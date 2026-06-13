@@ -1,7 +1,7 @@
 <?php
 /**
- * SNAPSMACK - Help topics for the Rational Geo skin
- * v1.0
+ * SNAPSMACK - Help topics for the Slickr skin
+ * v1.0.0
  */
 
 /**
@@ -11,32 +11,34 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-
-
 return [
     [
         'title' => 'About This Skin',
-        'body'  => 'Rational Geo is an homage to the world\'s best magazine. Editorial serif typography, the iconic yellow accent, and a layout that treats every photograph like a feature spread. Light variant evokes warm magazine paper; dark variant channels the drama of a cover shot.'
+        'body'  => 'Slickr is a Flickr-idiom skin built for migrated Flickr archives. Justified masonry landing page, classic solo view with an EXIF sidebar, and an albums directory — the way Flickr used to feel before they decided your photos were worth $140 a year.',
     ],
     [
-        'title' => 'Image Borders',
-        'body'  => 'Choose between NatGeo Yellow, white, black, grey, or no border. Hero images default to 8px borders, thumbnails to 2px. Adjust both independently in Image Presentation settings.'
+        'title' => 'Archive Layouts',
+        'body'  => 'The archive supports two layouts: Justified Masonry (Flickr-style rows of full-aspect images) and Cropped Grid (uniform square tiles). Set your default in Admin → Skin Options → Layout. Visitors can toggle between layouts using the T/M buttons in the filter bar.',
     ],
     [
-        'title' => 'Gallery Layouts',
-        'body'  => 'The archive page supports two layouts: Cropped Thumbnails (uniform grid) and Justified/Masonry (editorial flow). A toggle switch on the gallery page lets visitors switch between them. Set the default in Archive Grid settings.'
+        'title' => 'Solo Image View',
+        'body'  => 'Clicking any image opens the full solo view: large image on a dark background at the top, then title, date, and description in the left column, with tags, albums, and EXIF data in the right sidebar. Navigate between images with the arrow keys or the nav bar below the image.',
     ],
     [
-        'title' => 'Map Backgrounds',
-        'body'  => 'Enable or disable the subtle line-art map pattern that appears behind page content. The pattern adapts to light and dark variants automatically. Toggle in Image Presentation settings.'
+        'title' => 'EXIF & Technical Details',
+        'body'  => 'Camera, lens, aperture, shutter, ISO, focal length, and film stock (if set) appear in the sidebar when available. Toggle the EXIF panel on or off in Admin → Skin Options → Single Image.',
     ],
     [
-        'title' => 'Magazine Page Layout',
-        'body'  => 'On single image views, the editorial notes (comments) drop down from the top like a masthead section, while the photo caption and technical details slide up from the bottom like a magazine caption block. Press 1 for info, 2 for comments.'
+        'title' => 'Flickr Migration Badge',
+        'body'  => 'Images imported from Flickr via FLKR FCKR carry a provenance note in the sidebar showing the original Flickr asset ID. This can be hidden in Admin → Skin Options → Single Image if you prefer a clean look.',
     ],
     [
-        'title' => 'Likes, Reactions & Comments',
-        'body'  => 'SnapSmack ships a built-in community system: likes, emoji reactions, and threaded comments — all self-hosted on your own server, no third-party tracking. A floating dock appears on every page; visitors tap it to like or react without needing an account. Comments require a free community account created directly on your site. Manage everything in Admin > Community Settings: toggle features on or off, pick your reaction set (up to 6 emoji), set rate limits, and configure comment notification emails.',
+        'title' => 'Albums',
+        'body'  => 'The Albums page shows all your named collections as a 4-column cover grid. Create and manage albums in Admin → Media Library.',
+    ],
+    [
+        'title' => 'Likes & Comments',
+        'body'  => 'Slickr includes the SnapSmack community system: self-hosted likes and threaded comments, no third-party tracking. A floating dock appears on every page. Manage settings in Admin → Community Settings.',
     ],
 ];
 // ===== SNAPSMACK EOF =====

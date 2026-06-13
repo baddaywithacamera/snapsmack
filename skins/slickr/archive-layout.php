@@ -35,8 +35,8 @@ $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
 
 <!-- Layout toggle handled by core T/M buttons in the filter bar. -->
 
-<!-- Cropped grid — Galleria structure, RG borders -->
-<div id="browse-grid" class="rg-archive-grid" <?php echo $archive_default !== 'cropped' ? 'style="display:none;"' : ''; ?>>
+<!-- Cropped grid fallback -->
+<div id="browse-grid" class="sl-archive-grid" <?php echo $archive_default !== 'cropped' ? 'style="display:none;"' : ''; ?>>
     <?php if (!empty($images)): ?>
         <?php foreach ($images as $img):
             $link = BASE_URL . htmlspecialchars($img['img_slug']);
@@ -61,17 +61,17 @@ $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
                 $ratio = 1; // fallback square
             }
         ?>
-            <a href="<?php echo $link; ?>" class="rg-archive-item" title="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>">
-                <div class="rg-thumb<?php echo $ratio < 1 ? ' rg-thumb-portrait' : ''; ?>" style="aspect-ratio: <?php echo round($ratio, 4); ?>;">
+            <a href="<?php echo $link; ?>" class="sl-archive-item" title="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>">
+                <div class="sl-thumb<?php echo $ratio < 1 ? ' sl-thumb-portrait' : ''; ?>" style="aspect-ratio: <?php echo round($ratio, 4); ?>;">
                     <img src="<?php echo $thumb_url; ?>"
                          alt="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>"
                          loading="lazy">
                 </div>
-                <div class="rg-archive-title"><?php echo htmlspecialchars($img['img_title'] ?? ''); ?></div>
+                <div class="sl-archive-title"><?php echo htmlspecialchars($img['img_title'] ?? ''); ?></div>
             </a>
         <?php endforeach; ?>
     <?php else: ?>
-        <div class="rg-no-photos" style="grid-column: 1 / -1; text-align: center; padding: 80px 20px;">
+        <div class="sl-no-photos" style="grid-column: 1 / -1; text-align: center; padding: 80px 20px;">
             <p>No photographs found.</p>
         </div>
     <?php endif; ?>

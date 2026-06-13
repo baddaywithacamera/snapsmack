@@ -1,39 +1,36 @@
 /**
  * SnapSmack Slickr Skin - Main Stylesheet
- * Spec v0.1 — Clean, system-serif free Flickr visual idiom clone.
- * * @author Sean McCormick
+ * v1.0.0 — Flickr visual idiom. Justified masonry archive, classic solo view.
+ *
+ * @author Sean McCormick
  */
 
 /* ============================================================================
-   GLOBAL TOKENS & SYSTEM PROPERTIES
+   GLOBAL TOKENS
    ========================================================================== */
 
 :root {
-  /* Palette Idiom */
-  --sl-bg: #ffffff;
-  --sl-solo-bg: #1a1a1a;
-  --sl-text-primary: #222222;
+  --sl-bg:             #ffffff;
+  --sl-solo-bg:        #1a1a1a;
+  --sl-header-bg:      #ffffff;
+  --sl-header-border:  #eeeeee;
+  --sl-text-primary:   #222222;
   --sl-text-secondary: #888888;
-  --sl-link: #0063dc;
-  --sl-link-hover: #004baf;
+  --sl-link:           #0063dc;
+  --sl-link-hover:     #004baf;
+  --sl-canvas-width:   1400px;
 
-  /* Typography Stack */
   --sl-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
-  /* Layout Boundaries */
-  --justified-gap: 4px;
+  --justified-gap:        4px;
   --justified-row-height: 240px;
 }
 
 /* ============================================================================
-   RESET & VIEWPORT TYPOGRAPHY
+   RESET & BASE
    ========================================================================== */
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
   background-color: var(--sl-bg);
@@ -44,86 +41,65 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-a {
-  color: var(--sl-link);
-  text-decoration: none;
-  transition: color 0.1s ease;
-}
-
-a:hover {
-  color: var(--sl-link-hover);
-  text-decoration: none; /* Flickr convention: no underline on hover */
-}
+a { color: var(--sl-link); text-decoration: none; transition: color 0.1s ease; }
+a:hover { color: var(--sl-link-hover); }
 
 /* ============================================================================
-   CHROME REGION — NAVIGATION & CORE HEADER
+   HEADER
    ========================================================================== */
 
-#rg-header {
-  position: static; /* Unlock view; let the masonry run edge-to-edge naturally */
+#sl-header {
   width: 100%;
-  height: auto;
-  padding: 20px 24px;
-  background-color: var(--sl-bg);
-  border-bottom: 1px solid #eeeeee;
+  padding: 16px 24px;
+  background-color: var(--sl-header-bg);
+  border-bottom: 1px solid var(--sl-header-border);
 }
 
-.rg-header-inside {
-  max-width: 100%;
+.sl-header-inner {
+  max-width: var(--sl-canvas-width);
   margin: 0 auto;
   display: flex;
-  flex-direction: row;
   justify-content: space-between;
   align-items: center;
 }
 
-.rg-masthead {
+.sl-logo-link { text-decoration: none; }
+
+.sl-masthead {
   font-family: var(--sl-font-stack);
-  font-size: 24px;
-  font-weight: 400;
+  font-size: 22px;
+  font-weight: 600;
   color: var(--sl-text-primary);
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
 }
 
+.sl-header-nav { display: flex; gap: 24px; align-items: center; font-size: 14px; }
+.sl-header-nav a { color: var(--sl-text-secondary); }
+.sl-header-nav a:hover { color: var(--sl-text-primary); }
+
 /* ============================================================================
-   PERSISTENT CHROME SORTER & INDICATORS
+   SORTER BAR (archive filter chrome)
    ========================================================================== */
 
 .sl-sorter-bar {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 12px 24px;
+  padding: 10px 24px;
   background: #f3f5f6;
   border-bottom: 1px solid #e1e4e6;
   font-size: 13px;
   color: var(--sl-text-secondary);
 }
 
-/* Side-by-Side Tilted Diamonds Indicator Icon */
-.sl-idiom-icon {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.sl-diamond-pink,
-.sl-diamond-blue {
-  width: 8px;
-  height: 8px;
-  transform: rotate(45deg);
-}
-
-.sl-diamond-pink {
-  background-color: #ff0084;
-}
-
-.sl-diamond-blue {
-  background-color: #0063dc;
-}
+/* Flickr diamond pair icon */
+.sl-idiom-icon { display: inline-flex; gap: 6px; align-items: center; }
+.sl-diamond-pink, .sl-diamond-blue { width: 8px; height: 8px; transform: rotate(45deg); }
+.sl-diamond-pink  { background-color: #ff0084; }
+.sl-diamond-blue  { background-color: #0063dc; }
 
 /* ============================================================================
-   ARCHIVE DISPLAY MODES (MASONRY & THUMBS)
+   ARCHIVE — JUSTIFIED MASONRY (primary)
    ========================================================================== */
 
 #justified-grid {
@@ -137,76 +113,110 @@ a:hover {
   overflow: hidden;
 }
 
-/* Calm, un-cluttered metadata grid overlay */
 .justified-item::after {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(to bottom, rgba(0,0,0,0) 60%, rgba(0,0,0,0.7) 100%);
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0) 60%, rgba(0,0,0,0.6) 100%);
   opacity: 0;
   transition: opacity 0.2s ease;
   pointer-events: none;
 }
 
-.justified-item:hover::after {
-  opacity: 1;
-}
+.justified-item:hover::after { opacity: 1; }
 
-/* Cropped layout fallback style matching Slickr standard dimensions */
-.rg-archive-grid {
+/* ============================================================================
+   ARCHIVE — CROPPED GRID (toggle fallback)
+   ========================================================================== */
+
+.sl-archive-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-  padding: 24px;
+  gap: 4px;
+  padding: 4px;
+}
+
+.sl-archive-item {
+  display: block;
+  overflow: hidden;
+  background: #f3f5f6;
+}
+
+.sl-thumb {
+  width: 100%;
+  overflow: hidden;
+}
+
+.sl-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.15s ease;
+}
+
+.sl-archive-title {
+  font-size: 12px;
+  color: var(--sl-text-secondary);
+  padding: 4px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sl-no-photos {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--sl-text-secondary);
 }
 
 /* ============================================================================
-   SINGLE FOCUS VIEW (SLICKR FLOW)
+   SINGLE IMAGE VIEW
    ========================================================================== */
 
-.rg-single {
-  display: block;
-}
-
-#rg-photobox {
+#sl-photobox {
   background-color: var(--sl-solo-bg);
   padding: 40px 24px;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 60vh;
+  min-height: 55vh;
   max-height: 85vh;
   width: 100%;
 }
 
-.rg-image.post-image {
+.sl-photo-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.sl-image.post-image {
   max-width: 100%;
   max-height: 80vh;
   height: auto;
   width: auto;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  display: block;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
 }
 
-/* Core Split Layout Below Fold */
+/* Below-image split: main column + sidebar */
 .sl-focus-container {
-  max-width: 1400px;
+  max-width: var(--sl-canvas-width);
   margin: 0 auto;
   padding: 32px 24px;
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 340px;
   gap: 48px;
 }
 
 @media (max-width: 900px) {
-  .sl-focus-container {
-    grid-template-columns: 1fr;
-    gap: 32px;
-  }
+  .sl-focus-container { grid-template-columns: 1fr; gap: 32px; }
 }
 
-/* Left Metadata Column */
+/* Left column */
 .sl-main-column h1 {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 400;
   color: var(--sl-text-primary);
   margin-bottom: 4px;
@@ -215,56 +225,110 @@ a:hover {
 .sl-byline {
   font-size: 13px;
   color: var(--sl-text-secondary);
+  margin-bottom: 20px;
+}
+
+.sl-description-block {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--sl-text-primary);
   margin-bottom: 24px;
 }
 
-/* Right Metadata Sidebar */
-.sl-sidebar {
-  font-size: 14px;
-}
+.sl-comments-region { margin-top: 32px; }
+
+/* Right sidebar */
+.sl-sidebar { font-size: 14px; }
 
 .sl-sidebar-block {
-  margin-bottom: 28px;
+  margin-bottom: 24px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #eeeeee;
 }
 
+.sl-sidebar-block:last-child { border-bottom: none; }
+
 .sl-sidebar-block h4 {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--sl-text-secondary);
-  text-transform: lowercase; /* Flickr style metadata rules */
-  margin-bottom: 8px;
+  text-transform: lowercase;
   font-weight: 600;
+  margin-bottom: 8px;
+  letter-spacing: 0.03em;
+}
+
+.sl-sidebar-links { list-style: none; }
+.sl-sidebar-links li { margin-bottom: 4px; }
+.sl-sidebar-links a { font-size: 14px; }
+
+.sl-tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.sl-sidebar-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  background: #f3f5f6;
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--sl-text-secondary);
+}
+
+.sl-sidebar-tag:hover { background: #e1e4e6; color: var(--sl-text-primary); }
+
+.sl-metadata-table { width: 100%; border-collapse: collapse; }
+.sl-metadata-table td { padding: 4px 0; font-size: 13px; vertical-align: top; }
+.sl-metadata-table td:first-child { color: var(--sl-text-secondary); width: 40%; }
+
+.sl-geo-routing { margin-top: 8px; font-size: 13px; }
+
+.sl-provenance {
+  font-size: 12px;
+  color: var(--sl-text-secondary);
+}
+
+.sl-provenance code {
+  font-size: 11px;
+  background: #f3f5f6;
+  padding: 1px 4px;
+  border-radius: 2px;
 }
 
 /* ============================================================================
-   ALBUMS VIEW MODE
+   ALBUMS VIEW
    ========================================================================== */
+
+.sl-albums-view { background: var(--sl-bg); }
 
 .sl-album-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 24px;
-  padding: 24px;
-  max-width: 1400px;
+  padding: 32px 24px;
+  max-width: var(--sl-canvas-width);
   margin: 0 auto;
 }
 
 @media (max-width: 1024px) { .sl-album-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px) { .sl-album-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px)  { .sl-album-grid { grid-template-columns: 1fr; } }
 
 .sl-album-cover {
   aspect-ratio: 1;
-  background-color: #eee;
-  border: 1px solid #ddd;
+  background: #f3f5f6;
+  border: 1px solid #e1e4e6;
   overflow: hidden;
   margin-bottom: 8px;
 }
 
-.sl-album-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.sl-album-cover img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ============================================================================
+   NAVIGATION BAR (#infobox)
+   ========================================================================== */
+
+#infobox {
+  border-top: 1px solid var(--sl-header-border);
+  border-bottom: 1px solid var(--sl-header-border);
+  background: #fafafa;
+  padding: 0 24px;
 }
 
-/* SNAPSMACK EOF ========================================================== */
+/* ===== SNAPSMACK EOF ===== */
