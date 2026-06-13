@@ -19,6 +19,7 @@
 // every page load. If a site is down its card shows "Stats unavailable".
 
 $_demo_sites = [
+    'unzucked.ca'         => 'https://unzucked.ca',
     'photowalk.ing'       => 'https://photowalk.ing',
     'hekeepsdroningon.ca' => 'https://hekeepsdroningon.ca',
     'pixhellated.ca'      => 'https://pixhellated.ca',
@@ -1611,8 +1612,30 @@ require_once __DIR__ . '/includes/header.php';
 <section id="themes">
     <div class="wrap">
         <h2>Production Ready Skins</h2>
-        <p class="lede">Six skins. Six live sites. Not demos stuffed with stock photos — each is a real photographer's actual online portfolio. Click any screenshot to zoom in, then visit the live site. Hover a card for live site stats. Ten more skins are in development.</p>
+        <p class="lede">Seven skins. Seven live sites. Not demos stuffed with stock photos — each is a real photographer's actual online portfolio. Click any screenshot to zoom in, then visit the live site. Hover a card for live site stats. Nine more skins are in development.</p>
         <div class="theme-grid">
+
+            <div class="theme-card" data-stats="<?php echo ss_card_stats('unzucked.ca', $_demo_stats); ?>">
+                <div class="theme-main-shot">
+                    <a href="img/grid-landing.png" data-lb="img/grid-landing.png">
+                        <img src="img/grid-landing.png" alt="The Grid — landing">
+                    </a>
+                </div>
+                <div class="theme-thumbs">
+                    <a href="img/grid-solo.png" data-lb="img/grid-solo.png">
+                        <img src="img/grid-solo.png" alt="The Grid — post view">
+                    </a>
+                    <a href="img/grid-page.png" data-lb="img/grid-page.png">
+                        <img src="img/grid-page.png" alt="The Grid — static page">
+                    </a>
+                </div>
+                <div class="theme-info">
+                    <h3>The Grid</h3>
+                    <p>The Instagram-style square grid you already know — carousel posts, panorama trigrams, and a full post modal with likes and comments. The familiar feed, self-hosted and free of billionaires.</p>
+
+                    <a href="https://unzucked.ca" target="_blank" class="theme-link"><span class="theme-link-label">View live site</span>unzucked.ca →</a>
+                </div>
+            </div>
 
             <div class="theme-card" data-stats="<?php echo ss_card_stats('photowalk.ing', $_demo_stats); ?>">
                 <div class="theme-main-shot">
