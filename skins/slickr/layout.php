@@ -45,10 +45,10 @@ $exif_labels = [
 
     <?php include dirname(__DIR__, 2) . '/core/community-dock.php'; ?>
 
-    <div id="rg-photobox" style="background-color: <?php echo htmlspecialchars($settings['solo_bg_color'] ?? '#1a1a1a'); ?>;">
-        <div class="rg-photo-wrap">
+    <div id="sl-photobox" style="background-color: <?php echo htmlspecialchars($settings['solo_bg_color'] ?? '#1a1a1a'); ?>;">
+        <div class="sl-photo-wrap">
             <?php include dirname(__DIR__, 2) . '/core/download-overlay.php'; ?>
-            <img class="rg-image post-image"
+            <img class="sl-image post-image"
                  src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>"
                  alt="<?php echo htmlspecialchars($img['img_title']); ?>">
             <?php echo $download_button; ?>
