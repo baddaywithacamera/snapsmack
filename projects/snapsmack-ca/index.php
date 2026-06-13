@@ -314,7 +314,7 @@ $page_css = <<<'CSS'
 #lb-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.94);
+    background: rgba(0,0,0,0.8);
     z-index: 1000;
     display: flex;
     align-items: center;
@@ -329,8 +329,8 @@ $page_css = <<<'CSS'
     pointer-events: all;
 }
 #lb-overlay img {
-    max-width: 92vw;
-    max-height: 88vh;
+    max-width: 90vw;
+    max-height: 90vh;
     object-fit: contain;
     box-shadow: 0 4px 60px rgba(0,0,0,0.6);
     cursor: default;
@@ -2031,6 +2031,15 @@ document.getElementById('yr').textContent = new Date().getFullYear();
     ml('account', '2243616');
 </script>
 <!-- End MailerLite Universal -->
+
+<!-- Lightbox overlay — screenshot zoom. Required by the gallery script below
+     (the script bails if #lb-overlay / #lb-img are absent). -->
+<div id="lb-overlay">
+    <span class="lb-close" aria-label="Close">&times;</span>
+    <span class="lb-prev" aria-label="Previous image">&#8249;</span>
+    <img id="lb-img" src="" alt="">
+    <span class="lb-next" aria-label="Next image">&#8250;</span>
+</div>
 
 <script>
 (function () {
