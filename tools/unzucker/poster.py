@@ -378,7 +378,9 @@ def run_migration(
 
             # ── 3. Create post record via API ─────────────────────────
             resp = client.create_post(
-                title=post.body or '',
+                title='',                  # IG posts have no title; caption goes in body
+                                           # only (was title=post.body, which double-wrote
+                                           # the caption — The Grid renders title+body).
                 body=post.caption or '',
                 tags=tags_list,
                 images=image_meta,
