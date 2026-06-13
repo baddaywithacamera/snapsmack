@@ -1879,6 +1879,26 @@ function updater_check_skin_registry(PDO $pdo, bool $fast = false): array {
         }
     }
 
+    // ── AUTO-REPAIR: mandatory mobile skin ──────────────────────────────────
+    // If the mobile skin is absent (missing directory), pull it from the registry
+    // silently. Runs on every non-fast updater page load so any install that lost
+    // or never received the skin self-heals without admin intervention.
+    if (defined('SNAPSMACK_MOBILE_SKIN') && SNAPSMACK_MOBILE_SKIN !== '') {
+        $mobile_slug = SNAPSMACK_MOBILE_SKIN;
+        $mobile_dir  = dirname(__DIR__) . '/skins/' . $mobile_slug;
+        if (!is_dir($mobile_dir) && !empty($remote['skins'][$mobile_slug])) {
+            $mobile_entry = $remote['skins'][$mobile_slug];
+            if (!empty($mobile_entry['download_url'])) {
+                skin_registry_install(
+                    $mobile_slug,
+                    $mobile_entry['download_url'],
+                    $mobile_entry['signature'] ?? '',
+                    defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : ''
+                );
+            }
+        }
+    }
+
     return [
         'new_skins' => $new_skins,
         'updated_skins' => $updated_skins,
