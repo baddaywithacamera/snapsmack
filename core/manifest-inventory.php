@@ -754,6 +754,11 @@ return [
             'path'         => 'skins/the-grid/assets/js/tg-nav.js',
             'has_settings' => false,
         ],
+        'smack-grid-modal' => [
+            'label'        => 'The Grid post modal overlay (IG-style popover)',
+            'path'         => 'skins/the-grid/assets/js/tg-modal.js',
+            'has_settings' => false,
+        ],
         'smack-calendar' => [
             'label'        => 'Archive Calendar Sidebar (Sliding date panel)',
             'path'         => 'assets/js/ss-engine-calendar.js',
