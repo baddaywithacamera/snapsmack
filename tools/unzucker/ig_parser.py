@@ -166,6 +166,15 @@ def parse(export_folder: str) -> ParseResult:
 
         # Caption and hashtags
         caption = post_obj.get('title', '') or ''
+        # Single-image posts store the caption on the media item, not the
+        # post-level title. Fall back to the first media item carrying a title
+        # (before the Latin-1 decode below, so it applies to whichever we found).
+        if not caption:
+            for _m in media_list:
+                _mt = _m.get('title', '') or ''
+                if _mt:
+                    caption = _mt
+                    break
         # Instagram sometimes encodes as Latin-1 bytes in the JSON
         if isinstance(caption, str):
             try:
