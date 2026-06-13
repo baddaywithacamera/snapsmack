@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.9i"   # bump this on every rebuild
+BUILD_VERSION = "0.7.9k"   # bump this on every rebuild
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -57,6 +57,7 @@ import gemini as gemini_module
 import manifest_parser
 import poster as poster_module
 import profile_manager
+import recovery as recovery_module
 from manifest_parser import ManifestEntry
 from poster import SnapSmackClient, SiteData
 
@@ -161,18 +162,28 @@ class EntryRow(tk.Frame):
         self.row_index   = row_index
         self._thumb_img  = None   # keep reference to prevent GC
         self._status     = 'pending'
+        self._sel_var    = tk.BooleanVar(value=True)   # selected for enrich/post
 
         self._build(cats, albums, on_drag_start, on_drag_motion, on_drag_end)
 
     def _build(self, cats, albums, on_drag_start, on_drag_motion, on_drag_end):
         self.configure(height=ROW_HEIGHT)
 
-        # ── Drag handle ───────────────────────────────────────────────
+        # ── Selection checkbox (top of the left gutter) ───────────────
+        self._sel_chk = tk.Checkbutton(
+            self, variable=self._sel_var,
+            bg=BG_CARD, activebackground=BG_CARD,
+            selectcolor=BG_MID, fg=FG_DIM, cursor="hand2",
+            relief="flat", bd=0, highlightthickness=0,
+        )
+        self._sel_chk.place(x=4, y=4, width=22, height=22)
+
+        # ── Drag handle (below the checkbox) ──────────────────────────
         self._handle = tk.Label(
             self, text="⠿", bg=BG_CARD, fg=FG_DIM,
             font=("Segoe UI", 14), cursor="fleur", padx=6,
         )
-        self._handle.place(x=0, y=0, width=28, height=ROW_HEIGHT)
+        self._handle.place(x=0, y=28, width=28, height=ROW_HEIGHT - 28)
         self._handle.bind("<ButtonPress-1>",   on_drag_start)
         self._handle.bind("<B1-Motion>",        on_drag_motion)
         self._handle.bind("<ButtonRelease-1>", on_drag_end)
@@ -378,6 +389,13 @@ class EntryRow(tk.Frame):
         self._album_cb['values'] = [''] + albums
         self._album_cb.set(cur_alb)
 
+    # ── Selection ──────────────────────────────────────────────────────
+    def is_selected(self) -> bool:
+        return bool(self._sel_var.get())
+
+    def set_selected(self, on: bool):
+        self._sel_var.set(bool(on))
+
 
 # ---------------------------------------------------------------------------
 # Scrollable entry list with drag reorder
@@ -495,9 +513,28 @@ class EntryList(tk.Frame):
     def get_entries(self) -> List[ManifestEntry]:
         return [r.entry for r in self._rows]
 
+    def get_selected_entries(self) -> List[ManifestEntry]:
+        return [r.entry for r in self._rows if r.is_selected()]
+
+    def selected_count(self) -> int:
+        return sum(1 for r in self._rows if r.is_selected())
+
+    def set_all_selected(self, on: bool):
+        for r in self._rows:
+            r.set_selected(on)
+
     def get_row(self, index: int) -> Optional['EntryRow']:
         if 0 <= index < len(self._rows):
             return self._rows[index]
+        return None
+
+    def row_for_entry(self, entry) -> Optional['EntryRow']:
+        """Find the row owning a given entry object (identity match).
+        Used so status updates land on the right row even when only a
+        filtered subset of the queue is being processed."""
+        for r in self._rows:
+            if r.entry is entry:
+                return r
         return None
 
     def set_row_status(self, index: int, status: str, message: str = ""):
@@ -939,6 +976,8 @@ class App(tk.Tk):
         self._drive_service = None
         self._posting           = False
         self._keepalive_running = False
+        self._cancel_evt        = threading.Event()    # set to abort a running POST
+        self._recovery          = None                 # recovery_module.RecoveryStore
         self._msg_queue:    queue.Queue               = queue.Queue()
 
         self._led_font = _load_dotmatrix_font()
@@ -1398,6 +1437,18 @@ class App(tk.Tk):
             bg=BG_DEEP, fg=FG_DIM, font=FONT_BOLD,
         )
         self._queue_lbl.pack(side="left", padx=14, pady=6)
+
+        # Select-all toggle — Enrich and Post act only on ticked rows.
+        self._sel_all_var = tk.BooleanVar(value=True)
+        self._sel_all_chk = tk.Checkbutton(
+            self._queue_hdr, text="Select all", variable=self._sel_all_var,
+            command=self._on_select_all,
+            bg=BG_DEEP, fg=FG_DIM, activebackground=BG_DEEP, activeforeground=FG_MAIN,
+            selectcolor=BG_MID, font=FONT_SMALL, cursor="hand2",
+            relief="flat", bd=0, highlightthickness=0,
+        )
+        self._sel_all_chk.pack(side="right", padx=14)
+
         self._queue_sep  = tk.Frame(self._post_frame, bg=BORDER, height=1)
 
         # ── Entry list ────────────────────────────────────────────────
@@ -1454,10 +1505,8 @@ class App(tk.Tk):
             font=("Segoe UI", 11, "bold"),
         )
         self._post_canvas.bind("<Button-1>", lambda e: self._on_post())
-        self._post_canvas.bind("<Enter>", lambda e: self._post_canvas.itemconfig(
-            self._post_rect, fill=self._lighten(self._post_canvas.itemcget(self._post_rect, 'fill'))))
-        self._post_canvas.bind("<Leave>", lambda e: self._post_canvas.itemconfig(
-            self._post_rect, fill=ACCENT))
+        self._post_canvas.bind("<Enter>", lambda e: self._post_hover(True))
+        self._post_canvas.bind("<Leave>", lambda e: self._post_hover(False))
 
         self._clear_btn = ttk.Button(bottom, text="Clear", style="Ghost.TButton",
                                       command=self._on_clear)
@@ -3406,7 +3455,12 @@ class App(tk.Tk):
         cats   = sorted(self._site_data._cat_display.values()) if self._site_data else []
         albums = sorted(self._site_data._album_display.values()) if self._site_data else []
 
+        # Offer to restore saved enrichment for this folder before building rows.
+        self._maybe_resume(parse_result.entries, image_folder)
+
         self._entry_list.load(parse_result.entries, image_folder, cats, albums)
+        self._mark_restored_rows()
+        self._sel_all_var.set(True)
         total = len(self._entry_list.get_entries())
         added = len(parse_result.entries)
         self._progress['maximum'] = total
@@ -3454,7 +3508,12 @@ class App(tk.Tk):
         cats   = sorted(self._site_data._cat_display.values()) if self._site_data else []
         albums = sorted(self._site_data._album_display.values()) if self._site_data else []
 
+        # Offer to restore saved enrichment for this folder before building rows.
+        self._maybe_resume(entries, image_folder)
+
         self._entry_list.load(entries, image_folder, cats, albums)
+        self._mark_restored_rows()
+        self._sel_all_var.set(True)
         total = len(entries)
         self._progress['maximum'] = total
         self._prog_var.set(0)
@@ -3534,15 +3593,22 @@ class App(tk.Tk):
             messagebox.showerror("No API Key", "Enter your Gemini API key in the configuration panel.")
             return
 
-        entries = self._entry_list.get_entries()
-        if not entries:
+        if not self._entry_list.get_entries():
             messagebox.showerror("Nothing loaded", "Load images or a manifest first.")
+            return
+        entries = self._entry_list.get_selected_entries()
+        if not entries:
+            messagebox.showerror("Nothing selected",
+                                 "Tick at least one image to enrich (or use Select all).")
             return
 
         image_folder = self._folder_var.get().strip()
         if not image_folder:
             messagebox.showerror("No folder", "Select an image folder first.")
             return
+
+        # Recovery store for this folder — each enriched item is saved as it lands.
+        self._ensure_recovery(image_folder)
 
         if not gemini_module.is_available():
             messagebox.showerror(
@@ -3570,7 +3636,9 @@ class App(tk.Tk):
                         self._set_status(
                             f"Gemini: {entry.file} — {error}", FG_ERR)
                     else:
-                        row = self._entry_list.get_row(idx - 1)
+                        # Locate the row by entry identity — robust even when only
+                        # a selected subset of the queue is being enriched.
+                        row = self._entry_list.row_for_entry(entry)
                         if row:
                             row.fill_from_ai(
                                 title=entry.title,
@@ -3580,6 +3648,13 @@ class App(tk.Tk):
                                 colors=entry.colors,
                             )
                             row.set_status('enriched')
+                        # Persist this item's enrichment to disk the moment it lands
+                        # so a later crash/hang/close can't lose the Gemini spend.
+                        if self._recovery:
+                            try:
+                                self._recovery.upsert(entry, 'enriched')
+                            except Exception:
+                                pass
                         self._set_status(
                             f"Gemini: enriched {idx} / {total} — {entry.file}", FG_OK)
                 self.after(0, _ui_update)
@@ -3817,9 +3892,13 @@ class App(tk.Tk):
         if not self._ensure_connected():
             return
 
-        entries = self._entry_list.get_entries()
-        if not entries:
+        if not self._entry_list.get_entries():
             messagebox.showerror("Nothing loaded", "Load a manifest first.")
+            return
+        entries = self._entry_list.get_selected_entries()
+        if not entries:
+            messagebox.showerror("Nothing selected",
+                                 "Tick at least one image to post (or use Select all).")
             return
 
         # ── Warn if Drive is enabled but not connected ─────────────────
@@ -3836,13 +3915,19 @@ class App(tk.Tk):
                 return
 
         count = len(entries)
+        total_in_queue = len(self._entry_list.get_entries())
+        subset_note = ("" if count == total_in_queue
+                       else f"  (of {total_in_queue} in the queue)")
         if not messagebox.askyesno(
             "Confirm post",
-            f"Post {count} image{'s' if count != 1 else ''} to SnapSmack?\n\n"
+            f"Post {count} selected image{'s' if count != 1 else ''}{subset_note} to SnapSmack?\n\n"
             "They'll appear in the archive in the order shown.",
         ):
             return
 
+        # Recovery store for this folder — posted items are marked as they go.
+        self._ensure_recovery(self._folder_var.get().strip())
+        self._cancel_evt.clear()
         self._set_posting(True)
         self._prog_var.set(0)
         self._progress['maximum'] = count
@@ -3865,7 +3950,7 @@ class App(tk.Tk):
         orient_map = {'auto': 'auto', 'landscape': '0', 'portrait': '1', 'square': '2'}
         orient_val = orient_map.get(self._def_orient_var.get().strip().lower(), 'auto')
 
-        poster_module.run_batch(
+        results = poster_module.run_batch(
             client=self._client,
             entries=entries,
             image_folder=image_folder,
@@ -3877,8 +3962,10 @@ class App(tk.Tk):
             drive_service=self._drive_service,
             drive_folder_id=self._drive_folder_var.get().strip(),
             copyright_text=self._copyright_var.get().strip(),
+            cancel_event=self._cancel_evt,
         )
-        self._msg_queue.put(('done', total))
+        cancelled = self._cancel_evt.is_set()
+        self._msg_queue.put(('done', len(results), cancelled))
 
     def _poll_queue(self):
         try:
@@ -3889,12 +3976,22 @@ class App(tk.Tk):
                     self._prog_var.set(current)
                     self._prog_lbl.configure(text=f"{current} / {total}")
 
-                    idx = current - 1
+                    # Badge the row by entry identity (not index) so a selected
+                    # subset still lights up the correct rows.
+                    row = self._entry_list.row_for_entry(result.entry)
                     if result.success:
                         row_status = 'ok' if result.exif_ok else 'warning'
-                        self._entry_list.set_row_status(idx, row_status, result.message)
                     else:
-                        self._entry_list.set_row_status(idx, 'error', result.message)
+                        row_status = 'error'
+                    if row:
+                        row.set_status(row_status, result.message)
+
+                    # Mark the item posted in the recovery file as it succeeds.
+                    if result.success and self._recovery:
+                        try:
+                            self._recovery.mark_status(result.entry, 'ok')
+                        except Exception:
+                            pass
 
                     row_color = FG_OK if result.success and result.exif_ok else (FG_WARN if result.success else FG_ERR)
                     self._set_status(
@@ -3903,9 +4000,23 @@ class App(tk.Tk):
                     )
 
                 elif msg[0] == 'done':
-                    total = msg[1]
+                    processed = msg[1]
+                    cancelled = msg[2] if len(msg) > 2 else False
                     self._set_posting(False)
-                    self._set_status(f"Batch complete — {total} processed.", FG_OK)
+                    if cancelled:
+                        self._set_status(
+                            f"Cancelled — {processed} posted before stop. "
+                            "The rest stay in the queue.", FG_WARN)
+                    else:
+                        self._set_status(f"Batch complete — {processed} processed.", FG_OK)
+                        # Whole batch posted → recovery file no longer needed.
+                        if self._recovery:
+                            try:
+                                if self._recovery.all_posted():
+                                    self._recovery.delete()
+                                    self._recovery = None
+                            except Exception:
+                                pass
                     if not self._cfg_visible:
                         self._toggle_cfg()
 
@@ -3931,27 +4042,14 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
 
     def _ensure_connected(self) -> bool:
+        # API-key auth (0.7.9e+) has NO server session to check. The old code
+        # here called self._client.is_session_alive(), a method deleted in the
+        # API-key migration — it raised AttributeError and froze POST forever on
+        # "Checking session…" (the 0.7.9j hang). We only need a client + site data.
         if not self._client or not self._site_data:
             messagebox.showinfo("Not connected",
                                 "Click Connect first and enter your credentials.")
             return False
-
-        # Verify the server session is still alive
-        self._set_status("Checking session…", FG_WARN)
-        self.update_idletasks()
-
-        if not self._client.is_session_alive():
-            self._set_status("Session expired.", FG_ERR)
-            self._conn_lbl.configure(text="SESSION EXPIRED", fg=LED_ERR)
-            self._conn_dot.configure(fg=LED_ERR)
-            messagebox.showwarning(
-                "Session Expired",
-                "Your login session has timed out on the server.\n\n"
-                "Click Connect to log in again. Your queue is still here."
-            )
-            return False
-
-        self._set_status("Session OK.", FG_OK)
         return True
 
     # ------------------------------------------------------------------
@@ -4069,17 +4167,107 @@ class App(tk.Tk):
     def _set_status(self, text: str, color: str = FG_DIM):
         self._status_lbl.configure(text=text, fg=color)
 
+    # ------------------------------------------------------------------
+    # Selection
+    # ------------------------------------------------------------------
+
+    def _on_select_all(self):
+        """Master checkbox in the queue header → tick/untick every row."""
+        self._entry_list.set_all_selected(self._sel_all_var.get())
+
+    # ------------------------------------------------------------------
+    # Recovery (incremental enrichment save + resume)
+    # ------------------------------------------------------------------
+
+    def _ensure_recovery(self, image_folder: str):
+        """Return the active RecoveryStore for image_folder, creating/loading it
+        if the folder changed. Never raises."""
+        if not image_folder:
+            return self._recovery
+        try:
+            same = (self._recovery is not None and
+                    os.path.normcase(os.path.abspath(self._recovery.image_folder))
+                    == os.path.normcase(os.path.abspath(image_folder)))
+            if not same:
+                store = recovery_module.RecoveryStore(image_folder)
+                if store.exists():
+                    store.load()
+                self._recovery = store
+        except Exception:
+            pass
+        return self._recovery
+
+    def _maybe_resume(self, entries, image_folder: str):
+        """If a recovery file exists for this folder, offer to restore enrichment
+        into `entries` (in place) and skip re-enriching them. Sets self._recovery."""
+        try:
+            store = recovery_module.RecoveryStore(image_folder)
+        except Exception:
+            self._recovery = None
+            return
+        if store.exists():
+            store.load()
+            have = store.enriched_count()
+            if have and messagebox.askyesno(
+                "Resume enrichment",
+                f"Saved enrichment was found for this folder:\n\n"
+                f"    {have} of {len(entries)} item(s) already enriched.\n\n"
+                "Restore it and skip re-enriching those?\n"
+                "(This is recovered from a previous run — it saves Gemini cost.)",
+            ):
+                restored = store.restore_into(entries)
+                self._set_status(
+                    f"Recovered {restored} enriched item(s) from disk.", FG_OK)
+            elif have:
+                # Declined — start fresh; next enrich overwrites the old file.
+                store = recovery_module.RecoveryStore(image_folder)
+        self._recovery = store
+
+    def _mark_restored_rows(self):
+        """After load, badge any rows whose enrichment was restored from disk."""
+        if not self._recovery:
+            return
+        for i in range(len(self._entry_list.get_entries())):
+            row = self._entry_list.get_row(i)
+            if not row:
+                continue
+            rec = self._recovery.lookup(row.entry)
+            if rec and (rec.get('title') or rec.get('tags')):
+                row.set_status('ok' if rec.get('status') == 'ok' else 'enriched')
+
+    # ------------------------------------------------------------------
+    # Cancel a running POST
+    # ------------------------------------------------------------------
+
+    def _on_cancel_post(self):
+        if not self._posting:
+            return
+        self._cancel_evt.set()
+        self._post_canvas.itemconfig(self._post_text, text="CANCELLING…")
+        self._post_canvas.unbind("<Button-1>")
+        self._post_canvas.configure(cursor="")
+        self._set_status("Cancelling after the current image finishes…", FG_WARN)
+
+    def _post_hover(self, on: bool):
+        """Hover lighten for the POST button — suppressed while posting so the
+        red CANCEL state isn't wiped back to green."""
+        if self._posting:
+            return
+        self._post_canvas.itemconfig(
+            self._post_rect, fill=self._lighten(ACCENT) if on else ACCENT)
+
     def _set_posting(self, posting: bool):
         self._posting = posting
-        state = "disabled" if posting else "normal"
-        # Post button is a Canvas — simulate disabled by dimming and blocking clicks
+        # The POST button is a Canvas. While posting it becomes a red CANCEL
+        # button; otherwise it's the green POST BATCH button.
+        self._post_canvas.unbind("<Button-1>")
         if posting:
-            self._post_canvas.itemconfig(self._post_text, fill=FG_DIM)
-            self._post_canvas.itemconfig(self._post_rect, fill=BG_MID)
-            self._post_canvas.configure(cursor="")
-            self._post_canvas.unbind("<Button-1>")
+            self._post_canvas.itemconfig(self._post_text, text="CANCEL", fill="#FFFFFF")
+            self._post_canvas.itemconfig(self._post_rect, fill=FG_ERR)
+            self._post_canvas.configure(cursor="hand2")
+            self._post_canvas.bind("<Button-1>", lambda e: self._on_cancel_post())
         else:
-            self._post_canvas.itemconfig(self._post_text, fill="#000000")
+            self._post_canvas.itemconfig(self._post_text, text="POST BATCH", fill="#000000")
             self._post_canvas.itemconfig(self._post_rect, fill=ACCENT)
             self._post_canvas.configure(cursor="hand2")
             self._post_canvas.bind("<Button-1>", lambda e: self._on_post())

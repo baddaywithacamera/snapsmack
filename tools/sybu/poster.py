@@ -380,11 +380,16 @@ def run_batch(
     drive_service=None,
     drive_folder_id:     str = '',
     copyright_text:      str = '',
+    cancel_event=None,
 ) -> List[PostResult]:
     results = []
     total   = len(entries)
 
     for i, entry in enumerate(entries, start=1):
+        # Stop cleanly between images if the user hit Cancel. Already-posted
+        # items are kept; the rest are simply not attempted.
+        if cancel_event is not None and cancel_event.is_set():
+            break
         result = client.post_image(
             entry=entry,
             image_folder=image_folder,

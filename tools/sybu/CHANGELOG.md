@@ -15,6 +15,35 @@ Same versioning scheme as SnapSmack (0.7.9x). Letter increments per SYBU release
 
 ---
 
+## 0.7.9k — Crash recovery, batch selection, cancel + session-hang fix (2026-06-12)
+
+### Fixed
+- **POST froze forever on "Checking session…"** — `_ensure_connected()` in `main.py`
+  called `self._client.is_session_alive()`, a method removed in the 0.7.9e API-key
+  migration. It raised `AttributeError` and hung the POST at 0/N (the 0.7.9j hang that
+  lost ~$1 of Gemini enrichment). API-key auth has no server session, so the whole
+  session-check block was removed — it now just confirms client + site data are present.
+  (Third leftover from the same migration after 0.7.9h `_logged_in` and 0.7.9i `_api_key`.)
+
+### Added
+- **Incremental enrichment recovery (new `recovery.py`).** Each image's Gemini
+  enrichment (title/tags/category/album/orientation/colors) is written to disk the
+  instant it lands, to `recovery/sybu_recovery_<jobid>.json` next to the exe, via an
+  atomic temp-write + `os.replace` (crash-safe). Reloading the same image folder offers
+  **"Resume — N of M already enriched. Restore?"**, repopulates the rows, and skips
+  re-enriching them (no repeat Gemini spend). Items are marked posted as they go; the
+  file is pruned once the whole batch is posted. A crash/hang/close can no longer throw
+  away paid enrichment.
+- **Select one / some / all.** Every queue row has a checkbox (default on) plus a
+  "Select all" toggle in the queue header. Both **Enrich** and **Post** act only on the
+  ticked rows. Row status is now matched by entry identity, so processing a subset still
+  lights up the correct rows.
+- **Cancel a running job.** While posting, the POST BATCH button turns into a red
+  **CANCEL** button. It stops cleanly between images — already-posted items are kept,
+  the rest stay in the queue — and reports how many posted before the stop.
+
+---
+
 ## 0.7.9i — Fix attribute name typo in api-key check (2026-05-08)
 
 ### Fixed
