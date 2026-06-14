@@ -38,6 +38,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $log[] = "SUCCESS: Database tables optimized and defragmented.";
     }
 
+    // FORCE MOBILE SKIN UPDATE
+    // Mobile-only skins (Photogram) are hidden from the gallery, so they can only
+    // self-heal via the updater when the registry version is HIGHER than installed.
+    // This forces a fresh reinstall from the registry regardless of version —
+    // skin_registry_install() removes the existing dir first, so it's a safe
+    // in-place overwrite. We clear the 10-minute registry session cache first so
+    // we pull the freshly published registry, not a stale copy.
+    if ($action === 'force_mobile_skin_update') {
+        require_once 'core/skin-registry.php';
+        if (function_exists('skin_registry_clear_cache')) {
+            skin_registry_clear_cache();
+        }
+        $remote = skin_registry_fetch(SKIN_REGISTRY_DEFAULT_URL);
+        if (!empty($remote['error']) || empty($remote['skins'])) {
+            $log[] = "ERROR: Could not fetch the skin registry — " . htmlspecialchars($remote['error'] ?? 'no skins returned') . ".";
+        } else {
+            $mobile_slugs = (defined('SNAPSMACK_MOBILE_SKIN') && SNAPSMACK_MOBILE_SKIN !== '')
+                ? [SNAPSMACK_MOBILE_SKIN]
+                : [];
+            if (!$mobile_slugs) {
+                $log[] = "NOTICE: No mobile skin is configured (SNAPSMACK_MOBILE_SKIN is empty).";
+            }
+            foreach ($mobile_slugs as $slug) {
+                $entry = $remote['skins'][$slug] ?? null;
+                if (!$entry || empty($entry['download_url'])) {
+                    $log[] = "WARNING: \"" . htmlspecialchars($slug) . "\" is not in the registry (or has no download URL). Republish the registry and retry.";
+                    continue;
+                }
+                $result = skin_registry_install(
+                    $slug,
+                    $entry['download_url'],
+                    $entry['signature'] ?? '',
+                    defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : ''
+                );
+                if (!empty($result['success'])) {
+                    $log[] = "SUCCESS: Force-reinstalled mobile skin \"" . htmlspecialchars($slug) . "\" (v" . htmlspecialchars($entry['version'] ?? '?') . ") from the registry.";
+                } else {
+                    $log[] = "ERROR: \"" . htmlspecialchars($slug) . "\" — " . htmlspecialchars($result['message'] ?? 'install failed') . ".";
+                }
+            }
+        }
+    }
+
     // ASSET SYNC
     // Regenerates missing thumbnails and deletes physical files not found in the DB.
     // Batched at 25 images per run to avoid flattening shared hosting.
@@ -807,6 +850,16 @@ include 'core/sidebar.php';
                     <button type="submit" class="btn-smack btn-block">REGENERATE ALL THUMBNAILS</button>
                 </form>
             <?php endif; ?>
+        </div>
+
+        <div class="box box-flex">
+            <h3>FORCE MOBILE SKIN UPDATE</h3>
+            <p class="skin-desc-text">Reinstalls the mobile-only skin (Photogram) from the skin registry, ignoring version checks. Photogram is hidden from the gallery and normally only self-updates when the registry version is newer &mdash; use this to force it into sync after republishing the registry.</p>
+            <form method="POST"
+                  onsubmit="return confirm('This will reinstall the mobile skin from the registry, overwriting the current copy. Continue?')">
+                <input type="hidden" name="action" value="force_mobile_skin_update">
+                <button type="submit" class="btn-smack btn-block">FORCE MOBILE SKIN UPDATE</button>
+            </form>
         </div>
     </div>
 
