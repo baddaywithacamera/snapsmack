@@ -26,7 +26,7 @@ require_once dirname(__DIR__, 2) . '/core/snap-tags.php';
 
 // ── Profile data ──────────────────────────────────────────────────────────
 $site_title  = $settings['site_title']       ?? $site_name ?? 'Photogram';
-$avatar_file = $settings['site_avatar'] ?? $settings['header_logo_url'] ?? $settings['site_logo'] ?? $settings['favicon_url'] ?? '';
+$avatar_file = $settings['pg_avatar'] ?? $settings['header_logo_url'] ?? $settings['site_logo'] ?? $settings['favicon_url'] ?? '';
 
 // ── Carousel: load post + all images if this image belongs to a post ──────
 $_pg_post       = null;

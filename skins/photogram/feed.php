@@ -36,7 +36,7 @@ $load_newer       = ($_GET['newer'] ?? '') === '1';  // Load posts NEWER than cu
 
 // ── Profile data for author row ─────────────────────────────────────────────
 $site_title  = $settings['site_title']       ?? $site_name ?? 'Photogram';
-$avatar_file = $settings['site_avatar'] ?? $settings['header_logo_url'] ?? $settings['site_logo'] ?? $settings['favicon_url'] ?? '';
+$avatar_file = $settings['pg_avatar'] ?? $settings['header_logo_url'] ?? $settings['site_logo'] ?? $settings['favicon_url'] ?? '';
 
 
 // ── Query helper ────────────────────────────────────────────────────────────
