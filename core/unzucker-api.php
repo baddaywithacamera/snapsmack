@@ -22,6 +22,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/snap-tags.php';
+require_once __DIR__ . '/thumb-generator.php';
 
 // Defensive schema guard — table may be absent on installs that predate
 // the Oh Snap! key table; columns key_type and key_prefix may be absent
@@ -307,15 +308,30 @@ if ($sub === 'posts' && $method === 'POST') {
         $sort_row   = $pdo->query("SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM snap_images")->fetch(PDO::FETCH_ASSOC);
         $sort_order = (int)($sort_row['n'] ?? 1);
 
+        // Generate the 400px square + aspect thumbnails the skins expect. The
+        // uploaded JPEG is already on disk (saved by unzucker/upload). Without
+        // this, img_thumb_square stays empty and both The Grid and Photogram
+        // fall back to serving the full ~2000px original. 400px matches
+        // RecoveryEngine::regenerateAndChecksum() so backfills stay consistent.
+        $img_thumb_square = null;
+        $img_thumb_aspect = null;
+        $_thumb = snapsmack_generate_thumbs($img_path, dirname(__DIR__), 400, 400);
+        if ($_thumb !== false) {
+            $img_thumb_square = $_thumb['sq_path'];
+            $img_thumb_aspect = $_thumb['asp_path'];
+        }
+
         $pdo->prepare("
             INSERT INTO snap_images (
                 img_slug, img_file, img_title, img_description,
                 img_date, img_width, img_height, img_orientation,
+                img_thumb_square, img_thumb_aspect,
                 img_source_file, img_status, sort_order
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?)
         ")->execute([
             $img_slug, $img_path, '', $desc,
             $post_date, $img_w, $img_h, $img_ori,
+            $img_thumb_square, $img_thumb_aspect,
             $img_source ?: null, $sort_order,
         ]);
 
