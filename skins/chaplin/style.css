@@ -993,6 +993,11 @@ body.archive-page #scroll-stage {
 
 .rg-archive-item:hover .rg-archive-title { opacity: 1; }
 
+/* Touch / no-hover devices can't hover to reveal the title — show it always. */
+@media (hover: none), (pointer: coarse) {
+  .rg-archive-title { opacity: 1; }
+}
+
 /* Justified / Masonry grid */
 #justified-grid {
   max-width: var(--chap-photo-max-width, 1600px);
@@ -1080,6 +1085,11 @@ body.archive-page #scroll-stage {
 
 .fsog-archive-item:hover .fsog-archive-title {
     opacity: 1;
+}
+
+/* Touch / no-hover devices can't hover to reveal the title — show it always. */
+@media (hover: none), (pointer: coarse) {
+    .fsog-archive-title { opacity: 1; }
 }
 
 

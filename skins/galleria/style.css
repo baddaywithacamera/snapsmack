@@ -984,6 +984,11 @@ body.archive-page #scroll-stage {
     opacity: 1;
 }
 
+/* Touch / no-hover devices can't hover to reveal the title — show it always. */
+@media (hover: none), (pointer: coarse) {
+    .htbs-archive-title { opacity: 1; }
+}
+
 /* ============================================================================
    Filmstrip
    Horizontal scrollable strip of image thumbnails

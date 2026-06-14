@@ -770,6 +770,11 @@ small,
   opacity: 1;
 }
 
+/* Touch / no-hover devices can't hover to reveal the title — show it always. */
+@media (hover: none), (pointer: coarse) {
+  .rg-archive-title { opacity: 1; }
+}
+
 /* --- Justified Grid: public-facing.css handles flex layout.
        We only add RG-specific overrides: positioning + yellow/white borders.
        NOTE: public-facing.css resets border/box-shadow with !important on
