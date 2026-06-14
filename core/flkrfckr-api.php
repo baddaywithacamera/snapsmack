@@ -417,4 +417,4 @@ if ($method === 'POST' && $sub === 'comments') {
 
     flkrfckr_ok(['comment_id' => $comment_id]);
 }
-<?php // ===== SNAPSMACK EOF =====
+// ===== SNAPSMACK EOF =====
