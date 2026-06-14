@@ -12,6 +12,19 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.257 — "Catbird Seat" (2026-06-14)
+
+### Core — maintenance + FLKR FCKR
+
+- **`smack-maintenance.php`** — new FORCE MOBILE SKIN UPDATE action and card. Mobile-only skins (Photogram) are hidden from the gallery and only self-update when the registry version is newer; this force-reinstalls them from the registry on demand (clears the registry session cache, then calls `skin_registry_install()` regardless of installed version).
+- **`core/flkrfckr-api.php`** — fixed the EOF marker to the bare-comment form on this pure-PHP file; the prior `<?php // …` form was a fatal parse error in the import endpoint.
+- **`core/constants.php`** — version → 0.7.257 "Catbird Seat".
+
+### Skins — touch accessibility + Photogram
+
+- **50 Shades of Noah Grey 1.4.1, Galleria 1.3.1, Rational Geo 2.1.4, Chaplin 0.2.10** — archive thumbnail titles now show on touch / no-hover devices via a `@media (hover: none), (pointer: coarse)` override. Previously hover-only, so the labels were invisible on tablets.
+- **Photogram 2.0.3** — version bump so a registry republish triggers the mobile auto-update, carrying the 2.0.2 dual-mode grid fix to installs.
+
 ## 0.7.256 — "Hot Seat" (2026-06-13)
 
 ### Core — smack-update.php auto-check removed
