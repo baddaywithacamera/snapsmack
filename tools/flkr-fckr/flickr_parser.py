@@ -20,9 +20,11 @@ with Flickr-specific logic. ParsedPhoto mirrors ParsedPost structure.
 
 
 import glob
+import html
 import json
 import os
 import re
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
@@ -48,6 +50,7 @@ class ParsedPhoto:
     privacy:        str          = 'public'     # 'public', 'private', 'friends', etc.
     license:        str          = ''
     excluded:       bool         = False        # user can toggle in GUI
+    comments:       List[dict]   = field(default_factory=list)  # imported Flickr comments
 
 
 @dataclass
@@ -67,57 +70,86 @@ class ParseResult:
 
 
 # ---------------------------------------------------------------------------
-# Filename → Flickr ID extraction
+# Filename → Flickr ID matching
 #
-# Flickr exports image files as: {title}_{photo_id}_{size_code}.{ext}
-# The photo_id is the numeric string immediately before the last
-# underscore+size_code suffix. Size codes are single letters: o, k, b, h, etc.
+# Flickr exports image files under several naming conventions. Real-world
+# exports almost always embed the photo *secret* between the id and the size
+# code, so a simple "id immediately before size" assumption does NOT hold:
 #
-# Examples:
-#   mountain_pass_53298148_o.jpg      → ID 53298148
-#   53298148_abc123def456_o.jpg       → ID 53298148  (no title prefix)
-#   my_photo_title_53298148_k.jpg     → ID 53298148
+#   mountain_pass_53298148_o.jpg              → id 53298148  (no secret)
+#   my_photo_title_53298148_k.jpg             → id 53298148  (no secret)
+#   53298148_abc123def456_o.jpg               → id 53298148  (secret, no title)
+#   sunset_49214987863_a1b2c3d4e5_o.jpg       → id 49214987863  (title+id+secret+size)
 #
-# Strategy: find the last occurrence of _(\d+)_[a-z]\. in the filename.
+# Strategy: index every image file by ALL long numeric runs (>= 7 digits) found
+# in its name. A photo's Flickr id is matched against that index. We also keep a
+# basename map so we can match exactly against the `original` URL from the
+# sidecar when available (the strongest possible signal). Scanning the folder
+# once (rather than per photo) also turns the old O(n^2) walk into O(n).
 # ---------------------------------------------------------------------------
 
-_FLICKR_ID_RE = re.compile(r'_(\d+)_[a-zA-Z]\.[a-zA-Z0-9]+$')
+_IMG_EXTS = ('.jpg', '.jpeg', '.png', '.gif', '.webp')
+
+# Long numeric runs that could be a Flickr photo id (ids are ~10-11 digits;
+# >= 7 avoids matching years/short numbers that appear in titles).
+_ID_RUN_RE = re.compile(r'\d{7,}')
+
+# Trailing size code, e.g. ..._o.jpg → 'o'
+_SIZE_RE = re.compile(r'_([a-zA-Z])\.[a-zA-Z0-9]+$')
 
 # Prefer larger size codes first (original > k > b > h > etc.)
 _SIZE_PRIORITY = {'o': 0, 'k': 1, 'b': 2, 'h': 3, 'l': 4, 'c': 5, 'z': 6, 'm': 7, 's': 8, 't': 9, 'q': 10}
 
 
-def _extract_flickr_id(filename: str) -> Optional[str]:
-    """Extract Flickr photo ID from a filename. Returns None if not found."""
-    m = _FLICKR_ID_RE.search(filename)
-    return m.group(1) if m else None
+def _size_priority(filename: str) -> int:
+    """Lower number = higher quality. Unknown/absent size code sorts mid-pack."""
+    m = _SIZE_RE.search(filename)
+    code = m.group(1).lower() if m else ''
+    return _SIZE_PRIORITY.get(code, 50)
 
 
-def _size_code(filename: str) -> str:
-    """Extract the size code character from a Flickr filename."""
-    m = re.search(r'_([a-zA-Z])\.[a-zA-Z0-9]+$', filename)
-    return m.group(1).lower() if m else 'z'
-
-
-def _best_image_for_id(folder: str, flickr_id: str) -> Optional[str]:
+def _build_image_index(folder: str):
     """
-    Among all image files in folder whose name contains the given Flickr ID,
-    return the path to the highest-quality version (lowest size priority number).
-    Returns None if no file found.
+    Single pass over the export folder. Returns:
+      by_id:   dict flickr_id → list of (size_priority, abs_path)
+      by_name: dict lowercased_basename → abs_path
     """
-    candidates = []
-    for fname in os.listdir(folder):
+    by_id: Dict[str, list]  = {}
+    by_name: Dict[str, str] = {}
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return by_id, by_name
+    for fname in names:
         ext = os.path.splitext(fname)[1].lower()
-        if ext not in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
+        if ext not in _IMG_EXTS:
             continue
-        fid = _extract_flickr_id(fname)
-        if fid == flickr_id:
-            priority = _SIZE_PRIORITY.get(_size_code(fname), 99)
-            candidates.append((priority, os.path.join(folder, fname)))
-    if not candidates:
-        return None
-    candidates.sort(key=lambda x: x[0])
-    return candidates[0][1]
+        path = os.path.join(folder, fname)
+        by_name[fname.lower()] = path
+        prio = _size_priority(fname)
+        for run in _ID_RUN_RE.findall(fname):
+            by_id.setdefault(run, []).append((prio, path))
+    return by_id, by_name
+
+
+def _best_image(by_id: dict, by_name: dict,
+                flickr_id: str, original_url: str = '') -> Optional[str]:
+    """
+    Resolve the best local image file for a photo.
+
+    1. Exact match against the `original` URL basename (strongest signal).
+    2. Otherwise, the highest-quality file indexed under the photo's id.
+    Returns None if nothing matches.
+    """
+    if original_url:
+        base = os.path.basename(original_url.split('?')[0]).lower()
+        if base in by_name:
+            return by_name[base]
+    candidates = by_id.get(str(flickr_id))
+    if candidates:
+        candidates.sort(key=lambda x: x[0])
+        return candidates[0][1]
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -164,10 +196,15 @@ def _best_date(photo: ParsedPhoto) -> datetime:
 
 def _parse_tags(tag_list: list) -> List[str]:
     """
-    Flickr tags are objects: {"id": "...", "tag": "landscape", "raw": "Landscape"}
-    Returns a list of cleaned lowercase tag strings.
+    Flickr tags are objects: {"tag": "Medicine Hat", "raw": "...", ...}.
+    SnapSmack stores single-token hashtags (the server tag parser only accepts
+    [a-zA-Z][a-zA-Z0-9_]*), so multi-word Flickr tags like "Medicine Hat" must
+    be collapsed to "medicinehat" — which mirrors Flickr's own clean-tag form —
+    rather than truncated to the first word. Returns deduped, order-preserved
+    single-token tags.
     """
-    tags = []
+    tags: List[str] = []
+    seen = set()
     for t in tag_list:
         if isinstance(t, dict):
             tag = t.get('tag') or t.get('raw') or ''
@@ -175,10 +212,113 @@ def _parse_tags(tag_list: list) -> List[str]:
             tag = t
         else:
             continue
-        tag = tag.strip().lower()
-        if tag:
+        # Collapse to a single lowercase token: keep [a-z0-9_], drop the rest.
+        tag = re.sub(r'[^a-z0-9_]+', '', tag.strip().lower())
+        if tag and tag not in seen:
+            seen.add(tag)
             tags.append(tag)
     return tags
+
+
+# ---------------------------------------------------------------------------
+# Comments
+#
+# Each photo sidecar carries an inline `comments` array:
+#   {id, date: 'YYYY-MM-DD HH:MM:SS', user: '<NSID>', comment: '<html-escaped>', url}
+# The commenter is identified only by NSID — no screen name in the comment
+# record. contacts_part*.json maps display-name → profile URL; we reverse it,
+# keyed on the URL's final path segment (the NSID for NSID-form profile URLs),
+# so contacts resolve to a name and everyone else falls back to the NSID.
+# ---------------------------------------------------------------------------
+
+def _build_contacts_map(export_folder: str) -> Dict[str, str]:
+    """Map Flickr NSID → display name from contacts_part*.json (best effort)."""
+    result: Dict[str, str] = {}
+    for path in glob.glob(os.path.join(export_folder, 'contacts_part*.json')):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception:
+            continue
+        contacts = data.get('contacts', {}) if isinstance(data, dict) else {}
+        if not isinstance(contacts, dict):
+            continue
+        for name, url in contacts.items():
+            seg = str(url).rstrip('/').rsplit('/', 1)[-1]
+            if seg and seg not in result:
+                result[seg] = name
+    return result
+
+
+# Optional hand-maintained ID → name sidecar. Most commenters aren't in your
+# contacts and the export carries no screen names for them, so this lets you
+# name the people who matter. Keys = Flickr NSID (e.g. 196612229@N04) or profile
+# slug; values = the display name. Keys starting with '_' are ignored (notes).
+NAME_SIDECAR_FILENAME = 'flkrfckr-names.json'
+
+
+def _app_dir() -> str:
+    """Directory of the running exe (frozen) or this script (dev)."""
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def _load_name_sidecar(folder: str) -> Dict[str, str]:
+    """Load a flkrfckr-names.json name map from a folder (empty if absent/bad)."""
+    path = os.path.join(folder, NAME_SIDECAR_FILENAME)
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(k): str(v).strip()
+            for k, v in data.items()
+            if not str(k).startswith('_') and str(v).strip()}
+
+
+def _build_name_map(export_folder: str) -> Dict[str, str]:
+    """
+    NSID/slug → display name for comment authors.
+    Precedence (later overrides earlier):
+      1. Flickr contacts_part*.json
+      2. flkrfckr-names.json next to the app
+      3. flkrfckr-names.json in the export folder (most specific wins)
+    """
+    name_map = _build_contacts_map(export_folder)
+    name_map.update(_load_name_sidecar(_app_dir()))
+    name_map.update(_load_name_sidecar(export_folder))
+    return name_map
+
+
+def _parse_comments(raw_list: list, contacts_map: Dict[str, str]) -> List[dict]:
+    """
+    Turn a photo's inline Flickr comments into import-ready dicts:
+      {author_name, author_url, text, date}
+    Resolves the name from contacts where possible, else uses the NSID.
+    HTML entities in the comment body are decoded.
+    """
+    out: List[dict] = []
+    for c in raw_list or []:
+        if not isinstance(c, dict):
+            continue
+        text = html.unescape(str(c.get('comment', '') or '')).strip()
+        if not text:
+            continue
+        nsid = str(c.get('user', '') or '').strip()
+        name = (contacts_map.get(nsid) if nsid else '') or nsid or 'Flickr member'
+        url  = f'https://www.flickr.com/people/{nsid}/' if nsid else ''
+        out.append({
+            'author_name': name,
+            'author_url':  url,
+            'text':        text,
+            'date':        str(c.get('date', '') or '').strip(),
+        })
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -254,8 +394,14 @@ def parse(export_folder: str) -> ParseResult:
         return result
 
     missing_images = 0
-    skipped_private = 0
     skipped_videos  = 0
+
+    # Index every image file in the folder once (id → files, basename → file).
+    img_by_id, img_by_name = _build_image_index(export_folder)
+
+    # Map NSID → display name for resolving comment authors (contacts +
+    # the hand-maintained flkrfckr-names.json sidecar).
+    name_map = _build_name_map(export_folder)
 
     for sidecar_path in sidecar_files:
         try:
@@ -284,9 +430,14 @@ def parse(export_folder: str) -> ParseResult:
             title = f'Photo {flickr_id}'
         description = _strip_html(str(data.get('description', '') or '').strip())
 
-        # Dates
+        # Dates — Flickr exports use 'date_taken' (string) and 'date_imported'
+        # (string) as the upload time. Older/other exports may carry epoch
+        # 'date_upload'/'create_date' fields, so handle both shapes as fallback.
         date_taken  = _parse_date_taken(data.get('date_taken', ''))
-        create_date = _parse_epoch(data.get('create_date') or data.get('date_upload'))
+        create_date = (
+            _parse_date_taken(data.get('date_imported', ''))
+            or _parse_epoch(data.get('create_date') or data.get('date_upload'))
+        )
 
         # Tags
         tags = _parse_tags(data.get('tags', []))
@@ -298,9 +449,11 @@ def parse(export_folder: str) -> ParseResult:
             if aid:
                 album_ids.append(aid)
 
-        # Geo
+        # Geo — may be absent ([]), a dict, or a list with one dict.
         geo = None
         geo_data = data.get('geo')
+        if isinstance(geo_data, list):
+            geo_data = geo_data[0] if geo_data else None
         if isinstance(geo_data, dict):
             try:
                 lat = float(geo_data.get('latitude', 0))
@@ -313,17 +466,23 @@ def parse(export_folder: str) -> ParseResult:
         # License
         license_str = str(data.get('license', '') or '').strip()
 
-        # Original format
-        original_format = str(data.get('original_format', 'jpg') or 'jpg').lower().strip('.')
+        # Original format — there is usually no 'original_format' field; derive
+        # it from the 'original' download URL extension when present.
+        original_url = str(data.get('original', '') or '').strip()
+        original_format = str(data.get('original_format', '') or '').lower().strip('.')
+        if not original_format and original_url:
+            original_format = os.path.splitext(original_url.split('?')[0])[1].lower().strip('.')
+        if not original_format:
+            original_format = 'jpg'
         if original_format not in ('jpg', 'jpeg', 'png', 'gif', 'webp'):
             # Could be a video — skip
-            if original_format in ('mp4', 'mov', 'avi', 'mkv', 'webm'):
+            if original_format in ('mp4', 'mov', 'avi', 'mkv', 'webm', 'm4v'):
                 skipped_videos += 1
                 continue
             original_format = 'jpg'
 
         # Find best image file on disk
-        image_path = _best_image_for_id(export_folder, flickr_id)
+        image_path = _best_image(img_by_id, img_by_name, flickr_id, original_url)
         missing = image_path is None
         if missing:
             missing_images += 1
@@ -344,6 +503,7 @@ def parse(export_folder: str) -> ParseResult:
             missing_image=missing,
             privacy=privacy,
             license=license_str,
+            comments=_parse_comments(data.get('comments', []), name_map),
         ))
 
     # Sort oldest-first by best available date

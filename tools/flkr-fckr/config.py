@@ -3,7 +3,7 @@ FLKR FCKR — config.py
 Reads and writes flkrfckr.ini next to the executable.
 Forked from tools/unzucker/config.py.
 
-Passwords (FTP) are stored base64-obfuscated — not encrypted,
+The API key is stored base64-obfuscated — not encrypted,
 just not plaintext at a glance.
 """
 
@@ -53,14 +53,6 @@ def load() -> dict:
         'site_url':         cfg.get('site', 'url',          fallback=''),
         'api_key':          _decode_pw(cfg.get('site', 'api_key', fallback='')),
 
-        # FTP
-        'ftp_host':         cfg.get('ftp', 'host',          fallback=''),
-        'ftp_port':         cfg.getint('ftp', 'port',        fallback=21),
-        'ftp_username':     cfg.get('ftp', 'username',       fallback=''),
-        'ftp_password':     _decode_pw(cfg.get('ftp', 'password', fallback='')),
-        'ftp_protocol':     cfg.get('ftp', 'protocol',       fallback='ftp'),
-        'ftp_remote_base':  cfg.get('ftp', 'remote_base',    fallback='/public_html/media_assets'),
-
         # Import
         'export_folder':    cfg.get('import', 'export_folder', fallback=''),
         'throttle_delay':   cfg.getfloat('import', 'throttle_delay', fallback=1.5),
@@ -82,15 +74,6 @@ def save(data: dict) -> None:
     cfg['site'] = {
         'url':     data.get('site_url', ''),
         'api_key': _encode_pw(data.get('api_key', '')),
-    }
-
-    cfg['ftp'] = {
-        'host':        data.get('ftp_host', ''),
-        'port':        str(data.get('ftp_port', 21)),
-        'username':    data.get('ftp_username', ''),
-        'password':    _encode_pw(data.get('ftp_password', '')),
-        'protocol':    data.get('ftp_protocol', 'ftp'),
-        'remote_base': data.get('ftp_remote_base', '/public_html/media_assets'),
     }
 
     cfg['import'] = {

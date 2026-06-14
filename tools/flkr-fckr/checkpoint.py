@@ -83,9 +83,20 @@ class ImportCheckpoint:
         }
         self._write()
 
+    def update_total(self, total_photos: int) -> None:
+        """Update the expected photo count (e.g. when resuming a run)."""
+        self.data['total_photos'] = total_photos
+        self.data['updated_at'] = datetime.now(timezone.utc).isoformat()
+        self._write()
+
     def record_imported(self, flickr_id: str, snapsmack_image_id: int) -> None:
         """Record a successfully imported photo. Flushes to disk immediately."""
         self.data.setdefault('imported', {})[flickr_id] = snapsmack_image_id
+        # Clear any prior failure for this id so a successful retry lets the
+        # checkpoint auto-delete on completion instead of lingering forever.
+        failed = self.data.get('failed')
+        if failed and flickr_id in failed:
+            failed.remove(flickr_id)
         self.data['updated_at'] = datetime.now(timezone.utc).isoformat()
         self._write()
 

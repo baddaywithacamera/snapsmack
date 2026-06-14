@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
   `img_slug`            varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL,
   `img_description`     text           COLLATE utf8mb4_unicode_ci,
   `img_film`            varchar(100)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `img_license`         varchar(100)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                        COMMENT 'Rights/licence label (e.g. Flickr import: "All Rights Reserved", CC BY 2.0). Optional; surfaced per-image.',
   `img_date`            datetime       NOT NULL,
   `img_file`            varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL,
   `img_source_file`     varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
