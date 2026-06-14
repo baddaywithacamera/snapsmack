@@ -23,6 +23,7 @@ from datetime import datetime
 from typing import Optional, Tuple
 
 from PIL import Image as PILImage
+from PIL import ImageOps
 from PIL.ExifTags import TAGS
 
 
@@ -32,8 +33,6 @@ from PIL.ExifTags import TAGS
 
 WEB_MAX_W   = 1900
 WEB_MAX_H   = 1425
-THUMB_SQ    = 400   # square thumbnail edge length
-THUMB_LONG  = 800   # aspect thumbnail longest edge
 
 
 # ---------------------------------------------------------------------------
@@ -43,11 +42,7 @@ THUMB_LONG  = 800   # aspect thumbnail longest edge
 @dataclass
 class PreparedImage:
     main_path:     str          # resized web image
-    thumb_sq_path: str          # 400×400 square crop (t_ prefix)
-    thumb_as_path: str          # aspect-ratio thumbnail (a_ prefix)
     filename:      str          # basename of main_path (server will use this)
-    thumb_sq_name: str          # basename of thumb_sq_path
-    thumb_as_name: str          # basename of thumb_as_path
     width:         int
     height:        int
     orientation:   str          # 'landscape', 'portrait', 'square'
@@ -118,16 +113,6 @@ def _generate_filename(date: Optional[datetime]) -> str:
     return f"{prefix}_{rand}.jpg"
 
 
-def _center_crop_square(img: PILImage.Image, size: int) -> PILImage.Image:
-    """Crop the image to a centered square of given pixel size."""
-    w, h = img.size
-    short = min(w, h)
-    left  = (w - short) // 2
-    top   = (h - short) // 2
-    img   = img.crop((left, top, left + short, top + short))
-    return img.resize((size, size), PILImage.LANCZOS)
-
-
 def prepare(
     source_path:  str,
     output_dir:   str,
@@ -135,7 +120,8 @@ def prepare(
     geo:          Optional[Tuple[float, float]] = None,
 ) -> PreparedImage:
     """
-    Process one image: resize to web max, generate thumbnails, extract EXIF.
+    Process one image: resize to web max + extract EXIF (thumbnails are made
+    server-side after upload).
 
     Args:
         source_path: absolute path to the source Flickr image
@@ -156,6 +142,10 @@ def prepare(
 
     # Open and normalise
     img = PILImage.open(source_path)
+    # Apply EXIF orientation so portrait / rotated camera shots are not written
+    # sideways (PIL does not auto-rotate on open). Must happen before any resize
+    # or crop so width/height and the square thumbnail come out correct.
+    img = ImageOps.exif_transpose(img)
     img = img.convert('RGB')  # normalise to RGB (handles CMYK, palette, etc.)
 
     orig_w, orig_h = img.size
@@ -173,26 +163,12 @@ def prepare(
     main_path    = os.path.join(output_dir, filename)
     web_img.save(main_path, 'JPEG', quality=92, optimize=True)
 
-    # ── Square thumbnail ──────────────────────────────────────────────────────
-    sq_name  = 't_' + filename
-    sq_path  = os.path.join(output_dir, sq_name)
-    sq_img   = _center_crop_square(img, THUMB_SQ)
-    sq_img.save(sq_path, 'JPEG', quality=88, optimize=True)
-
-    # ── Aspect thumbnail ──────────────────────────────────────────────────────
-    as_name  = 'a_' + filename
-    as_path  = os.path.join(output_dir, as_name)
-    as_img   = img.copy()
-    as_img.thumbnail((THUMB_LONG, THUMB_LONG), PILImage.LANCZOS)
-    as_img.save(as_path, 'JPEG', quality=88, optimize=True)
+    # Thumbnails (t_/a_) are generated server-side by the flkrfckr/upload
+    # endpoint (core/thumb-generator.php), so none are produced here.
 
     return PreparedImage(
         main_path=main_path,
-        thumb_sq_path=sq_path,
-        thumb_as_path=as_path,
         filename=filename,
-        thumb_sq_name=sq_name,
-        thumb_as_name=as_name,
         width=web_w,
         height=web_h,
         orientation=orientation,

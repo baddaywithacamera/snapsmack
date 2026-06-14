@@ -125,8 +125,16 @@ class FlkrDckrApp(tk.Tk):
         self._font_mono  = font.Font(family='Consolas', size=8)
 
         self._build_ui()
+        self.protocol('WM_DELETE_WINDOW', self._on_close)
         self._check_resume()
         self.after(100, self._poll_queue)
+
+    def _on_close(self):
+        """Signal any running import to stop, then close the window."""
+        if self._running:
+            self._stop_event.set()
+            self._pause_event.set()   # unblock the worker if it is paused
+        self.destroy()
 
     # ------------------------------------------------------------------
     # UI construction
@@ -175,44 +183,28 @@ class FlkrDckrApp(tk.Tk):
                                    command=self._test_connection)
         self._btn_test.grid(row=0, column=4, padx=(0, 12))
 
-        # Row 1: FTP
-        lbl(bar, 'FTP Host', 0, row=1)
-        self._v_ftp_host = tk.StringVar(value=self._cfg.get('ftp_host', ''))
-        entry(bar, self._v_ftp_host, 1, row=1)
-
-        lbl(bar, 'User', 2, row=1)
-        self._v_ftp_user = tk.StringVar(value=self._cfg.get('ftp_username', ''))
-        entry(bar, self._v_ftp_user, 3, row=1, width=16)
-
-        lbl(bar, 'Pass', 4, row=1)
-        self._v_ftp_pass = tk.StringVar(value=self._cfg.get('ftp_password', ''))
-        e_pass = entry(bar, self._v_ftp_pass, 5, row=1, width=16, show='•')
-
-        lbl(bar, 'Path', 6, row=1)
-        self._v_ftp_path = tk.StringVar(value=self._cfg.get('ftp_remote_base', '/public_html/media_assets'))
-        entry(bar, self._v_ftp_path, 7, row=1, width=22)
-
-        # Row 2: Export folder + options
-        lbl(bar, 'Export Folder', 0, row=2)
+        # Row 1: Export folder + options. Images upload over HTTPS now (same
+        # channel as the API) — no FTP host/credentials needed.
+        lbl(bar, 'Export Folder', 0, row=1)
         self._v_folder = tk.StringVar(value=self._cfg.get('export_folder', ''))
-        entry(bar, self._v_folder, 1, row=2, width=36)
+        entry(bar, self._v_folder, 1, row=1, width=36)
 
         btn_browse = tk.Button(bar, text='Browse…', bg=BG_CELL, fg=TEXT_PRI,
                                relief='flat', bd=0, padx=8, pady=3,
                                font=self._font_ui, cursor='hand2',
                                command=self._browse_folder)
-        btn_browse.grid(row=2, column=2, sticky='w', padx=(0, 8))
+        btn_browse.grid(row=1, column=2, sticky='w', padx=(0, 8))
 
-        lbl(bar, 'Throttle (s)', 4, row=2)
+        lbl(bar, 'Throttle (s)', 4, row=1)
         self._v_throttle = tk.DoubleVar(value=self._cfg.get('throttle_delay', 1.5))
         tk.Spinbox(bar, from_=0.5, to=5.0, increment=0.5, textvariable=self._v_throttle,
                    bg=BG_CELL, fg=TEXT_PRI, insertbackground=TEXT_PRI, relief='flat',
-                   bd=4, font=self._font_ui, width=6).grid(row=2, column=5, sticky='w', padx=(0, 8))
+                   bd=4, font=self._font_ui, width=6).grid(row=1, column=5, sticky='w', padx=(0, 8))
 
-        lbl(bar, 'Private →', 6, row=2)
+        lbl(bar, 'Private →', 6, row=1)
         self._v_private = tk.StringVar(value=self._cfg.get('private_status', 'draft'))
         ttk.Combobox(bar, textvariable=self._v_private, values=['draft', 'published'],
-                     width=10, state='readonly').grid(row=2, column=7, sticky='w')
+                     width=10, state='readonly').grid(row=1, column=7, sticky='w')
 
         # Connection status label
         self._lbl_conn = tk.Label(bar, text='', bg=BG_PANEL, fg=TEXT_DIM,
@@ -223,7 +215,7 @@ class FlkrDckrApp(tk.Tk):
                              relief='flat', bd=0, padx=10, pady=4,
                              font=self._font_bold, cursor='hand2',
                              command=self._load_export)
-        btn_load.grid(row=2, column=8, padx=(8, 0), sticky='e')
+        btn_load.grid(row=1, column=8, padx=(8, 0), sticky='e')
 
         btn_help = tk.Button(bar, text='?', bg=BG_CELL, fg=TEXT_DIM,
                              relief='flat', bd=0, padx=6, pady=3,
@@ -562,10 +554,9 @@ class FlkrDckrApp(tk.Tk):
         p('1. Download and unzip your Flickr data export (Account Settings → Your Flickr Data → Request your archive).')
         p('2. In your SnapSmack admin panel, go to Boring Ass Stuff → API Keys and generate a new key with type "FLKR FCKR Import". Copy it — shown only once.')
         p('3. Enter your site URL and API key in the settings bar above. Click Test to verify.')
-        p('4. Enter your FTP credentials and the remote base path (where your media files live on the server).')
-        p('5. Browse to your unzipped Flickr export folder and click Load Export.')
-        p('6. Review the photo grid. Click any tile to exclude it. Use the album sidebar to filter by album.')
-        p('7. Click Start Import. Pause and resume at any time. If interrupted, FLKR FCKR offers to resume on next launch.')
+        p('4. Browse to your unzipped Flickr export folder and click Load Export.')
+        p('5. Review the photo grid. Click any tile to exclude it. Use the album sidebar to filter by album.')
+        p('6. Click Start Import. Pause and resume at any time. If interrupted, FLKR FCKR offers to resume on next launch.')
         br()
 
         h2('Settings')
@@ -574,10 +565,6 @@ class FlkrDckrApp(tk.Tk):
         h2('  API Key')
         p('The FLKR FCKR Import key generated from your SnapSmack admin panel. '
           'Revoke it when your import is done.')
-        h2('  FTP Host / User / Pass / Path')
-        p('Standard FTP credentials for your server. Remote Path is the server-side base '
-          'directory for media files — usually something like /public_html/media_assets. '
-          'FLKR FCKR creates year/month subdirectories inside this path automatically.')
         h2('  Export Folder')
         p('The root of your unzipped Flickr export. Should contain albums.json and '
           'many photo_XXXXXXXX.json sidecar files.')
@@ -603,6 +590,16 @@ class FlkrDckrApp(tk.Tk):
           'all into a named album (enter the album name in the settings).')
         br()
 
+        h2('Comments & Commenter Names')
+        p('Comments left on your Flickr photos are imported automatically and appear '
+          'in each photo\'s comment thread. Flickr only stores the commenter\'s ID '
+          '(e.g. 196612229@N08), not their name, so by default that ID is shown. To '
+          'give the people who matter their real names, create a file named '
+          'flkrfckr-names.json in your export folder (or next to this app) mapping '
+          'IDs (or profile slugs) to names, e.g. {"196612229@N08": "Ray van der Woning"}. '
+          'FLKR FCKR reads it on Load Export. Entries whose key starts with _ are notes.')
+        br()
+
         h2('Resume After Interruption')
         p('If FLKR FCKR is closed or crashes mid-import, a checkpoint file is written '
           'after every successfully imported photo. On next launch, FLKR FCKR detects '
@@ -610,17 +607,23 @@ class FlkrDckrApp(tk.Tk):
           'instantly — no duplicates, no re-processing.')
         br()
 
+        h2('How Images Are Transferred')
+        p('FLKR FCKR resizes each photo locally, then uploads it to your site over '
+          'the same secure HTTPS connection it uses for the API — no FTP, no separate '
+          'credentials. The server stores the image and generates thumbnails for you.')
+        br()
+
         h2('After the Import')
         p('Go back to your SnapSmack admin panel and revoke the FLKR FCKR API key — '
-          'you do not need it again. If any photos failed (usually a dropped FTP '
+          'you do not need it again. If any photos failed (usually a dropped '
           'connection), re-run FLKR FCKR against the same export folder with the same '
           'settings. Duplicates are detected and skipped automatically.')
         br()
 
         dim('FLKR FCKR is part of the SnapSmack companion tool family alongside '
             'Smack Your Batch Up (batch posting), Smack Up Your Backup (backups), '
-            'and SmackPress (WordPress migration). All tools use the same FTP + API '
-            'key pattern and ship as standalone Windows executables.')
+            'and SmackPress (WordPress migration). All upload over HTTPS with an API '
+            'key and ship as standalone Windows executables.')
 
         txt.configure(state='disabled')
 
@@ -670,24 +673,23 @@ class FlkrDckrApp(tk.Tk):
             return
 
         self._client = FlkrDckrClient(url, key)
-        self._checkpoint = ImportCheckpoint(ImportCheckpoint.path_for())
 
-        # New checkpoint
-        self._checkpoint.start(
-            export_folder=cfg.get('export_folder', ''),
-            site_url=url,
-            total_photos=len(photos),
-        )
-
-        # FTP transport
-        from ftp_upload import create_transport
-        transport = create_transport(
-            protocol=cfg.get('ftp_protocol', 'ftp'),
-            host=cfg.get('ftp_host', ''),
-            port=cfg.get('ftp_port', 21),
-            username=cfg.get('ftp_username', ''),
-            password=cfg.get('ftp_password', ''),
-        )
+        # Reuse an existing checkpoint when resuming (or retrying failures from a
+        # previous run); only start a fresh one otherwise. Calling start() on a
+        # resumed checkpoint would wipe its 'imported' map and re-import
+        # everything. If the checkpoint belongs to a different export, discard it.
+        if (self._checkpoint is not None
+                and self._checkpoint.data.get('export_folder') != cfg.get('export_folder', '')):
+            self._checkpoint = None
+        if self._checkpoint is None:
+            self._checkpoint = ImportCheckpoint(ImportCheckpoint.path_for())
+            self._checkpoint.start(
+                export_folder=cfg.get('export_folder', ''),
+                site_url=url,
+                total_photos=len(photos),
+            )
+        else:
+            self._checkpoint.update_total(len(photos))
 
         staging = tempfile.mkdtemp(prefix='flkrfckr_')
 
@@ -718,8 +720,6 @@ class FlkrDckrApp(tk.Tk):
                 run_import(
                     client=self._client,
                     photos=photos,
-                    ftp_transport=transport,
-                    ftp_remote_base=cfg.get('ftp_remote_base', '/public_html/media_assets'),
                     staging_dir=staging,
                     checkpoint=self._checkpoint,
                     flickr_album_map=flickr_album_map,
@@ -728,14 +728,12 @@ class FlkrDckrApp(tk.Tk):
                     default_album=cfg.get('default_album', ''),
                     throttle_delay=float(cfg.get('throttle_delay', 1.5)),
                     on_progress=_on_progress,
+                    stop_event=self._stop_event,
+                    pause_event=self._pause_event,
                 )
             except Exception as e:
                 self._q.put(('log', f'FATAL: {e}', TEXT_ERR))
             finally:
-                try:
-                    transport.disconnect()
-                except Exception:
-                    pass
                 self._q.put(('done',))
 
         threading.Thread(target=_run, daemon=True).start()
@@ -767,7 +765,11 @@ class FlkrDckrApp(tk.Tk):
                 TEXT_PRI,
             )
             if prog['failed'] == 0:
+                # Clean run — drop the checkpoint so the next import starts fresh.
                 self._checkpoint.delete()
+                self._checkpoint = None
+            # If anything failed, keep the checkpoint: clicking Start again will
+            # skip the already-imported photos and retry only the failures.
 
     def _update_summary(self):
         if not self._parse_result:
@@ -801,8 +803,18 @@ class FlkrDckrApp(tk.Tk):
         )
         if answer:
             self._checkpoint = cp
-            self._v_folder.set(cp.data.get('export_folder', ''))
+            folder = cp.data.get('export_folder', '')
+            self._v_folder.set(folder)
             self._log_write(f"Resuming — {prog['imported']} already done.", ACCENT)
+            # Auto-load the export so the grid populates and Start is enabled;
+            # the retained checkpoint means already-imported photos are skipped.
+            if folder and os.path.isdir(folder):
+                self._load_export()
+            else:
+                self._log_write(
+                    "Export folder not found — set it and click Load Export to resume.",
+                    TEXT_WARN,
+                )
         else:
             cp.delete()
 
@@ -860,10 +872,6 @@ class FlkrDckrApp(tk.Tk):
         data.update({
             'site_url':         self._v_url.get().strip(),
             'api_key':          self._v_key.get().strip(),
-            'ftp_host':         self._v_ftp_host.get().strip(),
-            'ftp_username':     self._v_ftp_user.get().strip(),
-            'ftp_password':     self._v_ftp_pass.get().strip(),
-            'ftp_remote_base':  self._v_ftp_path.get().strip(),
             'export_folder':    self._v_folder.get().strip(),
             'throttle_delay':   self._v_throttle.get(),
             'private_status':   self._v_private.get(),

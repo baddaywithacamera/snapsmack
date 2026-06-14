@@ -1,0 +1,8 @@
+{
+  "_help": "Maps a Flickr user ID or profile slug to the name shown on imported comments. Most commenters are not in your Flickr contacts and the export stores no screen name for them, so add the people who matter here. Keys = the Flickr NSID (e.g. 196612229@N04) or profile slug (e.g. rayvanderwoning); values = the display name. Keys starting with _ are ignored. FLKR FCKR reads this file from your export folder first, then from next to the app.",
+  "_your_account_note": "61180839@N06 is your own account (mccormickphotography). Add it below with your name if you want your own replies attributed to you instead of an ID.",
+
+  "196612229@N04": "Ray van der Woning",
+  "rayvanderwoning": "Ray van der Woning",
+  "27740851@N08": "Thomas_H_photo"
+}

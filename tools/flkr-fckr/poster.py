@@ -18,6 +18,7 @@ Forked from tools/unzucker/poster.py. Key differences:
 
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional
 
@@ -146,6 +147,7 @@ class FlkrDckrClient:
         album_ids:        List[int],    # SnapSmack album IDs
         tags:             List[str],    # plain tag strings (no # prefix)
         status:           str = 'published',
+        img_license:      str = '',     # rights label from Flickr (optional)
     ) -> ImportResult:
         """
         POST to flkrfckr/images. Handles duplicate detection.
@@ -167,6 +169,7 @@ class FlkrDckrClient:
             'album_ids':        album_ids,
             'tags':             tags,
             'status':           status,
+            'img_license':      img_license,
         }
         try:
             resp = self._session.post(
@@ -197,6 +200,60 @@ class FlkrDckrClient:
         except requests.RequestException as e:
             return ImportResult(flickr_id=flickr_id, success=False, message=str(e))
 
+    # ------------------------------------------------------------------
+    # Image upload (multipart over HTTPS — replaces FTP/SFTP)
+    # ------------------------------------------------------------------
+
+    def upload_image(self, local_path: str) -> dict:
+        """
+        Upload a JPEG to flkrfckr/upload as multipart/form-data. The server
+        saves it under img_uploads/YYYY/MM/, generates the t_/a_ thumbnails,
+        and returns {path, thumb_square, thumb_aspect, width, height}.
+        Raises on HTTP error or a non-ok response.
+        """
+        with open(local_path, 'rb') as fh:
+            files = {'image': (os.path.basename(local_path), fh, 'image/jpeg')}
+            resp = self._session.post(
+                f"{self.base_url}/api.php",
+                params={'route': 'flkrfckr/upload'},
+                files=files,
+                # Drop the session's JSON Content-Type so requests can set the
+                # correct multipart boundary header for this request.
+                headers={'Content-Type': None},
+                timeout=120,
+            )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get('status') != 'ok':
+            raise RuntimeError(data.get('message', 'Image upload failed'))
+        return data
+
+    # ------------------------------------------------------------------
+    # Comments
+    # ------------------------------------------------------------------
+
+    def import_comment(self, image_id: int, author_name: str, author_url: str,
+                       comment_text: str, comment_date: str) -> bool:
+        """
+        POST one Flickr comment to flkrfckr/comments (attached to image_id).
+        Returns True on success. Uses the session's default JSON Content-Type.
+        """
+        payload = {
+            'image_id':     image_id,
+            'author_name':  author_name,
+            'author_url':   author_url,
+            'comment_text': comment_text,
+            'comment_date': comment_date,
+        }
+        resp = self._session.post(
+            f"{self.base_url}/api.php",
+            params={'route': 'flkrfckr/comments'},
+            data=json.dumps(payload),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json().get('status') == 'ok'
+
 
 # ---------------------------------------------------------------------------
 # Migration runner (called from main.py background thread)
@@ -205,8 +262,6 @@ class FlkrDckrClient:
 def run_import(
     client:           FlkrDckrClient,
     photos:           list,              # List[ParsedPhoto] from flickr_parser
-    ftp_transport,                       # from ftp_upload
-    ftp_remote_base:  str,
     staging_dir:      str,
     checkpoint,                          # ImportCheckpoint instance
     flickr_album_map: Dict[str, str],    # flickr album_id → album title+desc
@@ -215,14 +270,20 @@ def run_import(
     default_album:    str = '',          # album name for unalbumed if action=default_album
     throttle_delay:   float = 1.5,
     on_progress:      Optional[Callable[[int, int, ImportResult], None]] = None,
+    stop_event=None,        # threading.Event — set to abort the run
+    pause_event=None,       # threading.Event — cleared to pause, set to resume
 ) -> List[ImportResult]:
     """
-    Full import pipeline: image_prep → FTP → API record creation.
+    Full import pipeline: image_prep → HTTPS multipart upload → API record creation.
     Respects checkpoint — skips already-imported Flickr IDs.
+
+    Cooperative control:
+      - if ``stop_event`` is set, the loop exits cleanly between photos;
+      - if ``pause_event`` is provided, the loop blocks on it before each photo
+        (the caller clears it to pause and sets it to resume).
     """
     import time
     import os
-    from ftp_upload import remote_dir_for_timestamp, upload_images
     from image_prep import prepare
 
     already_done = checkpoint.already_imported()
@@ -238,6 +299,13 @@ def run_import(
             pass
 
     for idx, photo in enumerate(photos):
+        # Cooperative pause/stop — checked before each photo.
+        if pause_event is not None:
+            pause_event.wait()
+        if stop_event is not None and stop_event.is_set():
+            log.info("Import stopped by user at photo %d/%d", idx, total)
+            break
+
         # Skip excluded photos
         if photo.excluded:
             result = ImportResult(photo.flickr_id, True, 'Skipped (excluded)')
@@ -279,31 +347,20 @@ def run_import(
             best_date = photo.date_taken or photo.create_date
             img_date_str = best_date.strftime('%Y-%m-%d %H:%M:%S') if best_date else ''
 
-            # ── 3. Prepare image (resize + thumbnails + EXIF) ─────────────────
+            # ── 3. Prepare image (resize + EXIF). Thumbnails are generated
+            #       server-side by the upload endpoint, so we only make the main.
             prepped = prepare(
                 source_path=photo.image_path,
                 output_dir=staging_dir,
                 date=best_date,
                 geo=photo.geo,
             )
-            local_paths = [prepped.main_path, prepped.thumb_sq_path, prepped.thumb_as_path]
+            local_paths = [prepped.main_path]
 
-            # ── 4. FTP upload (main + sq thumb + aspect thumb) ────────────────
-            remote_dir = remote_dir_for_timestamp(
-                ftp_remote_base,
-                int(best_date.timestamp()) if best_date else 0,
-            )
-            local_paths  = [prepped.main_path, prepped.thumb_sq_path, prepped.thumb_as_path]
-            remote_paths = [
-                f"{remote_dir}/{prepped.filename}",
-                f"{remote_dir}/{prepped.thumb_sq_name}",
-                f"{remote_dir}/{prepped.thumb_as_name}",
-            ]
-
-            ftp_results = upload_images(ftp_transport, local_paths, remote_paths)
-            ftp_fails   = [r for r in ftp_results if not r.success]
-            if ftp_fails:
-                raise RuntimeError(f"FTP failed: {ftp_fails[0].message}")
+            # ── 4. Upload over HTTPS (multipart) — no FTP. The server saves the
+            #       file under img_uploads/YYYY/MM/, generates the t_/a_ thumbs,
+            #       and returns their paths.
+            up = client.upload_image(prepped.main_path)
 
             # ── 5. Resolve albums ─────────────────────────────────────────────
             snap_album_ids: List[int] = []
@@ -323,7 +380,7 @@ def run_import(
             # ── 6. Create image record via API ────────────────────────────────
             result = client.create_image_record(
                 flickr_id=photo.flickr_id,
-                img_file=remote_paths[0],
+                img_file=up['path'],
                 img_title=photo.title,
                 img_description=photo.description,
                 img_date=img_date_str,
@@ -331,17 +388,36 @@ def run_import(
                 img_height=prepped.height,
                 img_orientation=prepped.orientation,
                 img_exif=prepped.img_exif,
-                img_thumb_square=remote_paths[1],
-                img_thumb_aspect=remote_paths[2],
+                img_thumb_square=up.get('thumb_square', ''),
+                img_thumb_aspect=up.get('thumb_aspect', ''),
                 album_ids=snap_album_ids,
                 tags=photo.tags,
                 status=status,
+                img_license=photo.license,
             )
 
             if result.success:
                 checkpoint.record_imported(photo.flickr_id, result.image_id)
                 if not result.duplicate:
                     log.info(f"Imported {photo.flickr_id} → image_id={result.image_id}")
+                    # Import this photo's Flickr comments (best-effort; only on a
+                    # fresh import so re-runs don't duplicate them).
+                    if result.image_id and photo.comments:
+                        posted = 0
+                        for cm in photo.comments:
+                            try:
+                                if client.import_comment(
+                                    image_id=result.image_id,
+                                    author_name=cm.get('author_name', ''),
+                                    author_url=cm.get('author_url', ''),
+                                    comment_text=cm.get('text', ''),
+                                    comment_date=cm.get('date', ''),
+                                ):
+                                    posted += 1
+                            except Exception as ce:
+                                log.warning(f"Comment import failed for {photo.flickr_id}: {ce}")
+                        if posted:
+                            log.info(f"Imported {posted} comment(s) for {photo.flickr_id}")
                 else:
                     log.debug(f"Duplicate skipped: {photo.flickr_id}")
             else:
