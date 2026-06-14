@@ -3618,8 +3618,8 @@ class App(tk.Tk):
             return
 
         site_data     = self._site_data
-        cats          = list(site_data.categories.keys()) if site_data else []
-        albums        = list(site_data.albums.keys())     if site_data else []
+        cats          = list(site_data._cat_display.values())   if site_data else []
+        albums        = list(site_data._album_display.values()) if site_data else []
         custom_prompt = self._gem_prompt_txt.get("1.0", "end").strip()
 
         self._enrich_btn.configure(state="disabled")
