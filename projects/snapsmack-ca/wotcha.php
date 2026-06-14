@@ -137,6 +137,10 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Jun 14</span>
+                    <a href="#the-grid">More Skin in the Game</a>
+                </li>
+                <li>
                     <span class="idx-date">Jun 8</span>
                     <a href="#unzucker">Your Instagram Archive, Moved Out</a>
                 </li>
@@ -227,6 +231,22 @@ require_once __DIR__ . '/includes/header.php';
     <section class="posts">
         <div class="wrap">
 
+            <!-- POST: THE GRID -->
+            <article class="post" id="the-grid">
+                <div class="post-meta">
+                    <span class="post-date">June 14, 2026</span>
+                    <span class="post-tag">Skins</span>
+                </div>
+                <h2><a href="#the-grid">More Skin in the Game</a></h2>
+                <p>The Grid ships today as a production skin. It is the square-grid, three-across, tap-a-tile-to-open experience — Instagram on the desktop, from back when Instagram was a place you looked at photographs rather than a video platform that occasionally remembers it has a feed. If that is the layout your work belongs in, The Grid is now a download and a click away.</p>
+                <p>Every tile resolves to a square and crops to fill it, so the grid stays even no matter what aspect ratios you feed it. Click a tile and the post opens in a modal over the grid — not a navigation to a separate page — showing the image at its natural proportions inside a square frame, with the border drawn in CSS rather than baked into the file. Deep links open the modal too: send someone a direct post URL and they land on the grid with that post already open. Close it and they are back in the grid where they started, no reload.</p>
+                <p>Carousels work the way carousels should. A multi-image post opens as a swipeable set inside the modal — dots, arrows, swipe — with one like and one comment thread for the whole post rather than a separate set of reactions per frame. The grid marks anything with more than one image with a small stacked-squares badge, so you know what you are about to open before you open it.</p>
+                <p>This is the part that matters if you ever composed for the grid. The Grid preserves the triptych — a panoramic image cut into three squares that sit side by side across a row, reading as one wide photograph and as three tiles at the same time — and it preserves the larger carousel post with a shared cover, a set held together under a single frame. The square chunks line up the way you arranged them, the cover stays the cover, and the composition holds across the row. This is what a curated feed looked like when the grid was the point: before Instagram handed the scroll to 3:4 vertical video and quietly stopped rewarding anyone who treated their profile as a composed surface. If you built a feed back then, with intent, it renders here the way you meant it — and the same triptychs and shared-cover carousels carry through to Photogram on the phone.</p>
+                <p>The Grid is more than the grid. A background treatment system sits behind the content — a full-bleed image (1920×1080 or larger) or a solid colour, with a single bidirectional overlay slider that runs from dark through none to light, so you can settle the contrast against your own photographs without touching code. The profile header is centred and identical on every page of the site, the avatar opens in a lightbox, and the network blogroll is restyled to match. All of it lives in the skin settings.</p>
+                <p>Photogram is the other half of the same idea — the phone-native skin SnapSmack serves automatically to mobile visitors — and it is now updated to match. Bringing a carousel-heavy archive in had exposed that Photogram wasn't rendering this content properly on the phone. That's fixed. Multi-image posts now open as swipeable carousels with dot indicators, likes and comments keyed to the post rather than the individual image, and carousel badges in the grid. The Grid on the desktop and Photogram on the phone now speak the same square-grid language — the same content, each rendered the right way for the screen it lands on.</p>
+                <p>This is where your Instagram archive was always headed. Move it out with UNZUCKER, and your carousels import as carousels — and now they look like carousels, on the desktop with The Grid and on the phone with Photogram. The Grid is available through the SnapSmack Skin Packager and is the default skin for GramOfSmack installs. It is live now at <a href="https://unzucked.ca" target="_blank">unzucked.ca</a>.</p>
+            </article>
+
             <!-- POST: UNZUCKER -->
             <article class="post" id="unzucker">
                 <div class="post-meta">
@@ -237,7 +257,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Instagram will give you your data if you ask for it. A folder arrives: JSON files, image files, a structure that makes sense to a machine and not immediately to a person. What it does not give you is a way to put that data somewhere you control. That is what UNZUCKER does.</p>
                 <p>UNZUCKER is a Windows desktop application. Point it at your Instagram export folder and it parses the archive: every post, every carousel, every caption, every hashtag extracted and stripped from the body text, timestamps preserved. The result is a three-column square-thumbnail grid — the same layout Instagram uses — showing your posts in chronological order. Click any post to see the full caption and, for carousels, all images in the set. The grid shows a small stacked-squares badge on anything with more than one image so you know what you're looking at before you click.</p>
                 <p>Connect UNZUCKER to a SnapSmack site with an API key and hit Transfer &amp; Post. Each post is uploaded image by image over HTTPS — no FTP, no separate file transfer tool — and created in SnapSmack with its original caption, hashtags converted to tags, and the original posting date preserved. Carousels import as carousel posts. Singles import as singles. The whole export can process in one session, with a progress bar and per-post status so you can see what landed and what didn't.</p>
-                <p>The Photogram mobile skin — the phone-native Instagram-style interface that SnapSmack serves automatically to mobile visitors — now supports carousels fully. Swipe through images with dot indicators, likes and comments keyed to the post rather than individual images, carousel badge in the archive grid. It was always the right skin for this content. Now it handles all of it.</p>
+                <p>One caveat, stated plainly: importing a carousel-heavy archive exposed that the Photogram mobile skin — the phone-native interface SnapSmack serves automatically to mobile visitors — does not yet handle this content properly. The import broke it. Multi-image posts and the profile grid don't render the way they should on the phone. Photogram was always the right skin for an Instagram archive, and getting it to handle carousels fully — swipe, dot indicators, post-level likes and comments, the carousel badge in the grid — is the next thing on the list. We would rather tell you that than pretend it already works.</p>
                 <p>SnapSmack is where we eat our own dog food, so that's where UNZUCKER shipped first. If SnapSmack isn't your destination, Pixelfed support is coming — the import side is the same either way, and we'll add Pixelfed as a target when it's confirmed stable. Your archive. Your server. Your call where it lands.</p>
             </article>
 
