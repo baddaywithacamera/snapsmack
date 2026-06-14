@@ -11,9 +11,22 @@
 
 # Smack Your Batch Up — Changelog
 
-Same versioning scheme as SnapSmack (0.7.9x). Letter increments per SYBU release.
+Versioned 0.7.<build>. As of 0.7.12 the third number is a plain build counter
+(+1 each rebuild) — the old letter suffixes (…0.7.9k) are retired for clarity.
 
 ---
+
+## 0.7.12 — Switch to numeric build counter; Gemini/post audit log; cat/album list fix (2026-06-14)
+
+- Version scheme: dropped letter suffixes (was 0.7.9k) for a plain incrementing
+  build number. Next builds are 0.7.13, 0.7.14, …
+- New rotating audit log (`sybu.log`, daily, 7-day retention) recording every
+  Gemini request + raw response + parsed result per image, and every post
+  (resolved category/album IDs + outcome). Separate from the stdout debug log.
+- Enrichment: `_on_enrich` now feeds Gemini the proper-case display names for
+  categories/albums (was lowercase internal keys) so returned values match the
+  dropdown options. (POST already lowercases on lookup, so mapping is unchanged.)
+- Build: spec now explicitly bundles `recovery.py`.
 
 ## 0.7.9k — Crash recovery, batch selection, cancel + session-hang fix (2026-06-12)
 

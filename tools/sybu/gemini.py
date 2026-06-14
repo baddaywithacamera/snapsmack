@@ -10,11 +10,14 @@ Sends images to the Gemini API and returns AI-generated metadata
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
+import logging
 import os
 import re
 from typing import Callable, List, Optional
 
 from manifest_parser import ManifestEntry
+
+log = logging.getLogger('sybu')
 
 # google-generativeai is imported lazily so the app still starts
 # even if the library isn't installed yet.
@@ -176,6 +179,14 @@ def enrich_batch(
         existing_tags=existing_tags,
     )
     total  = len(entries)
+    log.info("ENRICH start — %d item(s), %d categories, %d albums",
+             total, len(categories), len(albums))
+    if not categories:
+        log.warning("ENRICH — NO categories provided to Gemini (site not connected?); "
+                    "CATEGORY will be left blank")
+    if not albums:
+        log.warning("ENRICH — NO albums provided to Gemini (site not connected?); "
+                    "ALBUM will be left blank")
 
     # Titles we must not reuse: pre-existing on the site + generated in this run.
     used_titles: set = {t.strip().lower() for t in (existing_titles or [])}
@@ -208,8 +219,16 @@ def enrich_batch(
                         + prompt
                     )
 
+                log.info("GEMINI REQUEST %s (attempt %d) — prompt:\n%s",
+                         entry.file, attempt, run_prompt)
                 response = model.generate_content([run_prompt, img_part])
+                log.info("GEMINI RESPONSE %s (attempt %d):\n%s",
+                         entry.file, attempt, response.text)
                 parsed   = _parse_response(response.text)
+                log.info("GEMINI PARSED %s — title=%r tags=%r category=%r album=%r colors=%r",
+                         entry.file, parsed.get('title', ''), parsed.get('tags', ''),
+                         parsed.get('category', ''), parsed.get('album', ''),
+                         parsed.get('colors', ''))
                 title    = parsed.get('title', '').strip()
 
                 if title and title.lower() not in used_titles:
@@ -240,6 +259,7 @@ def enrich_batch(
                     on_progress(i, total, entry, None)
 
         except Exception as e:
+            log.error("GEMINI ERROR %s: %s", entry.file, e)
             if on_progress:
                 on_progress(i, total, entry, str(e))
 

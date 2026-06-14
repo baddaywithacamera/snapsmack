@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.9k"   # bump this on every rebuild
+BUILD_VERSION = "0.7.12"   # integer build counter — +1 each rebuild (dropped letter suffixes after 0.7.9k)
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -60,6 +60,31 @@ import profile_manager
 import recovery as recovery_module
 from manifest_parser import ManifestEntry
 from poster import SnapSmackClient, SiteData
+
+
+# ---------------------------------------------------------------------------
+# Audit log — rotating daily, 7-day retention. Records every Gemini request +
+# response and every post. Separate from the stdout/stderr debug log above.
+# File: sybu.log next to the exe (or the source dir in dev).
+# ---------------------------------------------------------------------------
+import logging
+import logging.handlers
+
+_AUDIT_LOG = os.path.join(os.path.dirname(LOG_PATH), 'sybu.log')
+try:
+    _audit_handler = logging.handlers.TimedRotatingFileHandler(
+        _AUDIT_LOG, when='D', interval=1, backupCount=7, encoding='utf-8',
+    )
+    _audit_handler.setFormatter(logging.Formatter(
+        '%(asctime)s  %(levelname)-8s  %(message)s', datefmt='%Y-%m-%d %H:%M:%S',
+    ))
+    _audit_log = logging.getLogger('sybu')
+    _audit_log.setLevel(logging.DEBUG)
+    if not _audit_log.handlers:
+        _audit_log.addHandler(_audit_handler)
+    _audit_log.info("SYBU %s — audit log opened", BUILD_VERSION)
+except Exception:
+    pass  # never let logging setup crash the app
 
 
 # ---------------------------------------------------------------------------
