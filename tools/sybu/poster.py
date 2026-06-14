@@ -25,9 +25,13 @@ import tempfile
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional
 
+import logging
+
 import requests
 from bs4 import BeautifulSoup
 from PIL import Image as PILImage
+
+log = logging.getLogger('sybu')
 
 import exif_writer
 from exif_writer import COPYRIGHT as _DEFAULT_COPYRIGHT
@@ -313,6 +317,8 @@ class SnapSmackClient:
                 notes.append(f"category \"{cat_name}\" not matched")
             if album_name and album_id is None:
                 notes.append(f"album \"{album_name}\" not matched")
+            log.info("POST %s — category=%r(id=%s) album=%r(id=%s)",
+                     entry.file, cat_name, cat_id, album_name, album_id)
 
             # ── 5. POST to SnapSmack ──────────────────────────────────
             orient = entry.orientation if entry.orientation != 'auto' else default_orientation
@@ -356,11 +362,14 @@ class SnapSmackClient:
             if notes:
                 msg += f" ({'; '.join(notes)})"
 
+            log.info("POST OK %s — %s (drive=%s)", entry.file, msg, bool(drive_url))
             return PostResult(entry, True, msg, web_path=web_path, drive_url=drive_url, exif_ok=exif_ok)
 
         except requests.RequestException as e:
+            log.error("POST NETWORK ERROR %s: %s", entry.file, e)
             return PostResult(entry, False, f"Network error: {e}", web_path=web_path)
         except Exception as e:
+            log.error("POST ERROR %s: %s", entry.file, e)
             return PostResult(entry, False, str(e), web_path=web_path)
 
 
