@@ -405,6 +405,14 @@ button {
     pointer-events: none;
 }
 
+/* Phantom tile (GRAMOFSMACK trigrams) — invisible spacer that pushes a
+   horizontal trigram's first tile to column 0 so its 3-chunk panorama stays
+   on one row. Trigram tiles otherwise need no special CSS. */
+.pg-grid-cell--phantom {
+    visibility: hidden;
+    pointer-events: none;
+}
+
 /* Empty state */
 .pg-grid-empty {
     grid-column: 1 / -1;

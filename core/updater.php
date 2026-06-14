@@ -1879,23 +1879,37 @@ function updater_check_skin_registry(PDO $pdo, bool $fast = false): array {
         }
     }
 
-    // ── AUTO-REPAIR: mandatory mobile skin ──────────────────────────────────
-    // If the mobile skin is absent (missing directory), pull it from the registry
-    // silently. Runs on every non-fast updater page load so any install that lost
-    // or never received the skin self-heals without admin intervention.
+    // ── AUTO-REPAIR / AUTO-UPDATE: mandatory mobile skin ─────────────────────
+    // The mobile skin (Photogram) is hidden from the gallery, so an admin can
+    // never click to install OR update it. The updater self-heals on every
+    // non-fast page load: it (re)installs the registry copy whenever the local
+    // skin is MISSING, or OLDER than the registry version. skin_registry_install()
+    // removes any existing dir first (see its "update scenario" branch), so this
+    // is a safe in-place overwrite. Because it's handled here, the skin is also
+    // dropped from the manual "update available" notifications below — there is
+    // no gallery row for the admin to act on anyway.
     if (defined('SNAPSMACK_MOBILE_SKIN') && SNAPSMACK_MOBILE_SKIN !== '') {
-        $mobile_slug = SNAPSMACK_MOBILE_SKIN;
-        $mobile_dir  = dirname(__DIR__) . '/skins/' . $mobile_slug;
-        if (!is_dir($mobile_dir) && !empty($remote['skins'][$mobile_slug])) {
-            $mobile_entry = $remote['skins'][$mobile_slug];
-            if (!empty($mobile_entry['download_url'])) {
-                skin_registry_install(
-                    $mobile_slug,
-                    $mobile_entry['download_url'],
-                    $mobile_entry['signature'] ?? '',
-                    defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : ''
-                );
-            }
+        $mobile_slug  = SNAPSMACK_MOBILE_SKIN;
+        $mobile_dir   = dirname(__DIR__) . '/skins/' . $mobile_slug;
+        $mobile_entry = $remote['skins'][$mobile_slug] ?? null;
+
+        $mobile_missing  = !is_dir($mobile_dir);
+        $mobile_outdated = !$mobile_missing
+            && isset($mobile_entry['version'], $local[$mobile_slug]['version'])
+            && snap_version_compare($mobile_entry['version'], $local[$mobile_slug]['version'], '>');
+
+        if (($mobile_missing || $mobile_outdated) && !empty($mobile_entry['download_url'])) {
+            skin_registry_install(
+                $mobile_slug,
+                $mobile_entry['download_url'],
+                $mobile_entry['signature'] ?? '',
+                defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : ''
+            );
+            // Self-handled — don't also surface it as a manual update notice.
+            $updated_skins = array_values(array_filter(
+                $updated_skins,
+                static fn(array $s): bool => ($s['slug'] ?? '') !== $mobile_slug
+            ));
         }
     }
 
