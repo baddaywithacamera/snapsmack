@@ -27,7 +27,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'        => 'Photogram',
-    'version'     => '2.0.5',
+    'version'     => '2.0.6',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'A shadow of what a photo-sharing app used to be. Phone-native layout: 3-column archive grid, full-aspect post view, inline likes, bottom-sheet comments. Reproduces the Pixelfed / classic Instagram experience in a self-hosted blog.',
@@ -124,14 +124,10 @@ return [
         ],
 
         // ── PROFILE ───────────────────────────────────────────────────────
-        'pg_avatar' => [
-            'section' => 'PROFILE',
-            'type'    => 'image',
-            'label'   => 'Profile Avatar',
-            'default' => '',
-            'accept'  => 'image/jpeg,image/png,image/webp,image/gif',
-            'hint'    => 'Square image recommended. Shown at the top of the feed and profile. Falls back to the site logo, then favicon, if unset.',
-        ],
+        // NOTE: Photogram has no avatar upload of its own — it is the mobile half
+        // of the active desktop skin and inherits THAT skin's Profile Avatar
+        // (resolved in layout/feed/landing). Configure the avatar on your desktop
+        // skin's settings page; it shows here automatically.
         'pg_avatar_shape' => [
             'section' => 'PROFILE',
             'type'    => 'select',

@@ -147,7 +147,7 @@ if (!$_tg_modal_mode) {
 
 <?php
 // ── Right panel: avatar + site name ───────────────────────────────────────
-$_avatar_path    = $settings['tg_avatar'] ?? '';
+$_avatar_path    = $settings['skin_avatar'] ?? '';
 $_avatar_exists  = $_avatar_path && file_exists(dirname(__DIR__, 2) . '/' . $_avatar_path);
 $_site_name      = $settings['site_name'] ?? 'SnapSmack';
 $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
