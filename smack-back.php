@@ -169,6 +169,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['reinit_baseline'] ?? '') =
 
 // CONFIRM HUB-REQUESTED SMACKBACK DISABLE
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['smackback_hub_confirm_disable'] ?? '') === '1') {
+    // Same step-up auth as a local disable — confirming a hub-requested disable
+    // is the same destructive transition and must not be one-click.
+    require_once 'core/reauth.php';
+    $re = reauth_verify($pdo, $_POST['reauth_password'] ?? '', $_POST['reauth_totp'] ?? '');
+    if (!$re['ok']) {
+        header('Location: smack-back.php?msg=' . urlencode('Hub disable confirm blocked — re-auth failed: ' . $re['error']));
+        exit;
+    }
     $upsert = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
     $upsert->execute(['smackback_enabled',            '0']);
     $upsert->execute(['smackback_hub_pending_disable', '0']);
@@ -208,6 +216,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_settings'] ?? '') ===
                     ? $_POST['smackback_mode'] : 'lockout';
     $new_pageload   = ($_POST['smackback_pageload_check'] ?? '0') === '1' ? '1' : '0';
     $new_email      = trim($_POST['smackback_alert_email'] ?? '');
+
+    // STEP-UP AUTH ON DISABLE (enabled -> disabled). Disabling file-integrity
+    // monitoring is destructive, so it requires the admin to re-enter their
+    // password (+ TOTP code when enrolled). Enabling / mode / email stay one-click.
+    $was_enabled = ($settings['smackback_enabled'] ?? '0') === '1';
+    if ($was_enabled && $new_enabled === '0') {
+        require_once 'core/reauth.php';
+        $re = reauth_verify($pdo, $_POST['reauth_password'] ?? '', $_POST['reauth_totp'] ?? '');
+        if (!$re['ok']) {
+            header('Location: smack-back.php?msg=' . urlencode('Disable blocked — re-auth failed: ' . $re['error']));
+            exit;
+        }
+    }
 
     $upsert = $pdo->prepare(
         "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
@@ -463,6 +484,16 @@ include 'core/sidebar.php';
             <form method="post" onsubmit="return confirm('Disable SMACKBACK on this site as requested by hub?');">
                 <?php csrf_field(); ?>
                 <input type="hidden" name="smackback_hub_confirm_disable" value="1">
+                <div class="dash-grid" style="margin-bottom:10px;">
+                    <div class="lens-input-wrapper">
+                        <label>PASSWORD</label>
+                        <input type="password" name="reauth_password" autocomplete="current-password" required>
+                    </div>
+                    <div class="lens-input-wrapper">
+                        <label>2FA CODE <span class="dim" style="font-size:0.75rem;">(if enrolled)</span></label>
+                        <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="000000">
+                    </div>
+                </div>
                 <button type="submit" class="btn-smack btn-danger">APPROVE — DISABLE SMACKBACK</button>
             </form>
             <form method="post">
@@ -594,10 +625,43 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
+            <!-- ── STEP-UP AUTH (required only when DISABLING) ── -->
+            <div id="smackback-reauth"<?php echo $smack_enabled ? '' : ' style="display:none;"'; ?>
+                 style="border:1px solid var(--border,#333);border-radius:4px;padding:14px 16px;margin:8px 0 20px;">
+                <div style="font-size:0.9rem;font-weight:700;letter-spacing:.05em;margin-bottom:4px;">CONFIRM IDENTITY TO DISABLE</div>
+                <div class="dim" style="font-size:0.8rem;margin-bottom:12px;">
+                    Turning SMACKBACK off is destructive. Enter your password (and 2FA code, if enrolled).
+                    Leave blank if you're not disabling.
+                </div>
+                <div class="dash-grid">
+                    <div class="lens-input-wrapper">
+                        <label>PASSWORD</label>
+                        <input type="password" name="reauth_password" autocomplete="current-password">
+                    </div>
+                    <div class="lens-input-wrapper">
+                        <label>2FA CODE <span class="dim" style="font-size:0.75rem;">(if enrolled)</span></label>
+                        <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="000000">
+                    </div>
+                </div>
+            </div>
+
             <div class="form-action-row">
                 <button type="submit" class="master-update-btn">SAVE SETTINGS</button>
             </div>
         </form>
+        <script>
+        // Show the step-up auth fields only when the admin is moving the toggle
+        // toward OFF (it starts visible when currently enabled).
+        (function () {
+            var tog = document.getElementById('smackback_enabled_toggle');
+            var box = document.getElementById('smackback-reauth');
+            if (tog && box) {
+                tog.addEventListener('change', function () {
+                    box.style.display = tog.checked ? 'none' : 'block';
+                });
+            }
+        }());
+        </script>
         <script>
         (function(){
             var tog = document.getElementById('smackback_enabled_toggle');

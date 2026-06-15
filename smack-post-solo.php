@@ -592,6 +592,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         // Sync hashtags from title + description + manual tags field.
         snap_sync_tags($pdo, (int)$new_img_id, $title . ' ' . $desc . ' ' . $manual_tags);
 
+        // New content is live — flush the page cache so it appears immediately.
+        require_once __DIR__ . '/core/page-cache.php';
+        page_cache_purge_all();
+
         if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
             echo "success";
             exit;

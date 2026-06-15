@@ -48,6 +48,8 @@ if ($slug === '') {
 
 $settings    = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 require_once __DIR__ . '/core/maintenance-gate.php';
+require_once __DIR__ . '/core/page-cache.php';
+page_cache_serve_or_start($settings);
 $active_skin = $settings['active_skin'] ?? 'smackdown';
 $site_name   = $settings['site_name']   ?? 'SNAPSMACK';
 

@@ -1295,6 +1295,8 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'network_alert_push_enabled'   => $sec_na_push,
                 'network_alert_consent_choice' => $sec_consent,
                 'network_alert_consent_at'     => $sec_consent_at,
+                // Install timestamp — starts the 30-day Force-2FA grace clock (spec #1).
+                'installed_at'                 => date('Y-m-d H:i:s'),
             ];
 
             $stmt = $pdo->prepare("INSERT INTO `{$prefix}settings` (setting_key, setting_val) VALUES (?, ?)");

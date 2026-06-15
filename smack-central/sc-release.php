@@ -903,9 +903,22 @@ if ($action === 'build' && $preflight_ok) {
 
                 // Write site-version.php for snapsmack.ca promo site
                 $site_version_path = '/var/www/snapsmack.ca/includes/site-version.php';
+                // Preserve any existing dev-track version — a STABLE publish must NOT
+                // blank SS_PROMO_DEV_VERSION (that left the Bitchin' badge showing a
+                // bare "v" until the next dev build). Read the current value; if none,
+                // default to the stable version + 'D' (dev is never behind stable).
+                $existing_dev = '';
+                if (is_file($site_version_path) && ($_sv_old = @file_get_contents($site_version_path)) !== false) {
+                    if (preg_match("/define\\('SS_PROMO_DEV_VERSION',\\s*'([^']*)'\\)/", $_sv_old, $_sv_m)) {
+                        $existing_dev = $_sv_m[1];
+                    }
+                }
+                if ($existing_dev === '') {
+                    $existing_dev = $version . 'D';
+                }
                 $site_version_content = "<?php\n" .
                     "define('SS_PROMO_VERSION',     '" . addslashes($version) . "');   // BORING track — stable\n" .
-                    "define('SS_PROMO_DEV_VERSION', '');  // BITCHIN' track — updated by dev build\n" .
+                    "define('SS_PROMO_DEV_VERSION', '" . addslashes($existing_dev) . "');  // BITCHIN' track — preserved across stable publishes; updated by dev build\n" .
                     "define('SS_PROMO_CODENAME',    '" . addslashes($codename) . "');\n" .
                     "// ===== SNAPSMACK EOF =====\n";
                 if (file_put_contents($site_version_path, $site_version_content) !== false) {

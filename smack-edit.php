@@ -204,6 +204,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ->execute([(int)$cid, $id, (int)$max->fetchColumn()]);
     }
 
+    // Content changed — flush the page cache so the edit appears immediately.
+    require_once __DIR__ . '/core/page-cache.php';
+    page_cache_purge_all();
+
     $msg = "Success: Mission parameters updated.";
 }
 

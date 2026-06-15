@@ -23,6 +23,10 @@ require_once __DIR__ . '/core/db.php';
 
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 
+require_once __DIR__ . '/core/maintenance-gate.php';
+require_once __DIR__ . '/core/page-cache.php';
+page_cache_serve_or_start($settings);
+
 if (!defined('BASE_URL')) {
     $db_url = $settings['site_url'] ?? '/';
     define('BASE_URL', rtrim($db_url, '/') . '/');

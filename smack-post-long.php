@@ -130,6 +130,8 @@ if (isset($_GET['delete'])) {
     $pdo->prepare("DELETE FROM snap_post_album_map WHERE post_id = ?")->execute([$del_id]);
     $pdo->prepare("DELETE FROM snap_tags WHERE image_id = ?")->execute([$del_id]);
     $pdo->prepare("DELETE FROM snap_posts WHERE id = ? AND post_type = 'longform'")->execute([$del_id]);
+    require_once __DIR__ . '/core/page-cache.php';
+    page_cache_purge_all();
     header("Location: smack-post-long.php?msg=TRANSMISSION+PURGED");
     exit;
 }
@@ -202,6 +204,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_long'])) {
             $pdo->prepare("INSERT IGNORE INTO snap_post_album_map (post_id, album_id) VALUES (?, ?)")->execute([$post_id, (int)$aid]);
         }
         snap_sync_tags($pdo, $post_id, $title . ' ' . $manual_tags);
+        require_once __DIR__ . '/core/page-cache.php';
+        page_cache_purge_all();
         header("Location: smack-post-long.php?msg=TRANSMISSION+UPDATED&edit=" . $post_id);
         exit;
     } else {
@@ -225,6 +229,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_long'])) {
             $pdo->prepare("INSERT IGNORE INTO snap_post_album_map (post_id, album_id) VALUES (?, ?)")->execute([$new_id, (int)$aid]);
         }
         snap_sync_tags($pdo, $new_id, $title . ' ' . $manual_tags);
+        require_once __DIR__ . '/core/page-cache.php';
+        page_cache_purge_all();
         header("Location: smack-post-long.php?msg=TRANSMISSION+LIVE&edit=" . $new_id);
         exit;
     }

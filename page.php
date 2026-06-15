@@ -49,6 +49,8 @@ try {
     // --- SETTINGS LOADING ---
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
     require_once __DIR__ . '/core/maintenance-gate.php';
+    require_once __DIR__ . '/core/page-cache.php';
+    page_cache_serve_or_start($settings);
 
     // Define BASE_URL from database. Source of truth for site URL.
     if (!defined('BASE_URL')) {

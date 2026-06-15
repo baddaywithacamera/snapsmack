@@ -182,6 +182,34 @@ if ($forum_enabled && $forum_api_key !== '') {
 $action = $_POST['action'] ?? '';
 $msg    = '';
 
+// ── BREACH FORUM RE-AUTH (spec #2) ──────────────────────────────────────────
+// SS installs ship with default forum write access. While a SMACKBACK breach is
+// active, that default is revoked: posting requires a step-up re-auth (password
+// + TOTP when enrolled) which grants a rolling 15-minute posting window. This
+// stops an attacker who has breached an install from weaponising the forum.
+require_once 'core/reauth.php';
+$forum_breach_lock = ($settings['smackback_enabled'] ?? '0') === '1'
+                  && ($settings['smackback_status'] ?? 'clean') === 'breach';
+
+if ($forum_breach_lock && $action === 'forum-reauth') {
+    $re = reauth_verify($pdo, $_POST['reauth_password'] ?? '', $_POST['reauth_totp'] ?? '');
+    if ($re['ok']) {
+        reauth_grant_window('forum', 15);
+        $msg = 'Identity confirmed — you can post for the next 15 minutes.';
+    } else {
+        $msg = 'Re-auth failed: ' . $re['error'];
+    }
+    $action = ''; // never fall through to a write on the reauth submit
+}
+
+$forum_can_post = !$forum_breach_lock || reauth_window_active('forum');
+
+// Block forum writes during a breach when no re-auth window is open.
+if ($forum_breach_lock && !$forum_can_post && in_array($action, ['post-thread', 'post-reply'], true)) {
+    $msg    = 'SMACKBACK breach active — confirm your identity below to post (15-minute window).';
+    $action = '';
+}
+
 if ($action === 'post-thread' && $forum_enabled && $forum_api_key) {
     $cat_id = (int)($_POST['category_id'] ?? 0);
     $title  = trim($_POST['title']        ?? '');
@@ -336,6 +364,38 @@ require 'core/sidebar.php';
   <div class="header-row">
     <h2>COMMUNITY FORUM</h2>
   </div>
+
+  <?php if ($forum_breach_lock): ?>
+  <div class="box" style="grid-column:1 / -1;border:1px solid #cc2200;background:#2a0d05;margin-bottom:16px;">
+    <div style="padding:14px 16px;">
+      <strong style="color:#ff7a55;letter-spacing:.05em;">&#9888; BREACH LOCKDOWN</strong>
+      <p class="dim" style="font-size:0.85rem;margin:6px 0 0;">
+        File tampering detected on this install. Forum posting is locked.
+        <?php if (reauth_window_active('forum')): ?>
+          Your posting window is open for a few more minutes.
+        <?php else: ?>
+          Confirm your identity to post for the next 15 minutes.
+        <?php endif; ?>
+      </p>
+      <?php if (!reauth_window_active('forum')): ?>
+      <form method="post" style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+        <?php if (function_exists('csrf_field')) csrf_field(); ?>
+        <input type="hidden" name="action" value="forum-reauth">
+        <div class="lens-input-wrapper" style="margin:0;">
+          <label>PASSWORD</label>
+          <input type="password" name="reauth_password" autocomplete="current-password" required>
+        </div>
+        <div class="lens-input-wrapper" style="margin:0;">
+          <label>2FA CODE <span class="dim" style="font-size:0.72rem;">(if enrolled)</span></label>
+          <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="000000">
+        </div>
+        <button type="submit" class="btn-smack">CONFIRM IDENTITY</button>
+      </form>
+      <?php endif; ?>
+    </div>
+  </div>
+  <?php endif; ?>
+
   <div class="dash-grid">
 
     <?php if (!$forum_enabled): ?>

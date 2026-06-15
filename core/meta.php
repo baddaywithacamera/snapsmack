@@ -33,18 +33,30 @@ $site_name = htmlspecialchars($settings['site_name'] ?? 'ISWA.CA');
 $tagline = !empty($settings['site_tagline']) ? " | " . htmlspecialchars($settings['site_tagline']) : "";
 
 // Build the Title String
+// SEO: an optional seo_title_template ('{page} — {site}') controls the
+// per-page title format. {page} = current page title, {site} = site name.
+// Falls back to the classic "Page | Site" when no template is set.
 if (!empty($page_title) && !$is_home) {
-    $display_title = htmlspecialchars($page_title) . " | " . $site_name;
+    if (!empty($settings['seo_title_template'])) {
+        $display_title = htmlspecialchars(strtr($settings['seo_title_template'], [
+            '{page}' => $page_title,
+            '{site}' => $settings['site_name'] ?? 'ISWA.CA',
+        ]));
+    } else {
+        $display_title = htmlspecialchars($page_title) . " | " . $site_name;
+    }
 } else {
     $display_title = $site_name . $tagline;
 }
 
 // --- OPEN GRAPH META TAGS ---
-// Priority chain for og:image:
+// Priority chain for og:image (Sean's rule 2026-06-15): ONLY a deliberately
+// chosen image is ever used as the social preview. No logo, no latest-image
+// auto-pick. Order:
 //   1. Single image post ($img from index.php)
 //   2. Static page hero image ($page_data from page.php)
-//   3. Latest published image (homepage, archive, blogroll)
-//   4. Site logo fallback
+//   3. Explicit OG Image Override setting (a deliberately picked default)
+//   else: no og:image at all.
 $og_title = $display_title;
 $og_description = '';
 $og_image = '';
@@ -65,22 +77,15 @@ if (!empty($img['img_file'])) {
     $og_image = BASE_URL . ltrim($page['image_asset'], '/');
 }
 
-// If still empty, fetch the latest published image as the site preview
-if (empty($og_image) && isset($pdo)) {
-    try {
-        $og_latest = $pdo->query("SELECT img_file FROM snap_images WHERE img_status = 'published' ORDER BY img_date DESC LIMIT 1")->fetchColumn();
-        if ($og_latest) {
-            $og_image = BASE_URL . ltrim($og_latest, '/');
-        }
-    } catch (Exception $e) {
-        // Silently fall through to logo fallback
-    }
+// Explicit OG image override — a deliberately chosen site-wide default, used
+// only when the page has no image of its own. A specific post/page image above
+// still wins so individual shares keep their own image.
+if (empty($og_image) && !empty($settings['og_image_override'])) {
+    $og_image = BASE_URL . ltrim($settings['og_image_override'], '/');
 }
 
-// Final fallback: site logo
-if (empty($og_image) && !empty($settings['header_logo_url'])) {
-    $og_image = BASE_URL . ltrim($settings['header_logo_url'], '/');
-}
+// Deliberate: NO logo fallback and NO latest-image auto-pick. If nothing
+// specific was chosen, og:image is simply omitted (Sean's rule 2026-06-15).
 
 // Site description fallback for og:description
 // Prefer site_description (a dedicated bio sentence) over the tagline.
@@ -88,6 +93,18 @@ if (empty($og_description) && !empty($settings['site_description'])) {
     $og_description = $settings['site_description'];
 } elseif (empty($og_description) && !empty($settings['site_tagline'])) {
     $og_description = $settings['site_tagline'];
+}
+
+// --- META DESCRIPTION (SEO) ---
+// A dedicated <meta name="description">. Page-specific content description wins;
+// then the dedicated meta_description setting; then the og:description fallbacks
+// already computed (site_description ?: tagline).
+if (!empty($img['img_description'])) {
+    $meta_description = mb_substr(strip_tags($img['img_description']), 0, 200);
+} elseif (!empty($settings['meta_description'])) {
+    $meta_description = $settings['meta_description'];
+} else {
+    $meta_description = $og_description;
 }
 
 // --- CANONICAL URL ---
@@ -112,6 +129,9 @@ if ($ai_policy === 'disallow'): ?>
 <meta name="robots" content="noai, noimageai">
 <?php endif; ?>
 <title><?php echo $display_title; ?></title>
+<?php if (!empty($meta_description)): ?>
+<meta name="description" content="<?php echo htmlspecialchars($meta_description); ?>">
+<?php endif; ?>
 
 <link rel="canonical" href="<?php echo $canonical_url; ?>">
 <link rel="alternate" type="application/rss+xml" title="<?php echo $site_name; ?> RSS Feed" href="<?php echo BASE_URL; ?>rss.php" />

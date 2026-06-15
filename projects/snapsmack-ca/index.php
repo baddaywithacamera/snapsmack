@@ -1290,7 +1290,16 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="build-badge build-badge--bitchin">
                 <span class="build-badge-track">Bitchin&#x27;</span>
-                <span class="build-badge-ver">v<?php echo defined('SS_PROMO_DEV_VERSION') ? preg_replace('/^Alpha\s+/i', '', SS_PROMO_DEV_VERSION) : ''; ?></span>
+                <span class="build-badge-ver">v<?php
+                    $__dev_ver = defined('SS_PROMO_DEV_VERSION') ? preg_replace('/^Alpha\s+/i', '', SS_PROMO_DEV_VERSION) : '';
+                    // Fallback: a stable (Boring) publish blanks SS_PROMO_DEV_VERSION
+                    // (sc-release.php). Dev track is never behind stable, so show the
+                    // stable version with the D suffix rather than a bare "v".
+                    if ($__dev_ver === '') {
+                        $__dev_ver = defined('SS_PROMO_VERSION') ? SS_PROMO_VERSION . 'D' : '';
+                    }
+                    echo htmlspecialchars($__dev_ver);
+                ?></span>
             </div>
         </div>
         <h1 class="hero-headline">A photo blog platform that doesn't treat you like a <span>product.</span></h1>
@@ -1398,7 +1407,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="status-card">
                 <h3>Two-Factor Authentication</h3>
-                <p>TOTP-based 2FA compatible with any authenticator app. QR setup, recovery codes, the works.</p>
+                <p>TOTP-based 2FA compatible with any authenticator app — open-source ones first. QR setup, recovery codes, the works. Now required: a 30-day grace period after install, then it's mandatory for every admin. Lost everything? A documented emergency override means you're never locked out of your own site.</p>
             </div>
             <div class="status-card">
                 <h3>One-Click Installer</h3>
@@ -1464,6 +1473,18 @@ require_once __DIR__ . '/includes/header.php';
             <div class="status-card">
                 <h3>UNZUCKER</h3>
                 <p>Your years of careful Instagram curation aren't gone. They're just hostage. UNZUCKER takes your Instagram export and migrates it to SnapSmack — images, captions, hashtags, and original post dates all intact. Posts at whatever rate your server can handle, spread across as many days as you need. Phase 1 is shipping now. We eat our own dog food first.</p>
+            </div>
+            <div class="status-card">
+                <h3>SMACKBACK &amp; Breach Lockdown</h3>
+                <p>File-integrity monitoring baked into every install. If something tampers with your code, SMACKBACK catches it — and seals the site. The public side drops behind a holding page so a compromised install can't push bad code at your readers, and admin is locked to the essentials (updater, backups, support forum) until you fix it. Turning the watchdog off takes your password and your 2FA code.</p>
+            </div>
+            <div class="status-card">
+                <h3>SEO, Done Lightly</h3>
+                <p>Meta descriptions, a per-page title template, and an auto-generated XML sitemap. Honest social-share previews: your link shows a photo you actually chose — never a logo or a random recent shot. No keyword-stuffing dashboards, no bloat. Just the basics, set right.</p>
+            </div>
+            <div class="status-card">
+                <h3>Page Cache</h3>
+                <p>Optional, off by default. Caches public pages for anonymous visitors to take the load off your server — never logged-in admins, never filtered views. Clears itself the instant you publish or edit. Dev mode pauses it for anywhere from five minutes to a week while you work, then switches itself back on.</p>
             </div>
             <div class="status-card">
                 <h3>Thomas the Bear</h3>

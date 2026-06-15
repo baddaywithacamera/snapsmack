@@ -162,12 +162,67 @@ if (isset($_SESSION['user_login'])) {
     );
 }
 
+// --- FORCE TOTP 2FA ENROLMENT (post-grace) ---
+// After installed_at + 30 days, every admin must have TOTP enrolled. Until they
+// do, all admin pages redirect to the enrolment screen. The enrolment pages,
+// the updater, change-password, and logout are exempt so nobody is bricked.
+// An owner emergency override file (core/release-2fa-override — any contents)
+// suspends enforcement entirely: the documented escape hatch for a lost
+// authenticator AND lost recovery codes (see spec #1; Sean approved).
+if (isset($_SESSION['user_login']) && !file_exists(__DIR__ . '/release-2fa-override')) {
+    $_2fa_current = basename($_SERVER['SCRIPT_FILENAME'] ?? '');
+    $_2fa_exempt  = ['smack-2fa.php', 'smack-2fa-verify.php', 'smack-update.php', 'smack-change-password.php'];
+    if (!in_array($_2fa_current, $_2fa_exempt, true)) {
+        try {
+            $_installed_at = $pdo->query(
+                "SELECT setting_val FROM snap_settings WHERE setting_key = 'installed_at' LIMIT 1"
+            )->fetchColumn();
+            // Defensive: stamp installed_at the first time it's missing. Upgraded
+            // installs thus get a fresh 30-day clock from now — honest, and it can
+            // never brick an existing admin mid-session.
+            if (!$_installed_at) {
+                $pdo->prepare(
+                    "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('installed_at', NOW())
+                     ON DUPLICATE KEY UPDATE setting_val = setting_val"
+                )->execute();
+                $_installed_at = date('Y-m-d H:i:s');
+            }
+            $_inst_ts = strtotime((string)$_installed_at);
+            if ($_inst_ts && time() > $_inst_ts + (30 * 86400)) {
+                $_totp_stmt = $pdo->prepare("SELECT totp_enabled FROM snap_users WHERE id = ? LIMIT 1");
+                $_totp_stmt->execute([$_SESSION['user_id'] ?? 0]);
+                if (!(int)$_totp_stmt->fetchColumn()) {
+                    $_SESSION['totp_enrol_required'] = 1;
+                    header('Location: ' . BASE_URL . 'smack-2fa.php?enrol=required');
+                    exit;
+                }
+                unset($_totp_stmt);
+            }
+        } catch (PDOException $e) {
+            // Non-fatal: a DB hiccup must never hard-lock the admin out.
+        }
+        unset($_installed_at, $_inst_ts);
+    }
+    unset($_2fa_current, $_2fa_exempt);
+}
+
 // --- SMACKBACK BREACH GATE ---
 // In lockout or paranoid mode, redirect all admin pages to smack-back.php
 // when a breach is active. smack-back.php and smack-update.php are exempt
 // (they're how you resolve the breach). Alert mode: no redirect.
+// Breach LOCKDOWN allowlist (Sean's spec #2): while locked down the admin can
+// reach only — the breach screen (silence the flash; the red skin stays), the
+// updater (replace bad files), the support forum (get help), and the backup
+// utilities (grab a backup BEFORE replacing files). Everything else redirects
+// to the breach screen, forcing the owner to deal with the tampering.
 $_smack_current = basename($_SERVER['SCRIPT_FILENAME'] ?? '');
-$_smack_exempt  = ['smack-back.php', 'smack-update.php'];
+$_smack_exempt  = [
+    'smack-back.php',             // breach detail + silence-flash
+    'smack-update.php',           // updater — replace bad files
+    'smack-forum.php',            // support forum — get help
+    'smack-backup.php',           // backup util (solo)
+    'smack-multisite-backup.php', // backup util (fleet)
+];
 
 if (!in_array($_smack_current, $_smack_exempt, true)) {
     try {
