@@ -35,7 +35,7 @@ if (!isset($settings)) {
 // --- TAB ROUTING ---
 // Determine which tab is active: 'customize' (default) or 'gallery'
 $active_tab = $_GET['tab'] ?? 'customize';
-if (!in_array($active_tab, ['customize', 'gallery'])) $active_tab = 'customize';
+if (!in_array($active_tab, ['customize', 'gallery', 'mobile'])) $active_tab = 'customize';
 
 // Initialise here so modal-building code at the bottom of the page
 // always has a valid array regardless of which tab is active.
@@ -177,6 +177,31 @@ foreach ($required_engines as $engine_key) {
     if (isset($global_inventory['scripts'][$engine_key])) {
         $resolved_engines[$engine_key] = $global_inventory['scripts'][$engine_key];
     }
+}
+
+// --- MOBILE-SKIN AVATAR SAVE (Mobile tab; dedicated — never changes the active desktop skin) ---
+if (isset($_POST['save_mobile_avatar'])) {
+    $_mob_slug = preg_replace('/[^a-z0-9_\-]/', '', $_POST['mobile_skin_slug'] ?? '');
+    $_is_mobile = false;
+    if ($_mob_slug && is_file(__DIR__ . '/skins/' . $_mob_slug . '/manifest.php')) {
+        $_mm = include __DIR__ . '/skins/' . $_mob_slug . '/manifest.php';
+        $_is_mobile = is_array($_mm) && !empty($_mm['features']['mobile_only']);
+    }
+    if ($_is_mobile && !empty($_FILES['mobile_avatar']['name']) && ($_FILES['mobile_avatar']['error'] ?? 1) === UPLOAD_ERR_OK) {
+        $upload_dir = __DIR__ . '/uploads/skin-avatars/';
+        if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+        $ext = strtolower(pathinfo($_FILES['mobile_avatar']['name'], PATHINFO_EXTENSION));
+        if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+            $filename = $_mob_slug . '--skin_avatar.' . $ext;
+            if (move_uploaded_file($_FILES['mobile_avatar']['tmp_name'], $upload_dir . $filename)) {
+                $rel = 'uploads/skin-avatars/' . $filename;
+                $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+                    ->execute([$_mob_slug . '__skin_avatar', $rel, $rel]);
+            }
+        }
+    }
+    header('Location: smack-skin.php?tab=mobile');
+    exit;
 }
 
 // --- 4. SAVE HANDLER (Customize tab) ---
@@ -737,6 +762,10 @@ if (!empty($google_families)) {
            class="skin-tab <?php echo ($active_tab === 'customize') ? 'active' : ''; ?>">
             CUSTOMIZE
         </a>
+        <a href="smack-skin.php?tab=mobile"
+           class="skin-tab <?php echo ($active_tab === 'mobile') ? 'active' : ''; ?>">
+            MOBILE
+        </a>
         <a href="smack-skin.php?tab=gallery"
            class="skin-tab <?php echo ($active_tab === 'gallery') ? 'active' : ''; ?>">
             GALLERY
@@ -1063,6 +1092,61 @@ if (!empty($google_families)) {
             <button type="submit" name="save_skin_settings" class="master-update-btn">SAVE SKIN SPECIFIC CALIBRATION</button>
         </div>
     </form>
+
+<?php elseif ($active_tab === 'mobile'): ?>
+    <!-- ============================================================
+         TAB 3: MOBILE (mobile-only skins — auto-served to phones,
+         hidden from the gallery, configured here)
+         ============================================================ -->
+    <?php
+    // Enumerate every mobile-only skin (manifest features.mobile_only === true).
+    // Photogram today; Telegram + others appear automatically when installed.
+    $mobile_skins = [];
+    foreach (glob('skins/*', GLOB_ONLYDIR) as $_md) {
+        $_ms = basename($_md);
+        if (!is_file($_md . '/manifest.php')) continue;
+        $_mm = include $_md . '/manifest.php';
+        if (is_array($_mm) && !empty($_mm['features']['mobile_only'])) {
+            $mobile_skins[$_ms] = $_mm['name'] ?? ucfirst($_ms);
+        }
+    }
+    ?>
+    <div class="box">
+        <h3>MOBILE SKINS</h3>
+        <p class="dim field-hint">MOBILE-ONLY SKINS ARE SERVED AUTOMATICALLY ON PHONES AND ARE HIDDEN FROM THE GALLERY. SET EACH ONE'S PROFILE AVATAR HERE. MORE MOBILE OPTIONS COMING.</p>
+    </div>
+    <?php if (empty($mobile_skins)): ?>
+        <div class="box"><p class="dim">No mobile-only skins are installed.</p></div>
+    <?php else: foreach ($mobile_skins as $_ms => $_mname):
+        $_mav     = $settings[$_ms . '__skin_avatar'] ?? '';
+        $_mav_url = $_mav ? BASE_URL . ltrim($_mav, '/') : '';
+    ?>
+        <div class="box">
+            <h3><?php echo strtoupper(htmlspecialchars($_mname)); ?></h3>
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="mobile_skin_slug" value="<?php echo htmlspecialchars($_ms); ?>">
+                <div class="dash-grid">
+                    <div class="lens-input-wrapper">
+                        <label>PROFILE AVATAR</label>
+                        <?php if ($_mav_url): ?>
+                        <div style="margin-bottom:8px;">
+                            <img src="<?php echo htmlspecialchars($_mav_url); ?>" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.15);display:block;">
+                        </div>
+                        <?php endif; ?>
+                        <div class="file-upload-wrapper" onclick="document.getElementById('mob-av-<?php echo $_ms; ?>').click()">
+                            <div class="file-custom-btn">UPLOAD</div>
+                            <div class="file-name-display" id="mob-av-name-<?php echo $_ms; ?>"><?php echo $_mav ? 'CURRENT' : 'SELECT FILE'; ?></div>
+                        </div>
+                        <input type="file" id="mob-av-<?php echo $_ms; ?>" name="mobile_avatar"
+                               accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;"
+                               onchange="document.getElementById('mob-av-name-<?php echo $_ms; ?>').innerText = (this.files[0] ? this.files[0].name : 'SELECT FILE')">
+                        <p class="dim field-hint" style="margin-top:4px;">SQUARE IMAGE. SHOWN AT THE TOP OF THE FEED AND PROFILE.</p>
+                    </div>
+                </div>
+                <button type="submit" name="save_mobile_avatar" class="master-update-btn">SAVE <?php echo strtoupper(htmlspecialchars($_mname)); ?> AVATAR</button>
+            </form>
+        </div>
+    <?php endforeach; endif; ?>
 
 <?php elseif ($active_tab === 'gallery'): ?>
     <!-- ============================================================
