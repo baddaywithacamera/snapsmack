@@ -212,6 +212,19 @@ $avatar_file = !empty($settings['skin_avatar'])
         : ($settings['header_logo_url'] ?? $settings['site_logo'] ?? $settings['favicon_url'] ?? ''));
 
 $pg_active_tab = 'home';
+
+// Avatar tap target: the About CMS page (slug 'about'). The mobile scroll shows
+// no footer/nav, so the profile avatar is the way in to the About page — mirrors
+// how Instagram surfaced a small amount of about info. Link only when a real
+// 'about' page exists; otherwise the avatar stays non-interactive.
+$pg_about_url = '';
+try {
+    $_pg_about = $pdo->query("SELECT slug FROM snap_pages WHERE is_active = 1 AND slug = 'about' LIMIT 1");
+    $_pg_about_slug = $_pg_about ? $_pg_about->fetchColumn() : '';
+    if ($_pg_about_slug) {
+        $pg_about_url = BASE_URL . 'page.php?slug=' . rawurlencode($_pg_about_slug);
+    }
+} catch (PDOException $e) {}
 ?>
 
 <?php include __DIR__ . '/skin-meta.php'; ?>
@@ -232,9 +245,11 @@ $pg_active_tab = 'home';
             <!-- Avatar -->
             <?php if (!empty($avatar_file)): ?>
                 <div class="pg-avatar">
+                    <?php if ($pg_about_url): ?><a href="<?php echo $pg_about_url; ?>" class="pg-avatar-link" aria-label="About"><?php endif; ?>
                     <img src="<?php echo BASE_URL . ltrim($avatar_file, '/'); ?>"
                          alt="<?php echo htmlspecialchars($site_title); ?>"
                          width="80" height="80">
+                    <?php if ($pg_about_url): ?></a><?php endif; ?>
                 </div>
             <?php else: ?>
                 <div class="pg-avatar-placeholder" aria-hidden="true">

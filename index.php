@@ -93,6 +93,15 @@ try {
 
     $homepage_mode    = $settings['homepage_mode'] ?? 'latest_post';
     $homepage_page_id = (int)($settings['homepage_page_id'] ?? 0);
+
+    // Mobile (Photogram) always opens to the post scroll. The landing-page
+    // homepage modes — static_page / archive / skin_landing — are desktop-only;
+    // an Instagram-style mobile feed never shows a static front page. Force
+    // latest_post whenever the mobile skin is active so the scroll is never
+    // intercepted by a configured landing page.
+    if ($active_skin === SNAPSMACK_MOBILE_SKIN && snapsmack_is_mobile()) {
+        $homepage_mode = 'latest_post';
+    }
     $blog_slug        = trim($settings['blog_slug'] ?? 'blog', '/');
 
     $force_blog = !empty($_SERVER['SNAPSMACK_FORCE_BLOG']);
@@ -100,7 +109,7 @@ try {
     // Landing-only mode: bare homepage with no skin chrome.
     // Works for both skin_landing (hides nav via CSS) and static_page (full bare render).
     $landing_only_active = ($settings['landing_only'] ?? '0') === '1'
-        && in_array($settings['homepage_mode'] ?? 'latest_post', ['skin_landing', 'static_page'])
+        && in_array($homepage_mode, ['skin_landing', 'static_page'])
         && empty($requested_slug)
         && !$force_blog;
 
