@@ -792,6 +792,40 @@ if (!empty($google_families)) {
         <div id="smack-skin-config-wrap">
 
             <?php
+            // --- UNIVERSAL PROFILE AVATAR (every skin, any install mode) ---
+            // Stored scoped as "<skin>__skin_avatar"; the generic image-upload
+            // handler saves it without needing a manifest entry. Photogram (mobile)
+            // inherits the active desktop skin's avatar from this key. Rendered for
+            // every skin EXCEPT ones that already declare their own skin_avatar
+            // option (e.g. The Grid), to avoid a duplicate control.
+            if (!isset($manifest['options']['skin_avatar'])):
+                $_av_val = $settings[$target_skin . '__skin_avatar'] ?? '';
+                $_av_url = $_av_val ? BASE_URL . ltrim($_av_val, '/') : '';
+            ?>
+            <div class="box">
+                <h3>PROFILE AVATAR</h3>
+                <div class="dash-grid">
+                    <div class="lens-input-wrapper">
+                        <input type="hidden" name="skin_opt[skin_avatar]" value="<?php echo htmlspecialchars($_av_val); ?>">
+                        <?php if ($_av_url): ?>
+                        <div style="margin-bottom:8px;">
+                            <img src="<?php echo htmlspecialchars($_av_url); ?>" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.15);display:block;">
+                        </div>
+                        <?php endif; ?>
+                        <div class="file-upload-wrapper" onclick="document.getElementById('skinimg-skin_avatar').click()">
+                            <div class="file-custom-btn">UPLOAD</div>
+                            <div class="file-name-display" id="skinimg-name-skin_avatar"><?php echo $_av_val ? 'CURRENT' : 'SELECT FILE'; ?></div>
+                        </div>
+                        <input type="file" id="skinimg-skin_avatar" name="skin_img_opt[skin_avatar]"
+                               accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;"
+                               onchange="document.getElementById('skinimg-name-skin_avatar').innerText = (this.files[0] ? this.files[0].name : 'SELECT FILE')">
+                        <p class="dim field-hint" style="margin-top:4px;">SQUARE IMAGE. PROFILE AVATAR &mdash; ALSO USED BY THE PHOTOGRAM MOBILE VIEW.</p>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <?php
             // --- COLOUR VARIANT: Only if manifest declares variants ---
             if (!empty($manifest['variants'])):
                 $current_variant = $settings['active_skin_variant'] ?? ($manifest['default_variant'] ?? array_key_first($manifest['variants']));

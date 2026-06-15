@@ -42,7 +42,7 @@ try {
 }
 
 // ── Avatar ─────────────────────────────────────────────────────────────────
-$avatar_path     = $settings['tg_avatar'] ?? '';
+$avatar_path     = $settings['skin_avatar'] ?? '';
 $avatar_exists   = $avatar_path && file_exists(dirname(__DIR__, 2) . '/' . $avatar_path);
 $avatar_initials = strtoupper(substr($settings['site_name'] ?? 'S', 0, 1));
 $avatar_url      = $avatar_exists ? BASE_URL . htmlspecialchars($avatar_path) : '';

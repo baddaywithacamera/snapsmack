@@ -12,6 +12,17 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.258 — "Box Seat" (2026-06-14)
+
+### Core — universal skin avatar
+
+- **`smack-skin.php`** — every skin now gets a standard **Profile Avatar** upload in its settings, rendered universally (saved scoped as `<skin>__skin_avatar` via the existing generic image handler). Skins that already declare their own `skin_avatar` option (e.g. The Grid) keep theirs; all others get the injected field. Covers current, experimental, and future skins with no per-manifest work.
+
+### Skins — avatar standardization
+
+- **The Grid 1.3.19** — renamed the profile-avatar setting `tg_avatar` → `skin_avatar` (manifest + layout/skin-page/skin-profile) so it matches the universal key. Existing uploads need re-saving once under the new key (or a one-row settings migration).
+- **Photogram 2.0.6** — as the mobile half of the active desktop skin, it now inherits that skin's avatar via `<active_skin>__skin_avatar` (single key, no install-mode logic), falling back to site logo / favicon. Photogram has no avatar field of its own.
+
 ## 0.7.257 — "Catbird Seat" (2026-06-14)
 
 ### Core — maintenance + FLKR FCKR

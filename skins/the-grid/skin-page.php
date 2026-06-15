@@ -27,7 +27,7 @@ try {
 }
 
 // ── Avatar for header ──────────────────────────────────────────────────────
-$_sp_avatar_path   = $settings['tg_avatar'] ?? '';
+$_sp_avatar_path   = $settings['skin_avatar'] ?? '';
 $_sp_avatar_exists = $_sp_avatar_path && file_exists(dirname(__DIR__, 2) . '/' . $_sp_avatar_path);
 $_sp_site_name     = $settings['site_name'] ?? 'SnapSmack';
 $_sp_initial       = strtoupper(substr($_sp_site_name, 0, 1));
