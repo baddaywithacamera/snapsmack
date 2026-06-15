@@ -40,9 +40,11 @@ $site_title  = $settings['site_title']       ?? $site_name ?? 'Photogram';
 // avatar. Skin settings are stored scoped as "<skin>__<key>" (Grid: tg_avatar,
 // other skins: skin_avatar). Fall back to site logo / favicon if none is set.
 $_pg_host = $settings['active_skin'] ?? '';
-$avatar_file = ($_pg_host && !empty($settings["{$_pg_host}__skin_avatar"]))
-    ? $settings["{$_pg_host}__skin_avatar"]
-    : ($settings['header_logo_url'] ?? $settings['site_logo'] ?? $settings['favicon_url'] ?? '');
+$avatar_file = !empty($settings['skin_avatar'])
+    ? $settings['skin_avatar']
+    : (($_pg_host && !empty($settings["{$_pg_host}__skin_avatar"]))
+        ? $settings["{$_pg_host}__skin_avatar"]
+        : ($settings['header_logo_url'] ?? $settings['site_logo'] ?? $settings['favicon_url'] ?? ''));
 
 
 // ── Query helper ────────────────────────────────────────────────────────────
