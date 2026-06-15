@@ -11,8 +11,14 @@
  * Last non-empty line of this file MUST match the line above.
  */
 
-if (($settings['maintenance_mode'] ?? '0') !== '1') {
-    return; // Nothing to do — maintenance mode off
+// Trigger on explicit maintenance mode OR a SMACKBACK breach. The breach path
+// (spec #2 lockdown, public side) holds the public site down so a tampered
+// install can't throw bad/exploit code at visitors. Admins still pass through.
+$_mg_maint  = ($settings['maintenance_mode'] ?? '0') === '1';
+$_mg_breach = ($settings['smackback_enabled'] ?? '0') === '1'
+           && ($settings['smackback_status'] ?? 'clean') === 'breach';
+if (!$_mg_maint && !$_mg_breach) {
+    return; // Nothing to do — neither maintenance nor breach
 }
 
 // Resume an existing session to check login state — never create a new one
@@ -25,6 +31,18 @@ if (session_status() === PHP_SESSION_NONE && !empty($_COOKIE[session_name()])) {
 // Logged-in users see the site normally
 if (!empty($_SESSION['user_login'])) {
     return;
+}
+
+// Breach path: send 503 (temporary, keeps crawlers from indexing the holding
+// page) and, when this is a pure breach (not also explicit maintenance), use a
+// neutral message — never reveal a breach to the public.
+if ($_mg_breach) {
+    http_response_code(503);
+    header('Retry-After: 3600');
+    if (!$_mg_maint) {
+        $settings['maintenance_title'] = 'Temporarily Unavailable';
+        $settings['maintenance_body']  = 'This site is briefly offline for maintenance. Please check back soon.';
+    }
 }
 
 // ── Build page values ──────────────────────────────────────────────────────

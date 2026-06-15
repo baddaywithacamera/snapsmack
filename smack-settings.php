@@ -173,6 +173,23 @@ if (isset($_POST['save_settings'])) {
 
     file_put_contents(__DIR__ . '/robots.txt', $robots);
 
+    // --- CACHE DEV MODE (pause) ---
+    // Compute an absolute expiry from the chosen window. When "pause" is ticked,
+    // caching is bypassed until now + duration, then auto-resumes. Allowed
+    // windows: 5min / 15min / 1hr / 6hr / 1day / 1week.
+    $_dev_dur     = (int)($_POST['cache_dev_duration'] ?? 0);
+    $_dev_allowed = [300, 900, 3600, 21600, 86400, 604800];
+    $_dev_until   = (!empty($_POST['cache_dev_enable']) && in_array($_dev_dur, $_dev_allowed, true))
+                  ? (time() + $_dev_dur) : 0;
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('cache_dev_until', ?)
+                   ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+        ->execute([(string)$_dev_until]);
+
+    // Settings changed — flush the opt-in page cache so the change is visible
+    // immediately (and so toggling cache_enabled off / pausing clears stale pages).
+    require_once __DIR__ . '/core/page-cache.php';
+    page_cache_purge_all();
+
     $msg = "Engine parameters updated successfully.";
 }
 
@@ -239,6 +256,15 @@ include 'core/sidebar.php';
 
                     <label>SITE DESCRIPTION <span class="field-tip" data-tip="Used for Open Graph link previews and feed skin profile bios.">ⓘ</span></label>
                     <textarea name="settings[site_description]" rows="3" placeholder="One or two sentences about this blog. Used for Open Graph link previews and photo-feed skin profiles."><?php echo htmlspecialchars($settings['site_description'] ?? ''); ?></textarea>
+
+                    <label>META DESCRIPTION <span class="field-tip" data-tip="Dedicated &lt;meta name=description&gt; for search engines. Falls back to Site Description, then tagline. Individual post pages use their own description.">ⓘ</span></label>
+                    <textarea name="settings[meta_description]" rows="2" placeholder="Optional. Search-engine description for the homepage. ~150–160 characters." maxlength="320"><?php echo htmlspecialchars($settings['meta_description'] ?? ''); ?></textarea>
+
+                    <label>SEO TITLE TEMPLATE <span class="field-tip" data-tip="Format for per-page browser titles. Tokens: {page} = page title, {site} = site name. Leave blank for the default 'Page | Site'.">ⓘ</span></label>
+                    <input type="text" name="settings[seo_title_template]" value="<?php echo htmlspecialchars($settings['seo_title_template'] ?? ''); ?>" placeholder="{page} — {site}">
+
+                    <label>OG IMAGE OVERRIDE <span class="field-tip" data-tip="Default social-share image (path or URL) used when a page has no image of its own. Individual post images still take priority.">ⓘ</span></label>
+                    <input type="text" name="settings[og_image_override]" value="<?php echo htmlspecialchars($settings['og_image_override'] ?? ''); ?>" placeholder="e.g. uploads/social-card.jpg">
 
                     <label>BASE SITE URL</label>
                     <input type="text" name="settings[site_url]" value="<?php echo htmlspecialchars($settings['site_url'] ?? 'https://example.com/'); ?>">
@@ -329,6 +355,39 @@ include 'core/sidebar.php';
                         <option value="allow" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'allow') ? 'selected' : ''; ?>>ALLOW</option>
                         <option value="disallow" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'disallow') ? 'selected' : ''; ?>>DISALLOW</option>
                     </select>
+
+                    <label>PAGE CACHE <span class="field-tip" data-tip="Opt-in. Caches public pages for anonymous visitors only (logged-in admins and query-param pages are never cached). Like/comment counts may lag up to the TTL. Cleared automatically when you save settings or publish.">ⓘ</span></label>
+                    <select name="settings[cache_enabled]">
+                        <option value="0" <?php echo (($settings['cache_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>OFF (DEFAULT)</option>
+                        <option value="1" <?php echo (($settings['cache_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ON — anonymous full-page cache</option>
+                    </select>
+
+                    <label>CACHE TTL (SECONDS) <span class="field-tip" data-tip="How long a cached page stays fresh before it is rebuilt. Default 300 (5 minutes).">ⓘ</span></label>
+                    <input type="number" name="settings[cache_ttl]" min="30" max="86400" value="<?php echo (int)($settings['cache_ttl'] ?? 300); ?>">
+
+                    <?php
+                        $_dev_until  = (int)($settings['cache_dev_until'] ?? 0);
+                        $_dev_active = $_dev_until > time();
+                    ?>
+                    <label>DEV MODE — PAUSE CACHE <span class="field-tip" data-tip="Temporarily bypass the cache while you work on the site. Caching resumes automatically when the window ends — no need to switch it back.">ⓘ</span></label>
+                    <label class="checkbox-inline" style="display:flex;align-items:center;gap:8px;margin:4px 0;">
+                        <input type="checkbox" name="cache_dev_enable" value="1" <?php echo $_dev_active ? 'checked' : ''; ?>>
+                        Pause caching for:
+                    </label>
+                    <select name="cache_dev_duration">
+                        <option value="300">5 minutes</option>
+                        <option value="900">15 minutes</option>
+                        <option value="3600">1 hour</option>
+                        <option value="21600">6 hours</option>
+                        <option value="86400">1 day</option>
+                        <option value="604800">1 week</option>
+                    </select>
+                    <?php if ($_dev_active): ?>
+                        <span class="dim" style="font-size:0.78rem;display:block;margin-top:4px;">
+                            ⏸ Caching paused until <?php echo htmlspecialchars(date('M j, Y g:i a', $_dev_until)); ?>.
+                            Untick and save to resume now.
+                        </span>
+                    <?php endif; ?>
                 </div>
 
 

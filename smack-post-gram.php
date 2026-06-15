@@ -278,6 +278,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         $tag_source = $title . ' ' . $desc . ' ' . $manual_tags;
         snap_sync_tags($pdo, $cover_id, $tag_source);
 
+        // New content is live — flush the page cache so it appears immediately.
+        require_once __DIR__ . '/core/page-cache.php';
+        page_cache_purge_all();
+
         if ($is_ajax) { echo 'success'; exit; }
         header('Location: smack-manage.php?msg=TRANSMISSION_LIVE');
         exit;

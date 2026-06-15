@@ -12,6 +12,39 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.260 — "Ejector Seat" (2026-06-15)
+
+### Security & platform — six-feature batch
+
+- **Force TOTP 2FA (30-day grace).** New `installed_at` stamp starts a 30-day
+  clock; after it, admins without 2FA are redirected to enrolment until they
+  enable it (`core/auth-smack.php` gate). Enrolment screen now shows a countdown
+  and recommends open-source authenticators (Aegis, Ente, 2FAS) first. Emergency
+  escape hatch: an `core/release-2fa-override` file suspends enforcement.
+- **Breach lockdown.** On a SMACKBACK breach the public side now serves a 503
+  holding page (`core/maintenance-gate.php`, also added to `blog.php`) so a
+  tampered install can't throw bad code at visitors. Admin is restricted to an
+  allowlist — breach screen, updater, support forum, and backup utilities — and
+  the support forum requires a step-up re-auth for a rolling 15-minute posting
+  window while breached.
+- **SMACKBACK disable re-auth.** Turning SMACKBACK off (locally or confirming a
+  hub-requested disable) now requires password + TOTP step-up
+  (`core/reauth.php`). Enabling and mode changes stay one-click.
+- **SMACKBACK fleet enable from the hub** — already shipped via `smack-push-it.php`
+  (verified): pushes `smackback_enabled` + `smackback_mode` + `hub_controls_smackback`.
+- **Basic SEO.** Dedicated meta description, OG image override, and a per-page
+  SEO title template (`{page}`/`{site}`) in `core/meta.php`; new `sitemap.php`
+  served at `/sitemap.xml` (robots.txt already pointed to it). Settings on
+  Global Configuration. The social-share (OG) image now uses ONLY a deliberately
+  chosen image — the post's own image, or the OG Image Override — and never falls
+  back to the site logo or the latest photo. If nothing is chosen, no OG image.
+- **Opt-in page cache.** Anonymous-only, no-query full-page cache for the public
+  read views (`core/page-cache.php`), default OFF, configurable TTL (default
+  300s). Flushed on settings save and **instantly on publish/edit/delete** of
+  posts (solo, carousel, longform). New **Dev Mode** pauses caching for a chosen
+  window (5 min – 1 week), then auto-resumes. Logged-in admins and query-param
+  pages are never cached.
+
 ## 0.7.259 — "Driver's Seat" (2026-06-14)
 
 ### Core — mobile skin configuration

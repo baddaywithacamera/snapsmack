@@ -137,6 +137,10 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Jun 15</span>
+                    <a href="#ejector-seat">Locked Down and Sealed Up</a>
+                </li>
+                <li>
                     <span class="idx-date">Jun 14</span>
                     <a href="#the-grid">More Skin in the Game</a>
                 </li>
@@ -230,6 +234,21 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <!-- POST: EJECTOR SEAT -->
+            <article class="post" id="ejector-seat">
+                <div class="post-meta">
+                    <span class="post-date">June 15, 2026</span>
+                    <span class="post-tag">Security</span>
+                </div>
+                <h2><a href="#ejector-seat">Locked Down and Sealed Up</a></h2>
+                <p>This release is about keeping your site yours — even on a bad day. Six security and platform features land together, and most of them you will never have to think about until the one moment they matter.</p>
+                <p><strong>Two-factor authentication is now mandatory.</strong> Every install gets a 30-day grace period, then admins who haven't switched it on get walked to the setup screen and can't go further until they do. We point you at open-source authenticator apps first — Aegis, Ente, 2FAS — because that is the company we keep. Lost your phone and your recovery codes? There is a documented emergency override file so you are never permanently locked out of your own site. A password alone stopped being enough a long time ago.</p>
+                <p><strong>If a file gets tampered with, the site seals itself.</strong> SnapSmack already watches its own files for tampering. Now, when it catches something, the public side drops behind a plain "temporarily unavailable" page so a compromised install can't be used to throw malicious code at the people who read your work — and it never announces the breach to the public. On the admin side you are held to four things: the breach screen, the updater to replace the bad files, the support forum to get help, and your backups so you can grab a copy before you fix anything. Everything else waits. The point is to make you deal with it, not click past it. And because a breached box is exactly what an attacker would use to spam a forum, posting to the community forum during a lockdown requires you to re-confirm who you are first.</p>
+                <p><strong>Turning the watchdog off now takes more than a click.</strong> Disabling file-integrity monitoring asks for your password and your 2FA code first. Turning it on stays a single click — friction belongs on the dangerous direction, not the safe one.</p>
+                <p><strong>And two quality-of-life additions.</strong> Basic SEO settings are here — a real meta description, a per-page title template, an XML sitemap at <code>/sitemap.xml</code>, and honest control over your social-share image: it uses a photo you actually chose, never a logo or a random recent shot. There is also an opt-in page cache for sites that get real traffic — anonymous visitors only, never logged-in admins, with a dev-mode switch that pauses it for anywhere from five minutes to a week while you work, then turns itself back on.</p>
+                <p>None of this costs anything. None of it phones home. It is just the locks being good locks.</p>
+            </article>
 
             <!-- POST: THE GRID -->
             <article class="post" id="the-grid">

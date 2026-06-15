@@ -417,6 +417,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         snap_sync_tags($pdo, $cover_img_id, $desc ?? '');
     }
 
+    // Content changed — flush the page cache so the edit appears immediately.
+    require_once __DIR__ . '/core/page-cache.php';
+    page_cache_purge_all();
+
     $msg = 'Success: Post updated.';
 }
 

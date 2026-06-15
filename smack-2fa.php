@@ -171,6 +171,21 @@ if ($pending_secret) {
     $qr_url   = totp_qr_url($totp_uri);
 }
 
+// --- FORCE-2FA COUNTDOWN (spec #1) ---
+// Days remaining in the 30-day grace window from installed_at. <=0 = overdue.
+$twofa_days_left   = null;
+$twofa_enforced    = false;
+try {
+    $_ia = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'installed_at' LIMIT 1")->fetchColumn();
+    if ($_ia && ($_ia_ts = strtotime((string)$_ia))) {
+        $_deadline       = $_ia_ts + (30 * 86400);
+        $twofa_days_left = (int)ceil(($_deadline - time()) / 86400);
+        $twofa_enforced  = time() > $_deadline;
+    }
+} catch (PDOException $e) { /* non-fatal */ }
+$twofa_required_now = $twofa_enforced || (($_GET['enrol'] ?? '') === 'required');
+?>
+<?php
 require_once 'core/admin-header.php';
 require_once 'core/sidebar.php';
 ?>
@@ -179,6 +194,20 @@ require_once 'core/sidebar.php';
         <div class="page-header-row">
             <h1 class="page-title">Two-Factor Authentication</h1>
         </div>
+
+        <?php if (!$is_enabled && $twofa_required_now): ?>
+            <div class="alert alert-error">
+                <strong>Two-factor authentication is now required.</strong>
+                Set it up below to continue using the admin. (Lost your authenticator and recovery codes?
+                Ask the site owner to place the <code>core/release-2fa-override</code> emergency file.)
+            </div>
+        <?php elseif (!$is_enabled && $twofa_days_left !== null): ?>
+            <div class="alert alert-warning">
+                <strong>Two-factor authentication will be required in
+                <?php echo max(0, (int)$twofa_days_left); ?> day<?php echo (int)$twofa_days_left === 1 ? '' : 's'; ?>.</strong>
+                Set it up now to avoid an interruption at login.
+            </div>
+        <?php endif; ?>
 
         <?php if ($message): ?>
             <div class="alert alert-<?php echo $message_type === 'success' ? 'success' : 'error'; ?>">
@@ -292,7 +321,15 @@ require_once 'core/sidebar.php';
                 <h2 class="section-title">Two-Factor Authentication Is Off</h2>
             </div>
             <p class="setting-desc">Add a second layer of security to your account. After enabling, every login will require your password <em>plus</em> a 6-digit code from your authenticator app.</p>
-            <p class="setting-desc">You'll need an authenticator app: Google Authenticator, Authy, 1Password, Bitwarden, or any TOTP-compatible app.</p>
+            <div class="setting-desc" style="margin-top:12px;">
+                <p style="margin:0 0 6px;">Any TOTP (RFC 6238) authenticator app works. Scan the QR or enter the key. Recommended:</p>
+                <p style="margin:0 0 4px;"><strong>Open-source (recommended):</strong>
+                    Aegis Authenticator (Android),
+                    Ente Auth (iOS/Android/desktop),
+                    2FAS (iOS/Android).</p>
+                <p style="margin:0;"><strong>Also fine:</strong>
+                    Google Authenticator, Microsoft Authenticator, 1Password, Authy, Bitwarden.</p>
+            </div>
             <form method="POST" style="margin-top: 20px;">
                 <input type="hidden" name="action" value="generate">
                 <button type="submit" class="master-update-btn">Set Up Two-Factor Authentication</button>

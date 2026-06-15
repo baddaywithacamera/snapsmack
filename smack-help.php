@@ -1309,6 +1309,69 @@ won't affect anything either.</p>
 HTML
 ];
 
+$help_topics['seo-settings'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'SEO Settings',
+    'icon'     => '&#x1F50E;',
+    'content'  => <<<'HTML'
+<h3>SEO Settings</h3>
+<p>SnapSmack keeps SEO deliberately basic — no keyword scoring, no bloat. The controls live
+on <strong>Settings → Global Configuration</strong>.</p>
+<h4>Meta Description</h4>
+<p>A dedicated search-engine description for your homepage. Aim for ~150–160 characters. If
+left blank, SnapSmack falls back to your Site Description, then your tagline. Individual post
+pages use their own description automatically.</p>
+<h4>SEO Title Template</h4>
+<p>Controls the format of per-page browser titles. Use the tokens <code>{page}</code> (the
+page's title) and <code>{site}</code> (your site name) — for example <code>{page} — {site}</code>.
+Leave blank for the classic "Page | Site" format.</p>
+<h4>OG Image Override</h4>
+<p>The social-share image (the preview shown when a link is posted to Facebook, Discord,
+iMessage, etc.) only ever uses a <em>deliberately chosen</em> image: the post's own image, or
+this override. It never falls back to your logo or your latest photo. Set an override here as a
+default for pages that have no image of their own (homepage, text pages). If nothing is chosen,
+no preview image is sent — which is intentional.</p>
+<h4>Sitemap</h4>
+<p>An XML sitemap is generated automatically at <code>/sitemap.xml</code> and is already
+referenced from your robots.txt. It lists your homepage, published posts/images, and active
+static pages with last-modified dates. Nothing to configure.</p>
+HTML
+];
+
+$help_topics['page-cache'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Page Cache (Performance)',
+    'icon'     => '&#x26A1;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Page Cache</h3>
+<p>An optional full-page cache that speeds up your public site under load. It's
+<strong>off by default</strong> and conservative by design. Controls are on
+<strong>Settings → Global Configuration</strong>.</p>
+<h4>What It Caches</h4>
+<p>Only public pages, only for <strong>anonymous visitors</strong>, only on plain page loads
+with no query string. Logged-in admins never see a cached page, and any filtered/parameterised
+view (search, category, layout switches) bypasses the cache entirely.</p>
+<h4>TTL</h4>
+<p>Cache TTL (seconds) controls how long a cached page stays fresh before it's rebuilt.
+Default is 300 (5 minutes). Because of this, like and comment counts on cached pages may lag
+by up to the TTL — a deliberate trade-off for speed.</p>
+<h4>When It Clears</h4>
+<p>The cache is flushed automatically when you save settings (including turning the cache off)
+and <strong>instantly whenever you publish, edit, or delete a post</strong> (solo, carousel, or
+longform) — so new and changed content appears right away. It also expires on its own via the TTL.</p>
+<h4>Dev Mode (Pause)</h4>
+<p>When you're actively working on a site, tick <strong>Dev Mode — Pause Cache</strong> and
+pick a window (5 minutes up to 1 week). Caching is bypassed entirely for that window so you
+always see fresh pages, then resumes automatically when the window ends — no need to remember
+to switch it back on. Untick and save to resume immediately.</p>
+<h4>Should I Enable It?</h4>
+<p>Turn it on if your public site gets meaningful anonymous traffic and you want to reduce
+server load — especially on the self-hosted Proxmox boxes. If your traffic is light, the
+default (off) is perfectly fine.</p>
+HTML
+];
+
 $help_topics['smackback'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'SMACKBACK — File Integrity Monitoring',
@@ -1340,17 +1403,32 @@ pageload check independently.</p>
 <p><strong>Alert:</strong> Tamper detected → email fires → a prominent warning banner appears
 in your admin header on every page. You can still use the admin. The banner won't go away
 until you resolve the tamper.</p>
-<p><strong>Lockout (recommended):</strong> Tamper detected → email fires → all admin pages
-redirect to the SMACKBACK breach page. You can't post, configure, or navigate anywhere else
-until the tampered files are resolved. This is what it's supposed to do.</p>
+<p><strong>Lockout (recommended):</strong> Tamper detected → email fires → the admin is
+restricted to a small allowlist while locked down (see below), and the public side is taken
+offline behind a holding page. This is what it's supposed to do.</p>
 <p><strong>Paranoid:</strong> Same as Lockout, plus a hook for hub/spoke breach reporting
 (Phase 2 — coming in a future release).</p>
 
-<h4>When a Breach Fires</h4>
-<p>You'll get an email immediately. In Lockout mode, every admin page redirects to a
-high-contrast BREACH screen that lists every affected file with its status. From there you
-can restore each file individually from the update server, or run a full update instead.
-The breach cannot be dismissed — resolving it clears it.</p>
+<h4>When a Breach Fires (Lockdown)</h4>
+<p>You'll get an email immediately. The admin theme turns red and a breach banner appears.
+You can silence the flashing alarm, but the red state stays until the breach is resolved.</p>
+<p><strong>Admin is restricted to four things while locked down:</strong> the breach screen
+(restore files / run a full update), the updater, the support forum (to get help), and the
+backup utilities (so you can download a backup <em>before</em> replacing files). Everything
+else in admin is blocked — this forces you to deal with the tampering rather than carry on.</p>
+<p><strong>The public side goes offline.</strong> Visitors get a neutral "temporarily
+unavailable" holding page (HTTP 503) so a tampered install can't push bad or exploit code to
+your readers' browsers. The breach is never revealed publicly.</p>
+<p><strong>Forum posting needs re-auth.</strong> Installs ship with forum write access on by
+default, but during a breach you must re-enter your password (and 2FA code, if enrolled) to
+earn a 15-minute posting window. This stops a compromised install from being used to attack
+the forum.</p>
+<p>The breach cannot be dismissed — resolving it clears it.</p>
+
+<h4>Disabling SMACKBACK</h4>
+<p>Turning SMACKBACK off is a step-up action: it requires you to re-enter your password (plus
+your 2FA code if enrolled) before it will apply — locally or when confirming a hub-requested
+disable. Enabling it and changing the response mode stay one-click.</p>
 
 <h4>EOF Sentinel — What the Status Labels Mean</h4>
 <p>SMACKBACK doesn't just detect that a file changed — it tells you how. The status label on
@@ -1558,6 +1636,18 @@ $help_topics['two-factor-auth'] = [
 <p>2FA adds a second layer of security to your account. After enabling it, every login
 requires your password <em>plus</em> a 6-digit code from an authenticator app. Even if
 someone gets your password, they cannot log in without your phone.</p>
+
+<h4>2FA Is Required (30-Day Grace)</h4>
+<p>Every admin must enrol in 2FA. New installs have a 30-day grace period from setup; after
+that, any admin without 2FA is redirected to the enrolment screen and cannot use the rest of
+the admin until it is enabled. The enrolment screen shows a countdown during the grace window.
+Upgraded sites start their 30-day clock from the upgrade.</p>
+<p><strong>Recommended apps</strong> (open-source first): Aegis Authenticator (Android),
+Ente Auth (iOS/Android/desktop), 2FAS (iOS/Android). Also fine: Google Authenticator,
+Microsoft Authenticator, 1Password, Authy, Bitwarden. Any RFC 6238 TOTP app works.</p>
+<p><strong>Emergency override:</strong> if an owner loses both their authenticator and their
+recovery codes, placing a file named <code>core/release-2fa-override</code> on the server
+(any contents) suspends enforcement so they can log in and re-enrol. Remove it afterwards.</p>
 
 <h4>Setting Up 2FA</h4>
 <p>Go to <strong>Settings → Two-Factor Auth</strong> and click <em>Set Up
