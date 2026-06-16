@@ -2,7 +2,7 @@
 
 **SnapSmack Alpha (multisite mesh subsystem)**
 **Finding date:** 2026-06-15
-**Status:** Working finding (pre-PDF). Disclosed proactively per SnapSmack transparency policy. We are NOT hiding this — it was found in our own review and is recorded openly.
+**Status:** **REMEDIATION SHIPPED in 0.7.260 "Ejector Seat" (2026-06-15).** Finding 1 fixed (roster strips keys + spoke self-heal); Finding 2 mitigated (consent gates + duplicate unguarded SSO handler removed); Finding 3 functional break fixed (SUYB uses correct key), at-rest scoped-key hardening DEFERRED; Finding 4 still OPEN. See "REMEDIATION SHIPPED" section below. Working finding (pre-PDF). Disclosed proactively per SnapSmack transparency policy. We are NOT hiding this — it was found in our own review and is recorded openly.
 **Severity:** **Critical** if the multisite mesh is deployed on a live hub+spoke fleet (network-wide admin compromise from a single leaked key). Confirm deployment state of the mesh on the Proxmox fleet to set "exploitable now" vs "design-stage."
 **Document authorship:** Prepared with AI assistance (Claude — Cowork build instance). All SnapSmack code is AI-produced; see the SPL Ethical Provenance Summary / hairy-muff.php. Finding raised by Sean ("what attack surface is the hub having spoke keys?") and traced in collaboration.
 
@@ -118,10 +118,72 @@ the UI.
 5. THEN defense-in-depth: automatic key lifetime / rotation (auto re-handshake, no human —
    manual reauth across the fleet will not happen; see backup-recovery continuity).
 
+---
+
+## REMEDIATION SHIPPED — 0.7.260 "Ejector Seat" (2026-06-15), linted clean, pending push
+
+Built and PHP-linted in the main session this same day. Six PHP files + the SUYB tool.
+
+**Finding 1 — FIXED (keystone).** `ms_build_roster()` now selects/returns
+**names, URLs, and roles only — no `api_key_local`** (`core/mesh-helpers.php`).
+`ms_ingest_roster()` stores no key for learned peers and **self-heals**: on each
+hub sync it blanks any sibling `api_key_local` a spoke stored under the old code
+(`UPDATE … SET api_key_local='' WHERE roster_source = <hub>`). The no-spoke-consumer
+sweep was completed — a repo-wide grep confirmed **every** `api_key_local` reader
+is a hub-side admin page reading its own DB where `role='spoke'`; nothing consumes
+an ingested peer key. Topology confirmed **star** by Sean. Zero working
+functionality lost.
+
+**Finding 2 — MITIGATED (not the full JIT-token redesign yet).** Root cause of the
+missing SSO role gate was found and fixed: a **duplicate, unguarded
+`multisite/auth/sso-token` handler executed first and shadowed the role-gated one**
+— the duplicate is removed, so only the hub-role-gated handler runs. In addition,
+the four powerful inbound actions — `backup/export`, `auth/sso-token`,
+`updates/trigger`, `skins/reinstall` — are now behind **per-site consent gates**
+(`multisite_allow_backup` / `_sso` / `_update` / `_skin`), **default OFF**, each
+requiring the spoke owner to enable it with password + TOTP step-up. NOTE: because
+a leaked `api_key_local` resolves to `role='hub'` on the target, role-gating alone
+would not have closed Finding 1 — the keystone strip does; these gates are
+defence-in-depth + consent. Short-lived JIT tokens for export/SSO remain future work.
+
+**Finding 3 — FUNCTIONAL FIX SHIPPED; AT-REST HARDENING DEFERRED (documented deviation).**
+The `api_key_remote` wiring was reverted. SUYB now uses **`api_key_local`** —
+the key the hub backup page already uses — read from the hub's own DB via
+`suyb-data.php`. This is a **deliberate deviation** from this audit's recommended
+remediation (a dedicated backup-only scoped key). Reason: Sean's explicit "fix it,
+keep functionality, ship today." Consequence: SUYB profile files on the desktop now
+hold `api_key_local` (a hub-authority key), so a **desktop compromise is still
+fleet-significant** until the scoped key lands. Partial mitigations now in place:
+(a) `backup/export` is consent-gated default-off; (b) key rotation (disconnect/rejoin
+mints fresh keys) neutralises anything leaked. **Residual risk accepted by owner;
+the `api_key_backup` scoped-key redesign (generate at handshake → expose via
+suyb-data → `backup/export` authenticates the scoped key only) remains the
+recommended next hardening.**
+
+**Finding 4 — OPEN.** Keys still plaintext; `tool_api_key` still rendered in the UI.
+Unchanged this release. Recommended next, alongside the scoped key.
+
+**New operational control — key rotation.** Because keys may already have spread to
+all spoke boxes over the ~1-month live window, the rollout includes a one-time
+**disconnect + rejoin of every spoke** after the fixed code is deployed, minting
+fresh `api_key_local`/`_remote` on each. This is what actually neutralises
+already-leaked keys; it only counts once every node runs the fixed (no-broadcast) code.
+
+**New auth model (durable).** Auth is required to GRANT or REDUCE security (join a
+hub, enable a hub-permission, push settings from the hub, disable SMACKBACK) and is
+FREE for actions that INCREASE security (leave a hub, disable a hub-permission).
+Batched operations take ONE step-up, not one per item. SMACKBACK-disable keeps its
+own separate gate.
+
+---
+
 ## Honesty note
-Finding 3 is a flub introduced this session by the Cowork build instance and is recorded here
-in full rather than quietly reverted. Findings 1, 2, 4 predate this session (mesh design). The
+Finding 3 is a flub introduced in a prior session by the Cowork build instance and is
+recorded here in full rather than quietly reverted; its functional break is now fixed,
+and the deviation from the recommended scoped-key remediation is documented above
+rather than hidden. Findings 1, 2, 4 predate this session (mesh design). The
 roster chain (Finding 1) and the crosspost/hub-reads-locally evidence were verified firsthand
 from source; Findings 2 and 4 carry file:line from the audit trace and should be re-confirmed
-firsthand before the PDF is cut.
+firsthand before the PDF is cut. The shipped remediation was PHP-linted clean (`php -l`,
+all six files) but not yet runtime-tested on the live fleet at the time of writing.
 <!-- ===== SNAPSMACK EOF ===== -->

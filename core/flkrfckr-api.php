@@ -114,6 +114,48 @@ $sub    = preg_replace('#^flkrfckr/?#', '', $route);
 $method = $_SERVER['REQUEST_METHOD'];
 
 // ---------------------------------------------------------------------------
+// Import-safety context + guards (server-enforced)
+//
+// Flkr Fckr is a SMACKONEOUT (photoblog) tool ONLY, is single-site (NO hub/mesh
+// awareness), and is additive-only (no DELETE / no UPDATE-of-existing path).
+// Guards:
+//   1. Install-mode lock — refuse any write unless site_mode === 'photoblog'.
+//   2. Non-empty-site lock — if the site already holds > 5 items, refuse writes
+//      until the owner authorizes an import in the admin (Settings -> API Access),
+//      which sets import_authorized_until. Empty/new sites import freely.
+// GET reads (ping, albums) are unaffected.
+// ---------------------------------------------------------------------------
+$fl_site_mode = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog');
+$fl_content   = max(
+    (int)$pdo->query("SELECT COUNT(*) FROM snap_posts")->fetchColumn(),
+    (int)$pdo->query("SELECT COUNT(*) FROM snap_images")->fetchColumn()
+);
+$fl_import_authorized = ((int)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='import_authorized_until' LIMIT 1")->fetchColumn() ?: 0)) > time();
+
+if ($method === 'POST') {
+    if ($fl_site_mode !== 'photoblog') {
+        flkrfckr_error(409, "Flkr Fckr imports Flickr into SMACKONEOUT (photoblog) installs only. This site is '{$fl_site_mode}' — no bueno.");
+    }
+    if ($fl_content > 5 && !$fl_import_authorized) {
+        flkrfckr_error(403, "This site already holds {$fl_content} items. To import into a site that is not empty, authorize the import on the admin API Keys page first.");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// GET flkrfckr/ping — preflight: reports compatibility so the tool can pre-check
+// ---------------------------------------------------------------------------
+
+if ($sub === 'ping' && $method === 'GET') {
+    flkrfckr_ok([
+        'message'           => 'Connected.',
+        'site_mode'         => $fl_site_mode,
+        'compatible'        => ($fl_site_mode === 'photoblog'),
+        'content_count'     => $fl_content,
+        'import_authorized' => $fl_import_authorized,
+    ]);
+}
+
+// ---------------------------------------------------------------------------
 // GET flkrfckr/albums
 // ---------------------------------------------------------------------------
 

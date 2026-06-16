@@ -77,6 +77,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     }
 }
 
+// --- AUTHORIZE BULK IMPORT (step-up: password + TOTP) ---
+// Flkr Fckr / Unzucker refuse to write to a site holding > 5 items unless the
+// owner opens a short import window here. Enabling GRANTS access → requires
+// re-auth; cancelling REDUCES access → no password needed.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'authorize_import') {
+    require_once 'core/reauth.php';
+    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    if (!$ra['ok']) {
+        $msg = 'IMPORT AUTHORIZATION BLOCKED — ' . $ra['error'];
+    } else {
+        $until = time() + 3600; // 1-hour window
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('import_authorized_until', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute([(string)$until]);
+        header('Location: smack-api-keys.php?msg=' . urlencode('Import authorized until ' . date('H:i', $until)));
+        exit;
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel_import_auth') {
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('import_authorized_until', '0')
+                   ON DUPLICATE KEY UPDATE setting_val = '0'")->execute();
+    header('Location: smack-api-keys.php?msg=Import+authorization+cancelled');
+    exit;
+}
+
 // --- FETCH ---
 $keys         = $pdo->query("
     SELECT id, label, key_type, key_prefix, is_active, created_at, last_used_at
@@ -85,6 +110,10 @@ $keys         = $pdo->query("
 ")->fetchAll(PDO::FETCH_ASSOC);
 $active_keys  = array_values(array_filter($keys, fn($k) =>  $k['is_active']));
 $revoked_keys = array_values(array_filter($keys, fn($k) => !$k['is_active']));
+
+// Bulk-import authorization window state (set by the panel below).
+$import_auth_until  = (int)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='import_authorized_until' LIMIT 1")->fetchColumn() ?: 0);
+$import_auth_active = $import_auth_until > time();
 
 include 'core/admin-header.php';
 include 'core/sidebar.php';
@@ -100,6 +129,10 @@ include 'core/sidebar.php';
         <div class="alert alert-success">&gt; <?php echo htmlspecialchars($_GET['msg']); ?></div>
     <?php endif; ?>
 
+    <?php if ($msg && !$new_key_raw): ?>
+        <div class="alert alert-warn">&gt; <?php echo htmlspecialchars($msg); ?></div>
+    <?php endif; ?>
+
     <?php if ($new_key_raw): ?>
         <div class="alert alert-warn" style="margin-bottom:20px;">
             <strong><?php echo $msg; ?></strong><br><br>
@@ -112,6 +145,44 @@ include 'core/sidebar.php';
             ">COPY</button>
         </div>
     <?php endif; ?>
+
+    <!-- BULK IMPORT AUTHORIZATION (Flkr Fckr / Unzucker non-empty-site gate) -->
+    <div class="box" style="margin-bottom:20px;">
+        <h3>BULK IMPORT AUTHORIZATION</h3>
+        <p class="dim" style="font-size:0.85rem; margin-bottom:14px;">
+            The Flkr Fckr and Unzucker importers refuse to write to a site that already holds
+            more than 5 items, to stop an accidental bulk import from clobbering an established
+            site. Empty or new sites need no authorization. Authorizing requires your password
+            (and 2FA code if enabled) and lasts one hour.
+        </p>
+        <?php if ($import_auth_active): ?>
+            <p style="color:var(--success,#4caf50); font-size:0.9rem; margin-bottom:12px;">
+                &#10003; Import authorized until <?php echo date('H:i', $import_auth_until); ?>
+                (about <?php echo max(1, (int)ceil(($import_auth_until - time()) / 60)); ?> min left).
+            </p>
+            <form method="post" action="smack-api-keys.php">
+                <input type="hidden" name="action" value="cancel_import_auth">
+                <button type="submit" class="btn-smack">CANCEL AUTHORIZATION</button>
+            </form>
+        <?php else: ?>
+            <form method="post" action="smack-api-keys.php">
+                <input type="hidden" name="action" value="authorize_import">
+                <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px;">
+                    <div>
+                        <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">PASSWORD</label>
+                        <input type="password" name="reauth_password" autocomplete="off"
+                               style="padding:8px 10px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">2FA CODE (if enabled)</label>
+                        <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off"
+                               style="padding:8px 10px; width:120px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                    </div>
+                </div>
+                <button type="submit" class="master-update-btn">AUTHORIZE IMPORT FOR 1 HOUR</button>
+            </form>
+        <?php endif; ?>
+    </div>
 
     <div class="post-layout-grid">
 

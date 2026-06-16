@@ -1141,6 +1141,57 @@ until updated.</p>
 HTML
 ];
 
+$help_topics['hub-permissions'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Hub Permissions &amp; Network Authentication',
+    'icon'     => '&#x1F510;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Hub Permissions &amp; Network Authentication</h3>
+<p>When your site is connected to a hub as a spoke, the hub can do powerful things to it.
+SnapSmack puts you in control of exactly which of those things are allowed, and protects the
+sensitive actions with your password.</p>
+
+<h4>What This Site Lets Its Hub Do</h4>
+<p>On the <strong>Multisite</strong> page (spoke view) there's a panel titled
+<em>"What this site lets its hub do."</em> It has four switches, all <strong>OFF by
+default</strong>:</p>
+<ul>
+    <li><strong>Install software updates</strong> on this site</li>
+    <li><strong>Install or re-install skins</strong> on this site</li>
+    <li><strong>Open an admin login session (SSO)</strong> on this site</li>
+    <li><strong>Pull a full database backup</strong> from this site</li>
+</ul>
+<p>Turn on only what you want your hub to be able to do. Until a switch is on, the hub is
+refused that action (the site returns a "disabled on this site" error), even though the two
+sites are connected.</p>
+
+<h4>Turning a Permission On Needs Your Password</h4>
+<p>Switching any permission <strong>on</strong> requires your account password — and your
+two-factor code if you have 2FA enabled. Switching a permission <strong>off</strong> never
+needs a password: tightening security should always be quick. You can flip several switches
+in one save with a single password entry.</p>
+
+<h4>Joining vs. Leaving a Hub</h4>
+<p><strong>Joining</strong> a hub grants it admin-level access to your site, so generating a
+registration token now requires your password (plus 2FA if enabled).
+<strong>Leaving</strong> a hub never asks for a password — disconnecting only reduces access
+and may be needed in a hurry.</p>
+
+<h4>Pushing Settings From the Hub</h4>
+<p>On a hub, the <strong>Push It</strong> and <strong>Network Settings</strong> pages ask for
+your password once per push. One entry covers the whole batch — push six settings to every
+spoke and you authenticate a single time, not six. If 2FA is enabled on your hub account, the
+code is required too.</p>
+
+<h4>Why These Controls Exist</h4>
+<p>The multisite roster the hub shares with spokes carries site names and addresses only — it
+never carries access keys. Combined with the per-site permission switches and password-gated
+sensitive actions, this means a problem on one site can't cascade into control of your whole
+network. Disabling SMACKBACK has its own separate password gate, on top of all of the above.</p>
+HTML
+];
+
 $help_topics['bigwheel-pimpmobile'] = [
     'section'  => 'Settings',
     'title'    => 'Big Wheel &amp; Pimpmobile Modes',
