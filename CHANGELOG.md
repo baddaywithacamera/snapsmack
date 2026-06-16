@@ -35,11 +35,15 @@ cross-mode restore protection. Spec:
   typed key (`snap_ohsnap_keys`, `key_type='suyb'`/`'sybu'`) — the same hashed
   Bearer model already used by Unzucker and Flkr Fckr. A SUYB key cannot act on
   SYBU's endpoints and vice-versa. Issue them from Admin → API Keys.
-- **Central, additive enforcement.** `core/api-auth.php` now also accepts a typed
-  Bearer key when an endpoint declares which `key_type`(s) it allows, and can
-  require a specific `site_mode` for tool access. The legacy shared `X-Snap-Key`
-  and admin sessions keep working, so existing tools are unaffected until they
-  migrate to a typed key.
+- **Central enforcement.** `core/api-auth.php` validates a typed Bearer key when an
+  endpoint declares which `key_type`(s) it allows, and can require a specific
+  `site_mode` for tool access. Admin sessions still work for the dual-use admin pages.
+- **Legacy shared `tool_api_key` RETIRED.** The old single `X-Snap-Key` shared key is
+  gone — validation removed from `api-auth.php`, generation + UI removed from Settings
+  and the installer. SUYB and SYBU now send their scoped key as `Authorization: Bearer`
+  (the desktop tools were updated to match). Mint per-tool keys on Admin → API Keys.
+  **Note:** the rebuilt SUYB/SYBU executables must ship together with this release —
+  an un-rebuilt tool still sending `X-Snap-Key` will get a 401.
 - **SYBU is photoblog-only.** Tool access to SYBU's endpoints is refused (409) on
   non-`photoblog` installs. Browser admin access is unaffected.
 

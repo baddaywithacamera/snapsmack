@@ -4,7 +4,7 @@
  *
  * JSON API for SYBU's drive-link backfill / repair function (the standalone
  * "Fix Your Batch Up" desktop tool was folded into SYBU and is retired).
- * Auth: a 'sybu' scoped key, the legacy X-Snap-Key, or an admin session.
+ * Auth: a 'sybu' scoped key (Authorization: Bearer) or an admin session.
  *
  * GET  ?action=list       — images missing a download_url, newest first
  * GET  ?action=list_drive — published images whose download_url is a Google Drive link

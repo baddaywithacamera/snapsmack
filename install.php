@@ -1285,8 +1285,8 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'privacy_policy_enabled'    => '0',
                 'privacy_policy_title'      => 'Privacy Policy',
                 'privacy_policy_content'    => '',
-                // --- TOOL API KEY ---
-                'tool_api_key'              => bin2hex(random_bytes(32)),
+                // (The legacy shared tool_api_key was retired in 0.7.261 — tools
+                //  now use per-tool scoped keys minted on smack-api-keys.php.)
                 // --- SECURITY OPT-IN (installer Step 6) ---
                 'smackback_enabled'            => $sec_smackback,
                 'smackback_mode'               => 'lockout',

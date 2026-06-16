@@ -6,7 +6,7 @@
  * Returns cloud backup config, multisite node list, and site metadata
  * so SUYB can auto-populate profile fields.
  *
- * Authentication: X-Snap-Key header (API key) or session cookie (browser).
+ * Authentication: a 'suyb' scoped key (Authorization: Bearer) or admin session cookie.
  * Method: GET
  * Response: application/json
  */

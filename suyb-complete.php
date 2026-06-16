@@ -8,7 +8,7 @@
  * only — it never touches other nodes. Spoke values reach the hub via the
  * normal heartbeat the dashboard already performs on load.
  *
- * Authentication: X-Snap-Key header (tool API key) or admin session cookie.
+ * Authentication: a 'suyb' scoped key (Authorization: Bearer) or admin session cookie.
  * Method: POST
  * Params:
  *   status        clean|partial|failed   (default: clean)

@@ -56,22 +56,8 @@ if (
     exit;
 }
 
-// --- TOOL API KEY ACTIONS ---
-$api_key_msg = '';
-if (isset($_POST['api_key_action'])) {
-    if ($_POST['api_key_action'] === 'generate') {
-        $new_key = bin2hex(random_bytes(32)); // 64-char hex
-        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('tool_api_key', ?)
-                        ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute([$new_key]);
-        $settings['tool_api_key'] = $new_key;
-        $api_key_msg = 'New API key generated. Copy it into your tool now — it will not be shown in full again.';
-    } elseif ($_POST['api_key_action'] === 'revoke') {
-        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('tool_api_key', '')
-                        ON DUPLICATE KEY UPDATE setting_val = ''")->execute();
-        $settings['tool_api_key'] = '';
-        $api_key_msg = 'API key revoked. Tool access is now disabled.';
-    }
-}
+// --- TOOL API KEY ACTIONS --- retired in 0.7.261. The shared tool_api_key is
+// gone; per-tool scoped keys are managed on smack-api-keys.php (Admin → API Keys).
 
 // --- SMACKATTACK: REGISTER ACTION ---
 // Handled before the main settings save so the new key is in DB before we reload settings.
@@ -811,41 +797,12 @@ include 'core/sidebar.php';
 
         <div class="box">
             <h3>API ACCESS</h3>
-            <?php
-            $tool_api_key = $settings['tool_api_key'] ?? '';
-            ?>
-            <?php if ($api_key_msg): ?>
-                <div class="alert alert-success"><?php echo htmlspecialchars($api_key_msg); ?></div>
-            <?php endif; ?>
-            <p class="dim" style="font-size:0.85rem; margin-bottom:16px;">
-                Generate an API key to allow companion tools (SYBU, etc.) to authenticate
-                without a login session. Send the key in the <code>X-Snap-Key</code> request header.
-                Revoking the key immediately blocks all tool access.
+            <p class="dim" style="font-size:0.85rem; margin-bottom:0;">
+                Companion tools (SUYB, SYBU, Unzucker, Flkr Fckr, Oh Snap!) authenticate
+                with their own per-tool scoped keys. Create and revoke them on the
+                <a href="smack-api-keys.php">API Keys</a> page. The old shared key was
+                retired in 0.7.261 — there is no single key any more.
             </p>
-
-            <?php if ($tool_api_key !== ''): ?>
-                <div class="control-group" style="margin-bottom:12px;">
-                    <label>CURRENT KEY</label>
-                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                        <input type="text" id="tool-api-key-display"
-                               value="<?php echo htmlspecialchars($tool_api_key); ?>"
-                               readonly style="font-family:monospace; font-size:0.8rem; flex:1; min-width:200px; height:38px; padding:0 10px; margin:0;">
-                        <button type="button" onclick="
-                            navigator.clipboard.writeText(document.getElementById('tool-api-key-display').value);
-                            this.textContent='COPIED';
-                            setTimeout(()=>this.textContent='COPY',1500);
-                        " class="btn-smack" style="margin-top:0; white-space:nowrap; width:auto; flex-shrink:0; height:38px; padding:0 18px;">COPY</button>
-                    </div>
-                </div>
-                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
-                    <button type="submit" form="api-regen-form" class="btn-smack" style="margin-top:0; width:auto; padding:0 18px; height:38px;">REGENERATE KEY</button>
-                    <button type="submit" form="api-revoke-form" class="btn-smack btn-danger" style="margin-top:0; width:auto; padding:0 18px; height:38px;"
-                            onclick="return confirm('Revoke the API key? All tools will lose access immediately.')">REVOKE KEY</button>
-                </div>
-            <?php else: ?>
-                <p class="dim" style="font-size:0.85rem; margin-bottom:12px;">No key generated. Tool API access is currently disabled.</p>
-                <button type="submit" form="api-generate-form" class="btn-smack" style="margin-top:0;">GENERATE API KEY</button>
-            <?php endif; ?>
         </div>
 
         <button type="submit" name="save_settings" class="master-update-btn">SAVE GLOBAL ENGINE CONFIGURATION</button>
@@ -857,9 +814,6 @@ include 'core/sidebar.php';
     <form method="POST" id="ste-register-form"><input type="hidden" name="ste_action" value="register"></form>
     <form method="POST" id="ste-sync-form"><input type="hidden" name="ste_action" value="sync_now"></form>
     <form method="POST" id="ste-optout-form"><input type="hidden" name="ste_action" value="optout"></form>
-    <form method="POST" id="api-regen-form"><input type="hidden" name="api_key_action" value="generate"></form>
-    <form method="POST" id="api-revoke-form"><input type="hidden" name="api_key_action" value="revoke"></form>
-    <form method="POST" id="api-generate-form"><input type="hidden" name="api_key_action" value="generate"></form>
 </div>
 
 <script>
