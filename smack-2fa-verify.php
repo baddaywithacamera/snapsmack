@@ -126,23 +126,6 @@ function ss_totp_check_trust(PDO $pdo, int $user_id): bool {
     }
 }
 
-if (ss_totp_check_trust($pdo, $pending_id)) {
-    // Trusted device — grant full session, no TOTP needed.
-    session_regenerate_id(true);
-    unset($_SESSION['totp_pending_user_id'], $_SESSION['totp_fail_count']);
-    $_SESSION['user_login']          = $user['username'];
-    $_SESSION['user_role']           = $user['user_role'] ?: 'editor';
-    $_SESSION['user_preferred_skin'] = $user['preferred_skin'] ?: null;
-    $_SESSION['user_id']             = $user['id'];
-    if (!empty($user['force_password_change'])) {
-        $_SESSION['force_password_change'] = true;
-        header("Location: smack-change-password.php");
-        exit;
-    }
-    header("Location: smack-admin.php");
-    exit;
-}
-
 // --- ADMIN THEME RESOLUTION ---
 if (!isset($settings)) {
     $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
@@ -180,6 +163,29 @@ if (!$user || empty($user['totp_secret'])) {
     $_SESSION['user_role']           = $user['user_role'] ?: 'editor';
     $_SESSION['user_preferred_skin'] = $user['preferred_skin'] ?: null;
     $_SESSION['user_id']             = $user['id'];
+    header("Location: smack-admin.php");
+    exit;
+}
+
+// --- TOTP TRUST COOKIE CHECK ---
+// Trusted-device fast-path: if a valid ss_totp_trust cookie matches this user,
+// grant a full session now and skip the code prompt. MUST run here, AFTER the
+// pending user is loaded — $pending_id and $user are both defined at this point.
+// (Previously this ran before they existed and fataled on PHP 8 with a null→int
+// TypeError on ss_totp_check_trust(), locking every 2FA user out of the admin.)
+if (ss_totp_check_trust($pdo, $pending_id)) {
+    // Trusted device — grant full session, no TOTP needed.
+    session_regenerate_id(true);
+    unset($_SESSION['totp_pending_user_id'], $_SESSION['totp_fail_count']);
+    $_SESSION['user_login']          = $user['username'];
+    $_SESSION['user_role']           = $user['user_role'] ?: 'editor';
+    $_SESSION['user_preferred_skin'] = $user['preferred_skin'] ?: null;
+    $_SESSION['user_id']             = $user['id'];
+    if (!empty($user['force_password_change'])) {
+        $_SESSION['force_password_change'] = true;
+        header("Location: smack-change-password.php");
+        exit;
+    }
     header("Location: smack-admin.php");
     exit;
 }
