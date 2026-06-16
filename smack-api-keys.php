@@ -33,12 +33,14 @@ try { $pdo->query("SELECT key_prefix FROM snap_ohsnap_keys LIMIT 0");
 // --- GENERATE ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate') {
     $label    = trim($_POST['label'] ?? '');
-    $key_type = in_array($_POST['key_type'] ?? '', ['ohsnap','smackpress','flkrfckr','gyss','unzucker']) ? $_POST['key_type'] : 'ohsnap';
+    $key_type = in_array($_POST['key_type'] ?? '', ['ohsnap','smackpress','flkrfckr','gyss','unzucker','suyb','sybu']) ? $_POST['key_type'] : 'ohsnap';
     if (!$label) $label = match($key_type) {
         'smackpress' => 'SmackPress Key',
         'flkrfckr'   => 'FLKR FCKR Import',
         'gyss'       => 'GET YOUR SHIT SORTED',
         'unzucker'   => 'Unzucker Import',
+        'suyb'       => 'Smack Up Your Backup',
+        'sybu'       => 'Sort Your Backup Up',
         default      => 'Oh Snap! Key',
     };
 
@@ -202,6 +204,8 @@ include 'core/sidebar.php';
                             <option value="flkrfckr">FLKR FCKR (FLICKR IMPORT)</option>
                             <option value="gyss">GET YOUR SHIT SORTED (PHOTO SORTER)</option>
                             <option value="unzucker">UNZUCKER (INSTAGRAM IMPORT)</option>
+                            <option value="suyb">SUYB (SMACK UP YOUR BACKUP)</option>
+                            <option value="sybu">SYBU (SORT YOUR BACKUP UP)</option>
                         </select>
                     </div>
 

@@ -50,6 +50,15 @@ cross-mode restore protection. Spec:
   carries a header warning that restoring it onto a different-mode site will break
   that site. `site_uuid` is generated once and reused.
 
+### Multisite
+
+- **Hub-pushed updates no longer trigger a false SMACKBACK breach.** When the hub
+  applied an update to a spoke (`multisite/updates/trigger`), it replaced files
+  but never refreshed the spoke's SMACKBACK file-integrity manifest, so the next
+  scan saw "changed" files and flagged a breach. The hub-push path now refreshes
+  the manifest from the signed update package — and clears a stale breach — exactly
+  as the local SYSTEM UPDATES path already did.
+
 ## 0.7.260 — "Ejector Seat" (2026-06-15)
 
 ### Multisite mesh — critical key-broadcast fix + consent model

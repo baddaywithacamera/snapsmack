@@ -2,8 +2,9 @@
 /**
  * SNAPSMACK - Drive Link Backfill Endpoint
  *
- * JSON API for the Fix Your Batch Up desktop tool.
- * Requires an active admin session (auth.php).
+ * JSON API for SYBU's drive-link backfill / repair function (the standalone
+ * "Fix Your Batch Up" desktop tool was folded into SYBU and is retired).
+ * Auth: a 'sybu' scoped key, the legacy X-Snap-Key, or an admin session.
  *
  * GET  ?action=list       — images missing a download_url, newest first
  * GET  ?action=list_drive — published images whose download_url is a Google Drive link
@@ -18,12 +19,12 @@
  */
 
 
-// CLASSIFICATION PENDING SEAN CONFIRM: this endpoint's header says "Fix Your
-// Batch Up" — tagged to the 'sybu' family for now (additive, so it also accepts
-// a sybu Bearer key). NO photoblog mode gate added here pending classification,
-// to avoid 409-ing a tool that may legitimately run on other modes. Legacy
-// X-Snap-Key + admin session still work.
-$GLOBALS['SNAP_API_KEY_TYPES'] = ['sybu'];
+// SYBU endpoint: the drive-link backfill/repair function was folded into SYBU
+// (tools/sybu/poster.py + main.py call this with a sybu key). Photoblog-only for
+// tool access, matching the other SYBU endpoints — the gate affects key/tool
+// access only; admin sessions are unaffected. Additive (legacy X-Snap-Key works).
+$GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu'];
+$GLOBALS['SNAP_API_REQUIRE_MODE'] = 'photoblog';
 require_once 'core/api-auth.php';
 
 $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");

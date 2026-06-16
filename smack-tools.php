@@ -19,14 +19,6 @@ require_once 'core/auth-smack.php';
 // Add new companion tools here.
 $tools = [
     [
-        'name'         => 'Fix Your Batch Up',
-        'version'      => '0.7.6',
-        'platform'     => 'Windows (64-bit)',
-        'download_url' => 'https://snapsmack.ca/tools/fixyourbatchup.zip',
-        'description'  => 'Recovery tool for images posted without a Google Drive link. Pulls the list of affected records directly from your site, then matches your local original files against the server-side copies using two-stage image matching (pHash pre-filter + SIFT feature matching). Processes in batches of 10 using up to 75% of available CPU cores. Review each match at your own pace — upload one image at a time, pick a different original via the Windows file browser, or skip. Reuses the Drive credentials and token from Smack Your Batch Up automatically.',
-        'requires'     => 'Windows 10/11 only · Google Drive credentials JSON (same credentials.json as Smack Your Batch Up)',
-    ],
-    [
         'name'         => 'Smack Your Batch Up',
         'version'      => '0.7.7a-04',
         'platform'     => 'Windows (64-bit)',
