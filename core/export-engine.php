@@ -68,6 +68,8 @@ class SnapSmackExport {
             'export_type'       => 'recovery-kit',
             'site_name'         => $this->settings['site_name'] ?? '',
             'site_url'          => $this->settings['site_url'] ?? '',
+            'site_mode'         => $this->settings['site_mode'] ?? 'photoblog',
+            'site_uuid'         => (string)($this->settings['site_uuid'] ?? ''),
             'active_skin'       => $this->settings['active_skin'] ?? '50-shades-of-noah-grey',
             'active_variant'    => $this->settings['active_skin_variant'] ?? 'dark',
             'php_version'       => PHP_VERSION,
@@ -87,7 +89,14 @@ class SnapSmackExport {
         ];
 
         // --- 1. SQL DUMP (only file actually bundled) ---
+        // generateSqlDump() get-or-creates site_uuid; capture it for the manifest
+        // so the kit is bound to its origin site + mode (cross-mode restore guard).
         $sqlContent = $this->generateSqlDump();
+        if ($manifest['site_uuid'] === '') {
+            try {
+                $manifest['site_uuid'] = (string)($this->pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_uuid' LIMIT 1")->fetchColumn() ?: '');
+            } catch (Exception $e) { /* non-fatal */ }
+        }
         $archive->addFromString("{$prefix}/database.sql", $sqlContent);
         $manifest['files']['database.sql'] = [
             'size'     => strlen($sqlContent),
@@ -550,11 +559,42 @@ class SnapSmackExport {
      * @return string  SQL dump as a string
      */
     public function generateSqlDump(string $type = 'full'): string {
-        $output = "-- SnapSmack Backup Service\n";
+        // Origin stamp — binds the dump to the site (and MODE) it came from, so a
+        // cross-mode restore is a visible, deliberate act rather than a silent foul.
+        $site_mode = $this->settings['site_mode'] ?? 'photoblog';
+        $site_url  = $this->settings['site_url'] ?? ($this->settings['site_address'] ?? '');
+        $site_uuid = (string)($this->settings['site_uuid'] ?? '');
+        if ($site_uuid === '') {
+            try {
+                $site_uuid = (string)($this->pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_uuid' LIMIT 1")->fetchColumn() ?: '');
+            } catch (PDOException $e) {
+                $site_uuid = '';
+            }
+            if ($site_uuid === '') {
+                // Generate once, then it's stable for this install.
+                $site_uuid = bin2hex(random_bytes(16));
+                try {
+                    $this->pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('site_uuid', ?)
+                                         ON DUPLICATE KEY UPDATE setting_val = setting_val")->execute([$site_uuid]);
+                } catch (PDOException $e) { /* non-fatal */ }
+            }
+        }
+
+        $output  = "-- SnapSmack Backup Service\n";
         $output .= "-- Type: " . strtoupper($type) . "\n";
         $output .= "-- Version: " . (defined('SNAPSMACK_VERSION') ? SNAPSMACK_VERSION : 'unknown') . "\n";
         $output .= "-- Date: " . date('Y-m-d H:i:s') . "\n";
-        $output .= "-- Site: " . ($this->settings['site_name'] ?? '') . "\n\n";
+        $output .= "-- Site: " . ($this->settings['site_name'] ?? '') . "\n";
+        $output .= "-- Site URL: " . $site_url . "\n";
+        $output .= "-- Site UUID: " . $site_uuid . "\n";
+        $output .= "-- Site mode: " . $site_mode . "\n";
+        $output .= "-- ============================================================\n";
+        $output .= "-- WARNING: this is a SnapSmack '" . $site_mode . "'-mode database.\n";
+        $output .= "-- Restoring it onto a site running a DIFFERENT mode (photoblog /\n";
+        $output .= "-- carousel / smacktalk) WILL break that site: it overwrites\n";
+        $output .= "-- site_mode, the default skin, and imports wrong-shaped content.\n";
+        $output .= "-- Restore only onto the SAME site, or a deliberate same-mode migration.\n";
+        $output .= "-- ============================================================\n\n";
         $output .= "SET NAMES utf8mb4;\n";
         $output .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
 

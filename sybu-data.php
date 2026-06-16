@@ -19,6 +19,13 @@
  */
 
 
+// SYBU holds a least-privilege 'sybu' scoped key and only operates on photoblog
+// (SMACKONEOUT) sites. Declared before api-auth: the typed-Bearer branch accepts
+// the key; the mode gate refuses non-photoblog TOOL access (browser sessions are
+// exempt). Field-level write scope (chunk 3) is PENDING Sean's confirm. Legacy
+// X-Snap-Key + admin session still work (additive).
+$GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu'];
+$GLOBALS['SNAP_API_REQUIRE_MODE'] = 'photoblog';
 require_once 'core/api-auth.php';
 
 header('Content-Type: application/json; charset=utf-8');

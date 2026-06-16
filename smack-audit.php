@@ -18,6 +18,10 @@
  */
 
 
+// SYBU scoped key + photoblog-only gate (see sybu-data.php). Field-level write
+// scope (audit update_title only) is PENDING Sean's confirm. Additive.
+$GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu'];
+$GLOBALS['SNAP_API_REQUIRE_MODE'] = 'photoblog';
 require_once 'core/api-auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
