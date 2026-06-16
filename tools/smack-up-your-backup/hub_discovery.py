@@ -27,11 +27,12 @@ class DiscoveryError(Exception):
 class HubDiscovery:
     """Connects to a SnapSmack hub and discovers its spoke network."""
 
-    def __init__(self, site_url: str, admin_user: str, admin_pass: str,
-                 timeout: int = 30):
+    def __init__(self, site_url: str, admin_user: str = "", admin_pass: str = "",
+                 api_key: str = "", timeout: int = 30):
         self.site_url = site_url.rstrip("/")
         self.admin_user = admin_user
         self.admin_pass = admin_pass
+        self.api_key = (api_key or "").strip()
         self.timeout = timeout
         self._session: Optional[requests.Session] = None
 
@@ -42,6 +43,12 @@ class HubDiscovery:
 
         s = requests.Session()
         s.headers["User-Agent"] = "SmackUpYourBackup/1.0"
+
+        # API-key auth (preferred): no login, send X-Snap-Key on every request.
+        if self.api_key:
+            s.headers["X-Snap-Key"] = self.api_key
+            self._session = s
+            return s
 
         login_url = f"{self.site_url}/login.php"
         try:
@@ -156,6 +163,8 @@ def build_profiles_from_spokes(
     spokes: List[Dict],
     spoke_configs: Dict[str, Dict],
     default_backup_dir: str = "",
+    global_cloud: Optional[Dict] = None,
+    hub_api_key: str = "",
 ) -> List[Dict]:
     """Turn discovered spokes into SUYB profile dicts ready for save_profile().
 
@@ -173,17 +182,22 @@ def build_profiles_from_spokes(
 
     profiles = []
 
+    gc = global_cloud or {}
+
     # Hub profile first
     hub_cloud = hub_info.get("cloud_config", {})
     hub_tmpl = profile_manager.new_profile_template()
     hub_tmpl.update({
-        "name":            hub_info.get("site_name", "Hub"),
-        "site_url":        hub_info.get("site_url", ""),
-        "cloud_provider":  hub_cloud.get("provider", "none"),
-        "cloud_folder_id": hub_cloud.get("folder_id", ""),
-        "backup_dir":      os.path.join(default_backup_dir,
+        "name":                   hub_info.get("site_name", "Hub"),
+        "site_url":               hub_info.get("site_url", ""),
+        "api_key":                hub_api_key,
+        "backup_method":          "cloud",
+        "cloud_provider":         gc.get("cloud_provider") or hub_cloud.get("provider") or "google_drive",
+        "cloud_credentials_file": "",   # inherit the one global Drive credential
+        "cloud_folder_id":        hub_cloud.get("folder_id", ""),
+        "backup_dir":             os.path.join(default_backup_dir,
                                          _safe_dirname(hub_info.get("site_name", "hub")))
-                           if default_backup_dir else "",
+                                  if default_backup_dir else "",
     })
     profiles.append(hub_tmpl)
 
@@ -191,18 +205,18 @@ def build_profiles_from_spokes(
     for spoke in spokes:
         url  = spoke.get("site_url", "").rstrip("/")
         name = spoke.get("site_name", "") or _name_from_url(url)
+        cfg  = spoke_configs.get(url, {})
 
         tmpl = profile_manager.new_profile_template()
         tmpl.update({
-            "name":     name,
-            "site_url": url,
+            "name":                   name,
+            "site_url":               url,
+            "api_key":                spoke.get("api_key_local", ""),  # hub->spoke key from the hub's own DB (auth for backup pulls)
+            "backup_method":          "cloud",
+            "cloud_provider":         gc.get("cloud_provider") or cfg.get("cloud_provider") or "google_drive",
+            "cloud_credentials_file": "",   # inherit the one global Drive credential
+            "cloud_folder_id":        cfg.get("cloud_folder_id", ""),
         })
-
-        # Merge cloud config if we got it from the spoke
-        cfg = spoke_configs.get(url, {})
-        if cfg:
-            tmpl["cloud_provider"]  = cfg.get("cloud_provider", "none")
-            tmpl["cloud_folder_id"] = cfg.get("cloud_folder_id", "")
 
         if default_backup_dir:
             tmpl["backup_dir"] = os.path.join(default_backup_dir,

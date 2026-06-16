@@ -6,6 +6,19 @@ REM  Output:   C:\SmackYourBatchUp\smackyourbatchup-{version}.exe
 REM  UPX is disabled in the spec — builds finish in 2-5 min, not an hour.
 REM ─────────────────────────────────────────────────────────────────────────
 
+REM ── Auto-increment BUILD_VERSION (skip for debug rebuilds: build.bat norev) ─
+if /I "%~1"=="norev" (
+    echo Skipping version bump ^(norev^) — rebuilding current version.
+) else (
+    echo Bumping build version...
+    python bump_version.py
+    if errorlevel 1 (
+        echo ERROR: version bump failed. Aborting build.
+        pause
+        exit /b 1
+    )
+)
+
 REM ── Read BUILD_VERSION from main.py ───────────────────────────────────────
 for /f "tokens=3 delims= " %%V in ('findstr /C:"BUILD_VERSION = " main.py') do set RAW_VER=%%V
 set BUILD_VER=%RAW_VER:"=%

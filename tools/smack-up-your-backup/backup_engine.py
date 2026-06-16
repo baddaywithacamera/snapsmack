@@ -45,6 +45,27 @@ import manifest_reader
 ProgressCallback = Callable[[str, str, float], None]
 
 
+def filename_token(site_url: str, fallback: str = "blog") -> str:
+    """Slugify a site URL into a filesystem-safe token used in backup filenames,
+    so archives from different sites are unambiguous in one shared directory.
+    e.g. 'https://photowalk.ing/' -> 'photowalk-ing'. Falls back to `fallback`
+    (the profile name) if no usable URL is given."""
+    s = (site_url or "").strip().lower()
+    for pre in ("https://", "http://"):
+        if s.startswith(pre):
+            s = s[len(pre):]
+            break
+    s = s.strip("/")
+    token = "".join(ch if ch.isalnum() else "-" for ch in s)
+    while "--" in token:
+        token = token.replace("--", "-")
+    token = token.strip("-")
+    if token:
+        return token
+    fb = "".join(ch if ch.isalnum() else "-" for ch in (fallback or "").strip().lower())
+    return fb.strip("-") or "blog"
+
+
 # ---------------------------------------------------------------------------
 # HTTP session (shared with SYBU auth pattern)
 # ---------------------------------------------------------------------------
@@ -52,15 +73,25 @@ ProgressCallback = Callable[[str, str, float], None]
 class SnapSmackSession:
     """Cookie-based HTTP session to the SnapSmack admin panel."""
 
-    def __init__(self, site_url: str):
+    def __init__(self, site_url: str, api_key: str = ""):
         self.site_url = site_url.rstrip("/")
         self.session  = requests.Session()
         self.session.headers.update({"User-Agent": "smack-up-your-backup/1.0"})
         self._username = ""
         self._password = ""
+        self._api_key  = (api_key or "").strip()
         self._logged_in = False
+        if self._api_key:
+            # Key auth: every request carries X-Snap-Key — no login, and no
+            # session to time out on long jobs. Validated by core/api-auth.php.
+            self.session.headers["X-Snap-Key"] = self._api_key
+            self._logged_in = True
 
-    def login(self, username: str, password: str) -> None:
+    def login(self, username: str = "", password: str = "") -> None:
+        # API-key profiles never log in — the key header is already set.
+        if self._api_key:
+            self._logged_in = True
+            return
         self._username = username
         self._password = password
         url  = f"{self.site_url}/login.php"
@@ -76,6 +107,8 @@ class SnapSmackSession:
         self._logged_in = True
 
     def is_alive(self) -> bool:
+        if self._api_key:
+            return True   # key auth doesn't expire
         if not self._logged_in:
             return False
         try:
@@ -92,6 +125,8 @@ class SnapSmackSession:
         return self.relogin()
 
     def relogin(self) -> bool:
+        if self._api_key:
+            return True   # nothing to refresh — the key is stateless
         if not self._username:
             return False
         try:
@@ -123,6 +158,25 @@ class SnapSmackSession:
                 )
 
         self._stream_to_file(resp, local_path, on_progress)
+
+    def report_backup_complete(self, status: str = "clean",
+                               size_bytes: int = 0,
+                               destination: str = "") -> None:
+        """Tell the site a backup just completed, so the Multisite dashboard can
+        show backup freshness. POSTs to suyb-complete.php using the logged-in
+        admin session (same auth as the rest of SUYB). Best-effort — the caller
+        treats any failure here as non-fatal."""
+        url  = f"{self.site_url}/suyb-complete.php"
+        data = {"status": status}
+        if size_bytes:
+            data["size_bytes"] = str(int(size_bytes))
+        if destination:
+            data["destination"] = destination
+        resp = self.session.post(url, data=data, timeout=30)
+        resp.raise_for_status()
+        body = resp.json()
+        if not body.get("ok"):
+            raise RuntimeError(body.get("error", "backup-complete rejected"))
 
     def download_spoke_sql_dump(self, spoke_url: str, api_key: str,
                                 local_path: str, dump_type: str = "full",
@@ -398,6 +452,9 @@ class BackupEngine:
         os.makedirs(backup_dir, exist_ok=True)
 
         blog_name = self.profile.get("name", "blog")
+        # File prefix is the site-URL slug (unambiguous across sites in one
+        # shared cloud folder); falls back to the profile name if no URL.
+        file_token = filename_token(self.profile.get("site_url", ""), blog_name)
         cp        = self._resume_cp  # None for fresh run, populated for resume
         resuming  = cp is not None
 
@@ -417,8 +474,8 @@ class BackupEngine:
             self._log(f"Resuming interrupted backup from {cp.data.get('created_at', 'unknown time')}.")
             self._log(f"Already downloaded: {len(already_done)} files — skipping those.")
         else:
-            timestamp       = datetime.now().strftime("%Y-%m-%d_%H-%M")
-            kit_path        = os.path.join(backup_dir, f"{blog_name}_recovery_kit_{timestamp}.tar.gz")
+            timestamp       = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            kit_path        = os.path.join(backup_dir, f"{file_token}_recovery_kit_{timestamp}.tar.gz")
             sql_full_path   = ""
             sql_schema_path = ""
             local_media_dir = ""
@@ -430,7 +487,8 @@ class BackupEngine:
             if self._cancelled:
                 return result
             self._progress("stage1", "Connecting to site…", 0.02)
-            http = SnapSmackSession(self.profile["site_url"])
+            http = SnapSmackSession(self.profile["site_url"],
+                                    self.profile.get("api_key", ""))
             try:
                 http.login(
                     self.profile.get("snap_admin_user", ""),
@@ -460,8 +518,8 @@ class BackupEngine:
                 return result
             self._progress("stage1", "Downloading SQL dumps…", 0.12)
 
-            sql_full_path   = os.path.join(backup_dir, f"{blog_name}_full_{timestamp}.sql")
-            sql_schema_path = os.path.join(backup_dir, f"{blog_name}_schema_{timestamp}.sql")
+            sql_full_path   = os.path.join(backup_dir, f"{file_token}_full_{timestamp}.sql")
+            sql_schema_path = os.path.join(backup_dir, f"{file_token}_schema_{timestamp}.sql")
             result["sql_full_path"]   = ""
             result["sql_schema_path"] = ""
 
@@ -510,8 +568,8 @@ class BackupEngine:
 
         # Set up paths for a fresh run (resuming already has these)
         if not resuming:
-            local_media_dir = os.path.join(backup_dir, f"{blog_name}_media_{timestamp}")
-            zip_name        = f"{blog_name}_backup_{timestamp}.zip"
+            local_media_dir = os.path.join(backup_dir, f"{file_token}_media_{timestamp}")
+            zip_name        = f"{file_token}_backup_{timestamp}.zip"
 
         os.makedirs(local_media_dir, exist_ok=True)
 
@@ -828,7 +886,7 @@ class BackupEngine:
             self._log(f"⚠ {err}")
 
         # ── Write session log file ────────────────────────────────────
-        self._write_log_file(backup_dir, blog_name, timestamp, result)
+        self._write_log_file(backup_dir, file_token, timestamp, result)
 
         if verify_ok:
             result["success"] = True
@@ -839,6 +897,22 @@ class BackupEngine:
         else:
             self._progress("done", "Backup completed with errors — check the log file.", 1.0)
             self._log(f"✗ Backup completed with {len(result['errors'])} error(s). See log file in {backup_dir}")
+
+        # ── Report completion to the site (Multisite dashboard freshness) ─────
+        # Best-effort: never let a reporting hiccup fail an otherwise-good backup.
+        try:
+            status_str = "clean" if verify_ok else "partial"
+            size_b = os.path.getsize(zip_path) if (zip_path and os.path.exists(zip_path)) else 0
+            dest = (self.profile.get("cloud_provider", "") or "cloud") if (cloud and cloud_id) else "local"
+            reporter = SnapSmackSession(self.profile["site_url"])
+            reporter.login(
+                self.profile.get("snap_admin_user", ""),
+                self.profile.get("snap_admin_pass", ""),
+            )
+            reporter.report_backup_complete(status_str, size_b, dest)
+            self._log(f"Reported backup status to site: {status_str}.")
+        except Exception as e:
+            self._log(f"Backup-complete ping failed (non-fatal): {e}")
 
         return result
 # ===== SNAPSMACK EOF =====

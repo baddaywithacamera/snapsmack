@@ -13,8 +13,9 @@
  *     don't see themselves in their own roster).
  *   ms_ingest_roster($pdo, $hub_url, $peers) — receive a roster from
  *     a hub and reconcile it into local snap_multisite_nodes. Inserts
- *     new peers, updates known peers' keys/status, prunes peers that
- *     have left the network. Locally-registered hub rows
+ *     new peers (discovery data only — no keys), updates known peers'
+ *     status, prunes peers that have left the network. Locally-registered
+ *     hub rows
  *     (roster_source = 'self') are never touched.
  *
  * Permission kinds: 'crosspost', 'blogroll', 'stats_query'.
@@ -67,9 +68,12 @@ function ms_peer_allows(array $peer_row, string $kind): bool
 
 function ms_build_roster(PDO $pdo, string $exclude_url = ''): array
 {
+    // SECURITY: the roster is DISCOVERY DATA ONLY (names/URLs/roles). It must
+    // NEVER carry api_key_local — that is the hub->spoke credential, and
+    // broadcasting it let one leaked spoke key compromise the whole fleet.
     $exclude_norm = preg_replace('~^https?://~i', '', rtrim($exclude_url, '/'));
     $rows = $pdo->query(
-        "SELECT site_url, site_name, role, api_key_local, status
+        "SELECT site_url, site_name, role
          FROM snap_multisite_nodes
          WHERE status = 'active'
          ORDER BY site_name ASC"
@@ -79,10 +83,9 @@ function ms_build_roster(PDO $pdo, string $exclude_url = ''): array
         $r_norm = preg_replace('~^https?://~i', '', rtrim($r['site_url'], '/'));
         if ($exclude_norm !== '' && $r_norm === $exclude_norm) continue;
         $out[] = [
-            'site_url'      => $r['site_url'],
-            'site_name'     => $r['site_name'],
-            'role'          => $r['role'],
-            'api_key_local' => $r['api_key_local'],
+            'site_url'  => $r['site_url'],
+            'site_name' => $r['site_name'],
+            'role'      => $r['role'],
         ];
     }
     return $out;
@@ -103,16 +106,17 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
         $has_roster_cols = ($test !== false);
     } catch (PDOException $e) { /* columns missing */ }
 
+    // SECURITY: roster peers are discovery rows only. We store NO key for them
+    // (api_key_local stays ''); a spoke never needs a sibling's inbound key.
     if ($has_roster_cols) {
         $upsert = $pdo->prepare("
             INSERT INTO snap_multisite_nodes
                 (role, site_url, site_name, api_key_local, api_key_remote, status,
                  roster_source, last_roster_seen_at, connected_at)
-            VALUES (?, ?, ?, ?, '', 'active', ?, ?, NOW())
+            VALUES (?, ?, ?, '', '', 'active', ?, ?, NOW())
             ON DUPLICATE KEY UPDATE
                 role                = VALUES(role),
                 site_name           = VALUES(site_name),
-                api_key_local       = VALUES(api_key_local),
                 status              = 'active',
                 roster_source       = VALUES(roster_source),
                 last_roster_seen_at = VALUES(last_roster_seen_at)
@@ -121,19 +125,26 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
         $upsert = $pdo->prepare("
             INSERT INTO snap_multisite_nodes
                 (role, site_url, site_name, api_key_local, api_key_remote, status, connected_at)
-            VALUES (?, ?, ?, ?, '', 'active', NOW())
+            VALUES (?, ?, ?, '', '', 'active', NOW())
             ON DUPLICATE KEY UPDATE
                 role          = VALUES(role),
                 site_name     = VALUES(site_name),
-                api_key_local = VALUES(api_key_local),
                 status        = 'active'
         ");
     }
 
+    // SECURITY self-heal: the OLD roster broadcast sibling api_key_local values
+    // and spokes stored them. Blank any key previously learned from THIS hub's
+    // roster — siblings must hold no inbound key. The local hub row is
+    // roster_source='self'/NULL and is left untouched.
+    if ($has_roster_cols && $hub_url !== '') {
+        $pdo->prepare("UPDATE snap_multisite_nodes SET api_key_local = '' WHERE roster_source = ?")
+            ->execute([$hub_url]);
+    }
+
     foreach ($peers as $p) {
         $url = trim($p['site_url']     ?? '');
-        $key = trim($p['api_key_local'] ?? '');
-        if ($url === '' || $key === '') continue;
+        if ($url === '') continue;
         if (!filter_var($url, FILTER_VALIDATE_URL)) continue;
 
         $row_before = $pdo->prepare(
@@ -147,7 +158,6 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
                 $p['role']      ?? 'peer',
                 $url,
                 $p['site_name'] ?? parse_url($url, PHP_URL_HOST),
-                $key,
                 $hub_url,
                 $now,
             ]);
@@ -156,7 +166,6 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
                 $p['role']      ?? 'peer',
                 $url,
                 $p['site_name'] ?? parse_url($url, PHP_URL_HOST),
-                $key,
             ]);
         }
 

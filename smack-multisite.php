@@ -60,22 +60,34 @@ if (isset($_POST['enable_spoke'])) {
 
 // Generate registration token
 if (isset($_POST['gen_reg_token'])) {
-    $token = bin2hex(random_bytes(16)); // 32-char hex
-    $expires = time() + 900; // 15 minutes
+    // JOINING a hub grants a remote party admin-level access to this site, so it
+    // is gated by step-up auth (password + 2FA when enrolled). LEAVING a hub is
+    // deliberately NOT gated — see disconnect_hub — because it only reduces
+    // access and may be needed in an emergency.
+    require_once 'core/reauth.php';
+    $ra = reauth_verify($pdo,
+        (string)($_POST['reauth_password'] ?? ''),
+        (string)($_POST['reauth_totp'] ?? ''));
+    if (!$ra['ok']) {
+        $err = 'Token generation blocked: ' . $ra['error'];
+    } else {
+        $token = bin2hex(random_bytes(16)); // 32-char hex
+        $expires = time() + 900; // 15 minutes
 
-    $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
-    $stmt->execute(['multisite_reg_token', $token, $token]);
-    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
-        ->execute(['multisite_reg_token_expires', $expires, $expires]);
+        $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
+        $stmt->execute(['multisite_reg_token', $token, $token]);
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+            ->execute(['multisite_reg_token_expires', $expires, $expires]);
 
-    // Update in-memory $settings so the token display is correct on this same page load.
-    // $settings was loaded before this POST handler ran, so it's stale without this.
-    $settings['multisite_reg_token']         = $token;
-    $settings['multisite_reg_token_expires'] = (string)$expires;
+        // Update in-memory $settings so the token display is correct on this same page load.
+        // $settings was loaded before this POST handler ran, so it's stale without this.
+        $settings['multisite_reg_token']         = $token;
+        $settings['multisite_reg_token_expires'] = (string)$expires;
 
-    $_SESSION['multisite_reg_token'] = $token;
-    $_SESSION['multisite_reg_token_expires'] = $expires;
-    $msg = "Registration token generated. Valid for 15 minutes.";
+        $_SESSION['multisite_reg_token'] = $token;
+        $_SESSION['multisite_reg_token_expires'] = $expires;
+        $msg = "Registration token generated. Valid for 15 minutes.";
+    }
 }
 
 // Register spoke (hub mode)
@@ -275,6 +287,50 @@ if (isset($_POST['disconnect_hub'])) {
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
         ->execute(['multisite_reg_token_expires', '0', '0']);
     $msg = "Disconnected from hub.";
+}
+
+// --- SPOKE: hub-permission consent gates ------------------------------------
+// Powerful inbound hub actions (update / skin / sso / backup-pull) are OFF by
+// default. Switching one ON requires step-up auth (password + 2FA when enrolled)
+// so a hijacked session or compromised hub can't quietly grant itself access.
+// Turning things OFF is always allowed (it reduces access).
+if (isset($_POST['save_hub_perms']) && $multisite_role === 'spoke') {
+    $perm_map = [
+        'perm_update' => 'multisite_allow_update',
+        'perm_skin'   => 'multisite_allow_skin',
+        'perm_sso'    => 'multisite_allow_sso',
+        'perm_backup' => 'multisite_allow_backup',
+    ];
+
+    // Is this submission turning anything ON that is currently off?
+    $enabling = false;
+    foreach ($perm_map as $field => $skey) {
+        $new = !empty($_POST[$field]) ? '1' : '0';
+        if ($new === '1' && (($settings[$skey] ?? '0') !== '1')) { $enabling = true; break; }
+    }
+
+    $allowed = true;
+    if ($enabling) {
+        require_once 'core/reauth.php';
+        $ra = reauth_verify($pdo,
+            (string)($_POST['reauth_password'] ?? ''),
+            (string)($_POST['reauth_totp'] ?? ''));
+        if (!$ra['ok']) {
+            $allowed = false;
+            $err = 'Permission change blocked: ' . $ra['error'];
+        }
+    }
+
+    if ($allowed) {
+        $up = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+                             ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
+        foreach ($perm_map as $field => $skey) {
+            $val = !empty($_POST[$field]) ? '1' : '0';
+            $up->execute([$skey, $val]);
+            $settings[$skey] = $val;
+        }
+        $msg = 'Hub permissions updated.';
+    }
 }
 
 // --- PUSH UPDATE TO SPOKE(S) ---
@@ -544,16 +600,37 @@ if (isset($_POST['verify_hub'])) {
     }
 }
 
+// Backup freshness → dashboard dot class + human label, keyed on the AGE of the
+// last successful backup (not a status string). Thresholds (Sean): <=7d fresh
+// (green), <=14d aging (yellow), <=28d stale (red), >28d or never = critical
+// (black, pulsing red).
+function ss_backup_dot(int $ts): array {
+    if ($ts <= 0) {
+        return ['backup-dot--critical', 'never backed up'];
+    }
+    $age  = time() - $ts;
+    $days = (int) floor($age / 86400);
+    if      ($age <=  7 * 86400) $class = 'backup-dot--fresh';
+    elseif  ($age <= 14 * 86400) $class = 'backup-dot--aging';
+    elseif  ($age <= 28 * 86400) $class = 'backup-dot--stale';
+    else                         $class = 'backup-dot--critical';
+    if      ($days <= 0)  $label = 'today';
+    elseif  ($days === 1) $label = '1 day ago';
+    else                  $label = $days . ' days ago';
+    return [$class, $label];
+}
+
 // --- DATA LOADING ---
 // (settings + multisite_role loaded at top of file before POST handlers)
 
 // Load connected nodes — fetch UNIX_TIMESTAMP to avoid strtotime/timezone issues
-$nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, site_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts, UNIX_TIMESTAMP(last_backup_at) AS last_backup_ts FROM snap_multisite_nodes ORDER BY role ASC, site_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Hub self-entry data — shown as first row in Connected Spokes table
 $hub_post_count      = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
 $hub_pending         = (int)$pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
 $hub_backup_status   = $settings['last_backup_status']  ?? 'unknown';
+$hub_backup_ts       = !empty($settings['last_backup_at']) ? (int)strtotime((string)$settings['last_backup_at']) : 0;
 $hub_site_name       = $settings['site_name']            ?? 'Hub';
 $hub_site_url        = rtrim($settings['site_url']       ?? '', '/');
 $hub_smackback       = $settings['smackback_status']     ?? (($settings['smackback_enabled'] ?? '0') === '1' ? 'pending' : 'unknown');
@@ -651,7 +728,7 @@ if ($multisite_role === 'hub') {
     unset($n);
 
     // Reload nodes so status changes are reflected
-    $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, site_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts, UNIX_TIMESTAMP(last_backup_at) AS last_backup_ts FROM snap_multisite_nodes ORDER BY role ASC, site_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // Fetch skin registry for push-skin UI (hub only; session-cached 10 min)
@@ -871,7 +948,8 @@ include 'core/sidebar.php';
                                 <td class="col-center"><?php echo $hub_post_count; ?></td>
                                 <td class="col-center"><?php echo $hub_pending; ?></td>
                                 <td class="col-center">
-                                    <span class="status-dot status-dot--lg status-dot--<?php echo htmlspecialchars($hub_backup_status); ?>" title="<?php echo htmlspecialchars($hub_backup_status); ?>"></span>
+                                    <?php [$hub_bk_class, $hub_bk_label] = ss_backup_dot($hub_backup_ts); ?>
+                                    <span class="status-dot status-dot--lg <?php echo $hub_bk_class; ?>" title="Backup: <?php echo htmlspecialchars($hub_bk_label); ?>"></span>
                                 </td>
                                 <td class="col-center">
                                     <?php if ($hub_smackback === 'breach'): ?>
@@ -890,6 +968,7 @@ include 'core/sidebar.php';
                                 <?php if ($n['role'] !== 'spoke') continue; ?>
                                 <?php $node_status    = $n['status'] ?? 'unknown'; ?>
                                 <?php $backup_status  = $n['last_backup_status'] ?? 'unknown'; ?>
+                                <?php $backup_ts      = isset($n['last_backup_ts']) ? (int)$n['last_backup_ts'] : 0; ?>
                                 <?php $in_maintenance = !empty($n['maintenance_mode']); ?>
                                 <tr id="spoke-row-<?php echo $n['id']; ?>">
                                     <td><strong><?php echo htmlspecialchars($n['site_name'] ?? 'Unknown'); ?></strong></td>
@@ -952,7 +1031,8 @@ include 'core/sidebar.php';
                                     <td class="col-center"><?php echo (int)$n['post_count']; ?></td>
                                     <td class="col-center"><?php echo (int)$n['pending_comments']; ?></td>
                                     <td class="col-center">
-                                        <span class="status-dot status-dot--lg status-dot--<?php echo htmlspecialchars($backup_status); ?>" title="<?php echo htmlspecialchars($backup_status); ?>"></span>
+                                        <?php [$bk_class, $bk_label] = ss_backup_dot($backup_ts); ?>
+                                        <span class="status-dot status-dot--lg <?php echo $bk_class; ?>" title="Backup: <?php echo htmlspecialchars($bk_label); ?>"></span>
                                     </td>
                                     <td class="col-center">
                                         <?php
@@ -1154,6 +1234,22 @@ include 'core/sidebar.php';
                     </div>
                 <?php else: ?>
                     <form method="POST" style="margin-bottom:20px;">
+                        <p class="dim" style="font-size:0.82rem; margin-bottom:12px;">
+                            Joining a hub grants it admin-level access to this site, so it needs your password
+                            (plus your 2FA code if you use it). Leaving a hub never needs a password.
+                        </p>
+                        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px;">
+                            <div>
+                                <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">PASSWORD</label>
+                                <input type="password" name="reauth_password" autocomplete="off"
+                                       style="padding:8px 10px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                            </div>
+                            <div>
+                                <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">2FA CODE (if enabled)</label>
+                                <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off"
+                                       style="padding:8px 10px; width:120px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                            </div>
+                        </div>
                         <button type="submit" name="gen_reg_token" class="master-update-btn">
                             GENERATE REGISTRATION TOKEN
                         </button>
@@ -1187,6 +1283,48 @@ include 'core/sidebar.php';
                     </form>
                 </div>
             <?php endif; ?>
+        </div>
+
+        <!-- WHAT THIS SITE LETS ITS HUB DO (consent gates) -->
+        <div class="box">
+            <h3>WHAT THIS SITE LETS ITS HUB DO</h3>
+            <p class="dim" style="font-size:0.85rem; margin-bottom:16px;">
+                These powerful hub actions are OFF by default. Turn on only what you want your hub to be able to do
+                to this site. Switching one ON needs your password (plus your 2FA code if you use it). Turning things
+                off is always allowed.
+            </p>
+            <?php
+                $perm_defs = [
+                    'perm_update' => ['multisite_allow_update', 'Install software updates on this site'],
+                    'perm_skin'   => ['multisite_allow_skin',   'Install or re-install skins on this site'],
+                    'perm_sso'    => ['multisite_allow_sso',    'Open an admin login session on this site (SSO)'],
+                    'perm_backup' => ['multisite_allow_backup', 'Pull a full database backup from this site'],
+                ];
+            ?>
+            <form method="POST">
+                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:18px;">
+                    <?php foreach ($perm_defs as $field => $def): ?>
+                    <label style="display:flex; align-items:center; gap:10px; font-size:0.9rem; cursor:pointer;">
+                        <input type="checkbox" name="<?php echo $field; ?>" value="1"
+                               <?php echo (($settings[$def[0]] ?? '0') === '1') ? 'checked' : ''; ?>>
+                        <?php echo htmlspecialchars($def[1]); ?>
+                    </label>
+                    <?php endforeach; ?>
+                </div>
+                <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+                    <div>
+                        <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">PASSWORD (to enable)</label>
+                        <input type="password" name="reauth_password" autocomplete="off"
+                               style="padding:8px 10px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">2FA CODE (if enabled)</label>
+                        <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off"
+                               style="padding:8px 10px; width:120px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                    </div>
+                    <button type="submit" name="save_hub_perms" class="btn-smack btn-mt-0" style="padding:8px 20px;">SAVE PERMISSIONS</button>
+                </div>
+            </form>
         </div>
 
         <!-- API ACCESS LOG -->
