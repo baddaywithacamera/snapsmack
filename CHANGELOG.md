@@ -12,6 +12,22 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.262 — "Hot Seat" (2026-06-16)
+
+Critical hotfix — the 30-day force-2FA rollout exposed two latent fatals that
+locked admins out of the fleet. Ships alone, ahead of the 0.7.261 tool-security
+pass (which stays unreleased until the SUYB/SYBU executables are rebuilt).
+
+- **2FA verify no longer fatals.** `smack-2fa-verify.php` called the trusted-device
+  check (`ss_totp_check_trust()`) before `$pending_id`/`$user` were defined, so on
+  PHP 8 it threw an uncaught `TypeError` (null given for an `int` param) and
+  white-screened the verify page — locking every 2FA-enabled admin out of every
+  site. The check now runs after the pending user is loaded.
+- **Admin dashboard tolerates an unarmed SMACKBACK.** `smackback_verify_all()`
+  (`core/smackback.php`) now returns a clean result instead of fataling when the
+  `snap_file_manifest` table doesn't exist yet, so `smack-admin.php` loads on
+  installs where SMACKBACK was never armed.
+
 ## 0.7.261 — "Bass Ackwards" (2026-06-15)
 
 Tool-security pass — per-tool scoped keys, bulk-import safety rails, and
@@ -46,6 +62,23 @@ cross-mode restore protection. Spec:
   an un-rebuilt tool still sending `X-Snap-Key` will get a 401.
 - **SYBU is photoblog-only.** Tool access to SYBU's endpoints is refused (409) on
   non-`photoblog` installs. Browser admin access is unaffected.
+- **SYBU write scope locked.** SYBU's writable surface is now documented and pinned
+  in code: it may only INSERT a new image plus its category/album/collection map
+  rows (`smack-post-solo.php`) and update a single image's title
+  (`smack-audit.php` `update_title`). No update or deletion of existing content.
+
+### Least-privilege multisite backup key
+
+- **Scoped `api_key_backup` for SUYB backup pulls.** Each spoke now issues a second,
+  least-privilege hub→spoke key at join that is valid **only** on
+  `multisite/backup/*` endpoints — so the full hub key (`api_key_local`) no longer
+  has to live in a SUYB desktop profile. The auth gate accepts it for backup
+  resources only (403 on anything else). A new `POST multisite/backup/report`
+  lets SUYB record a completed pull (writes only the `last_backup_*` keys).
+- **Additive rollout.** `api_key_local` still works everywhere; `suyb-data.php`
+  emits both keys and SUYB prefers the scoped one when present. The new
+  `snap_multisite_nodes.api_key_backup` column is populated when a spoke re-joins —
+  until then SUYB transparently falls back to the legacy key. No flag day.
 
 ### Cross-mode restore protection
 

@@ -722,9 +722,25 @@ function smackback_verify_all(): array {
 
     $t_start = microtime(true);
 
-    $rows = $pdo->query(
-        "SELECT file_path, expected_hash, expected_mtime, eof_signature FROM snap_file_manifest"
-    )->fetchAll(PDO::FETCH_ASSOC);
+    // SMACKBACK may never have been armed on this install (no manifest table yet).
+    // Treat that as "nothing to verify / clean" rather than fataling the admin
+    // dashboard, which calls this on load (smack-admin.php).
+    try {
+        $rows = $pdo->query(
+            "SELECT file_path, expected_hash, expected_mtime, eof_signature FROM snap_file_manifest"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        return [
+            'status'    => 'clean',
+            'tampered'  => [],
+            'truncated' => [],
+            'corrupted' => [],
+            'missing'   => [],
+            'ok'        => 0,
+            'checked'   => 0,
+            'duration'  => 0.0,
+        ];
+    }
 
     $tampered  = [];
     $truncated = [];
