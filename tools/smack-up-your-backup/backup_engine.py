@@ -82,9 +82,10 @@ class SnapSmackSession:
         self._api_key  = (api_key or "").strip()
         self._logged_in = False
         if self._api_key:
-            # Key auth: every request carries X-Snap-Key — no login, and no
-            # session to time out on long jobs. Validated by core/api-auth.php.
-            self.session.headers["X-Snap-Key"] = self._api_key
+            # Scoped key auth: every request carries the 'suyb' typed key as a
+            # Bearer token — no login, no session to time out on long jobs.
+            # Validated by core/api-auth.php against snap_ohsnap_keys (key_type).
+            self.session.headers["Authorization"] = f"Bearer {self._api_key}"
             self._logged_in = True
 
     def login(self, username: str = "", password: str = "") -> None:

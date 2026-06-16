@@ -44,9 +44,10 @@ class HubDiscovery:
         s = requests.Session()
         s.headers["User-Agent"] = "SmackUpYourBackup/1.0"
 
-        # API-key auth (preferred): no login, send X-Snap-Key on every request.
+        # Scoped key auth (preferred): no login, send the 'suyb' typed key as a
+        # Bearer token on every request. Validated by core/api-auth.php.
         if self.api_key:
-            s.headers["X-Snap-Key"] = self.api_key
+            s.headers["Authorization"] = f"Bearer {self.api_key}"
             self._session = s
             return s
 

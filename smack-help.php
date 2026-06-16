@@ -948,22 +948,23 @@ $help_topics['api-keys'] = [
     'icon'     => '&#x1F5DD;',
     'role'     => 'admin',
     'content'  => <<<'HTML'
-<h3>Tool API Key</h3>
-<p>Companion tools (SYBU, SUYB, and others) can authenticate with SnapSmack using a
-64-character hex API key instead of a browser session. The key is sent in the
-<code>X-Snap-Key</code> request header. Endpoints that accept the API key also accept a
-normal session cookie, so your browser-based admin access is unchanged.</p>
+<h3>Tool API Keys</h3>
+<p>Companion tools (SUYB, SYBU, Unzucker, Flkr Fckr, Oh Snap!, and others) authenticate
+with SnapSmack using their own per-tool 64-character hex key instead of a browser
+session. The key is sent as an <code>Authorization: Bearer</code> request header. Each
+key is <em>scoped to its tool</em> — a SUYB key cannot act on SYBU's endpoints, and so on.
+Endpoints also accept a normal admin session cookie, so your browser-based admin access
+is unchanged. (The old single shared key was retired in 0.7.261.)</p>
 
 <h4>Generating a Key</h4>
-<p>Go to <strong>Admin &rarr; Settings &rarr; API Access</strong>. Click
-<strong>Generate Key</strong> to create a cryptographically random 64-char hex key.
-Copy it immediately — it is shown only once. The key is stored as a salted hash; the
-plaintext is never saved.</p>
+<p>Go to <strong>Admin &rarr; API Keys</strong>. Pick the <strong>key type</strong> for the
+tool you are setting up, give it a label, and click <strong>Generate Key</strong>. Copy it
+immediately — it is shown only once. The key is stored as a SHA-256 hash; the plaintext is
+never saved.</p>
 
-<h4>Revoking or Regenerating</h4>
-<p>Click <strong>Regenerate</strong> to invalidate the current key and issue a new one.
-Any tool using the old key will immediately lose access. Click <strong>Revoke</strong>
-to delete the key entirely and disable API access until a new one is generated.</p>
+<h4>Revoking</h4>
+<p>On the same page, click <strong>Revoke</strong> next to a key to invalidate it
+immediately — any tool using it loses access at once. Generate a fresh key to replace it.</p>
 
 <h4>Key Types</h4>
 <p>Each key has a type that restricts which API endpoints it can reach. Choose the right

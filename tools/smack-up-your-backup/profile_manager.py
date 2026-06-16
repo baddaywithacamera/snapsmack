@@ -122,7 +122,7 @@ def new_profile_template() -> Dict:
         "ftp_verify_cert":       False,
         "snap_admin_user":       "",
         "snap_admin_pass":       "",
-        "api_key":               "",             # X-Snap-Key; preferred over admin login
+        "api_key":               "",             # scoped 'suyb' key (Bearer); preferred over admin login
         "backup_method":         "cloud",         # "ftp" | "cloud" | "local"
         "schedule_enabled":      False,
         "schedule_type":         "daily",        # "daily" | "weekly"

@@ -96,7 +96,7 @@ class SnapSmackClient:
         self.session  = requests.Session()
         self.session.headers.update({
             'User-Agent': 'SYBU/1.0',
-            'X-Snap-Key': api_key,
+            'Authorization': f'Bearer {api_key}',
         })
         self._api_key = api_key
 

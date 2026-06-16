@@ -3,18 +3,18 @@
  * SNAPSMACK - API / Session Dual Authentication
  *
  * Drop-in replacement for require_once 'core/auth-smack.php' on endpoints that
- * must serve both browser sessions (admin UI) and tool API key access (SYBU).
+ * must serve both browser sessions (admin UI) and desktop-tool API access.
  *
  * Priority order:
- *   1. X-Snap-Key header present → validate against tool_api_key setting.
- *      Valid: define SNAP_API_AUTH and return (caller proceeds immediately).
- *      Invalid: 401 JSON error, exit.
- *   2. No key header → fall through to normal session auth (core/auth-smack.php),
+ *   1. Typed scoped key (Authorization: Bearer <key>) — when the endpoint
+ *      declares $GLOBALS['SNAP_API_KEY_TYPES']. Validated against
+ *      snap_ohsnap_keys by key_type. Valid: define SNAP_API_AUTH and return.
+ *      Bearer present but invalid: 401 JSON error, exit (no session fallthrough).
+ *   2. No accepted key → fall through to normal session auth (core/auth-smack.php),
  *      which redirects browsers to the login page if not authenticated.
  *
- * The tool_api_key setting is managed in Admin → Settings → API Access.
- * An empty stored key means API key auth is disabled — key header is ignored
- * and falls through to session auth.
+ * Tools mint a scoped key in Admin → API Keys. The legacy shared tool_api_key
+ * (X-Snap-Key header) was retired in 0.7.261 — there is no shared key any more.
  */
 
 /**
@@ -30,7 +30,7 @@ require_once __DIR__ . '/db.php';
 /**
  * Optional install-mode gate for tool/API access. An endpoint sets
  * $GLOBALS['SNAP_API_REQUIRE_MODE'] (e.g. 'photoblog') BEFORE including this
- * file; on a successful API auth (typed Bearer or legacy X-Snap-Key) the
+ * file; on a successful API auth (typed Bearer key) the
  * site's snap_settings.site_mode must equal it or the request is refused 409.
  * Browser sessions are NOT gated here — only tool access.
  */
@@ -57,9 +57,8 @@ if (!function_exists('snap_api_enforce_mode')) {
  * key_type) shared with the importers. An endpoint declares which key_type(s)
  * it accepts by setting $GLOBALS['SNAP_API_KEY_TYPES'] (array) before including
  * this file. A 'suyb' key therefore cannot act on a 'sybu' endpoint and vice
- * versa. Absent/empty = no Bearer auth offered (legacy X-Snap-Key + session
- * only). This branch is ADDITIVE: it runs before the legacy shared-key check,
- * so existing tools keep working until they migrate to a typed key.
+ * versa. Absent/empty = no Bearer auth offered (session only). The legacy
+ * shared tool_api_key / X-Snap-Key path was retired in 0.7.261.
  */
 $_allowed_types = $GLOBALS['SNAP_API_KEY_TYPES'] ?? [];
 if (is_array($_allowed_types) && $_allowed_types) {
@@ -103,39 +102,8 @@ if (is_array($_allowed_types) && $_allowed_types) {
 }
 unset($_allowed_types);
 
-$_x_snap_key = trim($_SERVER['HTTP_X_SNAP_KEY'] ?? '');
-
-if ($_x_snap_key !== '') {
-    // Key was provided — look up the stored key
-    $_stored_key = '';
-    try {
-        $_stmt = $pdo->prepare(
-            "SELECT setting_val FROM snap_settings WHERE setting_key = 'tool_api_key' LIMIT 1"
-        );
-        $_stmt->execute();
-        $_stored_key = (string)($_stmt->fetchColumn() ?: '');
-        unset($_stmt);
-    } catch (PDOException $e) {
-        // DB error — fail closed
-    }
-
-    if ($_stored_key === '' || !hash_equals($_stored_key, $_x_snap_key)) {
-        http_response_code(401);
-        header('Content-Type: application/json');
-        echo json_encode(['error' => 'Invalid or missing API key.']);
-        exit;
-    }
-
-    // Valid key — mark as API-authenticated and return immediately.
-    // The caller proceeds without a session.
-    define('SNAP_API_AUTH', true);
-    snap_api_enforce_mode($pdo);
-    unset($_x_snap_key, $_stored_key);
-    return;
-}
-
-unset($_x_snap_key);
-
-// No key header — fall through to standard session auth.
+// No typed Bearer key accepted by this endpoint → fall through to standard
+// session auth. The legacy shared tool_api_key (X-Snap-Key) path was retired
+// in 0.7.261; desktop tools now present a scoped key_type Bearer instead.
 require_once __DIR__ . '/auth-smack.php';
 // ===== SNAPSMACK EOF =====
