@@ -1035,12 +1035,39 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
 
     // 6. Extract
     $extract = updater_extract($zip_path);
-    @unlink($zip_path);
 
     if (!$extract['success']) {
+        @unlink($zip_path);
         updater_release_lock();
         ms_err('Extraction failed: ' . implode('; ', $extract['errors']), 500);
     }
+
+    // 6b. SMACKBACK: refresh the file-integrity manifest from the (Ed25519-
+    // verified) update package — mirrors the local SYSTEM UPDATES path
+    // (smack-update.php). Without this the spoke's freshly-replaced files no
+    // longer match its OLD manifest, so SMACKBACK false-breaches on the next
+    // scan. Must run while the zip still exists (the signed in-zip manifest is
+    // the trusted baseline), so it precedes the unlink below.
+    if (file_exists($zip_path)) {
+        require_once __DIR__ . '/smackback.php';
+        if (function_exists('smackback_init_manifest') && smackback_init_manifest($zip_path)) {
+            // Baselined from the signed in-zip manifest → safe to auto-clear a
+            // stale breach left over from before this update.
+            if (function_exists('smackback_resolve_breach')) {
+                $smack_prev = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_status'")->fetchColumn();
+                if ($smack_prev === 'breach') {
+                    smackback_resolve_breach('update');
+                }
+            }
+        } elseif (function_exists('smackback_init_from_disk')) {
+            // No manifest in the package (e.g. an SC-packaged-from-GitHub zip) →
+            // re-baseline from the freshly-extracted, signature-verified disk. Do
+            // NOT auto-clear a breach on the disk fallback (less trusted basis).
+            smackback_init_from_disk();
+        }
+    }
+
+    @unlink($zip_path);
 
     // 7. Run migrations
     $migration_files = updater_find_migrations($pdo);

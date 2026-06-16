@@ -2687,7 +2687,7 @@ has left.</p>
     open. If you lose network and it expires, click Connect again — your queue is not lost.</li>
     <li><strong>CLOUD DRIVE</strong> — green means Google Drive is authenticated and download
     links will be attached to every post. If this is red when you post, images will be uploaded
-    to SnapSmack but will not have download links. Use Fix Your Batch Up to recover those links.</li>
+    to SnapSmack but will not have download links. Use Smack Your Batch Up (SYBU) to recover those links.</li>
     <li><strong>AI ENGINE</strong> — green means a Gemini API key is saved. Without a key
     the Enrich button will prompt you to add one in the configuration panel.</li>
 </ul>
@@ -2754,7 +2754,7 @@ without re-authorising every session.</p>
 <p>For every image posted via SYBU, SnapSmack stores the title, tags, category, album,
 orientation, the Google Drive download URL, and the original source filename. The source
 filename is particularly useful for recovery — if Drive links are ever lost,
-Fix Your Batch Up can re-match originals to server copies using visual feature matching.</p>
+Smack Your Batch Up (SYBU) can re-match originals to server copies using visual feature matching.</p>
 
 <h4>Keeping Originals</h4>
 <p>Do not delete your source image files after posting. The copy on the server is
