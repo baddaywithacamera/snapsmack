@@ -29,6 +29,27 @@ cross-mode restore protection. Spec:
 - **Additive-only, single-site (reaffirmed in code + comments).** The importers
   carry no DELETE/UPDATE-of-existing path and no hub/multisite awareness.
 
+### Per-tool scoped keys (SUYB, SYBU)
+
+- **Least-privilege tool keys.** SUYB and SYBU now authenticate with their own
+  typed key (`snap_ohsnap_keys`, `key_type='suyb'`/`'sybu'`) — the same hashed
+  Bearer model already used by Unzucker and Flkr Fckr. A SUYB key cannot act on
+  SYBU's endpoints and vice-versa. Issue them from Admin → API Keys.
+- **Central, additive enforcement.** `core/api-auth.php` now also accepts a typed
+  Bearer key when an endpoint declares which `key_type`(s) it allows, and can
+  require a specific `site_mode` for tool access. The legacy shared `X-Snap-Key`
+  and admin sessions keep working, so existing tools are unaffected until they
+  migrate to a typed key.
+- **SYBU is photoblog-only.** Tool access to SYBU's endpoints is refused (409) on
+  non-`photoblog` installs. Browser admin access is unaffected.
+
+### Cross-mode restore protection
+
+- **Backups stamped with their origin.** SQL dumps and recovery kits now record
+  the source `site_url`, `site_mode`, and a stable `site_uuid`, and the SQL dump
+  carries a header warning that restoring it onto a different-mode site will break
+  that site. `site_uuid` is generated once and reused.
+
 ## 0.7.260 — "Ejector Seat" (2026-06-15)
 
 ### Multisite mesh — critical key-broadcast fix + consent model

@@ -18,6 +18,12 @@
  */
 
 
+// CLASSIFICATION PENDING SEAN CONFIRM: this endpoint's header says "Fix Your
+// Batch Up" — tagged to the 'sybu' family for now (additive, so it also accepts
+// a sybu Bearer key). NO photoblog mode gate added here pending classification,
+// to avoid 409-ing a tool that may legitimately run on other modes. Legacy
+// X-Snap-Key + admin session still work.
+$GLOBALS['SNAP_API_KEY_TYPES'] = ['sybu'];
 require_once 'core/api-auth.php';
 
 $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");

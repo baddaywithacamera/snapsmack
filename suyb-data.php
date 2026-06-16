@@ -25,6 +25,11 @@
 require_once __DIR__ . '/core/csrf.php';
 csrf_exempt();
 
+// SUYB holds a least-privilege 'suyb' scoped key (snap_ohsnap_keys, key_type).
+// Declared before api-auth so its typed-Bearer branch accepts it; a 'suyb' key
+// cannot act on 'sybu'/importer endpoints. Legacy X-Snap-Key + admin session
+// still work (additive) until tool_api_key is retired.
+$GLOBALS['SNAP_API_KEY_TYPES'] = ['suyb'];
 require_once 'core/api-auth.php';
 
 header('Content-Type: application/json; charset=utf-8');

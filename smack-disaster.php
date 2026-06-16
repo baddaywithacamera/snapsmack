@@ -18,6 +18,8 @@
 require_once __DIR__ . '/core/csrf.php';
 csrf_exempt();
 
+// SUYB scoped key (see suyb-data.php). Additive — legacy auth still works.
+$GLOBALS['SNAP_API_KEY_TYPES'] = ['suyb'];
 require_once 'core/api-auth.php';
 
 // --- RECOVERY KIT EXPORT ---

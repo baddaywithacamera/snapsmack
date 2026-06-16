@@ -16,6 +16,11 @@
  */
 
 
+// SYBU scoped key + photoblog-only gate (see sybu-data.php). This is the solo
+// posting endpoint SYBU writes through; the gate only affects TOOL access, the
+// browser admin page is unaffected. Additive — legacy auth still works.
+$GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu'];
+$GLOBALS['SNAP_API_REQUIRE_MODE'] = 'photoblog';
 require_once 'core/api-auth.php';
 require_once 'core/palette-extract.php';
 require_once 'core/snap-tags.php';
