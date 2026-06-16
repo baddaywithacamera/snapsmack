@@ -12,6 +12,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.261 — "Bass Ackwards" (2026-06-15)
+
+Tool-security pass — per-tool scoped keys, bulk-import safety rails, and
+cross-mode restore protection. Spec:
+`_spec/tool-security-scoped-keys-and-import-guards-v0.1.md`.
+
+### Bulk-import safety (Unzucker, Flkr Fckr)
+
+- **Install-mode lock.** Flkr Fckr imports into SMACKONEOUT (`photoblog`) installs
+  only; Unzucker into GRAMOFSMACK (`carousel`) only. Pointed at the wrong mode the
+  importer refuses (HTTP 409) and names the actual mode.
+- **Non-empty-site guard.** If a target already holds more than 5 items, the
+  importer's write endpoints refuse (HTTP 403) until the site owner authorizes an
+  import in the admin. Empty/new sites import with no friction.
+- **Additive-only, single-site (reaffirmed in code + comments).** The importers
+  carry no DELETE/UPDATE-of-existing path and no hub/multisite awareness.
+
 ## 0.7.260 — "Ejector Seat" (2026-06-15)
 
 ### Multisite mesh — critical key-broadcast fix + consent model

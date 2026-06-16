@@ -159,6 +159,34 @@ $sub    = preg_replace('#^unzucker/?#', '', $route);
 $method = $_SERVER['REQUEST_METHOD'];
 
 // ---------------------------------------------------------------------------
+// Import-safety context + guards (server-enforced)
+//
+// Unzucker is a GRAMOFSMACK (carousel) tool ONLY, is single-site (NO hub/mesh
+// awareness), and is additive-only (no DELETE / no UPDATE-of-existing path).
+// Two guards protect the target site from this "data bazooka":
+//   1. Install-mode lock — refuse any write unless site_mode === 'carousel'.
+//   2. Non-empty-site lock — if the site already holds > 5 items, refuse writes
+//      until the owner authorizes an import in the admin (Settings -> API Access),
+//      which sets import_authorized_until. Empty/new sites import freely.
+// GET reads (ping, site) are unaffected so the tool can preflight and report.
+// ---------------------------------------------------------------------------
+$uz_site_mode = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog');
+$uz_content   = max(
+    (int)$pdo->query("SELECT COUNT(*) FROM snap_posts")->fetchColumn(),
+    (int)$pdo->query("SELECT COUNT(*) FROM snap_images")->fetchColumn()
+);
+$uz_import_authorized = ((int)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='import_authorized_until' LIMIT 1")->fetchColumn() ?: 0)) > time();
+
+if ($method === 'POST') {
+    if ($uz_site_mode !== 'carousel') {
+        uz_error(409, "Unzucker imports Instagram into GRAMOFSMACK (carousel) installs only. This site is '{$uz_site_mode}' — no bueno.");
+    }
+    if ($uz_content > 5 && !$uz_import_authorized) {
+        uz_error(403, "This site already holds {$uz_content} items. To import into a site that is not empty, authorize the import on the admin API Keys page first.");
+    }
+}
+
+// ---------------------------------------------------------------------------
 // GET unzucker/ping
 // ---------------------------------------------------------------------------
 
@@ -166,9 +194,13 @@ if ($sub === 'ping' && $method === 'GET') {
     $cat_count   = (int)$pdo->query("SELECT COUNT(*) FROM snap_categories")->fetchColumn();
     $album_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_albums")->fetchColumn();
     uz_ok([
-        'message'     => 'Connected.',
-        'cat_count'   => $cat_count,
-        'album_count' => $album_count,
+        'message'           => 'Connected.',
+        'cat_count'         => $cat_count,
+        'album_count'       => $album_count,
+        'site_mode'         => $uz_site_mode,
+        'compatible'        => ($uz_site_mode === 'carousel'),
+        'content_count'     => $uz_content,
+        'import_authorized' => $uz_import_authorized,
     ]);
 }
 
