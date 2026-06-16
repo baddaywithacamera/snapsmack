@@ -88,7 +88,7 @@ try {
             'role'               => $n['role'],
             'site_url'           => $n['site_url'],
             'site_name'          => $n['site_name'],
-            'api_key_remote'     => $n['api_key_remote'],  // key for calling that node
+            'api_key_local'      => $n['api_key_local'],   // hub->spoke key — what SUYB presents to pull a backup (same key the hub backup page uses)
             'software_version'   => $n['software_version'],
             'last_seen_at'       => $n['last_seen_at'],
             'post_count'         => (int) $n['post_count'],

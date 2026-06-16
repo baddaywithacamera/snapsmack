@@ -93,7 +93,18 @@ function pushit_push_group(array $spokes, array $settings, array $keys, string $
 // ─── SAVE HUB CONTROLS ───────────────────────────────────────────────────────
 $push_results = [];
 
+$push_error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['csrf']) && hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf'])) {
+
+    // STEP-UP AUTH: pushing to spokes is a powerful fleet action. Require the hub
+    // admin's password (+ 2FA when enrolled — reauth_verify enforces TOTP if the
+    // account has it) ONCE per submit. This page is a single form carrying every
+    // push button, so one entry covers the whole batch.
+    require_once 'core/reauth.php';
+    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    if (!$ra['ok']) {
+        $push_error = 'Push blocked — ' . $ra['error'];
+    } else {
 
     $upsert = $pdo->prepare(
         "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
@@ -144,6 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['csrf']) && hash_equa
             );
         }
     }
+    } // end step-up-auth else
 }
 
 // Re-read hub_controls from DB (after saves)
@@ -209,6 +221,33 @@ include 'core/sidebar.php';
 
     <form method="POST">
         <input type="hidden" name="csrf" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+
+        <?php if (!empty($push_error)): ?>
+        <div class="box" style="border:1px solid #c55400; background:rgba(197,84,0,0.08);">
+            <p style="margin:0; color:#c55400; font-size:0.9rem;"><?php echo htmlspecialchars($push_error); ?></p>
+        </div>
+        <?php endif; ?>
+
+        <!-- STEP-UP AUTH — one entry covers every push on this page -->
+        <div class="box">
+            <h3>CONFIRM IT'S YOU</h3>
+            <p class="dim" style="font-size:0.85rem; margin-bottom:14px;">
+                Pushing settings to your fleet needs your password — and your 2FA code if you have it turned on.
+                One entry here covers every push button on this page.
+            </p>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+                <div>
+                    <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">PASSWORD</label>
+                    <input type="password" name="reauth_password" autocomplete="off"
+                           style="padding:8px 10px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                </div>
+                <div>
+                    <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">2FA CODE (if enabled)</label>
+                    <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off"
+                           style="padding:8px 10px; width:120px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                </div>
+            </div>
+        </div>
 
         <?php
         // Helper: render push results for a group

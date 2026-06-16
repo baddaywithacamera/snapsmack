@@ -935,6 +935,19 @@ class B2Client:
 # Factory
 # ---------------------------------------------------------------------------
 
+def get_cloud_client(profile: dict, global_cloud: Optional[dict] = None):
+    """Return a cloud client for a backup profile's configured provider, falling
+    back to the global cloud config (profile settings win, global fills the gaps).
+    Returns None when no usable cloud is configured (local/FTP-only profiles).
+    Resolution mirrors backup_engine's own provider/creds derivation."""
+    gc       = global_cloud or {}
+    provider = (profile.get("cloud_provider")
+                or gc.get("cloud_provider") or "none")
+    creds    = (profile.get("cloud_credentials_file")
+                or gc.get("cloud_credentials_file") or "")
+    folder   = (profile.get("cloud_folder_id")
+                or gc.get("cloud_folder_id") or "")
+    if provider == "google_drive" and creds:
         return DriveClient(creds, folder)
     if provider == "box" and creds:
         return BoxClient(creds, folder)

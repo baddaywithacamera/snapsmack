@@ -6927,4 +6927,23 @@ input[type="range"]:active::-webkit-slider-thumb {
 .tab-content { display: none; }
 .tab-content.active,
 .tab-content.tab-content--active { display: block; }
+
+/* ── Backup freshness dots (Multisite dashboard) ─────────────────────────────
+   Age-keyed, NOT status-string keyed: <=7d green, <=14d yellow, <=28d red,
+   >28d or never = black + pulsing red. Base size/shape comes from .status-dot. */
+.backup-dot--fresh    { background-color: #4CAF50; }
+.backup-dot--aging    { background-color: #FFC107; }
+.backup-dot--stale    { background-color: #f44336; }
+.backup-dot--critical {
+    background-color: #0a0a0a;
+    border: 1px solid #ff3b30;
+    animation: ss-backup-pulse 1.1s ease-in-out infinite;
+}
+@keyframes ss-backup-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.90); }
+    50%      { box-shadow: 0 0 6px 3px rgba(255, 59, 48, 0.55); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .backup-dot--critical { animation: none; box-shadow: 0 0 5px 2px rgba(255, 59, 48, 0.80); }
+}
 /* ===== SNAPSMACK EOF ===== */

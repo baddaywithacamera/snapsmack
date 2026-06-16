@@ -14,6 +14,34 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ## 0.7.260 — "Ejector Seat" (2026-06-15)
 
+### Multisite mesh — critical key-broadcast fix + consent model
+
+- **Roster no longer broadcasts node keys (P0 fix).** The hub's peer roster
+  (`core/mesh-helpers.php` `ms_build_roster`) previously included every node's
+  `api_key_local` — the hub→spoke credential — and served it to any holder of a
+  valid spoke key, so one leaked spoke key could reach every sibling's database
+  export and admin-session (SSO) endpoints. The roster now carries discovery data
+  only (names/URLs/roles). `ms_ingest_roster` stores no peer key and self-heals by
+  blanking any sibling key a spoke stored under the old behaviour.
+- **Per-site hub-permission consent gates.** Powerful inbound hub actions — remote
+  update, skin reinstall, SSO token, and database backup export — are now OFF by
+  default and individually gated in `core/multisite-api.php`. Each spoke controls
+  them from a new "What this site lets its hub do" panel (`smack-multisite.php`).
+  Enabling a permission requires password + TOTP step-up (`core/reauth.php`);
+  turning one off is always allowed.
+- **Step-up auth model.** Joining a hub now requires step-up auth; leaving a hub
+  does not (it only reduces access and may be needed in an emergency). Pushing
+  settings from the hub (`smack-push-it.php`, `smack-multisite-settings.php`)
+  requires one password + TOTP per push — a single entry covers the whole batch.
+  SMACKBACK-disable keeps its own separate step-up gate.
+- **Duplicate SSO-token handler removed.** An earlier unguarded
+  `multisite/auth/sso-token` handler shadowed the hub-role-gated one; removed so
+  only the gated handler runs.
+- **SUYB backup tool.** Now authenticates to spokes with the correct key
+  (`api_key_local`, matching the hub backup page) instead of the unusable
+  `api_key_remote`; restores the broken `get_cloud_client()` factory in
+  `cloud_client.py` so cloud backups import again.
+
 ### Security & platform — six-feature batch
 
 - **Force TOTP 2FA (30-day grace).** New `installed_at` stamp starts a 30-day

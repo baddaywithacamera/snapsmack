@@ -69,6 +69,19 @@ $push_results = [];
 $csrf = $_SESSION['csrf_token'] ?? '';
 $csrf_valid = !empty($_POST['csrf']) && hash_equals($csrf, $_POST['csrf']);
 
+// STEP-UP AUTH for any push to spokes (one entry covers the batch; 2FA enforced
+// when enrolled). Saving the spoke selection is NOT a push and stays auth-free.
+$push_actions = ['push_timezone','push_akismet','push_ai','push_smackback','push_comments','push_email','push_downloads'];
+$is_push = false;
+foreach ($push_actions as $pa) { if (isset($_POST[$pa])) { $is_push = true; break; } }
+$push_auth_ok = true;
+$push_error   = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $csrf_valid && $is_push) {
+    require_once 'core/reauth.php';
+    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    if (!$ra['ok']) { $push_auth_ok = false; $push_error = 'Push blocked — ' . $ra['error']; }
+}
+
 // Save downloads spoke selection
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $csrf_valid && isset($_POST['save_dl_spokes'])) {
     $selected = array_map('intval', (array)($_POST['dl_spoke_ids'] ?? []));
@@ -90,7 +103,7 @@ $push_groups = [
 ];
 
 // SMACKBACK fleet enable/mode — save to hub first, then push
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $csrf_valid && isset($_POST['push_smackback'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $csrf_valid && $push_auth_ok && isset($_POST['push_smackback'])) {
     $fleet_enabled = ($_POST['smackback_enabled'] ?? '0') === '1' ? '1' : '0';
     $fleet_mode    = in_array($_POST['smackback_mode'] ?? '', ['alert','lockout','paranoid'], true)
                      ? $_POST['smackback_mode'] : 'lockout';
@@ -102,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $csrf_valid && isset($_POST['push_s
     $settings['smackback_mode']    = $fleet_mode;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $csrf_valid) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $csrf_valid && $push_auth_ok) {
     foreach ($push_groups as $action => $keys) {
         if (!isset($_POST[$action])) continue;
         $pairs = [];
@@ -219,8 +232,23 @@ require_once 'core/admin-header.php';
         <?php if (!empty($push_results['push_downloads'])): ?>
             <?php render_push_result($push_results['push_downloads']); ?>
         <?php endif; ?>
+        <?php if (!empty($push_error)): ?>
+        <p style="color:#c55400; font-size:0.85rem; margin-bottom:10px;"><?php echo htmlspecialchars($push_error); ?></p>
+        <?php endif; ?>
         <form method="POST">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px;">
+                <div>
+                    <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.5; margin-bottom:4px;">PASSWORD (to push)</label>
+                    <input type="password" name="reauth_password" autocomplete="off"
+                           style="padding:8px 10px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                </div>
+                <div>
+                    <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.5; margin-bottom:4px;">2FA CODE (if enabled)</label>
+                    <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off"
+                           style="padding:8px 10px; width:120px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                </div>
+            </div>
             <button type="submit" name="push_downloads" class="btn-smack"
                     style="width:auto;height:auto;padding:8px 20px;margin-top:0;"
                     <?php echo empty($dl_spoke_ids) ? 'disabled title="No spokes selected above"' : ''; ?>>

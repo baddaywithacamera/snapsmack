@@ -659,6 +659,11 @@ if ($resource === 'backup' && $sub_action === 'config' && $method === 'GET') {
 //   ?dump=full    — schema + data (default)
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'backup' && $sub_action === 'export' && $method === 'GET') {
+    // CONSENT GATE: pulling a full DB dump is powerful. Off unless this site's
+    // owner explicitly enabled it (Multisite settings → hub permissions).
+    if (($settings['multisite_allow_backup'] ?? '0') !== '1')
+        ms_err('Backup pull is disabled on this site (enable it in Multisite settings).', 403);
+
     require_once __DIR__ . '/export-engine.php';
 
     $dump_type = $_GET['dump'] ?? 'full';
@@ -791,23 +796,10 @@ if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
     ]);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ENDPOINT: POST multisite/auth/sso-token
-// Generates a short-lived one-time SSO token so the hub can launch a
-// browser session on this spoke without knowing its admin password.
-// Token is single-use and expires in 5 minutes.
-// ─────────────────────────────────────────────────────────────────────────────
-if ($resource === 'auth' && $sub_action === 'sso-token' && $method === 'POST') {
-    $token   = bin2hex(random_bytes(32));   // 64-char hex
-    $expires = time() + 300;               // 5 minutes
-
-    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
-        ->execute(['multisite_sso_token', $token, $token]);
-    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
-        ->execute(['multisite_sso_token_expires', $expires, $expires]);
-
-    ms_ok(['sso_token' => $token, 'expires_at' => $expires]);
-}
+// NOTE: the multisite/auth/sso-token handler lives further down (search
+// "sso-token") and is role-gated to the hub. An earlier DUPLICATE handler that
+// sat here had NO role gate and, executing first, shadowed the gated one —
+// removed 2026-06-15 so the role-gated version is the only one that runs.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: GET multisite/blogroll/list
@@ -1003,6 +995,9 @@ if ($resource === 'ban-sync' && $method === 'POST') {
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') {
     if ($node['role'] !== 'hub') ms_err('Only a hub may trigger spoke updates', 403);
+    // CONSENT GATE: remote code deploy. Off unless the owner enabled it.
+    if (($settings['multisite_allow_update'] ?? '0') !== '1')
+        ms_err('Remote updates are disabled on this site (enable it in Multisite settings).', 403);
 
     require_once __DIR__ . '/updater.php';
 
@@ -1185,6 +1180,9 @@ if ($resource === 'smackback' && $sub_action === 'report' && $method === 'POST')
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'skins' && $sub_action === 'reinstall' && $method === 'POST') {
     if ($node['role'] !== 'hub') ms_err('Only a hub may install skins on this spoke', 403);
+    // CONSENT GATE: remote skin install writes files. Off unless the owner enabled it.
+    if (($settings['multisite_allow_skin'] ?? '0') !== '1')
+        ms_err('Remote skin install is disabled on this site (enable it in Multisite settings).', 403);
 
     $body         = json_decode(file_get_contents('php://input'), true) ?? [];
     $slug         = trim($body['skin_slug']    ?? '');
@@ -1280,6 +1278,9 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'auth' && $sub_action === 'sso-token' && $method === 'POST') {
     if ($node['role'] !== 'hub') ms_err('Only a hub may request an SSO token', 403);
+    // CONSENT GATE: SSO = admin session takeover. Off unless the owner enabled it.
+    if (($settings['multisite_allow_sso'] ?? '0') !== '1')
+        ms_err('Hub SSO is disabled on this site (enable it in Multisite settings).', 403);
 
     $token   = bin2hex(random_bytes(32)); // 64 hex chars
     $expires = time() + 300;             // 5 minutes

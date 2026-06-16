@@ -328,6 +328,7 @@ class SetupWizard(tk.Toplevel):
             "pick whatever helps you identify this site.")
         self._field(f, "Blog name", "name")
         self._field(f, "Site URL", "site_url")
+        self._field(f, "API key", "api_key")
 
         # Step 2: Admin login
         f = self._make_frame()
@@ -572,6 +573,7 @@ class ProfileDialog(tk.Toplevel):
                  font=FONT_HEAD).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 4))
         self._field(f, 1,  "Blog name",          "name")
         self._field(f, 2,  "Site URL",            "site_url")
+        self._field(f, 3,  "API key",             "api_key")
 
         tk.Label(f, text="FTP", bg=BG_MID, fg=ACCENT,
                  font=FONT_HEAD).grid(row=3, column=0, columnspan=2, sticky="w", pady=(12, 4))
@@ -675,16 +677,16 @@ class HubDiscoveryDialog(tk.Toplevel):
         tk.Label(f, text="Hub Connection", bg=BG_MID, fg=ACCENT,
                  font=FONT_HEAD).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
 
-        tk.Label(f, text="Enter the hub blog's URL and admin credentials.\n"
-                         "SUYB will discover all spokes and create profiles.",
+        tk.Label(f, text="Enter the hub blog's URL and its API key.\n"
+                         "SUYB pulls every spoke, fills in each one's key, and\n"
+                         "points them all at your Global Cloud Config.",
                  bg=BG_MID, fg=FG_DIM, font=FONT_SMALL,
                  justify="left").grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 8))
 
         self._vars = {}
         for row, (label, key, show) in enumerate([
-            ("Hub URL",         "site_url",        ""),
-            ("Admin username",  "admin_user",      ""),
-            ("Admin password",  "admin_pass",      "●"),
+            ("Hub URL",      "site_url",  ""),
+            ("Hub API key",  "api_key",   ""),
         ], start=2):
             tk.Label(f, text=label, bg=BG_MID, fg=FG_DIM,
                      font=FONT_SMALL, anchor="w").grid(
@@ -700,8 +702,7 @@ class HubDiscoveryDialog(tk.Toplevel):
         cp = self._app._current_profile
         if cp:
             self._vars["site_url"].set(cp.get("site_url", ""))
-            self._vars["admin_user"].set(cp.get("snap_admin_user", ""))
-            self._vars["admin_pass"].set(cp.get("snap_admin_pass", ""))
+            self._vars["api_key"].set(cp.get("api_key", ""))
 
         # Backup directory for new profiles
         tk.Label(f, text="Backup base dir", bg=BG_MID, fg=FG_DIM,
@@ -742,12 +743,11 @@ class HubDiscoveryDialog(tk.Toplevel):
             self._dir_var.set(d)
 
     def _discover(self):
-        url  = self._vars["site_url"].get().strip()
-        user = self._vars["admin_user"].get().strip()
-        pw   = self._vars["admin_pass"].get().strip()
+        url = self._vars["site_url"].get().strip()
+        key = self._vars["api_key"].get().strip()
 
-        if not url or not user or not pw:
-            messagebox.showerror("Required", "All three fields are required.", parent=self)
+        if not url or not key:
+            messagebox.showerror("Required", "Hub URL and API key are required.", parent=self)
             return
 
         self._go_btn.configure(state="disabled")
@@ -756,14 +756,14 @@ class HubDiscoveryDialog(tk.Toplevel):
 
         import threading
         threading.Thread(target=self._run_discovery,
-                         args=(url, user, pw), daemon=True).start()
+                         args=(url, key), daemon=True).start()
 
-    def _run_discovery(self, url: str, user: str, pw: str):
+    def _run_discovery(self, url: str, key: str):
         try:
             from hub_discovery import HubDiscovery, build_profiles_from_spokes
 
-            disc = HubDiscovery(url, user, pw)
-            self.after(0, lambda: self._status_var.set("Logged in. Fetching spoke list…"))
+            disc = HubDiscovery(url, api_key=key)
+            self.after(0, lambda: self._status_var.set("Connected. Fetching spoke list…"))
 
             hub_info, spokes = disc.discover_spokes()
 
@@ -785,12 +785,9 @@ class HubDiscoveryDialog(tk.Toplevel):
             base_dir = self._dir_var.get().strip()
             profiles = build_profiles_from_spokes(
                 hub_info, spokes, spoke_configs, base_dir,
+                global_cloud=self._app.global_cloud_config(),
+                hub_api_key=key,
             )
-
-            # Also populate hub profile with admin credentials
-            if profiles:
-                profiles[0]["snap_admin_user"] = user
-                profiles[0]["snap_admin_pass"] = pw
 
             self.after(0, lambda: self._on_discovery_done(profiles))
 
@@ -2190,8 +2187,9 @@ class SettingsTab(tk.Frame):
         site_g.columnconfigure(1, weight=1)
         self._row(site_g, 0, "Blog name",      "name")
         self._row(site_g, 1, "Site URL",        "site_url")
-        self._row(site_g, 2, "Admin username",  "snap_admin_user")
-        self._row(site_g, 3, "Admin password",  "snap_admin_pass", show="●")
+        self._row(site_g, 2, "API key",         "api_key")
+        self._row(site_g, 3, "Admin username",  "snap_admin_user")
+        self._row(site_g, 4, "Admin password",  "snap_admin_pass", show="●")
 
         test_row = tk.Frame(c, bg=BG_MID)
         test_row.pack(anchor="w", pady=(6, 0))
@@ -2490,7 +2488,25 @@ class SettingsTab(tk.Frame):
         c = self._card(right)
         c.pack(fill="x", pady=(0, G))
         self._heading(c, "Automatic Backups")
-        self._sub(c, "Schedule is per-profile — set it in each profile's Schedule section below.")
+        self._sub(c, "One switch backs up every blog on a daily timer — and it runs even when SUYB is closed.")
+
+        gs_row = tk.Frame(c, bg=BG_MID)
+        gs_row.pack(anchor="w", fill="x", pady=(2, 0))
+        self._global_sched_var = tk.BooleanVar(value=False)
+        self._global_sched_time_var = tk.StringVar(value="02:00")
+        tk.Checkbutton(gs_row, text="Back up ALL blogs automatically, daily at",
+                       variable=self._global_sched_var,
+                       bg=BG_MID, fg=FG_MAIN, selectcolor=BG_INPUT,
+                       activebackground=BG_MID, font=FONT_BODY,
+                       command=self._on_global_schedule_toggle).pack(side="left")
+        tk.Entry(gs_row, textvariable=self._global_sched_time_var, width=6,
+                 bg=BG_INPUT, fg=FG_MAIN, insertbackground=FG_MAIN,
+                 relief="flat", font=FONT_BODY).pack(side="left", padx=(6, 0))
+
+        self._global_sched_status = tk.StringVar(value="")
+        tk.Label(c, textvariable=self._global_sched_status,
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL,
+                 wraplength=380, justify="left").pack(anchor="w", pady=(2, 4))
 
         app_opts = tk.Frame(c, bg=BG_MID)
         app_opts.pack(anchor="w", fill="x")
@@ -2541,6 +2557,8 @@ class SettingsTab(tk.Frame):
         # App options
         self._tray_var.set(cfg.getboolean("app", "tray_enabled", fallback=False))
         self._startup_var.set(cfg.getboolean("app", "startup_enabled", fallback=False))
+        self._global_sched_var.set(cfg.getboolean("app", "global_schedule_enabled", fallback=False))
+        self._global_sched_time_var.set(cfg.get("app", "global_schedule_time", fallback="02:00"))
         self._validate_global_key()
         self._refresh_ai_status()
         self.load_profile(self._app._current_profile)
@@ -2733,6 +2751,26 @@ class SettingsTab(tk.Frame):
         if not cfg.has_section("app"):
             cfg.add_section("app")
         cfg.set("app", "startup_enabled", str(enabled).lower())
+        cfg_module.save(cfg)
+
+    def _on_global_schedule_toggle(self) -> None:
+        """One switch → an OS-level daily 'back up all blogs' task (headless)."""
+        import os_schedule
+        enabled  = self._global_sched_var.get()
+        time_str = (self._global_sched_time_var.get() or "02:00").strip()
+        ok, msg = os_schedule.set_global_schedule(enabled, time_str)
+        self._global_sched_status.set(("✓ " if ok else "✗ ") + msg)
+        if not ok:
+            # snap the checkbox back to the real OS state
+            self._global_sched_var.set(
+                os_schedule.schedule_state().get("enabled", False))
+        # persist intent so the toggle reflects reality next launch
+        cfg = self._app._cfg
+        if not cfg.has_section("app"):
+            cfg.add_section("app")
+        cfg.set("app", "global_schedule_enabled",
+                str(self._global_sched_var.get()).lower())
+        cfg.set("app", "global_schedule_time", time_str)
         cfg_module.save(cfg)
 
     @staticmethod
@@ -5376,6 +5414,21 @@ def _enforce_single_instance():
 
 
 if __name__ == "__main__":
+    import sys
+    import argparse
+    _parser = argparse.ArgumentParser(
+        prog="suyb", description="Smack Up Your Backup")
+    _parser.add_argument(
+        "--backup-all", action="store_true",
+        help="Run a headless differential backup of every blog, then exit "
+             "(used by the Automatic Backups schedule).")
+    _parser.add_argument(
+        "--silent", action="store_true",
+        help="Suppress console output on a headless run (file log only).")
+    _args, _ = _parser.parse_known_args()
+    if _args.backup_all:
+        import headless
+        sys.exit(headless.run_backup_all(silent=_args.silent))
     _enforce_single_instance()
     app = App()
     app.mainloop()
