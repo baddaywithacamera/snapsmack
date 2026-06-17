@@ -123,7 +123,11 @@ $_au_nav_line_css  = ($_au_nav_line_mode === 'aurora')
 $_au_glow_hex  = trim($settings['au_glow_color'] ?? '#000000');
 $_au_glow_sz   = max(0, min(40, (int)($settings['au_glow_size']    ?? 0)));
 $_au_glow_op   = max(0, min(100, (int)($settings['au_glow_opacity'] ?? 0)));
-$_au_glow_css  = 'none';
+// Default: a soft DARK halo so the title/tagline stay legible over the bright,
+// shifting aurora curtains (light text over a bright curtain needs dark
+// separation, not a light glow). The admin "Text Glow" settings override this
+// when configured — so this is just the out-of-the-box readability floor.
+$_au_glow_css  = '0 0 2px rgba(0,0,0,0.85),0 0 8px rgba(0,0,0,0.55),0 0 16px rgba(0,0,0,0.40)';
 if ($_au_glow_sz > 0 && $_au_glow_op > 0) {
     // Parse hex → RGB for rgba() composition.
     $_gc = ltrim($_au_glow_hex, '#');
