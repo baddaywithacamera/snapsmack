@@ -131,8 +131,6 @@ $grid_stmt = $pdo->prepare("
 ");
 $grid_stmt->execute([$now_local]);
 $grid_posts = $grid_stmt->fetchAll();
-
-include dirname(__DIR__, 2) . '/core/meta.php';
 ?>
 <div class="au-content-wrap">
 
