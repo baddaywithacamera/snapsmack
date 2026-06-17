@@ -586,47 +586,60 @@ function smackback_init_manifest(string $zip_path, ?string $skin_id = null): boo
     $now   = date('Y-m-d H:i:s');
     $count = 0;
 
-    $stmt = $pdo->prepare(
-        "INSERT INTO snap_file_manifest
-             (file_path, expected_hash, file_size, eof_signature, skin_id, baseline_set, last_status)
-         VALUES (?, ?, ?, ?, ?, ?, 'pending')
-         ON DUPLICATE KEY UPDATE
-             expected_hash  = VALUES(expected_hash),
-             file_size      = VALUES(file_size),
-             eof_signature  = VALUES(eof_signature),
-             skin_id        = VALUES(skin_id),
-             baseline_set   = VALUES(baseline_set),
-             last_status    = 'pending',
-             last_verified  = NULL,
-             expected_mtime = NULL"
-    );
+    // snap_file_manifest may not exist yet on a spoke whose schema is behind
+    // canonical (the table is created by the schema sync). A hub-pushed update
+    // calls this BEFORE the sync has necessarily created it, so an unguarded
+    // prepare here threw an uncaught PDOException and 500'd the whole update
+    // endpoint — the same missing-table footgun that was fixed in
+    // smackback_verify_all(). Treat a missing manifest table as "nothing to
+    // baseline here" and let the update proceed; the schema sync creates the
+    // table and SMACKBACK initialises on the next arm/verify.
+    try {
+        $stmt = $pdo->prepare(
+            "INSERT INTO snap_file_manifest
+                 (file_path, expected_hash, file_size, eof_signature, skin_id, baseline_set, last_status)
+             VALUES (?, ?, ?, ?, ?, ?, 'pending')
+             ON DUPLICATE KEY UPDATE
+                 expected_hash  = VALUES(expected_hash),
+                 file_size      = VALUES(file_size),
+                 eof_signature  = VALUES(eof_signature),
+                 skin_id        = VALUES(skin_id),
+                 baseline_set   = VALUES(baseline_set),
+                 last_status    = 'pending',
+                 last_verified  = NULL,
+                 expected_mtime = NULL"
+        );
 
-    foreach ($manifest['files'] as $path => $info) {
-        if (empty($info['hash']) || !isset($info['size'])) {
-            continue;
+        foreach ($manifest['files'] as $path => $info) {
+            if (empty($info['hash']) || !isset($info['size'])) {
+                continue;
+            }
+            // Defence in depth: a CORE package manifest must never carry skin rows.
+            // Skins are monitored via their own skin_id rows (Skin Packager); a stray
+            // skins/ path here is exactly what false-breached the fleet on a core update.
+            if (str_starts_with($path, 'skins/')) {
+                continue;
+            }
+            // Use eof_signature from manifest JSON if present (build pipeline sets this).
+            // Fall back to computing from installed file on disk.
+            $eof_sig = $info['eof_signature'] ?? null;
+            if ($eof_sig === null) {
+                $abs_tmp = smackback_abs($path);
+                $eof_sig = file_exists($abs_tmp) ? smackback_get_eof_signature($abs_tmp) : null;
+            }
+            $stmt->execute([
+                $path,
+                $info['hash'],
+                (int) $info['size'],
+                $eof_sig ?: null,
+                $skin_id,
+                $now,
+            ]);
+            $count++;
         }
-        // Defence in depth: a CORE package manifest must never carry skin rows.
-        // Skins are monitored via their own skin_id rows (Skin Packager); a stray
-        // skins/ path here is exactly what false-breached the fleet on a core update.
-        if (str_starts_with($path, 'skins/')) {
-            continue;
-        }
-        // Use eof_signature from manifest JSON if present (build pipeline sets this).
-        // Fall back to computing from installed file on disk.
-        $eof_sig = $info['eof_signature'] ?? null;
-        if ($eof_sig === null) {
-            $abs_tmp = smackback_abs($path);
-            $eof_sig = file_exists($abs_tmp) ? smackback_get_eof_signature($abs_tmp) : null;
-        }
-        $stmt->execute([
-            $path,
-            $info['hash'],
-            (int) $info['size'],
-            $eof_sig ?: null,
-            $skin_id,
-            $now,
-        ]);
-        $count++;
+    } catch (PDOException $e) {
+        error_log('SMACKBACK: init_manifest skipped — ' . $e->getMessage());
+        return false;
     }
 
     error_log("SMACKBACK: Manifest loaded — {$count} files from " . basename($zip_path));
@@ -648,61 +661,72 @@ function smackback_init_from_disk(): bool {
         return false;
     }
 
-    $now  = date('Y-m-d H:i:s');
-    $stmt = $pdo->prepare(
-        "INSERT INTO snap_file_manifest
-             (file_path, expected_hash, file_size, eof_signature, skin_id, baseline_set, last_status)
-         VALUES (?, ?, ?, ?, ?, ?, 'pending')
-         ON DUPLICATE KEY UPDATE
-             expected_hash  = VALUES(expected_hash),
-             file_size      = VALUES(file_size),
-             eof_signature  = VALUES(eof_signature),
-             skin_id        = VALUES(skin_id),
-             baseline_set   = VALUES(baseline_set),
-             last_status    = 'pending',
-             last_verified  = NULL,
-             expected_mtime = NULL"
-    );
-
+    $now   = date('Y-m-d H:i:s');
     $count = 0;
     $seen  = [];
-    foreach ($files as $abs) {
-        $rel     = smackback_rel($abs);
-        $hash    = hash_file('sha256', $abs);
-        $size    = filesize($abs);
-        $eof_sig = smackback_get_eof_signature($abs);
-        if ($hash === false || $size === false) {
-            continue;
-        }
-        // Preserve skin attribution so a re-baseline of a 'skins/<slug>/...' file
-        // keeps its skin_id instead of orphaning it under NULL.
-        $skin_id = null;
-        if (preg_match('#^skins/([^/]+)/#', $rel, $m)) {
-            $skin_id = $m[1];
-        }
-        $stmt->execute([$rel, $hash, $size, $eof_sig ?: null, $skin_id, $now]);
-        $seen[$rel] = true;
-        $count++;
-    }
 
-    // Prune orphaned rows — anything still in the manifest that is no longer a
-    // monitored file on disk. A re-baseline declares the current disk authoritative;
-    // without this prune a stale/poisoned row (e.g. a skin file an OLD core package
-    // shipped but the live, separately-deployed skin no longer has) survives every
-    // re-baseline and keeps re-tripping the breach, so the in-admin recovery never
-    // sticks. That was the 0.7.262 lockout trap — VAX was the only way out.
-    if ($seen) {
-        $pruned = 0;
-        $del    = $pdo->prepare("DELETE FROM snap_file_manifest WHERE id = ?");
-        foreach ($pdo->query("SELECT id, file_path FROM snap_file_manifest")->fetchAll(PDO::FETCH_ASSOC) as $erow) {
-            if (!isset($seen[$erow['file_path']])) {
-                $del->execute([(int) $erow['id']]);
-                $pruned++;
+    // snap_file_manifest may not exist on a schema-behind spoke (same missing-table
+    // footgun guarded in init_manifest / verify_all). Without this, a "Re-initialise
+    // baseline from disk" — exactly the in-admin recovery step run on poisoned spokes
+    // — would 500 instead of recovering. Treat a missing table as "cannot baseline
+    // yet" and bail cleanly; the schema sync creates it.
+    try {
+        $stmt = $pdo->prepare(
+            "INSERT INTO snap_file_manifest
+                 (file_path, expected_hash, file_size, eof_signature, skin_id, baseline_set, last_status)
+             VALUES (?, ?, ?, ?, ?, ?, 'pending')
+             ON DUPLICATE KEY UPDATE
+                 expected_hash  = VALUES(expected_hash),
+                 file_size      = VALUES(file_size),
+                 eof_signature  = VALUES(eof_signature),
+                 skin_id        = VALUES(skin_id),
+                 baseline_set   = VALUES(baseline_set),
+                 last_status    = 'pending',
+                 last_verified  = NULL,
+                 expected_mtime = NULL"
+        );
+
+        foreach ($files as $abs) {
+            $rel     = smackback_rel($abs);
+            $hash    = hash_file('sha256', $abs);
+            $size    = filesize($abs);
+            $eof_sig = smackback_get_eof_signature($abs);
+            if ($hash === false || $size === false) {
+                continue;
+            }
+            // Preserve skin attribution so a re-baseline of a 'skins/<slug>/...' file
+            // keeps its skin_id instead of orphaning it under NULL.
+            $skin_id = null;
+            if (preg_match('#^skins/([^/]+)/#', $rel, $m)) {
+                $skin_id = $m[1];
+            }
+            $stmt->execute([$rel, $hash, $size, $eof_sig ?: null, $skin_id, $now]);
+            $seen[$rel] = true;
+            $count++;
+        }
+
+        // Prune orphaned rows — anything still in the manifest that is no longer a
+        // monitored file on disk. A re-baseline declares the current disk authoritative;
+        // without this prune a stale/poisoned row (e.g. a skin file an OLD core package
+        // shipped but the live, separately-deployed skin no longer has) survives every
+        // re-baseline and keeps re-tripping the breach, so the in-admin recovery never
+        // sticks. That was the 0.7.262 lockout trap — VAX was the only way out.
+        if ($seen) {
+            $pruned = 0;
+            $del    = $pdo->prepare("DELETE FROM snap_file_manifest WHERE id = ?");
+            foreach ($pdo->query("SELECT id, file_path FROM snap_file_manifest")->fetchAll(PDO::FETCH_ASSOC) as $erow) {
+                if (!isset($seen[$erow['file_path']])) {
+                    $del->execute([(int) $erow['id']]);
+                    $pruned++;
+                }
+            }
+            if ($pruned > 0) {
+                error_log("SMACKBACK: Disk baseline pruned {$pruned} orphaned manifest row(s)");
             }
         }
-        if ($pruned > 0) {
-            error_log("SMACKBACK: Disk baseline pruned {$pruned} orphaned manifest row(s)");
-        }
+    } catch (PDOException $e) {
+        error_log('SMACKBACK: init_from_disk skipped — ' . $e->getMessage());
+        return false;
     }
 
     error_log("SMACKBACK: Disk baseline set — {$count} files");
