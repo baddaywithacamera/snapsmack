@@ -12,6 +12,35 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.264 — "Musical Chairs" (2026-06-17)
+
+Hotfix release shaken out by the 0.7.263 fleet rollout + the first big Instagram import.
+
+### Bulk-import guard no longer guillotines its own import
+
+- **Gate on pre-existing content, not the live count.** The non-empty-site lock
+  (Unzucker, Flkr Fckr) recomputed the item count on every upload, so an import
+  larger than the threshold sailed past 5 of its own writes and then 403'd itself
+  on a clean site ("This site already holds 6 items"). It now blocks only when the
+  site is *already* over the limit with no import window open; a clean/under-limit
+  site is let through.
+- **Sliding import window.** Every accepted write now (re)opens the window, so a
+  multi-thousand-item migration runs to completion and never expires mid-flight —
+  also fixing the manual authorization lapsing 60 minutes into a big import.
+
+### Fixes
+
+- **Delete 500 in Manage.** `smack-manage.php` deleted from `snap_collection_items`
+  by `image_id`, a column that no longer exists since collections went polymorphic
+  (`item_type`/`item_id`) — every post/image delete threw a 1054 fatal. Images are
+  not collection members, so the obsolete cleanup is removed.
+- **SMACKBACK missing-table hardening.** `smackback_init_manifest()` and
+  `smackback_init_from_disk()` now treat a missing `snap_file_manifest` table as
+  "nothing to baseline" instead of fataling — a hub-pushed update (which calls the
+  manifest init before the schema sync has created the table on a schema-behind
+  spoke) and the in-admin "Re-initialise baseline from disk" recovery can no longer
+  500. Same guard the 0.7.262 hotfix gave `smackback_verify_all()`.
+
 ## 0.7.263 — "Bass Ackwards" (2026-06-16)
 
 Tool-security pass — per-tool scoped keys, bulk-import safety rails, and

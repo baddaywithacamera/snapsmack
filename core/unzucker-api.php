@@ -181,9 +181,24 @@ if ($method === 'POST') {
     if ($uz_site_mode !== 'carousel') {
         uz_error(409, "Unzucker imports Instagram into GRAMOFSMACK (carousel) installs only. This site is '{$uz_site_mode}' — no bueno.");
     }
-    if ($uz_content > 5 && !$uz_import_authorized) {
+    // Non-empty-site lock. The threshold must measure content that existed
+    // BEFORE this import — NOT the rows the import is adding — or any import
+    // larger than the limit guillotines itself on a clean site (it sailed past
+    // 5 of its own uploads and 403'd the sixth). So we only block when the site
+    // is ALREADY over the limit AND no import window is open. A clean/under-limit
+    // site is let through, and every accepted write (re)opens a sliding window —
+    // so the rest of the run proceeds however large it gets, and a long import
+    // never expires mid-flight (which also fixes the manual-authorize path
+    // lapsing 60 min into a multi-thousand-item migration).
+    if (!$uz_import_authorized && $uz_content > 5) {
         uz_error(403, "This site already holds {$uz_content} items. To import into a site that is not empty, authorize the import on the admin API Keys page first.");
     }
+    // Slide the import window forward on every accepted write.
+    $pdo->prepare(
+        "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('import_authorized_until', ?)
+         ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+    )->execute([(string)(time() + 3600)]);
+    $uz_import_authorized = true;
 }
 
 // ---------------------------------------------------------------------------

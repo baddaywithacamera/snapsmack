@@ -112,7 +112,14 @@ if (isset($_GET['delete'])) {
     $pdo->prepare("DELETE FROM snap_images WHERE id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_image_album_map WHERE image_id = ?")->execute([$id]);
-    $pdo->prepare("DELETE FROM snap_collection_items WHERE image_id = ?")->execute([$id]);
+    // NOTE: snap_collection_items went polymorphic (item_type IN
+    // ('post','album','category'), item_id) — it no longer has an `image_id`
+    // column, and images are never collection members, so the old
+    // "DELETE ... WHERE image_id = ?" here threw a 1054 Unknown column fatal and
+    // 500'd every delete. An image delete has no collection rows to clean
+    // (collections reference posts/albums/categories, not images), so there is
+    // nothing to do here. Matching item_id against an image id would risk
+    // deleting an unrelated post/album/category that happens to share the id.
     $pdo->prepare("DELETE FROM snap_comments WHERE img_id = ?")->execute([$id]);
 
     header("Location: smack-manage.php?msg=deleted");

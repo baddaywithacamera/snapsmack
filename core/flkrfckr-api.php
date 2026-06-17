@@ -136,9 +136,18 @@ if ($method === 'POST') {
     if ($fl_site_mode !== 'photoblog') {
         flkrfckr_error(409, "Flkr Fckr imports Flickr into SMACKONEOUT (photoblog) installs only. This site is '{$fl_site_mode}' — no bueno.");
     }
-    if ($fl_content > 5 && !$fl_import_authorized) {
+    // Non-empty-site lock — gate on PRE-EXISTING content only, with a sliding
+    // window so a large import doesn't trip its own wire or expire mid-flight.
+    // (See core/unzucker-api.php for the full rationale — same fix.)
+    if (!$fl_import_authorized && $fl_content > 5) {
         flkrfckr_error(403, "This site already holds {$fl_content} items. To import into a site that is not empty, authorize the import on the admin API Keys page first.");
     }
+    // Slide the import window forward on every accepted write.
+    $pdo->prepare(
+        "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('import_authorized_until', ?)
+         ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+    )->execute([(string)(time() + 3600)]);
+    $fl_import_authorized = true;
 }
 
 // ---------------------------------------------------------------------------
