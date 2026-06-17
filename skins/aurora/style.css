@@ -115,8 +115,13 @@ img { display: block; max-width: 100%; }
     top: 0;
     z-index: 100;
     background: transparent;
+    /* Thin (1px) static divider lines. No wave-colour cascade unless the admin
+       picks the 'aurora' nav-line mode — then --nav-line-color tracks the wave. */
     border-top:    1px solid var(--nav-line-color, var(--border-color));
     border-bottom: 1px solid var(--nav-line-color, var(--border-color));
+    /* Soft outer glow on the lines, matching the nav-text glow. Single static
+       colour — not the cascading wave. */
+    box-shadow: 0 0 7px var(--nav-line-glow, rgba(97,233,110,0.30));
 }
 
 .au-sticky-nav-inner {
