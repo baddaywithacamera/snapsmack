@@ -189,13 +189,21 @@ img { display: block; max-width: 100%; }
     text-decoration: none;
     letter-spacing: 0.2px;
     text-transform: var(--nav-text-transform, none);
-    transition: color 0.15s;
+    /* Outer glow — keeps the nav legible over the dark, animated aurora bg. */
+    text-shadow:
+        0 0 4px  var(--nav-glow-color, rgba(97,233,110,0.45)),
+        0 0 10px var(--nav-glow-color, rgba(97,233,110,0.30));
+    transition: color 0.15s, text-shadow 0.15s;
 }
 
 .au-sticky-nav-links a:hover,
 .au-sticky-nav-links a.active {
     color: var(--text-primary);
     opacity: 1;
+    /* Brighter halo on hover / current page. */
+    text-shadow:
+        0 0 6px  var(--nav-glow-color-strong, rgba(97,233,110,0.70)),
+        0 0 16px var(--nav-glow-color-strong, rgba(97,233,110,0.45));
 }
 
 /* Top nav bar (existing) */
