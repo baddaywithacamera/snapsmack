@@ -83,8 +83,9 @@ $count_stmt = $pdo->prepare(
 $count_stmt->execute([$now_local]);
 $post_count = (int)$count_stmt->fetchColumn();
 
-// ── Fetch all published posts with cover image + trigram info ─────────────
-// No LIMIT — all posts, browser lazy-loading handles performance.
+// ── Fetch all published posts ─────────────────────────────────────────────
+// All posts go into the DOM; images use loading="lazy" so the browser only
+// fetches them as they approach the viewport (same pattern as archive.php).
 $grid_stmt = $pdo->prepare("
     SELECT
         p.id          AS post_id,
@@ -244,7 +245,8 @@ $grid_posts = $grid_stmt->fetchAll();
             <p>No posts yet. Start by uploading your first photograph.</p>
         </div>
         <?php endif; ?>
-    </div>
+    </div><!-- /.au-grid -->
+
 </main>
 
 </div><!-- /.au-content-wrap -->
