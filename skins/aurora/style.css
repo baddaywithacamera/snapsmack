@@ -363,6 +363,13 @@ img { display: block; max-width: 100%; }
     overflow: hidden;
     background: var(--border-color);
     border-radius: var(--tile-radius);
+    /* Off-screen tiles skip layout/paint entirely — the mask-composite ring is
+       costly, so on a 1400-image grid this keeps render work to what's visible.
+       aspect-ratio already fixes the square height; contain-intrinsic-size is the
+       placeholder used while a tile is skipped. Pair with aurora-wave.js's
+       viewport-scoped animation. If layout ever looks off, this is the line to pull. */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 300px;
 }
 
 /* Aurora border-wave ring overlay (Layer 2).
@@ -1334,7 +1341,11 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 .au-aurora-bg {
     position: fixed;
     inset: 0;
-    z-index: 0;
+    /* MUST be negative: this is an opaque fixed layer. At z-index:0 it is a
+       positioned element that paints ABOVE static content (.au-content-wrap,
+       .au-profile have no z-index), hiding the profile header. Match the
+       treatment-bg pattern (-2/-1) and sit behind the content. */
+    z-index: -1;
     pointer-events: none;
     background-color: var(--au-sky, #000000);
 }

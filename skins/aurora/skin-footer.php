@@ -39,6 +39,11 @@
 $skin_manifest = include __DIR__ . '/manifest.php';
 $requested     = $skin_manifest['require_scripts'] ?? [];
 
+// Skin asset cache-buster: core version + skin version, mirroring meta.php's
+// $_skin_css_version. Bumping the skin version now busts BOTH the CSS and this
+// skin's JS, so a normal reload pulls everything fresh (no hard-refresh needed).
+$skin_asset_v = SNAPSMACK_VERSION_SHORT . (!empty($skin_manifest['version']) ? '-' . $skin_manifest['version'] : '');
+
 if (!empty($requested)) {
     $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
     if (isset($inventory['scripts'])) {
@@ -52,16 +57,16 @@ if (!empty($requested)) {
 }
 
 // ── au-modal.js — load directly in case manifest-inventory is stale ────────
-echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/au-modal.js?v=' . SNAPSMACK_VERSION_SHORT . '" defer></script>' . "\n";
+echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/au-modal.js?v=' . $skin_asset_v . '" defer></script>' . "\n";
 
 // ── au-lightbox.js — avatar lightbox (shared by all Grid pages) ────────────
-echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/au-lightbox.js?v=' . SNAPSMACK_VERSION_SHORT . '" defer></script>' . "\n";
+echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/au-lightbox.js?v=' . $skin_asset_v . '" defer></script>' . "\n";
 
 // ── aurora-bg.js — Layer 1 background curtains (canvas) ─────────────────────
-echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/aurora-bg.js?v=' . SNAPSMACK_VERSION_SHORT . '" defer></script>' . "\n";
+echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/aurora-bg.js?v=' . $skin_asset_v . '" defer></script>' . "\n";
 
 // ── aurora-wave.js — Layer 2 tile border colour wave (conic ring) ───────────
-echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/aurora-wave.js?v=' . SNAPSMACK_VERSION_SHORT . '" defer></script>' . "\n";
+echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/aurora-wave.js?v=' . $skin_asset_v . '" defer></script>' . "\n";
 
 // ── Core footer (closes </body></html>) ────────────────────────────────────
 include_once(dirname(__DIR__, 2) . '/core/footer.php');
