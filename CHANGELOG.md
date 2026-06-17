@@ -12,27 +12,35 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.262 — "Hot Seat" (2026-06-16)
-
-Critical hotfix — the 30-day force-2FA rollout exposed two latent fatals that
-locked admins out of the fleet. Ships alone, ahead of the 0.7.261 tool-security
-pass (which stays unreleased until the SUYB/SYBU executables are rebuilt).
-
-- **2FA verify no longer fatals.** `smack-2fa-verify.php` called the trusted-device
-  check (`ss_totp_check_trust()`) before `$pending_id`/`$user` were defined, so on
-  PHP 8 it threw an uncaught `TypeError` (null given for an `int` param) and
-  white-screened the verify page — locking every 2FA-enabled admin out of every
-  site. The check now runs after the pending user is loaded.
-- **Admin dashboard tolerates an unarmed SMACKBACK.** `smackback_verify_all()`
-  (`core/smackback.php`) now returns a clean result instead of fataling when the
-  `snap_file_manifest` table doesn't exist yet, so `smack-admin.php` loads on
-  installs where SMACKBACK was never armed.
-
-## 0.7.261 — "Bass Ackwards" (2026-06-15)
+## 0.7.263 — "Bass Ackwards" (2026-06-16)
 
 Tool-security pass — per-tool scoped keys, bulk-import safety rails, and
-cross-mode restore protection. Spec:
+cross-mode restore protection. Renumbered from the originally-planned 0.7.261
+because the 0.7.262 "Hot Seat" login hotfix shipped first. Spec:
 `_spec/tool-security-scoped-keys-and-import-guards-v0.1.md`.
+
+### New skin — AURORA (v1.0.0)
+
+- **AURORA** — a new desktop **GRAMOFSMACK** skin built on The Grid's proven
+  3-across square-tile architecture, overlaid with a two-layer animation system:
+  - **Layer 1 — background aurora.** A slow, CSS-only animated radial gradient
+    that breathes the active palette behind the photography. Atmospheric by
+    design: low opacity, ~30s cycle. Admin-configurable palette, sky base, and
+    opacity.
+  - **Layer 2 — tile border wave.** A colour wave travels across the grid's tile
+    borders (`skins/aurora/assets/js/aurora-wave.js`), with admin-configurable
+    direction, speed, intensity, and border width.
+  - Palettes (Aurora / Borealis Ice / Solar Storm) and sky bases are data-driven
+    via `skins/aurora/aurora-config.php` — new palettes need no code changes.
+  - Respects `prefers-reduced-motion` (both layers freeze, still coherent) and
+    pauses the wave loop while the tab is hidden. No inline JS; the wave engine
+    ships as a skin asset, loaded from the skin footer.
+  - Desktop-only: declared `incompatible: ["mobile", "tablet"]` so it is never
+    offered on mobile-primary installs (PHOTOGRAM/TELEGRAM handle mobile).
+  - Distributed via the **Skin Packager** (like all non-base skins) — not bundled
+    in the core release zip. Spec: `_spec/aurora-parade-skin-spec-v0.1.docx`.
+    PARADE (the Pride-palette variant of the same architecture) is a separate
+    skin, deferred.
 
 ### Bulk-import safety (Unzucker, Flkr Fckr)
 
@@ -95,6 +103,51 @@ cross-mode restore protection. Spec:
   scan saw "changed" files and flagged a breach. The hub-push path now refreshes
   the manifest from the signed update package — and clears a stale breach — exactly
   as the local SYSTEM UPDATES path already did.
+
+### API key expiry + admin theme fixes
+
+- **Mandatory API-key expiry (4-week cap).** Tool keys minted in Admin → API Keys
+  now require an expiry — 1 day, 1 week, 2 weeks, or 4 weeks (no permanent keys).
+  `core/api-auth.php` rejects an expired key (with a graceful fallback if the column
+  hasn't synced yet). Pre-existing keys carry a NULL expiry and are grandfathered
+  until re-minted. New `snap_ohsnap_keys.expires_at` column.
+- **Admin button labels readable in every colour scheme.** Delete/revoke buttons
+  (`.btn-reset.action-delete`) lost their colour to `.btn-reset` by CSS source order;
+  fixed across all admin themes by raising the action-delete selector's specificity,
+  preserving each scheme's own palette. Added a readable `.action-copy` control and
+  moved the API-keys page off inline styles onto theme classes.
+
+### SMACKBACK false-breach fix (no more update lockouts)
+
+- **Core integrity manifest is core-only.** The release packager no longer sweeps
+  `skins/` file hashes into the core `smackback-manifest.json`, and the manifest
+  loader skips any stray skin path — so a core update can never plant skin rows that
+  false-breach the fleet. Skins stay monitored via their own `skin_id` rows.
+- **Re-baseline from disk now prunes orphaned rows.** `smackback_init_from_disk()`
+  removes manifest rows whose file is no longer on disk (and preserves each skin
+  file's `skin_id`). A poisoned/stale row can no longer survive a re-baseline, so the
+  in-admin "Re-initialise baseline from disk" recovery actually sticks — no more
+  needing the operator break-glass (VAX) to escape a lockout.
+- **A signed update self-heals on either baseline path.** When an Ed25519-verified
+  update (local or hub-pushed) re-baselines from the freshly-extracted disk, a stale
+  breach is now auto-cleared the same way the in-zip signed-manifest path already did
+  — a trusted update resolves the breach instead of locking the site down.
+
+## 0.7.262 — "Hot Seat" (2026-06-16)
+
+Critical hotfix — the 30-day force-2FA rollout exposed two latent fatals that
+locked admins out of the fleet. Shipped alone, ahead of the 0.7.263 tool-security
+pass (which shipped once the SUYB/SYBU executables were rebuilt).
+
+- **2FA verify no longer fatals.** `smack-2fa-verify.php` called the trusted-device
+  check (`ss_totp_check_trust()`) before `$pending_id`/`$user` were defined, so on
+  PHP 8 it threw an uncaught `TypeError` (null given for an `int` param) and
+  white-screened the verify page — locking every 2FA-enabled admin out of every
+  site. The check now runs after the pending user is loaded.
+- **Admin dashboard tolerates an unarmed SMACKBACK.** `smackback_verify_all()`
+  (`core/smackback.php`) now returns a clean result instead of fataling when the
+  `snap_file_manifest` table doesn't exist yet, so `smack-admin.php` loads on
+  installs where SMACKBACK was never armed.
 
 ## 0.7.260 — "Ejector Seat" (2026-06-15)
 

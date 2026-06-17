@@ -38,6 +38,7 @@ if ($multisite_role !== 'hub') {
 $spokes = $pdo->query("
     SELECT id, site_url, site_name,
            api_key_local,
+           COALESCE(api_key_backup, '') AS api_key_backup,
            last_backup_at, last_backup_size, last_backup_dest, last_backup_status,
            disk_usage_bytes, status, last_seen_at
     FROM snap_multisite_nodes
@@ -66,7 +67,9 @@ if ($drill_node > 0) {
             CURLOPT_TIMEOUT        => 8,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_HTTPHEADER     => [
-                'Authorization: Bearer ' . $drill_spoke['api_key_local'],
+                // 0.7.261: prefer the least-privilege backup key; fall back to the
+                // full key for spokes that have not re-joined yet.
+                'Authorization: Bearer ' . (!empty($drill_spoke['api_key_backup']) ? $drill_spoke['api_key_backup'] : $drill_spoke['api_key_local']),
                 'Accept: application/json',
             ],
         ]);

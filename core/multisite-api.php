@@ -113,30 +113,42 @@ if ($resource === 'handshake' && $method === 'POST') {
 
     // Generate a persistent key pair: hub calls us with api_key_local,
     // we call the hub with api_key_remote.
-    $api_key_local  = bin2hex(random_bytes(32));  // hub → spoke auth
+    $api_key_local  = bin2hex(random_bytes(32));  // hub → spoke auth (FULL)
     $api_key_remote = bin2hex(random_bytes(32));  // spoke → hub auth (returned to hub)
+    // 0.7.261: least-privilege hub→spoke key, valid ONLY on multisite/backup/*.
+    // SUYB presents this (instead of the full api_key_local) so the god key never
+    // lands in a desktop profile. Additive: api_key_local still works everywhere.
+    $api_key_backup = bin2hex(random_bytes(32));
+
+    // Belt-and-suspenders: ensure the column exists even if a canonical sync was
+    // skipped on this spoke. Harmless if it already exists / engine lacks IF NOT EXISTS.
+    try {
+        $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS api_key_backup varchar(255) NOT NULL DEFAULT ''");
+    } catch (\PDOException $e) { /* column already present, or unsupported syntax — canonical covers it */ }
 
     try {
         $pdo->prepare("
             INSERT INTO snap_multisite_nodes
-                (role, site_url, site_name, api_key_local, api_key_remote, status, connected_at)
-            VALUES ('hub', ?, ?, ?, ?, 'active', NOW())
+                (role, site_url, site_name, api_key_local, api_key_remote, api_key_backup, status, connected_at)
+            VALUES ('hub', ?, ?, ?, ?, ?, 'active', NOW())
             ON DUPLICATE KEY UPDATE
                 role           = VALUES(role),
                 api_key_local  = VALUES(api_key_local),
                 api_key_remote = VALUES(api_key_remote),
+                api_key_backup = VALUES(api_key_backup),
                 site_name      = VALUES(site_name),
                 status         = 'active',
                 connected_at   = NOW()
-        ")->execute([$remote_url, $remote_name, $api_key_local, $api_key_remote]);
+        ")->execute([$remote_url, $remote_name, $api_key_local, $api_key_remote, $api_key_backup]);
 
         // Burn the one-time token
         $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, '') ON DUPLICATE KEY UPDATE setting_val = ''")->execute(['multisite_reg_token']);
         $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, '0') ON DUPLICATE KEY UPDATE setting_val = '0'")->execute(['multisite_reg_token_expires']);
 
         ms_ok([
-            'api_key'          => $api_key_local,   // hub presents this when calling us (hub→spoke)
+            'api_key'          => $api_key_local,   // hub presents this when calling us (hub→spoke, FULL)
             'api_key_outbound' => $api_key_remote,  // we present this when calling hub (spoke→hub)
+            'api_key_backup'   => $api_key_backup,  // hub presents this for backup-only pulls (0.7.261)
             'site_url'         => BASE_URL,
             'site_name'        => $settings['site_name'] ?? 'SnapSmack',
             'version'          => SNAPSMACK_VERSION,
@@ -253,8 +265,34 @@ $node_stmt = $pdo->prepare("
 $node_stmt->execute([$api_key]);
 $node = $node_stmt->fetch(PDO::FETCH_ASSOC);
 
+// 0.7.261 — least-privilege backup key. If the presented Bearer is not the FULL
+// api_key_local, accept it ONLY if it matches this node's api_key_backup, and ONLY
+// for multisite/backup/* resources. Additive: api_key_local still reaches everything.
+// try/catch so a pre-migration spoke (column not yet present) just falls through to 401.
+$ms_key_scope = 'full';
+if (!$node) {
+    try {
+        $bkp_stmt = $pdo->prepare("
+            SELECT id, site_url, site_name, role
+            FROM snap_multisite_nodes
+            WHERE api_key_backup = ? AND api_key_backup <> '' AND status = 'active'
+            LIMIT 1
+        ");
+        $bkp_stmt->execute([$api_key]);
+        $node = $bkp_stmt->fetch(PDO::FETCH_ASSOC);
+        if ($node) { $ms_key_scope = 'backup'; }
+    } catch (\PDOException $e) {
+        $node = false; // column missing on this spoke — fail closed to normal 401
+    }
+}
+
 if (!$node) {
     ms_err('Invalid or revoked API key', 401);
+}
+
+// A backup-scoped key may touch NOTHING outside multisite/backup/*.
+if ($ms_key_scope === 'backup' && $resource !== 'backup') {
+    ms_err('This key is scoped to backup operations only', 403);
 }
 
 $node_id = $node['id'];
@@ -687,6 +725,27 @@ if ($resource === 'backup' && $sub_action === 'export' && $method === 'GET') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/backup/report
+// Lets SUYB record a completed hub-side backup pull onto this spoke's own
+// snap_settings (the sanctioned "flip the backup-done bit"). Writes ONLY the
+// last_backup_* keys — the scoped api_key_backup reaches nothing else. Mirrors
+// the single-site suyb-complete.php contract. (0.7.261)
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'backup' && $sub_action === 'report' && $method === 'POST') {
+    $b_status = in_array(($_POST['status'] ?? ''), ['ok', 'failed'], true) ? $_POST['status'] : 'ok';
+    $b_size   = isset($_POST['size'])  ? (string)(int)$_POST['size'] : '';
+    $b_dest   = substr(trim((string)($_POST['dest'] ?? '')), 0, 100);
+
+    $set = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
+    $set->execute(['last_backup_at',     date('Y-m-d H:i:s')]);
+    $set->execute(['last_backup_status', $b_status]);
+    if ($b_size !== '') { $set->execute(['last_backup_size', $b_size]); }
+    if ($b_dest !== '') { $set->execute(['last_backup_dest', $b_dest]); }
+
+    ms_ok(['recorded' => true, 'last_backup_status' => $b_status]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: POST multisite/posts/create
 // Cross-post: create a new image record from a hub-originated post.
 // The hub sends metadata + a publicly accessible URL for the image file.
@@ -1061,9 +1120,18 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
             }
         } elseif (function_exists('smackback_init_from_disk')) {
             // No manifest in the package (e.g. an SC-packaged-from-GitHub zip) →
-            // re-baseline from the freshly-extracted, signature-verified disk. Do
-            // NOT auto-clear a breach on the disk fallback (less trusted basis).
-            smackback_init_from_disk();
+            // re-baseline from the freshly-extracted, signature-verified disk. The
+            // package was Ed25519-verified before staging, so this shares the same
+            // trust basis as the in-zip manifest (0.7.263 posture). The prune in
+            // smackback_init_from_disk() removes any orphaned row, so auto-clearing a
+            // stale breach here is safe — without it the spoke stays locked until an
+            // admin re-inits by hand.
+            if (smackback_init_from_disk() && function_exists('smackback_resolve_breach')) {
+                $smack_prev = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_status'")->fetchColumn();
+                if ($smack_prev === 'breach') {
+                    smackback_resolve_breach('update');
+                }
+            }
         }
     }
 

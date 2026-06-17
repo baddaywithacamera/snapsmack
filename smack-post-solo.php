@@ -18,7 +18,14 @@
 
 // SYBU scoped key + photoblog-only gate (see sybu-data.php). This is the solo
 // posting endpoint SYBU writes through; the gate only affects TOOL access, the
-// browser admin page is unaffected. Additive — legacy auth still works.
+// browser admin page is unaffected.
+//
+// SYBU WRITE SCOPE — LOCKED (0.7.261, Sean-confirmed): the 'sybu' key's entire
+// write surface on this endpoint is ADDITIVE — it INSERTs ONE new snap_images
+// row plus its category / album / collection map rows (snap_image_cat_map,
+// snap_image_album_map, snap_collection_items). It performs NO UPDATE of an
+// existing image and NO DELETE. Do not widen this surface (no UPDATE/DELETE of
+// existing content) without re-confirming the tool's least-privilege scope.
 $GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu'];
 $GLOBALS['SNAP_API_REQUIRE_MODE'] = 'photoblog';
 require_once 'core/api-auth.php';

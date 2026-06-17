@@ -212,7 +212,10 @@ def build_profiles_from_spokes(
         tmpl.update({
             "name":                   name,
             "site_url":               url,
-            "api_key":                spoke.get("api_key_local", ""),  # hub->spoke key from the hub's own DB (auth for backup pulls)
+            # 0.7.261: PREFER the least-privilege backup key (valid only on
+            # multisite/backup/*). Fall back to the full api_key_local for spokes
+            # that have not re-joined since the scoped-key release.
+            "api_key":                spoke.get("api_key_backup") or spoke.get("api_key_local", ""),
             "backup_method":          "cloud",
             "cloud_provider":         gc.get("cloud_provider") or cfg.get("cloud_provider") or "google_drive",
             "cloud_credentials_file": "",   # inherit the one global Drive credential

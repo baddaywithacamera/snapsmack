@@ -437,6 +437,11 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
             && !str_ends_with($basename, '.min.js')
             && !str_ends_with($basename, '.min.css')
             && strpos($rel, 'fjGallery') === false
+            && !str_starts_with($rel, 'skins/')   // CORE manifest is core-only — skins are
+                                                  // monitored via their own skin_id rows (Skin
+                                                  // Packager). Keeping skin hashes out of the
+                                                  // core baseline is what stops a core update
+                                                  // false-breaching the fleet.
         ) {
             if ($content === '') {
                 $eof_sig = null;

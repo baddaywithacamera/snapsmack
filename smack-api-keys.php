@@ -29,6 +29,10 @@ try { $pdo->query("SELECT key_prefix FROM snap_ohsnap_keys LIMIT 0");
 } catch (PDOException $e) {
     $pdo->exec("ALTER TABLE snap_ohsnap_keys ADD COLUMN key_prefix VARCHAR(8) NOT NULL DEFAULT '' AFTER key_hash");
 }
+try { $pdo->query("SELECT expires_at FROM snap_ohsnap_keys LIMIT 0");
+} catch (PDOException $e) {
+    $pdo->exec("ALTER TABLE snap_ohsnap_keys ADD COLUMN expires_at DATETIME DEFAULT NULL AFTER last_used_at");
+}
 
 // --- GENERATE ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate') {
@@ -48,10 +52,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
     $key_hash   = hash('sha256', $raw_key);
     $key_prefix = substr($raw_key, 0, 8);
 
+    // Mandatory expiry — keys live at most 4 weeks (0.7.263). No "never" option.
+    $expiry_map = ['1d' => '+1 day', '1w' => '+1 week', '2w' => '+2 weeks', '4w' => '+4 weeks'];
+    $expiry_sel = (string)($_POST['expiry'] ?? '');
+    if (!isset($expiry_map[$expiry_sel])) $expiry_sel = '4w'; // default + cap
+    $expires_at = date('Y-m-d H:i:s', strtotime($expiry_map[$expiry_sel]));
+
     $pdo->prepare("
-        INSERT INTO snap_ohsnap_keys (label, key_type, key_hash, key_prefix)
-        VALUES (?, ?, ?, ?)
-    ")->execute([$label, $key_type, $key_hash, $key_prefix]);
+        INSERT INTO snap_ohsnap_keys (label, key_type, key_hash, key_prefix, expires_at)
+        VALUES (?, ?, ?, ?, ?)
+    ")->execute([$label, $key_type, $key_hash, $key_prefix, $expires_at]);
 
     $new_key_raw = $raw_key;
     $msg = '> KEY GENERATED. COPY IT NOW — IT WILL NOT BE SHOWN AGAIN.';
@@ -106,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cance
 
 // --- FETCH ---
 $keys         = $pdo->query("
-    SELECT id, label, key_type, key_prefix, is_active, created_at, last_used_at
+    SELECT id, label, key_type, key_prefix, is_active, created_at, last_used_at, expires_at
     FROM snap_ohsnap_keys
     ORDER BY key_type ASC, created_at DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
@@ -136,11 +146,11 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
     <?php if ($new_key_raw): ?>
-        <div class="alert alert-warn" style="margin-bottom:20px;">
+        <div class="alert alert-warn mb-20">
             <strong><?php echo $msg; ?></strong><br><br>
-            <code id="new-key-value" style="word-break:break-all;font-size:0.9rem;"><?php echo htmlspecialchars($new_key_raw); ?></code>
+            <code id="new-key-value" class="key-reveal"><?php echo htmlspecialchars($new_key_raw); ?></code>
             &nbsp;
-            <button type="button" class="btn-reset" style="text-decoration:underline;cursor:pointer;" onclick="
+            <button type="button" class="action-copy" onclick="
                 navigator.clipboard.writeText(document.getElementById('new-key-value').textContent);
                 this.textContent = 'COPIED';
                 setTimeout(() => this.textContent = 'COPY', 2000);
@@ -149,19 +159,19 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
     <!-- BULK IMPORT AUTHORIZATION (Flkr Fckr / Unzucker non-empty-site gate) -->
-    <div class="box" style="margin-bottom:20px;">
+    <div class="box mb-20">
         <h3>BULK IMPORT AUTHORIZATION</h3>
-        <p class="dim" style="font-size:0.85rem; margin-bottom:14px;">
+        <p class="dim mb-20">
             The Flkr Fckr and Unzucker importers refuse to write to a site that already holds
             more than 5 items, to stop an accidental bulk import from clobbering an established
             site. Empty or new sites need no authorization. Authorizing requires your password
             (and 2FA code if enabled) and lasts one hour.
         </p>
         <?php if ($import_auth_active): ?>
-            <p style="color:var(--success,#4caf50); font-size:0.9rem; margin-bottom:12px;">
+            <div class="alert alert-success">
                 &#10003; Import authorized until <?php echo date('H:i', $import_auth_until); ?>
                 (about <?php echo max(1, (int)ceil(($import_auth_until - time()) / 60)); ?> min left).
-            </p>
+            </div>
             <form method="post" action="smack-api-keys.php">
                 <input type="hidden" name="action" value="cancel_import_auth">
                 <button type="submit" class="btn-smack">CANCEL AUTHORIZATION</button>
@@ -169,16 +179,14 @@ include 'core/sidebar.php';
         <?php else: ?>
             <form method="post" action="smack-api-keys.php">
                 <input type="hidden" name="action" value="authorize_import">
-                <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px;">
-                    <div>
-                        <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">PASSWORD</label>
-                        <input type="password" name="reauth_password" autocomplete="off"
-                               style="padding:8px 10px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                <div class="reauth-row">
+                    <div class="lens-input-wrapper">
+                        <label>PASSWORD</label>
+                        <input type="password" name="reauth_password" autocomplete="off">
                     </div>
-                    <div>
-                        <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">2FA CODE (if enabled)</label>
-                        <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off"
-                               style="padding:8px 10px; width:120px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                    <div class="lens-input-wrapper">
+                        <label>2FA CODE (IF ENABLED)</label>
+                        <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" class="input-code">
                     </div>
                 </div>
                 <button type="submit" class="master-update-btn">AUTHORIZE IMPORT FOR 1 HOUR</button>
@@ -217,6 +225,17 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper mt-20">
+                        <label>EXPIRES</label>
+                        <select name="expiry">
+                            <option value="1d">1 day</option>
+                            <option value="1w">1 week</option>
+                            <option value="2w">2 weeks</option>
+                            <option value="4w" selected>4 weeks (max)</option>
+                        </select>
+                        <p class="field-hint">Keys expire automatically &mdash; 4 weeks max. Mint a fresh one when this lapses.</p>
+                    </div>
+
+                    <div class="lens-input-wrapper mt-20">
                         <button type="submit" class="master-update-btn">GENERATE KEY</button>
                     </div>
                 </form>
@@ -240,11 +259,17 @@ include 'core/sidebar.php';
                                     <div class="item-meta">
                                         CREATED <?php echo htmlspecialchars($key['created_at']); ?> &middot;
                                         LAST USED: <?php echo $key['last_used_at'] ? htmlspecialchars($key['last_used_at']) : 'NEVER'; ?>
+                                        <?php if (!empty($key['expires_at'])):
+                                            $exp_ts = strtotime($key['expires_at']); ?>
+                                            &middot; <?php echo ($exp_ts && $exp_ts <= time())
+                                                ? 'EXPIRED ' . htmlspecialchars($key['expires_at'])
+                                                : 'EXPIRES ' . htmlspecialchars($key['expires_at']); ?>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
                             <div class="item-actions">
-                                <form method="post" action="smack-api-keys.php" style="display:inline;"
+                                <form method="post" action="smack-api-keys.php" class="form-inline"
                                       onsubmit="return confirm('REVOKE THIS KEY?');">
                                     <input type="hidden" name="action" value="revoke">
                                     <input type="hidden" name="key_id" value="<?php echo (int)$key['id']; ?>">
@@ -257,7 +282,7 @@ include 'core/sidebar.php';
             </div>
 
             <?php if ($revoked_keys): ?>
-            <div class="box" style="margin-top:20px;">
+            <div class="box mt-20">
                 <h3>REVOKED KEYS</h3>
                 <?php foreach ($revoked_keys as $key): ?>
                     <div class="recent-item">
@@ -268,7 +293,7 @@ include 'core/sidebar.php';
                             </div>
                         </div>
                         <div class="item-actions">
-                            <form method="post" action="smack-api-keys.php" style="display:inline;"
+                            <form method="post" action="smack-api-keys.php" class="form-inline"
                                   onsubmit="return confirm('PERMANENTLY DELETE THIS KEY RECORD?');">
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="key_id" value="<?php echo (int)$key['id']; ?>">
