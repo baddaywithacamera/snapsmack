@@ -110,10 +110,39 @@ $_au_bo      = number_format(max(10, min(100, (int)($settings['au_border_opacity
 $_au_corner  = $settings['au_tile_corners'] ?? 'auto';                             // auto|square|rounded
 $_au_radius  = ($_au_corner === 'square') ? 0
              : (($_au_corner === 'rounded') ? 16 : (int)round($_au_bw * 2.2));     // 'auto' grows with width
+
+// ── Nav line colour mode ───────────────────────────────────────────────────
+// 'aurora' → lines track the live wave colour; 'static' → use --border-color.
+$_au_nav_line_mode = $settings['au_nav_line_mode'] ?? 'static';
+$_au_nav_line_css  = ($_au_nav_line_mode === 'aurora')
+    ? '--nav-line-color:var(--au-wave-color,var(--border-color));'
+    : '';
+
+// ── Profile text glow ─────────────────────────────────────────────────────
+// Composited text-shadow for readability over the shifting aurora background.
+$_au_glow_hex  = trim($settings['au_glow_color'] ?? '#000000');
+$_au_glow_sz   = max(0, min(40, (int)($settings['au_glow_size']    ?? 0)));
+$_au_glow_op   = max(0, min(100, (int)($settings['au_glow_opacity'] ?? 0)));
+$_au_glow_css  = 'none';
+if ($_au_glow_sz > 0 && $_au_glow_op > 0) {
+    // Parse hex → RGB for rgba() composition.
+    $_gc = ltrim($_au_glow_hex, '#');
+    if (strlen($_gc) === 3) $_gc = $_gc[0].$_gc[0].$_gc[1].$_gc[1].$_gc[2].$_gc[2];
+    $_gr = hexdec(substr($_gc, 0, 2));
+    $_gg = hexdec(substr($_gc, 2, 2));
+    $_gb = hexdec(substr($_gc, 4, 2));
+    $_ga = number_format($_au_glow_op / 100, 2);
+    // Two passes at the configured size, second at 2× for spread.
+    $_au_glow_css = sprintf(
+        '0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_au_glow_sz, $_gr, $_gg, $_gb, $_ga,
+        $_au_glow_sz * 2, $_gr, $_gg, $_gb, number_format($_au_glow_op / 200, 2)
+    );
+}
 ?>
 
 <!-- AURORA tile vars: border width / corner radius / ring opacity / sky base -->
-<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;}</style>
+<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_au_glow_css); ?>;<?php echo $_au_nav_line_css; ?>}</style>
 
 <!-- AURORA config carrier — read by aurora-bg.js (Layer 1 curtains) and
      aurora-wave.js (Layer 2 ring wave). -->

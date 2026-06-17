@@ -291,6 +291,11 @@ if (isset($_POST['save_skin_settings'])) {
     snapsmack_apply_skin_settings($all_settings, $active_skin);
     $settings = $all_settings;
 
+    // 4b-i. Flush the page cache — skin appearance changes must be visible
+    // immediately on the front end, not after the next cache TTL expires.
+    require_once __DIR__ . '/core/page-cache.php';
+    page_cache_purge_all();
+
     // 4c. Public CSS Compilation.
     $generated_public = "/* SKIN_START */\n";
 

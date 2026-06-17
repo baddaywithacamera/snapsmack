@@ -96,6 +96,9 @@
         function paint(T) {
             var tw = (brhythm === 'breath') ? (T + 6*Math.sin(T*0.05)) : T;
             for (var k = 0; k < tiles.length; k++) tiles[k].ring.style.background = borderBG(tiles[k], tw);
+            // Expose current wave colour as a CSS var so other elements (e.g. nav
+            // border lines) can track the aurora without extra JS.
+            document.documentElement.style.setProperty('--au-wave-color', sampleHsl(tw / bCycle));
         }
 
         var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
