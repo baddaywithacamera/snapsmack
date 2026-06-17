@@ -115,14 +115,28 @@ img { display: block; max-width: 100%; }
     top: 0;
     z-index: 100;
     background: transparent;
-    /* Thin (1px) static divider lines. No wave-colour cascade unless the admin
-       picks the 'aurora' nav-line mode — then --nav-line-color tracks the wave. */
+    /* Thin (1px) divider lines. The line itself is static (no wave cascade);
+       the pulse lives in the attached dark companion below. */
     border-top:    1px solid var(--nav-line-color, var(--border-color));
     border-bottom: 1px solid var(--nav-line-color, var(--border-color));
-    /* Soft outer glow on the lines, matching the nav-text glow. Single static
-       colour — not the cascading wave. */
-    box-shadow: 0 0 7px var(--nav-line-glow, rgba(97,233,110,0.30));
 }
+
+/* Attached 1px dark companion line — offset 1px below and 1px right of each
+   divider (they touch), pulsing in a DARK tint of the live aurora colour
+   (--au-wave-color-dark, set by aurora-wave.js each frame). Falls back to a
+   static dark line when JS/animation is off. */
+.au-sticky-nav::before,
+.au-sticky-nav::after {
+    content: "";
+    position: absolute;
+    left: 1px;
+    right: -1px;
+    height: 1px;
+    background: var(--au-wave-color-dark, rgba(0, 0, 0, 0.55));
+    pointer-events: none;
+}
+.au-sticky-nav::before { top: 1px; }     /* hugs just under the top line    */
+.au-sticky-nav::after  { bottom: -1px; } /* hugs just under the bottom line */
 
 .au-sticky-nav-inner {
     display: flex;
