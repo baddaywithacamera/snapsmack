@@ -291,11 +291,13 @@ button:hover {
     color: #020802;
 }
 
-.action-delete {
+.action-delete,
+.btn-reset.action-delete {
     color: #0D260D;
     border-color: #0D260D;
 }
-.action-delete:hover {
+.action-delete:hover,
+.btn-reset.action-delete:hover {
     background-color: #0D260D;
     color: #FFFFFF;
 }

@@ -605,6 +605,12 @@ function smackback_init_manifest(string $zip_path, ?string $skin_id = null): boo
         if (empty($info['hash']) || !isset($info['size'])) {
             continue;
         }
+        // Defence in depth: a CORE package manifest must never carry skin rows.
+        // Skins are monitored via their own skin_id rows (Skin Packager); a stray
+        // skins/ path here is exactly what false-breached the fleet on a core update.
+        if (str_starts_with($path, 'skins/')) {
+            continue;
+        }
         // Use eof_signature from manifest JSON if present (build pipeline sets this).
         // Fall back to computing from installed file on disk.
         $eof_sig = $info['eof_signature'] ?? null;
@@ -645,12 +651,13 @@ function smackback_init_from_disk(): bool {
     $now  = date('Y-m-d H:i:s');
     $stmt = $pdo->prepare(
         "INSERT INTO snap_file_manifest
-             (file_path, expected_hash, file_size, eof_signature, baseline_set, last_status)
-         VALUES (?, ?, ?, ?, ?, 'pending')
+             (file_path, expected_hash, file_size, eof_signature, skin_id, baseline_set, last_status)
+         VALUES (?, ?, ?, ?, ?, ?, 'pending')
          ON DUPLICATE KEY UPDATE
              expected_hash  = VALUES(expected_hash),
              file_size      = VALUES(file_size),
              eof_signature  = VALUES(eof_signature),
+             skin_id        = VALUES(skin_id),
              baseline_set   = VALUES(baseline_set),
              last_status    = 'pending',
              last_verified  = NULL,
@@ -658,6 +665,7 @@ function smackback_init_from_disk(): bool {
     );
 
     $count = 0;
+    $seen  = [];
     foreach ($files as $abs) {
         $rel     = smackback_rel($abs);
         $hash    = hash_file('sha256', $abs);
@@ -666,8 +674,35 @@ function smackback_init_from_disk(): bool {
         if ($hash === false || $size === false) {
             continue;
         }
-        $stmt->execute([$rel, $hash, $size, $eof_sig ?: null, $now]);
+        // Preserve skin attribution so a re-baseline of a 'skins/<slug>/...' file
+        // keeps its skin_id instead of orphaning it under NULL.
+        $skin_id = null;
+        if (preg_match('#^skins/([^/]+)/#', $rel, $m)) {
+            $skin_id = $m[1];
+        }
+        $stmt->execute([$rel, $hash, $size, $eof_sig ?: null, $skin_id, $now]);
+        $seen[$rel] = true;
         $count++;
+    }
+
+    // Prune orphaned rows — anything still in the manifest that is no longer a
+    // monitored file on disk. A re-baseline declares the current disk authoritative;
+    // without this prune a stale/poisoned row (e.g. a skin file an OLD core package
+    // shipped but the live, separately-deployed skin no longer has) survives every
+    // re-baseline and keeps re-tripping the breach, so the in-admin recovery never
+    // sticks. That was the 0.7.262 lockout trap — VAX was the only way out.
+    if ($seen) {
+        $pruned = 0;
+        $del    = $pdo->prepare("DELETE FROM snap_file_manifest WHERE id = ?");
+        foreach ($pdo->query("SELECT id, file_path FROM snap_file_manifest")->fetchAll(PDO::FETCH_ASSOC) as $erow) {
+            if (!isset($seen[$erow['file_path']])) {
+                $del->execute([(int) $erow['id']]);
+                $pruned++;
+            }
+        }
+        if ($pruned > 0) {
+            error_log("SMACKBACK: Disk baseline pruned {$pruned} orphaned manifest row(s)");
+        }
     }
 
     error_log("SMACKBACK: Disk baseline set — {$count} files");

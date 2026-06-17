@@ -74,15 +74,30 @@ if (is_array($_allowed_types) && $_allowed_types) {
         $_place = implode(',', array_fill(0, count($_allowed_types), '?'));
         $_krow  = false;
         try {
+            // Expiry-aware: NULL expires_at = legacy key (no expiry); a set,
+            // past expiry is rejected (mandatory ≤4-week keys, 0.7.263).
             $_kst = $pdo->prepare(
                 "SELECT id FROM snap_ohsnap_keys
                  WHERE key_hash = ? AND is_active = 1 AND key_type IN ($_place)
+                   AND (expires_at IS NULL OR expires_at > NOW())
                  LIMIT 1"
             );
             $_kst->execute(array_merge([$_bhash], array_values($_allowed_types)));
             $_krow = $_kst->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            $_krow = false; // fail closed
+            // expires_at column may not exist yet (pre schema-sync) — retry
+            // without it so tools keep working until the column lands.
+            try {
+                $_kst = $pdo->prepare(
+                    "SELECT id FROM snap_ohsnap_keys
+                     WHERE key_hash = ? AND is_active = 1 AND key_type IN ($_place)
+                     LIMIT 1"
+                );
+                $_kst->execute(array_merge([$_bhash], array_values($_allowed_types)));
+                $_krow = $_kst->fetch(PDO::FETCH_ASSOC);
+            } catch (PDOException $e2) {
+                $_krow = false; // fail closed
+            }
         }
         if ($_krow) {
             $pdo->prepare("UPDATE snap_ohsnap_keys SET last_used_at = NOW() WHERE id = ?")

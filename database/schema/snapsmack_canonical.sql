@@ -665,6 +665,8 @@ CREATE TABLE IF NOT EXISTS `snap_ohsnap_keys` (
   `is_active`    tinyint(1)     NOT NULL DEFAULT 1,
   `created_at`   datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `last_used_at` datetime       DEFAULT NULL,
+  `expires_at`   datetime       DEFAULT NULL
+                 COMMENT 'Mandatory key expiry (<=4 weeks) as of 0.7.263; NULL = legacy key, no expiry',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_key_hash` (`key_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -683,6 +685,8 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
                         COMMENT 'Our key that the remote site uses to call us',
   `api_key_remote`      varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
                         COMMENT 'Key we use to call the remote site',
+  `api_key_backup`      varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
+                        COMMENT 'Least-privilege hub->spoke key valid ONLY on multisite/backup/* endpoints (0.7.261). Populated on (re)join; empty = use api_key_local fallback.',
   `software_version`    varchar(50)    COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `last_seen_at`        datetime       DEFAULT NULL,
   `ban_sync_cursor`     datetime       DEFAULT NULL

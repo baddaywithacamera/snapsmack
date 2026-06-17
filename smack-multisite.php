@@ -144,27 +144,35 @@ if (isset($_POST['register_spoke'])) {
             if (empty($response_data['ok']) || empty($response_data['api_key'])) {
                 $err = "Handshake failed: " . ($response_data['error'] ?? 'Unknown error');
             } else {
-                // api_key     = key hub presents when calling spoke (hub→spoke auth)
+                // api_key     = key hub presents when calling spoke (hub→spoke auth, FULL)
                 // api_key_outbound = key spoke presents when calling hub (spoke→hub auth)
+                // api_key_backup = least-privilege hub→spoke key for backup/* only (0.7.261)
                 $api_key_local  = $response_data['api_key'];
                 $api_key_remote = $response_data['api_key_outbound'] ?? '';
+                $api_key_backup = $response_data['api_key_backup']  ?? '';
+
+                // Belt-and-suspenders: ensure the column exists on this hub.
+                try {
+                    $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS api_key_backup varchar(255) NOT NULL DEFAULT ''");
+                } catch (PDOException $e) { /* present already, or unsupported syntax — canonical covers it */ }
 
                 // Store the spoke
                 $stmt = $pdo->prepare("
                     INSERT INTO snap_multisite_nodes
-                    (role, site_url, site_name, api_key_local, api_key_remote, status, connected_at)
-                    VALUES (?, ?, ?, ?, ?, 'active', NOW())
+                    (role, site_url, site_name, api_key_local, api_key_remote, api_key_backup, status, connected_at)
+                    VALUES (?, ?, ?, ?, ?, ?, 'active', NOW())
                     ON DUPLICATE KEY UPDATE
                         role           = VALUES(role),
                         api_key_local  = VALUES(api_key_local),
                         api_key_remote = VALUES(api_key_remote),
+                        api_key_backup = VALUES(api_key_backup),
                         status         = 'active',
                         site_name      = VALUES(site_name),
                         connected_at   = NOW()
                 ");
 
                 try {
-                    $stmt->execute(['spoke', $spoke_url, $spoke_name, $api_key_local, $api_key_remote]);
+                    $stmt->execute(['spoke', $spoke_url, $spoke_name, $api_key_local, $api_key_remote, $api_key_backup]);
                     $msg = "Spoke registered successfully: {$spoke_name}";
                 } catch (PDOException $e) {
                     $err = "Database error: " . $e->getMessage();

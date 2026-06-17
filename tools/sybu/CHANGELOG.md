@@ -16,6 +16,13 @@ Versioned 0.7.<build>. As of 0.7.12 the third number is a plain build counter
 
 ---
 
+## 0.7.13 — 2026-06-16
+
+### Changed
+- _TODO: describe this build._
+
+---
+
 ## 0.7.12 — Switch to numeric build counter; Gemini/post audit log; cat/album list fix (2026-06-14)
 
 - Version scheme: dropped letter suffixes (was 0.7.9k) for a plain incrementing

@@ -1090,7 +1090,6 @@ if ($action === 'stage_migrate'
         if ($smack_zip && file_exists($smack_zip)) {
             require_once __DIR__ . '/core/smackback.php';
             $smack_ok     = smackback_init_manifest($smack_zip);
-            $smack_signed = $smack_ok;   // true only if baselined from the in-zip (Ed25519-signed) manifest
             if ($smack_ok) {
                 $smack_detail = 'File hashes refreshed from update package';
             } else {
@@ -1104,11 +1103,13 @@ if ($action === 'stage_migrate'
                     ? 'No manifest in package — baseline rebuilt from disk'
                     : 'Re-baseline failed — check error log';
             }
-            // Auto-clear a stale breach ONLY when the new baseline came from the SIGNED
-            // in-zip manifest (cryptographically anchored to this release). On the disk
-            // fallback we deliberately do NOT auto-clear — disk is less trustworthy, so any
-            // breach is left for admin review on smack-back.php instead of silently cleared.
-            if ($smack_signed && function_exists('smackback_resolve_breach')) {
+            // Auto-clear a stale breach after a successful re-baseline by EITHER method.
+            // The update reaching this point was Ed25519-verified before staging, so the
+            // freshly-extracted disk shares the same trust basis as the in-zip signed
+            // manifest (0.7.263 posture: a signed update is trusted to re-baseline + clear,
+            // never LOCKOUT). The prune in smackback_init_from_disk() guarantees no orphaned
+            // row survives to re-trip the breach on the next verify.
+            if ($smack_ok && function_exists('smackback_resolve_breach')) {
                 $smack_prev_status = $pdo->query(
                     "SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_status'"
                 )->fetchColumn();

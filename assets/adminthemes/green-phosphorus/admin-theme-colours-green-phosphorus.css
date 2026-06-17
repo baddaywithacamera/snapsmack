@@ -294,11 +294,13 @@ button:hover {
 }
 
 /* Delete action scaled down via luminosity rather than color */
-.action-delete {
+.action-delete,
+.btn-reset.action-delete {
     color: #24b300;
     border-color: #24b300;
 }
-.action-delete:hover {
+.action-delete:hover,
+.btn-reset.action-delete:hover {
     background-color: #24b300;
     color: #000;
 }

@@ -436,6 +436,12 @@ function smackback_build_should_monitor(string $rel): bool {
     $excluded_dirs = [
         'uploads/', 'smack-central/', 'reference/', 'node_modules/',
         'vendor/', 'tools/', 'backups/', 'migrations/',
+        // Skins are NEVER in the CORE integrity manifest. They ship/update via the
+        // Skin Packager and are monitored at runtime through their own skin_id rows.
+        // A skin hash in the core package manifest is exactly what false-breached the
+        // fleet on every core update (the 0.7.262 Photogram lockout) — keep them out
+        // at the source.
+        'skins/',
     ];
     foreach ($excluded_dirs as $dir) {
         if (strpos($rel, $dir) === 0) {

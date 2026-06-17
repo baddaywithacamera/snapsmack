@@ -80,6 +80,7 @@ $nodes = [];
 try {
     $node_rows = $pdo->query("
         SELECT id, role, site_url, site_name, api_key_local, api_key_remote,
+               COALESCE(api_key_backup, '') AS api_key_backup,
                software_version, last_seen_at, post_count, image_count,
                last_backup_at, last_backup_status, status
         FROM snap_multisite_nodes
@@ -93,7 +94,8 @@ try {
             'role'               => $n['role'],
             'site_url'           => $n['site_url'],
             'site_name'          => $n['site_name'],
-            'api_key_local'      => $n['api_key_local'],   // hub->spoke key — what SUYB presents to pull a backup (same key the hub backup page uses)
+            'api_key_local'      => $n['api_key_local'],   // hub->spoke FULL key — legacy fallback for un-rebuilt SUYB
+            'api_key_backup'     => $n['api_key_backup'],  // 0.7.261 least-privilege key — SUYB should PREFER this for backup pulls; empty = use api_key_local
             'software_version'   => $n['software_version'],
             'last_seen_at'       => $n['last_seen_at'],
             'post_count'         => (int) $n['post_count'],

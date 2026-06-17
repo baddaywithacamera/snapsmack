@@ -18,8 +18,13 @@
  */
 
 
-// SYBU scoped key + photoblog-only gate (see sybu-data.php). Field-level write
-// scope (audit update_title only) is PENDING Sean's confirm. Additive.
+// SYBU scoped key + photoblog-only gate (see sybu-data.php).
+//
+// SYBU WRITE SCOPE — LOCKED (0.7.261, Sean-confirmed): the ONLY write this
+// endpoint performs is action=update_title → UPDATE snap_images.img_title for a
+// single row (snap_id, new_title). Every other action returns read-only audit
+// summaries. The 'sybu' key reaches no other field, row-set, or table here. Do
+// not add further write actions without re-confirming the tool's scope.
 $GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu'];
 $GLOBALS['SNAP_API_REQUIRE_MODE'] = 'photoblog';
 require_once 'core/api-auth.php';

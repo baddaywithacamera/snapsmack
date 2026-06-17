@@ -935,7 +935,8 @@ button:active,
 .action-update,
 .action-warning,
 .action-hide,
-.action-view {
+.action-view,
+.action-copy {
     width: auto;
     height: 32px;
     padding: 0 12px;
@@ -970,6 +971,34 @@ button:active,
 .action-view:hover {
     background-color: #6ab0de;
     color: #111;
+}
+
+/* action-copy: steel blue — copy-to-clipboard, neutral read action */
+.action-copy {
+    color: #6ab0de;
+    border-color: #6ab0de;
+}
+.action-copy:hover {
+    background-color: #6ab0de;
+    color: #111;
+}
+
+/* API-keys page: generated-key reveal + re-auth row geometry */
+.key-reveal {
+    word-break: break-all;
+    font-size: 0.9rem;
+}
+.reauth-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+.reauth-row .lens-input-wrapper {
+    margin-bottom: 0;
+}
+.input-code {
+    max-width: 140px;
 }
 
 /* action-warning: amber — significant but non-destructive state (e.g. spoke in maintenance mode) */
