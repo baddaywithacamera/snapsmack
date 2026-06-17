@@ -62,19 +62,25 @@
         function solid(c){ return 'linear-gradient(' + c + ',' + c + ')'; }
 
         // ── tile lookup (each tile carries a .au-ring overlay) ──────────────
-        var nodes = document.querySelectorAll('.au-grid .au-tile');
         var tiles = [], seedN = 0;
-        for (var i = 0; i < nodes.length; i++) {
-            var el = nodes[i];
-            if (el.classList.contains('au-tile--phantom')) continue;
-            var ring = el.querySelector('.au-ring');
-            if (!ring) continue;
-            var row = parseInt(el.getAttribute('data-row'), 10) || 0;
-            var col = parseInt(el.getAttribute('data-col'), 10) || 0;
-            tiles.push({ ring: ring, row: row, col: col, seed: (seedN*0.137)%1 });
-            seedN++;
+        function scanTiles() {
+            var nodes = document.querySelectorAll('.au-grid .au-tile');
+            tiles = []; seedN = 0;
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.classList.contains('au-tile--phantom')) continue;
+                var ring = el.querySelector('.au-ring');
+                if (!ring) continue;
+                var row = parseInt(el.getAttribute('data-row'), 10) || 0;
+                var col = parseInt(el.getAttribute('data-col'), 10) || 0;
+                tiles.push({ ring: ring, row: row, col: col, seed: (seedN*0.137)%1 });
+                seedN++;
+            }
         }
+        scanTiles();
         if (!tiles.length) return;
+        // Re-scan when grid pages are appended via AJAX load-more.
+        document.addEventListener('aurora:grid-updated', scanTiles);
 
         function posIndex(r, c) {
             switch (bdir) {
