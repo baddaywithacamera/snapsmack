@@ -114,9 +114,9 @@ img { display: block; max-width: 100%; }
     position: sticky;
     top: 0;
     z-index: 100;
-    background: var(--bg-primary);
-    border-bottom: 1px solid var(--border-color);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    background: transparent;
+    border-top:    1px solid var(--nav-line-color, var(--border-color));
+    border-bottom: 1px solid var(--nav-line-color, var(--border-color));
 }
 
 .au-sticky-nav-inner {
@@ -182,9 +182,10 @@ img { display: block; max-width: 100%; }
 }
 
 .au-sticky-nav-links a {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-secondary);
+    font-size:      var(--nav-font-size, 13px);
+    font-weight:    var(--nav-font-weight, 500);
+    font-family:    var(--nav-font, inherit);
+    color:          var(--nav-color, var(--text-secondary));
     text-decoration: none;
     letter-spacing: 0.2px;
     text-transform: var(--nav-text-transform, none);
@@ -275,22 +276,25 @@ img { display: block; max-width: 100%; }
     font-weight: var(--blog-title-weight, 300);
     font-family: var(--blog-title-font, inherit);
     margin: 0;
-    color: var(--text-primary);
+    color:       var(--blog-title-color, var(--text-primary));
+    text-shadow: var(--profile-text-glow, none);
 }
 
 .au-profile-tagline-sep {
-    font-size: var(--blog-title-size, 20px);
+    font-size:   var(--blog-title-size, 20px);
     font-weight: 300;
-    color: var(--text-secondary);
+    color:       var(--text-secondary);
     line-height: 1;
+    text-shadow: var(--profile-text-glow, none);
 }
 
 .au-profile-tagline {
     font-size:   var(--tagline-size, 16px);
     font-weight: var(--tagline-weight, 300);
     font-family: var(--tagline-font, inherit);
-    color: var(--tagline-color, var(--text-secondary));
+    color:       var(--tagline-color, var(--text-secondary));
     margin: 0;
+    text-shadow: var(--profile-text-glow, none);
 }
 
 .au-profile-stats {
@@ -322,6 +326,7 @@ img { display: block; max-width: 100%; }
     line-height: 1.5;
     color:       var(--text-secondary);
     max-width:   480px;
+    text-shadow: var(--profile-text-glow, none);
 }
 
 

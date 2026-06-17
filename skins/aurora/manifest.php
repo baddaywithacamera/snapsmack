@@ -299,6 +299,14 @@ return [
             'selector' => ':root',
             'property' => '--blog-title-weight',
         ],
+        'au_blog_title_color' => [
+            'section'  => 'PROFILE HEADER',
+            'type'     => 'color',
+            'label'    => 'Blog Title Colour',
+            'default'  => '#eaeaea',
+            'selector' => ':root',
+            'property' => '--blog-title-color',
+        ],
         'au_show_tagline' => [
             'section'  => 'PROFILE HEADER',
             'type'     => 'select',
@@ -352,6 +360,40 @@ return [
             'selector' => ':root',
             'property' => '--tagline-color',
         ],
+        // ---- TEXT GLOW (readability over shifting aurora background) ----------
+        'au_glow_color' => [
+            'section' => 'PROFILE HEADER',
+            'type'    => 'color',
+            'label'   => 'Text Glow Colour',
+            'default' => '#000000',
+            'hint'    => 'Halo colour behind title, tagline, and bio. Black for dark glow; white for light glow.',
+            // PHP-handled → --profile-text-glow (skin-profile.php).
+        ],
+        'au_glow_size' => [
+            'section'  => 'PROFILE HEADER',
+            'type'     => 'range_numeric',
+            'label'    => 'Text Glow Size',
+            'default'  => '0',
+            'min'      => '0',
+            'max'      => '40',
+            'step'     => '2',
+            'unit'     => 'px',
+            'hint'     => '0 = no glow. Increase for a wider halo.',
+            // PHP-handled → --profile-text-glow.
+        ],
+        'au_glow_opacity' => [
+            'section'  => 'PROFILE HEADER',
+            'type'     => 'range_numeric',
+            'label'    => 'Text Glow Opacity',
+            'default'  => '0',
+            'min'      => '0',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+            // PHP-handled → --profile-text-glow.
+        ],
+
+        // ---- NAV -----------------------------------------------------------
         'au_nav_case' => [
             'section'  => 'PROFILE HEADER',
             'type'     => 'select',
@@ -365,6 +407,37 @@ return [
             ],
             'selector' => ':root',
             'property' => '--nav-text-transform',
+        ],
+        'au_nav_font' => [
+            'section'        => 'PROFILE HEADER',
+            'type'           => 'select',
+            'label'          => 'Nav Font',
+            'default'        => 'inherit',
+            'options'        => array_merge(['inherit' => 'Same as Body Font'], $fonts),
+            'selector'       => ':root',
+            'property'       => '--nav-font',
+            'is_font'        => true,
+            'no_size_slider' => true,
+        ],
+        'au_nav_color' => [
+            'section'  => 'PROFILE HEADER',
+            'type'     => 'color',
+            'label'    => 'Nav Link Colour',
+            'default'  => '#8a8a8a',
+            'selector' => ':root',
+            'property' => '--nav-color',
+        ],
+        'au_nav_line_mode' => [
+            'section'  => 'PROFILE HEADER',
+            'type'     => 'select',
+            'label'    => 'Nav Border Lines',
+            'default'  => 'static',
+            'options'  => [
+                'static' => 'Static (uses Border / Divider colour)',
+                'aurora' => 'Aurora wave (shifts with the tile borders)',
+            ],
+            'hint'     => 'Aurora mode tracks the live border wave colour.',
+            // PHP-handled — skin-profile.php sets --nav-line-color.
         ],
 
         // ---- COLOURS -------------------------------------------------------
