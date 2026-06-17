@@ -34,6 +34,14 @@ Hotfix release shaken out by the 0.7.263 fleet rollout + the first big Instagram
   by `image_id`, a column that no longer exists since collections went polymorphic
   (`item_type`/`item_id`) — every post/image delete threw a 1054 fatal. Images are
   not collection members, so the obsolete cleanup is removed.
+- **Manage delete no longer orphans posts (ghost content).** A Manage grid tile is
+  a *post*, but delete removed only the cover image and left the `snap_posts` row
+  behind — invisible in the grid (no cover) yet still counted by the bulk-import
+  guard, so a "deleted" site kept reporting content and blocked re-imports. Both the
+  single and batch delete paths now cascade the whole post: its images (unless
+  shared), the post→image links, trigram slices, collection membership, and the post
+  row. A new password + 2FA gated **Purge Orphaned Posts** action on the Manage page
+  clears pre-existing ghosts (post rows with no images) that no grid tile could reach.
 - **SMACKBACK missing-table hardening.** `smackback_init_manifest()` and
   `smackback_init_from_disk()` now treat a missing `snap_file_manifest` table as
   "nothing to baseline" instead of fataling — a hub-pushed update (which calls the

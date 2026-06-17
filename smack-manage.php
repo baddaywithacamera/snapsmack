@@ -16,36 +16,110 @@
 
 
 require_once 'core/auth-smack.php';
+require_once 'core/reauth.php';   // step-up auth (password + 2FA) for the orphan purge
+
+/**
+ * Delete one standalone image: its files, row, and image-level maps + comments.
+ * Photoblog unit. (For carousel content use snap_manage_delete_post().)
+ */
+function snap_manage_delete_image(PDO $pdo, int $id): void {
+    $stmt = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ?");
+    $stmt->execute([$id]);
+    $img = $stmt->fetch();
+    if ($img && !empty($img['img_file']) && file_exists($img['img_file'])) {
+        $pi = pathinfo($img['img_file']);
+        $td = $pi['dirname'] . '/thumbs';
+        @unlink($td . '/t_' . $pi['basename']);
+        @unlink($td . '/a_' . $pi['basename']);
+        @unlink($img['img_file']);
+    }
+    $pdo->prepare("DELETE FROM snap_images WHERE id = ?")->execute([$id]);
+    $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
+    $pdo->prepare("DELETE FROM snap_image_album_map WHERE image_id = ?")->execute([$id]);
+    $pdo->prepare("DELETE FROM snap_comments WHERE img_id = ?")->execute([$id]);
+}
+
+/**
+ * Delete an entire post container and everything that belongs to it: its images
+ * (unless an image is shared with another post), the post→image links, trigram
+ * slices, post-level collection membership, and the post row. A Manage grid tile
+ * IS a post, so deleting a tile must remove the whole post — deleting only the
+ * cover image (the old behaviour) orphaned the snap_posts row, which then stayed
+ * invisible in the grid yet counted by the bulk-import guard as phantom content.
+ */
+function snap_manage_delete_post(PDO $pdo, int $pid): void {
+    $q = $pdo->prepare("SELECT image_id FROM snap_post_images WHERE post_id = ?");
+    $q->execute([$pid]);
+    $image_ids = array_map('intval', $q->fetchAll(PDO::FETCH_COLUMN));
+
+    $pdo->prepare("DELETE FROM snap_post_images WHERE post_id = ?")->execute([$pid]);
+
+    foreach ($image_ids as $iid) {
+        $chk = $pdo->prepare("SELECT COUNT(*) FROM snap_post_images WHERE image_id = ?");
+        $chk->execute([$iid]);
+        if ((int)$chk->fetchColumn() === 0) {
+            snap_manage_delete_image($pdo, $iid); // image no longer used by any post
+        }
+    }
+
+    $pdo->prepare("DELETE FROM snap_trigrams WHERE post_id_1 = ? OR post_id_2 = ? OR post_id_3 = ?")
+        ->execute([$pid, $pid, $pid]);
+    $pdo->prepare("DELETE FROM snap_collection_items WHERE item_type = 'post' AND item_id = ?")
+        ->execute([$pid]);
+    $pdo->prepare("DELETE FROM snap_posts WHERE id = ?")->execute([$pid]);
+}
+
+/**
+ * Route a Manage delete keyed by image id: if the image belongs to any post,
+ * delete those whole posts (carousel); otherwise delete the lone image
+ * (photoblog). Either way no orphaned snap_posts are left behind.
+ */
+function snap_manage_delete_by_image(PDO $pdo, int $image_id): void {
+    $q = $pdo->prepare("SELECT DISTINCT post_id FROM snap_post_images WHERE image_id = ?");
+    $q->execute([$image_id]);
+    $post_ids = array_map('intval', $q->fetchAll(PDO::FETCH_COLUMN));
+    if ($post_ids) {
+        foreach ($post_ids as $pid) snap_manage_delete_post($pdo, $pid);
+    } else {
+        snap_manage_delete_image($pdo, $image_id);
+    }
+}
 
 // --- BATCH DELETE HANDLER ---
-// Accepts an array of image IDs and purges each one along with its files and
-// associated DB records. Redirects back with a count of deletions.
+// Routes each selected tile through the post-aware cascade so nothing is orphaned.
 if (isset($_POST['action']) && $_POST['action'] === 'batch_delete') {
     $ids = array_filter(array_map('intval', $_POST['ids'] ?? []));
     $deleted = 0;
-
     foreach ($ids as $id) {
-        $stmt = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ?");
-        $stmt->execute([$id]);
-        $img = $stmt->fetch();
-
-        if ($img && file_exists($img['img_file'])) {
-            $pi = pathinfo($img['img_file']);
-            $td = $pi['dirname'] . '/thumbs';
-            @unlink($td . '/t_' . $pi['basename']);
-            @unlink($td . '/a_' . $pi['basename']);
-            unlink($img['img_file']);
-        }
-
-        $pdo->prepare("DELETE FROM snap_images WHERE id = ?")->execute([$id]);
-        $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
-        $pdo->prepare("DELETE FROM snap_image_album_map WHERE image_id = ?")->execute([$id]);
-        $pdo->prepare("DELETE FROM snap_collection_items WHERE image_id = ?")->execute([$id]);
-        $pdo->prepare("DELETE FROM snap_comments WHERE img_id = ?")->execute([$id]);
+        snap_manage_delete_by_image($pdo, $id);
         $deleted++;
     }
-
     header("Location: smack-manage.php?msg=batch_deleted&count=$deleted");
+    exit;
+}
+
+// --- PURGE ORPHANED POSTS (DESTRUCTIVE — password + 2FA) ---
+// Clears snap_posts rows that have NO images — the ghosts left by older
+// image-only deletes or partial imports, which the grid can't show (no cover)
+// yet the import guard counts as content. See [[feedback_stepup_auth_pass_plus_2fa]].
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['purge_orphans'])) {
+    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    if (!$ra['ok']) {
+        header('Location: smack-manage.php?purge_err=' . urlencode($ra['error']));
+        exit;
+    }
+    $orphans = $pdo->query(
+        "SELECT p.id FROM snap_posts p
+         LEFT JOIN snap_post_images pi ON pi.post_id = p.id
+         WHERE pi.id IS NULL"
+    )->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($orphans as $pid) {
+        $pid = (int)$pid;
+        $pdo->prepare("DELETE FROM snap_trigrams WHERE post_id_1 = ? OR post_id_2 = ? OR post_id_3 = ?")->execute([$pid, $pid, $pid]);
+        $pdo->prepare("DELETE FROM snap_collection_items WHERE item_type = 'post' AND item_id = ?")->execute([$pid]);
+        $pdo->prepare("DELETE FROM snap_posts WHERE id = ?")->execute([$pid]);
+    }
+    header('Location: smack-manage.php?msg=orphans_purged&count=' . count($orphans));
     exit;
 }
 
@@ -92,36 +166,14 @@ if (isset($_POST['action']) && $_POST['action'] === 'reorder') {
 }
 
 // --- DELETION HANDLER ---
-// Removes a post, its image files, and all associated database records.
+// Post-aware cascade (see snap_manage_delete_by_image): deleting a carousel tile
+// removes the whole post + its images + links + trigram/collection refs; a lone
+// photoblog image is removed on its own. Leaves no orphaned snap_posts rows.
+// (Previously this deleted only the image and also ran a DELETE against
+// snap_collection_items.image_id — a column dropped when collections went
+// polymorphic — which 500'd every delete.)
 if (isset($_GET['delete'])) {
-    $id = (int)$_GET['delete'];
-    $stmt = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ?");
-    $stmt->execute([$id]);
-    $img = $stmt->fetch();
-
-    // Delete the primary image file and its thumbnails from disk.
-    if ($img && file_exists($img['img_file'])) {
-        $pi = pathinfo($img['img_file']);
-        $td = $pi['dirname'] . '/thumbs';
-        @unlink($td . '/t_' . $pi['basename']);
-        @unlink($td . '/a_' . $pi['basename']);
-        unlink($img['img_file']);
-    }
-
-    // Remove database records in cascading order.
-    $pdo->prepare("DELETE FROM snap_images WHERE id = ?")->execute([$id]);
-    $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
-    $pdo->prepare("DELETE FROM snap_image_album_map WHERE image_id = ?")->execute([$id]);
-    // NOTE: snap_collection_items went polymorphic (item_type IN
-    // ('post','album','category'), item_id) — it no longer has an `image_id`
-    // column, and images are never collection members, so the old
-    // "DELETE ... WHERE image_id = ?" here threw a 1054 Unknown column fatal and
-    // 500'd every delete. An image delete has no collection rows to clean
-    // (collections reference posts/albums/categories, not images), so there is
-    // nothing to do here. Matching item_id against an image id would risk
-    // deleting an unrelated post/album/category that happens to share the id.
-    $pdo->prepare("DELETE FROM snap_comments WHERE img_id = ?")->execute([$id]);
-
+    snap_manage_delete_by_image($pdo, (int)$_GET['delete']);
     header("Location: smack-manage.php?msg=deleted");
     exit;
 }
@@ -209,14 +261,30 @@ $albums      = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")-
 $collections = $pdo->query("SELECT * FROM snap_collections ORDER BY title ASC")->fetchAll();
 
 $success_msg = '';
+$purge_err   = '';
 if (!empty($_GET['msg'])) {
     if ($_GET['msg'] === 'deleted') {
         $success_msg = 'Transmission purged.';
     } elseif ($_GET['msg'] === 'batch_deleted') {
         $n = (int)($_GET['count'] ?? 0);
         $success_msg = "$n transmission" . ($n !== 1 ? 's' : '') . " purged.";
+    } elseif ($_GET['msg'] === 'orphans_purged') {
+        $n = (int)($_GET['count'] ?? 0);
+        $success_msg = "$n orphaned post" . ($n !== 1 ? 's' : '') . " purged — the database is clean.";
     }
 }
+if (!empty($_GET['purge_err'])) {
+    $purge_err = (string)$_GET['purge_err'];
+}
+
+// Orphaned posts = snap_posts rows with no images. Invisible in the grid (no
+// cover) but still counted as content by the bulk-import guard, which is what
+// keeps blocking a "should-be-empty" site. Surfaced so the owner can purge them.
+$orphan_count = (int)$pdo->query(
+    "SELECT COUNT(*) FROM snap_posts p
+     LEFT JOIN snap_post_images pi ON pi.post_id = p.id
+     WHERE pi.id IS NULL"
+)->fetchColumn();
 
 $page_title = "Manage Archive";
 include 'core/admin-header.php';
@@ -230,6 +298,35 @@ include 'core/sidebar.php';
 
     <?php if ($success_msg): ?>
         <div class="alert alert-success">> <?php echo htmlspecialchars($success_msg); ?></div>
+    <?php endif; ?>
+
+    <?php if ($purge_err): ?>
+        <div class="alert alert-error">> <?php echo htmlspecialchars($purge_err); ?></div>
+    <?php endif; ?>
+
+    <?php if ($orphan_count > 0): ?>
+    <div class="box" style="border:1px solid #e45735;">
+        <h3 style="color:#e45735; margin-top:0;">
+            ⚠ <?php echo $orphan_count; ?> orphaned post<?php echo $orphan_count !== 1 ? 's' : ''; ?> in the database
+        </h3>
+        <p style="font-size:0.85rem; opacity:0.75; max-width:640px;">
+            Post records with no images — invisible in the grid, but still counted as content,
+            which can block a fresh import into a site that looks empty. Purging removes the empty
+            post rows and their trigram / collection references. Images are not affected.
+            Requires your password and 2FA.
+        </p>
+        <form method="POST"
+              onsubmit="return confirm('Purge <?php echo $orphan_count; ?> orphaned post(s)? This cannot be undone.');"
+              style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:0;">
+            <?php if (function_exists('csrf_field')) csrf_field(); ?>
+            <input type="hidden" name="purge_orphans" value="1">
+            <input type="password" name="reauth_password" placeholder="Password"
+                   autocomplete="current-password" required>
+            <input type="text" name="reauth_totp" placeholder="2FA code" inputmode="numeric"
+                   autocomplete="one-time-code" maxlength="10" required style="width:110px;">
+            <button type="submit" class="btn-smack btn-danger">Purge Orphaned Posts</button>
+        </form>
+    </div>
     <?php endif; ?>
 
     <div class="box box--no-header">

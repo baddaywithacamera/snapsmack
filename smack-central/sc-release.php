@@ -327,28 +327,16 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
     // the skin registry table in CLAUDE.md.
     $always_exclude = [
         'assets/fonts/',
-        // Skins no longer bundled — installer fetches mode-appropriate skins
-        // from snapsmack.ca at install time via releases/skins/install-manifest.php
-        'skins/50-shades-of-noah-grey/',
-        'skins/new-horizon/',
-        // Skins NOT included in base release package
-        'skins/alfred/',         // SmackTalk skin — Skin Packager only; ships fonts/bg.jpg
-        'skins/52-card-pickup/',
-        'skins/a-grey-reckoning/',
-        'skins/hip-to-be-square/',
-        'skins/impact-printer/',
-        'skins/in-stereo-where-available/',
-        'skins/kiosk/',
-        'skins/pocket-rocket/',
-        'skins/show-n-tell/',
-        'skins/slickr/',
-        'skins/the-grid/',
-        'skins/true-grit/',
-        // Skins distributed via Skin Packager only — NOT in base release
-        'skins/chaplin/',
-        'skins/galleria/',
-        'skins/photogram/',
-        'skins/rational-geo/',
+        // ── ALL skins — blanket exclude ──────────────────────────────────────
+        // NO skin ships in the core release zip — not even 50-shades / new-horizon.
+        // Fresh installs fetch the mode-appropriate skins from snapsmack.ca at
+        // install time (releases/skins/install-manifest.php); everything else comes
+        // via the Skin Packager. This is a BLANKET prefix, not a per-skin list, on
+        // purpose: the old hand-maintained list silently shipped any skin nobody
+        // remembered to add — which is exactly how AURORA auto-installed fleet-wide
+        // in 0.7.263 (committed to skins/aurora/ but never added here). A new skin
+        // can never leak into a core update again.
+        'skins/',
         // Non-web directories
         'tools/',
         'projects/',
