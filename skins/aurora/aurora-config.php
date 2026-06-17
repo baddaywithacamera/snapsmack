@@ -26,8 +26,16 @@
 return [
     'palettes' => [
         'aurora' => [
-            'label'  => 'Aurora — green · teal · blue · purple · magenta',
-            'colors' => ['#61e96e', '#00cec9', '#4899f0', '#a55eea', '#e056d7', '#61e96e'],
+            'label'  => 'Aurora — green-dominant, teal/blue/yellow/red flares',
+            // From the canonical prototype (_spec/aurora-prototype.html): green
+            // dominates (every other stop), with brief teal/blue/yellow/red flares
+            // that always return to green. The engine HSL-interpolates between
+            // stops, so this reads as a living aurora, not a flat colour wheel.
+            'colors' => [
+                '#56e86a', '#7df06a', '#56e86a', '#2fe6a0', '#56e86a', '#39b6f0',
+                '#56e86a', '#9bf25a', '#56e86a', '#2f7fe0', '#56e86a', '#f2d24a',
+                '#56e86a', '#ff5566', '#56e86a', '#46c0c0',
+            ],
         ],
         'borealis-ice' => [
             'label'  => 'Borealis Ice — cool greens & blues',
