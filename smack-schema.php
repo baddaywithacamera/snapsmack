@@ -6,8 +6,10 @@
  * apply missing tables and columns via ALTER TABLE / CREATE TABLE.
  *
  * Adds missing tables and columns, and corrects wrong column types or
- * nullability via MODIFY COLUMN. Never drops columns or tables.
- * Existing row data is never modified.
+ * nullability via MODIFY COLUMN. The automatic sync never drops anything.
+ * A separate "Schema Drift" report surfaces tables/columns that exist in the
+ * live DB but NOT in canonical, and a password + 2FA gated "Prune Debris"
+ * action can remove them. Existing row data is never modified by the sync.
  *
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====
@@ -16,6 +18,8 @@
  */
 
 require_once 'core/auth-smack.php';
+require_once 'core/schema-sync.php';   // snap_schema_drift() + snap_schema_prune() — reverse-diff debris detection
+require_once 'core/reauth.php';        // step-up auth (password + 2FA) for the destructive prune
 
 $page_title = 'Database Schema';
 
@@ -64,10 +68,14 @@ function snap_col_nullable(string $col_def): bool {
  * 'longtext' for JSON columns. Treating them as equivalent prevents phantom
  * wrong-type alerts on MariaDB installs.
  */
-function snap_types_equivalent(string $a, string $b): bool {
-    if ($a === $b) return true;
-    static $json_compat = ['json', 'longtext'];
-    return in_array($a, $json_compat, true) && in_array($b, $json_compat, true);
+if (!function_exists('snap_types_equivalent')) {
+    // Provided by core/schema-sync.php; guarded so this page still works if that
+    // engine file is ever absent. Identical definition.
+    function snap_types_equivalent(string $a, string $b): bool {
+        if ($a === $b) return true;
+        static $json_compat = ['json', 'longtext'];
+        return in_array($a, $json_compat, true) && in_array($b, $json_compat, true);
+    }
 }
 
 // ── Schema parser ─────────────────────────────────────────────────────────────
@@ -308,12 +316,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['apply_schema'])) {
     exit;
 }
 
+// ── POST: Prune schema debris (DESTRUCTIVE) ────────────────────────────────────
+// Drops live tables/columns that are NOT in canonical. Step-up gated: requires
+// the admin's password AND a valid 2FA code (no password-only path; an unenrolled
+// admin is told to set up 2FA) — see [[feedback_stepup_auth_pass_plus_2fa]].
+// snap_schema_prune() re-verifies drift at execution time and validates every
+// identifier, so nothing canonical can ever be dropped.
+$prune_results = [];
+$prune_error   = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['prune_schema'])) {
+    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    if (!$ra['ok']) {
+        $prune_error = $ra['error'];
+    } else {
+        try {
+            $d   = snap_schema_drift($pdo);
+            $res = snap_schema_prune($pdo, $d['extra_tables'], $d['extra_columns']);
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $_SESSION['snap_schema_prune'] = $res;
+            header('Location: smack-schema.php?pruned=1');
+            exit;
+        } catch (Throwable $e) {
+            $prune_error = 'Prune failed: ' . $e->getMessage();
+        }
+    }
+}
+
 // Retrieve apply results after redirect
 if (!empty($_GET['applied'])) {
     if (session_status() === PHP_SESSION_NONE) session_start();
     if (!empty($_SESSION['snap_schema_apply'])) {
         $apply_results = $_SESSION['snap_schema_apply'];
         unset($_SESSION['snap_schema_apply']);
+    }
+}
+
+// Retrieve prune results after redirect
+if (!empty($_GET['pruned'])) {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (!empty($_SESSION['snap_schema_prune'])) {
+        $prune_results = $_SESSION['snap_schema_prune'];
+        unset($_SESSION['snap_schema_prune']);
     }
 }
 
@@ -326,6 +370,7 @@ $parse_error    = null;
 $total_missing  = 0;
 
 $php_audit_missing = [];
+$schema_drift      = ['extra_tables' => [], 'extra_columns' => []];
 
 if ($canonical === false) {
     $parse_error = 'Canonical schema file not found at database/schema/snapsmack_canonical.sql';
@@ -346,6 +391,14 @@ if ($canonical === false) {
         array_fill(0, count($canonical), true)
     );
     $php_audit_missing = snap_schema_audit_php(__DIR__, $canonical_table_keys);
+
+    // Reverse diff — tables/columns in the live DB but absent from canonical
+    // (debris the additive-only sync never removes). Read-only.
+    try {
+        $schema_drift = snap_schema_drift($pdo);
+    } catch (Throwable $e) {
+        $schema_drift = ['extra_tables' => [], 'extra_columns' => []];
+    }
 }
 
 require_once 'core/admin-header.php';
@@ -500,6 +553,108 @@ require 'core/sidebar.php';
         Fix: add each table to <code>database/schema/snapsmack_canonical.sql</code>
         and create a <code>migrations/migrate-*.sql</code> with IF NOT EXISTS DDL.
     </div>
+</div>
+<?php endif; ?>
+
+<!-- ── Schema Drift (DB-side debris not in canonical) ─────────────────────── -->
+<?php
+$drift_tables = $schema_drift['extra_tables']  ?? [];
+$drift_cols   = $schema_drift['extra_columns'] ?? [];
+$drift_col_n  = array_sum(array_map('count', $drift_cols));
+$drift_total  = count($drift_tables) + $drift_col_n;
+?>
+<h3 style="font-size:0.8rem; letter-spacing:1px; text-transform:uppercase; opacity:0.5; margin:28px 0 10px;">
+    Schema Drift — Debris Not in Canonical
+</h3>
+<p style="font-size:0.82rem; opacity:0.5; margin-bottom:14px; max-width:640px;">
+    The sync only ever ADDs and corrects what canonical requires — it never removes.
+    This is the reverse view: tables and columns present in the live database but
+    absent from canonical (leftovers from dropped features or old migrations).
+    Detection is read-only. Removing them is destructive and requires your
+    password and 2FA.
+</p>
+
+<?php if (!empty($prune_results)): ?>
+<div class="schema-table" style="margin-bottom:16px;">
+    <div class="schema-log">
+        <?php
+        foreach ($prune_results['dropped_tables']  as $t) echo '<div class="schema-log-ok">✓ dropped table `' . htmlspecialchars($t) . '`</div>';
+        foreach ($prune_results['dropped_columns'] as $c) echo '<div class="schema-log-ok">✓ dropped column `' . htmlspecialchars($c) . '`</div>';
+        foreach ($prune_results['skipped']         as $s) echo '<div class="schema-log-ok" style="opacity:.55;">– skipped ' . htmlspecialchars($s) . '</div>';
+        foreach ($prune_results['errors']          as $e) echo '<div class="schema-log-err">✗ ' . htmlspecialchars($e) . '</div>';
+        if (empty($prune_results['dropped_tables']) && empty($prune_results['dropped_columns'])
+            && empty($prune_results['skipped']) && empty($prune_results['errors'])) {
+            echo '<div class="schema-log-ok">Nothing to prune.</div>';
+        }
+        ?>
+    </div>
+</div>
+<?php endif; ?>
+
+<div class="schema-status-bar"<?php echo $drift_total ? '' : ' style="margin-bottom:24px;"'; ?>>
+    <span class="schema-status-label">DB → Canonical</span>
+    <?php if ($drift_total === 0): ?>
+        <span class="schema-status-ok">✓ No debris — every live table &amp; column exists in canonical</span>
+    <?php else: ?>
+        <span class="schema-status-warn">
+            <?php
+            $dp = [];
+            if ($drift_tables) $dp[] = count($drift_tables) . ' extra table' . (count($drift_tables) !== 1 ? 's' : '');
+            if ($drift_col_n)  $dp[] = $drift_col_n . ' extra column' . ($drift_col_n !== 1 ? 's' : '');
+            echo implode(', ', $dp) . ' in the DB but not in canonical';
+            ?>
+        </span>
+    <?php endif; ?>
+</div>
+
+<?php if ($drift_total > 0): ?>
+<div class="schema-table" style="margin-bottom:24px;">
+    <?php foreach ($drift_tables as $t): ?>
+    <div class="schema-table-head">
+        <span class="schema-table-name schema-table-name--bad">`<?php echo htmlspecialchars($t); ?>`</span>
+        <span></span>
+        <span class="schema-tag schema-tag--missing">Extra table</span>
+    </div>
+    <?php endforeach; ?>
+    <?php foreach ($drift_cols as $t => $cols): ?>
+    <div class="schema-table-head">
+        <span class="schema-table-name">`<?php echo htmlspecialchars($t); ?>`</span>
+        <span></span>
+        <span class="schema-tag schema-tag--warn"><?php echo count($cols); ?> extra column<?php echo count($cols) !== 1 ? 's' : ''; ?></span>
+    </div>
+    <div class="schema-cols">
+        <?php foreach ($cols as $c): ?>
+        <span class="schema-col schema-col--wrong-type"><?php echo htmlspecialchars($c); ?></span>
+        <?php endforeach; ?>
+    </div>
+    <?php endforeach; ?>
+
+    <div class="schema-apply-bar">
+        <div class="schema-apply-note" style="color:#e45735;">
+            Pruning permanently DROPs the items above — irreversible, so back up first.
+            Requires your password and 2FA.
+        </div>
+        <form method="POST"
+              onsubmit="return confirm('Permanently DROP the listed tables/columns? This cannot be undone.');"
+              style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:0;">
+            <?php if (function_exists('csrf_field')) csrf_field(); ?>
+            <input type="hidden" name="prune_schema" value="1">
+            <input type="password" name="reauth_password" placeholder="Password"
+                   autocomplete="current-password" required style="padding:7px 10px;">
+            <input type="text" name="reauth_totp" placeholder="2FA code" inputmode="numeric"
+                   autocomplete="one-time-code" maxlength="10" required style="padding:7px 10px; width:110px;">
+            <button type="submit" class="btn-smack btn-danger">Prune Debris</button>
+        </form>
+    </div>
+    <?php if ($prune_error): ?>
+    <div class="schema-log schema-log-err" style="border-top:1px solid var(--admin-border,#333);">
+        ✗ <?php echo htmlspecialchars($prune_error); ?>
+    </div>
+    <?php endif; ?>
+</div>
+<?php elseif ($prune_error): ?>
+<div class="schema-status-bar" style="margin-bottom:24px;">
+    <span class="schema-status-err">✗ <?php echo htmlspecialchars($prune_error); ?></span>
 </div>
 <?php endif; ?>
 

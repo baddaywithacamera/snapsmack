@@ -165,6 +165,147 @@ function snap_canonical_col_meta(): array {
 }
 
 /**
+ * Extract the COMPLETE set of column names from a canonical CREATE TABLE DDL.
+ * Reads the raw DDL (not the lossy typed-regex of snap_canonical_col_meta), so
+ * EVERY column is captured regardless of its data type. Used by the drift
+ * detector — a column we fail to recognise as canonical here could be flagged as
+ * debris and dropped, so completeness matters more than type detail.
+ *
+ * @return array<string,true> column name => true
+ */
+function _snap_canonical_columns_from_ddl(string $ddl): array {
+    $start = strpos($ddl, '(');
+    $end   = strrpos($ddl, ')');
+    if ($start === false || $end === false || $end <= $start) return [];
+    $body = substr($ddl, $start + 1, $end - $start - 1);
+
+    $cols = [];
+    foreach (explode("\n", $body) as $raw) {
+        $line = trim($raw, " \t,");
+        if ($line === '') continue;
+        // Skip key / constraint definition lines — only column lines count.
+        if (preg_match('/^(PRIMARY\s+KEY|UNIQUE\s+KEY|UNIQUE|KEY|INDEX|CONSTRAINT|FOREIGN\s+KEY|FULLTEXT|SPATIAL|CHECK)\b/i', $line)) {
+            continue;
+        }
+        if (preg_match('/^`([^`]+)`/', $line, $m)) {
+            $cols[$m[1]] = true;
+        }
+    }
+    return $cols;
+}
+
+/**
+ * REVERSE diff — what exists in the LIVE DB but NOT in canonical (schema debris).
+ *
+ * The forward sync (snap_schema_sync) is additive/corrective only: it ADDs and
+ * MODIFYs whatever canonical requires and NEVER removes — by design, so a
+ * canonical typo can't auto-drop a column across the fleet. The cost is that
+ * leftovers (columns/tables from dropped features or old migrations) accumulate
+ * silently. This surfaces them. READ-ONLY — alters nothing.
+ *
+ * @return array{extra_tables:string[], extra_columns:array<string,string[]>}
+ */
+function snap_schema_drift(PDO $pdo): array {
+    $out = ['extra_tables' => [], 'extra_columns' => []];
+
+    try {
+        $canon = snap_parse_canonical_schema();   // [table => full DDL]
+    } catch (Exception $e) {
+        // Can't parse canonical — report nothing rather than risk false debris.
+        return $out;
+    }
+
+    $canon_cols = [];
+    foreach ($canon as $t => $ddl) {
+        $canon_cols[$t] = _snap_canonical_columns_from_ddl($ddl);
+    }
+
+    $db = $pdo->query('SELECT DATABASE()')->fetchColumn();
+
+    // Tables present live but absent from canonical.
+    $lt = $pdo->prepare(
+        "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
+         WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE'"
+    );
+    $lt->execute([$db]);
+    foreach ($lt->fetchAll(PDO::FETCH_COLUMN) as $t) {
+        if (!isset($canon_cols[$t])) {
+            $out['extra_tables'][] = $t;
+        }
+    }
+
+    // Columns present live but absent from canonical — but ONLY on tables that
+    // ARE canonical (an extra table is reported whole, above) and whose columns
+    // parsed cleanly (empty set = parse failure → skip, never guess).
+    $lc = $pdo->prepare(
+        "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = ?
+         ORDER BY TABLE_NAME, ORDINAL_POSITION"
+    );
+    $lc->execute([$db]);
+    foreach ($lc->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $t = $row['TABLE_NAME'];
+        $c = $row['COLUMN_NAME'];
+        if (!isset($canon_cols[$t]) || empty($canon_cols[$t])) continue;
+        if (!isset($canon_cols[$t][$c])) {
+            $out['extra_columns'][$t][] = $c;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Prune schema debris. DESTRUCTIVE — callers MUST gate this behind
+ * reauth_verify() (password + 2FA) per [[feedback_stepup_auth_pass_plus_2fa]].
+ *
+ * Safety: re-computes drift right now and only drops items that are STILL drift
+ * (guards against stale form data / a canonical update between view and prune),
+ * and validates every identifier. A canonical table/column can never be dropped.
+ *
+ * @param string[]                 $drop_tables
+ * @param array<string,string[]>   $drop_columns  table => [col, ...]
+ * @return array{dropped_tables:string[],dropped_columns:string[],skipped:string[],errors:string[]}
+ */
+function snap_schema_prune(PDO $pdo, array $drop_tables, array $drop_columns): array {
+    $report = ['dropped_tables' => [], 'dropped_columns' => [], 'skipped' => [], 'errors' => []];
+
+    $current      = snap_schema_drift($pdo);
+    $extra_tables = array_flip($current['extra_tables']);
+    $extra_cols   = $current['extra_columns'];
+
+    foreach ($drop_tables as $t) {
+        if (!preg_match('/^[A-Za-z0-9_]+$/', (string)$t)) { $report['skipped'][] = "table {$t} (invalid name)"; continue; }
+        if (!isset($extra_tables[$t]))                    { $report['skipped'][] = "table {$t} (no longer drift)"; continue; }
+        try {
+            $pdo->exec("DROP TABLE `{$t}`");
+            $report['dropped_tables'][] = $t;
+        } catch (\PDOException $e) {
+            $report['errors'][] = "DROP TABLE {$t}: " . $e->getMessage();
+        }
+    }
+
+    foreach ($drop_columns as $t => $cols) {
+        foreach ((array)$cols as $c) {
+            if (!preg_match('/^[A-Za-z0-9_]+$/', (string)$t) || !preg_match('/^[A-Za-z0-9_]+$/', (string)$c)) {
+                $report['skipped'][] = "{$t}.{$c} (invalid name)"; continue;
+            }
+            if (!isset($extra_cols[$t]) || !in_array($c, $extra_cols[$t], true)) {
+                $report['skipped'][] = "{$t}.{$c} (no longer drift)"; continue;
+            }
+            try {
+                $pdo->exec("ALTER TABLE `{$t}` DROP COLUMN `{$c}`");
+                $report['dropped_columns'][] = "{$t}.{$c}";
+            } catch (\PDOException $e) {
+                $report['errors'][] = "DROP {$t}.{$c}: " . $e->getMessage();
+            }
+        }
+    }
+
+    return $report;
+}
+
+/**
  * Returns true if two normalised type strings are platform-equivalent.
  * MariaDB stores JSON columns as LONGTEXT internally and INFORMATION_SCHEMA
  * reports 'longtext' for them, so ALTER TABLE ... json is a no-op there.

@@ -41,6 +41,28 @@ Hotfix release shaken out by the 0.7.263 fleet rollout + the first big Instagram
   spoke) and the in-admin "Re-initialise baseline from disk" recovery can no longer
   500. Same guard the 0.7.262 hotfix gave `smackback_verify_all()`.
 
+### Step-up auth hardening — password + 2FA, always
+
+- **No password-only step-up.** `core/reauth.php` `reauth_verify()` now requires a
+  valid TOTP code for *every* step-up action, not only when 2FA happens to be
+  enrolled. An account without 2FA cannot perform a critical action — it is told to
+  enrol (the call returns `needs_2fa_enrollment`). The 30-day post-install 2FA grace
+  applies to LOGIN only; critical actions never get it. Because every step-up gate
+  funnels through `reauth_verify`, this covers them all at once: disable-SMACKBACK,
+  hub join/permissions, hub push, bulk-import authorize, and the new schema prune.
+
+### Schema drift report + authenticated prune
+
+- **DB-side debris is now visible.** The schema sync is additive/corrective only and
+  never removes, so leftovers (tables/columns from dropped features or old
+  migrations) accumulated silently. A new read-only reverse diff
+  (`snap_schema_drift()`) lists everything in the live DB that is absent from
+  canonical, shown on the Database Schema admin page.
+- **Prune Debris.** A destructive prune (`snap_schema_prune()`) drops the listed
+  extras — gated by password + 2FA, re-verifying drift at execution time and
+  validating every identifier so nothing canonical can ever be dropped. It reports
+  automatically and destroys only on authenticated confirmation.
+
 ## 0.7.263 — "Bass Ackwards" (2026-06-16)
 
 Tool-security pass — per-tool scoped keys, bulk-import safety rails, and

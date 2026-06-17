@@ -4,8 +4,11 @@
  *
  * Verifies the CURRENTLY LOGGED-IN admin's credentials again before a sensitive
  * action (disabling SMACKBACK, posting to the support forum while in breach
- * lockdown, etc.). Requires the account password; additionally requires a valid
- * TOTP code when the account has 2FA enrolled.
+ * lockdown, pruning DB drift, etc.). ALWAYS requires the account password AND a
+ * valid TOTP code — there is no password-only path. An account that has not yet
+ * enrolled 2FA cannot perform a step-up action; reauth_verify returns
+ * needs_2fa_enrollment=true so the caller can force enrolment. (The 30-day
+ * post-install 2FA grace is for LOGIN only — critical actions never get it.)
  *
  * Shared so every step-up gate behaves identically — see [[feedback_reuse_proven_patterns]].
  */
@@ -45,12 +48,22 @@ function reauth_verify(PDO $pdo, string $password, string $totp_code = ''): arra
     if ($password === '' || !password_verify($password, $u['password_hash'])) {
         return ['ok' => false, 'error' => 'Password incorrect.'];
     }
-    // TOTP required only when the account has it enrolled.
-    if (!empty($u['totp_enabled']) && !empty($u['totp_secret'])) {
-        $code = preg_replace('/\s+/', '', $totp_code);
-        if ($code === '' || !totp_verify($u['totp_secret'], $code)) {
-            return ['ok' => false, 'error' => 'Authenticator code incorrect.'];
-        }
+    // POLICY (Sean, 2026-06-17): step-up auth is ALWAYS password + TOTP. There is
+    // no password-only fallback. An account that has not enrolled 2FA cannot
+    // perform a step-up action — it must enrol first. The 30-day post-install
+    // grace period applies to LOGIN only; it does NOT extend to critical actions.
+    // Callers can route on 'needs_2fa_enrollment' to send the admin to enrolment.
+    $enrolled = !empty($u['totp_enabled']) && !empty($u['totp_secret']);
+    if (!$enrolled) {
+        return [
+            'ok'                  => false,
+            'error'               => 'Two-factor authentication is required for this action. Set up 2FA to continue.',
+            'needs_2fa_enrollment'=> true,
+        ];
+    }
+    $code = preg_replace('/\s+/', '', $totp_code);
+    if ($code === '' || !totp_verify($u['totp_secret'], $code)) {
+        return ['ok' => false, 'error' => 'Authenticator code incorrect.'];
     }
     return ['ok' => true, 'error' => ''];
 }
