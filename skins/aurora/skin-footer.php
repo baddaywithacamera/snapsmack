@@ -57,7 +57,10 @@ echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/au-modal.js?v=' . SNAP
 // ── au-lightbox.js — avatar lightbox (shared by all Grid pages) ────────────
 echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/au-lightbox.js?v=' . SNAPSMACK_VERSION_SHORT . '" defer></script>' . "\n";
 
-// ── aurora-wave.js — Layer 2 tile border colour wave (AURORA's own engine) ──
+// ── aurora-bg.js — Layer 1 background curtains (canvas) ─────────────────────
+echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/aurora-bg.js?v=' . SNAPSMACK_VERSION_SHORT . '" defer></script>' . "\n";
+
+// ── aurora-wave.js — Layer 2 tile border colour wave (conic ring) ───────────
 echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/aurora-wave.js?v=' . SNAPSMACK_VERSION_SHORT . '" defer></script>' . "\n";
 
 // ── Core footer (closes </body></html>) ────────────────────────────────────

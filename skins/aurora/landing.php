@@ -205,6 +205,7 @@ include dirname(__DIR__, 2) . '/core/meta.php';
              data-trigram-slot="<?php echo $au_slot; ?>"
              data-row="<?php echo intdiv($au_idx, 3); ?>" data-col="<?php echo $au_idx % 3; ?>"
              <?php if ($tile_css_vars): ?>style="<?php echo $tile_css_vars; ?>"<?php endif; ?>>
+            <div class="au-ring" aria-hidden="true"></div>
             <a href="<?php echo $post_url; ?>" title="<?php echo $title_safe; ?>">
                 <img src="<?php echo htmlspecialchars($thumb_src); ?>"
                      alt="<?php echo $title_safe; ?>"

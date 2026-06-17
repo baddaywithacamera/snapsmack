@@ -47,22 +47,15 @@
     --carousel-dot-color:        rgba(234, 234, 234, 0.25);
     --carousel-dot-active-color: var(--accent-color);
 
-    /* ── AURORA animation variables ───────────────────────────────────────
-       Layer 1 (background aurora) reads --au-sky, --au-l1-op, and the palette
-       stops --au-c1..--au-c6, all set inline on .au-aurora-bg by skin-profile.php
-       from admin config. The fallbacks below are the shipped AURORA palette so
-       the effect is coherent even before any admin save.
-       Layer 2 (tile border wave) border thickness is --au-bw; aurora-wave.js
-       drives each tile's border-color at runtime. */
-    --au-sky:   #000000;
-    --au-l1-op: 0.22;
-    --au-bw:    2px;
-    --au-c1: #61e96e;  /* oxygen green */
-    --au-c2: #00cec9;  /* teal       */
-    --au-c3: #4899f0;  /* blue       */
-    --au-c4: #a55eea;  /* purple     */
-    --au-c5: #e056d7;  /* magenta    */
-    --au-c6: #61e96e;  /* back to green (cycle) */
+    /* ── AURORA variables ─────────────────────────────────────────────────
+       Layer 1 (canvas curtains, aurora-bg.js) reads its palette/cycle/opacity
+       from .au-aurora-bg data attributes — no CSS colour stops. The sky base
+       and the tile-ring vars below are set on :root by skin-profile.php's
+       <style id="au-vars"> block; these are just before-save fallbacks. */
+    --au-sky:       #000000;
+    --tile-bw:      2px;   /* border ring thickness */
+    --tile-radius:  4px;   /* tile corner radius    */
+    --ring-op:      1;     /* border ring opacity   */
 }
 
 /* ==========================================================================
@@ -342,7 +335,10 @@ img { display: block; max-width: 100%; }
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--grid-gap);
-    background: var(--grid-bg);
+    /* Transparent on purpose — the fixed aurora layer shows through the gaps
+       between tiles. AURORA never paints a gap/background colour (unlike The
+       Grid); the aurora IS the background. */
+    background: transparent;
     margin-top: var(--grid-gap);
     width: 100%;
 }
@@ -1294,40 +1290,29 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 }
 
 /* ==========================================================================
-   AURORA — LAYER 1: BACKGROUND AURORA EFFECT
+   AURORA — LAYER 1: BACKGROUND CURTAINS (canvas)
    --------------------------------------------------------------------------
-   A fixed, full-viewport div behind the photography. CSS-only animated radial
-   gradient that breathes the active palette. Opacity is kept low and the cycle
-   is slow (geological, not flashy) — felt, not watched. All colour stops, the
-   sky base, and the opacity are set inline on .au-aurora-bg by skin-profile.php
-   from the admin config (with the shipped aurora palette as the :root fallback).
+   A fixed, full-viewport layer behind the photography. aurora-bg.js renders
+   northern-lights curtains into a half-res <canvas> (CSS-blurred for softness),
+   advancing through the active palette over the admin cycle time. The sky base
+   colour sits behind the canvas; the canvas alpha carries the "background
+   opacity". No CSS animation — the canvas owns the motion and pauses itself
+   when the tab is hidden or reduced-motion is on. See _spec/aurora-prototype.html.
    ========================================================================== */
 .au-aurora-bg {
     position: fixed;
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    opacity: var(--au-l1-op, 0.22);
     background-color: var(--au-sky, #000000);
-    background-image:
-        radial-gradient(60% 50% at 20% 30%, var(--au-c1, #61e96e), transparent 70%),
-        radial-gradient(55% 45% at 80% 25%, var(--au-c3, #4899f0), transparent 70%),
-        radial-gradient(65% 55% at 50% 82%, var(--au-c4, #a55eea), transparent 72%),
-        radial-gradient(50% 42% at 68% 60%, var(--au-c5, #e056d7), transparent 70%);
-    background-size: 200% 200%;
-    background-repeat: no-repeat;
-    animation: au-aurora-drift 32s ease-in-out infinite alternate,
-               au-aurora-hue   48s linear      infinite;
-    will-change: background-position, filter;
 }
-@keyframes au-aurora-drift {
-    0%   { background-position:   0% 0%, 100% 0%,  50% 100%, 60% 50%; }
-    50%  { background-position:  30% 40%, 70% 30%, 40% 70%,  50% 40%; }
-    100% { background-position:   0% 100%,100% 60%, 60% 40%, 70% 60%; }
-}
-@keyframes au-aurora-hue {
-    from { filter: hue-rotate(0deg);   }
-    to   { filter: hue-rotate(360deg); }
+.au-aurora-bg canvas.au-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    filter: blur(5px);
 }
 
 /* Content sits above the fixed aurora layer. */
@@ -1335,29 +1320,34 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 .au-content-wrap { position: relative; z-index: 1; }
 
 /* ==========================================================================
-   AURORA — LAYER 2: TILE BORDER COLOUR WAVE
+   AURORA — LAYER 2: TILE BORDER WAVE (conic ring)
    --------------------------------------------------------------------------
-   Each tile carries a transparent border by default; aurora-wave.js drives the
-   per-tile border-color at runtime so a slow colour wave appears to travel
-   across the grid. Border thickness is the admin --au-bw (box-sizing keeps the
-   tile perfectly square). If the JS never runs the borders simply stay
-   transparent — the grid degrades to a clean dark 3-across.
+   Each tile carries a .au-ring overlay — a hollow border ring built with the
+   two-layer mask trick. aurora-wave.js drives its background: a conic gradient
+   for the "circle" / "sweep" styles, or a solid palette colour for "across" /
+   "pulse", so colour travels around or across the tiles. Border thickness
+   (--tile-bw), corner radius (--tile-radius) and ring opacity (--ring-op) are
+   set by skin-profile.php from the admin config. If the JS never runs the ring
+   stays empty and the grid degrades to a clean dark 3-across.
    ========================================================================== */
 .au-grid .au-tile {
-    box-sizing: border-box;
-    border: var(--au-bw, 2px) solid transparent;
+    position: relative;
+    border-radius: var(--tile-radius, 4px);
 }
-/* Phantom alignment tiles never take a wave border. */
-.au-grid .au-tile--phantom { border-color: transparent !important; }
-
-/* ==========================================================================
-   AURORA — REDUCED MOTION
-   --------------------------------------------------------------------------
-   Layer 1 freezes to a static gradient (first keyframe); Layer 2 is frozen by
-   aurora-wave.js itself (it paints a single mid-cycle colour and stops the
-   loop). The skin stays visually coherent with zero motion.
-   ========================================================================== */
-@media (prefers-reduced-motion: reduce) {
-    .au-aurora-bg { animation: none; }
+.au-grid .au-tile a,
+.au-grid .au-tile img { border-radius: inherit; }
+.au-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--tile-radius, 4px);
+    padding: var(--tile-bw, 2px);
+    pointer-events: none;
+    opacity: var(--ring-op, 1);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
 }
+/* Phantom alignment tiles never get a ring. */
+.au-grid .au-tile--phantom .au-ring { display: none; }
 /* ===== SNAPSMACK EOF ===== */

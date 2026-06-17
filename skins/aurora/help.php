@@ -24,15 +24,15 @@ return [
         ],
         [
             'title' => 'The Aurora Background',
-            'body'  => 'Behind your photographs, a slow aurora breathes colour across the page — a CSS-only animated gradient that cycles through the active palette over roughly half a minute. It is meant to be felt, not watched: the opacity ships low so the photography always wins. In Skin Admin under AURORA you can choose the palette (Aurora, Borealis Ice, or Solar Storm), the sky base colour (deep black, navy, or indigo), and the background opacity (5–50%). Want it subtler? Drop the opacity. Want more drama on a big dark monitor? Raise it.',
+            'body'  => 'Behind your photographs, slow northern-lights curtains drift across the page — drawn on a canvas, advancing through the active palette over a cycle you choose (15–240 seconds; the default is deliberately geological). It is meant to be felt, not watched. In Skin Admin under AURORA you set the palette (Aurora, Borealis Ice, or Solar Storm), the sky base colour (deep black, navy, or indigo), the cycle time, and the background opacity. The colour shift is palette-driven — the real palette colours always show true, so nothing washes out or shifts off-hue.',
         ],
         [
             'title' => 'The Border Wave',
-            'body'  => 'Each tile\'s border colour is driven by a wave that travels across the grid, so neighbouring tiles sit at adjacent points in the colour cycle and a visible wave-front moves through your photographs. Configure it in Skin Admin under BORDER WAVE: direction (left-to-right, right-to-left, top-to-bottom, or bottom-to-top), speed (Slow / Medium / Fast — all deliberately geological), intensity (0% = near-neutral dark borders, 100% = full saturated palette), and border width (1–10 px). The wave shares the AURORA palette, so changing the palette restyles both layers at once.',
+            'body'  => 'Each tile carries an animated colour border drawn from the AURORA palette. Pick the style in Skin Admin under BORDER WAVE: Circle each tile, Circle + sweep across, Wave across grid, or Scatter pulse. You also control the direction (including the two diagonals), the wave rhythm (a slow–fast–slow breath, or constant slow), the border width (1–10 px), the border opacity, and the tile corners. The border shares the AURORA palette, so changing the palette restyles both the background and the borders at once.',
         ],
         [
             'title' => 'Motion & Accessibility',
-            'body'  => 'Both animation layers respect your operating system\'s "reduce motion" setting. When reduced motion is on, the aurora background holds a static gradient and the border wave freezes at a coloured-but-still position — the skin stays visually coherent with zero movement. The wave animation also pauses automatically whenever the browser tab is hidden, so it never burns CPU in the background.',
+            'body'  => 'Both layers respect your operating system\'s "reduce motion" setting. When reduced motion is on, the aurora background and the tile borders each render a single static frame — the skin stays visually coherent with zero movement. The animation also pauses automatically whenever the browser tab is hidden, so it never burns CPU in the background.',
         ],
         [
             'title' => 'Carousel Posts (Multi-Image)',

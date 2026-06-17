@@ -1,17 +1,16 @@
 /**
- * SNAPSMACK - AURORA Tile Border Colour Wave (Layer 2)
+ * SNAPSMACK - AURORA Tile Border Wave (Layer 2)
  *
- * Drives each grid tile's border-color from a sine wave whose phase is offset
- * by the tile's position, so a slow colour wave appears to travel across the
- * grid. Self-contained: reads all config from the .au-aurora-bg element's data
- * attributes (set by skin-profile.php from the admin config). No core hooks, no
- * fetch, no cookies, no storage, no DOM changes beyond border-color.
+ * Conic-gradient ring border, ported from _spec/aurora-prototype.html. Four
+ * styles — circle each tile / circle + sweep across / wave across grid /
+ * scatter pulse — on a slower clock than the sky, with an optional slow-fast-slow
+ * "breath" rhythm. Colour is the TRUE palette (HSL-interpolated for the solid
+ * models, real hex stops for the conic ring) — no hue-rotate.
  *
- *   phase = (time * speedBase * speedMult) + (positionIndex * WAVE_SPREAD)
- *   positionIndex = col (ltr) | -col (rtl) | row (ttb) | -row (btt)
- *
- * Respects prefers-reduced-motion (paints one frozen frame, no loop) and pauses
- * on document.hidden to avoid background CPU drain.
+ * Self-contained. Reads config from the .au-aurora-bg dataset (data-au-palette,
+ * data-au-border-style, data-au-border-dir, data-au-border-rhythm) and drives
+ * each tile's `.au-ring` overlay. Respects prefers-reduced-motion (one static
+ * frame) and pauses on document.hidden. No fetch / storage.
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -21,136 +20,99 @@
 (function () {
     'use strict';
 
-    var SPEED_BASE  = 0.6;   // rad/s at speedMult 1.0 → ~10s per cycle (geological)
-    var WAVE_SPREAD = 0.6;   // radians of phase offset per tile (wavefront width)
-
-    function clamp01(n) { return n < 0 ? 0 : (n > 1 ? 1 : n); }
-
-    function hexToRgb(hex) {
-        if (typeof hex !== 'string') return null;
-        hex = hex.trim().replace('#', '');
-        if (hex.length === 3) {
-            hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-        }
-        if (hex.length !== 6) return null;
-        var n = parseInt(hex, 16);
-        if (isNaN(n)) return null;
-        return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+    // ── HSL helpers (self-contained; mirror aurora-bg.js) ───────────────────
+    function hex2hsl(h) {
+        h = String(h).replace('#', '');
+        if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+        var r = parseInt(h.slice(0,2),16)/255, g = parseInt(h.slice(2,4),16)/255, b = parseInt(h.slice(4,6),16)/255;
+        var mx = Math.max(r,g,b), mn = Math.min(r,g,b), hu = 0, s = 0, l = (mx+mn)/2;
+        if (mx !== mn) { var d = mx-mn; s = l > .5 ? d/(2-mx-mn) : d/(mx+mn);
+            hu = mx===r ? (g-b)/d+(g<b?6:0) : mx===g ? (b-r)/d+2 : (r-g)/d+4; hu /= 6; }
+        return [hu*360, s, l];
     }
-
-    function mix(a, b, t) {
-        return {
-            r: Math.round(a.r + (b.r - a.r) * t),
-            g: Math.round(a.g + (b.g - a.g) * t),
-            b: Math.round(a.b + (b.b - a.b) * t)
-        };
+    function lerp(a,b,t){ return a+(b-a)*t; }
+    function lerpHue(a,b,t){ var d = ((b-a)%360+540)%360-180; return (a+d*t+360)%360; }
+    function sampleArr(hs,t){
+        var n = hs.length, x = (((t%1)+1)%1)*n, i = Math.floor(x), f = x-i;
+        var a = hs[i%n], b = hs[(i+1)%n];
+        return [lerpHue(a[0],b[0],f), lerp(a[1],b[1],f), lerp(a[2],b[2],f)];
     }
-
-    function rgbStr(c) { return 'rgb(' + c.r + ',' + c.g + ',' + c.b + ')'; }
+    function hslStr(c){ return 'hsl('+c[0].toFixed(1)+' '+(c[1]*100).toFixed(1)+'% '+(c[2]*100).toFixed(1)+'%)'; }
 
     function init() {
         var cfg = document.querySelector('.au-aurora-bg');
         if (!cfg) return;
 
-        // ── Parse palette ────────────────────────────────────────────────
-        var palette = [];
-        try {
-            var raw = JSON.parse(cfg.getAttribute('data-au-palette') || '[]');
-            if (Array.isArray(raw)) {
-                for (var i = 0; i < raw.length; i++) {
-                    var c = hexToRgb(raw[i]);
-                    if (c) palette.push(c);
-                }
-            }
-        } catch (e) { /* fall through to default below */ }
-        if (palette.length < 2) {
-            palette = [
-                { r: 97, g: 233, b: 110 }, { r: 0, g: 206, b: 201 },
-                { r: 72, g: 153, b: 240 }, { r: 165, g: 94, b: 234 },
-                { r: 224, g: 86, b: 215 }, { r: 97, g: 233, b: 110 }
-            ];
-        }
+        var hexes = [];
+        try { var raw = JSON.parse(cfg.getAttribute('data-au-palette') || '[]'); if (Array.isArray(raw)) hexes = raw; } catch (e) {}
+        if (hexes.length < 2) hexes = ['#56e86a','#2fe6a0','#39b6f0','#9bf25a','#2f7fe0','#f2d24a','#ff5566','#46c0c0'];
+        var PAL = hexes.map(hex2hsl);
 
-        var dir       = cfg.getAttribute('data-au-direction') || 'ltr';
-        var speedMult = parseFloat(cfg.getAttribute('data-au-speed')) || 0.6;
-        var intensity = parseFloat(cfg.getAttribute('data-au-intensity'));
-        if (isNaN(intensity)) intensity = 0.85;
-        intensity = clamp01(intensity);
+        var bmodel  = cfg.getAttribute('data-au-border-style')  || 'circle';
+        var bdir    = cfg.getAttribute('data-au-border-dir')    || 'dtlbr';
+        var brhythm = cfg.getAttribute('data-au-border-rhythm') || 'breath';
+        var bCycle  = 160; // border clock — slower counterpoint to the sky
 
-        // Peak colour is blended from a near-neutral dark up to the full palette
-        // colour by the intensity setting (0% = barely-there, 100% = saturated).
-        var neutral = hexToRgb(cfg.getAttribute('data-au-neutral') || '#1a1a1a')
-                      || { r: 26, g: 26, b: 26 };
+        // conic ring uses the real hex stops so the true palette wraps the edge
+        var ringStops = hexes.concat([hexes[0]]).map(function (c, i, a) {
+            return c + ' ' + Math.round(i/(a.length-1)*360) + 'deg';
+        }).join(',');
 
-        // ── Build tile lookup ────────────────────────────────────────────
+        function sampleHsl(t){ return hslStr(sampleArr(PAL, t)); }
+        function solid(c){ return 'linear-gradient(' + c + ',' + c + ')'; }
+
+        // ── tile lookup (each tile carries a .au-ring overlay) ──────────────
         var nodes = document.querySelectorAll('.au-grid .au-tile');
-        var tiles = [];
-        for (var j = 0; j < nodes.length; j++) {
-            var el = nodes[j];
+        var tiles = [], seedN = 0;
+        for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
             if (el.classList.contains('au-tile--phantom')) continue;
+            var ring = el.querySelector('.au-ring');
+            if (!ring) continue;
             var row = parseInt(el.getAttribute('data-row'), 10) || 0;
             var col = parseInt(el.getAttribute('data-col'), 10) || 0;
-            var posIndex;
-            switch (dir) {
-                case 'rtl': posIndex = -col; break;
-                case 'ttb': posIndex =  row; break;
-                case 'btt': posIndex = -row; break;
-                default:    posIndex =  col; // ltr
-            }
-            tiles.push({ el: el, pos: posIndex });
+            tiles.push({ ring: ring, row: row, col: col, seed: (seedN*0.137)%1 });
+            seedN++;
         }
         if (!tiles.length) return;
 
-        // ── Colour from a normalized wave position s in [0,1] ─────────────
-        function colourAt(s) {
-            var span = palette.length - 1;          // segments between stops
-            var x    = clamp01(s) * span;
-            var idx  = Math.floor(x);
-            if (idx >= span) idx = span - 1;
-            var frac = x - idx;
-            var col  = mix(palette[idx], palette[idx + 1], frac);
-            return rgbStr(mix(neutral, col, intensity));
-        }
-
-        function paint(timeSec) {
-            var base = timeSec * SPEED_BASE * speedMult;
-            for (var k = 0; k < tiles.length; k++) {
-                var phase = base + tiles[k].pos * WAVE_SPREAD;
-                var s = (Math.sin(phase) + 1) / 2;  // → [0,1]
-                tiles[k].el.style.borderColor = colourAt(s);
+        function posIndex(r, c) {
+            switch (bdir) {
+                case 'ltr':   return c;
+                case 'rtl':   return 2 - c;
+                case 'ttb':   return r;
+                case 'btt':   return 3 - r;
+                case 'dbrtl': return -(r + c); // diagonal ↖
+                default:      return  (r + c); // dtlbr / diagonal ↘
             }
         }
-
-        // ── Reduced motion: paint one frozen frame, no loop ──────────────
-        var reduce = window.matchMedia &&
-                     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (reduce) {
-            paint(0);   // position offsets still differ → a frozen wave front
-            return;
+        function borderBG(o, tw) {
+            var idx = posIndex(o.row, o.col);
+            if (bmodel === 'across') return solid(sampleHsl(tw/bCycle + idx*0.12)); // wavefront across grid
+            if (bmodel === 'pulse')  return solid(sampleHsl(tw/bCycle + o.seed));   // scattered per-tile pulse
+            if (bmodel === 'sweep')  return 'conic-gradient(from ' + (((tw/bCycle*360)+idx*40)%360) + 'deg, ' + ringStops + ')';
+            return 'conic-gradient(from ' + ((tw/bCycle*360)%360) + 'deg, ' + ringStops + ')'; // circle each tile
+        }
+        function paint(T) {
+            var tw = (brhythm === 'breath') ? (T + 6*Math.sin(T*0.05)) : T;
+            for (var k = 0; k < tiles.length; k++) tiles[k].ring.style.background = borderBG(tiles[k], tw);
         }
 
-        // ── Animation loop, paused while the tab is hidden ───────────────
-        var rafId = null;
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduced) { paint(80); return; } // one static, coloured frame
+
+        var rafId = null, last = 0;
         function frame(now) {
-            paint(now / 1000);
+            if (now - last >= 32) { last = now; paint(now/1000); }
             rafId = window.requestAnimationFrame(frame);
         }
-        function start() {
-            if (rafId === null) rafId = window.requestAnimationFrame(frame);
-        }
-        function stop() {
-            if (rafId !== null) { window.cancelAnimationFrame(rafId); rafId = null; }
-        }
-        document.addEventListener('visibilitychange', function () {
-            if (document.hidden) { stop(); } else { start(); }
-        });
+        function start(){ if (rafId === null) rafId = window.requestAnimationFrame(frame); }
+        function stop(){ if (rafId !== null) { window.cancelAnimationFrame(rafId); rafId = null; } }
+        document.addEventListener('visibilitychange', function () { if (document.hidden) stop(); else start(); });
         if (!document.hidden) start();
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
 })();
 // ===== SNAPSMACK EOF =====

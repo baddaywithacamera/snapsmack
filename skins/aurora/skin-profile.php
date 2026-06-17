@@ -99,32 +99,32 @@ $_au_colors    = $_au_palettes[$_au_pal_key]['colors']
                      ?? ['#61e96e', '#00cec9', '#4899f0', '#a55eea', '#e056d7', '#61e96e']);
 $_au_colors    = array_values($_au_colors);
 
-$_au_sky       = $settings['au_sky']           ?? '#000000';
-$_au_l1_op     = (string)($settings['au_l1_opacity'] ?? '0.22');
-$_au_dir       = $settings['au_wave_direction'] ?? 'ltr';
-$_au_speed     = (string)($settings['au_wave_speed'] ?? '0.6');
-$_au_int_pct   = (int)($settings['au_wave_intensity'] ?? 85);
-$_au_intensity = max(0, min(100, $_au_int_pct)) / 100;
-
-// Spread up to six Layer-1 gradient stops across the chosen palette.
-$_au_n = max(1, count($_au_colors));
-$_au_css = 'background-color:' . htmlspecialchars($_au_sky) . ';opacity:'
-         . htmlspecialchars($_au_l1_op) . ';';
-for ($_i = 1; $_i <= 6; $_i++) {
-    $_idx = ($_au_n === 1) ? 0 : (int)round((($_i - 1) / 5) * ($_au_n - 1));
-    $_au_css .= '--au-c' . $_i . ':' . htmlspecialchars($_au_colors[$_idx]) . ';';
-}
-$_au_css .= '--au-sky:' . htmlspecialchars($_au_sky) . ';--au-l1-op:'
-          . htmlspecialchars($_au_l1_op) . ';';
+$_au_sky     = $settings['au_sky'] ?? '#000000';
+$_au_opacity = number_format(max(5, min(100, (int)($settings['au_l1_opacity'] ?? 50))) / 100, 2); // canvas alpha
+$_au_cycle   = max(15, min(240, (int)($settings['au_cycle_time'] ?? 240)));      // seconds per palette pass
+$_au_bstyle  = $settings['au_border_style']   ?? 'circle';                        // circle|sweep|across|pulse
+$_au_bdir    = $settings['au_wave_direction'] ?? 'dtlbr';
+$_au_brhythm = $settings['au_wave_rhythm']    ?? 'breath';                         // breath|constant
+$_au_bw      = max(1, min(10, (int)($settings['au_border_width'] ?? 2)));
+$_au_bo      = number_format(max(10, min(100, (int)($settings['au_border_opacity'] ?? 100))) / 100, 2);
+$_au_corner  = $settings['au_tile_corners'] ?? 'auto';                             // auto|square|rounded
+$_au_radius  = ($_au_corner === 'square') ? 0
+             : (($_au_corner === 'rounded') ? 16 : (int)round($_au_bw * 2.2));     // 'auto' grows with width
 ?>
 
-<!-- AURORA Layer 1 — animated atmospheric background + wave config carrier -->
+<!-- AURORA tile vars: border width / corner radius / ring opacity / sky base -->
+<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;}</style>
+
+<!-- AURORA config carrier — read by aurora-bg.js (Layer 1 curtains) and
+     aurora-wave.js (Layer 2 ring wave). -->
 <div class="au-aurora-bg" aria-hidden="true"
      data-au-palette='<?php echo htmlspecialchars(json_encode($_au_colors), ENT_QUOTES); ?>'
-     data-au-direction="<?php echo htmlspecialchars($_au_dir); ?>"
-     data-au-speed="<?php echo htmlspecialchars($_au_speed); ?>"
-     data-au-intensity="<?php echo htmlspecialchars(number_format($_au_intensity, 2)); ?>"
-     style="<?php echo $_au_css; ?>"></div>
+     data-au-cycle="<?php echo $_au_cycle; ?>"
+     data-au-opacity="<?php echo $_au_opacity; ?>"
+     data-au-sky="<?php echo htmlspecialchars($_au_sky); ?>"
+     data-au-border-style="<?php echo htmlspecialchars($_au_bstyle); ?>"
+     data-au-border-dir="<?php echo htmlspecialchars($_au_bdir); ?>"
+     data-au-border-rhythm="<?php echo htmlspecialchars($_au_brhythm); ?>"></div>
 
 <?php if ($_au_has_treat): ?>
 <div class="au-treatment-bg" style="<?php echo $_au_bg_style; ?>" aria-hidden="true"></div>
@@ -192,4 +192,4 @@ $_au_css .= '--au-sky:' . htmlspecialchars($_au_sky) . ';--au-l1-op:'
         </ul>
     </div>
 </nav>
-<?php // ===== SNAPSMACK EOF ====
+<?php // ===== SNAPSMACK EOF =====

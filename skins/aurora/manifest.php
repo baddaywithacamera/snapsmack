@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'AURORA',
-    'version'     => '1.0.0',
+    'version'     => '1.0.2',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Northern-lights desktop skin. A classic 3-across square grid under a slow aurora that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.',
@@ -83,7 +83,7 @@ return [
             'label'   => 'Colour Palette',
             'default' => 'aurora',
             'options' => [
-                'aurora'       => 'Aurora — green · teal · blue · purple · magenta',
+                'aurora'       => 'Aurora — green-dominant, teal/blue/yellow/red flares',
                 'borealis-ice' => 'Borealis Ice — cool greens & blues',
                 'solar'        => 'Solar Storm — green into red aurora',
             ],
@@ -105,14 +105,28 @@ return [
         'au_l1_opacity' => [
             'section'  => 'AURORA',
             'type'     => 'range_numeric',
-            'label'    => 'Background Aurora Opacity',
-            'default'  => '0.22',
-            'min'      => '0.05',
-            'max'      => '0.50',
-            'step'     => '0.05',
-            'unit'     => '',
-            'hint'     => 'How present the aurora feels behind the grid. Low keeps it atmospheric.',
-            // PHP-handled (skin-profile.php).
+            'label'    => 'Background Opacity',
+            // Integer PERCENT — the admin range widget is integer-only; skin-profile.php
+            // divides by 100 and feeds it to the canvas curtains as their alpha.
+            'default'  => '50',
+            'min'      => '5',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+            'hint'     => 'How present the aurora feels behind the grid.',
+            // PHP-handled → data-au-opacity (aurora-bg.js).
+        ],
+        'au_cycle_time' => [
+            'section'  => 'AURORA',
+            'type'     => 'range_numeric',
+            'label'    => 'Aurora Cycle Time',
+            'default'  => '240',
+            'min'      => '15',
+            'max'      => '240',
+            'step'     => '5',
+            'unit'     => 's',
+            'hint'     => 'Seconds for one full pass through the palette. Higher = slower. Default is deliberately geological.',
+            // PHP-handled → --au-cycle on .au-aurora-bg.
         ],
 
         // ---- BORDER WAVE (Layer 2) ----------------------------------------
@@ -122,37 +136,38 @@ return [
             'label'   => 'Wave Direction',
             'default' => 'ltr',
             'options' => [
-                'ltr' => 'Left to right',
-                'rtl' => 'Right to left',
-                'ttb' => 'Top to bottom',
-                'btt' => 'Bottom to top',
+                'ltr'   => 'Left to right',
+                'rtl'   => 'Right to left',
+                'ttb'   => 'Top to bottom',
+                'btt'   => 'Bottom to top',
+                'dtlbr' => 'Diagonal ↘ (top-left to bottom-right)',
+                'dbrtl' => 'Diagonal ↖ (bottom-right to top-left)',
             ],
-            // PHP-handled → data-au-direction; read by aurora-wave.js.
+            // PHP-handled → data-au-border-dir; read by aurora-wave.js.
         ],
-        'au_wave_speed' => [
+        'au_border_style' => [
             'section' => 'BORDER WAVE',
             'type'    => 'select',
-            'label'   => 'Wave Speed',
-            'default' => '0.6',
+            'label'   => 'Border Style',
+            'default' => 'circle',
             'options' => [
-                '0.3' => 'Slow',
-                '0.6' => 'Medium',
-                '1.0' => 'Fast',
+                'circle' => 'Circle each tile',
+                'sweep'  => 'Circle + sweep across',
+                'across' => 'Wave across grid',
+                'pulse'  => 'Scatter pulse',
             ],
-            'hint'    => 'Even "Fast" is deliberately geological — the wave is atmosphere, not a light show.',
-            // PHP-handled → data-au-speed.
+            // PHP-handled → data-au-border-style; read by aurora-wave.js.
         ],
-        'au_wave_intensity' => [
-            'section'  => 'BORDER WAVE',
-            'type'     => 'range_numeric',
-            'label'    => 'Wave Intensity',
-            'default'  => '85',
-            'min'      => '0',
-            'max'      => '100',
-            'step'     => '5',
-            'unit'     => '%',
-            'hint'     => 'How saturated the peak border colour gets. 0% = near-neutral dark, 100% = full palette.',
-            // PHP-handled → data-au-intensity.
+        'au_wave_rhythm' => [
+            'section' => 'BORDER WAVE',
+            'type'    => 'select',
+            'label'   => 'Wave Rhythm',
+            'default' => 'breath',
+            'options' => [
+                'breath'   => 'Slow–fast–slow breath',
+                'constant' => 'Constant slow',
+            ],
+            // PHP-handled → data-au-border-rhythm.
         ],
         'au_border_width' => [
             'section'  => 'BORDER WAVE',
@@ -163,8 +178,19 @@ return [
             'max'      => '10',
             'step'     => '1',
             'unit'     => 'px',
-            'selector' => ':root',
-            'property' => '--au-bw',
+            // PHP-handled → --tile-bw; also drives the 'auto' corner radius.
+        ],
+        'au_border_opacity' => [
+            'section'  => 'BORDER WAVE',
+            'type'     => 'range_numeric',
+            'label'    => 'Border Opacity',
+            'default'  => '100',
+            'min'      => '10',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+            'hint'     => 'Strength of the tile border ring.',
+            // PHP-handled → --ring-op.
         ],
 
         // ---- GRID APPEARANCE -----------------------------------------------
@@ -180,27 +206,20 @@ return [
             'selector' => ':root',
             'property' => '--grid-gap',
         ],
-        'au_bg_color' => [
-            'section'  => 'GRID',
-            'type'     => 'color',
-            'label'    => 'Grid Background / Gap Colour',
-            'default'  => '#000000',
-            'selector' => ':root',
-            'property' => '--grid-bg',
-        ],
-        'au_border_radius' => [
+        // NOTE: no "grid background / gap colour" option — unlike The Grid, AURORA
+        // shows the live aurora through the gaps between tiles (the grid container
+        // is transparent), so a gap colour would just paint over the effect.
+        'au_tile_corners' => [
             'section'  => 'GRID',
             'type'     => 'select',
-            'label'    => 'Tile Border Radius',
-            'default'  => '0',
+            'label'    => 'Tile Corners',
+            'default'  => 'auto',
             'options'  => [
-                '0' => '0px (sharp)',
-                '2' => '2px',
-                '4' => '4px',
-                '8' => '8px (rounded)',
+                'auto'    => 'Round with border thickness',
+                'square'  => 'Square',
+                'rounded' => 'Rounded',
             ],
-            'selector' => ':root',
-            'property' => '--tile-radius',
+            // PHP-handled → --tile-radius (skin-profile.php derives it from corners + width).
         ],
         'au_carousel_indicator' => [
             'section'  => 'GRID',
