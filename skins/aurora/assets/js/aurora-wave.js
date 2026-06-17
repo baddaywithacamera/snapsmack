@@ -12,6 +12,12 @@
  * each tile's `.au-ring` overlay. Respects prefers-reduced-motion (one static
  * frame) and pauses on document.hidden. No fetch / storage.
  *
+ * SCALING: the per-frame paint runs ONLY on tiles currently in/near the viewport
+ * (tracked via IntersectionObserver). A 1400-image grid therefore animates ~30
+ * rings per frame instead of 1400 — the wave never pins the main thread, so the
+ * grid stays smooth and native loading="lazy" is never starved. Tiles paint once
+ * on entry so they are never blank. Falls back to all-tiles if IO is unavailable.
+ *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  * Last non-empty line of this file MUST match the line above.
@@ -61,27 +67,6 @@
         function sampleHsl(t){ return hslStr(sampleArr(PAL, t)); }
         function solid(c){ return 'linear-gradient(' + c + ',' + c + ')'; }
 
-        // ── tile lookup (each tile carries a .au-ring overlay) ──────────────
-        var tiles = [], seedN = 0;
-        function scanTiles() {
-            var nodes = document.querySelectorAll('.au-grid .au-tile');
-            tiles = []; seedN = 0;
-            for (var i = 0; i < nodes.length; i++) {
-                var el = nodes[i];
-                if (el.classList.contains('au-tile--phantom')) continue;
-                var ring = el.querySelector('.au-ring');
-                if (!ring) continue;
-                var row = parseInt(el.getAttribute('data-row'), 10) || 0;
-                var col = parseInt(el.getAttribute('data-col'), 10) || 0;
-                tiles.push({ ring: ring, row: row, col: col, seed: (seedN*0.137)%1 });
-                seedN++;
-            }
-        }
-        scanTiles();
-        if (!tiles.length) return;
-        // Re-scan when grid pages are appended via AJAX load-more.
-        document.addEventListener('aurora:grid-updated', scanTiles);
-
         function posIndex(r, c) {
             switch (bdir) {
                 case 'ltr':   return c;
@@ -99,16 +84,66 @@
             if (bmodel === 'sweep')  return 'conic-gradient(from ' + (((tw/bCycle*360)+idx*40)%360) + 'deg, ' + ringStops + ')';
             return 'conic-gradient(from ' + ((tw/bCycle*360)%360) + 'deg, ' + ringStops + ')'; // circle each tile
         }
+
+        // ── viewport scoping ────────────────────────────────────────────────
+        // Only tiles on/near screen get repainted each frame. This is what lets
+        // a 1400-tile grid animate without melting: ~30 rings/frame, not 1400.
+        var supportsIO = typeof window.IntersectionObserver === 'function';
+        var lastTw = 80; // current wave clock; tiles entering view paint at this value
+        var io = supportsIO ? new IntersectionObserver(function (entries) {
+            for (var i = 0; i < entries.length; i++) {
+                var t = entries[i].target.__auTile;
+                if (!t) continue;
+                t.vis = entries[i].isIntersecting;
+                if (t.vis) t.ring.style.background = borderBG(t, lastTw); // never blank on entry
+            }
+        }, { rootMargin: '200px 0px' }) : null;
+
+        // ── tile lookup (each tile carries a .au-ring overlay) ──────────────
+        var tiles = [], seedN = 0;
+        function scanTiles() {
+            if (io) io.disconnect();
+            var nodes = document.querySelectorAll('.au-grid .au-tile');
+            tiles = []; seedN = 0;
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.classList.contains('au-tile--phantom')) continue;
+                var ring = el.querySelector('.au-ring');
+                if (!ring) continue;
+                var row = parseInt(el.getAttribute('data-row'), 10) || 0;
+                var col = parseInt(el.getAttribute('data-col'), 10) || 0;
+                var t = { el: el, ring: ring, row: row, col: col, seed: (seedN*0.137)%1, vis: !io };
+                tiles.push(t);
+                el.__auTile = t;
+                seedN++;
+            }
+            if (io) for (var j = 0; j < tiles.length; j++) io.observe(tiles[j].el);
+        }
+        scanTiles();
+        if (!tiles.length) return;
+        // Re-scan when grid pages are appended via AJAX load-more.
+        document.addEventListener('aurora:grid-updated', scanTiles);
+
         function paint(T) {
             var tw = (brhythm === 'breath') ? (T + 6*Math.sin(T*0.05)) : T;
-            for (var k = 0; k < tiles.length; k++) tiles[k].ring.style.background = borderBG(tiles[k], tw);
+            lastTw = tw;
+            for (var k = 0; k < tiles.length; k++) {
+                if (tiles[k].vis) tiles[k].ring.style.background = borderBG(tiles[k], tw);
+            }
             // Expose current wave colour as a CSS var so other elements (e.g. nav
             // border lines) can track the aurora without extra JS.
             document.documentElement.style.setProperty('--au-wave-color', sampleHsl(tw / bCycle));
         }
 
         var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (reduced) { paint(80); return; } // one static, coloured frame
+        if (reduced) {
+            // one static, coloured frame across every tile (no animation, so no
+            // viewport scoping needed) then stop observing.
+            for (var s = 0; s < tiles.length; s++) tiles[s].ring.style.background = borderBG(tiles[s], 80);
+            document.documentElement.style.setProperty('--au-wave-color', sampleHsl(80 / bCycle));
+            if (io) io.disconnect();
+            return;
+        }
 
         var rafId = null, last = 0;
         function frame(now) {
