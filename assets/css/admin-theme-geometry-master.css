@@ -4396,7 +4396,7 @@ input[type="range"]:active::-webkit-slider-thumb {
 .multisite-table th    { text-align: left; padding: 10px; }
 .multisite-table td    { padding: 10px; }
 .multisite-table tr    { border-bottom-width: 1px; border-bottom-style: solid; }
-.multisite-table .col-center { text-align: center; }
+.multisite-table .col-center { text-align: center; vertical-align: middle; }
 
 /* Cross-post image picker selection highlight                                 */
 .img-picker-cb:checked ~ .img-picker-card {
@@ -6791,7 +6791,7 @@ input[type="range"]:active::-webkit-slider-thumb {
 .multisite-table th    { text-align: left; padding: 10px; }
 .multisite-table td    { padding: 10px; }
 .multisite-table tr    { border-bottom-width: 1px; border-bottom-style: solid; }
-.multisite-table .col-center { text-align: center; }
+.multisite-table .col-center { text-align: center; vertical-align: middle; }
 
 /* Cross-post image picker selection highlight                                 */
 .img-picker-cb:checked ~ .img-picker-card {
@@ -6975,4 +6975,22 @@ input[type="range"]:active::-webkit-slider-thumb {
 @media (prefers-reduced-motion: reduce) {
     .backup-dot--critical { animation: none; box-shadow: 0 0 5px 2px rgba(255, 59, 48, 0.80); }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   MULTISITE — ACTION COLUMN ALIGNMENT
+   The ACTION cell shows a variable set of controls per spoke (REMOTE LOGIN,
+   optional UPDATE, ENABLE/DISABLE MAINT, DISCONNECT), each in its own <form>.
+   Forms are block-level by default, so without this the controls stacked and
+   started at different x per row — making the BACKUP / SMACKBACK / ACTION
+   columns read as ragged. Flex + inline forms give every row one tidy, centred
+   control cluster on a consistent baseline, lining the three columns up.
+   ────────────────────────────────────────────────────────────────────────── */
+.spoke-act-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+}
+.spoke-act-wrap form { margin: 0; display: inline-flex; }
 /* ===== SNAPSMACK EOF ===== */

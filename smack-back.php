@@ -152,6 +152,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_skin_js_settings'] ??
     exit;
 }
 
+// DISMISS ONE INCIDENT (remove a single resolved-incident row from the log)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['dismiss_incident'] ?? '') !== '') {
+    $iid = (int)$_POST['dismiss_incident'];
+    if ($iid > 0) {
+        $pdo->prepare("DELETE FROM snap_smackback_log WHERE id = ?")->execute([$iid]);
+    }
+    header('Location: smack-back.php?msg=' . urlencode('Incident dismissed.'));
+    exit;
+}
+
+// CLEAR ENTIRE INCIDENT LOG
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['clear_incident_log'] ?? '') === '1') {
+    try { $pdo->exec("DELETE FROM snap_smackback_log"); } catch (PDOException $e) { /* table absent — nothing to clear */ }
+    header('Location: smack-back.php?msg=' . urlencode('Incident log cleared.'));
+    exit;
+}
+
 // RE-INITIALISE BASELINE FROM DISK
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['reinit_baseline'] ?? '') === '1') {
     $ok = smackback_init_from_disk();
@@ -455,17 +472,50 @@ include 'core/sidebar.php';
 
     <!-- ── INCIDENT LOG ──────────────────────────────────────────────────── -->
     <div class="box">
-        <h3>INCIDENT LOG</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <h3 style="margin:0;">INCIDENT LOG</h3>
+            <?php if (!empty($incidents)): ?>
+            <form method="post" style="margin:0;"
+                  onsubmit="return confirm('Clear the entire incident log? This permanently removes the recorded history of resolved integrity incidents.');">
+                <?php csrf_field(); ?>
+                <input type="hidden" name="clear_incident_log" value="1">
+                <button type="submit" class="btn-smack btn-danger" style="font-size:0.8rem;padding:6px 12px;">CLEAR LOG</button>
+            </form>
+            <?php endif; ?>
+        </div>
         <?php if (empty($incidents)): ?>
             <p class="dim">No incidents recorded.</p>
         <?php else: ?>
-            <?php foreach ($incidents as $inc): ?>
-            <div class="stat-row" style="display:grid;grid-template-columns:1fr 1fr auto auto;gap:16px;align-items:center;padding:10px 0;font-size:0.88rem;">
-                <span><?php echo htmlspecialchars($inc['detected_at']); ?></span>
-                <span><?php echo $inc['resolved_at'] ? htmlspecialchars($inc['resolved_at']) : '<span class="dim">Open</span>'; ?></span>
-                <span><?php echo (int)$inc['file_count']; ?> files</span>
-                <span class="dim"><?php echo $inc['resolution'] ? htmlspecialchars($inc['resolution']) : '—'; ?></span>
-            </div>
+            <p class="dim" style="margin:8px 0 16px;">Each entry is a detected-then-resolved integrity incident. Expand a row to read exactly which files were affected.</p>
+            <?php foreach ($incidents as $inc):
+                $aff = json_decode($inc['affected_files'] ?? '[]', true);
+                if (!is_array($aff)) $aff = [];
+            ?>
+            <details class="incident-entry" style="border-bottom:1px solid var(--border-color,#2a2a2a);padding:8px 0;">
+                <summary style="display:grid;grid-template-columns:1.4fr 1.4fr auto auto auto;gap:16px;align-items:center;font-size:0.88rem;cursor:pointer;list-style:none;">
+                    <span title="Detected"><?php echo htmlspecialchars($inc['detected_at']); ?></span>
+                    <span title="Resolved"><?php echo $inc['resolved_at'] ? htmlspecialchars($inc['resolved_at']) : '<span class="dim">Open</span>'; ?></span>
+                    <span><?php echo (int)$inc['file_count']; ?> files</span>
+                    <span class="dim"><?php echo $inc['resolution'] ? htmlspecialchars($inc['resolution']) : '—'; ?></span>
+                    <span class="dim" style="font-size:0.78rem;">details ▾</span>
+                </summary>
+                <div style="padding:10px 4px 4px;">
+                    <?php if (empty($aff)): ?>
+                        <p class="dim" style="margin:0 0 10px;">No file list was recorded for this incident.</p>
+                    <?php else: ?>
+                        <ul class="input-code" style="margin:0 0 10px;padding:10px 14px;max-height:240px;overflow:auto;list-style:none;">
+                            <?php foreach ($aff as $f): ?>
+                            <li><?php echo htmlspecialchars(is_array($f) ? ($f['path'] ?? json_encode($f)) : (string)$f); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                    <form method="post" style="margin:0;">
+                        <?php csrf_field(); ?>
+                        <input type="hidden" name="dismiss_incident" value="<?php echo (int)$inc['id']; ?>">
+                        <button type="submit" class="btn-smack" style="font-size:0.8rem;padding:6px 12px;">DISMISS</button>
+                    </form>
+                </div>
+            </details>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>

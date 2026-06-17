@@ -42,6 +42,24 @@ because the 0.7.262 "Hot Seat" login hotfix shipped first. Spec:
     PARADE (the Pride-palette variant of the same architecture) is a separate
     skin, deferred.
 
+### SMACKBACK status accuracy + incident log + multisite UI
+
+- **PENDING-forever fix.** `smackback_status` was only ever written `clean` by
+  `smackback_resolve_breach()`, so a site that was armed but never breached
+  reported `pending` ("awaiting first run") indefinitely and the hub dashboard
+  showed PENDING for healthy spokes. New guarded `smackback_mark_clean()` helper
+  promotes pending/unknown → `clean` on a clean full-verify pass and on a fresh
+  disk baseline. It deliberately refuses to clear an active breach (that still
+  goes through `resolve_breach`, which logs the incident). Net effect: a clean
+  verification or a "Re-initialise baseline from disk" now flips a spoke to CLEAN.
+- **Incident log is now readable + dismissible.** Each entry in the SMACKBACK
+  incident log expands to show exactly which files were affected; individual
+  incidents can be dismissed, and the whole log cleared (with confirmation).
+- **Multisite dashboard alignment.** The BACKUP / SMACKBACK / ACTION columns now
+  line up: `col-center` cells are vertically centred and the per-spoke ACTION
+  control cluster is a tidy centred flex row regardless of which buttons a given
+  spoke shows.
+
 ### Bulk-import safety (Unzucker, Flkr Fckr)
 
 - **Install-mode lock.** Flkr Fckr imports into SMACKONEOUT (`photoblog`) installs

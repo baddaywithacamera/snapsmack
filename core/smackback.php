@@ -706,6 +706,12 @@ function smackback_init_from_disk(): bool {
     }
 
     error_log("SMACKBACK: Disk baseline set — {$count} files");
+    if ($count > 0) {
+        // A fresh disk baseline is authoritative — the site is clean by definition.
+        // Lets a re-baseline (or first arm) flip smackback_status pending→clean so the
+        // hub dashboard reflects reality without waiting for a breach→resolve cycle.
+        smackback_mark_clean();
+    }
     return $count > 0;
 }
 
@@ -827,6 +833,13 @@ function smackback_verify_all(): array {
 
     $duration = round(microtime(true) - $t_start, 3);
     $any_bad  = !empty($tampered) || !empty($truncated) || !empty($corrupted) || !empty($missing);
+
+    // A clean pass over a populated manifest promotes pending/unknown → clean so the
+    // hub dashboard stops showing PENDING forever on armed-but-never-breached spokes.
+    // Guarded inside mark_clean: an active breach is left for resolve_breach (logged).
+    if (!$any_bad && count($rows) > 0) {
+        smackback_mark_clean();
+    }
 
     return [
         'status'    => $any_bad ? 'breach' : 'clean',
@@ -1097,6 +1110,37 @@ function smackback_resolve_breach(string $resolution = 'restore'): void {
     $upsert->execute(['smackback_breach_files',       '']);
     $upsert->execute(['smackback_breach_resolved_at', $now]);
     $upsert->execute(['smackback_last_full_verify',   $now]);
+}
+
+/**
+ * Promote smackback_status to 'clean'.
+ *
+ * Previously the ONLY writer of smackback_status='clean' was
+ * smackback_resolve_breach(), so a site that was armed but never breached
+ * never got a 'clean' write — its heartbeat reported 'pending' ("awaiting
+ * first run") forever and the hub dashboard showed PENDING indefinitely.
+ *
+ * This promotes pending/unknown (or already-clean) → 'clean'. It deliberately
+ * REFUSES to override an active 'breach': clearing a breach must go through
+ * smackback_resolve_breach() so the incident is logged. Safe to call on every
+ * clean verify pass and after a fresh disk baseline.
+ */
+function smackback_mark_clean(): void {
+    global $pdo;
+    try {
+        $cur = $pdo->query(
+            "SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_status'"
+        )->fetchColumn();
+    } catch (\Throwable $e) {
+        return; // settings table unavailable — nothing to do
+    }
+    if ($cur === 'breach') {
+        return; // never silently clear a breach — resolve_breach owns that path
+    }
+    $pdo->prepare(
+        "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackback_status', 'clean')
+         ON DUPLICATE KEY UPDATE setting_val = 'clean'"
+    )->execute();
 }
 
 // ─── FILE RESTORE ────────────────────────────────────────────────────────────
