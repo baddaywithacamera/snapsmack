@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - AURORA Skin Manifest
- * v1.0.7
+ * v1.0.8
  *
  * Desktop GRAMOFSMACK skin. A classic 3-across square-tile grid (The Grid's
  * proven column architecture) overlaid with a two-layer animation system:
@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'AURORA',
-    'version'     => '1.0.7',
+    'version'     => '1.0.8',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Northern-lights desktop skin. A classic 3-across square grid under a slow aurora that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.',

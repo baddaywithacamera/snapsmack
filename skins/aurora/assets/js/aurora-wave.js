@@ -66,6 +66,15 @@
 
         function sampleHsl(t){ return hslStr(sampleArr(PAL, t)); }
         function solid(c){ return 'linear-gradient(' + c + ',' + c + ')'; }
+        // Publish the live wave colour + a DARK tint (30% lightness) as CSS vars.
+        // The nav divider lines read --au-wave-color-dark so they pulse in a dark
+        // version of the aurora without any extra DOM work.
+        function setWaveVars(t){
+            var wc = sampleArr(PAL, t), ds = document.documentElement.style;
+            ds.setProperty('--au-wave-color', hslStr(wc));
+            ds.setProperty('--au-wave-color-dark',
+                'hsl(' + wc[0].toFixed(1) + ' ' + (wc[1]*100).toFixed(1) + '% ' + (wc[2]*30).toFixed(1) + '%)');
+        }
 
         function posIndex(r, c) {
             switch (bdir) {
@@ -130,9 +139,9 @@
             for (var k = 0; k < tiles.length; k++) {
                 if (tiles[k].vis) tiles[k].ring.style.background = borderBG(tiles[k], tw);
             }
-            // Expose current wave colour as a CSS var so other elements (e.g. nav
-            // border lines) can track the aurora without extra JS.
-            document.documentElement.style.setProperty('--au-wave-color', sampleHsl(tw / bCycle));
+            // Expose current wave colour + a dark variant as CSS vars so other
+            // elements (e.g. the nav divider lines) can track the aurora.
+            setWaveVars(tw / bCycle);
         }
 
         var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -140,7 +149,7 @@
             // one static, coloured frame across every tile (no animation, so no
             // viewport scoping needed) then stop observing.
             for (var s = 0; s < tiles.length; s++) tiles[s].ring.style.background = borderBG(tiles[s], 80);
-            document.documentElement.style.setProperty('--au-wave-color', sampleHsl(80 / bCycle));
+            setWaveVars(80 / bCycle);
             if (io) io.disconnect();
             return;
         }
