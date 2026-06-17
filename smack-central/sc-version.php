@@ -9,6 +9,6 @@
  * SNAPSMACK_EOF_HEADER: bottom marker is  // ===== SNAPSMACK EOF =======  (last non-empty line)
  */
 
-define('SC_VERSION',  '0.7.254D');
+define('SC_VERSION',  '0.7.265D');
 define('SC_CODENAME', 'Hot Seat');
 // ===== SNAPSMACK EOF =====
