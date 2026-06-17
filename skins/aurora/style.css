@@ -1,0 +1,1363 @@
+/**
+ * SNAPSMACK - AURORA Skin Styles
+ * Alpha v0.7.5
+ *
+ * Clean, minimal Instagram-inspired grid skin.
+ * All configurable values are CSS custom properties on :root.
+ * The compiled CSS blob from smack-skin.php loads after this file
+ * and overrides defaults via the same :root variables.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
+/* ==========================================================================
+   CUSTOM PROPERTY DEFAULTS
+   Override these via the skin settings panel (compiled CSS blob).
+   ========================================================================== */
+
+:root {
+    /* AURORA ships dark by default — northern-lights aesthetic. The photography
+       is the content; the dark canvas lets the aurora breathe behind it.
+       Every value here is also a manifest option default (Skin Admin overrides
+       win via the compiled dynamic CSS). Keep the two in sync. */
+    --bg-primary:        #000000;
+    --text-primary:      #eaeaea;
+    --text-secondary:    #8a8a8a;
+    --accent-color:      #61e96e;   /* aurora green */
+    --border-color:      #242424;
+    --font-body:         'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+    --grid-gap:          2px;
+    --grid-bg:           #000000;
+    --tile-radius:       0px;
+    --grid-gutter:       0px;
+    --grid-max-width:    935px;
+
+    /* Carousel dot colours — inherit site accent */
+    --carousel-dot-color:        rgba(234, 234, 234, 0.25);
+    --carousel-dot-active-color: var(--accent-color);
+
+    /* ── AURORA animation variables ───────────────────────────────────────
+       Layer 1 (background aurora) reads --au-sky, --au-l1-op, and the palette
+       stops --au-c1..--au-c6, all set inline on .au-aurora-bg by skin-profile.php
+       from admin config. The fallbacks below are the shipped AURORA palette so
+       the effect is coherent even before any admin save.
+       Layer 2 (tile border wave) border thickness is --au-bw; aurora-wave.js
+       drives each tile's border-color at runtime. */
+    --au-sky:   #000000;
+    --au-l1-op: 0.22;
+    --au-bw:    2px;
+    --au-c1: #61e96e;  /* oxygen green */
+    --au-c2: #00cec9;  /* teal       */
+    --au-c3: #4899f0;  /* blue       */
+    --au-c4: #a55eea;  /* purple     */
+    --au-c5: #e056d7;  /* magenta    */
+    --au-c6: #61e96e;  /* back to green (cycle) */
+}
+
+/* ==========================================================================
+   RESET & BASE
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    color: var(--text-primary);
+    text-decoration: none;
+}
+a:hover { opacity: 0.7; }
+
+img { display: block; max-width: 100%; }
+
+/* ==========================================================================
+   LAYOUT SHELL
+   ========================================================================== */
+
+/* Max-width content column — wraps profile, sticky nav, and grid on landing page */
+.au-content-wrap {
+    box-sizing: border-box;
+    /* Card = grid width + a white gutter on each side. With box-sizing:border-box
+       the inner content stays at --grid-max-width while the card itself grows by
+       the gutter, so the white extends outward over the background treatment. */
+    max-width: calc(var(--grid-max-width, 935px) + (2 * var(--grid-gutter, 0px)));
+    margin: 0 auto;
+    padding-left: var(--grid-gutter, 0px);
+    padding-right: var(--grid-gutter, 0px);
+}
+
+/* General constrained wrapper — profile header, topbar, post view, archive */
+.au-wrap {
+    padding: 0 var(--grid-gutter);
+}
+
+/* ==========================================================================
+   STICKY NAV
+   Sits between profile header and grid. Sticks to top when profile scrolls off.
+   JS (au-nav.js) adds .profile-hidden class to reveal the mini avatar.
+   ========================================================================== */
+
+.au-sticky-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.au-sticky-nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 0 var(--grid-gutter, 0px);
+    height: 40px;
+    overflow: hidden;
+}
+
+/* Mini avatar — absolutely positioned left, hidden until profile scrolls off screen */
+.au-sticky-avatar {
+    position: absolute;
+    left: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+}
+
+.au-sticky-avatar-initials {
+    position: absolute;
+    left: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+}
+
+.au-sticky-nav.profile-hidden .au-sticky-avatar,
+.au-sticky-nav.profile-hidden .au-sticky-avatar-initials {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+/* Nav links */
+.au-sticky-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.au-sticky-nav-links a {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-decoration: none;
+    letter-spacing: 0.2px;
+    text-transform: var(--nav-text-transform, none);
+    transition: color 0.15s;
+}
+
+.au-sticky-nav-links a:hover,
+.au-sticky-nav-links a.active {
+    color: var(--text-primary);
+    opacity: 1;
+}
+
+/* Top nav bar (existing) */
+.au-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.au-topbar-inner {
+    padding: 0 var(--grid-gutter);
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.au-site-name {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   PROFILE HEADER
+   Shown above the grid on the landing page.
+   ========================================================================== */
+
+.au-profile {
+    padding: 30px 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.au-profile-avatar {
+    width: 77px;
+    height: 77px;
+    border-radius: 50%;
+    background: var(--border-color);
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.au-profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.au-profile-avatar-initials {
+    font-size: 28px;
+    font-weight: 300;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.au-profile-info { flex: 0 1 auto; min-width: 0; }
+
+.au-profile-nameline {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 10px;
+}
+
+.au-profile-username {
+    font-size:   var(--blog-title-size, 20px);
+    font-weight: var(--blog-title-weight, 300);
+    font-family: var(--blog-title-font, inherit);
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.au-profile-tagline-sep {
+    font-size: var(--blog-title-size, 20px);
+    font-weight: 300;
+    color: var(--text-secondary);
+    line-height: 1;
+}
+
+.au-profile-tagline {
+    font-size:   var(--tagline-size, 16px);
+    font-weight: var(--tagline-weight, 300);
+    font-family: var(--tagline-font, inherit);
+    color: var(--tagline-color, var(--text-secondary));
+    margin: 0;
+}
+
+.au-profile-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 10px;
+}
+
+.au-profile-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.au-profile-stat-num {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.au-profile-stat-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.au-profile-bio {
+    margin:      8px 0 0;
+    font-size:   14px;
+    line-height: 1.5;
+    color:       var(--text-secondary);
+    max-width:   480px;
+}
+
+
+/* ==========================================================================
+   3-COLUMN GRID
+   ========================================================================== */
+
+/* 3-column grid — constrained by .au-content-wrap max-width.
+   Width is 100% of the content column (not full viewport). */
+.au-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--grid-gap);
+    background: var(--grid-bg);
+    margin-top: var(--grid-gap);
+    width: 100%;
+}
+
+/* Individual grid tile */
+.au-tile {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: var(--border-color);
+    border-radius: var(--tile-radius);
+}
+
+.au-tile a {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+}
+
+.au-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: opacity 0.2s;
+}
+
+.au-tile:hover img { opacity: 0.85; }
+
+/* Carousel indicator badge (top-right corner) */
+.au-tile-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    pointer-events: none;
+    line-height: 1;
+}
+
+.au-tile-indicator--icon {
+    color: #fff;
+    font-size: 16px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    /* Unicode: layered squares ⧉ */
+}
+
+.au-tile-indicator--count {
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    letter-spacing: 0.3px;
+}
+
+/* Hover overlay: title or count shown on hover */
+.au-tile-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 1;
+    pointer-events: none;
+    padding: 12px;
+}
+
+.au-tile:hover .au-tile-overlay { opacity: 1; }
+
+/* Dark-only hover: no pointer events, no padding needed */
+.au-tile-overlay--dark { padding: 0; }
+
+.au-tile-overlay-text {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.3;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+/* ── Framed tile mode ──────────────────────────────────────────────────────
+   Applied when per-image/carousel/grid style brings size below 100%,
+   adds a border, or adds a shadow. PHP emits class .au-tile--framed and
+   CSS custom properties on the .au-tile element itself.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.au-tile--framed {
+    background: var(--tile-bg, #ffffff);
+}
+
+.au-tile--framed a {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--tile-bg, #ffffff);
+}
+
+.au-tile--framed img {
+    /* override fill-tile behaviour */
+    width:        var(--tile-img-size, 100%);
+    height:       var(--tile-img-size, 100%);
+    object-fit:   contain;
+    border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
+    box-shadow:   var(--tile-shadow, none);
+    box-sizing:   border-box;
+    transition:   opacity 0.2s;
+}
+
+/* ── Trigram row ──────────────────────────────────────────────────────────
+   Trigram tiles are plain square tiles. No special CSS needed — L, M, R
+   all inherit .au-tile's aspect-ratio: 1/1 and sit in the grid normally.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* Phantom tile: invisible placeholder to complete a partial row before a
+   trigram set, so the L tile always starts at column 0. */
+.au-tile--phantom {
+    visibility:     hidden;
+    pointer-events: none;
+}
+
+/* Panorama tiles: the first tile forces a new row via grid-column: 1 */
+.au-tile--pano-first  { grid-column: 1; }
+.au-tile--pano-middle { /* naturally placed in column 2 */ }
+.au-tile--pano-last   { /* naturally placed in column 3 */ }
+
+/* ==========================================================================
+   SINGLE POST VIEW (layout.php) — Instagram two-panel layout
+   ========================================================================== */
+
+/* ── Outer two-panel container ─────────────────────────────────────────── */
+.au-post-ig {
+    display:         flex;
+    justify-content: center;
+    height:          100dvh;
+    overflow:        hidden;
+    background:      var(--post-bg, #000);
+}
+
+/* ── Left: image panel (fixed, never scrolls) ──────────────────────────── */
+.au-post-ig-image {
+    /* AURORA is classic-IG: the image panel is ALWAYS 1:1 square.
+       Sized by container height; width derives from aspect-ratio. */
+    flex:            0 0 auto;
+    height:          100%;
+    aspect-ratio:    1 / 1;
+    min-width:       0;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    overflow:        hidden;
+    background:      var(--post-bg, #000);
+    position:        relative;
+    padding:         0;
+}
+
+.au-post-ig-image .au-single-img {
+    width:      100%;
+    height:     100%;
+    object-fit: contain;
+    display:    block;
+}
+
+/* Carousel fills the image panel */
+.au-post-ig-image .au-carousel-wrap {
+    width:    100%;
+    height:   100%;
+    position: relative;
+}
+
+.au-post-ig-image .ss-slider,
+.au-post-ig-image .slider-track {
+    height: 100%;
+}
+
+.au-post-ig-image .slider-slide {
+    height:          100%;
+    display:         flex !important;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--post-bg, #000);
+}
+
+.au-post-ig-image .slider-slide img {
+    max-width:   100% !important;
+    max-height:  100% !important;
+    width:       auto !important;
+    height:      auto !important;
+    object-fit:  contain !important;
+}
+
+/* Framed slides inside the image panel */
+.au-post-ig-image .au-slide--framed img {
+    max-height: 100% !important;
+}
+
+/* ── Right: info panel (scrollable) ────────────────────────────────────── */
+.au-post-ig-info {
+    flex:           0 0 335px;
+    width:          335px;
+    border-left:    1px solid var(--border-color);
+    background:     var(--bg-primary, #fff);
+    display:        flex;
+    flex-direction: column;
+    overflow:       hidden;
+}
+
+/* Fixed header: back + avatar + site name */
+.au-post-ig-header {
+    display:       flex;
+    align-items:   center;
+    gap:           10px;
+    padding:       14px 16px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink:   0;
+}
+
+.au-back-btn {
+    background:  none;
+    border:      none;
+    cursor:      pointer;
+    color:       var(--text-primary);
+    font-size:   20px;
+    padding:     4px 8px 4px 0;
+    display:     flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.au-back-btn:hover { opacity: 0.6; }
+
+.au-post-ig-avatar {
+    width:         32px;
+    height:        32px;
+    border-radius: 50%;
+    object-fit:    cover;
+    flex-shrink:   0;
+}
+
+.au-post-ig-avatar--initials {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--text-secondary, #8e8e8e);
+    color:           #fff;
+    font-size:       14px;
+    font-weight:     600;
+}
+
+.au-post-ig-sitename {
+    font-size:     14px;
+    font-weight:   600;
+    color:         var(--text-primary);
+    flex:          1;
+    overflow:      hidden;
+    white-space:   nowrap;
+    text-overflow: ellipsis;
+}
+
+/* Scrollable body */
+.au-post-ig-body {
+    flex:       1 1 0;
+    overflow-y: auto;
+    padding:    20px 22px;
+}
+
+/* IG-style caption block: bold username inline then caption text */
+.au-post-caption-block {
+    margin-bottom: 12px;
+}
+
+.au-post-ig-caption {
+    font-size:   14px;
+    color:       var(--text-primary);
+    line-height: 1.6;
+    margin:      0;
+}
+
+.au-post-ig-caption-user {
+    font-weight:  600;
+    margin-right: 4px;
+}
+
+.description a,
+.static-content a:not(.nav-menu a) {
+    color:                  var(--accent-color);
+    text-decoration:        underline;
+    text-underline-offset:  2px;
+}
+
+.description a:hover,
+.static-content a:not(.nav-menu a):hover { color: var(--text-primary); }
+
+.description a:has(img),
+.static-content a:has(img) {
+    text-decoration: none !important;
+    border-bottom:   none !important;
+}
+
+/* EXIF panel */
+.au-exif-panel {
+    display:       flex;
+    flex-wrap:     wrap;
+    gap:           6px 16px;
+    padding:       10px 0;
+    border-top:    1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 12px;
+}
+
+.au-exif-item {
+    display:        flex;
+    flex-direction: column;
+}
+
+.au-exif-label {
+    font-size:      10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color:          var(--text-secondary);
+}
+
+.au-exif-value {
+    font-size: 13px;
+    color:     var(--text-primary);
+}
+
+/* Engagement bar — pinned between body and footer */
+.au-post-ig-actions {
+    flex-shrink:  0;
+    border-top:   1px solid var(--border-color);
+    padding:      10px 16px 8px;
+    background:   var(--bg-primary, #fff);
+}
+
+.au-post-ig-action-icons {
+    display:       flex;
+    gap:           16px;
+    margin-bottom: 6px;
+}
+
+.au-action-btn {
+    background:  none;
+    border:      none;
+    padding:     0;
+    cursor:      pointer;
+    color:       var(--text-primary);
+    line-height: 1;
+    display:     flex;
+    align-items: center;
+}
+
+.au-action-btn:hover { opacity: 0.6; }
+
+.au-action-bookmark { margin-left: auto; }
+
+.au-post-ig-date {
+    font-size:      10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color:          var(--text-secondary);
+    margin:         0;
+}
+
+/* Community component — flush to body edges */
+.au-community-wrap {
+    border-top: 1px solid var(--border-color);
+    margin:     16px -16px 0;
+    padding:    0 16px;
+}
+
+/* ── Framed carousel slide (shared with grid tiles) ────────────────────── */
+.au-slide--framed {
+    background:      var(--slide-bg, #000) !important;
+    display:         flex !important;
+    align-items:     center;
+    justify-content: center;
+    min-height:      280px;
+}
+
+.au-slide--framed img {
+    width:      var(--slide-img-size, 100%) !important;
+    height:     auto !important;
+    max-height: 80vh !important;
+    object-fit: contain !important;
+    border:     var(--slide-border-w, 0px) solid var(--slide-border-c, transparent) !important;
+    box-shadow: var(--slide-shadow, none) !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+}
+
+/* Fallback carousel/single-img classes (used outside post view) */
+.au-carousel-wrap {
+    position:   relative;
+    background: var(--post-bg, #000);
+    width:      100%;
+}
+
+.au-single-img {
+    width:      100%;
+    max-height: 80vh;
+    object-fit: contain;
+    display:    block;
+}
+
+/* ── Footer pinned to bottom of right panel ────────────────────────────── */
+.au-post-ig-info > #system-footer {
+    flex-shrink:   0;
+    border-top:    1px solid var(--border-color);
+    background:    var(--bg-primary, #fff);
+    padding:       8px 16px;
+    margin:        0;
+}
+
+.au-post-ig-info > #system-footer .footer-metadata-bar p {
+    font-size:      10px;
+    letter-spacing: 0.3px;
+    color:          var(--text-secondary);
+    margin:         0;
+}
+
+/* ── Mobile: stack vertically ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .au-post-ig {
+        flex-direction: column;
+        height:         auto;
+        overflow:       visible;
+    }
+
+    .au-post-ig-image {
+        /* Square here too — full width, 1:1. */
+        flex:         0 0 auto;
+        width:        100%;
+        aspect-ratio: 1 / 1;
+        height:       auto;
+    }
+
+    .au-post-ig-info {
+        width:    100%;
+        flex:     0 0 auto;
+        height:   auto;
+        overflow: visible;
+    }
+
+    .au-post-ig-body {
+        overflow: visible;
+    }
+}
+
+/* ==========================================================================
+   POST MODAL OVERLAY
+   IG-style popover: grid stays visible, dimmed behind 80% opaque backdrop.
+   au-modal.js populates #au-modal-frame by fetching ?modal=1 fragments.
+   ========================================================================== */
+
+.au-modal-overlay {
+    position:        fixed;
+    inset:           0;
+    z-index:         900;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+}
+
+.au-modal-overlay[hidden] { display: none; }
+
+/* Prevent grid scroll while modal is open */
+body.au-modal-open { overflow: hidden; }
+
+.au-modal-backdrop {
+    position:   absolute;
+    inset:      0;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.au-modal-frame {
+    position:      relative;
+    z-index:       1;
+    width:         auto;
+    max-width:     92vw;
+    height:        min(92vh, 900px);
+    border-radius: 4px;
+    overflow:      hidden;
+    box-shadow:    0 8px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* Force the post layout to fill the frame (overrides 100dvh default) */
+.au-modal-frame .au-post-ig {
+    height: 100%;
+}
+
+/* ==========================================================================
+   ARCHIVE VIEW (categories, albums)
+   Same grid as landing — just no profile header.
+   ========================================================================== */
+
+.au-archive-header {
+    padding: 20px 0 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.au-archive-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 4px;
+}
+
+.au-archive-meta {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ── Hashtag / Tag Page ──────────────────────────────────────────────────── */
+
+.au-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    opacity: .7;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.au-archive-header h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px;
+}
+
+.au-archive-header p {
+    font-size: 13px;
+    opacity: .6;
+    margin: 0;
+}
+
+.au-grid-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    opacity: .5;
+}
+
+/* ==========================================================================
+   PAGINATION
+   ========================================================================== */
+
+.au-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 20px 16px;
+}
+
+.au-page-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.15s;
+}
+
+.au-page-btn:hover,
+.au-page-btn.is-current {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border-color: var(--text-primary);
+}
+
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
+
+.au-footer {
+    border-top: 1px solid var(--border-color);
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.au-footer a {
+    color: var(--text-secondary);
+}
+
+.au-footer a:hover {
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 600px) {
+    .au-profile {
+        gap: 20px;
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+    .au-profile-avatar {
+        width: 56px;
+        height: 56px;
+    }
+    .au-profile-username { font-size: 16px; }
+    .au-profile-tagline-sep { font-size: 16px; }
+    .au-profile-tagline { font-size: 14px; }
+    .au-profile-stats { gap: 16px; }
+}
+
+/* ── Hashtag links in captions ────────────────────────────────────────────── */
+.au-hashtag {
+    color: var(--accent-color, #0095f6);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.au-hashtag:hover {
+    text-decoration: underline;
+}
+/* ==========================================================================
+   SYSTEM FOOTER OVERRIDES (core/footer.php → #system-footer)
+   ========================================================================== */
+
+#system-footer {
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-primary);
+}
+
+#system-footer .inside {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+    padding: 20px var(--grid-gutter, 0px);
+}
+
+#system-footer .footer-metadata-bar {
+    text-align: center;
+}
+
+#system-footer .footer-metadata-bar p {
+    margin: 0;
+    font-size: 11px;
+    color: var(--text-secondary);
+    letter-spacing: 0.4px;
+    line-height: 2;
+}
+
+#system-footer .footer-metadata-bar .sep {
+    margin: 0 8px;
+    opacity: 0.4;
+}
+
+#system-footer .footer-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+#system-footer .footer-link:hover {
+    color: var(--text-primary);
+    opacity: 1;
+}
+
+/* ==========================================================================
+   STATIC PAGE (About, etc.)
+   ========================================================================== */
+
+.au-static-page .au-sticky-nav {
+    position: sticky;
+    top: 0;
+}
+
+.au-static-content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+}
+
+.au-static-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 24px;
+}
+
+.au-static-body {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.au-static-body p {
+    margin: 0 0 16px;
+}
+
+.au-static-body a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.au-static-body a:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   BACKGROUND TREATMENT  (skin admin → Treatment)
+   Full-viewport image/colour layer behind the centred content card.
+   The .au-treatment-* layers are emitted by skin-profile.php ONLY when a
+   treatment is active, so with no treatment these rules never match and the
+   default flat layout is completely untouched.
+   ========================================================================== */
+
+.au-treatment-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+.au-treatment-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* When a treatment is present, the content column reads as a card floating
+   over the background. */
+body:has(.au-treatment-bg) .au-content-wrap,
+body:has(.au-treatment-bg).is-blogroll #scroll-stage {
+    background: var(--bg-primary, #ffffff);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.28);
+    min-height: 100vh;
+}
+
+body:has(.au-treatment-bg).is-blogroll #scroll-stage {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+}
+
+/* ==========================================================================
+   AVATAR LIGHTBOX
+   ========================================================================== */
+
+.au-profile-avatar--zoom { cursor: zoom-in; }
+
+.au-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5vmin;
+    background: rgba(0, 0, 0, 0.85);
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+.au-lightbox[hidden] { display: none; }
+.au-lightbox.is-open { opacity: 1; }
+
+.au-lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 4px;
+    box-shadow: 0 10px 60px rgba(0, 0, 0, 0.6);
+    cursor: zoom-out;
+}
+
+.au-lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 34px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.8;
+}
+.au-lightbox-close:hover { opacity: 1; }
+
+/* ==========================================================================
+   BLOGROLL  (core blogroll.php rendered inside the Grid shell)
+   Scoped to body.is-blogroll so it only affects the blogroll page, and only
+   on AURORA (this stylesheet is loaded only when AURORA is active).
+   ========================================================================== */
+
+body.is-blogroll .blogroll-canvas {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 32px 20px 60px;
+}
+
+body.is-blogroll .static-page-title {
+    font-size: var(--blog-title-size, 24px);
+    font-weight: 300;
+    color: var(--text-primary);
+    margin: 0 0 24px;
+}
+
+body.is-blogroll .blogroll-category-heading {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 6px;
+    margin: 32px 0 16px;
+}
+
+body.is-blogroll .blogroll-peer { margin: 0 0 20px; }
+
+body.is-blogroll .blogroll-peer-name a {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+body.is-blogroll .blogroll-peer-name a:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
+
+body.is-blogroll .blogroll-peer-desc {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin: 3px 0 0;
+}
+
+/* Drop the raw URL line — the peer name is the link. */
+body.is-blogroll .blogroll-peer-url { display: none; }
+
+/* ==========================================================================
+   COMMUNITY COMMENT FORM  (inside the Grid post modal)
+   The core community component ships raw browser inputs; theme them to match
+   the Grid modal. Scoped to .au-post-ig so only the modal is affected, and
+   higher specificity than ss-community.css so these win regardless of order.
+   ========================================================================== */
+
+.au-post-ig .ss-comment-guest-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.au-post-ig .ss-guest-name,
+.au-post-ig .ss-guest-email,
+.au-post-ig .ss-comment-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--border-color, #dbdbdb);
+    border-radius: 8px;
+    background: transparent;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-primary);
+    transition: border-color 0.15s ease;
+}
+
+.au-post-ig .ss-guest-name::placeholder,
+.au-post-ig .ss-guest-email::placeholder,
+.au-post-ig .ss-comment-textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+.au-post-ig .ss-guest-name:focus,
+.au-post-ig .ss-guest-email:focus,
+.au-post-ig .ss-comment-textarea:focus {
+    outline: none;
+    border-color: var(--accent-color, #0095f6);
+}
+
+.au-post-ig .ss-comment-input-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.au-post-ig .ss-comment-textarea {
+    resize: none;
+    line-height: 1.4;
+    min-height: 38px;
+}
+
+.au-post-ig .ss-comment-input-row .ss-avatar-placeholder {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--border-color, #dbdbdb);
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.au-post-ig .ss-comment-btns {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+.au-post-ig .ss-comment-cancel,
+.au-post-ig .ss-comment-submit {
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+}
+
+.au-post-ig .ss-comment-cancel { color: var(--text-secondary); }
+.au-post-ig .ss-comment-submit { color: var(--accent-color, #0095f6); }
+.au-post-ig .ss-comment-submit:hover { background: rgba(0, 149, 246, 0.08); }
+
+.au-post-ig .ss-comment-author {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   AURORA — LAYER 1: BACKGROUND AURORA EFFECT
+   --------------------------------------------------------------------------
+   A fixed, full-viewport div behind the photography. CSS-only animated radial
+   gradient that breathes the active palette. Opacity is kept low and the cycle
+   is slow (geological, not flashy) — felt, not watched. All colour stops, the
+   sky base, and the opacity are set inline on .au-aurora-bg by skin-profile.php
+   from the admin config (with the shipped aurora palette as the :root fallback).
+   ========================================================================== */
+.au-aurora-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: var(--au-l1-op, 0.22);
+    background-color: var(--au-sky, #000000);
+    background-image:
+        radial-gradient(60% 50% at 20% 30%, var(--au-c1, #61e96e), transparent 70%),
+        radial-gradient(55% 45% at 80% 25%, var(--au-c3, #4899f0), transparent 70%),
+        radial-gradient(65% 55% at 50% 82%, var(--au-c4, #a55eea), transparent 72%),
+        radial-gradient(50% 42% at 68% 60%, var(--au-c5, #e056d7), transparent 70%);
+    background-size: 200% 200%;
+    background-repeat: no-repeat;
+    animation: au-aurora-drift 32s ease-in-out infinite alternate,
+               au-aurora-hue   48s linear      infinite;
+    will-change: background-position, filter;
+}
+@keyframes au-aurora-drift {
+    0%   { background-position:   0% 0%, 100% 0%,  50% 100%, 60% 50%; }
+    50%  { background-position:  30% 40%, 70% 30%, 40% 70%,  50% 40%; }
+    100% { background-position:   0% 100%,100% 60%, 60% 40%, 70% 60%; }
+}
+@keyframes au-aurora-hue {
+    from { filter: hue-rotate(0deg);   }
+    to   { filter: hue-rotate(360deg); }
+}
+
+/* Content sits above the fixed aurora layer. */
+#page-wrapper,
+.au-content-wrap { position: relative; z-index: 1; }
+
+/* ==========================================================================
+   AURORA — LAYER 2: TILE BORDER COLOUR WAVE
+   --------------------------------------------------------------------------
+   Each tile carries a transparent border by default; aurora-wave.js drives the
+   per-tile border-color at runtime so a slow colour wave appears to travel
+   across the grid. Border thickness is the admin --au-bw (box-sizing keeps the
+   tile perfectly square). If the JS never runs the borders simply stay
+   transparent — the grid degrades to a clean dark 3-across.
+   ========================================================================== */
+.au-grid .au-tile {
+    box-sizing: border-box;
+    border: var(--au-bw, 2px) solid transparent;
+}
+/* Phantom alignment tiles never take a wave border. */
+.au-grid .au-tile--phantom { border-color: transparent !important; }
+
+/* ==========================================================================
+   AURORA — REDUCED MOTION
+   --------------------------------------------------------------------------
+   Layer 1 freezes to a static gradient (first keyframe); Layer 2 is frozen by
+   aurora-wave.js itself (it paints a single mid-cycle colour and stops the
+   loop). The skin stays visually coherent with zero motion.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+    .au-aurora-bg { animation: none; }
+}
+/* ===== SNAPSMACK EOF ===== */
