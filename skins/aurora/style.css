@@ -352,6 +352,25 @@ img { display: block; max-width: 100%; }
     border-radius: var(--tile-radius);
 }
 
+/* Aurora border-wave ring overlay (Layer 2).
+   JS (aurora-wave.js) drives .style.background on this element with a
+   conic-gradient. The mask punches out the centre, leaving only the
+   padding-width ring visible. --tile-bw and --ring-op are set by
+   skin-profile.php from the au_border_width / au_border_opacity settings. */
+.au-ring {
+    position:      absolute;
+    inset:         0;
+    border-radius: var(--tile-radius);
+    padding:       var(--tile-bw, 2px);
+    pointer-events: none;
+    z-index:       2;
+    opacity:       var(--ring-op, 1);
+    -webkit-mask:  linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:          linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+}
+
 .au-tile a {
     display: block;
     width: 100%;
