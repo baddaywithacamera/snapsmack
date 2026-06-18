@@ -50,26 +50,19 @@ if (!empty($requested)) {
         foreach ($requested as $handle) {
             if (isset($inventory['scripts'][$handle])) {
                 $script = $inventory['scripts'][$handle];
-                echo '<script src="' . BASE_URL . $script['path'] . '?v=' . SNAPSMACK_VERSION_SHORT . '"></script>' . "\n";
+                // Skin-owned scripts bust on the skin version and load deferred;
+                // core engines stay on the core version.
+                $_is_skin = strpos($script['path'], 'skins/') === 0;
+                $_ver = $_is_skin ? $skin_asset_v : SNAPSMACK_VERSION_SHORT;
+                echo '<script src="' . BASE_URL . $script['path'] . '?v=' . $_ver . '"' . ($_is_skin ? ' defer' : '') . '></script>' . "\n";
             }
         }
     }
 }
 
-// ── au-modal.js — load directly in case manifest-inventory is stale ────────
-echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/au-modal.js?v=' . $skin_asset_v . '" defer></script>' . "\n";
-
-// ── au-lightbox.js — avatar lightbox (shared by all Grid pages) ────────────
-echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/au-lightbox.js?v=' . $skin_asset_v . '" defer></script>' . "\n";
-
-// ── aurora-bg.js — Layer 1 background curtains (canvas) ─────────────────────
-echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/aurora-bg.js?v=' . $skin_asset_v . '" defer></script>' . "\n";
-
-// ── aurora-wave.js — Layer 2 tile border colour wave (conic ring) ───────────
-echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/aurora-wave.js?v=' . $skin_asset_v . '" defer></script>' . "\n";
-
-// ── au-grid-reveal.js — progressive "grows as you scroll" reveal ────────────
-echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/au-grid-reveal.js?v=' . $skin_asset_v . '" defer></script>' . "\n";
+// All AURORA engines load through the manifest above (require_scripts →
+// core/manifest-inventory.php). No direct <script> tags here — JS stays under
+// the CMS library / integrity posture.
 
 // ── Core footer (closes </body></html>) ────────────────────────────────────
 include_once(dirname(__DIR__, 2) . '/core/footer.php');

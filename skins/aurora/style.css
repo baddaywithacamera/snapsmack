@@ -133,10 +133,11 @@ img { display: block; max-width: 100%; }
     right: -2px;
     height: 2px;
     background: var(--nav-line-indigo, #14143d);
+    opacity: var(--nav-line-opacity, 1);
     pointer-events: none;
 }
-.au-sticky-nav::before { top: 1px; }     /* directly under the top green line    */
-.au-sticky-nav::after  { bottom: -2px; } /* directly under the bottom green line  */
+.au-sticky-nav::before { top: 1px; }     /* 1px below the top green line               */
+.au-sticky-nav::after  { bottom: -4px; } /* 1px below the bottom green line (clears it) */
 
 .au-sticky-nav-inner {
     display: flex;
@@ -208,10 +209,9 @@ img { display: block; max-width: 100%; }
     text-decoration: none;
     letter-spacing: 0.2px;
     text-transform: var(--nav-text-transform, none);
-    /* Outer glow — keeps the nav legible over the dark, animated aurora bg. */
-    text-shadow:
-        0 0 4px  var(--nav-glow-color, rgba(97,233,110,0.45)),
-        0 0 10px var(--nav-glow-color, rgba(97,233,110,0.30));
+    /* Outer glow — keeps the nav legible over the dark, animated aurora bg.
+       Admin-tunable via the Menu / Nav glow controls (--nav-text-glow). */
+    text-shadow: var(--nav-text-glow, 0 0 4px rgba(97,233,110,0.45), 0 0 10px rgba(97,233,110,0.30));
     transition: color 0.15s, text-shadow 0.15s;
 }
 
@@ -220,9 +220,7 @@ img { display: block; max-width: 100%; }
     color: var(--text-primary);
     opacity: 1;
     /* Brighter halo on hover / current page. */
-    text-shadow:
-        0 0 6px  var(--nav-glow-color-strong, rgba(97,233,110,0.70)),
-        0 0 16px var(--nav-glow-color-strong, rgba(97,233,110,0.45));
+    text-shadow: var(--nav-text-glow-strong, 0 0 6px rgba(97,233,110,0.70), 0 0 16px rgba(97,233,110,0.45));
 }
 
 /* Top nav bar (existing) */
@@ -349,7 +347,7 @@ img { display: block; max-width: 100%; }
 
 .au-profile-bio {
     margin:      8px 0 0;
-    font-size:   14px;
+    font-size:   var(--bio-size, 14px);
     line-height: 1.5;
     color:       var(--bio-color, var(--text-secondary));
     max-width:   480px;

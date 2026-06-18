@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - AURORA Skin Manifest
- * v1.0.10
+ * v1.0.13
  *
  * Desktop GRAMOFSMACK skin. A classic 3-across square-tile grid (The Grid's
  * proven column architecture) overlaid with a two-layer animation system:
@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'AURORA',
-    'version'     => '1.0.10',
+    'version'     => '1.0.13',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Northern-lights desktop skin. A classic 3-across square grid under a slow aurora that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.',
@@ -64,10 +64,15 @@ return [
         'smack-community',
         'smack-slider',
         'smack-carousel-view',
-        'smack-grid-nav',
-        'smack-grid-modal',
         'smack-image-fade-load',  // reveals lightbox/asset images on static pages
         'smack-lightbox',         // click-to-zoom for content/asset images
+        // AURORA's own engines (registered in core/manifest-inventory.php):
+        'smack-aurora-bg',
+        'smack-aurora-wave',
+        'smack-aurora-modal',
+        'smack-aurora-lightbox',
+        'smack-aurora-nav',
+        'smack-aurora-reveal',
     ],
 
     'community_comments'  => true,
@@ -360,6 +365,18 @@ return [
             'selector' => ':root',
             'property' => '--tagline-color',
         ],
+        'au_bio_size' => [
+            'section'  => 'TITLE & TAGLINE',
+            'type'     => 'range_numeric',
+            'label'    => 'Description / Bio Size',
+            'default'  => '14',
+            'min'      => '10',
+            'max'      => '28',
+            'step'     => '1',
+            'unit'     => 'px',
+            'selector' => ':root',
+            'property' => '--bio-size',
+        ],
         // ---- TEXT GLOW (readability over shifting aurora background) ----------
         'au_glow_color' => [
             'section' => 'TEXT GLOW',
@@ -438,6 +455,49 @@ return [
             ],
             'hint'     => 'Aurora mode tracks the live border wave colour.',
             // PHP-handled — skin-profile.php sets --nav-line-color.
+        ],
+        'au_nav_line_opacity' => [
+            'section'  => 'MENU / NAV',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav Line Opacity',
+            'default'  => '100',
+            'min'      => '0',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+            'hint'     => 'Opacity of the dark companion line under each divider.',
+            // PHP-handled → --nav-line-opacity (skin-profile.php).
+        ],
+        'au_nav_glow_color' => [
+            'section' => 'MENU / NAV',
+            'type'    => 'color',
+            'label'   => 'Nav Glow Colour',
+            'default' => '#61e96e',
+            'hint'    => 'Outer glow behind the menu links (home / blogroll / pages).',
+            // PHP-handled → --nav-text-glow (skin-profile.php).
+        ],
+        'au_nav_glow_size' => [
+            'section'  => 'MENU / NAV',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav Glow Size',
+            'default'  => '8',
+            'min'      => '0',
+            'max'      => '40',
+            'step'     => '2',
+            'unit'     => 'px',
+            'hint'     => '0 = no glow.',
+            // PHP-handled → --nav-text-glow.
+        ],
+        'au_nav_glow_opacity' => [
+            'section'  => 'MENU / NAV',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav Glow Opacity',
+            'default'  => '45',
+            'min'      => '0',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+            // PHP-handled → --nav-text-glow.
         ],
 
         // ---- COLOURS -------------------------------------------------------
