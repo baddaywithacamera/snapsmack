@@ -69,6 +69,17 @@ Ties to prior audits 020 / 021 (hub-spoke attack surface).
   collapsed invisible by the global input reset. The trust mechanism (`ss_totp_trust` cookie +
   `snap_totp_devices`) is **unchanged** — no weakening, no policy change.
 
+## 5b. Pimpotron / KIOSK engine removed (attack-surface reduction)
+
+The cut KIOSK skin's Pimpotron engine sat orphaned in the tree: a **live admin page**
+(`smack-pimpotron.php`) and an **HTTP endpoint** (`pimpotron-payload.php`), plus engine
+JS/CSS, a manifest entry, an admin-nav link, and two DB tables — unreachable by design but
+still live, executable code = needless attack surface. Removed in 0.7.267: the four files
+deleted, `smack-pimpotron` manifest entry dropped, nav unhooked in `core/sidebar.php`, and
+tables dropped (`migrations/migrate-drop-pimpotron.sql` + canonical removal so schema-sync
+won't recreate them). The one reusable piece — a standalone Matrix-rain canvas class — was
+salvaged into a clean library engine `assets/js/ss-engine-matrix-rain.js` (`smack-matrix-rain`).
+
 ## 6. Residual / follow-up
 
 1. **Dead install templates** — `$constants_php` / `$const_php` strings remain in `install.php`
