@@ -1196,10 +1196,14 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
 }
 ';
 
-        $wrote_const = @file_put_contents(__DIR__ . '/core/constants.php', $constants_php);
-        if ($wrote_const === false) {
-            $errors[] = 'Could not write core/constants.php.';
-        }
+        // FIX (incident 2026-06-18): do NOT regenerate core/constants.php. The shipped
+        // package file is canonical (correct version + EOF marker, matches the SMACKBACK
+        // baseline). The old $constants_php template above had drifted (wrong codename,
+        // reordered blocks, no EOF marker) and false-breached every fresh install on first
+        // login. Its only "dynamic" value, SNAPSMACK_TABLE_PREFIX, is dead (0 read-sites;
+        // all queries hardcode snap_). Leave the shipped file untouched.
+        // TODO(cleanup): delete the now-unused $constants_php template above.
+        unset($constants_php);
     }
 
     // --- SEED DEFAULT SETTINGS ---
@@ -1674,7 +1678,12 @@ function snapsmack_is_mobile(): bool {
     return (bool) preg_match(\'/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackBerry|Opera Mini|IEMobile|Windows Phone/i\', $ua);
 }
 ';
-                            @file_put_contents(__DIR__ . '/core/constants.php', $const_php);
+                            // FIX (incident 2026-06-18): never write a hand-built constants.php
+                            // (drifted, marker-less → false breach on first login). The package
+                            // ships the canonical file; if it is genuinely missing the package
+                            // is broken — fail loudly rather than write a bad copy.
+                            // TODO(cleanup): delete the unused $const_php template above.
+                            unset($const_php);
                         }
 
                         $step = 'r3';
