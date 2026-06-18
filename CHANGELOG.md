@@ -34,7 +34,7 @@ overnight build to ship-ready with The Grid sharing the same engines.
   inert) while its own nav engine never loaded — the sticky mini-avatar was dead.
   Now points at its own/shared handles.
 
-### AURORA skin — ship-ready (v1.0.14)
+### AURORA skin — ship-ready (v1.0.15)
 
 - Profile header restored (the background layer was painting over it on a wrong
   z-index); background curtains, grid borders, and the border wave all verified.
