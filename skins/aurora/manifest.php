@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - AURORA Skin Manifest
- * v1.0.8
+ * v1.0.10
  *
  * Desktop GRAMOFSMACK skin. A classic 3-across square-tile grid (The Grid's
  * proven column architecture) overlaid with a two-layer animation system:
@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'AURORA',
-    'version'     => '1.0.8',
+    'version'     => '1.0.10',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Northern-lights desktop skin. A classic 3-across square grid under a slow aurora that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.',
@@ -262,7 +262,7 @@ return [
             'hint'    => 'Square image recommended. Displayed as a circle, ~77px.',
         ],
         'au_blog_title_font' => [
-            'section'        => 'PROFILE HEADER',
+            'section'        => 'TITLE & TAGLINE',
             'type'           => 'select',
             'label'          => 'Blog Title Font',
             'default'        => 'inherit',
@@ -273,7 +273,7 @@ return [
             'no_size_slider' => true,
         ],
         'au_blog_title_size' => [
-            'section'  => 'PROFILE HEADER',
+            'section'  => 'TITLE & TAGLINE',
             'type'     => 'range_numeric',
             'label'    => 'Blog Title Size',
             'default'  => '20',
@@ -285,7 +285,7 @@ return [
             'property' => '--blog-title-size',
         ],
         'au_blog_title_weight' => [
-            'section'  => 'PROFILE HEADER',
+            'section'  => 'TITLE & TAGLINE',
             'type'     => 'select',
             'label'    => 'Blog Title Weight',
             'default'  => '300',
@@ -300,7 +300,7 @@ return [
             'property' => '--blog-title-weight',
         ],
         'au_blog_title_color' => [
-            'section'  => 'PROFILE HEADER',
+            'section'  => 'TITLE & TAGLINE',
             'type'     => 'color',
             'label'    => 'Blog Title Colour',
             'default'  => '#eaeaea',
@@ -308,14 +308,14 @@ return [
             'property' => '--blog-title-color',
         ],
         'au_show_tagline' => [
-            'section'  => 'PROFILE HEADER',
+            'section'  => 'TITLE & TAGLINE',
             'type'     => 'select',
             'label'    => 'Show Tagline (Site Description)',
             'default'  => '1',
             'options'  => ['1' => 'Show', '0' => 'Hide'],
         ],
         'au_tagline_font' => [
-            'section'        => 'PROFILE HEADER',
+            'section'        => 'TITLE & TAGLINE',
             'type'           => 'select',
             'label'          => 'Tagline Font',
             'default'        => 'inherit',
@@ -326,7 +326,7 @@ return [
             'no_size_slider' => true,
         ],
         'au_tagline_size' => [
-            'section'  => 'PROFILE HEADER',
+            'section'  => 'TITLE & TAGLINE',
             'type'     => 'range_numeric',
             'label'    => 'Tagline Size',
             'default'  => '16',
@@ -338,7 +338,7 @@ return [
             'property' => '--tagline-size',
         ],
         'au_tagline_weight' => [
-            'section'  => 'PROFILE HEADER',
+            'section'  => 'TITLE & TAGLINE',
             'type'     => 'select',
             'label'    => 'Tagline Weight',
             'default'  => '300',
@@ -353,7 +353,7 @@ return [
             'property' => '--tagline-weight',
         ],
         'au_tagline_color' => [
-            'section'  => 'PROFILE HEADER',
+            'section'  => 'TITLE & TAGLINE',
             'type'     => 'color',
             'label'    => 'Tagline Colour',
             'default'  => '#8a8a8a',
@@ -362,7 +362,7 @@ return [
         ],
         // ---- TEXT GLOW (readability over shifting aurora background) ----------
         'au_glow_color' => [
-            'section' => 'PROFILE HEADER',
+            'section' => 'TEXT GLOW',
             'type'    => 'color',
             'label'   => 'Text Glow Colour',
             'default' => '#000000',
@@ -370,7 +370,7 @@ return [
             // PHP-handled → --profile-text-glow (skin-profile.php).
         ],
         'au_glow_size' => [
-            'section'  => 'PROFILE HEADER',
+            'section'  => 'TEXT GLOW',
             'type'     => 'range_numeric',
             'label'    => 'Text Glow Size',
             'default'  => '0',
@@ -382,7 +382,7 @@ return [
             // PHP-handled → --profile-text-glow.
         ],
         'au_glow_opacity' => [
-            'section'  => 'PROFILE HEADER',
+            'section'  => 'TEXT GLOW',
             'type'     => 'range_numeric',
             'label'    => 'Text Glow Opacity',
             'default'  => '0',
@@ -395,7 +395,7 @@ return [
 
         // ---- NAV -----------------------------------------------------------
         'au_nav_case' => [
-            'section'  => 'PROFILE HEADER',
+            'section'  => 'MENU / NAV',
             'type'     => 'select',
             'label'    => 'Nav Link Case',
             'default'  => 'none',
@@ -409,7 +409,7 @@ return [
             'property' => '--nav-text-transform',
         ],
         'au_nav_font' => [
-            'section'        => 'PROFILE HEADER',
+            'section'        => 'MENU / NAV',
             'type'           => 'select',
             'label'          => 'Nav Font',
             'default'        => 'inherit',
@@ -420,7 +420,7 @@ return [
             'no_size_slider' => true,
         ],
         'au_nav_color' => [
-            'section'  => 'PROFILE HEADER',
+            'section'  => 'MENU / NAV',
             'type'     => 'color',
             'label'    => 'Nav Link Colour',
             'default'  => '#8a8a8a',
@@ -428,7 +428,7 @@ return [
             'property' => '--nav-color',
         ],
         'au_nav_line_mode' => [
-            'section'  => 'PROFILE HEADER',
+            'section'  => 'MENU / NAV',
             'type'     => 'select',
             'label'    => 'Nav Border Lines',
             'default'  => 'static',
@@ -488,6 +488,15 @@ return [
             'default'  => '#242424',
             'selector' => ':root',
             'property' => '--border-color',
+        ],
+        'au_bio_color' => [
+            'section'  => 'COLOURS',
+            'type'     => 'color',
+            'label'    => 'Description / Bio Text',
+            'default'  => '#8a8a8a',
+            'selector' => ':root',
+            'property' => '--bio-color',
+            'hint'     => 'Colour of the bio paragraph under the profile. Independent of Secondary Text.',
         ],
 
         // ---- TYPOGRAPHY ----------------------------------------------------

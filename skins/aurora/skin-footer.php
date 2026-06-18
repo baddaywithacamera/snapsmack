@@ -68,6 +68,9 @@ echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/aurora-bg.js?v=' . $sk
 // ── aurora-wave.js — Layer 2 tile border colour wave (conic ring) ───────────
 echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/aurora-wave.js?v=' . $skin_asset_v . '" defer></script>' . "\n";
 
+// ── au-grid-reveal.js — progressive "grows as you scroll" reveal ────────────
+echo '<script src="' . BASE_URL . 'skins/aurora/assets/js/au-grid-reveal.js?v=' . $skin_asset_v . '" defer></script>' . "\n";
+
 // ── Core footer (closes </body></html>) ────────────────────────────────────
 include_once(dirname(__DIR__, 2) . '/core/footer.php');
 // ===== SNAPSMACK EOF =====
