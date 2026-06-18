@@ -115,6 +115,8 @@ img { display: block; max-width: 100%; }
     top: 0;
     z-index: 100;
     background: transparent;
+    /* When stuck to the top (.profile-hidden) fast-fade in a backdrop. */
+    transition: background 0.18s ease-in;
     /* Two-part divider line (static, no colour shifting):
        (1) a 1px bright-green line — this border, and
        (2) a 2px solid dark-indigo line tucked directly beneath it, shifted 2px
@@ -122,6 +124,12 @@ img { display: block; max-width: 100%; }
        Applied to BOTH the top and bottom dividers. */
     border-top:    1px solid var(--nav-line-green, #6ff0a0);
     border-bottom: 1px solid var(--nav-line-green, #6ff0a0);
+}
+
+/* Stuck to top: fade in 40% of the sky colour behind the nav. .profile-hidden is
+   added by the shared nav engine when the profile scrolls out of view. */
+.au-sticky-nav.profile-hidden {
+    background: color-mix(in srgb, var(--au-sky, #0d0d2b) 40%, transparent);
 }
 
 /* Lower half of each divider: 2px solid dark indigo, offset 2px to the right. */
@@ -338,11 +346,13 @@ img { display: block; max-width: 100%; }
     font-size: 16px;
     font-weight: 600;
     color: var(--text-primary);
+    text-shadow: var(--profile-text-glow, none);
 }
 
 .au-profile-stat-label {
     font-size: 14px;
     color: var(--text-secondary);
+    text-shadow: var(--profile-text-glow, none);
 }
 
 .au-profile-bio {
