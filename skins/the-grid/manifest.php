@@ -24,7 +24,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'The Grid',
-    'version'     => '1.3.19',
+    'version'     => '1.3.20',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Classic Instagram-style 3-column square-thumbnail photo grid. Carousel and panorama post support. Clean, minimal UI keeps the focus on the photographs.',
@@ -54,6 +54,7 @@ return [
         'smack-carousel-view',
         'smack-grid-nav',
         'smack-grid-modal',
+        'smack-grid-lightbox',
         'smack-image-fade-load',  // reveals lightbox/asset images on static pages
                                   // (public-base.css sets img[data-lightbox-src]{opacity:0};
                                   //  this engine fades them to opacity:1 on load)

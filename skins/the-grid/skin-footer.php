@@ -39,23 +39,26 @@
 $skin_manifest = include __DIR__ . '/manifest.php';
 $requested     = $skin_manifest['require_scripts'] ?? [];
 
+// Skin asset cache-buster: core version + skin version (skin JS busts on skin bump).
+$skin_asset_v = SNAPSMACK_VERSION_SHORT . (!empty($skin_manifest['version']) ? '-' . $skin_manifest['version'] : '');
+
 if (!empty($requested)) {
     $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
     if (isset($inventory['scripts'])) {
         foreach ($requested as $handle) {
             if (isset($inventory['scripts'][$handle])) {
                 $script = $inventory['scripts'][$handle];
-                echo '<script src="' . BASE_URL . $script['path'] . '?v=' . SNAPSMACK_VERSION_SHORT . '"></script>' . "\n";
+                // Skin-owned scripts bust on the skin version and load deferred.
+                $_is_skin = strpos($script['path'], 'skins/') === 0;
+                $_ver = $_is_skin ? $skin_asset_v : SNAPSMACK_VERSION_SHORT;
+                echo '<script src="' . BASE_URL . $script['path'] . '?v=' . $_ver . '"' . ($_is_skin ? ' defer' : '') . '></script>' . "\n";
             }
         }
     }
 }
 
-// ── tg-modal.js — load directly in case manifest-inventory is stale ────────
-echo '<script src="' . BASE_URL . 'skins/the-grid/assets/js/tg-modal.js?v=' . SNAPSMACK_VERSION_SHORT . '" defer></script>' . "\n";
-
-// ── tg-lightbox.js — avatar lightbox (shared by all Grid pages) ────────────
-echo '<script src="' . BASE_URL . 'skins/the-grid/assets/js/tg-lightbox.js?v=' . SNAPSMACK_VERSION_SHORT . '" defer></script>' . "\n";
+// All Grid engines load through the manifest above (require_scripts →
+// core/manifest-inventory.php). No direct <script> tags here.
 
 // ── Core footer (closes </body></html>) ────────────────────────────────────
 include_once(dirname(__DIR__, 2) . '/core/footer.php');

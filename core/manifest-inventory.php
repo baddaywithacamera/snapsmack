@@ -759,6 +759,41 @@ return [
             'path'         => 'skins/the-grid/assets/js/tg-modal.js',
             'has_settings' => false,
         ],
+        'smack-grid-lightbox' => [
+            'label'        => 'The Grid avatar lightbox',
+            'path'         => 'skins/the-grid/assets/js/tg-lightbox.js',
+            'has_settings' => false,
+        ],
+        'smack-aurora-bg' => [
+            'label'        => 'AURORA Layer 1 background curtains (canvas)',
+            'path'         => 'skins/aurora/assets/js/aurora-bg.js',
+            'has_settings' => false,
+        ],
+        'smack-aurora-wave' => [
+            'label'        => 'AURORA Layer 2 tile border colour wave',
+            'path'         => 'skins/aurora/assets/js/aurora-wave.js',
+            'has_settings' => false,
+        ],
+        'smack-aurora-modal' => [
+            'label'        => 'AURORA post modal overlay',
+            'path'         => 'skins/aurora/assets/js/au-modal.js',
+            'has_settings' => false,
+        ],
+        'smack-aurora-lightbox' => [
+            'label'        => 'AURORA avatar lightbox',
+            'path'         => 'skins/aurora/assets/js/au-lightbox.js',
+            'has_settings' => false,
+        ],
+        'smack-aurora-nav' => [
+            'label'        => 'AURORA profile-aware sticky nav',
+            'path'         => 'skins/aurora/assets/js/au-nav.js',
+            'has_settings' => false,
+        ],
+        'smack-aurora-reveal' => [
+            'label'        => 'AURORA progressive grid reveal (grow-as-you-scroll)',
+            'path'         => 'skins/aurora/assets/js/au-grid-reveal.js',
+            'has_settings' => false,
+        ],
         'smack-calendar' => [
             'label'        => 'Archive Calendar Sidebar (Sliding date panel)',
             'path'         => 'assets/js/ss-engine-calendar.js',

@@ -117,6 +117,35 @@ $_au_nav_line_mode = $settings['au_nav_line_mode'] ?? 'static';
 $_au_nav_line_css  = ($_au_nav_line_mode === 'aurora')
     ? '--nav-line-color:var(--au-wave-color,var(--border-color));'
     : '';
+// Opacity of the dark companion divider lines (0–100% → 0–1).
+$_au_nav_line_op   = number_format(max(0, min(100, (int)($settings['au_nav_line_opacity'] ?? 100))) / 100, 2);
+
+// ── Nav menu text glow ─────────────────────────────────────────────────────
+// Outer glow on the nav links (home / blogroll / pages). Defaults to aurora
+// green so the menu stays legible over the animated background; admin-tunable.
+$_au_navglow_hex    = trim($settings['au_nav_glow_color'] ?? '#61e96e');
+$_au_navglow_sz     = max(0, min(40,  (int)($settings['au_nav_glow_size']    ?? 8)));
+$_au_navglow_op     = max(0, min(100, (int)($settings['au_nav_glow_opacity'] ?? 45)));
+$_au_navglow_css    = 'none';
+$_au_navglow_strong = 'none';
+if ($_au_navglow_sz > 0 && $_au_navglow_op > 0) {
+    $_ngc = ltrim($_au_navglow_hex, '#');
+    if (strlen($_ngc) === 3) $_ngc = $_ngc[0].$_ngc[0].$_ngc[1].$_ngc[1].$_ngc[2].$_ngc[2];
+    $_ngr = hexdec(substr($_ngc, 0, 2));
+    $_ngg = hexdec(substr($_ngc, 2, 2));
+    $_ngb = hexdec(substr($_ngc, 4, 2));
+    $_nga = number_format($_au_navglow_op / 100, 2);
+    $_au_navglow_css = sprintf(
+        '0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_au_navglow_sz, $_ngr, $_ngg, $_ngb, $_nga,
+        $_au_navglow_sz * 2, $_ngr, $_ngg, $_ngb, number_format($_au_navglow_op / 200, 2)
+    );
+    $_au_navglow_strong = sprintf(
+        '0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_au_navglow_sz + 2, $_ngr, $_ngg, $_ngb, number_format(min(1, $_au_navglow_op / 100 * 1.5), 2),
+        ($_au_navglow_sz + 2) * 2, $_ngr, $_ngg, $_ngb, $_nga
+    );
+}
 
 // ── Profile text glow ─────────────────────────────────────────────────────
 // Composited text-shadow for readability over the shifting aurora background.
@@ -146,7 +175,7 @@ if ($_au_glow_sz > 0 && $_au_glow_op > 0) {
 ?>
 
 <!-- AURORA tile vars: border width / corner radius / ring opacity / sky base -->
-<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_au_glow_css); ?>;<?php echo $_au_nav_line_css; ?>}</style>
+<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_au_glow_css); ?>;--nav-line-opacity:<?php echo $_au_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_au_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_au_navglow_strong); ?>;<?php echo $_au_nav_line_css; ?>}</style>
 
 <!-- AURORA config carrier — read by aurora-bg.js (Layer 1 curtains) and
      aurora-wave.js (Layer 2 ring wave). -->
