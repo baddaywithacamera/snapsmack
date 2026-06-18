@@ -115,28 +115,28 @@ img { display: block; max-width: 100%; }
     top: 0;
     z-index: 100;
     background: transparent;
-    /* Thin (1px) divider lines. The line itself is static (no wave cascade);
-       the pulse lives in the attached dark companion below. */
-    border-top:    1px solid var(--nav-line-color, var(--border-color));
-    border-bottom: 1px solid var(--nav-line-color, var(--border-color));
+    /* Two-part divider line (static, no colour shifting):
+       (1) a 1px bright-green line — this border, and
+       (2) a 2px solid dark-indigo line tucked directly beneath it, shifted 2px
+           to the right (the ::before/::after below).
+       Applied to BOTH the top and bottom dividers. */
+    border-top:    1px solid var(--nav-line-green, #6ff0a0);
+    border-bottom: 1px solid var(--nav-line-green, #6ff0a0);
 }
 
-/* Attached 1px dark companion line — offset 1px below and 1px right of each
-   divider (they touch), pulsing in a DARK tint of the live aurora colour
-   (--au-wave-color-dark, set by aurora-wave.js each frame). Falls back to a
-   static dark line when JS/animation is off. */
+/* Lower half of each divider: 2px solid dark indigo, offset 2px to the right. */
 .au-sticky-nav::before,
 .au-sticky-nav::after {
     content: "";
     position: absolute;
-    left: 1px;
-    right: -1px;
-    height: 1px;
-    background: var(--au-wave-color-dark, rgba(0, 0, 0, 0.55));
+    left: 2px;
+    right: -2px;
+    height: 2px;
+    background: var(--nav-line-indigo, #14143d);
     pointer-events: none;
 }
-.au-sticky-nav::before { top: 1px; }     /* hugs just under the top line    */
-.au-sticky-nav::after  { bottom: -1px; } /* hugs just under the bottom line */
+.au-sticky-nav::before { top: 1px; }     /* directly under the top green line    */
+.au-sticky-nav::after  { bottom: -2px; } /* directly under the bottom green line  */
 
 .au-sticky-nav-inner {
     display: flex;
@@ -351,7 +351,7 @@ img { display: block; max-width: 100%; }
     margin:      8px 0 0;
     font-size:   14px;
     line-height: 1.5;
-    color:       var(--text-secondary);
+    color:       var(--bio-color, var(--text-secondary));
     max-width:   480px;
     text-shadow: var(--profile-text-glow, none);
 }
@@ -390,6 +390,11 @@ img { display: block; max-width: 100%; }
     content-visibility: auto;
     contain-intrinsic-size: auto 300px;
 }
+
+/* Progressive reveal: tiles past the first batch are folded out of layout by
+   au-grid-reveal.js so the page starts short and GROWS as you scroll, instead
+   of dumping all posts to full height at once. */
+.au-grid .au-tile.au-fold { display: none; }
 
 /* Aurora border-wave ring overlay (Layer 2).
    JS (aurora-wave.js) drives .style.background on this element with a
