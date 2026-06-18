@@ -379,6 +379,14 @@ function smackback_should_monitor(string $abs_path): bool {
     // ─── Excluded filename patterns ─────────────────────────────────────────
     $basename = basename($rel);
 
+    // Installer / setup files: present on disk at install time, then self-deleted
+    // immediately after (install.php @unlink(__FILE__); setup.php likewise). If they
+    // get baselined, the very next scan sees them gone → false MISSING breach →
+    // lockout on every fresh install. Never monitor them.
+    if (in_array($basename, ['install.php', 'setup.php'], true)) {
+        return false;
+    }
+
     // Minified files
     if (str_ends_with($basename, '.min.js') || str_ends_with($basename, '.min.css')) {
         return false;
