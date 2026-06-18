@@ -45,20 +45,25 @@ if (!is_file($registry_path)) {
 $registry  = json_decode(file_get_contents($registry_path), true);
 $reg_skins = $registry['skins'] ?? [];
 
-// Filter to skins whose modes[] includes the requested mode.
-// mobile_only skins (e.g. photogram) are appended unconditionally to every
-// install — they are required infrastructure, not user-selectable skins.
+// Install ONLY the mode's default skin (the one that becomes active_skin), plus
+// any required mobile-only infrastructure skin (e.g. photogram, the mobile
+// renderer). EVERY other registered skin is OPTIONAL and installed later from the
+// in-CMS skin gallery — never shipped to a fresh install. Installing unused skins
+// wastes shared-host space without the owner's consent and is needless attack
+// surface. "Only ever install the skin you will use." (Sean, 2026-06-18.)
+// This is what stops a non-default skin (e.g. AURORA) auto-landing on every
+// GRAMOFSMACK/carousel install just because it lists the mode.
 $result = [];
 foreach ($reg_skins as $slug => $s) {
     $is_mobile_only = !empty($s['features']['mobile_only']);
-    $skin_modes     = $s['modes'] ?? [];
-    if (!$is_mobile_only && !in_array($mode, $skin_modes, true)) continue;
+    $is_default     = ($slug === $default_skin);
+    if (!$is_default && !$is_mobile_only) continue;
     $result[] = [
         'slug'         => $slug,
         'download_url' => $s['download_url'] ?? '',
         'signature'    => $s['signature']    ?? '',
         'version'      => $s['version']      ?? '',
-        'default'      => ($slug === $default_skin),
+        'default'      => $is_default,
     ];
 }
 
