@@ -450,6 +450,11 @@ function smackback_build_should_monitor(string $rel): bool {
     }
 
     $basename = basename($rel);
+    // Installer / setup files self-delete right after install — baselining them
+    // false-breaches every fresh install. Ship in the zip, never in the manifest.
+    if (in_array($basename, ['install.php', 'setup.php'], true)) {
+        return false;
+    }
     if (str_ends_with($basename, '.min.js') || str_ends_with($basename, '.min.css')) {
         return false;
     }
