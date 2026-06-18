@@ -12,6 +12,48 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.266 — "Musical Chairs" (2026-06-17)
+
+Shared the Grid-family JS engines into the core asset library, and brought AURORA's
+overnight build to ship-ready with The Grid sharing the same engines.
+
+### Skin JS unified in the core library (de-dup)
+
+- **One engine per job, every skin.** The forked `au-*` / `tg-*` modal, lightbox,
+  and sticky-nav engines were byte-identical except their class prefix. They're now
+  a single prefix-derived engine each in `/assets/js` (`ss-engine-grid-modal`,
+  `-grid-lightbox`, `-grid-nav`) that reads the skin prefix from the DOM — no
+  per-skin copies. AURORA's own atmosphere engines (background curtains, border
+  wave, grow-as-you-scroll reveal) moved to `/assets/js` as shared assets too.
+- **All skin JS now loads through the manifest.** AURORA and The Grid no longer
+  emit direct `<script>` tags from `skin-footer.php`; every engine is registered in
+  `core/manifest-inventory.php` and pulled via `require_scripts`, keeping executable
+  JS on the inventoried / integrity-monitored path. (SECAUDIT 025.)
+- **AURORA was running The Grid's engines.** Its `require_scripts` referenced
+  `smack-grid-nav`/`-modal`, so it loaded `tg-*` against `.au-` markup (silently
+  inert) while its own nav engine never loaded — the sticky mini-avatar was dead.
+  Now points at its own/shared handles.
+
+### AURORA skin — ship-ready (v1.0.14)
+
+- Profile header restored (the background layer was painting over it on a wrong
+  z-index); background curtains, grid borders, and the border wave all verified.
+- Border wave now animates only on-screen tiles (IntersectionObserver) and tiles
+  skip off-screen render (`content-visibility`), so a 3,900-post grid no longer
+  pins the main thread.
+- Grow-as-you-scroll reveal — the page starts short and grows on scroll instead of
+  rendering all posts at full height at once.
+- Two-part nav divider lines (green + offset dark indigo) with adjustable opacity;
+  outer-glow controls for nav text and title/tagline; default dark legibility halo.
+- Admin reorganised — Profile Header split into Profile Header / Title & Tagline /
+  Text Glow / Menu-Nav; added Description / Bio colour and size controls.
+
+### The Grid (v1.3.21)
+
+- Uses the shared `/assets/js` grid engines; its `tg-*` JS copies removed.
+- Avatar lightbox now registered and loaded through the manifest (was a stray
+  direct `<script>`).
+
 ## 0.7.264 — "Musical Chairs" (2026-06-17)
 
 Hotfix release shaken out by the 0.7.263 fleet rollout + the first big Instagram import.
