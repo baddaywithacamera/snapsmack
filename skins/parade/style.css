@@ -1,0 +1,1406 @@
+/**
+ * SNAPSMACK - PARADE Skin Styles
+ * Alpha v0.7.5
+ *
+ * Clean, minimal Instagram-inspired grid skin.
+ * All configurable values are CSS custom properties on :root.
+ * The compiled CSS blob from smack-skin.php loads after this file
+ * and overrides defaults via the same :root variables.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
+/* ==========================================================================
+   CUSTOM PROPERTY DEFAULTS
+   Override these via the skin settings panel (compiled CSS blob).
+   ========================================================================== */
+
+:root {
+    /* PARADE ships dark by default — northern-lights aesthetic. The photography
+       is the content; the dark canvas lets the parade breathe behind it.
+       Every value here is also a manifest option default (Skin Admin overrides
+       win via the compiled dynamic CSS). Keep the two in sync. */
+    /* PARADE ships HIGH-KEY (white) — the daylight twin of AURORA. The bright
+       field lets the slow-motion flag fireworks read soft behind the photos.
+       Text/accent resolve from skin-profile.php's <style id="pa-vars"> vars
+       (admin-tunable); the literals here are before-save fallbacks. */
+    --bg-primary:        var(--pa-bg, #ffffff);
+    --text-primary:      var(--pa-text, #1a1a1a);
+    --text-secondary:    var(--pa-muted, #5b5b66);
+    --accent-color:      var(--pa-accent, #750787);
+    --border-color:      #e6e6e6;
+    --font-body:         'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+    --grid-gap:          2px;
+    --grid-bg:           transparent;   /* gaps let the fireworks show through */
+    --tile-radius:       0px;
+    --grid-gutter:       0px;
+    --grid-max-width:    935px;
+
+    /* Carousel dot colours — inherit site accent */
+    --carousel-dot-color:        rgba(0, 0, 0, 0.22);
+    --carousel-dot-active-color: var(--accent-color);
+
+    /* ── PARADE variables ─────────────────────────────────────────────────
+       Layer 1 (slow-mo fireworks, ss-engine-parade-fireworks.js) reads its palette
+       from .pa-parade-bg data attributes — no CSS colour stops. The sky base
+       and the tile-ring vars below are set on :root by skin-profile.php's
+       <style id="pa-vars"> block; these are just before-save fallbacks. */
+    --pa-sky:       #ffffff;
+    --tile-bw:      2px;   /* border ring thickness */
+    --tile-radius:  4px;   /* tile corner radius    */
+    --ring-op:      1;     /* border ring opacity   */
+}
+
+/* ==========================================================================
+   RESET & BASE
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    color: var(--text-primary);
+    text-decoration: none;
+}
+a:hover { opacity: 0.7; }
+
+img { display: block; max-width: 100%; }
+
+/* ==========================================================================
+   LAYOUT SHELL
+   ========================================================================== */
+
+/* Max-width content column — wraps profile, sticky nav, and grid on landing page */
+.pa-content-wrap {
+    box-sizing: border-box;
+    /* Card = grid width + a white gutter on each side. With box-sizing:border-box
+       the inner content stays at --grid-max-width while the card itself grows by
+       the gutter, so the white extends outward over the background treatment. */
+    max-width: calc(var(--grid-max-width, 935px) + (2 * var(--grid-gutter, 0px)));
+    margin: 0 auto;
+    padding-left: var(--grid-gutter, 0px);
+    padding-right: var(--grid-gutter, 0px);
+}
+
+/* General constrained wrapper — profile header, topbar, post view, archive */
+.pa-wrap {
+    padding: 0 var(--grid-gutter);
+}
+
+/* ==========================================================================
+   STICKY NAV
+   Sits between profile header and grid. Sticks to top when profile scrolls off.
+   JS (pa-nav.js) adds .profile-hidden class to reveal the mini avatar.
+   ========================================================================== */
+
+.pa-sticky-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: transparent;
+    /* When stuck to the top (.profile-hidden) fast-fade in a backdrop. */
+    transition: background 0.18s ease-in;
+    /* Two-part divider line (static, no colour shifting):
+       (1) a 1px bright-green line — this border, and
+       (2) a 2px solid dark-indigo line tucked directly beneath it, shifted 2px
+           to the right (the ::before/::after below).
+       Applied to BOTH the top and bottom dividers. */
+    border-top:    1px solid var(--nav-line-green, #6ff0a0);
+    border-bottom: 1px solid var(--nav-line-green, #6ff0a0);
+}
+
+/* Stuck to top: fade in 40% of the sky colour behind the nav. .profile-hidden is
+   added by the shared nav engine when the profile scrolls out of view. */
+.pa-sticky-nav.profile-hidden {
+    background: color-mix(in srgb, var(--pa-sky, #0d0d2b) 40%, transparent);
+}
+
+/* Lower half of each divider: 2px solid dark indigo, offset 2px to the right. */
+.pa-sticky-nav::before,
+.pa-sticky-nav::after {
+    content: "";
+    position: absolute;
+    left: 2px;
+    right: -2px;
+    height: 2px;
+    background: var(--nav-line-indigo, #14143d);
+    opacity: var(--nav-line-opacity, 1);
+    pointer-events: none;
+}
+.pa-sticky-nav::before { top: 1px; }     /* 1px below the top green line               */
+.pa-sticky-nav::after  { bottom: -4px; } /* 1px below the bottom green line (clears it) */
+
+.pa-sticky-nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 0 var(--grid-gutter, 0px);
+    height: 40px;
+    overflow: hidden;
+}
+
+/* Mini avatar — absolutely positioned left, hidden until profile scrolls off screen */
+.pa-sticky-avatar {
+    position: absolute;
+    left: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+}
+
+.pa-sticky-avatar-initials {
+    position: absolute;
+    left: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+}
+
+.pa-sticky-nav.profile-hidden .pa-sticky-avatar,
+.pa-sticky-nav.profile-hidden .pa-sticky-avatar-initials {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+/* Nav links */
+.pa-sticky-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pa-sticky-nav-links a {
+    font-size:      var(--nav-font-size, 13px);
+    font-weight:    var(--nav-font-weight, 500);
+    font-family:    var(--nav-font, inherit);
+    color:          var(--nav-color, var(--text-secondary));
+    text-decoration: none;
+    letter-spacing: 0.2px;
+    text-transform: var(--nav-text-transform, none);
+    /* Outer glow — keeps the nav legible over the dark, animated parade bg.
+       Admin-tunable via the Menu / Nav glow controls (--nav-text-glow). */
+    text-shadow: var(--nav-text-glow, 0 0 4px rgba(97,233,110,0.45), 0 0 10px rgba(97,233,110,0.30));
+    transition: color 0.15s, text-shadow 0.15s;
+}
+
+.pa-sticky-nav-links a:hover,
+.pa-sticky-nav-links a.active {
+    color: var(--text-primary);
+    opacity: 1;
+    /* Brighter halo on hover / current page. */
+    text-shadow: var(--nav-text-glow-strong, 0 0 6px rgba(97,233,110,0.70), 0 0 16px rgba(97,233,110,0.45));
+}
+
+/* Top nav bar (existing) */
+.pa-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pa-topbar-inner {
+    padding: 0 var(--grid-gutter);
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.pa-site-name {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   PROFILE HEADER
+   Shown above the grid on the landing page.
+   ========================================================================== */
+
+.pa-profile {
+    padding: 30px 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pa-profile-avatar {
+    width: 77px;
+    height: 77px;
+    border-radius: 50%;
+    background: var(--border-color);
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pa-profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.pa-profile-avatar-initials {
+    font-size: 28px;
+    font-weight: 300;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.pa-profile-info { flex: 0 1 auto; min-width: 0; }
+
+.pa-profile-nameline {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 10px;
+}
+
+.pa-profile-username {
+    font-size:   var(--blog-title-size, 20px);
+    font-weight: var(--blog-title-weight, 300);
+    font-family: var(--blog-title-font, inherit);
+    margin: 0;
+    color:       var(--blog-title-color, var(--text-primary));
+    text-shadow: var(--profile-text-glow, none);
+}
+
+.pa-profile-tagline-sep {
+    font-size:   var(--blog-title-size, 20px);
+    font-weight: 300;
+    color:       var(--text-secondary);
+    line-height: 1;
+    text-shadow: var(--profile-text-glow, none);
+}
+
+.pa-profile-tagline {
+    font-size:   var(--tagline-size, 16px);
+    font-weight: var(--tagline-weight, 300);
+    font-family: var(--tagline-font, inherit);
+    color:       var(--tagline-color, var(--text-secondary));
+    margin: 0;
+    text-shadow: var(--profile-text-glow, none);
+}
+
+.pa-profile-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 10px;
+}
+
+.pa-profile-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.pa-profile-stat-num {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-shadow: var(--profile-text-glow, none);
+}
+
+.pa-profile-stat-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-shadow: var(--profile-text-glow, none);
+}
+
+.pa-profile-bio {
+    margin:      8px 0 0;
+    font-size:   var(--bio-size, 14px);
+    line-height: 1.5;
+    color:       var(--bio-color, var(--text-secondary));
+    max-width:   480px;
+    text-shadow: var(--profile-text-glow, none);
+}
+
+
+/* ==========================================================================
+   3-COLUMN GRID
+   ========================================================================== */
+
+/* 3-column grid — constrained by .pa-content-wrap max-width.
+   Width is 100% of the content column (not full viewport). */
+.pa-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--grid-gap);
+    /* Transparent on purpose — the fixed parade layer shows through the gaps
+       between tiles. PARADE never paints a gap/background colour (unlike The
+       Grid); the parade IS the background. */
+    background: transparent;
+    margin-top: var(--grid-gap);
+    width: 100%;
+}
+
+/* Individual grid tile */
+.pa-tile {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: var(--border-color);
+    border-radius: var(--tile-radius);
+    /* Off-screen tiles skip layout/paint entirely — the mask-composite ring is
+       costly, so on a 1400-image grid this keeps render work to what's visible.
+       aspect-ratio already fixes the square height; contain-intrinsic-size is the
+       placeholder used while a tile is skipped. Pair with parade-wave.js's
+       viewport-scoped animation. If layout ever looks off, this is the line to pull. */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 300px;
+}
+
+/* Progressive reveal: tiles past the first batch are folded out of layout by
+   pa-grid-reveal.js so the page starts short and GROWS as you scroll, instead
+   of dumping all posts to full height at once. */
+.pa-grid .pa-tile.pa-fold { display: none; }
+
+/* DORMANT Layer-2 ring overlay — DEFERRED in PARADE v1.0.0 (spec v0.2 §8).
+   No engine drives this in v1; with no background set it renders invisible, so
+   PARADE ships clean tiles. The CSS + the .pa-ring divs in the templates are
+   left in place, ready to wire up if/when Layer 2 is approved. */
+.pa-ring {
+    position:      absolute;
+    inset:         0;
+    border-radius: var(--tile-radius);
+    padding:       var(--tile-bw, 2px);
+    pointer-events: none;
+    z-index:       2;
+    opacity:       var(--ring-op, 1);
+    -webkit-mask:  linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:          linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+}
+
+.pa-tile a {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+}
+
+.pa-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: opacity 0.2s;
+}
+
+.pa-tile:hover img { opacity: 0.85; }
+
+/* Carousel indicator badge (top-right corner) */
+.pa-tile-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    pointer-events: none;
+    line-height: 1;
+}
+
+.pa-tile-indicator--icon {
+    color: #fff;
+    font-size: 16px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    /* Unicode: layered squares ⧉ */
+}
+
+.pa-tile-indicator--count {
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    letter-spacing: 0.3px;
+}
+
+/* Hover overlay: title or count shown on hover */
+.pa-tile-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 1;
+    pointer-events: none;
+    padding: 12px;
+}
+
+.pa-tile:hover .pa-tile-overlay { opacity: 1; }
+
+/* Dark-only hover: no pointer events, no padding needed */
+.pa-tile-overlay--dark { padding: 0; }
+
+.pa-tile-overlay-text {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.3;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+/* ── Framed tile mode ──────────────────────────────────────────────────────
+   Applied when per-image/carousel/grid style brings size below 100%,
+   adds a border, or adds a shadow. PHP emits class .pa-tile--framed and
+   CSS custom properties on the .pa-tile element itself.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.pa-tile--framed {
+    background: var(--tile-bg, #ffffff);
+}
+
+.pa-tile--framed a {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--tile-bg, #ffffff);
+}
+
+.pa-tile--framed img {
+    /* override fill-tile behaviour */
+    width:        var(--tile-img-size, 100%);
+    height:       var(--tile-img-size, 100%);
+    object-fit:   contain;
+    border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
+    box-shadow:   var(--tile-shadow, none);
+    box-sizing:   border-box;
+    transition:   opacity 0.2s;
+}
+
+/* ── Trigram row ──────────────────────────────────────────────────────────
+   Trigram tiles are plain square tiles. No special CSS needed — L, M, R
+   all inherit .pa-tile's aspect-ratio: 1/1 and sit in the grid normally.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* Phantom tile: invisible placeholder to complete a partial row before a
+   trigram set, so the L tile always starts at column 0. */
+.pa-tile--phantom {
+    visibility:     hidden;
+    pointer-events: none;
+}
+
+/* Panorama tiles: the first tile forces a new row via grid-column: 1 */
+.pa-tile--pano-first  { grid-column: 1; }
+.pa-tile--pano-middle { /* naturally placed in column 2 */ }
+.pa-tile--pano-last   { /* naturally placed in column 3 */ }
+
+/* ==========================================================================
+   SINGLE POST VIEW (layout.php) — Instagram two-panel layout
+   ========================================================================== */
+
+/* ── Outer two-panel container ─────────────────────────────────────────── */
+.pa-post-ig {
+    display:         flex;
+    justify-content: center;
+    height:          100dvh;
+    overflow:        hidden;
+    background:      var(--post-bg, #000);
+}
+
+/* ── Left: image panel (fixed, never scrolls) ──────────────────────────── */
+.pa-post-ig-image {
+    /* PARADE is classic-IG: the image panel is ALWAYS 1:1 square.
+       Sized by container height; width derives from aspect-ratio. */
+    flex:            0 0 auto;
+    height:          100%;
+    aspect-ratio:    1 / 1;
+    min-width:       0;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    overflow:        hidden;
+    background:      var(--post-bg, #000);
+    position:        relative;
+    padding:         0;
+}
+
+.pa-post-ig-image .pa-single-img {
+    width:      100%;
+    height:     100%;
+    object-fit: contain;
+    display:    block;
+}
+
+/* Carousel fills the image panel */
+.pa-post-ig-image .pa-carousel-wrap {
+    width:    100%;
+    height:   100%;
+    position: relative;
+}
+
+.pa-post-ig-image .ss-slider,
+.pa-post-ig-image .slider-track {
+    height: 100%;
+}
+
+.pa-post-ig-image .slider-slide {
+    height:          100%;
+    display:         flex !important;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--post-bg, #000);
+}
+
+.pa-post-ig-image .slider-slide img {
+    max-width:   100% !important;
+    max-height:  100% !important;
+    width:       auto !important;
+    height:      auto !important;
+    object-fit:  contain !important;
+}
+
+/* Framed slides inside the image panel */
+.pa-post-ig-image .pa-slide--framed img {
+    max-height: 100% !important;
+}
+
+/* ── Right: info panel (scrollable) ────────────────────────────────────── */
+.pa-post-ig-info {
+    flex:           0 0 335px;
+    width:          335px;
+    border-left:    1px solid var(--border-color);
+    background:     var(--bg-primary, #fff);
+    display:        flex;
+    flex-direction: column;
+    overflow:       hidden;
+}
+
+/* Fixed header: back + avatar + site name */
+.pa-post-ig-header {
+    display:       flex;
+    align-items:   center;
+    gap:           10px;
+    padding:       14px 16px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink:   0;
+}
+
+.pa-back-btn {
+    background:  none;
+    border:      none;
+    cursor:      pointer;
+    color:       var(--text-primary);
+    font-size:   20px;
+    padding:     4px 8px 4px 0;
+    display:     flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.pa-back-btn:hover { opacity: 0.6; }
+
+.pa-post-ig-avatar {
+    width:         32px;
+    height:        32px;
+    border-radius: 50%;
+    object-fit:    cover;
+    flex-shrink:   0;
+}
+
+.pa-post-ig-avatar--initials {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--text-secondary, #8e8e8e);
+    color:           #fff;
+    font-size:       14px;
+    font-weight:     600;
+}
+
+.pa-post-ig-sitename {
+    font-size:     14px;
+    font-weight:   600;
+    color:         var(--text-primary);
+    flex:          1;
+    overflow:      hidden;
+    white-space:   nowrap;
+    text-overflow: ellipsis;
+}
+
+/* Scrollable body */
+.pa-post-ig-body {
+    flex:       1 1 0;
+    overflow-y: auto;
+    padding:    20px 22px;
+}
+
+/* IG-style caption block: bold username inline then caption text */
+.pa-post-caption-block {
+    margin-bottom: 12px;
+}
+
+.pa-post-ig-caption {
+    font-size:   14px;
+    color:       var(--text-primary);
+    line-height: 1.6;
+    margin:      0;
+}
+
+.pa-post-ig-caption-user {
+    font-weight:  600;
+    margin-right: 4px;
+}
+
+.description a,
+.static-content a:not(.nav-menu a) {
+    color:                  var(--accent-color);
+    text-decoration:        underline;
+    text-underline-offset:  2px;
+}
+
+.description a:hover,
+.static-content a:not(.nav-menu a):hover { color: var(--text-primary); }
+
+.description a:has(img),
+.static-content a:has(img) {
+    text-decoration: none !important;
+    border-bottom:   none !important;
+}
+
+/* EXIF panel */
+.pa-exif-panel {
+    display:       flex;
+    flex-wrap:     wrap;
+    gap:           6px 16px;
+    padding:       10px 0;
+    border-top:    1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 12px;
+}
+
+.pa-exif-item {
+    display:        flex;
+    flex-direction: column;
+}
+
+.pa-exif-label {
+    font-size:      10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color:          var(--text-secondary);
+}
+
+.pa-exif-value {
+    font-size: 13px;
+    color:     var(--text-primary);
+}
+
+/* Engagement bar — pinned between body and footer */
+.pa-post-ig-actions {
+    flex-shrink:  0;
+    border-top:   1px solid var(--border-color);
+    padding:      10px 16px 8px;
+    background:   var(--bg-primary, #fff);
+}
+
+.pa-post-ig-action-icons {
+    display:       flex;
+    gap:           16px;
+    margin-bottom: 6px;
+}
+
+.pa-action-btn {
+    background:  none;
+    border:      none;
+    padding:     0;
+    cursor:      pointer;
+    color:       var(--text-primary);
+    line-height: 1;
+    display:     flex;
+    align-items: center;
+}
+
+.pa-action-btn:hover { opacity: 0.6; }
+
+.pa-action-bookmark { margin-left: auto; }
+
+.pa-post-ig-date {
+    font-size:      10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color:          var(--text-secondary);
+    margin:         0;
+}
+
+/* Community component — flush to body edges */
+.pa-community-wrap {
+    border-top: 1px solid var(--border-color);
+    margin:     16px -16px 0;
+    padding:    0 16px;
+}
+
+/* ── Framed carousel slide (shared with grid tiles) ────────────────────── */
+.pa-slide--framed {
+    background:      var(--slide-bg, #000) !important;
+    display:         flex !important;
+    align-items:     center;
+    justify-content: center;
+    min-height:      280px;
+}
+
+.pa-slide--framed img {
+    width:      var(--slide-img-size, 100%) !important;
+    height:     auto !important;
+    max-height: 80vh !important;
+    object-fit: contain !important;
+    border:     var(--slide-border-w, 0px) solid var(--slide-border-c, transparent) !important;
+    box-shadow: var(--slide-shadow, none) !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+}
+
+/* Fallback carousel/single-img classes (used outside post view) */
+.pa-carousel-wrap {
+    position:   relative;
+    background: var(--post-bg, #000);
+    width:      100%;
+}
+
+.pa-single-img {
+    width:      100%;
+    max-height: 80vh;
+    object-fit: contain;
+    display:    block;
+}
+
+/* ── Footer pinned to bottom of right panel ────────────────────────────── */
+.pa-post-ig-info > #system-footer {
+    flex-shrink:   0;
+    border-top:    1px solid var(--border-color);
+    background:    var(--bg-primary, #fff);
+    padding:       8px 16px;
+    margin:        0;
+}
+
+.pa-post-ig-info > #system-footer .footer-metadata-bar p {
+    font-size:      10px;
+    letter-spacing: 0.3px;
+    color:          var(--text-secondary);
+    margin:         0;
+}
+
+/* ── Mobile: stack vertically ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .pa-post-ig {
+        flex-direction: column;
+        height:         auto;
+        overflow:       visible;
+    }
+
+    .pa-post-ig-image {
+        /* Square here too — full width, 1:1. */
+        flex:         0 0 auto;
+        width:        100%;
+        aspect-ratio: 1 / 1;
+        height:       auto;
+    }
+
+    .pa-post-ig-info {
+        width:    100%;
+        flex:     0 0 auto;
+        height:   auto;
+        overflow: visible;
+    }
+
+    .pa-post-ig-body {
+        overflow: visible;
+    }
+}
+
+/* ==========================================================================
+   POST MODAL OVERLAY
+   IG-style popover: grid stays visible, dimmed behind 80% opaque backdrop.
+   pa-modal.js populates #pa-modal-frame by fetching ?modal=1 fragments.
+   ========================================================================== */
+
+.pa-modal-overlay {
+    position:        fixed;
+    inset:           0;
+    z-index:         900;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+}
+
+.pa-modal-overlay[hidden] { display: none; }
+
+/* Prevent grid scroll while modal is open */
+body.pa-modal-open { overflow: hidden; }
+
+.pa-modal-backdrop {
+    position:   absolute;
+    inset:      0;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.pa-modal-frame {
+    position:      relative;
+    z-index:       1;
+    width:         auto;
+    max-width:     92vw;
+    height:        min(92vh, 900px);
+    border-radius: 4px;
+    overflow:      hidden;
+    box-shadow:    0 8px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* Force the post layout to fill the frame (overrides 100dvh default) */
+.pa-modal-frame .pa-post-ig {
+    height: 100%;
+}
+
+/* ==========================================================================
+   ARCHIVE VIEW (categories, albums)
+   Same grid as landing — just no profile header.
+   ========================================================================== */
+
+.pa-archive-header {
+    padding: 20px 0 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pa-archive-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 4px;
+}
+
+.pa-archive-meta {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ── Hashtag / Tag Page ──────────────────────────────────────────────────── */
+
+.pa-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    opacity: .7;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.pa-archive-header h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px;
+}
+
+.pa-archive-header p {
+    font-size: 13px;
+    opacity: .6;
+    margin: 0;
+}
+
+.pa-grid-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    opacity: .5;
+}
+
+/* ==========================================================================
+   PAGINATION
+   ========================================================================== */
+
+.pa-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 20px 16px;
+}
+
+.pa-page-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.15s;
+}
+
+.pa-page-btn:hover,
+.pa-page-btn.is-current {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border-color: var(--text-primary);
+}
+
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
+
+.pa-footer {
+    border-top: 1px solid var(--border-color);
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.pa-footer a {
+    color: var(--text-secondary);
+}
+
+.pa-footer a:hover {
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 600px) {
+    .pa-profile {
+        gap: 20px;
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+    .pa-profile-avatar {
+        width: 56px;
+        height: 56px;
+    }
+    .pa-profile-username { font-size: 16px; }
+    .pa-profile-tagline-sep { font-size: 16px; }
+    .pa-profile-tagline { font-size: 14px; }
+    .pa-profile-stats { gap: 16px; }
+}
+
+/* ── Hashtag links in captions ────────────────────────────────────────────── */
+.pa-hashtag {
+    color: var(--accent-color, #0095f6);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.pa-hashtag:hover {
+    text-decoration: underline;
+}
+/* ==========================================================================
+   SYSTEM FOOTER OVERRIDES (core/footer.php → #system-footer)
+   ========================================================================== */
+
+#system-footer {
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-primary);
+}
+
+#system-footer .inside {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+    padding: 20px var(--grid-gutter, 0px);
+}
+
+#system-footer .footer-metadata-bar {
+    text-align: center;
+}
+
+#system-footer .footer-metadata-bar p {
+    margin: 0;
+    font-size: 11px;
+    color: var(--text-secondary);
+    letter-spacing: 0.4px;
+    line-height: 2;
+}
+
+#system-footer .footer-metadata-bar .sep {
+    margin: 0 8px;
+    opacity: 0.4;
+}
+
+#system-footer .footer-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+#system-footer .footer-link:hover {
+    color: var(--text-primary);
+    opacity: 1;
+}
+
+/* ==========================================================================
+   STATIC PAGE (About, etc.)
+   ========================================================================== */
+
+.pa-static-page .pa-sticky-nav {
+    position: sticky;
+    top: 0;
+}
+
+.pa-static-content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+}
+
+.pa-static-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 24px;
+}
+
+.pa-static-body {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.pa-static-body p {
+    margin: 0 0 16px;
+}
+
+.pa-static-body a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.pa-static-body a:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   BACKGROUND TREATMENT  (skin admin → Treatment)
+   Full-viewport image/colour layer behind the centred content card.
+   The .pa-treatment-* layers are emitted by skin-profile.php ONLY when a
+   treatment is active, so with no treatment these rules never match and the
+   default flat layout is completely untouched.
+   ========================================================================== */
+
+.pa-treatment-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+.pa-treatment-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* When a treatment is present, the content column reads as a card floating
+   over the background. */
+body:has(.pa-treatment-bg) .pa-content-wrap,
+body:has(.pa-treatment-bg).is-blogroll #scroll-stage {
+    background: var(--bg-primary, #ffffff);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.28);
+    min-height: 100vh;
+}
+
+body:has(.pa-treatment-bg).is-blogroll #scroll-stage {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+}
+
+/* ==========================================================================
+   AVATAR LIGHTBOX
+   ========================================================================== */
+
+.pa-profile-avatar--zoom { cursor: zoom-in; }
+
+.pa-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5vmin;
+    background: rgba(0, 0, 0, 0.85);
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+.pa-lightbox[hidden] { display: none; }
+.pa-lightbox.is-open { opacity: 1; }
+
+.pa-lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 4px;
+    box-shadow: 0 10px 60px rgba(0, 0, 0, 0.6);
+    cursor: zoom-out;
+}
+
+.pa-lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 34px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.8;
+}
+.pa-lightbox-close:hover { opacity: 1; }
+
+/* ==========================================================================
+   BLOGROLL  (core blogroll.php rendered inside the Grid shell)
+   Scoped to body.is-blogroll so it only affects the blogroll page, and only
+   on PARADE (this stylesheet is loaded only when PARADE is active).
+   ========================================================================== */
+
+body.is-blogroll .blogroll-canvas {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 32px 20px 60px;
+}
+
+body.is-blogroll .static-page-title {
+    font-size: var(--blog-title-size, 24px);
+    font-weight: 300;
+    color: var(--text-primary);
+    margin: 0 0 24px;
+}
+
+body.is-blogroll .blogroll-category-heading {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 6px;
+    margin: 32px 0 16px;
+}
+
+body.is-blogroll .blogroll-peer { margin: 0 0 20px; }
+
+body.is-blogroll .blogroll-peer-name a {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+body.is-blogroll .blogroll-peer-name a:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
+
+body.is-blogroll .blogroll-peer-desc {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin: 3px 0 0;
+}
+
+/* Drop the raw URL line — the peer name is the link. */
+body.is-blogroll .blogroll-peer-url { display: none; }
+
+/* ==========================================================================
+   COMMUNITY COMMENT FORM  (inside the Grid post modal)
+   The core community component ships raw browser inputs; theme them to match
+   the Grid modal. Scoped to .pa-post-ig so only the modal is affected, and
+   higher specificity than ss-community.css so these win regardless of order.
+   ========================================================================== */
+
+.pa-post-ig .ss-comment-guest-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.pa-post-ig .ss-guest-name,
+.pa-post-ig .ss-guest-email,
+.pa-post-ig .ss-comment-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--border-color, #dbdbdb);
+    border-radius: 8px;
+    background: transparent;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-primary);
+    transition: border-color 0.15s ease;
+}
+
+.pa-post-ig .ss-guest-name::placeholder,
+.pa-post-ig .ss-guest-email::placeholder,
+.pa-post-ig .ss-comment-textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+.pa-post-ig .ss-guest-name:focus,
+.pa-post-ig .ss-guest-email:focus,
+.pa-post-ig .ss-comment-textarea:focus {
+    outline: none;
+    border-color: var(--accent-color, #0095f6);
+}
+
+.pa-post-ig .ss-comment-input-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.pa-post-ig .ss-comment-textarea {
+    resize: none;
+    line-height: 1.4;
+    min-height: 38px;
+}
+
+.pa-post-ig .ss-comment-input-row .ss-avatar-placeholder {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--border-color, #dbdbdb);
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.pa-post-ig .ss-comment-btns {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+.pa-post-ig .ss-comment-cancel,
+.pa-post-ig .ss-comment-submit {
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+}
+
+.pa-post-ig .ss-comment-cancel { color: var(--text-secondary); }
+.pa-post-ig .ss-comment-submit { color: var(--accent-color, #0095f6); }
+.pa-post-ig .ss-comment-submit:hover { background: rgba(0, 149, 246, 0.08); }
+
+.pa-post-ig .ss-comment-author {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   PARADE — LAYER 1: BACKGROUND CURTAINS (canvas)
+   --------------------------------------------------------------------------
+   A fixed, full-viewport layer behind the photography. The fireworks engine
+   (ss-engine-parade-fireworks.js) renders flag-coloured bursts into a half-res
+   <canvas> (CSS-blurred for softness) and pauses itself when the tab is hidden
+   or reduced-motion is on. No CSS animation — the canvas owns the motion. The
+   high-key field (--pa-bg) shows through the fading trails (the engine erases
+   trails via destination-out). Layer 2 (tile border-wave) is deferred (spec
+   v0.2 §8) — PARADE ships clean tiles for the Layer-1 sign-off.
+   ========================================================================== */
+.pa-parade-bg {
+    position: fixed;
+    inset: 0;
+    /* MUST be negative — a fixed field layer painted above the propagated body
+       background but behind static content. Mirrors AURORA's z-index fix that
+       stopped the fixed background covering the profile header. */
+    z-index: -1;
+    pointer-events: none;
+    background-color: var(--pa-bg, #ffffff);
+}
+.pa-parade-bg canvas.pa-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    filter: blur(2px);
+}
+
+/* Content sits above the fixed fireworks layer. */
+#page-wrapper,
+.pa-content-wrap { position: relative; z-index: 1; }
+
+/* Reduced motion: the engine itself freezes to a few static coloured bursts.
+   Keep the layer calm here too. */
+@media (prefers-reduced-motion: reduce) {
+    .pa-parade-bg canvas.pa-canvas { filter: blur(1px); }
+}
+
+/* ===== SNAPSMACK EOF ===== */
