@@ -751,47 +751,32 @@ return [
         ],
         'smack-grid-nav' => [
             'label'        => 'Grid Sticky Nav (profile-aware sticky nav for The Grid)',
-            'path'         => 'skins/the-grid/assets/js/tg-nav.js',
+            'path'         => 'assets/js/ss-engine-grid-nav.js',
             'has_settings' => false,
         ],
         'smack-grid-modal' => [
             'label'        => 'The Grid post modal overlay (IG-style popover)',
-            'path'         => 'skins/the-grid/assets/js/tg-modal.js',
+            'path'         => 'assets/js/ss-engine-grid-modal.js',
             'has_settings' => false,
         ],
         'smack-grid-lightbox' => [
-            'label'        => 'The Grid avatar lightbox',
-            'path'         => 'skins/the-grid/assets/js/tg-lightbox.js',
+            'label'        => 'Grid-family avatar lightbox (shared)',
+            'path'         => 'assets/js/ss-engine-grid-lightbox.js',
             'has_settings' => false,
         ],
         'smack-aurora-bg' => [
             'label'        => 'AURORA Layer 1 background curtains (canvas)',
-            'path'         => 'skins/aurora/assets/js/aurora-bg.js',
+            'path'         => 'assets/js/ss-engine-aurora-bg.js',
             'has_settings' => false,
         ],
         'smack-aurora-wave' => [
             'label'        => 'AURORA Layer 2 tile border colour wave',
-            'path'         => 'skins/aurora/assets/js/aurora-wave.js',
-            'has_settings' => false,
-        ],
-        'smack-aurora-modal' => [
-            'label'        => 'AURORA post modal overlay',
-            'path'         => 'skins/aurora/assets/js/au-modal.js',
-            'has_settings' => false,
-        ],
-        'smack-aurora-lightbox' => [
-            'label'        => 'AURORA avatar lightbox',
-            'path'         => 'skins/aurora/assets/js/au-lightbox.js',
-            'has_settings' => false,
-        ],
-        'smack-aurora-nav' => [
-            'label'        => 'AURORA profile-aware sticky nav',
-            'path'         => 'skins/aurora/assets/js/au-nav.js',
+            'path'         => 'assets/js/ss-engine-aurora-wave.js',
             'has_settings' => false,
         ],
         'smack-aurora-reveal' => [
-            'label'        => 'AURORA progressive grid reveal (grow-as-you-scroll)',
-            'path'         => 'skins/aurora/assets/js/au-grid-reveal.js',
+            'label'        => 'Grid-family progressive reveal (grow-as-you-scroll)',
+            'path'         => 'assets/js/ss-engine-aurora-reveal.js',
             'has_settings' => false,
         ],
         'smack-calendar' => [
