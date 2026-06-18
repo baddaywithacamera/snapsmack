@@ -590,23 +590,10 @@ return [
                 'logo_font_courier'     => ['type' => 'select', 'label' => 'Courier Intrusion Hits',    'default' => '1',      'options' => ['1' => 'Enabled', '0' => 'Disabled']],
             ]
         ],
-        'smack-pimpotron' => [
-            'label'        => 'Pimpotron Sequencer',
-            'path'         => 'assets/js/ss-engine-pimpotron.js',
-            'css'          => 'assets/css/ss-engine-pimpotron.css',
-            'has_settings' => true,
-            'controls'     => [
-                'pimpotron_slideshow_id' => [
-                    'type'    => 'number',
-                    'label'   => 'Slideshow ID',
-                    'default' => '1'
-                ],
-                'pimpotron_stage_id' => [
-                    'type'    => 'text',
-                    'label'   => 'Stage Element ID',
-                    'default' => 'pimpotron-sequencer'
-                ]
-            ]
+        'smack-matrix-rain' => [
+            'label'        => 'Matrix Rain background effect (canvas)',
+            'path'         => 'assets/js/ss-engine-matrix-rain.js',
+            'has_settings' => false,
         ],
         'smack-thomas' => [
             'label'        => 'Thomas the Bear (Easter Egg)',
