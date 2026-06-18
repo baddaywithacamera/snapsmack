@@ -12,6 +12,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.268 — "Box Seat" (2026-06-18)
+
+In progress. Carries the Unzucker caption-import fix and the tsohn caption recovery
+(VAX injection). The PARADE skin — AURORA's high-key twin, slow-motion flag fireworks
+over The Grid — ships separately via the Skin Packager.
+
+### Unzucker caption import
+
+- (pending — fold in once the caption fix + recovery path land.)
+
 ## 0.7.267 — "Ejector Seat" (2026-06-18)
 
 Hardening + cleanup release. Stopped fresh installs from locking themselves out on
