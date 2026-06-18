@@ -48,7 +48,7 @@ if (!empty($settings['active_skin'])) {
 // Determine which accordion section to auto-open based on the current page.
 $_section_map = [
     'good-shit'  => ['smack-admin.php','smack-post-solo.php','smack-post-long.php','smack-manage.php','smack-edit.php','smack-lighttable.php','smack-lt-gram.php','smack-cats.php','smack-albums.php','smack-collections.php','smack-mosaics.php','smack-media.php','smack-gallery.php','smack-comments.php','smack-blogroll.php','smack-pages.php','smack-shortcodes.php','smack-privacy.php','smack-community-settings.php','smack-community-users.php','smack-tools.php'],
-    'pimp'       => ['smack-globalvibe.php','smack-skin.php','smack-menu.php','smack-pimpotron.php','smack-social-dock.php','smack-css.php','smack-scripts.php','smack-appearance-archive.php','smack-appearance-solo.php','smack-appearance-static.php'],
+    'pimp'       => ['smack-globalvibe.php','smack-skin.php','smack-menu.php','smack-social-dock.php','smack-css.php','smack-scripts.php','smack-appearance-archive.php','smack-appearance-solo.php','smack-appearance-static.php'],
     'boring'     => ['smack-settings.php','smack-users.php','smack-maintenance.php','smack-fingerprints.php','smack-backup.php','smack-disaster.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php','smack-schema.php','smack-stats.php','smack-api-keys.php','smack-back.php','smack-multisite.php','smack-multisite-comments.php','smack-multisite-posts.php','smack-multisite-backup.php','smack-multisite-stats.php','smack-multisite-crosspost.php','smack-multisite-blogroll.php','smack-multisite-settings.php','smack-push-it.php'],
     'help'       => ['smack-help.php','smack-forum.php'],
 ];
@@ -167,11 +167,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-menu.php') ? 'active' : ''; ?>">
                         <a href="smack-menu.php">Menu Manager</a>
                     </li>
-                    <?php if ($_ui_pimpmobile && $_sidebar_pimpotron): ?>
-                    <li class="<?php echo ($current_page == 'smack-pimpotron.php') ? 'active' : ''; ?>">
-                        <a href="smack-pimpotron.php">Pimpotron</a>
-                    </li>
-                    <?php endif; ?>
+                    <?php /* Pimpotron nav removed 2026-06-18 — KIOSK engine retired (secaudit 026). */ ?>
                     <?php if ($_ui_pimpmobile): ?>
                     <li class="<?php echo ($current_page == 'smack-social-dock.php') ? 'active' : ''; ?>">
                         <a href="smack-social-dock.php">Social Dock</a>
