@@ -34,7 +34,7 @@ overnight build to ship-ready with The Grid sharing the same engines.
   inert) while its own nav engine never loaded — the sticky mini-avatar was dead.
   Now points at its own/shared handles.
 
-### AURORA skin — ship-ready (v1.0.15)
+### AURORA skin — ship-ready (v1.0.17)
 
 - Profile header restored (the background layer was painting over it on a wrong
   z-index); background curtains, grid borders, and the border wave all verified.
@@ -45,6 +45,9 @@ overnight build to ship-ready with The Grid sharing the same engines.
   rendering all posts at full height at once.
 - Two-part nav divider lines (green + offset dark indigo) with adjustable opacity;
   outer-glow controls for nav text and title/tagline; default dark legibility halo.
+- Sticky nav fast-fades in a 40%-of-sky-colour backdrop when it sticks to the top.
+- Post-count label ("posts") now carries the same outer glow as the rest of the
+  profile text.
 - Admin reorganised — Profile Header split into Profile Header / Title & Tagline /
   Text Glow / Menu-Nav; added Description / Bio colour and size controls.
 
