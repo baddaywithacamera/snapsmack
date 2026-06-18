@@ -46,7 +46,7 @@ $push_group_keys = [
     'ai'        => ['ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_training_policy', 'hub_controls_ai'],
     'smackback' => ['smackback_enabled', 'smackback_mode', 'hub_controls_smackback'],
     'comments'  => ['global_comments_enabled',           'hub_controls_comments'],
-    'email'     => ['site_email',                        'hub_controls_email'],
+    'email'     => ['site_email', 'admin_email', 'email_from', 'email_from_name', 'hub_controls_email'],
     'netalert'  => ['network_alert_receive', 'network_alert_send', 'hub_controls_netalert'],
 ];
 
