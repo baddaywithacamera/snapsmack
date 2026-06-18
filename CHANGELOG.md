@@ -12,6 +12,46 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.267 — "Ejector Seat" (2026-06-18)
+
+Hardening + cleanup release. Stopped fresh installs from locking themselves out on
+first login, fixed the 2FA trust-device control, tightened the install footprint, and
+ejected the dead KIOSK / Pimpotron engine.
+
+### Installer self-breach fixed (SECAUDIT 026)
+
+- **`install.php` / `setup.php` no longer baselined by SMACKBACK.** Both are present at
+  install then self-delete (`@unlink(__FILE__)`); baselining them meant the next scan saw
+  them MISSING → false breach → LOCKOUT on every fresh install. Now excluded in all three
+  paths: `core/smackback.php`, `smack-central/sc-release.php`, `tools/_build/build-release.php`
+  (they ship in the zip, never in the integrity manifest).
+- **`install.php` no longer regenerates `core/constants.php`.** It rebuilt the file from a
+  drifted hand-typed template (wrong codename, reordered blocks, no EOF marker) that didn't
+  match the SMACKBACK baseline → false "truncated" on first login. The shipped canonical file
+  now stands. Its only dynamic value, `SNAPSMACK_TABLE_PREFIX`, was dead (zero read-sites; all
+  queries hardcode `snap_`).
+
+### Install footprint / attack surface
+
+- **Fresh installs fetch only the mode-default skin** (+ required mobile-only infra), not the
+  whole registry — no more unused skins landing on every box (the AURORA fleet-auto-install
+  vector). (`projects/snapsmack-ca/install-manifest.php`; deploys with snapsmack.ca.)
+- **Pimpotron / KIOSK engine removed.** Admin page, payload endpoint, engine JS/CSS, manifest
+  entry, admin-nav link, and two DB tables all gone (drop migration + canonical removal). The
+  one reusable piece — a standalone Matrix-rain canvas — was salvaged as the library engine
+  `smack-matrix-rain` (`assets/js/ss-engine-matrix-rain.js`).
+
+### Multisite
+
+- **Hub→spoke email-identity push.** `admin_email`, `email_from`, and `email_from_name` now
+  propagate hub→spoke alongside `site_email` (gated by `hub_controls_email`) — set email
+  identity once on the hub. Identity strings only; no credentials.
+
+### Fixes
+
+- **2FA "trust this device" checkbox** was rendering invisible (the global input reset
+  collapsed it to a sliver) — now forces native checkbox rendering at an explicit size.
+
 ## 0.7.266 — "Musical Chairs" (2026-06-17)
 
 Shared the Grid-family JS engines into the core asset library, and brought AURORA's
