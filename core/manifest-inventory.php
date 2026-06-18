@@ -779,6 +779,11 @@ return [
             'path'         => 'assets/js/ss-engine-aurora-reveal.js',
             'has_settings' => false,
         ],
+        'smack-parade-fireworks' => [
+            'label'        => 'PARADE Layer 1 slow-motion fireworks (canvas)',
+            'path'         => 'assets/js/ss-engine-parade-fireworks.js',
+            'has_settings' => false,
+        ],
         'smack-calendar' => [
             'label'        => 'Archive Calendar Sidebar (Sliding date panel)',
             'path'         => 'assets/js/ss-engine-calendar.js',
