@@ -317,7 +317,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <div class="control-group" style="margin:12px 0 18px;">
                         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.8rem;letter-spacing:0.06em;">
-                            <input type="checkbox" name="trust_device" value="1" style="width:auto;margin:0;">
+                            <input type="checkbox" name="trust_device" value="1" style="appearance:auto;-webkit-appearance:checkbox;width:16px;height:16px;min-width:16px;flex:0 0 auto;margin:0;padding:0;border:0;background:none;box-shadow:none;accent-color:#19e0d8;cursor:pointer;">
                             TRUST THIS DEVICE FOR <?php echo ss_totp_trust_days($pdo); ?> DAYS
                         </label>
                     </div>
