@@ -16,6 +16,13 @@ Versioned 0.7.<build>. As of 0.7.12 the third number is a plain build counter
 
 ---
 
+## 0.7.17 — 2026-06-19
+
+### Changed
+- _TODO: describe this build._
+
+---
+
 ## 0.7.16 — 2026-06-19
 
 ### Changed
