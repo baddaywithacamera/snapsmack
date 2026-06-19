@@ -736,6 +736,12 @@ return [
                 ],
             ]
         ],
+        'smack-52-pickup' => [
+            'label'        => '52 PICKUP interaction layer (hover-lift, click-to-expand, ghost chrome, ESC return)',
+            'path'         => 'assets/js/ss-engine-52-pickup.js',
+            'css'          => 'assets/css/ss-engine-52-pickup.css',
+            'has_settings' => false,
+        ],
         'smack-anaglyph' => [
             'label'        => 'Anaglyph 3D Engine (Red/Cyan stereoscopic)',
             'path'         => 'assets/js/ss-engine-anaglyph.js',

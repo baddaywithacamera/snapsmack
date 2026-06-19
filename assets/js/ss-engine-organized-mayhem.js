@@ -468,8 +468,24 @@
 
         // ── Chunked, non-blocking initial build (spec §3.1, §6) ──────────
         function build() {
-            view.x = -(container.clientWidth / 2);
-            view.y = -(container.clientHeight / 2);
+            // ESC-return restores the exact prior view (spec §4.3, set by the
+            // 52 PICKUP layer); a plain refresh gets a fresh centred sample.
+            var restored = false;
+            try {
+                if (window.sessionStorage && sessionStorage.getItem('om-restore') === '1') {
+                    sessionStorage.removeItem('om-restore');
+                    var sv = JSON.parse(sessionStorage.getItem('om-view') || 'null');
+                    if (sv && typeof sv.x === 'number') {
+                        view.x = sv.x; view.y = sv.y;
+                        view.z = Math.max(minZoom, Math.min(maxZoom, sv.z || 1));
+                        restored = true;
+                    }
+                }
+            } catch (e) { fault('restore view', e); }
+            if (!restored) {
+                view.x = -(container.clientWidth / 2);
+                view.y = -(container.clientHeight / 2);
+            }
             renderView();
 
             var total = initialCount;
@@ -509,6 +525,20 @@
         }
         var reBtn = document.querySelector('[data-mayhem-reshuffle]');
         if (reBtn) reBtn.addEventListener('click', function (e) { e.preventDefault(); reshuffle(); });
+
+        // ── Public API (consumed by the 52 PICKUP layer for ESC return) ──
+        try {
+            window.OrganizedMayhem = window.OrganizedMayhem || {};
+            window.OrganizedMayhem.getView = function () { return { x: view.x, y: view.y, z: view.z }; };
+            window.OrganizedMayhem.setView = function (v) {
+                if (!v) return;
+                if (typeof v.x === 'number') view.x = v.x;
+                if (typeof v.y === 'number') view.y = v.y;
+                if (typeof v.z === 'number') view.z = Math.max(minZoom, Math.min(maxZoom, v.z));
+                renderView(); update();
+            };
+            window.OrganizedMayhem.reshuffle = function () { reshuffle(); };
+        } catch (e) { fault('expose api', e); }
 
         // ── Go ───────────────────────────────────────────────────────────
         setProgress(0, initialCount);
