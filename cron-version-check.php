@@ -5,24 +5,14 @@
  * Scheduled task that checks for both core software updates AND new/updated
  * skins from the remote registry. Stores results in snap_settings so the
  * admin dashboard can display notifications without making live API calls
- * on every page load.
+ * on every page load. Also runs the scheduled SMACKBACK integrity verify.
  *
  * USAGE:
  *   php cron-version-check.php
  *
- * RECOMMENDED CRON SCHEDULE:
- *   0 */
-
-/**
- * SNAPSMACK_EOF_HEADER
- *     // ===== SNAPSMACK EOF =====
- * Last non-empty line of this file MUST match the line above.
- * Missing or different = truncated/corrupted. Restore before saving.
- */
-
-
-6 * * * /usr/bin/php /path/to/cron-version-check.php >> /dev/null 2>&1
- *   (Every 6 hours)
+ * RECOMMENDED CRON SCHEDULE (every 6 hours; explicit hours are used instead of
+ * "0 [slash]6 * * *" because a literal star-slash would close this docblock):
+ *   0 0,6,12,18 * * *  /usr/bin/php /path/to/cron-version-check.php >> /dev/null 2>&1
  *
  * FALLBACK:
  *   If cron is not available, smack-admin.php performs an on-load check
@@ -31,6 +21,11 @@
  * STORED SETTINGS:
  *   update_check_result   — JSON blob with core update + skin notifications
  *   last_update_check     — ISO datetime of last successful check
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
  */
 
 // --- BOOTSTRAP (CLI-safe, no session needed) ---
@@ -136,20 +131,22 @@ try {
          WHERE setting_key IN ('smackback_enabled', 'smackback_mode')"
     )->fetchAll(PDO::FETCH_KEY_PAIR);
 
-    if (($smack_settings['smackback_enabled'] ?? '0') === '1') {
+    if (($smack_settings['smackback_enabled'] ?? '0') === '1' && smackback_verify_due()) {
         $smack_result = smackback_verify_all();
         if ($smack_result['status'] === 'breach') {
             smackback_handle_breach(
                 $smack_result['tampered'],
                 $smack_result['missing'],
                 $smack_result['truncated'] ?? [],
-                $smack_result['corrupted'] ?? []
+                $smack_result['corrupted'] ?? [],
+                $smack_result['unexpected'] ?? []
             );
             echo "SMACKBACK BREACH DETECTED: "
                . count($smack_result['tampered'])  . " tampered, "
                . count($smack_result['truncated'] ?? []) . " truncated, "
                . count($smack_result['corrupted'] ?? []) . " corrupted, "
-               . count($smack_result['missing'])   . " missing. Alert sent.\n";
+               . count($smack_result['missing'])   . " missing, "
+               . count($smack_result['unexpected'] ?? []) . " unexpected. Alert sent.\n";
         } else {
             $pdo->prepare(
                 "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackback_last_full_verify', ?)

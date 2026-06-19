@@ -33,6 +33,7 @@ $smack_breach_files = json_decode($smack_breach_files_json, true) ?? [];
 $smack_last_verify = $settings['smackback_last_full_verify'] ?? '';
 $smack_alert_email = $settings['smackback_alert_email']    ?? '';
 $smack_pageload   = ($settings['smackback_pageload_check'] ?? '0') === '1';
+$smack_interval   = max(1, min(24, (int)($settings['smackback_verify_interval_hours'] ?? 6)));
 $smack_hub_pending_disable = ($settings['smackback_hub_pending_disable'] ?? '0') === '1';
 $smack_hub_pending_mode    = $settings['smackback_hub_pending_mode'] ?? '';
 
@@ -91,7 +92,8 @@ if ($action === 'run_verify' || ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POS
             $result['tampered'],
             $result['missing'],
             $result['truncated'] ?? [],
-            $result['corrupted'] ?? []
+            $result['corrupted'] ?? [],
+            $result['unexpected'] ?? []
         );
     } else {
         $pdo->prepare(
@@ -114,10 +116,11 @@ if ($action === 'run_verify' || ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POS
 
     if ($result['status'] === 'breach') {
         $parts = [];
-        if (count($result['tampered']))             $parts[] = count($result['tampered'])  . ' tampered';
-        if (count($result['truncated'] ?? []))      $parts[] = count($result['truncated']) . ' truncated';
-        if (count($result['corrupted'] ?? []))      $parts[] = count($result['corrupted']) . ' corrupted';
-        if (count($result['missing']))              $parts[] = count($result['missing'])   . ' missing';
+        if (count($result['tampered']))             $parts[] = count($result['tampered'])   . ' tampered';
+        if (count($result['truncated'] ?? []))      $parts[] = count($result['truncated'])  . ' truncated';
+        if (count($result['corrupted'] ?? []))      $parts[] = count($result['corrupted'])  . ' corrupted';
+        if (count($result['missing']))              $parts[] = count($result['missing'])    . ' missing';
+        if (count($result['unexpected'] ?? []))     $parts[] = count($result['unexpected']) . ' unexpected';
         $msg = 'BREACH DETECTED: ' . implode(', ', $parts) . '.';
     } else {
         $msg = "{$result['ok']} files verified clean in {$result['duration']}s.";
@@ -251,10 +254,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_settings'] ?? '') ===
         "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
          ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
     );
-    $upsert->execute(['smackback_enabled',        $new_enabled]);
-    $upsert->execute(['smackback_mode',            $new_mode]);
-    $upsert->execute(['smackback_pageload_check',  $new_pageload]);
-    $upsert->execute(['smackback_alert_email',     $new_email]);
+    // Verify interval: mandatory cadence, clamped 1–24h. There is no "off".
+    $new_interval = (int)($_POST['smackback_verify_interval_hours'] ?? 6);
+    if ($new_interval < 1)  $new_interval = 1;
+    if ($new_interval > 24) $new_interval = 24;
+
+    $upsert->execute(['smackback_enabled',         $new_enabled]);
+    $upsert->execute(['smackback_mode',             $new_mode]);
+    $upsert->execute(['smackback_pageload_check',   $new_pageload]);
+    $upsert->execute(['smackback_alert_email',      $new_email]);
+    $upsert->execute(['smackback_verify_interval_hours', (string)$new_interval]);
 
     header('Location: smack-back.php?msg=Settings+saved.');
     exit;
@@ -664,6 +673,16 @@ include 'core/sidebar.php';
                             <span class="toggle-slider"></span>
                         </label>
                         <span class="dim" style="font-size:0.82rem;">Check file mtimes on public page loads (very fast — no file reads unless mtime changed)</span>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>VERIFY INTERVAL <span class="field-tip" data-tip="How often the full integrity scan runs. Mandatory — there is no off switch.">ⓘ</span></label>
+                        <select name="smackback_verify_interval_hours">
+                            <?php for ($h = 1; $h <= 24; $h++): ?>
+                            <option value="<?php echo $h; ?>"<?php echo $smack_interval === $h ? ' selected' : ''; ?>><?php echo $h; ?> hour<?php echo $h === 1 ? '' : 's'; ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <span class="dim" style="font-size:0.82rem;">Full scan runs at least this often — on admin page loads and via cron. Mandatory: integrity checks cannot be switched off, only scheduled.</span>
                     </div>
 
                     <div class="lens-input-wrapper">
