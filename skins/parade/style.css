@@ -119,37 +119,36 @@ img { display: block; max-width: 100%; }
     top: 0;
     z-index: 100;
     background: transparent;
-    /* When stuck to the top (.profile-hidden) fast-fade in a backdrop. */
     transition: background 0.18s ease-in;
-    /* Two-part divider line (static, no colour shifting):
-       (1) a 1px bright-green line — this border, and
-       (2) a 2px solid dark-indigo line tucked directly beneath it, shifted 2px
-           to the right (the ::before/::after below).
-       Applied to BOTH the top and bottom dividers. */
-    border-top:    1px solid var(--nav-line-green, #6ff0a0);
-    border-bottom: 1px solid var(--nav-line-green, #6ff0a0);
+    /* Dual 1px divider lines, top + bottom. Colour = --pa-nav-line, set by
+       skin-profile.php to a fixed admin colour OR the live wave colour (track
+       mode). The OUTER line of each pair is this border; the INNER line is the
+       ::before / ::after below. */
+    border-top:    1px solid var(--pa-nav-line, var(--pa-accent, #750787));
+    border-bottom: 1px solid var(--pa-nav-line, var(--pa-accent, #750787));
 }
 
-/* Stuck to top: fade in 40% of the sky colour behind the nav. .profile-hidden is
-   added by the shared nav engine when the profile scrolls out of view. */
+/* Stuck to top: fade in the high-key field behind the nav so the dark menu text
+   stays legible over the fireworks. .profile-hidden is added by the shared nav
+   engine when the profile scrolls out of view. */
 .pa-sticky-nav.profile-hidden {
-    background: color-mix(in srgb, var(--pa-sky, #0d0d2b) 40%, transparent);
+    background: color-mix(in srgb, var(--pa-bg, #ffffff) 88%, transparent);
 }
 
-/* Lower half of each divider: 2px solid dark indigo, offset 2px to the right. */
+/* Inner line of each dual divider: a second 1px line, 2px inside the border. */
 .pa-sticky-nav::before,
 .pa-sticky-nav::after {
     content: "";
     position: absolute;
-    left: 2px;
-    right: -2px;
-    height: 2px;
-    background: var(--nav-line-indigo, #14143d);
-    opacity: var(--nav-line-opacity, 1);
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--pa-nav-line, var(--pa-accent, #750787));
+    opacity: var(--pa-nav-line-opacity, 0.55);
     pointer-events: none;
 }
-.pa-sticky-nav::before { top: 1px; }     /* 1px below the top green line               */
-.pa-sticky-nav::after  { bottom: -4px; } /* 1px below the bottom green line (clears it) */
+.pa-sticky-nav::before { top: 2px; }     /* 2px below the top border line    */
+.pa-sticky-nav::after  { bottom: 2px; }  /* 2px above the bottom border line */
 
 .pa-sticky-nav-inner {
     display: flex;
@@ -1390,7 +1389,7 @@ body.is-blogroll .blogroll-peer-url { display: none; }
     width: 100%;
     height: 100%;
     display: block;
-    filter: blur(2px);
+    filter: blur(0.6px);
 }
 
 /* Content sits above the fixed fireworks layer. */

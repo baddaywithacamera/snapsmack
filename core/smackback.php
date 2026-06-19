@@ -369,6 +369,16 @@ function smackback_should_monitor(string $abs_path): bool {
         'tools/',
         'backups/',
         'migrations/',
+        // Skins are forkable deliverables distributed SEPARATELY via the Skin
+        // Packager — even the base skins are fetched from snapsmack.ca at install,
+        // never shipped in the core zip. Monitoring them in the CORE integrity
+        // manifest meant every skin (re)deploy drifted the baseline → false
+        // TAMPERED breach → LOCKOUT after essentially every update. The build
+        // packager + init_manifest already exclude skins/; this aligns the RUNTIME
+        // monitor so all paths agree. Skin JS is still covered by
+        // smackback_scan_skins_for_js(); skin PHP/CSS integrity is intentionally
+        // out of SMACKBACK's core scope (see project_smackback_false_breach_lockout).
+        'skins/',
     ];
     foreach ($excluded_dirs as $dir) {
         if (strpos($rel, $dir) === 0) {

@@ -14,7 +14,7 @@ creates posts through the SnapSmack admin API. No FTP required.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.38"
+BUILD_VERSION = "0.7.39"  # captions verified: single-post media[].title fallback (ig_parser.py) confirmed against the tsohn export
 
 import logging
 import logging.handlers
