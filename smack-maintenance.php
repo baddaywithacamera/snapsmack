@@ -31,6 +31,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $log[] = "SUCCESS: Purged $deleted orphaned category mappings.";
     }
 
+    // VAX INJECTOR
+    // Applies a signed VAX database package sent by SnapSmack support. The package
+    // code + one-time token ARE the credential: core/smack-vax.php fetches the
+    // payload from snapsmack.ca, verifies the Ed25519 signature + token + expiry +
+    // replay guard, and only then runs the SQL. This panel just relays pkg+token to
+    // that hardened endpoint (loopback) and surfaces its result — no logic dup, and
+    // it works even while SMACKBACK is locked down (smack-vax.php is already tracked).
+    if ($action === 'apply_vax') {
+        $vax_pkg   = trim($_POST['vax_pkg']   ?? '');
+        $vax_token = trim($_POST['vax_token'] ?? '');
+        if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $vax_pkg)) {
+            $log[] = "ERROR: VAX package code is missing or malformed.";
+        } elseif (!preg_match('/^[a-fA-F0-9]{32,128}$/', $vax_token)) {
+            $log[] = "ERROR: VAX token is missing or malformed (expect 32–128 hex characters).";
+        } else {
+            $vax_url = rtrim(BASE_URL, '/') . '/core/smack-vax.php?pkg=' . rawurlencode($vax_pkg);
+            $vax_ctx = stream_context_create([
+                'http' => [
+                    'method'        => 'POST',
+                    'header'        => "Content-Type: application/x-www-form-urlencoded\r\n",
+                    'content'       => 'token=' . rawurlencode($vax_token),
+                    'timeout'       => 25,
+                    'ignore_errors' => true,   // capture the body on non-200 too
+                ],
+                'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
+            ]);
+            $vax_resp = @file_get_contents($vax_url, false, $vax_ctx);
+            $vax_status = 0;
+            if (isset($http_response_header[0]) && preg_match('#\s(\d{3})\s#', $http_response_header[0], $vm)) {
+                $vax_status = (int) $vm[1];
+            }
+            if ($vax_resp === false) {
+                $log[] = "ERROR: Could not reach the VAX endpoint (" . htmlspecialchars($vax_url) . "). Check the site URL and that core/smack-vax.php is present.";
+            } elseif ($vax_status === 200 || stripos($vax_resp, 'VAX OK') !== false) {
+                $log[] = "SUCCESS: " . htmlspecialchars(trim($vax_resp));
+            } else {
+                $log[] = "VAX REJECTED (HTTP {$vax_status}): " . htmlspecialchars(trim($vax_resp));
+            }
+        }
+    }
+
     // DB OPTIMIZATION
     // Forces MySQL to defragment and optimize core operational tables.
     if ($action === 'optimize') {
@@ -859,6 +900,21 @@ include 'core/sidebar.php';
                   onsubmit="return confirm('This will reinstall the mobile skin from the registry, overwriting the current copy. Continue?')">
                 <input type="hidden" name="action" value="force_mobile_skin_update">
                 <button type="submit" class="btn-smack btn-block">FORCE MOBILE SKIN UPDATE</button>
+            </form>
+        </div>
+
+        <div class="box box-flex">
+            <h3>VAX INJECTOR</h3>
+            <p class="skin-desc-text">Apply a signed VAX database package sent to you by SnapSmack support. Paste the package code and its one-time token, then apply. The package's Ed25519 signature, token and expiry are verified before any SQL runs &mdash; an invalid, expired or already-used package is rejected. Works even while SMACKBACK is locked down.</p>
+            <form method="POST" onsubmit="return confirm('Apply this VAX package to the live database? It runs signed SQL and cannot be undone.')">
+                <input type="hidden" name="action" value="apply_vax">
+                <label class="skin-desc-text" for="vax_pkg">Package code</label>
+                <input type="text" id="vax_pkg" name="vax_pkg" autocomplete="off" spellcheck="false"
+                       placeholder="e.g. tsohn-captions-fix" style="width:100%;padding:8px;margin:4px 0 10px;box-sizing:border-box;font-family:monospace;">
+                <label class="skin-desc-text" for="vax_token">One-time token</label>
+                <input type="text" id="vax_token" name="vax_token" autocomplete="off" spellcheck="false"
+                       placeholder="32–128 character hex token" style="width:100%;padding:8px;margin:4px 0 10px;box-sizing:border-box;font-family:monospace;">
+                <button type="submit" class="btn-smack btn-block">APPLY VAX PACKAGE</button>
             </form>
         </div>
     </div>
