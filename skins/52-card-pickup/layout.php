@@ -19,6 +19,10 @@ require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 
 <?php include('skin-header.php'); ?>
 
+<?php /* ESC from a picked-up print drops back to the tabletop (52 PICKUP layer
+         reads this hook; the engine restores the exact prior view via sessionStorage). */ ?>
+<div data-52-return="<?php echo BASE_URL; ?>" hidden></div>
+
 <div class="pickup-single">
 
     <div class="image-wrap">

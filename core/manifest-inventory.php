@@ -688,11 +688,6 @@ return [
             'path'         => 'assets/js/ss-engine-overlay.js',
             'has_settings' => false,
         ],
-        'smack-pile' => [
-            'label'        => 'Photo Pile Engine (52 Card Pickup)',
-            'path'         => 'assets/js/ss-engine-pile.js',
-            'has_settings' => false,
-        ],
         'smack-organized-mayhem' => [
             'label'        => 'Organized Mayhem (infinite pannable tabletop of scattered prints)',
             'path'         => 'assets/js/ss-engine-organized-mayhem.js',

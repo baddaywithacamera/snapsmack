@@ -15,6 +15,18 @@
  */
 
 
+// Ghost-chrome footer — a fixed bar that appears only on bottom-edge hover
+// (the 52 PICKUP layer toggles .om-chrome-show via the [data-ghost-footer] hook).
+// Rendered only on the tabletop landing, where $om_ghost_chrome is set.
+if (!empty($om_ghost_chrome)):
+?>
+<footer class="pickup-ghost-footer" data-ghost-footer>
+    <span class="pickup-ghost-credit"><?php echo htmlspecialchars($site_name); ?></span>
+    <a href="<?php echo BASE_URL; ?>archive">ARCHIVE</a>
+</footer>
+<?php
+endif;
+
 // Load requested engines from manifest
 $skin_manifest = include __DIR__ . '/manifest.php';
 $requested = $skin_manifest['require_scripts'] ?? [];

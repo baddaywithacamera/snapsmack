@@ -78,6 +78,11 @@
         var driftDelay   = clampInt(d.driftDelay, 0, 60000, 4000);
         var warpOn       = d.warp !== '0';
         var loadingLabel = d.loadingLabel || 'Placing';
+        // Mode knobs (spec: one engine, two behaviours):
+        //   data-pan="0"     → not grabbable/zoomable (INSTANT CAMERA backdrop)
+        //   data-ambient="1" → always drift, not just when idle (backdrop)
+        var panEnabled   = d.pan !== '0';
+        var ambient      = d.ambient === '1';
         var prefersReduced = window.matchMedia &&
             window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -105,8 +110,10 @@
         // ── DOM scaffold ─────────────────────────────────────────────────
         if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
         container.style.overflow = 'hidden';
-        container.style.touchAction = 'none';
-        container.style.cursor = 'grab';
+        if (panEnabled) {
+            container.style.touchAction = 'none';   // we own drag/zoom gestures
+            container.style.cursor = 'grab';
+        }                                            // backdrop mode leaves touch/scroll to the page
 
         var world = document.createElement('div');
         world.className = 'om-world';
@@ -363,7 +370,7 @@
 
         // ── Pan / drag (mouse + touch) ───────────────────────────────────
         var dragging = false, dragMoved = false, lastX = 0, lastY = 0, lastInteract = now();
-        function pointerDown(px, py) { dragging = true; dragMoved = false; lastX = px; lastY = py; container.style.cursor = 'grabbing'; lastInteract = now(); setAlive(false); }
+        function pointerDown(px, py) { if (!panEnabled) return; dragging = true; dragMoved = false; lastX = px; lastY = py; container.style.cursor = 'grabbing'; lastInteract = now(); setAlive(false); }
         function pointerMove(px, py) {
             if (!dragging) return;
             var dx = (px - lastX) / view.z, dy = (py - lastY) / view.z;
@@ -376,6 +383,7 @@
         function pointerUp() { dragging = false; container.style.cursor = 'grab'; lastInteract = now(); }
 
         function zoomAt(clientX, clientY, factor) {
+            if (!panEnabled) return;
             var r = container.getBoundingClientRect();
             var px = clientX - r.left, py = clientY - r.top;
             var wx = view.x + px / view.z, wy = view.y + py / view.z;
@@ -447,7 +455,7 @@
             try {
                 if (document.hidden) { raf = requestAnimationFrame(loop); return; }
                 watchdog(dt);
-                var idle = (now() - lastInteract) > driftDelay && !dragging;
+                var idle = ambient || ((now() - lastInteract) > driftDelay && !dragging);
                 setAlive(idle);
 
                 if (budget.drift && idle) {
