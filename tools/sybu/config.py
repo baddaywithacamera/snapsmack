@@ -63,10 +63,17 @@ def load() -> dict:
     except Exception:
         password = ''
 
+    api_key_raw = cfg.get('auth', 'api_key', fallback='')
+    try:
+        api_key = base64.b64decode(api_key_raw.encode()).decode() if api_key_raw else ''
+    except Exception:
+        api_key = ''
+
     return {
         'url':                cfg.get('site', 'url', fallback='https://foundtextures.ca'),
         'username':           cfg.get('auth', 'username', fallback=''),
         'password':           password,
+        'api_key':            api_key,
         'remember':           cfg.getboolean('auth', 'remember', fallback=False),
         'default_category':   cfg.get('defaults', 'category', fallback=''),
         'default_album':      cfg.get('defaults', 'album', fallback=''),
@@ -94,10 +101,14 @@ def save(data: dict) -> None:
 
     password_plain = data.get('password', '') if data.get('remember') else ''
     password_enc = base64.b64encode(password_plain.encode()).decode() if password_plain else ''
+    # API key is the primary credential now (Bearer auth). Persist it regardless
+    # of "remember" — it's a generated, reusable token the CMS shows only once.
+    api_key_enc = base64.b64encode(data['api_key'].encode()).decode() if data.get('api_key') else ''
     cfg['auth'] = {
         'username': data.get('username', '') if data.get('remember') else '',
         'password': password_enc,
         'remember': str(data.get('remember', False)),
+        'api_key':  api_key_enc,
     }
 
     cfg['defaults'] = {
