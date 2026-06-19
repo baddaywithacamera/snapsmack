@@ -76,6 +76,7 @@ return [
         'smack-grid-lightbox',
         'smack-grid-nav',
         'smack-parade-fireworks',
+        'smack-aurora-wave',      // shared prefix-derived tile-border WAVE (Layer 2)
         'smack-thomas',           // Thomas the Bear Easter egg — required in every fork
     ],
 
@@ -106,7 +107,7 @@ return [
             'section' => 'PARADE',
             'type'    => 'select',
             'label'   => 'Background',
-            'default' => 'white',
+            'default' => 'warm',
             'options' => [
                 'white' => 'Pure white',
                 'soft'  => 'Soft white',
@@ -203,6 +204,97 @@ return [
             'unit'     => '%',
             'hint'     => 'Thickness of the particle trails.',
             // PHP-handled → data-pa-streamer.
+        ],
+
+        // ---- BORDER WAVE (Layer 2 — the waving flag on tile borders) -------
+        'pa_border_style' => [
+            'section' => 'BORDER WAVE',
+            'type'    => 'select',
+            'label'   => 'Border Style',
+            'default' => 'circle',
+            'options' => [
+                'circle' => 'Circle each tile',
+                'sweep'  => 'Circle + sweep across',
+                'across' => 'Wave across grid',
+                'pulse'  => 'Scatter pulse',
+            ],
+            'hint'    => 'How the flag colour travels around the tile borders. Black/brown flag stops are lifted toward grey so the border never goes hard black.',
+            // PHP-handled → data-pa-border-style (ss-engine-aurora-wave.js).
+        ],
+        'pa_border_dir' => [
+            'section' => 'BORDER WAVE',
+            'type'    => 'select',
+            'label'   => 'Wave Direction',
+            'default' => 'dtlbr',
+            'options' => [
+                'dtlbr' => 'Diagonal down-right',
+                'dbrtl' => 'Diagonal up-left',
+                'ltr'   => 'Left to right',
+                'rtl'   => 'Right to left',
+                'ttb'   => 'Top to bottom',
+                'btt'   => 'Bottom to top',
+            ],
+        ],
+        'pa_border_rhythm' => [
+            'section' => 'BORDER WAVE',
+            'type'    => 'select',
+            'label'   => 'Wave Rhythm',
+            'default' => 'breath',
+            'options' => [
+                'breath'   => 'Breathe — slow / fast / slow',
+                'constant' => 'Constant slow',
+            ],
+        ],
+        'pa_border_width' => [
+            'section'  => 'BORDER WAVE',
+            'type'     => 'range_numeric',
+            'label'    => 'Border Width',
+            'default'  => '2',
+            'min'      => '1',
+            'max'      => '10',
+            'step'     => '1',
+            'unit'     => 'px',
+        ],
+        'pa_border_opacity' => [
+            'section'  => 'BORDER WAVE',
+            'type'     => 'range_numeric',
+            'label'    => 'Border Opacity',
+            'default'  => '100',
+            'min'      => '10',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+        ],
+        'pa_tile_corners' => [
+            'section' => 'BORDER WAVE',
+            'type'    => 'select',
+            'label'   => 'Tile Corners',
+            'default' => 'auto',
+            'options' => [
+                'auto'    => 'Round with thickness',
+                'square'  => 'Square',
+                'rounded' => 'Rounded',
+            ],
+        ],
+
+        // ---- NAV (dual 1px divider lines) ----------------------------------
+        'pa_nav_line_mode' => [
+            'section' => 'NAV',
+            'type'    => 'select',
+            'label'   => 'Nav Divider Lines',
+            'default' => 'track',
+            'options' => [
+                'track' => 'Track the flag colour (live)',
+                'fixed' => 'Fixed colour',
+            ],
+            'hint'    => 'The menu is bracketed by dual 1px lines. Track rides the live border-wave colour; Fixed uses the colour below.',
+        ],
+        'pa_nav_line_color' => [
+            'section'  => 'NAV',
+            'type'     => 'color',
+            'label'    => 'Nav Line Colour (fixed mode)',
+            'default'  => '#750787',
+            // PHP-handled → --pa-nav-line when mode = fixed.
         ],
 
         // ---- PROFILE HEADER ------------------------------------------------

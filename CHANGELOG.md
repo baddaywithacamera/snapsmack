@@ -12,15 +12,50 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.268 — "Box Seat" (2026-06-18)
+## 0.7.269 — "Front Row" (2026-06-18)
 
-In progress. Carries the Unzucker caption-import fix and the tsohn caption recovery
-(VAX injection). The PARADE skin — AURORA's high-key twin, slow-motion flag fireworks
-over The Grid — ships separately via the Skin Packager.
+SMACKBACK skin-monitoring fix, PARADE's Layer-2 tile borders, an API-key label fix, plus the
+Unzucker caption fix + tsohn caption recovery. The PARADE skin — AURORA's high-key twin,
+slow-motion flag fireworks over The Grid — ships separately via the Skin Packager.
+(Heads-up: if 0.7.268 already shipped the Unzucker work, split that entry into its own 0.7.268 section.)
 
-### Unzucker caption import
+### API keys
 
-- (pending — fold in once the caption fix + recovery path land.)
+- **SYBU key type relabelled "Smack Your Batch Up"** — was the misleading "Sort Your Backup Up",
+  which reads like a backup tool. That mislabel led to minting a `suyb` key for the SYBU batch
+  poster, which the scoped auth then (correctly) rejected as Invalid. `smack-api-keys.php`.
+
+### Unzucker caption import + recovery
+
+- **Captions on single-image posts were dropping.** Instagram stores a single post's caption
+  in `media[0].title`, not the post-level `title`. The `media[].title` fallback that handles this
+  lives in `tools/unzucker/ig_parser.py` (since the 0.7.x build of 2026-06-12) — but the tsohn
+  import (3,917 posts) ran an **older Unzucker build without it**, so 1,545 captions imported blank.
+  Forward fix: rebuild / ship the current Unzucker exe (parser source already correct).
+- **tsohn caption recovery (VAX).** Generated a guarded backfill keyed on
+  `import_source='instagram' AND import_id=<ig timestamp>` that fills only blank descriptions
+  (`_continuity/tsohn-caption-recovery.sql`, 1,635 statements → 1,545 fills, 90 pre-filled rows
+  skipped). Validated 1:1 against the full DB dump — zero key misses, zero clobbers. Delivered as
+  a signed VAX package via Smack Central.
+
+### SMACKBACK false-breach lockout — finally fixed
+
+- **Skins are no longer monitored by the core integrity system.** The build packager and
+  `smackback_init_manifest()` already excluded `skins/`, but the *runtime*
+  `smackback_should_monitor()` did not — and `init_from_disk` + `verify_all` both route through
+  it. So spokes baselined and scanned skin files, even though skins ship separately via the Skin
+  Packager (even base skins are fetched from snapsmack.ca at install, never in the core zip).
+  Every skin redeploy drifted the baseline → false `TAMPERED` breach → lockout after nearly every
+  update. Added `skins/` to the runtime exclusion so all paths agree. Skin JS is still covered by
+  the Skin JS Security Scan; skin PHP/CSS integrity is intentionally out of core scope. After
+  updating, run **Re-initialise baseline from disk** once per site to prune the stale skin rows.
+
+### PARADE skin — Layer 2 (waving-flag tile borders)
+
+- Tile borders now run the shared, **prefix-derived** wave engine (`ss-engine-aurora-wave.js`) —
+  PARADE drives it on its own tiles with AURORA's behaviour byte-identical. Added a dark-stop
+  lightness floor so flag black/brown stops read as soft grey, not a hard black band. Nav dividers
+  are now dual 1px lines (fixed colour or palette-tracking). Ships via the Skin Packager.
 
 ## 0.7.267 — "Ejector Seat" (2026-06-18)
 

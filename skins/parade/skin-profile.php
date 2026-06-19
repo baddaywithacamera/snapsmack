@@ -77,7 +77,7 @@ $_pa_colors   = array_values($_pa_colors);
 
 // High-key background preset → CSS colour. 'wash' = a faint high-lightness tint
 // of the active flag's first stop (NEVER a generic colour picker).
-$_pa_bg_key = $settings['pa_background'] ?? 'white';
+$_pa_bg_key = $settings['pa_background'] ?? 'warm';
 $_pa_bg_css = $_pa_bgs[$_pa_bg_key]['css'] ?? '#ffffff';
 if ($_pa_bg_key === 'wash' || $_pa_bg_css === '') {
     $_pa_first  = $_pa_colors[0] ?? '#e40303';
@@ -97,10 +97,31 @@ $_pa_soft      = number_format(max(0,  min(100, (int)($settings['pa_soft']      
 $_pa_text   = trim($settings['pa_text_color']   ?? '#1a1a1a');
 $_pa_muted  = trim($settings['pa_muted_color']  ?? '#5b5b66');
 $_pa_accent = trim($settings['pa_accent_color'] ?? '#750787');
+
+// ── Layer 2: tile border WAVE (the waving flag) ─────────────────────────────
+// Drives the shared, prefix-derived ss-engine-aurora-wave.js on each .pa-ring.
+$_pa_bstyle  = $settings['pa_border_style']  ?? 'circle';   // circle|sweep|across|pulse
+$_pa_bdir    = $settings['pa_border_dir']    ?? 'dtlbr';
+$_pa_brhythm = $settings['pa_border_rhythm'] ?? 'breath';   // breath|constant
+$_pa_bw      = max(1,  min(10,  (int)($settings['pa_border_width']   ?? 2)));
+$_pa_bo      = number_format(max(10, min(100, (int)($settings['pa_border_opacity'] ?? 100))) / 100, 2);
+$_pa_corner  = $settings['pa_tile_corners'] ?? 'auto';      // auto|square|rounded
+$_pa_radius  = ($_pa_corner === 'square') ? 0
+             : (($_pa_corner === 'rounded') ? 16 : (int)round($_pa_bw * 2.2));
+// Dark-stop floor so flag black/brown (Progress, Non-Binary) never paints a hard
+// black border — lifts those stops toward grey. (Sean: black borders looked bad.)
+$_pa_border_minl = '0.45';
+
+// ── Nav divider — dual 1px lines ────────────────────────────────────────────
+// 'track' → lines ride the live wave colour; 'fixed' → admin-picked colour.
+$_pa_nav_mode = $settings['pa_nav_line_mode'] ?? 'track';
+$_pa_nav_col  = ($_pa_nav_mode === 'fixed')
+    ? htmlspecialchars(trim($settings['pa_nav_line_color'] ?? '#750787'))
+    : 'var(--pa-wave-color, var(--pa-accent, #750787))';
 ?>
 
 <!-- PARADE CSS vars: high-key field + text colours (read by style.css) -->
-<style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;}</style>
+<style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;}</style>
 
 <!-- PARADE fireworks carrier — read by ss-engine-parade-fireworks.js (Layer 1).
      The engine appends its own <canvas class="pa-canvas">. -->
@@ -112,7 +133,11 @@ $_pa_accent = trim($settings['pa_accent_color'] ?? '#750787');
      data-pa-intensity="<?php echo $_pa_intensity; ?>"
      data-pa-spread="<?php echo $_pa_spread; ?>"
      data-pa-streamer="<?php echo $_pa_streamer; ?>"
-     data-pa-soft="<?php echo $_pa_soft; ?>"></div>
+     data-pa-soft="<?php echo $_pa_soft; ?>"
+     data-pa-border-style="<?php echo htmlspecialchars($_pa_bstyle); ?>"
+     data-pa-border-dir="<?php echo htmlspecialchars($_pa_bdir); ?>"
+     data-pa-border-rhythm="<?php echo htmlspecialchars($_pa_brhythm); ?>"
+     data-pa-border-minl="<?php echo $_pa_border_minl; ?>"></div>
 
 <?php if ($show_profile): ?>
 <!-- ── Profile Header (shared across all Grid pages) ───────────────────────── -->

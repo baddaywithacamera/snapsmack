@@ -1,5 +1,5 @@
 /**
- * SNAPSMACK - AURORA Tile Border Wave (Layer 2)
+ * SNAPSMACK - Grid-family Tile Border Wave (Layer 2, shared engine)
  *
  * Conic-gradient ring border, ported from _spec/aurora-prototype.html. Four
  * styles — circle each tile / circle + sweep across / wave across grid /
@@ -7,10 +7,14 @@
  * "breath" rhythm. Colour is the TRUE palette (HSL-interpolated for the solid
  * models, real hex stops for the conic ring) — no hue-rotate.
  *
- * Self-contained. Reads config from the .au-aurora-bg dataset (data-au-palette,
- * data-au-border-style, data-au-border-dir, data-au-border-rhythm) and drives
- * each tile's `.au-ring` overlay. Respects prefers-reduced-motion (one static
- * frame) and pauses on document.hidden. No fetch / storage.
+ * PREFIX-DERIVED (since 0.7.268): works for any Grid-family skin (au-, pa-, …)
+ * with no fork. The prefix P is read from the page's `<P>-sticky-nav` (same idiom
+ * as the shared grid engines), falling back to the known background elements.
+ * Reads config from the element carrying `data-<P>-palette` (AURORA's
+ * `.au-aurora-bg`, PARADE's `.pa-parade-bg`): data-<P>-border-style /
+ * -border-dir / -border-rhythm, and drives each tile's `.<P>-ring` overlay.
+ * Publishes `--<P>-wave-color` / `--<P>-wave-color-dark` CSS vars. Respects
+ * prefers-reduced-motion (one static frame) and pauses on document.hidden.
  *
  * SCALING: the per-frame paint runs ONLY on tiles currently in/near the viewport
  * (tracked via IntersectionObserver). A 1400-image grid therefore animates ~30
@@ -45,34 +49,55 @@
     }
     function hslStr(c){ return 'hsl('+c[0].toFixed(1)+' '+(c[1]*100).toFixed(1)+'% '+(c[2]*100).toFixed(1)+'%)'; }
 
+    // ── Prefix derivation (shared-engine idiom) ─────────────────────────────
+    function derivePrefix() {
+        var nav = document.querySelector('nav[class*="-sticky-nav"]');
+        if (nav) { var m = nav.className.match(/(?:^|\s)([a-z]+)-sticky-nav(?:\s|$)/); if (m) return m[1]; }
+        var bg = document.querySelector('.au-aurora-bg, .pa-parade-bg');
+        if (bg) { var m2 = bg.className.match(/(?:^|\s)([a-z]+)-(?:aurora|parade)-bg(?:\s|$)/); if (m2) return m2[1]; }
+        return null;
+    }
+
     function init() {
-        var cfg = document.querySelector('.au-aurora-bg');
+        var P = derivePrefix();
+        if (!P) return;
+
+        var cfg = document.querySelector('[data-' + P + '-palette]');
         if (!cfg) return;
 
         var hexes = [];
-        try { var raw = JSON.parse(cfg.getAttribute('data-au-palette') || '[]'); if (Array.isArray(raw)) hexes = raw; } catch (e) {}
+        try { var raw = JSON.parse(cfg.getAttribute('data-' + P + '-palette') || '[]'); if (Array.isArray(raw)) hexes = raw; } catch (e) {}
         if (hexes.length < 2) hexes = ['#56e86a','#2fe6a0','#39b6f0','#9bf25a','#2f7fe0','#f2d24a','#ff5566','#46c0c0'];
         var PAL = hexes.map(hex2hsl);
 
-        var bmodel  = cfg.getAttribute('data-au-border-style')  || 'circle';
-        var bdir    = cfg.getAttribute('data-au-border-dir')    || 'dtlbr';
-        var brhythm = cfg.getAttribute('data-au-border-rhythm') || 'breath';
+        var bmodel  = cfg.getAttribute('data-' + P + '-border-style')  || 'circle';
+        var bdir    = cfg.getAttribute('data-' + P + '-border-dir')    || 'dtlbr';
+        var brhythm = cfg.getAttribute('data-' + P + '-border-rhythm') || 'breath';
         var bCycle  = 160; // border clock — slower counterpoint to the sky
 
-        // conic ring uses the real hex stops so the true palette wraps the edge
-        var ringStops = hexes.concat([hexes[0]]).map(function (c, i, a) {
+        // Optional dark-stop floor: lift very dark flag stops (e.g. the black /
+        // brown on Progress + Non-Binary) toward grey so the border never reads
+        // as a hard black band. data-<P>-border-minl is 0 (off — AURORA) .. 1.
+        var minL = parseFloat(cfg.getAttribute('data-' + P + '-border-minl'));
+        if (!(minL > 0)) minL = 0;
+        if (minL > 0) PAL = PAL.map(function (c) { return [c[0], c[1], Math.max(c[2], minL)]; });
+
+        // conic ring stops: raw hex when no floor (true palette, AURORA), or the
+        // softened HSL when a floor is set (PARADE) so black never bands the ring.
+        var ringHexes = (minL > 0) ? PAL.map(hslStr) : hexes;
+        var ringStops = ringHexes.concat([ringHexes[0]]).map(function (c, i, a) {
             return c + ' ' + Math.round(i/(a.length-1)*360) + 'deg';
         }).join(',');
 
         function sampleHsl(t){ return hslStr(sampleArr(PAL, t)); }
         function solid(c){ return 'linear-gradient(' + c + ',' + c + ')'; }
         // Publish the live wave colour + a DARK tint (30% lightness) as CSS vars.
-        // The nav divider lines read --au-wave-color-dark so they pulse in a dark
-        // version of the aurora without any extra DOM work.
+        // Nav divider lines read --<P>-wave-color-dark so they pulse in a dark
+        // version of the palette without any extra DOM work.
         function setWaveVars(t){
             var wc = sampleArr(PAL, t), ds = document.documentElement.style;
-            ds.setProperty('--au-wave-color', hslStr(wc));
-            ds.setProperty('--au-wave-color-dark',
+            ds.setProperty('--' + P + '-wave-color', hslStr(wc));
+            ds.setProperty('--' + P + '-wave-color-dark',
                 'hsl(' + wc[0].toFixed(1) + ' ' + (wc[1]*100).toFixed(1) + '% ' + (wc[2]*30).toFixed(1) + '%)');
         }
 
@@ -101,37 +126,38 @@
         var lastTw = 80; // current wave clock; tiles entering view paint at this value
         var io = supportsIO ? new IntersectionObserver(function (entries) {
             for (var i = 0; i < entries.length; i++) {
-                var t = entries[i].target.__auTile;
+                var t = entries[i].target.__ssWaveTile;
                 if (!t) continue;
                 t.vis = entries[i].isIntersecting;
                 if (t.vis) t.ring.style.background = borderBG(t, lastTw); // never blank on entry
             }
         }, { rootMargin: '200px 0px' }) : null;
 
-        // ── tile lookup (each tile carries a .au-ring overlay) ──────────────
+        // ── tile lookup (each tile carries a .<P>-ring overlay) ─────────────
         var tiles = [], seedN = 0;
         function scanTiles() {
             if (io) io.disconnect();
-            var nodes = document.querySelectorAll('.au-grid .au-tile');
+            var nodes = document.querySelectorAll('.' + P + '-grid .' + P + '-tile');
             tiles = []; seedN = 0;
             for (var i = 0; i < nodes.length; i++) {
                 var el = nodes[i];
-                if (el.classList.contains('au-tile--phantom')) continue;
-                var ring = el.querySelector('.au-ring');
+                if (el.classList.contains(P + '-tile--phantom')) continue;
+                var ring = el.querySelector('.' + P + '-ring');
                 if (!ring) continue;
                 var row = parseInt(el.getAttribute('data-row'), 10) || 0;
                 var col = parseInt(el.getAttribute('data-col'), 10) || 0;
                 var t = { el: el, ring: ring, row: row, col: col, seed: (seedN*0.137)%1, vis: !io };
                 tiles.push(t);
-                el.__auTile = t;
+                el.__ssWaveTile = t;
                 seedN++;
             }
             if (io) for (var j = 0; j < tiles.length; j++) io.observe(tiles[j].el);
         }
         scanTiles();
         if (!tiles.length) return;
-        // Re-scan when grid pages are appended via AJAX load-more.
+        // Re-scan when grid pages are appended via AJAX load-more (either skin's event).
         document.addEventListener('aurora:grid-updated', scanTiles);
+        document.addEventListener('parade:grid-updated', scanTiles);
 
         function paint(T) {
             var tw = (brhythm === 'breath') ? (T + 6*Math.sin(T*0.05)) : T;
@@ -140,7 +166,7 @@
                 if (tiles[k].vis) tiles[k].ring.style.background = borderBG(tiles[k], tw);
             }
             // Expose current wave colour + a dark variant as CSS vars so other
-            // elements (e.g. the nav divider lines) can track the aurora.
+            // elements (e.g. the nav divider lines) can track the palette.
             setWaveVars(tw / bCycle);
         }
 

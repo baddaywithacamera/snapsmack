@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
         'gyss'       => 'GET YOUR SHIT SORTED',
         'unzucker'   => 'Unzucker Import',
         'suyb'       => 'Smack Up Your Backup',
-        'sybu'       => 'Sort Your Backup Up',
+        'sybu'       => 'Smack Your Batch Up',
         default      => 'Oh Snap! Key',
     };
 
@@ -213,7 +213,7 @@ include 'core/sidebar.php';
                             <option value="gyss">GET YOUR SHIT SORTED (PHOTO SORTER)</option>
                             <option value="unzucker">UNZUCKER (INSTAGRAM IMPORT)</option>
                             <option value="suyb">SUYB (SMACK UP YOUR BACKUP)</option>
-                            <option value="sybu">SYBU (SORT YOUR BACKUP UP)</option>
+                            <option value="sybu">SYBU (SMACK YOUR BATCH UP)</option>
                         </select>
                     </div>
 
