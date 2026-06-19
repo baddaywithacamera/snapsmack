@@ -1384,7 +1384,7 @@ include 'core/sidebar.php';
 .spoke-act-wrap form { display:contents; } /* form is transparent to flex layout */
 .spoke-act-wrap .action-authorize { min-width:105px; text-align:center; }
 .spoke-act-wrap .action-view,
-.spoke-act-wrap .action-warning   { min-width:82px;  text-align:center; }
+.spoke-act-wrap .action-warning   { min-width:118px; text-align:center; }
 .spoke-act-wrap .action-delete    { min-width:95px;  text-align:center; }
 .spoke-act-wrap .action-update    { min-width:72px;  text-align:center; }
 </style>
