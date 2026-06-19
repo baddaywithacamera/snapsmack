@@ -212,8 +212,8 @@ class SnapSmackClient:
         except Exception:
             pass  # Fall through to HTML scrape if endpoint unavailable
 
-        # ── Fallback: scrape smack-post.php HTML (older server versions) ─────────
-        url  = f"{self.base_url}/smack-post.php"
+        # ── Fallback: scrape smack-post-solo.php HTML (older server versions) ────
+        url  = f"{self.base_url}/smack-post-solo.php"
         resp = self.session.get(url, timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, 'html.parser')
@@ -349,7 +349,7 @@ class SnapSmackClient:
             with open(web_path, 'rb') as img_f:
                 files = {'img_file': (new_filename, img_f, _mime(new_filename))}
                 resp  = self.session.post(
-                    f"{self.base_url}/smack-post.php",
+                    f"{self.base_url}/smack-post-solo.php",
                     data=form_data,
                     files=files,
                     timeout=120,
