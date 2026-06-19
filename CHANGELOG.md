@@ -32,9 +32,10 @@ single shared engine for every Grid-family skin.
 - **Enrolled PARADE and The Grid.** Added the `smack-aurora-reveal` handle to both manifests and
   added The Grid's missing `.tg-grid .tg-tile.tg-fold { display:none }` fold rule (AURORA and
   PARADE already shipped theirs). One engine now serves au-/pa-/tg-.
-- **Deploy:** ships in core (the engine JS) **and** requires re-packaging PARADE 1.0.3,
-  AURORA 1.0.17, and The Grid 1.3.21 through the Skin Packager — the manifest/CSS changes live
-  inside the skin zips, so a core push alone won't reach live sites.
+- **Deploy:** ships in core (the engine JS) **and** requires re-packaging PARADE 1.0.4 and
+  The Grid 1.3.22 through the Skin Packager — their manifest/CSS changes live inside the skin
+  zips, so a core push alone won't reach live sites. AURORA needs no repackage: its skin files
+  are unchanged (it already enqueued the handle; the engine ships with core).
 
 ## 0.7.271 — "Skybox" (2026-06-19)
 
