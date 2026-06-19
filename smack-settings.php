@@ -538,7 +538,7 @@ include 'core/sidebar.php';
                     </p>
                 </div>
             </div>
-            <a href="smack-back.php" class="btn-smack" style="display:block;width:100%;box-sizing:border-box;text-align:center;margin-top:12px;">OPEN SMACKBACK →</a>
+            <a href="smack-back.php" class="btn-smack" style="margin-top:12px;">OPEN SMACKBACK →</a>
         </div>
 
         <!-- Footer Config + Image Engine moved to Global Vibe (smack-globalvibe.php) -->
