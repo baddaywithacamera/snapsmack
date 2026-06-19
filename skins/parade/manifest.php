@@ -77,6 +77,7 @@ return [
         'smack-grid-nav',
         'smack-parade-fireworks',
         'smack-aurora-wave',      // shared prefix-derived tile-border WAVE (Layer 2)
+        'smack-aurora-reveal',    // shared prefix-derived progressive grid reveal (lazy)
         'smack-thomas',           // Thomas the Bear Easter egg — required in every fork
     ],
 
