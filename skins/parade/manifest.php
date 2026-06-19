@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - PARADE Skin Manifest
- * v1.0.2
+ * v1.0.3
  *
  * Desktop GRAMOFSMACK skin — AURORA's high-key twin. A classic 3-across
  * square-tile grid (The Grid's proven column architecture) over a single
@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.0.2',
+    'version'     => '1.0.3',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
@@ -120,37 +120,35 @@ return [
         'pa_rate' => [
             'section'  => 'PARADE',
             'type'     => 'range_numeric',
-            'label'    => 'Busyness',
-            // Integer launches/sec — the admin range widget is integer-only.
-            'default'  => '3',
+            'label'    => 'Busyness (launches)',
+            // Prototype unit: slider 1–40, ÷3 = launches/sec. Default 8 ≈ 2.7/s.
+            'default'  => '8',
             'min'      => '1',
-            'max'      => '8',
+            'max'      => '40',
             'step'     => '1',
-            'unit'     => '/s',
-            'hint'     => 'How many rockets launch per second. Real-time, so a busy sky is independent of the slow-motion.',
+            'hint'     => 'Rocket launch rate (slider ÷ 3 = launches per second). Real-time, independent of the slow-motion.',
             // PHP-handled → data-pa-rate.
         ],
         'pa_explode' => [
             'section'  => 'PARADE',
             'type'     => 'range_numeric',
-            'label'    => 'Motion (slow-motion)',
-            // Integer PERCENT; skin-profile.php divides by 100 → burst-sim clock.
-            'default'  => '18',
-            'min'      => '5',
-            'max'      => '100',
+            'label'    => 'Explosion speed',
+            // Prototype unit: slider 3–150, ÷100 = burst-sim speed. Default 21 = 0.21×.
+            'default'  => '21',
+            'min'      => '3',
+            'max'      => '150',
             'step'     => '1',
-            'unit'     => '%',
-            'hint'     => 'Speed of the drifting particles. Lower = dreamier near-freeze; higher = livelier.',
+            'hint'     => 'Speed of the drifting burst particles. Lower = bursts hang in the air; higher = livelier.',
             // PHP-handled → data-pa-explode.
         ],
         'pa_intensity' => [
             'section'  => 'PARADE',
             'type'     => 'range_numeric',
-            'label'    => 'Burst Size',
-            'default'  => '74',
+            'label'    => 'Burst intensity (particles)',
+            'default'  => '105',
             'min'      => '20',
-            'max'      => '160',
-            'step'     => '2',
+            'max'      => '300',
+            'step'     => '5',
             'unit'     => 'particles',
             'hint'     => 'Particles per burst.',
             // PHP-handled → data-pa-intensity.
@@ -159,7 +157,7 @@ return [
             'section'  => 'PARADE',
             'type'     => 'range_numeric',
             'label'    => 'Softness (pastel)',
-            'default'  => '84',
+            'default'  => '100',
             'min'      => '0',
             'max'      => '100',
             'step'     => '1',
@@ -172,36 +170,36 @@ return [
         'pa_spread' => [
             'section'  => 'FIREWORKS DETAIL',
             'type'     => 'range_numeric',
-            'label'    => 'Burst Spread',
-            // Integer; skin-profile.php divides by 1000 → burst radius.
+            'label'    => 'Burst size (spread)',
+            // Prototype unit: slider 10–120, ÷1000 = burst radius. Default 45 = 0.045.
             'default'  => '45',
             'min'      => '10',
             'max'      => '120',
-            'step'     => '5',
+            'step'     => '1',
             'hint'     => 'How wide each burst opens.',
             // PHP-handled → data-pa-spread.
         ],
         'pa_launch' => [
             'section'  => 'FIREWORKS DETAIL',
             'type'     => 'range_numeric',
-            'label'    => 'Rocket Speed',
-            'default'  => '60',
-            'min'      => '20',
-            'max'      => '120',
-            'step'     => '5',
-            'unit'     => '%',
+            'label'    => 'Launch speed',
+            // Prototype unit: slider 5–150, ÷100 = rocket-rise speed. Default 32 = 0.32×.
+            'default'  => '32',
+            'min'      => '5',
+            'max'      => '150',
+            'step'     => '1',
             'hint'     => 'How fast rockets rise before they burst.',
             // PHP-handled → data-pa-launch.
         ],
         'pa_streamer' => [
             'section'  => 'FIREWORKS DETAIL',
             'type'     => 'range_numeric',
-            'label'    => 'Streamer Width',
-            'default'  => '100',
-            'min'      => '30',
-            'max'      => '250',
-            'step'     => '5',
-            'unit'     => '%',
+            'label'    => 'Streamer width',
+            // Prototype unit: slider 2–40, ÷10 = streamer width ×. Default 4 = 0.4×.
+            'default'  => '4',
+            'min'      => '2',
+            'max'      => '40',
+            'step'     => '1',
             'hint'     => 'Thickness of the particle trails.',
             // PHP-handled → data-pa-streamer.
         ],
@@ -249,7 +247,7 @@ return [
             'section'  => 'BORDER WAVE',
             'type'     => 'range_numeric',
             'label'    => 'Border Width',
-            'default'  => '2',
+            'default'  => '5',
             'min'      => '1',
             'max'      => '10',
             'step'     => '1',

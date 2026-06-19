@@ -12,6 +12,20 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.271 — "Skybox" (2026-06-19)
+
+Stops the recurring SMACKBACK false-breach lockout for good.
+
+### SMACKBACK — stale skin rows purged on every update (the real lockout fix)
+
+- `smackback_init_manifest()` upserts the core files and skips `skins/`, but it never
+  **deleted** the skin rows a previous version had baselined — so those rows survived every
+  update and false-breached on the next scan (skins ship separately via the Skin Packager and
+  change between core updates). `init_manifest` now purges all `skins/` rows, so every update
+  leaves a clean, skin-free core manifest. With the runtime `should_monitor` skins exclusion
+  (0.7.270), this ends the fleet lockouts — updating a site to 0.7.271 rebuilds its manifest
+  without skin rows. Set Response Mode to ALERT on any still-locked site until 0.7.271 lands.
+
 ## 0.7.270 — "Grandstand" (2026-06-18)
 
 SMACKBACK skin-monitoring fix, PARADE's Layer-2 tile borders, an API-key label fix, plus the
