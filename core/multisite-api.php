@@ -1101,7 +1101,22 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
         ms_err('Extraction failed: ' . implode('; ', $extract['errors']), 500);
     }
 
-    // 6b. SMACKBACK: refresh the file-integrity manifest from the (Ed25519-
+    // 6b. Set version + store checksum — MUST run BEFORE the SMACKBACK baseline
+    // below. updater_set_version() rewrites core/constants.php with the stamped
+    // version; if the baseline is taken first, constants.php drifts the instant it
+    // is stamped and SMACKBACK false-breaches that one file on the next verify
+    // (the remote-update lockout, 2026-06-19). The local path (smack-update.php)
+    // stamps the version before baselining for exactly this reason — keep both
+    // paths in this order. Do NOT move this back below the baseline.
+    updater_set_version(
+        $pdo,
+        $release_info['version']         ?? $installed_version,
+        $release_info['version_full']    ?? '',
+        $release_info['codename']        ?? '',
+        $release_info['checksum_sha256'] ?? ''
+    );
+
+    // 6c. SMACKBACK: refresh the file-integrity manifest from the (Ed25519-
     // verified) update package — mirrors the local SYSTEM UPDATES path
     // (smack-update.php). Without this the spoke's freshly-replaced files no
     // longer match its OLD manifest, so SMACKBACK false-breaches on the next
@@ -1144,16 +1159,7 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
         $mig_result = updater_run_migrations($pdo, $migration_files);
     }
 
-    // 8. Set version + store checksum
-    updater_set_version(
-        $pdo,
-        $release_info['version']         ?? $installed_version,
-        $release_info['version_full']    ?? '',
-        $release_info['codename']        ?? '',
-        $release_info['checksum_sha256'] ?? ''
-    );
-
-    // 9. Release lock
+    // 8. Release lock (version already stamped in step 6b, before the baseline)
     updater_release_lock();
     updater_cleanup();
 
