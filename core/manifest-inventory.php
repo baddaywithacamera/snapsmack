@@ -710,6 +710,11 @@ return [
             'path'         => 'assets/js/ss-engine-carousel-post.js',
             'has_settings' => false,
         ],
+        'smack-scan-align' => [
+            'label'        => 'Scan Align (posting-interface ±5° rotate + crop-to-fill; INSTANT CAMERA)',
+            'path'         => 'assets/js/ss-engine-scan-align.js',
+            'has_settings' => false,
+        ],
         'smack-overlay' => [
             'label'        => 'Center-Expand Overlay (Info/Comments panel)',
             'path'         => 'assets/js/ss-engine-overlay.js',

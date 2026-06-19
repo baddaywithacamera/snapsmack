@@ -453,6 +453,24 @@ include 'core/sidebar.php';
 
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
 <script src="assets/js/shortcode-toolbar.js"></script>
+<?php
+// INSTANT CAMERA only — load the Scan Align engine and pass it the tile aspect,
+// so the gram composer can straighten + crop-to-fill each print before publish.
+// Gated to instant-camera: every other GRAMOFSMACK skin's poster is untouched.
+if (($settings['active_skin'] ?? '') === 'instant-camera') {
+    $_ic_fmt = $settings['instant-camera__ic_format'] ?? 'instax_square';
+    $_ic_map = ['polaroid'=>'79/97','sx70'=>'1/1','go'=>'47/60','instax_mini'=>'62/46','instax_wide'=>'99/62','instax_square'=>'1/1'];
+    if ($_ic_fmt === 'custom') {
+        $_ic_raw = trim($settings['instant-camera__ic_custom_ratio'] ?? '1:1');
+        $_ic_asp = (preg_match('/^\s*(\d{1,4})\s*[:\/xX]\s*(\d{1,4})\s*$/', $_ic_raw, $_m) && (int)$_m[2] > 0)
+                 ? ((int)$_m[1] . '/' . (int)$_m[2]) : '1/1';
+    } else {
+        $_ic_asp = $_ic_map[$_ic_fmt] ?? '1/1';
+    }
+    echo '<script>window.__IC_SCAN=' . json_encode(['aspect' => $_ic_asp]) . ';</script>' . "\n";
+    echo '<script src="' . BASE_URL . 'assets/js/ss-engine-scan-align.js?v=' . SNAPSMACK_VERSION_SHORT . '"></script>' . "\n";
+}
+?>
 <script>
 // GramOfSmack post composer — drop zone, preview strip, drag-reorder, submit.
 // Mirrors ss-engine-carousel-post.js but scoped to #gp-* IDs, no EXIF panels,
@@ -571,7 +589,39 @@ include 'core/sidebar.php';
             });
 
             strip.appendChild(el);
+
+            if (window.__IC_SCAN) addRotateControl(el, item);
         });
+    }
+
+    // INSTANT CAMERA: per-thumb straighten slider (±5°, 0.1°). Sets item.angle
+    // and shows a quick rotated/zoomed preview; the true crop-to-fill bake runs
+    // on submit via ScanAlign.bakeFile. Gated — only added when __IC_SCAN is set.
+    function addRotateControl(el, item) {
+        const wrap  = el.querySelector('.cp-thumb-wrap');
+        const thumb = el.querySelector('.cp-thumb');
+        if (!wrap || !thumb) return;
+        wrap.style.overflow = 'hidden';
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:6px;margin-top:6px;';
+        const s = document.createElement('input');
+        s.type = 'range'; s.min = '-5'; s.max = '5'; s.step = '0.1';
+        s.value = String(item.angle || 0); s.style.flex = '1'; s.title = 'Straighten ±5°';
+        const lab = document.createElement('span');
+        lab.style.cssText = 'font:11px/1 monospace;min-width:42px;text-align:right;opacity:.75;';
+        lab.textContent = (item.angle || 0).toFixed(1) + '°';
+        const applyPreview = () => { thumb.style.transform = 'scale(1.18) rotate(' + (item.angle || 0) + 'deg)'; };
+        s.addEventListener('input', () => {
+            item.angle = parseFloat(s.value) || 0;
+            lab.textContent = item.angle.toFixed(1) + '°';
+            applyPreview();
+        });
+        // Keep the slider from starting a thumbnail drag-reorder.
+        s.addEventListener('click', e => e.stopPropagation());
+        s.addEventListener('mousedown', e => e.stopPropagation());
+        if (item.angle) applyPreview();
+        row.appendChild(s); row.appendChild(lab);
+        el.appendChild(row);
     }
 
     function escHtml(s) {
@@ -579,7 +629,7 @@ include 'core/sidebar.php';
     }
 
     // Form submit — rebuild file input in correct order then XHR
-    form.addEventListener('submit', e => {
+    form.addEventListener('submit', async e => {
         e.preventDefault();
         if (fileList.length === 0) return;
 
@@ -587,6 +637,17 @@ include 'core/sidebar.php';
         submitBtn.disabled = true;
         progressWrap.style.display = '';
         progressBar.style.width = '0%';
+
+        // INSTANT CAMERA scan-align: bake any per-image straighten into the
+        // uploaded file. Gated to instant-camera + defensive — on any failure
+        // the original file stands, so a post can never be blocked.
+        if (window.__IC_SCAN && window.ScanAlign && ScanAlign.bakeFile) {
+            try {
+                await Promise.all(fileList.map(async (item) => {
+                    if (item.angle) item.file = await ScanAlign.bakeFile(item.file, item.angle, window.__IC_SCAN.aspect);
+                }));
+            } catch (err) { /* leave originals */ }
+        }
 
         const data = new FormData(form);
 
