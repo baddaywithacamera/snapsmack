@@ -214,6 +214,11 @@ if (isset($_POST['ic_aspect_detect'])) {
         header('Location: smack-skin.php?s=instant-camera'); exit;
     }
     require_once __DIR__ . '/core/ai-provider.php';
+    // Optional per-skin AI override; falls back to the site AI config (Settings → AI).
+    $_ov = $pdo->query("SELECT setting_key, setting_val FROM snap_settings WHERE setting_key IN ('instant-camera__ic_ai_provider', 'instant-camera__ic_ai_key')")->fetchAll(PDO::FETCH_KEY_PAIR);
+    $ov_provider = trim($_ov['instant-camera__ic_ai_provider'] ?? '');
+    $ov_key      = trim($_ov['instant-camera__ic_ai_key'] ?? '');
+    $use_override = ($ov_provider !== '' && $ov_key !== '');
     $imgs = [];
     if (!empty($_FILES['ic_scan']['name']) && is_array($_FILES['ic_scan']['name'])) {
         foreach ($_FILES['ic_scan']['name'] as $i => $name) {
@@ -227,13 +232,14 @@ if (isset($_POST['ic_aspect_detect'])) {
     }
     if (!$imgs) {
         $_SESSION['gallery_flash'] = 'Upload at least one print scan to detect the aspect ratio.';
-    } elseif (!snap_ai_configured()) {
-        $_SESSION['gallery_flash'] = 'No AI provider is configured. Set one up under Settings → AI first.';
+    } elseif (!$use_override && !snap_ai_configured()) {
+        $_SESSION['gallery_flash'] = 'No AI provider configured. Set one up under Settings → AI, or add a per-skin AI override in the skin settings.';
     } else {
         $sys = 'You are a precise image-measurement tool. The image shows a scanned instant-film print (Polaroid/Instax) on a background. Measure the PRINT itself, including its physical border, and return ONLY its width:height ratio as two integers separated by a colon, e.g. 79:97. Output nothing else.';
         $ratios = [];
         foreach ($imgs as $im) {
-            $r = snap_ai_vision($sys, 'Give the width:height ratio of the print in this image.', [$im], 30);
+            $r = snap_ai_vision($sys, 'Give the width:height ratio of the print in this image.', [$im], 30,
+                                $use_override ? $ov_provider : '', $use_override ? $ov_key : '');
             if ($r['ok'] && preg_match('/(\d{1,4})\s*[:\/]\s*(\d{1,4})/', $r['text'], $m) && (int)$m[2] > 0) {
                 $ratios[] = (int)$m[1] / (int)$m[2];
             }

@@ -123,6 +123,26 @@ return [
             'unit'     => '%',
             'hint'     => 'White layer between the background and the grid. 10% = background bold; 90% = prints float on near-white. PHP-handled → --ic-scrim.',
         ],
+        'ic_ai_provider' => [
+            'section' => 'INSTANT CAMERA',
+            'type'    => 'select',
+            'label'   => 'AI Provider for Aspect Detection',
+            'default' => '',
+            'options' => [
+                ''       => 'Use site AI settings (default)',
+                'claude' => 'Claude (override)',
+                'openai' => 'OpenAI (override)',
+                'gemini' => 'Gemini (override)',
+            ],
+            'hint'    => 'Aspect detection uses your site-wide AI key (Settings → AI) by default — most people only need that. Pick a provider here only to override it for this skin.',
+        ],
+        'ic_ai_key' => [
+            'section' => 'INSTANT CAMERA',
+            'type'    => 'text',
+            'label'   => 'AI Key Override',
+            'default' => '',
+            'hint'    => 'Only used if you chose an override provider above. Leave blank to use the site key.',
+        ],
 
         // ---- GRID APPEARANCE -----------------------------------------------
         'tg_gap' => [

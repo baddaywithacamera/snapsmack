@@ -331,14 +331,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="hidden" name="login_type" value="password">
 
                 <div class="control-group">
-                    <label for="username">IDENTIFIER</label>
+                    <label for="username">USERNAME</label>
                     <input type="text" id="username" name="username"
                            value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>"
                            autocomplete="username" required>
                 </div>
 
                 <div class="control-group">
-                    <label for="password">PASSCODE</label>
+                    <label for="password">PASSWORD</label>
                     <input type="password" id="password" name="password"
                            autocomplete="current-password" required>
                 </div>
@@ -353,7 +353,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="hidden" name="login_type" value="recovery">
 
                 <div class="control-group">
-                    <label for="rec_username">IDENTIFIER</label>
+                    <label for="rec_username">USERNAME</label>
                     <input type="text" id="rec_username" name="rec_username"
                            value="<?php echo htmlspecialchars($_POST['rec_username'] ?? ''); ?>"
                            autocomplete="username" required>

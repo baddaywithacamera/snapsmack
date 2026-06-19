@@ -154,11 +154,12 @@ function _snap_ai_openai(string $key, string $system, string $user, int $max_tok
  * @param int    $max_tokens
  * @return array{ok: bool, text: string, error: string}
  */
-function snap_ai_vision(string $system, string $user, array $images, int $max_tokens = 512): array {
-    $provider = snap_ai_provider();
-    $api_key  = snap_ai_api_key();
-    if ($provider === 'none' || $api_key === '') {
-        return ['ok' => false, 'text' => '', 'error' => 'No AI provider configured. Visit Settings → AI to set one up.'];
+function snap_ai_vision(string $system, string $user, array $images, int $max_tokens = 512, string $providerOverride = '', string $keyOverride = ''): array {
+    // Optional override (e.g. a per-skin key); otherwise the site's AI config.
+    $provider = $providerOverride !== '' ? $providerOverride : snap_ai_provider();
+    $api_key  = $providerOverride !== '' ? $keyOverride       : snap_ai_api_key();
+    if ($provider === 'none' || $provider === '' || $api_key === '') {
+        return ['ok' => false, 'text' => '', 'error' => 'No AI provider configured. Visit Settings → AI to set one up (or add a skin override).'];
     }
     if (empty($images)) {
         return ['ok' => false, 'text' => '', 'error' => 'No images supplied for vision request.'];
