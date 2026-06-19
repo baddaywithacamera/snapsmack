@@ -205,6 +205,58 @@ if (isset($_POST['save_mobile_avatar'])) {
 }
 
 // --- 4. SAVE HANDLER (Customize tab) ---
+// INSTANT CAMERA — AI-assisted aspect-ratio detection (spec §2.3).
+// Server-side: 3 scans → configured vision AI → averaged width:height → writes
+// the skin's Custom format. The API key never reaches the browser.
+if (isset($_POST['ic_aspect_detect'])) {
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
+        $_SESSION['gallery_flash'] = 'Security check failed — please try again.';
+        header('Location: smack-skin.php?s=instant-camera'); exit;
+    }
+    require_once __DIR__ . '/core/ai-provider.php';
+    $imgs = [];
+    if (!empty($_FILES['ic_scan']['name']) && is_array($_FILES['ic_scan']['name'])) {
+        foreach ($_FILES['ic_scan']['name'] as $i => $name) {
+            if (empty($name) || ($_FILES['ic_scan']['error'][$i] ?? 1) !== UPLOAD_ERR_OK) continue;
+            $tmp  = $_FILES['ic_scan']['tmp_name'][$i];
+            $mime = @mime_content_type($tmp) ?: 'image/jpeg';
+            if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) continue;
+            $imgs[] = ['mime' => $mime, 'data' => base64_encode((string)file_get_contents($tmp))];
+            if (count($imgs) >= 3) break;
+        }
+    }
+    if (!$imgs) {
+        $_SESSION['gallery_flash'] = 'Upload at least one print scan to detect the aspect ratio.';
+    } elseif (!snap_ai_configured()) {
+        $_SESSION['gallery_flash'] = 'No AI provider is configured. Set one up under Settings → AI first.';
+    } else {
+        $sys = 'You are a precise image-measurement tool. The image shows a scanned instant-film print (Polaroid/Instax) on a background. Measure the PRINT itself, including its physical border, and return ONLY its width:height ratio as two integers separated by a colon, e.g. 79:97. Output nothing else.';
+        $ratios = [];
+        foreach ($imgs as $im) {
+            $r = snap_ai_vision($sys, 'Give the width:height ratio of the print in this image.', [$im], 30);
+            if ($r['ok'] && preg_match('/(\d{1,4})\s*[:\/]\s*(\d{1,4})/', $r['text'], $m) && (int)$m[2] > 0) {
+                $ratios[] = (int)$m[1] / (int)$m[2];
+            }
+        }
+        if (!$ratios) {
+            $_SESSION['gallery_flash'] = 'The AI could not read a ratio from those scans. Try flatter, clearer scans — or just pick a standard format.';
+        } else {
+            $avg = array_sum($ratios) / count($ratios);
+            $w = (int)round($avg * 1000); $h = 1000;
+            $gcd = function ($a, $b) { while ($b) { [$a, $b] = [$b, $a % $b]; } return $a ?: 1; };
+            $d = $gcd($w, $h); $w = (int)($w / $d); $h = (int)($h / $d);
+            foreach (['ic_format' => 'custom', 'ic_custom_ratio' => "$w:$h"] as $k => $v) {
+                $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+                    ->execute(["instant-camera__$k", $v, $v]);
+            }
+            require_once __DIR__ . '/core/page-cache.php';
+            page_cache_purge_all();
+            $_SESSION['gallery_flash'] = "Detected ≈ $w:$h from " . count($ratios) . " scan(s). Print format set to Custom.";
+        }
+    }
+    header('Location: smack-skin.php?s=instant-camera&msg=updated'); exit;
+}
+
 if (isset($_POST['save_skin_settings'])) {
 
     // 4a. Persistence: Save individual skin and engine control values.
@@ -1097,6 +1149,27 @@ if (!empty($google_families)) {
             <button type="submit" name="save_skin_settings" class="master-update-btn">SAVE SKIN SPECIFIC CALIBRATION</button>
         </div>
     </form>
+
+    <?php if (($target_skin ?? '') === 'instant-camera'): ?>
+    <!-- INSTANT CAMERA — AI aspect-ratio detection (spec §2.3). Own multipart
+         form (forms can't nest); posts to the ic_aspect_detect handler above. -->
+    <div class="box">
+        <h3>AI ASPECT-RATIO DETECTION</h3>
+        <p class="dim field-hint">Don't know your exact print ratio? Upload up to three representative scans and your configured AI provider will measure them and set a Custom format automatically. Averaging three scans cancels out scan skew. One-time setup — the API key never leaves the server, and you can always just pick a standard format instead.</p>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+            <div class="dash-grid">
+                <div class="lens-input-wrapper">
+                    <label>PRINT SCANS (1–3)</label>
+                    <input type="file" name="ic_scan[]" accept="image/jpeg,image/png,image/webp" multiple>
+                </div>
+            </div>
+            <div class="form-action-row">
+                <button type="submit" name="ic_aspect_detect" class="master-update-btn">DETECT ASPECT RATIO</button>
+            </div>
+        </form>
+    </div>
+    <?php endif; ?>
 
 <?php elseif ($active_tab === 'mobile'): ?>
     <!-- ============================================================
