@@ -12,6 +12,38 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.273 — "Catbird Seat" (2026-06-19)
+
+Fixes the false SMACKBACK breach on `core/constants.php` that followed a remote (hub-push) update,
+plus a multisite dashboard alignment fix.
+
+### Remote update no longer false-breaches constants.php
+
+- **The hub-push self-update snapshotted the SMACKBACK integrity baseline *before* stamping the new
+  version into `core/constants.php`.** `core/multisite-api.php` baselined the freshly-extracted
+  (un-stamped) file, then `updater_set_version()` rewrote it — so on-disk `constants.php` no longer
+  matched its own just-set baseline, and the next integrity scan reported it TAMPERED, locking the
+  admin out. The local SYSTEM UPDATES path (`smack-update.php`) stamps the version *before*
+  baselining, which is why manual updates never tripped it.
+- **Fix:** moved `updater_set_version()` ahead of the SMACKBACK baseline in the remote update path so
+  the baseline captures the stamped `constants.php`. Both update paths now run in the same order.
+- A spoke runs its own copy of this code to self-update, so the old order runs once more on the
+  update that *delivers* this fix — expect one final `constants.php` breach per spoke on the
+  0.7.272 → 0.7.273 update. Clear it with **Re-initialise baseline from disk** (which baselines the
+  current file and sticks). Every remote update after that is clean.
+
+### Multisite dashboard
+
+- **Maintenance-mode rows no longer knock the action column out of alignment.** The maintenance
+  button toggles between ENABLE MAINT and DISABLE MAINT; both shared a minimum width too narrow for
+  the longer label, so the in-maintenance row's button grew and shifted the REMOTE LOGIN / MAINT /
+  DISCONNECT cluster. Widened the shared minimum so every row's controls line up.
+
+### Skins
+
+- **PARADE 1.0.5:** the sticky-nav dividers are now a single 1px line top and bottom (were rendered
+  as a doubled pair). Ships via the Skin Packager.
+
 ## 0.7.272 — "Box Seat" (2026-06-19)
 
 Fixes the PARADE tab crash on large blogs and folds the grow-as-you-scroll grid reveal into a
