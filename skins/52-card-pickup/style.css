@@ -521,4 +521,63 @@ a:hover { color: var(--text-primary); }
         padding: 0 16px;
     }
 }
+/* ───────────────────────────────────────────────────────────────────────────
+   52 PICKUP 1.4.0 — Tabletop landing (Organized Mayhem) + ghost chrome.
+   Interaction transitions (lift / expand / chrome show-hide) live in the shared
+   engine CSS (assets/css/ss-engine-52-pickup.css). These rules size the tabletop
+   and turn the nav/footer into hidden, fixed, edge-revealed bars.
+   Note: legacy .pile-* rules above are dead (pile engine retired) — harmless,
+   flagged for a later cleanup pass.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* The tabletop fills the window; transparent so the admin canvas colour
+   (body background, htbs_bg_color) shows through. The engine owns pan/zoom. */
+.pickup-tabletop {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: transparent;
+    z-index: 0;
+}
+.pickup-tabletop .om-card { cursor: pointer; }
+.pickup-tabletop .om-card img { display: block; border-radius: 1px; }
+
+/* Ghost nav — fixed top bar, hidden until the cursor nears the top edge.
+   The engine CSS toggles visibility via .om-chrome-show; we position it. */
+.pickup-header.pickup-ghost {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 14px 28px;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.10);
+}
+
+/* Ghost footer — fixed bottom bar, same reveal behaviour. */
+.pickup-ghost-footer {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 12px 28px;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.10);
+}
+.pickup-ghost-footer a { color: var(--text-primary); text-decoration: none; }
+.pickup-ghost-footer a:hover { color: var(--accent-color); }
+
 /* ===== SNAPSMACK EOF ===== */

@@ -20,7 +20,7 @@ $nav_pages = $pdo->query("
 ")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-<header class="pickup-header">
+<header class="pickup-header<?php echo !empty($om_ghost_chrome) ? ' pickup-ghost' : ''; ?>"<?php echo !empty($om_ghost_chrome) ? ' data-ghost-nav' : ''; ?>>
     <a href="<?php echo BASE_URL; ?>" class="site-title-text"><?php echo htmlspecialchars($site_name); ?></a>
 
     <ul class="nav-menu">

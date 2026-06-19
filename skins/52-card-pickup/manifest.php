@@ -14,10 +14,10 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name' => '52 Card Pickup',
-    'version' => '1.3.0',
+    'version' => '1.4.0',
     'author' => 'Sean McCormick',
     'support' => 'sean@baddaywithacamera.ca',
-    'description' => 'Randomised photo pile skin. Throws a configurable number of images onto the screen like prints tossed on a table. Four frame styles (Polaroid, standard print, borderless, slide mount), reshuffle to load a fresh set, and hover-to-lift interaction. Named for the card trick where someone throws a deck on the floor.',
+    'description' => 'The landing IS the table. An infinite, pannable tabletop of scattered photo prints (the Organized Mayhem engine) — drag to roam, scroll to zoom, hover to lift a print, click to pick it up and read it, ESC to drop it back. Nav and footer stay hidden under the pile until you reach for the screen edges. Named for the card trick where someone throws a deck on the floor.',
     'status' => 'available',
 
     'features' => [
@@ -36,107 +36,13 @@ return [
         'smack-image-fade-load',
         'smack-lightbox',
         'smack-keyboard',
-        'smack-pile',
+        'smack-organized-mayhem',
+        'smack-52-pickup',
         'smack-community',
         'smack-overlay',
     ],
 
     'options' => [
-
-        // THE PILE section
-        'htbs_pile_size' => [
-            'section' => 'THE PILE',
-            'type' => 'range',
-            'label' => 'Images in Pile',
-            'default' => '20',
-            'min' => '10',
-            'max' => '30',
-            'selector' => ':root',
-            'property' => '--pile-size',
-        ],
-        'htbs_scatter_radius' => [
-            'section' => 'THE PILE',
-            'type' => 'select',
-            'label' => 'Scatter Radius',
-            'default' => 'medium',
-            'options' => [
-                'tight'  => 'Tight (clustered)',
-                'medium' => 'Medium',
-                'wide'   => 'Wide (spread out)',
-            ],
-        ],
-        'htbs_rotation_max' => [
-            'section' => 'THE PILE',
-            'type' => 'range',
-            'label' => 'Max Rotation (degrees)',
-            'default' => '8',
-            'min' => '1',
-            'max' => '12',
-            'selector' => ':root',
-            'property' => '--rotation-max',
-        ],
-        'htbs_max_image_width' => [
-            'section' => 'THE PILE',
-            'type' => 'range',
-            'label' => 'Max Image Width (px)',
-            'default' => '280',
-            'min' => '160',
-            'max' => '420',
-            'selector' => ':root',
-            'property' => '--max-image-width',
-            'unit' => 'px',
-        ],
-        'htbs_hover_title' => [
-            'section' => 'THE PILE',
-            'type' => 'select',
-            'label' => 'Show Title on Hover',
-            'default' => '1',
-            'options' => ['1' => 'Yes', '0' => 'No'],
-        ],
-        'htbs_keyboard_reshuffle' => [
-            'section' => 'THE PILE',
-            'type' => 'select',
-            'label' => 'R Key to Reshuffle',
-            'default' => '1',
-            'options' => ['1' => 'Enabled', '0' => 'Disabled'],
-        ],
-        'htbs_transition_speed' => [
-            'section' => 'THE PILE',
-            'type' => 'range',
-            'label' => 'Transition Speed (ms)',
-            'default' => '300',
-            'min' => '100',
-            'max' => '800',
-            'selector' => ':root',
-            'property' => '--pile-transition',
-            'unit' => 'ms',
-        ],
-
-        // FRAME STYLES section
-        'htbs_frame_styles' => [
-            'section' => 'FRAME STYLES',
-            'type' => 'select',
-            'label' => 'Enabled Frames',
-            'default' => 'polaroid,print',
-            'options' => [
-                'polaroid'                  => 'Polaroid Only',
-                'print'                     => 'Standard Print Only',
-                'borderless'                => 'Borderless Only',
-                'slide'                     => 'Slide Mount Only',
-                'polaroid,print'            => 'Polaroid + Print (Default)',
-                'polaroid,print,borderless' => 'Polaroid + Print + Borderless',
-                'polaroid,print,slide'      => 'Polaroid + Print + Slide',
-                'polaroid,print,borderless,slide' => 'All Four Styles',
-            ],
-        ],
-
-        // RESHUFFLE section
-        'htbs_reshuffle_label' => [
-            'section' => 'RESHUFFLE',
-            'type' => 'text',
-            'label' => 'Reshuffle Button Label',
-            'default' => 'Reshuffle',
-        ],
 
         // BACKGROUND section
         'htbs_bg_color' => [

@@ -1,10 +1,14 @@
 <?php
 /**
- * 52 Card Pickup - Pile Landing Page
+ * 52 PICKUP — Tabletop Landing
  *
- * Renders a randomised pile of photographs using the pile engine (ss-engine-pile.js).
- * AJAX endpoint at the top returns random images as JSON when ?ajax=pile is requested.
- * Variables available from index.php: $pdo, $settings, $img, $active_skin, $site_name
+ * The landing IS the Organized Mayhem tabletop: an infinite, pannable scatter
+ * of photo prints. Interaction — hover-lift, click-to-pick-up, ghost chrome,
+ * ESC return — comes from the 52 PICKUP layer (ss-engine-52-pickup.js). Image
+ * data is served by the shared core endpoint (core/mayhem-data.php) at
+ * ?ajax=mayhem (cheap PK-range sampling, trigram-excluded, + server vitals).
+ *
+ * Variables available from index.php: $pdo, $settings, $site_name, BASE_URL.
  */
 
 /**
@@ -15,70 +19,35 @@
  */
 
 
-// ── AJAX endpoint: return random images as JSON ──────────────────────────
-if (isset($_GET['ajax']) && $_GET['ajax'] === 'pile') {
-    header('Content-Type: application/json');
+// Shared Organized Mayhem data endpoint — emits ?ajax=mayhem JSON and exits.
+require_once dirname(__DIR__, 2) . '/core/mayhem-data.php';
 
-    $count = max(10, min(30, (int)($_GET['count'] ?? 20)));
-    $now_local = date('Y-m-d H:i:s');
+// Tabletop config — Organized Mayhem engine controls (set under Engines admin)
+// with safe defaults if unset.
+$om_count   = (int) ($settings['mayhem_initial_count'] ?? 120);
+$om_maxw    = (int) ($settings['mayhem_max_width']     ?? 300);
+$om_overlap = max(0.4, min(0.95, ((int) ($settings['mayhem_overlap_max'] ?? 85)) / 100));
+$om_drift   = ($settings['mayhem_drift'] ?? '1') === '1' ? '1' : '0';
+$om_warp    = ($settings['mayhem_warp']  ?? '1') === '1' ? '1' : '0';
 
-    $stmt = $pdo->prepare("
-        SELECT id, img_title, img_slug, img_file, img_thumb_aspect
-        FROM snap_images
-        WHERE img_status = 'published' AND img_date <= ?
-        ORDER BY RAND()
-        LIMIT ?
-    ");
-    $stmt->execute([$now_local, $count]);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $images = [];
-    foreach ($rows as $r) {
-        $src = !empty($r['img_thumb_aspect'])
-            ? BASE_URL . ltrim($r['img_thumb_aspect'], '/')
-            : BASE_URL . ltrim($r['img_file'], '/');
-        $images[] = [
-            'id'    => (int)$r['id'],
-            'title' => $r['img_title'],
-            'src'   => $src,
-            'url'   => BASE_URL . htmlspecialchars($r['img_slug']),
-        ];
-    }
-
-    echo json_encode(['images' => $images]);
-    exit;
-}
-
-// ── Config from settings ─────────────────────────────────────────────────
-$pile_size         = (int)($settings['htbs_pile_size'] ?? 20);
-$scatter           = $settings['htbs_scatter_radius'] ?? 'medium';
-$rotation_max      = (int)($settings['htbs_rotation_max'] ?? 8);
-$max_image_width   = (int)($settings['htbs_max_image_width'] ?? 280);
-$hover_title       = ($settings['htbs_hover_title'] ?? '1') === '1';
-$keyboard_reshuffle = ($settings['htbs_keyboard_reshuffle'] ?? '1') === '1';
-$transition_speed  = (int)($settings['htbs_transition_speed'] ?? 300);
-$frame_styles      = $settings['htbs_frame_styles'] ?? 'polaroid,print';
-$reshuffle_label   = $settings['htbs_reshuffle_label'] ?? 'Reshuffle';
+// The landing renders GHOST CHROME — nav/footer stay hidden until the cursor
+// reaches a screen edge. skin-header.php / skin-footer.php read this flag.
+$om_ghost_chrome = true;
 ?>
 
 <?php include('skin-header.php'); ?>
 
-<div class="pile-canvas"
-     data-pile
-     data-api-url="<?php echo BASE_URL; ?>?ajax=pile"
-     data-pile-size="<?php echo $pile_size; ?>"
-     data-scatter="<?php echo htmlspecialchars($scatter); ?>"
-     data-rotation-max="<?php echo $rotation_max; ?>"
-     data-max-width="<?php echo $max_image_width; ?>"
-     data-transition-speed="<?php echo $transition_speed; ?>"
-     data-hover-title="<?php echo $hover_title ? '1' : '0'; ?>"
-     data-keyboard-reshuffle="<?php echo $keyboard_reshuffle ? '1' : '0'; ?>"
-     data-frame-styles="<?php echo htmlspecialchars($frame_styles); ?>">
-</div>
-
-<button class="pile-reshuffle" data-pile-reshuffle>
-    <?php echo htmlspecialchars($reshuffle_label); ?>
-</button>
+<div class="pickup-tabletop"
+     data-mayhem
+     data-api-url="<?php echo BASE_URL; ?>?ajax=mayhem"
+     data-initial-count="<?php echo $om_count; ?>"
+     data-max-width="<?php echo $om_maxw; ?>"
+     data-overlap-max="<?php echo number_format($om_overlap, 2); ?>"
+     data-drift="<?php echo $om_drift; ?>"
+     data-warp="<?php echo $om_warp; ?>"
+     data-pan="1"
+     data-cluster-size="9"
+     data-loading-label="Dealing"></div>
 
 <?php include('skin-footer.php'); ?>
 <?php // ===== SNAPSMACK EOF =====
