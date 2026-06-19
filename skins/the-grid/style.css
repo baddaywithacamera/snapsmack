@@ -335,6 +335,11 @@ img { display: block; max-width: 100%; }
     border-radius: var(--tile-radius);
 }
 
+/* Folded tiles (beyond the first batch) are removed from layout by
+   ss-engine-aurora-reveal.js so a large blog starts short and GROWS as you
+   scroll, instead of laying out every post at full height at once. */
+.tg-grid .tg-tile.tg-fold { display: none; }
+
 .tg-tile a {
     display: block;
     width: 100%;

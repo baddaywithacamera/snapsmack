@@ -55,6 +55,7 @@ return [
         'smack-grid-nav',
         'smack-grid-modal',
         'smack-grid-lightbox',
+        'smack-aurora-reveal',    // shared prefix-derived progressive grid reveal (lazy)
         'smack-image-fade-load',  // reveals lightbox/asset images on static pages
                                   // (public-base.css sets img[data-lightbox-src]{opacity:0};
                                   //  this engine fades them to opacity:1 on load)
