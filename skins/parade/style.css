@@ -120,10 +120,8 @@ img { display: block; max-width: 100%; }
     z-index: 100;
     background: transparent;
     transition: background 0.18s ease-in;
-    /* Dual 1px divider lines, top + bottom. Colour = --pa-nav-line, set by
-       skin-profile.php to a fixed admin colour OR the live wave colour (track
-       mode). The OUTER line of each pair is this border; the INNER line is the
-       ::before / ::after below. */
+    /* Single 1px divider line, top + bottom. Colour = --pa-nav-line, set by
+       skin-profile.php to a fixed admin colour OR the live wave colour (track mode). */
     border-top:    1px solid var(--pa-nav-line, var(--pa-accent, #750787));
     border-bottom: 1px solid var(--pa-nav-line, var(--pa-accent, #750787));
 }
@@ -134,21 +132,6 @@ img { display: block; max-width: 100%; }
 .pa-sticky-nav.profile-hidden {
     background: color-mix(in srgb, var(--pa-bg, #ffffff) 88%, transparent);
 }
-
-/* Inner line of each dual divider: a second 1px line, 2px inside the border. */
-.pa-sticky-nav::before,
-.pa-sticky-nav::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: var(--pa-nav-line, var(--pa-accent, #750787));
-    opacity: var(--pa-nav-line-opacity, 0.55);
-    pointer-events: none;
-}
-.pa-sticky-nav::before { top: 2px; }     /* 2px below the top border line    */
-.pa-sticky-nav::after  { bottom: 2px; }  /* 2px above the bottom border line */
 
 .pa-sticky-nav-inner {
     display: flex;
