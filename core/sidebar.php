@@ -233,7 +233,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                         <a href="smack-stats.php">Traffic Stats</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-api-keys.php') ? 'active' : ''; ?>">
-                        <a href="smack-api-keys.php">Oh Snap! API Keys</a>
+                        <a href="smack-api-keys.php">API Keys</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-multisite.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite.php">Multisite Management</a>
@@ -271,6 +271,11 @@ foreach ($_section_map as $sec => $_sec_pages) {
 
         </nav>
 
+    </div>
+
+    <div class="sidebar-bottom">
+        <a href="logout.php" class="logout">Logout</a>
+        <div class="credits-admin">&copy; 2026 Sean McCormick</div>
     </div>
 
 </div>
