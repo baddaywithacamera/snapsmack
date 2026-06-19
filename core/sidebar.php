@@ -207,6 +207,9 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-schema.php') ? 'active' : ''; ?>">
                         <a href="smack-schema.php">Database Schema</a>
                     </li>
+                    <li class="<?php echo ($current_page == 'smack-back.php') ? 'active' : ''; ?>">
+                        <a href="smack-back.php">SMACKBACK Security</a>
+                    </li>
                     <?php if ($_ui_pimpmobile): ?>
                     <li class="<?php echo ($current_page == 'smack-users.php') ? 'active' : ''; ?>">
                         <a href="smack-users.php">User Manager</a>

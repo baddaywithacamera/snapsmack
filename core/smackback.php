@@ -437,6 +437,46 @@ function smackback_abs(string $rel): string {
     return SNAPSMACK_ROOT . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rel);
 }
 
+/**
+ * Scheduled full-verify interval in hours. Admin-selectable 1–24; there is no
+ * "off" (strict posture — integrity checks are mandatory, only their cadence is
+ * configurable). Unset/invalid falls back to 6h.
+ */
+function smackback_verify_interval_hours(): int {
+    global $pdo;
+    try {
+        $v = $pdo->query(
+            "SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_verify_interval_hours'"
+        )->fetchColumn();
+    } catch (PDOException $e) {
+        $v = null;
+    }
+    $h = (int) $v;
+    if ($h < 1)  return 6;   // unset / invalid → default
+    if ($h > 24) return 24;
+    return $h;
+}
+
+/**
+ * True when a full verify is overdue — last full verify older than the interval,
+ * or never run. Drives the mandatory verify cadence from admin page loads and
+ * from cron, so the schedule holds even on hosts without a working system cron.
+ */
+function smackback_verify_due(): bool {
+    global $pdo;
+    try {
+        $last = $pdo->query(
+            "SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_last_full_verify'"
+        )->fetchColumn();
+    } catch (PDOException $e) {
+        return true;
+    }
+    if (empty($last)) return true;
+    $ts = strtotime($last);
+    if ($ts === false) return true;
+    return (time() - $ts) >= (smackback_verify_interval_hours() * 3600);
+}
+
 // ─── EOF SENTINEL ───────────────────────────────────────────────────────────
 
 /**
@@ -825,14 +865,15 @@ function smackback_verify_all(): array {
         )->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         return [
-            'status'    => 'clean',
-            'tampered'  => [],
-            'truncated' => [],
-            'corrupted' => [],
-            'missing'   => [],
-            'ok'        => 0,
-            'checked'   => 0,
-            'duration'  => 0.0,
+            'status'     => 'clean',
+            'tampered'   => [],
+            'truncated'  => [],
+            'corrupted'  => [],
+            'missing'    => [],
+            'unexpected' => [],
+            'ok'         => 0,
+            'checked'    => 0,
+            'duration'   => 0.0,
         ];
     }
 
@@ -884,8 +925,29 @@ function smackback_verify_all(): array {
         }
     }
 
+    // ─── Unknown / unexpected files (strict posture) ────────────────────────
+    // The loop above only catches CHANGES and DELETIONS of baselined files. A
+    // file present on disk but ABSENT from the manifest — a dropped webshell, a
+    // replaced non-baselined file, any FTP/SFTP intrusion — is invisible without
+    // this disk-vs-manifest diff. smackback_get_monitored_files() already honours
+    // every smackback_should_monitor() exclusion, so paths legitimately out of
+    // scope (uploads/, skins/, vendor/, …) never appear here. Skipped when the
+    // manifest is empty (unarmed install) so we don't false-flag the whole tree.
+    $unexpected = [];
+    if (!empty($rows)) {
+        $known = [];
+        foreach ($rows as $row) { $known[$row['file_path']] = true; }
+        foreach (smackback_get_monitored_files() as $abs) {
+            $rel = smackback_rel($abs);
+            if (!isset($known[$rel])) {
+                $unexpected[] = $rel;
+            }
+        }
+    }
+
     $duration = round(microtime(true) - $t_start, 3);
-    $any_bad  = !empty($tampered) || !empty($truncated) || !empty($corrupted) || !empty($missing);
+    $any_bad  = !empty($tampered) || !empty($truncated) || !empty($corrupted)
+             || !empty($missing)  || !empty($unexpected);
 
     // A clean pass over a populated manifest promotes pending/unknown → clean so the
     // hub dashboard stops showing PENDING forever on armed-but-never-breached spokes.
@@ -895,14 +957,15 @@ function smackback_verify_all(): array {
     }
 
     return [
-        'status'    => $any_bad ? 'breach' : 'clean',
-        'tampered'  => $tampered,
-        'truncated' => $truncated,
-        'corrupted' => $corrupted,
-        'missing'   => $missing,
-        'ok'        => $ok_count,
-        'checked'   => count($rows),
-        'duration'  => $duration,
+        'status'     => $any_bad ? 'breach' : 'clean',
+        'tampered'   => $tampered,
+        'truncated'  => $truncated,
+        'corrupted'  => $corrupted,
+        'missing'    => $missing,
+        'unexpected' => $unexpected,
+        'ok'         => $ok_count,
+        'checked'    => count($rows),
+        'duration'   => $duration,
     ];
 }
 
@@ -1064,7 +1127,8 @@ function smackback_handle_breach(
     array $tampered,
     array $missing,
     array $truncated = [],
-    array $corrupted = []
+    array $corrupted = [],
+    array $unexpected = []
 ): void {
     global $pdo;
 
@@ -1072,10 +1136,11 @@ function smackback_handle_breach(
 
     // Build affected file list for settings storage
     $breach_files = json_encode(array_merge(
-        array_map(fn($p) => ['path' => $p, 'status' => 'tampered'],  $tampered),
-        array_map(fn($p) => ['path' => $p, 'status' => 'missing'],   $missing),
-        array_map(fn($p) => ['path' => $p, 'status' => 'truncated'], $truncated),
-        array_map(fn($p) => ['path' => $p, 'status' => 'corrupted'], $corrupted)
+        array_map(fn($p) => ['path' => $p, 'status' => 'tampered'],   $tampered),
+        array_map(fn($p) => ['path' => $p, 'status' => 'missing'],    $missing),
+        array_map(fn($p) => ['path' => $p, 'status' => 'truncated'],  $truncated),
+        array_map(fn($p) => ['path' => $p, 'status' => 'corrupted'],  $corrupted),
+        array_map(fn($p) => ['path' => $p, 'status' => 'unexpected'], $unexpected)
     ));
 
     $upsert = $pdo->prepare(
@@ -1096,7 +1161,7 @@ function smackback_handle_breach(
     $upsert->execute(['smackback_breach_files', $breach_files]);
 
     // Send alert email
-    smackback_send_alert($tampered, $missing, $truncated, $corrupted);
+    smackback_send_alert($tampered, $missing, $truncated, $corrupted, $unexpected);
 
     // Phase 2 hook: hub/spoke correlation (no-op in this build)
     $mode = $pdo->query(
@@ -1112,7 +1177,9 @@ function smackback_handle_breach(
     $na_path = __DIR__ . '/network-alert.php';
     if (file_exists($na_path)) {
         require_once $na_path;
-        nalert_send_report($tampered, $missing, $truncated, $corrupted);
+        // Report unexpected files under the tampered set so the network alert
+        // (Smack Central) surfaces the rogue paths without changing its signature.
+        nalert_send_report(array_merge($tampered, $unexpected), $missing, $truncated, $corrupted);
     }
 }
 
@@ -1437,7 +1504,7 @@ function _smackback_download_zip(string $url, string $dest, string &$error = '')
  * @param  string[] $corrupted
  * @return void
  */
-function smackback_send_alert(array $tampered, array $missing, array $truncated = [], array $corrupted = []): void {
+function smackback_send_alert(array $tampered, array $missing, array $truncated = [], array $corrupted = [], array $unexpected = []): void {
     global $pdo;
 
     // Load settings
@@ -1464,10 +1531,11 @@ function smackback_send_alert(array $tampered, array $missing, array $truncated 
 
     // Build file list
     $file_lines = '';
-    foreach ($tampered  as $path) { $file_lines .= "  TAMPERED:  {$path}\n"; }
-    foreach ($missing   as $path) { $file_lines .= "  MISSING:   {$path}\n"; }
-    foreach ($truncated as $path) { $file_lines .= "  TRUNCATED: {$path}\n"; }
-    foreach ($corrupted as $path) { $file_lines .= "  CORRUPTED: {$path}\n"; }
+    foreach ($tampered   as $path) { $file_lines .= "  TAMPERED:   {$path}\n"; }
+    foreach ($missing    as $path) { $file_lines .= "  MISSING:    {$path}\n"; }
+    foreach ($truncated  as $path) { $file_lines .= "  TRUNCATED:  {$path}\n"; }
+    foreach ($corrupted  as $path) { $file_lines .= "  CORRUPTED:  {$path}\n"; }
+    foreach ($unexpected as $path) { $file_lines .= "  UNEXPECTED: {$path}  (not in baseline — possible intrusion)\n"; }
 
     $subject = "[SMACKBACK] File tampering detected on {$site_name}";
 
@@ -1517,24 +1585,28 @@ function smackback_render_breach(array $settings): void {
     // Build file rows
     $rows_html = '';
     $status_colours = [
-        'TAMPERED'  => '#cc2200',
-        'MISSING'   => '#ff6600',
-        'TRUNCATED' => '#e07800',
-        'CORRUPTED' => '#cc9900',
+        'TAMPERED'   => '#cc2200',
+        'MISSING'    => '#ff6600',
+        'TRUNCATED'  => '#e07800',
+        'CORRUPTED'  => '#cc9900',
+        'UNEXPECTED' => '#ff3344',
     ];
     foreach ($breach_files as $entry) {
         $path   = htmlspecialchars($entry['path']   ?? '', ENT_QUOTES);
         $status = strtoupper($entry['status'] ?? 'UNKNOWN');
         $colour = $status_colours[$status] ?? '#cc2200';
+        if ($status === 'UNEXPECTED') {
+            // No baseline exists for an unknown file — RESTORE is meaningless.
+            // The operator removes it (intrusion) or re-baselines (if legitimate).
+            $action_html = "<span style=\"color:#ff3344;font-size:0.78rem;font-weight:700;\">NOT IN BASELINE — REMOVE OR RE-BASELINE</span>";
+        } else {
+            $action_html = "<a href=\"{$base_url}/smack-back.php?action=restore&restore=" . urlencode($entry['path'] ?? '') . "\"
+                   style=\"color:#ff9900;font-size:0.8rem;text-decoration:none;border:1px solid #ff9900;padding:4px 10px;\">RESTORE</a>";
+        }
         $rows_html .= "<tr>
             <td style=\"padding:8px 16px;font-family:monospace;font-size:0.88rem;color:#eee;\">{$path}</td>
             <td style=\"padding:8px 16px;font-weight:700;color:{$colour};white-space:nowrap;\">{$status}</td>
-            <td style=\"padding:8px 16px;\">
-                <a href=\"{$base_url}/smack-back.php?action=restore&restore=" . urlencode($entry['path'] ?? '') . "\"
-                   style=\"color:#ff9900;font-size:0.8rem;text-decoration:none;border:1px solid #ff9900;padding:4px 10px;\">
-                   RESTORE
-                </a>
-            </td>
+            <td style=\"padding:8px 16px;\">{$action_html}</td>
         </tr>\n";
     }
 

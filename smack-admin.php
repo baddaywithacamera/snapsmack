@@ -35,16 +35,24 @@ if (($settings['smackback_enabled'] ?? '0') === '1') {
         exit;
     }
 
-    // Run full verify once per login session (not on every page load)
-    if (empty($_SESSION['smackback_verified_this_session'])) {
-        $_SESSION['smackback_verified_this_session'] = true;
+    // Run a full verify whenever one is DUE (interval elapsed or never run).
+    // This makes the verify cadence mandatory and host-independent — it holds
+    // even where system cron is not configured. Cheap when not due (one read).
+    if (smackback_verify_due()) {
         $smack_result = smackback_verify_all();
+        // Stamp the verify time on EVERY run (clean or breach) so the interval
+        // gate does not re-run the heavy scan on every subsequent page load.
+        $pdo->prepare(
+            "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackback_last_full_verify', ?)
+             ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+        )->execute([date('Y-m-d H:i:s')]);
         if ($smack_result['status'] === 'breach') {
             smackback_handle_breach(
                 $smack_result['tampered'],
                 $smack_result['missing'],
                 $smack_result['truncated'] ?? [],
-                $smack_result['corrupted'] ?? []
+                $smack_result['corrupted'] ?? [],
+                $smack_result['unexpected'] ?? []
             );
             // Reload $settings to pick up the new breach status
             $_s = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
@@ -53,11 +61,6 @@ if (($settings['smackback_enabled'] ?? '0') === '1') {
                 smackback_render_breach($settings);
                 exit;
             }
-        } else {
-            $pdo->prepare(
-                "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackback_last_full_verify', ?)
-                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
-            )->execute([date('Y-m-d H:i:s')]);
         }
     }
 }
