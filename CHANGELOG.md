@@ -12,6 +12,30 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.272 — "Box Seat" (2026-06-19)
+
+Fixes the PARADE tab crash on large blogs and folds the grow-as-you-scroll grid reveal into a
+single shared engine for every Grid-family skin.
+
+### Grid-family progressive reveal — one shared engine (PARADE crash fix)
+
+- **PARADE loaded every post at once and crashed the window.** The grow-as-you-scroll reveal
+  that keeps a large grid from rendering at full height was AURORA-only — the engine was
+  hardcoded to `.au-` selectors and only AURORA's manifest enqueued it. PARADE and The Grid
+  shipped without it, so a large blog put **every** published post in the DOM at once. Opening a
+  deep-linked post (which renders the full grid behind the modal) then blew out memory and took
+  the tab down. This is the crash on theschoolofhardnocks.ca.
+- **Reveal engine is now prefix-derived** (`assets/js/ss-engine-aurora-reveal.js`), using the
+  same `derivePrefix()` idiom as the shared `ss-engine-aurora-wave.js`: it resolves the skin
+  prefix from `<P>-sticky-nav` and drives `.<P>-grid` / `.<P>-tile` / `.<P>-fold`, firing
+  `<P>:grid-updated` after each reveal. AURORA behaviour is unchanged (P=au).
+- **Enrolled PARADE and The Grid.** Added the `smack-aurora-reveal` handle to both manifests and
+  added The Grid's missing `.tg-grid .tg-tile.tg-fold { display:none }` fold rule (AURORA and
+  PARADE already shipped theirs). One engine now serves au-/pa-/tg-.
+- **Deploy:** ships in core (the engine JS) **and** requires re-packaging PARADE 1.0.3,
+  AURORA 1.0.17, and The Grid 1.3.21 through the Skin Packager — the manifest/CSS changes live
+  inside the skin zips, so a core push alone won't reach live sites.
+
 ## 0.7.271 — "Skybox" (2026-06-19)
 
 Stops the recurring SMACKBACK false-breach lockout for good.
