@@ -120,11 +120,46 @@ $_pa_nav_mode = $settings['pa_nav_line_mode'] ?? 'track';
 $_pa_nav_col  = ($_pa_nav_mode === 'fixed')
     ? htmlspecialchars(trim($settings['pa_nav_line_color'] ?? '#750787'))
     : 'var(--pa-wave-color, var(--pa-accent, #750787))';
+
+// ── Background mode: fireworks (default) OR a full-viewport waving flag ──────
+// Mutually exclusive (spec): only the chosen engine is loaded (skin-footer.php
+// swaps the require_scripts handle). The flag rendered = the active pa_palette,
+// resolved to stripe data from the central flag stock (core/manifest-inventory).
+$_pa_flag_mode = (($settings['pa_bg_mode'] ?? 'fireworks') === 'flag');
+$_pa_flag_stripes = null;
+if ($_pa_flag_mode) {
+    $_pa_inv       = include dirname(__DIR__, 2) . '/core/manifest-inventory.php';
+    $_pa_flag_def  = $_pa_inv['flags'][$_pa_pal_key] ?? null;
+    if ($_pa_flag_def) {
+        $_pa_flag_orient  = $_pa_flag_def['o'] ?? 'h';
+        $_pa_flag_stripes = $_pa_flag_def['stripes'];
+    } else {
+        // Palette has no stripe def (e.g. progress chevron / two-spirit) — degrade
+        // to equal stripes from the fireworks palette colours.
+        $_pa_flag_orient  = 'h';
+        $_pa_flag_stripes = array_map(function ($c) { return [$c, 1]; }, $_pa_colors);
+    }
+    $_pa_flag_speed   = max(1, min(100, (int) ($settings['pa_flag_speed']     ?? 30)));
+    $_pa_flag_amp     = max(1, min(100, (int) ($settings['pa_flag_amplitude'] ?? 40)));
+    $_pa_flag_opacity = max(0, min(100, (int) ($settings['pa_flag_opacity']   ?? 100)));
+}
 ?>
 
 <!-- PARADE CSS vars: high-key field + text colours (read by style.css) -->
 <style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;}</style>
 
+<?php if ($_pa_flag_mode): ?>
+<!-- PARADE waving-flag carrier — read by ss-engine-flag-wave.js (Layer 1
+     ALTERNATIVE to fireworks; mutually exclusive). Reuses .pa-parade-bg for the
+     fixed full-viewport positioning; the engine appends its own <canvas>. -->
+<div class="pa-parade-bg pa-flag-bg" aria-hidden="true"
+     data-flag-wave
+     data-stripes='<?php echo htmlspecialchars(json_encode($_pa_flag_stripes), ENT_QUOTES); ?>'
+     data-orientation="<?php echo $_pa_flag_orient; ?>"
+     data-speed="<?php echo $_pa_flag_speed; ?>"
+     data-amplitude="<?php echo $_pa_flag_amp; ?>"
+     data-opacity="<?php echo $_pa_flag_opacity; ?>"></div>
+<?php else: ?>
 <!-- PARADE fireworks carrier — read by ss-engine-parade-fireworks.js (Layer 1).
      The engine appends its own <canvas class="pa-canvas">. -->
 <div class="pa-parade-bg" aria-hidden="true"
@@ -140,6 +175,7 @@ $_pa_nav_col  = ($_pa_nav_mode === 'fixed')
      data-pa-border-dir="<?php echo htmlspecialchars($_pa_bdir); ?>"
      data-pa-border-rhythm="<?php echo htmlspecialchars($_pa_brhythm); ?>"
      data-pa-border-minl="<?php echo $_pa_border_minl; ?>"></div>
+<?php endif; ?>
 
 <?php if ($show_profile): ?>
 <!-- ── Profile Header (shared across all Grid pages) ───────────────────────── -->

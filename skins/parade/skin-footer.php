@@ -39,6 +39,13 @@
 $skin_manifest = include __DIR__ . '/manifest.php';
 $requested     = $skin_manifest['require_scripts'] ?? [];
 
+// Background mode is mutually exclusive (spec): in flag mode, load the Flag Wave
+// engine INSTEAD of the fireworks engine — the other is never loaded.
+if (($settings['pa_bg_mode'] ?? 'fireworks') === 'flag') {
+    $requested = array_values(array_filter($requested, function ($h) { return $h !== 'smack-parade-fireworks'; }));
+    $requested[] = 'smack-flag-wave';
+}
+
 // Skin asset cache-buster: core version + skin version, mirroring meta.php's
 // $_skin_css_version. Bumping the skin version now busts BOTH the CSS and this
 // skin's JS, so a normal reload pulls everything fresh (no hard-refresh needed).

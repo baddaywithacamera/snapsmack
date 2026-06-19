@@ -519,6 +519,33 @@ return [
 
 
     /* =========================================================
+       FLAG LIBRARY (stock for the Flag Wave engine, smack-flag-wave)
+       The central, reusable stock of flags. A skin curates which it
+       offers (e.g. PARADE's pa_palette list); the chosen flag's stripe
+       definition is emitted to the engine as data-stripes/-orientation.
+       'o' = stripe orientation (h|v). stripes = [[hex, weight], …];
+       weight is the relative stripe size (bi = 40/20/40 → 2/1/2).
+       LGBT set only for now — extend with national/other flags as needed.
+       ========================================================= */
+    'flags' => [
+        'rainbow'   => ['label' => 'Rainbow Pride (6-stripe)',  'o' => 'h',
+                        'stripes' => [['#E40303', 1], ['#FF8C00', 1], ['#FFED00', 1], ['#008026', 1], ['#004DFF', 1], ['#750787', 1]]],
+        'bi'        => ['label' => 'Bisexual',                  'o' => 'h',
+                        'stripes' => [['#D60270', 2], ['#9B4F96', 1], ['#0038A8', 2]]],
+        'trans'     => ['label' => 'Transgender',              'o' => 'h',
+                        'stripes' => [['#55CDFC', 1], ['#F7A8B8', 1], ['#FFFFFF', 1], ['#F7A8B8', 1], ['#55CDFC', 1]]],
+        'nonbinary' => ['label' => 'Non-Binary',               'o' => 'h',
+                        'stripes' => [['#FCF434', 1], ['#FFFFFF', 1], ['#9C59D1', 1], ['#2C2C2C', 1]]],
+        'pan'       => ['label' => 'Pansexual',                'o' => 'h',
+                        'stripes' => [['#FF218C', 1], ['#FFD800', 1], ['#21B1FF', 1]]],
+        'lesbian'   => ['label' => 'Lesbian (5-stripe)',       'o' => 'h',
+                        'stripes' => [['#D52D00', 1], ['#FF9A56', 1], ['#FFFFFF', 1], ['#D362A4', 1], ['#A30262', 1]]],
+        'asexual'   => ['label' => 'Asexual',                  'o' => 'h',
+                        'stripes' => [['#000000', 1], ['#A3A3A3', 1], ['#FFFFFF', 1], ['#800080', 1]]],
+    ],
+
+
+    /* =========================================================
        JAVASCRIPT ENGINE LIBRARY
        ========================================================= */
     'scripts' => [
@@ -813,6 +840,11 @@ return [
         'smack-parade-fireworks' => [
             'label'        => 'PARADE Layer 1 slow-motion fireworks (canvas)',
             'path'         => 'assets/js/ss-engine-parade-fireworks.js',
+            'has_settings' => false,
+        ],
+        'smack-flag-wave' => [
+            'label'        => 'Flag Wave (full-viewport waving flag background, canvas; data-driven flags)',
+            'path'         => 'assets/js/ss-engine-flag-wave.js',
             'has_settings' => false,
         ],
         'smack-calendar' => [
