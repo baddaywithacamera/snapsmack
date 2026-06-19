@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.0.5',
+    'version'     => '1.1.0',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
@@ -117,6 +117,39 @@ return [
             ],
             'hint'    => 'High-key only — palette-matched presets, never a generic colour. The field shows through the fading fireworks trails.',
             // PHP-handled → --pa-bg (skin-profile.php).
+        ],
+        'pa_bg_mode' => [
+            'section' => 'PARADE',
+            'type'    => 'select',
+            'label'   => 'Background Mode',
+            'default' => 'fireworks',
+            'options' => [
+                'fireworks' => 'Fireworks (default)',
+                'flag'      => 'Waving Flag (full-screen)',
+            ],
+            'hint'    => 'Fireworks paints the chosen Flag Palette as slow-motion fireworks. Waving Flag flies that same flag full-screen behind the grid. Mutually exclusive — only one engine loads.',
+            // PHP-handled: skin-profile.php emits the matching carrier; skin-footer.php loads only the chosen engine.
+        ],
+        'pa_flag_speed' => [
+            'section'  => 'PARADE',
+            'type'     => 'range_numeric',
+            'label'    => 'Flag — Wave Speed',
+            'default'  => '30', 'min' => '1', 'max' => '100', 'step' => '1',
+            'hint'     => 'Waving Flag mode only. Slow drift → active ripple.',
+        ],
+        'pa_flag_amplitude' => [
+            'section'  => 'PARADE',
+            'type'     => 'range_numeric',
+            'label'    => 'Flag — Wave Amplitude',
+            'default'  => '40', 'min' => '1', 'max' => '100', 'step' => '1',
+            'hint'     => 'Waving Flag mode only. How deep the ripples run.',
+        ],
+        'pa_flag_opacity' => [
+            'section'  => 'PARADE',
+            'type'     => 'range_numeric',
+            'label'    => 'Flag — Opacity',
+            'default'  => '100', 'min' => '0', 'max' => '100', 'step' => '5',
+            'hint'     => 'Waving Flag mode only. Default full/bold; dial back if your photos need it.',
         ],
         'pa_rate' => [
             'section'  => 'PARADE',
