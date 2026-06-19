@@ -342,6 +342,241 @@ return [
             'default'  => '#750787',
             // PHP-handled → --pa-accent (skin-profile.php).
         ],
+
+        // ════════════════════════════════════════════════════════════════════
+        //  RESTORED FROM AURORA — PARADE is AURORA minus the background engine
+        //  and the flag palette, so it carries the same content/layout/type
+        //  controls. High-key defaults where AURORA ran dark. (Re-added after a
+        //  prior fork stripped them from the manifest UI.)
+        // ════════════════════════════════════════════════════════════════════
+
+        // ---- GRID ----------------------------------------------------------
+        'pa_gap' => [
+            'section'  => 'GRID',
+            'type'     => 'range_numeric',
+            'label'    => 'Image Gap',
+            'default'  => '2', 'min' => '0', 'max' => '20', 'step' => '1', 'unit' => 'px',
+            'selector' => ':root', 'property' => '--grid-gap',
+        ],
+        'pa_carousel_indicator' => [
+            'section'  => 'GRID',
+            'type'     => 'select',
+            'label'    => 'Carousel Indicator Style',
+            'default'  => 'icon',
+            'options'  => ['icon' => 'Layered squares icon', 'count' => 'Image count badge', 'none' => 'No indicator'],
+        ],
+        'pa_hover_overlay' => [
+            'section'  => 'GRID',
+            'type'     => 'select',
+            'label'    => 'Hover Overlay',
+            'default'  => 'dark',
+            'options'  => ['dark' => 'Darken only', 'title' => 'Show post title', 'count' => 'Show image count', 'none' => 'No overlay'],
+        ],
+
+        // ---- IMAGE FRAME ---------------------------------------------------
+        'pa_customize_level' => [
+            'section' => 'IMAGE FRAME',
+            'type'    => 'select',
+            'label'   => 'Customisation Level',
+            'default' => 'per_grid',
+            'options' => ['per_grid' => 'Site-wide (one style for all images)', 'per_carousel' => 'Per Post (each post defines its own style)', 'per_image' => 'Per Image (each photo has its own style)'],
+        ],
+        'pa_frame_size_pct' => [
+            'section' => 'IMAGE FRAME',
+            'type'    => 'select',
+            'label'   => 'Image Size Within Tile',
+            'default' => '100',
+            'options' => ['100' => '100% — edge to edge', '95' => '95%', '90' => '90%', '85' => '85%', '80' => '80%', '75' => '75%'],
+        ],
+        'pa_frame_border_px' => [
+            'section' => 'IMAGE FRAME',
+            'type'    => 'select',
+            'label'   => 'Border Thickness',
+            'default' => '0',
+            'options' => ['0' => 'None', '1' => '1px', '2' => '2px', '3' => '3px', '5' => '5px', '8' => '8px', '10' => '10px', '15' => '15px', '20' => '20px'],
+        ],
+        'pa_frame_border_color' => [
+            'section' => 'IMAGE FRAME',
+            'type'    => 'color',
+            'label'   => 'Border Colour',
+            'default' => '#ffffff',
+        ],
+        'pa_frame_bg_color' => [
+            'section' => 'IMAGE FRAME',
+            'type'    => 'color',
+            'label'   => 'Frame Background Colour',
+            'default' => '#ffffff',
+        ],
+        'pa_frame_shadow' => [
+            'section' => 'IMAGE FRAME',
+            'type'    => 'select',
+            'label'   => 'Drop Shadow on Image',
+            'default' => '0',
+            'options' => ['0' => 'None', '1' => 'Soft', '2' => 'Medium', '3' => 'Heavy'],
+        ],
+
+        // ---- LAYOUT --------------------------------------------------------
+        'pa_max_width' => [
+            'section'  => 'LAYOUT',
+            'type'     => 'range_numeric',
+            'label'    => 'Grid Max Width',
+            'default'  => '935', 'min' => '600', 'max' => '1600', 'step' => '5', 'unit' => 'px',
+            'selector' => ':root', 'property' => '--grid-max-width',
+        ],
+
+        // ---- TITLE & TAGLINE -----------------------------------------------
+        'pa_blog_title_font' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'select', 'label' => 'Blog Title Font',
+            'default' => 'inherit', 'options' => array_merge(['inherit' => 'Same as Body Font'], $fonts),
+            'selector' => ':root', 'property' => '--blog-title-font', 'is_font' => true, 'no_size_slider' => true,
+        ],
+        'pa_blog_title_size' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'range_numeric', 'label' => 'Blog Title Size',
+            'default' => '20', 'min' => '12', 'max' => '48', 'step' => '1', 'unit' => 'px',
+            'selector' => ':root', 'property' => '--blog-title-size',
+        ],
+        'pa_blog_title_weight' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'select', 'label' => 'Blog Title Weight',
+            'default' => '600', 'options' => ['300' => 'Light', '400' => 'Regular', '500' => 'Medium', '600' => 'Semibold', '700' => 'Bold'],
+            'selector' => ':root', 'property' => '--blog-title-weight',
+        ],
+        'pa_blog_title_color' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'color', 'label' => 'Blog Title Colour',
+            'default' => '#1a1a1a', 'selector' => ':root', 'property' => '--blog-title-color',
+        ],
+        'pa_tagline_font' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'select', 'label' => 'Tagline Font',
+            'default' => 'inherit', 'options' => array_merge(['inherit' => 'Same as Body Font'], $fonts),
+            'selector' => ':root', 'property' => '--tagline-font', 'is_font' => true, 'no_size_slider' => true,
+        ],
+        'pa_tagline_size' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'range_numeric', 'label' => 'Tagline Size',
+            'default' => '16', 'min' => '10', 'max' => '36', 'step' => '1', 'unit' => 'px',
+            'selector' => ':root', 'property' => '--tagline-size',
+        ],
+        'pa_tagline_weight' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'select', 'label' => 'Tagline Weight',
+            'default' => '400', 'options' => ['300' => 'Light', '400' => 'Regular', '500' => 'Medium', '600' => 'Semibold', '700' => 'Bold'],
+            'selector' => ':root', 'property' => '--tagline-weight',
+        ],
+        'pa_tagline_color' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'color', 'label' => 'Tagline Colour',
+            'default' => '#5b5b66', 'selector' => ':root', 'property' => '--tagline-color',
+        ],
+        'pa_bio_size' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'range_numeric', 'label' => 'Description / Bio Size',
+            'default' => '14', 'min' => '10', 'max' => '28', 'step' => '1', 'unit' => 'px',
+            'selector' => ':root', 'property' => '--bio-size',
+        ],
+
+        // ---- TEXT GLOW (legibility over the bright field) ------------------
+        'pa_glow_color' => [
+            'section' => 'TEXT GLOW', 'type' => 'color', 'label' => 'Text Glow Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Halo behind title/tagline/bio. White for a soft high-key halo.',
+            // PHP-handled → --profile-text-glow (skin-profile.php).
+        ],
+        'pa_glow_size' => [
+            'section' => 'TEXT GLOW', 'type' => 'range_numeric', 'label' => 'Text Glow Size',
+            'default' => '0', 'min' => '0', 'max' => '40', 'step' => '2', 'unit' => 'px',
+            'hint'    => '0 = no glow.',
+        ],
+        'pa_glow_opacity' => [
+            'section' => 'TEXT GLOW', 'type' => 'range_numeric', 'label' => 'Text Glow Opacity',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+        ],
+
+        // ---- MENU / NAV (font, case, link colour, glow) -------------------
+        'pa_nav_case' => [
+            'section' => 'NAV', 'type' => 'select', 'label' => 'Nav Link Case',
+            'default' => 'none',
+            'options' => ['none' => 'As typed', 'uppercase' => 'ALL CAPS', 'capitalize' => 'First Letter', 'lowercase' => 'all lowercase'],
+            'selector' => ':root', 'property' => '--nav-text-transform',
+        ],
+        'pa_nav_font' => [
+            'section' => 'NAV', 'type' => 'select', 'label' => 'Nav Font',
+            'default' => 'inherit', 'options' => array_merge(['inherit' => 'Same as Body Font'], $fonts),
+            'selector' => ':root', 'property' => '--nav-font', 'is_font' => true, 'no_size_slider' => true,
+        ],
+        'pa_nav_color' => [
+            'section' => 'NAV', 'type' => 'color', 'label' => 'Nav Link Colour',
+            'default' => '#5b5b66', 'selector' => ':root', 'property' => '--nav-color',
+        ],
+        'pa_nav_line_opacity' => [
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Line Opacity',
+            'default' => '100', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            // PHP-handled → --nav-line-opacity (skin-profile.php).
+        ],
+        'pa_nav_glow_color' => [
+            'section' => 'NAV', 'type' => 'color', 'label' => 'Nav Glow Colour',
+            'default' => '#750787',
+            'hint'    => 'Outer glow behind the menu links.',
+            // PHP-handled → --nav-text-glow (skin-profile.php).
+        ],
+        'pa_nav_glow_size' => [
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Glow Size',
+            'default' => '0', 'min' => '0', 'max' => '40', 'step' => '2', 'unit' => 'px',
+            'hint'    => '0 = no glow.',
+        ],
+        'pa_nav_glow_opacity' => [
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Glow Opacity',
+            'default' => '45', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+        ],
+
+        // ---- COLOURS -------------------------------------------------------
+        'pa_post_bg_color' => [
+            'section' => 'COLOURS', 'type' => 'color', 'label' => 'Image Page Background',
+            'default' => '#ffffff', 'selector' => ':root', 'property' => '--post-bg',
+        ],
+        'pa_border_color' => [
+            'section' => 'COLOURS', 'type' => 'color', 'label' => 'Border / Divider Colour',
+            'default' => '#e2e2e2', 'selector' => ':root', 'property' => '--border-color',
+        ],
+        'pa_bio_color' => [
+            'section' => 'COLOURS', 'type' => 'color', 'label' => 'Description / Bio Text',
+            'default' => '#5b5b66', 'selector' => ':root', 'property' => '--bio-color',
+        ],
+
+        // ---- TYPOGRAPHY ----------------------------------------------------
+        'pa_font_body' => [
+            'section' => 'TYPOGRAPHY', 'type' => 'select', 'label' => 'Body / UI Font',
+            'default' => '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            'options' => array_merge(['"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' => 'System Default (Segoe UI / Roboto)'], $fonts),
+            'selector' => ':root', 'property' => '--font-body',
+        ],
+
+        // ---- TREATMENT (full-page background behind a centred content card) -
+        'pa_gutter' => [
+            'section' => 'TREATMENT', 'type' => 'range_numeric', 'label' => 'Side Gutter (margin over background)',
+            'default' => '0', 'min' => '0', 'max' => '400', 'step' => '4', 'unit' => 'px',
+            'selector' => ':root', 'property' => '--grid-gutter',
+        ],
+        'pa_treatment_mode' => [
+            'section' => 'TREATMENT', 'type' => 'select', 'label' => 'Background Treatment',
+            'default' => 'none',
+            'options' => ['none' => 'None (fireworks field shows through)', 'image' => 'Background image', 'color' => 'Solid colour'],
+            'hint'    => 'Optional. Sits in front of the fireworks layer — leave on None to let the flag fireworks show.',
+        ],
+        'pa_treatment_image' => [
+            'section' => 'TREATMENT', 'type' => 'image', 'label' => 'Treatment Image',
+            'default' => '', 'accept' => 'image/jpeg,image/png,image/webp',
+            'min_width' => 1920, 'min_height' => 1080,
+            'hint'    => 'Used when Treatment = Background image. Minimum 1920×1080px.',
+        ],
+        'pa_treatment_position' => [
+            'section' => 'TREATMENT', 'type' => 'select', 'label' => 'Image Anchor (when it overshoots)',
+            'default' => 'center',
+            'options' => ['center' => 'Centre', 'top' => 'Snap to top', 'bottom' => 'Snap to bottom'],
+        ],
+        'pa_treatment_color' => [
+            'section' => 'TREATMENT', 'type' => 'color', 'label' => 'Treatment Colour',
+            'default' => '#ffffff', 'hint' => 'Used when Treatment = Solid colour.',
+        ],
+        'pa_treatment_overlay' => [
+            'section' => 'TREATMENT', 'type' => 'range_numeric', 'label' => 'Overlay  (left darkens · right lightens)',
+            'default' => '0', 'min' => '-100', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'    => 'Centre = none.',
+        ],
     ],
 ];
 // ===== SNAPSMACK EOF =====
