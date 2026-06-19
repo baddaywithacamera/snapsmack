@@ -12,7 +12,7 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.269 — "Front Row" (2026-06-18)
+## 0.7.270 — "Grandstand" (2026-06-18)
 
 SMACKBACK skin-monitoring fix, PARADE's Layer-2 tile borders, an API-key label fix, plus the
 Unzucker caption fix + tsohn caption recovery. The PARADE skin — AURORA's high-key twin,
