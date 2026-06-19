@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.13"   # integer build counter — +1 each rebuild (dropped letter suffixes after 0.7.9k)
+BUILD_VERSION = "0.7.16"   # integer build counter — +1 each rebuild (dropped letter suffixes after 0.7.9k)
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
