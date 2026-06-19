@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - PARADE Skin Manifest
- * v1.0.0
+ * v1.0.1
  *
  * Desktop GRAMOFSMACK skin — AURORA's high-key twin. A classic 3-across
  * square-tile grid (The Grid's proven column architecture) over a single
@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.0.0',
+    'version'     => '1.0.1',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
