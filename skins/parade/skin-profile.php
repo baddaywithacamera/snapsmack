@@ -84,14 +84,16 @@ if ($_pa_bg_key === 'wash' || $_pa_bg_css === '') {
     $_pa_bg_css = 'color-mix(in srgb, ' . htmlspecialchars($_pa_first) . ' 8%, #ffffff)';
 }
 
-// Integer sliders → engine params. Defaults mirror the engine's own fallbacks.
-$_pa_rate      = max(1,  min(8,   (int)($settings['pa_rate']      ?? 3)));            // launches / sec
-$_pa_launch    = number_format(max(20, min(120, (int)($settings['pa_launch']    ?? 60)))  / 100, 2); // rocket-rise ×
-$_pa_explode   = number_format(max(5,  min(100, (int)($settings['pa_explode']   ?? 18)))  / 100, 2); // burst sim speed (slow-mo)
-$_pa_intensity = max(20, min(160, (int)($settings['pa_intensity'] ?? 74)));          // particles / burst
-$_pa_spread    = number_format(max(10, min(120, (int)($settings['pa_spread']    ?? 45)))  / 1000, 3); // burst radius
-$_pa_streamer  = number_format(max(30, min(250, (int)($settings['pa_streamer']  ?? 100))) / 100, 2); // streamer width ×
-$_pa_soft      = number_format(max(0,  min(100, (int)($settings['pa_soft']      ?? 84)))  / 100, 2); // pastel amount
+// Prototype-unit sliders → engine params. Scales AND defaults are test.html's dock,
+// VERBATIM, with Sean's signed-off prototype values as the defaults (he signed off the
+// prototype, not a re-mapping). Busyness /3 = launches/sec; Streamer /10; speeds /100; spread /1000.
+$_pa_rate      = number_format(max(1,  min(40,  (int)($settings['pa_rate']      ?? 8)))   / 3,    2);  // 8 → 2.7/s
+$_pa_launch    = number_format(max(5,  min(150, (int)($settings['pa_launch']    ?? 32)))  / 100,  2);  // 0.32×
+$_pa_explode   = number_format(max(3,  min(150, (int)($settings['pa_explode']   ?? 21)))  / 100,  2);  // 0.21×
+$_pa_intensity = max(20, min(300, (int)($settings['pa_intensity'] ?? 105)));                            // 105 particles
+$_pa_spread    = number_format(max(10, min(120, (int)($settings['pa_spread']    ?? 45)))  / 1000, 3);  // 0.045
+$_pa_streamer  = number_format(max(2,  min(40,  (int)($settings['pa_streamer']  ?? 4)))   / 10,   2);  // 0.4×
+$_pa_soft      = number_format(max(0,  min(100, (int)($settings['pa_soft']      ?? 100))) / 100,  2);  // 100%
 
 // ── Text colours (legibility over the bright field) — default DARK ──────────
 $_pa_text   = trim($settings['pa_text_color']   ?? '#1a1a1a');
@@ -103,7 +105,7 @@ $_pa_accent = trim($settings['pa_accent_color'] ?? '#750787');
 $_pa_bstyle  = $settings['pa_border_style']  ?? 'circle';   // circle|sweep|across|pulse
 $_pa_bdir    = $settings['pa_border_dir']    ?? 'dtlbr';
 $_pa_brhythm = $settings['pa_border_rhythm'] ?? 'breath';   // breath|constant
-$_pa_bw      = max(1,  min(10,  (int)($settings['pa_border_width']   ?? 2)));
+$_pa_bw      = max(1,  min(10,  (int)($settings['pa_border_width']   ?? 5)));
 $_pa_bo      = number_format(max(10, min(100, (int)($settings['pa_border_opacity'] ?? 100))) / 100, 2);
 $_pa_corner  = $settings['pa_tile_corners'] ?? 'auto';      // auto|square|rounded
 $_pa_radius  = ($_pa_corner === 'square') ? 0

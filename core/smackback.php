@@ -655,6 +655,17 @@ function smackback_init_manifest(string $zip_path, ?string $skin_id = null): boo
             ]);
             $count++;
         }
+
+        // ── Purge stale skin rows ────────────────────────────────────────────
+        // Skins are NOT part of the core integrity manifest — they ship separately
+        // via the Skin Packager and legitimately change between core updates. This
+        // function upserts the core files (and skips skins/ above) but it never
+        // DELETED skin rows that an OLDER version had baselined — so those rows
+        // survived every single update and false-breached on the next scan. THAT is
+        // the recurring fleet lockout. Purge them so every update leaves a clean,
+        // skin-free core manifest. (init_from_disk already prunes; this aligns the
+        // update path.)
+        $pdo->exec("DELETE FROM snap_file_manifest WHERE file_path LIKE 'skins/%'");
     } catch (PDOException $e) {
         error_log('SMACKBACK: init_manifest skipped — ' . $e->getMessage());
         return false;
