@@ -693,6 +693,49 @@ return [
             'path'         => 'assets/js/ss-engine-pile.js',
             'has_settings' => false,
         ],
+        'smack-organized-mayhem' => [
+            'label'        => 'Organized Mayhem (infinite pannable tabletop of scattered prints)',
+            'path'         => 'assets/js/ss-engine-organized-mayhem.js',
+            'has_settings' => true,
+            'controls'     => [
+                'mayhem_initial_count' => [
+                    'type'    => 'range',
+                    'label'   => 'Initial Photos on the Table',
+                    'default' => '120',
+                    'min'     => '40',
+                    'max'     => '400',
+                    'step'    => '10'
+                ],
+                'mayhem_max_width' => [
+                    'type'    => 'range',
+                    'label'   => 'Max Print Width (px)',
+                    'default' => '300',
+                    'min'     => '120',
+                    'max'     => '500',
+                    'step'    => '10'
+                ],
+                'mayhem_overlap_max' => [
+                    'type'    => 'range',
+                    'label'   => 'Max Overlap (%)',
+                    'default' => '85',
+                    'min'     => '40',
+                    'max'     => '95',
+                    'step'    => '5'
+                ],
+                'mayhem_drift' => [
+                    'type'    => 'select',
+                    'label'   => 'Idle Cinematic Drift',
+                    'default' => '1',
+                    'options' => ['1' => 'Enabled', '0' => 'Disabled']
+                ],
+                'mayhem_warp' => [
+                    'type'    => 'select',
+                    'label'   => 'Paper Warp (3D skew)',
+                    'default' => '1',
+                    'options' => ['1' => 'Enabled', '0' => 'Disabled']
+                ],
+            ]
+        ],
         'smack-anaglyph' => [
             'label'        => 'Anaglyph 3D Engine (Red/Cyan stereoscopic)',
             'path'         => 'assets/js/ss-engine-anaglyph.js',
