@@ -97,6 +97,11 @@ class SnapSmackClient:
         self.session.headers.update({
             'User-Agent': 'SYBU/1.0',
             'Authorization': f'Bearer {api_key}',
+            # Opt into smack-post-solo.php's deterministic AJAX reply path so a
+            # successful post returns the literal body "success" (and validation
+            # failures return their message) instead of a 302 redirect we can't
+            # distinguish from failure. Harmless on the JSON data/audit endpoints.
+            'X-Requested-With': 'XMLHttpRequest',
         })
         self._api_key = api_key
 
@@ -356,6 +361,30 @@ class SnapSmackClient:
                 )
             resp.raise_for_status()
 
+            # ── 6. VERIFY the server actually created the post ────────────
+            # HTTP 200 is NOT proof: smack-post-solo.php returns 200 when it
+            # re-renders the form on a validation failure (e.g. download-link
+            # -required for a published post with no Drive URL), or when a
+            # session lapse serves a login page. Treat ONLY an explicit
+            # confirmation as success — the literal body "success" (our XHR
+            # path) or a redirect carrying msg=TRANSMISSION_LIVE (older servers).
+            # Without this, failed posts were silently counted as posted and
+            # then marked done in recovery, so they could never be retried.
+            body = (resp.text or '').strip()
+            confirmed = (
+                body == 'success'
+                or 'TRANSMISSION_LIVE' in resp.url
+                or 'TRANSMISSION_LIVE' in body
+            )
+            if not confirmed:
+                reason = _server_reason(body)
+                log.error("POST UNCONFIRMED %s — %s", entry.file, reason)
+                return PostResult(
+                    entry, False,
+                    f"Not posted — server did not confirm ({reason})",
+                    web_path=web_path, drive_url=drive_url, exif_ok=exif_ok,
+                )
+
             msg = "Posted"
             if drive_url:
                 msg += " + Drive"
@@ -419,6 +448,22 @@ def run_batch(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _server_reason(body: str) -> str:
+    """Best-effort short, human reason from a non-confirming server response."""
+    if not body:
+        return "empty response"
+    low = body.lower()
+    if 'download url is required' in low:
+        return "site requires a download link for published posts, but no Drive URL was set"
+    if 'initialize new transmission' in low or '<form' in low:
+        return "validation failed — server re-rendered the post form"
+    if any(w in low for w in ('login', 'password', 'sign in', 'unauthorized')):
+        return "session/login page returned — API key may be invalid or expired"
+    text = re.sub(r'<[^>]+>', ' ', body)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return (text[:160] + '…') if len(text) > 160 else (text or "unrecognised response")
+
 
 def _mime(path: str) -> str:
     ext = os.path.splitext(path)[1].lower()
