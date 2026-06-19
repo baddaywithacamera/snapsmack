@@ -96,7 +96,7 @@ function sc_extract_skins(string $ref): array {
         return ['ok' => false, 'msg' => 'Could not download repo zip from GitHub. Check outbound HTTPS and verify the ref exists.'];
     }
 
-    $tmp_zip = sys_get_temp_dir() . '/sc_skins_' . md5($ref . microtime()) . '.zip';
+    $tmp_zip = sc_skin_workroot() . '/repo_' . md5($ref . microtime()) . '.zip';
     file_put_contents($tmp_zip, $data);
     unset($data);
 
@@ -124,7 +124,7 @@ function sc_extract_skins(string $ref): array {
 
     // Extract only the skins/ subtree into a temp directory
     $tmp_key  = md5($ref . uniqid('', true));
-    $tmp_dir  = sys_get_temp_dir() . '/sc_skins_' . $tmp_key . '/';
+    $tmp_dir  = sc_skin_workdir($tmp_key);
     @mkdir($tmp_dir, 0755, true);
 
     $skin_prefix = $prefix . 'skins/';
@@ -136,7 +136,9 @@ function sc_extract_skins(string $ref): array {
         $relative = substr($name, strlen($skin_prefix));
         if ($relative === '' || str_ends_with($relative, '/')) continue; // directory entry
 
-        $dest = $tmp_dir . $relative;
+        // Mirror the install layout: skins live under skins/ so each manifest's
+        // dirname(__DIR__, 2) resolves to this run dir, not the parent.
+        $dest = $tmp_dir . 'skins/' . $relative;
         $dest_dir = dirname($dest);
         if (!is_dir($dest_dir)) @mkdir($dest_dir, 0755, true);
 
@@ -144,10 +146,62 @@ function sc_extract_skins(string $ref): array {
         if ($content !== false) file_put_contents($dest, $content);
     }
 
+    // Skin manifests include dirname(__DIR__, 2) . '/core/manifest-inventory.php'.
+    // Drop that file into the run dir's core/ so the include resolves during a
+    // build instead of warning on a missing /tmp/core/ (the old 502 cause).
+    $inv = $src->getFromName($prefix . 'core/manifest-inventory.php');
+    if ($inv !== false) {
+        @mkdir($tmp_dir . 'core', 0755, true);
+        file_put_contents($tmp_dir . 'core/manifest-inventory.php', $inv);
+    }
+
     $src->close();
     @unlink($tmp_zip);
 
     return ['ok' => true, 'tmp_dir' => $tmp_dir, 'tmp_key' => $tmp_key];
+}
+
+// ── Permanent skin-build work area ───────────────────────────────────────────
+// Replaces the old per-run sys_get_temp_dir() scratch. A stable, app-managed
+// root (alongside .sc-sessions) so builds dodge /tmp's tmpfs/noexec/auto-wipe
+// quirks and stay inspectable. It briefly holds runnable skin PHP during a
+// build, so it is denied to the web. Per-run subdirs are key-isolated and
+// pruned by age, so a missed explicit cleanup self-heals.
+
+function sc_rrmdir(string $dir): void {
+    if (!is_dir($dir)) return;
+    $it = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ($it as $f) { $f->isDir() ? @rmdir($f->getPathname()) : @unlink($f->getPathname()); }
+    @rmdir($dir);
+}
+
+function sc_skin_workroot(): string {
+    static $pruned = false;
+    $root = __DIR__ . '/.sc-skinwork';
+    if (!is_dir($root)) {
+        @mkdir($root, 0700, true);
+        // Belt: deny web access in case this lands inside the docroot. If
+        // AllowOverride is off, also add a server-level <Directory> deny.
+        @file_put_contents($root . '/.htaccess', "Require all denied\nDeny from all\n");
+    }
+    if (!$pruned) {
+        $pruned = true;
+        $cutoff = time() - 6 * 3600;  // prune builds older than 6h
+        foreach (glob($root . '/run_*', GLOB_ONLYDIR) ?: [] as $old) {
+            if (@filemtime($old) < $cutoff) sc_rrmdir($old);
+        }
+        foreach (glob($root . '/repo_*.zip') ?: [] as $z) {
+            if (@filemtime($z) < $cutoff) @unlink($z);
+        }
+    }
+    return $root;
+}
+
+function sc_skin_workdir(string $tmp_key): string {
+    return sc_skin_workroot() . '/run_' . $tmp_key . '/';
 }
 
 // ── Read manifests from an extracted skins directory ─────────────────────────
@@ -199,7 +253,7 @@ if (file_exists($registry_path)) {
 $phase        = 'select_ref';
 $ref          = trim($_POST['ref'] ?? 'master');
 $tmp_key      = preg_replace('/[^a-f0-9]/', '', $_POST['tmp_key'] ?? '');
-$tmp_dir      = $tmp_key ? sys_get_temp_dir() . '/sc_skins_' . $tmp_key . '/' : '';
+$tmp_dir      = $tmp_key ? sc_skin_workdir($tmp_key) : '';
 $repo_skins   = [];
 $build_results = [];
 $build_errors  = [];
@@ -280,12 +334,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
         } else {
             $tmp_dir    = $result['tmp_dir'];
             $tmp_key    = $result['tmp_key'];
-            $repo_skins = sc_read_manifests($tmp_dir);
+            $repo_skins = sc_read_manifests($tmp_dir . 'skins/');
             $phase = empty($repo_skins) ? 'select_ref' : 'select_skins';
             if (empty($repo_skins)) {
                 $fetch_error = 'No valid skins found in skins/ for ref: ' . htmlspecialchars($ref);
                 // Clean up empty tmp dir
-                @rmdir($tmp_dir);
+                sc_rrmdir($tmp_dir);
             }
         }
     }
@@ -306,7 +360,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
             $tmp_key = $result['tmp_key'];
         }
 
-        $repo_skins = sc_read_manifests($tmp_dir);
+        $repo_skins = sc_read_manifests($tmp_dir . 'skins/');
         $selected   = (array)($_POST['skins'] ?? []);
 
         if (empty($selected)) {
@@ -330,7 +384,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                 }
 
                 $meta         = $repo_skins[$slug];
-                $skin_dir     = rtrim($tmp_dir, '/') . '/' . $slug;
+                $skin_dir     = rtrim($tmp_dir, '/') . '/skins/' . $slug;
                 $version      = $meta['version'];
                 $zip_name     = $slug . '-' . $version . '.zip';
                 $zip_path     = rtrim(RELEASES_DIR, '/') . '/skins/' . $zip_name;
