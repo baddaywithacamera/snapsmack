@@ -12,6 +12,67 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.274 — "Ringside" (2026-06-19)
+
+A new background-engine family (the Organized Mayhem tabletop and a waving-flag
+engine), a new INSTANT CAMERA skin for instant-film photographers, and a hardened
+SMACKBACK that now catches files which were never in the baseline.
+
+### SMACKBACK — strict unknown-file detection (security)
+
+- **The integrity scan now flags files on disk that are NOT in the baseline** —
+  a dropped webshell or a replaced non-baselined file (the exact FTP/SFTP
+  compromise SMACKBACK exists to catch). Previously it only checked *known*
+  files for changes/deletion, so an added/unknown file was invisible. See
+  secaudit `2026-06-19-027`.
+- ⚠ **ROLLOUT:** deploy in **ALERT** mode first. Strict detection will flag any
+  legitimate unbaselined file (e.g. a legacy `stats.php`), so review each spoke's
+  UNEXPECTED list, remove cruft or re-initialise the baseline, then switch back
+  to **LOCKOUT**.
+- **Mandatory verify interval (1–24h, no "off").** Verification now runs on a
+  due-based schedule from admin page loads as well as cron, so it holds even
+  where system cron isn't configured.
+- **Fixed `cron-version-check.php` fatal parse error** — a `*/` inside the cron
+  example in the header comment had closed the docblock, so scheduled
+  verification had never actually run via cron (only on admin login).
+- SMACKBACK promoted to its own **sidebar** item (was buried on Configuration);
+  OPEN SMACKBACK button centring fixed.
+
+### Organized Mayhem — tabletop background engine (new)
+
+- New core engine `ss-engine-organized-mayhem.js`: an infinite, pannable/zoomable
+  tabletop of scattered photo prints with organic clustering, drift, a hardware
+  watchdog and memory-bounded virtualisation. Served by a cheap shared data
+  endpoint (`core/mayhem-data.php`, PK-range sampling, no `ORDER BY RAND()`).
+  Available to any skin; ambient (backdrop) mode via `data-pan`/`data-ambient`.
+
+### 52 PICKUP — the tabletop skin (1.4.0)
+
+- The landing **is** the tabletop now: drag to roam, scroll to zoom, hover to
+  lift a print, click to pick it up, ESC to drop it back. Nav/footer hide until
+  you reach a screen edge. Retires the old single-pile engine.
+
+### PARADE — waving flag background (1.1.0)
+
+- New **Background Mode**: Fireworks (default) or a full-screen waving flag,
+  mutually exclusive. New reusable `ss-engine-flag-wave.js` (canvas, data-driven
+  from a central flag stock) flies the chosen flag full-viewport behind the grid.
+
+### INSTANT CAMERA — new skin (GRAMOFSMACK)
+
+- For instant-film photographers (Polaroid, Instax). A skew of The Grid with a
+  **configurable non-square tile aspect** so scanned prints show **uncropped**,
+  over a drifting Organized Mayhem background and white scrim.
+- **AI aspect detection:** upload three scans and the configured AI provider
+  measures your print ratio (new `snap_ai_vision()` in `core/ai-provider.php`;
+  uses the site AI key by default, optional per-skin override).
+- **Scan Align** posting tool (`ss-engine-scan-align.js`): a ±5° straighten
+  slider that crops-to-fill before publishing, wired into the gram poster.
+
+### Other
+
+- Login page: corrected the field labels to USERNAME / PASSWORD.
+
 ## 0.7.273 — "Catbird Seat" (2026-06-19)
 
 Fixes the false SMACKBACK breach on `core/constants.php` that followed a remote (hub-push) update,
