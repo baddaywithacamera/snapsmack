@@ -12,6 +12,27 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.275 — "Dumpster Sofa" (2026-06-20)
+
+Packaging hardening and a PARADE skin overhaul.
+
+### Packaging — default-deny allowlist (security)
+
+- Release packagers now ship only runtime file types (an allowlist) instead of a
+  hand-maintained denylist. Stops dev/doc files (`.githooks/`, `*.md`, `*.docx`,
+  `package-lock.json`, the `outputs/` scratch dir) from leaking into installs and
+  false-tripping SMACKBACK as UNEXPECTED. Force-included runtime non-allowlist
+  files: canonical schema SQL, `protected_paths.json`, `core/htaccess-template`.
+  See secaudit `2026-06-20-028`.
+- SMACKBACK: `forum-server/` excluded from core integrity scope (it is a
+  separately deployed sub-project, never in the core zip).
+
+### PARADE — skin overhaul (in progress)
+
+- Dumpster Sofa PARADE pass: context-sensitive background-mode controls,
+  corrected control labels, visible slider tracks, flag-mode border/glow fix,
+  and a new flag motion engine.
+
 ## 0.7.274 — "Ringside" (2026-06-19)
 
 A new background-engine family (the Organized Mayhem tabletop and a waving-flag

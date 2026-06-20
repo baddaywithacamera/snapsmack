@@ -1074,13 +1074,12 @@ if ($action === 'stage_migrate'
         updater_set_version($pdo, $update['version'], $update['version_full'] ?? "Alpha {$update['version']}", $update['codename'] ?? '', $update['checksum_sha256'] ?? '');
         $_SESSION['update_state']['log'][] = ['label' => 'Version updated', 'status' => 'ok', 'detail' => "v{$installed_version} → v{$update['version']}"];
 
-        // Remove files that were deleted from the distribution in this or any earlier release
-        $dep_result = updater_remove_deprecated_files($update['version']);
-        if (!empty($dep_result['removed'])) {
-            $_SESSION['update_state']['log'][] = ['label' => 'Orphan cleanup', 'status' => 'ok', 'detail' => 'Removed: ' . implode(', ', $dep_result['removed'])];
-        }
-        if (!empty($dep_result['failed'])) {
-            $_SESSION['update_state']['log'][] = ['label' => 'Orphan cleanup', 'status' => 'warn', 'detail' => 'Could not remove: ' . implode(', ', $dep_result['failed'])];
+        // Detect (do NOT delete) files renamed/removed upstream that still linger.
+        // The CMS never alters a user's filesystem — report them for manual removal
+        // (secaudit 029). SMACKBACK also surfaces these as UNEXPECTED.
+        $dep_result = updater_detect_orphan_files($update['version']);
+        if (!empty($dep_result['present'])) {
+            $_SESSION['update_state']['log'][] = ['label' => 'Orphaned files', 'status' => 'warn', 'detail' => 'Known orphans present — remove manually: ' . implode(', ', $dep_result['present'])];
         }
 
         $pdo->exec("DELETE FROM snap_settings WHERE setting_key = 'update_check_result'");
@@ -1339,14 +1338,13 @@ if ($action === 'stage_migrate_upload' && !empty($_SESSION['upload_migrate_pendi
             $upload_steps[] = ['label' => 'Version updated', 'status' => 'ok', 'detail' => "v{$installed_version} → v{$target_version}"];
         }
 
-        // Remove files that were deleted from the distribution in this or any earlier release
+        // Detect (do NOT delete) files renamed/removed upstream that still linger.
+        // The CMS never alters a user's filesystem — report for manual removal
+        // (secaudit 029). SMACKBACK also surfaces these as UNEXPECTED.
         if ($target_version) {
-            $dep_result = updater_remove_deprecated_files($target_version);
-            if (!empty($dep_result['removed'])) {
-                $upload_steps[] = ['label' => 'Orphan cleanup', 'status' => 'ok', 'detail' => 'Removed: ' . implode(', ', $dep_result['removed'])];
-            }
-            if (!empty($dep_result['failed'])) {
-                $upload_steps[] = ['label' => 'Orphan cleanup', 'status' => 'warn', 'detail' => 'Could not remove: ' . implode(', ', $dep_result['failed'])];
+            $dep_result = updater_detect_orphan_files($target_version);
+            if (!empty($dep_result['present'])) {
+                $upload_steps[] = ['label' => 'Orphaned files', 'status' => 'warn', 'detail' => 'Known orphans present — remove manually: ' . implode(', ', $dep_result['present'])];
             }
         }
 
