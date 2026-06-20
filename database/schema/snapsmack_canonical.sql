@@ -759,6 +759,7 @@ CREATE TABLE IF NOT EXISTS `snap_file_manifest` (
   `baseline_set`   datetime       NOT NULL,
   `last_verified`  datetime       DEFAULT NULL,
   `last_status`    enum('ok','tampered','truncated','corrupted','missing','pending') NOT NULL DEFAULT 'pending',
+  `baseline_origin` enum('release','install','disk','rebless') NOT NULL DEFAULT 'release',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_path` (`file_path`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
