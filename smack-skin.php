@@ -957,8 +957,20 @@ if (!empty($google_families)) {
                         $o   = $item['meta'];
                         if ($o['type'] === 'spacer') { echo '<div class="lens-input-wrapper"></div>'; continue; }
                         $val = ($settings[$k] ?? '') !== '' ? $settings[$k] : $o['default'];
-                    ?>
-                        <div class="lens-input-wrapper">
+                        <?php
+                        // Context-sensitive controls: a manifest 'show_when' =>
+                        // ['<other_key>' => '<value>'] hides this wrapper unless that
+                        // control currently equals the value (toggled live by the
+                        // script below). Reusable across all skins.
+                        $show_attr = '';
+                        if (!empty($o['show_when']) && is_array($o['show_when'])) {
+                            $sw_key = (string) array_key_first($o['show_when']);
+                            $sw_val = (string) $o['show_when'][$sw_key];
+                            $show_attr = ' data-show-when="' . htmlspecialchars($sw_key)
+                                       . '" data-show-eq="' . htmlspecialchars($sw_val) . '"';
+                        }
+                        ?>
+                        <div class="lens-input-wrapper"<?php echo $show_attr; ?>>
                             <label><?php echo strtoupper($o['label']); ?></label>
                             <?php if ($o['type'] === 'color' && !empty($o['is_greyscale'])): ?>
                                 <?php
@@ -1102,6 +1114,37 @@ if (!empty($google_families)) {
                     </div>
                 </div>
             <?php endforeach; ?>
+
+            <script>
+            /* Context-sensitive skin controls: show a [data-show-when] wrapper only
+               while the named control equals data-show-eq, and hide a whole section
+               box when all of its conditional controls are hidden. Reusable across
+               skins (e.g. PARADE fireworks vs waving-flag controls). */
+            (function () {
+                function applyShowWhen() {
+                    document.querySelectorAll('[data-show-when]').forEach(function (el) {
+                        var key  = el.getAttribute('data-show-when');
+                        var eq   = el.getAttribute('data-show-eq');
+                        var ctrl = document.querySelector('[name="skin_opt[' + key + ']"]');
+                        if (!ctrl) return;
+                        el.style.display = (String(ctrl.value) === eq) ? '' : 'none';
+                    });
+                    document.querySelectorAll('.box').forEach(function (box) {
+                        if (!box.querySelector('[data-show-when]')) return; // only auto-manage conditional boxes
+                        var wraps = box.querySelectorAll('.lens-input-wrapper');
+                        var anyVisible = Array.prototype.some.call(wraps, function (w) {
+                            return w.style.display !== 'none';
+                        });
+                        box.style.display = anyVisible ? '' : 'none';
+                    });
+                }
+                document.addEventListener('change', function (e) {
+                    if (e.target && e.target.name && e.target.name.indexOf('skin_opt[') === 0) applyShowWhen();
+                });
+                if (document.readyState !== 'loading') applyShowWhen();
+                else document.addEventListener('DOMContentLoaded', applyShowWhen);
+            })();
+            </script>
 
             <?php
             // --- ENGINE CONTROLS: One box per engine that exposes settings ---

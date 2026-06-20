@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.1.0',
+    'version'     => '1.2.0',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
@@ -135,6 +135,8 @@ return [
             'type'     => 'range_numeric',
             'label'    => 'Flag — Wave Speed',
             'default'  => '30', 'min' => '1', 'max' => '100', 'step' => '1',
+            'unit'      => '',
+            'show_when' => ['pa_bg_mode' => 'flag'],
             'hint'     => 'Waving Flag mode only. Slow drift → active ripple.',
         ],
         'pa_flag_amplitude' => [
@@ -142,6 +144,8 @@ return [
             'type'     => 'range_numeric',
             'label'    => 'Flag — Wave Amplitude',
             'default'  => '40', 'min' => '1', 'max' => '100', 'step' => '1',
+            'unit'      => '',
+            'show_when' => ['pa_bg_mode' => 'flag'],
             'hint'     => 'Waving Flag mode only. How deep the ripples run.',
         ],
         'pa_flag_opacity' => [
@@ -149,6 +153,8 @@ return [
             'type'     => 'range_numeric',
             'label'    => 'Flag — Opacity',
             'default'  => '100', 'min' => '0', 'max' => '100', 'step' => '5',
+            'unit'      => '%',
+            'show_when' => ['pa_bg_mode' => 'flag'],
             'hint'     => 'Waving Flag mode only. Default full/bold; dial back if your photos need it.',
         ],
         'pa_rate' => [
@@ -160,6 +166,8 @@ return [
             'min'      => '1',
             'max'      => '40',
             'step'     => '1',
+            'unit'      => '',
+            'show_when' => ['pa_bg_mode' => 'fireworks'],
             'hint'     => 'Rocket launch rate (slider ÷ 3 = launches per second). Real-time, independent of the slow-motion.',
             // PHP-handled → data-pa-rate.
         ],
@@ -172,6 +180,8 @@ return [
             'min'      => '3',
             'max'      => '150',
             'step'     => '1',
+            'unit'      => '',
+            'show_when' => ['pa_bg_mode' => 'fireworks'],
             'hint'     => 'Speed of the drifting burst particles. Lower = bursts hang in the air; higher = livelier.',
             // PHP-handled → data-pa-explode.
         ],
@@ -184,6 +194,7 @@ return [
             'max'      => '300',
             'step'     => '5',
             'unit'     => 'particles',
+            'show_when' => ['pa_bg_mode' => 'fireworks'],
             'hint'     => 'Particles per burst.',
             // PHP-handled → data-pa-intensity.
         ],
@@ -196,6 +207,7 @@ return [
             'max'      => '100',
             'step'     => '1',
             'unit'     => '%',
+            'show_when' => ['pa_bg_mode' => 'fireworks'],
             'hint'     => 'How far the flag colours are softened toward pastel so they read against white. Flag hues stay true.',
             // PHP-handled → data-pa-soft.
         ],
@@ -210,6 +222,8 @@ return [
             'min'      => '10',
             'max'      => '120',
             'step'     => '1',
+            'unit'      => '',
+            'show_when' => ['pa_bg_mode' => 'fireworks'],
             'hint'     => 'How wide each burst opens.',
             // PHP-handled → data-pa-spread.
         ],
@@ -222,6 +236,8 @@ return [
             'min'      => '5',
             'max'      => '150',
             'step'     => '1',
+            'unit'      => '',
+            'show_when' => ['pa_bg_mode' => 'fireworks'],
             'hint'     => 'How fast rockets rise before they burst.',
             // PHP-handled → data-pa-launch.
         ],
@@ -234,6 +250,8 @@ return [
             'min'      => '2',
             'max'      => '40',
             'step'     => '1',
+            'unit'      => '',
+            'show_when' => ['pa_bg_mode' => 'fireworks'],
             'hint'     => 'Thickness of the particle trails.',
             // PHP-handled → data-pa-streamer.
         ],
