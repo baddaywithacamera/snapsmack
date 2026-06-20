@@ -224,6 +224,20 @@ foreach ($files_to_include as $file) {
         continue;
     }
 
+    // Allowlist gate (default-deny) — mirror sc-release.php. Ship only runtime
+    // file types; drop docs (.md/.docx), lockfiles and dev-meta even when they
+    // appear in the changed-file set. .sql is allowed because this differential
+    // builder explicitly ships migration files; protected_paths.json, the
+    // htaccess-template and the canonical schema are runtime non-allowlist files
+    // that must pass.
+    $b_ext   = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+    $b_keep  = ['php','css','js','txt','png','jpg','jpeg','gif','svg','ico','webp','sql'];
+    $b_force = ['protected_paths.json', 'core/htaccess-template', 'database/schema/snapsmack_canonical.sql'];
+    if (!in_array($b_ext, $b_keep, true) && !in_array($file, $b_force, true)) {
+        echo "  SKIP  {$file} (not a runtime file type)\n";
+        continue;
+    }
+
     $zip->addFromString($file, $content);
     $file_count++;
 }
