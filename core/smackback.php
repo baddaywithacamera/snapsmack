@@ -610,6 +610,35 @@ function smackback_classify_mismatch(string $abs_path, ?string $expected_sig): s
 // ─── BASELINE INITIALISATION ────────────────────────────────────────────────
 
 /**
+ * Files generated per-install (never shipped in the release zip) that are still
+ * security-critical and must be monitored. Captured (TOFU) at install and via
+ * the deliberate per-file re-bless — NEVER auto-hashed on update: a hub-pushed
+ * update cannot vouch for a file it didn't ship, so auto-capturing one would let
+ * a tampered db.php be silently blessed. Tagged baseline_origin='install' so the
+ * update merge-preserve never drops them and the breach review can label them
+ * "install config — expected, not shipped".
+ *
+ * @return string[]  Relative paths.
+ */
+function smackback_install_static_files(): array {
+    return ['core/db.php', 'core/release-pubkey.php'];
+}
+
+/**
+ * Belt-and-suspenders: ensure the baseline_origin column exists before any
+ * baseline write. The canonical schema sync adds it on update, but an existing
+ * spoke may baseline before that runs. Harmless no-op once present.
+ */
+function smackback_ensure_origin_column(PDO $pdo): void {
+    try {
+        $pdo->exec("ALTER TABLE snap_file_manifest ADD COLUMN IF NOT EXISTS baseline_origin ENUM('release','install','disk','rebless') NOT NULL DEFAULT 'release'");
+    } catch (PDOException $e) {
+        // Table not created yet (schema sync makes it WITH the column), or an
+        // engine lacking IF NOT EXISTS — safe to ignore.
+    }
+}
+
+/**
  * Read smackback-manifest.json from a verified release or skin ZIP.
  * UPSERTs all entries into snap_file_manifest.
  * Called by core/updater.php after successful update.
@@ -660,10 +689,11 @@ function smackback_init_manifest(string $zip_path, ?string $skin_id = null): boo
     // baseline here" and let the update proceed; the schema sync creates the
     // table and SMACKBACK initialises on the next arm/verify.
     try {
+        smackback_ensure_origin_column($pdo);
         $stmt = $pdo->prepare(
             "INSERT INTO snap_file_manifest
-                 (file_path, expected_hash, file_size, eof_signature, skin_id, baseline_set, last_status)
-             VALUES (?, ?, ?, ?, ?, ?, 'pending')
+                 (file_path, expected_hash, file_size, eof_signature, skin_id, baseline_set, last_status, baseline_origin)
+             VALUES (?, ?, ?, ?, ?, ?, 'pending', 'release')
              ON DUPLICATE KEY UPDATE
                  expected_hash  = VALUES(expected_hash),
                  file_size      = VALUES(file_size),
@@ -672,7 +702,9 @@ function smackback_init_manifest(string $zip_path, ?string $skin_id = null): boo
                  baseline_set   = VALUES(baseline_set),
                  last_status    = 'pending',
                  last_verified  = NULL,
-                 expected_mtime = NULL"
+                 expected_mtime = NULL
+                 /* baseline_origin deliberately NOT updated on duplicate: preserve
+                    install/rebless provenance across release refreshes (#6) */"
         );
 
         foreach ($manifest['files'] as $path => $info) {
@@ -747,10 +779,12 @@ function smackback_init_from_disk(): bool {
     // — would 500 instead of recovering. Treat a missing table as "cannot baseline
     // yet" and bail cleanly; the schema sync creates it.
     try {
+        smackback_ensure_origin_column($pdo);
+        $install_static = smackback_install_static_files();
         $stmt = $pdo->prepare(
             "INSERT INTO snap_file_manifest
-                 (file_path, expected_hash, file_size, eof_signature, skin_id, baseline_set, last_status)
-             VALUES (?, ?, ?, ?, ?, ?, 'pending')
+                 (file_path, expected_hash, file_size, eof_signature, skin_id, baseline_set, last_status, baseline_origin)
+             VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
              ON DUPLICATE KEY UPDATE
                  expected_hash  = VALUES(expected_hash),
                  file_size      = VALUES(file_size),
@@ -759,7 +793,8 @@ function smackback_init_from_disk(): bool {
                  baseline_set   = VALUES(baseline_set),
                  last_status    = 'pending',
                  last_verified  = NULL,
-                 expected_mtime = NULL"
+                 expected_mtime = NULL,
+                 baseline_origin = VALUES(baseline_origin)"
         );
 
         foreach ($files as $abs) {
@@ -776,7 +811,11 @@ function smackback_init_from_disk(): bool {
             if (preg_match('#^skins/([^/]+)/#', $rel, $m)) {
                 $skin_id = $m[1];
             }
-            $stmt->execute([$rel, $hash, $size, $eof_sig ?: null, $skin_id, $now]);
+            // Install-generated files (db.php, release-pubkey.php) → 'install' so
+            // the update merge-preserve never drops them; everything else absorbed
+            // from disk is 'disk' provenance.
+            $origin = in_array($rel, $install_static, true) ? 'install' : 'disk';
+            $stmt->execute([$rel, $hash, $size, $eof_sig ?: null, $skin_id, $now, $origin]);
             $seen[$rel] = true;
             $count++;
         }
