@@ -369,6 +369,13 @@ function smackback_should_monitor(string $abs_path): bool {
         'tools/',
         'backups/',
         'migrations/',
+        // The forum is a SEPARATE sub-project (repo: projects/forum-server/,
+        // deployed to webroot as forum-server/). It ships and updates outside the
+        // core release zip — the packager already excludes projects/ — so it is out
+        // of CORE integrity scope, same rationale as skins/ below. Without this it
+        // false-flags as UNEXPECTED on every spoke that runs the forum.
+        // (Sean confirmed forum-server/* legit 2026-06-20.)
+        'forum-server/',
         // Skins are forkable deliverables distributed SEPARATELY via the Skin
         // Packager — even the base skins are fetched from snapsmack.ca at install,
         // never shipped in the core zip. Monitoring them in the CORE integrity

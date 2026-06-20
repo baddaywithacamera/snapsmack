@@ -349,6 +349,7 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'migrations/',
         'database/',
         'data/',
+        'outputs/',   // dev scratch — never a runtime dir (no runtime code references it)
         'reference/',
         // Dev/meta files
         'CLAUDE.md',
@@ -375,6 +376,12 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
     // can fall back to the on-disk copy when the remote URL is unavailable.
     $always_include = [
         'database/schema/snapsmack_canonical.sql',
+        // Runtime files that are NOT an allowlisted extension (gate below) but
+        // must ship: the updater reads protected_paths.json (core/updater.php,
+        // UPDATER_PROTECTED_PATHS_FILE); install.php builds the live .htaccess
+        // from core/htaccess-template (no extension).
+        'protected_paths.json',
+        'core/htaccess-template',
     ];
 
     $count   = 0;
@@ -408,6 +415,22 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         if (str_starts_with($basename, 'screenshot') && str_ends_with($basename, '.png') && str_starts_with($rel, 'skins/')) {
             $skipped++;
             continue;
+        }
+
+        // ── Allowlist gate (default-deny) ────────────────────────────────────
+        // A web install ships ONLY runtime file types. Anything else — docs
+        // (.md/.docx), lockfiles (package-lock.json), git/dev meta — is dropped
+        // even when no denylist entry names it. This replaces the fragile
+        // per-name denylist that let .githooks, BRANCHING.md and *.docx ride
+        // into releases and then trip SMACKBACK as UNEXPECTED on every install.
+        // Force-included runtime files (canonical SQL, protected_paths.json,
+        // htaccess-template) are exempt above. .php cruft (backfill-*,
+        // release-pubkey.php, install/setup) is still stripped by the name/dir
+        // excludes — this allowlist only backstops the NON-.php leaks.
+        if (!$force_include) {
+            $allow_ext = ['php','css','js','txt','png','jpg','jpeg','gif','svg','ico','webp'];
+            $rel_ext   = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
+            if (!in_array($rel_ext, $allow_ext, true)) { $skipped++; continue; }
         }
 
         $content = $src->getFromIndex($i);
