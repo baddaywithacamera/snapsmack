@@ -110,20 +110,29 @@ const UPDATER_KNOWN_MIGRATIONS = [
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
 
 /**
- * Files removed from the SnapSmack distribution, keyed by filename (relative
- * to the install root) with the version string in which they were removed.
+ * Files removed/renamed in the SnapSmack distribution, keyed by filename
+ * (relative to install root) with the version string in which they were removed.
  *
- * updater_remove_deprecated_files() reads this list and unlinks any file that
- * still exists on the server after a successful update. This prevents orphan
- * accumulation on existing installs when files are renamed or deleted.
+ * REFERENCE / DETECTION ONLY — the CMS does NOT delete a user's files. An
+ * automatic file-removal path is a deletion primitive: a fleet-wide `rm` to
+ * anyone who compromises the hub or slips something into a package, and it is
+ * not our right to silently alter a user's filesystem (secaudit 029).
+ * updater_detect_orphan_files() reads this list and REPORTS which listed orphans
+ * are still present, so the admin can remove them by hand and the SMACKBACK
+ * review can annotate them "known orphan — safe to remove".
  *
- * Add an entry here whenever a file is removed from the repo. Never remove
- * entries — they are needed to clean up installs that missed an earlier update.
+ * Add an entry whenever a file is removed/renamed in the repo. Never delete
+ * entries — older installs still need them flagged.
  */
 const UPDATER_DEPRECATED_FILES = [
     'smack-post.php' => '0.7.20',  // renamed to smack-post-solo.php
     'login.php'      => '0.7.155', // replaced by snap-in slug model; predictable URL attack surface
     'core/auth.php'  => '0.7.155', // renamed to core/auth-smack.php to avoid cPanel filename collision
+    // 0.7.275: backfilled — these renames pre-dated disciplined list upkeep and
+    // their orphans were false-tripping SMACKBACK strict detection fleet-wide.
+    'core/navigation_bar.php' => '0.7.19',  // hygiene sweep → core/navigation-bar.php
+    'core/layout_logic.php'   => '0.7.19',  // hygiene sweep → core/layout-logic.php
+    'core/flkrdckr-api.php'   => '0.7.184', // renamed → core/flkrfckr-api.php (FLKR DCKR → FLKR FCKR)
 ];
 
 // ─── VERSION CHECK ──────────────────────────────────────────────────────────
@@ -1746,40 +1755,30 @@ function updater_cleanup(): void {
  * @param string $installing_version  The version string being installed (e.g. '0.7.20')
  * @return array { removed: string[], failed: string[] }
  */
-function updater_remove_deprecated_files(string $installing_version): array {
+function updater_detect_orphan_files(string $installing_version): array {
+    // DETECTION ONLY — never unlinks. The CMS must not delete a user's files
+    // (secaudit 029). Returns the known-orphan files that are still present on
+    // disk so the admin can remove them by hand and the SMACKBACK review can
+    // label them "known orphan — safe to remove".
     $root    = dirname(__DIR__);
-    $removed = [];
-    $failed  = [];
+    $present = [];
 
     foreach (UPDATER_DEPRECATED_FILES as $rel_path => $removed_in) {
-        // Only act if the removal version is <= the version being installed.
+        // Only flag orphans whose removal version is <= the version installed.
         // version_compare() handles standard semver (0.7.20 etc.) correctly.
-        // snap_version_compare() is not used here because constants.php may not
-        // be loaded yet when updater.php is required by smack-update.php.
         if (version_compare($removed_in, $installing_version, '>')) {
             continue;
         }
-
-        $abs = $root . '/' . ltrim($rel_path, '/');
-
-        // Security: never allow path traversal
+        // Defensive: ignore malformed list entries (never act on them anyway).
         if (str_contains($rel_path, '..') || str_starts_with($rel_path, '/')) {
-            $failed[] = $rel_path . ' (blocked — path traversal)';
             continue;
         }
-
-        if (!file_exists($abs)) {
-            continue; // already gone — nothing to do
-        }
-
-        if (@unlink($abs)) {
-            $removed[] = $rel_path;
-        } else {
-            $failed[] = $rel_path;
+        if (file_exists($root . '/' . ltrim($rel_path, '/'))) {
+            $present[] = $rel_path;
         }
     }
 
-    return ['removed' => $removed, 'failed' => $failed];
+    return ['present' => $present];
 }
 
 /**

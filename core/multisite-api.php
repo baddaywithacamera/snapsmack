@@ -1116,6 +1116,13 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
         $release_info['checksum_sha256'] ?? ''
     );
 
+    // NOTE: the remote/hub update path deliberately does NOT delete any files on
+    // the spoke. A hub-driven file-removal path is a fleet-wide deletion primitive
+    // (compromise the hub or a package → arbitrary `rm` on every spoke) and it is
+    // not the operator's right to silently alter a user's filesystem. Orphans from
+    // upstream renames are DETECTED (SMACKBACK UNEXPECTED + updater_detect_orphan_files)
+    // and removed by a local admin by hand. See secaudit 029. Do NOT add deletion here.
+
     // 6c. SMACKBACK: refresh the file-integrity manifest from the (Ed25519-
     // verified) update package — mirrors the local SYSTEM UPDATES path
     // (smack-update.php). Without this the spoke's freshly-replaced files no

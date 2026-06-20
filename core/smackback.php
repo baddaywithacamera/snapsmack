@@ -369,13 +369,12 @@ function smackback_should_monitor(string $abs_path): bool {
         'tools/',
         'backups/',
         'migrations/',
-        // The forum is a SEPARATE sub-project (repo: projects/forum-server/,
-        // deployed to webroot as forum-server/). It ships and updates outside the
-        // core release zip — the packager already excludes projects/ — so it is out
-        // of CORE integrity scope, same rationale as skins/ below. Without this it
-        // false-flags as UNEXPECTED on every spoke that runs the forum.
-        // (Sean confirmed forum-server/* legit 2026-06-20.)
-        'forum-server/',
+        // NOTE: forum-server/ is deliberately NOT excluded. It is the standalone
+        // forum API (central/Smack Central infrastructure), never shipped to a
+        // spoke (packager excludes projects/). Its presence on a spoke is leaked
+        // central code — the same class as smack-central/ — and SHOULD trip the
+        // alarm, not be hidden. Role-aware handling tracked in #21. (The forum
+        // CLIENT — smack-forum.php — is core, ships normally, baselined as usual.)
         // Skins are forkable deliverables distributed SEPARATELY via the Skin
         // Packager — even the base skins are fetched from snapsmack.ca at install,
         // never shipped in the core zip. Monitoring them in the CORE integrity
@@ -1320,6 +1319,86 @@ function smackback_mark_clean(): void {
  * @param  string $relative_path  Path relative to webroot (e.g. 'core/db.php').
  * @return array{ok: bool, message: string}
  */
+/**
+ * Re-bless a single file: trust its CURRENT on-disk contents as the baseline.
+ * Local, deliberate, step-up-gated (the caller enforces password+2FA). For an
+ * UNEXPECTED file this creates the row (it becomes known); for a TAMPERED file
+ * it accepts the change. Tagged baseline_origin='rebless' so its provenance is
+ * visible. This is the human-in-the-loop alternative to a blind disk re-baseline
+ * — one reviewed file at a time, never automatic.
+ */
+function smackback_rebless_file(string $relative_path): array {
+    global $pdo;
+
+    $rel = ltrim(str_replace('\\', '/', $relative_path), '/');
+    if ($rel === '' || str_contains($rel, '..')) {
+        return ['ok' => false, 'message' => 'Invalid path.'];
+    }
+    $abs = smackback_abs($rel);
+    if (!is_file($abs) || !smackback_should_monitor($abs)) {
+        return ['ok' => false, 'message' => "Not a monitored file on disk: {$rel}"];
+    }
+    $hash = hash_file('sha256', $abs);
+    $size = @filesize($abs);
+    if ($hash === false || $size === false) {
+        return ['ok' => false, 'message' => "Could not read {$rel}"];
+    }
+    $eof_sig = smackback_get_eof_signature($abs);
+    smackback_ensure_origin_column($pdo);
+    try {
+        $stmt = $pdo->prepare(
+            "INSERT INTO snap_file_manifest
+                 (file_path, expected_hash, file_size, eof_signature, skin_id, baseline_set, last_status, baseline_origin)
+             VALUES (?, ?, ?, ?, NULL, ?, 'ok', 'rebless')
+             ON DUPLICATE KEY UPDATE
+                 expected_hash   = VALUES(expected_hash),
+                 file_size       = VALUES(file_size),
+                 eof_signature   = VALUES(eof_signature),
+                 baseline_set    = VALUES(baseline_set),
+                 last_status     = 'ok',
+                 last_verified   = NULL,
+                 expected_mtime  = NULL,
+                 baseline_origin = 'rebless'"
+        );
+        $stmt->execute([$rel, $hash, $size, $eof_sig ?: null, date('Y-m-d H:i:s')]);
+    } catch (PDOException $e) {
+        return ['ok' => false, 'message' => 'Re-bless failed: ' . $e->getMessage()];
+    }
+    error_log("SMACKBACK: re-blessed {$rel} (origin=rebless) via admin step-up");
+    return ['ok' => true, 'message' => "Re-blessed {$rel} — its current contents are now the trusted baseline."];
+}
+
+/**
+ * Remove a single UNEXPECTED file (authorized, step-up-gated delete). Safety: a
+ * file that is already in the manifest is a known/shipped file — refuse, and tell
+ * the admin to Restore or Re-bless instead. Only genuinely-unbaselined files
+ * (leaked infra, dropped cruft) can be deleted here, and only by a human who
+ * authenticated. This is the ONLY deletion path in the CMS and it is never
+ * automatic (secaudit 029: authorized deletion fine; sneaky deletion not).
+ */
+function smackback_remove_file(string $relative_path): array {
+    global $pdo;
+
+    $rel = ltrim(str_replace('\\', '/', $relative_path), '/');
+    if ($rel === '' || str_contains($rel, '..')) {
+        return ['ok' => false, 'message' => 'Invalid path.'];
+    }
+    $abs = smackback_abs($rel);
+    if (!is_file($abs)) {
+        return ['ok' => false, 'message' => "Not a file: {$rel}"];
+    }
+    $has_row = $pdo->prepare("SELECT 1 FROM snap_file_manifest WHERE file_path = ? LIMIT 1");
+    $has_row->execute([$rel]);
+    if ($has_row->fetchColumn()) {
+        return ['ok' => false, 'message' => "{$rel} is a baselined file — use Restore or Re-bless, not Remove."];
+    }
+    if (!@unlink($abs)) {
+        return ['ok' => false, 'message' => "Could not delete {$rel} (permissions?)."];
+    }
+    error_log("SMACKBACK: removed unexpected file {$rel} via admin step-up");
+    return ['ok' => true, 'message' => "Removed {$rel}."];
+}
+
 function smackback_restore_file(string $relative_path): array {
     global $pdo;
 

@@ -83,6 +83,49 @@ if ($action === 'restore_all' || isset($_GET['restore_all'])) {
     exit;
 }
 
+// AUTHORIZE FILE ACTIONS — step-up (password + 2FA) grants a 10-min window in
+// which Re-bless / Remove work, so you clear many files without re-auth each one.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['smackback_stepup'] ?? '') === '1') {
+    require_once 'core/reauth.php';
+    $re = reauth_verify($pdo, $_POST['reauth_password'] ?? '', $_POST['reauth_totp'] ?? '');
+    if ($re['ok']) {
+        reauth_grant_window('smackback_files', 10);
+        $m = 'File actions authorized for 10 minutes.';
+    } else {
+        $m = 'Authorization failed: ' . $re['error'];
+    }
+    header('Location: smack-back.php?msg=' . urlencode($m));
+    exit;
+}
+
+// RE-BLESS ONE FILE — trust its current on-disk contents (legit install/config).
+// Requires the step-up window. Never automatic. (secaudit 029: authorized fine.)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['rebless_file'] ?? '') !== '') {
+    require_once 'core/reauth.php';
+    if (!reauth_window_active('smackback_files')) {
+        header('Location: smack-back.php?msg=' . urlencode('Authorize with password + 2FA first.'));
+        exit;
+    }
+    $result = smackback_rebless_file(trim($_POST['rebless_file']));
+    smackback_verify_all(); // recompute; clears the breach if nothing is left
+    header('Location: smack-back.php?msg=' . urlencode($result['message']));
+    exit;
+}
+
+// REMOVE ONE UNEXPECTED FILE — authorized delete of a leaked/dropped file.
+// Requires the step-up window. Refuses baselined files (use Restore/Re-bless).
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['remove_file'] ?? '') !== '') {
+    require_once 'core/reauth.php';
+    if (!reauth_window_active('smackback_files')) {
+        header('Location: smack-back.php?msg=' . urlencode('Authorize with password + 2FA first.'));
+        exit;
+    }
+    $result = smackback_remove_file(trim($_POST['remove_file']));
+    smackback_verify_all();
+    header('Location: smack-back.php?msg=' . urlencode($result['message']));
+    exit;
+}
+
 // RUN FULL VERIFY
 if ($action === 'run_verify' || ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['run_verify'] ?? '') === '1')) {
     $result = smackback_verify_all();
@@ -430,27 +473,58 @@ include 'core/sidebar.php';
         <h3 style="color:#cc2200">BREACH DETAIL</h3>
         <p class="dim" style="margin-bottom:16px;">Detected: <strong style="color:inherit"><?php echo htmlspecialchars($smack_breach_at ?: 'Unknown'); ?></strong></p>
 
+        <?php require_once 'core/reauth.php'; $stepup_active = reauth_window_active('smackback_files'); ?>
+
+        <?php if (!$stepup_active): ?>
+        <form method="post" action="smack-back.php" style="background:rgba(0,0,0,0.25);padding:14px;border-radius:4px;margin-bottom:16px;">
+            <input type="hidden" name="smackback_stepup" value="1">
+            <p class="dim" style="margin:0 0 10px;font-size:0.85rem;">Authorize file actions (Re-bless / Remove) with your password and 2FA — valid 10 minutes.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                <input type="password" name="reauth_password" placeholder="Password" autocomplete="off" style="flex:1;min-width:160px;">
+                <input type="text" name="reauth_totp" placeholder="2FA code" inputmode="numeric" autocomplete="off" style="width:120px;">
+                <button type="submit" class="btn-smack">AUTHORIZE</button>
+            </div>
+        </form>
+        <?php else: ?>
+        <p style="font-size:0.82rem;margin-bottom:12px;color:#88ffaa;">&#10003; File actions authorized — Re-bless / Remove enabled.</p>
+        <?php endif; ?>
+
         <?php
         $breach_status_colours = [
-            'TAMPERED'  => '#cc2200',
-            'MISSING'   => '#ff6600',
-            'TRUNCATED' => '#e07800',
-            'CORRUPTED' => '#cc9900',
+            'TAMPERED'   => '#cc2200',
+            'MISSING'    => '#ff6600',
+            'TRUNCATED'  => '#e07800',
+            'CORRUPTED'  => '#cc9900',
+            'UNEXPECTED' => '#ff6600',
         ];
         foreach ($smack_breach_files as $entry):
-            $bp   = htmlspecialchars($entry['path']   ?? '');
+            $bp   = htmlspecialchars($entry['path'] ?? '');
             $bst  = strtoupper($entry['status'] ?? 'UNKNOWN');
             $bcol = $breach_status_colours[$bst] ?? '#cc2200';
+            $is_unexpected = ($bst === 'UNEXPECTED');
         ?>
-        <div class="stat-row" style="display:grid;grid-template-columns:1fr 90px 130px;align-items:center;gap:16px;padding:10px 0;">
+        <div class="stat-row" style="display:grid;grid-template-columns:1fr 90px auto;align-items:center;gap:12px;padding:10px 0;">
             <span style="font-family:monospace;font-size:0.88rem;"><?php echo $bp; ?></span>
             <span style="color:<?php echo $bcol; ?>;font-weight:700;"><?php echo $bst; ?></span>
-            <a href="smack-back.php?action=restore&restore=<?php echo urlencode($entry['path'] ?? ''); ?>"
-               class="btn-smack btn-warning"
-               style="width:100%;margin-top:0;"
-               onclick="return confirm('Restore <?php echo $bp; ?> from update server?');">
-                RESTORE
-            </a>
+            <div style="display:flex;gap:6px;justify-content:flex-end;">
+                <?php if (!$is_unexpected): ?>
+                <a href="smack-back.php?action=restore&restore=<?php echo urlencode($entry['path'] ?? ''); ?>"
+                   class="btn-smack btn-warning" style="margin-top:0;"
+                   onclick="return confirm('Restore <?php echo $bp; ?> from update server?');">RESTORE</a>
+                <?php endif; ?>
+                <form method="post" action="smack-back.php" style="margin:0;"
+                      onsubmit="return confirm('Re-bless <?php echo $bp; ?>? Its current contents become the trusted baseline.');">
+                    <input type="hidden" name="rebless_file" value="<?php echo $bp; ?>">
+                    <button type="submit" class="btn-smack" style="margin-top:0;"<?php echo $stepup_active ? '' : ' disabled'; ?>>RE-BLESS</button>
+                </form>
+                <?php if ($is_unexpected): ?>
+                <form method="post" action="smack-back.php" style="margin:0;"
+                      onsubmit="return confirm('Permanently delete <?php echo $bp; ?> from this site? This cannot be undone.');">
+                    <input type="hidden" name="remove_file" value="<?php echo $bp; ?>">
+                    <button type="submit" class="btn-smack btn-danger" style="margin-top:0;"<?php echo $stepup_active ? '' : ' disabled'; ?>>REMOVE</button>
+                </form>
+                <?php endif; ?>
+            </div>
         </div>
         <?php endforeach; ?>
 
@@ -463,7 +537,7 @@ include 'core/sidebar.php';
             <a href="smack-update.php" class="btn-smack">RUN FULL UPDATE INSTEAD</a>
         </div>
         <p class="dim" style="font-size:0.85rem;margin-top:12px;">
-            After restoring, change your FTP credentials and check your hosting panel access logs.
+            <strong>Re-bless</strong> trusts a file's current contents (legit install/config files). <strong>Remove</strong> deletes an unexpected file (leaked or dropped). Both need password + 2FA. After resolving, change your FTP credentials and check access logs.
         </p>
     </div>
     <?php endif; ?>
