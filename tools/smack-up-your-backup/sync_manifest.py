@@ -140,18 +140,25 @@ class SyncManifest:
     def is_current(self, filename: str, size: int,
                    drive_md5: Optional[str]) -> bool:
         """
-        Return True if this file is already verified and can be skipped:
-          - In manifest with matching size
-          - drive_md5 matches if both are known (catches content changes)
+        Return True only if this file is PROVABLY unchanged and can be skipped:
+          - present in the manifest with matching size, AND
+          - a stored MD5 and the current source MD5 are BOTH present and equal.
+        A size match alone is NOT enough — a changed file can keep the same byte
+        size — so any file lacking an MD5 on either side is re-verified rather
+        than silently skipped.
         """
         entry = self.get(filename)
         if not entry:
             return False
         if entry.get("size") != size:
             return False
-        # If both sides have an MD5, they must match
+        # Require a real content hash on both sides to skip. If either MD5 is
+        # missing (e.g. Google-native files expose none), we cannot prove the
+        # bytes are identical from size alone — force a re-verify.
         em = entry.get("drive_md5")
-        if drive_md5 and em and drive_md5 != em:
+        if not drive_md5 or not em:
+            return False
+        if drive_md5 != em:
             return False
         return True
 
