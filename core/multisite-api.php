@@ -1131,24 +1131,16 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
     // the trusted baseline), so it precedes the unlink below.
     if (file_exists($zip_path)) {
         require_once __DIR__ . '/smackback.php';
-        if (function_exists('smackback_init_manifest') && smackback_init_manifest($zip_path)) {
-            // Baselined from the signed in-zip manifest → safe to auto-clear a
-            // stale breach left over from before this update.
+        // Re-baseline from the freshly-extracted, Ed25519-verified disk — NOT the
+        // in-zip manifest. The signed manifest can't enumerate per-install files
+        // (db.php, sc-config.php, release-pubkey.php), so baselining a hub-pushed
+        // update from it left those reading UNEXPECTED under PARANOID → this is the
+        // path that LOCKED THE WHOLE FLEET at once. Disk == the signed release here
+        // (verified before staging); init_from_disk captures the full monitored state
+        // and prunes orphans, so auto-clearing the stale breach is safe.
+        // (See project_smackback_false_breach_lockout.)
+        if (function_exists('smackback_init_from_disk') && smackback_init_from_disk()) {
             if (function_exists('smackback_resolve_breach')) {
-                $smack_prev = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_status'")->fetchColumn();
-                if ($smack_prev === 'breach') {
-                    smackback_resolve_breach('update');
-                }
-            }
-        } elseif (function_exists('smackback_init_from_disk')) {
-            // No manifest in the package (e.g. an SC-packaged-from-GitHub zip) →
-            // re-baseline from the freshly-extracted, signature-verified disk. The
-            // package was Ed25519-verified before staging, so this shares the same
-            // trust basis as the in-zip manifest (0.7.263 posture). The prune in
-            // smackback_init_from_disk() removes any orphaned row, so auto-clearing a
-            // stale breach here is safe — without it the spoke stays locked until an
-            // admin re-inits by hand.
-            if (smackback_init_from_disk() && function_exists('smackback_resolve_breach')) {
                 $smack_prev = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_status'")->fetchColumn();
                 if ($smack_prev === 'breach') {
                     smackback_resolve_breach('update');

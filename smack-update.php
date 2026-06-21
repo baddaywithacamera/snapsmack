@@ -1093,20 +1093,18 @@ if ($action === 'stage_migrate'
         $smack_zip = $stage_state['zip_path'] ?? '';
         if ($smack_zip && file_exists($smack_zip)) {
             require_once __DIR__ . '/core/smackback.php';
-            $smack_ok     = smackback_init_manifest($smack_zip);
-            if ($smack_ok) {
-                $smack_detail = 'File hashes refreshed from update package';
-            } else {
-                // No smackback-manifest.json in the package (e.g. a zip built by the SC
-                // Release Packager from the GitHub archive, which carries no manifest).
-                // Re-baseline from the freshly-extracted disk instead — the files came
-                // from an Ed25519-verified package, the same trust basis as a fresh
-                // install. Without this, every legitimately-changed file reads as TAMPERED.
-                $smack_ok     = smackback_init_from_disk();
-                $smack_detail = $smack_ok
-                    ? 'No manifest in package — baseline rebuilt from disk'
-                    : 'Re-baseline failed — check error log';
-            }
+            // Re-baseline from the freshly-extracted, Ed25519-verified disk — NOT the
+            // in-zip manifest. The signed manifest can't enumerate per-install files
+            // (db.php, sc-config.php, release-pubkey.php), so baselining from it left
+            // those reading as UNEXPECTED under PARANOID → fleet-wide false-breach
+            // LOCKOUT on every update. Disk == the signed release here (verified before
+            // staging), the same trust basis the installer uses (install.php uses
+            // init_from_disk too); it captures the full monitored state and prunes
+            // orphans so nothing false-trips. (See project_smackback_false_breach_lockout.)
+            $smack_ok     = smackback_init_from_disk();
+            $smack_detail = $smack_ok
+                ? 'Baseline rebuilt from verified on-disk files'
+                : 'Re-baseline failed — check error log';
             // Auto-clear a stale breach after a successful re-baseline by EITHER method.
             // The update reaching this point was Ed25519-verified before staging, so the
             // freshly-extracted disk shares the same trust basis as the in-zip signed
@@ -1358,14 +1356,17 @@ if ($action === 'stage_migrate_upload' && !empty($_SESSION['upload_migrate_pendi
         // SMACKBACK: refresh file integrity manifest before cleanup (upload path)
         $smack_upload_zip = UPDATER_TEMP_DIR . '/snapsmack-upload.zip';
         if (file_exists($smack_upload_zip)) {
-            if (!function_exists('smackback_init_manifest')) {
+            if (!function_exists('smackback_init_from_disk')) {
                 require_once __DIR__ . '/core/smackback.php';
             }
-            $smack_ok = smackback_init_manifest($smack_upload_zip);
+            // Re-baseline from the verified on-disk files, not the in-zip manifest, so
+            // per-install files don't read as UNEXPECTED → false-breach lockout. Same
+            // fix and trust basis as the auto-update path above.
+            $smack_ok = smackback_init_from_disk();
             $upload_steps[] = [
-                'label'  => 'SMACKBACK manifest',
+                'label'  => 'SMACKBACK baseline',
                 'status' => $smack_ok ? 'ok' : 'warn',
-                'detail' => $smack_ok ? 'File hashes refreshed from uploaded package' : 'Manifest not in package — skipped',
+                'detail' => $smack_ok ? 'Baseline rebuilt from verified on-disk files' : 'Re-baseline failed — check error log',
             ];
         }
 
