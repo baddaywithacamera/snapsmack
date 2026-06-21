@@ -606,6 +606,58 @@ function smackback_classify_mismatch(string $abs_path, ?string $expected_sig): s
     return 'tampered';
 }
 
+/**
+ * Does an on-disk file LOOK truncated right now?
+ *
+ * Used to protect baseline capture: we must never record a baseline (hash or
+ * eof_signature) from a file caught mid-transfer / partially written, or that
+ * poisoned baseline makes every later legitimate change classify as 'truncated'
+ * (the exact false-breach this guards against).
+ *
+ * Conservative by design — only returns true when we are CONFIDENT the file is
+ * incomplete, so we never refuse to baseline a legitimately-marker-less file:
+ *   - size 0 / unreadable                              → truncated
+ *   - null bytes in the tail                           → truncated (corruption)
+ *   - file DECLARES the EOF convention (SNAPSMACK_EOF_HEADER in its head) but
+ *     its last non-empty line is NOT a SNAPSMACK EOF marker → truncated
+ * Files that don't use the EOF convention return false (cannot judge).
+ */
+function smackback_disk_looks_truncated(string $abs_path): bool {
+    $size = @filesize($abs_path);
+    if ($size === false || $size === 0) {
+        return true;
+    }
+    $fp = @fopen($abs_path, 'rb');
+    if (!$fp) {
+        return false; // can't read — don't block; other guards still apply
+    }
+    $head = fread($fp, 2048);
+    $read = min($size, 1024);
+    fseek($fp, -$read, SEEK_END);
+    $tail = fread($fp, $read);
+    fclose($fp);
+
+    if ($head === false || $tail === false) {
+        return false;
+    }
+    if (strpos($tail, "\x00") !== false) {
+        return true; // null bytes in tail = corruption/partial write
+    }
+    // Only files that opt into the EOF-marker convention can be judged truncated.
+    if (strpos($head, 'SNAPSMACK_EOF_HEADER') === false) {
+        return false;
+    }
+    $lines = explode("\n", $tail);
+    for ($i = count($lines) - 1; $i >= 0; $i--) {
+        $line = rtrim($lines[$i]);
+        if ($line !== '') {
+            // Last non-empty line must carry the sentinel; if not, it's cut short.
+            return strpos($line, 'SNAPSMACK EOF') === false;
+        }
+    }
+    return true; // no non-empty line found = empty/truncated
+}
+
 // ─── BASELINE INITIALISATION ────────────────────────────────────────────────
 
 /**
@@ -721,7 +773,16 @@ function smackback_init_manifest(string $zip_path, ?string $skin_id = null): boo
             $eof_sig = $info['eof_signature'] ?? null;
             if ($eof_sig === null) {
                 $abs_tmp = smackback_abs($path);
-                $eof_sig = file_exists($abs_tmp) ? smackback_get_eof_signature($abs_tmp) : null;
+                // Disk fallback only — and ONLY from a file that doesn't look
+                // truncated. Capturing the last line of a half-written file here
+                // is what poisons the baseline into permanent false 'truncated'
+                // breaches. If it looks cut short, store null → check_eof returns
+                // 'unknown' → conservative pass, never a poisoned mismatch.
+                if (file_exists($abs_tmp) && !smackback_disk_looks_truncated($abs_tmp)) {
+                    $eof_sig = smackback_get_eof_signature($abs_tmp);
+                } else {
+                    $eof_sig = null;
+                }
             }
             $stmt->execute([
                 $path,
