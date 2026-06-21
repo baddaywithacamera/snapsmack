@@ -263,6 +263,37 @@ if (isset($_POST['ic_aspect_detect'])) {
     header('Location: smack-skin.php?s=instant-camera&msg=updated'); exit;
 }
 
+// --- RESET PARADE BACKGROUND TUNING (flag + fireworks) to manifest defaults ---
+// Deletes ONLY the animated-background tuning keys so the manifest defaults take
+// over (snapsmack_apply_skin_settings falls back to them at render). Leaves the
+// chosen background MODE, flag palette, colours, glow and nav settings intact.
+// Exists because there was no reset control and the 1.0.3 slider rescale left
+// old saved values misread (sparse straight-line fireworks).
+if (isset($_POST['reset_pa_bg'])) {
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
+        http_response_code(403);
+        exit('Invalid CSRF token.');
+    }
+    $reset_skin = preg_replace('/[^a-z0-9_\-]/', '', $_POST['active_skin_target'] ?? 'parade');
+    $reset_opts = [
+        // Fireworks tuning
+        'pa_rate', 'pa_explode', 'pa_intensity', 'pa_soft',
+        'pa_spread', 'pa_launch', 'pa_streamer',
+        // Waving-flag tuning
+        'pa_flag_speed', 'pa_flag_amplitude', 'pa_flag_opacity',
+    ];
+    $reset_keys = array_map(fn($k) => $reset_skin . '__' . $k, $reset_opts);
+    $ph = implode(',', array_fill(0, count($reset_keys), '?'));
+    $pdo->prepare("DELETE FROM snap_settings WHERE setting_key IN ($ph)")->execute($reset_keys);
+
+    require_once __DIR__ . '/core/page-cache.php';
+    page_cache_purge_all();
+
+    $_SESSION['gallery_flash'] = 'Flag & Fireworks settings reset to defaults.';
+    header('Location: smack-skin.php?s=' . urlencode($reset_skin) . '&msg=reset');
+    exit;
+}
+
 if (isset($_POST['save_skin_settings'])) {
 
     // 4a. Persistence: Save individual skin and engine control values.
@@ -1197,6 +1228,17 @@ if (!empty($google_families)) {
             <button type="submit" name="save_skin_settings" class="master-update-btn">SAVE SKIN SPECIFIC CALIBRATION</button>
         </div>
     </form>
+
+    <?php if (($target_skin ?? '') === 'parade'): ?>
+    <!-- PARADE — reset the animated-background tuning (flag + fireworks) to the
+         manifest defaults. Keeps the chosen mode, palette, colours, glow, nav. -->
+    <form method="post" action="smack-skin.php?s=parade" style="margin-top:12px;"
+          onsubmit="return confirm('Reset PARADE Flag &amp; Fireworks settings to their defaults?\n\nYour background mode, flag palette, colours, glow and nav settings are kept.');">
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+        <input type="hidden" name="active_skin_target" value="parade">
+        <button type="submit" name="reset_pa_bg" class="master-update-btn">RESET FLAG &amp; FIREWORKS TO DEFAULTS</button>
+    </form>
+    <?php endif; ?>
 
     <?php if (($target_skin ?? '') === 'instant-camera'): ?>
     <!-- INSTANT CAMERA — AI aspect-ratio detection (spec §2.3). Own multipart

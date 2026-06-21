@@ -213,6 +213,7 @@ $_snap_page_css = [
 if (in_array($_snap_page, ['page', 'blog', 'index'])): ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/shortcodes.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <?php endif; ?>
+<script>window.SNAP_SITE_MODE = <?php echo json_encode($settings['site_mode'] ?? 'photoblog'); ?>;</script>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-mosaic.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 

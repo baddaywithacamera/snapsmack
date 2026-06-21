@@ -46,7 +46,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    if (window.SNAP_DATA) {
+    // GRAMOFSMACK (carousel) keeps standard cursor controls only — no F1 help —
+    // so the "PRESS F1 FOR HELP" toast must not appear there.
+    if (window.SNAP_DATA && window.SNAP_SITE_MODE !== 'carousel') {
         // If the consent banner is still showing, wait until it's dismissed
         // before showing the F1 help toast — don't stack modals on first visit.
         if (window.snapConsent && window.snapConsent.pending()) {
@@ -65,8 +67,15 @@ document.addEventListener('keydown', function(e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (document.getElementById('wall-canvas')) return;
 
+    // GRAMOFSMACK (carousel) deliberately runs standard cursor controls ONLY —
+    // arrow-key navigation + ESC. F1 help and the [1]/[2]/[D] shortcuts are
+    // solo-photoblog features, skipped here (Sean: "nothing but standard cursor
+    // controls" — the IG paradigm needs no help layer).
+    var gram = (window.SNAP_SITE_MODE === 'carousel');
+
     // Help menu — delegate to public-help engine if loaded, else own modal.
     if (e.key === 'F1') {
+        if (gram) return;                 // F1 dropped on gram
         e.preventDefault();
         if (window.snapPublicHelp) {
             window.snapPublicHelp.toggle();
@@ -106,8 +115,8 @@ document.addEventListener('keydown', function(e) {
         }
     }
 
-    // Quick toggle shortcuts for info panes
-    if (e.key === '1') {
+    // Quick toggle shortcuts for info panes (solo only — skipped on gram)
+    if (e.key === '1' && !gram) {
         if (window.smackdown && window.smackdown.toggleFooter) {
             window.smackdown.toggleFooter('info', null);
             scrollToFooter();
@@ -117,7 +126,7 @@ document.addEventListener('keydown', function(e) {
         }
     }
 
-    if (e.key === '2') {
+    if (e.key === '2' && !gram) {
         const commBtn = document.getElementById('show-comments');
         if (!commBtn) return;
         if (window.smackdown && window.smackdown.toggleFooter) {
@@ -129,8 +138,8 @@ document.addEventListener('keydown', function(e) {
         }
     }
 
-    // Download shortcut
-    if (e.key === 'd' || e.key === 'D') {
+    // Download shortcut (solo only — skipped on gram)
+    if ((e.key === 'd' || e.key === 'D') && !gram) {
         const dlBtn = document.querySelector('.snap-download-btn');
         if (dlBtn) dlBtn.click();
     }
