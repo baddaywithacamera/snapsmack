@@ -12,6 +12,20 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.277 — "Hot Seat" (2026-06-20)
+
+- **Chaplin archive T/M toggle fixed** — switching between Thumbs and Masonry in
+  the Chaplin archive did nothing until a manual page refresh. The shared
+  archive-toggle engine intercepts the click but only swaps the default
+  `.archive-grid` / `.archive-masonry` panes, which Chaplin's two-pane layout
+  (`#browse-grid` / `#justified-grid`) doesn't use. Chaplin's stylesheet now
+  shows/hides the correct pane off `html[data-archive-layout]`, which the engine
+  already sets on click. (Chaplin skin 0.2.11.)
+- **F1 help opened then instantly closed (all sites)** — both `ss-engine-comms.js`
+  and `ss-engine-public-help.js` bound the F1 key, so a single press toggled the
+  help panel twice (open + close = nothing visible). `comms.js` is now the sole
+  F1 handler; the duplicate listener in `public-help.js` was removed.
+
 ## 0.7.276 — "Box Seat" (2026-06-20)
 
 - **Skin update via System Updates fixed** — the update page verified skin
