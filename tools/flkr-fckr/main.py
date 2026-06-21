@@ -34,7 +34,7 @@ from poster import FlkrDckrClient, run_import
 # Logging — rotating daily, 7-day retention, %APPDATA%\FlkrFckr\flkrfckr.log
 # ---------------------------------------------------------------------------
 
-BUILD_VERSION = "0.7.1"  # auto-incremented by bump_version.py on each build.bat run
+BUILD_VERSION = "0.7.6"  # auto-incremented by bump_version.py on each build.bat run
 
 _LOG_DIR  = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'FlkrFckr')
 _LOG_FILE = os.path.join(_LOG_DIR, 'flkrfckr.log')
@@ -119,6 +119,17 @@ class FlkrDckrApp(tk.Tk):
         self._pause_event.set()   # not paused by default
         self._q: queue.Queue      = queue.Queue()
         self._album_filter: str   = 'all'   # 'all', album flickr ID, or 'unalbumed'
+
+        # Lazy thumbnails — square previews decoded only for visible tiles.
+        self._THUMB_PX        = 120
+        self._thumb_q: queue.Queue           = queue.Queue()
+        self._thumb_cache: Dict[int, object] = {}   # cell index -> PhotoImage (kept alive)
+        self._thumb_state: Dict[int, str]    = {}   # cell index -> 'loading' | 'loaded'
+        self._grid_gen        = 0                    # bumped each render; stale loads ignored
+        self._row_pitch       = 0                    # px per grid row (measured after layout)
+        self._thumb_after     = None                 # debounce handle
+        self._thumbs_enabled  = True                 # flipped off if Pillow is unavailable
+        threading.Thread(target=self._thumb_worker, daemon=True).start()
 
         # Fonts
         self._font_ui    = font.Font(family='Segoe UI', size=9)
@@ -318,7 +329,7 @@ class FlkrDckrApp(tk.Tk):
         canvas_frame.columnconfigure(0, weight=1)
 
         self._canvas = tk.Canvas(canvas_frame, bg=BG_DEEP, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(canvas_frame, orient='vertical', command=self._canvas.yview)
+        scrollbar = ttk.Scrollbar(canvas_frame, orient='vertical', command=self._on_vscroll)
         self._canvas.configure(yscrollcommand=scrollbar.set)
 
         self._canvas.grid(row=0, column=0, sticky='nsew')
@@ -329,7 +340,7 @@ class FlkrDckrApp(tk.Tk):
 
         self._grid_frame.bind('<Configure>', self._on_grid_configure)
         self._canvas.bind('<Configure>', self._on_canvas_configure)
-        self._canvas.bind('<MouseWheel>', lambda e: self._canvas.yview_scroll(-1 * (e.delta // 120), 'units'))
+        self._canvas.bind('<MouseWheel>', self._on_mousewheel)
 
         self._photo_cells: List[dict] = []   # list of {flickr_id, frame, lbl_title, ...}
 
@@ -425,8 +436,13 @@ class FlkrDckrApp(tk.Tk):
         self._log_write('Parsing Flickr export…', TEXT_DIM)
         self._save_settings()
 
+        self._progress_var.set(0)
+
+        def _on_parse_prog(done, total):
+            self._q.put(('parse_progress', done, total))
+
         def _parse():
-            result = flickr_parser.parse(folder)
+            result = flickr_parser.parse(folder, on_progress=_on_parse_prog)
             self._q.put(('parse_done', result))
 
         threading.Thread(target=_parse, daemon=True).start()
@@ -495,6 +511,10 @@ class FlkrDckrApp(tk.Tk):
 
     def _render_grid(self, photos):
         """Re-render the photo grid with the given list of ParsedPhoto objects."""
+        self._grid_gen += 1          # invalidate any in-flight thumbnail loads
+        self._thumb_cache.clear()
+        self._thumb_state.clear()
+        self._row_pitch = 0
         for widget in self._grid_frame.winfo_children():
             widget.destroy()
         self._photo_cells.clear()
@@ -507,6 +527,7 @@ class FlkrDckrApp(tk.Tk):
         total = len(photos)
         excluded = sum(1 for p in photos if p.excluded)
         self._lbl_grid_count.config(text=f'{total} photos' + (f'  ({excluded} excluded)' if excluded else ''))
+        self._schedule_thumb_update()
 
     def _make_cell(self, photo, row: int, col: int):
         """Create a single photo cell in the grid."""
@@ -560,7 +581,12 @@ class FlkrDckrApp(tk.Tk):
 
         cell.config(bg=BG_DEEP if photo.excluded else BG_CELL)
 
-        self._photo_cells.append({'flickr_id': photo.flickr_id, 'cell': cell})
+        self._photo_cells.append({
+            'flickr_id':  photo.flickr_id,
+            'cell':       cell,
+            'thumb_lbl':  thumb_lbl,
+            'image_path': '' if photo.missing_image else (photo.image_path or ''),
+        })
 
     def _show_help(self):
         """Open in-app help window."""
@@ -889,6 +915,12 @@ class FlkrDckrApp(tk.Tk):
 
                 if kind == 'parse_done':
                     self._on_parse_done(msg[1])
+                elif kind == 'parse_progress':
+                    done, total = msg[1], msg[2]
+                    self._progress_var.set((done / total * 100) if total else 0)
+                    self._lbl_grid_count.config(text=f'Parsing… {done:,} / {total:,}')
+                elif kind == 'thumb_ready':
+                    self._apply_thumb(msg[1], msg[2], msg[3])
                 elif kind == 'conn_result':
                     ok, text = msg[1], msg[2]
                     self._lbl_conn.config(text=text, fg=ACCENT if ok else TEXT_ERR)
@@ -947,9 +979,133 @@ class FlkrDckrApp(tk.Tk):
 
     def _on_grid_configure(self, event):
         self._canvas.configure(scrollregion=self._canvas.bbox('all'))
+        self._schedule_thumb_update()
 
     def _on_canvas_configure(self, event):
         self._canvas.itemconfig(self._canvas_window, width=event.width)
+        self._schedule_thumb_update()
+
+    def _on_vscroll(self, *args):
+        self._canvas.yview(*args)
+        self._schedule_thumb_update()
+
+    def _on_mousewheel(self, event):
+        self._canvas.yview_scroll(-1 * (event.delta // 120), 'units')
+        self._schedule_thumb_update()
+
+    # ── Lazy square thumbnails ────────────────────────────────────────────
+    def _schedule_thumb_update(self):
+        """Coalesce rapid scroll/resize events into one visibility pass."""
+        if self._thumb_after is not None:
+            try:
+                self.after_cancel(self._thumb_after)
+            except Exception:
+                pass
+        self._thumb_after = self.after(60, self._update_visible_thumbs)
+
+    def _update_visible_thumbs(self):
+        """Request thumbnails for visible tiles; evict ones scrolled away."""
+        self._thumb_after = None
+        if not self._thumbs_enabled or not self._photo_cells:
+            return
+        COLS = 4
+        try:
+            total_h = self._grid_frame.winfo_height()
+        except Exception:
+            return
+        if total_h <= 1:
+            self._schedule_thumb_update()   # layout not ready yet — try again shortly
+            return
+        if self._row_pitch <= 0:
+            try:
+                self._row_pitch = max(1, self._photo_cells[0]['cell'].winfo_height() + 6)
+            except Exception:
+                return
+        top_frac, bot_frac = self._canvas.yview()
+        vis_top = top_frac * total_h
+        vis_bot = bot_frac * total_h
+        buf = self._row_pitch                 # one row of pre-load buffer above/below
+        first_row = max(0, int((vis_top - buf) // self._row_pitch))
+        last_row  = int((vis_bot + buf) // self._row_pitch)
+
+        keep = set()
+        for r in range(first_row, last_row + 1):
+            for c in range(COLS):
+                idx = r * COLS + c
+                if 0 <= idx < len(self._photo_cells):
+                    keep.add(idx)
+
+        # Queue loads for visible, not-yet-touched tiles.
+        for idx in keep:
+            if idx in self._thumb_state:
+                continue
+            path = self._photo_cells[idx].get('image_path') or ''
+            if not path:
+                continue
+            self._thumb_state[idx] = 'loading'
+            self._thumb_q.put((self._grid_gen, idx, path))
+
+        # Evict thumbnails that scrolled out of the keep window (bounds memory).
+        for idx in list(self._thumb_cache.keys()):
+            if idx not in keep:
+                if idx < len(self._photo_cells):
+                    try:
+                        self._photo_cells[idx]['thumb_lbl'].config(image='', width=14, height=6)
+                    except Exception:
+                        pass
+                self._thumb_cache.pop(idx, None)
+                self._thumb_state.pop(idx, None)
+
+    def _thumb_worker(self):
+        """Background decoder: open + square-crop visible images, hand the PIL
+        Image back to the UI thread (PhotoImage must be built on the main thread)."""
+        try:
+            from PIL import Image   # probe once; bundled with the exe via build.bat
+        except Exception:
+            self._thumbs_enabled = False
+            return
+        while True:
+            gen, idx, path = self._thumb_q.get()
+            if gen != self._grid_gen:
+                continue
+            try:
+                im = Image.open(path)
+                try:
+                    im.draft('RGB', (self._THUMB_PX * 2, self._THUMB_PX * 2))
+                except Exception:
+                    pass
+                im = self._square_crop(im, self._THUMB_PX)
+                self._q.put(('thumb_ready', gen, idx, im))
+            except Exception:
+                pass   # unreadable/bad image — leave the grey placeholder
+
+    def _square_crop(self, im, px: int):
+        from PIL import Image
+        im = im.convert('RGB')
+        w, h = im.size
+        s = min(w, h)
+        left = (w - s) // 2
+        top  = (h - s) // 2
+        im = im.crop((left, top, left + s, top + s))
+        return im.resize((px, px), Image.LANCZOS)
+
+    def _apply_thumb(self, gen: int, idx: int, pil_im):
+        """UI thread: turn the decoded image into a PhotoImage and show it."""
+        if gen != self._grid_gen or idx >= len(self._photo_cells):
+            return
+        try:
+            from PIL import ImageTk
+            photo = ImageTk.PhotoImage(pil_im)
+        except Exception:
+            self._thumbs_enabled = False
+            return
+        try:
+            self._photo_cells[idx]['thumb_lbl'].config(
+                image=photo, width=self._THUMB_PX, height=self._THUMB_PX, text='')
+        except Exception:
+            return
+        self._thumb_cache[idx] = photo      # keep a reference so Tk doesn't GC it
+        self._thumb_state[idx] = 'loaded'
 
 
 # ---------------------------------------------------------------------------
