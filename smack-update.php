@@ -75,7 +75,9 @@ if (
             $mobile_slug,
             $mobile_entry['download_url'],
             $mobile_entry['signature'] ?? '',
-            SNAPSMACK_RELEASE_PUBKEY
+            // Skins are signed with the SKIN-registry key (settings: update_public_key),
+            // NOT the core release pubkey — wrong key = Ed25519 verify fails.
+            (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='update_public_key' LIMIT 1")->fetchColumn() ?: '')
         );
     }
 }
@@ -410,7 +412,10 @@ if ($action === 'skin_update') {
     $slug         = $_POST['skin_slug']    ?? '';
     $download_url = $_POST['download_url'] ?? '';
     $signature    = $_POST['signature']    ?? '';
-    $public_key   = SNAPSMACK_RELEASE_PUBKEY;
+    // Skins are signed with the SKIN-registry key (settings: update_public_key),
+    // not the core release pubkey — the gallery uses this; the update page must too.
+    // This is why the gallery's skin-update worked and this one silently failed.
+    $public_key   = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='update_public_key' LIMIT 1")->fetchColumn() ?: '');
 
     if (empty($slug) || empty($download_url)) {
         $flash_msg  = 'SKIN UPDATE FAILED: MISSING DATA. TRY CHECKING FOR UPDATES AGAIN.';

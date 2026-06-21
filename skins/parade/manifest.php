@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.2.0',
+    'version'     => '1.2.1',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
@@ -129,6 +129,17 @@ return [
             ],
             'hint'    => 'Fireworks paints the chosen Flag Palette as slow-motion fireworks. Waving Flag flies that same flag full-screen behind the grid. Mutually exclusive — only one engine loads.',
             // PHP-handled: skin-profile.php emits the matching carrier; skin-footer.php loads only the chosen engine.
+        ],
+        'pa_flag_motion' => [
+            'section'   => 'PARADE',
+            'type'      => 'select',
+            'label'     => 'Flag — Motion',
+            'default'   => 'cloth',
+            'options'   => ['cloth' => 'Cloth (lifelike)', 'wave' => 'Wave (lighter)'],
+            'unit'      => '',
+            'show_when' => ['pa_bg_mode' => 'flag'],
+            'hint'      => 'Waving Flag mode only. Cloth = physics-based billow; Wave = the lighter travelling-ripple engine.',
+            // PHP-handled → data-motion on the flag carrier (ss-engine-flag-wave.js).
         ],
         'pa_flag_speed' => [
             'section'  => 'PARADE',

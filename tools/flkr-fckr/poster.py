@@ -259,6 +259,16 @@ class FlkrDckrClient:
 # Migration runner (called from main.py background thread)
 # ---------------------------------------------------------------------------
 
+def _in_peak(peak_start: int, peak_end: int) -> bool:
+    """True if the current local hour is inside the peak window (midnight-safe)."""
+    from datetime import datetime
+    h = datetime.now().hour
+    if peak_start < peak_end:
+        return peak_start <= h < peak_end
+    # Window wraps midnight (e.g. 22 → 8)
+    return h >= peak_start or h < peak_end
+
+
 def run_import(
     client:           FlkrDckrClient,
     photos:           list,              # List[ParsedPhoto] from flickr_parser
@@ -269,6 +279,10 @@ def run_import(
     unalbumed_action: str = 'feed',      # 'feed' or 'default_album'
     default_album:    str = '',          # album name for unalbumed if action=default_album
     throttle_delay:   float = 1.5,
+    offpeak_only:     bool  = False,  # pause entirely during peak hours
+    peak_start:       int   = 9,      # peak window start hour (0–23, local)
+    peak_end:         int   = 23,     # peak window end hour (exclusive)
+    on_wait:          Optional[Callable[[int], None]] = None,  # called w/ resume hour while paused
     on_progress:      Optional[Callable[[int, int, ImportResult], None]] = None,
     stop_event=None,        # threading.Event — set to abort the run
     pause_event=None,       # threading.Event — cleared to pause, set to resume
@@ -305,6 +319,20 @@ def run_import(
         if stop_event is not None and stop_event.is_set():
             log.info("Import stopped by user at photo %d/%d", idx, total)
             break
+
+        # Off-peak gate: when enabled, pause the run entirely during peak hours.
+        # Re-checks every 30s and honours stop. (Ported from unzucker — the
+        # off-peak scheduling requested but missed in the original build.)
+        if offpeak_only:
+            while _in_peak(peak_start, peak_end):
+                if stop_event is not None and stop_event.is_set():
+                    break
+                if on_wait:
+                    on_wait(peak_end)
+                time.sleep(30)
+            if stop_event is not None and stop_event.is_set():
+                log.info("Import stopped by user while waiting for off-peak")
+                break
 
         # Skip excluded photos
         if photo.excluded:
