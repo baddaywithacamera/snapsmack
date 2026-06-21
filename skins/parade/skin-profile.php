@@ -142,11 +142,51 @@ if ($_pa_flag_mode) {
     $_pa_flag_speed   = max(1, min(100, (int) ($settings['pa_flag_speed']     ?? 30)));
     $_pa_flag_amp     = max(1, min(100, (int) ($settings['pa_flag_amplitude'] ?? 40)));
     $_pa_flag_opacity = max(0, min(100, (int) ($settings['pa_flag_opacity']   ?? 100)));
+    $_pa_flag_motion  = (($settings['pa_flag_motion'] ?? 'cloth') === 'wave') ? 'wave' : 'cloth';
 }
+
+// ── Nav menu text glow (ported from AURORA — was never wired in PARADE, so the
+//    nav fell back to style.css's hardcoded GREEN and the admin colour did
+//    nothing). Emits --nav-text-glow / --nav-text-glow-strong. ────────────────
+$_pa_navglow_hex = trim($settings['pa_nav_glow_color'] ?? '#750787');
+$_pa_navglow_sz  = max(0, min(40,  (int)($settings['pa_nav_glow_size']    ?? 0)));
+$_pa_navglow_op  = max(0, min(100, (int)($settings['pa_nav_glow_opacity'] ?? 45)));
+$_pa_navglow_css = 'none'; $_pa_navglow_strong = 'none';
+if ($_pa_navglow_sz > 0 && $_pa_navglow_op > 0) {
+    $_ngc = ltrim($_pa_navglow_hex, '#');
+    if (strlen($_ngc) === 3) $_ngc = $_ngc[0].$_ngc[0].$_ngc[1].$_ngc[1].$_ngc[2].$_ngc[2];
+    $_ngr = hexdec(substr($_ngc, 0, 2)); $_ngg = hexdec(substr($_ngc, 2, 2)); $_ngb = hexdec(substr($_ngc, 4, 2));
+    $_nga = number_format($_pa_navglow_op / 100, 2);
+    $_pa_navglow_css = sprintf('0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_pa_navglow_sz, $_ngr, $_ngg, $_ngb, $_nga,
+        $_pa_navglow_sz * 2, $_ngr, $_ngg, $_ngb, number_format($_pa_navglow_op / 200, 2));
+    $_pa_navglow_strong = sprintf('0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_pa_navglow_sz + 2, $_ngr, $_ngg, $_ngb, number_format(min(1, $_pa_navglow_op / 100 * 1.5), 2),
+        ($_pa_navglow_sz + 2) * 2, $_ngr, $_ngg, $_ngb, $_nga);
+}
+
+// ── Profile text glow (ported from AURORA — also never wired, so the title/
+//    tagline/bio glow controls did nothing). Emits --profile-text-glow. ───────
+$_pa_glow_hex = trim($settings['pa_glow_color'] ?? '#ffffff');
+$_pa_glow_sz  = max(0, min(40,  (int)($settings['pa_glow_size']    ?? 0)));
+$_pa_glow_op  = max(0, min(100, (int)($settings['pa_glow_opacity'] ?? 0)));
+$_pa_glow_css = 'none';
+if ($_pa_glow_sz > 0 && $_pa_glow_op > 0) {
+    $_gc = ltrim($_pa_glow_hex, '#');
+    if (strlen($_gc) === 3) $_gc = $_gc[0].$_gc[0].$_gc[1].$_gc[1].$_gc[2].$_gc[2];
+    $_gr = hexdec(substr($_gc, 0, 2)); $_gg = hexdec(substr($_gc, 2, 2)); $_gb = hexdec(substr($_gc, 4, 2));
+    $_ga = number_format($_pa_glow_op / 100, 2);
+    $_pa_glow_css = sprintf('0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_pa_glow_sz, $_gr, $_gg, $_gb, $_ga,
+        $_pa_glow_sz * 2, $_gr, $_gg, $_gb, number_format($_pa_glow_op / 200, 2));
+}
+
+// Nav companion-line opacity (0–100 → 0–1) — also previously unemitted.
+$_pa_nav_line_op = number_format(max(0, min(100, (int)($settings['pa_nav_line_opacity'] ?? 100))) / 100, 2);
 ?>
 
 <!-- PARADE CSS vars: high-key field + text colours (read by style.css) -->
-<style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;}</style>
+<style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;--nav-line-opacity:<?php echo $_pa_nav_line_op; ?>;--nav-text-glow:<?php echo $_pa_navglow_css; ?>;--nav-text-glow-strong:<?php echo $_pa_navglow_strong; ?>;--profile-text-glow:<?php echo $_pa_glow_css; ?>;}</style>
 
 <?php if ($_pa_flag_mode): ?>
 <!-- PARADE waving-flag carrier — read by ss-engine-flag-wave.js (Layer 1
@@ -158,7 +198,13 @@ if ($_pa_flag_mode) {
      data-orientation="<?php echo $_pa_flag_orient; ?>"
      data-speed="<?php echo $_pa_flag_speed; ?>"
      data-amplitude="<?php echo $_pa_flag_amp; ?>"
-     data-opacity="<?php echo $_pa_flag_opacity; ?>"></div>
+     data-opacity="<?php echo $_pa_flag_opacity; ?>"
+     data-motion="<?php echo $_pa_flag_motion; ?>"
+     data-pa-palette='<?php echo htmlspecialchars(json_encode($_pa_colors), ENT_QUOTES); ?>'
+     data-pa-border-style="<?php echo htmlspecialchars($_pa_bstyle); ?>"
+     data-pa-border-dir="<?php echo htmlspecialchars($_pa_bdir); ?>"
+     data-pa-border-rhythm="<?php echo htmlspecialchars($_pa_brhythm); ?>"
+     data-pa-border-minl="<?php echo $_pa_border_minl; ?>"></div>
 <?php else: ?>
 <!-- PARADE fireworks carrier — read by ss-engine-parade-fireworks.js (Layer 1).
      The engine appends its own <canvas class="pa-canvas">. -->

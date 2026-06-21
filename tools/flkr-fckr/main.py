@@ -34,7 +34,7 @@ from poster import FlkrDckrClient, run_import
 # Logging — rotating daily, 7-day retention, %APPDATA%\FlkrFckr\flkrfckr.log
 # ---------------------------------------------------------------------------
 
-BUILD_VERSION = "1.0.0"
+BUILD_VERSION = "0.7.1"  # auto-incremented by bump_version.py on each build.bat run
 
 _LOG_DIR  = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'FlkrFckr')
 _LOG_FILE = os.path.join(_LOG_DIR, 'flkrfckr.log')
@@ -195,11 +195,42 @@ class FlkrDckrApp(tk.Tk):
                                command=self._browse_folder)
         btn_browse.grid(row=1, column=2, sticky='w', padx=(0, 8))
 
-        lbl(bar, 'Throttle (s)', 4, row=1)
-        self._v_throttle = tk.DoubleVar(value=self._cfg.get('throttle_delay', 1.5))
-        tk.Spinbox(bar, from_=0.5, to=5.0, increment=0.5, textvariable=self._v_throttle,
-                   bg=BG_CELL, fg=TEXT_PRI, insertbackground=TEXT_PRI, relief='flat',
-                   bd=4, font=self._font_ui, width=6).grid(row=1, column=5, sticky='w', padx=(0, 8))
+        # Server throttle — named presets (ported from unzucker). 'Full Send' = 0.0
+        # = no delay (localhost/VPS). Stored in config as seconds-as-string.
+        _THROTTLE_OPTIONS = [
+            ('Full Send (0s)', '0.0'),        ('Fast Lane (0.25s)', '0.25'),
+            ('Steady (0.5s)', '0.5'),         ('Easy Does It (1s)', '1.0'),
+            ('Sunday Driver (2s)', '2.0'),    ('Pump da Brakes (5s)', '5.0'),
+            ("Grandma's Pace (10s)", '10.0'), ('Geological Time (30s)', '30.0'),
+        ]
+        self._throttle_l2v = {l: v for l, v in _THROTTLE_OPTIONS}
+        self._throttle_v2l = {v: l for l, v in _THROTTLE_OPTIONS}
+        _cur = str(self._cfg.get('throttle_delay', 0.5))
+        if _cur not in self._throttle_v2l:
+            try: _cur = str(float(_cur))
+            except (TypeError, ValueError): _cur = '0.5'
+        lbl(bar, 'Throttle', 4, row=1)
+        self._v_throttle = tk.StringVar(value=self._throttle_v2l.get(_cur, 'Steady (0.5s)'))
+        ttk.Combobox(bar, textvariable=self._v_throttle,
+                     values=[l for l, _ in _THROTTLE_OPTIONS],
+                     width=18, state='readonly').grid(row=1, column=5, sticky='w', padx=(0, 8))
+
+        # Off-peak scheduling — pause the import during peak hours (ported from
+        # unzucker; the off-peak you asked for originally). Enforced by the poster.
+        self._v_offpeak    = tk.BooleanVar(value=bool(self._cfg.get('offpeak_only', False)))
+        self._v_peak_start = tk.StringVar(value=str(self._cfg.get('peak_start', 9)))
+        self._v_peak_end   = tk.StringVar(value=str(self._cfg.get('peak_end', 23)))
+        _hours = [str(h) for h in range(24)]
+        tk.Checkbutton(bar, text='Off-peak only', variable=self._v_offpeak,
+                       bg=BG_PANEL, fg=TEXT_DIM, selectcolor=BG_CELL,
+                       activebackground=BG_PANEL, activeforeground=TEXT_PRI,
+                       font=self._font_ui, cursor='hand2').grid(row=2, column=0, sticky='w', pady=(4, 0))
+        lbl(bar, 'Peak', 1, row=2)
+        ttk.Combobox(bar, textvariable=self._v_peak_start, values=_hours,
+                     width=4, state='readonly').grid(row=2, column=2, sticky='w', pady=(4, 0))
+        lbl(bar, 'to', 3, row=2)
+        ttk.Combobox(bar, textvariable=self._v_peak_end, values=_hours,
+                     width=4, state='readonly').grid(row=2, column=4, sticky='w', pady=(4, 0))
 
         lbl(bar, 'Private →', 6, row=1)
         self._v_private = tk.StringVar(value=self._cfg.get('private_status', 'draft'))
@@ -726,7 +757,11 @@ class FlkrDckrApp(tk.Tk):
                     private_status=cfg.get('private_status', 'draft'),
                     unalbumed_action=cfg.get('unalbumed_action', 'feed'),
                     default_album=cfg.get('default_album', ''),
-                    throttle_delay=float(cfg.get('throttle_delay', 1.5)),
+                    throttle_delay=float(self._throttle_l2v.get(self._v_throttle.get(), '0.5')),
+                    offpeak_only=self._v_offpeak.get(),
+                    peak_start=int(self._v_peak_start.get() or 9),
+                    peak_end=int(self._v_peak_end.get() or 23),
+                    on_wait=lambda hr: self._q.put(('log', f'Off-peak: paused until {hr}:00', TEXT_DIM)),
                     on_progress=_on_progress,
                     stop_event=self._stop_event,
                     pause_event=self._pause_event,
@@ -873,7 +908,10 @@ class FlkrDckrApp(tk.Tk):
             'site_url':         self._v_url.get().strip(),
             'api_key':          self._v_key.get().strip(),
             'export_folder':    self._v_folder.get().strip(),
-            'throttle_delay':   self._v_throttle.get(),
+            'throttle_delay':   self._throttle_l2v.get(self._v_throttle.get(), '0.5'),
+            'offpeak_only':     self._v_offpeak.get(),
+            'peak_start':       self._v_peak_start.get(),
+            'peak_end':         self._v_peak_end.get(),
             'private_status':   self._v_private.get(),
             'unalbumed_action': self._v_unalbumed.get(),
         })

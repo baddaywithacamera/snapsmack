@@ -12,6 +12,22 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.276 — "Box Seat" (2026-06-20)
+
+- **Skin update via System Updates fixed** — the update page verified skin
+  signatures against the core release pubkey instead of the skin-registry key
+  (`update_public_key`), so "update skin" there silently failed while the Skin
+  Gallery worked. The update handler and the mobile-skin auto-repair now use the
+  correct key.
+- **PARADE flag — cloth motion engine** — `ss-engine-flag-wave.js` gains a Verlet
+  mass-spring cloth simulation (gravity drape, travelling wind, corner flap)
+  alongside the original lighter wave, selectable per-site via the new
+  "Flag — Motion" control (Cloth / Wave). PARADE skin 1.2.1 also wires the
+  text-glow / nav-glow emission (were unwired) and the tile-border config for
+  flag mode.
+- **Flkr Fckr** (desktop tool): unzucker-style throttle presets + off-peak
+  scheduling; `0.7.x` auto-incrementing build version.
+
 ## 0.7.275 — "Dumpster Sofa" (2026-06-20)
 
 Packaging hardening and a PARADE skin overhaul.

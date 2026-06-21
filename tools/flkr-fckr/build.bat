@@ -9,6 +9,9 @@ echo === FLKR FCKR build ===
 REM Install / upgrade dependencies
 pip install --upgrade pyinstaller pillow requests
 
+REM Auto-increment the 0.7.xx build version (main.py BUILD_VERSION) before building
+python bump_version.py
+
 REM Build single-file exe
 pyinstaller --onefile --windowed --name flkrfckr --icon assets\icon.ico main.py
 

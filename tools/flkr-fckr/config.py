@@ -55,7 +55,10 @@ def load() -> dict:
 
         # Import
         'export_folder':    cfg.get('import', 'export_folder', fallback=''),
-        'throttle_delay':   cfg.getfloat('import', 'throttle_delay', fallback=1.5),
+        'throttle_delay':   cfg.getfloat('import', 'throttle_delay', fallback=0.5),
+        'offpeak_only':     cfg.getboolean('import', 'offpeak_only', fallback=False),
+        'peak_start':       cfg.getint('import', 'peak_start', fallback=9),
+        'peak_end':         cfg.getint('import', 'peak_end',   fallback=23),
 
         # Defaults
         'private_status':   cfg.get('defaults', 'private_status', fallback='draft'),
@@ -78,7 +81,10 @@ def save(data: dict) -> None:
 
     cfg['import'] = {
         'export_folder': data.get('export_folder', ''),
-        'throttle_delay': str(data.get('throttle_delay', 1.5)),
+        'throttle_delay': str(data.get('throttle_delay', 0.5)),
+        'offpeak_only':   str(data.get('offpeak_only', False)),
+        'peak_start':     str(data.get('peak_start', 9)),
+        'peak_end':       str(data.get('peak_end', 23)),
     }
 
     cfg['defaults'] = {
