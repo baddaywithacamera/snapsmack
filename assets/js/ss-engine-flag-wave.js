@@ -1,25 +1,25 @@
 /**
- * SNAPSMACK — Flag Wave Engine (cloth)
+ * SNAPSMACK — Flag Wave Engine
  * ss-engine-flag-wave.js
  *
  * Full-viewport waving-flag background. Built for PARADE's pride flags, but
  * DATA-DRIVEN so any skin can fly any flag (e.g. a Canada Day skin). One engine,
  * every flag — selected by data attributes; no inline JS lives in a skin.
  *
- * Technique (v2): a real 2D mass-spring CLOTH simulated with Verlet integration.
- * The pole edge (left) is pinned; gravity gives natural drape and a travelling
- * wind force flaps the free edge — corners lead, folds emerge from the physics
- * rather than a fixed sine. The flat flag is painted once to an offscreen canvas
- * and sampled per-frame through the cloth mesh via vertical slices (reliable,
- * dpr-safe, no skewed-quad math). Honours prefers-reduced-motion (near-still
- * drape), pauses on a hidden tab, and a frame-time watchdog coarsens the slice
- * width AND mesh under load. Physics is damped + NaN-guarded so it cannot blow up.
+ * Technique: the flat flag is painted once to an offscreen canvas, then drawn
+ * per-frame as vertical slices vertically offset by a travelling sine — corners
+ * lead, ripple amplitude grows toward the free edge — with light fold shading.
+ * Reliable, dpr-safe, cheap. Honours prefers-reduced-motion (near-still),
+ * pauses on a hidden tab, and a frame-time watchdog widens the slice under load.
+ *
+ * (A physics "cloth" mode was prototyped and then removed — it never read right.
+ *  This engine is the lighter travelling-sine wave, which is the only mode.)
  *
  * MARKUP CONTRACT — mount on a container carrying [data-flag-wave]:
  *   data-flag        built-in: rainbow | bi | trans | canada                  [rainbow]
  *   data-stripes     custom flag as JSON [["#hex",weight], …] (overrides data-flag)
  *   data-orientation stripe direction for custom flags: h | v                       [h]
- *   data-emblem      optional centre emblem image URL (drawn into the cloth)
+ *   data-emblem      optional centre emblem image URL (drawn into the flag)
  *   data-speed       wind speed 1–100 (slow drift → active flap)                   [30]
  *   data-amplitude   wind strength 1–100                                           [40]
  *   data-opacity     background opacity 0–100                                     [100]
@@ -82,22 +82,10 @@
         var ampCfg   = clamp(+d.amplitude, 1, 100, 40);
         var opacity  = clamp(+d.opacity, 0, 100, 100) / 100;
 
-        // travelling-wind frequency. Kept near the wave engine's proven cadence
-        // (omega = 0.00045·speed). The old 0.0016·speed flapped ~3.5× faster,
-        // so under the cloth's damping + constraints each gust cancelled the
-        // previous one before any billow could build — leaving only gravity, so
-        // the flag just hung limp. Slower cadence lets the wind accumulate.
-        var windFreq = 0.0005 * speedCfg;             // travelling-wind frequency
-        var windAmp  = (ampCfg / 100);                // 0..1 wind strength scalar
-        if (prefersReduced) { windFreq *= 0.06; windAmp *= 0.25; }
-
-        // Motion mode: 'cloth' (Verlet sim, default) or 'wave' (the original,
-        // lighter travelling-sine engine — kept so users can choose).
-        var motion  = (d.motion === 'wave') ? 'wave' : 'cloth';
-        var omega   = 0.00045 * speedCfg;          // wave-mode only
-        var ampFrac = (ampCfg / 100) * 0.16;       // wave-mode only
-        if (prefersReduced && motion === 'wave') omega *= 0.05;
-        var waveLen = 0;                            // wave-mode only
+        var omega   = 0.00045 * speedCfg;          // travelling-sine cadence
+        var ampFrac = (ampCfg / 100) * 0.16;       // ripple depth as a fraction of H
+        if (prefersReduced) omega *= 0.05;
+        var waveLen = 0;
 
         // ── Canvas ───────────────────────────────────────────────────────
         var canvas = document.createElement('canvas');
@@ -114,28 +102,6 @@
         var sliceW = 4;                                // logical px per render slice (watchdog raises)
         var emblemImg = null;
 
-        // ── Cloth mesh ───────────────────────────────────────────────────
-        // COLS along the fly (pole→free), ROWS down the hoist. Flat arrays for
-        // speed; index = r*COLS + c. Left column (c===0) is pinned to the pole.
-        var COLS = 26, ROWS = 14;
-        var px, py, ox, oy, restX, restY;             // positions, previous, rest lengths
-
-        function buildMesh() {
-            px = new Float64Array(ROWS * COLS);
-            py = new Float64Array(ROWS * COLS);
-            ox = new Float64Array(ROWS * COLS);
-            oy = new Float64Array(ROWS * COLS);
-            restX = W / (COLS - 1);
-            restY = H / (ROWS - 1);
-            for (var r = 0; r < ROWS; r++) {
-                for (var c = 0; c < COLS; c++) {
-                    var i = r * COLS + c;
-                    px[i] = ox[i] = c * restX;
-                    py[i] = oy[i] = r * restY;
-                }
-            }
-        }
-
         function sizeToHost() {
             var w = host.clientWidth || window.innerWidth;
             var h = host.clientHeight || window.innerHeight;
@@ -144,8 +110,7 @@
             canvas.height = Math.max(1, Math.round(h * dpr));
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             buildFlag();
-            if (motion === 'cloth') buildMesh();
-            else waveLen = Math.max(180, W / 1.6);
+            waveLen = Math.max(180, W / 1.6);
         }
 
         // Paint the flat flag (stripes + optional emblem) to the offscreen.
@@ -188,119 +153,7 @@
             emblemImg.src = emblemUrl;
         }
 
-        // ── Physics (Verlet) ─────────────────────────────────────────────
-        var DAMP = 0.985;          // velocity retention
-        var ITERS = 3;             // constraint relaxation passes
-        var meshBad = false;
-
-        function simulate(dt, t) {
-            // dt is already clamped by the caller. Normalise to ~16ms steps so
-            // tuning is frame-rate independent without risking an explosion.
-            var step = Math.min(dt, 32) / 16;
-            // Light-fabric drape. The old 0.045 sagged the whole mesh below the
-            // pole so the flag "hung down and jiggled" instead of flying out;
-            // a flag is light and wind-dominated, so keep gravity small.
-            var grav = 0.010 * step * step;                 // downward drape
-            var i, r, c;
-
-            // Integrate (skip pinned pole column).
-            for (r = 0; r < ROWS; r++) {
-                for (c = 1; c < COLS; c++) {
-                    i = r * COLS + c;
-                    var edge = c / (COLS - 1);                // 0 pole → 1 free edge
-                    // Travelling wind: a phase that moves along the fly, modulated
-                    // down the hoist so top and bottom flap out of sync.
-                    var phase = (c * 0.55) - (windFreq * t) + (r * 0.30);
-                    var gust  = 0.6 + 0.4 * Math.sin(windFreq * t * 0.37 + c * 0.2);
-                    var wy = windAmp * edge * gust * 1.3 * Math.sin(phase) * step * step * H * 0.018;
-                    var wx = windAmp * edge * 0.5 * Math.cos(phase) * step * step * W * 0.004;
-
-                    var vx = (px[i] - ox[i]) * DAMP;
-                    var vy = (py[i] - oy[i]) * DAMP;
-                    ox[i] = px[i]; oy[i] = py[i];
-                    px[i] += vx + wx;
-                    py[i] += vy + grav * restY + wy;
-                }
-            }
-
-            // Constraints: keep neighbours near rest length; re-pin the pole.
-            for (var k = 0; k < ITERS; k++) {
-                for (r = 0; r < ROWS; r++) {
-                    for (c = 0; c < COLS; c++) {
-                        i = r * COLS + c;
-                        if (c + 1 < COLS) relax(i, i + 1, restX);
-                        if (r + 1 < ROWS) relax(i, i + COLS, restY);
-                    }
-                }
-                // Pin the pole column to its original hoist positions.
-                for (r = 0; r < ROWS; r++) {
-                    i = r * COLS;
-                    px[i] = 0; py[i] = r * restY;
-                    ox[i] = 0; oy[i] = r * restY;
-                }
-            }
-
-            // NaN guard: if the sim ever destabilises, rebuild the flat mesh.
-            if (!isFinite(px[ROWS * COLS - 1]) || !isFinite(py[ROWS * COLS - 1])) {
-                meshBad = true;
-            }
-            if (meshBad) { buildMesh(); meshBad = false; }
-        }
-
-        function relax(a, b, rest) {
-            var dx = px[b] - px[a], dy = py[b] - py[a];
-            var dist = Math.sqrt(dx * dx + dy * dy) || rest;
-            var diff = (rest - dist) / dist * 0.5;
-            var ox2 = dx * diff, oy2 = dy * diff;
-            var aPin = (a % COLS) === 0, bPin = (b % COLS) === 0;
-            if (!aPin) { px[a] -= ox2; py[a] -= oy2; }
-            if (!bPin) { px[b] += ox2; py[b] += oy2; }
-        }
-
-        // Sample the mesh's hoist profile (top→bottom dest-Y) at fly-fraction fx.
-        // Returns dest-Y for each of RENDER_LEVELS evenly-spaced hoist levels.
-        var RENDER_LEVELS = 4;
-        var prof = new Float64Array(RENDER_LEVELS);
-        function sampleProfile(fx) {
-            var cf = fx * (COLS - 1);
-            var c0 = Math.min(COLS - 2, Math.floor(cf));
-            var ct = cf - c0;
-            for (var lvl = 0; lvl < RENDER_LEVELS; lvl++) {
-                var rf = (lvl / (RENDER_LEVELS - 1)) * (ROWS - 1);
-                var r0 = Math.min(ROWS - 2, Math.floor(rf));
-                var rt = rf - r0;
-                var i00 = r0 * COLS + c0, i01 = i00 + 1;
-                var i10 = i00 + COLS,     i11 = i10 + 1;
-                var top = py[i00] + (py[i01] - py[i00]) * ct;
-                var bot = py[i10] + (py[i11] - py[i10]) * ct;
-                prof[lvl] = top + (bot - top) * rt;
-            }
-        }
-
-        // ── Render ───────────────────────────────────────────────────────
-        function render() {
-            ctx.clearRect(0, 0, W, H);
-            var bandSrcH = H / (RENDER_LEVELS - 1);
-            var prevTopY = 0;
-            for (var x = 0; x < W; x += sliceW) {
-                sampleProfile(x / (W || 1));
-                // Fold shading: brighten/darken from how fast the top edge rises.
-                var slope = (prof[0] - prevTopY);
-                prevTopY = prof[0];
-                for (var lvl = 0; lvl < RENDER_LEVELS - 1; lvl++) {
-                    var dTop = prof[lvl], dBot = prof[lvl + 1];
-                    var dH = dBot - dTop;
-                    if (dH <= 0.1) continue;
-                    ctx.drawImage(off,
-                        x * dpr, (lvl * bandSrcH) * dpr, sliceW * dpr, bandSrcH * dpr,
-                        x, dTop, sliceW + 1, dH);
-                }
-                if (slope < -0.15)      { ctx.fillStyle = 'rgba(255,255,255,' + Math.min(0.18, -slope * 0.05).toFixed(3) + ')'; ctx.fillRect(x, prof[0], sliceW + 1, H); }
-                else if (slope > 0.15)  { ctx.fillStyle = 'rgba(0,0,0,' + Math.min(0.22, slope * 0.06).toFixed(3) + ')'; ctx.fillRect(x, prof[0], sliceW + 1, H); }
-            }
-        }
-
-        // ── Wave mode (original lighter engine) ──────────────────────────
+        // ── Render (travelling sine) ──────────────────────────────────────
         function renderWave(t) {
             ctx.clearRect(0, 0, W, H);
             var ampPx = ampFrac * H;
@@ -328,8 +181,7 @@
                 if (dt > 40) { slowStreak++; } else { slowStreak = Math.max(0, slowStreak - 1); }
                 if (slowStreak > 40 && sliceW < 10) { sliceW += 1; slowStreak = 0; }
 
-                if (motion === 'cloth') { simulate(dt, t); render(); }
-                else { renderWave(t); }
+                renderWave(t);
             } catch (e) { fault('frame', e); }
             raf = requestAnimationFrame(frame);
         }
