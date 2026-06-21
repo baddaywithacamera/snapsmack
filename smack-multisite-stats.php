@@ -438,6 +438,11 @@ include 'core/sidebar.php';
     <!-- FLEET TOTALS ─────────────────────────────────────────────────────── -->
     <div class="box">
         <h3>FLEET TOTALS<?php echo $period ? ' — ' . $period_label : ' — ALL TIME'; ?></h3>
+        <?php if ($period === 0 && !empty($fleet_daily)): ?>
+            <div style="font-size:0.78rem; color:var(--text-muted,#888); letter-spacing:1px; margin:-6px 0 14px;">
+                since <?php echo htmlspecialchars(array_key_first($fleet_daily)); ?> &ndash; <?php echo htmlspecialchars(array_key_last($fleet_daily)); ?>
+            </div>
+        <?php endif; ?>
 
         <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:25px;">
             <?php
