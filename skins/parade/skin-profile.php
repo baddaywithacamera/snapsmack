@@ -142,7 +142,6 @@ if ($_pa_flag_mode) {
     $_pa_flag_speed   = max(1, min(100, (int) ($settings['pa_flag_speed']     ?? 30)));
     $_pa_flag_amp     = max(1, min(100, (int) ($settings['pa_flag_amplitude'] ?? 40)));
     $_pa_flag_opacity = max(0, min(100, (int) ($settings['pa_flag_opacity']   ?? 100)));
-    $_pa_flag_motion  = (($settings['pa_flag_motion'] ?? 'cloth') === 'wave') ? 'wave' : 'cloth';
 }
 
 // ── Nav menu text glow (ported from AURORA — was never wired in PARADE, so the
@@ -199,7 +198,6 @@ $_pa_nav_line_op = number_format(max(0, min(100, (int)($settings['pa_nav_line_op
      data-speed="<?php echo $_pa_flag_speed; ?>"
      data-amplitude="<?php echo $_pa_flag_amp; ?>"
      data-opacity="<?php echo $_pa_flag_opacity; ?>"
-     data-motion="<?php echo $_pa_flag_motion; ?>"
      data-pa-palette='<?php echo htmlspecialchars(json_encode($_pa_colors), ENT_QUOTES); ?>'
      data-pa-border-style="<?php echo htmlspecialchars($_pa_bstyle); ?>"
      data-pa-border-dir="<?php echo htmlspecialchars($_pa_bdir); ?>"
