@@ -183,13 +183,11 @@
     }
 
     document.addEventListener('keydown', function (e) {
-        // F1 — toggle help. Don't trigger when typing.
-        var t = e.target;
-        if (e.key === 'F1') {
-            e.preventDefault();
-            toggle();
-            return;
-        }
+        // F1 is handled solely by the comms engine (ss-engine-comms.js), which
+        // delegates to snapPublicHelp.toggle() when this engine is loaded.
+        // Binding F1 here too made BOTH listeners fire on one press — open then
+        // immediately close — so the help panel appeared to do nothing.
+        // Escape-to-close stays here.
         if (e.key === 'Escape' && isOpen) {
             e.preventDefault();
             close();
