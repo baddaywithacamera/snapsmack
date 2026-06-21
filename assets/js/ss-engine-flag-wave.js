@@ -82,7 +82,12 @@
         var ampCfg   = clamp(+d.amplitude, 1, 100, 40);
         var opacity  = clamp(+d.opacity, 0, 100, 100) / 100;
 
-        var windFreq = 0.0016 * speedCfg;             // travelling-wind frequency
+        // travelling-wind frequency. Kept near the wave engine's proven cadence
+        // (omega = 0.00045·speed). The old 0.0016·speed flapped ~3.5× faster,
+        // so under the cloth's damping + constraints each gust cancelled the
+        // previous one before any billow could build — leaving only gravity, so
+        // the flag just hung limp. Slower cadence lets the wind accumulate.
+        var windFreq = 0.0005 * speedCfg;             // travelling-wind frequency
         var windAmp  = (ampCfg / 100);                // 0..1 wind strength scalar
         if (prefersReduced) { windFreq *= 0.06; windAmp *= 0.25; }
 

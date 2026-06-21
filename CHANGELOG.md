@@ -12,6 +12,25 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.278 — "Front Row" (2026-06-21)
+
+- **SMACKBACK — truncated files can no longer poison the baseline.** When a
+  release manifest lacked an EOF signature, SMACKBACK fell back to reading the
+  signature off disk; if that read caught a file mid-transfer / partially
+  written, the truncated last line became the trusted baseline, so every later
+  legitimate change to that file false-flagged as "TRUNCATED" (the recurring
+  one-file lockout on theschoolofhardnocks/constants.php). The disk-fallback now
+  refuses to capture a signature from a file that looks truncated (size 0, null
+  bytes in tail, or declares the EOF convention but doesn't end with the marker)
+  and stores none → conservative pass instead of a poisoned mismatch.
+- **Flag engine — Cloth mode no longer hangs limp.** The cloth wind advanced
+  ~3.5× faster than the (working) Wave mode, so under the cloth's damping +
+  constraints each gust cancelled the previous one before any billow could
+  build, leaving only gravity — the flag just draped. Brought the wind cadence
+  into the wave engine's proven range (`0.0005·speed`) so the wind accumulates
+  and the flag actually flies. (`ss-engine-flag-wave.js`; ships in core, used by
+  PARADE + any flag skin.)
+
 ## 0.7.277 — "Hot Seat" (2026-06-20)
 
 - **Chaplin archive T/M toggle fixed** — switching between Thumbs and Masonry in
