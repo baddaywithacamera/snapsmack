@@ -341,7 +341,7 @@ def _strip_html(s: str) -> str:
 # Core parse function
 # ---------------------------------------------------------------------------
 
-def parse(export_folder: str) -> ParseResult:
+def parse(export_folder: str, on_progress=None) -> ParseResult:
     """
     Parse a Flickr export folder.
 
@@ -403,7 +403,13 @@ def parse(export_folder: str) -> ParseResult:
     # the hand-maintained flkrfckr-names.json sidecar).
     name_map = _build_name_map(export_folder)
 
-    for sidecar_path in sidecar_files:
+    total_sidecars = len(sidecar_files)
+    for _idx, sidecar_path in enumerate(sidecar_files):
+        if on_progress and (_idx % 100 == 0):
+            try:
+                on_progress(_idx, total_sidecars)
+            except Exception:
+                pass
         try:
             with open(sidecar_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -505,6 +511,12 @@ def parse(export_folder: str) -> ParseResult:
             license=license_str,
             comments=_parse_comments(data.get('comments', []), name_map),
         ))
+
+    if on_progress:
+        try:
+            on_progress(len(sidecar_files), len(sidecar_files))
+        except Exception:
+            pass
 
     # Sort oldest-first by best available date
     result.photos.sort(key=_best_date)
