@@ -864,12 +864,26 @@ class BackupEngine:
             result["errors"].append(f"ZIP verification failed: {e}")
             verify_ok = False
 
-        # Cloud verification
+        # Cloud verification — content-hash check via the provider. FAIL-CLOSED:
+        # if the destination can't be verified, the backup is NOT marked clean.
+        # A backup tool that can't confirm the cloud copy is byte-identical isn't
+        # worth trusting, so "couldn't verify" is treated as failure, not success.
         if cloud and cloud_id:
-            zip_size = os.path.getsize(zip_path)
-            if not cloud.verify_upload(cloud_id, zip_size):
-                result["errors"].append("Cloud file size mismatch after upload.")
+            verifier = getattr(cloud, "verify_upload", None)
+            if not callable(verifier):
+                result["errors"].append(
+                    "Cloud destination provides no upload verification — "
+                    "backup NOT confirmed."
+                )
                 verify_ok = False
+            elif not verifier(cloud_id, zip_path):
+                result["errors"].append(
+                    "Cloud verification FAILED (size or content-hash mismatch) "
+                    "— backup NOT confirmed."
+                )
+                verify_ok = False
+            else:
+                self._log("✓ Cloud copy verified — size + content hash match.")
 
         # Upload updated backup-state.json to server
         self._progress("stage6", "Updating server state…", 0.96)

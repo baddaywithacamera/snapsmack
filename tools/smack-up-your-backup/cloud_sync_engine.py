@@ -265,34 +265,30 @@ class CloudSyncEngine:
         # ── Differential ──────────────────────────────────────────────
         to_sync      = []
         skipped      = 0
-        pre_verified = 0
 
         for name, sf in src_map.items():
             src_size = sf["size"]
             src_md5  = sf["md5"]
 
-            # Already in manifest with matching size+md5 → skip
+            # Already in manifest with a proven hash match → skip (the ONLY
+            # skip-without-transfer path; see SyncManifest.is_current).
             if manifest.is_current(name, src_size, src_md5):
                 skipped += 1
                 continue
 
-            # On destination with matching size — trust, record in manifest
-            df = dst_map.get(name)
-            if df and df["size"] == src_size:
-                manifest.update(name, src_size, src_md5, df.get("sha1") or None)
-                pre_verified += 1
-                skipped += 1
-                continue
-
+            # A file on the destination with a matching *size* is NOT trusted on
+            # size alone: the source exposes an MD5 while the destination (B2)
+            # exposes a SHA1, so they can't be compared without the bytes.
+            # Trusting size here used to bless (and manifest-cache) a
+            # same-size-but-different file — a silent-corruption hole. Instead we
+            # queue it; the transfer loop downloads, computes the local SHA1, and
+            # skips only the UPLOAD when the destination SHA1 actually matches,
+            # recording the manifest entry only after real content verification.
             to_sync.append(dict(sf, name=name))
 
         result["files_skipped"] = skipped
-        self._log(
-            f"Skipping {skipped} file(s) "
-            f"({pre_verified} confirmed on dest, "
-            f"{skipped - pre_verified} from manifest)."
-        )
-        self._log(f"Transferring {len(to_sync)} file(s).")
+        self._log(f"Skipping {skipped} file(s) verified from manifest.")
+        self._log(f"Transferring/verifying {len(to_sync)} file(s).")
 
         if not to_sync:
             self._log("Everything up to date.")

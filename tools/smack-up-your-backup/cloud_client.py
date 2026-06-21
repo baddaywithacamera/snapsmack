@@ -176,6 +176,16 @@ def authenticate_oauth(credentials_file: str, readonly: bool = False) -> tuple:
         return False, f"Authentication failed: {e}"
 
 
+def _hash_file(path: str, algo: str) -> str:
+    """Stream a file through a hashlib algorithm and return the hex digest."""
+    import hashlib
+    h = hashlib.new(algo)
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 class DriveClient:
     def __init__(self, credentials_file: str, folder_id: str, readonly: bool = False):
         self.credentials_file = credentials_file
@@ -311,12 +321,25 @@ class DriveClient:
                 return f["id"]
         return None
 
-    def verify_upload(self, file_id: str, expected_size: int) -> bool:
-        """Confirm file exists on Drive and size matches."""
+    def verify_upload(self, file_id: str, local_path: str) -> bool:
+        """Confirm the uploaded file on Drive matches the local source by SIZE
+        and MD5 content hash (Drive returns md5Checksum for binary uploads).
+
+        FAIL-CLOSED: any error, a size mismatch, or a missing remote hash we
+        cannot compare returns False — we never report a backup as good unless
+        the bytes are provably identical.
+        """
         try:
             svc  = self._svc()
-            meta = svc.files().get(fileId=file_id, fields="size").execute()
-            return int(meta.get("size", -1)) == expected_size
+            meta = svc.files().get(
+                fileId=file_id, fields="size,md5Checksum"
+            ).execute()
+            if int(meta.get("size", -1)) != os.path.getsize(local_path):
+                return False
+            drive_md5 = meta.get("md5Checksum")
+            if not drive_md5:
+                return False  # binary ZIPs always have one — absence = can't trust
+            return drive_md5 == _hash_file(local_path, "md5")
         except Exception:
             return False
 
@@ -581,6 +604,33 @@ class BoxClient:
                 received += len(chunk)
                 if on_progress:
                     on_progress(received, total)
+
+    def verify_upload(self, file_id: str, local_path: str) -> bool:
+        """Confirm the uploaded file on Box matches the local source by SIZE and
+        SHA1 (Box stores a sha1 for every file).
+
+        FAIL-CLOSED: any error, a size mismatch, or a missing remote sha1
+        returns False — a Box backup is only reported good when the bytes are
+        provably identical.
+        """
+        import requests
+        try:
+            resp = requests.get(
+                f"{self.API_BASE}/files/{file_id}",
+                headers=self._headers(),
+                params={"fields": "size,sha1"},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            meta = resp.json()
+            if int(meta.get("size", -1)) != os.path.getsize(local_path):
+                return False
+            box_sha1 = (meta.get("sha1") or "").lower()
+            if not box_sha1:
+                return False
+            return box_sha1 == _hash_file(local_path, "sha1")
+        except Exception:
+            return False
 
 
 # ---------------------------------------------------------------------------
