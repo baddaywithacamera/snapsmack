@@ -59,20 +59,22 @@ def _excepthook(exc_type, exc_value, exc_tb):
 sys.excepthook = _excepthook
 
 # ---------------------------------------------------------------------------
-# Palette — matches Unzucker dark theme
+# Palette — mid-grey with light borders, readable in a normally-lit room.
+# (Was the near-black Unzucker dark theme; lifted so nothing disappears in
+#  ambient light. Borders are applied widget-by-widget in _style_borders().)
 # ---------------------------------------------------------------------------
 
-BG_DEEP    = '#0d0d0d'
-BG_PANEL   = '#1a1a1a'
-BG_CELL    = '#222222'
-BG_HOVER   = '#2c2c2c'
-BG_ACTIVE  = '#1e3a1e'
-ACCENT     = '#aaff00'    # neon lime
-TEXT_PRI   = '#e8e8e8'
-TEXT_DIM   = '#777777'
-TEXT_ERR   = '#ff4444'
-TEXT_WARN  = '#ffaa00'
-BORDER     = '#333333'
+BG_DEEP    = '#3a3a3a'    # main window / canvas — mid grey
+BG_PANEL   = '#454545'    # panels, slightly lighter
+BG_CELL    = '#525252'    # entries / buttons
+BG_HOVER   = '#616161'
+BG_ACTIVE  = '#2f5130'    # selected/active green tint
+ACCENT     = '#b6ff1a'    # neon lime (nudged brighter for mid-grey)
+TEXT_PRI   = '#f2f2f2'
+TEXT_DIM   = '#c8c8c8'    # was #777 — now clearly readable on mid grey
+TEXT_ERR   = '#ff6b6b'
+TEXT_WARN  = '#ffc24d'
+BORDER     = '#cfcfcf'    # LIGHT border so boxes/buttons are visible
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -125,6 +127,7 @@ class FlkrDckrApp(tk.Tk):
         self._font_mono  = font.Font(family='Consolas', size=8)
 
         self._build_ui()
+        self._style_borders()
         self.protocol('WM_DELETE_WINDOW', self._on_close)
         self._check_resume()
         self.after(100, self._poll_queue)
@@ -135,6 +138,27 @@ class FlkrDckrApp(tk.Tk):
             self._stop_event.set()
             self._pause_event.set()   # unblock the worker if it is paused
         self.destroy()
+
+    def _style_borders(self):
+        """Give the input boxes and buttons a visible light border so it's clear
+        where to click in a normally-lit room. Walks the widget tree once after
+        construction (palette-driven via BORDER/ACCENT). Best-effort per widget —
+        a styling hiccup must never break the app."""
+        BORDERED = ('Button', 'Entry', 'Checkbutton', 'Canvas', 'Listbox')
+        def walk(w):
+            for child in w.winfo_children():
+                try:
+                    if child.winfo_class() in BORDERED:
+                        child.configure(highlightthickness=1,
+                                        highlightbackground=BORDER,
+                                        highlightcolor=ACCENT)
+                except tk.TclError:
+                    pass
+                walk(child)
+        try:
+            walk(self)
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # UI construction
