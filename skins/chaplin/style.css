@@ -1543,4 +1543,21 @@ input[type="reset"]:hover {
 #smack-cal-panel * {
   font-family: 'DM Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
+
+/* ============================================================================
+   ARCHIVE T/M IN-PLACE TOGGLE
+   The shared archive-toggle engine (smack-archive-toggle) intercepts the T/M
+   button clicks and flips html[data-archive-layout], but it does NOT swap
+   Chaplin's two server-rendered panes — it only fetch-replaces
+   .archive-grid / .archive-masonry, classes Chaplin's archive-layout.php does
+   not use. Result: clicking T/M was swallowed and nothing changed until a
+   refresh re-rendered the right pane server-side. These rules show/hide the
+   correct pane the instant the attribute changes. !important is required to
+   override the inline display:none that archive-layout.php writes on the
+   inactive pane at render time. JS-disabled / pre-click load still works:
+   the attribute matches the server-rendered inline display on first paint. */
+html[data-archive-layout="thumbs"]  #browse-grid    { display: grid  !important; }
+html[data-archive-layout="thumbs"]  #justified-grid { display: none  !important; }
+html[data-archive-layout="masonry"] #browse-grid    { display: none  !important; }
+html[data-archive-layout="masonry"] #justified-grid { display: block !important; }
 /* ===== SNAPSMACK EOF ===== */
