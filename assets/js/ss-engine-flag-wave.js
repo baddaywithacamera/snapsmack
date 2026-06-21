@@ -197,7 +197,10 @@
             // dt is already clamped by the caller. Normalise to ~16ms steps so
             // tuning is frame-rate independent without risking an explosion.
             var step = Math.min(dt, 32) / 16;
-            var grav = 0.045 * step * step;                 // downward drape
+            // Light-fabric drape. The old 0.045 sagged the whole mesh below the
+            // pole so the flag "hung down and jiggled" instead of flying out;
+            // a flag is light and wind-dominated, so keep gravity small.
+            var grav = 0.010 * step * step;                 // downward drape
             var i, r, c;
 
             // Integrate (skip pinned pole column).
@@ -209,7 +212,7 @@
                     // down the hoist so top and bottom flap out of sync.
                     var phase = (c * 0.55) - (windFreq * t) + (r * 0.30);
                     var gust  = 0.6 + 0.4 * Math.sin(windFreq * t * 0.37 + c * 0.2);
-                    var wy = windAmp * edge * gust * 0.9 * Math.sin(phase) * step * step * H * 0.012;
+                    var wy = windAmp * edge * gust * 1.3 * Math.sin(phase) * step * step * H * 0.018;
                     var wx = windAmp * edge * 0.5 * Math.cos(phase) * step * step * W * 0.004;
 
                     var vx = (px[i] - ox[i]) * DAMP;

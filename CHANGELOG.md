@@ -12,6 +12,17 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.279 — "Pole Position" (2026-06-21)
+
+- **Flag cloth mode — stopped it hanging.** 278's cadence fix got it moving but
+  it still draped under the pole and only jiggled. Cut the drape gravity
+  (`0.045`→`0.010`, light fabric) and raised the wind's vertical authority so
+  the flag flies out from the pole and ripples instead of sagging.
+  (`ss-engine-flag-wave.js`.)
+- **Fleet stats — ALL-TIME view now states its date range.** The ALL rollup
+  showed no start date; it now prints `since <first day> – <last day>` under the
+  header, drawn from the daily series. (`smack-multisite-stats.php`.)
+
 ## 0.7.278 — "Front Row" (2026-06-21)
 
 - **SMACKBACK — truncated files can no longer poison the baseline.** When a
@@ -26,10 +37,11 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - **Flag engine — Cloth mode no longer hangs limp.** The cloth wind advanced
   ~3.5× faster than the (working) Wave mode, so under the cloth's damping +
   constraints each gust cancelled the previous one before any billow could
-  build, leaving only gravity — the flag just draped. Brought the wind cadence
-  into the wave engine's proven range (`0.0005·speed`) so the wind accumulates
-  and the flag actually flies. (`ss-engine-flag-wave.js`; ships in core, used by
-  PARADE + any flag skin.)
+  build, leaving only gravity — the flag just draped. Fixed by bringing the wind
+  cadence into the wave engine's proven range (`0.0005·speed`), cutting the
+  drape gravity (`0.045`→`0.010`) so a light flag flies out instead of sagging,
+  and raising the wind's vertical authority so it ripples. (`ss-engine-flag-wave.js`;
+  ships in core, used by PARADE + any flag skin.)
 
 ## 0.7.277 — "Hot Seat" (2026-06-20)
 
