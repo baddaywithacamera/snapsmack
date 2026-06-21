@@ -12,6 +12,21 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.280 — "Driver's Seat" (2026-06-21)
+
+- **SMACKBACK no longer false-breaches the fleet on every update.** All three
+  update paths — local auto-update (`smack-update.php`), manual upload, and the
+  hub-push (`core/multisite-api.php`) — were confirming the integrity baseline
+  from the *in-zip signed manifest*, a list that can never include per-install
+  files (`db.php`, `sc-config.php`, `release-pubkey.php`) or orphans. Under
+  PARANOID those read as UNEXPECTED → fleet-wide LOCKOUT after every update. The
+  baseline is now confirmed by hashing the **actual on-disk files after
+  extraction completes** (`smackback_init_from_disk()`), the same trust basis the
+  installer already uses (files are Ed25519-verified before extraction). It
+  captures the full real state and prunes orphans, and — because it reads disk,
+  not the zip — the baseline no longer has to run before the zip is cleaned up,
+  so it lands after all files are in place. (See project_smackback_false_breach_lockout.)
+
 ## 0.7.279 — "Pole Position" (2026-06-21)
 
 - **Flag cloth mode — stopped it hanging.** 278's cadence fix got it moving but
