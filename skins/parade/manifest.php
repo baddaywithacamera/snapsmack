@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.2.2',
+    'version'     => '1.2.3',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
@@ -523,8 +523,8 @@ return [
         // ---- TEXT GLOW (legibility over the bright field) ------------------
         'pa_glow_color' => [
             'section' => 'TEXT GLOW', 'type' => 'color', 'label' => 'Text Glow Colour',
-            'default' => '#ffffff',
-            'hint'    => 'Halo behind title/tagline/bio. White for a soft high-key halo.',
+            'default' => '#750787',
+            'hint'    => 'Halo behind title/tagline/bio. Pick a colour that CONTRASTS with the bright field — a white glow is invisible on PARADE\'s high-key background.',
             // PHP-handled → --profile-text-glow (skin-profile.php).
         ],
         'pa_glow_size' => [
