@@ -12,7 +12,7 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.281 — "Window Seat" (2026-06-21)
+## 0.7.282 — "Window Seat" (2026-06-21)
 
 - **PARADE: cloth flag mode removed; the flag background is now wave-only.** The
   experimental Verlet-cloth simulation in `assets/js/ss-engine-flag-wave.js` never
