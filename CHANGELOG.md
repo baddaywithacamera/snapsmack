@@ -19,9 +19,14 @@ All notable changes to SnapSmack are documented here. Newest release first.
   read right, so the whole physics path (mesh, integrator, constraint solver) was
   stripped and the engine reduced to the lighter, proven travelling-sine wave —
   its only mode now. The PARADE skin's "Flag — Motion" Cloth/Wave picker is gone
-  (`skins/parade` → 1.2.2) and the carrier no longer emits `data-motion`; any
-  saved `pa_flag_motion` value is simply ignored. Repackage PARADE 1.2.2 via the
+  (`skins/parade` → 1.2.3) and the carrier no longer emits `data-motion`; any
+  saved `pa_flag_motion` value is simply ignored. Repackage PARADE 1.2.3 via the
   Skin Packager alongside this core release.
+- **PARADE: text-glow default no longer invisible.** The Text Glow Colour defaulted
+  to white — invisible on PARADE's bright high-key field, so the (correctly rendering)
+  glow looked broken. Default is now a contrasting pride purple (`#750787`), and the
+  hint warns that white reads as nothing on the light background. The glow mechanism
+  itself was always working (verified on the live DOM); this was purely the default.
 
 ## 0.7.280 — "Driver's Seat" (2026-06-21)
 
