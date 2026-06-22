@@ -13,5 +13,5 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 ?>
-<link rel="stylesheet" href="<?php echo BASE_URL . 'skins/' . htmlspecialchars($settings['skin']) . '/style.css?v=' . htmlspecialchars($skin_manifest['version'] ?? '1.0'); ?>">
+<link rel="stylesheet" href="<?php echo BASE_URL . 'skins/' . htmlspecialchars($settings['active_skin'] ?? '') . '/style.css?v=' . htmlspecialchars($skin_manifest['version'] ?? '1.0'); ?>">
 <?php // ===== SNAPSMACK EOF =====

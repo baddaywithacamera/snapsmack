@@ -16,6 +16,7 @@ from typing import Callable, Dict, List, Optional
 
 import cloud_client as cloud_module
 import ftp_client as ftp_module
+import transport
 import file_matcher
 import manifest_reader
 
@@ -135,16 +136,10 @@ class RestoreEngine:
             for k in unmatched[:10]:
                 self._log(f"  Unmatched: {k}")
 
-        # ── Connect FTP ──────────────────────────────────────────────
-        self._progress("ftp", "Connecting via FTP…", 0.30)
-        ftp = ftp_module.FTPClient(
-            host           = self.profile.get("ftp_host", ""),
-            user           = self.profile.get("ftp_user", ""),
-            password       = self.profile.get("ftp_pass", ""),
-            remote_dir     = self.profile.get("ftp_remote_dir", "/"),
-            port           = int(self.profile.get("ftp_port", 21)),
-            use_tls        = bool(self.profile.get("ftp_ssl", True)),
-            verify_cert    = bool(self.profile.get("ftp_verify_cert", False)),
+        # ── Connect (FTP or SFTP per profile) ─────────────────────────
+        self._progress("ftp", "Connecting…", 0.30)
+        ftp = transport.make_client(
+            self.profile,
             transfer_delay = float(self.profile.get("pacing_delay", 2)),
             batch_size     = int(self.profile.get("batch_size", 0)),
         )

@@ -373,7 +373,17 @@ include __DIR__ . '/' . $skin_path . '/skin-meta.php';
         } else {
             include __DIR__ . '/' . $skin_path . '/layout.php';
         }
+    } elseif (!$requested_slug && !$force_blog && file_exists(__DIR__ . '/' . $skin_path . '/landing.php')) {
+        // No current image — e.g. a freshly set-up site with no posts yet — but the
+        // active skin has a landing page (which renders its own, possibly empty, grid).
+        // Render it so an empty site shows its skin instead of a misleading 404.
+        include __DIR__ . '/' . $skin_path . '/landing.php';
+    } elseif (is_dir(__DIR__ . '/' . $skin_path)) {
+        // Skin is installed and present, but there's nothing to render and it has no
+        // landing page. A real empty state — not a missing-skin error.
+        echo "<div class='not-found-msg'><h1>Nothing here yet</h1>This site doesn't have any posts to show.</div>";
     } else {
+        // The active skin's directory is genuinely absent — the real error.
         echo "<div class='not-found-msg'><h1>404</h1>Transmission Lost.<br><small>Looking for: $skin_path</small></div>";
     }
     ?>
