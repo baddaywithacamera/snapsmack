@@ -1262,11 +1262,13 @@ if ($resource === 'smackback' && $sub_action === 'report' && $method === 'POST')
                       . "Log into your hub now to review the SMACKBACK panel on each spoke:\n"
                       . rtrim($site_url, '/') . "/smack-multisite.php\n\n"
                       . "--- Automated alert from SMACKBACK at " . date('Y-m-d H:i:s') . " ---\n";
-            @mail($to, $subject, $body_txt,
-                "From: SMACKBACK <noreply@" . (parse_url($site_url, PHP_URL_HOST) ?: 'localhost') . ">\r\n"
-                . "Content-Type: text/plain; charset=UTF-8\r\n"
-                . "X-Mailer: SnapSmack SMACKBACK"
-            );
+            // Route through the central mailer so the alert leaves the hub via
+            // Brevo (outbound HTTPS) when configured, else mail(). Sender name
+            // stays SMACKBACK; from_email/site_url come from settings via $pdo.
+            if (!function_exists('snapsmack_send_mail')) {
+                require_once __DIR__ . '/mailer.php';
+            }
+            snapsmack_send_mail($to, $subject, $body_txt, ['pdo' => $pdo, 'from_name' => 'SMACKBACK']);
         }
     }
 

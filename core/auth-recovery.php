@@ -147,10 +147,13 @@ function snapsmack_send_recovery_email(
              . "You will be required to set a new password immediately after.\n\n"
              . "This code can only be used once. If you did not request this, contact your administrator.\n\n"
              . "— {$site_name}";
-    $headers = "From: noreply@" . parse_url($site_url, PHP_URL_HOST) . "\r\n"
-             . "X-Mailer: SnapSmack";
 
-    return (bool) @mail($to, $subject, $body, $headers);
+    // Route through the central mailer (Brevo HTTP API when configured, else mail()).
+    // From/sender comes from the configured email_from + site_url settings via global $pdo.
+    if (!function_exists('snapsmack_send_mail')) {
+        require_once __DIR__ . '/mailer.php';
+    }
+    return snapsmack_send_mail($to, $subject, $body);
 }
 
 /**
@@ -174,9 +177,11 @@ function snapsmack_send_reset_email(
                . "    {$reset_url}\n\n"
                . "If you did not request a password reset, you can ignore this email.\n\n"
                . "— {$site_name}";
-    $headers   = "From: noreply@" . parse_url($site_url, PHP_URL_HOST) . "\r\n"
-               . "X-Mailer: SnapSmack";
 
-    return (bool) @mail($to, $subject, $body, $headers);
+    // Route through the central mailer (Brevo HTTP API when configured, else mail()).
+    if (!function_exists('snapsmack_send_mail')) {
+        require_once __DIR__ . '/mailer.php';
+    }
+    return snapsmack_send_mail($to, $subject, $body);
 }
 // ===== SNAPSMACK EOF =====
