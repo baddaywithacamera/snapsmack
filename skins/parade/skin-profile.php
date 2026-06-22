@@ -192,12 +192,25 @@ if ($_pa_glow_sz > 0 && $_pa_glow_op > 0) {
     $_pa_glow_css = $_pa_glow_stack($_gr, $_gg, $_gb, $_pa_glow_sz, $_pa_glow_op);
 }
 
+// ── Footer text glow (dedicated control). Emits --footer-text-glow. Off (none)
+//    until both size and opacity are set, same opt-in behaviour as profile glow.
+$_pa_ftglow_hex = trim($settings['pa_footer_glow_color'] ?? '#750787');
+$_pa_ftglow_sz  = max(0, min(40,  (int)($settings['pa_footer_glow_size']    ?? 0)));
+$_pa_ftglow_op  = max(0, min(100, (int)($settings['pa_footer_glow_opacity'] ?? 0)));
+$_pa_ftglow_css = 'none';
+if ($_pa_ftglow_sz > 0 && $_pa_ftglow_op > 0) {
+    $_fgc = ltrim($_pa_ftglow_hex, '#');
+    if (strlen($_fgc) === 3) $_fgc = $_fgc[0].$_fgc[0].$_fgc[1].$_fgc[1].$_fgc[2].$_fgc[2];
+    $_fgr = hexdec(substr($_fgc, 0, 2)); $_fgg = hexdec(substr($_fgc, 2, 2)); $_fgb = hexdec(substr($_fgc, 4, 2));
+    $_pa_ftglow_css = $_pa_glow_stack($_fgr, $_fgg, $_fgb, $_pa_ftglow_sz, $_pa_ftglow_op);
+}
+
 // Nav companion-line opacity (0–100 → 0–1) — also previously unemitted.
 $_pa_nav_line_op = number_format(max(0, min(100, (int)($settings['pa_nav_line_opacity'] ?? 100))) / 100, 2);
 ?>
 
 <!-- PARADE CSS vars: high-key field + text colours (read by style.css) -->
-<style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;--nav-line-opacity:<?php echo $_pa_nav_line_op; ?>;--nav-text-glow:<?php echo $_pa_navglow_css; ?>;--nav-text-glow-strong:<?php echo $_pa_navglow_strong; ?>;--profile-text-glow:<?php echo $_pa_glow_css; ?>;}</style>
+<style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;--nav-line-opacity:<?php echo $_pa_nav_line_op; ?>;--nav-text-glow:<?php echo $_pa_navglow_css; ?>;--nav-text-glow-strong:<?php echo $_pa_navglow_strong; ?>;--profile-text-glow:<?php echo $_pa_glow_css; ?>;--footer-text-glow:<?php echo $_pa_ftglow_css; ?>;}</style>
 
 <?php if ($_pa_flag_mode): ?>
 <!-- PARADE waving-flag carrier — read by ss-engine-flag-wave.js (Layer 1

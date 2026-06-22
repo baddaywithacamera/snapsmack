@@ -332,13 +332,11 @@ img { display: block; max-width: 100%; }
     font-size: 16px;
     font-weight: 600;
     color: var(--text-primary);
-    text-shadow: var(--profile-text-glow, none);
 }
 
 .pa-profile-stat-label {
     font-size: 14px;
     color: var(--text-secondary);
-    text-shadow: var(--profile-text-glow, none);
 }
 
 .pa-profile-bio {
@@ -493,6 +491,8 @@ img { display: block; max-width: 100%; }
 
 .pa-tile--framed {
     background: var(--tile-bg, #ffffff);
+    /* No glow on image tiles by design — the per-tile border is what separates
+       them from the animated parade background. Glow is text-only in PARADE. */
 }
 
 .pa-tile--framed a {
@@ -508,7 +508,6 @@ img { display: block; max-width: 100%; }
     height:       var(--tile-img-size, 100%);
     object-fit:   contain;
     border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
-    box-shadow:   var(--tile-shadow, none);
     box-sizing:   border-box;
     transition:   opacity 0.2s;
 }
@@ -990,6 +989,9 @@ body.pa-modal-open { overflow: hidden; }
     color: var(--text-secondary);
     font-size: 12px;
     letter-spacing: 0.5px;
+    /* Footer text glow — its own admin control (--footer-text-glow). text-shadow
+       inherits, so footer links pick it up too. 'none' default = off until set. */
+    text-shadow: var(--footer-text-glow, none);
 }
 
 .pa-footer a {
