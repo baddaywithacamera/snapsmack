@@ -31,12 +31,18 @@ from checkpoint import ImportCheckpoint
 from poster import FlkrDckrClient, run_import
 
 # ---------------------------------------------------------------------------
-# Logging — rotating daily, 7-day retention, %APPDATA%\FlkrFckr\flkrfckr.log
+# Logging — rotating daily, 7-day retention. Log sits NEXT TO THE EXE (portable-
+# app convention, matches unzucker), not in %APPDATA%.
 # ---------------------------------------------------------------------------
 
-BUILD_VERSION = "0.7.7"  # auto-incremented by bump_version.py on each build.bat run
+BUILD_VERSION = "0.7.9"  # auto-incremented by bump_version.py on each build.bat run
 
-_LOG_DIR  = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'FlkrFckr')
+if getattr(sys, 'frozen', False):
+    # Running as the compiled exe — log next to flkrfckr.exe
+    _LOG_DIR = os.path.dirname(sys.executable)
+else:
+    # Running from source
+    _LOG_DIR = os.path.dirname(os.path.abspath(__file__))
 _LOG_FILE = os.path.join(_LOG_DIR, 'flkrfckr.log')
 os.makedirs(_LOG_DIR, exist_ok=True)
 
@@ -500,20 +506,26 @@ class FlkrDckrApp(tk.Tk):
             self._v_filter.set('album')
             self._apply_filter()
 
+    def _current_photos(self):
+        """Photos matching the active album / Unalbumed filter — i.e. exactly
+        what is shown in the grid. Single source of truth for both the grid
+        render and the import, so the import never pulls photos that aren't
+        visible in the window."""
+        if not self._parse_result:
+            return []
+        flt = self._v_filter.get()
+        if flt == 'unalbumed':
+            return [p for p in self._parse_result.photos if not p.album_ids]
+        if flt == 'album':
+            fid = self._album_filter
+            return [p for p in self._parse_result.photos if fid in p.album_ids]
+        return list(self._parse_result.photos)
+
     def _apply_filter(self):
         if not self._parse_result:
             return
-        flt = self._v_filter.get()
-        if flt == 'all':
-            photos = self._parse_result.photos
-        elif flt == 'unalbumed':
-            photos = [p for p in self._parse_result.photos if not p.album_ids]
-        elif flt == 'album':
-            fid = self._album_filter
-            photos = [p for p in self._parse_result.photos if fid in p.album_ids]
-        else:
-            photos = self._parse_result.photos
-        self._render_grid(photos)
+        self._render_grid(self._current_photos())
+        self._update_summary()
 
     def _render_grid(self, photos):
         """Re-render the photo grid with the given list of ParsedPhoto objects."""
@@ -595,7 +607,7 @@ class FlkrDckrApp(tk.Tk):
         })
 
     def _open_logs(self):
-        """Open the log directory (%APPDATA%\\FlkrFckr) in the OS file manager."""
+        """Open the log directory (next to the exe) in the OS file manager."""
         try:
             os.makedirs(_LOG_DIR, exist_ok=True)
             log.info('Open Logs — opening %s', _LOG_DIR)
@@ -764,7 +776,10 @@ class FlkrDckrApp(tk.Tk):
     def _start_import(self):
         if not self._parse_result:
             return
-        photos = [p for p in self._parse_result.photos if not p.missing_image]
+        # Import exactly what's shown + kept: the active filter (album/Unalbumed),
+        # minus per-tile exclusions and missing-image rows. NOT the whole export.
+        photos = [p for p in self._current_photos()
+                  if not p.missing_image and not p.excluded]
         if not photos:
             messagebox.showwarning('FLKR FCKR', 'No photos to import.')
             return
@@ -884,9 +899,11 @@ class FlkrDckrApp(tk.Tk):
     def _update_summary(self):
         if not self._parse_result:
             return
-        total    = len(self._parse_result.photos)
-        selected = sum(1 for p in self._parse_result.photos if not p.excluded and not p.missing_image)
-        missing  = sum(1 for p in self._parse_result.photos if p.missing_image)
+        # Reflect the active filter so the count matches what Start Import does.
+        shown    = self._current_photos()
+        total    = len(shown)
+        selected = sum(1 for p in shown if not p.excluded and not p.missing_image)
+        missing  = sum(1 for p in shown if p.missing_image)
         self._lbl_summary.config(
             text=f'{selected} of {total} photos selected for import'
                  + (f'  ({missing} missing image files)' if missing else ''),
