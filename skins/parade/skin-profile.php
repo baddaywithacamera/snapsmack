@@ -144,6 +144,26 @@ if ($_pa_flag_mode) {
     $_pa_flag_opacity = max(0, min(100, (int) ($settings['pa_flag_opacity']   ?? 100)));
 }
 
+// ── Glow stack builder ───────────────────────────────────────────────────────
+//    A 2-shadow halo (the old approach) read as a wimpy haze even at max size,
+//    because text-shadow blur disperses fast. This stacks four graduated layers
+//    so a tight bright core builds into a soft outer halo — the glow actually
+//    reads at 40px. Shared by the nav glow and the profile (title/tagline/bio)
+//    glow so both behave identically.
+$_pa_glow_stack = function (int $r, int $g, int $b, int $sz, int $op): string {
+    if ($sz <= 0 || $op <= 0) return 'none';
+    $a = $op / 100;
+    // [blur multiple of size, alpha multiple of base]
+    $layers = [[0.40, 1.00], [0.80, 0.85], [1.30, 0.65], [2.00, 0.45]];
+    $parts  = [];
+    foreach ($layers as $l) {
+        $blur    = max(1, (int) round($sz * $l[0]));
+        $alpha   = number_format(min(1, $a * $l[1]), 2);
+        $parts[] = sprintf('0 0 %dpx rgba(%d,%d,%d,%s)', $blur, $r, $g, $b, $alpha);
+    }
+    return implode(',', $parts);
+};
+
 // ── Nav menu text glow (ported from AURORA — was never wired in PARADE, so the
 //    nav fell back to style.css's hardcoded GREEN and the admin colour did
 //    nothing). Emits --nav-text-glow / --nav-text-glow-strong. ────────────────
@@ -155,13 +175,8 @@ if ($_pa_navglow_sz > 0 && $_pa_navglow_op > 0) {
     $_ngc = ltrim($_pa_navglow_hex, '#');
     if (strlen($_ngc) === 3) $_ngc = $_ngc[0].$_ngc[0].$_ngc[1].$_ngc[1].$_ngc[2].$_ngc[2];
     $_ngr = hexdec(substr($_ngc, 0, 2)); $_ngg = hexdec(substr($_ngc, 2, 2)); $_ngb = hexdec(substr($_ngc, 4, 2));
-    $_nga = number_format($_pa_navglow_op / 100, 2);
-    $_pa_navglow_css = sprintf('0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
-        $_pa_navglow_sz, $_ngr, $_ngg, $_ngb, $_nga,
-        $_pa_navglow_sz * 2, $_ngr, $_ngg, $_ngb, number_format($_pa_navglow_op / 200, 2));
-    $_pa_navglow_strong = sprintf('0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
-        $_pa_navglow_sz + 2, $_ngr, $_ngg, $_ngb, number_format(min(1, $_pa_navglow_op / 100 * 1.5), 2),
-        ($_pa_navglow_sz + 2) * 2, $_ngr, $_ngg, $_ngb, $_nga);
+    $_pa_navglow_css    = $_pa_glow_stack($_ngr, $_ngg, $_ngb, $_pa_navglow_sz, $_pa_navglow_op);
+    $_pa_navglow_strong = $_pa_glow_stack($_ngr, $_ngg, $_ngb, $_pa_navglow_sz + 4, (int) min(100, $_pa_navglow_op * 1.5));
 }
 
 // ── Profile text glow (ported from AURORA — also never wired, so the title/
@@ -174,10 +189,7 @@ if ($_pa_glow_sz > 0 && $_pa_glow_op > 0) {
     $_gc = ltrim($_pa_glow_hex, '#');
     if (strlen($_gc) === 3) $_gc = $_gc[0].$_gc[0].$_gc[1].$_gc[1].$_gc[2].$_gc[2];
     $_gr = hexdec(substr($_gc, 0, 2)); $_gg = hexdec(substr($_gc, 2, 2)); $_gb = hexdec(substr($_gc, 4, 2));
-    $_ga = number_format($_pa_glow_op / 100, 2);
-    $_pa_glow_css = sprintf('0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
-        $_pa_glow_sz, $_gr, $_gg, $_gb, $_ga,
-        $_pa_glow_sz * 2, $_gr, $_gg, $_gb, number_format($_pa_glow_op / 200, 2));
+    $_pa_glow_css = $_pa_glow_stack($_gr, $_gg, $_gb, $_pa_glow_sz, $_pa_glow_op);
 }
 
 // Nav companion-line opacity (0–100 → 0–1) — also previously unemitted.

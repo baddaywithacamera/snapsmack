@@ -34,7 +34,7 @@ from poster import FlkrDckrClient, run_import
 # Logging — rotating daily, 7-day retention, %APPDATA%\FlkrFckr\flkrfckr.log
 # ---------------------------------------------------------------------------
 
-BUILD_VERSION = "0.7.6"  # auto-incremented by bump_version.py on each build.bat run
+BUILD_VERSION = "0.7.7"  # auto-incremented by bump_version.py on each build.bat run
 
 _LOG_DIR  = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'FlkrFckr')
 _LOG_FILE = os.path.join(_LOG_DIR, 'flkrfckr.log')
@@ -102,7 +102,7 @@ class FlkrDckrApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title('FLKR FCKR')
+        self.title(f'FLKR FCKR  v{BUILD_VERSION}')
         self.configure(bg=BG_DEEP)
         self.resizable(True, True)
         self.minsize(700, 600)
@@ -288,6 +288,12 @@ class FlkrDckrApp(tk.Tk):
                              font=self._font_bold, cursor='hand2',
                              command=self._show_help)
         btn_help.grid(row=0, column=8, padx=(8, 0), sticky='ne')
+
+        btn_logs = tk.Button(bar, text='Logs', bg=BG_CELL, fg=TEXT_DIM,
+                             relief='flat', bd=0, padx=6, pady=3,
+                             font=self._font_bold, cursor='hand2',
+                             command=self._open_logs)
+        btn_logs.grid(row=0, column=8, padx=(8, 34), sticky='ne')
 
     def _build_main_area(self):
         pane = tk.Frame(self, bg=BG_DEEP)
@@ -588,10 +594,29 @@ class FlkrDckrApp(tk.Tk):
             'image_path': '' if photo.missing_image else (photo.image_path or ''),
         })
 
+    def _open_logs(self):
+        """Open the log directory (%APPDATA%\\FlkrFckr) in the OS file manager."""
+        try:
+            os.makedirs(_LOG_DIR, exist_ok=True)
+            log.info('Open Logs — opening %s', _LOG_DIR)
+            if hasattr(os, 'startfile'):
+                os.startfile(_LOG_DIR)                       # Windows
+            else:
+                import subprocess
+                opener = 'open' if sys.platform == 'darwin' else 'xdg-open'
+                subprocess.Popen([opener, _LOG_DIR])
+        except Exception as e:
+            log.warning('Open Logs failed: %s', e)
+            try:
+                messagebox.showerror(
+                    'Open Logs', f'Could not open the log folder:\n{_LOG_DIR}\n\n{e}')
+            except Exception:
+                pass
+
     def _show_help(self):
         """Open in-app help window."""
         win = tk.Toplevel(self)
-        win.title('FLKR FCKR — Help')
+        win.title(f'FLKR FCKR  v{BUILD_VERSION} — Help')
         win.configure(bg=BG_DEEP)
         win.geometry('640x620')
         win.resizable(True, True)
@@ -1007,6 +1032,8 @@ class FlkrDckrApp(tk.Tk):
         """Request thumbnails for visible tiles; evict ones scrolled away."""
         self._thumb_after = None
         if not self._thumbs_enabled or not self._photo_cells:
+            log.debug('thumb pass skipped: thumbs_enabled=%s cells=%d',
+                      self._thumbs_enabled, len(self._photo_cells))
             return
         COLS = 4
         try:
@@ -1036,6 +1063,7 @@ class FlkrDckrApp(tk.Tk):
                     keep.add(idx)
 
         # Queue loads for visible, not-yet-touched tiles.
+        queued = 0
         for idx in keep:
             if idx in self._thumb_state:
                 continue
@@ -1044,6 +1072,10 @@ class FlkrDckrApp(tk.Tk):
                 continue
             self._thumb_state[idx] = 'loading'
             self._thumb_q.put((self._grid_gen, idx, path))
+            queued += 1
+        if queued:
+            log.debug('thumb pass: total_h=%d row_pitch=%d rows=%d-%d visible=%d queued=%d',
+                      total_h, self._row_pitch, first_row, last_row, len(keep), queued)
 
         # Evict thumbnails that scrolled out of the keep window (bounds memory).
         for idx in list(self._thumb_cache.keys()):
@@ -1061,9 +1093,14 @@ class FlkrDckrApp(tk.Tk):
         Image back to the UI thread (PhotoImage must be built on the main thread)."""
         try:
             from PIL import Image   # probe once; bundled with the exe via build.bat
-        except Exception:
+        except Exception as e:
             self._thumbs_enabled = False
+            log.error('Thumbnails DISABLED — Pillow (PIL.Image) import failed in the '
+                      'worker thread: %s. Pillow is likely not bundled in the exe; '
+                      'build.bat must --collect-all PIL.', e)
             return
+        log.info('Thumbnail worker started; Pillow import OK.')
+        _decoded = 0
         while True:
             gen, idx, path = self._thumb_q.get()
             if gen != self._grid_gen:
@@ -1076,8 +1113,11 @@ class FlkrDckrApp(tk.Tk):
                     pass
                 im = self._square_crop(im, self._THUMB_PX)
                 self._q.put(('thumb_ready', gen, idx, im))
-            except Exception:
-                pass   # unreadable/bad image — leave the grey placeholder
+                _decoded += 1
+                if _decoded == 1 or _decoded % 50 == 0:
+                    log.debug('thumb worker decoded %d image(s) (latest idx=%d)', _decoded, idx)
+            except Exception as e:
+                log.warning('thumb decode failed idx=%d path=%r: %s', idx, path, e)
 
     def _square_crop(self, im, px: int):
         from PIL import Image
@@ -1096,8 +1136,11 @@ class FlkrDckrApp(tk.Tk):
         try:
             from PIL import ImageTk
             photo = ImageTk.PhotoImage(pil_im)
-        except Exception:
+        except Exception as e:
             self._thumbs_enabled = False
+            log.error('Thumbnails DISABLED — ImageTk/PhotoImage failed on the UI thread: '
+                      '%s. PIL._tkinter_finder is likely missing from the frozen exe; '
+                      'build.bat must --hidden-import PIL._tkinter_finder.', e)
             return
         try:
             self._photo_cells[idx]['thumb_lbl'].config(
