@@ -18,7 +18,7 @@
 
 return [
     'name'         => 'Slickr',
-    'version'      => '1.0.1',
+    'version'      => '1.0.2',
     'author'       => 'Sean McCormick',
     'author_email' => 'sean@baddaywithacamera.ca',
     'description'  => 'Flickr, the way it was. Justified masonry archive, classic solo view with EXIF sidebar, albums directory. Built for migrated Flickr archives — includes an optional Flickr provenance badge on imported images.',
@@ -27,7 +27,7 @@ return [
     'features' => [
         'supports_wall'     => false,
         'supports_slider'   => false,
-        'has_landing'       => false,   // archive IS the landing
+        'has_landing'       => true,    // Flickr-profile landing (landing.php)
         'post_modes'        => ['image'],
         'instagram_mode'    => false,
         'carousel'          => false,
