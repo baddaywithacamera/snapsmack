@@ -1,6 +1,12 @@
 # One-time recovery scripts — never commit these
 recover-*.php
 
+# Runtime diagnostic logs — never commit log output. The dir + its self-deny
+# .htaccess are kept tracked so protection exists before the first write.
+logs/*
+!logs/.gitkeep
+!logs/.htaccess
+
 # Live database credentials — never commit these
 core/db.php
 smack-central/sc-config.php

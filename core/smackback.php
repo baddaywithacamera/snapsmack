@@ -1,6 +1,9 @@
 <?php
 // SNAPSMACK_EOF_HEADER
 //     
+// Diagnostic logger — fire-and-forget JSON-lines troubleshooting log (logs/).
+require_once __DIR__ . '/diaglog.php';
+
 // ─── HUB BREACH REPORTING (Phase 2 — paranoid mode) ────────────────────────
 
 /**
@@ -369,6 +372,12 @@ function smackback_should_monitor(string $abs_path): bool {
         'tools/',
         'backups/',
         'migrations/',
+        // Diagnostic logs (logs/*.log) — runtime output, web-denied, never
+        // shipped. The extension filter above already ignores .log, but
+        // excluding the dir keeps any future logs/*.php out of the monitor too,
+        // so the troubleshooting log can never become the next 'unexpected'
+        // false-breach. (see core/diaglog.php)
+        'logs/',
         // NOTE: forum-server/ is deliberately NOT excluded. It is the standalone
         // forum API (central/Smack Central infrastructure), never shipped to a
         // spoke (packager excludes projects/). Its presence on a spoke is leaked
@@ -957,7 +966,7 @@ function smackback_remove_skin_manifest(string $skin_id): void {
  *   duration:  float
  * }
  */
-function smackback_verify_all(): array {
+function smackback_verify_all(string $source = 'unknown'): array {
     global $pdo;
 
     $t_start = microtime(true);
@@ -1062,6 +1071,24 @@ function smackback_verify_all(): array {
         smackback_mark_clean();
     }
 
+    // Troubleshooting trail: every full verify, clean or not, with the lock
+    // state captured at scan time. Lets us prove whether a breach coincided
+    // with an update extraction window (the suspected false-breach race).
+    snap_diaglog('smackback', 'verify', [
+        'source'     => $source,
+        'status'     => $any_bad ? 'breach' : 'clean',
+        'checked'    => count($rows),
+        'ok'         => $ok_count,
+        'tampered'   => count($tampered),
+        'truncated'  => count($truncated),
+        'corrupted'  => count($corrupted),
+        'missing'    => count($missing),
+        'unexpected' => count($unexpected),
+        'duration'   => $duration,
+        'maint_lock' => snap_maint_lock_state(),
+        'version'    => defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : null,
+    ]);
+
     return [
         'status'     => $any_bad ? 'breach' : 'clean',
         'tampered'   => $tampered,
@@ -1159,7 +1186,7 @@ function smackback_verify_quick(): bool {
 
     $any_bad = !empty($tampered) || !empty($truncated) || !empty($corrupted) || !empty($missing);
     if ($any_bad) {
-        smackback_handle_breach($tampered, $missing, $truncated, $corrupted);
+        smackback_handle_breach($tampered, $missing, $truncated, $corrupted, [], 'page-quick');
         return false;
     }
 
@@ -1234,7 +1261,8 @@ function smackback_handle_breach(
     array $missing,
     array $truncated = [],
     array $corrupted = [],
-    array $unexpected = []
+    array $unexpected = [],
+    string $source = 'unknown'
 ): void {
     global $pdo;
 
@@ -1265,6 +1293,51 @@ function smackback_handle_breach(
 
     $upsert->execute(['smackback_status',       'breach']);
     $upsert->execute(['smackback_breach_files', $breach_files]);
+
+    // ── Forensic capture (the whole point of the logs/ work) ──────────────────
+    // Re-stat every flagged file RIGHT NOW. A file reported 'missing' that
+    // exists again here, or whose mtime is only seconds old, was mid-write
+    // during an update — a transient race, not a real intrusion. Paired with
+    // the maintenance-lock snapshot this is the dispositive signal that tells a
+    // false-breach apart from the real thing.
+    $restat = function (array $paths, string $type): array {
+        $out = [];
+        foreach ($paths as $rel) {
+            $abs = smackback_abs($rel);
+            clearstatcache(true, $abs);
+            $exists = file_exists($abs);
+            $mtime  = $exists ? @filemtime($abs) : null;
+            $out[]  = [
+                'path'          => $rel,
+                'type'          => $type,
+                'exists_now'    => $exists,
+                'size'          => $exists ? @filesize($abs) : null,
+                'mtime'         => $mtime,
+                'mtime_age_sec' => $mtime !== null ? (time() - (int)$mtime) : null,
+            ];
+        }
+        return $out;
+    };
+    snap_diaglog('smackback', 'breach', [
+        'source'       => $source,
+        'first_breach' => $current_status !== 'breach',
+        'counts'       => [
+            'tampered'   => count($tampered),
+            'missing'    => count($missing),
+            'truncated'  => count($truncated),
+            'corrupted'  => count($corrupted),
+            'unexpected' => count($unexpected),
+        ],
+        'maint_lock'   => snap_maint_lock_state(),
+        'version'      => defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : null,
+        'affected'     => array_merge(
+            $restat($tampered,   'tampered'),
+            $restat($missing,    'missing'),
+            $restat($truncated,  'truncated'),
+            $restat($corrupted,  'corrupted'),
+            $restat($unexpected, 'unexpected')
+        ),
+    ]);
 
     // Send alert email
     smackback_send_alert($tampered, $missing, $truncated, $corrupted, $unexpected);

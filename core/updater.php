@@ -29,6 +29,9 @@
 
 
 
+// Diagnostic logger — extraction-lifecycle troubleshooting trail (logs/updater.log).
+require_once __DIR__ . '/diaglog.php';
+
 // release-pubkey.php holds the Ed25519 public key for verifying release packages.
 // The placeholder (all-zeros key) disables signature verification, falling back
 // to SHA-256 checksum only. The file is protected from overwrites by the updater.
@@ -622,6 +625,7 @@ function updater_extract(string $zip_path): array {
     $root = dirname(__DIR__);
     $protected = updater_load_protected_paths();
     $result = ['success' => true, 'files_updated' => 0, 'files_skipped' => 0, 'errors' => []];
+    $written = []; // relative paths written, in extraction order
 
     $zip = new ZipArchive();
     $res = $zip->open($zip_path);
@@ -689,9 +693,17 @@ function updater_extract(string $zip_path): array {
         }
 
         $result['files_updated']++;
+        $written[] = $relative;
     }
 
     $zip->close();
+    snap_diaglog('updater', 'extract_full', [
+        'files_updated' => $result['files_updated'],
+        'files_skipped' => $result['files_skipped'],
+        'errors'        => $result['errors'],
+        'written'       => $written,
+        'maint_lock'    => snap_maint_lock_state(),
+    ]);
     return $result;
 }
 
@@ -729,6 +741,7 @@ function updater_extract_chunk(string $zip_path, int $offset, int $time_limit_se
         'total'         => 0,
         'done'          => false,
     ];
+    $written = []; // relative paths written this chunk, in extraction order
 
     $zip = new ZipArchive();
     $res = $zip->open($zip_path);
@@ -748,6 +761,17 @@ function updater_extract_chunk(string $zip_path, int $offset, int $time_limit_se
         if ($i % 10 === 0 && $i > $offset && (microtime(true) - $start) >= $time_limit_sec) {
             $result['next_offset'] = $i;
             $zip->close();
+            snap_diaglog('updater', 'extract_chunk', [
+                'from_offset'   => $offset,
+                'next_offset'   => $i,
+                'total'         => $total,
+                'files_updated' => $result['files_updated'],
+                'files_skipped' => $result['files_skipped'],
+                'errors'        => $result['errors'],
+                'done'          => false,
+                'written'       => $written,
+                'maint_lock'    => snap_maint_lock_state(),
+            ]);
             return $result; // not done — caller continues from next_offset
         }
 
@@ -827,6 +851,7 @@ function updater_extract_chunk(string $zip_path, int $offset, int $time_limit_se
         }
 
         $result['files_updated']++;
+        $written[] = $relative;
 
         // Throttle I/O — pause every 10 files to stay under shared-host rate limits
         if ($result['files_updated'] % 10 === 0) {
@@ -837,6 +862,17 @@ function updater_extract_chunk(string $zip_path, int $offset, int $time_limit_se
     $zip->close();
     $result['done']        = true;
     $result['next_offset'] = $total;
+    snap_diaglog('updater', 'extract_chunk', [
+        'from_offset'   => $offset,
+        'next_offset'   => $total,
+        'total'         => $total,
+        'files_updated' => $result['files_updated'],
+        'files_skipped' => $result['files_skipped'],
+        'errors'        => $result['errors'],
+        'done'          => true,
+        'written'       => $written,
+        'maint_lock'    => snap_maint_lock_state(),
+    ]);
     return $result;
 }
 
@@ -1212,6 +1248,7 @@ function updater_acquire_lock(PDO $pdo): void {
         'site_name' => $site_name ?: ($_SERVER['HTTP_HOST'] ?? 'This site'),
     ]);
     @file_put_contents($lock_path, $data, LOCK_EX);
+    snap_diaglog('updater', 'lock_acquired', ['reason' => 'update', 'site' => $site_name]);
 }
 
 /**
@@ -1220,6 +1257,7 @@ function updater_acquire_lock(PDO $pdo): void {
  */
 function updater_release_lock(): void {
     @unlink(__DIR__ . '/../data/maintenance.lock');
+    snap_diaglog('updater', 'lock_released', []);
 }
 
 // ─── VERSION BOOKKEEPING ────────────────────────────────────────────────────

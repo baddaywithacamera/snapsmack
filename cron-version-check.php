@@ -132,14 +132,15 @@ try {
     )->fetchAll(PDO::FETCH_KEY_PAIR);
 
     if (($smack_settings['smackback_enabled'] ?? '0') === '1' && smackback_verify_due()) {
-        $smack_result = smackback_verify_all();
+        $smack_result = smackback_verify_all('cron');
         if ($smack_result['status'] === 'breach') {
             smackback_handle_breach(
                 $smack_result['tampered'],
                 $smack_result['missing'],
                 $smack_result['truncated'] ?? [],
                 $smack_result['corrupted'] ?? [],
-                $smack_result['unexpected'] ?? []
+                $smack_result['unexpected'] ?? [],
+                'cron'
             );
             echo "SMACKBACK BREACH DETECTED: "
                . count($smack_result['tampered'])  . " tampered, "
