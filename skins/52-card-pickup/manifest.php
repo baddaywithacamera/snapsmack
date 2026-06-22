@@ -14,7 +14,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name' => '52 Card Pickup',
-    'version' => '1.4.0',
+    'version' => '1.4.1',
     'author' => 'Sean McCormick',
     'support' => 'sean@baddaywithacamera.ca',
     'description' => 'The landing IS the table. An infinite, pannable tabletop of scattered photo prints (the Organized Mayhem engine) — drag to roam, scroll to zoom, hover to lift a print, click to pick it up and read it, ESC to drop it back. Nav and footer stay hidden under the pile until you reach for the screen edges. Named for the card trick where someone throws a deck on the floor.',
