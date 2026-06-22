@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.2.4',
+    'version'     => '1.2.5',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
@@ -572,6 +572,23 @@ return [
         'pa_nav_glow_opacity' => [
             'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Glow Opacity',
             'default' => '45', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+        ],
+
+        // ---- FOOTER (text glow) -------------------------------------------
+        'pa_footer_glow_color' => [
+            'section' => 'FOOTER', 'type' => 'color', 'label' => 'Footer Glow Colour',
+            'default' => '#750787',
+            'hint'    => 'Outer glow behind the footer text.',
+            // PHP-handled → --footer-text-glow (skin-profile.php).
+        ],
+        'pa_footer_glow_size' => [
+            'section' => 'FOOTER', 'type' => 'range_numeric', 'label' => 'Footer Glow Size',
+            'default' => '0', 'min' => '0', 'max' => '40', 'step' => '2', 'unit' => 'px',
+            'hint'    => '0 = no glow.',
+        ],
+        'pa_footer_glow_opacity' => [
+            'section' => 'FOOTER', 'type' => 'range_numeric', 'label' => 'Footer Glow Opacity',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
         ],
 
         // ---- COLOURS -------------------------------------------------------
