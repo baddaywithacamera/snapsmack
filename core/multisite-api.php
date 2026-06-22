@@ -1318,7 +1318,7 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
         'ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_training_policy',
         'smackback_enabled', 'smackback_mode',
         'global_comments_enabled',
-        'site_email', 'admin_email', 'email_from', 'email_from_name',
+        'site_email', 'admin_email', 'email_from', 'email_from_name', 'brevo_api_key',
         'download_link_required', 'download_default_mode',
         'hub_controls_timezone', 'hub_controls_akismet', 'hub_controls_ai',
         'hub_controls_smackback', 'hub_controls_comments', 'hub_controls_email',

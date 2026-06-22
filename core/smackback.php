@@ -1820,8 +1820,10 @@ treat this as a security incident.
 -- SMACKBACK / {$site_name}
 TEXT;
 
-    $headers = "From: noreply@{$host}\r\nX-Mailer: SnapSmack-SMACKBACK";
-    @mail($to, $subject, $body, $headers);
+    // Send via the central mailer (Brevo HTTPS API → direct from this box even
+    // if the hub is down; falls back to mail() when Brevo isn't configured).
+    require_once __DIR__ . '/mailer.php';
+    snapsmack_send_mail($to, $subject, $body, ['pdo' => $pdo]);
 }
 
 // ─── BREACH RENDER ───────────────────────────────────────────────────────────

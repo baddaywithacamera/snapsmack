@@ -795,6 +795,37 @@ include 'core/sidebar.php';
         </div>
         <?php endif; // pimpmobile ?>
 
+        <!-- ============================================================
+             COMMUNICATIONS
+             ============================================================ -->
+        <div class="box">
+            <h3>COMMUNICATIONS</h3>
+            <p class="dim">Outbound email goes through Brevo's HTTPS API when a key is set — no mail server, no exposed IP, and breach alerts send straight from this box even if the hub is down. Without a key, SnapSmack falls back to PHP mail().</p>
+            <div class="dash-grid">
+
+                <div class="lens-input-wrapper">
+                    <label>BREVO API KEY <span class="field-tip" data-tip="Brevo (brevo.com) transactional email v3 API key. Leave blank to fall back to PHP mail().">ⓘ</span></label>
+                    <input type="password" name="settings[brevo_api_key]" autocomplete="off" value="<?php echo htmlspecialchars($settings['brevo_api_key'] ?? ''); ?>" placeholder="xkeysib-…">
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>SENDER EMAIL <span class="field-tip" data-tip="The verified From address for outbound mail. Must be a sender Brevo has verified for your domain.">ⓘ</span></label>
+                    <input type="email" name="settings[email_from]" value="<?php echo htmlspecialchars($settings['email_from'] ?? ''); ?>" placeholder="noreply@yourdomain.tld">
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>SENDER NAME <span class="field-tip" data-tip="Display name shown on outbound mail.">ⓘ</span></label>
+                    <input type="text" name="settings[email_from_name]" value="<?php echo htmlspecialchars($settings['email_from_name'] ?? ($settings['site_name'] ?? '')); ?>" placeholder="<?php echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack'); ?>">
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>BREACH ALERT EMAIL <span class="field-tip" data-tip="Where SMACKBACK file-integrity breach alerts are sent. Falls back to the admin email if blank.">ⓘ</span></label>
+                    <input type="email" name="settings[smackback_alert_email]" value="<?php echo htmlspecialchars($settings['smackback_alert_email'] ?? ''); ?>" placeholder="you@yourdomain.tld">
+                </div>
+
+            </div>
+        </div>
+
         <button type="submit" name="save_settings" class="master-update-btn">SAVE GLOBAL ENGINE CONFIGURATION</button>
 
     </form>
