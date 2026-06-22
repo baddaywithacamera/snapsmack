@@ -437,12 +437,7 @@ include 'core/sidebar.php';
 
     <!-- FLEET TOTALS ─────────────────────────────────────────────────────── -->
     <div class="box">
-        <h3>FLEET TOTALS<?php echo $period ? ' — ' . $period_label : ' — ALL TIME'; ?></h3>
-        <?php if ($period === 0 && !empty($fleet_daily)): ?>
-            <div style="font-size:0.78rem; color:var(--text-muted,#888); letter-spacing:1px; margin:-6px 0 14px;">
-                since <?php echo htmlspecialchars(array_key_first($fleet_daily)); ?> &ndash; <?php echo htmlspecialchars(array_key_last($fleet_daily)); ?>
-            </div>
-        <?php endif; ?>
+        <h3>FLEET TOTALS<?php echo $period ? ' — ' . $period_label : ' — ALL TIME'; ?><?php if ($period === 0 && !empty($fleet_daily)): ?> <span style="font-size:0.72rem; font-weight:400; color:var(--text-muted,#888); letter-spacing:1px; margin-left:8px;">(since <?php echo htmlspecialchars(array_key_first($fleet_daily)); ?> &ndash; <?php echo htmlspecialchars(array_key_last($fleet_daily)); ?>)</span><?php endif; ?></h3>
 
         <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:25px;">
             <?php
@@ -564,7 +559,12 @@ include 'core/sidebar.php';
                 <tbody>
                     <?php foreach ($spoke_stats as $node_id => $sd):
                         $share_pct  = $fleet_total_views > 0 ? ($sd['total_views'] / $fleet_total_views) * 100 : 0;
-                        $avg_day    = $period > 0 ? round($sd['total_views'] / $period) : 0;
+                        // ALL TIME ($period === 0) must divide by the active-day span,
+                        // not 0 — otherwise every row's AVG/DAY reads 0. Uses the same
+                        // $non_zero_days denominator as the fleet headline AVG VIEWS/DAY.
+                        $avg_day    = $period > 0
+                            ? round($sd['total_views'] / $period)
+                            : ($non_zero_days > 0 ? round($sd['total_views'] / $non_zero_days) : 0);
                         $is_hub_row = !empty($sd['is_hub']);
                         $bot_pct    = ($sd['total_views'] + $sd['bot_total']) > 0
                             ? round(($sd['bot_total'] / ($sd['total_views'] + $sd['bot_total'])) * 100, 1)

@@ -21,8 +21,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Build single-file exe
-pyinstaller --onefile --windowed --name flkrfckr --icon assets\icon.ico main.py
+REM Build single-file exe. --version-file stamps the Windows file-version
+REM resource (Properties > Details) from the version_info.txt that
+REM bump_version.py just regenerated. WITHOUT this flag the exe has no version
+REM number even though BUILD_VERSION was bumped — that was the recurring bug.
+REM --collect-all PIL + the _tkinter_finder hidden import: the one-file/windowed
+REM freeze was dropping Pillow (or its Tk bridge), so the thumbnail worker's
+REM "from PIL import Image / ImageTk" failed silently and thumbnails never rendered.
+pyinstaller --onefile --windowed --name flkrfckr --icon assets\icon.ico --version-file version_info.txt --collect-all PIL --hidden-import PIL._tkinter_finder main.py
 
 echo.
 echo Done. Exe is in dist\flkrfckr.exe

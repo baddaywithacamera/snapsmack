@@ -12,6 +12,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.284 — "Window Seat" (2026-06-21)
+
+- **PARADE: text/nav glow no longer wimpy (skin → 1.2.4).** The glow was built
+  from only two stacked `text-shadow` layers, which dispersed into a thin haze
+  even at the 40px maximum. Replaced with a shared four-layer stack (tight bright
+  core easing into a soft outer halo) used by both the profile (title/tagline/bio)
+  glow and the nav glow, so the glow actually reads at higher sizes. Repackage
+  PARADE 1.2.4 via the Skin Packager alongside this release. (Reminder: a white
+  glow is still invisible on PARADE's high-key field — pick a contrasting colour.)
+- **Fleet Stats: per-site AVG/DAY no longer always 0.** In ALL TIME view the
+  per-site average divided by `$period` (which is 0 for ALL TIME), so every row
+  read 0. It now divides by the active-day span (`$non_zero_days`), the same
+  denominator as the fleet headline AVG VIEWS/DAY.
+- **Fleet Stats: tighter header.** The ALL-TIME date range is folded inline into
+  the "FLEET TOTALS — ALL TIME" heading instead of a separate line, saving a row
+  of vertical space.
+
 ## 0.7.283 — "Window Seat" (2026-06-21)
 
 - **SMACKBACK + updater diagnostic logging (new `logs/` channel).** Adds a
