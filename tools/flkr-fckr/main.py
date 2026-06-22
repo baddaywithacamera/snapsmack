@@ -35,7 +35,7 @@ from poster import FlkrDckrClient, run_import
 # app convention, matches unzucker), not in %APPDATA%.
 # ---------------------------------------------------------------------------
 
-BUILD_VERSION = "0.7.10"  # auto-incremented by bump_version.py on each build.bat run
+BUILD_VERSION = "0.7.11"  # auto-incremented by bump_version.py on each build.bat run
 
 if getattr(sys, 'frozen', False):
     # Running as the compiled exe — log next to flkrfckr.exe
@@ -545,7 +545,23 @@ class FlkrDckrApp(tk.Tk):
 
         total = len(photos)
         excluded = sum(1 for p in photos if p.excluded)
-        self._lbl_grid_count.config(text=f'{total} photos' + (f'  ({excluded} excluded)' if excluded else ''))
+
+        # Hard cap on rendered tiles. Tk's grid geometry manager is ~O(n^2) in
+        # cell count, so building many thousands of tiles locks the UI (and the
+        # whole machine). We render at most RENDER_CAP tiles. The IMPORT is
+        # unaffected — it works from the photo list, not the rendered tiles —
+        # so all photos still upload. To review/exclude beyond the cap, filter
+        # by album (almost every album is well under the cap).
+        RENDER_CAP = 600
+        render_n = min(total, RENDER_CAP)
+        if total > render_n:
+            self._lbl_grid_count.config(
+                text=f'{total} photos — showing first {render_n}; '
+                     f'filter by album to view/exclude the rest'
+                     + (f'  ({excluded} excluded)' if excluded else ''))
+        else:
+            self._lbl_grid_count.config(
+                text=f'{total} photos' + (f'  ({excluded} excluded)' if excluded else ''))
 
         COLS = 4
         BATCH = 120                  # cells per slice — keeps each slice well under a frame
@@ -553,16 +569,16 @@ class FlkrDckrApp(tk.Tk):
         def _build_slice(start):
             if gen != self._grid_gen:          # a newer render superseded this one
                 return
-            end = min(start + BATCH, total)
+            end = min(start + BATCH, render_n)
             for i in range(start, end):
                 row, col = divmod(i, COLS)
                 self._make_cell(photos[i], row, col)
-            if end < total:
+            if end < render_n:
                 self.after(1, lambda: _build_slice(end))
             else:
                 self._schedule_thumb_update()
 
-        if total:
+        if render_n:
             _build_slice(0)
         else:
             self._schedule_thumb_update()
