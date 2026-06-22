@@ -528,8 +528,14 @@ class FlkrDckrApp(tk.Tk):
         self._update_summary()
 
     def _render_grid(self, photos):
-        """Re-render the photo grid with the given list of ParsedPhoto objects."""
-        self._grid_gen += 1          # invalidate any in-flight thumbnail loads
+        """Re-render the photo grid. Cells are built in small batches that yield
+        to the Tk event loop between slices, so loading a 9,000-image export no
+        longer blocks the UI thread — that synchronous all-at-once build was what
+        froze the app and tripped Windows' 'Not Responding' overlay. Bumping
+        _grid_gen aborts any in-flight batch from a previous render (e.g. when the
+        album filter changes mid-build)."""
+        self._grid_gen += 1          # invalidates in-flight thumbs AND batch builds
+        gen = self._grid_gen
         self._thumb_cache.clear()
         self._thumb_state.clear()
         self._row_pitch = 0
@@ -537,15 +543,29 @@ class FlkrDckrApp(tk.Tk):
             widget.destroy()
         self._photo_cells.clear()
 
-        COLS = 4
-        for i, photo in enumerate(photos):
-            row, col = divmod(i, COLS)
-            self._make_cell(photo, row, col)
-
         total = len(photos)
         excluded = sum(1 for p in photos if p.excluded)
         self._lbl_grid_count.config(text=f'{total} photos' + (f'  ({excluded} excluded)' if excluded else ''))
-        self._schedule_thumb_update()
+
+        COLS = 4
+        BATCH = 120                  # cells per slice — keeps each slice well under a frame
+
+        def _build_slice(start):
+            if gen != self._grid_gen:          # a newer render superseded this one
+                return
+            end = min(start + BATCH, total)
+            for i in range(start, end):
+                row, col = divmod(i, COLS)
+                self._make_cell(photos[i], row, col)
+            if end < total:
+                self.after(1, lambda: _build_slice(end))
+            else:
+                self._schedule_thumb_update()
+
+        if total:
+            _build_slice(0)
+        else:
+            self._schedule_thumb_update()
 
     def _make_cell(self, photo, row: int, col: int):
         """Create a single photo cell in the grid."""
