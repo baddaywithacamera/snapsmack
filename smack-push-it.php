@@ -286,7 +286,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
             <?php $render_result('timezone'); ?>
-            <button type="submit" name="push_timezone" class="btn-smack">PUSH TO ALL SPOKES</button>
         </div>
 
         <!-- ── SPAM PROTECTION ──────────────────────────────────────────── -->
@@ -311,10 +310,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
             <?php $render_result('akismet'); ?>
-            <button type="submit" name="push_akismet" class="btn-smack"
-                    <?php echo empty($ak) ? 'disabled title="No Akismet key set on hub"' : ''; ?>>
-                PUSH TO ALL SPOKES
-            </button>
         </div>
 
         <!-- ── AI SETTINGS ──────────────────────────────────────────────── -->
@@ -347,10 +342,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
             <?php $render_result('ai'); ?>
-            <button type="submit" name="push_ai" class="btn-smack"
-                    <?php echo ($ai_prov === 'none' || !$ai_has_key) ? 'disabled title="No AI provider configured on hub"' : ''; ?>>
-                PUSH TO ALL SPOKES
-            </button>
         </div>
 
         <!-- ── SMACKBACK ─────────────────────────────────────────────────── -->
@@ -376,7 +367,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
             <?php $render_result('smackback'); ?>
-            <button type="submit" name="push_smackback" class="btn-smack">PUSH TO ALL SPOKES</button>
         </div>
 
         <!-- ── GLOBAL COMMENTS ───────────────────────────────────────────── -->
@@ -398,7 +388,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
             <?php $render_result('comments'); ?>
-            <button type="submit" name="push_comments" class="btn-smack">PUSH TO ALL SPOKES</button>
         </div>
 
         <!-- ── CONTACT EMAIL ─────────────────────────────────────────────── -->
@@ -420,10 +409,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
             <?php $render_result('email'); ?>
-            <button type="submit" name="push_email" class="btn-smack"
-                    <?php echo empty($settings['site_email']) ? 'disabled title="No site email set on hub"' : ''; ?>>
-                PUSH TO ALL SPOKES
-            </button>
         </div>
 
         <!-- ── NETWORK ALERT (SMACKATTACK) ─────────────────────────────── -->
@@ -449,7 +434,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
             <?php $render_result('netalert'); ?>
-            <button type="submit" name="push_netalert" class="btn-smack">PUSH TO ALL SPOKES</button>
             <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-color,#333);">
                 <p class="dim" style="font-size:0.82rem;margin:0 0 10px;">
                     <strong>FORCE RE-REGISTER PUSH</strong> — resets push subscription state on all spokes.

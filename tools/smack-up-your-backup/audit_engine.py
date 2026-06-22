@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 import ftp_client as ftp_module
+import transport
 import manifest_reader
 
 
@@ -85,22 +86,13 @@ class AuditEngine:
             audit_date = datetime.now(timezone.utc).isoformat(),
         )
 
-        # ── Connect FTP ──────────────────────────────────────────────
-        self.on_progress("ftp", "Connecting via FTP…", 0.02)
-        ftp = ftp_module.FTPClient(
-            host        = self.profile.get("ftp_host", ""),
-            user        = self.profile.get("ftp_user", ""),
-            password    = self.profile.get("ftp_pass", ""),
-            remote_dir  = self.profile.get("ftp_remote_dir", "/"),
-            port        = int(self.profile.get("ftp_port", 21)),
-            use_tls     = bool(self.profile.get("ftp_ssl", True)),
-            verify_cert = bool(self.profile.get("ftp_verify_cert", False)),
-            transfer_delay = 0,     # No pacing during audit reads
-        )
+        # ── Connect (FTP or SFTP per profile) ─────────────────────────
+        self.on_progress("ftp", "Connecting…", 0.02)
+        ftp = transport.make_client(self.profile, transfer_delay=0)  # no pacing during audit reads
         try:
             ftp.connect()
         except Exception as e:
-            self.on_log(f"FTP connection failed: {e}")
+            self.on_log(f"Connection failed: {e}")
             return report
 
         # ── Build remote index ────────────────────────────────────────

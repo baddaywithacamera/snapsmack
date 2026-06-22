@@ -795,16 +795,6 @@ include 'core/sidebar.php';
         </div>
         <?php endif; // pimpmobile ?>
 
-        <div class="box">
-            <h3>API ACCESS</h3>
-            <p class="dim" style="font-size:0.85rem; margin-bottom:0;">
-                Companion tools (SUYB, SYBU, Unzucker, Flkr Fckr, Oh Snap!) authenticate
-                with their own per-tool scoped keys. Create and revoke them on the
-                <a href="smack-api-keys.php">API Keys</a> page. The old shared key was
-                retired in 0.7.261 — there is no single key any more.
-            </p>
-        </div>
-
         <button type="submit" name="save_settings" class="master-update-btn">SAVE GLOBAL ENGINE CONFIGURATION</button>
 
     </form>

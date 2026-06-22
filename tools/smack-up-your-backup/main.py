@@ -2615,30 +2615,33 @@ class SettingsTab(tk.Frame):
         threading.Thread(target=_run, daemon=True).start()
 
     def _test_ftp(self) -> None:
-        """Test FTP connection with current profile fields."""
+        """Test the connection (FTP or SFTP) with current profile fields."""
         host = self._profile_vars["ftp_host"].get().strip()
         if not host:
-            self._conn_status_var.set("Fill in FTP host first")
+            self._conn_status_var.set("Fill in host first")
             return
-        port = int(self._profile_vars["ftp_port"].get() or 21)
-        self._conn_status_var.set(f"Connecting to {host}:{port}…")
+        # Snapshot the live form into a profile dict so the factory picks the
+        # right transport (and any SFTP fields) exactly as a saved profile would.
+        profile = {}
+        for k, v in self._profile_vars.items():
+            try:
+                profile[k] = v.get()
+            except Exception:
+                pass
+        is_sftp = str(profile.get("transport", "ftp")).lower() == "sftp"
+        proto = "SFTP" if is_sftp else "FTP"
+        port = int(profile.get("ftp_port") or (22 if is_sftp else 21))
+        self._conn_status_var.set(f"Connecting to {host}:{port} ({proto})…")
         self.update_idletasks()
 
         import threading
         def _run():
             try:
-                from ftp_client import FTPClient
-                ftp = FTPClient(
-                    host=host,
-                    user=self._profile_vars["ftp_user"].get(),
-                    password=self._profile_vars["ftp_pass"].get(),
-                    remote_dir=self._profile_vars["ftp_remote_dir"].get() or "/",
-                    port=port,
-                    use_tls=bool(self._profile_vars["ftp_ssl"].get()),
-                )
-                ftp.connect()
-                ftp.disconnect()
-                msg = f"✓ Connected to {host}"
+                import transport
+                client = transport.make_client(profile, transfer_delay=0)
+                client.connect()
+                client.disconnect()
+                msg = f"✓ Connected to {host} ({proto})"
             except Exception as e:
                 msg = f"✗ {host}:{port} — {e}"
             self.after(0, lambda: self._conn_status_var.set(msg))
