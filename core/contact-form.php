@@ -117,12 +117,16 @@ function _snapsmack_contact_process(string $admin_email, string $site_name): str
         return '<div class="contact-error">Contact form is not configured. No admin email set.</div>';
     }
 
-    // Send email
+    // Send email. From must be the site's own (Brevo-verified) sender — NOT the
+    // visitor's address (Brevo rejects unverified senders, and From-spoofing fails
+    // SPF/DKIM). The visitor's address goes to Reply-To so replies reach them.
     $subject = "[$site_name] Contact form message from $name";
     $body    = "Name: $name\nEmail: $email\n\nMessage:\n$message";
-    $headers = "From: $email\r\nReply-To: $email\r\nX-Mailer: SnapSmack";
 
-    $sent = @mail($admin_email, $subject, $body, $headers);
+    if (!function_exists('snapsmack_send_mail')) {
+        require_once __DIR__ . '/mailer.php';
+    }
+    $sent = snapsmack_send_mail($admin_email, $subject, $body, ['reply_to' => $email]);
 
     if ($sent) {
         // Clear form values on success
