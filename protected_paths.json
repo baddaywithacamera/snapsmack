@@ -13,6 +13,7 @@
         "media_assets/",
         "assets/img/",
         "backups/",
+        "logs/",
         ".htaccess",
         "robots.txt"
     ]

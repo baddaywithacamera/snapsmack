@@ -12,6 +12,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.283 — "Window Seat" (2026-06-21)
+
+- **SMACKBACK + updater diagnostic logging (new `logs/` channel).** Adds a
+  fire-and-forget, JSON-lines troubleshooting log (`core/diaglog.php`) that
+  captures the context every previous false-breach erased. Each full integrity
+  verify records its trigger source, file counts, duration and the
+  maintenance-lock state at scan time to `logs/smackback.log`; on a breach it
+  additionally re-stats every flagged file at the moment of detection
+  (exists-now / size / mtime age), so a file caught mid-write during an update
+  is distinguishable from a genuine tamper. The updater writes its extraction
+  lifecycle to `logs/updater.log` — lock acquire/release plus, per 8-second
+  chunk, the files written in extraction order — so a breach timestamp can be
+  correlated against whether an update was in progress. The `logs/` directory is
+  web-denied (`.htaccess`), excluded from the SMACKBACK monitor, protected from
+  updates, kept out of the release zip, and gitignored, so the log channel can
+  never itself become an `unexpected` false-breach.
+
 ## 0.7.282 — "Window Seat" (2026-06-21)
 
 - **PARADE: cloth flag mode removed; the flag background is now wave-only.** The

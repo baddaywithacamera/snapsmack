@@ -39,7 +39,7 @@ if (($settings['smackback_enabled'] ?? '0') === '1') {
     // This makes the verify cadence mandatory and host-independent — it holds
     // even where system cron is not configured. Cheap when not due (one read).
     if (smackback_verify_due()) {
-        $smack_result = smackback_verify_all();
+        $smack_result = smackback_verify_all('admin-dashboard');
         // Stamp the verify time on EVERY run (clean or breach) so the interval
         // gate does not re-run the heavy scan on every subsequent page load.
         $pdo->prepare(
@@ -52,7 +52,8 @@ if (($settings['smackback_enabled'] ?? '0') === '1') {
                 $smack_result['missing'],
                 $smack_result['truncated'] ?? [],
                 $smack_result['corrupted'] ?? [],
-                $smack_result['unexpected'] ?? []
+                $smack_result['unexpected'] ?? [],
+                'admin-dashboard'
             );
             // Reload $settings to pick up the new breach status
             $_s = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");

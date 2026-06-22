@@ -107,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['rebless_file'] ?? '') !== 
         exit;
     }
     $result = smackback_rebless_file(trim($_POST['rebless_file']));
-    smackback_verify_all(); // recompute; clears the breach if nothing is left
+    smackback_verify_all('admin-rebless'); // recompute; clears the breach if nothing is left
     header('Location: smack-back.php?msg=' . urlencode($result['message']));
     exit;
 }
@@ -121,14 +121,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['remove_file'] ?? '') !== '
         exit;
     }
     $result = smackback_remove_file(trim($_POST['remove_file']));
-    smackback_verify_all();
+    smackback_verify_all('admin-remove-file');
     header('Location: smack-back.php?msg=' . urlencode($result['message']));
     exit;
 }
 
 // RUN FULL VERIFY
 if ($action === 'run_verify' || ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['run_verify'] ?? '') === '1')) {
-    $result = smackback_verify_all();
+    $result = smackback_verify_all('admin-run-verify');
 
     if ($result['status'] === 'breach') {
         smackback_handle_breach(
@@ -136,7 +136,8 @@ if ($action === 'run_verify' || ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POS
             $result['missing'],
             $result['truncated'] ?? [],
             $result['corrupted'] ?? [],
-            $result['unexpected'] ?? []
+            $result['unexpected'] ?? [],
+            'admin-run-verify'
         );
     } else {
         $pdo->prepare(

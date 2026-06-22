@@ -349,6 +349,7 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'migrations/',
         'database/',
         'data/',
+        'logs/',      // runtime diagnostic output — web-denied, never shipped (diaglog.php recreates it on first write)
         'outputs/',   // dev scratch — never a runtime dir (no runtime code references it)
         'reference/',
         // Dev/meta files
