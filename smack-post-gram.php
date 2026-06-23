@@ -370,6 +370,56 @@ include 'core/sidebar.php';
     .gp-swatch input[type=color] { width:24px; height:20px; border:none;
         background:none; padding:0; cursor:pointer; }
     .gp-shadow { flex:1; min-width:0; }
+
+    /* ---------------------------------------------------------------------
+       UPLOAD STRIP — drop zone + preview thumbnails. These .cp-* classes were
+       referenced by the markup/JS but defined in no stylesheet, so dropped
+       images rendered at full natural size and overflowed the page. Scoped
+       here (page-local) so it can't affect any other admin screen.
+       --------------------------------------------------------------------- */
+    .cp-drop-zone { display:flex; flex-direction:column; align-items:center;
+        justify-content:center; gap:6px; padding:34px 20px; cursor:pointer;
+        text-align:center; border:2px dashed var(--border-color,#3a3a3a);
+        border-radius:8px; background:rgba(255,255,255,0.02);
+        transition:border-color .15s, background .15s; }
+    .cp-drop-zone:hover { border-color:var(--accent,#b6ff1a);
+        background:rgba(255,255,255,0.04); }
+    .cp-drop-zone.is-over { border-color:var(--accent,#b6ff1a);
+        background:rgba(182,255,26,0.06); }
+    .cp-drop-icon { font-size:34px; line-height:1; opacity:.55; }
+    .cp-drop-label { margin:0; font-weight:600; letter-spacing:.5px; }
+    .cp-drop-sub { margin:0; font-size:12px; }
+
+    .cp-strip { display:flex; flex-wrap:wrap; gap:14px; margin-top:16px; }
+    .cp-strip:empty { margin-top:0; }
+    .cp-strip-item { width:170px; flex:0 0 170px; padding:8px;
+        background:rgba(255,255,255,0.03);
+        border:1px solid var(--border-color,#333); border-radius:6px;
+        cursor:grab; transition:opacity .15s, border-color .15s, transform .1s; }
+    .cp-strip-item.is-dragging { opacity:.4; cursor:grabbing; }
+    .cp-strip-item.drag-over { border-color:var(--accent,#b6ff1a);
+        transform:translateY(-2px); }
+
+    .cp-thumb-wrap { position:relative; width:100%; aspect-ratio:1/1;
+        border-radius:4px; overflow:hidden; background:#111; }
+    .cp-thumb { width:100%; height:100%; object-fit:cover; display:block; }
+
+    .cp-cover-badge { position:absolute; top:5px; left:5px; z-index:2;
+        font-size:9px; font-weight:700; letter-spacing:.6px; padding:2px 6px;
+        border-radius:3px; background:var(--accent,#b6ff1a); color:#111; }
+    .cp-pos-badge { position:absolute; bottom:5px; right:5px; z-index:2;
+        font-size:10px; font-weight:600; min-width:18px; text-align:center;
+        padding:1px 5px; border-radius:10px; background:rgba(0,0,0,.7);
+        color:#fff; }
+    .cp-remove-btn { position:absolute; top:4px; right:4px; z-index:3;
+        width:22px; height:22px; padding:0; line-height:20px; text-align:center;
+        font-size:12px; border:none; border-radius:50%; cursor:pointer;
+        background:rgba(0,0,0,.65); color:#fff; opacity:0; transition:opacity .15s; }
+    .cp-thumb-wrap:hover .cp-remove-btn { opacity:1; }
+    .cp-remove-btn:hover { background:#c0392b; }
+
+    .cp-item-label { margin-top:6px; font-size:11px; opacity:.7;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     </style>
 
     <form id="gp-form" method="POST" enctype="multipart/form-data">
@@ -381,26 +431,11 @@ include 'core/sidebar.php';
             <div class="post-layout-grid">
 
                 <div class="post-col-left">
-                    <div class="lens-input-wrapper">
-                        <label>POST TYPE</label>
-                        <select id="gp-post-type" name="post_type" class="full-width-select">
-                            <option value="single">Single Image</option>
-                            <option value="carousel" selected>Carousel (up to 10 images)</option>
-                            <option value="panorama">Panorama Split</option>
-                        </select>
-                        <p id="gp-type-hint" class="skin-desc-text" style="margin-top:6px;">
-                            Multi-image post. Viewers swipe through up to 10 images.
-                        </p>
-                    </div>
-
-                    <div id="gp-panorama-rows-row" class="lens-input-wrapper" style="display:none;">
-                        <label>PANORAMA ROWS</label>
-                        <select name="panorama_rows" class="full-width-select">
-                            <option value="1">1 Row — 3 tiles (wide banner)</option>
-                            <option value="2">2 Rows — 6 tiles</option>
-                            <option value="3">3 Rows — 9 tiles (full grid takeover)</option>
-                        </select>
-                    </div>
+                    <!-- All gram posts are carousel posts (spec: The Grid posting UI).
+                         A single image auto-downgrades to 'single' in the handler.
+                         Panorama splitting lives in the dedicated slicer tool, not
+                         here — it was confusing inside the composer. -->
+                    <input type="hidden" name="post_type" value="carousel">
 
                     <div class="lens-input-wrapper post-description-wrap">
                         <label>CAPTION</label>
@@ -534,24 +569,9 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
     const progressBar  = document.getElementById('gp-progress-bar');
     const errorDiv     = document.getElementById('gp-error');
     const form         = document.getElementById('gp-form');
-    const postTypeSelect = document.getElementById('gp-post-type');
-    const typeHint     = document.getElementById('gp-type-hint');
-    const panoRowsRow  = document.getElementById('gp-panorama-rows-row');
 
     let fileList = []; // [{file, objectUrl}]
     let dragSrc  = null;
-
-    // Post type hint text
-    const hints = {
-        single:   'Single image. Only the first image will be used if multiple are added.',
-        carousel: 'Multi-image post. Viewers swipe through up to 10 images.',
-        panorama: 'Wide image split into grid tiles. Upload one wide image.',
-    };
-
-    postTypeSelect.addEventListener('change', () => {
-        typeHint.textContent = hints[postTypeSelect.value] || '';
-        panoRowsRow.style.display = postTypeSelect.value === 'panorama' ? '' : 'none';
-    });
 
     // Drop zone click
     dropZone.addEventListener('click', () => fileInput.click());
