@@ -12,6 +12,19 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.289 — "Jump Seat" (2026-06-23)
+
+- **GramOfSmack composer usability pass (`smack-post-gram.php`).** The upload strip
+  now has its styling. The `.cp-*` thumbnail classes were referenced by the markup
+  and JS but defined in no stylesheet, so a dropped image rendered at full natural
+  size and overflowed the page. Added a page-local style block: a styled drop zone
+  with drag states, a flex-wrap strip of fixed-width cards, and square thumbnails
+  (`object-fit: cover`) with cover/position badges and a hover remove button.
+- **Panorama Split removed from the post composer.** Splitting a wide image into grid
+  tiles is moving to a dedicated slicer tool; inside the composer it was confusing.
+  The post-type selector and panorama-rows row are gone — every gram post is a
+  carousel (a single image still downgrades to a single-image post automatically).
+
 ## 0.7.288 — "Aisle Seat" (2026-06-23)
 
 - **GramOfSmack post composer finalised (`smack-post-gram.php`).** The gram poster
