@@ -12,6 +12,43 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.286 — "Hot Seat" (2026-06-23)
+
+- **Albums page no longer times out on large libraries (`albums.php`).** The
+  per-album cover lookup was a correlated subquery that ran once per album —
+  `O(albums × images)` — and tripped Cloudflare's origin timeout (524) on
+  imports of ~10k photos. Rewritten as one grouped aggregate plus a bulk cover
+  resolution pass (no correlated subqueries, no window functions, runs on any
+  MariaDB/MySQL). Added an `album_id` index to `snap_image_album_map`.
+- **Collections pages no longer 500 (`collections.php`, `collection.php`).** Both
+  still referenced columns (`image_id`, `position`, `caption`) that were removed
+  when `snap_collection_items` became polymorphic (`item_type` / `item_id` /
+  `sort_order`), throwing an uncaught database error. Queries rewritten for the
+  polymorphic schema (post-type members resolve to their published images) and
+  wrapped so a query failure degrades to an empty state instead of a white screen.
+- **Help page no longer fatals on eight skins (`smack-help.php`).** Skins ship help
+  in two shapes; the merge assumed one, so any skin using the `skin_name`/`topics`
+  shape (aurora, The Grid, galleria, parade, 52-card-pickup, hip-to-be-square,
+  instant-camera, show-n-tell) merged a bare string into the topic list and
+  crashed the page. The loader now normalises both shapes and skips malformed
+  entries.
+- **Duplicate `<head>` on Grid post views (`core/meta.php`).** Some render paths
+  pulled `meta.php` in twice per request, emitting the entire head (title, OG
+  tags, full font list) twice. Added a re-entrancy guard so it emits once.
+- **"New Post" routes by mode from the dashboard (`smack-admin.php`,
+  `smack-admin-reference.php`).** The QUICK STRIKE "New Post" button was hardcoded
+  to the solo poster, so on a GramOfSmack site it ignored `site_mode` and opened
+  the wrong composer. It now routes like the sidebar: carousel → gram poster,
+  smacktalk → longform, else solo.
+- **Skin activation keeps `site_mode` in lockstep (`smack-skin.php`).** Activating
+  a single-mode skin (e.g. The Grid) whose mode differs from the current
+  `site_mode` now switches the mode to match and surfaces a notice — preventing a
+  gram skin from sitting on a photoblog-mode install.
+- **Slickr landing fixes (`skins/slickr/landing.php`).** Photostream tiles now load
+  the aspect thumbnail instead of the full-resolution original (the page was
+  pulling thousands of full images); tagline and bio decode stored HTML entities
+  before re-escaping, fixing doubled `&#039;`-style artifacts.
+
 ## 0.7.285 — "Catbird Seat" (2026-06-22)
 
 - **Central mailer + Brevo delivery (`core/mailer.php`).** New single send path,
