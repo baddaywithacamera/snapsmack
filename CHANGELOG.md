@@ -24,6 +24,20 @@ All notable changes to SnapSmack are documented here. Newest release first.
   tiles is moving to a dedicated slicer tool; inside the composer it was confusing.
   The post-type selector and panorama-rows row are gone — every gram post is a
   carousel (a single image still downgrades to a single-image post automatically).
+- **Panorama Slicer — new GramOfSmack tool (`smack-slicer.php`).** Drop one wide image,
+  drag the two cut lines (default even thirds, horizontal L/M/R or vertical T/M/B); a
+  live canvas preview shows the exact square each cut produces. The `core/trigram-slicer.php`
+  GD engine cuts three 1080² squares. Two modes:
+    - **Triptych** — three new **draft** single-image posts; each slice is its own post
+      image and grid cover. Arrange in the Grid Lighttable and publish.
+    - **Cover Slices (Trigram)** — pick three existing posts; the slices become their grid
+      covers. Writes a `snap_trigrams` row (type `slice`) to `trigrams/` and sets
+      `snap_posts.trigram_id` on the three. The posts keep their own carousels — only the
+      grid tile shows the panorama.
+  The Grid landing page and the Grid Lighttable now serve the trigram slice
+  (`trigrams/trigram-{id}-{L|M|R}.jpg`) as the tile cover whenever `trigram_id` is set,
+  so the three tiles render as one panorama across a grid row. Linked under "The Good
+  Shit" in the sidebar on carousel installs.
 
 ## 0.7.288 — "Aisle Seat" (2026-06-23)
 
