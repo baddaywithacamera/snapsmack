@@ -1,6 +1,9 @@
 # One-time recovery scripts — never commit these
 recover-*.php
 
+# Local one-click ship helper — personal dev tool, not shipped
+ship.sh
+
 # Runtime diagnostic logs — never commit log output. The dir + its self-deny
 # .htaccess are kept tracked so protection exists before the first write.
 logs/*
