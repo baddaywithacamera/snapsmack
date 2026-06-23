@@ -266,10 +266,15 @@ include 'core/sidebar.php';
 
                 <div class="post-col-right">
                     <label>HEADER MODE</label>
+                    <?php if (($settings['site_mode'] ?? 'photoblog') === 'carousel'): ?>
+                    <div class="read-only-display">TEXT MODE — GramOfSmack is text-only</div>
+                    <input type="hidden" name="settings[header_type]" value="text">
+                    <?php else: ?>
                     <select name="settings[header_type]">
                         <option value="text" <?php echo (($settings['header_type'] ?? 'text') == 'text') ? 'selected' : ''; ?>>TEXT MODE</option>
                         <option value="image" <?php echo (($settings['header_type'] ?? 'text') == 'image') ? 'selected' : ''; ?>>IMAGE MODE (LOGO)</option>
                     </select>
+                    <?php endif; ?>
 
                     <label>ACTIVE SKIN</label>
                     <div class="read-only-display">
