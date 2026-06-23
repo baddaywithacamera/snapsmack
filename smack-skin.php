@@ -372,6 +372,30 @@ if (isset($_POST['save_skin_settings'])) {
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
         ->execute([$active_skin, $active_skin]);
 
+    // Keep site_mode in lockstep with the activated skin. Each skin declares the
+    // mode(s) it's built for in its manifest ('modes'). When a skin supports
+    // exactly ONE mode and that differs from the current site_mode, switch the
+    // site to it — otherwise a gram skin (The Grid) can sit on a photoblog-mode
+    // install and the poster routing / calendar / masthead all behave wrong
+    // (the unzucked.ca "solo poster on a Grid site" bug). Multi-mode or
+    // mode-agnostic skins are left untouched. Change is surfaced via the flash.
+    $_sk_slug  = preg_replace('/[^a-z0-9_\-]/', '', $active_skin);
+    $_sk_mpath = __DIR__ . '/skins/' . $_sk_slug . '/manifest.php';
+    if (is_file($_sk_mpath)) {
+        $_sk_man   = include $_sk_mpath;
+        $_sk_modes = (is_array($_sk_man) && isset($_sk_man['modes']) && is_array($_sk_man['modes']))
+                     ? array_values($_sk_man['modes']) : [];
+        if (count($_sk_modes) === 1 && in_array($_sk_modes[0], ['photoblog', 'carousel', 'smacktalk'], true)) {
+            $_cur_mode = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog');
+            if ($_sk_modes[0] !== $_cur_mode) {
+                $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('site_mode', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+                    ->execute([$_sk_modes[0], $_sk_modes[0]]);
+                $_mode_labels = ['photoblog' => 'SmackOneOut', 'carousel' => 'GramOfSmack', 'smacktalk' => 'SmackTalk'];
+                $_SESSION['gallery_flash'] = 'Site mode switched to ' . ($_mode_labels[$_sk_modes[0]] ?? $_sk_modes[0]) . ' to match this skin.';
+            }
+        }
+    }
+
     // 4b. Refresh local settings cache for CSS compilation AND form display.
     // Both $all_settings (used by compiler) and $settings (used by form rendering)
     // must reflect the just-saved values. Without this, the form shows stale values

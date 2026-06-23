@@ -36,8 +36,11 @@ try {
 
 // ── Profile fields (site-wide settings) ───────────────────────────────────
 $site_display = $settings['site_name']        ?? 'SnapSmack';
-$tagline      = trim($settings['site_tagline'] ?? '');
-$bio          = trim($settings['site_description'] ?? '');
+// Decode any stored HTML entities first (Flickr-imported / pasted values can
+// arrive pre-encoded, e.g. "it&#039;s"); the output layer re-escapes once, so
+// this is idempotent and kills the double-encoded "&#039;" rendering.
+$tagline      = trim(html_entity_decode($settings['site_tagline'] ?? '', ENT_QUOTES, 'UTF-8'));
+$bio          = trim(html_entity_decode($settings['site_description'] ?? '', ENT_QUOTES, 'UTF-8'));
 $location     = trim($settings['slickr_location']    ?? '');  // optional, set in skin settings
 $established  = trim($settings['slickr_established']  ?? '');  // optional, e.g. "2011"
 
@@ -198,7 +201,11 @@ include dirname(__DIR__, 2) . '/core/meta.php';
                     <div class="<?php echo $row_class; ?>">
                         <?php foreach ($row as $img):
                             $link      = BASE_URL . htmlspecialchars($img['img_slug']);
-                            $img_url   = BASE_URL . ltrim($img['img_file'] ?? '', '/');
+                            // Use the aspect thumbnail (same asset archive-layout.php serves),
+                            // NOT the full-resolution original — loading 9k+ full images froze
+                            // the photostream. Fall back to the original only if no thumb exists.
+                            $thumb_rel = trim((string)($img['img_thumb_aspect'] ?? ''));
+                            $img_url   = BASE_URL . ltrim($thumb_rel !== '' ? $thumb_rel : ($img['img_file'] ?? ''), '/');
                             $flex_grow = round($img['_aspect'] * 100);
                         ?>
                             <a href="<?php echo $link; ?>" class="justified-item" title="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>" style="flex-grow: <?php echo $flex_grow; ?>; flex-basis: 0; aspect-ratio: <?php echo round($img['_aspect'], 4); ?>;">

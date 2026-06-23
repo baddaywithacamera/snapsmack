@@ -79,37 +79,76 @@ try {
     // from the image table via the album mapping.
     $now_local = date('Y-m-d H:i:s');
 
-    $albums = $pdo->prepare("
-        SELECT
-            a.id,
-            a.album_name,
-            a.album_description,
-            COUNT(i.id) AS img_count,
-            MAX(i.img_date) AS latest_date,
-            cover.img_file AS cover_file,
-            cover.img_thumb_square AS cover_thumb,
-            cover.img_title AS cover_title,
-            cover.img_slug AS cover_slug
+    // Aggregate per album (count + latest date) in ONE grouped scan. The old
+    // query carried a per-album correlated cover subquery — O(albums×images),
+    // which 524'd (Cloudflare origin timeout) on large imports (~10k photos).
+    // Covers are now resolved in bulk below, with no correlated subqueries and
+    // no window functions (runs on any MariaDB/MySQL).
+    $agg = $pdo->prepare("
+        SELECT a.id, a.album_name, a.album_description, a.cover_image_id,
+               COUNT(i.id) AS img_count, MAX(i.img_date) AS latest_date
         FROM snap_albums a
         INNER JOIN snap_image_album_map m ON a.id = m.album_id
         INNER JOIN snap_images i ON m.image_id = i.id
             AND i.img_status = 'published'
             AND i.img_date <= ?
-        LEFT JOIN snap_images cover ON cover.id = (
-            SELECT i2.id
-            FROM snap_image_album_map m2
-            INNER JOIN snap_images i2 ON m2.image_id = i2.id
-            WHERE m2.album_id = a.id
-                AND i2.img_status = 'published'
-                AND i2.img_date <= ?
-            ORDER BY i2.img_date DESC
-            LIMIT 1
-        )
-        GROUP BY a.id
+        GROUP BY a.id, a.album_name, a.album_description, a.cover_image_id
         ORDER BY latest_date DESC
     ");
-    $albums->execute([$now_local, $now_local]);
-    $albums = $albums->fetchAll(PDO::FETCH_ASSOC);
+    $agg->execute([$now_local]);
+    $albums = $agg->fetchAll(PDO::FETCH_ASSOC);
+
+    if ($albums) {
+        // 1) Most-recent published image per album (groupwise-max resolved in
+        //    PHP — single date-desc scan, first row seen per album wins).
+        $latest = $pdo->prepare("
+            SELECT m.album_id,
+                   i.img_file, i.img_thumb_square, i.img_title, i.img_slug
+            FROM snap_image_album_map m
+            INNER JOIN snap_images i ON m.image_id = i.id
+                AND i.img_status = 'published'
+                AND i.img_date <= ?
+            ORDER BY m.album_id ASC, i.img_date DESC, i.id DESC
+        ");
+        $latest->execute([$now_local]);
+        $cover_by_album = [];
+        foreach ($latest as $r) {
+            if (!isset($cover_by_album[$r['album_id']])) {
+                $cover_by_album[$r['album_id']] = $r;
+            }
+        }
+
+        // 2) Explicit cover overrides (snap_albums.cover_image_id), bulk-fetched.
+        $cover_ids = array_filter(array_map(
+            static fn($a) => (int)($a['cover_image_id'] ?? 0), $albums
+        ));
+        $override = [];
+        if ($cover_ids) {
+            $ph = implode(',', array_fill(0, count($cover_ids), '?'));
+            $os = $pdo->prepare(
+                "SELECT id, img_file, img_thumb_square, img_title, img_slug
+                 FROM snap_images
+                 WHERE id IN ($ph) AND img_status = 'published'"
+            );
+            $os->execute(array_values($cover_ids));
+            foreach ($os->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $override[(int)$r['id']] = $r;
+            }
+        }
+
+        // Merge cover fields onto each album (explicit override wins, else newest).
+        foreach ($albums as &$a) {
+            $cid = (int)($a['cover_image_id'] ?? 0);
+            $cov = ($cid && isset($override[$cid]))
+                 ? $override[$cid]
+                 : ($cover_by_album[$a['id']] ?? null);
+            $a['cover_file']  = $cov['img_file']         ?? null;
+            $a['cover_thumb'] = $cov['img_thumb_square'] ?? null;
+            $a['cover_title'] = $cov['img_title']        ?? null;
+            $a['cover_slug']  = $cov['img_slug']         ?? null;
+        }
+        unset($a);
+    }
 
 } catch (Exception $e) {
     die("<div style='background:#300;color:#f99;padding:20px;border:1px solid red;font-family:monospace;'><h3>ALBUM_LISTING_ERROR</h3>" . $e->getMessage() . "</div>");

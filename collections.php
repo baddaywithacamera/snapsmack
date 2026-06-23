@@ -82,19 +82,33 @@ $order_by = match ($sort) {
 $rows_per_layout = max(1, min(5, (int)($settings['collections_index_rows'] ?? 3)));
 
 // Fetch collections + member count + featured image source.
+// snap_collection_items is polymorphic (item_type/item_id/sort_order) since the
+// collection-items migration — the old subquery referenced ci2.image_id /
+// ci2.position, columns that no longer exist, which threw an uncaught PDO
+// exception and 500'd this page. The first_thumb fallback now resolves a
+// post-type member's first published image; non-post members fall back to the
+// explicit cover (featured_thumb) or an empty tile.
 $query = "
     SELECT c.id, c.title, c.slug, c.description, c.cover_image_id, c.sort_order, c.created_at,
            (SELECT COUNT(*) FROM snap_collection_items WHERE collection_id = c.id) AS member_count,
            (SELECT i.img_thumb_square FROM snap_images i WHERE i.id = c.cover_image_id LIMIT 1) AS featured_thumb,
-           (SELECT i.img_thumb_square FROM snap_collection_items ci2
-              INNER JOIN snap_images i ON i.id = ci2.image_id
-              WHERE ci2.collection_id = c.id AND i.img_status = 'published'
-              ORDER BY ci2.position ASC LIMIT 1) AS first_thumb
+           (SELECT i.img_thumb_square
+              FROM snap_collection_items ci2
+              INNER JOIN snap_post_images pim ON pim.post_id = ci2.item_id
+              INNER JOIN snap_images i ON i.id = pim.image_id AND i.img_status = 'published'
+              WHERE ci2.collection_id = c.id AND ci2.item_type = 'post'
+              ORDER BY ci2.sort_order ASC, pim.sort_order ASC
+              LIMIT 1) AS first_thumb
     FROM snap_collections c
     WHERE c.published = 1
     ORDER BY {$order_by}
 ";
-$collections = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
+try {
+    $collections = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Fail soft — show the empty state rather than a white-screen 500.
+    $collections = [];
+}
 
 $page_title = 'Collections';
 $skin_path  = 'skins/' . $active_skin;
