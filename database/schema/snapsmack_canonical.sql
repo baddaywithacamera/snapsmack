@@ -39,6 +39,8 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
   `img_exif`            text           COLLATE utf8mb4_unicode_ci,
   `img_download_url`    varchar(500)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `img_download_count`  int unsigned   NOT NULL DEFAULT '0',
+  `img_like_seed`       int unsigned   NOT NULL DEFAULT '0'
+                        COMMENT 'Imported like tally (e.g. Flickr fave count). Live snap_likes add on top.',
   `img_width`           int            DEFAULT '0',
   `img_height`          int            DEFAULT '0',
   `img_status`          enum('published','draft') COLLATE utf8mb4_unicode_ci DEFAULT 'published',
