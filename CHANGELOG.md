@@ -12,6 +12,26 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.285 — "Catbird Seat" (2026-06-22)
+
+- **Central mailer + Brevo delivery (`core/mailer.php`).** New single send path,
+  `snapsmack_send_mail()`, that posts to Brevo's transactional HTTP API
+  (`api.brevo.com/v3/smtp/email`) when a `brevo_api_key` is configured, and falls
+  back to PHP `mail()` otherwise (or on a Brevo error). Mail leaves the box over
+  outbound HTTPS only — no SMTP ports, no home-IP exposure to the ISP, and delivery
+  no longer depends on the multisite hub being reachable. New **Communications**
+  settings section holds the Brevo key, sender address/name, and the breach-alert
+  recipient; the key rides PUSH IT ALL to spokes.
+- **All transactional senders rerouted through the mailer.** Password-reset links,
+  one-time recovery codes (`core/auth-recovery.php`), the contact form
+  (`core/contact-form.php`), and the SMACKBACK breach + coordinated-breach alerts
+  (`core/smackback.php`, `core/multisite-api.php`) now all go through
+  `snapsmack_send_mail()` instead of bare `mail()`.
+- **Contact form sender fix.** The form previously set `From:` to the visitor's
+  own address, which Brevo rejects (unverified sender) and which fails SPF/DKIM.
+  The visitor's address now goes to `Reply-To:` and `From:` is the site's own
+  verified sender, so replies still reach the visitor and the mail actually sends.
+
 ## 0.7.284 — "Window Seat" (2026-06-21)
 
 - **PARADE: text/nav glow no longer wimpy (skin → 1.2.4).** The glow was built

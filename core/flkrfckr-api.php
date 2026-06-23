@@ -239,6 +239,15 @@ if ($sub === 'images' && $method === 'POST') {
     $tags             = $body['tags']                    ?? [];
     $status           = trim($body['status']             ?? 'published');
     $img_license      = trim($body['img_license']        ?? '');
+    $img_like_seed    = (int)($body['img_like_seed']     ?? 0);
+
+    // Defensive structural add — canonical schema carries img_like_seed, but a
+    // spoke updated mid-cycle may not yet. Idempotent; pure additive.
+    try {
+        $pdo->exec("ALTER TABLE snap_images
+            ADD COLUMN IF NOT EXISTS img_like_seed INT UNSIGNED NOT NULL DEFAULT 0
+            COMMENT 'Imported like tally (e.g. Flickr fave count). Live snap_likes add on top.'");
+    } catch (Throwable $e) { /* column exists or DB lacks IF NOT EXISTS — ignore */ }
 
     if ($flickr_id === '') flkrfckr_error(400, 'flickr_id is required.');
     if ($img_file  === '') flkrfckr_error(400, 'img_file is required.');
@@ -305,20 +314,20 @@ if ($sub === 'images' && $method === 'POST') {
             img_date, img_width, img_height, img_orientation,
             img_exif, img_source_file,
             img_thumb_square, img_thumb_aspect,
-            img_license, img_status, sort_order
+            img_license, img_status, sort_order, img_like_seed
         ) VALUES (
             ?, ?, ?, ?,
             ?, ?, ?, ?,
             ?, ?,
             ?, ?,
-            ?, ?, ?
+            ?, ?, ?, ?
         )
     ")->execute([
         $slug, $img_file, $img_title, $img_description,
         $img_date, $img_width, $img_height, $img_orientation,
         $img_exif, $img_source_file,
         $img_thumb_square ?: null, $img_thumb_aspect ?: null,
-        $img_license ?: null, $status, $sort_order,
+        $img_license ?: null, $status, $sort_order, $img_like_seed,
     ]);
 
     $image_id = (int)$pdo->lastInsertId();
@@ -347,6 +356,36 @@ if ($sub === 'images' && $method === 'POST') {
         'img_slug'  => $slug,
         'duplicate' => false,
     ]);
+}
+
+// ---------------------------------------------------------------------------
+// POST flkrfckr/albums/cover — set an album's cover to an imported photo.
+// Body: { album_id:int, cover_flickr_id:str }. Resolves flickr:<id> →
+// snap_images.id → snap_albums.featured_post_id. Run after images are imported
+// (the cover photo must already exist as a snap_images row).
+// ---------------------------------------------------------------------------
+
+if ($sub === 'albums/cover' && $method === 'POST') {
+    $body            = json_decode(file_get_contents('php://input'), true) ?? [];
+    $album_id        = (int)($body['album_id']         ?? 0);
+    $cover_flickr_id = trim($body['cover_flickr_id']   ?? '');
+
+    if ($album_id <= 0)          flkrfckr_error(400, 'album_id is required.');
+    if ($cover_flickr_id === '') flkrfckr_error(400, 'cover_flickr_id is required.');
+
+    // Resolve the imported photo by its Flickr source key.
+    $stmt = $pdo->prepare("SELECT id FROM snap_images WHERE img_source_file = ? LIMIT 1");
+    $stmt->execute(['flickr:' . $cover_flickr_id]);
+    $img = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$img) {
+        // Cover photo not imported (excluded/missing) — leave the album as-is.
+        flkrfckr_ok(['album_id' => $album_id, 'cover_set' => false, 'reason' => 'cover photo not found']);
+    } else {
+        $pdo->prepare("UPDATE snap_albums SET featured_post_id = ? WHERE id = ?")
+            ->execute([(int)$img['id'], $album_id]);
+        flkrfckr_ok(['album_id' => $album_id, 'featured_post_id' => (int)$img['id'], 'cover_set' => true]);
+    }
 }
 
 // ---------------------------------------------------------------------------
