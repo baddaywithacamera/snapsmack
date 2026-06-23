@@ -168,6 +168,18 @@ include dirname(__DIR__, 2) . '/core/meta.php';
             endif;
 
             $thumb_src   = $post['img_thumb_square'] ?: $post['img_file'];
+
+            // Trigram cover: grid tile shows the panorama slice when set.
+            if ($tg_id > 0 && $tg_slot > 0) {
+                $tg_label = ($tg_orient === 'v')
+                    ? (['T','M','B'][$tg_slot - 1] ?? '')
+                    : (['L','M','R'][$tg_slot - 1] ?? '');
+                if ($tg_label !== '') {
+                    $tg_rel = 'trigrams/trigram-' . $tg_id . '-' . $tg_label . '.jpg';
+                    if (is_file(dirname(__DIR__, 2) . '/' . $tg_rel)) $thumb_src = $tg_rel;
+                }
+            }
+
             $post_url    = BASE_URL . '?s=' . urlencode($post['img_slug']);
             $image_count = (int)$post['image_count'];
             $is_carousel = $image_count > 1;
