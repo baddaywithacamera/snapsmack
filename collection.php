@@ -84,19 +84,28 @@ if (!$collection) {
     exit;
 }
 
-// Fetch members (images only, in curator's position order).
+// Fetch members. snap_collection_items is polymorphic (item_type/item_id/
+// sort_order) since the collection-items migration — the old query referenced
+// ci.image_id / ci.position / ci.caption (gone) and 500'd. Resolve post-type
+// members down to their published images, in curator order then in-post order.
 $mstmt = $pdo->prepare(
     "SELECT i.id, i.img_title AS title, i.img_slug AS slug,
             i.img_thumb_square, i.img_thumb_aspect, i.img_file,
-            i.img_date, ci.position, ci.caption
+            i.img_date, ci.sort_order AS position, NULL AS caption
      FROM snap_collection_items ci
-     INNER JOIN snap_images i ON i.id = ci.image_id
+     INNER JOIN snap_post_images pim ON pim.post_id = ci.item_id
+     INNER JOIN snap_images i ON i.id = pim.image_id
      WHERE ci.collection_id = ?
+       AND ci.item_type     = 'post'
        AND i.img_status     = 'published'
-     ORDER BY ci.position ASC, ci.added_at ASC"
+     ORDER BY ci.sort_order ASC, pim.sort_order ASC, ci.added_at ASC"
 );
-$mstmt->execute([$collection['id']]);
-$members = $mstmt->fetchAll(PDO::FETCH_ASSOC);
+try {
+    $mstmt->execute([$collection['id']]);
+    $members = $mstmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $members = [];
+}
 
 // Featured image: explicit pick if set, else first member.
 $featured = null;

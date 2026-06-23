@@ -3282,7 +3282,33 @@ if (!empty($settings['active_skin'])) {
     if (file_exists($_help_skin_path)) {
         $skin_help = include $_help_skin_path;
         if (is_array($skin_help)) {
-            $help_topics = array_merge($help_topics, $skin_help);
+            // Skins ship help in one of two shapes. Normalise BOTH, and skip any
+            // malformed entry, so a single non-conforming skin file can no longer
+            // fatal the entire help page (a bare string merged in here was being
+            // indexed as $topic['section'] below → "offset of type string on string").
+            if (isset($skin_help['topics']) && is_array($skin_help['topics'])) {
+                // Shape A: ['skin_name' => 'X', 'topics' => [ ['title'=>,'body'=>], ... ]]
+                $_sec = (string)($skin_help['skin_name'] ?? $_help_skin_slug);
+                $_n   = 0;
+                foreach ($skin_help['topics'] as $_t) {
+                    if (!is_array($_t) || empty($_t['title'])) continue;
+                    $help_topics[$_help_skin_slug . '-' . (++$_n)] = [
+                        'section' => $_sec,
+                        'title'   => $_t['title'],
+                        'icon'    => $_t['icon']    ?? '',
+                        'role'    => $_t['role']    ?? '',
+                        'content' => $_t['content'] ?? $_t['body'] ?? '',
+                    ];
+                }
+            } else {
+                // Shape B: flat map of slug => topic-array. Merge only well-formed
+                // entries (an array carrying a 'section').
+                foreach ($skin_help as $_k => $_t) {
+                    if (is_array($_t) && isset($_t['section'])) {
+                        $help_topics[$_k] = $_t;
+                    }
+                }
+            }
         }
     }
 }

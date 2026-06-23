@@ -17,6 +17,14 @@
 
 
 
+// --- RE-ENTRANCY GUARD ---
+// meta.php emits the ENTIRE <head>. Some render paths include it more than once
+// per request (e.g. The Grid post view pulls it via skin-meta.php AND again via
+// skin-page.php / landing.php), which duplicated the whole head block — two
+// <title>s, two OG sets, the full font list twice. Emit exactly once.
+if (defined('SNAPSMACK_META_EMITTED')) { return; }
+define('SNAPSMACK_META_EMITTED', true);
+
 // --- CSS VARIABLES (GRID GAP) ---
 // Set --grid-gap as a CSS custom property for consistent spacing across skins
 $grid_gap = $settings['browse_gap'] ?? '100';
