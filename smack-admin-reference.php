@@ -358,7 +358,12 @@ include 'core/sidebar.php';
         <div class="box">
             <h3>QUICK STRIKE</h3>
             <div class="quick-strike-grid">
-                <a href="smack-post-solo.php"><button class="btn-smack">NEW POST</button></a>
+                <?php $_np_target = match($settings['site_mode'] ?? 'photoblog') {
+                    'carousel'  => 'smack-post-gram.php',
+                    'smacktalk' => 'smack-post-long.php',
+                    default     => 'smack-post-solo.php',
+                }; ?>
+                <a href="<?php echo $_np_target; ?>"><button class="btn-smack">NEW POST</button></a>
                 <a href="smack-backup.php"><button class="btn-smack btn-backup">BACKUP</button></a>
                 <a href="smack-settings.php"><button class="btn-smack btn-settings">SETTINGS</button></a>
                 <a href="index.php" target="_blank"><button class="btn-smack btn-live">LIVE SITE</button></a>
