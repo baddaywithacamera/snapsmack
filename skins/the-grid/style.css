@@ -532,6 +532,19 @@ img { display: block; max-width: 100%; }
     max-height: 100% !important;
 }
 
+/* Square crop (classic IG): the image fills the 1:1 panel, centre-cropped.
+   Per-image — set with the "Square crop" toggle in the gram composer. */
+.tg-post-ig-image .slider-slide.tg-crop--fill img {
+    width:      100% !important;
+    height:     100% !important;
+    max-width:  none !important;
+    max-height: none !important;
+    object-fit: cover !important;
+}
+.tg-post-ig-image .tg-single-img.tg-crop--fill {
+    object-fit: cover;
+}
+
 /* ── Right: info panel (scrollable) ────────────────────────────────────── */
 .tg-post-ig-info {
     flex:           0 0 335px;

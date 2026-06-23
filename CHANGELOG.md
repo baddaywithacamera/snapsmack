@@ -12,6 +12,26 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.288 — "Aisle Seat" (2026-06-23)
+
+- **GramOfSmack post composer finalised (`smack-post-gram.php`).** The gram poster
+  is now true classic-IG: the per-post **TITLE field is gone** — slugs are
+  timestamp-based (`ig-<ts>`, matching the importer) and tags come from the caption
+  and tags field. The caption is a single large plain textarea (the shortcode
+  toolbar was dropped). Each image in a post is now styled **individually** in the
+  upload strip: a **Square crop (IG)** toggle for classic centre-cropped square
+  fill, or — when unchecked — per-image **size**, **border**, **border colour**,
+  **matte colour** and **shadow**. Per-image settings are written to
+  `snap_post_images` and applied at render time.
+- **New column `snap_post_images.img_crop_mode`** (`enum('fit','fill')`, default
+  `fit`). `fill` = square crop (cover the 1:1 panel); `fit` = contain with the
+  optional matte/border/shadow frame. Added to the canonical schema; a defensive
+  `ADD COLUMN IF NOT EXISTS` in the gram handler covers mid-migration installs.
+- **The Grid honours per-image treatment (`skins/the-grid` → 1.3.23).** The post
+  view now renders each image's crop mode (square-fill vs fit) and frame. Explicit
+  per-image styling renders regardless of the site-wide customise level, so a
+  per-image-composed post no longer shows nothing on a per-grid site.
+
 ## 0.7.287 — "Ringside Seat" (2026-06-23)
 
 - **Trigram / triptych slicer engine (`core/trigram-slicer.php`).** New shared GD

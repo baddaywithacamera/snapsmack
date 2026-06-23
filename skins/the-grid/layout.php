@@ -71,35 +71,48 @@ $_tg_shadow_map = [
 $_tg_customize_level = $settings['tg_customize_level'] ?? 'per_grid';
 
 $tg_resolve_frame = function ($pi_row) use ($settings, $_tg_customize_level, $_tg_shadow_map, &$post) {
-    switch ($_tg_customize_level) {
-        case 'per_image':
-            $sz  = (int)($pi_row['img_size_pct']     ?? 100);
-            $bpx = (int)($pi_row['img_border_px']    ?? 0);
-            $bc  = $pi_row['img_border_color'] ?? '#000000';
-            $bg  = $pi_row['img_bg_color']     ?? '#ffffff';
-            $sh  = (string)($pi_row['img_shadow']    ?? '0');
-            break;
-        case 'per_carousel':
-            $sz  = (int)($post['post_img_size_pct']  ?? 100);
-            $bpx = (int)($post['post_border_px']     ?? 0);
-            $bc  = $post['post_border_color'] ?? '#000000';
-            $bg  = $post['post_bg_color']     ?? '#ffffff';
-            $sh  = (string)($post['post_shadow']     ?? '0');
-            break;
-        default: // per_grid
-            $sz  = (int)($settings['tg_frame_size_pct']     ?? 100);
-            $bpx = (int)($settings['tg_frame_border_px']    ?? 0);
-            $bc  = $settings['tg_frame_border_color'] ?? '#000000';
-            $bg  = $settings['tg_frame_bg_color']     ?? '#ffffff';
-            $sh  = (string)($settings['tg_frame_shadow']    ?? '0');
+    // Per-image values from the pivot row — the gram composer sets these
+    // individually (square-crop, matte, border, shadow). If the row carries any
+    // explicit per-image styling we honour it REGARDLESS of the site-wide
+    // customise level, so a per-grid site still renders a post that was composed
+    // with per-image treatment (otherwise the composer's choices vanish silently).
+    $pi_crop = (($pi_row['img_crop_mode'] ?? 'fit') === 'fill') ? 'fill' : 'fit';
+    $pi_sz   = (int)($pi_row['img_size_pct']  ?? 100);
+    $pi_bpx  = (int)($pi_row['img_border_px'] ?? 0);
+    $pi_sh   = (string)($pi_row['img_shadow'] ?? '0');
+    $has_per_image = ($pi_crop === 'fill' || $pi_sz < 100 || $pi_bpx > 0 || (int)$pi_sh > 0);
+
+    $crop = 'fit';
+    if ($_tg_customize_level === 'per_image' || $has_per_image) {
+        $crop = $pi_crop;
+        $sz  = $pi_sz;
+        $bpx = $pi_bpx;
+        $bc  = $pi_row['img_border_color'] ?? '#000000';
+        $bg  = $pi_row['img_bg_color']     ?? '#ffffff';
+        $sh  = $pi_sh;
+    } elseif ($_tg_customize_level === 'per_carousel') {
+        $sz  = (int)($post['post_img_size_pct']  ?? 100);
+        $bpx = (int)($post['post_border_px']     ?? 0);
+        $bc  = $post['post_border_color'] ?? '#000000';
+        $bg  = $post['post_bg_color']     ?? '#ffffff';
+        $sh  = (string)($post['post_shadow']     ?? '0');
+    } else { // per_grid
+        $sz  = (int)($settings['tg_frame_size_pct']     ?? 100);
+        $bpx = (int)($settings['tg_frame_border_px']    ?? 0);
+        $bc  = $settings['tg_frame_border_color'] ?? '#000000';
+        $bg  = $settings['tg_frame_bg_color']     ?? '#ffffff';
+        $sh  = (string)($settings['tg_frame_shadow']    ?? '0');
     }
     return [
+        'crop_mode'   => $crop,
         'size_pct'    => $sz,
         'border_px'   => $bpx,
         'border_color'=> $bc,
         'bg_color'    => $bg,
         'shadow_css'  => $_tg_shadow_map[$sh] ?? 'none',
-        'is_framed'   => ($sz < 100 || $bpx > 0 || (int)$sh > 0),
+        // Square-crop (fill) ignores the matte/border/shadow frame.
+        'is_framed'   => ($crop === 'fit' && ($sz < 100 || $bpx > 0 || (int)$sh > 0)),
+        'is_fill'     => ($crop === 'fill'),
     ];
 };
 
@@ -166,7 +179,10 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
                  data-exif-map="<?php echo htmlspecialchars(json_encode($exif_map)); ?>">
                 <div class="slider-track">
                     <?php foreach ($post_images as $pimg):
-                        $frame = $tg_resolve_frame($pimg);
+                        $frame       = $tg_resolve_frame($pimg);
+                        $slide_vars  = '';
+                        $slide_class = 'slider-slide';
+                        $img_style   = '';
                         if ($frame['is_framed']):
                             $slide_vars = sprintf(
                                 '--slide-bg:%s; --slide-img-size:%d%%; --slide-border-w:%dpx; --slide-border-c:%s; --slide-shadow:%s;',
@@ -176,12 +192,9 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
                                 htmlspecialchars($frame['border_color']),
                                 htmlspecialchars($frame['shadow_css'])
                             );
-                            $slide_class = 'slider-slide tg-slide--framed';
-                            $img_style   = '';
-                        else:
-                            $slide_vars  = '';
-                            $slide_class = 'slider-slide';
-                            $img_style   = '';
+                            $slide_class .= ' tg-slide--framed';
+                        elseif ($frame['is_fill']):
+                            $slide_class .= ' tg-crop--fill';   // IG square crop
                         endif;
                     ?>
                     <div class="<?php echo $slide_class; ?>"
@@ -209,7 +222,7 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
         <!-- Single image -->
         <img src="<?php echo htmlspecialchars($cover_img['img_file']); ?>"
              alt="<?php echo htmlspecialchars($cover_img['img_title']); ?>"
-             class="tg-single-img"
+             class="tg-single-img<?php echo $frame['is_fill'] ? ' tg-crop--fill' : ''; ?>"
              <?php if ($single_img_style): ?>style="<?php echo $single_img_style; ?>"<?php endif; ?>>
         <?php endif; ?>
 
