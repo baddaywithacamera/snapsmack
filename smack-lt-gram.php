@@ -225,6 +225,18 @@ include 'core/sidebar.php';
         $tg_orient  = $post['trigram_orientation'] ?? 'h';
         $img_count  = (int)$post['image_count'];
 
+        // Trigram cover: show the panorama slice in the lighttable tile too, so the
+        // arrangement preview matches what the live grid will render.
+        if ($tg_id > 0 && $tg_slot > 0) {
+            $tg_label = ($tg_orient === 'v')
+                ? (['T','M','B'][$tg_slot - 1] ?? '')
+                : (['L','M','R'][$tg_slot - 1] ?? '');
+            if ($tg_label !== '') {
+                $tg_rel = 'trigrams/trigram-' . $tg_id . '-' . $tg_label . '.jpg';
+                if (is_file(__DIR__ . '/' . $tg_rel)) $thumb = $tg_rel;
+            }
+        }
+
         $slot_labels_h = [1 => 'L', 2 => 'M', 3 => 'R'];
         $slot_labels_v = [1 => 'T', 2 => 'M', 3 => 'B'];
         $slot_label = $tg_slot ? ($tg_orient === 'v' ? $slot_labels_v[$tg_slot] : $slot_labels_h[$tg_slot]) : '';
