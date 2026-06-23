@@ -12,6 +12,17 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.287 — "Ringside Seat" (2026-06-23)
+
+- **Trigram / triptych slicer engine (`core/trigram-slicer.php`).** New shared GD
+  engine that cuts one wide (or tall) source image into three square images —
+  the foundation for both the trigram cover tool (slices → grid covers) and the
+  triptych tool (slices → three new posts). Supports horizontal (L/M/R) and
+  vertical (T/M/B) orientation, explicit or even-thirds cut points, and a
+  centre square-crop per third (cover fit — upscales an under-size third rather
+  than letterboxing). The slicer is engine-only in this release; the admin/poster
+  UI that drives it lands in a following build.
+
 ## 0.7.286 — "Hot Seat" (2026-06-23)
 
 - **Albums page no longer times out on large libraries (`albums.php`).** The
