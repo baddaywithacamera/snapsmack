@@ -127,6 +127,24 @@ class FlkrDckrClient:
         self._album_cache[key] = album_id
         return album_id
 
+    def set_album_cover(self, album_id: int, cover_flickr_id: str) -> bool:
+        """
+        Set an album's cover to an already-imported Flickr photo. The server
+        resolves flickr:<id> → snap_images.id → snap_albums.featured_post_id.
+        Best-effort; returns True on a 2xx response, False if no cover given.
+        """
+        if not cover_flickr_id:
+            return False
+        payload = {'album_id': int(album_id), 'cover_flickr_id': str(cover_flickr_id)}
+        resp = self._session.post(
+            f"{self.base_url}/api.php",
+            params={'route': 'flkrfckr/albums/cover'},
+            data=json.dumps(payload),
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return True
+
     # ------------------------------------------------------------------
     # Images
     # ------------------------------------------------------------------
@@ -148,6 +166,7 @@ class FlkrDckrClient:
         tags:             List[str],    # plain tag strings (no # prefix)
         status:           str = 'published',
         img_license:      str = '',     # rights label from Flickr (optional)
+        like_seed:        int = 0,      # Flickr fave count → initial like tally
     ) -> ImportResult:
         """
         POST to flkrfckr/images. Handles duplicate detection.
@@ -170,6 +189,7 @@ class FlkrDckrClient:
             'tags':             tags,
             'status':           status,
             'img_license':      img_license,
+            'img_like_seed':    int(like_seed),
         }
         try:
             resp = self._session.post(
@@ -302,6 +322,7 @@ def run_import(
 
     already_done = checkpoint.already_imported()
     results      = []
+    cover_map: Dict[int, str] = {}   # snap album_id → cover Flickr photo ID
     total        = len(photos)
 
     # Resolve default album once if needed
@@ -402,6 +423,9 @@ def run_import(
                             album_meta.get('description', ''),
                         )
                         snap_album_ids.append(aid)
+                        cover_fid = album_meta.get('cover_flickr_id')
+                        if cover_fid and aid not in cover_map:
+                            cover_map[aid] = cover_fid
             elif unalbumed_action == 'default_album' and default_album_id:
                 snap_album_ids.append(default_album_id)
 
@@ -422,6 +446,7 @@ def run_import(
                 tags=photo.tags,
                 status=status,
                 img_license=photo.license,
+                like_seed=photo.count_faves,
             )
 
             if result.success:
@@ -482,6 +507,16 @@ def run_import(
         # Throttle between posts
         if throttle_delay > 0 and not result.duplicate:
             time.sleep(throttle_delay)
+
+    # ── Finalize album covers ────────────────────────────────────────────────
+    # Covers reference photos that only become snap_images rows during this run,
+    # so they are resolved in a single pass at the end. Best-effort: a cover
+    # whose photo was excluded/missing simply stays unset, never failing the run.
+    for snap_aid, cover_fid in cover_map.items():
+        try:
+            client.set_album_cover(snap_aid, cover_fid)
+        except Exception as e:
+            log.warning(f"Could not set cover for album {snap_aid}: {e}")
 
     return results
 # ===== SNAPSMACK EOF =====

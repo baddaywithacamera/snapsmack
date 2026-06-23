@@ -49,6 +49,7 @@ class ParsedPhoto:
     missing_image:  bool         = False        # True if no image file found
     privacy:        str          = 'public'     # 'public', 'private', 'friends', etc.
     license:        str          = ''
+    count_faves:    int          = 0            # Flickr fave count → like seed on import
     excluded:       bool         = False        # user can toggle in GUI
     comments:       List[dict]   = field(default_factory=list)  # imported Flickr comments
 
@@ -59,6 +60,7 @@ class AlbumInfo:
     title:       str
     description: str = ''
     photo_ids:   List[str] = field(default_factory=list)
+    cover_flickr_id: str = ''                   # Flickr photo ID of album cover (from cover_photo URL)
 
 
 @dataclass
@@ -370,17 +372,36 @@ def parse(export_folder: str, on_progress=None) -> ParseResult:
                 aid = str(a.get('id', ''))
                 if not aid:
                     continue
+                # Cover photo: Flickr exports it as a URL whose final path
+                # segment is the photo ID (".../photos/<user>/<id>"). A trailing
+                # "0" (or empty) means no cover was set on the album.
+                cover_url = str(a.get('cover_photo', '') or '').rstrip('/')
+                cover_id  = cover_url.rsplit('/', 1)[-1] if cover_url else ''
+                if cover_id in ('', '0'):
+                    cover_id = ''
                 info = AlbumInfo(
                     flickr_id=aid,
                     title=a.get('title', '').strip() or f'Album {aid}',
                     description=a.get('description', '').strip(),
                     photo_ids=[str(pid) for pid in a.get('photos', [])],
+                    cover_flickr_id=cover_id,
                 )
                 album_map[aid] = info
                 result.albums.append(info)
         except Exception as e:
             result.errors.append(f"Could not parse albums.json: {e}")
     # No albums.json is fine — account may have no photosets.
+
+    # ── 1b. Count collections (Flickr galleries → SnapSmack Collections) ──────
+    collections_count = 0
+    galleries_path = os.path.join(export_folder, 'galleries.json')
+    if os.path.isfile(galleries_path):
+        try:
+            with open(galleries_path, 'r', encoding='utf-8') as f:
+                galleries_raw = json.load(f)
+            collections_count = len(galleries_raw.get('galleries', []))
+        except Exception as e:
+            result.errors.append(f"Could not parse galleries.json: {e}")
 
     # ── 2. Parse photo sidecar files ─────────────────────────────────────────
     sidecar_pattern = os.path.join(export_folder, 'photo_*.json')
@@ -448,6 +469,12 @@ def parse(export_folder: str, on_progress=None) -> ParseResult:
         # Tags
         tags = _parse_tags(data.get('tags', []))
 
+        # Flickr fave count → seed the post's like tally at import time.
+        try:
+            count_faves = int(data.get('count_faves', 0) or 0)
+        except (TypeError, ValueError):
+            count_faves = 0
+
         # Album memberships — listed in sidecar as array of {id, title} objects
         album_ids: List[str] = []
         for a in data.get('albums', []):
@@ -509,6 +536,7 @@ def parse(export_folder: str, on_progress=None) -> ParseResult:
             missing_image=missing,
             privacy=privacy,
             license=license_str,
+            count_faves=count_faves,
             comments=_parse_comments(data.get('comments', []), name_map),
         ))
 
@@ -522,11 +550,15 @@ def parse(export_folder: str, on_progress=None) -> ParseResult:
     result.photos.sort(key=_best_date)
 
     result.stats = {
-        'total_photos':    len(result.photos),
-        'total_albums':    len(result.albums),
-        'missing_images':  missing_images,
-        'skipped_videos':  skipped_videos,
-        'private_photos':  sum(1 for p in result.photos if p.privacy != 'public'),
+        'total_photos':       len(result.photos),
+        'total_albums':       len(result.albums),
+        'albums_with_covers': sum(1 for a in result.albums if a.cover_flickr_id),
+        'total_collections':  collections_count,
+        'total_comments':     sum(len(p.comments) for p in result.photos),
+        'total_likes':        sum(p.count_faves for p in result.photos),
+        'missing_images':     missing_images,
+        'skipped_videos':     skipped_videos,
+        'private_photos':     sum(1 for p in result.photos if p.privacy != 'public'),
     }
 
     if not result.photos:
