@@ -142,6 +142,8 @@ CREATE TABLE IF NOT EXISTS `snap_post_images` (
   `img_border_color` char(7)        COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#000000',
   `img_bg_color`     char(7)        COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#ffffff',
   `img_shadow`       tinyint unsigned NOT NULL DEFAULT 0,
+  `img_crop_mode`    enum('fit','fill') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'fit'
+                     COMMENT 'fit = contain in 1:1 panel (optional frame); fill = IG square crop (cover). Per-image, set by the gram composer.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_image` (`image_id`),
   KEY `idx_post_id` (`post_id`),

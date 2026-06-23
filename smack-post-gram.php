@@ -41,7 +41,6 @@ $is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
 
-    $title        = trim($_POST['title']        ?? 'Untitled');
     $desc         = trim($_POST['desc']         ?? '');
     $status       = $_POST['img_status']        ?? 'published';
     $post_type    = $_POST['post_type']         ?? 'single';
@@ -49,7 +48,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
     $allow_cmt    = (int)($_POST['allow_comments']  ?? 1);
     $allow_dl     = (int)($_POST['allow_download']  ?? 0);
     $dl_url       = trim($_POST['download_url'] ?? '');
-    $manual_tags     = trim($_POST['tags'] ?? '');
+    $manual_tags  = trim($_POST['tags'] ?? '');
+
+    // GramOfSmack has no per-post title (classic IG). Slug is timestamp-based,
+    // matching the importer's ig-<ts> convention; caption + tags drive discovery.
+    $slug_base = 'ig-' . date('Ymd-His') . '-' . substr(bin2hex(random_bytes(3)), 0, 4);
+
+    // Per-image styling arrays (parallel to img_files[], in strip order). Each
+    // image is decided individually: either square-cropped (fill) or fit inside
+    // the 1:1 panel with an optional matte / border / shadow.
+    $st_crop   = $_POST['crop_mode']        ?? [];
+    $st_size   = $_POST['img_size_pct']     ?? [];
+    $st_bpx    = $_POST['img_border_px']    ?? [];
+    $st_bcol   = $_POST['img_border_color'] ?? [];
+    $st_bg     = $_POST['img_bg_color']     ?? [];
+    $st_shadow = $_POST['img_shadow']       ?? [];
+
+    $hexok = function ($v, $def) {
+        return (is_string($v) && preg_match('/^#[0-9a-fA-F]{6}$/', $v)) ? $v : $def;
+    };
+    $img_style_at = function ($i) use ($st_crop,$st_size,$st_bpx,$st_bcol,$st_bg,$st_shadow,$hexok) {
+        $crop = (($st_crop[$i] ?? 'fit') === 'fill') ? 'fill' : 'fit';
+        return [
+            'crop'   => $crop,
+            'size'   => max(10, min(100, (int)($st_size[$i]   ?? 100))),
+            'bpx'    => max(0,  min(50,  (int)($st_bpx[$i]    ?? 0))),
+            'bcol'   => $hexok($st_bcol[$i] ?? '', '#000000'),
+            'bg'     => $hexok($st_bg[$i]   ?? '', '#ffffff'),
+            'shadow' => max(0,  min(3,   (int)($st_shadow[$i] ?? 0))),
+        ];
+    };
+
+    // Defensive: ensure the per-image crop column exists (canonical adds it on
+    // update; this catches an install caught mid-migration). Pure structural add.
+    try {
+        $pdo->exec("ALTER TABLE snap_post_images
+                    ADD COLUMN IF NOT EXISTS img_crop_mode
+                    ENUM('fit','fill') NOT NULL DEFAULT 'fit' AFTER img_shadow");
+    } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
 
     $raw_date  = $_POST['img_date'] ?? '';
     $post_date = !empty($raw_date) ? str_replace('T', ' ', $raw_date) : date('Y-m-d H:i:s');
@@ -82,14 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
             continue;
         }
 
-        $file_ext  = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
-        $slug_base = strtolower(preg_replace('/[^A-Za-z0-9-]+/', '-', $title));
-        $slug_base = preg_replace('/-{2,}/', '-', $slug_base);
-        $slug_base = trim($slug_base, '-') ?: 'untitled';
-
-        $img_slug = $files_count > 1
-            ? $slug_base . '-' . ($i + 1) . '-' . time()
-            : $slug_base . '-' . time();
+        $file_ext = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
+        $img_slug = $files_count > 1 ? $slug_base . '-' . ($i + 1) : $slug_base;
 
         $rel_dir        = 'img_uploads/' . date('Y') . '/' . date('m');
         $full_dir       = __DIR__ . '/' . $rel_dir;
@@ -220,7 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $img_stmt->execute([
-            $title, $img_slug, $db_path, $desc,
+            '', $img_slug, $db_path, $desc,
             $status, $post_date, $auto_orient, $orig_w, $orig_h,
             $allow_cmt, $allow_dl, $dl_url,
             $db_thumb_square, $db_thumb_aspect, $db_checksum, $palette_json,
@@ -229,6 +259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         $processed_images[] = [
             'image_id'      => (int)$pdo->lastInsertId(),
             'sort_position' => $i,
+            'style'         => $img_style_at($i),
         ];
 
         gc_collect_cycles();
@@ -243,8 +274,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         // Downgrade to single if only one image
         if (count($processed_images) === 1) $post_type = 'single';
 
-        $post_slug = strtolower(preg_replace('/[^A-Za-z0-9-]+/', '-', $title)) . '-' . time();
-        $post_slug = preg_replace('/-{2,}/', '-', $post_slug);
+        $post_slug = $slug_base;
 
         $post_stmt = $pdo->prepare("
             INSERT INTO snap_posts
@@ -255,27 +285,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 100, 0, '#000000', '#ffffff', 0)
         ");
         $post_stmt->execute([
-            $title, $post_slug, $desc, $post_type, $status, $post_date,
+            '', $post_slug, $desc, $post_type, $status, $post_date,
             $allow_cmt, $allow_dl, $dl_url, $pano_rows,
         ]);
         $post_id = (int)$pdo->lastInsertId();
 
-        // Pivot rows — frame style defaults (resolved from skin settings at render time)
+        // Pivot rows — per-image styling decided individually in the composer.
+        // Square-crop (fill) ignores the matte/border/shadow; fit keeps them.
         $pi_stmt = $pdo->prepare("
             INSERT INTO snap_post_images
                 (post_id, image_id, sort_position, is_cover,
-                 img_size_pct, img_border_px, img_border_color, img_bg_color, img_shadow)
-            VALUES (?, ?, ?, ?, 100, 0, '#000000', '#ffffff', 0)
+                 img_size_pct, img_border_px, img_border_color, img_bg_color,
+                 img_shadow, img_crop_mode)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
+        $upd_post = $pdo->prepare("UPDATE snap_images SET post_id = ? WHERE id = ?");
         foreach ($processed_images as $pos => $img) {
-            $pi_stmt->execute([$post_id, $img['image_id'], $pos, ($pos === 0 ? 1 : 0)]);
-            $pdo->prepare("UPDATE snap_images SET post_id = ? WHERE id = ?")
-                ->execute([$post_id, $img['image_id']]);
+            $s = $img['style'];
+            if ($s['crop'] === 'fill') {
+                $pi_stmt->execute([$post_id, $img['image_id'], $pos, ($pos === 0 ? 1 : 0),
+                                   100, 0, '#000000', '#ffffff', 0, 'fill']);
+            } else {
+                $pi_stmt->execute([$post_id, $img['image_id'], $pos, ($pos === 0 ? 1 : 0),
+                                   $s['size'], $s['bpx'], $s['bcol'], $s['bg'], $s['shadow'], 'fit']);
+            }
+            $upd_post->execute([$post_id, $img['image_id']]);
         }
 
-        // Tags (title + caption + manual tags field, applied to cover image)
+        // Tags from caption + manual tags (no title in gram), applied to cover image.
         $cover_id   = $processed_images[0]['image_id'];
-        $tag_source = $title . ' ' . $desc . ' ' . $manual_tags;
+        $tag_source = $desc . ' ' . $manual_tags;
         snap_sync_tags($pdo, $cover_id, $tag_source);
 
         // New content is live — flush the page cache so it appears immediately.
@@ -311,6 +350,28 @@ include 'core/sidebar.php';
 
     <div id="gp-error" class="notice notice-error" style="display:none;"></div>
 
+    <style>
+    /* Per-image styling panel under each strip thumbnail. */
+    .gp-style { margin-top:8px; padding:8px;
+        background:rgba(255,255,255,0.03);
+        border:1px solid var(--border-color,#333); border-radius:4px;
+        font-size:11px; line-height:1.2; }
+    .gp-sqr { display:flex; align-items:center; gap:6px; cursor:pointer;
+        font-weight:600; letter-spacing:.4px; margin-bottom:6px; }
+    .gp-sqr input { cursor:pointer; }
+    .gp-fit { display:flex; flex-direction:column; gap:5px; }
+    .gp-ctl { display:flex; align-items:center; gap:6px; }
+    .gp-ctl > span { flex:0 0 44px; opacity:.7; }
+    .gp-ctl input[type=range] { flex:1; min-width:0; }
+    .gp-ctl > b { flex:0 0 36px; text-align:right; font-family:monospace;
+        font-weight:400; opacity:.85; }
+    .gp-ctl-row { gap:12px; }
+    .gp-swatch { display:flex; align-items:center; gap:5px; cursor:pointer; opacity:.8; }
+    .gp-swatch input[type=color] { width:24px; height:20px; border:none;
+        background:none; padding:0; cursor:pointer; }
+    .gp-shadow { flex:1; min-width:0; }
+    </style>
+
     <form id="gp-form" method="POST" enctype="multipart/form-data">
 
         <!-- =====================================================================
@@ -320,12 +381,6 @@ include 'core/sidebar.php';
             <div class="post-layout-grid">
 
                 <div class="post-col-left">
-                    <div class="lens-input-wrapper">
-                        <label>TITLE</label>
-                        <input type="text" id="gp-title" name="title"
-                               placeholder="Transmission Identifier..." required autofocus>
-                    </div>
-
                     <div class="lens-input-wrapper">
                         <label>POST TYPE</label>
                         <select id="gp-post-type" name="post_type" class="full-width-select">
@@ -349,17 +404,9 @@ include 'core/sidebar.php';
 
                     <div class="lens-input-wrapper post-description-wrap">
                         <label>CAPTION</label>
-                        <div class="sc-toolbar" data-target="desc">
-                            <div class="sc-row">
-                                <button type="button" class="sc-btn" data-action="bold" title="Bold">B</button>
-                                <button type="button" class="sc-btn" data-action="italic" title="Italic">I</button>
-                                <button type="button" class="sc-btn" data-action="link" title="Insert Link">LINK</button>
-                                <button type="button" class="sc-btn sc-btn-preview" data-action="preview" title="Preview">PREVIEW</button>
-                            </div>
-                        </div>
-                        <textarea id="desc" name="desc"
-                                  placeholder="Caption. Blank lines become paragraph breaks."
-                                  rows="4"></textarea>
+                        <textarea id="desc" name="desc" autofocus
+                                  placeholder="Write a caption… blank lines become paragraph breaks. #hashtags become tags."
+                                  rows="8"></textarea>
                     </div>
 
                     <div class="lens-input-wrapper">
@@ -452,7 +499,6 @@ include 'core/sidebar.php';
 </div>
 
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
-<script src="assets/js/shortcode-toolbar.js"></script>
 <?php
 // INSTANT CAMERA only — load the Scan Align engine and pass it the tile aspect,
 // so the gram composer can straighten + crop-to-fill each print before publish.
@@ -529,7 +575,12 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
         files.forEach(f => {
             if (!allowed.includes(f.type)) return;
             if (fileList.length >= MAX_IMAGES) return;
-            fileList.push({ file: f, objectUrl: URL.createObjectURL(f) });
+            // Per-image styling defaults (decided individually in the strip).
+            fileList.push({
+                file: f, objectUrl: URL.createObjectURL(f),
+                crop: 'fit', size: 100, bpx: 0,
+                bcol: '#000000', bg: '#ffffff', shadow: 0,
+            });
         });
         renderStrip();
     }
@@ -551,6 +602,10 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
             el.draggable  = true;
             el.dataset.idx = idx;
 
+            const shadowOpts = [0,1,2,3].map(n =>
+                '<option value="' + n + '"' + (item.shadow === n ? ' selected' : '') + '>' +
+                ['None','Soft','Medium','Heavy'][n] + '</option>').join('');
+
             el.innerHTML =
                 '<div class="cp-thumb-wrap">' +
                     (idx === 0 ? '<span class="cp-cover-badge">COVER</span>' : '') +
@@ -558,12 +613,51 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
                     '<img class="cp-thumb" src="' + item.objectUrl + '" alt="">' +
                     '<button type="button" class="cp-remove-btn" data-idx="' + idx + '">✕</button>' +
                 '</div>' +
-                '<div class="cp-item-label">' + escHtml(item.file.name) + '</div>';
+                '<div class="cp-item-label">' + escHtml(item.file.name) + '</div>' +
+                '<div class="gp-style">' +
+                    '<label class="gp-sqr"><input type="checkbox" class="gp-crop"' +
+                        (item.crop === 'fill' ? ' checked' : '') + '> Square crop (IG)</label>' +
+                    '<div class="gp-fit"' + (item.crop === 'fill' ? ' style="display:none;"' : '') + '>' +
+                        '<div class="gp-ctl"><span>Size</span>' +
+                            '<input type="range" class="gp-size" min="10" max="100" value="' + item.size + '">' +
+                            '<b class="gp-size-v">' + item.size + '%</b></div>' +
+                        '<div class="gp-ctl"><span>Border</span>' +
+                            '<input type="range" class="gp-bpx" min="0" max="50" value="' + item.bpx + '">' +
+                            '<b class="gp-bpx-v">' + item.bpx + 'px</b></div>' +
+                        '<div class="gp-ctl gp-ctl-row">' +
+                            '<label class="gp-swatch"><input type="color" class="gp-bcol" value="' + item.bcol + '"> Border</label>' +
+                            '<label class="gp-swatch"><input type="color" class="gp-bg" value="' + item.bg + '"> Matte</label>' +
+                        '</div>' +
+                        '<div class="gp-ctl"><span>Shadow</span>' +
+                            '<select class="gp-shadow">' + shadowOpts + '</select></div>' +
+                    '</div>' +
+                '</div>';
 
             el.querySelector('.cp-remove-btn').addEventListener('click', e => {
                 e.stopPropagation();
                 removeFile(parseInt(e.currentTarget.dataset.idx));
             });
+
+            // Per-image style wiring — updates the item in place (no re-render, so
+            // focus/value survive). stopPropagation keeps clicks off drag-reorder.
+            const styleEl = el.querySelector('.gp-style');
+            const cropCb  = styleEl.querySelector('.gp-crop');
+            const fitBox  = styleEl.querySelector('.gp-fit');
+            styleEl.querySelectorAll('input, select, label').forEach(n => {
+                n.addEventListener('click',     e => e.stopPropagation());
+                n.addEventListener('mousedown', e => e.stopPropagation());
+            });
+            cropCb.addEventListener('change', () => {
+                item.crop = cropCb.checked ? 'fill' : 'fit';
+                fitBox.style.display = cropCb.checked ? 'none' : '';
+            });
+            const sizeR = styleEl.querySelector('.gp-size'),  sizeV = styleEl.querySelector('.gp-size-v');
+            sizeR.addEventListener('input', () => { item.size = parseInt(sizeR.value); sizeV.textContent = item.size + '%'; });
+            const bpxR = styleEl.querySelector('.gp-bpx'),    bpxV  = styleEl.querySelector('.gp-bpx-v');
+            bpxR.addEventListener('input', () => { item.bpx = parseInt(bpxR.value); bpxV.textContent = item.bpx + 'px'; });
+            styleEl.querySelector('.gp-bcol').addEventListener('input', e => { item.bcol = e.target.value; });
+            styleEl.querySelector('.gp-bg').addEventListener('input',   e => { item.bg   = e.target.value; });
+            styleEl.querySelector('.gp-shadow').addEventListener('change', e => { item.shadow = parseInt(e.target.value); });
 
             // Drag-reorder
             el.addEventListener('dragstart', e => {
@@ -656,6 +750,12 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
         fileList.forEach((item, pos) => {
             data.append('img_files[]', item.file);
             data.append('sort_order[]', pos);
+            data.append('crop_mode[]',        item.crop || 'fit');
+            data.append('img_size_pct[]',     item.size   != null ? item.size   : 100);
+            data.append('img_border_px[]',    item.bpx    != null ? item.bpx    : 0);
+            data.append('img_border_color[]', item.bcol || '#000000');
+            data.append('img_bg_color[]',     item.bg   || '#ffffff');
+            data.append('img_shadow[]',       item.shadow != null ? item.shadow : 0);
         });
 
         const xhr = new XMLHttpRequest();
