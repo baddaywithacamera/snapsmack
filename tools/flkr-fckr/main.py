@@ -35,7 +35,7 @@ from poster import FlkrDckrClient, run_import
 # app convention, matches unzucker), not in %APPDATA%.
 # ---------------------------------------------------------------------------
 
-BUILD_VERSION = "0.7.12"  # auto-incremented by bump_version.py on each build.bat run
+BUILD_VERSION = "0.7.16"  # auto-incremented by bump_version.py on each build.bat run
 
 if getattr(sys, 'frozen', False):
     # Running as the compiled exe — log next to flkrfckr.exe
@@ -418,17 +418,31 @@ class FlkrDckrApp(tk.Tk):
         self._btn_run.grid(row=0, column=2, padx=(0, 8))
 
         # Log area
+        self._log_popup = None
+        self._log_popup_text = None
         log_frame = tk.Frame(panel, bg=BG_PANEL)
         log_frame.grid(row=1, column=0, columnspan=3, sticky='ew', pady=(4, 0))
         log_frame.columnconfigure(0, weight=1)
+
+        # Header row: label + Pop Out button (opens a large resizable log window).
+        log_hdr = tk.Frame(log_frame, bg=BG_PANEL)
+        log_hdr.grid(row=0, column=0, columnspan=2, sticky='ew')
+        log_hdr.columnconfigure(0, weight=1)
+        tk.Label(log_hdr, text='LOG', bg=BG_PANEL, fg=TEXT_DIM,
+                 font=self._font_label).grid(row=0, column=0, sticky='w')
+        tk.Button(log_hdr, text='Pop Out ↗', bg=BG_CELL, fg=TEXT_PRI,
+                  relief='flat', bd=0, padx=8, pady=1, font=self._font_label,
+                  cursor='hand2', activebackground=BG_HOVER,
+                  command=self._open_log_popup).grid(row=0, column=1, sticky='e')
 
         self._log = tk.Text(log_frame, height=5, bg=BG_DEEP, fg=TEXT_PRI,
                             relief='flat', bd=0, font=self._font_mono,
                             state='disabled', wrap='none')
         log_sb = ttk.Scrollbar(log_frame, orient='vertical', command=self._log.yview)
         self._log.configure(yscrollcommand=log_sb.set)
-        self._log.grid(row=0, column=0, sticky='ew')
-        log_sb.grid(row=0, column=1, sticky='ns')
+        self._log.grid(row=1, column=0, sticky='ew')
+        log_sb.grid(row=1, column=1, sticky='ns')
+        self._log.bind('<Double-Button-1>', lambda e: self._open_log_popup())
 
     # ------------------------------------------------------------------
     # Actions
@@ -473,6 +487,13 @@ class FlkrDckrApp(tk.Tk):
         self._log_write(f"  Collections found:  {stats.get('total_collections', 0)}  (Flickr galleries -> SnapSmack Collections)", ACCENT)
         self._log_write(f"  Comments found:     {stats.get('total_comments', 0)}", ACCENT)
         self._log_write(f"  Likes found:        {stats.get('total_likes', 0)}  (Flickr fave counts, seeded on import)", ACCENT)
+        # Only photos that actually carry a date — skips _best_date's 1970 sentinel
+        # so a dateless photo can't drag "Earliest post" back to the epoch.
+        _dates = [flickr_parser._best_date(p) for p in result.photos
+                  if p.date_taken or p.create_date]
+        if _dates:
+            self._log_write(f"  Earliest post:      {min(_dates).strftime('%Y-%m-%d')}  (date_taken, else create_date)", ACCENT)
+            self._log_write(f"  Latest post:        {max(_dates).strftime('%Y-%m-%d')}", ACCENT)
         if stats.get('skipped_videos'):
             self._log_write(f"  Videos ignored:     {stats.get('skipped_videos', 0)}  (intentionally skipped - NOT missing photos)", TEXT_DIM)
         if stats.get('missing_images'):
@@ -997,33 +1018,41 @@ class FlkrDckrApp(tk.Tk):
         try:
             while True:
                 msg = self._q.get_nowait()
-                kind = msg[0]
-
-                if kind == 'parse_done':
-                    self._on_parse_done(msg[1])
-                elif kind == 'parse_progress':
-                    done, total = msg[1], msg[2]
-                    self._progress_var.set((done / total * 100) if total else 0)
-                    self._lbl_grid_count.config(text=f'Parsing… {done:,} / {total:,}')
-                elif kind == 'thumb_ready':
-                    self._apply_thumb(msg[1], msg[2], msg[3])
-                elif kind == 'conn_result':
-                    ok, text = msg[1], msg[2]
-                    self._lbl_conn.config(text=text, fg=ACCENT if ok else TEXT_ERR)
-                    if ok:
-                        self._log_write(text, ACCENT)
-                elif kind == 'progress':
-                    _, pct, text, colour = msg
-                    self._progress_var.set(pct)
-                    self._log_write(text, colour)
-                elif kind == 'log':
-                    self._log_write(msg[1], msg[2] if len(msg) > 2 else TEXT_PRI)
-                elif kind == 'done':
-                    self._on_import_done()
+                # A bug in any single handler must NOT kill the poller — if it did,
+                # the grid, thumbnails and every further UI update would freeze
+                # (exactly the 0.7.15 best_date crash). Catch, log, keep draining.
+                try:
+                    self._handle_queue_msg(msg)
+                except Exception:
+                    log.exception('queue handler failed for %r', msg[0] if msg else msg)
 
         except queue.Empty:
             pass
         self.after(80, self._poll_queue)
+
+    def _handle_queue_msg(self, msg):
+        kind = msg[0]
+        if kind == 'parse_done':
+            self._on_parse_done(msg[1])
+        elif kind == 'parse_progress':
+            done, total = msg[1], msg[2]
+            self._progress_var.set((done / total * 100) if total else 0)
+            self._lbl_grid_count.config(text=f'Parsing… {done:,} / {total:,}')
+        elif kind == 'thumb_ready':
+            self._apply_thumb(msg[1], msg[2], msg[3])
+        elif kind == 'conn_result':
+            ok, text = msg[1], msg[2]
+            self._lbl_conn.config(text=text, fg=ACCENT if ok else TEXT_ERR)
+            if ok:
+                self._log_write(text, ACCENT)
+        elif kind == 'progress':
+            _, pct, text, colour = msg
+            self._progress_var.set(pct)
+            self._log_write(text, colour)
+        elif kind == 'log':
+            self._log_write(msg[1], msg[2] if len(msg) > 2 else TEXT_PRI)
+        elif kind == 'done':
+            self._on_import_done()
 
     # ------------------------------------------------------------------
     # Log
@@ -1039,6 +1068,59 @@ class FlkrDckrApp(tk.Tk):
         self._log.tag_configure(colour, foreground=colour)
         self._log.see('end')
         self._log.configure(state='disabled')
+        # Mirror into the pop-out window if it's open.
+        pt = getattr(self, '_log_popup_text', None)
+        if pt is not None:
+            try:
+                pt.configure(state='normal')
+                pt.insert('end', text + '\n', (colour,))
+                pt.tag_configure(colour, foreground=colour)
+                pt.see('end')
+                pt.configure(state='disabled')
+            except tk.TclError:
+                self._log_popup_text = None
+
+    def _open_log_popup(self):
+        """Open (or re-focus) a large, resizable window mirroring the log so the
+        full import summary is readable without squinting at the inline box."""
+        if self._log_popup is not None and self._log_popup.winfo_exists():
+            self._log_popup.deiconify()
+            self._log_popup.lift()
+            return
+
+        top = tk.Toplevel(self)
+        top.title('FLKR FCKR — Import Log')
+        top.configure(bg=BG_PANEL)
+        top.geometry('900x600')
+        top.minsize(420, 240)
+
+        frame = tk.Frame(top, bg=BG_PANEL)
+        frame.pack(fill='both', expand=True, padx=8, pady=8)
+        frame.rowconfigure(0, weight=1)
+        frame.columnconfigure(0, weight=1)
+
+        txt = tk.Text(frame, bg=BG_DEEP, fg=TEXT_PRI, relief='flat', bd=0,
+                      font=self._font_mono, wrap='none', state='normal')
+        sb_y = ttk.Scrollbar(frame, orient='vertical', command=txt.yview)
+        sb_x = ttk.Scrollbar(frame, orient='horizontal', command=txt.xview)
+        txt.configure(yscrollcommand=sb_y.set, xscrollcommand=sb_x.set)
+        txt.grid(row=0, column=0, sticky='nsew')
+        sb_y.grid(row=0, column=1, sticky='ns')
+        sb_x.grid(row=1, column=0, sticky='ew')
+
+        # Seed with the current log contents; future lines mirror live via _log_write.
+        txt.insert('1.0', self._log.get('1.0', 'end-1c'))
+        txt.see('end')
+        txt.configure(state='disabled')
+
+        self._log_popup = top
+        self._log_popup_text = txt
+
+        def _on_close():
+            self._log_popup_text = None
+            self._log_popup = None
+            top.destroy()
+        top.protocol('WM_DELETE_WINDOW', _on_close)
 
     # ------------------------------------------------------------------
     # Settings persistence
