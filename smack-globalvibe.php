@@ -246,13 +246,18 @@ include 'core/sidebar.php';
                 <div class="dash-grid">
                     <div class="lens-input-wrapper">
                         <label>MASTHEAD MODE</label>
+                        <?php if (($settings['site_mode'] ?? 'photoblog') === 'carousel'): ?>
+                        <div class="read-only-display">Plain Text — GramOfSmack mastheads are text-only</div>
+                        <input type="hidden" name="settings[header_type]" value="text">
+                        <?php else: ?>
                         <select name="settings[header_type]" onchange="document.getElementById('logo-upload-group').classList.toggle('d-none', this.value !== 'image');">
                             <option value="text" <?php echo (($settings['header_type'] ?? 'text') == 'text') ? 'selected' : ''; ?>>Plain Text (Public Skin Font)</option>
                             <option value="image" <?php echo (($settings['header_type'] ?? 'text') == 'image') ? 'selected' : ''; ?>>Custom Logo Image</option>
                         </select>
+                        <?php endif; ?>
                     </div>
 
-                    <div class="lens-input-wrapper<?php echo (($settings['header_type'] ?? 'text') == 'image') ? '' : ' d-none'; ?>" id="logo-upload-group">
+                    <div class="lens-input-wrapper<?php echo ((($settings['header_type'] ?? 'text') == 'image') && (($settings['site_mode'] ?? 'photoblog') !== 'carousel')) ? '' : ' d-none'; ?>" id="logo-upload-group">
                         <label>UPLOAD LOGO (PNG/SVG)</label>
                         <input type="file" name="site_logo_file" accept="image/*" class="file-input-raw">
                         <?php if (!empty($settings['site_logo'])): ?>
@@ -385,11 +390,13 @@ include 'core/sidebar.php';
                         <label>JPEG COMPRESSION (1-100)</label>
                         <input type="number" name="settings[jpeg_quality]" value="<?php echo htmlspecialchars($settings['jpeg_quality'] ?? 85); ?>">
 
+                        <?php if (($settings['site_mode'] ?? 'photoblog') === 'photoblog'): /* EXIF tags are SMACKONEOUT-only — GramOfSmack & SmackTalk don't write EXIF (IG strips it) */ ?>
                         <label>EXIF ARTIST TAG <span class="field-tip" data-tip="Written into the Artist field of every JPEG upload. Leave blank to skip.">ⓘ</span></label>
                         <input type="text" name="settings[exif_artist]" value="<?php echo htmlspecialchars($settings['exif_artist'] ?? ''); ?>" placeholder="e.g. Sean McCormick">
 
                         <label>EXIF COPYRIGHT TAG <span class="field-tip" data-tip="Written into the Copyright field of every JPEG upload. Leave blank to skip.">ⓘ</span></label>
                         <input type="text" name="settings[exif_copyright]" value="<?php echo htmlspecialchars($settings['exif_copyright'] ?? ''); ?>" placeholder="e.g. © 2026 Sean McCormick. All rights reserved.">
+                        <?php endif; ?>
                     </div>
                     <div class="post-col-right">
                         <label>HEADER LOGO ASSET</label>

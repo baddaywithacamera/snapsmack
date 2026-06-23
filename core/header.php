@@ -36,6 +36,12 @@ $site_display_name = $site_name ?? 'SNAPSMACK';
 $header_type = $settings['header_type'] ?? 'text';
 $logo_path   = $settings['header_logo_url'] ?? '';
 
+// GramOfSmack (carousel) mastheads are text-only — no logo image, matching the
+// Instagram-style header. Force text regardless of any stored header_type.
+if (($settings['site_mode'] ?? 'photoblog') === 'carousel') {
+    $header_type = 'text';
+}
+
 // --- HOMEPAGE MODE ---
 $homepage_mode    = $settings['homepage_mode'] ?? 'latest_post';
 $homepage_page_id = (int)($settings['homepage_page_id'] ?? 0);
