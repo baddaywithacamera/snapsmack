@@ -1402,6 +1402,10 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Bulk post, audit, and repair your archive from the desktop. AI enrichment, Drive sync, batch rename, and duplicate title repair — proven on archives of 1,400+ files. Full rundown in Companion Tools below.</p>
             </div>
             <div class="status-card">
+                <h3>FLKR FCKR</h3>
+                <p>Your Flickr export, migrated to SnapSmack — images, titles, descriptions, tags, and original upload dates, spread across as many days as your server can handle so nothing lands out of order. Proven on a real 10,000-image archive, imported clean. To Flickr: treat other people's wallets as your own, and don't be shocked when someone helps them snap those wallets shut.</p>
+            </div>
+            <div class="status-card">
                 <h3>Community</h3>
                 <p>Client/server community built into the software. Reactions, comments, following — limited to blog owners. No public signups, no spammers, no trolls.</p>
             </div>
@@ -1916,9 +1920,8 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="coming-item">
                 <span class="tag">Tools</span>
-                <h3>FLKR FCKR</h3>
-                <p>Your Flickr archive is not as safe as it feels. FLKR FCKR takes your Flickr export and migrates it to SnapSmack — images, titles, descriptions, tags, dates, all of it. Posts spread across as many days as you need, at a rate your server can handle, preserving your original upload dates so nothing arrives out of order. Your photographs, back in your hands, on your server, at a price you can handle.</p>
-                <p style="margin-top: 1em;">Note to Flickr: When you treat the wallets of others as your own, don't be surprised when your greed motivates someone to help others snap those wallets back closed and move their art elsewhere.</p>
+                <h3>MIDNIGHT MOVE</h3>
+                <p>The fourth desktop tool. MIDNIGHT MOVE rescues content off dying and legacy websites — hand-coded HTML, ancient CMS installs, the site a friend built in 2006 and can't log into anymore — and moves it into SnapSmack. Migration when you still have the keys, rescue when you've lost them, preservation before someone's life's work goes dark. FTP where you can get it, a public spider where you can't, and AI to make sense of whatever schema it finds. Save the work. Move it somewhere you own.</p>
             </div>
             <div class="coming-item">
                 <span class="tag">Media</span>
