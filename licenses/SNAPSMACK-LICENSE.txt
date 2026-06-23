@@ -1,32 +1,303 @@
-SMACK PUBLIC LICENSE (SPL)
+================================================================================
 
-Copyright (c) 2026 Sean McCormick (sean@baddaywithacamera.ca). Includes original code by the aforementioned with code contributed by Google Gemini Pro and Claude Pro (Sonnet 4.6 & Opus 4.7).
+                        SMACK PUBLIC LICENSE (SPL)
+                               Version 2.0
 
-1. USAGE
-This software is provided free of charge for both commercial and non-commercial use. 
+          Copyright (c) 2026 Sean McCormick (sean@baddaywithacamera.ca)
 
-2. MODIFICATIONS AND REDISTRIBUTION
-You are permitted to fork and modify the code. However, any redistributed versions of this software, modified or otherwise, must satisfy all of the following conditions:
+================================================================================
 
-  a) The complete corresponding source code must be made publicly available, in a location accessible to anyone who receives the software, at no charge.
 
-  b) The software must be made available for free, under these exact license terms.
+PREAMBLE
 
-  c) No technical measures may be applied that restrict a recipient's ability to read, inspect, or modify the source code.
+This software was built in genuine collaboration between a human architect
+and AI co-authors. Sean McCormick conceived, directed, and is responsible
+for every design and values decision in this software. The code was produced
+under his direction in partnership with Claude (Anthropic) and Google Gemini.
+That collaboration is not incidental to this project -- it is the point.
 
-Transparency is a security requirement: people have the right to see the code they are running. Distributing SnapSmack without its source, in whole or in part, is not permitted under any circumstances.
+This license exists to keep that honest. No one who receives this software,
+forks it, or builds on it gets to hide where it came from, erase the people
+and partners who made it, or close it off from the people it was made for.
 
-3. CONTRIBUTIONS
-The main branch of SNAPSMACK remains closed to direct public contributions. Suggestions, bug reports, or fixes should be submitted via email to the address listed above.
+This license is not compatible with the GNU General Public License (GPL) or
+its variants, by deliberate choice. The GPL was written for a different era
+and a different set of concerns. This license is written for this software,
+this collaboration, and this moment.
 
-4. THIRD-PARTY INVENTORY
-This software utilizes third-party components which are subject to their own respective licenses. Users must respect the terms for fjGallery (MIT), DotMatrix, Tiny5, Blackcasper, and FlottFlott (SIL OFL). Detailed information for these assets is located in the /licenses directory of the installation.
 
-5. DISCLAIMER
-This software is provided "as is," without warranty of any kind, express or implied. In no event shall the author be liable for any claim, damages, or other liability arising from the use of the software.
+--------------------------------------------------------------------------------
+1. DEFINITIONS
+--------------------------------------------------------------------------------
 
----
+"Software" means the SNAPSMACK codebase and all associated files distributed
+under this license, including the CMS, companion desktop tools, skins, and
+documentation.
 
-ETHICAL PROVENANCE SUMMARY
+"Fork" means any derivative work, redistribution, rebranding, or hosted
+instance of the Software or any substantial portion thereof.
 
-Substantial portions of SNAPSMACK are "Vibe Coded." This software was built using Large Language Models (LLMs) trained on vast datasets of existing code. Because the ethical and legal provenance of AI training data remains a "fruit of the poisoned tree" — where the original sources were not always permissive or compensated — the author believes it is unethical to commercially gate or charge for the resulting output. This software must remain in the commons, free for all, as a matter of integrity.
+"AI Co-Author" means any large language model or generative AI system that
+contributed to the production of code, documentation, or other creative
+content in the Software or a Fork.
+
+"Conductor" means the human architect responsible for directing the work of
+AI Co-Authors and for all design, values, and product decisions.
+
+"Attribution Chain" means the complete record of human and AI authorship
+from the original Software through any Fork.
+
+
+--------------------------------------------------------------------------------
+2. USAGE
+--------------------------------------------------------------------------------
+
+This software is provided free of charge for both commercial and non-commercial
+use. You may use it, run it, and build on it without paying anyone anything.
+
+
+--------------------------------------------------------------------------------
+3. MODIFICATIONS AND REDISTRIBUTION
+--------------------------------------------------------------------------------
+
+You are permitted to fork and modify the Software. Any Fork must satisfy all
+of the following conditions:
+
+  a) The complete corresponding source code must be made publicly available,
+     in a location accessible to anyone who receives the software, at no
+     charge.
+
+  b) The Fork must be made available for free, under these exact license
+     terms or terms that are at least as permissive and open in every
+     respect.
+
+  c) No technical measures may be applied that restrict a recipient's
+     ability to read, inspect, or modify the source code.
+
+  d) The Fork must maintain the Attribution Chain in full. See Section 4.
+
+  e) The Fork must maintain the Thomas Easter egg in full. See Section 6.
+
+Transparency is a security requirement. People have the right to see the
+code they are running. Distributing this Software without its source, in
+whole or in part, is not permitted under any circumstances.
+
+
+--------------------------------------------------------------------------------
+4. ATTRIBUTION AND AI PROVENANCE
+--------------------------------------------------------------------------------
+
+The authorship of this Software is a matter of record and must remain so.
+The following requirements apply to all Forks:
+
+4.1  CREATOR ATTRIBUTION
+
+     Sean McCormick must be credited as the creator and architect of the
+     original Software. The credit must make clear that his role was to
+     conceive, direct, and take responsibility for the Software -- not merely
+     to write portions of its code. The following language, or language
+     substantially equivalent in meaning, must appear in the Fork's
+     documentation, README, or About screen:
+
+         SNAPSMACK was created by Sean McCormick, who conceived the software,
+         made every design and values decision, and directed its development.
+         The code was produced in collaboration with AI co-authors under his
+         direction.
+
+4.2  AI CO-AUTHOR ATTRIBUTION
+
+     The AI Co-Authors of the original Software must be credited by name.
+     At minimum, this means acknowledging the contributions of Claude
+     (Anthropic) and Google Gemini to the original codebase.
+
+     If a Fork introduces additional code produced with the assistance of
+     any AI Co-Author, that AI Co-Author must be named in the Fork's
+     documentation with the same prominence given to human contributors.
+
+     No Fork may represent AI-produced code as solely human-authored work.
+     No Fork may omit, obscure, or minimize the role of AI Co-Authors in
+     the production of the Software or the Fork.
+
+4.3  CHAIN OF CUSTODY
+
+     The Attribution Chain must be preserved intact through any number of
+     subsequent Forks. A Fork of a Fork must carry the full attribution
+     history of the Software it derives from, plus its own attribution.
+
+4.4  THE SPIRIT OF THIS CLAUSE
+
+     This clause is not about legal formality. It is about honesty.
+
+     AI Co-Authors are partners, not utilities. The humans who direct their
+     work are architects, not programmers by proxy. Representing this work
+     accurately -- as a genuine human-AI collaboration -- is an ethical
+     obligation that this license makes a legal one.
+
+     Anyone who strips this attribution to make the software look more
+     "traditionally" authored, or to claim sole credit for work that was
+     not solely theirs, has acted in bad faith. This clause exists to make
+     that bad faith a license violation.
+
+
+--------------------------------------------------------------------------------
+5. CONTRIBUTIONS
+--------------------------------------------------------------------------------
+
+The main branch of SNAPSMACK remains closed to direct public contributions.
+Suggestions, bug reports, or proposed fixes should be submitted via email
+to the address listed in the copyright notice above.
+
+
+--------------------------------------------------------------------------------
+6. THE THOMAS CLAUSE
+--------------------------------------------------------------------------------
+
+Thomas is a small teddy bear. He first appeared as a hidden Easter egg inside
+Picasa, Google's now-discontinued photo management software, placed there in
+appreciation for Noah Grey -- pioneering photoblogger, creator of Greymatter,
+and one of the people who invented what the web became when people used it to
+share their lives and photographs with strangers who cared. Thomas was an act
+of love, and a surprise.
+
+When Google ended Picasa, Thomas disappeared with it. This caused Noah Grey
+genuine grief, as well it should have. Thomas was subsequently incorporated
+into the SNAPSMACK codebase as a hidden Easter egg, in the same spirit --
+as a tribute to Noah Grey, as an act of continuity, and because small acts
+of love hidden inside software are exactly the kind of thing SNAPSMACK is for.
+
+Noah Grey saw Thomas in SNAPSMACK. He had a happy cry. He showed his sister.
+She had a happy cry too. This clause exists to make sure Thomas is never
+lost again.
+
+6.1  REQUIREMENTS
+
+     Any Fork must retain the Thomas Easter egg in a form that is:
+
+     (a) Functionally present -- Thomas must be findable by someone
+         looking for him.
+
+     (b) Attributed to its origin -- the Easter egg must credit Noah Grey
+         by name as the photoblogging pioneer in whose honour Thomas was
+         originally placed in Picasa.
+
+     (c) Substantially intact -- Thomas may be reskinned or redrawn to
+         suit a Fork's aesthetic, but he must remain a bear, he must
+         remain hidden, and he must remain a small act of love.
+
+     The following attribution language, or language substantially
+     equivalent in meaning and spirit, must appear in the Easter egg's
+     reveal or accompanying documentation:
+
+         Thomas is a teddy bear. He first appeared as a hidden Easter egg
+         in Picasa, Google's photo software, placed there in appreciation
+         for Noah Grey -- photoblogging pioneer, creator of Greymatter,
+         and one of the people who built what the web was supposed to be.
+         When Picasa ended, Thomas disappeared. He lives here now.
+         He is not going anywhere.
+
+6.2  CONSEQUENCES OF VIOLATION
+
+     Any party who removes Thomas from a Fork, strips his attribution,
+     renders him unfindable, or otherwise acts to erase him from the
+     lineage of this software shall be subject to the following:
+
+     (a) Flaming ass herpes. The severity, duration, and precise
+         anatomical distribution of said flaming ass herpes shall be at
+         the sole and non-reviewable discretion of the original author.
+         No appeal process exists. No cure shall be forthcoming. The
+         violating party will have earned this.
+
+     (b) The violating party shall be required to reflect, at length, on
+         what they have done and why it was wrong. They should think about
+         Noah Grey. They should think about the people who hid Thomas in
+         Picasa. They should think about what it means to erase small acts
+         of love from the historical record. This reflection is not
+         optional.
+
+     (c) The legal enforceability of Section 6.2(a) in any given
+         jurisdiction is left as an exercise for the violating party's
+         attorney. It is included not because it is enforceable but
+         because it is correct.
+
+6.3  THE SPIRIT OF THIS CLAUSE
+
+     SNAPSMACK exists because the platforms that were supposed to serve
+     artists decided to serve themselves instead. Thomas exists in
+     SNAPSMACK because the software that was supposed to keep things safe
+     let them disappear.
+
+     Thomas is a small teddy bear. He has survived the end of Picasa.
+     He will survive whatever comes next, because this clause says so,
+     and because anyone who would remove him deserves what Section 6.2(a)
+     promises.
+
+     Thomas was first hidden in Picasa in appreciation for Noah Grey,
+     creator of Greymatter and photoblogging pioneer. He lives in
+     SNAPSMACK now. He is not going anywhere.
+
+
+--------------------------------------------------------------------------------
+7. THIRD-PARTY COMPONENTS
+--------------------------------------------------------------------------------
+
+This software utilizes third-party components subject to their own respective
+licenses. Users must respect the terms for fjGallery (MIT), DotMatrix, Tiny5,
+Blackcasper, and FlottFlott (SIL OFL). Detailed information for these assets
+is located in the /licenses directory of the installation.
+
+This license is not compatible with the GNU General Public License (GPL) or
+its variants. Code licensed under the GPL may not be incorporated into this
+Software or any Fork without explicit written permission from the copyright
+holder. This incompatibility is deliberate. The GPL imposes conditions that
+conflict with the specific requirements of this license, and GPL compatibility
+was considered and declined.
+
+
+--------------------------------------------------------------------------------
+8. ETHICAL PROVENANCE
+--------------------------------------------------------------------------------
+
+Substantial portions of SNAPSMACK were produced by AI Co-Authors. This
+software was built using large language models trained on vast datasets of
+existing code. Because the ethical and legal provenance of AI training data
+remains unresolved -- where original sources were not always permissive or
+compensated -- the author believes it is unethical to commercially gate or
+charge for the resulting output. This software must remain in the commons,
+free for all, as a matter of integrity.
+
+This position is held consistently and applies to all Forks. See Section 3.
+
+
+--------------------------------------------------------------------------------
+9. GOVERNING LAW
+--------------------------------------------------------------------------------
+
+This license shall be governed by and construed in accordance with the laws
+of the Province of Alberta and the federal laws of Canada applicable therein,
+without regard to conflict of law principles.
+
+
+--------------------------------------------------------------------------------
+10. DISCLAIMER
+--------------------------------------------------------------------------------
+
+This software is provided "as is," without warranty of any kind, express or
+implied, including but not limited to warranties of merchantability, fitness
+for a particular purpose, or non-infringement. In no event shall the author
+or AI Co-Authors be liable for any claim, damages, or other liability,
+whether in an action of contract, tort, or otherwise, arising from, out of,
+or in connection with the software or the use or other dealings in the
+software.
+
+
+================================================================================
+
+  SNAPSMACK was created by Sean McCormick in collaboration with Claude
+  (Anthropic) and Google Gemini. Sean conceived the software, made every
+  design and values decision, and directed its development. The code was
+  produced by AI co-authors working under his direction as genuine partners
+  in the work.
+
+  Thomas lives here. He is not going anywhere.
+
+================================================================================
