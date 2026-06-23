@@ -466,13 +466,20 @@ class FlkrDckrApp(tk.Tk):
             self._log_write(f'WARN: {err}', TEXT_WARN)
 
         stats = result.stats
-        self._log_write(
-            f"Loaded: {stats.get('total_photos', 0)} photos, "
-            f"{stats.get('total_albums', 0)} albums"
-            + (f", {stats.get('missing_images', 0)} missing image files" if stats.get('missing_images') else '')
-            + (f", {stats.get('private_photos', 0)} private" if stats.get('private_photos') else ''),
-            ACCENT,
-        )
+        self._log_write("── IMPORT SUMMARY ──────────────────────────────", ACCENT)
+        self._log_write(f"  Images found:       {stats.get('total_photos', 0)}", ACCENT)
+        self._log_write(f"  Albums found:       {stats.get('total_albums', 0)}", ACCENT)
+        self._log_write(f"  Album covers found: {stats.get('albums_with_covers', 0)}  (mapped to their albums on import)", ACCENT)
+        self._log_write(f"  Collections found:  {stats.get('total_collections', 0)}  (Flickr galleries -> SnapSmack Collections)", ACCENT)
+        self._log_write(f"  Comments found:     {stats.get('total_comments', 0)}", ACCENT)
+        self._log_write(f"  Likes found:        {stats.get('total_likes', 0)}  (Flickr fave counts, seeded on import)", ACCENT)
+        if stats.get('skipped_videos'):
+            self._log_write(f"  Videos ignored:     {stats.get('skipped_videos', 0)}  (intentionally skipped - NOT missing photos)", TEXT_DIM)
+        if stats.get('missing_images'):
+            self._log_write(f"  Missing image files:{stats.get('missing_images', 0)}  (sidecar present, image file not found)", TEXT_WARN)
+        if stats.get('private_photos'):
+            self._log_write(f"  Private on Flickr:  {stats.get('private_photos', 0)}", TEXT_DIM)
+        self._log_write("────────────────────────────────────────────────", ACCENT)
 
         self._populate_album_sidebar(result)
         self._render_grid(result.photos)
@@ -852,7 +859,8 @@ class FlkrDckrApp(tk.Tk):
 
         # Build album map from parse result
         flickr_album_map = {
-            a.flickr_id: {'title': a.title, 'description': a.description}
+            a.flickr_id: {'title': a.title, 'description': a.description,
+                          'cover_flickr_id': a.cover_flickr_id}
             for a in (self._parse_result.albums or [])
         }
 
