@@ -170,6 +170,18 @@ $grid_posts = $grid_stmt->fetchAll();
             endif;
 
             $thumb_src   = $post['img_thumb_square'] ?: $post['img_file'];
+
+            // Trigram cover: grid tile shows the panorama slice when set.
+            if ($au_id > 0 && $au_slot > 0) {
+                $au_label = ($au_orient === 'v')
+                    ? (['T','M','B'][$au_slot - 1] ?? '')
+                    : (['L','M','R'][$au_slot - 1] ?? '');
+                if ($au_label !== '') {
+                    $au_rel = 'trigrams/trigram-' . $au_id . '-' . $au_label . '.jpg';
+                    if (is_file(dirname(__DIR__, 2) . '/' . $au_rel)) $thumb_src = $au_rel;
+                }
+            }
+
             $post_url    = BASE_URL . '?s=' . urlencode($post['img_slug']);
             $image_count = (int)$post['image_count'];
             $is_carousel = $image_count > 1;
