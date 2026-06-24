@@ -12,6 +12,22 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.293 — "Box Seat" (2026-06-23)
+
+- **Gram composer per-image controls are usable again.** `IMAGE SIZE (%)` and
+  `BORDER THICKNESS (px)` are now directly-editable number fields (type the value)
+  instead of dropdowns. More importantly, the strip card is `draggable` for
+  reorder, and native form controls can't operate inside a draggable element —
+  grabbing a slider/field dragged the whole card. The card now disables its own
+  drag whenever the pointer is over any control and restores it on the way out,
+  so the fields work and reorder still works. (`assets/js/ss-engine-carousel-post.js`)
+- **COVER badge is readable.** It used `background: var(--accent)`, which resolves
+  dark in some admin themes → dark text on a dark badge. Hardcoded a high-contrast
+  lime/dark pair with a subtle shadow. (`smack-post-gram.php`)
+- **Manage Archive order matches the live site.** The archive manager sorted
+  `sort_order ASC, img_date DESC` (oldest/imported-order first) while the public
+  site sorts newest-first; reconciled to `img_date DESC, id DESC`. (`smack-manage.php`)
+
 ## 0.7.292 — "Folding Chair" (2026-06-24)
 
 - **All composer JS externalised to `/assets/js`.** The gram composer and the Panorama

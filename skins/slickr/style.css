@@ -477,7 +477,22 @@ a:hover { color: var(--sl-link-hover); }
   height: 100%;
 }
 #justified-grid .justified-row-last .justified-item img { width: auto; height: 100%; }
-#justified-grid .justified-item { position: relative; }
+/* Image-fit rules lifted verbatim from core page-archive.css (the part the
+   earlier port dropped — without these the <img> renders at natural size and
+   overflows the flex cell). This is what makes RG / 50-shades fit correctly. */
+#justified-grid .justified-item {
+  position: relative;
+  display: block;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+#justified-grid .justified-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 
 /* Flickr-style hover title overlay */
 .justified-item-overlay {
