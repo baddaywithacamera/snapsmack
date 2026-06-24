@@ -444,6 +444,11 @@ img { display: block; max-width: 100%; }
     margin:       auto;   /* bulletproof flex centring — splits matte evenly */
     object-fit:   contain;
     border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
+    /* Fill the sub-pixel object-fit:contain letterbox with the border colour
+       instead of letting the white tile bg show through as a thin sliver
+       between the image and its border (the "white line at the bottom" bug).
+       Falls back to transparent when there's no border, preserving the matte. */
+    background-color: var(--tile-border-c, transparent);
     box-shadow:   var(--tile-shadow, none);
     box-sizing:   border-box;
     transition:   opacity 0.2s;
