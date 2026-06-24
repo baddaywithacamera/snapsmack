@@ -95,7 +95,7 @@ include __DIR__ . '/includes/header.php';
                 <li>The full license text is in the repository. It includes an Ethical Provenance Summary that lays out the AI co-authorship and explains why we chose copyleft. It's actually readable, which is unusual for a license document.</li>
             </ul>
             <p>We did not go with a standard open-source license like GPL or MIT because we wanted to say the quiet part loud — the AI provenance thing, the "vibe coded" disclosure, the co-author credit for Claude. Standard licenses don't have fields for that. So we wrote our own.</p>
-            <p>The SPL is not anti-commercial in the sense of begrudging you a paid hosting bill. Run it on whatever server you like. What you cannot do is take the software itself and make it a closed, proprietary product. The code stays open. Everything else is up to you.</p>
+            <p>The SPL is not anti-commercial. Run SnapSmack for your own business if it does the job. Sell services around it — fold it into a hosting plan, or charge a fee to install and run it for someone who can't do that themselves. Make a living off the work you do with it; that is the whole point of owning your tools. What you cannot do is sell the software itself, or take the code and turn it into a closed, proprietary product. The code stays open and the software stays free for whoever ends up with it. Everything else is up to you.</p>
             <p>Hosting providers are welcome to include a SnapSmack installer in their cPanel or hosting control panel once SnapSmack reaches public release (planned for 2027). We appreciate the support. The same terms apply — the software stays free and open for whoever installs it.</p>
 
             <h2>The full meal deal</h2>

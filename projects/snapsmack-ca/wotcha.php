@@ -137,6 +137,18 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Jun 23</span>
+                    <a href="#break-glass">Break the Glass</a>
+                </li>
+                <li>
+                    <span class="idx-date">Jun 22</span>
+                    <a href="#flkr-fckr">Ten Thousand Photos, Imported Clean</a>
+                </li>
+                <li>
+                    <span class="idx-date">Jun 22</span>
+                    <a href="#email">Your Site Can Email Again</a>
+                </li>
+                <li>
                     <span class="idx-date">Jun 15</span>
                     <a href="#ejector-seat">Locked Down and Sealed Up</a>
                 </li>
@@ -234,6 +246,45 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <!-- POST: BREAK THE GLASS -->
+            <article class="post" id="break-glass">
+                <div class="post-meta">
+                    <span class="post-date">June 23, 2026</span>
+                    <span class="post-tag">Security</span>
+                </div>
+                <h2><a href="#break-glass">Break the Glass</a></h2>
+                <p>Two-factor authentication keeps the wrong people out of your site. The obvious problem with a lock that good is the day you're the one standing outside it — password forgotten, phone replaced, recovery codes in a notebook you can no longer find. Most systems answer that with a "contact support" link and a shrug. We don't have a support desk, and you own your own server, so we built you a fire axe instead.</p>
+                <p>It's called Break the Glass. You generate a small recovery file ahead of time and keep it somewhere safe and offline — an encrypted USB stick, a password manager — well away from the site it belongs to. If you're ever completely locked out, you upload that one file to your site and you're back in. That's the whole ritual. No email round-trip, no third party, no begging a platform to believe you're really you.</p>
+                <p>The reason a forged card can't be turned against you is the cryptography under it. The file is signed with a key that only your install trusts, using Ed25519 — the same class of signature your SSH connections and your browser already lean on. Your site checks that signature before it does anything, and a faked or substituted file is rejected on sight: nobody can edit yours, mint one of their own, or swap in a different key. The glass is bulletproof, and only the right axe goes through on the first swing.</p>
+                <p>But understand what that axe is: a master key, and it is yours to guard. The real card works — that's the entire point of it — which means whoever holds the genuine file can get into your site, exactly the way your house key works for anyone holding it. So keep it offline and out of sight, treat it like the spare key to everything you own, and never write down or mention which site it unlocks. Naming the site turns a lost file into an instant break-in. Forgeries fail; the real one doesn't — so the real one stays secret.</p>
+                <p>It is also, deliberately, the <em>only</em> time SnapSmack wants you to put a file on your site by hand. The rest of the time, an unexpected file appearing is exactly what an attack looks like, and the software treats it as one. Break the Glass is the documented exception — the signed envelope that says "this really is the owner, having a very bad day." Make one now, while you still can, then lock it away somewhere only you can reach — and don't breathe a word of which site it opens until the day you need it.</p>
+            </article>
+
+            <!-- POST: FLKR FCKR -->
+            <article class="post" id="flkr-fckr">
+                <div class="post-meta">
+                    <span class="post-date">June 22, 2026</span>
+                    <span class="post-tag">Tools</span>
+                </div>
+                <h2><a href="#flkr-fckr">Ten Thousand Photos, Imported Clean</a></h2>
+                <p>Flickr isn't dead, exactly, but it has the look of a place being quietly managed toward the exit. If your photographs have been living there, you can ask for them back — and what comes down is the familiar pile of JSON and image files that means everything and nothing until something reads it. FLKR FCKR reads it, and puts the whole thing on a site you own.</p>
+                <p>Point the desktop tool at your Flickr export and it parses the lot: images, titles, descriptions, tags, and — the part that matters most for an archive — the original upload dates. It connects to your SnapSmack site over HTTPS and posts everything in order, spread across as many days as your server can comfortably handle, so a decade of photographs doesn't all land on the same timestamp and collapse into a single day. Throttle and off-peak controls keep a shared host from falling over while it works.</p>
+                <p>This release brings two things across that earlier imports left behind. Your <strong>album covers</strong> now come over and map to the right albums, so the gallery looks the way it did on Flickr instead of defaulting to whatever happened to be newest. And your <strong>Flickr fave counts</strong> ride along as each post's starting like tally — not the individual people who faved you, Flickr never handed those over, but the number, so the work doesn't arrive looking like nobody ever saw it.</p>
+                <p>We don't ask you to trust a figure we made up. FLKR FCKR just ran a real ten-thousand-image archive — a decade of one photographer's actual Flickr — onto a live SnapSmack site, and it landed clean: every image, the albums rebuilt, the dates intact, in order. That's the bar. Your archive, your server, your dates, your order. To Flickr: thanks for the photographs. We'll take it from here.</p>
+            </article>
+
+            <!-- POST: EMAIL -->
+            <article class="post" id="email">
+                <div class="post-meta">
+                    <span class="post-date">June 22, 2026</span>
+                    <span class="post-tag">Platform</span>
+                </div>
+                <h2><a href="#email">Your Site Can Email Again</a></h2>
+                <p>Email is the unglamorous plumbing every site needs and no self-hosted setup handles gracefully. Password resets, contact-form messages, the alert that fires when something is wrong — all of it depends on your server actually being able to send mail, and on a cheap shared host that's a coin flip at best. Run a handful of sites and you have a handful of separate mail headaches.</p>
+                <p>SnapSmack now sends its mail through a single, reliable path. Drop in one key from a transactional email provider and every message — resets, recovery links, contact replies, breach alerts — goes out over plain HTTPS, the same way the rest of the software talks to the world. No SMTP ports to wrestle open, no exposing your home connection to your ISP, and no dependency on some central hub being awake. If no provider key is set, it quietly falls back to the old method, so nothing breaks on the way in.</p>
+                <p>The part that matters if you run more than one site: you configure it once, on your hub, and push it to every site you manage in a single action. One key, one setting, the whole fleet emailing properly. The breach alert in particular now leaves each site directly, so even a site having a genuinely bad day can still shout for help. It isn't exciting. It's just supposed to work now, and it does.</p>
+            </article>
 
             <!-- POST: EJECTOR SEAT -->
             <article class="post" id="ejector-seat">
