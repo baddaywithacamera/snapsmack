@@ -44,27 +44,35 @@ $_tg_shadow_map = [
 ];
 
 $tg_resolve_tile_frame = function ($cover_pi_row, $post_row) use ($settings, $customize_level, $_tg_shadow_map) {
-    switch ($customize_level) {
-        case 'per_image':
-            $sz  = (int)($cover_pi_row['img_size_pct']     ?? 100);
-            $bpx = (int)($cover_pi_row['img_border_px']    ?? 0);
-            $bc  = $cover_pi_row['img_border_color'] ?? '#000000';
-            $bg  = $cover_pi_row['img_bg_color']     ?? '#ffffff';
-            $sh  = (string)($cover_pi_row['img_shadow']    ?? '0');
-            break;
-        case 'per_carousel':
-            $sz  = (int)($post_row['post_img_size_pct']  ?? 100);
-            $bpx = (int)($post_row['post_border_px']     ?? 0);
-            $bc  = $post_row['post_border_color'] ?? '#000000';
-            $bg  = $post_row['post_bg_color']     ?? '#ffffff';
-            $sh  = (string)($post_row['post_shadow']     ?? '0');
-            break;
-        default: // per_grid
-            $sz  = (int)($settings['tg_frame_size_pct']     ?? 100);
-            $bpx = (int)($settings['tg_frame_border_px']    ?? 0);
-            $bc  = $settings['tg_frame_border_color'] ?? '#000000';
-            $bg  = $settings['tg_frame_bg_color']     ?? '#ffffff';
-            $sh  = (string)($settings['tg_frame_shadow']    ?? '0');
+    // Honour explicit per-image styling REGARDLESS of the site customise level —
+    // mirrors layout.php's post-view logic. Without this, a per-image 85% / border
+    // / matte set in the gram composer was ignored on the grid tile unless the
+    // whole site happened to be on the 'per_image' level, so the slider silently
+    // did nothing (this is the "doesn't work as specced" bug). Square-crop 'fill'
+    // stores size=100, so it never trips this and stays a normal cover crop.
+    $pi_sz  = (int)($cover_pi_row['img_size_pct']  ?? 100);
+    $pi_bpx = (int)($cover_pi_row['img_border_px'] ?? 0);
+    $pi_sh  = (string)($cover_pi_row['img_shadow'] ?? '0');
+    $has_per_image = ($pi_sz < 100 || $pi_bpx > 0 || (int)$pi_sh > 0);
+
+    if ($customize_level === 'per_image' || $has_per_image) {
+        $sz  = $pi_sz;
+        $bpx = $pi_bpx;
+        $bc  = $cover_pi_row['img_border_color'] ?? '#000000';
+        $bg  = $cover_pi_row['img_bg_color']     ?? '#ffffff';
+        $sh  = $pi_sh;
+    } elseif ($customize_level === 'per_carousel') {
+        $sz  = (int)($post_row['post_img_size_pct']  ?? 100);
+        $bpx = (int)($post_row['post_border_px']     ?? 0);
+        $bc  = $post_row['post_border_color'] ?? '#000000';
+        $bg  = $post_row['post_bg_color']     ?? '#ffffff';
+        $sh  = (string)($post_row['post_shadow']     ?? '0');
+    } else { // per_grid
+        $sz  = (int)($settings['tg_frame_size_pct']     ?? 100);
+        $bpx = (int)($settings['tg_frame_border_px']    ?? 0);
+        $bc  = $settings['tg_frame_border_color'] ?? '#000000';
+        $bg  = $settings['tg_frame_bg_color']     ?? '#ffffff';
+        $sh  = (string)($settings['tg_frame_shadow']    ?? '0');
     }
     return [
         'size_pct'    => $sz,
@@ -102,6 +110,7 @@ $grid_stmt = $pdo->prepare("
         i.id          AS img_id,
         i.img_file,
         i.img_thumb_square,
+        i.img_thumb_aspect,
         i.img_slug,
         pi.img_size_pct,
         pi.img_border_px,
@@ -125,7 +134,7 @@ $grid_stmt = $pdo->prepare("
     LEFT JOIN snap_trigrams tg ON tg.id = p.trigram_id
     WHERE p.status = 'published'
       AND p.created_at <= ?
-    ORDER BY CASE WHEN p.sort_order > 0 THEN 0 ELSE 1 END ASC,
+    ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
              p.sort_order ASC,
              p.created_at DESC
 ");
@@ -191,6 +200,15 @@ include dirname(__DIR__, 2) . '/core/meta.php';
 
             // ── Tile class ───────────────────────────────────────────────
             $tile_frame = $tg_resolve_tile_frame($post, $post);
+            $is_trigram_tile = ($tg_id > 0 && $tg_slot > 0);
+            // Per spec, a fit-mode cover (size<100 / border / matte) is matted on
+            // the tile, NOT cropped. Trigram slices are square covers and never
+            // framed. A framed tile must use the ASPECT thumbnail, otherwise we'd
+            // be matting an already-square-cropped image.
+            $do_frame = ($tile_frame['is_framed'] && !$is_trigram_tile);
+            if ($do_frame) {
+                $thumb_src = $post['img_thumb_aspect'] ?: ($post['img_thumb_square'] ?: $post['img_file']);
+            }
             $tile_class = 'tg-tile';
 
             if ($tg_id > 0 && $tg_slot > 0) {
@@ -199,10 +217,10 @@ include dirname(__DIR__, 2) . '/core/meta.php';
                 $tile_class .= ' tg-tile--trigram';
             }
 
-            if ($tile_frame['is_framed']) $tile_class .= ' tg-tile--framed';
+            if ($do_frame) $tile_class .= ' tg-tile--framed';
 
             $tile_css_vars = '';
-            if ($tile_frame['is_framed']) {
+            if ($do_frame) {
                 $tile_css_vars = sprintf(
                     '--tile-bg:%s; --tile-img-size:%d%%; --tile-border-w:%dpx; --tile-border-c:%s; --tile-shadow:%s;',
                     htmlspecialchars($tile_frame['bg_color']),
