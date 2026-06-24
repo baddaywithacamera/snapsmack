@@ -383,6 +383,12 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
     .gp-ctl { display:flex; align-items:center; gap:6px; }
     .gp-ctl > span { flex:0 0 44px; opacity:.7; }
     .gp-ctl input[type=range] { flex:1; min-width:0; }
+    /* Editable size/border read-out — color:inherit so the value is readable
+       in every admin theme (the greyscale theme was rendering it invisible). */
+    .gp-ctl input[type=number] { flex:0 0 54px; width:54px; text-align:right;
+        font-family:monospace; color:inherit; background:rgba(127,127,127,.12);
+        border:1px solid rgba(127,127,127,.4); border-radius:3px; padding:2px 4px;
+        -moz-appearance:textfield; }
     .gp-ctl > b { flex:0 0 36px; text-align:right; font-family:monospace;
         font-weight:400; opacity:.85; }
     .gp-ctl-row { gap:12px; }
@@ -429,10 +435,12 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
         display:flex; align-items:center; justify-content:center; }
     .cp-thumb { display:block; max-width:100%; max-height:100%; }
 
+    /* Theme-neutral dark pill + white text — reads on any admin theme
+       (greyscale included) and over any photo, no accent-colour clash. */
     .cp-cover-badge { position:absolute; top:5px; left:5px; z-index:2;
         font-size:9px; font-weight:700; letter-spacing:.6px; padding:2px 6px;
-        border-radius:3px; background:#c6ff00; color:#111;
-        text-shadow:none; box-shadow:0 1px 2px rgba(0,0,0,.4); }
+        border-radius:3px; background:rgba(0,0,0,.72); color:#fff;
+        box-shadow:0 1px 2px rgba(0,0,0,.35); }
     .cp-pos-badge { position:absolute; bottom:5px; right:5px; z-index:2;
         font-size:10px; font-weight:600; min-width:18px; text-align:center;
         padding:1px 5px; border-radius:10px; background:rgba(0,0,0,.7);
