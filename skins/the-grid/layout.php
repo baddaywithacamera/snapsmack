@@ -213,9 +213,13 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
 
         <?php else:
             $frame = $tg_resolve_frame($cover_img);
+            // Size the IMAGE to its own aspect at size% of the panel (both axes
+            // capped) so the border hugs the photo and the matte sits evenly around
+            // it — matching the thumbnail's framed look — instead of the CSS forcing
+            // a full-panel box with the photo letterboxed inside it.
             $single_img_style = $frame['is_framed'] ? sprintf(
-                'max-width:%d%%; border:%dpx solid %s; box-shadow:%s; box-sizing:border-box;',
-                $frame['size_pct'], $frame['border_px'],
+                'width:auto; height:auto; max-width:%d%%; max-height:%d%%; border:%dpx solid %s; box-shadow:%s; box-sizing:border-box;',
+                $frame['size_pct'], $frame['size_pct'], $frame['border_px'],
                 htmlspecialchars($frame['border_color']), htmlspecialchars($frame['shadow_css'])
             ) : '';
         ?>

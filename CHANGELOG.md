@@ -12,7 +12,7 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.299 — "Musical Chairs" (2026-06-24)
+## 0.7.300 — "Musical Chairs" (2026-06-24)
 
 - **Per-image square crop with zoom + pan (compose and edit).** Every photo in the
   gram composer and the carousel editor now has a Zoom slider (1×–3×) and drag-to-
@@ -31,11 +31,17 @@ All notable changes to SnapSmack are documented here. Newest release first.
   the carousel plus a single post per pulled image. (`smack-edit-carousel.php`,
   `smack-post-gram.php`, `assets/js/ss-engine-carousel-edit.js`,
   `assets/js/ss-engine-gram-post.js`)
-- **The Grid white-line fix (skin 1.3.28).** A framed tile showed a thin white sliver
+- **The Grid white-line fix (skin 1.3.29).** A framed tile showed a thin white sliver
   between the photo and its border along the bottom — the sub-pixel
   `object-fit:contain` letterbox bleeding the white tile background through. The
   letterbox now takes the border colour, so the line is gone. (`skins/the-grid/style.css`,
   `skins/the-grid/manifest.php`)
+- **The Grid solo post honours per-image framing (skin 1.3.29).** The single-image
+  post view forced the photo into a full-panel box and letterboxed it inside, so the
+  border floated around empty space and the size% / shadow looked ignored. The image
+  now sizes to its own aspect at the configured size%, so the border hugs the photo
+  with an even matte and the drop shadow applies — matching the thumbnail framing.
+  (`skins/the-grid/layout.php`)
 
 ## 0.7.297 — "Front Row" (2026-06-24)
 
