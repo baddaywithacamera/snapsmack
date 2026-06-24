@@ -256,6 +256,11 @@ $posts = $pdo->prepare($sql);
 $posts->execute($params);
 $post_list = $posts->fetchAll();
 
+// Site mode drives which post actions apply. In GramOfSmack (carousel) the
+// standalone SWAP page is hidden — image replacement belongs in the carousel
+// editor, not a single-image swap. Solo/smacktalk keep SWAP.
+$mng_site_mode = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog';
+
 $cats        = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $albums      = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 $collections = $pdo->query("SELECT * FROM snap_collections ORDER BY title ASC")->fetchAll();
@@ -460,7 +465,9 @@ include 'core/sidebar.php';
 
                         <div class="item-actions">
                             <a href="smack-edit.php?id=<?php echo $p['id']; ?>" class="action-edit">EDIT</a>
+                            <?php if ($mng_site_mode !== 'carousel'): ?>
                             <a href="smack-swap.php?id=<?php echo $p['id']; ?>" class="action-swap">SWAP</a>
+                            <?php endif; ?>
                             <?php if (!$is_draft && !$is_scheduled): ?>
                             <a href="<?php echo BASE_URL . htmlspecialchars($p['img_slug'] ?? '', ENT_QUOTES); ?>" class="action-view" target="_blank" rel="noopener">VIEW</a>
                             <?php endif; ?>
