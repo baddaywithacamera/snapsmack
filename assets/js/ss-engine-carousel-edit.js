@@ -194,7 +194,19 @@
         row.innerHTML = '<span style="font:11px/1 monospace;opacity:.7;">Zoom</span>' +
             '<input type="range" class="ce-zoom" min="100" max="300" value="' + st.zoom + '" style="flex:1;">';
         var zoomR = row.querySelector('.ce-zoom');
-        zoomR.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+        // stopPropagation alone does NOT stop the browser starting a native
+        // HTML5 drag of the draggable card ancestor — pressing the slider
+        // grabbed the whole box. Disable the card's drag for the duration of
+        // the slider interaction (mirrors the drag-to-pan handler below).
+        zoomR.addEventListener('mousedown', function (e) {
+            e.stopPropagation();
+            item.setAttribute('draggable', 'false');
+            var restore = function () {
+                item.setAttribute('draggable', 'true');
+                document.removeEventListener('mouseup', restore);
+            };
+            document.addEventListener('mouseup', restore);
+        });
         zoomR.addEventListener('click',     function (e) { e.stopPropagation(); });
         zoomR.addEventListener('input',     function () { st.zoom = parseInt(zoomR.value, 10) || 100; apply(); });
         wrap.parentNode.insertBefore(row, wrap.nextSibling);
