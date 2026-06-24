@@ -147,6 +147,36 @@ class FlkrDckrClient:
         return True
 
     # ------------------------------------------------------------------
+    # Collections (best-of)
+    # ------------------------------------------------------------------
+
+    def build_collection(self, title: str, image_ids: List[int],
+                         description: str = '', published: bool = True,
+                         cover_image_id: Optional[int] = None) -> dict:
+        """
+        Create or rebuild a "best of" collection from a ranked list of image IDs.
+        The first image_id becomes the cover unless cover_image_id is given.
+        Idempotent on the title's slug. POSTs to flkrfckr/collections.
+        """
+        ids = [int(i) for i in image_ids if int(i) > 0]
+        payload = {
+            'title':       title,
+            'description': description,
+            'published':   1 if published else 0,
+            'image_ids':   ids,
+        }
+        if cover_image_id:
+            payload['cover_image_id'] = int(cover_image_id)
+        resp = self._session.post(
+            f"{self.base_url}/api.php",
+            params={'route': 'flkrfckr/collections'},
+            data=json.dumps(payload),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    # ------------------------------------------------------------------
     # Images
     # ------------------------------------------------------------------
 
@@ -168,6 +198,8 @@ class FlkrDckrClient:
         status:           str = 'published',
         img_license:      str = '',     # rights label from Flickr (optional)
         like_seed:        int = 0,      # Flickr fave count → initial like tally
+        view_seed:        int = 0,      # Flickr view count → initial view tally
+        source_url:       str = '',     # Flickr photopage URL (provenance backlink)
     ) -> ImportResult:
         """
         POST to flkrfckr/images. Handles duplicate detection.
@@ -191,6 +223,8 @@ class FlkrDckrClient:
             'status':           status,
             'img_license':      img_license,
             'img_like_seed':    int(like_seed),
+            'img_view_seed':    int(view_seed),
+            'img_source_url':   source_url,
         }
         try:
             resp = self._session.post(
@@ -307,6 +341,9 @@ def run_import(
     on_progress:      Optional[Callable[[int, int, ImportResult], None]] = None,
     stop_event=None,        # threading.Event — set to abort the run
     pause_event=None,       # threading.Event — cleared to pause, set to resume
+    build_best_of:     bool = True,   # build Most Viewed / Most Liked collections
+    best_of_count:     int  = 20,     # images per best-of collection
+    best_of_published: bool = True,   # publish the best-of collections live
 ) -> List[ImportResult]:
     """
     Full import pipeline: image_prep → HTTPS multipart upload → API record creation.
@@ -324,6 +361,7 @@ def run_import(
     already_done = checkpoint.already_imported()
     results      = []
     cover_map: Dict[int, str] = {}   # snap album_id → cover Flickr photo ID
+    best_of: List[tuple] = []        # (image_id, views, faves) for best-of ranking
     total        = len(photos)
 
     # Resolve default album once if needed
@@ -449,10 +487,14 @@ def run_import(
                 status=status,
                 img_license=photo.license,
                 like_seed=photo.count_faves,
+                view_seed=photo.count_views,
+                source_url=photo.source_url,
             )
 
             if result.success:
                 checkpoint.record_imported(photo.flickr_id, result.image_id)
+                if result.image_id:
+                    best_of.append((result.image_id, photo.count_views, photo.count_faves))
                 if not result.duplicate:
                     log.info(f"Imported {photo.flickr_id} → image_id={result.image_id}")
                     # Import this photo's Flickr comments (best-effort; only on a
@@ -519,6 +561,29 @@ def run_import(
             client.set_album_cover(snap_aid, cover_fid)
         except Exception as e:
             log.warning(f"Could not set cover for album {snap_aid}: {e}")
+
+    # ── Build "best of" collections ──────────────────────────────────────────
+    # Most Viewed + Most Liked, top-N each, ranked; the #1 image becomes the
+    # cover. Best-effort — a failure here never fails the import.
+    if build_best_of and best_of:
+        try:
+            n = max(1, int(best_of_count))
+            most_viewed = [iid for iid, _v, _f in
+                           sorted(best_of, key=lambda x: x[1], reverse=True)][:n]
+            most_liked  = [iid for iid, _v, _f in
+                           sorted(best_of, key=lambda x: x[2], reverse=True)][:n]
+            if most_viewed:
+                client.build_collection('Most Viewed', most_viewed,
+                                        description='Most-viewed photographs.',
+                                        published=best_of_published)
+                log.info(f"Built 'Most Viewed' collection ({len(most_viewed)} images)")
+            if most_liked:
+                client.build_collection('Most Liked', most_liked,
+                                        description='Most-liked photographs.',
+                                        published=best_of_published)
+                log.info(f"Built 'Most Liked' collection ({len(most_liked)} images)")
+        except Exception as e:
+            log.warning(f"Best-of collection build failed: {e}")
 
     return results
 # ===== SNAPSMACK EOF =====

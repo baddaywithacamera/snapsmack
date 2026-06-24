@@ -50,6 +50,8 @@ class ParsedPhoto:
     privacy:        str          = 'public'     # 'public', 'private', 'friends', etc.
     license:        str          = ''
     count_faves:    int          = 0            # Flickr fave count → like seed on import
+    count_views:    int          = 0            # Flickr view count → view seed (Most Viewed)
+    source_url:     str          = ''           # Flickr photopage URL — provenance backlink
     excluded:       bool         = False        # user can toggle in GUI
     comments:       List[dict]   = field(default_factory=list)  # imported Flickr comments
 
@@ -501,6 +503,13 @@ def parse(export_folder: str, on_progress=None) -> ParseResult:
             count_faves = int(data.get('count_faves', 0) or 0)
         except (TypeError, ValueError):
             count_faves = 0
+        # Flickr view count → seed the view tally; powers the Most Viewed collection.
+        try:
+            count_views = int(data.get('count_views', 0) or 0)
+        except (TypeError, ValueError):
+            count_views = 0
+        # Original Flickr photo page — kept as a provenance backlink.
+        source_url = str(data.get('photopage', '') or '').strip()
 
         # Album memberships — listed in sidecar as array of {id, title} objects
         album_ids: List[str] = []
@@ -571,6 +580,8 @@ def parse(export_folder: str, on_progress=None) -> ParseResult:
             privacy=privacy,
             license=license_str,
             count_faves=count_faves,
+            count_views=count_views,
+            source_url=source_url,
             comments=_parse_comments(data.get('comments', []), name_map),
         ))
 
@@ -590,6 +601,7 @@ def parse(export_folder: str, on_progress=None) -> ParseResult:
         'total_collections':  collections_count,
         'total_comments':     sum(len(p.comments) for p in result.photos),
         'total_likes':        sum(p.count_faves for p in result.photos),
+        'total_views':        sum(p.count_views for p in result.photos),
         'missing_images':     missing_images,
         'skipped_videos':     skipped_videos,
         'private_photos':     sum(1 for p in result.photos if p.privacy != 'public'),

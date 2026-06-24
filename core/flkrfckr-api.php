@@ -249,6 +249,8 @@ if ($sub === 'images' && $method === 'POST') {
     $status           = trim($body['status']             ?? 'published');
     $img_license      = trim($body['img_license']        ?? '');
     $img_like_seed    = (int)($body['img_like_seed']     ?? 0);
+    $img_view_seed    = (int)($body['img_view_seed']     ?? 0);
+    $img_source_url   = trim($body['img_source_url']     ?? '');
 
     // Defensive structural add — canonical schema carries img_like_seed, but a
     // spoke updated mid-cycle may not yet. Idempotent; pure additive.
@@ -257,6 +259,13 @@ if ($sub === 'images' && $method === 'POST') {
             ADD COLUMN IF NOT EXISTS img_like_seed INT UNSIGNED NOT NULL DEFAULT 0
             COMMENT 'Imported like tally (e.g. Flickr fave count). Live snap_likes add on top.'");
     } catch (Throwable $e) { /* column exists or DB lacks IF NOT EXISTS — ignore */ }
+    // View tally + provenance source URL (canonical carries these; defensive for
+    // a spoke mid-update). Idempotent, pure additive.
+    try {
+        $pdo->exec("ALTER TABLE snap_images
+            ADD COLUMN IF NOT EXISTS img_view_seed INT UNSIGNED NOT NULL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS img_source_url VARCHAR(500) NULL DEFAULT NULL");
+    } catch (Throwable $e) { /* columns exist or DB lacks IF NOT EXISTS — ignore */ }
 
     if ($flickr_id === '') flkrfckr_error(400, 'flickr_id is required.');
     if ($img_file  === '') flkrfckr_error(400, 'img_file is required.');
@@ -323,13 +332,15 @@ if ($sub === 'images' && $method === 'POST') {
             img_date, img_width, img_height, img_orientation,
             img_exif, img_source_file,
             img_thumb_square, img_thumb_aspect,
-            img_license, img_status, sort_order, img_like_seed
+            img_license, img_status, sort_order, img_like_seed,
+            img_view_seed, img_source_url
         ) VALUES (
             ?, ?, ?, ?,
             ?, ?, ?, ?,
             ?, ?,
             ?, ?,
-            ?, ?, ?, ?
+            ?, ?, ?, ?,
+            ?, ?
         )
     ")->execute([
         $slug, $img_file, $img_title, $img_description,
@@ -337,6 +348,7 @@ if ($sub === 'images' && $method === 'POST') {
         $img_exif, $img_source_file,
         $img_thumb_square ?: null, $img_thumb_aspect ?: null,
         $img_license ?: null, $status, $sort_order, $img_like_seed,
+        $img_view_seed, $img_source_url ?: null,
     ]);
 
     $image_id = (int)$pdo->lastInsertId();
@@ -515,5 +527,62 @@ if ($method === 'POST' && $sub === 'comments') {
     $comment_id = (int)$pdo->lastInsertId();
 
     flkrfckr_ok(['comment_id' => $comment_id]);
+}
+
+// POST flkrfckr/collections — create (or rebuild) a "best of" collection from a
+// ranked list of image IDs. Body: { title, description?, published?,
+// cover_image_id?, image_ids:[ordered snap_images.id] }. Idempotent on slug — a
+// re-run rebuilds the same collection's membership in the given order.
+if ($method === 'POST' && $sub === 'collections') {
+    $body      = json_decode(file_get_contents('php://input'), true) ?? [];
+    $title     = trim($body['title'] ?? '');
+    if ($title === '') flkrfckr_error(400, 'title is required.');
+    $desc      = trim($body['description'] ?? '');
+    $published = !empty($body['published']) ? 1 : 0;
+    $image_ids = array_values(array_filter(
+        array_map('intval', (array)($body['image_ids'] ?? [])),
+        fn($i) => $i > 0
+    ));
+    $cover = (int)($body['cover_image_id'] ?? ($image_ids[0] ?? 0));
+
+    // Defensive: allow 'image' collection items (canonical carries this; a spoke
+    // mid-update may still be on the post/album/category-only enum).
+    try {
+        $pdo->exec("ALTER TABLE snap_collection_items
+                    MODIFY `item_type` ENUM('post','album','category','image')
+                    COLLATE utf8mb4_unicode_ci NOT NULL");
+    } catch (Throwable $e) { /* already widened, or tables not yet synced */ }
+
+    $slug = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($title)), '-');
+    if ($slug === '') $slug = 'collection';
+
+    // Create-or-get by slug, then rebuild membership.
+    $sel = $pdo->prepare("SELECT id FROM snap_collections WHERE slug = ? LIMIT 1");
+    $sel->execute([$slug]);
+    $existing = $sel->fetch(PDO::FETCH_ASSOC);
+    if ($existing) {
+        $cid = (int)$existing['id'];
+        $pdo->prepare("UPDATE snap_collections
+                       SET title = ?, description = ?, published = ?, cover_image_id = ?
+                       WHERE id = ?")
+            ->execute([$title, $desc ?: null, $published, $cover ?: null, $cid]);
+        $pdo->prepare("DELETE FROM snap_collection_items WHERE collection_id = ?")->execute([$cid]);
+    } else {
+        $so = (int)$pdo->query("SELECT COALESCE(MAX(sort_order),0)+1 FROM snap_collections")->fetchColumn();
+        $pdo->prepare("INSERT INTO snap_collections
+                       (title, slug, description, cover_image_id, sort_order, published)
+                       VALUES (?, ?, ?, ?, ?, ?)")
+            ->execute([$title, $slug, $desc ?: null, $cover ?: null, $so, $published]);
+        $cid = (int)$pdo->lastInsertId();
+    }
+
+    // Add image items in the given rank order.
+    $ins = $pdo->prepare("INSERT IGNORE INTO snap_collection_items
+                          (collection_id, item_type, item_id, sort_order)
+                          VALUES (?, 'image', ?, ?)");
+    $rank = 0;
+    foreach ($image_ids as $iid) { $ins->execute([$cid, $iid, $rank]); $rank++; }
+
+    flkrfckr_ok(['collection_id' => $cid, 'slug' => $slug, 'items' => count($image_ids)]);
 }
 // ===== SNAPSMACK EOF =====

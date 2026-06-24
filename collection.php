@@ -88,6 +88,9 @@ if (!$collection) {
 // sort_order) since the collection-items migration — the old query referenced
 // ci.image_id / ci.position / ci.caption (gone) and 500'd. Resolve post-type
 // members down to their published images, in curator order then in-post order.
+// Polymorphic members: 'post' items resolve down through snap_post_images;
+// 'image' items (e.g. the Flickr best-of collections) point straight at an image.
+// Both shapes are unioned and ordered by the curator sort_order (rank).
 $mstmt = $pdo->prepare(
     "SELECT i.id, i.img_title AS title, i.img_slug AS slug,
             i.img_thumb_square, i.img_thumb_aspect, i.img_file,
@@ -98,10 +101,19 @@ $mstmt = $pdo->prepare(
      WHERE ci.collection_id = ?
        AND ci.item_type     = 'post'
        AND i.img_status     = 'published'
-     ORDER BY ci.sort_order ASC, pim.sort_order ASC, ci.added_at ASC"
+     UNION ALL
+     SELECT i.id, i.img_title AS title, i.img_slug AS slug,
+            i.img_thumb_square, i.img_thumb_aspect, i.img_file,
+            i.img_date, ci.sort_order AS position, NULL AS caption
+     FROM snap_collection_items ci
+     INNER JOIN snap_images i ON i.id = ci.item_id
+     WHERE ci.collection_id = ?
+       AND ci.item_type     = 'image'
+       AND i.img_status     = 'published'
+     ORDER BY position ASC"
 );
 try {
-    $mstmt->execute([$collection['id']]);
+    $mstmt->execute([$collection['id'], $collection['id']]);
     $members = $mstmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $members = [];

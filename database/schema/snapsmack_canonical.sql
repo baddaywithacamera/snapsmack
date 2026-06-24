@@ -41,6 +41,10 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
   `img_download_count`  int unsigned   NOT NULL DEFAULT '0',
   `img_like_seed`       int unsigned   NOT NULL DEFAULT '0'
                         COMMENT 'Imported like tally (e.g. Flickr fave count). Live snap_likes add on top.',
+  `img_view_seed`       int unsigned   NOT NULL DEFAULT '0'
+                        COMMENT 'Imported view tally (e.g. Flickr count_views). Powers the Most Viewed collection.',
+  `img_source_url`      varchar(500)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                        COMMENT 'Original source page (e.g. Flickr photopage) — provenance backlink.',
   `img_width`           int            DEFAULT '0',
   `img_height`          int            DEFAULT '0',
   `img_status`          enum('published','draft') COLLATE utf8mb4_unicode_ci DEFAULT 'published',
@@ -732,7 +736,7 @@ CREATE TABLE IF NOT EXISTS `snap_collections` (
 CREATE TABLE IF NOT EXISTS `snap_collection_items` (
   `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `collection_id` INT UNSIGNED NOT NULL,
-  `item_type`     ENUM('post','album','category') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `item_type`     ENUM('post','album','category','image') COLLATE utf8mb4_unicode_ci NOT NULL,
   `item_id`       INT UNSIGNED NOT NULL,
   `sort_order`    INT          NOT NULL DEFAULT 0,
   `added_at`      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
