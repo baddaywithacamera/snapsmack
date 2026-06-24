@@ -97,66 +97,9 @@ include dirname(__DIR__, 2) . '/core/meta.php';
 ?>
 <div class="sl-landing">
 
-    <!-- ── Cover / background image ──────────────────────────────────────── -->
-    <div class="sl-cover"<?php if ($cover_url): ?> style="background-image:url('<?php echo $cover_url; ?>');"<?php endif; ?>>
-        <div class="sl-cover-scrim" aria-hidden="true"></div>
-    </div>
-
-    <!-- ── Profile header ────────────────────────────────────────────────── -->
-    <section class="sl-profile">
-        <div class="sl-profile-inner">
-            <div class="sl-profile-avatar">
-                <?php if ($avatar_exists): ?>
-                    <img src="<?php echo $avatar_url; ?>" alt="<?php echo htmlspecialchars($site_display); ?>">
-                <?php else: ?>
-                    <span class="sl-profile-avatar-initials"><?php echo htmlspecialchars($avatar_initials); ?></span>
-                <?php endif; ?>
-            </div>
-
-            <div class="sl-profile-info">
-                <h1 class="sl-profile-name"><?php echo htmlspecialchars($site_display); ?></h1>
-                <?php if ($tagline): ?>
-                    <p class="sl-profile-tagline"><?php echo htmlspecialchars($tagline); ?></p>
-                <?php endif; ?>
-                <?php if ($bio): ?>
-                    <p class="sl-profile-bio"><?php echo nl2br(htmlspecialchars($bio)); ?></p>
-                <?php endif; ?>
-            </div>
-
-            <div class="sl-profile-stats">
-                <div class="sl-stat">
-                    <strong><?php echo number_format($photo_count); ?></strong>
-                    <span>Photo<?php echo $photo_count !== 1 ? 's' : ''; ?></span>
-                </div>
-                <?php if ($location): ?>
-                    <div class="sl-stat-line"><?php echo htmlspecialchars($location); ?></div>
-                <?php endif; ?>
-                <?php if ($established): ?>
-                    <div class="sl-stat-line">Joined <?php echo htmlspecialchars($established); ?></div>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <!-- ── Tab / utility bar ─────────────────────────────────────────── -->
-        <nav class="sl-profile-tabs">
-            <div class="sl-tabs-left">
-                <a href="<?php echo BASE_URL; ?>" class="sl-tab sl-tab--active">Photostream</a>
-                <a href="<?php echo BASE_URL; ?>albums.php" class="sl-tab">Albums</a>
-                <a href="<?php echo BASE_URL; ?>collections.php" class="sl-tab">Collections</a>
-                <?php foreach ($nav_pages as $np): ?>
-                    <a href="<?php echo BASE_URL . htmlspecialchars($np['slug']); ?>" class="sl-tab"><?php echo htmlspecialchars($np['title']); ?></a>
-                <?php endforeach; ?>
-            </div>
-            <div class="sl-tabs-right">
-                <form class="sl-search" action="<?php echo BASE_URL; ?>archive.php" method="get" role="search">
-                    <input type="search" name="search" class="sl-search-input" placeholder="Search photos" aria-label="Search photos">
-                </form>
-                <button type="button" class="sl-cal-toggle" id="sl-cal-toggle" aria-label="Calendar filter" title="Calendar filter">
-                    <span class="sl-cal-c">C</span>
-                </button>
-            </div>
-        </nav>
-    </section>
+    <!-- ── Shared Flickr-style cover masthead (cover + gradient + overlaid
+         profile + tab bar). Self-contained; same on every Slickr page. ──── -->
+    <?php $sl_active_tab = 'photostream'; include __DIR__ . '/skin-header.php'; ?>
 
     <!-- ── Justified photostream ─────────────────────────────────────────── -->
     <main class="sl-landing-stream">

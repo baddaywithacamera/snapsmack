@@ -441,6 +441,7 @@ img { display: block; max-width: 100%; }
     height:       auto;
     max-width:    var(--tile-img-size, 100%);
     max-height:   100%;
+    margin:       auto;   /* bulletproof flex centring — splits matte evenly */
     object-fit:   contain;
     border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
     box-shadow:   var(--tile-shadow, none);

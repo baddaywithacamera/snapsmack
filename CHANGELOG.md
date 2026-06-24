@@ -12,6 +12,32 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.297 — "Front Row" (2026-06-24)
+
+- **Slickr Flickr-grade masthead + albums (skin 1.0.5).** The cover now carries a
+  bottom-heavy dark gradient with the avatar / name / tagline / stats overlaid in
+  it (Flickr idiom), and that masthead is shared across every Slickr page via
+  `skin-header.php`. The albums page is a Flickr-style thumbnail grid with the
+  title + "N photos · N views" overlaid on each cover. Calendar "C" button
+  re-centred. (skin files)
+- **Album view-count (core).** New `snap_albums.view_count` (canonical + defensive
+  `ADD COLUMN IF NOT EXISTS` in the albums controller). `archive.php` increments it
+  on a pure single-album view (no other filters / search, first page only). The
+  albums controller now selects it so the Slickr grid can display it. (`database/schema/snapsmack_canonical.sql`, `albums.php`, `archive.php`)
+
+## 0.7.296 — "Bucket Seat" (2026-06-23)
+
+- **Gram preview tile now reads as a visible square.** The preview box was already
+  1:1, but with a white matte on a white page the tile edge was invisible — so a
+  landscape photo looked like it floated with no way to judge the margin. Added a
+  bordered square so the grid-tile edge always shows; at 100% the image meets that
+  border on its long axis, matte visible top/bottom. (`smack-post-gram.php`)
+- **90° rotation per image.** Each image in the gram composer gets rotate-left /
+  rotate-right buttons for fixing orientation. The preview rotates live; on submit
+  the rotation is baked into the actual uploaded file via canvas (quarter-turn,
+  no clipping, defensive — original stands on any failure). This is separate from
+  the Instant-Camera ±5° straightener. (`assets/js/ss-engine-gram-post.js`)
+
 ## 0.7.295 — "Captain's Chair" (2026-06-23)
 
 - **The post editor is finally GramOfSmack-aware (real root cause).** `smack-edit.php`
@@ -27,6 +53,10 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - **Editable size/border read-out is visible in every theme.** The new number fields
   used the theme text colour, which rendered invisible in the greyscale theme. Forced
   `color:inherit` + a neutral field background. (`smack-post-gram.php`)
+- **SWAP removed in GramOfSmack mode.** The standalone single-image SWAP makes no sense
+  for multi-image gram posts; image replacement belongs in the carousel editor. Manage
+  now hides the SWAP action when `site_mode === 'carousel'`; solo/smacktalk keep it.
+  (`smack-manage.php`)
 
 ## 0.7.294 — "Driver's Seat" (2026-06-23)
 

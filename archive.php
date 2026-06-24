@@ -241,6 +241,19 @@ try {
     $cat_filter   = $filter_cats[0]   ?? null;
     $album_filter = $filter_albums[0] ?? null;
 
+    // ── Album view tally ───────────────────────────────────────────────────
+    // A pure single-album archive (no other filters, no search, first page) is
+    // an "album view" — bump snap_albums.view_count for the Slickr albums grid.
+    // Best-effort + defensive; never blocks the page.
+    if (count($filter_albums) === 1 && empty($filter_cats) && empty($filter_collections)
+        && trim($_GET['q'] ?? '') === '' && (int)($_GET['page'] ?? 1) <= 1) {
+        try {
+            $pdo->exec("ALTER TABLE snap_albums ADD COLUMN IF NOT EXISTS `view_count` int NOT NULL DEFAULT 0");
+            $pdo->prepare("UPDATE snap_albums SET view_count = view_count + 1 WHERE id = ?")
+                ->execute([(int)$filter_albums[0]]);
+        } catch (Exception $e) { /* non-fatal */ }
+    }
+
     $search_query  = trim($_GET['q'] ?? '');
     // Calendar date-range filter: ?from=YYYY-MM-DD&to=YYYY-MM-DD
     $from_filter   = (isset($_GET['from']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['from']))

@@ -1396,6 +1396,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="status-card">
                 <h3>Skin System</h3>
                 <p>No plugins. Skins use a manifest and library system — checking out fonts and applets from the CMS. Each skin presents its own controls: colour pickers, sliders, texture options. No CSS knowledge needed.</p>
+                <p style="margin-top:0.85em;">If you DO know CSS and JS; we've built in tools to let you customize your blog without having to edit files directly and all of your changes write to the DB.</p>
             </div>
             <div class="status-card">
                 <h3>Smack Your Batch Up</h3>
@@ -1403,7 +1404,12 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="status-card">
                 <h3>FLKR FCKR</h3>
-                <p>Your Flickr export, migrated to SnapSmack — images, titles, descriptions, tags, and original upload dates, spread across as many days as your server can handle so nothing lands out of order. Proven on a real 10,000-image archive, imported clean. To Flickr: treat other people's wallets as your own, and don't be shocked when someone helps them snap those wallets shut.</p>
+                <p>Your Flickr export, migrated to SnapSmack — images, titles, descriptions, tags, and original upload dates, spread across as many days as your server can handle so nothing lands out of order. Proven on a real 10,000-image archive, imported clean.</p>
+                <p>To Flickr: treat other people's wallets as your own, and don't be shocked when someone helps them snap those wallets shut.</p>
+            </div>
+            <div class="status-card">
+                <h3>Light Table</h3>
+                <p>The online sorter. A full-screen drag-and-drop workbench right in your browser — albums, categories, and collections as drop targets, your whole image grid in the centre. Select a handful or a hundred, drag them where they belong, and the assignments stick. Built for organising a thousand-image back catalog without losing your mind. Its offline counterpart, GET YOUR SHIT SORTED, is in the pipeline.</p>
             </div>
             <div class="status-card">
                 <h3>Community</h3>
@@ -1412,6 +1418,10 @@ require_once __DIR__ . '/includes/header.php';
             <div class="status-card">
                 <h3>Two-Factor Authentication</h3>
                 <p>TOTP-based 2FA compatible with any authenticator app — open-source ones first. QR setup, recovery codes, the works. Now required: a 30-day grace period after install, then it's mandatory for every admin. Lost everything? A documented emergency override means you're never locked out of your own site.</p>
+            </div>
+            <div class="status-card">
+                <h3>Break the Glass</h3>
+                <p>The recovery hatch for total lockout — password gone, 2FA gone, recovery codes gone, all at once. You keep a Break the Glass file; when you're locked out, you upload it to your site and you're back in. It's cryptographically signed, so a forged or substituted card is rejected outright — but the real one is a master key, so you guard it like one and never reveal which site it opens. The one and only time uploading a file by hand is the right answer.</p>
             </div>
             <div class="status-card">
                 <h3>One-Click Installer</h3>
@@ -1921,12 +1931,17 @@ require_once __DIR__ . '/includes/header.php';
             <div class="coming-item">
                 <span class="tag">Tools</span>
                 <h3>MIDNIGHT MOVE</h3>
-                <p>The fourth desktop tool. MIDNIGHT MOVE rescues content off dying and legacy websites — hand-coded HTML, ancient CMS installs, the site a friend built in 2006 and can't log into anymore — and moves it into SnapSmack. Migration when you still have the keys, rescue when you've lost them, preservation before someone's life's work goes dark. FTP where you can get it, a public spider where you can't, and AI to make sense of whatever schema it finds. Save the work. Move it somewhere you own.</p>
+                <p>The fourth desktop tool. MIDNIGHT MOVE rescues your own work off a dying website before it takes your photographs with it — hand-coded HTML, an ancient CMS install, the site you built in 2006 and can't log into anymore — and moves it into SnapSmack. Migration when you still have the keys, rescue when you've lost them. FTP where you can get it, a public spider where you can't, and AI to make sense of whatever schema it finds. Save the work. Move it somewhere you own.</p>
             </div>
             <div class="coming-item">
-                <span class="tag">Media</span>
-                <h3>Light Table</h3>
-                <p>Drag-and-drop bulk organisation for your archive. A full-screen workbench — albums, categories, and collections as drop targets on the left, your entire image grid in the centre. Select a handful of images or a hundred, drag them to where they belong, and the assignments stick. Multi-select by range or individual pick. The kind of interface that makes organising a thousand-image back catalog something you might actually do. Desktop only, intentionally — this is not a phone job.</p>
+                <span class="tag">Tools</span>
+                <h3>MEMENTO MORI</h3>
+                <p>A sibling to MIDNIGHT MOVE, for the hardest version of the job. Where MIDNIGHT MOVE rescues your own work, MEMENTO MORI helps friends and family preserve a photographer's after they've passed — the photographs, and the words where they survive — so a life's work doesn't quietly go dark. It works from a hard drive, a folder, or whatever of their site is still online. Nothing is selected without you, and nothing is ever deleted. Quiet, patient, and built for the people who've been left to carry it.</p>
+            </div>
+            <div class="coming-item">
+                <span class="tag">Tools</span>
+                <h3>GET YOUR SHIT SORTED</h3>
+                <p>The offline companion to the Light Table. GET YOUR SHIT SORTED pulls down your archive's thumbnails and the data needed to organise it, then turns your own machine into the sorting workbench — no live connection, no server load, no waiting on page loads for a ten-thousand-image back catalog. Do the work on a plane, in a basement, wherever you like. When you're done, it resyncs every change back to your site in one pass.</p>
             </div>
             <div class="coming-item">
                 <span class="tag">Tools</span>

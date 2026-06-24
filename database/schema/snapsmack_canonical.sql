@@ -175,6 +175,8 @@ CREATE TABLE IF NOT EXISTS `snap_albums` (
                       COMMENT 'Optional manual cover override — FK to snap_images',
   `featured_post_id`  int unsigned DEFAULT NULL
                       COMMENT 'Hero image source for album gallery views — migration 039',
+  `view_count`        int NOT NULL DEFAULT 0
+                      COMMENT 'Album page-view tally — incremented on archive.php?album=N',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

@@ -59,7 +59,7 @@
             // Per-image styling defaults (decided individually in the strip).
             fileList.push({
                 file: f, objectUrl: URL.createObjectURL(f),
-                crop: 'fit', size: 100, bpx: 0,
+                crop: 'fit', size: 100, bpx: 0, rotate: 0,
                 bcol: '#000000', bg: '#ffffff', shadow: 0,
             });
         });
@@ -96,6 +96,9 @@
             img.style.border = item.bpx > 0 ? (item.bpx + 'px solid ' + item.bcol) : 'none';
             img.style.boxShadow = SHADOW_CSS[item.shadow] || 'none';
         }
+        // 90° orientation preview. The square box contains the image, so a
+        // rotated landscape simply re-fits as a portrait inside the tile.
+        img.style.transform = 'rotate(' + (item.rotate || 0) + 'deg)';
     }
 
     function renderStrip() {
@@ -119,6 +122,10 @@
                     '<span class="cp-pos-badge">' + (idx + 1) + '</span>' +
                     '<img class="cp-thumb" src="' + item.objectUrl + '" alt="">' +
                     '<button type="button" class="cp-remove-btn" data-idx="' + idx + '">✕</button>' +
+                '</div>' +
+                '<div class="cp-rot-row">' +
+                    '<button type="button" class="cp-rot-btn" data-rot="-90" title="Rotate left 90°">&#8634;</button>' +
+                    '<button type="button" class="cp-rot-btn" data-rot="90" title="Rotate right 90°">&#8635;</button>' +
                 '</div>' +
                 '<div class="cp-item-label">' + escHtml(item.file.name) + '</div>' +
                 '<div class="gp-style">' +
@@ -147,6 +154,19 @@
             el.querySelector('.cp-remove-btn').addEventListener('click', e => {
                 e.stopPropagation();
                 removeFile(parseInt(e.currentTarget.dataset.idx));
+            });
+
+            // 90° orientation buttons — update the preview live; the real file is
+            // rotated via canvas on submit (rotateFile). Don't let them start a drag.
+            el.querySelectorAll('.cp-rot-btn').forEach(btn => {
+                btn.addEventListener('mousedown',  e => e.stopPropagation());
+                btn.addEventListener('mouseenter', () => { el.draggable = false; });
+                btn.addEventListener('mouseleave', () => { el.draggable = true; });
+                btn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    item.rotate = (((item.rotate || 0) + parseInt(btn.dataset.rot)) % 360 + 360) % 360;
+                    applyPreview(item, wrap, thumbImg);
+                });
             });
 
             // Per-image style wiring — updates the item in place (no re-render, so
@@ -245,6 +265,35 @@
         return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
+    // Rotate an image File by 0/90/180/270° via canvas, returning a new File.
+    // Swaps canvas dimensions for the quarter turns so nothing is clipped.
+    function rotateFile(file, deg) {
+        return new Promise(resolve => {
+            deg = ((deg % 360) + 360) % 360;
+            if (!deg) return resolve(file);
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    const swap = (deg === 90 || deg === 270);
+                    const c = document.createElement('canvas');
+                    c.width  = swap ? img.naturalHeight : img.naturalWidth;
+                    c.height = swap ? img.naturalWidth  : img.naturalHeight;
+                    const ctx = c.getContext('2d');
+                    ctx.translate(c.width / 2, c.height / 2);
+                    ctx.rotate(deg * Math.PI / 180);
+                    ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+                    const isPng = (file.type || '').indexOf('png') > -1;
+                    c.toBlob(blob => {
+                        if (!blob) return resolve(file);
+                        resolve(new File([blob], file.name, { type: blob.type || file.type }));
+                    }, isPng ? 'image/png' : 'image/jpeg', 0.95);
+                } catch (e) { resolve(file); }
+            };
+            img.onerror = () => resolve(file);
+            img.src = URL.createObjectURL(file);
+        });
+    }
+
     // Form submit — rebuild file input in correct order then XHR
     form.addEventListener('submit', async e => {
         e.preventDefault();
@@ -265,6 +314,14 @@
                 }));
             } catch (err) { /* leave originals */ }
         }
+
+        // Bake any 90° orientation change into the actual uploaded file (canvas).
+        // Defensive — on failure the original stands so a post is never blocked.
+        try {
+            await Promise.all(fileList.map(async (item) => {
+                if (item.rotate) item.file = await rotateFile(item.file, item.rotate);
+            }));
+        } catch (err) { /* leave originals */ }
 
         const data = new FormData(form);
 

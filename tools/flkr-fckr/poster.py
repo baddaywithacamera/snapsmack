@@ -105,16 +105,17 @@ class FlkrDckrClient:
         }
         return dict(self._album_cache)
 
-    def create_or_get_album(self, name: str, description: str = '') -> int:
+    def create_or_get_album(self, name: str, description: str = '', view_count: int = 0) -> int:
         """
         Get existing album by name (case-insensitive) or create it.
-        Returns SnapSmack album ID.
+        Returns SnapSmack album ID. view_count seeds snap_albums.view_count
+        (imported from the Flickr album's view_count).
         """
         key = name.lower()
         if key in self._album_cache:
             return self._album_cache[key]
 
-        payload = {'name': name, 'description': description}
+        payload = {'name': name, 'description': description, 'view_count': int(view_count)}
         resp = self._session.post(
             f"{self.base_url}/api.php",
             params={'route': 'flkrfckr/albums'},
@@ -421,6 +422,7 @@ def run_import(
                         aid = client.create_or_get_album(
                             album_meta['title'],
                             album_meta.get('description', ''),
+                            int(album_meta.get('view_count', 0) or 0),
                         )
                         snap_album_ids.append(aid)
                         cover_fid = album_meta.get('cover_flickr_id')
