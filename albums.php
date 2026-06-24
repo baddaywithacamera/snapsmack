@@ -84,15 +84,19 @@ try {
     // which 524'd (Cloudflare origin timeout) on large imports (~10k photos).
     // Covers are now resolved in bulk below, with no correlated subqueries and
     // no window functions (runs on any MariaDB/MySQL).
+    // Defensive: album view-tally column (canonical owns it; this catches
+    // installs updating from before it existed). Harmless if already present.
+    try { $pdo->exec("ALTER TABLE snap_albums ADD COLUMN IF NOT EXISTS `view_count` int NOT NULL DEFAULT 0"); } catch (Exception $e) {}
+
     $agg = $pdo->prepare("
-        SELECT a.id, a.album_name, a.album_description, a.cover_image_id,
+        SELECT a.id, a.album_name, a.album_description, a.cover_image_id, a.view_count,
                COUNT(i.id) AS img_count, MAX(i.img_date) AS latest_date
         FROM snap_albums a
         INNER JOIN snap_image_album_map m ON a.id = m.album_id
         INNER JOIN snap_images i ON m.image_id = i.id
             AND i.img_status = 'published'
             AND i.img_date <= ?
-        GROUP BY a.id, a.album_name, a.album_description, a.cover_image_id
+        GROUP BY a.id, a.album_name, a.album_description, a.cover_image_id, a.view_count
         ORDER BY latest_date DESC
     ");
     $agg->execute([$now_local]);

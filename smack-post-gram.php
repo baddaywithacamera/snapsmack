@@ -430,10 +430,21 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
     .cp-strip-item.drag-over { border-color:var(--accent,#b6ff1a);
         transform:translateY(-2px); }
 
-    .cp-thumb-wrap { position:relative; width:100%; aspect-ratio:1/1;
+    /* Square tile with a visible border so the grid-tile edge is always shown —
+       lets you judge the matte margin even when the matte colour matches the page.
+       At 100% the image meets this border on its long axis. */
+    .cp-thumb-wrap { position:relative; width:100%; aspect-ratio:1/1; box-sizing:border-box;
         border-radius:4px; overflow:hidden; background:#111;
+        border:1px solid rgba(120,120,120,.55);
         display:flex; align-items:center; justify-content:center; }
-    .cp-thumb { display:block; max-width:100%; max-height:100%; }
+    .cp-thumb { display:block; max-width:100%; max-height:100%; transition:transform .15s; }
+
+    /* 90° orientation controls */
+    .cp-rot-row { display:flex; gap:6px; justify-content:center; margin-top:6px; }
+    .cp-rot-btn { width:30px; height:26px; padding:0; line-height:24px; font-size:15px;
+        cursor:pointer; border:1px solid rgba(127,127,127,.4); border-radius:4px;
+        background:rgba(127,127,127,.12); color:inherit; }
+    .cp-rot-btn:hover { background:rgba(127,127,127,.25); }
 
     /* Theme-neutral dark pill + white text — reads on any admin theme
        (greyscale included) and over any photo, no accent-colour clash. */

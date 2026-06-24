@@ -185,10 +185,14 @@ if ($sub === 'albums' && $method === 'POST') {
     $body = json_decode(file_get_contents('php://input'), true) ?? [];
     $name = trim($body['name'] ?? '');
     $desc = trim($body['description'] ?? '');
+    $views = max(0, (int)($body['view_count'] ?? 0));   // imported Flickr album view tally
 
     if ($name === '') {
         flkrfckr_error(400, 'name is required.');
     }
+
+    // Defensive: view_count column (canonical owns it; catches pre-column installs).
+    try { $pdo->exec("ALTER TABLE snap_albums ADD COLUMN IF NOT EXISTS `view_count` int NOT NULL DEFAULT 0"); } catch (Exception $e) {}
 
     // Case-insensitive match on name
     $stmt = $pdo->prepare("
@@ -199,14 +203,19 @@ if ($sub === 'albums' && $method === 'POST') {
     $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($existing) {
+        // Refresh the imported view tally on re-import (only if a value was sent).
+        if ($views > 0) {
+            $pdo->prepare("UPDATE snap_albums SET view_count = ? WHERE id = ?")
+                ->execute([$views, (int)$existing['id']]);
+        }
         flkrfckr_ok(['album_id' => (int)$existing['id'], 'created' => false]);
     }
 
     // NOTE: snap_albums has no created_at column (canonical) — do not insert one.
     $pdo->prepare("
-        INSERT INTO snap_albums (album_name, album_description)
-        VALUES (?, ?)
-    ")->execute([$name, $desc]);
+        INSERT INTO snap_albums (album_name, album_description, view_count)
+        VALUES (?, ?, ?)
+    ")->execute([$name, $desc, $views]);
 
     $album_id = (int)$pdo->lastInsertId();
     flkrfckr_ok(['album_id' => $album_id, 'created' => true]);

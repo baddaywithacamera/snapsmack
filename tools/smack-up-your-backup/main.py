@@ -13,7 +13,7 @@ Same visual family as Smack Your Batch Up.
 
 
 
-BUILD_VERSION = "0.7.3"
+BUILD_VERSION = "0.7.4"
 
 import os
 import queue
@@ -2228,13 +2228,28 @@ class SettingsTab(tk.Frame):
         ftp_g = tk.Frame(self._ftp_frame, bg=BG_MID)
         ftp_g.pack(fill="x")
         ftp_g.columnconfigure(1, weight=1)
+
+        # Protocol selector — FTP or SFTP. transport.make_client() keys on
+        # profile["transport"]; the SFTP engine (sftp_client.py via paramiko) is
+        # already wired into audit/backup/restore. Port auto-swaps 21<->22.
+        tk.Label(ftp_g, text="Protocol", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, anchor="w").grid(
+            row=0, column=0, sticky="w", padx=(0, 10), pady=3)
+        self._transport_var = tk.StringVar(value="ftp")
+        ttk.Combobox(ftp_g, textvariable=self._transport_var,
+                     values=["ftp", "sftp"], font=FONT_MONO,
+                     state="readonly", width=10).grid(
+            row=0, column=1, sticky="w", pady=3)
+        self._profile_vars["transport"] = self._transport_var
+        self._transport_var.trace_add("write", lambda *a: self._on_transport_change())
+
         for row, (label, key, show, w) in enumerate([
             ("Host",             "ftp_host",       "", W),
             ("Port",             "ftp_port",       "", WS),
             ("Username",         "ftp_user",       "", W),
             ("Password",         "ftp_pass",       "●", W),
             ("Remote directory", "ftp_remote_dir", "", W),
-        ]):
+        ], start=1):
             self._row(ftp_g, row, label, key, width=w, show=show)
 
         checks_row = tk.Frame(self._ftp_frame, bg=BG_MID)
@@ -2563,6 +2578,22 @@ class SettingsTab(tk.Frame):
         self._refresh_ai_status()
         self.load_profile(self._app._current_profile)
 
+    def _on_transport_change(self) -> None:
+        """Swap the default port when toggling FTP<->SFTP — only if the port is
+        still at the other protocol's default, so a custom port is never lost."""
+        try:
+            t = self._transport_var.get()
+            port_var = self._profile_vars.get("ftp_port")
+            if not port_var:
+                return
+            cur = (port_var.get() or "").strip()
+            if t == "sftp" and cur in ("", "21"):
+                port_var.set("22")
+            elif t == "ftp" and cur in ("", "22"):
+                port_var.set("21")
+        except Exception:
+            pass
+
     def _on_method_change(self) -> None:
         """Show/hide FTP and Cloud field groups based on the selected method."""
         method = self._method_var.get()
@@ -2682,7 +2713,8 @@ class SettingsTab(tk.Frame):
                     val = profile.get(key, default)
                     var.set(bool(val) if val != "" else default)
                 else:
-                    var.set(str(profile.get(key, "")))
+                    _ld = {"transport": "ftp"}   # default protocol for legacy profiles
+                    var.set(str(profile.get(key, _ld.get(key, ""))))
             # Restore backup method — explicit key preferred over inference
             saved_method = profile.get("backup_method", "")
             if saved_method in ("ftp", "cloud", "local"):
@@ -2709,7 +2741,7 @@ class SettingsTab(tk.Frame):
             _bool_defaults = {"ftp_ssl": True, "ftp_verify_cert": False,
                               "schedule_enabled": False}
             _str_defaults  = {"schedule_type": "daily", "schedule_day": "monday",
-                              "schedule_time": "02:00"}
+                              "schedule_time": "02:00", "transport": "ftp"}
             for key, var in self._profile_vars.items():
                 if key in _bool_defaults:
                     var.set(_bool_defaults[key])
@@ -2740,6 +2772,7 @@ class SettingsTab(tk.Frame):
             try:
                 self._app._tray_icon.stop()
                 self._app._tray_icon = None
+                self._app._tray_running = False
             except Exception:
                 pass
 
@@ -4842,6 +4875,7 @@ class App(tk.Tk):
         self._current_profile: Optional[dict] = None
         self._msg_queue: queue.Queue = queue.Queue()
         self._tray_icon = None
+        self._tray_running = False   # True only once the tray loop is actually up
         self._quitting  = False
 
         # Restore window geometry and state
@@ -5338,7 +5372,26 @@ class App(tk.Tk):
             "suyb", self._make_tray_image(),
             f"Smack Up Your Backup  v{BUILD_VERSION}", menu,
         )
-        threading.Thread(target=self._tray_icon.run, daemon=True).start()
+
+        def _on_ready(icon, *_):
+            # Fires once the tray loop is actually up — only THEN is it safe to
+            # let closing the window hide-to-tray instead of quitting.
+            try:
+                icon.visible = True
+            except Exception:
+                pass
+            self._tray_running = True
+
+        def _tray_thread():
+            try:
+                self._tray_icon.run(setup=_on_ready)
+            except Exception:
+                # Backend unavailable (e.g. not bundled) — never strand the user:
+                # the icon won't appear, so closing must quit normally.
+                self._tray_running = False
+                self._tray_icon = None
+
+        threading.Thread(target=_tray_thread, daemon=True).start()
 
     def _show_window(self) -> None:
         self.deiconify()
@@ -5373,8 +5426,11 @@ class App(tk.Tk):
         self.destroy()
 
     def _on_close(self) -> None:
-        # If tray is active and user didn't explicitly quit, minimise to tray
-        if self._tray_icon and not self._quitting:
+        # Only hide-to-tray if the tray icon actually came up. If pystray's
+        # backend failed to start the icon, hiding the window would strand the
+        # process with no way back (the Ctrl+Alt+Del support headache) — so in
+        # that case fall through and quit normally.
+        if self._tray_running and not self._quitting:
             self._hide_to_tray()
             return
         self._save_window_state()

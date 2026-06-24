@@ -61,6 +61,7 @@ class AlbumInfo:
     description: str = ''
     photo_ids:   List[str] = field(default_factory=list)
     cover_flickr_id: str = ''                   # Flickr photo ID of album cover (from cover_photo URL)
+    view_count:  int = 0                        # Flickr album view_count → snap_albums.view_count
 
 
 @dataclass
@@ -91,6 +92,11 @@ class ParseResult:
 # ---------------------------------------------------------------------------
 
 _IMG_EXTS = ('.jpg', '.jpeg', '.png', '.gif', '.webp')
+
+# Video files the Flickr export ships (as <id>_<size>.<ext>). These are
+# intentionally NOT imported — but a sidecar whose photo has a video file on
+# disk should be reported as an ignored video, not a missing photo.
+_VIDEO_EXTS = ('.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.3gp', '.mpg', '.mpeg', '.wmv')
 
 # Long numeric runs that could be a Flickr photo id (ids are ~10-11 digits;
 # >= 7 avoids matching years/short numbers that appear in titles).
@@ -132,6 +138,23 @@ def _build_image_index(folder: str):
         for run in _ID_RUN_RE.findall(fname):
             by_id.setdefault(run, []).append((prio, path))
     return by_id, by_name
+
+
+def _build_video_index(folder: str) -> set:
+    """Flickr ids that have a VIDEO file on disk. Lets a 'missing image' that is
+    really an intentionally-skipped video be reported correctly (Flickr exports
+    videos as <id>_<size>.mp4/.mov/etc.)."""
+    vid_ids: set = set()
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return vid_ids
+    for fname in names:
+        if os.path.splitext(fname)[1].lower() not in _VIDEO_EXTS:
+            continue
+        for run in _ID_RUN_RE.findall(fname):
+            vid_ids.add(run)
+    return vid_ids
 
 
 def _best_image(by_id: dict, by_name: dict,
@@ -385,6 +408,7 @@ def parse(export_folder: str, on_progress=None) -> ParseResult:
                     description=a.get('description', '').strip(),
                     photo_ids=[str(pid) for pid in a.get('photos', [])],
                     cover_flickr_id=cover_id,
+                    view_count=int(a.get('view_count') or 0),
                 )
                 album_map[aid] = info
                 result.albums.append(info)
@@ -419,6 +443,9 @@ def parse(export_folder: str, on_progress=None) -> ParseResult:
 
     # Index every image file in the folder once (id → files, basename → file).
     img_by_id, img_by_name = _build_image_index(export_folder)
+    # Ids that have a video file on disk — used to distinguish ignored videos
+    # from genuinely missing photos below.
+    video_ids = _build_video_index(export_folder)
 
     # Map NSID → display name for resolving comment authors (contacts +
     # the hand-maintained flkrfckr-names.json sidecar).
@@ -518,6 +545,13 @@ def parse(export_folder: str, on_progress=None) -> ParseResult:
         image_path = _best_image(img_by_id, img_by_name, flickr_id, original_url)
         missing = image_path is None
         if missing:
+            # No image on disk, but a video file with this id IS present → this
+            # is an intentionally-ignored video, not a lost photo. Count it as a
+            # skipped video and drop it from the import set (matches how videos
+            # detected via original_format are handled above).
+            if str(flickr_id) in video_ids:
+                skipped_videos += 1
+                continue
             missing_images += 1
             # Include in result but flagged — user sees warning in UI
             image_path = ''

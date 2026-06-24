@@ -34,7 +34,10 @@ main { margin-top: 0; }
     padding: 24px 28px;
     margin: 0 0 48px;
 }
-.key-block h2 { margin: 0 0 12px; }
+.key-block h2 { margin: 0 0 12px; color: var(--red); }
+/* Dark card (#111) — force light body text so it's readable in daylight. */
+.key-block p, .key-block ol, .key-block li { color: #dadada; }
+.key-block strong { color: #fff; }
 .key-block p { margin: 0 0 14px; font-size: 0.9rem; }
 .key-block ol { margin: 0 0 14px; padding-left: 1.4em; font-size: 0.9rem; line-height: 1.9; }
 .key-copy-wrap { display: flex; align-items: stretch; gap: 0; margin: 16px 0; }
@@ -100,9 +103,6 @@ include __DIR__ . '/includes/header.php';
                     </div>
                 </div>
 
-                <h2>The Grid Skin</h2>
-                <p>The Grid is about halfway there. The layout engine runs and the grid renders correctly — images tile, columns behave, the basic structure holds together. What isn't working yet: the dynamic column-count logic doesn't respond properly to the manifest options at save time, so changing the grid density in the skin settings doesn't actually do anything. It saves. It just doesn't apply. The skin is excluded from the gallery until that's resolved. It's not lost, it's just not ready.</p>
-
                 <h2 style="margin-top: 48px;">Oh Snap! Skin Designer — AI Integration</h2>
                 <p>Oh Snap! is the desktop skin design tool — you build skins visually and push them directly to your blog without touching code. The design side works: the controls panel, the live preview, the push-to-blog pipeline. What isn't cooperating yet is the AI side. Oh Snap! supports multiple AI providers (local via Ollama, cloud via a handful of others) for generating skin suggestions and colour palettes from a prompt or a photo. The handoff between the UI and the AI provider is inconsistent — responses come back in the wrong shape, the generated CSS occasionally lands with bad values, and streaming output from local models cuts off mid-response. It functions enough to be useful in favourable conditions, but it isn't reliable enough to document as a feature yet.</p>
 
@@ -113,7 +113,7 @@ include __DIR__ . '/includes/header.php';
                 <p>The SYBU desktop tool handles bulk post management, Drive sync, and audit operations. The Repair tab — which handles renaming Drive files, re-enriching duplicate post titles via AI, and backfilling missing Drive links — is new and hasn't had a full run against a large dataset yet. The operations are rate-limited and resumable, but they haven't been stress-tested at scale. If you're running a repair job on a large archive, watch the first few hundred entries before walking away from it.</p>
 
                 <h2 style="margin-top: 48px;">Development Skins (Not Yet in Gallery)</h2>
-                <p>Several skins are in the repo but not available in the skin gallery yet. A Grey Reckoning, In Stereo Where Available, Kiosk, 52 Card Pickup, Photogram, Show-n-Tell, and The Grid are all in various states of done. They're tracked in git, they won't disappear, but they're not ready for installs. When they're ready, they'll show up in the gallery without any action required on your end.</p>
+                <p>Several skins are in the repo but not available in the skin gallery yet. A Grey Reckoning, In Stereo Where Available, 52 Card Pickup, and Show-n-Tell are all in various states of done. They're tracked in git, they won't disappear, but they're not ready for installs. When they're ready, they'll show up in the gallery without any action required on your end.</p>
             </div>
         </div>
     </section>

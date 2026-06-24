@@ -298,27 +298,48 @@ a:hover { color: var(--sl-link-hover); }
 
 .sl-albums-view { background: var(--sl-bg); }
 
+.sl-album-grid-container { max-width: var(--sl-canvas-width); margin: 0 auto; padding: 28px 24px; }
 .sl-album-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
-  padding: 32px 24px;
-  max-width: var(--sl-canvas-width);
-  margin: 0 auto;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
 }
+@media (max-width: 600px) { .sl-album-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; } }
 
-@media (max-width: 1024px) { .sl-album-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px)  { .sl-album-grid { grid-template-columns: 1fr; } }
-
-.sl-album-cover {
-  aspect-ratio: 1;
-  background: #f3f5f6;
-  border: 1px solid #e1e4e6;
+/* Flickr-style album card — cover fills, title + photo/view counts overlaid
+   bottom-left over a gradient. */
+.sl-album-card {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 8px;
+  background: #e1e4e6;
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,.18);
 }
-
-.sl-album-cover img { width: 100%; height: 100%; object-fit: cover; }
+.sl-album-img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform .25s ease;
+}
+.sl-album-card:hover .sl-album-img { transform: scale(1.04); }
+.sl-album-grad {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,.72) 0%, rgba(0,0,0,0) 48%);
+}
+.sl-album-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 14px; }
+.sl-album-title {
+  display: block;
+  font-size: 16px; font-weight: 700; line-height: 1.2;
+  color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6);
+}
+.sl-album-count {
+  display: block;
+  font-size: 12px; margin-top: 2px;
+  color: rgba(255,255,255,.9); text-shadow: 0 1px 2px rgba(0,0,0,.6);
+}
 
 /* ============================================================================
    NAVIGATION BAR (#infobox)
@@ -337,76 +358,84 @@ a:hover { color: var(--sl-link-hover); }
 
 .sl-landing { width: 100%; }
 
+/* ── Masthead: cover image + bottom-heavy gradient, profile overlaid ────── */
+.sl-masthead { position: relative; }
 .sl-cover {
   position: relative;
   width: 100%;
-  height: 300px;
+  height: 360px;
   background: #222 center / cover no-repeat;
 }
 .sl-cover-scrim {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(0,0,0,0) 55%, rgba(0,0,0,.35));
+  /* transparent up top, deepening to near-opaque at the bottom so the
+     overlaid white profile text stays readable over any photo. */
+  background: linear-gradient(to bottom, rgba(0,0,0,0) 18%, rgba(0,0,0,.45) 62%, rgba(0,0,0,.82) 100%);
   pointer-events: none;
 }
-
-.sl-profile {
-  max-width: var(--sl-canvas-width);
-  margin: 0 auto;
-  padding: 0 24px;
+/* Profile sits IN the gradient at the bottom of the cover (Flickr idiom) */
+.sl-cover-profile {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 0 24px 22px;
 }
 .sl-profile-inner {
+  max-width: var(--sl-canvas-width);
+  margin: 0 auto;
   display: flex;
   align-items: flex-end;
   gap: 20px;
-  margin-top: -46px;
   position: relative;
 }
 .sl-profile-avatar {
-  width: 110px;
-  height: 110px;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
-  border: 4px solid #fff;
-  background: var(--sl-header-border);
+  border: 3px solid rgba(255,255,255,.92);
+  background: rgba(0,0,0,.3);
   overflow: hidden;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  box-shadow: 0 2px 10px rgba(0,0,0,.4);
 }
 .sl-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.sl-profile-avatar-initials { font-size: 42px; font-weight: 300; color: var(--sl-text-secondary); }
+.sl-profile-avatar-initials { font-size: 38px; font-weight: 300; color: #fff; }
 
-.sl-profile-info { padding-bottom: 6px; min-width: 0; flex: 1; }
-.sl-profile-name { font-size: 26px; font-weight: 600; color: var(--sl-text-primary); line-height: 1.2; }
-
-/* Stats — right side of the profile row */
-.sl-profile-stats { text-align: right; align-self: flex-end; padding-bottom: 6px; flex-shrink: 0; }
-.sl-stat strong { display: block; font-size: 22px; font-weight: 600; color: var(--sl-text-primary); line-height: 1.1; }
-.sl-stat span { font-size: 12px; color: var(--sl-text-secondary); text-transform: uppercase; letter-spacing: .04em; }
-.sl-stat-line { font-size: 13px; color: var(--sl-text-secondary); margin-top: 4px; }
-.sl-profile-tagline { color: var(--sl-text-secondary); font-size: 15px; margin-top: 2px; }
-.sl-profile-meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
-  color: var(--sl-text-secondary);
-  font-size: 13px;
+.sl-profile-info { min-width: 0; flex: 1; padding-bottom: 4px; }
+.sl-profile-name {
+  margin: 0;
+  font-size: 28px; font-weight: 700; line-height: 1.15;
+  color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.55);
 }
-.sl-profile-meta strong { color: var(--sl-text-primary); }
-.sl-profile-dot { color: var(--sl-header-border); }
-.sl-profile-bio { margin-top: 10px; color: var(--sl-text-primary); font-size: 14px; max-width: 680px; }
+.sl-profile-tagline {
+  margin: 4px 0 0;
+  font-size: 15px;
+  color: rgba(255,255,255,.88);
+  text-shadow: 0 1px 3px rgba(0,0,0,.55);
+}
 
+/* Stats — right side, white over the gradient */
+.sl-profile-stats { text-align: right; flex-shrink: 0; padding-bottom: 4px; color: #fff; }
+.sl-stat strong { display: block; font-size: 22px; font-weight: 700; line-height: 1.1; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.55); }
+.sl-stat span { font-size: 11px; color: rgba(255,255,255,.8); text-transform: uppercase; letter-spacing: .05em; }
+.sl-stat-line { font-size: 13px; color: rgba(255,255,255,.82); margin-top: 4px; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+
+/* ── Tab / utility bar (below the cover, on white) ─────────────────────── */
 .sl-profile-tabs {
+  border-bottom: 1px solid var(--sl-header-border);
+  background: #fff;
+}
+.sl-tabs-inner {
+  max-width: var(--sl-canvas-width);
+  margin: 0 auto;
+  padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 16px;
-  border-bottom: 1px solid var(--sl-header-border);
 }
 .sl-tabs-left { display: flex; flex-wrap: wrap; gap: 2px; min-width: 0; }
 .sl-tabs-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
@@ -437,21 +466,21 @@ a:hover { color: var(--sl-link-hover); }
 
 /* Calendar toggle — box with a "C" in the corner (slide-over wired next) */
 .sl-cal-toggle {
-  position: relative;
   width: 30px;
   height: 30px;
+  padding: 0;
   border: 1px solid var(--sl-header-border);
   border-radius: 4px;
   background: #fff;
   cursor: pointer;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .sl-cal-toggle:hover { border-color: var(--sl-link); }
 .sl-cal-c {
-  position: absolute;
-  top: 1px;
-  right: 3px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--sl-text-secondary);
   line-height: 1;

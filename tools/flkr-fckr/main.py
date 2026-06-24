@@ -881,7 +881,8 @@ class FlkrDckrApp(tk.Tk):
         # Build album map from parse result
         flickr_album_map = {
             a.flickr_id: {'title': a.title, 'description': a.description,
-                          'cover_flickr_id': a.cover_flickr_id}
+                          'cover_flickr_id': a.cover_flickr_id,
+                          'view_count': a.view_count}
             for a in (self._parse_result.albums or [])
         }
 
