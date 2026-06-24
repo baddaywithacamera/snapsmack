@@ -68,11 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
     $st_fx     = $_POST['img_focus_x']      ?? [];
     $st_fy     = $_POST['img_focus_y']      ?? [];
     $st_zoom   = $_POST['img_zoom']         ?? [];
+    // "Post separately" flag: a flagged image is created as its OWN single post
+    // instead of joining the carousel stack.
+    $st_split  = $_POST['img_split']        ?? [];
 
     $hexok = function ($v, $def) {
         return (is_string($v) && preg_match('/^#[0-9a-fA-F]{6}$/', $v)) ? $v : $def;
     };
-    $img_style_at = function ($i) use ($st_crop,$st_size,$st_bpx,$st_bcol,$st_bg,$st_shadow,$st_fx,$st_fy,$st_zoom,$hexok) {
+    $img_style_at = function ($i) use ($st_crop,$st_size,$st_bpx,$st_bcol,$st_bg,$st_shadow,$st_fx,$st_fy,$st_zoom,$st_split,$hexok) {
         $crop = (($st_crop[$i] ?? 'fit') === 'fill') ? 'fill' : 'fit';
         return [
             'crop'   => $crop,
@@ -84,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
             'fx'     => max(0,  min(100, (int)($st_fx[$i]   ?? 50))),
             'fy'     => max(0,  min(100, (int)($st_fy[$i]   ?? 50))),
             'zoom'   => max(100,min(300, (int)($st_zoom[$i] ?? 100))),
+            'split'  => !empty($st_split[$i]) ? 1 : 0,
         ];
     };
 
@@ -292,55 +296,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         if ($is_ajax) { echo $err_msg; exit; }
         $msg = $err_msg;
     } else {
-        // Downgrade to single if only one image
-        if (count($processed_images) === 1) $post_type = 'single';
-
-        $post_slug = $slug_base;
-
-        $post_stmt = $pdo->prepare("
-            INSERT INTO snap_posts
-                (title, slug, description, post_type, status, created_at,
-                 allow_comments, allow_download, download_url, panorama_rows,
-                 post_img_size_pct, post_border_px, post_border_color,
-                 post_bg_color, post_shadow)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 100, 0, '#000000', '#ffffff', 0)
-        ");
-        $post_stmt->execute([
-            '', $post_slug, $desc, $post_type, $status, $post_date,
-            $allow_cmt, $allow_dl, $dl_url, $pano_rows,
-        ]);
-        $post_id = (int)$pdo->lastInsertId();
-
-        // Pivot rows — per-image styling decided individually in the composer.
-        // Square-crop (fill) ignores the matte/border/shadow; fit keeps them.
-        $pi_stmt = $pdo->prepare("
-            INSERT INTO snap_post_images
-                (post_id, image_id, sort_position, is_cover,
-                 img_size_pct, img_border_px, img_border_color, img_bg_color,
-                 img_shadow, img_crop_mode, img_focus_x, img_focus_y, img_zoom)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        $upd_post = $pdo->prepare("UPDATE snap_images SET post_id = ? WHERE id = ?");
-        foreach ($processed_images as $pos => $img) {
-            $s = $img['style'];
-            // Focal point + zoom apply to every image (fit or fill) — they define
-            // the square crop used for the tile thumbnail.
-            if ($s['crop'] === 'fill') {
-                $pi_stmt->execute([$post_id, $img['image_id'], $pos, ($pos === 0 ? 1 : 0),
-                                   100, 0, '#000000', '#ffffff', 0, 'fill',
-                                   $s['fx'], $s['fy'], $s['zoom']]);
-            } else {
-                $pi_stmt->execute([$post_id, $img['image_id'], $pos, ($pos === 0 ? 1 : 0),
-                                   $s['size'], $s['bpx'], $s['bcol'], $s['bg'], $s['shadow'], 'fit',
-                                   $s['fx'], $s['fy'], $s['zoom']]);
-            }
-            $upd_post->execute([$post_id, $img['image_id']]);
+        // Partition: images flagged "post separately" each become their OWN
+        // single post; the rest form the main post (carousel, or single if one).
+        $group   = [];
+        $singles = [];
+        foreach ($processed_images as $img) {
+            if (!empty($img['style']['split'])) $singles[] = $img;
+            else                                $group[]   = $img;
         }
 
-        // Tags from caption + manual tags (no title in gram), applied to cover image.
-        $cover_id   = $processed_images[0]['image_id'];
-        $tag_source = $desc . ' ' . $manual_tags;
-        snap_sync_tags($pdo, $cover_id, $tag_source);
+        // Shared creator: one snap_posts row + its pivot rows from a list of
+        // processed images (in order). Returns the new post id.
+        $make_post = function (array $images, string $ptype, int $rows) use (
+            $pdo, $desc, $status, $post_date, $allow_cmt, $allow_dl, $dl_url, $manual_tags
+        ) {
+            $imgs = array_values($images);
+            $slug = 'ig-' . date('Ymd-His') . '-' . substr(bin2hex(random_bytes(4)), 0, 8);
+            $pdo->prepare("
+                INSERT INTO snap_posts
+                    (title, slug, description, post_type, status, created_at,
+                     allow_comments, allow_download, download_url, panorama_rows,
+                     post_img_size_pct, post_border_px, post_border_color,
+                     post_bg_color, post_shadow)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 100, 0, '#000000', '#ffffff', 0)
+            ")->execute(['', $slug, $desc, $ptype, $status, $post_date,
+                         $allow_cmt, $allow_dl, $dl_url, $rows]);
+            $pid = (int)$pdo->lastInsertId();
+
+            $pi = $pdo->prepare("
+                INSERT INTO snap_post_images
+                    (post_id, image_id, sort_position, is_cover,
+                     img_size_pct, img_border_px, img_border_color, img_bg_color,
+                     img_shadow, img_crop_mode, img_focus_x, img_focus_y, img_zoom)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $up = $pdo->prepare("UPDATE snap_images SET post_id = ? WHERE id = ?");
+            foreach ($imgs as $pos => $img) {
+                $s = $img['style'];
+                if ($s['crop'] === 'fill') {
+                    $pi->execute([$pid, $img['image_id'], $pos, ($pos === 0 ? 1 : 0),
+                                  100, 0, '#000000', '#ffffff', 0, 'fill', $s['fx'], $s['fy'], $s['zoom']]);
+                } else {
+                    $pi->execute([$pid, $img['image_id'], $pos, ($pos === 0 ? 1 : 0),
+                                  $s['size'], $s['bpx'], $s['bcol'], $s['bg'], $s['shadow'], 'fit', $s['fx'], $s['fy'], $s['zoom']]);
+                }
+                $up->execute([$pid, $img['image_id']]);
+            }
+            // Tags from caption + manual tags, applied to this post's cover image.
+            snap_sync_tags($pdo, $imgs[0]['image_id'], $desc . ' ' . $manual_tags);
+            return $pid;
+        };
+
+        // Main post from the grouped images (downgrade to single if only one).
+        if (!empty($group)) {
+            $main_type = (count($group) === 1) ? 'single' : $post_type;
+            $make_post($group, $main_type, $pano_rows);
+        }
+        // Each "post separately" image → its own single post.
+        foreach ($singles as $simg) {
+            $make_post([$simg], 'single', 1);
+        }
 
         // New content is live — flush the page cache so it appears immediately.
         require_once __DIR__ . '/core/page-cache.php';

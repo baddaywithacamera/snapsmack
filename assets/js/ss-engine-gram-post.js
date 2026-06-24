@@ -63,6 +63,8 @@
                 bcol: '#000000', bg: '#ffffff', shadow: 0,
                 // Square-crop framing: focal point (%) + zoom (%). Always editable.
                 fx: 50, fy: 50, zoom: 100,
+                // "Post separately" — this image becomes its own single post.
+                split: false,
             });
         });
         renderStrip();
@@ -152,6 +154,8 @@
                     '<span class="cp-pos-badge">' + (idx + 1) + '</span>' +
                     '<img class="cp-thumb" src="' + item.objectUrl + '" alt="">' +
                     '<button type="button" class="cp-remove-btn" data-idx="' + idx + '">✕</button>' +
+                    '<button type="button" class="gp-split-btn" data-idx="' + idx + '" title="Post this one as its own separate post"' +
+                        ' style="position:absolute;top:6px;left:6px;width:24px;height:24px;border:0;border-radius:4px;color:#fff;font-size:13px;line-height:1;cursor:pointer;background:' + (item.split ? '#0a8a5f' : 'rgba(0,0,0,0.55)') + ';">↗</button>' +
                 '</div>' +
                 '<div class="cp-rot-row">' +
                     '<button type="button" class="cp-rot-btn" data-rot="-90" title="Rotate left 90°">&#8634;</button>' +
@@ -189,6 +193,21 @@
                 e.stopPropagation();
                 removeFile(parseInt(e.currentTarget.dataset.idx));
             });
+
+            // "Post separately" toggle — image leaves the carousel and posts on its
+            // own. Green when active; re-render to reflect the new state.
+            if (item.split) el.style.outline = '2px solid #0a8a5f';
+            const splitBtn = el.querySelector('.gp-split-btn');
+            if (splitBtn) {
+                splitBtn.addEventListener('mousedown',  e => e.stopPropagation());
+                splitBtn.addEventListener('mouseenter', () => { el.draggable = false; });
+                splitBtn.addEventListener('mouseleave', () => { el.draggable = true; });
+                splitBtn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    item.split = !item.split;
+                    renderStrip();
+                });
+            }
 
             // 90° orientation buttons — update the preview live; the real file is
             // rotated via canvas on submit (rotateFile). Don't let them start a drag.
@@ -416,6 +435,7 @@
             data.append('img_focus_x[]',      Math.round(item.fx != null ? item.fx : 50));
             data.append('img_focus_y[]',      Math.round(item.fy != null ? item.fy : 50));
             data.append('img_zoom[]',         item.zoom != null ? item.zoom : 100);
+            data.append('img_split[]',        item.split ? 1 : 0);
         });
 
         const xhr = new XMLHttpRequest();
