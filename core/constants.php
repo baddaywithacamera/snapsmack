@@ -65,7 +65,7 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
 
 define('SNAPSMACK_VERSION', 'Alpha 0.7.299');
 define('SNAPSMACK_VERSION_SHORT', '0.7.299');
-define('SNAPSMACK_VERSION_CODENAME', 'Front Row');
+define('SNAPSMACK_VERSION_CODENAME', 'Musical Chairs');
 
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.

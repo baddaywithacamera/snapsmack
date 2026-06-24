@@ -12,6 +12,31 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.299 — "Musical Chairs" (2026-06-24)
+
+- **Per-image square crop with zoom + pan (compose and edit).** Every photo in the
+  gram composer and the carousel editor now has a Zoom slider (1×–3×) and drag-to-
+  reposition, so you choose what fills the 1:1 tile instead of a forced centre crop.
+  The live preview matches the server crop exactly. Stored per-image as
+  `img_focus_x` / `img_focus_y` / `img_zoom` (canonical + defensive `ADD COLUMN IF
+  NOT EXISTS`); the square thumbnail is cut from the focal point at the chosen zoom
+  and regenerated on edit. Works regardless of fit/fill; defaults reproduce the old
+  centre crop. (`database/schema/snapsmack_canonical.sql`, `core/thumb-generator.php`,
+  `smack-post-gram.php`, `smack-edit-carousel.php`, `assets/js/ss-engine-gram-post.js`,
+  `assets/js/ss-engine-carousel-edit.js`)
+- **Split a photo out into its own post.** In the carousel editor an ↗ button pulls
+  an image out into a brand-new single post by re-pointing it in the DB — no delete
+  and re-upload — copying the source post's caption, status and date. In the gram
+  composer the same ↗ marks an image to be posted separately, so one submit creates
+  the carousel plus a single post per pulled image. (`smack-edit-carousel.php`,
+  `smack-post-gram.php`, `assets/js/ss-engine-carousel-edit.js`,
+  `assets/js/ss-engine-gram-post.js`)
+- **The Grid white-line fix (skin 1.3.28).** A framed tile showed a thin white sliver
+  between the photo and its border along the bottom — the sub-pixel
+  `object-fit:contain` letterbox bleeding the white tile background through. The
+  letterbox now takes the border colour, so the line is gone. (`skins/the-grid/style.css`,
+  `skins/the-grid/manifest.php`)
+
 ## 0.7.297 — "Front Row" (2026-06-24)
 
 - **Slickr Flickr-grade masthead + albums (skin 1.0.5).** The cover now carries a
