@@ -12,6 +12,21 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.301 — "Box Seats" (2026-06-24)
+
+- **Flickr import now captures views + provenance (FLKR FCKR).** Each photo's
+  `count_views` and Flickr page URL come in alongside likes/comments/tags/albums/
+  geo/license. New `snap_images.img_view_seed` + `img_source_url` (canonical +
+  defensive ADD COLUMN). (`tools/flkr-fckr/flickr_parser.py`,
+  `tools/flkr-fckr/poster.py`, `core/flkrfckr-api.php`,
+  `database/schema/snapsmack_canonical.sql`)
+- **Auto-built "best of" collections.** On import, a **Most Viewed** and a
+  **Most Liked** collection are created — top 20 each, ranked, the #1 photo as the
+  cover. New `flkrfckr/collections` endpoint; `snap_collection_items` gains an
+  `image` item type; `collection.php` renders image members so the collections show
+  as a page in every skin. (`core/flkrfckr-api.php`, `collection.php`,
+  `database/schema/snapsmack_canonical.sql`, `tools/flkr-fckr/poster.py`)
+
 ## 0.7.300 — "Musical Chairs" (2026-06-24)
 
 - **Per-image square crop with zoom + pan (compose and edit).** Every photo in the
