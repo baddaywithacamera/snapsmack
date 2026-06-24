@@ -478,7 +478,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && !$stage_state && !$action) {
         $cache_age_secs = $last_check ? (time() - strtotime($last_check)) : PHP_INT_MAX;
         $cached_ok = is_array($cached_result)
                   && ($cached_result['core_status'] ?? '') !== ''
-                  && ($cached_result['core_status'] ?? '') !== 'error';
+                  && ($cached_result['core_status'] ?? '') !== 'error'
+                  // A cached result computed for a different installed_version is
+                  // not trustworthy — e.g. after a reset, a partial update, or a
+                  // manual version bump. Don't hydrate it; fall through so the JS
+                  // auto-check fetches a fresh result instead of showing a stale
+                  // "up to date" that hides a newly-available version.
+                  && ($cached_result['installed_version'] ?? null) === $installed_version;
         if ($cache_age_secs < 21600 && $cached_ok) {
             $core_status = $cached_result['core_status'];
             $core_update = $cached_result['core_update'] ?? null;
@@ -757,8 +763,16 @@ if ($action === 'reset_update_state') {
           $_SESSION['update_chunk_state'], $_SESSION['update_backup_file']);
     $stage_state = null;
 
-    // Clear cached check results
-    $pdo->exec("DELETE FROM snap_settings WHERE setting_key IN ('update_check_result', 'last_update_check', 'installed_checksum')");
+    // Force a fresh check WITHOUT discarding the last-known-good cache.
+    // Previously this DELETE'd update_check_result too, which removed the only
+    // fallback — so the very next check (a single fast attempt on a slow
+    // outbound link) hard-failed with "COULD NOT REACH UPDATE SERVER" instead
+    // of falling back to last-known-good. Keep the cached result as a fallback;
+    // just age out last_update_check so a fresh check fires, and drop the
+    // checksum so a same-version rebuild is re-detected.
+    $pdo->exec("DELETE FROM snap_settings WHERE setting_key = 'installed_checksum'");
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('last_update_check', '2000-01-01 00:00:00')
+                   ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute();
 
     // Reset installed_version to what constants.php says — the protected file
     // is the reliable source of truth when an update has partially applied.
