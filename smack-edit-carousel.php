@@ -72,7 +72,11 @@ $errs = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $title        = trim($_POST['title']          ?? 'Untitled Transmission');
+    // GRAM/carousel-mode posts carry no title — don't force a placeholder when the
+    // (hidden) title field isn't submitted.
+    $title        = (($settings['site_mode'] ?? 'photoblog') === 'carousel')
+                        ? trim($_POST['title'] ?? '')
+                        : trim($_POST['title'] ?? 'Untitled Transmission');
     $desc         = trim($_POST['desc']            ?? '');
     $status       = $_POST['img_status']           ?? 'published';
     $pano_rows    = max(1, min(3, (int)($_POST['panorama_rows'] ?? 1)));
@@ -593,10 +597,12 @@ include 'core/sidebar.php';
             <div class="post-layout-grid">
 
                 <div class="post-col-left">
+                    <?php if (!$_edit_is_carousel): ?>
                     <div class="lens-input-wrapper">
                         <label>POST TITLE</label>
                         <input type="text" name="title" value="<?php echo htmlspecialchars($post['title']); ?>" required autofocus>
                     </div>
+                    <?php endif; ?>
 
                     <?php if ($post['post_type'] === 'panorama'): ?>
                     <div class="lens-input-wrapper">

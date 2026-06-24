@@ -161,6 +161,12 @@
 
         wrap.style.position = 'relative';
         wrap.style.overflow = 'hidden';
+        // The edit page puts no fixed size on this wrap — the square thumb used to
+        // give it height. Once the image is absolutely positioned for cropping the
+        // wrap would collapse to a stripe, so pin it to a square viewport.
+        wrap.style.width    = '240px';
+        wrap.style.height   = '240px';
+        wrap.style.maxWidth = '100%';
         if (aspect) thumb.src = aspect;   // uncropped, so panning has room to move
 
         function apply() {
