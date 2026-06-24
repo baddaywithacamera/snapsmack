@@ -166,3 +166,5 @@ skins/chaplin/reference work from Claude Design - gitignore/
 
 # Instagram export reference data — private, never commit
 dropagram/
+tools/flkr-fckr/_pycheck.out
+tools/smack-up-your-backup/_suyb_check.out
