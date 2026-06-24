@@ -431,7 +431,8 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
 
     .cp-cover-badge { position:absolute; top:5px; left:5px; z-index:2;
         font-size:9px; font-weight:700; letter-spacing:.6px; padding:2px 6px;
-        border-radius:3px; background:var(--accent,#b6ff1a); color:#111; }
+        border-radius:3px; background:#c6ff00; color:#111;
+        text-shadow:none; box-shadow:0 1px 2px rgba(0,0,0,.4); }
     .cp-pos-badge { position:absolute; bottom:5px; right:5px; z-index:2;
         font-size:10px; font-weight:600; min-width:18px; text-align:center;
         padding:1px 5px; border-radius:10px; background:rgba(0,0,0,.7);

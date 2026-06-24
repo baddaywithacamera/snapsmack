@@ -39,7 +39,13 @@ $site_display = $settings['site_name']        ?? 'SnapSmack';
 // Decode any stored HTML entities first (Flickr-imported / pasted values can
 // arrive pre-encoded, e.g. "it&#039;s"); the output layer re-escapes once, so
 // this is idempotent and kills the double-encoded "&#039;" rendering.
-$tagline      = trim(html_entity_decode($settings['site_tagline'] ?? '', ENT_QUOTES, 'UTF-8'));
+// Decode repeatedly to undo any accidental double-encoding baked in by the
+// Flickr import / hub sync (stored "it&amp;#039;s"), then drop a leading
+// separator pipe. Re-escaped once on output below.
+$tagline = (string)($settings['site_tagline'] ?? '');
+$prev = null;
+while ($tagline !== $prev) { $prev = $tagline; $tagline = html_entity_decode($tagline, ENT_QUOTES, 'UTF-8'); }
+$tagline = preg_replace('/^\s*\|\s*/', '', trim($tagline));
 $bio          = trim(html_entity_decode($settings['site_description'] ?? '', ENT_QUOTES, 'UTF-8'));
 $location     = trim($settings['slickr_location']    ?? '');  // optional, set in skin settings
 $established  = trim($settings['slickr_established']  ?? '');  // optional, e.g. "2011"

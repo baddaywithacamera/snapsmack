@@ -228,6 +228,15 @@
                 });
             }
 
+            // Don't let grabbing a control (number field, dropdown, colour
+            // picker, button) start a card drag — native form controls can't
+            // work inside a draggable element, so disable drag while the
+            // pointer is over any control and restore it on the way out.
+            item.querySelectorAll('input, select, textarea, button').forEach(function (ctrl) {
+                ctrl.addEventListener('mouseenter', function () { item.draggable = false; });
+                ctrl.addEventListener('mouseleave', function () { item.draggable = true; });
+            });
+
             // Drag-to-reorder (mouse)
             item.addEventListener('dragstart', function (e) {
                 dragSrcIdx = idx;
@@ -303,21 +312,14 @@
         return '<div class="cp-style-panel cp-exif-panel" style="display:none;">' +
             '<div class="cp-exif-grid">' +
                 '<div class="lens-input-wrapper">' +
-                    '<label>IMAGE SIZE</label>' +
-                    '<select name="img_size_pct[]" class="full-width-select cp-style-input" data-style-field="size_pct">' +
-                        opt(100, '100% — edge to edge', s.size_pct) +
-                        opt(95, '95%', s.size_pct) + opt(90, '90%', s.size_pct) +
-                        opt(85, '85%', s.size_pct) + opt(80, '80%', s.size_pct) +
-                        opt(75, '75%', s.size_pct) +
-                    '</select>' +
+                    '<label>IMAGE SIZE (%)</label>' +
+                    '<input type="number" name="img_size_pct[]" class="full-width-select cp-style-input" data-style-field="size_pct" ' +
+                           'value="' + (parseInt(s.size_pct, 10) || 100) + '" min="50" max="100" step="1" inputmode="numeric">' +
                 '</div>' +
                 '<div class="lens-input-wrapper">' +
-                    '<label>BORDER THICKNESS</label>' +
-                    '<select name="img_border_px[]" class="full-width-select cp-style-input" data-style-field="border_px">' +
-                        opt(0,'None',s.border_px) + opt(1,'1px',s.border_px) + opt(2,'2px',s.border_px) +
-                        opt(3,'3px',s.border_px)  + opt(5,'5px',s.border_px) + opt(8,'8px',s.border_px) +
-                        opt(10,'10px',s.border_px)+ opt(15,'15px',s.border_px)+ opt(20,'20px',s.border_px) +
-                    '</select>' +
+                    '<label>BORDER THICKNESS (px)</label>' +
+                    '<input type="number" name="img_border_px[]" class="full-width-select cp-style-input" data-style-field="border_px" ' +
+                           'value="' + (parseInt(s.border_px, 10) || 0) + '" min="0" max="40" step="1" inputmode="numeric">' +
                 '</div>' +
                 '<div class="lens-input-wrapper">' +
                     '<label>BORDER COLOUR</label>' +
