@@ -49,6 +49,8 @@
 
     // Tracks image IDs removed in this session
     var removedIds    = [];
+    // Tracks image IDs split out into their own new post this session
+    var splitIds      = [];
     // New files to add (File objects, from drop zone)
     var newFiles      = [];
     // Parallel style objects for new files (same index as newFiles[])
@@ -149,6 +151,24 @@
                 removedIds.push(imageId);
                 item.parentNode.removeChild(item);
                 // If we removed the cover, promote the first remaining item
+                if (imageId === coverImageId) {
+                    var first = strip.querySelector('.ce-strip-item');
+                    if (first) coverImageId = parseInt(first.getAttribute('data-image-id'), 10) || 0;
+                }
+                refreshBadges();
+            });
+        }
+
+        // Split: pull this image out into its own new post. Like remove, but the
+        // server creates a fresh single post for it (no delete + reupload).
+        var splitBtn = item.querySelector('.ce-split-btn');
+        if (splitBtn) {
+            splitBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (splitBtn.dataset.confirm && !window.confirm(splitBtn.dataset.confirm)) return;
+                var imageId = parseInt(item.getAttribute('data-image-id'), 10);
+                splitIds.push(imageId);
+                item.parentNode.removeChild(item);
                 if (imageId === coverImageId) {
                     var first = strip.querySelector('.ce-strip-item');
                     if (first) coverImageId = parseInt(first.getAttribute('data-image-id'), 10) || 0;
@@ -393,6 +413,7 @@
         form.addEventListener('submit', function (e) {
             syncSortOrder();
             syncRemovedIds();
+            syncSplitIds();
             syncCoverId();
 
             // For per_image mode: sync new-image style arrays as hidden inputs
@@ -462,6 +483,19 @@
             var input   = document.createElement('input');
             input.type  = 'hidden';
             input.name  = 'remove_image_ids[]';
+            input.value = id;
+            form.appendChild(input);
+        });
+    }
+
+    function syncSplitIds() {
+        form.querySelectorAll('input[name="split_image_ids[]"]').forEach(function (el) {
+            el.parentNode.removeChild(el);
+        });
+        splitIds.forEach(function (id) {
+            var input   = document.createElement('input');
+            input.type  = 'hidden';
+            input.name  = 'split_image_ids[]';
             input.value = id;
             form.appendChild(input);
         });
