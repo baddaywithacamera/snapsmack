@@ -153,6 +153,25 @@ if (is_array($cached_result)) {
     }
 }
 
+// ── STALE-CACHE GUARD ─────────────────────────────────────────────────────────
+// The status card renders straight from $cached_result['core_update'] without
+// re-checking it against the running version. So a cached row that advertises a
+// build we've already passed — e.g. the spoke was updated out-of-band via a hub
+// push while the cached check still pointed at an older version, or a "reset
+// state" kept the old row — paints "UPDATE AVAILABLE" for a version OLDER than
+// what's installed. Drop any cached update that isn't strictly newer than the
+// running version, and persist the cleaned row so it doesn't keep resurfacing.
+if (is_array($cached_result) && !empty($cached_result['core_update']['version'])
+    && !snap_version_compare($cached_result['core_update']['version'], $installed_version, '>')) {
+    $cached_result['core_update'] = null;
+    $cached_result['core_status'] = 'up_to_date';
+    try {
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('update_check_result', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+            ->execute([json_encode($cached_result, JSON_UNESCAPED_SLASHES)]);
+    } catch (PDOException $e) {}
+}
+
 /**
  * Backfill safe defaults into an update array so no key is ever undefined.
  * Uses += (union) — existing keys are never overwritten.

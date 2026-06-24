@@ -140,6 +140,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  $post_style_bg,   $post_style_shadow,
                  $post_id]);
 
+    // --- Cascade status + date to this post's images ---
+    // The archive grid (smack-manage.php) and all status filters read
+    // snap_images.img_status / img_date — NOT snap_posts.status. So a post-level
+    // status change must cascade to the linked image rows, or "Published" saves
+    // to snap_posts but the grid keeps showing the stale image status ("Draft").
+    // Mirrors the new-image INSERT, which already writes img_status + img_date
+    // together. The edit handler was updating only the post row.
+    $pdo->prepare("UPDATE snap_images i
+                   JOIN snap_post_images pi ON pi.image_id = i.id
+                   SET i.img_status = ?, i.img_date = ?
+                   WHERE pi.post_id = ?")
+        ->execute([$status, $post_date, $post_id]);
+
     // --- Rebuild category / album maps (photoblog mode only) ---
     if (($settings['site_mode'] ?? 'photoblog') !== 'carousel') {
         $selected_cats   = $_POST['cat_ids']   ?? [];
@@ -941,6 +954,10 @@ include 'core/sidebar.php';
 <style>
 /* Reuse cp- classes from smack-post-carousel.php for the strip UI.
    Additional overrides for the edit-specific elements. */
+/* Title field is hidden in carousel mode — kill the leftover top margin on the
+   now-first wrapper so the form doesn't open with a dead band of padding.
+   Mirrors the same fix on the new-post composer (smack-post-gram.php). */
+.post-col-left .post-description-wrap { margin-top: 0; }
 .ce-cover-badge {
     position: absolute; bottom: 6px; left: 6px;
     background: rgba(220, 160, 0, 0.85); color: #fff;
