@@ -32,9 +32,12 @@ if (!defined('BASE_URL')) {
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/constants.php';
 
-// --- CORS: allow Oh Snap! desktop app (file:// and tauri://) ---
+// --- CORS: allow Oh Snap! desktop app. Origins: file:// and tauri://localhost
+//     (macOS/Linux) AND http(s)://tauri.localhost — Tauri 2 on Windows/WebView2
+//     serves the app from there, so the old file://|tauri:// allowlist silently
+//     blocked every Windows connect with a CORS failure. ---
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if (preg_match('#^(file://|tauri://)#', $origin)) {
+if (preg_match('#^(file://|tauri://|https?://tauri\.localhost)#', $origin)) {
     header('Access-Control-Allow-Origin: ' . $origin);
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
     header('Access-Control-Allow-Headers: Authorization, Content-Type');
