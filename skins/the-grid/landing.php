@@ -111,6 +111,8 @@ $grid_stmt = $pdo->prepare("
         i.img_file,
         i.img_thumb_square,
         i.img_thumb_aspect,
+        i.img_width,
+        i.img_height,
         i.img_slug,
         pi.img_size_pct,
         pi.img_border_px,
@@ -217,7 +219,15 @@ include dirname(__DIR__, 2) . '/core/meta.php';
                 $tile_class .= ' tg-tile--trigram';
             }
 
-            if ($do_frame) $tile_class .= ' tg-tile--framed';
+            if ($do_frame) {
+                $tile_class .= ' tg-tile--framed';
+                // Orientation decides which axis the size% applies to: landscape
+                // fills width, portrait fills height (so it never overflows the
+                // square tile). The border hugs the actual image either way.
+                if ((int)$post['img_height'] > (int)$post['img_width']) {
+                    $tile_class .= ' tg-tile--portrait';
+                }
+            }
 
             $tile_css_vars = '';
             if ($do_frame) {
