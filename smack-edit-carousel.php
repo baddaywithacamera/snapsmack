@@ -119,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pi_style_bc     = $_POST['img_border_color'] ?? [];
     $pi_style_bg     = $_POST['img_bg_color']     ?? [];
     $pi_style_shadow = $_POST['img_shadow']       ?? [];
+    $pi_style_crop   = $_POST['img_crop_mode']    ?? [];   // [image_id => fit|fill]
     // New-image parallel style arrays (position-indexed, parallel to new_img_files[])
     $new_style_sizes  = $_POST['new_img_size_pct']     ?? [];
     $new_style_bpx    = $_POST['new_img_border_px']    ?? [];
@@ -238,23 +239,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // --- Update per-image frame style on snap_post_images ---
-    if ($customize_level === 'per_image') {
-        foreach ($pi_style_sizes as $img_id => $sz) {
-            $img_id = (int)$img_id;
-            $sz     = max(75, min(100, (int)$sz));
-            $bpx    = max(0,  min(20,  (int)($pi_style_bpx[$img_id]    ?? 0)));
-            $bc     = preg_match('/^#[0-9a-fA-F]{6}$/', $pi_style_bc[$img_id]    ?? '')
-                          ? $pi_style_bc[$img_id]    : '#000000';
-            $bg     = preg_match('/^#[0-9a-fA-F]{6}$/', $pi_style_bg[$img_id]    ?? '')
-                          ? $pi_style_bg[$img_id]    : '#ffffff';
-            $sh     = max(0, min(3, (int)($pi_style_shadow[$img_id]    ?? 0)));
-            $pdo->prepare("
-                UPDATE snap_post_images
-                SET img_size_pct = ?, img_border_px = ?, img_border_color = ?,
-                    img_bg_color = ?, img_shadow = ?
-                WHERE post_id = ? AND image_id = ?
-            ")->execute([$sz, $bpx, $bc, $bg, $sh, $post_id, $img_id]);
-        }
+    // Applied unconditionally (NOT gated by customise level) so the edit strip's
+    // per-image widget — the same component the composer uses — always persists.
+    // Crop mode (fit/fill), size, border, matte and shadow all key by image_id;
+    // ranges mirror the widget (size 10–100, border 0–50).
+    foreach ($pi_style_sizes as $img_id => $sz) {
+        $img_id = (int)$img_id;
+        $sz     = max(10, min(100, (int)$sz));
+        $bpx    = max(0,  min(50,  (int)($pi_style_bpx[$img_id]    ?? 0)));
+        $bc     = preg_match('/^#[0-9a-fA-F]{6}$/', $pi_style_bc[$img_id]    ?? '')
+                      ? $pi_style_bc[$img_id]    : '#000000';
+        $bg     = preg_match('/^#[0-9a-fA-F]{6}$/', $pi_style_bg[$img_id]    ?? '')
+                      ? $pi_style_bg[$img_id]    : '#ffffff';
+        $sh     = max(0, min(3, (int)($pi_style_shadow[$img_id]    ?? 0)));
+        $cm     = (($pi_style_crop[$img_id] ?? 'fit') === 'fill') ? 'fill' : 'fit';
+        $pdo->prepare("
+            UPDATE snap_post_images
+            SET img_size_pct = ?, img_border_px = ?, img_border_color = ?,
+                img_bg_color = ?, img_shadow = ?, img_crop_mode = ?
+            WHERE post_id = ? AND image_id = ?
+        ")->execute([$sz, $bpx, $bc, $bg, $sh, $cm, $post_id, $img_id]);
     }
 
     // --- Update per-image square crop (focal point + zoom) ---
@@ -542,7 +546,7 @@ try {
 $images_stmt = $pdo->prepare("
     SELECT i.*, pi.sort_position, pi.is_cover, pi.id AS pivot_id,
            pi.img_size_pct, pi.img_border_px, pi.img_border_color,
-           pi.img_bg_color, pi.img_shadow,
+           pi.img_bg_color, pi.img_shadow, pi.img_crop_mode,
            pi.img_focus_x, pi.img_focus_y, pi.img_zoom
     FROM snap_post_images pi
     JOIN snap_images i ON i.id = pi.image_id
@@ -836,7 +840,13 @@ include 'core/sidebar.php';
                      data-aspect="<?php echo htmlspecialchars($pimg['img_thumb_aspect'] ?: $pimg['img_file']); ?>"
                      data-focus-x="<?php echo (int)($pimg['img_focus_x'] ?? 50); ?>"
                      data-focus-y="<?php echo (int)($pimg['img_focus_y'] ?? 50); ?>"
-                     data-zoom="<?php echo (int)($pimg['img_zoom'] ?? 100); ?>">
+                     data-zoom="<?php echo (int)($pimg['img_zoom'] ?? 100); ?>"
+                     data-crop="<?php echo ($pimg['img_crop_mode'] ?? 'fit') === 'fill' ? 'fill' : 'fit'; ?>"
+                     data-size="<?php echo (int)($pimg['img_size_pct'] ?? 100); ?>"
+                     data-bpx="<?php echo (int)($pimg['img_border_px'] ?? 0); ?>"
+                     data-bcol="<?php echo htmlspecialchars($pimg['img_border_color'] ?? '#000000'); ?>"
+                     data-bg="<?php echo htmlspecialchars($pimg['img_bg_color'] ?? '#ffffff'); ?>"
+                     data-shadow="<?php echo (int)($pimg['img_shadow'] ?? 0); ?>">
                     <div class="ce-thumb-wrap cp-thumb-wrap">
                         <img src="<?php echo htmlspecialchars($thumb_src); ?>" class="ce-thumb cp-thumb" alt="">
                         <span class="ce-cover-badge cp-cover-badge" title="Click to make this the cover image"
@@ -882,50 +892,10 @@ include 'core/sidebar.php';
                         </div>
                     </div>
 
-                    <?php if ($customize_level === 'per_image'): ?>
-                    <!-- Frame style toggle + panel (per_image mode only) -->
-                    <button type="button" class="ce-style-toggle cp-exif-toggle" style="margin-top:4px;">FRAME ▸</button>
-                    <div class="ce-style-panel cp-exif-panel" style="display:none;">
-                        <div class="cp-exif-grid">
-                            <div class="lens-input-wrapper">
-                                <label>IMAGE SIZE</label>
-                                <select name="img_size_pct[<?php echo $pimg['id']; ?>]" class="full-width-select">
-                                    <?php foreach ([100=>'100%',95=>'95%',90=>'90%',85=>'85%',80=>'80%',75=>'75%'] as $v=>$l): ?>
-                                    <option value="<?php echo $v; ?>" <?php echo ($pimg['img_size_pct']??100)==$v?'selected':''; ?>><?php echo $l; ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="lens-input-wrapper">
-                                <label>BORDER</label>
-                                <select name="img_border_px[<?php echo $pimg['id']; ?>]" class="full-width-select">
-                                    <?php foreach ([0=>'None',1=>'1px',2=>'2px',3=>'3px',5=>'5px',8=>'8px',10=>'10px',15=>'15px',20=>'20px'] as $v=>$l): ?>
-                                    <option value="<?php echo $v; ?>" <?php echo ($pimg['img_border_px']??0)==$v?'selected':''; ?>><?php echo $l; ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="lens-input-wrapper">
-                                <label>BORDER COLOUR</label>
-                                <input type="color" name="img_border_color[<?php echo $pimg['id']; ?>]"
-                                       value="<?php echo htmlspecialchars($pimg['img_border_color'] ?? '#000000'); ?>"
-                                       style="height:30px; width:100%; padding:2px 4px;">
-                            </div>
-                            <div class="lens-input-wrapper">
-                                <label>BG COLOUR</label>
-                                <input type="color" name="img_bg_color[<?php echo $pimg['id']; ?>]"
-                                       value="<?php echo htmlspecialchars($pimg['img_bg_color'] ?? '#ffffff'); ?>"
-                                       style="height:30px; width:100%; padding:2px 4px;">
-                            </div>
-                            <div class="lens-input-wrapper">
-                                <label>SHADOW</label>
-                                <select name="img_shadow[<?php echo $pimg['id']; ?>]" class="full-width-select">
-                                    <?php foreach ([0=>'None',1=>'Soft',2=>'Medium',3=>'Heavy'] as $v=>$l): ?>
-                                    <option value="<?php echo $v; ?>" <?php echo ($pimg['img_shadow']??0)==$v?'selected':''; ?>><?php echo $l; ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
+                    <!-- Per-image style controls (square crop, zoom + pan, size,
+                         border, matte, shadow) are injected by
+                         ss-engine-carousel-edit.js as the .gp-style widget — the
+                         SAME component the new-post composer uses. -->
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -958,6 +928,31 @@ include 'core/sidebar.php';
    now-first wrapper so the form doesn't open with a dead band of padding.
    Mirrors the same fix on the new-post composer (smack-post-gram.php). */
 .post-col-left .post-description-wrap { margin-top: 0; }
+
+/* Per-image style widget — same classes/markup as the new-post composer
+   (smack-post-gram.php) so the edit strip controls look + behave identically. */
+.gp-style { margin-top:8px; padding:8px;
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--border-color,#333); border-radius:4px;
+    font-size:11px; line-height:1.2; }
+.gp-sqr { display:flex; align-items:center; gap:6px; cursor:pointer;
+    font-weight:600; letter-spacing:.4px; margin-bottom:6px; }
+.gp-sqr input { cursor:pointer; }
+.gp-fit { display:flex; flex-direction:column; gap:5px; }
+.gp-ctl { display:flex; align-items:center; gap:6px; }
+.gp-ctl > span { flex:0 0 44px; opacity:.7; }
+.gp-ctl input[type=range] { flex:1; min-width:0; }
+.gp-ctl input[type=number] { flex:0 0 54px; width:54px; text-align:right;
+    font-family:monospace; color:inherit; background:rgba(127,127,127,.12);
+    border:1px solid rgba(127,127,127,.4); border-radius:3px; padding:2px 4px;
+    -moz-appearance:textfield; }
+.gp-ctl > b { flex:0 0 36px; text-align:right; font-family:monospace;
+    font-weight:400; opacity:.85; }
+.gp-ctl-row { gap:12px; }
+.gp-swatch { display:flex; align-items:center; gap:5px; cursor:pointer; opacity:.8; }
+.gp-swatch input[type=color] { width:24px; height:20px; border:none;
+    background:none; padding:0; cursor:pointer; }
+.gp-shadow { flex:1; min-width:0; }
 .ce-cover-badge {
     position: absolute; bottom: 6px; left: 6px;
     background: rgba(220, 160, 0, 0.85); color: #fff;

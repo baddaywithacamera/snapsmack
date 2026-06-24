@@ -140,101 +140,172 @@
         refreshBadges();
     }
 
-    // Per-image square crop: swap the strip thumb to the uncropped (aspect) image,
-    // show the saved focal point + zoom, and let the user drag to pan / slide to
-    // zoom. State is stashed on item._crop and written to hidden inputs on submit.
-    // Crop math mirrors core/thumb-generator.php so preview == published.
+    // ── Per-image style widget ────────────────────────────────────────────────
+    // Ported from the new-post composer (ss-engine-gram-post.js) so the edit strip
+    // has the SAME controls: square crop (IG), zoom + pan, size, border, matte,
+    // shadow. Seeded from each image's saved values (data-* attrs) and written to
+    // the img_* hidden inputs on submit (syncCrops). applyPreview/applySquareCrop
+    // mirror core/thumb-generator.php so preview == published.
+    var SHADOW_CSS = ['none',
+        '0 2px 10px rgba(0,0,0,.20)',
+        '0 4px 20px rgba(0,0,0,.45)',
+        '0 8px 40px rgba(0,0,0,.70)'];
+
+    function applySquareCrop(st, wrap, img) {
+        var nw = img.naturalWidth, nh = img.naturalHeight;
+        var S  = wrap.clientWidth || wrap.offsetWidth;
+        if (!nw || !nh || !S) { img.addEventListener('load', function () { applySquareCrop(st, wrap, img); }, { once: true }); return; }
+        var zoom = Math.max(100, Math.min(300, st.zoom || 100));
+        var winD = Math.min(nw, nh) / (zoom / 100);
+        var offX = (nw - winD) * (Math.max(0, Math.min(100, st.fx)) / 100);
+        var offY = (nh - winD) * (Math.max(0, Math.min(100, st.fy)) / 100);
+        var scale = S / winD;
+        img.style.position = 'absolute';
+        img.style.width  = (nw * scale) + 'px';
+        img.style.height = (nh * scale) + 'px';
+        img.style.left   = (-offX * scale) + 'px';
+        img.style.top    = (-offY * scale) + 'px';
+    }
+
+    function applyPreview(st, wrap, img) {
+        var cropped = (st.crop === 'fill') || st.zoom > 100 || st.fx !== 50 || st.fy !== 50;
+        wrap.style.position = 'relative';
+        wrap.style.overflow = 'hidden';
+        if (cropped) {
+            wrap.style.background = (st.crop === 'fill') ? '#111' : st.bg;
+            img.style.objectFit = '';
+            img.style.maxWidth = 'none'; img.style.maxHeight = 'none';
+            img.style.border    = (st.crop !== 'fill' && st.bpx > 0) ? (st.bpx + 'px solid ' + st.bcol) : 'none';
+            img.style.boxShadow = (st.crop !== 'fill') ? (SHADOW_CSS[st.shadow] || 'none') : 'none';
+            applySquareCrop(st, wrap, img);
+        } else {
+            wrap.style.background = st.bg;
+            img.style.position = 'static';
+            img.style.left = ''; img.style.top = '';
+            img.style.width = 'auto'; img.style.height = 'auto';
+            img.style.maxWidth = st.size + '%';
+            img.style.maxHeight = st.size + '%';
+            img.style.objectFit = 'contain';
+            img.style.border = st.bpx > 0 ? (st.bpx + 'px solid ' + st.bcol) : 'none';
+            img.style.boxShadow = SHADOW_CSS[st.shadow] || 'none';
+        }
+    }
+
     function initCrop(item) {
         var wrap  = item.querySelector('.ce-thumb-wrap');
         var thumb = item.querySelector('.ce-thumb');
         if (!wrap || !thumb) return;
         var aspect = item.getAttribute('data-aspect');
+
+        function ip(attr, def) { var v = parseInt(item.getAttribute(attr), 10); return isNaN(v) ? def : v; }
         var st = {
-            fx:   parseInt(item.getAttribute('data-focus-x'), 10),
-            fy:   parseInt(item.getAttribute('data-focus-y'), 10),
-            zoom: parseInt(item.getAttribute('data-zoom'), 10)
+            crop:   (item.getAttribute('data-crop') === 'fill') ? 'fill' : 'fit',
+            fx:     ip('data-focus-x', 50),
+            fy:     ip('data-focus-y', 50),
+            zoom:   ip('data-zoom', 100),
+            size:   ip('data-size', 100),
+            bpx:    ip('data-bpx', 0),
+            bcol:   item.getAttribute('data-bcol') || '#000000',
+            bg:     item.getAttribute('data-bg')   || '#ffffff',
+            shadow: ip('data-shadow', 0)
         };
-        if (isNaN(st.fx)) st.fx = 50;
-        if (isNaN(st.fy)) st.fy = 50;
-        if (isNaN(st.zoom)) st.zoom = 100;
         item._crop = st;
 
-        wrap.style.position = 'relative';
-        wrap.style.overflow = 'hidden';
-        // The edit page puts no fixed size on this wrap — the square thumb used to
-        // give it height. Once the image is absolutely positioned for cropping the
-        // wrap would collapse to a stripe, so pin it to a square viewport.
+        // Pin the wrap to a square viewport — the absolutely-positioned crop image
+        // would otherwise collapse the wrap to a stripe.
         wrap.style.width    = '240px';
         wrap.style.height   = '240px';
         wrap.style.maxWidth = '100%';
-        if (aspect) thumb.src = aspect;   // uncropped, so panning has room to move
+        if (aspect) thumb.src = aspect;   // uncropped, so panning has room
 
-        function apply() {
-            var nw = thumb.naturalWidth, nh = thumb.naturalHeight;
-            var S  = wrap.clientWidth || wrap.offsetWidth;
-            if (!nw || !nh || !S) { thumb.addEventListener('load', apply, { once: true }); return; }
-            var z    = Math.max(100, Math.min(300, st.zoom));
-            var winD = Math.min(nw, nh) / (z / 100);
-            var offX = (nw - winD) * (st.fx / 100);
-            var offY = (nh - winD) * (st.fy / 100);
-            var scale = S / winD;
-            thumb.style.position  = 'absolute';
-            thumb.style.maxWidth  = 'none'; thumb.style.maxHeight = 'none';
-            thumb.style.objectFit = '';
-            thumb.style.width  = (nw * scale) + 'px';
-            thumb.style.height = (nh * scale) + 'px';
-            thumb.style.left   = (-offX * scale) + 'px';
-            thumb.style.top    = (-offY * scale) + 'px';
-        }
-        apply();
-
-        // Zoom slider (always available)
+        var shadowOpts = [0,1,2,3].map(function (n) {
+            return '<option value="' + n + '"' + (st.shadow === n ? ' selected' : '') + '>' +
+                ['None','Soft','Medium','Heavy'][n] + '</option>';
+        }).join('');
         var row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:6px;margin-top:6px;';
-        row.innerHTML = '<span style="font:11px/1 monospace;opacity:.7;">Zoom</span>' +
-            '<input type="range" class="ce-zoom" min="100" max="300" value="' + st.zoom + '" style="flex:1;">';
-        var zoomR = row.querySelector('.ce-zoom');
-        // stopPropagation alone does NOT stop the browser starting a native
-        // HTML5 drag of the draggable card ancestor — pressing the slider
-        // grabbed the whole box. Disable the card's drag for the duration of
-        // the slider interaction (mirrors the drag-to-pan handler below).
-        zoomR.addEventListener('mousedown', function (e) {
-            e.stopPropagation();
-            item.setAttribute('draggable', 'false');
-            var restore = function () {
-                item.setAttribute('draggable', 'true');
-                document.removeEventListener('mouseup', restore);
-            };
-            document.addEventListener('mouseup', restore);
-        });
-        zoomR.addEventListener('click',     function (e) { e.stopPropagation(); });
-        zoomR.addEventListener('input',     function () { st.zoom = parseInt(zoomR.value, 10) || 100; apply(); });
+        row.className = 'gp-style';
+        row.innerHTML =
+            '<label class="gp-sqr"><input type="checkbox" class="gp-crop"' +
+                (st.crop === 'fill' ? ' checked' : '') + '> Square crop (IG)</label>' +
+            '<div class="gp-ctl gp-crop-ctl"><span>Zoom</span>' +
+                '<input type="range" class="gp-zoom" min="100" max="300" value="' + st.zoom + '">' +
+                '<input type="number" class="gp-zoom-v" min="100" max="300" step="5" value="' + st.zoom + '" style="width:52px;">%</div>' +
+            '<div class="gp-pan-hint" style="font:10px/1.3 monospace;opacity:.55;margin:-2px 0 6px;">drag the photo to reposition the crop</div>' +
+            '<div class="gp-fit"' + (st.crop === 'fill' ? ' style="display:none;"' : '') + '>' +
+                '<div class="gp-ctl"><span>Size</span>' +
+                    '<input type="range" class="gp-size" min="10" max="100" value="' + st.size + '">' +
+                    '<input type="number" class="gp-size-v" min="10" max="100" step="1" value="' + st.size + '" style="width:48px;">%</div>' +
+                '<div class="gp-ctl"><span>Border</span>' +
+                    '<input type="range" class="gp-bpx" min="0" max="50" value="' + st.bpx + '">' +
+                    '<input type="number" class="gp-bpx-v" min="0" max="50" step="1" value="' + st.bpx + '" style="width:48px;">px</div>' +
+                '<div class="gp-ctl gp-ctl-row">' +
+                    '<label class="gp-swatch"><input type="color" class="gp-bcol" value="' + st.bcol + '"> Border</label>' +
+                    '<label class="gp-swatch"><input type="color" class="gp-bg" value="' + st.bg + '"> Matte</label>' +
+                '</div>' +
+                '<div class="gp-ctl"><span>Shadow</span>' +
+                    '<select class="gp-shadow">' + shadowOpts + '</select></div>' +
+            '</div>';
         wrap.parentNode.insertBefore(row, wrap.nextSibling);
 
-        // Drag-to-pan (disables card drag-reorder for the duration)
+        applyPreview(st, wrap, thumb);
+
+        var cropCb = row.querySelector('.gp-crop');
+        var fitBox = row.querySelector('.gp-fit');
+        // Native controls can't operate inside a draggable card — disable card drag
+        // while the pointer is over any control (this also stops a slider grabbing
+        // the whole card).
+        row.querySelectorAll('input, select, label').forEach(function (n) {
+            n.addEventListener('click',      function (e) { e.stopPropagation(); });
+            n.addEventListener('mousedown',  function (e) { e.stopPropagation(); });
+            n.addEventListener('mouseenter', function () { item.setAttribute('draggable', 'false'); });
+            n.addEventListener('mouseleave', function () { item.setAttribute('draggable', 'true'); });
+        });
+        cropCb.addEventListener('change', function () {
+            st.crop = cropCb.checked ? 'fill' : 'fit';
+            fitBox.style.display = cropCb.checked ? 'none' : '';
+            applyPreview(st, wrap, thumb);
+        });
+        var sizeR = row.querySelector('.gp-size'), sizeV = row.querySelector('.gp-size-v');
+        function syncSize(v) { v = Math.max(10, Math.min(100, parseInt(v, 10) || 10)); st.size = v; sizeR.value = v; sizeV.value = v; applyPreview(st, wrap, thumb); }
+        sizeR.addEventListener('input', function () { syncSize(sizeR.value); });
+        sizeV.addEventListener('input', function () { syncSize(sizeV.value); });
+        var bpxR = row.querySelector('.gp-bpx'), bpxV = row.querySelector('.gp-bpx-v');
+        function syncBpx(v) { v = Math.max(0, Math.min(50, parseInt(v, 10) || 0)); st.bpx = v; bpxR.value = v; bpxV.value = v; applyPreview(st, wrap, thumb); }
+        bpxR.addEventListener('input', function () { syncBpx(bpxR.value); });
+        bpxV.addEventListener('input', function () { syncBpx(bpxV.value); });
+        row.querySelector('.gp-bcol').addEventListener('input', function (e) { st.bcol = e.target.value; applyPreview(st, wrap, thumb); });
+        row.querySelector('.gp-bg').addEventListener('input',   function (e) { st.bg   = e.target.value; applyPreview(st, wrap, thumb); });
+        row.querySelector('.gp-shadow').addEventListener('change', function (e) { st.shadow = parseInt(e.target.value, 10); applyPreview(st, wrap, thumb); });
+
+        var zoomR = row.querySelector('.gp-zoom'), zoomV = row.querySelector('.gp-zoom-v');
+        function syncZoom(v) { v = Math.max(100, Math.min(300, parseInt(v, 10) || 100)); st.zoom = v; zoomR.value = v; zoomV.value = v; applyPreview(st, wrap, thumb); }
+        zoomR.addEventListener('input', function () { syncZoom(zoomR.value); });
+        zoomV.addEventListener('input', function () { syncZoom(zoomV.value); });
+
+        // Drag the photo to pan the square crop (focal point).
         thumb.style.cursor = 'grab';
         thumb.addEventListener('mousedown', function (e) {
-            e.preventDefault(); e.stopPropagation();
-            item.setAttribute('draggable', 'false');
+            var active = (st.crop === 'fill') || st.zoom > 100 || st.fx !== 50 || st.fy !== 50;
+            if (!active) return;
+            item.setAttribute('draggable', 'false'); e.preventDefault(); e.stopPropagation();
             thumb.style.cursor = 'grabbing';
             var lastX = e.clientX, lastY = e.clientY;
             function move(ev) {
                 var nw = thumb.naturalWidth, nh = thumb.naturalHeight;
                 var S  = wrap.clientWidth || wrap.offsetWidth;
                 if (!nw || !nh || !S) return;
-                var z    = Math.max(100, Math.min(300, st.zoom));
-                var winD = Math.min(nw, nh) / (z / 100);
+                var zoom = Math.max(100, Math.min(300, st.zoom || 100));
+                var winD = Math.min(nw, nh) / (zoom / 100);
                 var scale = S / winD;
                 var rangeX = (nw - winD) * scale, rangeY = (nh - winD) * scale;
                 var dx = ev.clientX - lastX, dy = ev.clientY - lastY;
                 lastX = ev.clientX; lastY = ev.clientY;
                 if (rangeX > 0) st.fx = Math.max(0, Math.min(100, st.fx - (dx / rangeX) * 100));
                 if (rangeY > 0) st.fy = Math.max(0, Math.min(100, st.fy - (dy / rangeY) * 100));
-                apply();
+                applySquareCrop(st, wrap, thumb);
             }
             function up() {
-                item.setAttribute('draggable', 'true');
-                thumb.style.cursor = 'grab';
+                item.setAttribute('draggable', 'true'); thumb.style.cursor = 'grab';
                 document.removeEventListener('mousemove', move);
                 document.removeEventListener('mouseup', up);
             }
@@ -608,15 +679,24 @@
 
     function syncCrops() {
         form.querySelectorAll('input[name^="img_focus_x["],' +
-            'input[name^="img_focus_y["],input[name^="img_zoom["]')
+            'input[name^="img_focus_y["],input[name^="img_zoom["],' +
+            'input[name^="img_crop_mode["],input[name^="img_size_pct["],' +
+            'input[name^="img_border_px["],input[name^="img_border_color["],' +
+            'input[name^="img_bg_color["],input[name^="img_shadow["]')
             .forEach(function (el) { el.parentNode.removeChild(el); });
         strip.querySelectorAll('.ce-strip-item').forEach(function (item) {
             var id = item.getAttribute('data-image-id');
             if (!id || id === '-1' || !item._crop) return;
             var c = item._crop;
-            [['img_focus_x', Math.round(c.fx)],
-             ['img_focus_y', Math.round(c.fy)],
-             ['img_zoom',    c.zoom]].forEach(function (pair) {
+            [['img_focus_x',     Math.round(c.fx)],
+             ['img_focus_y',     Math.round(c.fy)],
+             ['img_zoom',        c.zoom],
+             ['img_crop_mode',   c.crop],
+             ['img_size_pct',    c.size],
+             ['img_border_px',   c.bpx],
+             ['img_border_color', c.bcol],
+             ['img_bg_color',    c.bg],
+             ['img_shadow',      c.shadow]].forEach(function (pair) {
                 var inp   = document.createElement('input');
                 inp.type  = 'hidden';
                 inp.name  = pair[0] + '[' + id + ']';
