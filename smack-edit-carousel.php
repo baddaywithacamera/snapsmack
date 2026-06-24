@@ -85,6 +85,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $cover_img_id = (int)($_POST['cover_image_id'] ?? 0);
     $remove_ids   = array_map('intval', $_POST['remove_image_ids'] ?? []);
     $exif_overrides = $_POST['exif']               ?? [];      // [image_id][field] = value
+    $split_ids    = array_map('intval', $_POST['split_image_ids'] ?? []); // pull out to own post
+    $pi_fx        = $_POST['img_focus_x'] ?? [];   // [image_id => square-crop focal %]
+    $pi_fy        = $_POST['img_focus_y'] ?? [];
+    $pi_zoom      = $_POST['img_zoom']    ?? [];
+
+    // Defensive: ensure the per-image crop columns exist (canonical adds them on
+    // update; this catches an install mid-migration). Pure structural add.
+    try {
+        $pdo->exec("ALTER TABLE snap_post_images
+                    ADD COLUMN IF NOT EXISTS img_focus_x TINYINT UNSIGNED NOT NULL DEFAULT 50,
+                    ADD COLUMN IF NOT EXISTS img_focus_y TINYINT UNSIGNED NOT NULL DEFAULT 50,
+                    ADD COLUMN IF NOT EXISTS img_zoom    SMALLINT UNSIGNED NOT NULL DEFAULT 100");
+    } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
+    require_once __DIR__ . '/core/thumb-generator.php';
 
     // --- Frame style (per_carousel: one set for the whole post) ---
     $post_style_size   = max(75, min(100, (int)($_POST['post_img_size_pct'] ?? 100)));
@@ -147,6 +161,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ->execute([$rm_id]);
     }
 
+    // --- Split: pull an image out into its OWN new single post (no reupload) ---
+    // Copies the source post's caption + status + date, carries the image's
+    // per-image style + crop, then unlinks it here. The reorder pass below
+    // resequences whatever images remain.
+    foreach ($split_ids as $sp_id) {
+        $q = $pdo->prepare("SELECT pi.img_size_pct, pi.img_border_px, pi.img_border_color,
+                                   pi.img_bg_color, pi.img_shadow, pi.img_crop_mode,
+                                   pi.img_focus_x, pi.img_focus_y, pi.img_zoom,
+                                   p.status AS src_status, p.created_at AS src_created,
+                                   p.description AS src_desc
+                            FROM snap_post_images pi
+                            JOIN snap_posts p ON p.id = pi.post_id
+                            WHERE pi.post_id = ? AND pi.image_id = ?");
+        $q->execute([$post_id, $sp_id]);
+        $r = $q->fetch(PDO::FETCH_ASSOC);
+        if (!$r) continue;
+        $new_slug = 'ig-' . date('Ymd-His') . '-' . substr(bin2hex(random_bytes(3)), 0, 4);
+        $pdo->prepare("INSERT INTO snap_posts
+                           (title, slug, description, post_type, status, created_at,
+                            allow_comments, allow_download, download_url, panorama_rows,
+                            post_img_size_pct, post_border_px, post_border_color,
+                            post_bg_color, post_shadow)
+                       VALUES ('', ?, ?, 'single', ?, ?, 1, 0, '', 1, 100, 0, '#000000', '#ffffff', 0)")
+            ->execute([$new_slug, $r['src_desc'], $r['src_status'], $r['src_created']]);
+        $new_pid = (int)$pdo->lastInsertId();
+        // Unlink here FIRST — UNIQUE(image_id) allows only one pivot row per image.
+        $pdo->prepare("DELETE FROM snap_post_images WHERE post_id = ? AND image_id = ?")
+            ->execute([$post_id, $sp_id]);
+        $pdo->prepare("INSERT INTO snap_post_images
+                           (post_id, image_id, sort_position, is_cover,
+                            img_size_pct, img_border_px, img_border_color, img_bg_color,
+                            img_shadow, img_crop_mode, img_focus_x, img_focus_y, img_zoom)
+                       VALUES (?, ?, 0, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+            ->execute([$new_pid, $sp_id, $r['img_size_pct'], $r['img_border_px'],
+                       $r['img_border_color'], $r['img_bg_color'], $r['img_shadow'],
+                       $r['img_crop_mode'], $r['img_focus_x'], $r['img_focus_y'], $r['img_zoom']]);
+        $pdo->prepare("UPDATE snap_images SET post_id = ? WHERE id = ?")->execute([$new_pid, $sp_id]);
+    }
+
     // --- Reorder: apply sort_order[] → sort_position ---
     // sort_order[] contains image IDs in the desired order, submitted by the JS engine.
     if (!empty($sort_order)) {
@@ -184,6 +237,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     img_bg_color = ?, img_shadow = ?
                 WHERE post_id = ? AND image_id = ?
             ")->execute([$sz, $bpx, $bc, $bg, $sh, $post_id, $img_id]);
+        }
+    }
+
+    // --- Update per-image square crop (focal point + zoom) ---
+    // Always applies, independent of the customise level. Regenerate the square
+    // thumbnail only when the crop actually changed.
+    foreach ($pi_zoom as $crop_img_id => $z) {
+        $crop_img_id = (int)$crop_img_id;
+        $fx = max(0,   min(100, (int)($pi_fx[$crop_img_id] ?? 50)));
+        $fy = max(0,   min(100, (int)($pi_fy[$crop_img_id] ?? 50)));
+        $zm = max(100, min(300, (int)$z));
+        $cur = $pdo->prepare("SELECT pi.img_focus_x, pi.img_focus_y, pi.img_zoom, i.img_file
+                              FROM snap_post_images pi JOIN snap_images i ON i.id = pi.image_id
+                              WHERE pi.post_id = ? AND pi.image_id = ?");
+        $cur->execute([$post_id, $crop_img_id]);
+        $crow = $cur->fetch(PDO::FETCH_ASSOC);
+        if (!$crow) continue;
+        $pdo->prepare("UPDATE snap_post_images SET img_focus_x = ?, img_focus_y = ?, img_zoom = ?
+                       WHERE post_id = ? AND image_id = ?")
+            ->execute([$fx, $fy, $zm, $post_id, $crop_img_id]);
+        if ((int)$crow['img_focus_x'] !== $fx || (int)$crow['img_focus_y'] !== $fy || (int)$crow['img_zoom'] !== $zm) {
+            $t = snapsmack_generate_thumbs($crow['img_file'], __DIR__, 300, 600, $fx, $fy, $zm);
+            if ($t && !empty($t['sq_path'])) {
+                $pdo->prepare("UPDATE snap_images SET img_thumb_square = ? WHERE id = ?")
+                    ->execute([$t['sq_path'], $crop_img_id]);
+            }
         }
     }
 
@@ -724,7 +803,10 @@ include 'core/sidebar.php';
                 ?>
                 <div class="ce-strip-item cp-strip-item"
                      data-image-id="<?php echo $pimg['id']; ?>"
-                     data-thumb="<?php echo htmlspecialchars($thumb_src); ?>">
+                     data-thumb="<?php echo htmlspecialchars($thumb_src); ?>"
+                     data-focus-x="<?php echo (int)($pimg['img_focus_x'] ?? 50); ?>"
+                     data-focus-y="<?php echo (int)($pimg['img_focus_y'] ?? 50); ?>"
+                     data-zoom="<?php echo (int)($pimg['img_zoom'] ?? 100); ?>">
                     <div class="ce-thumb-wrap cp-thumb-wrap">
                         <img src="<?php echo htmlspecialchars($thumb_src); ?>" class="ce-thumb cp-thumb" alt="">
                         <span class="ce-cover-badge cp-cover-badge" title="Click to make this the cover image"
@@ -733,6 +815,7 @@ include 'core/sidebar.php';
                         </span>
                         <span class="ce-pos-badge cp-pos-badge"><?php echo $pimg['sort_position'] + 1; ?></span>
                         <button type="button" class="ce-remove-btn cp-remove-btn" title="Remove from post">×</button>
+                        <button type="button" class="ce-split-btn" title="Pull out into its own separate post" style="position:absolute;top:6px;left:6px;width:24px;height:24px;border:0;border-radius:4px;background:rgba(0,0,0,0.55);color:#fff;font-size:14px;line-height:1;cursor:pointer;" data-confirm="Pull this image out into its own separate post?">↗</button>
                         <button type="button" class="ce-edit-img-btn" title="Edit Image" onclick="SnapPhotoEditor.open('<?php echo htmlspecialchars($pimg['img_file'], ENT_QUOTES); ?>', <?php echo (int)$pimg['post_id']; ?>)">✎</button>
                     </div>
                     <div class="cp-item-label"><?php echo htmlspecialchars(basename($pimg['img_file'])); ?></div>
