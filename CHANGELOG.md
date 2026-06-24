@@ -12,6 +12,25 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.294 — "Driver's Seat" (2026-06-23)
+
+- **Gram composer sliders are actually usable (correct engine this time).** 0.7.293
+  patched `ss-engine-carousel-post.js`, but the gram poster loads
+  `ss-engine-gram-post.js` — so the fix never reached the screen. The real engine
+  guarded the sliders with `stopPropagation`, which does NOT stop an HTML5 drag on
+  a `draggable` card, so grabbing the Size/Border slider dragged the whole card.
+  The card now disables its own drag while the pointer is over any control (Size,
+  Border, colour pickers, shadow, the Instant-Camera straighten slider) and
+  restores it on the way out. (`assets/js/ss-engine-gram-post.js`)
+- **Size and Border are now type-able.** The read-out next to each slider is a
+  number field — drag the slider or type the exact value (Size 10–100%, Border
+  0–50px); the two stay in sync. (`assets/js/ss-engine-gram-post.js`)
+- **ACTIVATE button in the Skin Gallery.** Installed-but-inactive skins now show an
+  ACTIVATE button (alongside REINSTALL/REMOVE) so you can switch the active skin
+  straight from the gallery instead of going to Customize. It runs the same
+  site-mode lockstep and page-cache purge as the Customize-tab activation.
+  (`smack-skin.php`)
+
 ## 0.7.293 — "Box Seat" (2026-06-23)
 
 - **Gram composer per-image controls are usable again.** `IMAGE SIZE (%)` and
