@@ -63,9 +63,9 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.291');
-define('SNAPSMACK_VERSION_SHORT', '0.7.291');
-define('SNAPSMACK_VERSION_CODENAME', 'Captain\'s Chair');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.292');
+define('SNAPSMACK_VERSION_SHORT', '0.7.292');
+define('SNAPSMACK_VERSION_CODENAME', 'Folding Chair');
 
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.

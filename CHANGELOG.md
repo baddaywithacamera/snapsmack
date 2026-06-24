@@ -12,6 +12,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.292 — "Folding Chair" (2026-06-24)
+
+- **All composer JS externalised to `/assets/js`.** The gram composer and the Panorama
+  Slicer were running their JavaScript from inline `<script>` blocks. Both are now proper
+  engine files — `assets/js/ss-engine-gram-post.js` and `assets/js/ss-engine-slicer.js` —
+  loaded by `src`, with **zero inline JS** in the PHP pages. The one inline data injection
+  (`window.__IC_SCAN`) is replaced by a `data-ic-aspect` attribute on the gram form that
+  the engine reads. File once, reuse — no logic scattered across pages.
+
 ## 0.7.291 — "Captain's Chair" (2026-06-24)
 
 - **Admin themes now expose `--accent`.** Every `admin-theme-colours-*.css` (21 files)
