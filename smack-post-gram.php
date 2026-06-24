@@ -351,6 +351,11 @@ include 'core/sidebar.php';
     <div id="gp-error" class="notice notice-error" style="display:none;"></div>
 
     <style>
+    /* The caption is now the first field in the left column (the POST TYPE
+       selector was removed), so the description wrapper's default 20px top
+       margin became dead space above the box. Zero it here, gram-poster only. */
+    .post-col-left .post-description-wrap { margin-top: 0; }
+
     /* Per-image styling panel under each strip thumbnail. */
     .gp-style { margin-top:8px; padding:8px;
         background:rgba(255,255,255,0.03);

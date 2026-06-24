@@ -12,6 +12,18 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.290 — "Bucket Seat" (2026-06-24)
+
+- **Ships the Panorama Slicer end to end.** 0.7.289 went out partial — the gram-poster
+  cleanup landed, but the slicer page (`smack-slicer.php`), its sidebar link, and the
+  trigram-cover display wiring did not. This release carries all of it: the Triptych +
+  Cover Slices tool under "The Good Shit" on GramOfSmack installs, plus the slice-as-cover
+  rendering on every carousel skin's grid (The Grid, Instant Camera, Parade, Aurora — each
+  repackaged separately via the Skin Packager).
+- **Fix: dead space above the caption box** in the gram composer. Removing the POST TYPE
+  selector left `.post-description-wrap`'s top margin showing as a gap above the caption;
+  zeroed it, scoped to the gram poster so the solo/longform editors are untouched.
+
 ## 0.7.289 — "Jump Seat" (2026-06-23)
 
 - **GramOfSmack composer usability pass (`smack-post-gram.php`).** The upload strip
