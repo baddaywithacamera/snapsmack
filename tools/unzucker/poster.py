@@ -30,6 +30,7 @@ from datetime import datetime
 from typing import Callable, Dict, List, Optional
 
 import requests
+import piexif
 from PIL import Image as PILImage
 
 import exif_writer
@@ -247,24 +248,41 @@ def prepare_image(
     tags:           str = '',
 ) -> tuple:
     """
-    Resize and EXIF-embed a single image.
+    Preserve the full original image and EXIF-embed title/tags/copyright.
     Returns (output_path, generated_filename, width, height, exif_ok).
     """
     rand = secrets.token_hex(2)
     filename = f"{timestamp}_{sequence:02d}_{rand}.jpg"
     output_path = os.path.join(output_dir, filename)
 
-    img = PILImage.open(src_path)
-    img.thumbnail((WEB_MAX_W, WEB_MAX_H), PILImage.LANCZOS)
-    width, height = img.size
+    # Read format + dimensions without touching the pixels.
+    with PILImage.open(src_path) as probe:
+        src_fmt       = (probe.format or '').upper()
+        width, height = probe.size
 
     exif_ok = True
-    try:
-        exif_bytes = exif_writer.build_exif_bytes(title, tags, copyright_text)
-        img.save(output_path, quality=92, optimize=True, exif=exif_bytes)
-    except Exception:
-        exif_ok = False
-        img.save(output_path, quality=92, optimize=True)
+    if src_fmt in ('JPEG', 'JPG', 'MPO'):
+        # Already-compressed JPEG → copy the ORIGINAL bytes byte-for-byte (no
+        # resize, no re-encode — avoids the "92% of an already-compressed JPEG"
+        # double-compression loss), then write the title/tags/copyright EXIF
+        # in-place with piexif, which does NOT re-encode the pixel data.
+        shutil.copy2(src_path, output_path)
+        try:
+            exif_bytes = exif_writer.build_exif_bytes(title, tags, copyright_text)
+            piexif.insert(exif_bytes, output_path)
+        except Exception:
+            exif_ok = False  # original copy still stands, just without our EXIF
+    else:
+        # Non-JPEG source (rare for IG) → convert ONCE to high-quality JPEG at
+        # full resolution. Still never downscaled.
+        img = PILImage.open(src_path).convert('RGB')
+        width, height = img.size
+        try:
+            exif_bytes = exif_writer.build_exif_bytes(title, tags, copyright_text)
+            img.save(output_path, quality=95, optimize=True, exif=exif_bytes)
+        except Exception:
+            exif_ok = False
+            img.save(output_path, quality=95, optimize=True)
 
     return output_path, filename, width, height, exif_ok
 
