@@ -90,6 +90,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
             } else {
                 $gallery_err = $result['message'];
             }
+        } elseif ($action === 'activate') {
+            // Activate an already-installed skin straight from the gallery.
+            $slug     = preg_replace('/[^a-z0-9_\-]/', '', $slug);
+            $skin_dir = __DIR__ . '/skins/' . $slug;
+            if ($slug === '' || !is_dir($skin_dir) || !is_file($skin_dir . '/manifest.php')) {
+                $gallery_err = 'That skin is not installed.';
+            } else {
+                $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+                    ->execute([$slug, $slug]);
+                $gallery_msg = 'Skin "' . $slug . '" is now active.';
+
+                // Keep site_mode in lockstep with the activated skin — same rule
+                // as the Customize-tab activation: a single-mode skin whose mode
+                // differs from the current site_mode switches the site to it.
+                $_man   = include $skin_dir . '/manifest.php';
+                $_modes = (is_array($_man) && isset($_man['modes']) && is_array($_man['modes']))
+                          ? array_values($_man['modes']) : [];
+                if (count($_modes) === 1 && in_array($_modes[0], ['photoblog', 'carousel', 'smacktalk'], true)) {
+                    $_cur = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog');
+                    if ($_modes[0] !== $_cur) {
+                        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('site_mode', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+                            ->execute([$_modes[0], $_modes[0]]);
+                        $_lbl = ['photoblog' => 'SmackOneOut', 'carousel' => 'GramOfSmack', 'smacktalk' => 'SmackTalk'];
+                        $gallery_msg .= ' Site mode switched to ' . ($_lbl[$_modes[0]] ?? $_modes[0]) . ' to match it.';
+                    }
+                }
+
+                // Flush the page cache so the new skin shows immediately.
+                if (is_file(__DIR__ . '/core/page-cache.php')) {
+                    require_once __DIR__ . '/core/page-cache.php';
+                    if (function_exists('page_cache_purge_all')) page_cache_purge_all();
+                }
+            }
         }
     }
 
@@ -1642,6 +1675,15 @@ if (!empty($google_families)) {
                                 <?php else: ?>
                                 <button class="gallery-btn reinstall" disabled title="No download URL available">REINSTALL</button>
                                 <?php endif; ?>
+                            <?php endif; ?>
+
+                            <?php if ($skin['installed'] && $current_db_active !== $slug): ?>
+                                <form method="POST" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                    <input type="hidden" name="gallery_action" value="activate">
+                                    <input type="hidden" name="skin_slug" value="<?php echo htmlspecialchars($slug); ?>">
+                                    <button type="submit" class="gallery-btn activate">ACTIVATE</button>
+                                </form>
                             <?php endif; ?>
 
                             <?php if ($skin['installed'] && $current_db_active !== $slug && !in_array($slug, $protected_skins, true)): ?>

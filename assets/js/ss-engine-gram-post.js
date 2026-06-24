@@ -127,10 +127,10 @@
                     '<div class="gp-fit"' + (item.crop === 'fill' ? ' style="display:none;"' : '') + '>' +
                         '<div class="gp-ctl"><span>Size</span>' +
                             '<input type="range" class="gp-size" min="10" max="100" value="' + item.size + '">' +
-                            '<b class="gp-size-v">' + item.size + '%</b></div>' +
+                            '<input type="number" class="gp-size-v" min="10" max="100" step="1" value="' + item.size + '" style="width:48px;">%</div>' +
                         '<div class="gp-ctl"><span>Border</span>' +
                             '<input type="range" class="gp-bpx" min="0" max="50" value="' + item.bpx + '">' +
-                            '<b class="gp-bpx-v">' + item.bpx + 'px</b></div>' +
+                            '<input type="number" class="gp-bpx-v" min="0" max="50" step="1" value="' + item.bpx + '" style="width:48px;">px</div>' +
                         '<div class="gp-ctl gp-ctl-row">' +
                             '<label class="gp-swatch"><input type="color" class="gp-bcol" value="' + item.bcol + '"> Border</label>' +
                             '<label class="gp-swatch"><input type="color" class="gp-bg" value="' + item.bg + '"> Matte</label>' +
@@ -154,19 +154,28 @@
             const styleEl = el.querySelector('.gp-style');
             const cropCb  = styleEl.querySelector('.gp-crop');
             const fitBox  = styleEl.querySelector('.gp-fit');
+            // Native form controls can't operate inside a draggable element — so
+            // grabbing a slider was dragging the whole card. Disable card drag
+            // while the pointer is over any control; restore it on the way out.
             styleEl.querySelectorAll('input, select, label').forEach(n => {
-                n.addEventListener('click',     e => e.stopPropagation());
-                n.addEventListener('mousedown', e => e.stopPropagation());
+                n.addEventListener('click',      e => e.stopPropagation());
+                n.addEventListener('mousedown',  e => e.stopPropagation());
+                n.addEventListener('mouseenter', () => { el.draggable = false; });
+                n.addEventListener('mouseleave', () => { el.draggable = true; });
             });
             cropCb.addEventListener('change', () => {
                 item.crop = cropCb.checked ? 'fill' : 'fit';
                 fitBox.style.display = cropCb.checked ? 'none' : '';
                 applyPreview(item, wrap, thumbImg);
             });
-            const sizeR = styleEl.querySelector('.gp-size'),  sizeV = styleEl.querySelector('.gp-size-v');
-            sizeR.addEventListener('input', () => { item.size = parseInt(sizeR.value); sizeV.textContent = item.size + '%'; applyPreview(item, wrap, thumbImg); });
-            const bpxR = styleEl.querySelector('.gp-bpx'),    bpxV  = styleEl.querySelector('.gp-bpx-v');
-            bpxR.addEventListener('input', () => { item.bpx = parseInt(bpxR.value); bpxV.textContent = item.bpx + 'px'; applyPreview(item, wrap, thumbImg); });
+            const sizeR = styleEl.querySelector('.gp-size'), sizeV = styleEl.querySelector('.gp-size-v');
+            const syncSize = v => { v = Math.max(10, Math.min(100, parseInt(v) || 10)); item.size = v; sizeR.value = v; sizeV.value = v; applyPreview(item, wrap, thumbImg); };
+            sizeR.addEventListener('input', () => syncSize(sizeR.value));
+            sizeV.addEventListener('input', () => syncSize(sizeV.value));
+            const bpxR = styleEl.querySelector('.gp-bpx'), bpxV = styleEl.querySelector('.gp-bpx-v');
+            const syncBpx = v => { v = Math.max(0, Math.min(50, parseInt(v) || 0)); item.bpx = v; bpxR.value = v; bpxV.value = v; applyPreview(item, wrap, thumbImg); };
+            bpxR.addEventListener('input', () => syncBpx(bpxR.value));
+            bpxV.addEventListener('input', () => syncBpx(bpxV.value));
             styleEl.querySelector('.gp-bcol').addEventListener('input', e => { item.bcol = e.target.value; applyPreview(item, wrap, thumbImg); });
             styleEl.querySelector('.gp-bg').addEventListener('input',   e => { item.bg   = e.target.value; applyPreview(item, wrap, thumbImg); });
             styleEl.querySelector('.gp-shadow').addEventListener('change', e => { item.shadow = parseInt(e.target.value); applyPreview(item, wrap, thumbImg); });
@@ -225,6 +234,8 @@
         // Keep the slider from starting a thumbnail drag-reorder.
         s.addEventListener('click', e => e.stopPropagation());
         s.addEventListener('mousedown', e => e.stopPropagation());
+        s.addEventListener('mouseenter', () => { el.draggable = false; });
+        s.addEventListener('mouseleave', () => { el.draggable = true; });
         if (item.angle) applyRotate();
         row.appendChild(s); row.appendChild(lab);
         el.appendChild(row);
