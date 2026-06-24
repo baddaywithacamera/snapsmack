@@ -61,6 +61,8 @@
                 file: f, objectUrl: URL.createObjectURL(f),
                 crop: 'fit', size: 100, bpx: 0, rotate: 0,
                 bcol: '#000000', bg: '#ffffff', shadow: 0,
+                // Square-crop framing: focal point (%) + zoom (%). Always editable.
+                fx: 50, fy: 50, zoom: 100,
             });
         });
         renderStrip();
@@ -81,14 +83,23 @@
         '0 4px 20px rgba(0,0,0,.45)',
         '0 8px 40px rgba(0,0,0,.70)'];
     function applyPreview(item, wrap, img) {
-        if (item.crop === 'fill') {
-            wrap.style.background = '#111';
-            img.style.width = '100%';  img.style.height = '100%';
-            img.style.maxWidth = '';   img.style.maxHeight = '';
-            img.style.objectFit = 'cover';
-            img.style.border = 'none'; img.style.boxShadow = 'none';
+        const cropped = (item.crop === 'fill') || item.zoom > 100 || item.fx !== 50 || item.fy !== 50;
+        wrap.style.position = 'relative';
+        wrap.style.overflow = 'hidden';
+        if (cropped) {
+            // Show the exact square crop (focal point + zoom). Fill renders it on a
+            // dark canvas; a fit tile that's been zoomed/panned previews the crop
+            // its grid thumbnail will use.
+            wrap.style.background = (item.crop === 'fill') ? '#111' : item.bg;
+            img.style.objectFit = '';
+            img.style.maxWidth = 'none'; img.style.maxHeight = 'none';
+            img.style.border    = (item.crop !== 'fill' && item.bpx > 0) ? (item.bpx + 'px solid ' + item.bcol) : 'none';
+            img.style.boxShadow = (item.crop !== 'fill') ? (SHADOW_CSS[item.shadow] || 'none') : 'none';
+            applySquareCrop(item, wrap, img);
         } else {
             wrap.style.background = item.bg;                    // matte fills the tile
+            img.style.position = 'static';
+            img.style.left = ''; img.style.top = '';
             img.style.width = 'auto';  img.style.height = 'auto';
             img.style.maxWidth = item.size + '%';
             img.style.maxHeight = item.size + '%';
@@ -99,6 +110,25 @@
         // 90° orientation preview. The square box contains the image, so a
         // rotated landscape simply re-fits as a portrait inside the tile.
         img.style.transform = 'rotate(' + (item.rotate || 0) + 'deg)';
+    }
+
+    // Position the image inside the square wrap to show exactly the crop the
+    // server bakes (window = min(w,h)/(zoom/100), placed at fx%/fy%). Mirrors
+    // smack-post-gram.php + core/thumb-generator.php so preview == published.
+    function applySquareCrop(item, wrap, img) {
+        const nw = img.naturalWidth, nh = img.naturalHeight;
+        const S  = wrap.clientWidth || wrap.offsetWidth;
+        if (!nw || !nh || !S) { img.addEventListener('load', () => applySquareCrop(item, wrap, img), { once: true }); return; }
+        const zoom = Math.max(100, Math.min(300, item.zoom || 100));
+        const winD = Math.min(nw, nh) / (zoom / 100);
+        const offX = (nw - winD) * (Math.max(0, Math.min(100, item.fx)) / 100);
+        const offY = (nh - winD) * (Math.max(0, Math.min(100, item.fy)) / 100);
+        const scale = S / winD;
+        img.style.position = 'absolute';
+        img.style.width  = (nw * scale) + 'px';
+        img.style.height = (nh * scale) + 'px';
+        img.style.left   = (-offX * scale) + 'px';
+        img.style.top    = (-offY * scale) + 'px';
     }
 
     function renderStrip() {
@@ -131,6 +161,10 @@
                 '<div class="gp-style">' +
                     '<label class="gp-sqr"><input type="checkbox" class="gp-crop"' +
                         (item.crop === 'fill' ? ' checked' : '') + '> Square crop (IG)</label>' +
+                    '<div class="gp-ctl gp-crop-ctl"><span>Zoom</span>' +
+                        '<input type="range" class="gp-zoom" min="100" max="300" value="' + item.zoom + '">' +
+                        '<input type="number" class="gp-zoom-v" min="100" max="300" step="5" value="' + item.zoom + '" style="width:52px;">%</div>' +
+                    '<div class="gp-pan-hint" style="font:10px/1.3 monospace;opacity:.55;margin:-2px 0 6px;">drag the photo to reposition the crop</div>' +
                     '<div class="gp-fit"' + (item.crop === 'fill' ? ' style="display:none;"' : '') + '>' +
                         '<div class="gp-ctl"><span>Size</span>' +
                             '<input type="range" class="gp-size" min="10" max="100" value="' + item.size + '">' +
@@ -199,6 +233,49 @@
             styleEl.querySelector('.gp-bcol').addEventListener('input', e => { item.bcol = e.target.value; applyPreview(item, wrap, thumbImg); });
             styleEl.querySelector('.gp-bg').addEventListener('input',   e => { item.bg   = e.target.value; applyPreview(item, wrap, thumbImg); });
             styleEl.querySelector('.gp-shadow').addEventListener('change', e => { item.shadow = parseInt(e.target.value); applyPreview(item, wrap, thumbImg); });
+
+            // Zoom (square crop) — always available, independent of fit/fill.
+            const zoomR = styleEl.querySelector('.gp-zoom'), zoomV = styleEl.querySelector('.gp-zoom-v');
+            const syncZoom = v => {
+                v = Math.max(100, Math.min(300, parseInt(v) || 100));
+                item.zoom = v; zoomR.value = v; zoomV.value = v;
+                applyPreview(item, wrap, thumbImg);
+            };
+            zoomR.addEventListener('input', () => syncZoom(zoomR.value));
+            zoomV.addEventListener('input', () => syncZoom(zoomV.value));
+
+            // Drag the photo to pan the square crop (sets the focal point). Only
+            // active when the crop is tighter than the whole image; disables the
+            // card drag-reorder for the duration so the two don't fight.
+            thumbImg.style.cursor = 'grab';
+            thumbImg.addEventListener('mousedown', e => {
+                const active = (item.crop === 'fill') || item.zoom > 100 || item.fx !== 50 || item.fy !== 50;
+                if (!active) return;
+                el.draggable = false; e.preventDefault(); e.stopPropagation();
+                thumbImg.style.cursor = 'grabbing';
+                let lastX = e.clientX, lastY = e.clientY;
+                const move = ev => {
+                    const nw = thumbImg.naturalWidth, nh = thumbImg.naturalHeight;
+                    const S = wrap.clientWidth || wrap.offsetWidth;
+                    if (!nw || !nh || !S) return;
+                    const zoom = Math.max(100, Math.min(300, item.zoom || 100));
+                    const winD = Math.min(nw, nh) / (zoom / 100);
+                    const scale = S / winD;
+                    const rangeX = (nw - winD) * scale, rangeY = (nh - winD) * scale;
+                    const dx = ev.clientX - lastX, dy = ev.clientY - lastY;
+                    lastX = ev.clientX; lastY = ev.clientY;
+                    if (rangeX > 0) item.fx = Math.max(0, Math.min(100, item.fx - (dx / rangeX) * 100));
+                    if (rangeY > 0) item.fy = Math.max(0, Math.min(100, item.fy - (dy / rangeY) * 100));
+                    applySquareCrop(item, wrap, thumbImg);
+                };
+                const up = () => {
+                    el.draggable = true; thumbImg.style.cursor = 'grab';
+                    document.removeEventListener('mousemove', move);
+                    document.removeEventListener('mouseup', up);
+                };
+                document.addEventListener('mousemove', move);
+                document.addEventListener('mouseup', up);
+            });
 
             // Drag-reorder
             el.addEventListener('dragstart', e => {
@@ -336,6 +413,9 @@
             data.append('img_border_color[]', item.bcol || '#000000');
             data.append('img_bg_color[]',     item.bg   || '#ffffff');
             data.append('img_shadow[]',       item.shadow != null ? item.shadow : 0);
+            data.append('img_focus_x[]',      Math.round(item.fx != null ? item.fx : 50));
+            data.append('img_focus_y[]',      Math.round(item.fy != null ? item.fy : 50));
+            data.append('img_zoom[]',         item.zoom != null ? item.zoom : 100);
         });
 
         const xhr = new XMLHttpRequest();
