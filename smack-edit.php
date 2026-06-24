@@ -57,8 +57,12 @@ $_ss_active_skin = $_ss_settings['active_skin'] ?? '';
 if ($_ss_active_skin && preg_match('/^[a-z0-9][a-z0-9\-]*$/', $_ss_active_skin)) {
     $_ss_manifest_path = __DIR__ . '/skins/' . $_ss_active_skin . '/manifest.php';
     if (is_file($_ss_manifest_path)) {
-        $_ss_manifest = [];
-        include $_ss_manifest_path;
+        // Capture the manifest's returned array. `include` alone runs the file
+        // but DISCARDS its `return [...]`, leaving $_ss_manifest empty — so
+        // edit_page never resolved and gram/carousel skins (The Grid) silently
+        // fell back to the solo editor. This is the "editor not GramOfSmack-aware" bug.
+        $_ss_manifest = include $_ss_manifest_path;
+        if (!is_array($_ss_manifest)) $_ss_manifest = [];
         $_ss_edit_override = $_ss_manifest['edit_page'] ?? '';
         // Validate edit_page slug — only lowercase letters, digits, hyphens; no slashes or dots.
         if ($_ss_edit_override && preg_match('/^[a-z0-9][a-z0-9\-]*$/', $_ss_edit_override)) {

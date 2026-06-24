@@ -12,6 +12,22 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.295 — "Captain's Chair" (2026-06-23)
+
+- **The post editor is finally GramOfSmack-aware (real root cause).** `smack-edit.php`
+  is meant to delegate to `smack-edit-carousel.php` when the active skin's manifest
+  declares `'edit_page' => 'carousel'` (The Grid does). But the delegation read the
+  manifest with `include $path;` and never captured the returned array — manifests
+  use `return [...]`, so `$_ss_manifest` stayed empty, `edit_page` resolved to `''`,
+  and every Grid/gram post was edited with the single-image SOLO editor. Now captured
+  with `$_ss_manifest = include $path;`. (`smack-edit.php`)
+- **COVER badge is theme-neutral.** Replaced the hardcoded lime (which clashed in the
+  greyscale admin theme) with a dark translucent pill + white text — reads on any
+  theme and over any photo. (`smack-post-gram.php`)
+- **Editable size/border read-out is visible in every theme.** The new number fields
+  used the theme text colour, which rendered invisible in the greyscale theme. Forced
+  `color:inherit` + a neutral field background. (`smack-post-gram.php`)
+
 ## 0.7.294 — "Driver's Seat" (2026-06-23)
 
 - **Gram composer sliders are actually usable (correct engine this time).** 0.7.293
