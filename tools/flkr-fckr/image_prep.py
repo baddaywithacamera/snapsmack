@@ -18,6 +18,7 @@ Same resize logic, same thumbnail naming convention. Flickr-specific additions:
 import json
 import os
 import secrets
+import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Tuple
@@ -100,17 +101,17 @@ def _build_exif_json(image_path: str,
 # Image processing
 # ---------------------------------------------------------------------------
 
-def _generate_filename(date: Optional[datetime]) -> str:
+def _generate_filename(date: Optional[datetime], ext: str = 'jpg') -> str:
     """
     Generate a unique filename from date + random hex suffix.
-    Format: {YYYYMMDD_HHMMSS}_{rand6}.jpg
+    Format: {YYYYMMDD_HHMMSS}_{rand6}.{ext}
     """
     rand = secrets.token_hex(3)   # 6 hex chars
     if date:
         prefix = date.strftime('%Y%m%d_%H%M%S')
     else:
         prefix = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-    return f"{prefix}_{rand}.jpg"
+    return f"{prefix}_{rand}.{ext}"
 
 
 def prepare(
@@ -120,8 +121,9 @@ def prepare(
     geo:          Optional[Tuple[float, float]] = None,
 ) -> PreparedImage:
     """
-    Process one image: resize to web max + extract EXIF (thumbnails are made
-    server-side after upload).
+    Prepare one image for upload: preserve the full original (byte-for-byte for
+    JPEG/PNG/WebP; full-res high-quality JPEG for exotic formats) + extract EXIF.
+    Thumbnails are made server-side after upload.
 
     Args:
         source_path: absolute path to the source Flickr image
@@ -140,28 +142,33 @@ def prepare(
     # Build EXIF JSON before opening image (reads separately to avoid mode issues)
     img_exif = _build_exif_json(source_path, geo)
 
-    # Open and normalise
-    img = PILImage.open(source_path)
-    # Apply EXIF orientation so portrait / rotated camera shots are not written
-    # sideways (PIL does not auto-rotate on open). Must happen before any resize
-    # or crop so width/height and the square thumbnail come out correct.
-    img = ImageOps.exif_transpose(img)
-    img = img.convert('RGB')  # normalise to RGB (handles CMYK, palette, etc.)
+    # ── Full original, untouched ─────────────────────────────────────────────
+    # JPEG / PNG / WebP sources are copied BYTE-FOR-BYTE — no resize, no
+    # re-encode — so a Flickr original is preserved exactly (no "92% of an
+    # already-compressed JPEG" quality loss, and no downscale of full-res work).
+    # Exotic formats (tiff/gif/bmp/heic/…) are converted ONCE to high-quality
+    # JPEG at full resolution — still never downscaled.
+    src_ext     = os.path.splitext(source_path)[1].lower().lstrip('.')
+    passthrough = {'jpg': 'jpg', 'jpeg': 'jpg', 'png': 'png', 'webp': 'webp'}
 
-    orig_w, orig_h = img.size
+    if src_ext in passthrough:
+        out_ext   = passthrough[src_ext]
+        filename  = _generate_filename(date, out_ext)
+        main_path = os.path.join(output_dir, filename)
+        shutil.copy2(source_path, main_path)          # exact original bytes
+        # Stored dimensions honour the EXIF orientation tag the file still
+        # carries, so width/height match what the browser and the server
+        # thumbnailer display.
+        with PILImage.open(source_path) as probe:
+            web_w, web_h = ImageOps.exif_transpose(probe).size
+    else:
+        filename  = _generate_filename(date, 'jpg')
+        main_path = os.path.join(output_dir, filename)
+        img = ImageOps.exif_transpose(PILImage.open(source_path)).convert('RGB')
+        web_w, web_h = img.size                        # full resolution — no resize
+        img.save(main_path, 'JPEG', quality=95, optimize=True)
 
-    # ── Main image: resize to web max ────────────────────────────────────────
-    web_img = img.copy()
-    web_img.thumbnail((WEB_MAX_W, WEB_MAX_H), PILImage.LANCZOS)
-    web_w, web_h = web_img.size
-
-    orientation = 'landscape' if web_w >= web_h else 'portrait'
-    if web_w == web_h:
-        orientation = 'square'
-
-    filename     = _generate_filename(date)
-    main_path    = os.path.join(output_dir, filename)
-    web_img.save(main_path, 'JPEG', quality=92, optimize=True)
+    orientation = 'square' if web_w == web_h else ('landscape' if web_w > web_h else 'portrait')
 
     # Thumbnails (t_/a_) are generated server-side by the flkrfckr/upload
     # endpoint (core/thumb-generator.php), so none are produced here.
