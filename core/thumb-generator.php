@@ -42,8 +42,15 @@ function snapsmack_generate_thumbs(
     string $img_file,
     string $base_dir,
     int    $sq_size  = 300,
-    int    $asp_max  = 600
+    int    $asp_max  = 600,
+    int    $focus_x  = 50,
+    int    $focus_y  = 50,
+    int    $zoom     = 100
 ): array|false {
+    // $focus_x / $focus_y: square-crop focal point, 0-100 (% position of the
+    //   crop window across the spare axis). 50/50 = centre.
+    // $zoom: 100-300. Crop window = min(w,h)/(zoom/100), so 200 = half the
+    //   short edge (2× tighter). Defaults (50/50/100) == the old centre crop.
 
     // Resolve full path
     $rel  = ltrim($img_file, '/');
@@ -76,10 +83,14 @@ function snapsmack_generate_thumbs(
         mkdir($thumb_dir, 0755, true);
     }
 
-    // ── Square thumbnail (t_) ─────────────────────────────────────────────
-    $crop_dim = min($w, $h);
-    $crop_x   = (int)(($w - $crop_dim) / 2);
-    $crop_y   = (int)(($h - $crop_dim) / 2);
+    // ── Square thumbnail (t_) — focal-point + zoom crop ───────────────────
+    $zoom     = max(100, min(300, $zoom));
+    $crop_dim = (int)round(min($w, $h) / ($zoom / 100));
+    if ($crop_dim < 1) $crop_dim = 1;
+    $crop_x   = (int)round(($w - $crop_dim) * (max(0, min(100, $focus_x)) / 100));
+    $crop_y   = (int)round(($h - $crop_dim) * (max(0, min(100, $focus_y)) / 100));
+    $crop_x   = max(0, min($w - $crop_dim, $crop_x));
+    $crop_y   = max(0, min($h - $crop_dim, $crop_y));
     $sq_img   = imagecreatetruecolor($sq_size, $sq_size);
     imagecopyresampled($sq_img, $src, 0, 0, $crop_x, $crop_y, $sq_size, $sq_size, $crop_dim, $crop_dim);
     $sq_rel = $thumb_dir_rel . '/t_' . $base;

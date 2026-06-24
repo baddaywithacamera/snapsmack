@@ -63,11 +63,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
     $st_bcol   = $_POST['img_border_color'] ?? [];
     $st_bg     = $_POST['img_bg_color']     ?? [];
     $st_shadow = $_POST['img_shadow']       ?? [];
+    // Per-image square-crop framing (focal point % + zoom %). Available for every
+    // image regardless of fit/fill — drives where the square thumbnail is cut.
+    $st_fx     = $_POST['img_focus_x']      ?? [];
+    $st_fy     = $_POST['img_focus_y']      ?? [];
+    $st_zoom   = $_POST['img_zoom']         ?? [];
 
     $hexok = function ($v, $def) {
         return (is_string($v) && preg_match('/^#[0-9a-fA-F]{6}$/', $v)) ? $v : $def;
     };
-    $img_style_at = function ($i) use ($st_crop,$st_size,$st_bpx,$st_bcol,$st_bg,$st_shadow,$hexok) {
+    $img_style_at = function ($i) use ($st_crop,$st_size,$st_bpx,$st_bcol,$st_bg,$st_shadow,$st_fx,$st_fy,$st_zoom,$hexok) {
         $crop = (($st_crop[$i] ?? 'fit') === 'fill') ? 'fill' : 'fit';
         return [
             'crop'   => $crop,
@@ -76,6 +81,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
             'bcol'   => $hexok($st_bcol[$i] ?? '', '#000000'),
             'bg'     => $hexok($st_bg[$i]   ?? '', '#ffffff'),
             'shadow' => max(0,  min(3,   (int)($st_shadow[$i] ?? 0))),
+            'fx'     => max(0,  min(100, (int)($st_fx[$i]   ?? 50))),
+            'fy'     => max(0,  min(100, (int)($st_fy[$i]   ?? 50))),
+            'zoom'   => max(100,min(300, (int)($st_zoom[$i] ?? 100))),
         ];
     };
 
@@ -85,6 +93,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         $pdo->exec("ALTER TABLE snap_post_images
                     ADD COLUMN IF NOT EXISTS img_crop_mode
                     ENUM('fit','fill') NOT NULL DEFAULT 'fit' AFTER img_shadow");
+    } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
+    // Per-image square-crop focal point + zoom (canonical adds these on update;
+    // defensive add here catches an install mid-migration). Pure structural.
+    try {
+        $pdo->exec("ALTER TABLE snap_post_images
+                    ADD COLUMN IF NOT EXISTS img_focus_x TINYINT UNSIGNED NOT NULL DEFAULT 50,
+                    ADD COLUMN IF NOT EXISTS img_focus_y TINYINT UNSIGNED NOT NULL DEFAULT 50,
+                    ADD COLUMN IF NOT EXISTS img_zoom    SMALLINT UNSIGNED NOT NULL DEFAULT 100");
     } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
 
     $raw_date  = $_POST['img_date'] ?? '';
@@ -194,12 +210,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
                 $orig_w = $d_w; $orig_h = $d_h;
             }
 
-            // Square thumbnail (t_)
+            // Square thumbnail (t_) — focal-point + zoom crop (per-image).
+            // Defaults (fx=50,fy=50,zoom=100) reproduce the old centre crop.
+            $_st      = $img_style_at($i);
             $sq_size  = 400;
             $sq_thumb = imagecreatetruecolor($sq_size, $sq_size);
-            $min_dim  = min($orig_w, $orig_h);
-            $off_x    = ($orig_w - $min_dim) / 2;
-            $off_y    = ($orig_h - $min_dim) / 2;
+            $min_dim  = (int)round(min($orig_w, $orig_h) / ($_st['zoom'] / 100));
+            if ($min_dim < 1) $min_dim = 1;
+            $off_x    = (int)round(($orig_w - $min_dim) * ($_st['fx'] / 100));
+            $off_y    = (int)round(($orig_h - $min_dim) * ($_st['fy'] / 100));
+            $off_x    = max(0, min($orig_w - $min_dim, $off_x));
+            $off_y    = max(0, min($orig_h - $min_dim, $off_y));
             if ($mime === 'image/png' || $mime === 'image/webp') {
                 imagealphablending($sq_thumb, false); imagesavealpha($sq_thumb, true);
             }
@@ -296,18 +317,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
             INSERT INTO snap_post_images
                 (post_id, image_id, sort_position, is_cover,
                  img_size_pct, img_border_px, img_border_color, img_bg_color,
-                 img_shadow, img_crop_mode)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 img_shadow, img_crop_mode, img_focus_x, img_focus_y, img_zoom)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $upd_post = $pdo->prepare("UPDATE snap_images SET post_id = ? WHERE id = ?");
         foreach ($processed_images as $pos => $img) {
             $s = $img['style'];
+            // Focal point + zoom apply to every image (fit or fill) — they define
+            // the square crop used for the tile thumbnail.
             if ($s['crop'] === 'fill') {
                 $pi_stmt->execute([$post_id, $img['image_id'], $pos, ($pos === 0 ? 1 : 0),
-                                   100, 0, '#000000', '#ffffff', 0, 'fill']);
+                                   100, 0, '#000000', '#ffffff', 0, 'fill',
+                                   $s['fx'], $s['fy'], $s['zoom']]);
             } else {
                 $pi_stmt->execute([$post_id, $img['image_id'], $pos, ($pos === 0 ? 1 : 0),
-                                   $s['size'], $s['bpx'], $s['bcol'], $s['bg'], $s['shadow'], 'fit']);
+                                   $s['size'], $s['bpx'], $s['bcol'], $s['bg'], $s['shadow'], 'fit',
+                                   $s['fx'], $s['fy'], $s['zoom']]);
             }
             $upd_post->execute([$post_id, $img['image_id']]);
         }

@@ -144,6 +144,12 @@ CREATE TABLE IF NOT EXISTS `snap_post_images` (
   `img_shadow`       tinyint unsigned NOT NULL DEFAULT 0,
   `img_crop_mode`    enum('fit','fill') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'fit'
                      COMMENT 'fit = contain in 1:1 panel (optional frame); fill = IG square crop (cover). Per-image, set by the gram composer.',
+  `img_focus_x`      tinyint unsigned NOT NULL DEFAULT 50
+                     COMMENT 'Square-crop focal point, horizontal %, 0-100 (50=centre). Per-image, set by the crop/zoom widget.',
+  `img_focus_y`      tinyint unsigned NOT NULL DEFAULT 50
+                     COMMENT 'Square-crop focal point, vertical %, 0-100 (50=centre).',
+  `img_zoom`         smallint unsigned NOT NULL DEFAULT 100
+                     COMMENT 'Square-crop zoom %, 100-300 (100=no zoom). Crop dim = min(w,h)/(zoom/100).',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_image` (`image_id`),
   KEY `idx_post_id` (`post_id`),
