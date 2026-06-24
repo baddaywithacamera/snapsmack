@@ -512,11 +512,21 @@ $post_stmt->execute([$post_id]);
 $post = $post_stmt->fetch();
 if (!$post) die('Post not found.');
 
+// Ensure the per-image crop columns exist before selecting them on GET render
+// (canonical adds them on update; this guards a DB caught mid-migration).
+try {
+    $pdo->exec("ALTER TABLE snap_post_images
+                ADD COLUMN IF NOT EXISTS img_focus_x TINYINT UNSIGNED NOT NULL DEFAULT 50,
+                ADD COLUMN IF NOT EXISTS img_focus_y TINYINT UNSIGNED NOT NULL DEFAULT 50,
+                ADD COLUMN IF NOT EXISTS img_zoom    SMALLINT UNSIGNED NOT NULL DEFAULT 100");
+} catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
+
 // Load all images in this post, ordered by sort_position (including frame style columns)
 $images_stmt = $pdo->prepare("
     SELECT i.*, pi.sort_position, pi.is_cover, pi.id AS pivot_id,
            pi.img_size_pct, pi.img_border_px, pi.img_border_color,
-           pi.img_bg_color, pi.img_shadow
+           pi.img_bg_color, pi.img_shadow,
+           pi.img_focus_x, pi.img_focus_y, pi.img_zoom
     FROM snap_post_images pi
     JOIN snap_images i ON i.id = pi.image_id
     WHERE pi.post_id = ? AND pi.sort_position >= 0
@@ -804,6 +814,7 @@ include 'core/sidebar.php';
                 <div class="ce-strip-item cp-strip-item"
                      data-image-id="<?php echo $pimg['id']; ?>"
                      data-thumb="<?php echo htmlspecialchars($thumb_src); ?>"
+                     data-aspect="<?php echo htmlspecialchars($pimg['img_thumb_aspect'] ?: $pimg['img_file']); ?>"
                      data-focus-x="<?php echo (int)($pimg['img_focus_x'] ?? 50); ?>"
                      data-focus-y="<?php echo (int)($pimg['img_focus_y'] ?? 50); ?>"
                      data-zoom="<?php echo (int)($pimg['img_zoom'] ?? 100); ?>">
