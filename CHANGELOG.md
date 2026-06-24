@@ -12,6 +12,20 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.291 — "Captain's Chair" (2026-06-24)
+
+- **Admin themes now expose `--accent`.** Every `admin-theme-colours-*.css` (21 files)
+  defines a `:root { --accent }` matching the theme (greymatter → grey, midnight-lime →
+  lime, amber-phosphorus → amber, etc.). The master stylesheet and admin pages already
+  used `var(--accent, …)` but no theme defined it, so highlights always fell back to a
+  hardcoded lime green — glaring on greyscale/monochrome themes. Now the Panorama Slicer,
+  the gram upload strip, and every `var(--accent)` rule inherit the active theme's colour.
+- **Gram composer: real per-image preview.** The upload drop zone is now a slim bar, and
+  each dropped image renders as a **large 1:1 panel showing exactly how it will publish** —
+  IG square crop (fill) or the image at size% inside the matte panel with live border,
+  matte colour and drop shadow. The controls sit beneath each preview. (Was a tiny,
+  useless thumbnail over an oversized drop target.)
+
 ## 0.7.290 — "Bucket Seat" (2026-06-24)
 
 - **Ships the Panorama Slicer end to end.** 0.7.289 went out partial — the gram-poster

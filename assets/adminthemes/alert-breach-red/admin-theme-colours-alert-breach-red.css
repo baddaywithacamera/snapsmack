@@ -21,6 +21,8 @@
    Depends on assets/adminthemes/red-john/ remaining present (core theme). */
 @import url("../red-john/admin-theme-colours-red-john.css");
 
+:root { --accent: #ff2a2a; }
+
 /* Full-screen breathing pulse: fixed, click-through, screen-blended so it
    lightens the whole admin chrome at each peak and recedes at each trough —
    a smooth dark<->light pulse, not a hard flash. */

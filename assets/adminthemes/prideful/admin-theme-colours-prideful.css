@@ -19,6 +19,8 @@
    Green  #008026   Blue   #004DFF   Purple #750787 */
 
 
+:root { --accent: #004DFF; }
+
 /* 01: GLOBAL BASE */
 html, body {
     background-color: #cce4ff;

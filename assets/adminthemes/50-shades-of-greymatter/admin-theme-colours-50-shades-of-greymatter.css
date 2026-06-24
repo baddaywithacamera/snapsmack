@@ -16,6 +16,8 @@
  */
 
 
+:root { --accent: #666666; }
+
 /* 01: GLOBAL BASE */
 html, body {
     background-color: #F0F0F0;

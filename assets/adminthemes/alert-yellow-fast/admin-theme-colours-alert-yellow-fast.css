@@ -20,6 +20,8 @@
    Depends on assets/adminthemes/amber-phosphorus/ remaining present. */
 @import url("../amber-phosphorus/admin-theme-colours-amber-phosphorus.css");
 
+:root { --accent: #ffd11a; }
+
 /* Fast full-screen breathing pulse — smooth dark<->light, not a hard flash. */
 @keyframes ss-alert-pulse-yellow-fast {
     0%, 100% { opacity: 0.10; }

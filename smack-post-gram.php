@@ -382,22 +382,26 @@ include 'core/sidebar.php';
        images rendered at full natural size and overflowed the page. Scoped
        here (page-local) so it can't affect any other admin screen.
        --------------------------------------------------------------------- */
-    .cp-drop-zone { display:flex; flex-direction:column; align-items:center;
-        justify-content:center; gap:6px; padding:34px 20px; cursor:pointer;
-        text-align:center; border:2px dashed var(--border-color,#3a3a3a);
-        border-radius:8px; background:rgba(255,255,255,0.02);
+    /* Compact drop BAR — once an image is dropped you want to SEE it, not aim at
+       a giant target. Slim horizontal bar; the previews below do the heavy work. */
+    .cp-drop-zone { display:flex; flex-direction:row; align-items:center;
+        justify-content:center; gap:12px; flex-wrap:wrap; padding:12px 18px;
+        cursor:pointer; text-align:center;
+        border:2px dashed var(--border-color,#3a3a3a); border-radius:8px;
+        background:rgba(255,255,255,0.02);
         transition:border-color .15s, background .15s; }
-    .cp-drop-zone:hover { border-color:var(--accent,#b6ff1a);
+    .cp-drop-zone:hover, .cp-drop-zone.is-over { border-color:var(--accent,#b6ff1a);
         background:rgba(255,255,255,0.04); }
-    .cp-drop-zone.is-over { border-color:var(--accent,#b6ff1a);
-        background:rgba(182,255,26,0.06); }
-    .cp-drop-icon { font-size:34px; line-height:1; opacity:.55; }
-    .cp-drop-label { margin:0; font-weight:600; letter-spacing:.5px; }
-    .cp-drop-sub { margin:0; font-size:12px; }
+    .cp-drop-icon { font-size:22px; line-height:1; opacity:.55; }
+    .cp-drop-label { margin:0; font-weight:600; letter-spacing:.5px; font-size:13px; }
+    .cp-drop-sub { margin:0; font-size:11px; }
 
-    .cp-strip { display:flex; flex-wrap:wrap; gap:14px; margin-top:16px; }
+    /* LARGE preview panels — each renders the 1:1 grid tile as it will publish:
+       fill = IG square crop (cover); fit = image at size% inside the matte panel
+       with optional border + drop shadow. The per-image controls sit beneath. */
+    .cp-strip { display:flex; flex-wrap:wrap; gap:18px; margin-top:16px; }
     .cp-strip:empty { margin-top:0; }
-    .cp-strip-item { width:170px; flex:0 0 170px; padding:8px;
+    .cp-strip-item { width:420px; flex:0 0 420px; max-width:100%; padding:10px;
         background:rgba(255,255,255,0.03);
         border:1px solid var(--border-color,#333); border-radius:6px;
         cursor:grab; transition:opacity .15s, border-color .15s, transform .1s; }
@@ -406,8 +410,9 @@ include 'core/sidebar.php';
         transform:translateY(-2px); }
 
     .cp-thumb-wrap { position:relative; width:100%; aspect-ratio:1/1;
-        border-radius:4px; overflow:hidden; background:#111; }
-    .cp-thumb { width:100%; height:100%; object-fit:cover; display:block; }
+        border-radius:4px; overflow:hidden; background:#111;
+        display:flex; align-items:center; justify-content:center; }
+    .cp-thumb { display:block; max-width:100%; max-height:100%; }
 
     .cp-cover-badge { position:absolute; top:5px; left:5px; z-index:2;
         font-size:9px; font-weight:700; letter-spacing:.6px; padding:2px 6px;
@@ -616,6 +621,32 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
         renderStrip();
     }
 
+    // Live preview: render the 1:1 tile exactly as it will publish. fill = IG
+    // square crop (cover fill); fit = image at size% inside the matte panel with
+    // optional border + drop shadow. Mirrors the-grid's render so the panel IS
+    // the post preview.
+    const SHADOW_CSS = ['none',
+        '0 2px 10px rgba(0,0,0,.20)',
+        '0 4px 20px rgba(0,0,0,.45)',
+        '0 8px 40px rgba(0,0,0,.70)'];
+    function applyPreview(item, wrap, img) {
+        if (item.crop === 'fill') {
+            wrap.style.background = '#111';
+            img.style.width = '100%';  img.style.height = '100%';
+            img.style.maxWidth = '';   img.style.maxHeight = '';
+            img.style.objectFit = 'cover';
+            img.style.border = 'none'; img.style.boxShadow = 'none';
+        } else {
+            wrap.style.background = item.bg;                    // matte fills the tile
+            img.style.width = 'auto';  img.style.height = 'auto';
+            img.style.maxWidth = item.size + '%';
+            img.style.maxHeight = item.size + '%';
+            img.style.objectFit = 'contain';
+            img.style.border = item.bpx > 0 ? (item.bpx + 'px solid ' + item.bcol) : 'none';
+            img.style.boxShadow = SHADOW_CSS[item.shadow] || 'none';
+        }
+    }
+
     function renderStrip() {
         strip.innerHTML = '';
         fileCount.textContent = fileList.length + ' / ' + MAX_IMAGES + ' images';
@@ -658,6 +689,10 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
                     '</div>' +
                 '</div>';
 
+            const wrap     = el.querySelector('.cp-thumb-wrap');
+            const thumbImg = el.querySelector('.cp-thumb');
+            applyPreview(item, wrap, thumbImg);
+
             el.querySelector('.cp-remove-btn').addEventListener('click', e => {
                 e.stopPropagation();
                 removeFile(parseInt(e.currentTarget.dataset.idx));
@@ -675,14 +710,15 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
             cropCb.addEventListener('change', () => {
                 item.crop = cropCb.checked ? 'fill' : 'fit';
                 fitBox.style.display = cropCb.checked ? 'none' : '';
+                applyPreview(item, wrap, thumbImg);
             });
             const sizeR = styleEl.querySelector('.gp-size'),  sizeV = styleEl.querySelector('.gp-size-v');
-            sizeR.addEventListener('input', () => { item.size = parseInt(sizeR.value); sizeV.textContent = item.size + '%'; });
+            sizeR.addEventListener('input', () => { item.size = parseInt(sizeR.value); sizeV.textContent = item.size + '%'; applyPreview(item, wrap, thumbImg); });
             const bpxR = styleEl.querySelector('.gp-bpx'),    bpxV  = styleEl.querySelector('.gp-bpx-v');
-            bpxR.addEventListener('input', () => { item.bpx = parseInt(bpxR.value); bpxV.textContent = item.bpx + 'px'; });
-            styleEl.querySelector('.gp-bcol').addEventListener('input', e => { item.bcol = e.target.value; });
-            styleEl.querySelector('.gp-bg').addEventListener('input',   e => { item.bg   = e.target.value; });
-            styleEl.querySelector('.gp-shadow').addEventListener('change', e => { item.shadow = parseInt(e.target.value); });
+            bpxR.addEventListener('input', () => { item.bpx = parseInt(bpxR.value); bpxV.textContent = item.bpx + 'px'; applyPreview(item, wrap, thumbImg); });
+            styleEl.querySelector('.gp-bcol').addEventListener('input', e => { item.bcol = e.target.value; applyPreview(item, wrap, thumbImg); });
+            styleEl.querySelector('.gp-bg').addEventListener('input',   e => { item.bg   = e.target.value; applyPreview(item, wrap, thumbImg); });
+            styleEl.querySelector('.gp-shadow').addEventListener('change', e => { item.shadow = parseInt(e.target.value); applyPreview(item, wrap, thumbImg); });
 
             // Drag-reorder
             el.addEventListener('dragstart', e => {
@@ -729,16 +765,16 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
         const lab = document.createElement('span');
         lab.style.cssText = 'font:11px/1 monospace;min-width:42px;text-align:right;opacity:.75;';
         lab.textContent = (item.angle || 0).toFixed(1) + '°';
-        const applyPreview = () => { thumb.style.transform = 'scale(1.18) rotate(' + (item.angle || 0) + 'deg)'; };
+        const applyRotate = () => { thumb.style.transform = 'scale(1.18) rotate(' + (item.angle || 0) + 'deg)'; };
         s.addEventListener('input', () => {
             item.angle = parseFloat(s.value) || 0;
             lab.textContent = item.angle.toFixed(1) + '°';
-            applyPreview();
+            applyRotate();
         });
         // Keep the slider from starting a thumbnail drag-reorder.
         s.addEventListener('click', e => e.stopPropagation());
         s.addEventListener('mousedown', e => e.stopPropagation());
-        if (item.angle) applyPreview();
+        if (item.angle) applyRotate();
         row.appendChild(s); row.appendChild(lab);
         el.appendChild(row);
     }
