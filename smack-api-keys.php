@@ -33,6 +33,12 @@ try { $pdo->query("SELECT expires_at FROM snap_ohsnap_keys LIMIT 0");
 } catch (PDOException $e) {
     $pdo->exec("ALTER TABLE snap_ohsnap_keys ADD COLUMN expires_at DATETIME DEFAULT NULL AFTER last_used_at");
 }
+// Per-user binding (canonical owns it). Import keys act AS the bound user; the
+// import API forces content ownership to this user. Defensive add for unsynced installs.
+try { $pdo->query("SELECT user_id FROM snap_ohsnap_keys LIMIT 0");
+} catch (PDOException $e) {
+    $pdo->exec("ALTER TABLE snap_ohsnap_keys ADD COLUMN user_id INT UNSIGNED DEFAULT NULL AFTER is_active");
+}
 
 // --- GENERATE ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate') {
@@ -58,10 +64,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
     if (!isset($expiry_map[$expiry_sel])) $expiry_sel = '4w'; // default + cap
     $expires_at = date('Y-m-d H:i:s', strtotime($expiry_map[$expiry_sel]));
 
+    // Bind the key to its creator. Per-user keys: each user generates their own,
+    // and the import API attributes all imported content to this user.
+    $key_user_id = (int)($_SESSION['user_id'] ?? 0) ?: null;
+
     $pdo->prepare("
-        INSERT INTO snap_ohsnap_keys (label, key_type, key_hash, key_prefix, expires_at)
-        VALUES (?, ?, ?, ?, ?)
-    ")->execute([$label, $key_type, $key_hash, $key_prefix, $expires_at]);
+        INSERT INTO snap_ohsnap_keys (label, key_type, key_hash, key_prefix, expires_at, user_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ")->execute([$label, $key_type, $key_hash, $key_prefix, $expires_at, $key_user_id]);
 
     $new_key_raw = $raw_key;
     $msg = '> KEY GENERATED. COPY IT NOW — IT WILL NOT BE SHOWN AGAIN.';

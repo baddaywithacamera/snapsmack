@@ -12,6 +12,88 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.306 — "Assigned Seating" (2026-06-25)
+
+- **Per-user import keys + content ownership.** Multi-user blogs can now
+  attribute imported photos to a specific user. Import keys
+  (`snap_ohsnap_keys`) are bound to their creating user (`user_id`); the FLKR
+  FCKR import API forces imported `snap_images.user_id` to the key's user and
+  ignores any client-supplied value, so impersonation is impossible. New
+  nullable `user_id` columns on `snap_ohsnap_keys`, `snap_images`, and
+  `snap_posts` (the last for future web-admin author wiring). Legacy keys with
+  no bound user are refused for writes and must be regenerated.
+- **Leased step-up authorization window.** The import key is session continuity,
+  not a credential — it can no longer authorize writes on its own. Every import
+  now requires an active, time-boxed per-user window opened only by password +
+  TOTP via the new `flkrfckr/authorize` endpoint. The empty-site free pass and
+  the per-write sliding window are gone; the credential check is IP rate-limited
+  (reusing `snap_rate_limits`/`snap_ip_bans`). Window length is configurable
+  (`flkrfckr_window_minutes`, default 4h). Desktop tool support follows.
+
+## 0.7.305 — "Window Seat" (2026-06-25)
+
+- **Client-side thumbnail generation — moves import load off the shared host.**
+  The desktop import tools can now build the `t_` (300×300 square) and `a_`
+  (600px aspect) thumbnails locally and ship them in the same upload request;
+  the `flkrfckr/upload` endpoint saves them and SKIPS its server-side GD pass.
+  On a 10k import this takes the thumbnail-generation firehose off the Proxmox
+  box that also hosts the database. New shared, build-once module
+  `tools/_shared/snap_thumbs.py` (a faithful Pillow port of
+  `core/thumb-generator.php`, same sizes / naming / quality 85) is the single
+  source for the whole tool family. FLKR FCKR is the first consumer.
+  (`core/flkrfckr-api.php`, `tools/_shared/snap_thumbs.py`,
+  `tools/flkr-fckr/image_prep.py`, `tools/flkr-fckr/poster.py`)
+- **Graceful fallback.** If a tool does not send thumbs (or either part fails
+  MIME validation), the endpoint falls back to server-side generation exactly as
+  before — so Unzucker and every other uploader keep working untouched until they
+  adopt the shared module.
+
+## 0.7.304 — "Catbird Seat" (2026-06-25)
+
+- **Grid edit strip gets the composer's full image widget + card layout.** The
+  source-asset strip in the carousel editor now carries the same per-image
+  controls as the GramOfSmack composer — Square Crop (IG), Zoom + drag-to-pan,
+  Size, Border, Border/Matte colours, Shadow — laid out in the same 420px card
+  with a square preview tile, replacing the bare Zoom slider and the sprawling,
+  unstyled panel. The `.gp-*` widget and `.cp-*` card CSS are reused verbatim from
+  the composer; per-image style now persists regardless of customisation level.
+  (`smack-edit-carousel.php`, `assets/js/ss-engine-carousel-edit.js`)
+- **Publish status reaches single + trigram-slice images.** Publishing now
+  cascades `img_status` / `img_date` to a post's images via both the
+  `snap_post_images` pivot and the direct `snap_images.post_id` link, so single
+  posts and trigram slices (`-l`/`-m`/`-r`) actually flip to published in the
+  archive grid instead of silently staying "draft." (`smack-edit-carousel.php`)
+
+## 0.7.303 — "Driver's Seat" (2026-06-25)
+
+- **Publish status now sticks (carousel editor).** The editor saved
+  `snap_posts.status`, but the archive grid and every status filter read
+  `snap_images.img_status` — the two were never synced, so "Published" saved to
+  the post while the grid kept showing "draft." Saving now cascades status + date
+  to the post's images. (`smack-edit-carousel.php`)
+- **Per-image controls ported to the edit strip.** The carousel editor's lone Zoom
+  slider is replaced by the GramOfSmack composer's per-image widget (square crop,
+  zoom, pan, size, border, matte, shadow), reusing the composer's component and
+  serialising to the `img_*` fields the handler already accepts. (`smack-edit-carousel.php`,
+  `assets/js/ss-engine-carousel-edit.js`)
+- **Title-removal top padding fixed.** Carousel mode hides the post-title field;
+  the now-first wrapper kept its top margin, opening the form with a dead band of
+  padding. Matches the composer's `.post-description-wrap { margin-top:0 }` fix.
+  (`smack-edit-carousel.php`)
+- **Updater stale-cache guard.** The System Updates card rendered straight from the
+  cached check without comparing to the installed version, so a stale row (or a
+  hub-push that jumped the install ahead) showed "UPDATE AVAILABLE" for a build
+  already passed. Any cached update not strictly newer than the running version is
+  now discarded and the cached row rewritten. (`smack-update.php`)
+
+## 0.7.302 — "Hot Seat" (2026-06-25)
+
+- **Zoom slider no longer grabs the card (carousel editor).** Pressing the per-image
+  Zoom slider started a native HTML5 drag of the draggable card instead of moving
+  the slider, because `stopPropagation` alone doesn't stop a drag of a draggable
+  ancestor. The card's drag is now disabled for the duration of the slider
+  interaction. (Superseded by the full widget in 0.7.303.) (`assets/js/ss-engine-carousel-edit.js`)
+
 ## 0.7.301 — "Box Seats" (2026-06-24)
 
 - **Flickr import now captures views + provenance (FLKR FCKR).** Each photo's

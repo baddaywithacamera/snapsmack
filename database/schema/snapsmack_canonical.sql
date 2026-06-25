@@ -62,6 +62,8 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
                         COMMENT 'JSON: per-image frame/mat/bevel overrides and extracted colour palette',
   `post_id`             int            DEFAULT NULL
                         COMMENT 'FK to snap_posts — populated when image is wrapped in a post',
+  `user_id`             int unsigned   DEFAULT NULL
+                        COMMENT 'FK to snap_users — owner/author for per-user import attribution. NULL = legacy/unattributed.',
   `sort_order`          int            NOT NULL DEFAULT '0'
                         COMMENT 'Manual display order. Lower = earlier in feed. 0 = unset (falls back to img_date DESC).',
   `modified_at`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -101,6 +103,8 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
                       COMMENT 'FK to snap_trigrams.id — NULL = normal post cover',
   `sort_order`        int            NOT NULL DEFAULT 0
                       COMMENT 'Manual feed order. 0 = unset (falls back to created_at DESC).',
+  `user_id`           int unsigned   DEFAULT NULL
+                      COMMENT 'FK to snap_users — post author/owner (multi-user attribution). NULL = legacy/unattributed. Web-admin wiring pending.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_slug` (`slug`),
   KEY `idx_status` (`status`),
@@ -635,6 +639,8 @@ CREATE TABLE IF NOT EXISTS `snap_ohsnap_keys` (
   `key_prefix`   varchar(8)     COLLATE utf8mb4_unicode_ci NOT NULL
                  COMMENT 'First 8 chars of raw key for identification in the UI',
   `is_active`    tinyint(1)     NOT NULL DEFAULT 1,
+  `user_id`      int unsigned   DEFAULT NULL
+                 COMMENT 'FK to snap_users — the user this key acts as. Import keys MUST be bound (per-user attribution); NULL = legacy key (reject imports, force regen).',
   `created_at`   datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `last_used_at` datetime       DEFAULT NULL,
   `expires_at`   datetime       DEFAULT NULL
