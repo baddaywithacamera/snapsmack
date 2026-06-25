@@ -35,7 +35,7 @@ from poster import FlkrDckrClient, run_import
 # app convention, matches unzucker), not in %APPDATA%.
 # ---------------------------------------------------------------------------
 
-BUILD_VERSION = "0.7.16"  # auto-incremented by bump_version.py on each build.bat run
+BUILD_VERSION = "0.7.18"  # auto-incremented by bump_version.py on each build.bat run
 
 if getattr(sys, 'frozen', False):
     # Running as the compiled exe — log next to flkrfckr.exe
@@ -218,7 +218,7 @@ class FlkrDckrApp(tk.Tk):
         self._v_key = tk.StringVar(value=self._cfg.get('api_key', ''))
         entry(bar, self._v_key, 3, show='•')
 
-        self._btn_test = tk.Button(bar, text='Test', bg=BG_CELL, fg=ACCENT,
+        self._btn_test = tk.Button(bar, text='Connect', bg=BG_CELL, fg=ACCENT,
                                    relief='flat', bd=0, padx=8, pady=3,
                                    font=self._font_bold, cursor='hand2',
                                    command=self._test_connection)
@@ -236,13 +236,16 @@ class FlkrDckrApp(tk.Tk):
                                command=self._browse_folder)
         btn_browse.grid(row=1, column=2, sticky='w', padx=(0, 8))
 
-        # Server throttle — named presets (ported from unzucker). 'Full Send' = 0.0
-        # = no delay (localhost/VPS). Stored in config as seconds-as-string.
+        # Server throttle — named presets (ported from unzucker). Stored in config
+        # as seconds-as-string. 'Full Send' (0s) was removed deliberately: a
+        # zero-delay firehose hammers I/O even on a local network to your own
+        # server, and on shared hosting it will get someone in trouble. The
+        # fastest selectable rate is now Fast Lane (0.25s).
         _THROTTLE_OPTIONS = [
-            ('Full Send (0s)', '0.0'),        ('Fast Lane (0.25s)', '0.25'),
-            ('Steady (0.5s)', '0.5'),         ('Easy Does It (1s)', '1.0'),
-            ('Sunday Driver (2s)', '2.0'),    ('Pump da Brakes (5s)', '5.0'),
-            ("Grandma's Pace (10s)", '10.0'), ('Geological Time (30s)', '30.0'),
+            ('Fast Lane (0.25s)', '0.25'),    ('Steady (0.5s)', '0.5'),
+            ('Easy Does It (1s)', '1.0'),     ('Sunday Driver (2s)', '2.0'),
+            ('Pump da Brakes (5s)', '5.0'),   ("Grandma's Pace (10s)", '10.0'),
+            ('Geological Time (30s)', '30.0'),
         ]
         self._throttle_l2v = {l: v for l, v in _THROTTLE_OPTIONS}
         self._throttle_v2l = {v: l for l, v in _THROTTLE_OPTIONS}
@@ -735,7 +738,7 @@ class FlkrDckrApp(tk.Tk):
         h2('Quick Start')
         p('1. Download and unzip your Flickr data export (Account Settings → Your Flickr Data → Request your archive).')
         p('2. In your SnapSmack admin panel, go to Boring Ass Stuff → API Keys and generate a new key with type "FLKR FCKR Import". Copy it — shown only once.')
-        p('3. Enter your site URL and API key in the settings bar above. Click Test to verify.')
+        p('3. Enter your site URL and API key in the settings bar above. Click Connect to verify.')
         p('4. Browse to your unzipped Flickr export folder and click Load Export.')
         p('5. Review the photo grid. Click any tile to exclude it. Use the album sidebar to filter by album.')
         p('6. Click Start Import. Pause and resume at any time. If interrupted, FLKR FCKR offers to resume on next launch.')
