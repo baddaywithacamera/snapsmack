@@ -21,8 +21,8 @@
 
 
 $show_profile  = false; // No profile header in archive views
-$carousel_ind  = $settings['tg_carousel_indicator'] ?? 'icon';
-$hover_overlay = $settings['tg_hover_overlay']      ?? 'title';
+$carousel_ind  = $settings['ic_carousel_indicator'] ?? 'icon';
+$hover_overlay = $settings['ic_hover_overlay']      ?? 'title';
 
 $page_title = htmlspecialchars($archive_name ?? 'Archive');
 

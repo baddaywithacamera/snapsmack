@@ -23,8 +23,8 @@ $per_page  = 30;
 $curr_page = max(1, (int)($_GET['p'] ?? 1));
 $offset    = ($curr_page - 1) * $per_page;
 
-$carousel_ind  = $settings['tg_carousel_indicator'] ?? 'icon';
-$hover_overlay = $settings['tg_hover_overlay']      ?? 'dark';
+$carousel_ind  = $settings['ic_carousel_indicator'] ?? 'icon';
+$hover_overlay = $settings['ic_hover_overlay']      ?? 'dark';
 
 // ── Fetch tag record ──────────────────────────────────────────────────────────
 $tag_stmt = $pdo->prepare("SELECT id, use_count FROM snap_tags WHERE slug = ? LIMIT 1");
