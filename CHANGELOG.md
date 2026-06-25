@@ -12,6 +12,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.307 — "Open Seating" (2026-06-25)
+
+- **FLKR FCKR upload accepts PNG and WebP (not just JPEG).** The
+  `flkrfckr/upload` endpoint previously hard-rejected anything that wasn't
+  `image/jpeg`, so PNG/WebP photos in a Flickr export failed to import. It now
+  accepts JPEG, PNG and WebP, stores the original byte-for-byte in its own
+  format (correct extension), and keeps thumbnails as JPEG. The server
+  thumbnailer already handles all three. Fixes the "Only JPEG images are
+  accepted" rejection.
+
 ## 0.7.306 — "Assigned Seating" (2026-06-25)
 
 - **Per-user import keys + content ownership.** Multi-user blogs can now
