@@ -103,6 +103,33 @@ if (isset($_POST['ste_action']) && $_POST['ste_action'] === 'optout') {
 
 // --- FORM SUBMISSION HANDLER ---
 // Saves all settings via upsert. Logo/favicon uploads moved to Global Vibe.
+// --- AI spending-cap acknowledgement (from the first-key modal) ---
+// Liability: when a per-use AI key is first entered, a modal asks the owner to
+// confirm they've set a spend cap. CONFIRM records an ack (never asks again for
+// that provider); DEFER snoozes the prompt for 7 days. Per provider.
+if (($_POST['action'] ?? '') === 'ai_spendcap') {
+    header('Content-Type: application/json');
+    $sc_prov   = preg_replace('/[^a-z0-9_]/', '', strtolower((string)($_POST['provider'] ?? '')));
+    $sc_choice = (string)($_POST['choice'] ?? '');
+    if ($sc_prov === '' || !in_array($sc_prov, ['claude', 'gemini', 'openai'], true)) {
+        echo json_encode(['ok' => false, 'error' => 'bad provider']);
+        exit;
+    }
+    if ($sc_choice === 'confirm') {
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, '1') ON DUPLICATE KEY UPDATE setting_val = '1'")
+            ->execute(['ai_spendcap_ack_' . $sc_prov]);
+    } elseif ($sc_choice === 'defer') {
+        $until = (string)(time() + 7 * 86400);
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+            ->execute(['ai_spendcap_defer_' . $sc_prov, $until]);
+    } else {
+        echo json_encode(['ok' => false, 'error' => 'bad choice']);
+        exit;
+    }
+    echo json_encode(['ok' => true]);
+    exit;
+}
+
 if (isset($_POST['save_settings'])) {
     // Checkboxes that are unchecked send no POST value; default them to '0' before saving.
     $checkbox_keys = ['landing_only', 'ste_enabled'];
@@ -842,6 +869,51 @@ include 'core/sidebar.php';
     <form method="POST" id="ste-optout-form"><input type="hidden" name="ste_action" value="optout"></form>
 </div>
 
+<?php
+// ── AI spending-cap modal (liability: confirm a cap on per-use AI billing) ──
+// Prompt once per provider when a billable key is present and the cap hasn't been
+// confirmed (or a 1-week defer has lapsed). State lives in snap_settings:
+// ai_spendcap_ack_<prov> = '1' | ai_spendcap_defer_<prov> = <unix expiry>.
+$_sc_provider = $settings['ai_provider'] ?? 'none';
+$_sc_keymap   = ['claude' => 'ai_key_claude', 'gemini' => 'ai_key_gemini', 'openai' => 'ai_key_openai'];
+$_sc_keyname  = $_sc_keymap[$_sc_provider] ?? '';
+$_sc_haskey   = $_sc_keyname !== '' && trim((string)($settings[$_sc_keyname] ?? '')) !== '';
+$_sc_acked    = (string)($settings['ai_spendcap_ack_' . $_sc_provider] ?? '') === '1';
+$_sc_deferred = (int)($settings['ai_spendcap_defer_' . $_sc_provider] ?? 0) > time();
+$ai_spendcap_prompt = ($_sc_provider !== 'none') && $_sc_haskey && !$_sc_acked && !$_sc_deferred;
+$_sc_labels   = ['claude' => 'Anthropic (Claude)', 'gemini' => 'Google (Gemini)', 'openai' => 'OpenAI'];
+$_sc_caps     = [
+    'claude' => 'https://console.anthropic.com/settings/limits',
+    'gemini' => 'https://console.cloud.google.com/billing/budgets',
+    'openai' => 'https://platform.openai.com/settings/organization/limits',
+];
+$_sc_label    = $_sc_labels[$_sc_provider] ?? 'your AI provider';
+$_sc_capurl   = $_sc_caps[$_sc_provider] ?? '';
+?>
+<div id="ai-spendcap-modal" data-prompt="<?php echo $ai_spendcap_prompt ? '1' : '0'; ?>"
+     data-provider="<?php echo htmlspecialchars($_sc_provider); ?>"
+     style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.65);
+            align-items:center; justify-content:center;">
+  <div style="background:var(--color-panel,#2a2a2a); color:var(--color-text,#eee); max-width:440px;
+              width:90%; padding:24px 26px; border-radius:10px; box-shadow:0 12px 40px rgba(0,0,0,.6);">
+    <h3 style="margin:0 0 12px;">Set a spending cap first</h3>
+    <p style="margin:0 0 10px; line-height:1.5;">
+      You've added a <strong><?php echo htmlspecialchars($_sc_label); ?></strong> API key. That service
+      bills <strong>per use</strong> — an uncapped key can run up a surprise bill if something loops or the key leaks.
+    </p>
+    <p style="margin:0 0 18px; line-height:1.5;">
+      Please confirm you've set a spending / budget cap on your account.
+      <?php if ($_sc_capurl): ?>
+        <a href="<?php echo htmlspecialchars($_sc_capurl); ?>" target="_blank" rel="noopener">Where to set it →</a>
+      <?php endif; ?>
+    </p>
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button type="button" id="ai-spendcap-defer" class="btn-smack btn-smack--sm">DEFER 1 WEEK</button>
+      <button type="button" id="ai-spendcap-confirm" class="btn-smack btn-smack--sm">CONFIRM</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // Akismet key test button
 (function () {
@@ -957,6 +1029,7 @@ if (archiveLayout) {
     }
 }());
 </script>
+<script src="assets/js/ss-ai-spendcap.js?v=<?php echo time(); ?>"></script>
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
