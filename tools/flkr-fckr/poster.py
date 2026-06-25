@@ -39,6 +39,7 @@ class ImportResult:
     image_id:     int  = 0
     img_slug:     str  = ''
     duplicate:    bool = False
+    filename:     str  = ''   # source file basename — for logs + UI, eases locating failures
 
 
 # ---------------------------------------------------------------------------
@@ -417,6 +418,9 @@ def run_import(
             pass
 
     for idx, photo in enumerate(photos):
+        # Source filename for logs + UI, so a failed photo is locatable by name,
+        # not just by its Flickr ID. Falls back to the ID if there's no path.
+        fname = os.path.basename(photo.image_path) if getattr(photo, 'image_path', None) else photo.flickr_id
         # Cooperative pause/stop — checked before each photo.
         if pause_event is not None:
             pause_event.wait()
@@ -463,7 +467,7 @@ def run_import(
 
         # Skip missing images
         if photo.missing_image or not photo.image_path:
-            result = ImportResult(photo.flickr_id, False, 'Missing image file')
+            result = ImportResult(photo.flickr_id, False, 'Missing image file', filename=fname)
             results.append(result)
             checkpoint.record_failed(photo.flickr_id)
             if on_progress:
@@ -549,7 +553,7 @@ def run_import(
                 if result.image_id:
                     best_of.append((result.image_id, photo.count_views, photo.count_faves))
                 if not result.duplicate:
-                    log.info(f"Imported {photo.flickr_id} → image_id={result.image_id}")
+                    log.info(f"Imported {photo.flickr_id} ({fname}) → image_id={result.image_id}")
                     # Import this photo's Flickr comments (best-effort; only on a
                     # fresh import so re-runs don't duplicate them).
                     if result.image_id and photo.comments:
@@ -572,7 +576,7 @@ def run_import(
                     log.debug(f"Duplicate skipped: {photo.flickr_id}")
             else:
                 checkpoint.record_failed(photo.flickr_id)
-                log.error(f"API error for {photo.flickr_id}: {result.message}")
+                log.error(f"API error for {photo.flickr_id} ({fname}): {result.message}")
 
         except requests.HTTPError as e:
             status = e.response.status_code if e.response is not None else 0
@@ -587,19 +591,19 @@ def run_import(
             # once the user re-authorizes (re-click Start → step-up → continue).
             if status == 403 and ('authoriz' in body.lower() or 'window' in body.lower()):
                 log.warning("Import authorization expired at %s — stopping for re-auth.", photo.flickr_id)
-                stop_result = ImportResult(photo.flickr_id, False, 'AUTH_EXPIRED: ' + body)
+                stop_result = ImportResult(photo.flickr_id, False, 'AUTH_EXPIRED: ' + body, filename=fname)
                 results.append(stop_result)
                 if on_progress:
                     on_progress(idx + 1, total, stop_result)
                 break
             detail = f"{e} — server says: {body}" if body else str(e)
-            log.error(f"Photo {photo.flickr_id} failed: {detail}", exc_info=True)
-            result = ImportResult(photo.flickr_id, False, detail)
+            log.error(f"Photo {photo.flickr_id} ({fname}) failed: {detail}", exc_info=True)
+            result = ImportResult(photo.flickr_id, False, detail, filename=fname)
             checkpoint.record_failed(photo.flickr_id)
 
         except Exception as e:
-            log.error(f"Photo {photo.flickr_id} failed: {e}", exc_info=True)
-            result = ImportResult(photo.flickr_id, False, str(e))
+            log.error(f"Photo {photo.flickr_id} ({fname}) failed: {e}", exc_info=True)
+            result = ImportResult(photo.flickr_id, False, str(e), filename=fname)
             checkpoint.record_failed(photo.flickr_id)
 
         finally:
@@ -609,6 +613,8 @@ def run_import(
                 except OSError:
                     pass
 
+        if not result.filename:
+            result.filename = fname
         results.append(result)
         if on_progress:
             on_progress(idx + 1, total, result)
