@@ -61,6 +61,17 @@ import recovery as recovery_module
 from manifest_parser import ManifestEntry
 from poster import SnapSmackClient, SiteData
 
+# SON OF A BATCH — offline posting suite (BATCH SLAPPED + BATCH, PLEASE).
+# Guarded so a missing optional dep can never stop SYBU's core from launching.
+try:
+    from sob_solo import build_solo_mode
+    from sob_gram import build_gram_mode
+    _SOB_AVAILABLE = True
+    _SOB_IMPORT_ERROR = ""
+except Exception as _sob_err:  # pragma: no cover - import shim
+    _SOB_AVAILABLE = False
+    _SOB_IMPORT_ERROR = str(_sob_err)
+
 
 # ---------------------------------------------------------------------------
 # Audit log — rotating daily, 7-day retention. Records every Gemini request +
@@ -1135,7 +1146,13 @@ class App(tk.Tk):
         self._tab_indicators = {}
         tab_strip = tk.Frame(header, bg=BG_CARD)
         tab_strip.pack(side="left", padx=(28, 0), fill="y")
-        for _tname, _tlabel in [('post', 'POST'), ('audit', 'AUDIT'), ('repair', 'BASIC REPAIR'), ('match', 'ADV. MATCH'), ('settings', 'SETTINGS')]:
+        _tabs = [('post', 'POST'), ('audit', 'AUDIT'),
+                 ('repair', 'BASIC REPAIR'), ('match', 'ADV. MATCH')]
+        if _SOB_AVAILABLE:
+            _tabs += [('slapped', 'BATCH SLAPPED'), ('gram', 'BATCH, PLEASE'),
+                      ('smacktalk', 'SMACK YOUR BATCH UP')]
+        _tabs += [('settings', 'SETTINGS')]
+        for _tname, _tlabel in _tabs:
             _cell = tk.Frame(tab_strip, bg=BG_CARD)
             _cell.pack(side="left")
             _active = (_tname == 'post')
@@ -1232,6 +1249,10 @@ class App(tk.Tk):
         self._repair_frame   = tk.Frame(self, bg=BG_DEEP)
         self._settings_frame = tk.Frame(self, bg=BG_DEEP)
         self._match_frame    = tk.Frame(self, bg=BG_DEEP)
+        if _SOB_AVAILABLE:
+            self._slapped_frame   = tk.Frame(self, bg=BG_DEEP)
+            self._gram_frame      = tk.Frame(self, bg=BG_DEEP)
+            self._smacktalk_frame = tk.Frame(self, bg=BG_DEEP)
         self._post_frame.pack(fill="both", expand=True)
         # other frames packed by _switch_tab()
 
@@ -1554,6 +1575,36 @@ class App(tk.Tk):
         self._build_repair_ui()
         self._build_match_ui()
         self._build_settings_ui()
+        self._build_sob_modes()
+
+    # ------------------------------------------------------------------
+    # SON OF A BATCH — mount the offline posting mode panels
+    # ------------------------------------------------------------------
+
+    def _build_sob_modes(self):
+        """Mount BATCH SLAPPED + BATCH, PLEASE; SMACK YOUR BATCH UP is a
+        deferred 'coming soon' tab (it's the only mode needing a full local
+        skin render, so it lands last)."""
+        if not _SOB_AVAILABLE:
+            return
+        try:
+            build_solo_mode(self._slapped_frame, self).pack(fill="both", expand=True)
+            build_gram_mode(self._gram_frame, self).pack(fill="both", expand=True)
+        except Exception as e:
+            # Never let a panel error take down the whole tool.
+            for fr in (self._slapped_frame, self._gram_frame):
+                for w in fr.winfo_children():
+                    w.destroy()
+                tk.Label(fr, text=f"SON OF A BATCH panel failed to load:\n{e}",
+                         bg=BG_DEEP, fg=FG_ERR, font=FONT_UI, justify="left").pack(padx=20, pady=20)
+        # SMACK YOUR BATCH UP — deferred longform mode.
+        tk.Label(self._smacktalk_frame, text="SMACK YOUR BATCH UP", bg=BG_DEEP,
+                 fg=ACCENT, font=FONT_TITLE).pack(anchor="w", padx=20, pady=(24, 4))
+        tk.Label(self._smacktalk_frame,
+                 text="Longform / photo-essay mode — coming soon.\n\nIt's the only mode that "
+                      "needs a full local skin render, so it ships after a tested SmackTalk "
+                      "install. Build BATCH SLAPPED + BATCH, PLEASE here in the meantime.",
+                 bg=BG_DEEP, fg=FG_DIM, font=FONT_UI, justify="left").pack(anchor="w", padx=20)
 
     # ------------------------------------------------------------------
     # Tab switching
@@ -1571,6 +1622,10 @@ class App(tk.Tk):
         self._repair_frame.pack_forget()
         self._match_frame.pack_forget()
         self._settings_frame.pack_forget()
+        for _attr in ('_slapped_frame', '_gram_frame', '_smacktalk_frame'):
+            _fr = getattr(self, _attr, None)
+            if _fr is not None:
+                _fr.pack_forget()
         if tab == 'post':
             self._post_frame.pack(fill="both", expand=True)
         elif tab == 'audit':
@@ -1582,6 +1637,12 @@ class App(tk.Tk):
             self._match_frame.pack(fill="both", expand=True)
         elif tab == 'settings':
             self._settings_frame.pack(fill="both", expand=True)
+        elif tab == 'slapped' and hasattr(self, '_slapped_frame'):
+            self._slapped_frame.pack(fill="both", expand=True)
+        elif tab == 'gram' and hasattr(self, '_gram_frame'):
+            self._gram_frame.pack(fill="both", expand=True)
+        elif tab == 'smacktalk' and hasattr(self, '_smacktalk_frame'):
+            self._smacktalk_frame.pack(fill="both", expand=True)
         self._active_tab = tab
 
     # ------------------------------------------------------------------
