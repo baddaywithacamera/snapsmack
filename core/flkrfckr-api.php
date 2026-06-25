@@ -580,24 +580,30 @@ if ($sub === 'upload' && $method === 'POST') {
         flkrfckr_error(400, 'Upload error code ' . (int)$file['error']);
     }
 
-    // Verify the REAL MIME type — never trust the client Content-Type.
-    $finfo = new finfo(FILEINFO_MIME_TYPE);
-    $mime  = $finfo->file($file['tmp_name']);
-    if ($mime !== 'image/jpeg') {
-        flkrfckr_error(400, 'Only JPEG images are accepted (detected: ' . $mime . ').');
+    // Verify the REAL MIME type — never trust the client Content-Type. Accept the
+    // formats the server thumbnailer supports (JPEG, PNG, WebP). Originals are
+    // stored byte-for-byte in their own format; thumbnails are always JPEG.
+    $finfo    = new finfo(FILEINFO_MIME_TYPE);
+    $mime     = $finfo->file($file['tmp_name']);
+    $mime_ext = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+    if (!isset($mime_ext[$mime])) {
+        flkrfckr_error(400, 'Only JPEG, PNG or WebP images are accepted (detected: ' . $mime . ').');
     }
+    $ext    = $mime_ext[$mime];
+    $ext_re = ['jpg' => 'jpe?g', 'png' => 'png', 'webp' => 'webp'][$ext];
 
     // Client resizes before sending, so anything over 25 MB is a bug or attack.
     if ($file['size'] > 25 * 1024 * 1024) {
         flkrfckr_error(400, 'File too large (max 25 MB).');
     }
 
-    // Sanitise the client filename — keep only safe chars.
+    // Sanitise the client filename — keep only safe chars; extension must match
+    // the detected type.
     $client_name = preg_replace('/[^a-z0-9_.-]/', '', strtolower(basename($file['name'] ?? '')));
-    if (!preg_match('/\.jpe?g$/', $client_name) || strlen($client_name) > 120) {
+    if (!preg_match('/\.' . $ext_re . '$/', $client_name) || strlen($client_name) > 120) {
         $client_name = '';
     }
-    $filename = $client_name ?: (date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.jpg');
+    $filename = $client_name ?: (date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $ext);
 
     // Destination: img_uploads/YYYY/MM/ relative to the site root.
     $year_month = date('Y/m');
@@ -610,7 +616,7 @@ if ($sub === 'upload' && $method === 'POST') {
     // Avoid collisions.
     $dest_path = $dest_dir . '/' . $filename;
     if (file_exists($dest_path)) {
-        $filename  = date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.jpg';
+        $filename  = date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
         $dest_path = $dest_dir . '/' . $filename;
     }
 
@@ -633,8 +639,10 @@ if ($sub === 'upload' && $method === 'POST') {
     // fall through to server generation — we never store a half set.
     $thumb_dir_rel = 'img_uploads/' . $year_month . '/thumbs';
     $thumb_dir     = $site_root . '/' . $thumb_dir_rel;
-    $sq_rel        = $thumb_dir_rel . '/t_' . $filename;
-    $as_rel        = $thumb_dir_rel . '/a_' . $filename;
+    // Thumbs are always JPEG, so name them .jpg even when the original is PNG/WebP.
+    $thumb_base    = preg_replace('/\.[^.]+$/', '.jpg', $filename);
+    $sq_rel        = $thumb_dir_rel . '/t_' . $thumb_base;
+    $as_rel        = $thumb_dir_rel . '/a_' . $thumb_base;
 
     $client_thumbs_ok = false;
     if (!empty($_FILES['thumb_square']) && !empty($_FILES['thumb_aspect'])) {
