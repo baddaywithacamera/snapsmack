@@ -176,6 +176,8 @@ class Draft:
     group_key:    str = ""                # local key tying the 3 chunks together
     trigram_slot: int = 0                 # 1, 2 or 3 (L/M/R or T/M/B)
     trigram_orientation: str = "h"        # 'h' or 'v'
+    trigram_cut_a: float = 1.0 / 3.0      # first seam, fraction of the long axis (0-1)
+    trigram_cut_b: float = 2.0 / 3.0      # second seam, fraction of the long axis (0-1)
     # Sync bookkeeping.
     remote_post_id: int = 0               # filled after a successful create
     remote_trigram_id: int = 0
@@ -259,6 +261,165 @@ def migrate_draft_dict(d: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# DB-mirror sidecar — render a draft as the EXACT SnapSmack DB rows it becomes
+# on sync, using the real table + column names (and the same value logic the
+# gram/post and solo endpoints apply). Written next to each draft as a
+# <draft_id>.dbrows.json sidecar so a recovery tool (e.g. MIDNIGHT MOVE) can
+# rebuild the database straight from disk if a sync gets bitched up. Local
+# string refs ("post", "img_0"…) stand in for the auto-increment IDs the server
+# assigns; real remote IDs are filled in after a successful sync.
+# ---------------------------------------------------------------------------
+
+DBROWS_SUFFIX = ".dbrows.json"
+
+
+def _img_orientation(w: int, h: int) -> int:
+    """0 = landscape, 1 = portrait, 2 = square (matches the server)."""
+    return 1 if h > w else (2 if w == h else 0)
+
+
+def draft_db_rows(draft: Draft) -> dict:
+    base_name = lambda im: im.filename or os.path.basename(im.local_path or "")
+
+    meta = {
+        "draft_id": draft.draft_id,
+        "kind": draft.kind,
+        "mode": draft.mode,
+        "status": draft.status,
+        "schema_version": SCHEMA_VERSION,
+        "build_version": BUILD_VERSION,
+        "remote_post_id": draft.remote_post_id or None,
+        "remote_trigram_id": draft.remote_trigram_id or None,
+    }
+
+    # ---- SOLO: smack-post-solo.php is image-centric; capture the row + the
+    #      exact form payload it injects. ----------------------------------
+    if draft.kind == KIND_SOLO:
+        im = draft.cover()
+        meta["endpoint"] = "smack-post-solo.php"
+        img_row = {}
+        if im:
+            img_row = {
+                "img_slug": "",
+                "img_file": im.remote_path or base_name(im),
+                "img_title": draft.title,
+                "img_description": draft.caption,
+                "img_status": draft.img_status,
+                "img_date": draft.post_date,
+                "img_width": im.width,
+                "img_height": im.height,
+                "img_orientation": _img_orientation(im.width, im.height),
+                "img_thumb_square": im.remote_thumb_square or ("thumbs/t_" + base_name(im)),
+                "img_thumb_aspect": im.remote_thumb_aspect or ("thumbs/a_" + base_name(im)),
+                "img_source_file": base_name(im),
+                "img_ai_colors": draft.ai_colors,
+                "allow_download": 1 if draft.allow_download else 0,
+                "download_url": draft.download_url,
+            }
+        return {
+            "_meta": meta,
+            "snap_images": {"img_0": img_row} if img_row else {},
+            "_post_form": {
+                "title": draft.title, "tags": draft.tags,
+                "img_status": draft.img_status, "desc": draft.caption,
+                "allow_download": 1 if draft.allow_download else 0,
+                "download_url": draft.download_url,
+                "orientation_override": draft.orientation,
+                "img_ai_colors": draft.ai_colors,
+                "category": draft.category, "album": draft.album,
+            },
+        }
+
+    # ---- GRAM (single / carousel / trigram chunk): exact snap_* rows. ------
+    meta["endpoint"] = "api.php?route=unzucker/gram/post"
+
+    def _img_row(im, idx):
+        return {
+            "img_slug": "",
+            "img_file": im.remote_path or base_name(im),
+            "img_title": "",
+            "img_description": draft.caption,
+            "img_date": draft.post_date,
+            "img_width": im.width,
+            "img_height": im.height,
+            "img_orientation": _img_orientation(im.width, im.height),
+            "img_thumb_square": im.remote_thumb_square or ("thumbs/t_" + base_name(im)),
+            "img_thumb_aspect": im.remote_thumb_aspect or ("thumbs/a_" + base_name(im)),
+            "img_source_file": "sob:" + base_name(im),
+            "img_status": draft.img_status,
+            "sort_order": idx,
+            "allow_comments": 1 if draft.allow_comments else 0,
+            "allow_download": 1 if draft.allow_download else 0,
+            "download_url": draft.download_url,
+        }
+
+    def _pivot_row(im, idx):
+        fill = im.crop_mode == "fill"
+        return {
+            "post_ref": "post",
+            "image_ref": f"img_{idx}",
+            "sort_position": idx,
+            "is_cover": 1 if im.is_cover else 0,
+            "img_size_pct": 100 if fill else im.size_pct,
+            "img_border_px": 0 if fill else im.border_px,
+            "img_border_color": "#000000" if fill else im.border_color,
+            "img_bg_color": "#ffffff" if fill else im.bg_color,
+            "img_shadow": 0 if fill else im.shadow,
+            "img_crop_mode": "fill" if fill else "fit",
+            "img_focus_x": im.focus_x,
+            "img_focus_y": im.focus_y,
+            "img_zoom": im.zoom,
+        }
+
+    n = len(draft.images)
+    ptype = draft.post_type or ("single" if n <= 1 else "carousel")
+    post_row = {
+        "title": draft.title,
+        "slug": "",
+        "description": draft.caption,
+        "post_type": ptype,
+        "status": draft.img_status,
+        "created_at": draft.post_date,
+        "allow_comments": 1 if draft.allow_comments else 0,
+        "allow_download": 1 if draft.allow_download else 0,
+        "download_url": draft.download_url,
+        "panorama_rows": draft.panorama_rows,
+        "post_img_size_pct": 100,
+        "post_border_px": 0,
+        "post_border_color": "#000000",
+        "post_bg_color": "#ffffff",
+        "post_shadow": 0,
+        "trigram_id": "trigram" if draft.kind == KIND_GRAM_TRIGRAM else None,
+    }
+
+    tag_list = [t.lstrip("#") for t in draft.tags.split() if t.strip()]
+    rows = {
+        "_meta": meta,
+        "snap_posts": {"post": post_row},
+        "snap_images": {f"img_{i}": _img_row(im, i) for i, im in enumerate(draft.images)},
+        "snap_post_images": [_pivot_row(im, i) for i, im in enumerate(draft.images)],
+        "snap_image_tags": [
+            {"image_ref": f"img_{i}", "tag": t}
+            for i in range(len(draft.images)) for t in tag_list
+        ],
+    }
+    if draft.kind == KIND_GRAM_TRIGRAM:
+        # The trigram row belongs to the GROUP — a recovery tool collects all
+        # three sidecars sharing group_key and fills post_id_<slot> from each.
+        rows["snap_trigrams"] = {
+            "group_key": draft.group_key,
+            "trigram_type": "group",
+            "orientation": draft.trigram_orientation,
+            "source_path": None,
+            "cut_a": None,
+            "cut_b": None,
+            "slot": draft.trigram_slot,
+            "post_ref": "post",
+        }
+    return rows
+
+
+# ---------------------------------------------------------------------------
 # Thumbnails — generate the CMS-identical t_/a_ pair for every image in a draft.
 # ---------------------------------------------------------------------------
 
@@ -295,6 +456,15 @@ def generate_draft_thumbs(draft: Draft, *, sq_size: int = 400, asp_max: int = 40
 # server's trigram_check_and_publish promotes it exactly like the Unzucker path.
 # ---------------------------------------------------------------------------
 
+def _clamp_cuts(cut_a, cut_b) -> Tuple[float, float]:
+    """Normalize two seam fractions to a sane, ordered pair in (0,1)."""
+    fa = 1.0 / 3.0 if cut_a is None else float(cut_a)
+    fb = 2.0 / 3.0 if cut_b is None else float(cut_b)
+    fa = max(0.05, min(0.90, fa))
+    fb = max(fa + 0.05, min(0.95, fb))
+    return fa, fb
+
+
 def slice_trigram_cover(
     src_path: str,
     out_dir: str,
@@ -303,38 +473,40 @@ def slice_trigram_cover(
     mode: str = MODE_GRAM,
     caption: str = "",
     tags: str = "",
+    cut_a: Optional[float] = None,
+    cut_b: Optional[float] = None,
+    group_key: Optional[str] = None,
 ) -> List[Draft]:
     """
-    Slice `src_path` into three equal chunks and return three KIND_GRAM_TRIGRAM
-    drafts sharing one group_key, slots 1/2/3. orientation 'h' = left/mid/right,
-    'v' = top/mid/bottom. Thumbs are generated for each chunk.
+    Slice `src_path` into three KIND_GRAM_TRIGRAM chunks sharing one group_key,
+    slots 1/2/3. orientation 'h' = left/mid/right, 'v' = top/mid/bottom.
+
+    cut_a / cut_b are the two seam positions as fractions of the long axis
+    (defaults 1/3, 2/3 = even thirds). For an irregular (non-3:1) cover, set the
+    seams where they look right; each strip is then cropped to a square tile
+    (crop_mode='fill', focal/zoom adjustable per tile afterwards). Pass an
+    existing group_key to re-slice in place (keeps the group identity stable).
     """
     from PIL import Image as _PILImage  # local import keeps headless tests light
 
     if orientation not in ("h", "v"):
         orientation = "h"
     os.makedirs(out_dir, exist_ok=True)
+    fa, fb = _clamp_cuts(cut_a, cut_b)
 
     with _PILImage.open(src_path) as im:
         im.load()
         src = im.convert("RGB")
     w, h = src.size
 
-    boxes: List[Tuple[int, int, int, int]] = []
     if orientation == "h":
-        step = w // TRIGRAM_GROUP_SIZE
-        for i in range(TRIGRAM_GROUP_SIZE):
-            x0 = i * step
-            x1 = (i + 1) * step if i < TRIGRAM_GROUP_SIZE - 1 else w
-            boxes.append((x0, 0, x1, h))
+        xa, xb = int(round(w * fa)), int(round(w * fb))
+        boxes = [(0, 0, xa, h), (xa, 0, xb, h), (xb, 0, w, h)]
     else:
-        step = h // TRIGRAM_GROUP_SIZE
-        for i in range(TRIGRAM_GROUP_SIZE):
-            y0 = i * step
-            y1 = (i + 1) * step if i < TRIGRAM_GROUP_SIZE - 1 else h
-            boxes.append((0, y0, w, y1))
+        ya, yb = int(round(h * fa)), int(round(h * fb))
+        boxes = [(0, 0, w, ya), (0, ya, w, yb), (0, yb, w, h)]
 
-    group_key = _new_id()
+    group_key = group_key or _new_id()
     base = os.path.splitext(os.path.basename(src_path))[0]
     drafts: List[Draft] = []
     for slot, box in enumerate(boxes, start=1):
@@ -352,9 +524,13 @@ def slice_trigram_cover(
             group_key=group_key,
             trigram_slot=slot,
             trigram_orientation=orientation,
+            trigram_cut_a=fa,
+            trigram_cut_b=fb,
         )
+        # Trigram covers fill the square tile so the 3-across band reads as one
+        # image (a 'fit' default would letterbox an off-square strip).
         d.images = [DraftImage(local_path=chunk_path, filename=chunk_name,
-                               sort_position=0, is_cover=True)]
+                               sort_position=0, is_cover=True, crop_mode="fill")]
         generate_draft_thumbs(d)
         drafts.append(d)
     return drafts
@@ -447,6 +623,9 @@ class Session:
                         shutil.copy2(src, dst)
                     setattr(im, attr, dst)
 
+    def _dbrows_path(self, draft_id: str) -> str:
+        return os.path.join(self.drafts_dir, f"{draft_id}{DBROWS_SUFFIX}")
+
     def save_draft(self, draft: Draft) -> None:
         os.makedirs(self.drafts_dir, exist_ok=True)
         draft.touch()
@@ -454,6 +633,11 @@ class Session:
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(draft.to_dict(), f, indent=2, ensure_ascii=False)
         os.replace(tmp, self._draft_path(draft.draft_id))  # atomic write
+        # DB-mirror recovery sidecar (kept in lock-step with the draft).
+        tmp2 = self._dbrows_path(draft.draft_id) + ".tmp"
+        with open(tmp2, "w", encoding="utf-8") as f:
+            json.dump(draft_db_rows(draft), f, indent=2, ensure_ascii=False)
+        os.replace(tmp2, self._dbrows_path(draft.draft_id))
 
     def load_draft(self, draft_id: str) -> Optional[Draft]:
         p = self._draft_path(draft_id)
@@ -467,7 +651,7 @@ class Session:
         if not os.path.isdir(self.drafts_dir):
             return out
         for fn in sorted(os.listdir(self.drafts_dir)):
-            if fn.endswith(".json"):
+            if fn.endswith(".json") and not fn.endswith(DBROWS_SUFFIX):
                 try:
                     with open(os.path.join(self.drafts_dir, fn), "r", encoding="utf-8") as f:
                         out.append(Draft.from_dict(json.load(f)))
@@ -476,9 +660,9 @@ class Session:
         return out
 
     def delete_draft(self, draft_id: str) -> None:
-        p = self._draft_path(draft_id)
-        if os.path.isfile(p):
-            os.remove(p)
+        for p in (self._draft_path(draft_id), self._dbrows_path(draft_id)):
+            if os.path.isfile(p):
+                os.remove(p)
 
     def group_drafts(self, group_key: str) -> List[Draft]:
         return [d for d in self.list_drafts() if d.group_key == group_key]
@@ -612,7 +796,15 @@ def export_session(session: Session, dest_dir: str) -> str:
             "     already-synced posts stay done, the rest are ready to push.\n"
             "  4. Click 'SYNC WITH LIVE' when you have a connection.\n\n"
             "Nothing here talks to a server. It is safe to copy, back up, or move\n"
-            "between machines. See export-manifest.json for the full post list.\n"
+            "between machines. See export-manifest.json for the full post list.\n\n"
+            "DATABASE RECOVERY:\n"
+            "  Every draft in drafts/ has a matching <id>.dbrows.json sidecar that\n"
+            "  mirrors the exact SnapSmack tables and columns the post becomes on\n"
+            "  the live server (snap_posts, snap_images, snap_post_images,\n"
+            "  snap_image_tags, and snap_trigrams for trigrams). A recovery tool\n"
+            "  (MIDNIGHT MOVE) can rebuild the database straight from these files —\n"
+            "  local refs ('post', 'img_0'...) stand in for auto-increment IDs, and\n"
+            "  real server IDs appear once a post has been synced.\n"
         )
     return out
 

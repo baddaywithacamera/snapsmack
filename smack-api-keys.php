@@ -114,6 +114,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cance
     exit;
 }
 
+// --- OFFLINE POSTING (SON OF A BATCH) consent gate ---
+// Persistent owner opt-in: enabling lets the offline poster write to an
+// already-populated gram site. Enabling GRANTS access → requires re-auth;
+// disabling REDUCES access → no password. (SECAUDIT 2026-06-25 Finding 1.)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'enable_offline_posting') {
+    require_once 'core/reauth.php';
+    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    if (!$ra['ok']) {
+        $msg = 'OFFLINE POSTING NOT ENABLED — ' . $ra['error'];
+    } else {
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('gram_authoring_enabled', '1')
+                       ON DUPLICATE KEY UPDATE setting_val = '1'")->execute();
+        header('Location: smack-api-keys.php?msg=' . urlencode('Offline posting enabled for this site.'));
+        exit;
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'disable_offline_posting') {
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('gram_authoring_enabled', '0')
+                   ON DUPLICATE KEY UPDATE setting_val = '0'")->execute();
+    header('Location: smack-api-keys.php?msg=Offline+posting+disabled');
+    exit;
+}
+
 // --- FETCH ---
 $keys         = $pdo->query("
     SELECT id, label, key_type, key_prefix, is_active, created_at, last_used_at, expires_at
@@ -126,6 +150,9 @@ $revoked_keys = array_values(array_filter($keys, fn($k) => !$k['is_active']));
 // Bulk-import authorization window state (set by the panel below).
 $import_auth_until  = (int)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='import_authorized_until' LIMIT 1")->fetchColumn() ?: 0);
 $import_auth_active = $import_auth_until > time();
+
+// Offline-posting (SON OF A BATCH) consent state.
+$gram_authoring_on = ((string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='gram_authoring_enabled' LIMIT 1")->fetchColumn() ?: '0')) === '1';
 
 include 'core/admin-header.php';
 include 'core/sidebar.php';
@@ -190,6 +217,40 @@ include 'core/sidebar.php';
                     </div>
                 </div>
                 <button type="submit" class="master-update-btn">AUTHORIZE IMPORT FOR 1 HOUR</button>
+            </form>
+        <?php endif; ?>
+    </div>
+
+    <!-- OFFLINE POSTING (SON OF A BATCH) consent gate -->
+    <div class="box mb-20">
+        <h3>OFFLINE POSTING (SON OF A BATCH)</h3>
+        <p class="dim mb-20">
+            The SON OF A BATCH offline poster (BATCH SLAPPED / BATCH, PLEASE) writes new posts to
+            this site via the API. On a site that already holds content, posting stays blocked until
+            you enable it here — a one-time opt-in (no per-session re-authorizing). Enabling requires
+            your password (and 2FA code if enabled). The server also caps offline posting at 300
+            images/hour regardless. Empty or new sites need no opt-in.
+        </p>
+        <?php if ($gram_authoring_on): ?>
+            <div class="alert alert-success">&#10003; Offline posting is ENABLED for this site.</div>
+            <form method="post" action="smack-api-keys.php">
+                <input type="hidden" name="action" value="disable_offline_posting">
+                <button type="submit" class="btn-smack">DISABLE OFFLINE POSTING</button>
+            </form>
+        <?php else: ?>
+            <form method="post" action="smack-api-keys.php">
+                <input type="hidden" name="action" value="enable_offline_posting">
+                <div class="reauth-row">
+                    <div class="lens-input-wrapper">
+                        <label>PASSWORD</label>
+                        <input type="password" name="reauth_password" autocomplete="off">
+                    </div>
+                    <div class="lens-input-wrapper">
+                        <label>2FA CODE (IF ENABLED)</label>
+                        <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" class="input-code">
+                    </div>
+                </div>
+                <button type="submit" class="master-update-btn">ENABLE OFFLINE POSTING</button>
             </form>
         <?php endif; ?>
     </div>

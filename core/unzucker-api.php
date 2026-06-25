@@ -94,6 +94,27 @@ function uz_ok(array $data): void {
     exit;
 }
 
+// SECAUDIT 2026-06-25 Findings 1+4: server-side hourly image budget for the
+// SON OF A BATCH authoring routes — the real flood/storage bound (the ~50
+// client cap is only a UI nicety). Generous enough for legit field batches,
+// low enough to stop a runaway client or a leaked key. Exits 429 on exceed.
+function uz_authoring_budget(PDO $pdo, int $add): void {
+    $cap    = 300;   // images per rolling hour across gram/upload + gram/post
+    $window = 3600;
+    $now    = time();
+    $start  = (int)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='gram_authoring_win_start' LIMIT 1")->fetchColumn() ?: 0);
+    $count  = (int)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='gram_authoring_win_count' LIMIT 1")->fetchColumn() ?: 0);
+    if ($now - $start > $window) { $start = $now; $count = 0; }
+    if ($count + $add > $cap) {
+        uz_error(429, "Offline-posting rate limit reached ({$cap} images/hour). Try again shortly.");
+    }
+    $count += $add;
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('gram_authoring_win_start', ?)
+                   ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute([(string)$start]);
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('gram_authoring_win_count', ?)
+                   ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute([(string)$count]);
+}
+
 // ---------------------------------------------------------------------------
 // Slug helpers
 // ---------------------------------------------------------------------------
@@ -187,31 +208,39 @@ $uz_import_authorized = ((int)($pdo->query("SELECT setting_val FROM snap_setting
 $uz_authoring_subs = ['gram/upload', 'gram/post'];
 $uz_is_authoring   = in_array($sub, $uz_authoring_subs, true);
 
+// SECAUDIT 2026-06-25 Finding 1 remediation: authoring is no longer a blanket
+// exemption from owner authorization. An established site (>5 items) must have
+// the owner enable offline posting ONCE (Admin → API Keys, password+2FA) — a
+// persistent consent gate, not the per-session friction Sean rejected. Empty/
+// new sites stay free. A server-side hourly volume budget (uz_authoring_budget)
+// caps flooding even when enabled — the ~50 client cap is UX, not the control.
+$uz_authoring_on = ((string)($pdo->query(
+    "SELECT setting_val FROM snap_settings WHERE setting_key='gram_authoring_enabled' LIMIT 1"
+)->fetchColumn() ?: '0')) === '1';
+
 if ($method === 'POST') {
     if ($uz_site_mode !== 'carousel') {
         uz_error(409, "GRAMOFSMACK (carousel) installs only. This site is '{$uz_site_mode}' — no bueno.");
     }
-    // Authoring routes (SON OF A BATCH) skip the bulk-import bazooka lock below;
-    // the carousel mode lock above already applied to them.
-    if (!$uz_is_authoring) {
-    // Non-empty-site lock. The threshold must measure content that existed
-    // BEFORE this import — NOT the rows the import is adding — or any import
-    // larger than the limit guillotines itself on a clean site (it sailed past
-    // 5 of its own uploads and 403'd the sixth). So we only block when the site
-    // is ALREADY over the limit AND no import window is open. A clean/under-limit
-    // site is let through, and every accepted write (re)opens a sliding window —
-    // so the rest of the run proceeds however large it gets, and a long import
-    // never expires mid-flight (which also fixes the manual-authorize path
-    // lapsing 60 min into a multi-thousand-item migration).
-    if (!$uz_import_authorized && $uz_content > 5) {
-        uz_error(403, "This site already holds {$uz_content} items. To import into a site that is not empty, authorize the import on the admin API Keys page first.");
+    if ($uz_is_authoring) {
+        // Owner-consent gate for offline posting onto an established site.
+        if ($uz_content > 5 && !$uz_authoring_on) {
+            uz_error(403, "Offline posting is not enabled for this site. Turn it on in Admin → API Keys (requires your password and 2FA).");
+        }
+        // Per-request volume budget is enforced inside each authoring route.
+    } else {
+        // Non-empty-site lock for the bulk IMPORT path (unchanged). The threshold
+        // measures content that existed BEFORE this import, so a clean site lets
+        // its own uploads through and every accepted write slides the window.
+        if (!$uz_import_authorized && $uz_content > 5) {
+            uz_error(403, "This site already holds {$uz_content} items. To import into a site that is not empty, authorize the import on the admin API Keys page first.");
+        }
+        $pdo->prepare(
+            "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('import_authorized_until', ?)
+             ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+        )->execute([(string)(time() + 3600)]);
+        $uz_import_authorized = true;
     }
-    // Slide the import window forward on every accepted write.
-    $pdo->prepare(
-        "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('import_authorized_until', ?)
-         ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
-    )->execute([(string)(time() + 3600)]);
-    $uz_import_authorized = true;
 }
 
 // ---------------------------------------------------------------------------
@@ -337,6 +366,12 @@ if ($sub === 'posts' && $method === 'POST') {
         $ext = strtolower(pathinfo($img_path, PATHINFO_EXTENSION));
         if (!in_array($ext, ['jpg', 'jpeg'], true)) {
             uz_error(400, "images[$seq].path must be a .jpg or .jpeg file.");
+        }
+        // SECAUDIT 2026-06-25 Finding 2: block directory traversal here too.
+        // (Files arrive out-of-band via FTP, so a lexical check — no realpath —
+        // is the right guard: relative, no '..', no NUL.)
+        if ($img_path[0] === '/' || strpos($img_path, '..') !== false || strpos($img_path, "\0") !== false) {
+            uz_error(400, "images[$seq].path is not allowed.");
         }
 
         // All Instagram imports are square; img_orientation is INT (0=landscape/square)
@@ -639,6 +674,7 @@ if ($sub === 'gram/upload' && $method === 'POST') {
     if (empty($_FILES['image'])) {
         uz_error(400, 'No file uploaded. Expected multipart field: image');
     }
+    uz_authoring_budget($pdo, 1);  // SECAUDIT Findings 1+4 — hourly image budget
     $finfo = new finfo(FILEINFO_MIME_TYPE);
 
     $save_jpeg = function (array $file, string $dest_dir, string $name) use ($finfo): string {
@@ -728,6 +764,11 @@ if ($sub === 'gram/post' && $method === 'POST') {
         $post_date = date('Y-m-d H:i:s');
     }
     if (empty($images) || !is_array($images)) uz_error(400, 'images array is required.');
+    // SECAUDIT 2026-06-25 Finding 1: per-call image ceiling (a single compose
+    // unit is a carousel <=10 or a trigram chunk; 30 is a safe hard ceiling)
+    // plus the rolling hourly budget across authoring routes.
+    if (count($images) > 30) uz_error(400, 'Too many images in one post (max 30).');
+    uz_authoring_budget($pdo, count($images));
 
     $tag_string = '';
     if (is_array($tags) && count($tags) > 0) {
@@ -759,6 +800,16 @@ if ($sub === 'gram/post' && $method === 'POST') {
         ];
     };
 
+    // Trust a client thumb only if its path is shaped like one we'd have saved
+    // (img_uploads/YYYY/MM/thumbs/t_*.jpg or a_*.jpg) AND the file is on disk.
+    // Anything else falls back to a server GD pass — never stored blindly.
+    $valid_thumb = function ($p) use ($site_root): string {
+        $p = trim((string)$p);
+        if ($p === '' || strlen($p) > 500) return '';
+        if (!preg_match('#^img_uploads/[0-9]{4}/[0-9]{2}/thumbs/[ta]_[A-Za-z0-9_.\-]+\.jpe?g$#', $p)) return '';
+        return is_file($site_root . '/' . $p) ? $p : '';
+    };
+
     $pdo->beginTransaction();
     try {
         // 1) Create every snap_images row, carrying its style for the pivot.
@@ -779,6 +830,17 @@ if ($sub === 'gram/post' && $method === 'POST') {
             if (!in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), ['jpg', 'jpeg'], true)) {
                 uz_error(400, "images[$seq].path must be a .jpg/.jpeg file.");
             }
+            // SECAUDIT 2026-06-25 Finding 2: block directory traversal. The path
+            // must be relative, contain no '..' or NUL, and resolve to a real
+            // file under img_uploads/ (it was just uploaded via gram/upload).
+            if ($path[0] === '/' || strpos($path, '..') !== false || strpos($path, "\0") !== false) {
+                uz_error(400, "images[$seq].path is not allowed.");
+            }
+            $real = realpath($site_root . '/' . $path);
+            $root = realpath($site_root . '/img_uploads');
+            if ($real === false || $root === false || strncmp($real, $root . '/', strlen($root) + 1) !== 0) {
+                uz_error(400, "images[$seq].path must resolve under img_uploads/.");
+            }
             $w = (int)($im['width'] ?? 0);
             $h = (int)($im['height'] ?? 0);
             if ($w < 1 || $h < 1) {
@@ -790,9 +852,10 @@ if ($sub === 'gram/post' && $method === 'POST') {
 
             $st = $style_of($im);
 
-            // Client thumbs are authoritative — skip GD when provided.
-            $t_sq = trim($im['thumb_square'] ?? '');
-            $t_as = trim($im['thumb_aspect'] ?? '');
+            // Client thumbs are authoritative when valid (path-checked + on
+            // disk) — skip GD; otherwise generate server-side as a fallback.
+            $t_sq = $valid_thumb($im['thumb_square'] ?? '');
+            $t_as = $valid_thumb($im['thumb_aspect'] ?? '');
             if ($t_sq === '' || $t_as === '') {
                 $gen = snapsmack_generate_thumbs($path, $site_root, 400, 400, $st['fx'], $st['fy'], $st['zoom']);
                 if ($gen !== false) {
@@ -880,6 +943,40 @@ if ($sub === 'gram/post' && $method === 'POST') {
         'post_id'        => $main_post_id,
         'image_ids'      => array_map(fn($b) => $b['image_id'], $built),
         'split_post_ids' => $split_post_ids,
+    ]);
+}
+
+// ---------------------------------------------------------------------------
+// GET unzucker/gram/verify — confirm a synced post exists (positive verify)
+// ---------------------------------------------------------------------------
+// BATCH, PLEASE pulls the live post back after a sync and confirms it matches
+// the local draft before marking it synced (the SYBU lesson: confirm
+// positively, never infer success from no-error).
+
+if ($sub === 'gram/verify' && $method === 'GET') {
+    $post_id = (int)($_GET['post_id'] ?? 0);
+    if (!$post_id) uz_error(400, 'post_id is required.');
+
+    $stmt = $pdo->prepare("
+        SELECT p.id, p.post_type, p.status, p.description, p.trigram_id,
+               (SELECT COUNT(*) FROM snap_post_images pi WHERE pi.post_id = p.id) AS image_count
+        FROM snap_posts p
+        WHERE p.id = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$post_id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) uz_error(404, 'Post not found.');
+
+    // SECAUDIT 2026-06-25 Finding 5: return only what positive verification
+    // needs (existence + image count). No caption — don't make this a
+    // caption-enumeration oracle.
+    uz_ok([
+        'post_id'     => (int)$row['id'],
+        'post_type'   => $row['post_type'],
+        'post_status' => $row['status'],
+        'image_count' => (int)$row['image_count'],
+        'trigram_id'  => $row['trigram_id'] !== null ? (int)$row['trigram_id'] : null,
     ]);
 }
 
