@@ -46,6 +46,18 @@ def _mime(path: str) -> str:
     }.get(ext, "image/jpeg")
 
 
+def _resp_msg(r, default: str) -> str:
+    """Surface the server's JSON error message (consent gate / rate limit / etc.)
+    so the user sees 'Offline posting is not enabled…' rather than a generic note."""
+    try:
+        m = (r.json() or {}).get("message")
+        if m:
+            return str(m)
+    except Exception:
+        pass
+    return default
+
+
 # ---------------------------------------------------------------------------
 # Connection — one Bearer session shared by solo + gram, matching SYBU.
 # ---------------------------------------------------------------------------
@@ -212,8 +224,8 @@ class GramPoster:
                     f.close()
                 except Exception:
                     pass
-        if r.status_code in (401, 403):
-            raise RuntimeError("API key rejected for image upload (needs posting scope).")
+        if r.status_code in (401, 403, 429):
+            raise RuntimeError(_resp_msg(r, "Image upload rejected (key scope / consent / rate limit)."))
         r.raise_for_status()
         data = r.json()
         if data.get("status") != "ok" or not data.get("path"):
@@ -269,8 +281,8 @@ class GramPoster:
             }
             r = self.conn.session.post(self.conn._api("unzucker/gram/post"),
                                        json=payload, timeout=120)
-            if r.status_code in (401, 403):
-                return SyncResult(False, message="API key rejected for post create (needs posting scope).")
+            if r.status_code in (401, 403, 429):
+                return SyncResult(False, message=_resp_msg(r, "Post create rejected (key scope / consent / rate limit)."))
             r.raise_for_status()
             data = r.json()
         except requests.RequestException as e:
@@ -291,8 +303,8 @@ class GramPoster:
         }
         r = self.conn.session.post(self.conn._api("unzucker/trigram"),
                                    json=payload, timeout=60)
-        if r.status_code in (401, 403):
-            raise RuntimeError("API key rejected for trigram link (needs posting scope).")
+        if r.status_code in (401, 403, 429):
+            raise RuntimeError(_resp_msg(r, "Trigram link rejected (key scope / consent / rate limit)."))
         r.raise_for_status()
         data = r.json()
         if data.get("status") != "ok" or not data.get("trigram_id"):
@@ -305,9 +317,22 @@ class GramPoster:
     def verify(self, draft: Draft) -> bool:
         if not draft.remote_post_id:
             return False
+        # Primary: pull the live post back via the dedicated verify route and
+        # confirm it matches the local draft (image count).
+        try:
+            r = self.conn.session.get(self.conn._api("unzucker/gram/verify"),
+                                      params={"post_id": draft.remote_post_id}, timeout=20)
+            if r.status_code == 200:
+                data = r.json()
+                if data.get("status") == "ok":
+                    return int(data.get("image_count", -1)) == len(draft.images)
+            if r.status_code == 404:
+                return False  # server says the post isn't there — real failure
+        except requests.RequestException:
+            pass
+        # Fallback: audit list, else trust the explicit server 'ok' from create
+        # rather than manufacturing a false failure.
         ok = _verify_by_post_id(self.conn, draft.remote_post_id)
-        # When the audit read is out of scope/unavailable, trust the explicit
-        # server 'ok' from create rather than manufacturing a false failure.
         return True if ok is None else ok
 
 

@@ -58,6 +58,9 @@ class GramMode(tk.Frame):
         self._kind = tk.StringVar(value="carousel")        # single | carousel | trigram
         self._trig_style = tk.StringVar(value="single")    # single | carousels
         self._trig_orientation = tk.StringVar(value="h")
+        self._cut_a = tk.IntVar(value=33)        # first seam, % of long axis
+        self._cut_b = tk.IntVar(value=67)        # second seam, % of long axis
+        self._trig_cover_src = ""                # original cover path, for re-slicing
         self._work_images: List[O.DraftImage] = []         # single/carousel images
         self._trig_slots: List[List[O.DraftImage]] = [[], [], []]  # 3 slots for trigram
         self._sel_img: Optional[O.DraftImage] = None
@@ -150,6 +153,27 @@ class GramMode(tk.Frame):
         tk.Label(self._trig_style_row, text=" orient:", bg=ui.BG_CARD, fg=ui.FG_DIM,
                  font=ui.FONT_SMALL).pack(side="left")
         ui.combo(self._trig_style_row, self._trig_orientation, ["h", "v"], width=3).pack(side="left")
+
+        # trigram cut controls — set where the two seams fall (for off-3:1 covers)
+        # and preview the assembled 3-across band before committing.
+        self._trig_tools = tk.Frame(kbox, bg=ui.BG_CARD)
+        cuts = tk.Frame(self._trig_tools, bg=ui.BG_CARD); cuts.pack(fill="x")
+        tk.Label(cuts, text="Seam A %", bg=ui.BG_CARD, fg=ui.FG_DIM, font=ui.FONT_SMALL,
+                 width=8, anchor="w").pack(side="left")
+        a = tk.Scale(cuts, from_=5, to=90, orient="horizontal", variable=self._cut_a,
+                     bg=ui.BG_CARD, fg=ui.FG_MAIN, troughcolor=ui.BG_MID, highlightthickness=0,
+                     font=ui.FONT_SMALL, length=150)
+        a.pack(side="left"); a.bind("<ButtonRelease-1>", lambda e: self._reslice())
+        tk.Label(cuts, text="Seam B %", bg=ui.BG_CARD, fg=ui.FG_DIM, font=ui.FONT_SMALL,
+                 width=8, anchor="w").pack(side="left")
+        b = tk.Scale(cuts, from_=10, to=95, orient="horizontal", variable=self._cut_b,
+                     bg=ui.BG_CARD, fg=ui.FG_MAIN, troughcolor=ui.BG_MID, highlightthickness=0,
+                     font=ui.FONT_SMALL, length=150)
+        b.pack(side="left"); b.bind("<ButtonRelease-1>", lambda e: self._reslice())
+        ui.button(cuts, "Re-slice", self._reslice).pack(side="left", padx=6)
+        tk.Label(self._trig_tools, text="Band preview (how the row will land):",
+                 bg=ui.BG_CARD, fg=ui.FG_DIM, font=ui.FONT_SMALL).pack(anchor="w", pady=(4, 0))
+        self._band_preview = tk.Frame(self._trig_tools, bg=ui.BG_MID); self._band_preview.pack(anchor="w")
 
         # image source buttons (context changes with kind)
         self._src_row = tk.Frame(kbox, bg=ui.BG_CARD); self._src_row.pack(fill="x", pady=4)
@@ -249,9 +273,11 @@ class GramMode(tk.Frame):
     # ======================================================================
     def _on_kind_change(self):
         if self._kind.get() == "trigram":
-            self._trig_style_row.pack(fill="x", after=self._src_row.master.winfo_children()[1])
+            self._trig_style_row.pack(fill="x", before=self._src_row)
+            self._trig_tools.pack(fill="x", before=self._src_row)
         else:
             self._trig_style_row.pack_forget()
+            self._trig_tools.pack_forget()
         self._build_src_buttons()
         self._render_strip()
 
@@ -334,21 +360,57 @@ class GramMode(tk.Frame):
 
     def _slice_cover(self):
         cover = filedialog.askopenfilename(
-            title="Choose a 3:1 (h) or 1:3 (v) cover to slice",
+            title="Choose a cover to slice into three",
             filetypes=[("Images", "*.jpg *.jpeg *.png *.webp"), ("All", "*.*")])
         if not cover:
             return
         if not self._ensure_session():
             return
-        # Slice into three cover chunks (each becomes a slot's cover).
-        chunks = O.slice_trigram_cover(cover, self.session.images_dir,
-                                       orientation=self._trig_orientation.get(),
-                                       mode=self.SUITE_MODE)
-        self._trig_slots = [[c.images[0]] for c in chunks]  # cover = is_cover already
-        # carry a shared group key so save can re-group
+        self._trig_cover_src = cover
+        self._trig_group_key = ""       # fresh group for a new cover
+        self._do_slice()
+
+    def _reslice(self):
+        if self._kind.get() == "trigram" and self._trig_cover_src:
+            self._do_slice()
+
+    def _do_slice(self):
+        if not self._trig_cover_src or not os.path.isfile(self._trig_cover_src):
+            return
+        # Keep any extra carousel images already added to each slot.
+        extras = [slot[1:] if slot else [] for slot in self._trig_slots]
+        ca = max(5, min(90, int(self._cut_a.get()))) / 100.0
+        cb = max(int(self._cut_a.get()) + 5, min(95, int(self._cut_b.get()))) / 100.0
+        gk = getattr(self, "_trig_group_key", "") or None
+        chunks = O.slice_trigram_cover(
+            self._trig_cover_src, self.session.images_dir,
+            orientation=self._trig_orientation.get(), mode=self.SUITE_MODE,
+            cut_a=ca, cut_b=cb, group_key=gk)
         self._trig_group_key = chunks[0].group_key
+        self._trig_slots = []
+        for i, c in enumerate(chunks):
+            slot = [c.images[0]]
+            if i < len(extras):
+                slot.extend(extras[i])
+            self._trig_slots.append(slot)
         self._sel_img = self._trig_slots[0][0]
         self._render_strip()
+
+    def _render_band(self):
+        for w in self._band_preview.winfo_children():
+            w.destroy()
+        if not (self._kind.get() == "trigram" and any(self._trig_slots)):
+            return
+        horiz = self._trig_orientation.get() == "h"
+        for slot in self._trig_slots:
+            cov = slot[0] if slot else None
+            thumb = ui.load_thumb(cov.thumb_square, 60) if cov else None
+            lbl = tk.Label(self._band_preview, bg=ui.BG_MID, bd=0)
+            if thumb:
+                lbl.configure(image=thumb, width=60, height=60); lbl.image = thumb
+            else:
+                lbl.configure(width=8, height=4)
+            lbl.pack(side="left" if horiz else "top")
 
     def _add_to_slot(self, slot_idx: int):
         if self._trig_style.get() != "carousels":
@@ -375,6 +437,8 @@ class GramMode(tk.Frame):
             self._render_trig_slots()
         else:
             self._render_image_row(self._strip, self._work_images, slot_idx=None)
+        if hasattr(self, "_band_preview"):
+            self._render_band()
 
     def _render_trig_slots(self):
         if not any(self._trig_slots):
@@ -577,6 +641,8 @@ class GramMode(tk.Frame):
         self._work_images = []
         self._trig_slots = [[], [], []]
         self._trig_group_key = ""
+        self._trig_cover_src = ""
+        self._cut_a.set(33); self._cut_b.set(67)
         self._sel_img = None
         self._editing_id = ""
         self._editing_group = ""
@@ -688,6 +754,9 @@ class GramMode(tk.Frame):
         self._trig_group_key = group_key
         self._kind.set("trigram")
         self._trig_orientation.set(members[0].trigram_orientation)
+        self._cut_a.set(int(round(members[0].trigram_cut_a * 100)))
+        self._cut_b.set(int(round(members[0].trigram_cut_b * 100)))
+        self._trig_cover_src = ""   # original cover not retained; adjust controls, not cuts
         self._trig_style.set("carousels" if any(len(m.images) > 1 for m in members) else "single")
         self._trig_slots = [[O.DraftImage.from_dict(im.to_dict()) for im in m.images] for m in members]
         self._load_post_fields(members[0])
