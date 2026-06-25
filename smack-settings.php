@@ -103,6 +103,15 @@ if (isset($_POST['ste_action']) && $_POST['ste_action'] === 'optout') {
 
 // --- FORM SUBMISSION HANDLER ---
 // Saves all settings via upsert. Logo/favicon uploads moved to Global Vibe.
+// --- AI cost responsibility: accept gate (enables AI features site-wide) ---
+// Covers existing installs / upgrades that never saw the installer step. AI stays
+// hard-off (ai-provider.php refuses) until ai_cost_accepted = '1'.
+if (($_POST['action'] ?? '') === 'ai_accept_cost') {
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ai_cost_accepted', '1') ON DUPLICATE KEY UPDATE setting_val = '1'")->execute();
+    header('Location: smack-settings.php');
+    exit;
+}
+
 // --- AI spending-cap acknowledgement (from the first-key modal) ---
 // Liability: when a per-use AI key is first entered, a modal asks the owner to
 // confirm they've set a spend cap. CONFIRM records an ack (never asks again for
@@ -678,6 +687,21 @@ include 'core/sidebar.php';
                 </div>
             </div>
             <?php else: ?>
+            <?php $ai_cost_accepted = ($settings['ai_cost_accepted'] ?? '') === '1'; ?>
+            <?php if (!$ai_cost_accepted): ?>
+            <div style="background:#2a2200; border:1px solid #4a3a00; border-radius:6px; padding:18px 20px; margin:0 0 18px;">
+                <strong style="display:block; margin-bottom:6px;">AI is off until you accept cost responsibility</strong>
+                <p class="dim" style="margin:0 0 14px; line-height:1.6;">
+                    AI helpers use <strong>your own</strong> third-party API key (Claude, Gemini, or OpenAI),
+                    which bills <strong>per use</strong>. An uncapped key can run up a real bill. Accept
+                    responsibility to enable AI — then set a spending cap on your provider account.
+                </p>
+                <!-- No nested <form>: this button submits the outer settings form with
+                     action=ai_accept_cost; the handler catches it first and exits. -->
+                <button type="submit" name="action" value="ai_accept_cost" class="btn-smack btn-smack--sm">I ACCEPT — ENABLE AI</button>
+            </div>
+            <?php endif; ?>
+            <fieldset <?php echo $ai_cost_accepted ? '' : 'disabled'; ?> style="border:0; padding:0; margin:0;<?php echo $ai_cost_accepted ? '' : ' opacity:.5;'; ?>">
             <p class="dim" style="margin:0 0 16px;">
                 Powers the Spell/Grammar check and AI Assist panel in the post editor.
                 Your API key is stored in the database and never exposed publicly.
@@ -735,6 +759,7 @@ include 'core/sidebar.php';
                 </button>
                 <span id="ai-test-result" style="margin-left:12px; font-size:0.85em;"></span>
             </div>
+            </fieldset>
             <?php endif; // hub_controls_ai ?>
         </div>
 
@@ -880,7 +905,8 @@ $_sc_keyname  = $_sc_keymap[$_sc_provider] ?? '';
 $_sc_haskey   = $_sc_keyname !== '' && trim((string)($settings[$_sc_keyname] ?? '')) !== '';
 $_sc_acked    = (string)($settings['ai_spendcap_ack_' . $_sc_provider] ?? '') === '1';
 $_sc_deferred = (int)($settings['ai_spendcap_defer_' . $_sc_provider] ?? 0) > time();
-$ai_spendcap_prompt = ($_sc_provider !== 'none') && $_sc_haskey && !$_sc_acked && !$_sc_deferred;
+$_sc_accepted = ($settings['ai_cost_accepted'] ?? '') === '1';
+$ai_spendcap_prompt = $_sc_accepted && ($_sc_provider !== 'none') && $_sc_haskey && !$_sc_acked && !$_sc_deferred;
 $_sc_labels   = ['claude' => 'Anthropic (Claude)', 'gemini' => 'Google (Gemini)', 'openai' => 'OpenAI'];
 $_sc_caps     = [
     'claude' => 'https://console.anthropic.com/settings/limits',

@@ -1075,12 +1075,14 @@ if ($step === 5 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
     $sec_na_send    = isset($_POST['network_alert_send'])         ? '1' : '0';
     $sec_na_push    = isset($_POST['network_alert_push_enabled']) ? '1' : '0';
     $sec_forum      = isset($_POST['forum_enabled'])              ? '1' : '0';
+    $sec_ai_cost    = isset($_POST['ai_cost_accepted'])           ? '1' : '0';
     $sec_consent    = json_encode([
         'smackback_enabled'          => $sec_smackback  === '1',
         'network_alert_receive'      => $sec_na_receive === '1',
         'network_alert_send'         => $sec_na_send    === '1',
         'network_alert_push_enabled' => $sec_na_push    === '1',
         'forum_enabled'              => $sec_forum      === '1',
+        'ai_cost_accepted'           => $sec_ai_cost    === '1',
     ]);
     $sec_consent_at = gmdate('Y-m-d H:i:s'); // UTC, server clock
 
@@ -1299,6 +1301,8 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'network_alert_push_enabled'   => $sec_na_push,
                 'network_alert_consent_choice' => $sec_consent,
                 'network_alert_consent_at'     => $sec_consent_at,
+                // AI cost responsibility — AI features stay OFF until this is '1'.
+                'ai_cost_accepted'             => $sec_ai_cost,
                 // Install timestamp — starts the 30-day Force-2FA grace clock (spec #1).
                 'installed_at'                 => date('Y-m-d H:i:s'),
             ];
@@ -2412,6 +2416,16 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                         <strong style="color:#e0e0e0;display:block;margin-bottom:4px;">Community Forum &mdash; SnapSmack Hub</strong>
                         <span style="color:#999;font-size:.9rem;line-height:1.6;">Connects your admin panel to the SnapSmack community forum at Smack Central. This is the primary way we share news, updates, tips, and security notices &mdash; one post reaches every connected install at once, which is far more reliable than email. <strong style="color:#bbb;">We strongly recommend leaving this on</strong> so you don&rsquo;t miss anything important.</span>
                     </span>
+                </label>
+            </div>
+
+            <!-- AI cost responsibility — OFF by default; not pre-checked (liability acceptance must be a deliberate choice) -->
+            <div style="background:#1a1a1a;border:1px solid #4a3a00;border-radius:6px;padding:22px 26px;margin-bottom:22px;">
+                <strong style="color:#e0e0e0;display:block;margin-bottom:6px;">AI Features &mdash; Off by Default</strong>
+                <p style="color:#777;font-size:.85rem;line-height:1.6;margin:0 0 16px;">SnapSmack&rsquo;s optional AI helpers use <strong style="color:#999;">your own</strong> third-party API key (Claude, Gemini, or OpenAI). Those services bill <strong style="color:#bbb;">per use</strong> &mdash; an uncapped key can run up a real bill. AI stays disabled until you accept responsibility. You can leave this for now and turn it on later in Settings &rarr; AI.</p>
+                <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0;">
+                    <input type="checkbox" name="ai_cost_accepted" value="1" style="margin-top:4px;flex-shrink:0;">
+                    <span><strong style="color:#ddd;">I understand I&rsquo;m responsible for all AI provider costs</strong><span style="color:#999;font-size:.9rem;display:block;line-height:1.6;">&hellip; and I&rsquo;ll set a spending cap on my provider account. Leave unchecked to keep AI off for now.</span></span>
                 </label>
             </div>
 

@@ -32,6 +32,22 @@ function snap_ai_provider(): string {
     return $cache;
 }
 
+/**
+ * Has the site owner accepted responsibility for third-party AI provider costs?
+ * AI is hard-gated OFF until this is true (set at install or via the admin gate
+ * in Settings → AI). Protects users from surprise per-use bills — see
+ * _continuity / memory: AI is "capped, consented, detachable".
+ */
+function snap_ai_cost_accepted(): bool {
+    global $pdo;
+    static $cache = null;
+    if ($cache === null) {
+        $row   = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'ai_cost_accepted' LIMIT 1")->fetch();
+        $cache = ($row && $row['setting_val'] === '1');
+    }
+    return $cache;
+}
+
 function snap_ai_api_key(): string {
     global $pdo;
     $provider = snap_ai_provider();
@@ -47,7 +63,8 @@ function snap_ai_api_key(): string {
 }
 
 function snap_ai_configured(): bool {
-    return snap_ai_provider() !== 'none' && snap_ai_api_key() !== '';
+    // Cost responsibility must be accepted first — AI is off until then.
+    return snap_ai_cost_accepted() && snap_ai_provider() !== 'none' && snap_ai_api_key() !== '';
 }
 
 // ── Main completion function ─────────────────────────────────────────────────
@@ -64,6 +81,9 @@ function snap_ai_complete(string $system, string $user, int $max_tokens = 1024):
     $provider = snap_ai_provider();
     $api_key  = snap_ai_api_key();
 
+    if (!snap_ai_cost_accepted()) {
+        return ['ok' => false, 'text' => '', 'error' => 'AI is disabled until you accept responsibility for AI provider costs in Settings → AI.'];
+    }
     if ($provider === 'none' || $api_key === '') {
         return ['ok' => false, 'text' => '', 'error' => 'No AI provider configured. Visit Settings → AI to set one up.'];
     }
@@ -158,6 +178,10 @@ function snap_ai_vision(string $system, string $user, array $images, int $max_to
     // Optional override (e.g. a per-skin key); otherwise the site's AI config.
     $provider = $providerOverride !== '' ? $providerOverride : snap_ai_provider();
     $api_key  = $providerOverride !== '' ? $keyOverride       : snap_ai_api_key();
+    // Cost-acceptance gate applies even to a per-skin override — it still spends money.
+    if (!snap_ai_cost_accepted()) {
+        return ['ok' => false, 'text' => '', 'error' => 'AI is disabled until you accept responsibility for AI provider costs in Settings → AI.'];
+    }
     if ($provider === 'none' || $provider === '' || $api_key === '') {
         return ['ok' => false, 'text' => '', 'error' => 'No AI provider configured. Visit Settings → AI to set one up (or add a skin override).'];
     }
