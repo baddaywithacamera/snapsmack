@@ -81,6 +81,31 @@ class FlkrDckrClient:
         except requests.RequestException as e:
             return False, f"Connection failed: {e}"
 
+    def check_auth(self) -> dict:
+        """
+        GET flkrfckr/ping — the server's auth/import state for this key:
+        {ok, message, site_mode, compatible, content_count, key_bound,
+         import_authorized, window_minutes}. ok=False on transport error.
+        - key_bound False  => legacy key, not tied to a user; must be regenerated.
+        - import_authorized => an active step-up window exists for this user.
+        """
+        try:
+            resp = self._session.get(
+                f"{self.base_url}/api.php",
+                params={'route': 'flkrfckr/ping'},
+                timeout=15,
+            )
+            if resp.status_code == 401:
+                return {'ok': False, 'message': 'Invalid API key.'}
+            resp.raise_for_status()
+            data = resp.json()
+            data['ok'] = True
+            return data
+        except requests.RequestException as e:
+            return {'ok': False, 'message': f'Connection failed: {e}'}
+        except ValueError:
+            return {'ok': False, 'message': 'Unexpected server response.'}
+
     # ------------------------------------------------------------------
     # Albums
     # ------------------------------------------------------------------
@@ -259,15 +284,34 @@ class FlkrDckrClient:
     # Image upload (multipart over HTTPS — replaces FTP/SFTP)
     # ------------------------------------------------------------------
 
-    def upload_image(self, local_path: str) -> dict:
+    def upload_image(self, local_path: str,
+                     thumb_square_path: str = '',
+                     thumb_aspect_path: str = '') -> dict:
         """
         Upload a JPEG to flkrfckr/upload as multipart/form-data. The server
-        saves it under img_uploads/YYYY/MM/, generates the t_/a_ thumbnails,
-        and returns {path, thumb_square, thumb_aspect, width, height}.
+        saves it under img_uploads/YYYY/MM/ and returns
+        {path, thumb_square, thumb_aspect, width, height}.
+
+        If thumb_square_path / thumb_aspect_path are provided (client-built
+        t_/a_ thumbs), they are shipped in the SAME multipart request and the
+        server saves them and SKIPS its own GD generation — moving the thumb
+        load off the shared host. Omit them to keep the legacy server-side path.
         Raises on HTTP error or a non-ok response.
         """
-        with open(local_path, 'rb') as fh:
+        # Open every part inside one ExitStack so all handles close together,
+        # even if requests raises mid-send.
+        from contextlib import ExitStack
+        with ExitStack() as stack:
+            fh = stack.enter_context(open(local_path, 'rb'))
             files = {'image': (os.path.basename(local_path), fh, 'image/jpeg')}
+
+            if thumb_square_path and os.path.isfile(thumb_square_path):
+                tsq = stack.enter_context(open(thumb_square_path, 'rb'))
+                files['thumb_square'] = (os.path.basename(thumb_square_path), tsq, 'image/jpeg')
+            if thumb_aspect_path and os.path.isfile(thumb_aspect_path):
+                tas = stack.enter_context(open(thumb_aspect_path, 'rb'))
+                files['thumb_aspect'] = (os.path.basename(thumb_aspect_path), tas, 'image/jpeg')
+
             resp = self._session.post(
                 f"{self.base_url}/api.php",
                 params={'route': 'flkrfckr/upload'},
@@ -435,8 +479,9 @@ def run_import(
             best_date = photo.date_taken or photo.create_date
             img_date_str = best_date.strftime('%Y-%m-%d %H:%M:%S') if best_date else ''
 
-            # ── 3. Prepare image (resize + EXIF). Thumbnails are generated
-            #       server-side by the upload endpoint, so we only make the main.
+            # ── 3. Prepare image (full original + EXIF + client-built t_/a_
+            #       thumbnails). Building thumbs here lets the server skip its
+            #       GD pass, moving that load off the shared host.
             prepped = prepare(
                 source_path=photo.image_path,
                 output_dir=staging_dir,
@@ -444,11 +489,19 @@ def run_import(
                 geo=photo.geo,
             )
             local_paths = [prepped.main_path]
+            if prepped.thumb_square_path:
+                local_paths.append(prepped.thumb_square_path)
+            if prepped.thumb_aspect_path:
+                local_paths.append(prepped.thumb_aspect_path)
 
-            # ── 4. Upload over HTTPS (multipart) — no FTP. The server saves the
-            #       file under img_uploads/YYYY/MM/, generates the t_/a_ thumbs,
-            #       and returns their paths.
-            up = client.upload_image(prepped.main_path)
+            # ── 4. Upload over HTTPS (multipart) — no FTP. The original plus the
+            #       client-built thumbs go in one request; the server saves them
+            #       and skips generation, returning the stored thumb paths.
+            up = client.upload_image(
+                prepped.main_path,
+                prepped.thumb_square_path,
+                prepped.thumb_aspect_path,
+            )
 
             # ── 5. Resolve albums ─────────────────────────────────────────────
             snap_album_ids: List[int] = []
@@ -522,11 +575,23 @@ def run_import(
                 log.error(f"API error for {photo.flickr_id}: {result.message}")
 
         except requests.HTTPError as e:
+            status = e.response.status_code if e.response is not None else 0
             body = ''
             try:
                 body = e.response.json().get('message', '') if e.response is not None else ''
             except Exception:
                 body = e.response.text[:300] if e.response is not None else ''
+            # Leased-window expiry / not-authorized: every remaining write would
+            # also 403, so stop cleanly instead of failing every photo. The photo
+            # is NOT recorded as failed (checkpoint), so the run resumes from here
+            # once the user re-authorizes (re-click Start → step-up → continue).
+            if status == 403 and ('authoriz' in body.lower() or 'window' in body.lower()):
+                log.warning("Import authorization expired at %s — stopping for re-auth.", photo.flickr_id)
+                stop_result = ImportResult(photo.flickr_id, False, 'AUTH_EXPIRED: ' + body)
+                results.append(stop_result)
+                if on_progress:
+                    on_progress(idx + 1, total, stop_result)
+                break
             detail = f"{e} — server says: {body}" if body else str(e)
             log.error(f"Photo {photo.flickr_id} failed: {detail}", exc_info=True)
             result = ImportResult(photo.flickr_id, False, detail)

@@ -30,12 +30,21 @@ import flickr_parser
 from checkpoint import ImportCheckpoint
 from poster import FlkrDckrClient, run_import
 
+# Shared step-up authorization helper (tools/_shared/snap_stepup.py). Same
+# bootstrap as image_prep's snap_thumbs: dev finds it one dir up in _shared/;
+# the frozen exe bundles it (build.bat: --paths ..\_shared --hidden-import
+# snap_stepup), so the bare import resolves there.
+_SHARED_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '_shared')
+if os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in sys.path:
+    sys.path.insert(0, _SHARED_DIR)
+import snap_stepup
+
 # ---------------------------------------------------------------------------
 # Logging — rotating daily, 7-day retention. Log sits NEXT TO THE EXE (portable-
 # app convention, matches unzucker), not in %APPDATA%.
 # ---------------------------------------------------------------------------
 
-BUILD_VERSION = "0.7.18"  # auto-incremented by bump_version.py on each build.bat run
+BUILD_VERSION = "0.7.20"  # auto-incremented by bump_version.py on each build.bat run
 
 if getattr(sys, 'frozen', False):
     # Running as the compiled exe — log next to flkrfckr.exe
@@ -862,6 +871,44 @@ class FlkrDckrApp(tk.Tk):
 
         self._client = FlkrDckrClient(url, key)
 
+        # ── Per-user step-up gate ────────────────────────────────────────────
+        # The key is session continuity, not a credential — writing requires an
+        # active authorization window. Check state, and open a window with
+        # password + 2FA if there isn't one. The key alone can't import.
+        auth = self._client.check_auth()
+        if not auth.get('ok'):
+            messagebox.showerror('FLKR FCKR', auth.get('message', 'Could not reach the site.'))
+            return
+        if not auth.get('key_bound', True):
+            messagebox.showerror(
+                'FLKR FCKR',
+                'This import key is not tied to a user account. Regenerate it in '
+                'your site admin → API Keys (it binds to you), then paste the new '
+                'key here and try again.')
+            return
+        if not auth.get('import_authorized'):
+            res = snap_stepup.authorize_interactive(
+                self, url, 'flkrfckr/authorize', key,
+                username_default=cfg.get('auth_username', ''),
+                title='Authorize Import',
+                on_status=lambda t: self._lbl_conn.config(text=t, fg=TEXT_DIM),
+            )
+            if not res.ok:
+                # Cancelled = silent; real errors (incl. needs-2FA-enrolment) get shown.
+                if res.message and res.message != 'Authorization cancelled.':
+                    messagebox.showerror('FLKR FCKR', res.message)
+                return
+            # Persist the username for next time (never the password / code).
+            cfg['auth_username'] = res.username
+            try:
+                cfg_mod.save(cfg)
+            except Exception:
+                pass
+            mins = res.window_minutes or 0
+            self._log_write(
+                f'Import authorized for {mins} min.' if mins else 'Import authorized.',
+                ACCENT)
+
         # Reuse an existing checkpoint when resuming (or retrying failures from a
         # previous run); only start a fresh one otherwise. Calling start() on a
         # resumed checkpoint would wipe its 'imported' map and re-import
@@ -900,6 +947,12 @@ class FlkrDckrApp(tk.Tk):
         total = len(photos)
 
         def _on_progress(done, total, result):
+            # Window expired mid-run: poster stops cleanly here. Tell the user to
+            # re-authorize; the checkpoint resumes from this photo on next Start.
+            if result.message.startswith('AUTH_EXPIRED'):
+                self._q.put(('log', 'Authorization window expired — click Start to '
+                                    're-authorize and resume.', TEXT_WARN))
+                return
             pct = (done / total) * 100
             colour = _status_colour(result.message)
             status = 'DUP' if result.duplicate else ('ERR' if not result.success else 'OK')

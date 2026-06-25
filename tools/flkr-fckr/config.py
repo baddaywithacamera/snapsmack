@@ -52,6 +52,9 @@ def load() -> dict:
         # SnapSmack site
         'site_url':         cfg.get('site', 'url',          fallback=''),
         'api_key':          _decode_pw(cfg.get('site', 'api_key', fallback='')),
+        'auth_username':    cfg.get('site', 'auth_username', fallback=''),
+        # Username prefilled in the step-up dialog. Convenience only — the
+        # password and TOTP code are NEVER stored.
 
         # Import
         'export_folder':    cfg.get('import', 'export_folder', fallback=''),
@@ -75,8 +78,9 @@ def save(data: dict) -> None:
     cfg = configparser.ConfigParser()
 
     cfg['site'] = {
-        'url':     data.get('site_url', ''),
-        'api_key': _encode_pw(data.get('api_key', '')),
+        'url':           data.get('site_url', ''),
+        'api_key':       _encode_pw(data.get('api_key', '')),
+        'auth_username': data.get('auth_username', ''),
     }
 
     cfg['import'] = {
