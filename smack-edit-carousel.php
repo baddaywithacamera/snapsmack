@@ -153,6 +153,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                    SET i.img_status = ?, i.img_date = ?
                    WHERE pi.post_id = ?")
         ->execute([$status, $post_date, $post_id]);
+    // Belt-and-suspenders: also cover images linked directly via snap_images.post_id.
+    // Single posts and trigram slices (-l/-m/-r) may not carry a snap_post_images
+    // pivot row, so the JOIN above updates nothing for them and "Published" never
+    // reaches the grid. This direct update catches that path.
+    $pdo->prepare("UPDATE snap_images SET img_status = ?, img_date = ? WHERE post_id = ?")
+        ->execute([$status, $post_date, $post_id]);
 
     // --- Rebuild category / album maps (photoblog mode only) ---
     if (($settings['site_mode'] ?? 'photoblog') !== 'carousel') {
@@ -953,14 +959,45 @@ include 'core/sidebar.php';
 .gp-swatch input[type=color] { width:24px; height:20px; border:none;
     background:none; padding:0; cursor:pointer; }
 .gp-shadow { flex:1; min-width:0; }
-.ce-cover-badge {
-    position: absolute; bottom: 6px; left: 6px;
-    background: rgba(220, 160, 0, 0.85); color: #fff;
-    font-size: 9px; letter-spacing: 1px;
-    padding: 2px 5px; cursor: pointer;
-    align-items: center; justify-content: center;
-}
-.ce-cover-badge:hover { background: rgba(220, 160, 0, 1); }
+/* Strip / card layout — copied verbatim from the composer (smack-post-gram.php)
+   so each source-asset card is the SAME clean 420px column with a square tile.
+   These .cp-* classes were referenced by the markup but never defined here, which
+   is why the strip sprawled and the cover badge orphaned. */
+.cp-strip { display:flex; flex-wrap:wrap; gap:18px; margin-top:16px; }
+.cp-strip:empty { margin-top:0; }
+.cp-strip-item { width:420px; flex:0 0 420px; max-width:100%; padding:10px;
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--border-color,#333); border-radius:6px;
+    cursor:grab; transition:opacity .15s, border-color .15s, transform .1s; }
+.cp-strip-item.is-dragging { opacity:.4; cursor:grabbing; }
+.cp-strip-item.drag-over { border-color:var(--accent,#b6ff1a); transform:translateY(-2px); }
+.cp-thumb-wrap { position:relative; width:100%; aspect-ratio:1/1; box-sizing:border-box;
+    border-radius:4px; overflow:hidden; background:#111;
+    border:1px solid rgba(120,120,120,.55);
+    display:flex; align-items:center; justify-content:center; }
+.cp-thumb { display:block; max-width:100%; max-height:100%; transition:transform .15s; }
+.cp-cover-badge { position:absolute; top:5px; left:5px; z-index:2;
+    font-size:9px; font-weight:700; letter-spacing:.6px; padding:2px 6px;
+    border-radius:3px; background:rgba(0,0,0,.72); color:#fff; cursor:pointer;
+    box-shadow:0 1px 2px rgba(0,0,0,.35); }
+.cp-pos-badge { position:absolute; bottom:5px; right:5px; z-index:2;
+    font-size:10px; font-weight:600; min-width:18px; text-align:center;
+    padding:1px 5px; border-radius:10px; background:rgba(0,0,0,.7); color:#fff; }
+.cp-remove-btn { position:absolute; top:4px; right:4px; z-index:3;
+    width:22px; height:22px; padding:0; line-height:20px; text-align:center;
+    font-size:12px; border:none; border-radius:50%; cursor:pointer;
+    background:rgba(0,0,0,.65); color:#fff; opacity:0; transition:opacity .15s; }
+.cp-thumb-wrap:hover .cp-remove-btn { opacity:1; }
+.cp-remove-btn:hover { background:#c0392b; }
+.cp-item-label { margin-top:6px; font-size:11px; opacity:.7;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* Edit-only buttons (no equivalent in the composer): pencil opens the photo
+   editor; tuck it bottom-left so it clears cover/remove/pos/split. */
+.ce-edit-img-btn { position:absolute; bottom:6px; left:6px; z-index:3;
+    width:24px; height:24px; padding:0; line-height:22px; text-align:center;
+    font-size:13px; border:0; border-radius:4px; cursor:pointer;
+    background:rgba(0,0,0,.55); color:#fff; }
+.ce-edit-img-btn:hover { background:rgba(0,0,0,.8); }
 .btn-secondary {
     background: #333; color: #aaa;
     border: 1px solid #555; padding: 6px 14px;
