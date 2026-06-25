@@ -18,8 +18,8 @@
  */
 
 
-$show_profile = ($settings['tg_profile_header'] ?? '1') === '1';
-$show_tagline = ($settings['tg_show_tagline']   ?? '1') === '1';
+$show_profile = ($settings['ic_profile_header'] ?? '1') === '1';
+$show_tagline = ($settings['ic_show_tagline']   ?? '1') === '1';
 
 // ── Static pages for nav ───────────────────────────────────────────────────
 try {
@@ -59,11 +59,11 @@ $_tg_on_home     = ($_tg_script === 'index.php' && !isset($_GET['s']) && $_tg_ac
 // ── Background treatment (skin admin → Treatment) ──────────────────────────
 // Emitted on every Grid page. The full-screen layers sit behind the centred
 // content card; CSS (:has(.tg-treatment-bg)) turns the card on only when present.
-$_tg_treat_mode  = $settings['tg_treatment_mode']     ?? 'none';
-$_tg_treat_img   = trim($settings['tg_treatment_image'] ?? '');
-$_tg_treat_color = trim($settings['tg_treatment_color'] ?? '');
-$_tg_treat_pos   = $settings['tg_treatment_position'] ?? 'center';
-$_tg_treat_ov    = (int)($settings['tg_treatment_overlay'] ?? 0); // -100 dark .. +100 light
+$_tg_treat_mode  = $settings['ic_treatment_mode']     ?? 'none';
+$_tg_treat_img   = trim($settings['ic_treatment_image'] ?? '');
+$_tg_treat_color = trim($settings['ic_treatment_color'] ?? '');
+$_tg_treat_pos   = $settings['ic_treatment_position'] ?? 'center';
+$_tg_treat_ov    = (int)($settings['ic_treatment_overlay'] ?? 0); // -100 dark .. +100 light
 $_tg_has_treat   = ($_tg_treat_mode === 'image' && $_tg_treat_img !== '')
                 || ($_tg_treat_mode === 'color' && $_tg_treat_color !== '');
 

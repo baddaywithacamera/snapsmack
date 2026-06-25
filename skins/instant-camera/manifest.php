@@ -30,7 +30,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'INSTANT CAMERA',
-    'version'     => '1.0.2',
+    'version'     => '1.0.3',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'For instant-film photographers. A GRAMOFSMACK 3-across grid whose tile aspect you set to match your format (Polaroid, Instax Mini/Wide/Square, or custom) so prints show UNCROPPED — the scanned border is the frame, the skin just adds a drop shadow. Drifting Organized Mayhem tabletop behind a white scrim. Prints on a table, which is exactly what instant photography is.',
@@ -145,7 +145,7 @@ return [
         ],
 
         // ---- GRID APPEARANCE -----------------------------------------------
-        'tg_gap' => [
+        'ic_gap' => [
             'section'  => 'GRID',
             'type'     => 'range_numeric',
             'label'    => 'Image Gap',
@@ -157,7 +157,7 @@ return [
             'selector' => ':root',
             'property' => '--grid-gap',
         ],
-        'tg_bg_color' => [
+        'ic_bg_color' => [
             'section'  => 'GRID',
             'type'     => 'color',
             'label'    => 'Grid Background / Gap Colour',
@@ -167,7 +167,7 @@ return [
         ],
         // (Tile Border Radius control removed — INSTANT CAMERA is square-cornered;
         //  style.css hardcodes --tile-radius:0 so the print edges stay sharp.)
-        'tg_carousel_indicator' => [
+        'ic_carousel_indicator' => [
             'section'  => 'GRID',
             'type'     => 'select',
             'label'    => 'Carousel Indicator Style',
@@ -179,7 +179,7 @@ return [
             ],
             // No selector/property: handled by PHP in landing.php via $settings
         ],
-        'tg_hover_overlay' => [
+        'ic_hover_overlay' => [
             'section'  => 'GRID',
             'type'     => 'select',
             'label'    => 'Hover Overlay',
@@ -193,7 +193,7 @@ return [
         ],
 
         // ---- PROFILE HEADER ------------------------------------------------
-        'tg_profile_header' => [
+        'ic_profile_header' => [
             'section'  => 'PROFILE HEADER',
             'type'     => 'select',
             'label'    => 'Show Profile Header',
@@ -208,7 +208,7 @@ return [
             'accept'  => 'image/jpeg,image/png,image/webp,image/gif',
             'hint'    => 'Square image recommended. Displayed as a circle, ~77px.',
         ],
-        'tg_blog_title_font' => [
+        'ic_blog_title_font' => [
             'section'       => 'PROFILE HEADER',
             'type'          => 'select',
             'label'         => 'Blog Title Font',
@@ -217,9 +217,9 @@ return [
             'selector'      => ':root',
             'property'      => '--blog-title-font',
             'is_font'       => true,   // enables preview block + per-option font-family style
-            'no_size_slider'=> true,   // suppress built-in size slider; tg_blog_title_size handles it
+            'no_size_slider'=> true,   // suppress built-in size slider; ic_blog_title_size handles it
         ],
-        'tg_blog_title_size' => [
+        'ic_blog_title_size' => [
             'section'  => 'PROFILE HEADER',
             'type'     => 'range_numeric',
             'label'    => 'Blog Title Size',
@@ -231,7 +231,7 @@ return [
             'selector' => ':root',
             'property' => '--blog-title-size',
         ],
-        'tg_blog_title_weight' => [
+        'ic_blog_title_weight' => [
             'section'  => 'PROFILE HEADER',
             'type'     => 'select',
             'label'    => 'Blog Title Weight',
@@ -246,14 +246,14 @@ return [
             'selector' => ':root',
             'property' => '--blog-title-weight',
         ],
-        'tg_show_tagline' => [
+        'ic_show_tagline' => [
             'section'  => 'PROFILE HEADER',
             'type'     => 'select',
             'label'    => 'Show Tagline (Site Description)',
             'default'  => '1',
             'options'  => ['1' => 'Show', '0' => 'Hide'],
         ],
-        'tg_tagline_font' => [
+        'ic_tagline_font' => [
             'section'       => 'PROFILE HEADER',
             'type'          => 'select',
             'label'         => 'Tagline Font',
@@ -264,7 +264,7 @@ return [
             'is_font'       => true,
             'no_size_slider'=> true,
         ],
-        'tg_tagline_size' => [
+        'ic_tagline_size' => [
             'section'  => 'PROFILE HEADER',
             'type'     => 'range_numeric',
             'label'    => 'Tagline Size',
@@ -276,7 +276,7 @@ return [
             'selector' => ':root',
             'property' => '--tagline-size',
         ],
-        'tg_tagline_weight' => [
+        'ic_tagline_weight' => [
             'section'  => 'PROFILE HEADER',
             'type'     => 'select',
             'label'    => 'Tagline Weight',
@@ -291,7 +291,7 @@ return [
             'selector' => ':root',
             'property' => '--tagline-weight',
         ],
-        'tg_tagline_color' => [
+        'ic_tagline_color' => [
             'section'  => 'PROFILE HEADER',
             'type'     => 'color',
             'label'    => 'Tagline Colour',
@@ -299,7 +299,7 @@ return [
             'selector' => ':root',
             'property' => '--tagline-color',
         ],
-        'tg_nav_case' => [
+        'ic_nav_case' => [
             'section'  => 'PROFILE HEADER',
             'type'     => 'select',
             'label'    => 'Nav Link Case',
@@ -315,7 +315,7 @@ return [
         ],
 
         // ---- COLOURS -------------------------------------------------------
-        'tg_post_bg_color' => [
+        'ic_post_bg_color' => [
             'section'  => 'COLOURS',
             'type'     => 'color',
             'label'    => 'Image Page Background',
@@ -323,7 +323,7 @@ return [
             'selector' => ':root',
             'property' => '--post-bg',
         ],
-        'tg_bg_primary' => [
+        'ic_bg_primary' => [
             'section'  => 'COLOURS',
             'type'     => 'color',
             'label'    => 'Page Background',
@@ -331,7 +331,7 @@ return [
             'selector' => ':root',
             'property' => '--bg-primary',
         ],
-        'tg_text_primary' => [
+        'ic_text_primary' => [
             'section'  => 'COLOURS',
             'type'     => 'color',
             'label'    => 'Primary Text',
@@ -339,7 +339,7 @@ return [
             'selector' => ':root',
             'property' => '--text-primary',
         ],
-        'tg_text_secondary' => [
+        'ic_text_secondary' => [
             'section'  => 'COLOURS',
             'type'     => 'color',
             'label'    => 'Secondary Text',
@@ -347,7 +347,7 @@ return [
             'selector' => ':root',
             'property' => '--text-secondary',
         ],
-        'tg_accent' => [
+        'ic_accent' => [
             'section'  => 'COLOURS',
             'type'     => 'color',
             'label'    => 'Accent / Link Colour',
@@ -355,7 +355,7 @@ return [
             'selector' => ':root',
             'property' => '--accent-color',
         ],
-        'tg_border_color' => [
+        'ic_border_color' => [
             'section'  => 'COLOURS',
             'type'     => 'color',
             'label'    => 'Border / Divider Colour',
@@ -365,7 +365,7 @@ return [
         ],
 
         // ---- TYPOGRAPHY ----------------------------------------------------
-        'tg_font_body' => [
+        'ic_font_body' => [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
             'label'    => 'Body / UI Font',
@@ -379,11 +379,11 @@ return [
         ],
 
         // ---- IMAGE FRAME ---------------------------------------------------
-        // tg_customize_level controls which style resolution path is active.
+        // ic_customize_level controls which style resolution path is active.
         //   per_grid     — one style for all images, set here in Skin Admin.
         //   per_carousel — each post defines its own style (stored on snap_posts).
         //   per_image    — each photo has its own style (stored on snap_post_images).
-        'tg_customize_level' => [
+        'ic_customize_level' => [
             'section' => 'IMAGE FRAME',
             'type'    => 'select',
             'label'   => 'Customisation Level',
@@ -394,7 +394,7 @@ return [
                 'per_image'    => 'Per Image (each photo has its own style)',
             ],
         ],
-        'tg_frame_size_pct' => [
+        'ic_frame_size_pct' => [
             'section' => 'IMAGE FRAME',
             'type'    => 'select',
             'label'   => 'Image Size Within Tile',
@@ -409,7 +409,7 @@ return [
             ],
             // No selector/property: PHP applies this inline in landing.php / layout.php.
         ],
-        'tg_frame_border_px' => [
+        'ic_frame_border_px' => [
             'section' => 'IMAGE FRAME',
             'type'    => 'select',
             'label'   => 'Border Thickness',
@@ -426,19 +426,19 @@ return [
                 '20' => '20px',
             ],
         ],
-        'tg_frame_border_color' => [
+        'ic_frame_border_color' => [
             'section' => 'IMAGE FRAME',
             'type'    => 'color',
             'label'   => 'Border Colour',
             'default' => '#000000',
         ],
-        'tg_frame_bg_color' => [
+        'ic_frame_bg_color' => [
             'section' => 'IMAGE FRAME',
             'type'    => 'color',
             'label'   => 'Frame Background Colour',
             'default' => '#ffffff',
         ],
-        'tg_frame_shadow' => [
+        'ic_frame_shadow' => [
             'section' => 'IMAGE FRAME',
             'type'    => 'select',
             'label'   => 'Drop Shadow on Image',
@@ -452,7 +452,7 @@ return [
         ],
 
         // ---- LAYOUT --------------------------------------------------------
-        'tg_max_width' => [
+        'ic_max_width' => [
             'section'  => 'LAYOUT',
             'type'     => 'range_numeric',
             'label'    => 'Grid Max Width',
@@ -464,7 +464,7 @@ return [
             'selector' => ':root',
             'property' => '--grid-max-width',
         ],
-        'tg_gutter' => [
+        'ic_gutter' => [
             'section'  => 'TREATMENT',
             'type'     => 'range_numeric',
             'label'    => 'Side Gutter (white margin over background)',
@@ -478,7 +478,7 @@ return [
         ],
 
         // ---- TREATMENT (full-page background behind a centred content card) -
-        'tg_treatment_mode' => [
+        'ic_treatment_mode' => [
             'section' => 'TREATMENT',
             'type'    => 'select',
             'label'   => 'Background Treatment',
@@ -490,7 +490,7 @@ return [
             ],
             'hint'    => 'Adds a full-page background behind a centred content card on every page.',
         ],
-        'tg_treatment_image' => [
+        'ic_treatment_image' => [
             'section'    => 'TREATMENT',
             'type'       => 'image',
             'label'      => 'Treatment Image',
@@ -500,7 +500,7 @@ return [
             'min_height' => 1080,
             'hint'       => 'Used when Treatment = Background image. Minimum 1920×1080px.',
         ],
-        'tg_treatment_position' => [
+        'ic_treatment_position' => [
             'section' => 'TREATMENT',
             'type'    => 'select',
             'label'   => 'Image Anchor (when it overshoots)',
@@ -512,14 +512,14 @@ return [
             ],
             'hint'    => 'Which edge the background image hugs when it is taller than the screen.',
         ],
-        'tg_treatment_color' => [
+        'ic_treatment_color' => [
             'section' => 'TREATMENT',
             'type'    => 'color',
             'label'   => 'Treatment Colour',
             'default' => '#ffffff',
             'hint'    => 'Used when Treatment = Solid colour.',
         ],
-        'tg_treatment_overlay' => [
+        'ic_treatment_overlay' => [
             'section'  => 'TREATMENT',
             'type'     => 'range_numeric',
             'label'    => 'Overlay  (left darkens · right lightens)',

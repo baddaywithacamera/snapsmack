@@ -64,9 +64,9 @@ if ($post) {
 // the active customisation level (per_grid | per_carousel | per_image).
 $_tg_shadow_map = [
     '0' => 'none',
-    '1' => '0 2px 10px rgba(0,0,0,.20)',
-    '2' => '0 4px 20px rgba(0,0,0,.45)',
-    '3' => '0 8px 40px rgba(0,0,0,.70)',
+    '1' => '3px 3px 8px rgba(0,0,0,.20)',
+    '2' => '6px 6px 18px rgba(0,0,0,.40)',
+    '3' => '12px 12px 32px rgba(0,0,0,.60)',
 ];
 $_tg_customize_level = $settings['tg_customize_level'] ?? 'per_grid';
 

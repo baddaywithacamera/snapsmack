@@ -29,18 +29,18 @@ try {
 }
 
 // Read skin settings
-$show_profile    = ($settings['tg_profile_header']     ?? '1') === '1';
-$show_tagline    = ($settings['tg_show_tagline']       ?? '1') === '1';
-$carousel_ind    = $settings['tg_carousel_indicator']  ?? 'icon';
-$hover_overlay   = $settings['tg_hover_overlay']       ?? 'title';
-$customize_level = $settings['tg_customize_level']     ?? 'per_grid';
+$show_profile    = ($settings['ic_profile_header']     ?? '1') === '1';
+$show_tagline    = ($settings['ic_show_tagline']       ?? '1') === '1';
+$carousel_ind    = $settings['ic_carousel_indicator']  ?? 'icon';
+$hover_overlay   = $settings['ic_hover_overlay']       ?? 'title';
+$customize_level = $settings['ic_customize_level']     ?? 'per_grid';
 
 // ── Frame style resolver ───────────────────────────────────────────────────
 $_tg_shadow_map = [
     '0' => 'none',
-    '1' => '0 2px 10px rgba(0,0,0,.20)',
-    '2' => '0 4px 20px rgba(0,0,0,.45)',
-    '3' => '0 8px 40px rgba(0,0,0,.70)',
+    '1' => '3px 3px 8px rgba(0,0,0,.20)',
+    '2' => '6px 6px 18px rgba(0,0,0,.40)',
+    '3' => '12px 12px 32px rgba(0,0,0,.60)',
 ];
 
 $tg_resolve_tile_frame = function ($cover_pi_row, $post_row) use ($settings, $customize_level, $_tg_shadow_map) {
@@ -60,11 +60,11 @@ $tg_resolve_tile_frame = function ($cover_pi_row, $post_row) use ($settings, $cu
             $sh  = (string)($post_row['post_shadow']     ?? '0');
             break;
         default: // per_grid
-            $sz  = (int)($settings['tg_frame_size_pct']     ?? 100);
-            $bpx = (int)($settings['tg_frame_border_px']    ?? 0);
-            $bc  = $settings['tg_frame_border_color'] ?? '#000000';
-            $bg  = $settings['tg_frame_bg_color']     ?? '#ffffff';
-            $sh  = (string)($settings['tg_frame_shadow']    ?? '0');
+            $sz  = (int)($settings['ic_frame_size_pct']     ?? 100);
+            $bpx = (int)($settings['ic_frame_border_px']    ?? 0);
+            $bc  = $settings['ic_frame_border_color'] ?? '#000000';
+            $bg  = $settings['ic_frame_bg_color']     ?? '#ffffff';
+            $sh  = (string)($settings['ic_frame_shadow']    ?? '0');
     }
     return [
         'size_pct'    => $sz,
