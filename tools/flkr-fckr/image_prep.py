@@ -19,6 +19,7 @@ import json
 import os
 import secrets
 import shutil
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Tuple
@@ -26,6 +27,16 @@ from typing import Optional, Tuple
 from PIL import Image as PILImage
 from PIL import ImageOps
 from PIL.ExifTags import TAGS
+
+# Shared, build-once client thumbnailer (tools/_shared/snap_thumbs.py). In dev
+# the module lives one dir up in _shared/; in the frozen exe PyInstaller bundles
+# it (build.bat adds --paths ..\_shared --hidden-import snap_thumbs), so the
+# bare `import snap_thumbs` resolves there. The sys.path bootstrap only fires in
+# dev (the _shared dir does not exist inside the bundle).
+_SHARED_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '_shared')
+if os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in sys.path:
+    sys.path.insert(0, _SHARED_DIR)
+import snap_thumbs
 
 
 # ---------------------------------------------------------------------------
@@ -48,6 +59,8 @@ class PreparedImage:
     height:        int
     orientation:   str          # 'landscape', 'portrait', 'square'
     img_exif:      str          # JSON string for snap_images.img_exif
+    thumb_square_path: str = ''  # local t_ thumb (client-built); '' = let server gen
+    thumb_aspect_path: str = ''  # local a_ thumb (client-built); '' = let server gen
 
 
 # ---------------------------------------------------------------------------
@@ -122,8 +135,9 @@ def prepare(
 ) -> PreparedImage:
     """
     Prepare one image for upload: preserve the full original (byte-for-byte for
-    JPEG/PNG/WebP; full-res high-quality JPEG for exotic formats) + extract EXIF.
-    Thumbnails are made server-side after upload.
+    JPEG/PNG/WebP; full-res high-quality JPEG for exotic formats) + extract EXIF
+    + build t_/a_ thumbnails locally (shipped with the upload so the server can
+    skip its GD pass).
 
     Args:
         source_path: absolute path to the source Flickr image
@@ -170,8 +184,25 @@ def prepare(
 
     orientation = 'square' if web_w == web_h else ('landscape' if web_w > web_h else 'portrait')
 
-    # Thumbnails (t_/a_) are generated server-side by the flkrfckr/upload
-    # endpoint (core/thumb-generator.php), so none are produced here.
+    # ── Thumbnails (t_/a_) built CLIENT-SIDE ─────────────────────────────────
+    # Faithful port of core/thumb-generator.php (tools/_shared/snap_thumbs.py).
+    # Built here and shipped in the upload so the server can skip its GD pass —
+    # this is what moves the thumbnail load off the shared host during imports.
+    # If generation fails for any reason, we leave the paths empty and the
+    # upload endpoint falls back to server-side generation (no lost thumbs).
+    thumb_sq_path = ''
+    thumb_as_path = ''
+    try:
+        thumbs = snap_thumbs.generate_thumbs(
+            main_path,
+            thumb_dir=os.path.join(output_dir, 'thumbs'),
+        )
+        if thumbs:
+            thumb_sq_path = thumbs['sq_path']
+            thumb_as_path = thumbs['asp_path']
+    except Exception:
+        thumb_sq_path = ''
+        thumb_as_path = ''
 
     return PreparedImage(
         main_path=main_path,
@@ -180,5 +211,7 @@ def prepare(
         height=web_h,
         orientation=orientation,
         img_exif=img_exif,
+        thumb_square_path=thumb_sq_path,
+        thumb_aspect_path=thumb_as_path,
     )
 # ===== SNAPSMACK EOF =====
