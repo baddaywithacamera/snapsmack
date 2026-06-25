@@ -12,6 +12,19 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.309 — "Seat Belt" (2026-06-25)
+
+- **AI features hard-gated until cost responsibility is accepted.** AI now stays
+  OFF until the site owner explicitly accepts they're responsible for third-party
+  AI provider costs — protecting users from surprise per-use bills, not just
+  warning them. `ai-provider.php` refuses (`snap_ai_configured()` / `complete()` /
+  `vision()`, incl. the per-skin override) unless `ai_cost_accepted = '1'`. Set
+  via a new **installer** acceptance (Step 6, unchecked by default) and an
+  **admin accept-to-enable gate** in Settings → AI (covers existing installs;
+  disables the provider/key controls until accepted). The spend-cap modal now
+  only nudges after acceptance. No schema change. Principle: AI is capped,
+  consented, detachable — never load-bearing.
+
 ## 0.7.308 — "Cheap Seats" (2026-06-25)
 
 - **AI spending-cap warning modal (liability protection).** The first time a
