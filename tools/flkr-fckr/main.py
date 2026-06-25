@@ -14,6 +14,7 @@ Forked from tools/unzucker/main.py — IG-specific logic replaced.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
+import datetime
 import logging
 import logging.handlers
 import os
@@ -44,7 +45,7 @@ import snap_stepup
 # app convention, matches unzucker), not in %APPDATA%.
 # ---------------------------------------------------------------------------
 
-BUILD_VERSION = "0.7.20"  # auto-incremented by bump_version.py on each build.bat run
+BUILD_VERSION = "0.7.22"  # auto-incremented by bump_version.py on each build.bat run
 
 if getattr(sys, 'frozen', False):
     # Running as the compiled exe — log next to flkrfckr.exe
@@ -52,12 +53,25 @@ if getattr(sys, 'frozen', False):
 else:
     # Running from source
     _LOG_DIR = os.path.dirname(os.path.abspath(__file__))
-_LOG_FILE = os.path.join(_LOG_DIR, 'flkrfckr.log')
 os.makedirs(_LOG_DIR, exist_ok=True)
 
-_log_handler = logging.handlers.TimedRotatingFileHandler(
-    _LOG_FILE, when='D', interval=1, backupCount=7, encoding='utf-8',
-)
+# One dated log per day, e.g. flkrfckr.2026-06-25.log — so "today's log" is
+# findable by name (the old undated rolling file caused confusion). Same-day
+# launches append to it; logs older than 14 days are pruned to bound disk.
+_LOG_FILE = os.path.join(_LOG_DIR, 'flkrfckr.' + datetime.date.today().isoformat() + '.log')
+try:
+    import glob, time as _time
+    _cutoff = _time.time() - 14 * 86400
+    for _old in glob.glob(os.path.join(_LOG_DIR, 'flkrfckr.*.log')):
+        if os.path.getmtime(_old) < _cutoff:
+            try:
+                os.remove(_old)
+            except OSError:
+                pass
+except Exception:
+    pass
+
+_log_handler = logging.FileHandler(_LOG_FILE, encoding='utf-8')
 _log_handler.setFormatter(logging.Formatter(
     '%(asctime)s  %(levelname)-8s  %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
@@ -956,7 +970,8 @@ class FlkrDckrApp(tk.Tk):
             pct = (done / total) * 100
             colour = _status_colour(result.message)
             status = 'DUP' if result.duplicate else ('ERR' if not result.success else 'OK')
-            self._q.put(('progress', pct, f"[{status}] {result.flickr_id} — {result.message}", colour))
+            who = f"{result.flickr_id} ({result.filename})" if getattr(result, 'filename', '') else result.flickr_id
+            self._q.put(('progress', pct, f"[{status}] {who} — {result.message}", colour))
 
         def _run():
             try:
