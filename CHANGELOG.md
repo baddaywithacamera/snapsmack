@@ -12,6 +12,18 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.308 — "Cheap Seats" (2026-06-25)
+
+- **AI spending-cap warning modal (liability protection).** The first time a
+  per-use AI provider key (Claude / Gemini / OpenAI) is present in Settings → AI
+  without an acknowledged cap, a modal asks the owner to confirm they've set a
+  spending/budget cap on that provider account, with a link to where to set it.
+  Choices: **CONFIRM** (never asks again for that provider) or **DEFER 1 WEEK**
+  (snoozes 7 days). State is per provider in `snap_settings`
+  (`ai_spendcap_ack_<prov>` / `ai_spendcap_defer_<prov>`); no schema change. JS
+  is external (`assets/js/ss-ai-spendcap.js`). Per-skin AI override + the
+  desktop tools' AI-key entry are follow-ups that reuse this handler.
+
 ## 0.7.307 — "Open Seating" (2026-06-25)
 
 - **FLKR FCKR upload accepts PNG and WebP (not just JPEG).** The
