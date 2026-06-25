@@ -363,7 +363,7 @@ a:hover { color: var(--sl-link-hover); }
 .sl-cover {
   position: relative;
   width: 100%;
-  height: 360px;
+  height: 240px;
   background: #222 center / cover no-repeat;
 }
 .sl-cover-scrim {
