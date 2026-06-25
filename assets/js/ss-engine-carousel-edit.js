@@ -211,11 +211,8 @@
         };
         item._crop = st;
 
-        // Pin the wrap to a square viewport — the absolutely-positioned crop image
-        // would otherwise collapse the wrap to a stripe.
-        wrap.style.width    = '240px';
-        wrap.style.height   = '240px';
-        wrap.style.maxWidth = '100%';
+        // Wrap sizing is owned by the .cp-thumb-wrap CSS (square tile inside the
+        // 420px card) — the same rules the composer uses. No inline pin needed.
         if (aspect) thumb.src = aspect;   // uncropped, so panning has room
 
         var shadowOpts = [0,1,2,3].map(function (n) {
