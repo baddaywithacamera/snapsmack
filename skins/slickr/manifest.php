@@ -32,7 +32,7 @@ return [
         'instagram_mode'    => false,
         'carousel'          => false,
         'community'         => ['likes', 'comments'],
-        'archive_layouts'   => ['justified', 'cropped'],
+        'archive_layouts'   => ['justified'],   // masonry only — same view on photostream + album pages (cropped view ditched per Sean)
     ],
 
     'require_scripts' => [
