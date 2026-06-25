@@ -177,10 +177,23 @@ $uz_content   = max(
 );
 $uz_import_authorized = ((int)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='import_authorized_until' LIMIT 1")->fetchColumn() ?: 0)) > time();
 
+// SON OF A BATCH (BATCH, PLEASE) authoring routes are deliberate single-post
+// composition / edits from the offline poster — NOT the Instagram "data
+// bazooka" bulk import. They keep the GRAMOFSMACK mode lock (carousel only) but
+// are exempt from the non-empty-site import lock, so a photographer can post a
+// new batch to an established gram site from a coffee shop without first opening
+// an admin import window. The Instagram import path (posts/upload/trigram) is
+// unchanged and still fully guarded.
+$uz_authoring_subs = ['gram/upload', 'gram/post'];
+$uz_is_authoring   = in_array($sub, $uz_authoring_subs, true);
+
 if ($method === 'POST') {
     if ($uz_site_mode !== 'carousel') {
-        uz_error(409, "Unzucker imports Instagram into GRAMOFSMACK (carousel) installs only. This site is '{$uz_site_mode}' — no bueno.");
+        uz_error(409, "GRAMOFSMACK (carousel) installs only. This site is '{$uz_site_mode}' — no bueno.");
     }
+    // Authoring routes (SON OF A BATCH) skip the bulk-import bazooka lock below;
+    // the carousel mode lock above already applied to them.
+    if (!$uz_is_authoring) {
     // Non-empty-site lock. The threshold must measure content that existed
     // BEFORE this import — NOT the rows the import is adding — or any import
     // larger than the limit guillotines itself on a clean site (it sailed past
@@ -607,6 +620,266 @@ if ($sub === 'trigram' && $method === 'POST') {
         'post_id_1'  => $pid1,
         'post_id_2'  => $pid2,
         'post_id_3'  => $pid3,
+    ]);
+}
+
+// ===========================================================================
+// SON OF A BATCH — BATCH, PLEASE authoring routes
+// ===========================================================================
+// Native offline GRAMOFSMACK poster. Mirrors smack-post-gram.php's controls
+// EXACTLY (per-image crop/layout in snap_post_images) and accepts client-side
+// 400² + 400px thumbs so the shared host skips its GD pass. Exempt from the
+// import bazooka (see $uz_is_authoring) but still carousel-mode locked.
+
+// ---------------------------------------------------------------------------
+// POST unzucker/gram/upload — full image + optional client thumbs
+// ---------------------------------------------------------------------------
+
+if ($sub === 'gram/upload' && $method === 'POST') {
+    if (empty($_FILES['image'])) {
+        uz_error(400, 'No file uploaded. Expected multipart field: image');
+    }
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+
+    $save_jpeg = function (array $file, string $dest_dir, string $name) use ($finfo): string {
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            uz_error(400, 'Upload error code ' . $file['error']);
+        }
+        if ($finfo->file($file['tmp_name']) !== 'image/jpeg') {
+            uz_error(400, 'Only JPEG images are accepted.');
+        }
+        if ($file['size'] > 20 * 1024 * 1024) {
+            uz_error(400, 'File too large (max 20 MB).');
+        }
+        $dest = $dest_dir . '/' . $name;
+        if (!move_uploaded_file($file['tmp_name'], $dest)) {
+            uz_error(500, 'Failed to save ' . $name . '. Check img_uploads/ permissions.');
+        }
+        return $dest;
+    };
+
+    // Sanitise the client filename.
+    $client_name = preg_replace('/[^a-z0-9_.-]/', '', strtolower(basename($_FILES['image']['name'])));
+    if (!preg_match('/\.jpe?g$/', $client_name) || strlen($client_name) > 120) {
+        $client_name = '';
+    }
+    $filename = $client_name ?: (date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.jpg');
+
+    $year_month = date('Y/m');
+    $site_root  = dirname(__DIR__);
+    $dest_dir   = $site_root . '/img_uploads/' . $year_month;
+    $thumb_dir  = $dest_dir . '/thumbs';
+    if (!is_dir($dest_dir))  mkdir($dest_dir, 0755, true);
+    if (!is_dir($thumb_dir)) mkdir($thumb_dir, 0755, true);
+
+    if (file_exists($dest_dir . '/' . $filename)) {
+        $filename = date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.jpg';
+    }
+    $save_jpeg($_FILES['image'], $dest_dir, $filename);
+    $rel_image = 'img_uploads/' . $year_month . '/' . $filename;
+
+    $resp = ['status' => 'ok', 'path' => $rel_image,
+             'thumb_square' => '', 'thumb_aspect' => ''];
+
+    // Client thumbs are mandatory in the tool; save them under the t_/a_ naming
+    // the skins expect so the server can skip its own GD pass entirely.
+    if (!empty($_FILES['thumb_square'])) {
+        $save_jpeg($_FILES['thumb_square'], $thumb_dir, 't_' . $filename);
+        $resp['thumb_square'] = 'img_uploads/' . $year_month . '/thumbs/t_' . $filename;
+    }
+    if (!empty($_FILES['thumb_aspect'])) {
+        $save_jpeg($_FILES['thumb_aspect'], $thumb_dir, 'a_' . $filename);
+        $resp['thumb_aspect'] = 'img_uploads/' . $year_month . '/thumbs/a_' . $filename;
+    }
+
+    $dim = @getimagesize($dest_dir . '/' . $filename);
+    $resp['width']  = $dim ? (int)$dim[0] : 0;
+    $resp['height'] = $dim ? (int)$dim[1] : 0;
+
+    uz_ok($resp);
+}
+
+// ---------------------------------------------------------------------------
+// POST unzucker/gram/post — create a gram post with full per-image controls
+// ---------------------------------------------------------------------------
+
+if ($sub === 'gram/post' && $method === 'POST') {
+    $body = json_decode(file_get_contents('php://input'), true) ?? [];
+
+    $title      = trim($body['title']      ?? '');
+    $desc       = trim($body['body']       ?? '');
+    $post_date  = trim($body['post_date']  ?? '');
+    $images     = $body['images']          ?? [];
+    $tags       = $body['tags']            ?? [];
+    $status     = ($body['status'] ?? 'published') === 'draft' ? 'draft' : 'published';
+    $allow_cmt  = !empty($body['allow_comments']) ? 1 : 0;
+    $allow_dl   = !empty($body['allow_download']) ? 1 : 0;
+    $dl_url     = substr(trim($body['download_url'] ?? ''), 0, 512);
+    $pano_rows  = max(1, min(3, (int)($body['panorama_rows'] ?? 1)));
+    $want_type  = $body['post_type'] ?? '';
+    // Post-level frame defaults.
+    $p_size  = max(10, min(100, (int)($body['post_img_size_pct'] ?? 100)));
+    $p_bpx   = max(0,  min(50,  (int)($body['post_border_px']    ?? 0)));
+    $p_bcol  = preg_match('/^#[0-9a-fA-F]{6}$/', $body['post_border_color'] ?? '') ? $body['post_border_color'] : '#000000';
+    $p_bg    = preg_match('/^#[0-9a-fA-F]{6}$/', $body['post_bg_color']     ?? '') ? $body['post_bg_color']     : '#ffffff';
+    $p_shad  = max(0, min(3, (int)($body['post_shadow'] ?? 0)));
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}/', $post_date)) {
+        $post_date = date('Y-m-d H:i:s');
+    }
+    if (empty($images) || !is_array($images)) uz_error(400, 'images array is required.');
+
+    $tag_string = '';
+    if (is_array($tags) && count($tags) > 0) {
+        $tag_string = implode(' ', array_map(fn($t) => '#' . ltrim($t, '#'), $tags));
+    }
+
+    $site_root = dirname(__DIR__);
+
+    // Per-image control sanitiser → clamped style array matching the web poster.
+    $style_of = function (array $im): array {
+        $crop = ($im['crop_mode'] ?? 'fit') === 'fill' ? 'fill' : 'fit';
+        $fx   = max(0, min(100, (int)($im['focus_x'] ?? 50)));
+        $fy   = max(0, min(100, (int)($im['focus_y'] ?? 50)));
+        $zoom = max(100, min(300, (int)($im['zoom'] ?? 100)));
+        if ($crop === 'fill') {
+            // Fill ignores the frame controls (matches smack-post-gram.php).
+            return ['crop' => 'fill', 'size' => 100, 'bpx' => 0,
+                    'bcol' => '#000000', 'bg' => '#ffffff', 'shadow' => 0,
+                    'fx' => $fx, 'fy' => $fy, 'zoom' => $zoom];
+        }
+        return [
+            'crop'   => 'fit',
+            'size'   => max(10, min(100, (int)($im['size_pct'] ?? 100))),
+            'bpx'    => max(0,  min(50,  (int)($im['border_px'] ?? 0))),
+            'bcol'   => preg_match('/^#[0-9a-fA-F]{6}$/', $im['border_color'] ?? '') ? $im['border_color'] : '#000000',
+            'bg'     => preg_match('/^#[0-9a-fA-F]{6}$/', $im['bg_color'] ?? '') ? $im['bg_color'] : '#ffffff',
+            'shadow' => max(0, min(3, (int)($im['shadow'] ?? 0))),
+            'fx' => $fx, 'fy' => $fy, 'zoom' => $zoom,
+        ];
+    };
+
+    $pdo->beginTransaction();
+    try {
+        // 1) Create every snap_images row, carrying its style for the pivot.
+        $img_ins = $pdo->prepare("
+            INSERT INTO snap_images (
+                img_slug, img_file, img_title, img_description,
+                img_date, img_width, img_height, img_orientation,
+                img_thumb_square, img_thumb_aspect,
+                img_source_file, img_status, sort_order,
+                allow_comments, allow_download, download_url
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $built = [];  // each: ['image_id'=>, 'style'=>, 'split'=>bool, 'pos'=>]
+        foreach ($images as $seq => $im) {
+            $path = trim($im['path'] ?? '');
+            if ($path === '' || strlen($path) > 500) uz_error(400, "images[$seq].path invalid.");
+            if (!in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), ['jpg', 'jpeg'], true)) {
+                uz_error(400, "images[$seq].path must be a .jpg/.jpeg file.");
+            }
+            $w = (int)($im['width'] ?? 0);
+            $h = (int)($im['height'] ?? 0);
+            if ($w < 1 || $h < 1) {
+                $dim = @getimagesize($site_root . '/' . ltrim($path, '/'));
+                $w = $dim ? (int)$dim[0] : 0;
+                $h = $dim ? (int)$dim[1] : 0;
+            }
+            $orient = ($h > $w) ? 1 : (($w === $h) ? 2 : 0);  // 0=land,1=port,2=square
+
+            $st = $style_of($im);
+
+            // Client thumbs are authoritative — skip GD when provided.
+            $t_sq = trim($im['thumb_square'] ?? '');
+            $t_as = trim($im['thumb_aspect'] ?? '');
+            if ($t_sq === '' || $t_as === '') {
+                $gen = snapsmack_generate_thumbs($path, $site_root, 400, 400, $st['fx'], $st['fy'], $st['zoom']);
+                if ($gen !== false) {
+                    $t_sq = $t_sq ?: $gen['sq_path'];
+                    $t_as = $t_as ?: $gen['asp_path'];
+                }
+            }
+
+            $img_slug = uz_unique_img_slug($pdo, uz_slug_base('', $post_date, $seq));
+            $img_ins->execute([
+                $img_slug, $path, '', $desc,
+                $post_date, $w, $h, $orient,
+                $t_sq ?: null, $t_as ?: null,
+                'sob:' . $img_slug, $status, (int)$seq,
+                $allow_cmt, $allow_dl, $dl_url,
+            ]);
+            $img_id = (int)$pdo->lastInsertId();
+            if ($tag_string !== '') snap_sync_tags($pdo, $img_id, $tag_string);
+
+            $built[] = ['image_id' => $img_id, 'style' => $st,
+                        'split' => !empty($im['split'])];
+        }
+
+        // 2) Partition split-out images (each becomes its own single post),
+        //    matching smack-post-gram.php's split behaviour.
+        $group   = array_values(array_filter($built, fn($b) => !$b['split']));
+        $singles = array_values(array_filter($built, fn($b) =>  $b['split']));
+
+        $pi_ins = $pdo->prepare("
+            INSERT INTO snap_post_images
+                (post_id, image_id, sort_position, is_cover,
+                 img_size_pct, img_border_px, img_border_color, img_bg_color,
+                 img_shadow, img_crop_mode, img_focus_x, img_focus_y, img_zoom)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $post_ins = $pdo->prepare("
+            INSERT INTO snap_posts
+                (title, slug, description, post_type, status, created_at,
+                 allow_comments, allow_download, download_url, panorama_rows,
+                 post_img_size_pct, post_border_px, post_border_color,
+                 post_bg_color, post_shadow)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $make_post = function (array $members, string $ptype, int $rows)
+                use ($pdo, $post_ins, $pi_ins, $title, $desc, $status, $post_date,
+                     $allow_cmt, $allow_dl, $dl_url, $p_size, $p_bpx, $p_bcol, $p_bg, $p_shad): int {
+            $slug = uz_unique_post_slug($pdo, 'sob-' . date('Ymd-His', strtotime($post_date)) . '-' . bin2hex(random_bytes(2)));
+            $post_ins->execute([
+                $title, $slug, $desc, $ptype, $status, $post_date,
+                $allow_cmt, $allow_dl, $dl_url, $rows,
+                $p_size, $p_bpx, $p_bcol, $p_bg, $p_shad,
+            ]);
+            $pid = (int)$pdo->lastInsertId();
+            foreach ($members as $pos => $b) {
+                $s = $b['style'];
+                $pi_ins->execute([
+                    $pid, $b['image_id'], $pos, ($pos === 0 ? 1 : 0),
+                    $s['size'], $s['bpx'], $s['bcol'], $s['bg'], $s['shadow'],
+                    $s['crop'], $s['fx'], $s['fy'], $s['zoom'],
+                ]);
+                $pdo->prepare("UPDATE snap_images SET post_id = ? WHERE id = ?")->execute([$pid, $b['image_id']]);
+            }
+            return $pid;
+        };
+
+        $main_post_id  = 0;
+        $split_post_ids = [];
+        if (!empty($group)) {
+            $ptype = (count($group) === 1) ? 'single'
+                   : (($want_type === 'panorama') ? 'panorama' : 'carousel');
+            $main_post_id = $make_post($group, $ptype, $ptype === 'panorama' ? $pano_rows : 1);
+        }
+        foreach ($singles as $simg) {
+            $split_post_ids[] = $make_post([$simg], 'single', 1);
+        }
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        uz_error(500, 'Gram post failed: ' . $e->getMessage());
+    }
+
+    uz_ok([
+        'post_id'        => $main_post_id,
+        'image_ids'      => array_map(fn($b) => $b['image_id'], $built),
+        'split_post_ids' => $split_post_ids,
     ]);
 }
 
