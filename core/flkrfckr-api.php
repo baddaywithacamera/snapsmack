@@ -22,6 +22,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/snap-tags.php';
 require_once __DIR__ . '/thumb-generator.php';
+require_once __DIR__ . '/totp.php';   // totp_verify() for the step-up authorize endpoint
 
 // ---------------------------------------------------------------------------
 // Auth
@@ -35,24 +36,104 @@ function flkrfckr_ensure_key_type(PDO $pdo): void {
     }
 }
 
-function flkrfckr_auth(PDO $pdo): bool {
+function flkrfckr_ensure_key_user(PDO $pdo): void {
+    try {
+        $pdo->query("SELECT user_id FROM snap_ohsnap_keys LIMIT 0");
+    } catch (PDOException $e) {
+        $pdo->exec("ALTER TABLE snap_ohsnap_keys ADD COLUMN user_id INT UNSIGNED DEFAULT NULL AFTER is_active");
+    }
+}
+
+/**
+ * Validate the Bearer key. Returns the key row ['id','user_id'] on success,
+ * or false if the key is missing/invalid. NOTE: user_id may be NULL on a
+ * legacy key issued before per-user attribution — callers that write content
+ * MUST reject a NULL user_id (force the user to regenerate the key).
+ *
+ * @return array|false
+ */
+function flkrfckr_auth(PDO $pdo) {
     flkrfckr_ensure_key_type($pdo);
+    flkrfckr_ensure_key_user($pdo);
     $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     if (!preg_match('/^Bearer\s+([a-f0-9]{64})$/i', $header, $m)) {
         return false;
     }
     $hash = hash('sha256', $m[1]);
     $stmt = $pdo->prepare("
-        SELECT id FROM snap_ohsnap_keys
+        SELECT id, user_id FROM snap_ohsnap_keys
         WHERE key_hash = ? AND is_active = 1 AND key_type = 'flkrfckr'
         LIMIT 1
     ");
     $stmt->execute([$hash]);
-    $row = $stmt->fetch();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) return false;
     $pdo->prepare("UPDATE snap_ohsnap_keys SET last_used_at = NOW() WHERE id = ?")
         ->execute([$row['id']]);
-    return true;
+    return $row;
+}
+
+// ---------------------------------------------------------------------------
+// Leased step-up authorization window (per user)
+//
+// The import key is session continuity, NOT a credential. Every write requires
+// an ACTIVE, time-boxed window for the key's user, opened ONLY by password+TOTP
+// via the flkrfckr/authorize endpoint. The key alone cannot open it. The window
+// is stored in snap_settings as flkrfckr_window_u<user_id> = expiry unix ts.
+// ---------------------------------------------------------------------------
+
+function flkrfckr_window_active(PDO $pdo, int $uid): bool {
+    if ($uid <= 0) return false;
+    $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = ? LIMIT 1");
+    $stmt->execute(['flkrfckr_window_u' . $uid]);
+    return ((int)($stmt->fetchColumn() ?: 0)) > time();
+}
+
+function flkrfckr_window_minutes(PDO $pdo): int {
+    $m = (int)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='flkrfckr_window_minutes' LIMIT 1")->fetchColumn() ?: 0);
+    return ($m > 0 && $m <= 1440) ? $m : 240;   // default 4h; hard cap 24h
+}
+
+// ---------------------------------------------------------------------------
+// IP rate-limit (reuses snap_rate_limits / snap_ip_bans — same as login)
+// ---------------------------------------------------------------------------
+
+function flkrfckr_client_ip(): string {
+    return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+}
+
+function flkrfckr_ip_banned(PDO $pdo, string $ip): bool {
+    try {
+        $stmt = $pdo->prepare("SELECT 1 FROM snap_ip_bans WHERE ip = ? AND expires_at > NOW() LIMIT 1");
+        $stmt->execute([$ip]);
+        return (bool)$stmt->fetchColumn();
+    } catch (PDOException $e) { return false; }
+}
+
+function flkrfckr_record_auth_failure(PDO $pdo, string $ip): void {
+    try {
+        $pdo->prepare(
+            "INSERT INTO snap_rate_limits (ip, action, count, window_start)
+             VALUES (?, 'flkrfckr_auth_fail', 1, NOW())
+             ON DUPLICATE KEY UPDATE
+               count        = IF(window_start < DATE_SUB(NOW(), INTERVAL 10 MINUTE), 1, count + 1),
+               window_start = IF(window_start < DATE_SUB(NOW(), INTERVAL 10 MINUTE), NOW(), window_start)"
+        )->execute([$ip]);
+        $row = $pdo->prepare(
+            "SELECT count FROM snap_rate_limits
+             WHERE ip = ? AND action = 'flkrfckr_auth_fail'
+               AND window_start >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
+        );
+        $row->execute([$ip]);
+        if ((int)($row->fetchColumn() ?: 0) >= 5) {
+            $pdo->prepare(
+                "INSERT INTO snap_ip_bans (ip, reason, banned_at, expires_at)
+                 VALUES (?, 'auto:flkrfckr_auth', NOW(), DATE_ADD(NOW(), INTERVAL 7 DAY))
+                 ON DUPLICATE KEY UPDATE reason = VALUES(reason), banned_at = NOW(), expires_at = VALUES(expires_at)"
+            )->execute([$ip]);
+            $pdo->prepare("DELETE FROM snap_rate_limits WHERE ip = ? AND action = 'flkrfckr_auth_fail'")->execute([$ip]);
+        }
+    } catch (PDOException $e) { /* rate-limit is best-effort; never block on its failure */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -101,9 +182,13 @@ function flkrfckr_unique_slug(PDO $pdo, string $title): string {
 // Gate auth
 // ---------------------------------------------------------------------------
 
-if (!flkrfckr_auth($pdo)) {
+$fl_key = flkrfckr_auth($pdo);
+if ($fl_key === false) {
     flkrfckr_error(401, 'Invalid or missing API key.');
 }
+// The user this key acts as. NULL on a legacy (pre-attribution) key — writes are
+// refused below until the key is regenerated.
+$fl_user_id = (isset($fl_key['user_id']) && $fl_key['user_id'] !== null) ? (int)$fl_key['user_id'] : 0;
 
 // ---------------------------------------------------------------------------
 // Route parsing
@@ -112,6 +197,65 @@ if (!flkrfckr_auth($pdo)) {
 $route  = $_GET['route'] ?? '';
 $sub    = preg_replace('#^flkrfckr/?#', '', $route);
 $method = $_SERVER['REQUEST_METHOD'];
+
+// ---------------------------------------------------------------------------
+// POST flkrfckr/authorize — step-up: open a leased import window (password+TOTP)
+//
+// Handled BEFORE the write gate (this is how you GET authorized). Requires the
+// Bearer key (identifies the user) AND that user's password + TOTP. You can only
+// open a window for the user the key is bound to — no impersonation. IP rate-
+// limited to blunt credential brute-force.
+// ---------------------------------------------------------------------------
+
+if ($sub === 'authorize' && $method === 'POST') {
+    $ip = flkrfckr_client_ip();
+    if (flkrfckr_ip_banned($pdo, $ip)) {
+        flkrfckr_error(429, 'Too many attempts. Try again later.');
+    }
+    if ($fl_user_id <= 0) {
+        flkrfckr_error(403, 'This import key is not bound to a user. Regenerate it in admin → API Keys.');
+    }
+
+    $body     = json_decode(file_get_contents('php://input'), true) ?? [];
+    $username = trim($body['username']  ?? '');
+    $password = (string)($body['password'] ?? '');
+    $totp     = preg_replace('/\s+/', '', (string)($body['totp_code'] ?? ''));
+
+    $stmt = $pdo->prepare("SELECT id, password_hash, totp_enabled, totp_secret FROM snap_users WHERE username = ? LIMIT 1");
+    $stmt->execute([$username]);
+    $u = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // The credentials must belong to the user this key is bound to.
+    if (!$u || (int)$u['id'] !== $fl_user_id) {
+        flkrfckr_record_auth_failure($pdo, $ip);
+        flkrfckr_error(403, 'Credentials do not match the user this key belongs to.');
+    }
+    if ($password === '' || !password_verify($password, $u['password_hash'])) {
+        flkrfckr_record_auth_failure($pdo, $ip);
+        flkrfckr_error(401, 'Password incorrect.');
+    }
+    // Step-up is ALWAYS password + TOTP — no password-only fallback (Sean policy).
+    if (empty($u['totp_enabled']) || empty($u['totp_secret'])) {
+        flkrfckr_error(403, 'Two-factor authentication is required to authorize imports. Enrol 2FA in admin, then retry.');
+    }
+    if ($totp === '' || !totp_verify($u['totp_secret'], $totp)) {
+        flkrfckr_record_auth_failure($pdo, $ip);
+        flkrfckr_error(401, 'Authenticator code incorrect.');
+    }
+
+    // Success — open the leased window for this user.
+    $until = time() + (flkrfckr_window_minutes($pdo) * 60);
+    $pdo->prepare(
+        "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+    )->execute(['flkrfckr_window_u' . $fl_user_id, (string)$until]);
+
+    flkrfckr_ok([
+        'message'          => 'Import authorized.',
+        'authorized_until' => $until,
+        'window_minutes'   => flkrfckr_window_minutes($pdo),
+    ]);
+}
 
 // ---------------------------------------------------------------------------
 // Import-safety context + guards (server-enforced)
@@ -130,24 +274,22 @@ $fl_content   = max(
     (int)$pdo->query("SELECT COUNT(*) FROM snap_posts")->fetchColumn(),
     (int)$pdo->query("SELECT COUNT(*) FROM snap_images")->fetchColumn()
 );
-$fl_import_authorized = ((int)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='import_authorized_until' LIMIT 1")->fetchColumn() ?: 0)) > time();
+// Per-user leased window — opened ONLY by flkrfckr/authorize (password+TOTP).
+// The key alone is NOT a credential and cannot write. No empty-site free pass,
+// no auto-slide: a >window-length import re-authorizes on resume (checkpoint
+// resumes cleanly). See _continuity/per-user-keys-and-leased-auth-spec.md.
+$fl_import_authorized = flkrfckr_window_active($pdo, $fl_user_id);
 
 if ($method === 'POST') {
     if ($fl_site_mode !== 'photoblog') {
         flkrfckr_error(409, "Flkr Fckr imports Flickr into SMACKONEOUT (photoblog) installs only. This site is '{$fl_site_mode}' — no bueno.");
     }
-    // Non-empty-site lock — gate on PRE-EXISTING content only, with a sliding
-    // window so a large import doesn't trip its own wire or expire mid-flight.
-    // (See core/unzucker-api.php for the full rationale — same fix.)
-    if (!$fl_import_authorized && $fl_content > 5) {
-        flkrfckr_error(403, "This site already holds {$fl_content} items. To import into a site that is not empty, authorize the import on the admin API Keys page first.");
+    if ($fl_user_id <= 0) {
+        flkrfckr_error(403, 'This import key is not bound to a user. Regenerate it in admin → API Keys.');
     }
-    // Slide the import window forward on every accepted write.
-    $pdo->prepare(
-        "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('import_authorized_until', ?)
-         ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
-    )->execute([(string)(time() + 3600)]);
-    $fl_import_authorized = true;
+    if (!$fl_import_authorized) {
+        flkrfckr_error(403, 'Import session not authorized. Open a window with step-up auth (password + 2FA) via flkrfckr/authorize, then retry.');
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -160,7 +302,9 @@ if ($sub === 'ping' && $method === 'GET') {
         'site_mode'         => $fl_site_mode,
         'compatible'        => ($fl_site_mode === 'photoblog'),
         'content_count'     => $fl_content,
-        'import_authorized' => $fl_import_authorized,
+        'key_bound'         => ($fl_user_id > 0),   // false = legacy key, must regenerate
+        'import_authorized' => $fl_import_authorized, // active step-up window for this user?
+        'window_minutes'    => flkrfckr_window_minutes($pdo),
     ]);
 }
 
@@ -319,6 +463,15 @@ if ($sub === 'images' && $method === 'POST') {
         $pdo->exec("ALTER TABLE snap_images ADD COLUMN img_license VARCHAR(100) NULL DEFAULT NULL AFTER img_film");
     }
 
+    // Ensure the per-user owner column exists (canonical owns it; defensive add
+    // for installs that haven't synced yet). The owner is FORCED to the key's
+    // user below — any client-supplied user is ignored (no impersonation).
+    try {
+        $pdo->query("SELECT user_id FROM snap_images LIMIT 0");
+    } catch (PDOException $e) {
+        $pdo->exec("ALTER TABLE snap_images ADD COLUMN user_id INT UNSIGNED DEFAULT NULL AFTER post_id");
+    }
+
     // Get next sort_order (avoid self-referencing subquery in INSERT VALUES)
     $sort_row = $pdo->query("SELECT COALESCE(MAX(sort_order),0)+1 AS next_sort FROM snap_images")->fetch(PDO::FETCH_ASSOC);
     $sort_order = (int)($sort_row['next_sort'] ?? 1);
@@ -333,14 +486,14 @@ if ($sub === 'images' && $method === 'POST') {
             img_exif, img_source_file,
             img_thumb_square, img_thumb_aspect,
             img_license, img_status, sort_order, img_like_seed,
-            img_view_seed, img_source_url
+            img_view_seed, img_source_url, user_id
         ) VALUES (
             ?, ?, ?, ?,
             ?, ?, ?, ?,
             ?, ?,
             ?, ?,
             ?, ?, ?, ?,
-            ?, ?
+            ?, ?, ?
         )
     ")->execute([
         $slug, $img_file, $img_title, $img_description,
@@ -348,7 +501,7 @@ if ($sub === 'images' && $method === 'POST') {
         $img_exif, $img_source_file,
         $img_thumb_square ?: null, $img_thumb_aspect ?: null,
         $img_license ?: null, $status, $sort_order, $img_like_seed,
-        $img_view_seed, $img_source_url ?: null,
+        $img_view_seed, $img_source_url ?: null, $fl_user_id,
     ]);
 
     $image_id = (int)$pdo->lastInsertId();
@@ -467,17 +620,59 @@ if ($sub === 'upload' && $method === 'POST') {
 
     $rel_path = 'img_uploads/' . $year_month . '/' . $filename;
 
-    // Generate square + aspect thumbnails with the shared core helper.
     $thumb_sq = '';
     $thumb_as = '';
     $width    = 0;
     $height   = 0;
-    $thumbs = snapsmack_generate_thumbs($rel_path, $site_root);
-    if ($thumbs !== false) {
-        $thumb_sq = $thumbs['sq_path'];
-        $thumb_as = $thumbs['asp_path'];
-        $width    = (int)$thumbs['width'];
-        $height   = (int)$thumbs['height'];
+
+    // ── Client-built thumbnails (load-off-the-host path) ─────────────────────
+    // If the client shipped t_/a_ thumbs in this same request, save them under
+    // img_uploads/YYYY/MM/thumbs/ using the canonical t_/a_<filename> names and
+    // SKIP the server-side GD pass. We still MIME-verify each part and never
+    // trust the client's filenames. Either both valid thumbs are accepted or we
+    // fall through to server generation — we never store a half set.
+    $thumb_dir_rel = 'img_uploads/' . $year_month . '/thumbs';
+    $thumb_dir     = $site_root . '/' . $thumb_dir_rel;
+    $sq_rel        = $thumb_dir_rel . '/t_' . $filename;
+    $as_rel        = $thumb_dir_rel . '/a_' . $filename;
+
+    $client_thumbs_ok = false;
+    if (!empty($_FILES['thumb_square']) && !empty($_FILES['thumb_aspect'])) {
+        $tsq = $_FILES['thumb_square'];
+        $tas = $_FILES['thumb_aspect'];
+        $finfo_t = new finfo(FILEINFO_MIME_TYPE);
+        $sq_ok = ($tsq['error'] === UPLOAD_ERR_OK)
+              && $tsq['size'] > 0 && $tsq['size'] <= 5 * 1024 * 1024
+              && $finfo_t->file($tsq['tmp_name']) === 'image/jpeg';
+        $as_ok = ($tas['error'] === UPLOAD_ERR_OK)
+              && $tas['size'] > 0 && $tas['size'] <= 5 * 1024 * 1024
+              && $finfo_t->file($tas['tmp_name']) === 'image/jpeg';
+        if ($sq_ok && $as_ok) {
+            if (!is_dir($thumb_dir)) {
+                mkdir($thumb_dir, 0755, true);
+            }
+            if (move_uploaded_file($tsq['tmp_name'], $site_root . '/' . $sq_rel)
+             && move_uploaded_file($tas['tmp_name'], $site_root . '/' . $as_rel)) {
+                $thumb_sq = $sq_rel;
+                $thumb_as = $as_rel;
+                // Source dimensions from the original (raw px — matches the GD
+                // path, which reads imagesx/imagesy without EXIF transpose).
+                $dims = @getimagesize($dest_path);
+                if ($dims) { $width = (int)$dims[0]; $height = (int)$dims[1]; }
+                $client_thumbs_ok = true;
+            }
+        }
+    }
+
+    // ── Fallback: server-side generation (any tool not yet shipping thumbs) ──
+    if (!$client_thumbs_ok) {
+        $thumbs = snapsmack_generate_thumbs($rel_path, $site_root);
+        if ($thumbs !== false) {
+            $thumb_sq = $thumbs['sq_path'];
+            $thumb_as = $thumbs['asp_path'];
+            $width    = (int)$thumbs['width'];
+            $height   = (int)$thumbs['height'];
+        }
     }
 
     flkrfckr_ok([
