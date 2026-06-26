@@ -227,6 +227,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action) {
     }
 }
 
+// SECURITY: `check` is state-changing — it writes the update cache and fires a
+// phone-home ping — so it must arrive as POST + CSRF, exactly like the CHECK NOW
+// / FORCE CHECK buttons. A GET carrying action=check (the legacy bare URL, or a
+// cross-site CSRF probe via <img src=...?action=check>) is downgraded to a plain
+// page load: it neither refreshes the cache nor mis-renders, closing the GET
+// CSRF vector. The only state-changing actions permitted on GET are the
+// session-gated stage_extract_chunk / stage_migrate_upload redirect flows below.
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'check') {
+    $action = '';
+}
+
 // ── PICK UP SESSION FLASH (set by chunked extract redirect) ──────────────────
 if (empty($flash_msg) && !empty($_SESSION['stage_flash_msg'])) {
     $flash_msg  = $_SESSION['stage_flash_msg'];
@@ -2144,6 +2155,12 @@ include 'core/sidebar.php';
         <form method="POST" class="mt-25">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
             <button type="submit" name="action" value="stage_download" class="btn-smack">APPLY UPDATE &rarr;</button>
+        </form>
+        <!-- Re-poll the release server even while an update is showing, so a stale
+             cached manifest can never strand the install on the wrong version. -->
+        <form method="POST" class="mt-10">
+            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <button type="submit" name="action" value="check" class="btn-smack btn-secondary" style="width:auto;padding:0 20px;">FORCE CHECK</button>
         </form>
 
         <?php else: ?>
