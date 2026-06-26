@@ -24,6 +24,21 @@
 
   --justified-gap:        4px;
   --justified-row-height: 240px;
+
+  /* Archive calendar panel (ss-engine-calendar.css) hooks. Slickr is a light
+     theme, but the engine falls back to a DARK palette when these are absent —
+     it looks for --cal-*/--page-bg/--bg, not Slickr's --sl-* names. White
+     panel, dark-grey labels/text, near-black clickable date "links". */
+  --cal-bg:             #ffffff;
+  --cal-text:           #111111;  /* clickable days = date links */
+  --cal-text-dim:       #cccccc;  /* days with no posts */
+  --cal-border:         #e6e6e6;
+  --cal-label:          #555555;  /* titles, weekday heads, month names, nav */
+  --cal-active:         #000000;  /* hover / selected */
+  --cal-hover-bg:       rgba(0,0,0,.06);
+  --cal-today:          #999999;
+  --cal-range-bg:       rgba(0,0,0,.06);
+  --cal-range-start-bg: #000000;
 }
 
 /* ============================================================================
@@ -469,7 +484,7 @@ a:hover { color: var(--sl-link-hover); }
   width: 30px;
   height: 30px;
   padding: 0;
-  border: 1px solid var(--sl-header-border);
+  border: 1px solid #cccccc;  /* visible grey box (--sl-header-border #eee read as no box on white) */
   border-radius: 4px;
   background: #fff;
   cursor: pointer;
@@ -546,6 +561,30 @@ a:hover { color: var(--sl-link-hover); }
 }
 
 .sl-no-photos { text-align: center; padding: 80px 20px; color: var(--sl-text-secondary); }
+
+/* ============================================================================
+   FOOTER — dark-grey bar, thin black top line, light-grey text, white links.
+   Colours are overridable via the skin customizer (footer_bg / footer_text /
+   footer_link pickers); these are the defaults.
+   ========================================================================== */
+#system-footer {
+  background: #2a2a2a;
+  border-top: 1px solid #000;
+  padding: 18px 24px;
+}
+#system-footer .inside {
+  max-width: var(--sl-canvas-width);
+  margin: 0 auto;
+}
+#system-footer .footer-metadata-bar p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #bbbbbb;
+}
+#system-footer .footer-link { color: #ffffff; }
+#system-footer .footer-link:hover { color: #ffffff; text-decoration: underline; }
+#system-footer .sep { color: #777777; }
 
 @media (max-width: 700px) {
   .sl-cover { height: 180px; }

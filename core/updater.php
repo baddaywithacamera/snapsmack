@@ -49,17 +49,43 @@ if (file_exists($_rpk_file)) {
 }
 if (!defined('SNAPSMACK_RELEASE_PUBKEY')
     || SNAPSMACK_RELEASE_PUBKEY === str_repeat('0', 64)) {
-    @file_put_contents($_rpk_file,
+    $_rpk_canonical = 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2';
+    $_rpk_written = @file_put_contents($_rpk_file,
           "<?php\n"
         . "// Release verification public key — PUBLIC, safe to commit/ship.\n"
         . "// SNAPSMACK_EOF_HEADER — last non-empty line must be the EOF marker.\n"
-        . "define('SNAPSMACK_RELEASE_PUBKEY', 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2');\n"
+        . "define('SNAPSMACK_RELEASE_PUBKEY', '{$_rpk_canonical}');\n"
         . "// ===== SNAPSMACK EOF =====\n"
     );
     if (function_exists('opcache_invalidate')) { @opcache_invalidate($_rpk_file, true); }
-    if (!defined('SNAPSMACK_RELEASE_PUBKEY')) {
-        define('SNAPSMACK_RELEASE_PUBKEY', 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2');
+
+    // CONFIRM the write actually landed — re-read the file and check the key is
+    // present. Never fail silently: a botched write leaves the blog on the
+    // placeholder with signature verification OFF, so log loudly AND record an
+    // admin-visible flag.
+    $_rpk_ok = ($_rpk_written !== false)
+            && strpos((string)@file_get_contents($_rpk_file), $_rpk_canonical) !== false;
+    if ($_rpk_ok) {
+        error_log('SnapSmack Updater: release public key planted in core/release-pubkey.php (self-heal OK).');
+    } else {
+        error_log('SnapSmack Updater: FAILED to write ' . $_rpk_file
+                . ' — check filesystem permissions. Blog stays on the PLACEHOLDER key: '
+                . 'signature verification OFF and VAX will refuse payloads.');
     }
+    // Surface it to the operator too (best-effort; only if a DB handle is up).
+    if (isset($GLOBALS['pdo']) && $GLOBALS['pdo'] instanceof PDO) {
+        try {
+            $GLOBALS['pdo']->prepare(
+                "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('release_pubkey_heal', ?)
+                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+            )->execute([($_rpk_ok ? 'ok ' : 'FAILED ') . date('c')]);
+        } catch (\PDOException $e) { /* settings table not ready — server log already has it */ }
+    }
+
+    if (!defined('SNAPSMACK_RELEASE_PUBKEY')) {
+        define('SNAPSMACK_RELEASE_PUBKEY', $_rpk_canonical);
+    }
+    unset($_rpk_canonical, $_rpk_written, $_rpk_ok);
 }
 unset($_rpk_file);
 // Signing is enforced only when a real (non-placeholder) pubkey is present.
