@@ -18,7 +18,7 @@
 
 return [
     'name'         => 'Slickr',
-    'version'      => '1.0.8',
+    'version'      => '1.0.9',
     'author'       => 'Sean McCormick',
     'author_email' => 'sean@baddaywithacamera.ca',
     'description'  => 'Flickr, the way it was. Justified masonry archive, classic solo view with EXIF sidebar, albums directory. Built for migrated Flickr archives — includes an optional Flickr provenance badge on imported images.',
@@ -138,6 +138,34 @@ return [
             'label'   => 'Blogroll Columns',
             'default' => '1',
             'options' => ['1' => 'Single Column', '2' => 'Two Columns', '3' => 'Three Columns'],
+        ],
+
+        // ── FOOTER ───────────────────────────────────────────────────────────
+        // Defaults match the base CSS (dark grey / light grey text / white links);
+        // changing a picker overrides it via the customizer's generated CSS.
+        'footer_bg' => [
+            'section'  => 'FOOTER',
+            'type'     => 'color',
+            'label'    => 'Footer Background',
+            'default'  => '#2a2a2a',
+            'selector' => '#system-footer',
+            'property' => 'background-color',
+        ],
+        'footer_text' => [
+            'section'  => 'FOOTER',
+            'type'     => 'color',
+            'label'    => 'Footer Text',
+            'default'  => '#bbbbbb',
+            'selector' => '#system-footer .footer-metadata-bar p',
+            'property' => 'color',
+        ],
+        'footer_link' => [
+            'section'  => 'FOOTER',
+            'type'     => 'color',
+            'label'    => 'Footer Links',
+            'default'  => '#ffffff',
+            'selector' => '#system-footer .footer-link',
+            'property' => 'color',
         ],
 
     ],
