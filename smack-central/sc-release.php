@@ -357,9 +357,9 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'CHANGELOG.md',
         'README.md',
         '.gitignore',
-        // Server-specific signing key — each server has its own copy via FTP.
-        // release-pubkey-sample.php ships instead so operators know what to create.
-        'core/release-pubkey.php',
+        // NOTE: core/release-pubkey.php is intentionally NOT excluded any more
+        // (0.7.313). The PUBLIC release key now ships in the package so fresh
+        // installs get it automatically. Only the private key stays secret.
         // One-off utility scripts — not part of a normal install
         'backfill-checksums.php',
         'backfill-thumbs.php',

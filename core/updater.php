@@ -33,14 +33,35 @@
 require_once __DIR__ . '/diaglog.php';
 
 // release-pubkey.php holds the Ed25519 public key for verifying release packages.
-// The placeholder (all-zeros key) disables signature verification, falling back
-// to SHA-256 checksum only. The file is protected from overwrites by the updater.
-if (file_exists(__DIR__ . '/release-pubkey.php')) {
-    require_once __DIR__ . '/release-pubkey.php';
+// It is PUBLIC — safe to ship and commit; only the matching private key (held in
+// Smack Central's sc-config.php) is secret.
+//
+// SELF-HEAL (0.7.313): the installer historically never wrote this file, so
+// installs booted on the all-zero placeholder — signature verification disabled
+// and VAX refusing every payload. If the file is missing or still the
+// placeholder, write the canonical public key so the whole fleet converges on
+// signed verification after this update lands. A real/rotated key already in
+// place is left untouched. Fail-safe: if the write can't happen (permissions),
+// behaviour falls back to the old SHA-only path — no regression.
+$_rpk_file = __DIR__ . '/release-pubkey.php';
+if (file_exists($_rpk_file)) {
+    require_once $_rpk_file;
 }
-if (!defined('SNAPSMACK_RELEASE_PUBKEY')) {
-    define('SNAPSMACK_RELEASE_PUBKEY', str_repeat('0', 64));
+if (!defined('SNAPSMACK_RELEASE_PUBKEY')
+    || SNAPSMACK_RELEASE_PUBKEY === str_repeat('0', 64)) {
+    @file_put_contents($_rpk_file,
+          "<?php\n"
+        . "// Release verification public key — PUBLIC, safe to commit/ship.\n"
+        . "// SNAPSMACK_EOF_HEADER — last non-empty line must be the EOF marker.\n"
+        . "define('SNAPSMACK_RELEASE_PUBKEY', 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2');\n"
+        . "// ===== SNAPSMACK EOF =====\n"
+    );
+    if (function_exists('opcache_invalidate')) { @opcache_invalidate($_rpk_file, true); }
+    if (!defined('SNAPSMACK_RELEASE_PUBKEY')) {
+        define('SNAPSMACK_RELEASE_PUBKEY', 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2');
+    }
 }
+unset($_rpk_file);
 // Signing is enforced only when a real (non-placeholder) pubkey is present.
 if (!defined('SNAPSMACK_SIGNING_ENFORCED')) {
     define('SNAPSMACK_SIGNING_ENFORCED', SNAPSMACK_RELEASE_PUBKEY !== str_repeat('0', 64));
@@ -478,7 +499,6 @@ function updater_load_protected_paths(): array {
         return [
             'core/db.php',
             'core/constants.php',
-            'core/release-pubkey.php',
             'protected_paths.json',
             'img_uploads/',
             'media_assets/',

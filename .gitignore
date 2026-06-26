@@ -14,9 +14,9 @@ logs/*
 core/db.php
 smack-central/sc-config.php
 
-# Server-specific signing key — never commit the real key
-# Use core/release-pubkey-sample.php as the template
-core/release-pubkey.php
+# core/release-pubkey.php is now TRACKED + shipped (0.7.313) — it holds the
+# PUBLIC release-verification key, which is not a secret. Only the PRIVATE key,
+# in smack-central/sc-config.php (ignored above), must ever stay secret.
 
 # Backups contain full source + database dumps — never commit
 backups/
