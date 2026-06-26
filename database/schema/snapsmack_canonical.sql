@@ -746,6 +746,11 @@ CREATE TABLE IF NOT EXISTS `snap_collection_items` (
   `item_id`       INT UNSIGNED NOT NULL,
   `sort_order`    INT          NOT NULL DEFAULT 0,
   `added_at`      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `image_id`      INT UNSIGNED NOT NULL DEFAULT 0
+                  COMMENT 'v0.2 image-folio member — FK to snap_images.id',
+  `position`      INT          NOT NULL DEFAULT 0,
+  `caption`       TEXT         COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                  COMMENT 'Collection-specific caption; overrides post description in collection context',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_collection_item` (`collection_id`, `item_type`, `item_id`),
   KEY `idx_collection` (`collection_id`),

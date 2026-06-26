@@ -40,6 +40,20 @@ try {
     if (file_exists($mig)) { require_once $mig; migration_040_up($pdo); }
 }
 
+// Defensive: ensure the v0.2 image-folio columns exist. Canonical drift left
+// some installs (e.g. foreverphotograph.ing, pre-image-refactor) without
+// image_id/position/caption, fataling every SELECT/INSERT below with
+// "Unknown column 'ci.image_id'". Belt-and-suspenders to the canonical add;
+// unblocks the install on next page load without waiting for a full update.
+try {
+    $pdo->exec(
+        "ALTER TABLE snap_collection_items
+           ADD COLUMN IF NOT EXISTS `image_id` INT UNSIGNED NOT NULL DEFAULT 0,
+           ADD COLUMN IF NOT EXISTS `position` INT          NOT NULL DEFAULT 0,
+           ADD COLUMN IF NOT EXISTS `caption`  TEXT                  DEFAULT NULL"
+    );
+} catch (PDOException $e) { /* already present, or engine lacks IF NOT EXISTS */ }
+
 // --- AJAX HANDLERS ---
 $is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
         && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
