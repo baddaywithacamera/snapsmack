@@ -18,7 +18,7 @@
 
 return [
     'name'         => 'Slickr',
-    'version'      => '1.0.7',
+    'version'      => '1.0.8',
     'author'       => 'Sean McCormick',
     'author_email' => 'sean@baddaywithacamera.ca',
     'description'  => 'Flickr, the way it was. Justified masonry archive, classic solo view with EXIF sidebar, albums directory. Built for migrated Flickr archives — includes an optional Flickr provenance badge on imported images.',
@@ -38,6 +38,7 @@ return [
     'require_scripts' => [
         'smack-footer',
         'smack-image-fade-load',
+        'smack-lazyload',          // IntersectionObserver lazy loading — auto-upgrades .justified-item imgs (photostream + archive). Was missing, so slickr never lazy-loaded.
         'smack-justified-lib',
         'smack-justified',
         'smack-community',

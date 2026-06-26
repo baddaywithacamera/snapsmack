@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.311 — "Exit Row" (2026-06-25)
+
+- Slickr album directory now renders the Flickr-style cover grid: added album-list.php, the template the album controller actually includes (the grid was wrongly named albums.php and never loaded, so the default list showed).
+- Slickr now lazy-loads images: added the smack-lazyload engine to its scripts (it auto-upgrades photostream/archive images), which slickr's manifest was missing.
+
 ## 0.7.310 — "Tray Table" (2026-06-25)
 
 - The sticky header now obeys the admin Sticky Header toggle on every skin: the engine loads only when the setting is on (it previously stickied the header regardless of the setting).
