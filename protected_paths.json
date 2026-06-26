@@ -7,7 +7,6 @@
     "protected": [
         "core/db.php",
         "core/constants.php",
-        "core/release-pubkey.php",
         "protected_paths.json",
         "img_uploads/",
         "media_assets/",
