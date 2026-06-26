@@ -64,6 +64,15 @@ try {
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-social-dock.js?v=<?php echo time(); ?>"></script>
 
 <?php include __DIR__ . '/sticky-header.php'; ?>
+<?php
+// Only load the sticky-header engine when the admin actually enabled it. Before
+// this, the CSS/JS loaded unconditionally, so the JS stickied the first <header>
+// on any page that included this file (e.g. slickr archive pages) even after the
+// option was turned off. Match sticky-header.php's own gate ('1' = on) so the
+// admin "Sticky header" toggle controls the behaviour everywhere, every skin.
+if (($settings['sticky_header_enabled'] ?? '') === '1'):
+?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-sticky-header.css">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-sticky-header.js?v=<?php echo time(); ?>"></script>
+<?php endif; ?>
 <?php // ===== SNAPSMACK EOF =====

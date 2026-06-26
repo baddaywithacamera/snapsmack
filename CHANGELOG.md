@@ -12,6 +12,10 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.310 — "Tray Table" (2026-06-25)
+
+- The sticky header now obeys the admin Sticky Header toggle on every skin: the engine loads only when the setting is on (it previously stickied the header regardless of the setting).
+
 ## 0.7.309 — "Seat Belt" (2026-06-25)
 
 - AI features are now hard-gated: they stay OFF until the site owner accepts responsibility for third-party AI provider costs, protecting against surprise per-use bills.
