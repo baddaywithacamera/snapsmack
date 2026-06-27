@@ -296,6 +296,15 @@ return [
                 'constant' => 'Constant slow',
             ],
         ],
+        'pa_wave_speed' => [
+            'section' => 'BORDER WAVE',
+            'type'    => 'range_numeric',
+            'label'   => 'Wave Speed',
+            'default' => '160',
+            'min'     => '40', 'max' => '400', 'step' => '5',
+            'hint'    => 'Border-wave clock, independent of the fireworks rate. Lower = faster shimmer; higher = slower.',
+            // PHP-handled → data-pa-border-cycle (read by ss-engine-aurora-wave.js).
+        ],
         'pa_border_width' => [
             'section'  => 'BORDER WAVE',
             'type'     => 'range_numeric',
@@ -346,6 +355,15 @@ return [
             'label'    => 'Nav Line Colour (fixed mode)',
             'default'  => '#750787',
             // PHP-handled → --pa-nav-line when mode = fixed.
+        ],
+        'pa_nav_line_opacity' => [
+            'section'  => 'NAV',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav Line Opacity',
+            'default'  => '100',
+            'min'      => '0', 'max' => '100', 'step' => '1', 'unit' => '%',
+            'selector' => ':root', 'property' => '--pa-nav-line-op',
+            'hint'     => 'Opacity of the nav divider lines.',
         ],
 
         // ---- PROFILE HEADER ------------------------------------------------
@@ -409,6 +427,22 @@ return [
             'label'    => 'Image Gap',
             'default'  => '2', 'min' => '0', 'max' => '20', 'step' => '1', 'unit' => 'px',
             'selector' => ':root', 'property' => '--grid-gap',
+        ],
+        'pa_nav_tile_gap' => [
+            'section'  => 'GRID',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav → Tiles Gap',
+            'default'  => '2', 'min' => '0', 'max' => '60', 'step' => '1', 'unit' => 'px',
+            'selector' => ':root', 'property' => '--nav-tile-gap',
+            'hint'     => 'Vertical space between the sticky nav bar and the first row of tiles.',
+        ],
+        'pa_post_count_color' => [
+            'section'  => 'GRID',
+            'type'     => 'color',
+            'label'    => 'Post Count Colour',
+            'default'  => '#1a1a1a',
+            'selector' => ':root', 'property' => '--post-count-color',
+            'hint'     => 'Colour of the post count number and label.',
         ],
         'pa_carousel_indicator' => [
             'section'  => 'GRID',

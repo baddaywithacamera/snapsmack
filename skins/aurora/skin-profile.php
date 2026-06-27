@@ -105,6 +105,7 @@ $_au_cycle   = max(15, min(240, (int)($settings['au_cycle_time'] ?? 240)));     
 $_au_bstyle  = $settings['au_border_style']   ?? 'circle';                        // circle|sweep|across|pulse
 $_au_bdir    = $settings['au_wave_direction'] ?? 'dtlbr';
 $_au_brhythm = $settings['au_wave_rhythm']    ?? 'breath';                         // breath|constant
+$_au_wave_cycle = max(40, min(400, (int)($settings['au_wave_speed'] ?? 160)));    // Layer-2 border-wave clock; higher = slower (independent of sky cycle)
 $_au_bw      = max(1, min(10, (int)($settings['au_border_width'] ?? 2)));
 $_au_bo      = number_format(max(10, min(100, (int)($settings['au_border_opacity'] ?? 100))) / 100, 2);
 $_au_corner  = $settings['au_tile_corners'] ?? 'auto';                             // auto|square|rounded
@@ -186,7 +187,8 @@ if ($_au_glow_sz > 0 && $_au_glow_op > 0) {
      data-au-sky="<?php echo htmlspecialchars($_au_sky); ?>"
      data-au-border-style="<?php echo htmlspecialchars($_au_bstyle); ?>"
      data-au-border-dir="<?php echo htmlspecialchars($_au_bdir); ?>"
-     data-au-border-rhythm="<?php echo htmlspecialchars($_au_brhythm); ?>"></div>
+     data-au-border-rhythm="<?php echo htmlspecialchars($_au_brhythm); ?>"
+     data-au-border-cycle="<?php echo $_au_wave_cycle; ?>"></div>
 
 <?php if ($_au_has_treat): ?>
 <div class="au-treatment-bg" style="<?php echo $_au_bg_style; ?>" aria-hidden="true"></div>

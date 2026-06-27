@@ -105,6 +105,7 @@ $_pa_accent = trim($settings['pa_accent_color'] ?? '#750787');
 $_pa_bstyle  = $settings['pa_border_style']  ?? 'circle';   // circle|sweep|across|pulse
 $_pa_bdir    = $settings['pa_border_dir']    ?? 'dtlbr';
 $_pa_brhythm = $settings['pa_border_rhythm'] ?? 'breath';   // breath|constant
+$_pa_wave_cycle = max(40, min(400, (int)($settings['pa_wave_speed'] ?? 160)));   // Layer-2 border-wave clock; higher = slower (independent of fireworks rate)
 $_pa_bw      = max(1,  min(10,  (int)($settings['pa_border_width']   ?? 5)));
 $_pa_bo      = number_format(max(10, min(100, (int)($settings['pa_border_opacity'] ?? 100))) / 100, 2);
 $_pa_corner  = $settings['pa_tile_corners'] ?? 'auto';      // auto|square|rounded
@@ -227,6 +228,7 @@ $_pa_nav_line_op = number_format(max(0, min(100, (int)($settings['pa_nav_line_op
      data-pa-border-style="<?php echo htmlspecialchars($_pa_bstyle); ?>"
      data-pa-border-dir="<?php echo htmlspecialchars($_pa_bdir); ?>"
      data-pa-border-rhythm="<?php echo htmlspecialchars($_pa_brhythm); ?>"
+     data-pa-border-cycle="<?php echo $_pa_wave_cycle; ?>"
      data-pa-border-minl="<?php echo $_pa_border_minl; ?>"></div>
 <?php else: ?>
 <!-- PARADE fireworks carrier — read by ss-engine-parade-fireworks.js (Layer 1).
@@ -243,6 +245,7 @@ $_pa_nav_line_op = number_format(max(0, min(100, (int)($settings['pa_nav_line_op
      data-pa-border-style="<?php echo htmlspecialchars($_pa_bstyle); ?>"
      data-pa-border-dir="<?php echo htmlspecialchars($_pa_bdir); ?>"
      data-pa-border-rhythm="<?php echo htmlspecialchars($_pa_brhythm); ?>"
+     data-pa-border-cycle="<?php echo $_pa_wave_cycle; ?>"
      data-pa-border-minl="<?php echo $_pa_border_minl; ?>"></div>
 <?php endif; ?>
 
