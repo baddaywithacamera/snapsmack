@@ -124,6 +124,72 @@ if (!defined('SMACKBACK_BASE_SKINS')) {
  *                             inline scripts → info. eval() is never demoted.
  * @return array
  */
+/**
+ * Blank comment spans in a set of source lines so the JS-pattern scanner does not
+ * match <script>/eval()/atob()/document.write() that appear *inside comments*.
+ *
+ * Returns an array the same length as $lines (line numbers preserved), with comment
+ * content replaced by spaces. Handles:
+ *   - /* ... *\/ block comments (PHP/JS/CSS), tracked across lines
+ *   - <!-- ... --> HTML comments, tracked across lines
+ *   - //  line comments (PHP/JS), but NOT "//" that is part of "://" (URL-safe)
+ *   - leading #  line comments (PHP), only when the line is wholly a comment
+ *
+ * Deliberately conservative: it never strips inside a "://" sequence, so a real
+ * <script src="https://untrusted-host"> is always left intact for detection. Code
+ * outside comments is untouched, so eval()/external-script findings are unaffected.
+ *
+ * @param  string[] $lines  File lines (FILE_IGNORE_NEW_LINES).
+ * @param  string   $ext    Lowercase file extension (php|js|html|htm).
+ * @return string[]         Comment-stripped lines, same indices/count.
+ */
+function smackback_strip_comments(array $lines, string $ext): array {
+    $out      = [];
+    $in_block = false; // inside /* ... */
+    $in_html  = false; // inside <!-- ... -->
+
+    foreach ($lines as $line) {
+        $len = strlen($line);
+
+        // Whole-line PHP "#" comment (after optional leading whitespace), when not
+        // already mid block/html comment. Kept simple to avoid touching JS "#field"
+        // or "#fff"-style tokens that are not line-leading.
+        if (!$in_block && !$in_html && $ext === 'php'
+            && preg_match('/^\s*#/', $line)) {
+            $out[] = '';
+            continue;
+        }
+
+        $res = '';
+        $j   = 0;
+        while ($j < $len) {
+            if ($in_block) {
+                $close = strpos($line, '*/', $j);
+                if ($close === false) { $j = $len; break; }
+                $j = $close + 2; $in_block = false; continue;
+            }
+            if ($in_html) {
+                $close = strpos($line, '-->', $j);
+                if ($close === false) { $j = $len; break; }
+                $j = $close + 3; $in_html = false; continue;
+            }
+            if (substr($line, $j, 2) === '/*') { $in_block = true; $j += 2; continue; }
+            if (substr($line, $j, 4) === '<!--') { $in_html = true; $j += 4; continue; }
+            if (substr($line, $j, 2) === '//') {
+                // Only a comment if not part of "://" (URL scheme separator).
+                $prev = $j > 0 ? $line[$j - 1] : '';
+                if ($prev !== ':') { break; }   // rest of line is a // comment
+                $res .= '//'; $j += 2; continue; // keep "://" as code
+            }
+            $res .= $line[$j];
+            $j++;
+        }
+        $out[] = $res;
+    }
+
+    return $out;
+}
+
 function smackback_scan_skin_js(bool $allow_custom = false): array {
     $skins_dir = SNAPSMACK_ROOT . DIRECTORY_SEPARATOR . 'skins';
     if (!is_dir($skins_dir)) {
@@ -171,13 +237,20 @@ function smackback_scan_skin_js(bool $allow_custom = false): array {
             $lines = @file($abs, FILE_IGNORE_NEW_LINES);
             if ($lines === false) continue;
 
+            // Blank out comment spans before pattern-matching so that <script>,
+            // eval(), etc. *mentioned inside comments* don't produce false-positive
+            // findings (e.g. the "No direct <script> tags here" note in skin-footer
+            // files). Line count/numbers are preserved. URL "://" is protected so a
+            // real <script src="https://untrusted"> is never hidden — see helper.
+            $scan_lines = smackback_strip_comments($lines, $ext);
+
             $skin_path_fwd = str_replace('\\', '/', $skin_path);
             $rel_file = 'skins/' . $skin_slug . '/' . ltrim(
                 str_replace($skin_path_fwd, '', $abs_fwd),
                 '/'
             );
 
-            foreach ($lines as $i => $line) {
+            foreach ($scan_lines as $i => $line) {
                 $lnum = $i + 1;
 
                 // ── External <script src="..."> from untrusted host ─────────

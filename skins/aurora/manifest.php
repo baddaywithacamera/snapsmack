@@ -74,6 +74,7 @@ return [
         'smack-aurora-bg',
         'smack-aurora-wave',
         'smack-aurora-reveal',
+        'smack-tag-infinite',     // shared prefix-derived hashtag infinite scroll
     ],
 
     'community_comments'  => true,

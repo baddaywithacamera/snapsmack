@@ -256,29 +256,37 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
                 </p>
             </div>
 
+            <?php
+            // ── EXIF panel ───────────────────────────────────────────────────
+            // Build the cover image's EXIF rows into a buffer first, then only
+            // emit the panel when there is EXIF to show — on the cover now, or on
+            // another slide (carousel mode injects it via snapslider:slidechange).
+            // Posts with no EXIF (phone/IG imports, GramOfSmack mode) emit NO panel,
+            // so the bordered strip never renders as empty stray lines.
+            $exif_fields = [
+                'camera'   => 'Camera',
+                'lens'     => 'Lens',
+                'focal'    => 'Focal',
+                'film'     => 'Film',
+                'iso'      => 'ISO',
+                'aperture' => 'Aperture',
+                'shutter'  => 'Shutter',
+                'flash'    => 'Flash',
+            ];
+            $exif_rows = '';
+            foreach ($exif_fields as $key => $label):
+                $val = trim($cover_exif[$key] ?? ($key === 'film' ? ($cover_img['img_film'] ?? '') : ''));
+                if ($val === '') continue;
+                $exif_rows .= '<div class="au-exif-item" data-exif-key="' . $key . '">'
+                            . '<span class="au-exif-label">' . $label . '</span>'
+                            . '<span class="au-exif-value">' . htmlspecialchars($val) . '</span></div>';
+            endforeach;
+            $exif_any = ($exif_rows !== '') || !empty(array_filter($exif_map));
+            if ($exif_any):
+            ?>
             <!-- EXIF panel — updated by snapslider:slidechange in carousel mode -->
-            <div id="au-exif-panel" class="au-exif-panel">
-                <?php
-                $exif_fields = [
-                    'camera'   => 'Camera',
-                    'lens'     => 'Lens',
-                    'focal'    => 'Focal',
-                    'film'     => 'Film',
-                    'iso'      => 'ISO',
-                    'aperture' => 'Aperture',
-                    'shutter'  => 'Shutter',
-                    'flash'    => 'Flash',
-                ];
-                foreach ($exif_fields as $key => $label):
-                    $val = trim($cover_exif[$key] ?? ($key === 'film' ? ($cover_img['img_film'] ?? '') : ''));
-                    if (!$val) continue;
-                ?>
-                <div class="au-exif-item" data-exif-key="<?php echo $key; ?>">
-                    <span class="au-exif-label"><?php echo $label; ?></span>
-                    <span class="au-exif-value"><?php echo htmlspecialchars($val); ?></span>
-                </div>
-                <?php endforeach; ?>
-            </div>
+            <div id="au-exif-panel" class="au-exif-panel"><?php echo $exif_rows; ?></div>
+            <?php endif; ?>
 
             <?php if (!empty($post['allow_comments'])): ?>
             <div class="au-community-wrap">

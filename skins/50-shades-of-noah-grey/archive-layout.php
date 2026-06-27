@@ -147,34 +147,7 @@ $_fsog_initial_thumbs = ($_fsog_cur === 'thumbs');
     <?php endif; ?>
 </div>
 
-<script>
-// 0.7.79: 50-shades archive — react to <html data-archive-layout> changes.
-// The [T]/[M] toggle in core archive.php updates that attribute; we just
-// show/hide the matching grid. No own toggle, no own localStorage key.
-(function() {
-    'use strict';
-    var browseGrid    = document.getElementById('browse-grid');
-    var justifiedGrid = document.getElementById('justified-grid');
-
-    function applyLayout(layout) {
-        if (!browseGrid || !justifiedGrid) return;
-        if (layout === 'masonry') {
-            browseGrid.style.display    = 'none';
-            justifiedGrid.style.display = 'block';
-        } else { // 'thumbs' or anything else falls through to thumbs
-            browseGrid.style.display    = 'grid';
-            justifiedGrid.style.display = 'none';
-        }
-    }
-
-    // Initial state from html data-attr (set by archive.php from cookie).
-    var initial = document.documentElement.getAttribute('data-archive-layout') || 'thumbs';
-    applyLayout(initial);
-
-    // React to the in-place toggle from ss-engine-archive-toggle.js.
-    document.addEventListener('smackarchive:layoutchange', function (e) {
-        applyLayout((e.detail && e.detail.layout) || 'thumbs');
-    });
-}());
-</script>
+<?php /* Archive grid thumbs/masonry switch moved to
+   assets/js/ss-engine-archive-grid-switch.js (loaded via the skin manifest).
+   #browse-grid / #justified-grid above are its hooks — no inline JS in skins. */ ?>
 <?php // ===== SNAPSMACK EOF =====
