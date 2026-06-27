@@ -189,13 +189,13 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Across our early-2026 review series, site-wide CSRF protection was the one item we flagged and deliberately deferred while higher-severity findings were closed first. It's now done: every admin form and every background request in SnapSmack carries and checks that token automatically, with no per-page switch anyone can forget to flip. That closes the single open thread carried through reports 001 to 008.</p>
                 <a class="report-link" href="secaudits/2026-06-27-csrf-closure-sweep.pdf" target="_blank" rel="noopener">Read the closure record &rarr;</a>
                 <p class="report-refs">Underlying reviews:
-                    <a href="secaudits/2024-04-25-001-snapsmack-security-audit.pdf" target="_blank" rel="noopener">001</a>,
-                    <a href="secaudits/2026-04-25-002-snapsmack-security-audit.pdf" target="_blank" rel="noopener">002</a>,
-                    <a href="secaudits/2026-04-26-003-snapsmack-security-audit.pdf" target="_blank" rel="noopener">003</a>,
-                    <a href="secaudits/2026-04-29-005-snapsmack-security-audit.pdf" target="_blank" rel="noopener">005</a>,
-                    <a href="secaudits/2026-04-29-006-snapsmack-security-audit.pdf" target="_blank" rel="noopener">006</a>,
-                    <a href="secaudits/2026-05-03-007-snapsmack-security-audit.pdf" target="_blank" rel="noopener">007</a>,
-                    <a href="secaudits/2026-05-05-008-snapsmack-security-audit.pdf" target="_blank" rel="noopener">008</a>.
+                    <a href="secaudits/2024-04-25-001-initial-full-codebase-audit.pdf" target="_blank" rel="noopener">001</a>,
+                    <a href="secaudits/2026-04-25-002-contact-form-injection-ratelimiter-race.pdf" target="_blank" rel="noopener">002</a>,
+                    <a href="secaudits/2026-04-26-003-installer-credential-overwrite.pdf" target="_blank" rel="noopener">003</a>,
+                    <a href="secaudits/2026-04-29-005-login-hardening-ip-shield.pdf" target="_blank" rel="noopener">005</a>,
+                    <a href="secaudits/2026-04-29-006-post-release-integrity-verification.pdf" target="_blank" rel="noopener">006</a>,
+                    <a href="secaudits/2026-05-03-007-featured-image-picker-dom-xss.pdf" target="_blank" rel="noopener">007</a>,
+                    <a href="secaudits/2026-05-05-008-masthead-logo-upload-mime-bypass.pdf" target="_blank" rel="noopener">008</a>.
                 </p>
             </article>
 
@@ -217,7 +217,7 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="post-meta"><span class="post-date">May 26, 2026</span><span class="post-tag">Closed</span></div>
                 <h2>Deep Review: 0.7.184</h2>
                 <p>A deep review of the large 0.7.184 feature drop — mandatory 2FA, self-sealing breach lockdown, the skin JS scanner, and more. All five findings closed: fixed, or confirmed safe by design.</p>
-                <a class="report-link" href="secaudits/2026-05-26-019-snapsmack-security-audit.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+                <a class="report-link" href="secaudits/2026-05-26-019-deep-review-0.7.184.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
             </article>
 
             <article class="post" id="a018">
@@ -266,21 +266,21 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="post-meta"><span class="post-date">May 18, 2026</span><span class="post-tag">Closed</span></div>
                 <h2>Post-Remediation Verification</h2>
                 <p>A second pass confirming the previous review's fixes were actually applied correctly — because "we fixed it" should be something you can check. All seven items verified resolved or confirmed clean.</p>
-                <a class="report-link" href="secaudits/2026-05-18-011-snapsmack-security-audit.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+                <a class="report-link" href="secaudits/2026-05-18-011-post-remediation-verification.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
             </article>
 
             <article class="post" id="a010">
                 <div class="post-meta"><span class="post-date">May 18, 2026</span><span class="post-tag">Closed</span></div>
                 <h2>Delta Review: 0.7.147–0.7.152</h2>
                 <p>A routine review of everything that changed across half a dozen releases. Two low-severity housekeeping items found and resolved; no exploitable vulnerabilities.</p>
-                <a class="report-link" href="secaudits/2026-05-18-010-snapsmack-security-audit.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+                <a class="report-link" href="secaudits/2026-05-18-010-delta-review-0.7.147-0.7.152.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
             </article>
 
             <article class="post" id="a009">
                 <div class="post-meta"><span class="post-date">May 10, 2026</span><span class="post-tag">Closed</span></div>
                 <h2>Multisite Remote-Admin Surface</h2>
                 <p>A full review of the new hub-and-spoke remote-admin features before they went out. All five findings were remediated in 0.7.102 ahead of release — nothing reached a live site unfixed.</p>
-                <a class="report-link" href="secaudits/2026-05-10-009-snapsmack-security-audit.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+                <a class="report-link" href="secaudits/2026-05-10-009-multisite-remote-admin-surface.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
             </article>
 
         </div>

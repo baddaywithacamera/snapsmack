@@ -137,6 +137,14 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Jun 27</span>
+                    <a href="#skin-drop">Slickr, Aurora, Parade — Live Today</a>
+                </li>
+                <li>
+                    <span class="idx-date">Jun 27</span>
+                    <a href="#open-books">Straight Answers, Open Audits</a>
+                </li>
+                <li>
                     <span class="idx-date">Jun 23</span>
                     <a href="#break-glass">Break the Glass</a>
                 </li>
@@ -246,6 +254,32 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <!-- POST: SKIN DROP -->
+            <article class="post" id="skin-drop">
+                <div class="post-meta">
+                    <span class="post-date">June 27, 2026</span>
+                    <span class="post-tag">Skins</span>
+                </div>
+                <h2><a href="#skin-drop">Slickr, Aurora, Parade — Live Today</a></h2>
+                <p>SLICKR ships today, and it brings the cover with it. It's the magazine skin — an editorial layout built around a full-width masthead cover, the kind of front page a printed photography quarterly would run. New in this release: you position and zoom that cover by dragging it into place against a live preview, so a panorama or an off-centre subject sits exactly where you want it instead of wherever a fixed crop happened to land. Nothing is re-encoded, the move is fully reversible, and the banner always fills its frame. The archive underneath carries a unified filter panel and browse-by-date, so a deep catalogue stays walkable.</p>
+                <p>AURORA and PARADE ship alongside it — the carousel skins, where your photographs ride a moving stage instead of sitting still. AURORA is the quiet one: a slow wash of pastel light behind the tiles, animated nav lines, a border that drifts rather than blinks. PARADE is its louder sibling — slow-motion fireworks on white, with pride palettes built in for anyone who wants them. Both put a rotating set of your work front and centre, and the motion speeds, nav-line opacity, and spacing are all adjustable in the skin settings so you can dial the energy up or down to suit the pictures.</p>
+                <p>Two more are close. INSTANT CAMERA is the instant-film skin — the white-bordered, slightly-imperfect snapshot look, for archives that want that warmth. ORGANIZED MAYHEM is a background engine rather than a full skin: controlled motion behind your content, chaotic on the surface and deliberate underneath. Both are nearing completion and land shortly.</p>
+                <p>SLICKR, AURORA, and PARADE are available now through the SnapSmack Skin Packager. INSTANT CAMERA and ORGANIZED MAYHEM follow when they're ready — which, going by where they are, won't be long.</p>
+            </article>
+
+            <!-- POST: OPEN BOOKS -->
+            <article class="post" id="open-books">
+                <div class="post-meta">
+                    <span class="post-date">June 27, 2026</span>
+                    <span class="post-tag">Transparency</span>
+                </div>
+                <h2><a href="#open-books">Straight Answers, Open Audits</a></h2>
+                <p>Two pages went up on this site today, and both exist for the same reason: you shouldn't have to take our word for anything.</p>
+                <p><strong>BRASS TACKS</strong> is the FAQ — straight answers to the questions people actually ask before trusting a platform with years of their work. What it costs (nothing), who owns your photographs (you), what happens if the project goes away (you still have everything, because it's on your server), and the blunter ones we'd rather answer head-on than dodge. It's written the way we talk, which is to say not always gently.</p>
+                <p><strong>BUZZERS</strong> is the security ledger. Every security audit we've run on SnapSmack and its tools, the findings, and the releases that closed them — published once they're closed. Today that list grew: site-wide protection against cross-site request forgery, the one item we'd carried as deferred across the early review series, is now in place everywhere, and the reports that were waiting on it are public. What you won't find there is the blueprint for a live, unpatched hole — those stay private until they're fixed, then they join the list. That's the deal, and now you can read it.</p>
+                <p>The codebase has always been open for inspection. These two pages just make the rest of the story — what we fixed, and what we won't pretend we did — open too.</p>
+            </article>
 
             <!-- POST: BREAK THE GLASS -->
             <article class="post" id="break-glass">

@@ -32,7 +32,7 @@ $_nav = function(string $active): string {
            ss_nav_link('hairy-muff.php', 'HAIRY MUFF!',     'hairy-muff',  $active) . "\n" .
            ss_nav_link('brass-tacks.php','BRASS TACKS!',    'brass-tacks', $active) . "\n" .
            ss_nav_link('buzzers.php',    'BUZZERS!',        'buzzers',     $active) . "\n" .
-           ss_nav_link('oi.php',         'OI MATE!',        'oi',          $active);
+           ss_nav_link('oi.php',         'OI THERE MATE!',  'oi',          $active);
 };
 
 $_page_css_block = isset($page_css) && $page_css !== '' ? "\n" . $page_css . "\n" : '';
@@ -174,14 +174,14 @@ p:last-child { margin-bottom: 0; }
 
 /* \u2500\u2500\u2500 NAVIGATION \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 nav {
-    display: grid; grid-template-columns: repeat(3, auto);
-    column-gap: 24px; row-gap: 9px;
+    display: grid; grid-template-columns: repeat(4, auto);
+    column-gap: 20px; row-gap: 8px;
     margin-left: auto; text-align: right;
     align-items: start; justify-items: end;
 }
 nav a {
     font-family: Arial Black, Arial, sans-serif;
-    font-size: 0.78rem; font-weight: 900; text-transform: uppercase;
+    font-size: 0.74rem; font-weight: 900; text-transform: uppercase;
     letter-spacing: 0.03em; color: var(--dark-grey);
     text-decoration: none; position: relative; padding-bottom: 4px;
     transition: color 0.15s;
