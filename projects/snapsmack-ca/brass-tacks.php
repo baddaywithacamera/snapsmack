@@ -117,7 +117,6 @@ require_once __DIR__ . '/includes/header.php';
                     <li><a href="#q-resources">Resources needed?</a></li>
                     <li><a href="#q-platforms">Platforms supported?</a></li>
                     <li><a href="#q-companion-apps">Why companion apps instead of plugins?</a></li>
-                    <li><a href="#q-desktop-apps">Why desktop apps for the companion tools?</a></li>
                     <li><a href="#q-no-apple">Why no Apple support?</a></li>
                     <li><a href="#q-noah-grey">Who is Noah Grey?</a></li>
                     <li><a href="#q-thomas">What is Thomas the Bear?</a></li>
@@ -182,7 +181,6 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Photoblogging software used to be made by people who loved blogging and loved photography. Greymatter, Movable Type, the original Pixelpost. One person or a small team, building something they actually wanted to use, sharing it because that was the right thing to do.</p>
                 <p>That doesn't really exist anymore. The web ate it. Algorithms ate what the web left. The serious photography sites that survive are either platforms harvesting their users' work, or static-site generators that demand you become a developer to publish a photo.</p>
                 <p>Ray and I talked about how nice it would be to have good blogging software again, because there was nothing usable left. And now, almost by magic, there is. SnapSmack is what photoblogging software looks like when somebody who loves photography and loves the old web builds it for themselves and shares it because that's still the right thing to do. I just wish that Ray was here to share it with me. That's the part that hurts.</p>
-                <p>Slow software. Human curation. No algorithm. No telemetry. No upsell tier. Yours.</p>
             </div>
 
             <div class="qa" id="q-rude-profane">
@@ -246,14 +244,8 @@ require_once __DIR__ . '/includes/header.php';
                 <p>SnapSmack ships with dedicated companion apps instead. Each one does one job well, runs on your machine, touches your files directly, and doesn't need to ask the CMS's permission to do it. No plugin marketplace. No subscription tier. No "pro version" of a feature that should have been free.</p>
                 <p>Moving the heavy lifting off the server matters too. Batch importing 15 GB of images, running backups, sorting and organizing your archive — none of that belongs on a shared hosting environment that's already doing its job serving your site. The companion apps handle it on your machine, where it belongs. Better still, large imports can be scheduled for off-peak hours and spread over days or weeks if necessary, so you never upset your hosting provider with a sudden spike. No commercial CMS we're aware of offers this — they all assume chonky hardware and phat bandwidth. We don't.</p>
                 <p>There's also a practical reality worth acknowledging: not everyone has reliable home internet. If you're working from a library or a coffee shop, you should be able to organize your content, write posts, and queue up work offline, then sync when you have a connection. The companion apps are built with that in mind. Your photography practice shouldn't depend on your ISP.</p>
+                <p>And they're native desktop apps, not browser tabs, on purpose. Direct filesystem access with no upload round-trip. Background tray daemons that keep working while you don't. Batch operations on thousands of files at native speed. Cloud sync run by code that lives on your machine, not a tab you have to leave open. The industry forgot for a while that not everything needs to be a web app. The industry was wrong.</p>
                 <p>If you've been burned by plugins before: same. That's why these exist.</p>
-            </div>
-
-            <div class="qa" id="q-desktop-apps">
-                <h3>Why desktop apps for the companion tools?</h3>
-                <p>Some things are better as native applications. File system access without an upload round-trip. System tray daemons that run in the background. Batch operations on thousands of files at native speed. Sync to cloud storage handled by code that lives on your machine, not in a browser tab that has to stay open.</p>
-                <p>SnapSmack's web admin stays lean because the heavy lifting moves to the companion apps. Each one does one job well, on your machine, with your files.</p>
-                <p>The industry forgot for a while that not everything needs to be a web app. The industry was wrong.</p>
             </div>
 
             <div class="qa" id="q-no-apple">
@@ -294,7 +286,7 @@ require_once __DIR__ . '/includes/header.php';
                 <h3>Why can't I switch install modes?</h3>
                 <p>SnapSmack ships in three install personalities — SMACKONEOUT (single-user photoblog), GRAMOFSMACK (a faithful 2016-Instagram-clone with three-across grids and carousel posts up to ten images deep), and SMACKTALK (essays and pages alongside the photoblog). You pick one when you install. You don't switch later.</p>
                 <p>This is deliberate. Each mode has its own database conventions, its own admin behaviours, its own assumptions about what a post is, its own visible feature set. Letting installs toggle between them would mean every feature has to handle three modes plus every transition state between them. That is the road to bloat and to the kind of bugs that don't get found until somebody loses data.</p>
-                <p>Pick the install mode that fits the site you're building. If the site changes shape later, install fresh in the new mode and migrate your content. The migration tools exist for exactly this case.</p>
+                <p>Pick the install mode that fits the site you're building. If the site changes shape later, you install fresh in the new mode and bring your content across. A dedicated mode-migration tool is on the build list — until it ships, that move is a manual one, and we're not going to pretend otherwise.</p>
             </div>
 
             <div class="qa" id="q-classic-ig">
