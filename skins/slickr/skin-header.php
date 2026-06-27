@@ -83,10 +83,17 @@ if ($sl_cover === '') {
     $f = $q->fetchColumn();
     if ($f) $sl_cover = BASE_URL . ltrim($f, '/');
 }
+
+// ── Cover framing (admin-set in smack-masthead.php) ────────────────────────
+// Pan (object-position %) + zoom (scale multiplier). Defaults = centred, 1×.
+$sl_cpx   = max(0, min(100, (int)($settings['slickr_cover_pos_x'] ?? 50)));
+$sl_cpy   = max(0, min(100, (int)($settings['slickr_cover_pos_y'] ?? 50)));
+$sl_czoom = max(100, min(300, (int)($settings['slickr_cover_zoom'] ?? 100))) / 100;
 ?>
 <header class="sl-masthead">
     <!-- Cover image + bottom-heavy gradient, profile overlaid in it -->
-    <div class="sl-cover"<?php if ($sl_cover): ?> style="background-image:url('<?php echo $sl_cover; ?>');"<?php endif; ?>>
+    <div class="sl-cover"<?php if ($sl_cover): ?> style="--sl-cover-pos:<?php echo $sl_cpx; ?>% <?php echo $sl_cpy; ?>%; --sl-cover-zoom:<?php echo $sl_czoom; ?>;"<?php endif; ?>>
+        <?php if ($sl_cover): ?><img class="sl-cover-img" src="<?php echo htmlspecialchars($sl_cover, ENT_QUOTES); ?>" alt="" aria-hidden="true"><?php endif; ?>
         <div class="sl-cover-scrim" aria-hidden="true"></div>
         <div class="sl-cover-profile">
             <div class="sl-profile-inner">

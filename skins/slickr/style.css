@@ -379,7 +379,22 @@ a:hover { color: var(--sl-link-hover); }
   position: relative;
   width: 100%;
   height: 240px;
-  background: #222 center / cover no-repeat;
+  overflow: hidden;
+  background: #222;
+}
+/* Cover photo: filled, but admin-positionable. object-position pans to the
+   chosen band; scale zooms in from the focal point. Both come from CSS vars set
+   inline by skin-header.php (slickr_cover_pos_x/y + slickr_cover_zoom). Cover
+   fit guarantees the banner always fills, even for ultra-wide panoramas. */
+.sl-cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--sl-cover-pos, 50% 50%);
+  transform: scale(var(--sl-cover-zoom, 1));
+  transform-origin: var(--sl-cover-pos, 50% 50%);
 }
 .sl-cover-scrim {
   position: absolute;
