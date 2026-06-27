@@ -6,7 +6,7 @@
  *   $page_title       — <title> content
  *   $page_description — meta description
  *   $page_og_url      — canonical og:url for this page
- *   $nav_active       — key matching a nav link: index|wotcha|bugger|tnb|oi|hairy-muff
+ *   $nav_active       — key matching a nav link: index|wotcha|bugger|tnb|hairy-muff|brass-tacks|buzzers|oi
  *   $page_css         — (optional) additional CSS string for page-specific styles
  */
 
@@ -29,8 +29,10 @@ $_nav = function(string $active): string {
            ss_nav_link('wotcha.php',     'WOTCHA!',         'wotcha',     $active) . "\n" .
            ss_nav_link('bugger.php',     'BUGGER!',         'bugger',     $active) . "\n" .
            ss_nav_link('tnb.php',        'TWIG N BERRIES!', 'tnb',        $active) . "\n" .
-           ss_nav_link('hairy-muff.php', 'HAIRY MUFF!',     'hairy-muff', $active) . "\n" .
-           ss_nav_link('oi.php',         'OI MATE!',        'oi',         $active);
+           ss_nav_link('hairy-muff.php', 'HAIRY MUFF!',     'hairy-muff',  $active) . "\n" .
+           ss_nav_link('brass-tacks.php','BRASS TACKS!',    'brass-tacks', $active) . "\n" .
+           ss_nav_link('buzzers.php',    'BUZZERS!',        'buzzers',     $active) . "\n" .
+           ss_nav_link('oi.php',         'OI MATE!',        'oi',          $active);
 };
 
 $_page_css_block = isset($page_css) && $page_css !== '' ? "\n" . $page_css . "\n" : '';
@@ -173,14 +175,14 @@ p:last-child { margin-bottom: 0; }
 /* \u2500\u2500\u2500 NAVIGATION \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 nav {
     display: grid; grid-template-columns: repeat(3, auto);
-    column-gap: 32px; row-gap: 10px;
+    column-gap: 24px; row-gap: 9px;
     margin-left: auto; text-align: right;
     align-items: start; justify-items: end;
 }
 nav a {
     font-family: Arial Black, Arial, sans-serif;
-    font-size: 0.8rem; font-weight: 900; text-transform: uppercase;
-    letter-spacing: 0.04em; color: var(--dark-grey);
+    font-size: 0.78rem; font-weight: 900; text-transform: uppercase;
+    letter-spacing: 0.03em; color: var(--dark-grey);
     text-decoration: none; position: relative; padding-bottom: 4px;
     transition: color 0.15s;
 }
