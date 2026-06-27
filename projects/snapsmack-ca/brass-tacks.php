@@ -79,9 +79,6 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="slang">
                     <p><strong>"Brass tacks"?</strong> As in <em>get down to brass tacks</em> — get down to the facts, the real stuff, the part that actually matters. In Cockney rhyming slang, brass tacks = facts. (Purists will tell you the phrase is older than the rhyme. They're not wrong. The facts are still what this page is.)</p>
                 </div>
-                <div class="callout">
-                    <p><strong>On transparency and accountability:</strong> we'd rather tell you the truth than sell you a story. The code is AI-written and we say so — here, in the license, and in the repo. The software isn't bulletproof and we say that too. We run security audits and we publish the closed ones in public over on <a href="buzzers.php">BUZZERS!</a> so you can check our work instead of taking our word for it. If we get something wrong, we own it and we fix it. That's the whole deal.</p>
-                </div>
             </div>
         </div>
     </section>
@@ -123,8 +120,7 @@ require_once __DIR__ . '/includes/header.php';
                 <h3>Why this, why now?</h3>
                 <p>Photoblogging software used to be made by people who loved blogging and loved photography. Greymatter, Movable Type, the original Pixelpost. One person or a small team, building something they actually wanted to use, sharing it because that was the right thing to do.</p>
                 <p>That doesn't really exist anymore. The web ate it. Algorithms ate what the web left. The serious photography sites that survive are either platforms harvesting their users' work, or static-site generators that demand you become a developer to publish a photo.</p>
-                <p>Ray and I talked about how nice it would be to have good blogging software again. He didn't live to see it.</p>
-                <p>So I made it. SnapSmack is what photoblogging software looks like when somebody who loves photography and loves the old web builds it for themselves and shares it because that's still the right thing to do.</p>
+                <p>Ray and I talked about how nice it would be to have good blogging software again, because there was nothing usable left. And now, almost by magic, there is. SnapSmack is what photoblogging software looks like when somebody who loves photography and loves the old web builds it for themselves and shares it because that's still the right thing to do. I just wish that Ray was here to share it with me. That's the part that hurts.</p>
                 <p>Slow software. Human curation. No algorithm. No telemetry. No upsell tier. Yours.</p>
             </div>
 
@@ -138,13 +134,12 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Yes. Almost all of the code in SnapSmack is AI-produced. ETHICS.md in the repo names the AI systems involved and the role each one played. I am not a coder and have never claimed to be.</p>
                 <p>My hands are on the keyboard for CSS. I am decent with it. The visual design of the skins is shaped by me at the stylesheet level. Everything else — the architecture, the spec, the security posture, the decisions about what ships — is the curation job.</p>
                 <p>The code is AI. Said up front, in the FAQ, in the license, in the repo. I'd rather be honest.</p>
-                <p>Servicing the Selectric Cross-Dimensional 251 is also a solid career move.</p>
             </div>
 
             <div class="qa">
                 <h3>What's the catch?</h3>
-                <p>Why is SnapSmack free? Because nothing else is anymore. In my last year of running my blogs on WordPress, I had to pay for my sticky header plugin. I had to pay for themes. I had to pay for my SEO plugin. I paid for a backup plugin for a year that never worked once in that year. I paid for an OpenGraph plugin. I paid, I paid, I paid.</p>
-                <p>SnapSmack is what I need to stop paying everyone else to be able to share my photography in a way that works for me. I'm a prolific photographer and a power user who can flatten a shared hosting environment in ten seconds flat, so I needed something better and affordable. The arrival of AI and vibe coding let me build bespoke software that suits me. The truth is, if it works for me it will probably work for nearly everyone else because I'm a literal worst-case scenario as photographers go.</p>
+                <p>Why is SnapSmack free? Because nothing else is anymore. In my last year of running my blogs on WordPress, I had to pay for my sticky header plugin. I had to pay for themes. I had to pay for my SEO plugin. I paid for Softaculous' rubbish backup plugin for WP for a year, that never worked once in that year. I paid for an OpenGraph plugin. I paid, I paid, I paid.</p>
+                <p>SnapSmack is what I need to stop paying everyone else to be able to share my photography in a way that works for me. I'm a prolific photographer and a power user who can flatten a shared hosting environment in ten seconds flat, so I needed something better and affordable. The arrival of AI and vibe coding let me build bespoke software that suits me. The truth is, if it works for me it will probably work for nearly everyone else because I'm a literal worst-case scenario as photographers who publish their work to the web go.</p>
                 <p>This software is a gift from one photographer to others. I know you're all sick of paying the photography tax like I am. SnapSmack is free now, and forever. I have no plans to turn it into a paid product. Further to that, it's open source and under a copyleft license so I can't. Neither can anyone else. They can fork it, build off it, but not charge for it. It's free and staying that way.</p>
                 <p>If you want to support me, hit my tip jar, buy gear from my affiliate links, watch a few of my videos which I have monetized — hey, lenses ain't free bro. You can support me, but you don't have to in order to use the product. That's the point.</p>
                 <p>The only catch is there is no catch. Word.</p>
@@ -165,7 +160,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>PHP 8.1 or newer. MySQL 5.7 or MariaDB equivalent or newer. Enough disk space for your image archive. Modest RAM — SnapSmack runs comfortably on the cheapest shared-host plans.</p>
                 <p>A fresh SnapSmack install is approximately 6MB. With a full skin library loaded it stays under 10MB. The software footprint is negligible — plan your disk around your image archive, not the CMS. A prolific photographer running a busy site for a year can easily hit 15GB of images. That's on you and your hosting plan, not us.</p>
                 <p>No Docker. No Node. No build step. No Composer. No package manager. No CI pipeline. Upload, configure, go.</p>
-                <p>If your host runs WordPress, it runs SnapSmack.</p>
+                <p>If your host runs WordPress, it runs SnapSmack. If your host runs WordPress badly, odds are it will still run SnapSmack well.</p>
             </div>
 
             <div class="qa">
@@ -220,7 +215,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="qa">
                 <h3>SnapSmack vs Pixelpost — what's the difference?</h3>
                 <p>Pixelpost is a gunship. Light, fast, one job: show one photo per day, well, with comments and a small archive. It was beautiful at it. It is still beautiful at it where installs survive.</p>
-                <p>SnapSmack is a dreadnought. Multisite hub-and-spoke architecture. Three install personalities (single-user, multi-user, talking — pick one at install). Companion desktop apps for backup, sync, sorting, importing. Integrated security stack. Anti-spam layer. Multi-skin engine. Shortcode system.</p>
+                <p>SnapSmack is a dreadnought. Multisite hub-and-spoke architecture. Three install personalities (single photos, Classic IG, or longform essays — pick one at install). Companion desktop apps for backup, sync, sorting, importing. Integrated security stack. Anti-spam layer. Multi-skin engine. Shortcode system.</p>
                 <p>If you want one photo a day and nothing else, Pixelpost is the right answer. If you want an entire photoblogging operation with the tools to run it, SnapSmack is the right answer.</p>
                 <p>Both are correct. They aim at different photographers.</p>
             </div>
@@ -230,6 +225,19 @@ require_once __DIR__ . '/includes/header.php';
                 <p>SnapSmack ships in three install personalities — SMACKONEOUT (single-user photoblog), GRAMOFSMACK (a faithful 2016-Instagram-clone with three-across grids and carousel posts up to ten images deep), and SMACKTALK (essays and pages alongside the photoblog). You pick one when you install. You don't switch later.</p>
                 <p>This is deliberate. Each mode has its own database conventions, its own admin behaviours, its own assumptions about what a post is, its own visible feature set. Letting installs toggle between them would mean every feature has to handle three modes plus every transition state between them. That is the road to bloat and to the kind of bugs that don't get found until somebody loses data.</p>
                 <p>Pick the install mode that fits the site you're building. If the site changes shape later, install fresh in the new mode and migrate your content. The migration tools exist for exactly this case.</p>
+            </div>
+
+            <div class="qa">
+                <h3>Classic IG, before Meta wrecked it</h3>
+                <p>Greymatter, Pixelpost, Movable Type — those were blogging 1.0. When Instagram arrived it sort of became blogging 2.0, in a manner of speaking. No hosting costs or headaches. No setting up a server or learning CSS. You could just SHARE your images and the audience was there waiting. Yeah, it was boring looking, but the appeal was obvious, so a lot of blogs were abandoned for Instagram. Photogs found hacks like splitting an image across 3, 6, or 9 tiles to punch Insta up visually, and they were happy, even as enshittification crept into the platform.</p>
+                <p>Then in 2025 Meta threw photographers under the bus. They yoinked the three-across grid, destroying so many years of careful work by photographers who curated their feeds, in favour of creepy preteen influencer videos. It sucked.</p>
+                <p>We can't do anything about the social aspect, but we can help you get the look you loved back. GRAMOFSMACK is the classic-Instagram install — the curated three-across feed, square tiles, cover spreads, and carousel posts up to ten deep, the way it looked when Instagram was still about photographs. Leave it stock and period-correct, or bolt on the modern flourishes — the animated carousel skins, AURORA and PARADE — spinning rims on a Model T, if that's your thing. The Grid is the default skin; on phones it serves Photogram automatically.</p>
+            </div>
+
+            <div class="qa">
+                <h3>I've got content locked in elsewhere — do I have to abandon it?</h3>
+                <p>If you're talking about your Instagram stash or your many years of Flickr posts, no. We've built and already proven tools that take your data and image exports from both Flickr and Instagram and import them into SnapSmack — with all the likes, post counts, captions, and the rest those platforms package into their exports brought across. If you're currently using Flickr or Instagram and you want out, you can get out.</p>
+                <p>Oh, and that beautifully curated three-across Instagram feed you had, the one the new scroll broke? It's still there, and we can give it back to you. Really. Go look <a href="https://unzucked.ca" target="_blank" rel="noopener">HERE</a> to see what we mean.</p>
             </div>
 
             <div class="qa">
