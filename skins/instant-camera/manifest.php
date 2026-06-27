@@ -63,6 +63,7 @@ return [
         'smack-grid-lightbox',
         'smack-organized-mayhem', // ambient drifting-tabletop background (behind the scrim)
         'smack-aurora-reveal',    // shared prefix-derived progressive grid reveal (lazy)
+        'smack-tag-infinite',     // shared prefix-derived hashtag infinite scroll
         'smack-image-fade-load',  // reveals lightbox/asset images on static pages
                                   // (public-base.css sets img[data-lightbox-src]{opacity:0};
                                   //  this engine fades them to opacity:1 on load)

@@ -842,6 +842,21 @@ return [
             'path'         => 'assets/js/ss-engine-aurora-reveal.js',
             'has_settings' => false,
         ],
+        'smack-tag-infinite' => [
+            'label'        => 'Hashtag infinite scroll (prefix-derived, Grid-family)',
+            'path'         => 'assets/js/ss-engine-tag-infinite.js',
+            'has_settings' => false,
+        ],
+        'smack-archive-grid-switch' => [
+            'label'        => 'Archive grid switch (thumbs/masonry responder)',
+            'path'         => 'assets/js/ss-engine-archive-grid-switch.js',
+            'has_settings' => false,
+        ],
+        'smack-justified-reveal' => [
+            'label'        => 'Justified photostream progressive reveal (grow-as-you-scroll)',
+            'path'         => 'assets/js/ss-engine-justified-reveal.js',
+            'has_settings' => false,
+        ],
         'smack-parade-fireworks' => [
             'label'        => 'PARADE Layer 1 slow-motion fireworks (canvas)',
             'path'         => 'assets/js/ss-engine-parade-fireworks.js',

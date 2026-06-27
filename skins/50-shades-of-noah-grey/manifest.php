@@ -57,6 +57,7 @@ return [
         'smack-community',
         'smack-keyboard',
         'smack-calendar',
+        'smack-archive-grid-switch',
     ],
 
     'options' => [

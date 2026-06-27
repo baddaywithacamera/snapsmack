@@ -645,6 +645,10 @@ img { display: block; max-width: 100%; }
     border-bottom: 1px solid var(--border-color);
     margin-bottom: 12px;
 }
+/* No EXIF to show (phone/IG imports, GramOfSmack mode) → don't paint the bordered
+   strip as empty stray lines. PHP also skips emitting the panel when no image has
+   EXIF; this covers the carousel edge where only a later slide does. */
+.tg-exif-panel:empty { display: none; }
 
 .tg-exif-item {
     display:        flex;

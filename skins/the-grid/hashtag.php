@@ -178,51 +178,9 @@ $has_more = ($offset + count($raw_images)) < $total_count;
 
 </div><!-- /.tg-content-wrap -->
 
-<?php if ($has_more): ?>
-<script>
-(function () {
-    var sentinel = document.getElementById('tg-sentinel');
-    if (!sentinel || !window.IntersectionObserver) return;
-
-    var loading = false;
-    var grid    = document.querySelector('.tg-grid');
-    var nextPg  = parseInt(sentinel.dataset.next, 10);
-    var tag     = sentinel.dataset.tag;
-    var base    = sentinel.dataset.base;
-
-    var obs = new IntersectionObserver(function (entries) {
-        if (!entries[0].isIntersecting || loading) return;
-        loading = true;
-
-        var url = base + '?tag=' + encodeURIComponent(tag) + '&p=' + nextPg;
-        fetch(url)
-            .then(function (r) { return r.text(); })
-            .then(function (html) {
-                var tmp = document.createElement('div');
-                tmp.innerHTML = html;
-
-                // Extract tiles from the fetched page's grid
-                var newTiles = tmp.querySelectorAll('.tg-grid .tg-tile');
-                newTiles.forEach(function (t) { grid.appendChild(t); });
-
-                // Check if there are more pages
-                var newSentinel = tmp.querySelector('#tg-sentinel');
-                if (newSentinel) {
-                    nextPg++;
-                    loading = false;
-                } else {
-                    // No more pages — stop observing
-                    obs.disconnect();
-                    sentinel.remove();
-                }
-            })
-            .catch(function () { loading = false; });
-    }, { rootMargin: '400px' });
-
-    obs.observe(sentinel);
-}());
-</script>
-<?php endif; ?>
+<?php /* Hashtag infinite scroll moved to assets/js/ss-engine-tag-infinite.js
+   (shared, prefix-derived; loaded via the skin manifest). The #tg-sentinel
+   div above is its hook — no inline JS in skins. */ ?>
 
 <?php include('skin-footer.php'); ?>
 <?php // ===== SNAPSMACK EOF =====
