@@ -73,7 +73,7 @@ return [
         'smack-grid-nav',
         'smack-aurora-bg',
         'smack-aurora-wave',
-        'smack-aurora-reveal',
+        'smack-progressive-reveal',
         'smack-tag-infinite',     // shared prefix-derived hashtag infinite scroll
     ],
 

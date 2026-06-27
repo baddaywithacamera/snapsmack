@@ -90,7 +90,8 @@ if ($sl_cover === '') {
         <div class="sl-cover-scrim" aria-hidden="true"></div>
         <div class="sl-cover-profile">
             <div class="sl-profile-inner">
-                <div class="sl-profile-avatar">
+                <div class="sl-profile-avatar<?php echo $sl_av_exists ? ' sl-profile-avatar--zoom' : ''; ?>"
+                     <?php if ($sl_av_exists): ?>role="button" tabindex="0" aria-label="View profile photo" data-sl-lightbox="<?php echo $sl_av_url; ?>"<?php endif; ?>>
                     <?php if ($sl_av_exists): ?>
                         <img src="<?php echo $sl_av_url; ?>" alt="<?php echo htmlspecialchars($sl_site); ?>">
                     <?php else: ?>

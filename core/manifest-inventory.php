@@ -837,9 +837,9 @@ return [
             'path'         => 'assets/js/ss-engine-aurora-wave.js',
             'has_settings' => false,
         ],
-        'smack-aurora-reveal' => [
-            'label'        => 'Grid-family progressive reveal (grow-as-you-scroll)',
-            'path'         => 'assets/js/ss-engine-aurora-reveal.js',
+        'smack-progressive-reveal' => [
+            'label'        => 'Progressive reveal — grid tiles + justified rows (grow-as-you-scroll)',
+            'path'         => 'assets/js/ss-engine-progressive-reveal.js',
             'has_settings' => false,
         ],
         'smack-tag-infinite' => [
@@ -850,11 +850,6 @@ return [
         'smack-archive-grid-switch' => [
             'label'        => 'Archive grid switch (thumbs/masonry responder)',
             'path'         => 'assets/js/ss-engine-archive-grid-switch.js',
-            'has_settings' => false,
-        ],
-        'smack-justified-reveal' => [
-            'label'        => 'Justified photostream progressive reveal (grow-as-you-scroll)',
-            'path'         => 'assets/js/ss-engine-justified-reveal.js',
             'has_settings' => false,
         ],
         'smack-parade-fireworks' => [

@@ -18,10 +18,18 @@
     }
 
     ready(function () {
-        // Derive the skin prefix from the modal overlay (unique, skin-owned).
+        // Derive the skin prefix. Grid-family skins carry a #<prefix>-modal-overlay
+        // (unique, skin-owned); skins without a post modal (e.g. Slickr) instead just
+        // ship the #<prefix>-lightbox box, so fall back to that.
+        var P = null;
         var anchor = document.querySelector('[data-grid-url][id$="-modal-overlay"]');
-        if (!anchor) { return; }
-        var P = anchor.id.replace(/-modal-overlay$/, '');
+        if (anchor) {
+            P = anchor.id.replace(/-modal-overlay$/, '');
+        } else {
+            var lbAnchor = document.querySelector('[id$="-lightbox"]');
+            if (lbAnchor) { P = lbAnchor.id.replace(/-lightbox$/, ''); }
+        }
+        if (!P) { return; }
 
         var triggers = document.querySelectorAll('[data-' + P + '-lightbox]');
         if (!triggers.length) { return; }
