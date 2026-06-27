@@ -107,7 +107,44 @@ if (isset($_POST['ste_action']) && $_POST['ste_action'] === 'optout') {
 // Covers existing installs / upgrades that never saw the installer step. AI stays
 // hard-off (ai-provider.php refuses) until ai_cost_accepted = '1'.
 if (($_POST['action'] ?? '') === 'ai_accept_cost') {
+    // Accepting AI cost responsibility is a SIGNING EVENT, not a bare checkbox:
+    // it requires step-up auth (password + TOTP) and is recorded auditably.
+    // See [[project_ai_responsibility_requires_signing]].
+    require_once __DIR__ . '/core/reauth.php';
+    $auth = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    if (empty($auth['ok'])) {
+        $_SESSION['ai_accept_error']     = $auth['error'] ?? 'Verification failed.';
+        $_SESSION['ai_accept_needs_2fa'] = !empty($auth['needs_2fa_enrollment']);
+        header('Location: smack-settings.php#ai-key');
+        exit;
+    }
+    // Verified. Enable AI site-wide and write the signed acceptance to the audit log.
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ai_cost_accepted', '1') ON DUPLICATE KEY UPDATE setting_val = '1'")->execute();
+    try {
+        // Defensive create (belt-and-suspenders; canonical schema is the real delivery).
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS snap_ai_acceptance_audit (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NULL,
+                username VARCHAR(190) NULL,
+                action VARCHAR(20) NOT NULL DEFAULT 'accepted',
+                ip_address VARCHAR(45) NULL,
+                user_agent VARCHAR(512) NULL,
+                accepted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        );
+        $pdo->prepare(
+            "INSERT INTO snap_ai_acceptance_audit (user_id, username, action, ip_address, user_agent)
+             VALUES (?, ?, 'accepted', ?, ?)"
+        )->execute([
+            ($_SESSION['user_id'] ?? null) ?: null,
+            (string)($_SESSION['username'] ?? ''),
+            substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45),
+            substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512),
+        ]);
+    } catch (PDOException $e) {
+        error_log('SnapSmack AI acceptance audit insert failed — ' . $e->getMessage());
+    }
     header('Location: smack-settings.php');
     exit;
 }
@@ -689,15 +726,35 @@ include 'core/sidebar.php';
             <?php else: ?>
             <?php $ai_cost_accepted = ($settings['ai_cost_accepted'] ?? '') === '1'; ?>
             <?php if (!$ai_cost_accepted): ?>
-            <div style="background:#2a2200; border:1px solid #4a3a00; border-radius:6px; padding:18px 20px; margin:0 0 18px;">
+            <?php
+            $ai_accept_err = $_SESSION['ai_accept_error']     ?? '';
+            $ai_needs_2fa  = !empty($_SESSION['ai_accept_needs_2fa']);
+            unset($_SESSION['ai_accept_error'], $_SESSION['ai_accept_needs_2fa']);
+            ?>
+            <div id="ai-key" style="background:#2a2200; border:1px solid #4a3a00; border-radius:6px; padding:18px 20px; margin:0 0 18px;">
                 <strong style="display:block; margin-bottom:6px;">AI is off until you accept cost responsibility</strong>
                 <p class="dim" style="margin:0 0 14px; line-height:1.6;">
                     AI helpers use <strong>your own</strong> third-party API key (Claude, Gemini, or OpenAI),
-                    which bills <strong>per use</strong>. An uncapped key can run up a real bill. Accept
-                    responsibility to enable AI — then set a spending cap on your provider account.
+                    which bills <strong>per use</strong>. An uncapped key can run up a real bill. Accepting
+                    responsibility is a <strong>signed action</strong>: confirm with your password and
+                    authenticator code to enable AI — then set a spending cap on your provider account.
                 </p>
-                <!-- No nested <form>: this button submits the outer settings form with
-                     action=ai_accept_cost; the handler catches it first and exits. -->
+                <?php if ($ai_accept_err): ?>
+                <p style="color:#ff9b9b; margin:0 0 12px; line-height:1.5;">
+                    <?php echo htmlspecialchars($ai_accept_err); ?>
+                    <?php if ($ai_needs_2fa): ?><br><span class="dim">Enrol 2FA in Security settings, then return here.</span><?php endif; ?>
+                </p>
+                <?php endif; ?>
+                <!-- No nested <form>: these inputs + button submit the outer settings form
+                     with action=ai_accept_cost; the handler verifies password + TOTP first. -->
+                <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px;">
+                    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; letter-spacing:.04em;">ACCOUNT PASSWORD
+                        <input type="password" name="reauth_password" autocomplete="current-password" style="padding:7px 9px;">
+                    </label>
+                    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; letter-spacing:.04em;">AUTHENTICATOR CODE
+                        <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="9" style="padding:7px 9px; width:130px;">
+                    </label>
+                </div>
                 <button type="submit" name="action" value="ai_accept_cost" class="btn-smack btn-smack--sm">I ACCEPT — ENABLE AI</button>
             </div>
             <?php endif; ?>

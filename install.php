@@ -1075,7 +1075,11 @@ if ($step === 5 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
     $sec_na_send    = isset($_POST['network_alert_send'])         ? '1' : '0';
     $sec_na_push    = isset($_POST['network_alert_push_enabled']) ? '1' : '0';
     $sec_forum      = isset($_POST['forum_enabled'])              ? '1' : '0';
-    $sec_ai_cost    = isset($_POST['ai_cost_accepted'])           ? '1' : '0';
+    // AI cost acceptance can NOT be a signing event at install time (2FA isn't
+    // enrolled yet), so the installer never enables AI. Enabling is a signed admin
+    // action (password + TOTP) in Settings → AI. The installer checkbox is now
+    // informational only. See [[project_ai_responsibility_requires_signing]].
+    $sec_ai_cost    = '0';
     $sec_consent    = json_encode([
         'smackback_enabled'          => $sec_smackback  === '1',
         'network_alert_receive'      => $sec_na_receive === '1',
@@ -2422,11 +2426,8 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <!-- AI cost responsibility — OFF by default; not pre-checked (liability acceptance must be a deliberate choice) -->
             <div style="background:#1a1a1a;border:1px solid #4a3a00;border-radius:6px;padding:22px 26px;margin-bottom:22px;">
                 <strong style="color:#e0e0e0;display:block;margin-bottom:6px;">AI Features &mdash; Off by Default</strong>
-                <p style="color:#777;font-size:.85rem;line-height:1.6;margin:0 0 16px;">SnapSmack&rsquo;s optional AI helpers use <strong style="color:#999;">your own</strong> third-party API key (Claude, Gemini, or OpenAI). Those services bill <strong style="color:#bbb;">per use</strong> &mdash; an uncapped key can run up a real bill. AI stays disabled until you accept responsibility. You can leave this for now and turn it on later in Settings &rarr; AI.</p>
-                <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0;">
-                    <input type="checkbox" name="ai_cost_accepted" value="1" style="margin-top:4px;flex-shrink:0;">
-                    <span><strong style="color:#ddd;">I understand I&rsquo;m responsible for all AI provider costs</strong><span style="color:#999;font-size:.9rem;display:block;line-height:1.6;">&hellip; and I&rsquo;ll set a spending cap on my provider account. Leave unchecked to keep AI off for now.</span></span>
-                </label>
+                <p style="color:#777;font-size:.85rem;line-height:1.6;margin:0 0 16px;">SnapSmack&rsquo;s optional AI helpers use <strong style="color:#999;">your own</strong> third-party API key (Claude, Gemini, or OpenAI). Those services bill <strong style="color:#bbb;">per use</strong> &mdash; an uncapped key can run up a real bill. AI stays disabled until you accept responsibility.</p>
+                <p style="color:#999;font-size:.85rem;line-height:1.6;margin:0;">You&rsquo;ll enable AI <strong style="color:#bbb;">after install</strong> from <strong style="color:#bbb;">Settings &rarr; AI</strong>. Turning it on is a <strong style="color:#bbb;">signed action</strong> &mdash; it requires your password and authenticator code so the cost-responsibility acceptance is recorded and auditable. (Set up two-factor first if you haven&rsquo;t.)</p>
             </div>
 
             <button type="submit" style="background:#4caf50;color:#fff;border:none;padding:12px 32px;font-size:.9rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border-radius:4px;">Finish Installation &rarr;</button>

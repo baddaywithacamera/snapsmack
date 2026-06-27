@@ -827,4 +827,18 @@ CREATE TABLE IF NOT EXISTS `snap_backup_log` (
   KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Audit trail for AI cost-responsibility acceptance. Enabling AI is a signing
+-- event (password + TOTP step-up); each acceptance is recorded here with who/when.
+CREATE TABLE IF NOT EXISTS `snap_ai_acceptance_audit` (
+  `id`          int unsigned NOT NULL AUTO_INCREMENT,
+  `user_id`     int unsigned DEFAULT NULL,
+  `username`    varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `action`      varchar(20)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'accepted',
+  `ip_address`  varchar(45)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent`  varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `accepted_at` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_accepted_at` (`accepted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ===== SNAPSMACK EOF =====
