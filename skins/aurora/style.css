@@ -122,8 +122,8 @@ img { display: block; max-width: 100%; }
        (2) a 2px solid dark-indigo line tucked directly beneath it, shifted 2px
            to the right (the ::before/::after below).
        Applied to BOTH the top and bottom dividers. */
-    border-top:    1px solid var(--nav-line-green, #6ff0a0);
-    border-bottom: 1px solid var(--nav-line-green, #6ff0a0);
+    border-top:    1px solid color-mix(in srgb, var(--nav-line-green, #6ff0a0) calc(var(--nav-line-opacity, 1) * 100%), transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--nav-line-green, #6ff0a0) calc(var(--nav-line-opacity, 1) * 100%), transparent);
 }
 
 /* Stuck to top: fade in 40% of the sky colour behind the nav. .profile-hidden is
@@ -345,13 +345,13 @@ img { display: block; max-width: 100%; }
 .au-profile-stat-num {
     font-size: 16px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--post-count-color, var(--text-primary));
     text-shadow: var(--profile-text-glow, none);
 }
 
 .au-profile-stat-label {
     font-size: 14px;
-    color: var(--text-secondary);
+    color: var(--post-count-color, var(--text-secondary));
     text-shadow: var(--profile-text-glow, none);
 }
 
@@ -379,7 +379,7 @@ img { display: block; max-width: 100%; }
        between tiles. AURORA never paints a gap/background colour (unlike The
        Grid); the aurora IS the background. */
     background: transparent;
-    margin-top: var(--grid-gap);
+    margin-top: var(--nav-tile-gap, var(--grid-gap));
     width: 100%;
 }
 

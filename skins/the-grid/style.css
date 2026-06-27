@@ -294,12 +294,12 @@ img { display: block; max-width: 100%; }
 .tg-profile-stat-num {
     font-size: 16px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--post-count-color, var(--text-primary));
 }
 
 .tg-profile-stat-label {
     font-size: 14px;
-    color: var(--text-secondary);
+    color: var(--post-count-color, var(--text-secondary));
 }
 
 .tg-profile-bio {
@@ -322,7 +322,7 @@ img { display: block; max-width: 100%; }
     grid-template-columns: repeat(3, 1fr);
     gap: var(--grid-gap);
     background: var(--grid-bg);
-    margin-top: var(--grid-gap);
+    margin-top: var(--nav-tile-gap, var(--grid-gap));
     width: 100%;
 }
 

@@ -176,6 +176,15 @@ return [
             ],
             // PHP-handled → data-au-border-rhythm.
         ],
+        'au_wave_speed' => [
+            'section'  => 'BORDER WAVE',
+            'type'     => 'range_numeric',
+            'label'    => 'Wave Speed',
+            'default'  => '160',
+            'min'      => '40', 'max' => '400', 'step' => '5',
+            'hint'     => 'Border-wave clock, independent of the sky cycle. Lower = faster shimmer; higher = slower. 160 is the original counterpoint pace.',
+            // PHP-handled → data-au-border-cycle (read by ss-engine-aurora-wave.js).
+        ],
         'au_border_width' => [
             'section'  => 'BORDER WAVE',
             'type'     => 'range_numeric',
@@ -212,6 +221,28 @@ return [
             'unit'     => 'px',
             'selector' => ':root',
             'property' => '--grid-gap',
+        ],
+        'au_nav_tile_gap' => [
+            'section'  => 'GRID',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav → Tiles Gap',
+            'default'  => '2',
+            'min'      => '0',
+            'max'      => '60',
+            'step'     => '1',
+            'unit'     => 'px',
+            'selector' => ':root',
+            'property' => '--nav-tile-gap',
+            'hint'     => 'Vertical space between the sticky nav bar and the first row of tiles.',
+        ],
+        'au_post_count_color' => [
+            'section'  => 'GRID',
+            'type'     => 'color',
+            'label'    => 'Post Count Colour',
+            'default'  => '#eaeaea',
+            'selector' => ':root',
+            'property' => '--post-count-color',
+            'hint'     => 'Colour of the post count number and "posts" label.',
         ],
         // NOTE: no "grid background / gap colour" option — unlike The Grid, AURORA
         // shows the live aurora through the gaps between tiles (the grid container
@@ -467,7 +498,7 @@ return [
             'max'      => '100',
             'step'     => '5',
             'unit'     => '%',
-            'hint'     => 'Opacity of the dark companion line under each divider.',
+            'hint'     => 'Opacity of the nav divider lines (both the bright rule and its companion).',
             // PHP-handled → --nav-line-opacity (skin-profile.php).
         ],
         'au_nav_glow_color' => [

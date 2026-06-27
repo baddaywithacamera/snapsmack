@@ -73,7 +73,11 @@
         var bmodel  = cfg.getAttribute('data-' + P + '-border-style')  || 'circle';
         var bdir    = cfg.getAttribute('data-' + P + '-border-dir')    || 'dtlbr';
         var brhythm = cfg.getAttribute('data-' + P + '-border-rhythm') || 'breath';
-        var bCycle  = 160; // border clock — slower counterpoint to the sky
+        // Border clock — slower counterpoint to the sky. Admin-tunable independently
+        // of the sky cycle via data-<P>-border-cycle (higher = slower). Falls back to
+        // 160 when unset/invalid, preserving the original tempo.
+        var bCycle  = parseFloat(cfg.getAttribute('data-' + P + '-border-cycle'));
+        if (!(bCycle > 0)) bCycle = 160;
 
         // Optional dark-stop floor: lift very dark flag stops (e.g. the black /
         // brown on Progress + Non-Binary) toward grey so the border never reads
