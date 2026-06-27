@@ -16,6 +16,29 @@
 
 require_once 'core/auth-smack.php';
 
+// --- PAGE-LEVEL MASTHEAD GATE ---
+// The Masthead Cover picker only applies to skins that render a full-bleed cover
+// (today: Slickr). core/sidebar.php gates the nav LINK; this blocks a direct URL
+// hit too, mirroring the same manifest-flag / slug-fallback logic.
+// See [[project_masthead_cover]].
+$_active_skin = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)(
+    $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='active_skin' LIMIT 1")->fetchColumn() ?: ''
+));
+$_mh_manifest = [];
+if ($_active_skin !== '' && file_exists("skins/{$_active_skin}/manifest.php")) {
+    try { $_mh_manifest = include "skins/{$_active_skin}/manifest.php"; }
+    catch (\Throwable $_e) {
+        $_mh_manifest = [];
+        error_log("SnapSmack masthead: failed to load manifest for {$_active_skin} — " . $_e->getMessage());
+    }
+}
+$_skin_has_masthead = (is_array($_mh_manifest) && !empty($_mh_manifest['features']['masthead_cover']))
+                   || in_array($_active_skin, ['slickr'], true);
+if (!$_skin_has_masthead) {
+    header('Location: smack-skin.php?msg=' . urlencode('The Masthead Cover applies to the Slickr skin only.'));
+    exit;
+}
+
 // --- SET / RESET COVER ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (($_POST['action'] ?? '') === 'set_cover') {
@@ -33,9 +56,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: smack-masthead.php?msg=' . urlencode('Reset to automatic (newest landscape).'));
         exit;
     }
+    if (($_POST['action'] ?? '') === 'save_cover_pos') {
+        $px = max(0,   min(100, (int)($_POST['pos_x'] ?? 50)));
+        $py = max(0,   min(100, (int)($_POST['pos_y'] ?? 50)));
+        $pz = max(100, min(300, (int)($_POST['zoom']  ?? 100)));
+        foreach (['slickr_cover_pos_x' => $px, 'slickr_cover_pos_y' => $py, 'slickr_cover_zoom' => $pz] as $k => $v) {
+            $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+                ->execute([$k, $v, $v]);
+        }
+        header('Location: smack-masthead.php?msg=' . urlencode('Cover position saved.'));
+        exit;
+    }
 }
 
 $current_cover_id = (int)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='slickr_cover_image_id' LIMIT 1")->fetchColumn() ?: 0);
+
+// Current cover framing (0 is a valid pan position, so test for missing keys
+// explicitly rather than treating 0 as "unset").
+$_cf = $pdo->query("SELECT setting_key, setting_val FROM snap_settings WHERE setting_key IN ('slickr_cover_pos_x','slickr_cover_pos_y','slickr_cover_zoom')")
+           ->fetchAll(PDO::FETCH_KEY_PAIR);
+$cover_pos_x = isset($_cf['slickr_cover_pos_x']) ? (int)$_cf['slickr_cover_pos_x'] : 50;
+$cover_pos_y = isset($_cf['slickr_cover_pos_y']) ? (int)$_cf['slickr_cover_pos_y'] : 50;
+$cover_zoom  = isset($_cf['slickr_cover_zoom'])  ? (int)$_cf['slickr_cover_zoom']  : 100;
+
+// Full-resolution URL of the chosen cover, for the WYSIWYG position editor.
+$cover_full_url = '';
+if ($current_cover_id > 0) {
+    $cfq = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ? LIMIT 1");
+    $cfq->execute([$current_cover_id]);
+    $cff = $cfq->fetchColumn();
+    if ($cff) $cover_full_url = BASE_URL . ltrim($cff, '/');
+}
 
 // --- FILTERS ---
 $f_album = (int)($_GET['album'] ?? 0);
@@ -89,7 +140,7 @@ include 'core/sidebar.php';
         <div class="alert alert-success">&gt; <?php echo htmlspecialchars($_GET['msg']); ?></div>
     <?php endif; ?>
 
-    <p class="dim" style="margin:0 0 18px;">Pick a photo for your profile masthead. Leave it on automatic to use your newest landscape shot. (Positioning/crop is coming next — for now it centre-crops to fill.)</p>
+    <p class="dim" style="margin:0 0 18px;">Pick a photo for your profile masthead, then drag to position and zoom it. Leave it on automatic to use your newest landscape shot.</p>
 
     <div style="display:flex; align-items:center; gap:16px; margin-bottom:22px;">
         <span style="font-size:0.85rem;"><strong>Current:</strong>
@@ -107,6 +158,29 @@ include 'core/sidebar.php';
             </form>
         <?php endif; ?>
     </div>
+
+    <?php if ($cover_full_url !== ''): ?>
+    <style>#mh-stage.mh-grabbing{cursor:grabbing;}</style>
+    <div class="box" style="margin:0 0 22px; padding:18px;">
+        <p style="margin:0 0 12px; font-size:0.85rem;"><strong>Position &amp; zoom</strong> &mdash; drag the cover to move it, slide to zoom in. This preview renders exactly like the live banner.</p>
+        <div id="mh-stage" style="position:relative; width:100%; height:240px; overflow:hidden; background:#222; border-radius:6px; cursor:grab; touch-action:none; user-select:none;">
+            <img id="mh-cover-img" src="<?php echo htmlspecialchars($cover_full_url, ENT_QUOTES); ?>" alt=""
+                 style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:<?php echo $cover_pos_x; ?>% <?php echo $cover_pos_y; ?>%; transform-origin:<?php echo $cover_pos_x; ?>% <?php echo $cover_pos_y; ?>%; transform:scale(<?php echo number_format($cover_zoom / 100, 3); ?>); pointer-events:none;">
+            <div aria-hidden="true" style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to bottom, rgba(0,0,0,0) 18%, rgba(0,0,0,.45) 62%, rgba(0,0,0,.82) 100%);"></div>
+        </div>
+        <form method="post" style="margin:14px 0 0; display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+            <input type="hidden" name="action" value="save_cover_pos">
+            <input type="hidden" name="pos_x" id="mh-pos-x" value="<?php echo $cover_pos_x; ?>">
+            <input type="hidden" name="pos_y" id="mh-pos-y" value="<?php echo $cover_pos_y; ?>">
+            <input type="hidden" name="zoom"  id="mh-zoom-val" value="<?php echo $cover_zoom; ?>">
+            <label style="display:flex; align-items:center; gap:10px; font-size:0.8rem; letter-spacing:.04em;">ZOOM
+                <input type="range" id="mh-zoom" min="100" max="300" step="1" value="<?php echo $cover_zoom; ?>" style="width:200px;">
+            </label>
+            <button type="button" id="mh-recenter" class="btn-smack btn-smack--sm">Re-centre</button>
+            <button type="submit" class="btn-smack btn-smack--sm">Save position</button>
+        </form>
+    </div>
+    <?php endif; ?>
 
     <form method="get" style="display:flex; gap:14px; align-items:end; margin-bottom:18px; flex-wrap:wrap;">
         <div>
@@ -148,5 +222,8 @@ include 'core/sidebar.php';
     </div>
 
 </div>
+<?php if ($cover_full_url !== ''): ?>
+<script src="assets/js/ss-engine-masthead-crop.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+<?php endif; ?>
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
