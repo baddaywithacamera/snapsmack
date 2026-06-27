@@ -30,13 +30,29 @@ $page_css = <<<'CSS'
 .slang p { margin-bottom: 0; }
 .slang strong { color: var(--black); }
 
-.section-jump { padding: 32px 0; border-bottom: 3px solid var(--black); }
-.section-jump a {
+.faq-index { padding: 40px 0; border-bottom: 3px solid var(--black); }
+.faq-index h2 {
     font-family: Arial Black, Arial, sans-serif;
-    font-size: 0.8rem; font-weight: 900; text-transform: uppercase;
-    letter-spacing: 0.06em; color: var(--dark-grey); margin-right: 28px;
+    font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--mid-grey); margin-bottom: 22px;
 }
-.section-jump a:hover { color: var(--red); text-decoration: none; }
+.faq-index .idx-group { margin-bottom: 28px; }
+.faq-index .idx-group:last-child { margin-bottom: 0; }
+.faq-index .idx-group > h3 {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.04em;
+    margin-bottom: 12px;
+}
+.faq-index .idx-group > h3 a { color: var(--red); }
+.faq-index .idx-group > h3 a:hover { color: var(--black); text-decoration: none; }
+.faq-index ol { list-style: none; columns: 2; column-gap: 48px; }
+.faq-index ol li { margin-bottom: 10px; break-inside: avoid; }
+.faq-index ol li a {
+    font-family: Arial, sans-serif; font-size: 0.92rem; font-weight: 700;
+    color: var(--dark-grey); line-height: 1.35;
+}
+.faq-index ol li a:hover { color: var(--red); text-decoration: none; }
+@media (max-width: 700px) { .faq-index ol { columns: 1; } }
 
 .faq-section { padding: 64px 0; border-bottom: 1px solid var(--border); }
 .faq-section > .wrap > h2.section-title {
@@ -83,13 +99,58 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <nav class="section-jump">
+    <section class="faq-index">
         <div class="wrap">
-            <a href="#general">General</a>
-            <a href="#security">Security</a>
-            <a href="#future">The Future</a>
+            <h2>All Questions</h2>
+
+            <div class="idx-group">
+                <h3><a href="#general">General</a></h3>
+                <ol>
+                    <li><a href="#q-biggest-best">Is SnapSmack the biggest, best photoblogging software out there?</a></li>
+                    <li><a href="#q-where-from">Where did this come from?</a></li>
+                    <li><a href="#q-why-now">Why this, why now?</a></li>
+                    <li><a href="#q-rude-profane">Why so rude and profane?</a></li>
+                    <li><a href="#q-ai">AI? AIIIIIIEEEEE!!!</a></li>
+                    <li><a href="#q-catch">What's the catch?</a></li>
+                    <li><a href="#q-reimagining">A re-imagining of Pixelpost?</a></li>
+                    <li><a href="#q-how-techie">How techie do I have to be to run this?</a></li>
+                    <li><a href="#q-resources">Resources needed?</a></li>
+                    <li><a href="#q-platforms">Platforms supported?</a></li>
+                    <li><a href="#q-companion-apps">Why companion apps instead of plugins?</a></li>
+                    <li><a href="#q-desktop-apps">Why desktop apps for the companion tools?</a></li>
+                    <li><a href="#q-no-apple">Why no Apple support?</a></li>
+                    <li><a href="#q-noah-grey">Who is Noah Grey?</a></li>
+                    <li><a href="#q-thomas">What is Thomas the Bear?</a></li>
+                    <li><a href="#q-vs-pixelpost">SnapSmack vs Pixelpost — what's the difference?</a></li>
+                    <li><a href="#q-install-modes">Why can't I switch install modes?</a></li>
+                    <li><a href="#q-classic-ig">Classic IG, before Meta wrecked it</a></li>
+                    <li><a href="#q-content-locked">I've got content locked in elsewhere — do I have to abandon it?</a></li>
+                    <li><a href="#q-skins">How do skins work?</a></li>
+                </ol>
+            </div>
+
+            <div class="idx-group">
+                <h3><a href="#security">Security</a></h3>
+                <ol>
+                    <li><a href="#q-secure">Is SnapSmack secure?</a></li>
+                    <li><a href="#q-smackback">What is SMACKBACK?</a></li>
+                    <li><a href="#q-why-security">Why does SnapSmack care so much about security?</a></li>
+                    <li><a href="#q-reauth">Why does it feel like I have to reauthenticate every time I do something?</a></li>
+                    <li><a href="#q-hacked">What happens if my site gets hacked?</a></li>
+                    <li><a href="#q-contribute">Can I contribute?</a></li>
+                </ol>
+            </div>
+
+            <div class="idx-group">
+                <h3><a href="#future">The Future</a></h3>
+                <ol>
+                    <li><a href="#q-stay-free">Is SnapSmack going to stay free?</a></li>
+                    <li><a href="#q-add-feature">Will you add [feature]?</a></li>
+                    <li><a href="#q-whats-next">What's next?</a></li>
+                </ol>
+            </div>
         </div>
-    </nav>
+    </section>
 
     <!-- ════════════════════════════ GENERAL ════════════════════════════ -->
     <section class="faq-section" id="general">
@@ -97,12 +158,12 @@ require_once __DIR__ . '/includes/header.php';
             <h2 class="section-title">General</h2>
             <div class="section-rule"></div>
 
-            <div class="qa">
+            <div class="qa" id="q-biggest-best">
                 <h3>Is SnapSmack the biggest, best photoblogging software out there?</h3>
                 <p>It's not the size of your army, it's the fury of its onslaught.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-where-from">
                 <h3>Where did this come from?</h3>
                 <p>I've blogged in some form or another since getting my first digital camera in 2001. I searched online for other photographers where I lived and met another photographer who was also new to digital photography and who also had a blog. We went out on one shoot and almost never went out on a second shoot because he was a real asshole. Over the next 23 years he became MY asshole.</p>
                 <p>In 2023 he was diagnosed with cancer in an ER visit for back pain. It was cancer that started in his prostate and then went on a world tour. Stage 4, but maybe three or four good years with treatment, they said. By January of 2024 it was already obvious the end was approaching and Ray's world was shrinking. It took all of his energy to crawl from his chair to a window to photograph the skating rink out back of his duplex. I had been on a break from blogging for some time. He remarked to me in passing that he missed when I had a blog, because it would mean a lot to him to be able to see my photos — he was increasingly unable to make his own. I had baddaywithacamera.ca running several days later.</p>
@@ -116,7 +177,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>I hope you like the product and find it useful.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-why-now">
                 <h3>Why this, why now?</h3>
                 <p>Photoblogging software used to be made by people who loved blogging and loved photography. Greymatter, Movable Type, the original Pixelpost. One person or a small team, building something they actually wanted to use, sharing it because that was the right thing to do.</p>
                 <p>That doesn't really exist anymore. The web ate it. Algorithms ate what the web left. The serious photography sites that survive are either platforms harvesting their users' work, or static-site generators that demand you become a developer to publish a photo.</p>
@@ -124,19 +185,19 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Slow software. Human curation. No algorithm. No telemetry. No upsell tier. Yours.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-rude-profane">
                 <h3>Why so rude and profane?</h3>
                 <p>First, I'm a peach. Second, I'm ebullient. Are we good?</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-ai">
                 <h3>AI? AIIIIIIEEEEE!!!</h3>
                 <p>Yes. Almost all of the code in SnapSmack is AI-produced. ETHICS.md in the repo names the AI systems involved and the role each one played. I am not a coder and have never claimed to be.</p>
                 <p>My hands are on the keyboard for CSS. I am decent with it. The visual design of the skins is shaped by me at the stylesheet level. Everything else — the architecture, the spec, the security posture, the decisions about what ships — is the curation job.</p>
                 <p>The code is AI. Said up front, in the FAQ, in the license, in the repo. I'd rather be honest.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-catch">
                 <h3>What's the catch?</h3>
                 <p>Why is SnapSmack free? Because nothing else is anymore. In my last year of running my blogs on WordPress, I had to pay for my sticky header plugin. I had to pay for themes. I had to pay for my SEO plugin. I paid for Softaculous' rubbish backup plugin for WP for a year, that never worked once in that year. I paid for an OpenGraph plugin. I paid, I paid, I paid.</p>
                 <p>SnapSmack is what I need to stop paying everyone else to be able to share my photography in a way that works for me. I'm a prolific photographer and a power user who can flatten a shared hosting environment in ten seconds flat, so I needed something better and affordable. The arrival of AI and vibe coding let me build bespoke software that suits me. The truth is, if it works for me it will probably work for nearly everyone else because I'm a literal worst-case scenario as photographers who publish their work to the web go.</p>
@@ -145,7 +206,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>The only catch is there is no catch. Word.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-reimagining">
                 <h3>A re-imagining of Pixelpost?</h3>
                 <p>Yes. The admin panel says so.</p>
                 <p>The honest origin: I dumped the old Pixelpost source into Google Workspace and asked Gemini if it was fixable. Gemini said it would be easier to rebuild from scratch while keeping the functionality. So that's what happened.</p>
@@ -155,7 +216,16 @@ require_once __DIR__ . '/includes/header.php';
                 <p>See "SnapSmack vs Pixelpost" below for the operational comparison.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-how-techie">
+                <h3>How techie do I have to be to run this?</h3>
+                <p>Honestly? Not very.</p>
+                <p>If you've ever installed WordPress yourself — not watched someone do it, actually done it — you're overqualified. The installer is browser-based and walks you through everything. If you can fill out a form, you can get SnapSmack running.</p>
+                <p>Making it look the way you want doesn't require touching a line of code either. Every skin ships with sliders for spacing, font pickers, and colour pickers. You click until it looks right. That's the whole job.</p>
+                <p>If you want to get your hands dirty with CSS, the door is open. But nobody's going to make you.</p>
+                <p>We're also currently producing video tutorials that walk you through the whole process start to finish, for those who'd rather watch someone do it first.</p>
+            </div>
+
+            <div class="qa" id="q-resources">
                 <h3>Resources needed?</h3>
                 <p>PHP 8.1 or newer. MySQL 5.7 or MariaDB equivalent or newer. Enough disk space for your image archive. Modest RAM — SnapSmack runs comfortably on the cheapest shared-host plans.</p>
                 <p>A fresh SnapSmack install is approximately 6MB. With a full skin library loaded it stays under 10MB. The software footprint is negligible — plan your disk around your image archive, not the CMS. A prolific photographer running a busy site for a year can easily hit 15GB of images. That's on you and your hosting plan, not us.</p>
@@ -163,13 +233,13 @@ require_once __DIR__ . '/includes/header.php';
                 <p>If your host runs WordPress, it runs SnapSmack. If your host runs WordPress badly, odds are it will still run SnapSmack well.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-platforms">
                 <h3>Platforms supported?</h3>
                 <p><strong>Server.</strong> LAMP. Linux, Apache, MySQL/MariaDB, PHP 8.1 or newer. Nginx with PHP-FPM works in principle and several testers run it. Officially supported once it's been through enough cycles to call it tested. WIMP — Windows, IIS, MySQL, PHP — can go eat a bag of dicks. Not supported. Not going to be. Don't file bug reports. See "Why no Apple support?" for the other platform we don't build for, and why.</p>
                 <p><strong>Desktop Companion Apps.</strong> Windows 10 and up. Any recent Linux distribution. That's it. FreeBSD: no. macOS: see "Why no Apple support?" Don't ask.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-companion-apps">
                 <h3>Why companion apps instead of plugins?</h3>
                 <p>CMS plugins are the biggest scam in open source software. They promise functionality, deliver half of it, break on every update, charge you for the rest, and hold your workflow hostage to a developer who may or may not still care.</p>
                 <p>I paid for Softaculous for a year, had to spend $200 in hosting package upgrades to get it to run properly and after that it still never ran properly. Their software is shit and no one should spend a dime on it and I'll swear to that in court. Come at me, you pricks.</p>
@@ -179,14 +249,14 @@ require_once __DIR__ . '/includes/header.php';
                 <p>If you've been burned by plugins before: same. That's why these exist.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-desktop-apps">
                 <h3>Why desktop apps for the companion tools?</h3>
                 <p>Some things are better as native applications. File system access without an upload round-trip. System tray daemons that run in the background. Batch operations on thousands of files at native speed. Sync to cloud storage handled by code that lives on your machine, not in a browser tab that has to stay open.</p>
                 <p>SnapSmack's web admin stays lean because the heavy lifting moves to the companion apps. Each one does one job well, on your machine, with your files.</p>
                 <p>The industry forgot for a while that not everything needs to be a web app. The industry was wrong.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-no-apple">
                 <h3>Why no Apple support?</h3>
                 <p>Ray died in March 2024. Prostate cancer that metastasised. He was on disability. He was processing his life's photographic archive and trying to finish the work he wanted to leave behind.</p>
                 <p>Partway through that work, Apple obsoleted his Mac. The machine he was using to do the most important job left in his life stopped getting the updates it needed to keep functioning as the tool he needed it to be. He could not afford to replace it. He was dying.</p>
@@ -196,7 +266,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Nobody hurts my friends and gets away with it. No Apple support ever.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-noah-grey">
                 <h3>Who is Noah Grey?</h3>
                 <p>Noah Grey wrote Greymatter in the year 2000. Greymatter was the first widely used personal blogging engine — predating Movable Type, predating WordPress, predating the entire industry that grew up around the idea that anyone could publish on the web.</p>
                 <p>Noah also consulted on Picasa, which mattered to a generation of photographers in ways the current state of photo software cannot replicate.</p>
@@ -205,42 +275,42 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Noah is the senpai. SnapSmack is the kohai's offering.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-thomas">
                 <h3>What is Thomas the Bear?</h3>
                 <p>Thomas is a bear.</p>
                 <p>There is an Easter egg in SnapSmack somewhere. It is woven through the whole install — not gated to one corner of it. Go find it. The path from finding it to understanding why it's there is yours to walk. The work of finding out is the point. If you have to be told, you don't yet know enough about the lineage of this software for the answer to mean what it means.</p>
                 <p>No peeking at gifts on Christmas eve.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-vs-pixelpost">
                 <h3>SnapSmack vs Pixelpost — what's the difference?</h3>
-                <p>Pixelpost is a gunship. Light, fast, one job: show one photo per day, well, with comments and a small archive. It was beautiful at it. It is still beautiful at it where installs survive.</p>
+                <p>Pixelpost was a gunship. Light, fast, one job: show one photo a day, well, with comments and a small archive. It was beautiful at it. Past tense, though — the last real release was 2009, the project was officially abandoned and archived in 2019, and what survives runs on ancient PHP with unpatched cross-site-scripting and SQL-injection holes. A lovely ghost, but not something you should hang on the public internet in 2026.</p>
                 <p>SnapSmack is a dreadnought. Multisite hub-and-spoke architecture. Three install personalities (single photos, Classic IG, or longform essays — pick one at install). Companion desktop apps for backup, sync, sorting, importing. Integrated security stack. Anti-spam layer. Multi-skin engine. Shortcode system.</p>
-                <p>If you want one photo a day and nothing else, Pixelpost is the right answer. If you want an entire photoblogging operation with the tools to run it, SnapSmack is the right answer.</p>
-                <p>Both are correct. They aim at different photographers.</p>
+                <p>If you want one photo a day and nothing else, that stripped-down minimalism was Pixelpost's whole soul — and it's exactly what SnapSmack's SMACKONEOUT mode gives you, minus the decade of rot. We didn't build SnapSmack to compete with Pixelpost. We built it to carry on after it, because nobody else did.</p>
+                <p>Pixelpost showed what a photoblog should feel like, then quietly died. SnapSmack is the heir, not the rival — as far as we can tell, the only dedicated, still-actively-built photoblog CMS left standing. Know of another living one? Point us at it. We'd like to know.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-install-modes">
                 <h3>Why can't I switch install modes?</h3>
                 <p>SnapSmack ships in three install personalities — SMACKONEOUT (single-user photoblog), GRAMOFSMACK (a faithful 2016-Instagram-clone with three-across grids and carousel posts up to ten images deep), and SMACKTALK (essays and pages alongside the photoblog). You pick one when you install. You don't switch later.</p>
                 <p>This is deliberate. Each mode has its own database conventions, its own admin behaviours, its own assumptions about what a post is, its own visible feature set. Letting installs toggle between them would mean every feature has to handle three modes plus every transition state between them. That is the road to bloat and to the kind of bugs that don't get found until somebody loses data.</p>
                 <p>Pick the install mode that fits the site you're building. If the site changes shape later, install fresh in the new mode and migrate your content. The migration tools exist for exactly this case.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-classic-ig">
                 <h3>Classic IG, before Meta wrecked it</h3>
                 <p>Greymatter, Pixelpost, Movable Type — those were blogging 1.0. When Instagram arrived it sort of became blogging 2.0, in a manner of speaking. No hosting costs or headaches. No setting up a server or learning CSS. You could just SHARE your images and the audience was there waiting. Yeah, it was boring looking, but the appeal was obvious, so a lot of blogs were abandoned for Instagram. Photogs found hacks like splitting an image across 3, 6, or 9 tiles to punch Insta up visually, and they were happy, even as enshittification crept into the platform.</p>
                 <p>Then in 2025 Meta threw photographers under the bus. They yoinked the three-across grid, destroying so many years of careful work by photographers who curated their feeds, in favour of creepy preteen influencer videos. It sucked.</p>
                 <p>We can't do anything about the social aspect, but we can help you get the look you loved back. GRAMOFSMACK is the classic-Instagram install — the curated three-across feed, square tiles, cover spreads, and carousel posts up to ten deep, the way it looked when Instagram was still about photographs. Leave it stock and period-correct, or bolt on the modern flourishes — the animated carousel skins, AURORA and PARADE — spinning rims on a Model T, if that's your thing. The Grid is the default skin; on phones it serves Photogram automatically.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-content-locked">
                 <h3>I've got content locked in elsewhere — do I have to abandon it?</h3>
                 <p>If you're talking about your Instagram stash or your many years of Flickr posts, no. We've built and already proven tools that take your data and image exports from both Flickr and Instagram and import them into SnapSmack — with all the likes, post counts, captions, and the rest those platforms package into their exports brought across. If you're currently using Flickr or Instagram and you want out, you can get out.</p>
                 <p>Oh, and that beautifully curated three-across Instagram feed you had, the one the new scroll broke? It's still there, and we can give it back to you. Really. Go look <a href="https://unzucked.ca" target="_blank" rel="noopener">HERE</a> to see what we mean.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-skins">
                 <h3>How do skins work?</h3>
                 <p>SnapSmack ships with a skin gallery. You pick one, apply it, configure it. There are skins for traditional photoblog layouts, Instagram-style grids, gallery walls, newspaper-style typography, art-deco black-and-white, and several others. New skins are added over time.</p>
                 <p>Architecturally: a skin is a CSS stylesheet, a manifest file, and a layout template. The JavaScript that makes archives, lightboxes, calendars, galleries, sliders, and the rest actually work lives in the CMS itself — not in the skin. Skins declare which engines they want by name. The CMS provides them.</p>
@@ -258,23 +328,23 @@ require_once __DIR__ . '/includes/header.php';
             <h2 class="section-title">Security</h2>
             <div class="section-rule"></div>
 
-            <div class="qa">
+            <div class="qa" id="q-secure">
                 <h3>Is SnapSmack secure?</h3>
                 <p>As secure as Claude and I could make it — but perfectly secure? No. Assume there are holes. Practice good file and backup hygiene, rotate passwords and API keys regularly, keep them safe. Anyone who tells you their platform is bulletproof is lying.</p>
                 <p>Hobbyist software or not, I have a duty of care to all users of the software to make it as secure as possible — protecting it from breach and tampering, and protecting your data from loss. It's important to me to uphold that duty of care. The receipts are public: see <a href="buzzers.php">BUZZERS!</a> for every audit we've run and closed.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-smackback">
                 <h3>What is SMACKBACK?</h3>
                 <p>SMACKBACK is a file tamper and file system intrusion monitor. It's like an immune system for your CMS. It can trigger a response on your blog to alert you to it being screwed with. If enough of the network of blogs gets screwed with and notifies the main hub, the upstream version of SMACKBACK pushes out a Yellow Alert to all SnapSmack site operators to let them know a coordinated attack is possibly underway. That means backup, change passwords, rotate API keys — the works. We'd rather tell you in real time that you're getting hax0red than give you a lame apology two weeks after your work is destroyed.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-why-security">
                 <h3>Why does SnapSmack care so much about security?</h3>
                 <p>I've been trolled and catfished personally online and it sucked. I'm not dumb and neither was the troll who made my life hell. The answer to that is a troll control system that isn't dumb either. I'm also a senior insurance broker with a solid understanding of cyber liability and how often companies get hacked. Spoiler: anyone can get hacked and probably will. You can slow it down and make it hard enough that the hackers go after softer targets.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-reauth">
                 <h3>Why does it feel like I have to reauthenticate every time I do something?</h3>
                 <p>SnapSmack forces authentication on any action with a large blast radius — pushing from hubs to spokes, turning off security features, using a companion app that can aim a data hose at your shared host, and similar high-consequence operations. These are exactly the actions bad actors go after. We've put extra friction there on purpose. Sorry not sorry.</p>
                 <p>Here's what the complaint usually gets wrong: it's not every ten minutes, and it's not everything. Posting, editing, browsing your own library — no gate, ever. The gate's on the short list of actions that can actually torch you. And when you do trip one, a single auth gets you a window to work in, not a nag on every click. The friction's smaller and a hell of a lot more targeted than it feels at 11pm when you just want to push one thing.</p>
@@ -282,12 +352,12 @@ require_once __DIR__ . '/includes/header.php';
                 <p>We made it harder. You're welcome.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-hacked">
                 <h3>What happens if my site gets hacked?</h3>
                 <p>See <a href="buzzers.php">BUZZERS!</a> and the security documentation for the full picture. The short version: SMACKBACK has a hair trigger and will notice changes and lock down your site. With paranoid settings enabled you can't do anything except use the provided tools in the interface to replace tampered files with clean, digitally signed versions. Besides, this isn't a big deal because you've been using our excellent backup tools daily, right? RIGHT?</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-contribute">
                 <h3>Can I contribute?</h3>
                 <p>To the codebase, no. We don't need our own version of the XZ Utils backdoor — one of the most sophisticated supply chain attacks in open source history was a social engineering job that took years of patient groundwork. We're not leaving that door open.</p>
                 <p>What you can contribute: bug reports, skin submissions through the gallery process, and feedback. All of it is welcome.</p>
@@ -302,17 +372,17 @@ require_once __DIR__ . '/includes/header.php';
             <h2 class="section-title">The Future</h2>
             <div class="section-rule"></div>
 
-            <div class="qa">
+            <div class="qa" id="q-stay-free">
                 <h3>Is SnapSmack going to stay free?</h3>
                 <p>You have my word. It's deliberately open source and copyleft specifically to make sure no one — including me — can ever put a price tag on it. It belongs to the photographic community. I'm just the Hindmost.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-add-feature">
                 <h3>Will you add [feature]?</h3>
                 <p>Odds are no, but I'm open to ideas. The hard rule is no bloat — SnapSmack is a photo publishing tool first and stays that way. If a feature doesn't serve that, it doesn't ship.</p>
             </div>
 
-            <div class="qa">
+            <div class="qa" id="q-whats-next">
                 <h3>What's next?</h3>
                 <p>What indeed. Honest answer: I don't know. Six months ago SnapSmack didn't exist. I'm not guessing what can happen next.</p>
             </div>
