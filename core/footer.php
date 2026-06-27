@@ -58,7 +58,7 @@ if ($email_mode === 'on') {
 
 // --- SLOT 3: CURRENT THEME ---
 // Display the active skin name, or use custom text
-$theme_mode = $settings['footer_slot_theme'] ?? 'off';
+$theme_mode = $settings['footer_slot_theme'] ?? 'on';
 if ($theme_mode === 'on') {
     $skin_slug = $settings['active_skin'] ?? 'unknown';
     $skin_name = str_replace('_', ' ', ucwords($skin_slug, '_'));
