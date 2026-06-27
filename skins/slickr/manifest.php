@@ -39,13 +39,14 @@ return [
         'smack-footer',
         'smack-image-fade-load',
         'smack-lazyload',          // IntersectionObserver lazy loading — auto-upgrades .justified-item imgs (photostream + archive). Was missing, so slickr never lazy-loaded.
-        'smack-justified-reveal',  // grow-as-you-scroll: folds #justified-grid rows past the first batch so the whole photostream isn't laid out at once
+        'smack-progressive-reveal',  // grow-as-you-scroll: folds #justified-grid rows past the first batch so the whole photostream isn't laid out at once
         'smack-justified-lib',
         'smack-justified',
         'smack-community',
         'smack-keyboard',
         'smack-archive-toggle',
         'smack-calendar',
+        'smack-grid-lightbox',     // shared avatar lightbox (derives prefix from #sl-lightbox); click the profile avatar to view it full-screen
     ],
 
     'community_comments'  => '1',

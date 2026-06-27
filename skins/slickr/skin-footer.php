@@ -12,6 +12,14 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
+?>
+<!-- Avatar lightbox (driven by the shared ss-engine-grid-lightbox.js; the avatar in
+     skin-header.php carries data-sl-lightbox). Shared by every Slickr page. -->
+<div id="sl-lightbox" class="sl-lightbox" hidden>
+    <button type="button" class="sl-lightbox-close" aria-label="Close">&times;</button>
+    <img class="sl-lightbox-img" src="" alt="Profile photo">
+</div>
+<?php
 // ── Load required JS engines from the manifest (justified, calendar, lightbox,
 //    etc.). This loop existed in every OTHER skin's footer but was missing here,
 //    which is why the calendar [C] button — and the justified archive engine —
