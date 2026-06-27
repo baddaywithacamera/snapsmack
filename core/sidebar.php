@@ -44,6 +44,16 @@ if (!empty($settings['active_skin'])) {
     }
 }
 
+// --- MASTHEAD COVER GATING ---
+// The "Masthead Cover" page (smack-masthead.php) configures the full-bleed profile
+// COVER image — a feature only skins with a cover masthead use. Today that's Slickr;
+// other skins' "masthead" settings (rational-geo, chaplin) are TITLE typography, not
+// a cover. Gate the nav link so it only appears for skins that actually render one.
+// Prefers a manifest features.masthead_cover flag; falls back to a known slug list so
+// no skin file has to change to enable it today.
+$_skin_has_masthead = !empty($_sidebar_manifest['features']['masthead_cover'])
+                   || in_array(($_sidebar_skin_slug ?? ''), ['slickr'], true);
+
 // --- SECTION / PAGE MAP ---
 // Determine which accordion section to auto-open based on the current page.
 $_section_map = [
@@ -164,9 +174,11 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-globalvibe.php') ? 'active' : ''; ?>">
                         <a href="smack-globalvibe.php">Global Vibe</a>
                     </li>
+                    <?php if ($_skin_has_masthead): ?>
                     <li class="<?php echo ($current_page == 'smack-masthead.php') ? 'active' : ''; ?>">
                         <a href="smack-masthead.php">Masthead Cover</a>
                     </li>
+                    <?php endif; ?>
                     <li class="<?php echo ($current_page == 'smack-skin.php') ? 'active' : ''; ?>">
                         <a href="smack-skin.php">Smooth Your Skin</a>
                     </li>
