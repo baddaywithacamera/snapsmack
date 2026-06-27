@@ -12,6 +12,34 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.316 — "Stadium Seat" (2026-06-27)
+
+- Enabling AI is now a signed admin action: accepting AI cost-responsibility requires step-up auth (password + authenticator) and is recorded to a new audit log. The installer no longer enables AI — it is always an explicit, authenticated choice made in the admin.
+- Slickr masthead cover gains a position + zoom editor: drag the cover to reframe it and zoom with a slider against a live preview that matches the published banner. No re-encoding, fully reversible, always fills the frame.
+- Carousel skins (AURORA, PARADE, The Grid) gained customizer controls: nav-line opacity, post-count colour, nav-to-tiles gap, and a separate border-wave speed.
+
+## 0.7.315 — "Recline" (2026-06-26)
+
+- Release public-key self-heal continues: the canonical signing key is re-planted on update when it is missing or still the placeholder, keeping signature verification and VAX operational.
+- Ships smack-masthead.php, which had been orphaned — the Masthead Cover nav link was 404ing.
+- Slickr skin-meta and calendar fixes.
+
+## 0.7.314 — "Tray Table" (2026-06-26)
+
+- Release public-key self-heal hardened: the key write is now verified after planting and fails loudly if it cannot be written, instead of continuing silently.
+- Slickr skin-meta and calendar fixes.
+
+## 0.7.313 — "Window Seat" (2026-06-26)
+
+- Fixes the signing-key bootstrap. The installer never planted the release public key, so every blog booted on the all-zero placeholder: signature verification was off and VAX refused to operate ("500 No signing key installed"). The updater now self-heals, planting the canonical public key whenever it finds a placeholder or missing key (a real or rotated key is left untouched).
+- Carries pending collections, masthead, and Slickr fixes.
+
+## 0.7.312 — "Aisle Seat" (2026-06-25)
+
+- New Masthead Cover picker (smack-masthead.php): choose any photo as the Slickr profile cover, filter by album and sort by newest / most viewed / most liked / A-Z, or reset to automatic (newest landscape).
+- Slickr footer styled (dark grey bar, thin black top line, light grey text, white links) and wired to customizer colour pickers (footer background / text / links).
+- Footer current-theme slot now defaults to on (it was defaulting off while the admin labelled it on).
+
 ## 0.7.311 — "Exit Row" (2026-06-25)
 
 - Slickr album directory now renders the Flickr-style cover grid: added album-list.php, the template the album controller actually includes (the grid was wrongly named albums.php and never loaded, so the default list showed).
