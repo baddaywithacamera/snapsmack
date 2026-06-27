@@ -121,6 +121,9 @@ article.post:last-child { border-bottom: none; }
     color: var(--red);
 }
 .report-link:hover { color: var(--black); text-decoration: none; }
+.report-refs { margin-top: 1.2em; font-size: 0.9rem; color: var(--mid-grey); }
+.report-refs a { font-weight: 700; color: var(--dark-grey); }
+.report-refs a:hover { color: var(--red); text-decoration: none; }
 
 /* ─── DISCLOSURE ──────────────────────────────────────────────────────────── */
 .disclosure { padding: 64px 0 96px; max-width: 820px; }
@@ -159,6 +162,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Jun 27</span><a href="#csrf">Cross-Site Request Forgery — Closed Site-Wide</a></li>
                 <li><span class="idx-date">Jun 7</span><a href="#a022">Canonical-Schema Fetch Hardening</a></li>
                 <li><span class="idx-date">Jun 4</span><a href="#a021a">Hub/Spoke Attack Surface — Resolution</a></li>
                 <li><span class="idx-date">May 26</span><a href="#a019">Deep Review: 0.7.184</a></li>
@@ -177,6 +181,23 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="csrf">
+                <div class="post-meta"><span class="post-date">June 27, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Cross-Site Request Forgery — Closed Site-Wide</h2>
+                <p>Cross-Site Request Forgery (CSRF) is a trick where a booby-trapped web page quietly gets your browser to fire a real action on a site you're already logged into — without you clicking anything that means to. The defence is a per-session token that proves a request genuinely came from your own admin screens and not from somewhere else.</p>
+                <p>Across our early-2026 review series, site-wide CSRF protection was the one item we flagged and deliberately deferred while higher-severity findings were closed first. It's now done: every admin form and every background request in SnapSmack carries and checks that token automatically, with no per-page switch anyone can forget to flip. That closes the single open thread carried through reports 001 to 008.</p>
+                <a class="report-link" href="secaudits/2026-06-27-csrf-closure-sweep.pdf" target="_blank" rel="noopener">Read the closure record &rarr;</a>
+                <p class="report-refs">Underlying reviews:
+                    <a href="secaudits/2024-04-25-001-snapsmack-security-audit.pdf" target="_blank" rel="noopener">001</a>,
+                    <a href="secaudits/2026-04-25-002-snapsmack-security-audit.pdf" target="_blank" rel="noopener">002</a>,
+                    <a href="secaudits/2026-04-26-003-snapsmack-security-audit.pdf" target="_blank" rel="noopener">003</a>,
+                    <a href="secaudits/2026-04-29-005-snapsmack-security-audit.pdf" target="_blank" rel="noopener">005</a>,
+                    <a href="secaudits/2026-04-29-006-snapsmack-security-audit.pdf" target="_blank" rel="noopener">006</a>,
+                    <a href="secaudits/2026-05-03-007-snapsmack-security-audit.pdf" target="_blank" rel="noopener">007</a>,
+                    <a href="secaudits/2026-05-05-008-snapsmack-security-audit.pdf" target="_blank" rel="noopener">008</a>.
+                </p>
+            </article>
 
             <article class="post" id="a022">
                 <div class="post-meta"><span class="post-date">June 7, 2026</span><span class="post-tag">Closed</span></div>
