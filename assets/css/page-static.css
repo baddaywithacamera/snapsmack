@@ -1,8 +1,15 @@
 /**
  * SNAPSMACK - Static / Page Styles
  *
- * Loaded on page.php and other static page templates. Page hero defaults
- * and 404/empty fallback only.
+ * Loaded by core/meta.php on static pages (page.php and index.php pretty-URL
+ * pages) for EVERY skin. Provides a theme-safe base so any skin renders a
+ * readable static page even if its own style.css says nothing about pages.
+ *
+ * Rules here are LAYOUT + TYPOGRAPHY only — no hard colours or backgrounds.
+ * `color: inherit` + transparent backgrounds let the page adopt each skin's
+ * palette (works on light AND dark skins). Selectors are kept low-specificity
+ * and this file loads BEFORE the skin's style.css, so any skin that styles
+ * pages itself overrides these defaults cleanly.
  */
 
 /*
@@ -12,8 +19,48 @@
  */
 
 
-/* ─── PAGE HERO (static pages) ─────────────────────────────────────────── */
-.page-hero { margin-bottom: 0; }
+/* --- CONTENT CONTAINER --- */
+.static-content {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: inherit;
+}
+
+.static-page-title {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    line-height: 1.15;
+    margin: 0 0 28px;
+    color: inherit;
+}
+
+/* --- CONTENT FLOW (light touch; skins override freely) --- */
+.static-content p { margin: 0 0 1.3em; }
+.static-content p:last-child { margin-bottom: 0; }
+.static-content h2 { font-size: 1.5rem; line-height: 1.2; margin: 1.6em 0 0.5em; }
+.static-content h3 { font-size: 1.2rem; line-height: 1.25; margin: 1.4em 0 0.4em; }
+.static-content ul,
+.static-content ol { margin: 0 0 1.3em 1.5em; }
+.static-content li { margin-bottom: 0.5em; }
+.static-content a { text-decoration: underline; }
+.static-content img { max-width: 100%; height: auto; }
+.static-content blockquote {
+    margin: 1.4em 0;
+    padding: 0.5em 1.1em;
+    border-left: 3px solid currentColor;
+}
+.static-content hr {
+    border: 0;
+    border-top: 1px solid currentColor;
+    opacity: 0.25;
+    margin: 2em 0;
+}
+.static-content .dim { opacity: 0.6; }
+
+/* --- PAGE HERO (static pages) --- */
+.page-hero { margin-bottom: 28px; }
 .page-hero .main-photo { text-align: center; }
 .page-hero .main-photo img {
     max-width: 100%;
@@ -21,4 +68,14 @@
     display: block;
     margin: 0 auto;
 }
+.page-hero--full .main-photo img   { width: 100%; }
+.page-hero--medium .main-photo img { max-width: 600px; }
+.page-hero--small .main-photo img  { max-width: 320px; }
+.page-hero--left .main-photo       { text-align: left; }
+.page-hero--left .main-photo img   { margin: 0; }
+.page-hero--right .main-photo      { text-align: right; }
+.page-hero--right .main-photo img  { margin: 0 0 0 auto; }
+.page-hero--center .main-photo     { text-align: center; }
+.page-hero--shadow .main-photo img { box-shadow: 0 8px 30px rgba(0,0,0,0.35); }
+
 /* ===== SNAPSMACK EOF ===== */

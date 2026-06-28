@@ -766,4 +766,19 @@ a:hover { color: var(--sl-link-hover); }
 }
 .sl-lightbox-close:hover { opacity: 1; }
 
+/* ── STATIC PAGES ────────────────────────────────────────────────────────
+   Layout + typography come from the engine base (assets/css/page-static.css),
+   which loads before this file. Here we only apply SLICKR's theme tones so
+   pages match the skin. Reading width (820px) is left to the engine base on
+   purpose — the wide --sl-canvas-width is for image grids, not body copy. */
+.static-content { font-family: var(--sl-font-stack); color: var(--sl-text-primary); }
+.static-content .static-page-title { color: var(--sl-text-primary); }
+.static-content a { color: var(--sl-link); }
+.static-content a:hover { color: var(--sl-link-hover); }
+.static-content blockquote {
+  border-left-color: var(--sl-link);
+  color: var(--sl-text-secondary);
+}
+.static-content hr { border-top-color: var(--sl-header-border); opacity: 1; }
+
 /* ===== SNAPSMACK EOF ===== */
