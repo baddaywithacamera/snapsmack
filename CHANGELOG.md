@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.319 — "Cutie Mark" (2026-06-28)
+
+- Static pages now open at their own pretty URL on every skin. The router sends every bare slug to `index.php`, which only ever looked a slug up against images — so visiting a static page at `/its-slug` found no image and fell through to the "Nothing here yet" empty state, even though the page existed and `page.php` rendered it correctly. `index.php` now falls back to `snap_pages` when no image matches and renders the page exactly the way `page.php` does (the skin's own `skin-page.php` if it ships one, otherwise the skin header/footer around the page content), keeping the clean URL. Image slugs still win over page slugs on a collision.
+- Every skin now renders a readable static page out of the box. The engine's `page-static.css` styled only the hero image and left `.static-content`, the page title, and all body copy to each individual skin — so any skin that didn't style pages itself (Slickr, 52 Card Pickup, Alfred, Show N Tell, In Stereo) produced an unstyled, often illegible page. `page-static.css` now ships a theme-safe base: layout and typography only, with `color: inherit` and transparent backgrounds so it reads correctly on both light and dark skins, kept at low specificity and loaded before the skin stylesheet so any skin that does style pages still overrides it cleanly.
+- Slickr (skin package, 1.0.14): the solo-image footer now presents and behaves like the 50 Shades footer — the prev/info/comments/next bar is pinned to the bottom of the view and centred, instead of jammed into the corner and only appearing once an info or comments tray was opened. (The fix existed in the skin source; the deployed 1.0.13 predated it.) Static pages also pick up Slickr's theme tones for links, titles, and rules.
+
 ## 0.7.318 — "Box Seat" (2026-06-28)
 
 - Album cover thumbnails no longer repeat across different albums. The public album grid was reading `snap_albums.cover_image_id` — a column nothing ever populates — so every album fell back to "newest image," and since a photo can live in several albums, one recent shared image became the cover for all of them. The grid now reads `featured_post_id` (the column the admin album editor and the FLKR FCKR importer both write), so designated and imported covers are honoured — and manually set album covers now actually show.
