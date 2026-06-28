@@ -12,6 +12,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.317 — "Catbird Seat" (2026-06-27)
+
+- Collections page fixed: it was showing "No collections published yet" even when published collections existed. The cover query referenced a column that does not exist (sort_order on snap_post_images, which is actually sort_position), threw, and a silent catch masked the error as an empty list. The column is corrected, the same bug is fixed in the Oh Snap! API, and the catch now logs the real cause instead of swallowing it.
+- FLKR FCKR album covers no longer duplicate. When a Flickr photoset's designated cover photo was not imported, the album was left with no cover and fell back to a single shared default image — so every coverless album showed the same picture. The importer now falls back to the album's own most-viewed photo, giving each album a distinct cover drawn from its own contents.
+- Footer theme name now always renders in capitals (e.g. "THEME: SLICKR"), across every skin.
+- SMACKBACK now monitors the release-staging directory (smack-central/) on real installs, excluding it only on the Smack Central host itself — leaked central code on a spoke now trips the integrity alarm (secaudit 028-B).
+- Direct web access to the SMACKBACK integrity manifest (smackback-manifest.json) is now denied in .htaccess (secaudit 0.7.209-S2).
+- Photogram's landing infinite-scroll script is externalized to a manifest-loaded engine file, so the skin ships no inline script tags (secaudit 025-S1).
+- Slickr (skin package): Flickr-style masthead brag-bar showing lifetime photos, views, and album views with an auto-derived "active since" year; white archive calendar; centred footer; lighter cover scrim.
+
 ## 0.7.316 — "Stadium Seat" (2026-06-27)
 
 - Enabling AI is now a signed admin action: accepting AI cost-responsibility requires step-up auth (password + authenticator) and is recorded to a new audit log. The installer no longer enables AI — it is always an explicit, authenticated choice made in the admin.
