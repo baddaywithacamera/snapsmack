@@ -97,7 +97,7 @@ $query = "
               INNER JOIN snap_post_images pim ON pim.post_id = ci2.item_id
               INNER JOIN snap_images i ON i.id = pim.image_id AND i.img_status = 'published'
               WHERE ci2.collection_id = c.id AND ci2.item_type = 'post'
-              ORDER BY ci2.sort_order ASC, pim.sort_order ASC
+              ORDER BY ci2.sort_order ASC, pim.sort_position ASC
               LIMIT 1) AS first_thumb
     FROM snap_collections c
     WHERE c.published = 1
@@ -106,7 +106,10 @@ $query = "
 try {
     $collections = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    // Fail soft — show the empty state rather than a white-screen 500.
+    // Fail soft — show the empty state rather than a white-screen 500 — but LOG
+    // the real cause. A swallowed schema/query error was silently masquerading
+    // as "No collections published yet", making it near-impossible to diagnose.
+    error_log('SnapSmack collections.php — collection query failed: ' . $e->getMessage());
     $collections = [];
 }
 

@@ -190,8 +190,8 @@ if ($resource === 'posts' && $method === 'GET') {
             i.img_width,
             i.img_height
         FROM snap_posts p
-        LEFT JOIN snap_post_images pi ON pi.post_id = p.id AND pi.sort_order = (
-            SELECT MIN(sort_order) FROM snap_post_images WHERE post_id = p.id
+        LEFT JOIN snap_post_images pi ON pi.post_id = p.id AND pi.sort_position = (
+            SELECT MIN(sort_position) FROM snap_post_images WHERE post_id = p.id
         )
         LEFT JOIN snap_images i ON i.id = pi.image_id
         WHERE p.status = 'published'
