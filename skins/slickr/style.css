@@ -215,7 +215,47 @@ a:hover { color: var(--sl-link-hover); }
   box-shadow: 0 4px 24px rgba(0,0,0,0.5);
 }
 
-/* Below-image split: main column + sidebar */
+/* ── Solo page: bottom-pinned navbar + hidden info/comments drawers ───────
+   Borrowed behaviour from 50-shades (core ss-engine-footer.js toggles #footer
+   and #pane-info / #pane-comments via the navbar INFO/COMMENTS buttons + keys
+   1/2). Scoped to .sl-single-flow so landing/archive are untouched. */
+.sl-single-flow {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+/* Photo fills the space between the masthead and the bottom-pinned navbar. */
+.sl-single-flow #sl-photobox {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* Navbar sits at the bottom of the first viewport. */
+.sl-single-flow #infobox {
+  flex: 0 0 auto;
+  order: 3;
+}
+/* The drawer (starts hidden via JS) and its panes. */
+.sl-single-flow #footer {
+  order: 4;
+  display: none;            /* ss-engine-footer.js also sets this on load */
+  background: #ffffff;
+  border-top: 1px solid var(--sl-header-border);
+  width: 100%;
+}
+.sl-single-flow .footer-pane { display: none; }   /* engine shows one at a time */
+.sl-single-flow .sl-pane-inner {
+  max-width: var(--sl-canvas-width);
+  margin: 0 auto;
+  padding: 28px 24px 40px;
+  box-sizing: border-box;
+}
+.sl-single-flow #pane-info .sl-photo-title {
+  font-size: 22px; font-weight: 400; color: var(--sl-text-primary); margin-bottom: 4px;
+}
+.sl-single-flow .sl-comments-region { margin-top: 0; }
+.sl-comments-closed { color: var(--sl-text-secondary); font-size: 14px; }
+
+/* Below-image split: main column + sidebar (legacy — retained for reference) */
 .sl-focus-container {
   max-width: var(--sl-canvas-width);
   margin: 0 auto;
@@ -374,7 +414,12 @@ a:hover { color: var(--sl-link-hover); }
 .sl-landing { width: 100%; }
 
 /* ── Masthead: cover image + bottom-heavy gradient, profile overlaid ────── */
-.sl-masthead { position: relative; }
+.sl-masthead {
+  position: relative;
+  /* Dark outer glow applied to every overlaid header string (name, tagline,
+     stats, labels) so white text separates cleanly from a light/busy cover. */
+  --sl-header-glow: 0 0 4px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.8), 0 1px 2px rgba(0,0,0,.7);
+}
 .sl-cover {
   position: relative;
   width: 100%;
@@ -429,31 +474,32 @@ a:hover { color: var(--sl-link-hover); }
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 10px rgba(0,0,0,.4);
+  /* Dark outer glow so the avatar separates from any cover, light or busy. */
+  box-shadow: 0 0 12px 3px rgba(0,0,0,.6), 0 2px 10px rgba(0,0,0,.45);
 }
 .sl-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.sl-profile-avatar-initials { font-size: 38px; font-weight: 300; color: #fff; }
+.sl-profile-avatar-initials { font-size: 38px; font-weight: 300; color: #fff; text-shadow: var(--sl-header-glow); }
 
 .sl-profile-info { min-width: 0; flex: 1; padding-bottom: 4px; }
 .sl-profile-name {
   margin: 0;
   font-size: 28px; font-weight: 700; line-height: 1.15;
-  color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.55);
+  color: #fff; text-shadow: var(--sl-header-glow);
 }
 .sl-profile-tagline {
   margin: 4px 0 0;
   font-size: 15px;
   color: rgba(255,255,255,.88);
-  text-shadow: 0 1px 3px rgba(0,0,0,.55);
+  text-shadow: var(--sl-header-glow);
 }
 
 /* Stats — right side, white over the gradient */
 .sl-profile-stats { text-align: right; flex-shrink: 0; padding-bottom: 4px; color: #fff; }
 .sl-stat-row { display: flex; gap: 26px; justify-content: flex-end; flex-wrap: wrap; }
 .sl-stat-row .sl-stat { text-align: right; }
-.sl-stat strong { display: block; font-size: 22px; font-weight: 700; line-height: 1.1; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.55); }
-.sl-stat span { font-size: 11px; color: rgba(255,255,255,.8); text-transform: uppercase; letter-spacing: .05em; }
-.sl-stat-line { font-size: 13px; color: rgba(255,255,255,.82); margin-top: 4px; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+.sl-stat strong { display: block; font-size: 22px; font-weight: 700; line-height: 1.1; color: #fff; text-shadow: var(--sl-header-glow); }
+.sl-stat span { font-size: 11px; color: rgba(255,255,255,.85); text-transform: uppercase; letter-spacing: .05em; text-shadow: var(--sl-header-glow); }
+.sl-stat-line { font-size: 13px; color: rgba(255,255,255,.85); margin-top: 4px; text-shadow: var(--sl-header-glow); }
 
 /* ── Tab / utility bar (below the cover, on white) ─────────────────────── */
 .sl-profile-tabs {

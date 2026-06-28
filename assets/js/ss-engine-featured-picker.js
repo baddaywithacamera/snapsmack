@@ -45,6 +45,8 @@
     var _hasMore     = false;
     var _loading     = false;
     var _searchTimer = null;
+    var _curFilters  = {};     // param -> selected value (optional filter dropdowns)
+    var _modalFilters = null;  // container holding the filter <select>s
 
     // ── Modal DOM construction (lazy, once) ────────────────────────────────
 
@@ -77,6 +79,9 @@
         _modalSearch.placeholder = 'Search posts…';
         _modalSearch.addEventListener('input', onSearchInput);
 
+        _modalFilters = document.createElement('div');
+        _modalFilters.className = 'ssfp-filters';
+
         _modalGrid = document.createElement('div');
         _modalGrid.className = 'ssfp-grid';
 
@@ -92,6 +97,7 @@
 
         dialog.appendChild(header);
         dialog.appendChild(_modalSearch);
+        dialog.appendChild(_modalFilters);
         dialog.appendChild(_modalGrid);
         dialog.appendChild(loadWrap);
 
@@ -112,9 +118,48 @@
         _curQuery  = '';
         _curOffset = 0;
         _hasMore   = false;
+        _curFilters = {};
+        buildFilters(cfg.filters);
         _modalGrid.innerHTML = '';
         _modal.classList.add('ssfp-modal--open');
         loadPage();
+    }
+
+    // ── Optional filter dropdowns ──────────────────────────────────────────
+    // cfg.filters: [{ param, label, options:[{value,label}] }, ...]. Each renders
+    // a <select>; choosing a value appends &<param>=<value> to the AJAX query.
+    // Pages that pass no filters (e.g. collections) get no dropdowns — the bar
+    // hides itself, so the engine stays backward-compatible.
+    function buildFilters(filters) {
+        if (!_modalFilters) return;
+        _modalFilters.innerHTML = '';
+        if (!filters || !filters.length) {
+            _modalFilters.style.display = 'none';
+            return;
+        }
+        _modalFilters.style.display = '';
+        filters.forEach(function (f) {
+            var sel = document.createElement('select');
+            sel.className = 'ssfp-filter';
+            var def = document.createElement('option');
+            def.value = '';
+            def.textContent = f.label || 'All';
+            sel.appendChild(def);
+            (f.options || []).forEach(function (o) {
+                var opt = document.createElement('option');
+                opt.value = String(o.value);
+                opt.textContent = o.label;
+                sel.appendChild(opt);
+            });
+            sel.addEventListener('change', function () {
+                if (this.value === '') delete _curFilters[f.param];
+                else _curFilters[f.param] = this.value;
+                _curOffset = 0;
+                _modalGrid.innerHTML = '';
+                loadPage();
+            });
+            _modalFilters.appendChild(sel);
+        });
     }
 
     function closeModal() {
@@ -149,6 +194,9 @@
                 + (_activeCfg.endpoint.indexOf('?') >= 0 ? '&' : '?')
                 + 'q='      + encodeURIComponent(_curQuery)
                 + '&offset=' + encodeURIComponent(_curOffset);
+        Object.keys(_curFilters).forEach(function (k) {
+            url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(_curFilters[k]);
+        });
 
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url, true);

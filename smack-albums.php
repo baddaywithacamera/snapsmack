@@ -43,17 +43,34 @@ if (!empty($_GET['ajax']) && $_GET['ajax'] === 'posts') {
     $q      = '%' . trim($_GET['q'] ?? '') . '%';
     $offset = max(0, (int)($_GET['offset'] ?? 0));
     $limit  = 30;
+    $cat    = (int)($_GET['cat']   ?? 0);
+    $album  = (int)($_GET['album'] ?? 0);
+
+    // Optional category / album filters — narrow the picker grid by membership.
+    $joins  = '';
+    $fbinds = [];                       // [value, PDO type] in placeholder order
+    if ($cat > 0) {
+        $joins  .= " INNER JOIN snap_image_cat_map cm ON cm.image_id = i.id AND cm.cat_id = ?";
+        $fbinds[] = [$cat, PDO::PARAM_INT];
+    }
+    if ($album > 0) {
+        $joins  .= " INNER JOIN snap_image_album_map am ON am.image_id = i.id AND am.album_id = ?";
+        $fbinds[] = [$album, PDO::PARAM_INT];
+    }
+
     $rows = $pdo->prepare(
         "SELECT i.id, i.img_title AS title,
                 i.img_thumb_square, i.img_thumb_aspect, i.img_file
-         FROM snap_images i
+         FROM snap_images i" . $joins . "
          WHERE i.img_status = 'published' AND i.img_title LIKE ?
          ORDER BY i.img_date DESC
          LIMIT ? OFFSET ?"
     );
-    $rows->bindValue(1, $q,         PDO::PARAM_STR);
-    $rows->bindValue(2, $limit + 1, PDO::PARAM_INT);
-    $rows->bindValue(3, $offset,    PDO::PARAM_INT);
+    $pos = 1;
+    foreach ($fbinds as $fb) { $rows->bindValue($pos++, $fb[0], $fb[1]); }
+    $rows->bindValue($pos++, $q,         PDO::PARAM_STR);
+    $rows->bindValue($pos++, $limit + 1, PDO::PARAM_INT);
+    $rows->bindValue($pos++, $offset,    PDO::PARAM_INT);
     $rows->execute();
     $raw   = $rows->fetchAll(PDO::FETCH_ASSOC);
     $hasMore = count($raw) > $limit;
@@ -117,6 +134,11 @@ $albums = $pdo->query(
      GROUP BY a.id
      ORDER BY a.album_name ASC"
 )->fetchAll();
+
+// Categories for the featured-image picker filter dropdown ($albums reused below).
+$pick_cats = $pdo->query(
+    "SELECT id, cat_name FROM snap_categories ORDER BY cat_name ASC"
+)->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch featured image thumbnail for currently editing album
 $featured_thumb = null;
@@ -257,7 +279,17 @@ document.addEventListener('DOMContentLoaded', function () {
         hiddenInputEl: idEl,
         baseUrl:       <?php echo json_encode(BASE_URL); ?>,
         initialThumb:  initialThumb,
-        initialTitle:  initialTitle
+        initialTitle:  initialTitle,
+        filters: [
+            { param: 'cat', label: 'All categories', options: <?php
+                echo json_encode(array_map(fn($c) => [
+                    'value' => (int)$c['id'], 'label' => $c['cat_name']
+                ], $pick_cats), JSON_UNESCAPED_UNICODE); ?> },
+            { param: 'album', label: 'All albums', options: <?php
+                echo json_encode(array_map(fn($a) => [
+                    'value' => (int)$a['id'], 'label' => $a['album_name']
+                ], $albums), JSON_UNESCAPED_UNICODE); ?> }
+        ]
     });
 });
 </script>
