@@ -2256,17 +2256,19 @@ class SettingsTab(tk.Frame):
         checks_row.pack(anchor="w", pady=(4, 0))
 
         self._ftp_ssl_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(checks_row, text="Use FTP_TLS", variable=self._ftp_ssl_var,
+        self._ftp_ssl_chk = tk.Checkbutton(checks_row, text="Use FTP_TLS", variable=self._ftp_ssl_var,
                        bg=BG_MID, fg=FG_MAIN, selectcolor=BG_INPUT,
-                       activebackground=BG_MID, font=FONT_BODY).pack(
-            side="left", padx=(0, 16))
+                       activebackground=BG_MID, font=FONT_BODY)
+        self._ftp_ssl_chk.pack(side="left", padx=(0, 16))
         self._profile_vars["ftp_ssl"] = self._ftp_ssl_var
 
         self._ftp_verify_var = tk.BooleanVar(value=False)
-        tk.Checkbutton(checks_row, text="Verify certificate",
+        self._ftp_verify_chk = tk.Checkbutton(checks_row, text="Verify certificate",
                        variable=self._ftp_verify_var,
                        bg=BG_MID, fg=FG_MAIN, selectcolor=BG_INPUT,
-                       activebackground=BG_MID, font=FONT_BODY).pack(side="left")
+                       activebackground=BG_MID, font=FONT_BODY)
+        self._ftp_verify_chk.pack(side="left")
+        self._sync_tls_enabled()   # TLS boxes are FTP-only; grey them out under SFTP
         self._profile_vars["ftp_verify_cert"] = self._ftp_verify_var
 
         # Cloud fields (shown when method = cloud)
@@ -2580,7 +2582,9 @@ class SettingsTab(tk.Frame):
 
     def _on_transport_change(self) -> None:
         """Swap the default port when toggling FTP<->SFTP — only if the port is
-        still at the other protocol's default, so a custom port is never lost."""
+        still at the other protocol's default, so a custom port is never lost.
+        Also greys the TLS boxes, which apply to plain FTP only."""
+        self._sync_tls_enabled()
         try:
             t = self._transport_var.get()
             port_var = self._profile_vars.get("ftp_port")
@@ -2591,6 +2595,17 @@ class SettingsTab(tk.Frame):
                 port_var.set("22")
             elif t == "ftp" and cur in ("", "22"):
                 port_var.set("21")
+        except Exception:
+            pass
+
+    def _sync_tls_enabled(self) -> None:
+        """FTP_TLS + certificate verification apply to plain FTP only. SFTP is
+        SSH-encrypted already, so grey them out when SFTP is selected."""
+        try:
+            is_sftp = (self._transport_var.get() == "sftp")
+            state   = "disabled" if is_sftp else "normal"
+            if hasattr(self, "_ftp_ssl_chk"):    self._ftp_ssl_chk.config(state=state)
+            if hasattr(self, "_ftp_verify_chk"): self._ftp_verify_chk.config(state=state)
         except Exception:
             pass
 

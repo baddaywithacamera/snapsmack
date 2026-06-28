@@ -1930,6 +1930,11 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="coming-item">
                 <span class="tag">Tools</span>
+                <h3>SNAP OUT OF IT</h3>
+                <p>Picked the wrong install mode? It happens. SNAP OUT OF IT is the desktop tool that moves your whole site from one SnapSmack mode to another — SMACKONEOUT, GRAMOFSMACK, or SMACKTALK — content intact, for when your blog outgrows the shape you first gave it. It runs on the desktop for a reason: grinding a large archive through a mode change on a shared host would flatten the poor thing. Windows and Linux, as ever. No more "install fresh and start over."</p>
+            </div>
+            <div class="coming-item">
+                <span class="tag">Tools</span>
                 <h3>MIDNIGHT MOVE</h3>
                 <p>The fourth desktop tool. MIDNIGHT MOVE rescues your own work off a dying website before it takes your photographs with it — hand-coded HTML, an ancient CMS install, the site you built in 2006 and can't log into anymore — and moves it into SnapSmack. Migration when you still have the keys, rescue when you've lost them. FTP where you can get it, a public spider where you can't, and AI to make sense of whatever schema it finds. Save the work. Move it somewhere you own.</p>
             </div>

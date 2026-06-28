@@ -74,7 +74,8 @@ if ($theme_mode === 'on') {
             error_log("SnapSmack: failed to load manifest {$skin_manifest_path} — " . $e->getMessage());
         }
     }
-    $slots[] = 'THEME: ' . htmlspecialchars($skin_name);
+    // Theme names always render in all caps (SnapSmack convention).
+    $slots[] = 'THEME: ' . htmlspecialchars(mb_strtoupper($skin_name, 'UTF-8'));
 } elseif ($theme_mode === 'custom') {
     $custom = trim($settings['footer_slot_theme_custom'] ?? '');
     if ($custom !== '') {

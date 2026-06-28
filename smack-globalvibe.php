@@ -309,7 +309,7 @@ include 'core/sidebar.php';
                 $footer_slots = [
                     ['key' => 'copyright', 'label' => 'COPYRIGHT',     'hint' => 'Default: &copy; {YEAR} {BLOG NAME}',                     'placeholder' => 'e.g. &copy; 2026 My Photo Blog',     'default' => 'on'],
                     ['key' => 'email',     'label' => 'EMAIL',         'hint' => 'Default: reverse-encoded site email (spam protection).', 'placeholder' => 'e.g. contact@example.com',            'default' => 'on'],
-                    ['key' => 'theme',     'label' => 'CURRENT THEME', 'hint' => 'Default: shows active skin name.',                       'placeholder' => 'e.g. Designed by Example Studio',    'default' => 'off'],
+                    ['key' => 'theme',     'label' => 'CURRENT THEME', 'hint' => 'Default: shows active skin name.',                       'placeholder' => 'e.g. Designed by Example Studio',    'default' => 'on'],
                     ['key' => 'powered',   'label' => 'POWERED BY',    'hint' => 'Default: POWERED BY SNAPSMACK {VERSION}',                'placeholder' => 'e.g. Built with love and caffeine',   'default' => 'on'],
                 ];
                 ?>

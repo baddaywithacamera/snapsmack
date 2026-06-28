@@ -50,6 +50,7 @@ return [
     'require_scripts' => [
         'smack-community',
         'smack-photogram',
+        'smack-photogram-feed',
         'smack-image-fade-load',
         'smack-slider',
     ],
