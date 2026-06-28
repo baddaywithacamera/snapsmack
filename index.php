@@ -289,6 +289,85 @@ try {
     }
     $img = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    // --- STATIC PAGE FALLBACK ---
+    // A bare slug arrives here via .htaccess (index.php?name=slug). If it is not
+    // a published image it may be a static page (snap_pages) reached by its
+    // pretty URL, e.g. /flkr-fckr. Resolve and render it the SAME way page.php
+    // does so clean-URL pages work. (Keep this in sync with page.php lines ~93-160.)
+    if ($requested_slug && !$img) {
+        $pg_stmt = $pdo->prepare("SELECT * FROM snap_pages WHERE slug = ? AND is_active = 1 LIMIT 1");
+        $pg_stmt->execute([$requested_slug]);
+        $page_data = $pg_stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($page_data) {
+            $page_title = htmlspecialchars($page_data['title']);
+            $skin_path  = 'skins/' . $active_skin;
+
+            snapsmack_log_hit($pdo, $settings, ['page_type' => 'page', 'page_slug' => $requested_slug]);
+
+            // Skin may fully override the static-page layout (e.g. Photogram).
+            $skin_page_tpl = __DIR__ . '/' . $skin_path . '/skin-page.php';
+            if (file_exists($skin_page_tpl)) {
+                include $skin_page_tpl;
+                exit;
+            }
+
+            if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
+                include __DIR__ . '/' . $skin_path . '/skin-meta.php';
+            }
+            ?>
+<body class="static-transmission">
+    <div id="page-wrapper">
+        <div id="scroll-stage">
+            <?php
+            $header_file = __DIR__ . '/' . $skin_path . '/skin-header.php';
+            if (file_exists($header_file)) {
+                include $header_file;
+            } else {
+                include __DIR__ . '/core/header.php';
+            }
+            ?>
+            <div class="static-content">
+                <h1 class="static-page-title"><?php echo $page_title; ?></h1>
+                <?php if (!empty($page_data['image_asset'])):
+                    $hero_size   = in_array($page_data['image_size']  ?? '', ['medium','small']) ? $page_data['image_size']  : 'full';
+                    $hero_align  = in_array($page_data['image_align'] ?? '', ['left','right'])   ? $page_data['image_align'] : 'center';
+                    $hero_shadow = !empty($page_data['image_shadow']) ? ' page-hero--shadow' : '';
+                ?>
+                    <div id="photobox" class="page-hero page-hero--<?php echo $hero_size; ?> page-hero--<?php echo $hero_align; ?><?php echo $hero_shadow; ?>">
+                        <div class="main-photo">
+                            <img src="<?php echo BASE_URL . ltrim($page_data['image_asset'], '/'); ?>"
+                                 class="post-image"
+                                 alt="<?php echo $page_title; ?>">
+                        </div>
+                    </div>
+                <?php endif; ?>
+                <div class="description">
+                    <?php
+                    if (!empty($page_data['content'])) {
+                        echo $snapsmack->parseContent($page_data['content']);
+                    } else {
+                        echo "<p class='dim'>No content signal found for this sector.</p>";
+                    }
+                    ?>
+                </div>
+            </div>
+            <?php
+            $footer_file = __DIR__ . '/' . $skin_path . '/skin-footer.php';
+            if (file_exists($footer_file)) {
+                include $footer_file;
+            }
+            ?>
+        </div>
+    </div>
+    <?php include __DIR__ . '/core/footer-scripts.php'; ?>
+</body>
+</html>
+            <?php
+            exit;
+        }
+    }
+
     // --- NAVIGATION LINKS ---
     // Fetches first, last, previous, and next image slugs based on publication date.
     // Timezone is configured globally in core/db.php.
