@@ -123,7 +123,7 @@ require_once __DIR__ . '/includes/header.php';
                     <li><a href="#q-thomas">What is Thomas the Bear?</a></li>
                     <li><a href="#q-vs-pixelpost">SnapSmack vs Pixelpost — what's the difference?</a></li>
                     <li><a href="#q-install-modes">Why can't I switch install modes?</a></li>
-                    <li><a href="#q-classic-ig">Classic IG, before Meta wrecked it</a></li>
+                    <li><a href="#q-classic-ig">Why are you ripping off Instagram?</a></li>
                     <li><a href="#q-content-locked">I've got content locked in elsewhere — do I have to abandon it?</a></li>
                     <li><a href="#q-skins">How do skins work?</a></li>
                 </ol>
@@ -291,8 +291,8 @@ require_once __DIR__ . '/includes/header.php';
             </div>
 
             <div class="qa" id="q-classic-ig">
-                <h3>Classic IG, before Meta wrecked it</h3>
-                <p>Greymatter, Pixelpost, Movable Type — those were blogging 1.0. When Instagram arrived it sort of became blogging 2.0, in a manner of speaking. No hosting costs or headaches. No setting up a server or learning CSS. You could just SHARE your images and the audience was there waiting. Yeah, it was boring looking, but the appeal was obvious, so a lot of blogs were abandoned for Instagram. Photogs found hacks like splitting an image across 3, 6, or 9 tiles to punch Insta up visually, and they were happy, even as enshittification crept into the platform.</p>
+                <h3>Why are you ripping off Instagram?</h3>
+                <p>We're not ripping them off, we're taking back what's ours. Greymatter, Pixelpost, Movable Type — those were blogging 1.0. When Instagram arrived it sort of became blogging 2.0, in a manner of speaking. No hosting costs or headaches. No setting up a server or learning CSS. You could just SHARE your images and the audience was there waiting. Yeah, it was boring looking, but the appeal was obvious, so a lot of blogs were abandoned for Instagram. Photogs found hacks like splitting an image across 3, 6, or 9 tiles to punch Insta up visually, and they were happy, even as enshittification crept into the platform.</p>
                 <p>Then in 2025 Meta threw photographers under the bus. They yoinked the three-across grid, destroying so many years of careful work by photographers who curated their feeds, in favour of creepy preteen influencer videos. It sucked.</p>
                 <p>We can't do anything about the social aspect, but we can help you get the look you loved back. GRAMOFSMACK is the classic-Instagram install — the curated three-across feed, square tiles, cover spreads, and carousel posts up to ten deep, the way it looked when Instagram was still about photographs. Leave it stock and period-correct, or bolt on the modern flourishes — the animated carousel skins, AURORA and PARADE — spinning rims on a Model T, if that's your thing. The Grid is the default skin; on phones it serves Photogram automatically.</p>
             </div>
