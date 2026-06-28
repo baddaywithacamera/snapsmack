@@ -163,8 +163,20 @@ require_once __DIR__ . '/includes/header.php';
             <h3>Closed Audits</h3>
             <ol>
                 <li><span class="idx-date">Jun 27</span><a href="#csrf">Cross-Site Request Forgery — Closed Site-Wide</a></li>
+                <li><span class="idx-date">Jun 25</span><a href="#asob">Son of a Batch — Batch Poster Review</a></li>
+                <li><span class="idx-date">Jun 20</span><a href="#a028">Dev-File Leak &amp; SMACKBACK Blind Spot</a></li>
+                <li><span class="idx-date">Jun 20</span><a href="#a029">Auto File-Deletion Attack Surface</a></li>
+                <li><span class="idx-date">Jun 19</span><a href="#a027">SMACKBACK Unknown-File &amp; Cron-Verify Gap</a></li>
+                <li><span class="idx-date">Jun 18</span><a href="#a026">Installer Constants &amp; Skin Attack Surface</a></li>
+                <li><span class="idx-date">Jun 17</span><a href="#a025">Skin Inline-Script Manifest Bypass</a></li>
+                <li><span class="idx-date">Jun 15</span><a href="#amesh">Mesh Roster Key Broadcast</a></li>
+                <li><span class="idx-date">Jun 12</span><a href="#a024a">Imported-Caption XSS — Remediation</a></li>
+                <li><span class="idx-date">Jun 12</span><a href="#a024">SYBU Recovery &amp; Unzucker Captions</a></li>
+                <li><span class="idx-date">Jun 7</span><a href="#a023">Unzucker Attack Surface</a></li>
                 <li><span class="idx-date">Jun 7</span><a href="#a022">Canonical-Schema Fetch Hardening</a></li>
+                <li><span class="idx-date">Jun 5</span><a href="#a209">SMACKBACK False-Positive Fix Review (0.7.209)</a></li>
                 <li><span class="idx-date">Jun 4</span><a href="#a021a">Hub/Spoke Attack Surface — Resolution</a></li>
+                <li><span class="idx-date">May 31</span><a href="#a020">PUSH IT Hub-Controls Attack Surface</a></li>
                 <li><span class="idx-date">May 26</span><a href="#a019">Deep Review: 0.7.184</a></li>
                 <li><span class="idx-date">May 23</span><a href="#a018">Hub-Initiated Maintenance Mode</a></li>
                 <li><span class="idx-date">May 22</span><a href="#a017">SMACKBACK File-Integrity Monitoring</a></li>
@@ -199,6 +211,76 @@ require_once __DIR__ . '/includes/header.php';
                 </p>
             </article>
 
+            <article class="post" id="asob">
+                <div class="post-meta"><span class="post-date">June 25, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Son of a Batch — Batch Poster Review</h2>
+                <p>A security review of the batch-posting pipeline that pushes large image sets to your site. Findings fixed or mitigated; desktop-side encryption of stored keys at rest is noted as a tracked follow-up rather than a live exposure.</p>
+                <a class="report-link" href="secaudits/2026-06-25-son-of-a-batch.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a028">
+                <div class="post-meta"><span class="post-date">June 20, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Dev-File Leak &amp; SMACKBACK Blind Spot</h2>
+                <p>Closed a path where development-only files could be swept into a release package, plus a SMACKBACK blind spot around the release-staging directory. The integrity monitor now flags leaked central code if it ever lands on a normal install. Closed in 0.7.317.</p>
+                <a class="report-link" href="secaudits/2026-06-20-028-package-dev-file-leak-and-smackback-blindspot.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a029">
+                <div class="post-meta"><span class="post-date">June 20, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Auto File-Deletion Attack Surface</h2>
+                <p>A pre-emptive review of the attack surface around automatic file deletion. Confirmed the dangerous capability was never actually shipped; the review closed with no exploitable exposure on any live site.</p>
+                <a class="report-link" href="secaudits/2026-06-20-029-auto-file-deletion-attack-surface.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a027">
+                <div class="post-meta"><span class="post-date">June 19, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>SMACKBACK Unknown-File &amp; Cron-Verify Gap</h2>
+                <p>Two SMACKBACK gaps — how it handles unexpected files, and a timing gap in the scheduled verification pass. Both addressed; the only residual was a low-sensitivity information item handled operationally.</p>
+                <a class="report-link" href="secaudits/2026-06-19-027-smackback-unknown-file-and-cron-verify-gap.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a026">
+                <div class="post-meta"><span class="post-date">June 18, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Installer Constants &amp; Skin Attack Surface</h2>
+                <p>An installer self-breach around how configuration constants were written, alongside a review of the skin attack surface. Remediated, with the skin-side hardening folded into the manifest-only JavaScript policy.</p>
+                <a class="report-link" href="secaudits/2026-06-18-026-installer-constants-breach-and-skin-attack-surface.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a025">
+                <div class="post-meta"><span class="post-date">June 17, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Skin Inline-Script Manifest Bypass</h2>
+                <p>Skins could ship an inline script tag that slipped past the manifest-only JavaScript policy — the rule that keeps every install's scripts reviewed and accounted for. The last remaining carrier, Photogram's landing feed, was moved to a manifest-loaded engine file. Closed in 0.7.317.</p>
+                <a class="report-link" href="secaudits/2026-06-17-025-skin-js-direct-script-tag-manifest-bypass.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="amesh">
+                <div class="post-meta"><span class="post-date">June 15, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Mesh Roster Key Broadcast</h2>
+                <p>A review of the multisite mesh-roster key broadcast. The UI key exposure was fixed — keys now show once, then are hidden — and encryption of those keys at rest is a documented, accepted residual rather than a live hole.</p>
+                <a class="report-link" href="secaudits/2026-06-15-mesh-roster-key-broadcast.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a024a">
+                <div class="post-meta"><span class="post-date">June 12, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Imported-Caption XSS — Remediation</h2>
+                <p>The remediation record for a cross-site-scripting risk in captions brought in during import — confirming the fix landed and imported caption text is properly sanitized before it is ever displayed.</p>
+                <a class="report-link" href="secaudits/2026-06-12-024A-caption-xss-remediation-addendum.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a024">
+                <div class="post-meta"><span class="post-date">June 12, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>SYBU Recovery &amp; Unzucker Captions</h2>
+                <p>A review of the backup-recovery flows and Unzucker's caption handling. Findings resolved; the caption cross-site-scripting item is closed out in its own remediation addendum (024A above).</p>
+                <a class="report-link" href="secaudits/2026-06-12-024-sybu-recovery-and-unzucker-caption-changes.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a023">
+                <div class="post-meta"><span class="post-date">June 7, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Unzucker Attack Surface</h2>
+                <p>A full review of the Unzucker desktop importer's attack surface. The transport-layer findings are now moot: Unzucker moved to HTTPS with Bearer-token auth, removing the old FTP and cross-site-request surfaces entirely.</p>
+                <a class="report-link" href="secaudits/2026-06-07-023-unzucker-attack-surface.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
             <article class="post" id="a022">
                 <div class="post-meta"><span class="post-date">June 7, 2026</span><span class="post-tag">Closed</span></div>
                 <h2>Canonical-Schema Fetch Hardening</h2>
@@ -206,11 +288,26 @@ require_once __DIR__ . '/includes/header.php';
                 <a class="report-link" href="secaudits/2026-06-07-022-canonical-schema-fetch-hardening.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
             </article>
 
+            <article class="post" id="a209">
+                <div class="post-meta"><span class="post-date">June 5, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>SMACKBACK False-Positive Fix Review (0.7.209)</h2>
+                <p>A review tied to the 0.7.209 fix for SMACKBACK false-positive breach alerts. The release deliverables shipped clean; two follow-ups were flagged at the time, and the one that mattered for public installs — denying direct web access to the integrity manifest — is closed in 0.7.317.</p>
+                <a class="report-link" href="secaudits/2026-06-05-0.7.209-review.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
             <article class="post" id="a021a">
                 <div class="post-meta"><span class="post-date">June 4, 2026</span><span class="post-tag">Closed</span></div>
                 <h2>Hub/Spoke Attack Surface — Resolution</h2>
                 <p>The closing record for a deep review of the multisite hub-and-spoke attack surface — the machinery that lets one install manage a fleet of others. Every finding resolved, the bulk of them in 0.7.203.</p>
                 <a class="report-link" href="secaudits/2026-06-04-021A-hub-spoke-attack-surface-addendum.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+                <p class="report-refs">Underlying review: <a href="secaudits/2026-06-04-021-hub-spoke-attack-surface.pdf" target="_blank" rel="noopener">021</a>.</p>
+            </article>
+
+            <article class="post" id="a020">
+                <div class="post-meta"><span class="post-date">May 31, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>PUSH IT Hub-Controls Attack Surface</h2>
+                <p>A review of the PUSH IT hub controls — the fleet-wide action buttons that let a hub act on every spoke at once. Findings closed, with one accepted low-risk item documented.</p>
+                <a class="report-link" href="secaudits/2026-05-31-020-push-it-hub-controls-attack-surface.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
             </article>
 
             <article class="post" id="a019">
@@ -260,6 +357,13 @@ require_once __DIR__ . '/includes/header.php';
                 <h2>Installer Admin-Creation Bypass</h2>
                 <p>A leftover installer could be used to create a brand-new admin account on an already-installed site, sidestepping two-factor auth entirely. Closed in 0.7.157.</p>
                 <a class="report-link" href="secaudits/2026-05-19-013-installer-admin-creation-bypass.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a012">
+                <div class="post-meta"><span class="post-date">May 18, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Installer Step-5 CSRF Bypass</h2>
+                <p>A cross-site-request-forgery bypass in step 5 of the installer. Closed as part of the site-wide CSRF work recorded in the closure at the top of this page.</p>
+                <a class="report-link" href="secaudits/2026-05-18-012-installer-step5-csrf-bypass.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
             </article>
 
             <article class="post" id="a011">

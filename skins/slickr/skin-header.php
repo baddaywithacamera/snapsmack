@@ -137,14 +137,20 @@ $sl_czoom = max(100, min(300, (int)($settings['slickr_cover_zoom'] ?? 100))) / 1
                             <strong><?php echo number_format($sl_album_views); ?></strong>
                             <span>Album Views</span>
                         </div>
+                        <?php if ($sl_since_year > 0): ?>
+                            <div class="sl-stat">
+                                <strong><?php echo (int)$sl_since_year; ?></strong>
+                                <span>Launch Date</span>
+                            </div>
+                        <?php elseif ($sl_est !== ''): ?>
+                            <div class="sl-stat">
+                                <strong><?php echo htmlspecialchars($sl_est); ?></strong>
+                                <span>Launch Date</span>
+                            </div>
+                        <?php endif; ?>
                     </div>
                     <?php if ($sl_loc !== ''): ?>
                         <div class="sl-stat-line"><?php echo htmlspecialchars($sl_loc); ?></div>
-                    <?php endif; ?>
-                    <?php if ($sl_since_year > 0): ?>
-                        <div class="sl-stat-line">Active since <?php echo (int)$sl_since_year; ?></div>
-                    <?php elseif ($sl_est !== ''): ?>
-                        <div class="sl-stat-line">Joined <?php echo htmlspecialchars($sl_est); ?></div>
                     <?php endif; ?>
                 </div>
             </div>

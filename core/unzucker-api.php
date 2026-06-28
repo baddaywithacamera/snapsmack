@@ -677,12 +677,19 @@ if ($sub === 'gram/upload' && $method === 'POST') {
     uz_authoring_budget($pdo, 1);  // SECAUDIT Findings 1+4 — hourly image budget
     $finfo = new finfo(FILEINFO_MIME_TYPE);
 
-    $save_jpeg = function (array $file, string $dest_dir, string $name) use ($finfo): string {
+    // Originals may be JPEG, PNG or WebP — parity with smack-post-solo.php, which
+    // already decodes all three. Thumbnails stay strict JPEG: the client
+    // thumbnailer (snap_thumbs) always emits JPEG, and gram/post's $valid_thumb
+    // only trusts t_/a_*.jpe?g paths, so thumbs MUST be named .jpg regardless of
+    // the original's extension.
+    $IMG_MIME_EXT = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+
+    $save_strict_jpeg = function (array $file, string $dest_dir, string $name) use ($finfo): string {
         if ($file['error'] !== UPLOAD_ERR_OK) {
             uz_error(400, 'Upload error code ' . $file['error']);
         }
         if ($finfo->file($file['tmp_name']) !== 'image/jpeg') {
-            uz_error(400, 'Only JPEG images are accepted.');
+            uz_error(400, 'Thumbnails must be JPEG.');
         }
         if ($file['size'] > 20 * 1024 * 1024) {
             uz_error(400, 'File too large (max 20 MB).');
@@ -694,12 +701,27 @@ if ($sub === 'gram/upload' && $method === 'POST') {
         return $dest;
     };
 
-    // Sanitise the client filename.
-    $client_name = preg_replace('/[^a-z0-9_.-]/', '', strtolower(basename($_FILES['image']['name'])));
-    if (!preg_match('/\.jpe?g$/', $client_name) || strlen($client_name) > 120) {
-        $client_name = '';
+    // Validate the original and pin its stored extension to the detected content
+    // type (never trust the client-supplied extension).
+    if ($_FILES['image']['error'] !== UPLOAD_ERR_OK) {
+        uz_error(400, 'Upload error code ' . $_FILES['image']['error']);
     }
-    $filename = $client_name ?: (date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.jpg');
+    $orig_mime = $finfo->file($_FILES['image']['tmp_name']);
+    if (!isset($IMG_MIME_EXT[$orig_mime])) {
+        uz_error(400, 'Only JPEG, PNG or WebP images are accepted.');
+    }
+    if ($_FILES['image']['size'] > 20 * 1024 * 1024) {
+        uz_error(400, 'File too large (max 20 MB).');
+    }
+    $orig_ext = $IMG_MIME_EXT[$orig_mime];
+
+    // Sanitise just the client filename stem; force the real extension on.
+    $stem = preg_replace('/[^a-z0-9_.-]/', '', strtolower(basename($_FILES['image']['name'])));
+    $stem = preg_replace('/\.(jpe?g|png|webp)$/', '', $stem);
+    if ($stem === '' || strlen($stem) > 100) {
+        $stem = date('YmdHis') . '_' . bin2hex(random_bytes(4));
+    }
+    $filename = $stem . '.' . $orig_ext;
 
     $year_month = date('Y/m');
     $site_root  = dirname(__DIR__);
@@ -709,10 +731,15 @@ if ($sub === 'gram/upload' && $method === 'POST') {
     if (!is_dir($thumb_dir)) mkdir($thumb_dir, 0755, true);
 
     if (file_exists($dest_dir . '/' . $filename)) {
-        $filename = date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.jpg';
+        $filename = date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $orig_ext;
     }
-    $save_jpeg($_FILES['image'], $dest_dir, $filename);
-    $rel_image = 'img_uploads/' . $year_month . '/' . $filename;
+    if (!move_uploaded_file($_FILES['image']['tmp_name'], $dest_dir . '/' . $filename)) {
+        uz_error(500, 'Failed to save the image. Check img_uploads/ permissions.');
+    }
+    $rel_image  = 'img_uploads/' . $year_month . '/' . $filename;
+    // Thumbs are always t_/a_<stem>.jpg so they match gram/post's $valid_thumb
+    // pattern even when the original is .png/.webp.
+    $thumb_stem = pathinfo($filename, PATHINFO_FILENAME);
 
     $resp = ['status' => 'ok', 'path' => $rel_image,
              'thumb_square' => '', 'thumb_aspect' => ''];
@@ -720,12 +747,12 @@ if ($sub === 'gram/upload' && $method === 'POST') {
     // Client thumbs are mandatory in the tool; save them under the t_/a_ naming
     // the skins expect so the server can skip its own GD pass entirely.
     if (!empty($_FILES['thumb_square'])) {
-        $save_jpeg($_FILES['thumb_square'], $thumb_dir, 't_' . $filename);
-        $resp['thumb_square'] = 'img_uploads/' . $year_month . '/thumbs/t_' . $filename;
+        $save_strict_jpeg($_FILES['thumb_square'], $thumb_dir, 't_' . $thumb_stem . '.jpg');
+        $resp['thumb_square'] = 'img_uploads/' . $year_month . '/thumbs/t_' . $thumb_stem . '.jpg';
     }
     if (!empty($_FILES['thumb_aspect'])) {
-        $save_jpeg($_FILES['thumb_aspect'], $thumb_dir, 'a_' . $filename);
-        $resp['thumb_aspect'] = 'img_uploads/' . $year_month . '/thumbs/a_' . $filename;
+        $save_strict_jpeg($_FILES['thumb_aspect'], $thumb_dir, 'a_' . $thumb_stem . '.jpg');
+        $resp['thumb_aspect'] = 'img_uploads/' . $year_month . '/thumbs/a_' . $thumb_stem . '.jpg';
     }
 
     $dim = @getimagesize($dest_dir . '/' . $filename);
@@ -827,8 +854,8 @@ if ($sub === 'gram/post' && $method === 'POST') {
         foreach ($images as $seq => $im) {
             $path = trim($im['path'] ?? '');
             if ($path === '' || strlen($path) > 500) uz_error(400, "images[$seq].path invalid.");
-            if (!in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), ['jpg', 'jpeg'], true)) {
-                uz_error(400, "images[$seq].path must be a .jpg/.jpeg file.");
+            if (!in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'webp'], true)) {
+                uz_error(400, "images[$seq].path must be a .jpg/.jpeg/.png/.webp file.");
             }
             // SECAUDIT 2026-06-25 Finding 2: block directory traversal. The path
             // must be relative, contain no '..' or NUL, and resolve to a real

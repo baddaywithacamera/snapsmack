@@ -76,6 +76,7 @@ $_page_css_block = isset($page_css) && $page_css !== '' ? "\n" . $page_css . "\n
 
 :root {
     --red:       #D40000;
+    --link:      #F50A0A;   /* bright red — body/content text links */
     --black:     #111111;
     --dark-grey: #333333;
     --mid-grey:  #666666;
@@ -96,8 +97,8 @@ body {
     background: var(--white);
 }
 
-a { color: var(--dark-grey); text-decoration: none; transition: color 0.15s; }
-a:hover { color: var(--black); text-decoration: underline; }
+a { color: var(--link); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--red); text-decoration: underline; }
 
 img { display: block; max-width: 100%; height: auto; }
 

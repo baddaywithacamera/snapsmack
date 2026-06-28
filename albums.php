@@ -89,14 +89,14 @@ try {
     try { $pdo->exec("ALTER TABLE snap_albums ADD COLUMN IF NOT EXISTS `view_count` int NOT NULL DEFAULT 0"); } catch (Exception $e) {}
 
     $agg = $pdo->prepare("
-        SELECT a.id, a.album_name, a.album_description, a.cover_image_id, a.view_count,
+        SELECT a.id, a.album_name, a.album_description, a.featured_post_id, a.view_count,
                COUNT(i.id) AS img_count, MAX(i.img_date) AS latest_date
         FROM snap_albums a
         INNER JOIN snap_image_album_map m ON a.id = m.album_id
         INNER JOIN snap_images i ON m.image_id = i.id
             AND i.img_status = 'published'
             AND i.img_date <= ?
-        GROUP BY a.id, a.album_name, a.album_description, a.cover_image_id, a.view_count
+        GROUP BY a.id, a.album_name, a.album_description, a.featured_post_id, a.view_count
         ORDER BY latest_date DESC
     ");
     $agg->execute([$now_local]);
@@ -122,9 +122,12 @@ try {
             }
         }
 
-        // 2) Explicit cover overrides (snap_albums.cover_image_id), bulk-fetched.
+        // 2) Explicit cover overrides (snap_albums.featured_post_id — the column
+        //    the admin album editor AND the FLKR FCKR importer both write; the old
+        //    cover_image_id column was never populated, so every album fell through
+        //    to newest-image and shared cross-album photos collapsed to dup covers).
         $cover_ids = array_filter(array_map(
-            static fn($a) => (int)($a['cover_image_id'] ?? 0), $albums
+            static fn($a) => (int)($a['featured_post_id'] ?? 0), $albums
         ));
         $override = [];
         if ($cover_ids) {
@@ -142,7 +145,7 @@ try {
 
         // Merge cover fields onto each album (explicit override wins, else newest).
         foreach ($albums as &$a) {
-            $cid = (int)($a['cover_image_id'] ?? 0);
+            $cid = (int)($a['featured_post_id'] ?? 0);
             $cov = ($cid && isset($override[$cid]))
                  ? $override[$cid]
                  : ($cover_by_album[$a['id']] ?? null);

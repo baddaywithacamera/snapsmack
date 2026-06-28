@@ -290,9 +290,16 @@ class GramPoster:
         except Exception as e:
             return SyncResult(False, message=str(e))
 
-        if data.get("status") != "ok" or not data.get("post_id"):
+        post_id   = int(data.get("post_id") or 0)
+        split_ids = [int(x) for x in (data.get("split_post_ids") or [])]
+        # A draft whose images are ALL marked "post separately" produces no
+        # grouped post (post_id == 0) — the split singles ARE the result. Treat
+        # that as success instead of a false failure (and avoid a dup on retry).
+        if data.get("status") != "ok" or (not post_id and not split_ids):
             return SyncResult(False, message=data.get("error", "server did not confirm the post"))
-        return SyncResult(True, remote_post_id=int(data["post_id"]), message="Posted")
+        # Stash the fanned-out post ids so verify() can confirm each one.
+        draft._split_post_ids = split_ids
+        return SyncResult(True, remote_post_id=(post_id or split_ids[0]), message="Posted")
 
     def link_trigram(self, post_ids: List[int], orientation: str = "h") -> int:
         payload = {
@@ -314,26 +321,39 @@ class GramPoster:
     # Positive verification — the create call returns an explicit {status:'ok',
     # post_id}; we treat that server confirmation as the verify (and best-effort
     # pull the post back when an audit read is in scope).
-    def verify(self, draft: Draft) -> bool:
-        if not draft.remote_post_id:
-            return False
-        # Primary: pull the live post back via the dedicated verify route and
-        # confirm it matches the local draft (image count).
+    def _verify_one(self, post_id: int, expect_images: int) -> bool:
+        """Pull one live post back and confirm it exists with the expected image
+        count. Falls back to the audit list, then to trusting the explicit
+        server 'ok' rather than manufacturing a false failure."""
         try:
             r = self.conn.session.get(self.conn._api("unzucker/gram/verify"),
-                                      params={"post_id": draft.remote_post_id}, timeout=20)
+                                      params={"post_id": post_id}, timeout=20)
             if r.status_code == 200:
                 data = r.json()
                 if data.get("status") == "ok":
-                    return int(data.get("image_count", -1)) == len(draft.images)
+                    return int(data.get("image_count", -1)) == expect_images
             if r.status_code == 404:
                 return False  # server says the post isn't there — real failure
         except requests.RequestException:
             pass
         # Fallback: audit list, else trust the explicit server 'ok' from create
         # rather than manufacturing a false failure.
-        ok = _verify_by_post_id(self.conn, draft.remote_post_id)
+        ok = _verify_by_post_id(self.conn, post_id)
         return True if ok is None else ok
+
+    def verify(self, draft: Draft) -> bool:
+        if not draft.remote_post_id:
+            return False
+        # Split images each became their own single-image post; confirm every
+        # one. A grouped post (when present alongside splits) holds the rest.
+        split_ids = getattr(draft, "_split_post_ids", None) or []
+        if split_ids:
+            results = [self._verify_one(pid, 1) for pid in split_ids]
+            grouped_count = len(draft.images) - len(split_ids)
+            if draft.remote_post_id not in split_ids and grouped_count > 0:
+                results.append(self._verify_one(draft.remote_post_id, grouped_count))
+            return all(results)
+        return self._verify_one(draft.remote_post_id, len(draft.images))
 
 
 # ---------------------------------------------------------------------------

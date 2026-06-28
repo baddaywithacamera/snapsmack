@@ -88,6 +88,25 @@
     border-color: var(--accent, #999);
 }
 
+/* ── Optional filter dropdowns (category / album) ────────────────────────── */
+.ssfp-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 10px;
+}
+.ssfp-filter {
+    flex: 1 1 160px;
+    min-width: 140px;
+    padding: 7px 9px;
+    border: 1px solid var(--border, #3a3a3a);
+    border-radius: 3px;
+    background: var(--input-bg, var(--card-bg, #0d0d0d));
+    color: var(--text, #f0f0f0);
+    font-size: 0.85rem;
+}
+.ssfp-filter:focus { outline: none; border-color: var(--accent, #999); }
+
 /* ── Grid of post tiles ──────────────────────────────────────────────────── */
 
 .ssfp-grid {

@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.318 — "Box Seat" (2026-06-28)
+
+- Album cover thumbnails no longer repeat across different albums. The public album grid was reading `snap_albums.cover_image_id` — a column nothing ever populates — so every album fell back to "newest image," and since a photo can live in several albums, one recent shared image became the cover for all of them. The grid now reads `featured_post_id` (the column the admin album editor and the FLKR FCKR importer both write), so designated and imported covers are honoured — and manually set album covers now actually show.
+- The admin "Select Featured Image" picker (Albums) gains Category and Album filter dropdowns — narrow the grid by either or both alongside the text search. Built into the shared picker engine generically, so other pages that use it are unaffected.
+
+- GRAMOFSMACK offline posting (BATCH, PLEASE / Son of a Batch) now accepts PNG and WebP originals, not just JPEG — bringing the gram authoring API to parity with the solo poster, which already handled all three. The `unzucker/gram/upload` route validates the original by its true content type and stores it with the correct extension; `unzucker/gram/post` accepts the matching paths. Thumbnails remain JPEG and are always named `.jpg` so they continue to match the server's trusted-thumb check regardless of the original's format.
+- Fixed a false "server did not confirm the post" failure when every image in a gram post was marked "post separately" (split). The server creates each split image as its own single post and returns them as `split_post_ids`; the poster now treats that as success and positively verifies each created post, preventing a duplicate post on retry.
+
 ## 0.7.317 — "Catbird Seat" (2026-06-27)
 
 - Collections page fixed: it was showing "No collections published yet" even when published collections existed. The cover query referenced a column that does not exist (sort_order on snap_post_images, which is actually sort_position), threw, and a silent catch masked the error as an empty list. The column is corrected, the same bug is fixed in the Oh Snap! API, and the catch now logs the real cause instead of swallowing it.
