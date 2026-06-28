@@ -438,7 +438,6 @@ function smackback_should_monitor(string $abs_path): bool {
     // ─── Excluded directories ───────────────────────────────────────────────
     $excluded_dirs = [
         'uploads/',
-        'smack-central/',
         'reference/',
         'node_modules/',
         'vendor/',
@@ -468,6 +467,14 @@ function smackback_should_monitor(string $abs_path): bool {
         // out of SMACKBACK's core scope (see project_smackback_false_breach_lockout).
         'skins/',
     ];
+    // smack-central/ is release-packaging staging that exists ONLY on the Smack
+    // Central host (identified by its private signing config, sc-config.php). On
+    // any real install — hub or spoke — its presence is leaked central code and
+    // SHOULD trip the alarm, exactly like forum-server/ above (secaudit 028
+    // Finding B). Keep it excluded only on the SC host itself, where it's legit.
+    if (is_file($root . '/smack-central/sc-config.php')) {
+        $excluded_dirs[] = 'smack-central/';
+    }
     foreach ($excluded_dirs as $dir) {
         if (strpos($rel, $dir) === 0) {
             return false;

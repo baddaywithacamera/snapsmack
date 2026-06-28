@@ -315,53 +315,8 @@ try {
 </div><!-- /.pg-content -->
 </div><!-- /#pg-app -->
 
-<script>
-(function () {
-    'use strict';
-    var sentinel = document.getElementById('pg-grid-sentinel');
-    var grid     = document.getElementById('pg-grid');
-    if (!sentinel || !grid) return;
-
-    var loading = false;
-
-    function loadNext() {
-        if (loading || sentinel.dataset.hasMore === '0') return;
-        loading = true;
-        sentinel.className = 'pg-feed-sentinel pg-feed-loading';
-
-        var page = parseInt(sentinel.dataset.page, 10) || 2;
-        fetch('?format=json&p=' + page)
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                if (data.html) {
-                    var tmp = document.createElement('div');
-                    tmp.innerHTML = data.html;
-                    while (tmp.firstChild) grid.appendChild(tmp.firstChild);
-                }
-                sentinel.dataset.page     = page + 1;
-                sentinel.dataset.hasMore  = data.has_more ? '1' : '0';
-                sentinel.className        = data.has_more
-                    ? 'pg-feed-sentinel pg-feed-loading'
-                    : 'pg-feed-sentinel pg-feed-end';
-                loading = false;
-            })
-            .catch(function () {
-                loading = false;
-                sentinel.className = 'pg-feed-sentinel';
-            });
-    }
-
-    if ('IntersectionObserver' in window) {
-        var observer = new IntersectionObserver(function (entries) {
-            if (entries[0].isIntersecting) loadNext();
-        }, { rootMargin: '300px' });
-        observer.observe(sentinel);
-    } else {
-        // Fallback: load all at once for older browsers
-        loadNext();
-    }
-}());
-</script>
-
+<?php /* Infinite-scroll JS externalised to assets/js/ss-engine-photogram-feed.js
+        (manifest handle 'smack-photogram-feed', loaded by skin-footer.php).
+        No inline script tags here — manifest-only JS policy, secaudit 025 S1. */ ?>
 <?php include __DIR__ . '/skin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

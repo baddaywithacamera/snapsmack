@@ -699,6 +699,11 @@ return [
             'path'         => 'assets/js/ss-engine-photogram.js',
             'has_settings' => false,
         ],
+        'smack-photogram-feed' => [
+            'label'        => 'Photogram Feed (landing infinite-scroll grid)',
+            'path'         => 'assets/js/ss-engine-photogram-feed.js',
+            'has_settings' => false,
+        ],
         'smack-mosaic' => [
             'label'        => 'Mosaic Engine (Tiled image panels via [mosaic:ID] shortcode)',
             'path'         => 'assets/js/ss-engine-mosaic.js',

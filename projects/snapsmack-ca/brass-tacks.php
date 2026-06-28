@@ -20,7 +20,8 @@ $nav_active       = 'brass-tacks';
 
 $page_css = <<<'CSS'
 /* ─── BRASS TACKS — FAQ LAYOUT ────────────────────────────────────────────── */
-.intro-body { max-width: 820px; padding: 56px 0 8px; }
+.page-header { padding-bottom: 32px; }
+.intro-body { max-width: 820px; padding: 24px 0 8px; }
 .intro-body p { margin-bottom: 1.4em; max-width: 72ch; }
 .slang {
     background: var(--light-grey);

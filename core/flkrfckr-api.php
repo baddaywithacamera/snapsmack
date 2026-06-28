@@ -553,8 +553,32 @@ if ($sub === 'albums/cover' && $method === 'POST') {
     $img = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$img) {
-        // Cover photo not imported (excluded/missing) — leave the album as-is.
-        flkrfckr_ok(['album_id' => $album_id, 'cover_set' => false, 'reason' => 'cover photo not found']);
+        // Designated Flickr cover wasn't imported (excluded/missing). Do NOT leave
+        // the album coverless — that is precisely what made every cover-less album
+        // fall through to the same shared default image (the duplicate-covers bug).
+        // Instead pick the album's OWN most-viewed published image, so every album
+        // always gets a real, distinct cover drawn from its own contents.
+        $fb = $pdo->prepare("
+            SELECT m.image_id
+            FROM snap_image_album_map m
+            INNER JOIN snap_images i ON i.id = m.image_id AND i.img_status = 'published'
+            LEFT JOIN snap_stats s ON s.image_id = m.image_id AND s.is_bot = 0
+            WHERE m.album_id = ?
+            GROUP BY m.image_id
+            ORDER BY COUNT(s.id) DESC, MAX(i.img_view_seed) DESC, MAX(i.img_date) DESC, MAX(i.id) DESC
+            LIMIT 1
+        ");
+        $fb->execute([$album_id]);
+        $fb_id = (int)($fb->fetchColumn() ?: 0);
+
+        if ($fb_id > 0) {
+            $pdo->prepare("UPDATE snap_albums SET featured_post_id = ? WHERE id = ?")
+                ->execute([$fb_id, $album_id]);
+            flkrfckr_ok(['album_id' => $album_id, 'featured_post_id' => $fb_id, 'cover_set' => true, 'reason' => 'designated cover not imported — fell back to album most-viewed']);
+        } else {
+            // Genuinely empty album (no published members) — nothing to show.
+            flkrfckr_ok(['album_id' => $album_id, 'cover_set' => false, 'reason' => 'cover photo not found and album has no published images']);
+        }
     } else {
         $pdo->prepare("UPDATE snap_albums SET featured_post_id = ? WHERE id = ?")
             ->execute([(int)$img['id'], $album_id]);

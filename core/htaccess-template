@@ -59,7 +59,7 @@ RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
 </IfModule>
 
 # ─── BLOCK SENSITIVE FILES ───────────────────────────────────
-<FilesMatch "(^\.ht|\.sql$|\.log$|\.bak$|\.inc$|\.sh$|\.env$)">
+<FilesMatch "(^\.ht|\.sql$|\.log$|\.bak$|\.inc$|\.sh$|\.env$|^smackback-manifest\.json$)">
     Order Allow,Deny
     Deny from all
 </FilesMatch>
