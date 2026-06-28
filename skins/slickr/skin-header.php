@@ -58,6 +58,18 @@ $_pc = $pdo->prepare("SELECT COUNT(*) FROM snap_images WHERE img_status = 'publi
 $_pc->execute([$sl_now]);
 $sl_count = (int)$_pc->fetchColumn();
 
+// ── Brag stats (SLICKR only) ────────────────────────────────────────────────
+// Slickr is the Flickr-refugee skin, so the masthead shows LIFETIME totals as
+// bragging rights: imported Flickr history (img_view_seed) + native SnapSmack
+// traffic (snap_stats), combined. Admin/hub/spoke dashboards stay native-only /
+// since-install — this public aggregate never feeds those.
+$sl_seed_views   = (int)$pdo->query("SELECT COALESCE(SUM(img_view_seed),0) FROM snap_images WHERE img_status='published'")->fetchColumn();
+$sl_native_views = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE is_bot=0 AND image_id IS NOT NULL")->fetchColumn();
+$sl_total_views  = $sl_seed_views + $sl_native_views;
+$sl_album_views  = (int)$pdo->query("SELECT COALESCE(SUM(view_count),0) FROM snap_albums")->fetchColumn();
+$_since_year     = $pdo->query("SELECT MIN(YEAR(img_date)) FROM snap_images WHERE img_status='published' AND img_date >= '1990-01-01'")->fetchColumn();
+$sl_since_year   = $_since_year ? (int)$_since_year : 0;
+
 // ── Avatar (same source as The Grid) ───────────────────────────────────────
 $_av           = $settings['skin_avatar'] ?? '';
 $sl_av_exists  = $_av && file_exists(dirname(__DIR__, 2) . '/' . $_av);
@@ -112,14 +124,26 @@ $sl_czoom = max(100, min(300, (int)($settings['slickr_cover_zoom'] ?? 100))) / 1
                     <?php endif; ?>
                 </div>
                 <div class="sl-profile-stats">
-                    <div class="sl-stat">
-                        <strong><?php echo number_format($sl_count); ?></strong>
-                        <span>Photo<?php echo $sl_count !== 1 ? 's' : ''; ?></span>
+                    <div class="sl-stat-row">
+                        <div class="sl-stat">
+                            <strong><?php echo number_format($sl_count); ?></strong>
+                            <span>Photo<?php echo $sl_count !== 1 ? 's' : ''; ?></span>
+                        </div>
+                        <div class="sl-stat">
+                            <strong><?php echo number_format($sl_total_views); ?></strong>
+                            <span>View<?php echo $sl_total_views !== 1 ? 's' : ''; ?></span>
+                        </div>
+                        <div class="sl-stat">
+                            <strong><?php echo number_format($sl_album_views); ?></strong>
+                            <span>Album Views</span>
+                        </div>
                     </div>
                     <?php if ($sl_loc !== ''): ?>
                         <div class="sl-stat-line"><?php echo htmlspecialchars($sl_loc); ?></div>
                     <?php endif; ?>
-                    <?php if ($sl_est !== ''): ?>
+                    <?php if ($sl_since_year > 0): ?>
+                        <div class="sl-stat-line">Active since <?php echo (int)$sl_since_year; ?></div>
+                    <?php elseif ($sl_est !== ''): ?>
                         <div class="sl-stat-line">Joined <?php echo htmlspecialchars($sl_est); ?></div>
                     <?php endif; ?>
                 </div>

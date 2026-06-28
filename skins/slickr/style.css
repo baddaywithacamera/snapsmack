@@ -401,7 +401,7 @@ a:hover { color: var(--sl-link-hover); }
   inset: 0;
   /* transparent up top, deepening to near-opaque at the bottom so the
      overlaid white profile text stays readable over any photo. */
-  background: linear-gradient(to bottom, rgba(0,0,0,0) 18%, rgba(0,0,0,.45) 62%, rgba(0,0,0,.82) 100%);
+  background: linear-gradient(to bottom, rgba(0,0,0,0) 18%, rgba(0,0,0,.27) 62%, rgba(0,0,0,.49) 100%);
   pointer-events: none;
 }
 /* Profile sits IN the gradient at the bottom of the cover (Flickr idiom) */
@@ -449,6 +449,8 @@ a:hover { color: var(--sl-link-hover); }
 
 /* Stats — right side, white over the gradient */
 .sl-profile-stats { text-align: right; flex-shrink: 0; padding-bottom: 4px; color: #fff; }
+.sl-stat-row { display: flex; gap: 26px; justify-content: flex-end; flex-wrap: wrap; }
+.sl-stat-row .sl-stat { text-align: right; }
 .sl-stat strong { display: block; font-size: 22px; font-weight: 700; line-height: 1.1; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.55); }
 .sl-stat span { font-size: 11px; color: rgba(255,255,255,.8); text-transform: uppercase; letter-spacing: .05em; }
 .sl-stat-line { font-size: 13px; color: rgba(255,255,255,.82); margin-top: 4px; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
@@ -596,6 +598,7 @@ a:hover { color: var(--sl-link-hover); }
   font-size: 13px;
   line-height: 1.6;
   color: #bbbbbb;
+  text-align: center;
 }
 #system-footer .footer-link { color: #ffffff; }
 #system-footer .footer-link:hover { color: #ffffff; text-decoration: underline; }
