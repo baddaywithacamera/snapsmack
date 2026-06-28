@@ -167,7 +167,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                 <?php if ($featured): ?>
                     <div class="collection-hero">
                         <a href="<?php echo BASE_URL . htmlspecialchars($featured['img_slug'] ?? ''); ?>">
-                            <img src="<?php echo BASE_URL . 'img_uploads/' . htmlspecialchars($featured['img_file'] ?? ''); ?>"
+                            <img src="<?php echo BASE_URL . htmlspecialchars(ltrim($featured['img_file'] ?? '', '/')); ?>"
                                  alt="<?php echo htmlspecialchars($featured['img_title'] ?? $collection['title']); ?>"
                                  class="collection-hero-img">
                         </a>
@@ -183,7 +183,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                             $href  = BASE_URL . htmlspecialchars($m['slug'] ?? '');
                         ?>
                             <a class="collection-tile" href="<?php echo $href; ?>">
-                                <img src="<?php echo BASE_URL . 'img_uploads/' . htmlspecialchars($thumb); ?>"
+                                <img src="<?php echo BASE_URL . htmlspecialchars(ltrim($thumb, '/')); ?>"
                                      alt="<?php echo htmlspecialchars($m['title'] ?? ''); ?>"
                                      loading="lazy">
                                 <span class="collection-tile-title"><?php echo htmlspecialchars($m['title'] ?? ''); ?></span>

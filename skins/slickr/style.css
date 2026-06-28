@@ -229,14 +229,47 @@ a:hover { color: var(--sl-link-hover); }
   flex: 1 1 auto;
   min-height: 0;
 }
-/* Navbar sits at the bottom of the first viewport. */
+/* Navbar bar — sits below the photo (DOM order; the footer follows it). Layout
+   borrowed from 50-shades, recoloured for SLICKR's light theme. */
 .sl-single-flow #infobox {
   flex: 0 0 auto;
-  order: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: 0 16px;
+  background: #fafafa;
+  border-top: 1px solid var(--sl-header-border);
+  border-bottom: 1px solid var(--sl-header-border);
 }
+.sl-single-flow #infobox .nav-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sl-single-flow #infobox .nav-links .left,
+.sl-single-flow #infobox .nav-links .center,
+.sl-single-flow #infobox .nav-links .right {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+}
+.sl-single-flow #infobox .nav-links a {
+  color: var(--sl-text-primary);
+  font-weight: 600;
+  text-decoration: none;
+  padding: 6px 0;
+  transition: color .15s;
+}
+.sl-single-flow #infobox .nav-links a:hover { color: var(--sl-link); }
+.sl-single-flow #infobox .nav-links .dim { color: var(--sl-text-secondary); font-weight: 600; }
+.sl-single-flow #infobox .nav-links .sep { color: var(--sl-header-border); }
+
 /* The drawer (starts hidden via JS) and its panes. */
 .sl-single-flow #footer {
-  order: 4;
   display: none;            /* ss-engine-footer.js also sets this on load */
   background: #ffffff;
   border-top: 1px solid var(--sl-header-border);
@@ -254,6 +287,37 @@ a:hover { color: var(--sl-link-hover); }
 }
 .sl-single-flow .sl-comments-region { margin-top: 0; }
 .sl-comments-closed { color: var(--sl-text-secondary); font-size: 14px; }
+
+/* Comment form (core ss-community component) recoloured for SLICKR's light theme. */
+.sl-single-flow .ss-comment-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--sl-header-border);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--sl-text-primary);
+  font-family: var(--sl-font-stack);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 48px;
+}
+.sl-single-flow .ss-comment-textarea:focus { outline: none; border-color: var(--sl-link); }
+.sl-single-flow .ss-comment-submit,
+.sl-single-flow .ss-comment-cancel {
+  padding: 8px 18px;
+  border-radius: 4px;
+  border: 1px solid var(--sl-header-border);
+  font-family: var(--sl-font-stack);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.sl-single-flow .ss-comment-submit {
+  background: var(--sl-link); border-color: var(--sl-link); color: #fff;
+}
+.sl-single-flow .ss-comment-submit:hover { background: var(--sl-link-hover); border-color: var(--sl-link-hover); }
+.sl-single-flow .ss-comment-cancel { background: #fff; color: var(--sl-text-secondary); }
 
 /* Below-image split: main column + sidebar (legacy — retained for reference) */
 .sl-focus-container {
