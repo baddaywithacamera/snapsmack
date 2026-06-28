@@ -1,0 +1,200 @@
+/*
+ * SNAPSMACK.CA — Site Styles
+ * Extracted from includes/header.php (was an inline <style> block).
+ * Per-page CSS still injects via $page_css in header.php.
+ *
+ * SNAPSMACK_EOF_HEADER
+ *   Last non-empty line of this file MUST be the CSS EOF marker:
+ *   slash-star, five equals, space, SNAPSMACK EOF, space, five equals, star-slash.
+ *   Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+/* --- RESET & BASE --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --red:       #D40000;
+    --link:      #F50A0A;   /* bright red — body/content text links */
+    --black:     #111111;
+    --dark-grey: #333333;
+    --mid-grey:  #666666;
+    --light-grey:#f4f4f4;
+    --border:    #ddd;
+    --white:     #ffffff;
+    --max:       1100px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 17px;
+    line-height: 1.7;
+    zoom: 1.25;
+    color: var(--dark-grey);
+    background: var(--white);
+}
+
+a { color: var(--link); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--red); text-decoration: underline; }
+
+img { display: block; max-width: 100%; height: auto; }
+
+/* --- LAYOUT --- */
+.wrap { max-width: var(--max); margin: 0 auto; padding: 0 32px; }
+section { padding: 72px 0; }
+section + section { border-top: 1px solid var(--border); }
+
+/* --- TYPOGRAPHY --- */
+h1, h2, h3 {
+    font-family: Arial Black, Arial, sans-serif;
+    line-height: 1.1;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: clamp(2.4rem, 5vw, 4rem);
+    color: var(--black);
+    margin-bottom: 24px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+}
+h1 span { color: var(--red); }
+h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); color: var(--red); margin-bottom: 24px; }
+h3 { font-size: 1.05rem; color: var(--black); margin-bottom: 8px; letter-spacing: 0.03em; }
+p { margin-bottom: 1.4em; }
+p:last-child { margin-bottom: 0; }
+.lede { font-size: 1.15rem; color: var(--mid-grey); max-width: 680px; }
+
+/* --- MAIN HEADER --- */
+#site-header { background: var(--white); border-bottom: 3px solid var(--red); padding: 28px 0 24px; }
+
+/* --- MINI HEADER --- */
+#mini-header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-bottom: 2px solid rgba(212,0,0,0.5);
+    padding: 8px 0;
+    transform: translateY(-100%); opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+#mini-header.visible { transform: translateY(0); opacity: 1; }
+.mini-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    max-width: var(--max); margin: 0 auto; padding: 0 32px;
+}
+.mini-inner a.mini-logo img { display: block; width: 38px; height: auto; }
+#mini-header nav { column-gap: 24px; row-gap: 6px; }
+#mini-header nav a { font-size: 0.75rem; }
+
+.header-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 40px; max-width: var(--max); margin: 0 auto; padding: 0 32px;
+}
+.logo-lockup { display: flex; align-items: center; gap: 20px; text-decoration: none; }
+.logo-lockup:hover { text-decoration: none; }
+.logo-lockup img { width: 90px; height: auto; flex-shrink: 0; }
+.logo-text .snap {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 900;
+    text-transform: uppercase; letter-spacing: -0.03em; line-height: 1;
+}
+.logo-text .snap em { color: var(--red); font-style: normal; }
+.logo-text .snap strong { color: var(--black); font-weight: 900; }
+.logo-text .tagline {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: clamp(0.65rem, 1.5vw, 0.85rem); font-weight: 900;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--dark-grey); margin-top: 4px;
+}
+.logo-text .tagline em { color: var(--red); font-style: normal; }
+
+/* --- NAVIGATION --- */
+nav {
+    display: grid; grid-template-columns: repeat(4, auto);
+    column-gap: 20px; row-gap: 8px;
+    margin-left: auto; text-align: right;
+    align-items: start; justify-items: end;
+}
+nav a {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: 0.74rem; font-weight: 900; text-transform: uppercase;
+    letter-spacing: 0.03em; color: var(--dark-grey);
+    text-decoration: none; position: relative; padding-bottom: 4px;
+    transition: color 0.15s;
+}
+nav a::after {
+    content: ''; position: absolute; bottom: 0; left: 0;
+    width: 0; height: 2px; background: var(--red); transition: width 0.3s ease;
+}
+nav a:hover { color: var(--black); text-decoration: none; }
+nav a:hover::after { width: 100%; }
+nav a.active { color: var(--black); }
+nav a.active::after { width: 100%; }
+
+/* --- SUBPAGE SHARED --- */
+.page-header { padding: 80px 0 64px; border-bottom: 1px solid var(--border); }
+.page-header h1 { margin-bottom: 12px; }
+.page-body { max-width: 820px; padding: 64px 0 96px; }
+.page-body ul { margin: 0 0 1.4em 1.5em; }
+.page-body ul li { margin-bottom: 0.6em; }
+.callout {
+    background: var(--light-grey); border-left: 4px solid var(--red);
+    padding: 20px 24px; margin: 32px 0; font-size: 0.97rem;
+}
+.callout p { margin-bottom: 0.8em; }
+.callout p:last-child { margin-bottom: 0; }
+.updated {
+    font-family: Arial, sans-serif; font-size: 0.8rem; color: var(--mid-grey);
+    letter-spacing: 0.04em; margin-top: 56px; padding-top: 24px;
+    border-top: 1px solid var(--border);
+}
+
+/* --- FOOTER --- */
+#site-footer { background: var(--black); border-top: 3px solid var(--red); padding: 32px 0; }
+.footer-copy {
+    font-family: 'Courier New', monospace; font-size: 0.68rem; color: #aaa;
+    letter-spacing: 0.04em; line-height: 1; margin: 0; text-align: center;
+}
+.footer-copy a { color: var(--white); text-decoration: none; }
+.footer-copy a:hover { text-decoration: underline; }
+
+/* --- HEADER VERSION BADGES --- */
+.header-right {
+    display: flex; align-items: flex-start; gap: 24px;
+    margin-left: auto;
+}
+.header-build-badges {
+    display: flex; flex-direction: column; gap: 5px; align-items: flex-end;
+    flex-shrink: 0;
+}
+.header-badge {
+    display: flex; align-items: center; gap: 0;
+    font-family: 'Courier New', monospace;
+    font-size: 0.62rem; font-weight: 700;
+    letter-spacing: 0.04em; border-radius: 3px; overflow: hidden;
+    white-space: nowrap;
+}
+.header-badge-track {
+    padding: 3px 7px;
+    text-transform: uppercase;
+    color: #fff;
+}
+.header-badge-ver {
+    padding: 3px 7px;
+    background: var(--black);
+    color: #fff;
+    text-transform: uppercase;
+}
+.header-badge--boring .header-badge-track  { background: #555; }
+.header-badge--bitchin .header-badge-track { background: var(--red); }
+
+@media (max-width: 700px) {
+    nav { column-gap: 16px; }
+    nav a { font-size: 0.7rem; }
+    .header-build-badges { display: none; }
+}
+
+/* ===== SNAPSMACK EOF ===== */
