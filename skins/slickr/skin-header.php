@@ -63,10 +63,36 @@ $sl_count = (int)$_pc->fetchColumn();
 // bragging rights: imported Flickr history (img_view_seed) + native SnapSmack
 // traffic (snap_stats), combined. Admin/hub/spoke dashboards stay native-only /
 // since-install — this public aggregate never feeds those.
-$sl_seed_views   = (int)$pdo->query("SELECT COALESCE(SUM(img_view_seed),0) FROM snap_images WHERE img_status='published'")->fetchColumn();
-$sl_native_views = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE is_bot=0 AND image_id IS NOT NULL")->fetchColumn();
-$sl_total_views  = $sl_seed_views + $sl_native_views;
-$sl_album_views  = (int)$pdo->query("SELECT COALESCE(SUM(view_count),0) FROM snap_albums")->fetchColumn();
+// Imported Flickr baseline view counts, stored in snap_settings from the Flickr
+// stats page (see the seed SQL). These capture views on photos/albums since DELETED
+// on Flickr, which the per-photo seed can't reconstruct. Read straight from the
+// table so it works no matter how $settings is assembled; fall back to the live
+// sums when a seed is unset.
+$_seed_rows = $pdo->query(
+    "SELECT setting_key, setting_val FROM snap_settings WHERE setting_key LIKE 'flickr_seed_%'"
+)->fetchAll(PDO::FETCH_KEY_PAIR);
+$_seed = function (string $k, int $fallback = 0) use ($_seed_rows): int {
+    return isset($_seed_rows[$k]) && $_seed_rows[$k] !== '' ? (int)$_seed_rows[$k] : $fallback;
+};
+$_sum_img_seed   = (int)$pdo->query("SELECT COALESCE(SUM(img_view_seed),0) FROM snap_images WHERE img_status='published'")->fetchColumn();
+$_sum_album_seed = (int)$pdo->query("SELECT COALESCE(SUM(view_count),0) FROM snap_albums")->fetchColumn();
+
+$sl_seed_photo   = $_seed('flickr_seed_photo_views',       $_sum_img_seed);
+$sl_seed_stream  = $_seed('flickr_seed_photostream_views', 0);
+$sl_seed_album   = $_seed('flickr_seed_album_views',       $_sum_album_seed);
+$sl_seed_collect = $_seed('flickr_seed_collection_views',  0);
+$sl_seed_gallery = $_seed('flickr_seed_gallery_views',     0);
+
+// Native SnapSmack traffic since launch (bot-filtered).
+$sl_native_image  = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE is_bot=0 AND image_id IS NOT NULL")->fetchColumn();
+$sl_native_stream = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE is_bot=0 AND image_id IS NULL AND page_type IN ('archive','landing')")->fetchColumn();
+$sl_native_all    = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE is_bot=0")->fetchColumn();
+
+// Display buckets = Flickr baseline + native since launch.
+$sl_total_views  = $sl_seed_photo  + $sl_native_image;   // headline "VIEWS" (photo views, Flickr + local)
+$sl_stream_views = $sl_seed_stream + $sl_native_stream;  // photostream / feed views
+$sl_album_views  = $sl_seed_album;                       // album page views not yet tracked natively
+$sl_grand_total  = ($sl_seed_photo + $sl_seed_stream + $sl_seed_album + $sl_seed_collect + $sl_seed_gallery) + $sl_native_all;
 $_since_year     = $pdo->query("SELECT MIN(YEAR(img_date)) FROM snap_images WHERE img_status='published' AND img_date >= '1990-01-01'")->fetchColumn();
 $sl_since_year   = $_since_year ? (int)$_since_year : 0;
 
@@ -134,8 +160,16 @@ $sl_czoom = max(100, min(300, (int)($settings['slickr_cover_zoom'] ?? 100))) / 1
                             <span>View<?php echo $sl_total_views !== 1 ? 's' : ''; ?></span>
                         </div>
                         <div class="sl-stat">
+                            <strong><?php echo number_format($sl_stream_views); ?></strong>
+                            <span>Photostream Views</span>
+                        </div>
+                        <div class="sl-stat">
                             <strong><?php echo number_format($sl_album_views); ?></strong>
                             <span>Album Views</span>
+                        </div>
+                        <div class="sl-stat">
+                            <strong><?php echo number_format($sl_grand_total); ?></strong>
+                            <span>Total Views</span>
                         </div>
                         <?php if ($sl_since_year > 0): ?>
                             <div class="sl-stat">

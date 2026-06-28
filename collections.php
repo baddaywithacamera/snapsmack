@@ -168,7 +168,7 @@ $sort_labels = [
                         ?>
                             <a class="collections-tile" href="<?php echo $href; ?>">
                                 <?php if ($thumb): ?>
-                                    <img src="<?php echo BASE_URL . 'img_uploads/' . htmlspecialchars($thumb); ?>"
+                                    <img src="<?php echo BASE_URL . htmlspecialchars(ltrim($thumb, '/')); ?>"
                                          alt="<?php echo htmlspecialchars($c['title']); ?>"
                                          loading="lazy"
                                          class="collections-tile-img">
