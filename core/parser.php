@@ -524,12 +524,23 @@ class SnapSmack {
                 $align = $matches[3] ?? 'center';
 
                 // --- ASSET LOOKUP (PRIORITY 1) ---
-                // Try media assets first (smack-media.php uploads)
-                $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name FROM snap_assets WHERE id = ? LIMIT 1");
-                $stmt->execute([$id]);
-                $asset = $stmt->fetch();
+                // Try media assets first (smack-media.php uploads). The global
+                // per-asset border (width + colour) rides along on this existing
+                // SELECT — zero extra queries, applied everywhere [img:ID] renders.
+                // Fallback SELECT (no border cols) protects blogs where the schema
+                // sync hasn't added the columns yet — avoids an Unknown-column fatal.
+                try {
+                    $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name, asset_border_width as bw, asset_border_color as bc FROM snap_assets WHERE id = ? LIMIT 1");
+                    $stmt->execute([$id]);
+                    $asset = $stmt->fetch();
+                } catch (\PDOException $e) {
+                    $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name FROM snap_assets WHERE id = ? LIMIT 1");
+                    $stmt->execute([$id]);
+                    $asset = $stmt->fetch();
+                }
 
                 // --- FALLBACK TO SNAP_IMAGES (PRIORITY 2) ---
+                // snap_images has no border columns; defaults leave it borderless.
                 if (!$asset) {
                     $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name FROM snap_images WHERE id = ? LIMIT 1");
                     $stmt->execute([$id]);
@@ -537,6 +548,14 @@ class SnapSmack {
                 }
 
                 if (!$asset) return "";
+
+                // --- GLOBAL BORDER (per-asset) ---
+                $bw = max(0, min(10, (int)($asset['bw'] ?? 0)));
+                $bc = $asset['bc'] ?? '#000000';
+                if (!preg_match('/^#[0-9a-fA-F]{6}$/', (string)$bc)) {
+                    $bc = '#000000';
+                }
+                $border_css = $bw > 0 ? sprintf('border:%dpx solid %s;', $bw, $bc) : '';
 
                 // Determine base URL from environment or config
                 $base     = defined('BASE_URL') ? BASE_URL : (rtrim($this->config['site_url'] ?? '/', '/') . '/');
@@ -559,12 +578,13 @@ class SnapSmack {
                 $classes      = "snap-framed-img asset-$size align-$align";
 
                 return sprintf(
-                    '<div class="snap-inline-frame align-%s"><div class="ip-ascii-frame-inner"><img src="%s" class="%s" alt="%s" loading="lazy" data-lightbox-src="%s" style="cursor:zoom-in"></div></div>',
+                    '<div class="snap-inline-frame align-%s"><div class="ip-ascii-frame-inner"><img src="%s" class="%s" alt="%s" loading="lazy" data-lightbox-src="%s" style="cursor:zoom-in;%s"></div></div>',
                     $align,
                     $full_src,
                     $classes,
                     htmlspecialchars($asset['name']),
-                    htmlspecialchars($full_url)
+                    htmlspecialchars($full_url),
+                    $border_css
                 );
             },
             $content

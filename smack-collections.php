@@ -79,9 +79,9 @@ if ($is_ajax && !empty($_POST['action'])) {
         // Mark already-added items
         $already = [];
         if ($coll_id > 0) {
-            $ai = $pdo->prepare("SELECT image_id FROM snap_collection_items WHERE collection_id=?");
+            $ai = $pdo->prepare("SELECT item_id FROM snap_collection_items WHERE collection_id=? AND item_type='image'");
             $ai->execute([$coll_id]);
-            $already = array_column($ai->fetchAll(PDO::FETCH_ASSOC), 'image_id');
+            $already = array_column($ai->fetchAll(PDO::FETCH_ASSOC), 'item_id');
         }
         foreach ($items as &$it) { $it['added'] = in_array($it['id'], $already); }
 
@@ -120,12 +120,14 @@ if ($is_ajax && !empty($_POST['action'])) {
             exit;
         }
 
-        $max = $pdo->prepare("SELECT COALESCE(MAX(position),0)+1 FROM snap_collection_items WHERE collection_id=?");
+        $max = $pdo->prepare("SELECT COALESCE(MAX(sort_order),0)+1 FROM snap_collection_items WHERE collection_id=? AND item_type='image'");
         $max->execute([$coll_id]);
         $next = (int)$max->fetchColumn();
 
+        // Store on the polymorphic columns the public collection.php reads
+        // (item_type/item_id/sort_order). Keeps admin and public in lockstep.
         $pdo->prepare(
-            "INSERT IGNORE INTO snap_collection_items (collection_id, image_id, position) VALUES (?,?,?)"
+            "INSERT IGNORE INTO snap_collection_items (collection_id, item_type, item_id, sort_order) VALUES (?,'image',?,?)"
         )->execute([$coll_id, $item_id, $next]);
 
         echo json_encode(['ok' => true, 'count' => $current + 1, 'cap' => 30]);
@@ -136,7 +138,7 @@ if ($is_ajax && !empty($_POST['action'])) {
     if ($_POST['action'] === 'remove_item') {
         $coll_id = (int)$_POST['collection_id'];
         $item_id = (int)$_POST['image_id'];
-        $pdo->prepare("DELETE FROM snap_collection_items WHERE collection_id=? AND image_id=?")
+        $pdo->prepare("DELETE FROM snap_collection_items WHERE collection_id=? AND item_type='image' AND item_id=?")
             ->execute([$coll_id, $item_id]);
         echo json_encode(['ok' => true]);
         exit;
@@ -157,7 +159,7 @@ if ($is_ajax && !empty($_POST['action'])) {
             }
             if ($iid <= 0) continue;
             $pdo->prepare(
-                "UPDATE snap_collection_items SET position=? WHERE collection_id=? AND image_id=?"
+                "UPDATE snap_collection_items SET sort_order=? WHERE collection_id=? AND item_type='image' AND item_id=?"
             )->execute([$pos, $coll_id, $iid]);
         }
         echo json_encode(['ok' => true]);
@@ -170,7 +172,7 @@ if ($is_ajax && !empty($_POST['action'])) {
         $image_id = (int)$_POST['image_id'];
         $caption  = trim($_POST['caption'] ?? '');
         $pdo->prepare(
-            "UPDATE snap_collection_items SET caption=? WHERE collection_id=? AND image_id=?"
+            "UPDATE snap_collection_items SET caption=? WHERE collection_id=? AND item_type='image' AND item_id=?"
         )->execute([$caption ?: null, $coll_id, $image_id]);
         echo json_encode(['ok' => true]);
         exit;
@@ -302,12 +304,15 @@ if (!empty($_GET['edit'])) {
     $editing = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
     if ($editing) {
-        // Load member items with their display names and thumbnails
+        // Load member items with their display names and thumbnails. Read the
+        // polymorphic columns the public page uses; alias item_id AS image_id +
+        // sort_order AS position so the enrich/render code below is unchanged.
         $items_raw = $pdo->prepare(
-            "SELECT ci.*, ci.image_id, ci.position
+            "SELECT ci.*, ci.item_id AS image_id, ci.sort_order AS position
              FROM snap_collection_items ci
              WHERE ci.collection_id = ?
-             ORDER BY ci.position ASC"
+               AND ci.item_type = 'image'
+             ORDER BY ci.sort_order ASC"
         );
         $items_raw->execute([$editing['id']]);
         $items_raw = $items_raw->fetchAll(PDO::FETCH_ASSOC);

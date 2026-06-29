@@ -264,6 +264,13 @@ a:hover { color: var(--sl-link-hover); }
    borrowed from 50-shades, recoloured for SLICKR's light theme. */
 .sl-single-flow #infobox {
   flex: 0 0 auto;
+  /* Pin the bar to the very bottom of the flex column. The photo (#sl-photobox,
+     flex:1) doesn't always grow to fill the column — when its image is shorter
+     than the free space the leftover fell BELOW this bar as a dead white band
+     (the bar read as ~2x height with empty padding under it). margin-top:auto
+     absorbs that free space ABOVE the bar (into the dark photo surround), so the
+     bar sits flush on the viewport floor at its true 56px height. */
+  margin-top: auto;
   display: flex;
   align-items: center;
   justify-content: center;

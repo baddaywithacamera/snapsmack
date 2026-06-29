@@ -38,6 +38,13 @@
 .snapsmack-col p:first-child { margin-top: 0; }
 .snapsmack-col p:last-child  { margin-bottom: 0; }
 
+/* Image frames carry their own 1.5em top+bottom margin. Inside a grid cell
+   that doubles up into dead space above/below the image, opening a gap under
+   side-by-side images. Collapse the outer edges so the frame sits flush to
+   the cell (matches the p:first/last-child rule above). */
+.snapsmack-col .snap-inline-frame:first-child { margin-top: 0; }
+.snapsmack-col .snap-inline-frame:last-child  { margin-bottom: 0; }
+
 /* ─── RESPONSIVE ──────────────────────────────────────────── */
 
 @media (max-width: 768px) {
