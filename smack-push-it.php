@@ -47,6 +47,7 @@ $push_group_keys = [
     'smackback' => ['smackback_enabled', 'smackback_mode', 'hub_controls_smackback'],
     'comments'  => ['global_comments_enabled',           'hub_controls_comments'],
     'email'     => ['site_email', 'admin_email', 'email_from', 'email_from_name', 'brevo_api_key', 'hub_controls_email'],
+    'footer'    => ['footer_slot_copyright', 'footer_slot_copyright_custom', 'footer_slot_theme', 'footer_slot_theme_custom', 'hub_controls_footer'],
     'netalert'  => ['network_alert_receive', 'network_alert_send', 'hub_controls_netalert'],
 ];
 
@@ -342,6 +343,41 @@ include 'core/sidebar.php';
                 </div>
             </div>
             <?php $render_result('ai'); ?>
+        </div>
+
+        <!-- ── FOOTER ────────────────────────────────────────────────────── -->
+        <div class="box">
+            <h3>FOOTER — COPYRIGHT &amp; THEME</h3>
+            <div class="dash-grid" style="margin-bottom:16px;">
+                <div class="lens-input-wrapper">
+                    <label>COPYRIGHT</label>
+                    <div class="read-only-display"><?php
+                        $_cm = $settings['footer_slot_copyright'] ?? 'on';
+                        echo $_cm === 'custom'
+                            ? htmlspecialchars($settings['footer_slot_copyright_custom'] ?? '')
+                            : strtoupper($_cm);
+                    ?></div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>THEME IN FOOTER</label>
+                    <div class="read-only-display"><?php
+                        $_tm = $settings['footer_slot_theme'] ?? 'on';
+                        echo $_tm === 'custom'
+                            ? htmlspecialchars($settings['footer_slot_theme_custom'] ?? '')
+                            : strtoupper($_tm);
+                    ?></div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>HUB CONTROLS THIS SETTING</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" name="hub_controls[footer]" value="1"
+                               <?php echo ($settings['hub_controls_footer'] ?? '0') === '1' ? 'checked' : ''; ?>>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="dim" style="font-size:0.82rem;">When on, spokes use the hub's footer copyright and "theme in footer" setting. Tip: put {year} in custom copyright to auto-fill the current year.</span>
+                </div>
+            </div>
+            <?php $render_result('footer'); ?>
         </div>
 
         <!-- ── SMACKBACK ─────────────────────────────────────────────────── -->

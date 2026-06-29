@@ -33,6 +33,13 @@ if ($copy_mode === 'on') {
 } elseif ($copy_mode === 'custom') {
     $custom = trim($settings['footer_slot_copyright_custom'] ?? '');
     if ($custom !== '') {
+        // {year} auto-fills the current year so a custom copyright line never
+        // goes stale; {site_name} fills the configured site name. Tokens are
+        // substituted before escaping, so the result is still safe.
+        $custom = strtr($custom, [
+            '{year}'      => date('Y'),
+            '{site_name}' => $settings['site_name'] ?? 'SnapSmack',
+        ]);
         $slots[] = htmlspecialchars($custom);
     }
 }

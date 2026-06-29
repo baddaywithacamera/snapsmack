@@ -71,7 +71,7 @@ $csrf_valid = !empty($_POST['csrf']) && hash_equals($csrf, $_POST['csrf']);
 
 // STEP-UP AUTH for any push to spokes (one entry covers the batch; 2FA enforced
 // when enrolled). Saving the spoke selection is NOT a push and stays auth-free.
-$push_actions = ['push_timezone','push_akismet','push_ai','push_smackback','push_comments','push_email','push_downloads'];
+$push_actions = ['push_timezone','push_akismet','push_ai','push_smackback','push_comments','push_email','push_footer','push_downloads'];
 $is_push = false;
 foreach ($push_actions as $pa) { if (isset($_POST[$pa])) { $is_push = true; break; } }
 $push_auth_ok = true;
@@ -100,6 +100,7 @@ $push_groups = [
     'push_smackback' => ['smackback_enabled', 'smackback_mode'],
     'push_comments'  => ['global_comments_enabled'],
     'push_email'     => ['site_email'],
+    'push_footer'    => ['footer_slot_copyright', 'footer_slot_copyright_custom', 'footer_slot_theme', 'footer_slot_theme_custom'],
 ];
 
 // SMACKBACK fleet enable/mode — save to hub first, then push
