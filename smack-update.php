@@ -2152,16 +2152,18 @@ include 'core/sidebar.php';
         <?php if (!empty($upd['schema_changes'])): ?>
         <div class="update-warning mt-15">THIS UPDATE INCLUDES DATABASE SCHEMA CHANGES. Migrations run automatically during apply.</div>
         <?php endif; ?>
-        <form method="POST" class="mt-25">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="action" value="stage_download" class="btn-smack">APPLY UPDATE &rarr;</button>
-        </form>
-        <!-- Re-poll the release server even while an update is showing, so a stale
-             cached manifest can never strand the install on the wrong version. -->
-        <form method="POST" class="mt-10">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="action" value="check" class="btn-smack btn-secondary" style="width:auto;padding:0 20px;">FORCE CHECK</button>
-        </form>
+        <div class="update-action-row mt-25">
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="stage_download" class="btn-smack">APPLY UPDATE &rarr;</button>
+            </form>
+            <!-- Re-poll the release server even while an update is showing, so a stale
+                 cached manifest can never strand the install on the wrong version. -->
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="check" class="btn-smack btn-secondary">FORCE CHECK</button>
+            </form>
+        </div>
 
         <?php else: ?>
         <div class="update-status-badge status-ok">&#10003; UP TO DATE</div>
