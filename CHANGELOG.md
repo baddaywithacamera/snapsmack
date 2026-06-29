@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.320 — "Rainbow Dash" (2026-06-28)
+
+- Multi-column page layouts now actually render. The `[columns=2/3/4]` shortcode emitted the correct `.snapsmack-columns` grid markup, but `columns.css` — the stylesheet that turns it into a grid and constrains images to their column — was never loaded on content pages. So columns stacked full-width and images sized to the whole page instead of their column. `core/meta.php` now loads `columns.css` alongside `shortcodes.css` on page/blog/index, so columns lay out side by side and images fill their column with responsive collapse (to 2-up under 768px, single column under 540px).
+- Page-content images are now clickable to a full-size lightbox on every skin. The lightbox engine (`ss-engine-lightbox.js`) and the `data-lightbox-src` markup already existed, but the engine was never loaded on content pages, so images looked clickable (zoom cursor) and did nothing. `core/meta.php` now loads it alongside the page stylesheets, so inline and column images open full-size on click/tap — consistent across all skins.
+- Fixed block-level shortcodes being wrapped in invalid `<p>` tags. Auto-paragraph could not protect *nested* block elements (a `[columns]` wrapper contains inner column `<div>`s), so the wrapper leaked into paragraphs as `<p><div class="snapsmack-columns">…` and left stray empty paragraphs. A general cleanup pass now unwraps any block element from a surrounding paragraph and drops the empty ones, producing valid markup.
+- New `[hspacer:N]` shortcode for a horizontal inline gap (1–100px), alongside the existing vertical `[spacer:N]`.
+- The admin sidebar's "Boring Ass Stuff" group keeps its name in Big Wheel mode instead of being relabeled "Settings" — Big Wheel trims the item list, it does not rename groups.
+
 ## 0.7.319 — "Cutie Mark" (2026-06-28)
 
 - Static pages now open at their own pretty URL on every skin. The router sends every bare slug to `index.php`, which only ever looked a slug up against images — so visiting a static page at `/its-slug` found no image and fell through to the "Nothing here yet" empty state, even though the page existed and `page.php` rendered it correctly. `index.php` now falls back to `snap_pages` when no image matches and renders the page exactly the way `page.php` does (the skin's own `skin-page.php` if it ships one, otherwise the skin header/footer around the page content), keeping the clean URL. Image slugs still win over page slugs on a collision.

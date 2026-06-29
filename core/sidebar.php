@@ -209,10 +209,11 @@ foreach ($_section_map as $sec => $_sec_pages) {
                 </ul>
             </div>
 
-            <!-- SECTION 3: Boring Ass Stuff (Pimpmobile) / Settings (Big Wheel) -->
+            <!-- SECTION 3: Boring Ass Stuff. Label stays saucy in BOTH modes —
+                 Big Wheel only trims the item list, it does NOT tame names. -->
             <div class="nav-section<?php echo ($_active_section === 'boring') ? ' open' : ''; ?>" data-section="boring">
                 <button type="button" class="nav-section-toggle">
-                    <span class="nav-section-label"><?php echo $_ui_pimpmobile ? 'Boring Ass Stuff' : 'Settings'; ?></span>
+                    <span class="nav-section-label">Boring Ass Stuff</span>
                     <span class="nav-section-arrow"></span>
                 </button>
                 <ul class="nav-section-links">

@@ -289,16 +289,22 @@ class SnapSmack {
     // =========================================================================
 
     /**
-     * Parse [spacer:N] shortcodes into vertical gap divs.
+     * Parse [spacer:N] (vertical) and [hspacer:N] (horizontal) gap shortcodes.
      *
      * Accepts pixel values 1–100. Values outside range are clamped.
      * Renders as an empty div with an explicit height.
      */
     private function parseSpacers($content) {
         return preg_replace_callback(
-            '/\[spacer:\s*(\d+)\]/i',
+            '/\[(h?)spacer:\s*(\d+)\]/i',
             function ($matches) {
-                $px = max(1, min(100, (int) $matches[1]));
+                $horizontal = strtolower($matches[1]) === 'h';
+                $px = max(1, min(100, (int) $matches[2]));
+                if ($horizontal) {
+                    // Inline horizontal gap — e.g. between two inline images.
+                    return '<span class="snap-spacer-h" style="display:inline-block;width:'
+                        . $px . 'px" aria-hidden="true"></span>';
+                }
                 return '<div class="snap-spacer" style="height:' . $px . 'px" aria-hidden="true"></div>';
             },
             $content
@@ -318,7 +324,7 @@ class SnapSmack {
      */
     private function cleanBlockNesting($content) {
         // Match any <p> that contains a snap-inline-frame div
-        return preg_replace_callback(
+        $content = preg_replace_callback(
             '/<p>(.*?<div class="snap-inline-frame[^"]*">.*?<\/div><\/div>.*?)<\/p>/si',
             function ($matches) {
                 $inner = $matches[1];
@@ -353,6 +359,21 @@ class SnapSmack {
             },
             $content
         );
+
+        // General block-in-paragraph cleanup. autoParagraph cannot protect
+        // NESTED block elements (a [columns] wrapper holds inner column divs),
+        // so the wrapper leaks into <p> tags — e.g. <p><div class="snapsmack-
+        // columns">. Unwrap any block element from a surrounding paragraph and
+        // drop the empty / <br>-only paragraphs that get left behind.
+        $block = 'div|figure|table|ul|ol|blockquote|section|article|header|footer|nav|aside|h[1-6]|pre|form|hr';
+        // Drop a <p> (plus leading whitespace/<br>) sitting right before a block tag.
+        $content = preg_replace('#<p>(?:\s|<br\s*/?>)*(?=</?(?:' . $block . ')\b)#i', '', $content);
+        // Drop a </p> (plus trailing whitespace/<br>) sitting right after a block tag.
+        $content = preg_replace('#(</?(?:' . $block . ')\b[^>]*>)(?:\s|<br\s*/?>)*</p>#i', '$1', $content);
+        // Remove now-empty or <br>-only paragraphs.
+        $content = preg_replace('#<p>\s*(?:<br\s*/?>\s*)*</p>#i', '', $content);
+
+        return $content;
     }
 
     // =========================================================================
