@@ -98,7 +98,13 @@ $query = "
               INNER JOIN snap_images i ON i.id = pim.image_id AND i.img_status = 'published'
               WHERE ci2.collection_id = c.id AND ci2.item_type = 'post'
               ORDER BY ci2.sort_order ASC, pim.sort_position ASC
-              LIMIT 1) AS first_thumb
+              LIMIT 1) AS first_thumb,
+           (SELECT i.img_thumb_square
+              FROM snap_collection_items ci3
+              INNER JOIN snap_images i ON i.id = ci3.item_id AND i.img_status = 'published'
+              WHERE ci3.collection_id = c.id AND ci3.item_type = 'image'
+              ORDER BY ci3.sort_order ASC
+              LIMIT 1) AS first_thumb_img
     FROM snap_collections c
     WHERE c.published = 1
     ORDER BY {$order_by}
@@ -126,6 +132,21 @@ $sort_labels = [
     'newest'       => 'Newest',
     'oldest'       => 'Oldest',
 ];
+
+// Spell out member counts for the series list ("TWELVE IMAGES"), a nod to the
+// Noah Grey Series Collections layout. Collections cap at 30; digits past 99.
+if (!function_exists('snap_number_to_words')) {
+    function snap_number_to_words(int $n): string {
+        if ($n < 0) return (string)$n;
+        $ones = ['zero','one','two','three','four','five','six','seven','eight','nine',
+                 'ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen',
+                 'seventeen','eighteen','nineteen'];
+        $tens = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+        if ($n < 20)  return $ones[$n];
+        if ($n < 100) return $tens[intdiv($n, 10)] . (($n % 10) ? '-' . $ones[$n % 10] : '');
+        return (string)$n;
+    }
+}
 ?>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
@@ -161,23 +182,32 @@ $sort_labels = [
                 <?php if (empty($collections)): ?>
                     <p class="dim">No collections published yet.</p>
                 <?php else: ?>
-                    <div class="collections-grid collections-grid--rows-<?php echo $rows_per_layout; ?>">
+                    <div class="collections-series">
                         <?php foreach ($collections as $c):
-                            $thumb = $c['featured_thumb'] ?: $c['first_thumb'];
+                            $thumb = $c['featured_thumb'] ?: ($c['first_thumb'] ?: ($c['first_thumb_img'] ?? null));
                             $href  = BASE_URL . 'collection.php?slug=' . urlencode($c['slug']);
+                            $count = (int)$c['member_count'];
+                            $count_words = strtoupper(snap_number_to_words($count));
+                            $posted = !empty($c['created_at'])
+                                ? strtoupper(date('j F Y', strtotime($c['created_at'])))
+                                : '';
                         ?>
-                            <a class="collections-tile" href="<?php echo $href; ?>">
-                                <?php if ($thumb): ?>
-                                    <img src="<?php echo BASE_URL . htmlspecialchars(ltrim($thumb, '/')); ?>"
-                                         alt="<?php echo htmlspecialchars($c['title']); ?>"
-                                         loading="lazy"
-                                         class="collections-tile-img">
-                                <?php else: ?>
-                                    <div class="collections-tile-img collections-tile-img--empty"></div>
-                                <?php endif; ?>
-                                <div class="collections-tile-meta">
-                                    <span class="collections-tile-name"><?php echo htmlspecialchars($c['title']); ?></span>
-                                    <span class="collections-tile-count"><?php echo (int)$c['member_count']; ?> images</span>
+                            <a class="series-row" href="<?php echo $href; ?>">
+                                <div class="series-thumb">
+                                    <?php if ($thumb): ?>
+                                        <img src="<?php echo BASE_URL . htmlspecialchars(ltrim($thumb, '/')); ?>"
+                                             alt="<?php echo htmlspecialchars($c['title']); ?>"
+                                             loading="lazy">
+                                    <?php else: ?>
+                                        <div class="series-thumb-empty"></div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="series-panel">
+                                    <span class="series-title"><?php echo htmlspecialchars($c['title']); ?></span>
+                                    <span class="series-count"><?php echo $count_words; ?> <?php echo $count === 1 ? 'IMAGE' : 'IMAGES'; ?></span>
+                                    <?php if ($posted): ?>
+                                        <span class="series-posted">POSTED <?php echo $posted; ?></span>
+                                    <?php endif; ?>
                                 </div>
                             </a>
                         <?php endforeach; ?>

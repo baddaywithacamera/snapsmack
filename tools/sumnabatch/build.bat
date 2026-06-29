@@ -1,8 +1,8 @@
 @echo off
 REM ─────────────────────────────────────────────────────────────────────────
-REM  Smack Your Batch Up — build script
+REM  SUMNABATCH — build script
 REM  Requires: Python 3.11+, pip install -r requirements.txt
-REM  Output:   C:\SmackYourBatchUp\smackyourbatchup-{version}.exe
+REM  Output:   C:\SUMNABATCH\sumnabatch.exe
 REM  UPX is disabled in the spec — builds finish in 2-5 min, not an hour.
 REM ─────────────────────────────────────────────────────────────────────────
 
@@ -22,16 +22,17 @@ if /I "%~1"=="norev" (
 REM ── Read BUILD_VERSION from main.py ───────────────────────────────────────
 for /f "tokens=3 delims= " %%V in ('findstr /C:"BUILD_VERSION = " main.py') do set RAW_VER=%%V
 set BUILD_VER=%RAW_VER:"=%
-set EXE_NAME=smackyourbatchup-%BUILD_VER%.exe
+set EXE_NAME=sumnabatch.exe
 echo Build version: %BUILD_VER%
 echo Output name:   %EXE_NAME%
 
-REM ── Use versioned spec file ───────────────────────────────────────────────
-set SPEC_FILE=smackyourbatchup-%BUILD_VER%.spec
+REM ── Single fixed spec (SUMNABATCH). sumnabatch.spec auto-bundles every local
+REM    .py, so there is NO per-version spec to clone/rename. This is the fix:
+REM    build.bat used to build smackyourbatchup-<ver>.spec, which bump_version.py
+REM    cloned forward each build — propagating a truncated spec (the build error).
+set SPEC_FILE=sumnabatch.spec
 if not exist %SPEC_FILE% (
     echo ERROR: Spec file %SPEC_FILE% not found.
-    echo When bumping the version, copy and rename the previous spec file,
-    echo then update the name= field inside it to match the new version.
     pause
     exit /b 1
 )
@@ -51,13 +52,13 @@ pip install -r requirements.txt
 
 echo.
 echo Building %EXE_NAME%...
-if not exist C:\SmackYourBatchUp mkdir C:\SmackYourBatchUp
-pyinstaller --clean %SPEC_FILE% --distpath "C:\SmackYourBatchUp"
+if not exist C:\SUMNABATCH mkdir C:\SUMNABATCH
+pyinstaller --clean %SPEC_FILE% --distpath "C:\SUMNABATCH"
 
 echo.
-if exist "C:\SmackYourBatchUp\%EXE_NAME%" (
-    echo Build successful: C:\SmackYourBatchUp\%EXE_NAME%
-    echo Done. Launch: C:\SmackYourBatchUp\%EXE_NAME%
+if exist "C:\SUMNABATCH\%EXE_NAME%" (
+    echo Build successful: C:\SUMNABATCH\%EXE_NAME%
+    echo Done. Launch: C:\SUMNABATCH\%EXE_NAME%
 ) else (
     echo Build FAILED — check output above for errors.
     pause

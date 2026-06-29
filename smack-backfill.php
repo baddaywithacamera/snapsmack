@@ -24,7 +24,8 @@
 // tool access, matching the other SYBU endpoints — the gate affects key/tool
 // access only; admin sessions are unaffected. Additive (legacy X-Snap-Key works).
 $GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu'];
-$GLOBALS['SNAP_API_REQUIRE_MODE'] = 'photoblog';
+// Writes a Drive share URL onto an existing post — mode-agnostic; allow gram too.
+$GLOBALS['SNAP_API_REQUIRE_MODE'] = ['photoblog', 'carousel'];
 require_once 'core/api-auth.php';
 
 $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");

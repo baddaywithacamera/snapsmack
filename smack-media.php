@@ -22,6 +22,39 @@ if (!is_dir($target_dir)) {
     mkdir($target_dir, 0755, true);
 }
 
+// --- DEFENSIVE SCHEMA (belt-and-suspenders; canonical is source of truth) ---
+// Per-asset global border controls. Pure structural add — no migration file
+// needed (see CLAUDE.md new-column checklist). Applied everywhere [img:ID]
+// renders, read through the parser's existing asset SELECT (zero extra query).
+$pdo->exec("ALTER TABLE snap_assets ADD COLUMN IF NOT EXISTS asset_border_width TINYINT UNSIGNED NOT NULL DEFAULT 0");
+$pdo->exec("ALTER TABLE snap_assets ADD COLUMN IF NOT EXISTS asset_border_color VARCHAR(7) NOT NULL DEFAULT '#000000'");
+
+// --- BORDER SAVE (AJAX) ---
+// Persists the per-asset global border width (0-10px) and hex colour. Border
+// is global: set once here, rendered everywhere the asset is embedded.
+if (isset($_POST['border_id'])) {
+    $border_id    = (int)$_POST['border_id'];
+    $border_width = max(0, min(10, (int)($_POST['border_width'] ?? 0)));
+    $border_color = (string)($_POST['border_color'] ?? '#000000');
+
+    // Validate hex colour; fall back to black on anything malformed.
+    if (!preg_match('/^#[0-9a-fA-F]{6}$/', $border_color)) {
+        $border_color = '#000000';
+    }
+
+    $stmt = $pdo->prepare("UPDATE snap_assets SET asset_border_width = ?, asset_border_color = ? WHERE id = ?");
+    $ok = $stmt->execute([$border_width, $border_color, $border_id]);
+
+    header('Content-Type: application/json');
+    if ($ok) {
+        echo json_encode(['status' => 'success']);
+    } else {
+        header('HTTP/1.1 500 Internal Server Error');
+        echo json_encode(['status' => 'error']);
+    }
+    exit;
+}
+
 // --- ASSET SWAP ---
 // Replaces an existing asset's file while preserving its ID and all shortcode
 // references ([img:ID|size|align] embeds in pages remain valid automatically).
@@ -135,10 +168,16 @@ include 'core/sidebar.php';
                 $ext = strtolower(pathinfo($a['asset_path'], PATHINFO_EXTENSION));
                 $is_web = in_array($ext, $web_formats);
             ?>
+                <?php
+                    $bw = (int)($a['asset_border_width'] ?? 0);
+                    $bc = $a['asset_border_color'] ?? '#000000';
+                    if (!preg_match('/^#[0-9a-fA-F]{6}$/', (string)$bc)) { $bc = '#000000'; }
+                    $thumb_border = $bw > 0 ? "border:{$bw}px solid {$bc};" : '';
+                ?>
                 <div class="asset-card" id="asset-<?php echo $a['id']; ?>">
                     <div class="asset-thumb-wrapper">
                         <?php if ($is_web): ?>
-                            <img src="<?php echo htmlspecialchars($a['asset_path']); ?>" alt="<?php echo htmlspecialchars($a['asset_name']); ?>">
+                            <img src="<?php echo htmlspecialchars($a['asset_path']); ?>" alt="<?php echo htmlspecialchars($a['asset_name']); ?>" style="<?php echo $thumb_border; ?>">
                         <?php else: ?>
                             <div class="asset-no-preview">.<?php echo strtoupper($ext); ?></div>
                         <?php endif; ?>
@@ -164,6 +203,20 @@ include 'core/sidebar.php';
                             </select>
                         </div>
 
+                        <div class="asset-border-control">
+                            <label class="border-label">BORDER
+                                <input type="range" class="border-width" min="0" max="10" step="1"
+                                       value="<?php echo $bw; ?>"
+                                       data-asset-id="<?php echo $a['id']; ?>">
+                                <span class="border-width-val"><?php echo $bw === 0 ? 'Off' : $bw . 'px'; ?></span>
+                            </label>
+                            <input type="color" class="border-color"
+                                   value="<?php echo htmlspecialchars($bc); ?>"
+                                   data-asset-id="<?php echo $a['id']; ?>"
+                                   title="Border colour (applies everywhere this image is used)">
+                            <span class="border-saved-note"></span>
+                        </div>
+
                         <div class="asset-actions">
                             <input type="file"
                                    id="swap-input-<?php echo $a['id']; ?>"
@@ -182,112 +235,7 @@ include 'core/sidebar.php';
     </div>
 </div>
 
-<script>
-const fileInput    = document.getElementById('file-input');
-const pContainer   = document.getElementById('p-container');
-const pBar         = document.getElementById('p-bar');
-const nameDisplay  = document.getElementById('file-name-display');
-
-/**
- * Updates the shortcode string in the UI based on dropdown values.
- */
-function updateShortcode(id) {
-    const card    = document.getElementById('asset-' + id);
-    const size    = card.querySelector('.size-select').value;
-    const align   = card.querySelector('.align-select').value;
-    const display = card.querySelector('.shortcode-display');
-    display.innerText = `[img:${id}|${size}|${align}]`;
-}
-
-fileInput.addEventListener('change', function() {
-    if (this.files && this.files[0]) {
-        nameDisplay.innerText = this.files[0].name;
-        uploadFile(this.files[0]);
-    }
-});
-
-/**
- * Executes AJAX upload and monitors progress.
- */
-function uploadFile(file) {
-    pContainer.style.display = 'block';
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', 'smack-media.php', true);
-
-    xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-            const percent = (e.loaded / e.total) * 100;
-            pBar.style.width = percent + '%';
-        }
-    };
-
-    xhr.onload = () => {
-        if (xhr.status === 200) {
-            location.reload();
-        } else {
-            alert('Transmission Interrupted.');
-            pContainer.style.display = 'none';
-        }
-    };
-
-    xhr.send(formData);
-}
-
-/**
- * Utility to copy shortcode text to system clipboard.
- */
-function copyToClipboard(element) {
-    const text = element.innerText.trim();
-    navigator.clipboard.writeText(text).then(() => {
-        const original = text;
-        element.innerText = "COPIED";
-        setTimeout(() => { element.innerText = original; }, 1000);
-    });
-}
-
-/**
- * Swap an existing asset's file without changing its ID.
- * All [img:ID|...] shortcodes in pages continue to work automatically.
- */
-document.querySelectorAll('[id^="swap-input-"]').forEach(function(input) {
-    input.addEventListener('change', function() {
-        if (!this.files || !this.files[0]) return;
-        const assetId = this.dataset.assetId;
-        const card    = document.getElementById('asset-' + assetId);
-        const thumb   = card.querySelector('.asset-thumb-wrapper img');
-        const swapBtn = card.querySelector('.action-edit');
-
-        // Visual feedback while uploading
-        thumb.style.opacity   = '0.35';
-        swapBtn.disabled      = true;
-        swapBtn.textContent   = '...';
-
-        const formData = new FormData();
-        formData.append('swap_id', assetId);
-        formData.append('file', this.files[0]);
-
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'smack-media.php', true);
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                location.reload();
-            } else {
-                thumb.style.opacity  = '1';
-                swapBtn.disabled     = false;
-                swapBtn.textContent  = 'SWAP';
-                alert('Swap failed. Try again.');
-            }
-        };
-        xhr.send(formData);
-
-        // Reset so the same filename can be chosen again if needed
-        this.value = '';
-    });
-});
-</script>
+<script src="assets/js/ss-engine-media-library.js?v=<?php echo time(); ?>"></script>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

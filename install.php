@@ -206,7 +206,22 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
         // Capture install mode choice (set on step 1 form, carried forward here)
         $posted_mode = $_POST['site_mode'] ?? '';
         if (in_array($posted_mode, ['photoblog', 'carousel', 'smacktalk'], true)) {
-            $_SESSION['site_mode'] = $posted_mode;
+            // Mode-vs-content safety: refuse to set a mode that mismatches the
+            // database's dominant existing content (e.g. choosing GRAMOFSMACK on a
+            // DB full of SmackTalk essays). A normal re-install is already blocked
+            // above, so this only ever fires in recovery mode against a populated
+            // DB. It never deletes — it stops the silent mis-render at the door.
+            $mode_conflict = null;
+            if ($has_existing_db && isset($pdo)) {
+                require_once __DIR__ . '/core/mode-guard.php';
+                $mode_conflict = snap_mode_conflict($pdo, $posted_mode);
+            }
+            if ($mode_conflict) {
+                $errors[] = $mode_conflict['message'];
+                $step = 2; // stay on this step; do not adopt the conflicting mode
+            } else {
+                $_SESSION['site_mode'] = $posted_mode;
+            }
         } elseif (empty($_SESSION['site_mode'])) {
             $_SESSION['site_mode'] = 'photoblog'; // safe default
         }

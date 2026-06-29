@@ -348,6 +348,10 @@ CREATE TABLE IF NOT EXISTS `snap_assets` (
   `asset_path`     varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
   `asset_checksum` varchar(64)  COLLATE utf8mb4_unicode_ci DEFAULT NULL
                    COMMENT 'SHA-256 hash for recovery verification',
+  `asset_border_width` tinyint unsigned NOT NULL DEFAULT 0
+                   COMMENT 'Global image border width in px (0-10, 0 = no border). Applied everywhere [img:ID] renders.',
+  `asset_border_color` varchar(7)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#000000'
+                   COMMENT 'Global image border colour (hex). Paired with asset_border_width.',
   `created_at`     timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

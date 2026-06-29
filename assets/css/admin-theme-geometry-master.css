@@ -1397,6 +1397,42 @@ button:active,
     margin: 0;
 }
 
+/* Per-asset global border (width 0-10px + colour). Auto-saves on change. */
+.asset-border-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 0.7rem;
+}
+.asset-border-control .border-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    letter-spacing: 0.04em;
+    opacity: 0.85;
+}
+.asset-border-control .border-width { flex: 1; min-width: 0; }
+.asset-border-control .border-width-val {
+    min-width: 30px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.asset-border-control .border-color {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+.asset-border-control .border-saved-note {
+    min-width: 30px;
+    color: #6fcf6f;
+    opacity: 0.9;
+}
+
 .asset-actions {
     display: flex;
     gap: 8px;

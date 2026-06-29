@@ -36,17 +36,18 @@ require_once __DIR__ . '/db.php';
  */
 if (!function_exists('snap_api_enforce_mode')) {
     function snap_api_enforce_mode(PDO $pdo): void {
-        $need = (string)($GLOBALS['SNAP_API_REQUIRE_MODE'] ?? '');
-        if ($need === '') return;
+        // Accept a single mode (string) OR a list of allowed modes (array).
+        $allowed = array_values(array_filter((array)($GLOBALS['SNAP_API_REQUIRE_MODE'] ?? []), 'strlen'));
+        if (empty($allowed)) return;
         try {
             $mode = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog');
         } catch (PDOException $e) {
             $mode = 'photoblog';
         }
-        if ($mode !== $need) {
+        if (!in_array($mode, $allowed, true)) {
             http_response_code(409);
             header('Content-Type: application/json');
-            echo json_encode(['error' => "This tool works only on '{$need}' sites; this site is in '{$mode}' mode."]);
+            echo json_encode(['error' => "This tool works only on " . implode('/', $allowed) . " sites; this site is in '{$mode}' mode."]);
             exit;
         }
     }

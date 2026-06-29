@@ -26,7 +26,8 @@
 // summaries. The 'sybu' key reaches no other field, row-set, or table here. Do
 // not add further write actions without re-confirming the tool's scope.
 $GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu'];
-$GLOBALS['SNAP_API_REQUIRE_MODE'] = 'photoblog';
+// Read-only post counts/dupe stats — valid on photoblog AND gram (carousel).
+$GLOBALS['SNAP_API_REQUIRE_MODE'] = ['photoblog', 'carousel'];
 require_once 'core/api-auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
