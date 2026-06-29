@@ -3,8 +3,8 @@ SON OF A BATCH — sob_post.py
 HTTP transport for the offline poster suite. Injected into the SyncEngine so
 the engine itself stays headless. Nothing here is rebuilt from scratch — the
 solo path reuses the exact, already-verified smack-post-solo.php contract from
-SYBU's poster.py, and the gram path reuses the proven Unzucker import API
-(upload -> posts -> trigram), which is the only Bearer-authenticated,
+SYBU's poster.py, and the gram path reuses the proven shared three-across
+carousel-write API (formerly 'unzucker'), which is the only Bearer-authenticated,
 post_id-returning carousel/trigram contract the server exposes today.
 
 Posts push via the SnapSmack API using a scoped API key (posting scope), stored
@@ -12,7 +12,7 @@ locally in the connection profile and never uploaded — consistent with the
 0.7.261 Bass Ackwards least-privilege model.
 
 Server-side items this build flags (see addendum):
-  * unzucker/posts still generates 400px thumbs server-side and does NOT yet
+  * threeacross/posts still generates 400px thumbs server-side and does NOT yet
     consume the client 300²/600px thumbs (the 0.7.305 "skip-GD" wiring is not
     in this checkout). We send client thumbs anyway as extra multipart parts so
     they are used the moment the server accepts them — harmless until then.
@@ -82,11 +82,11 @@ class SobConnection:
     def probe_site_mode(self, timeout: int = 12) -> Tuple[str, bool, str]:
         """
         Return (site_mode, reachable, note). Tries sybu-data.php first (it can
-        carry an optional 'site_mode'); falls back to the Unzucker site route.
+        carry an optional 'site_mode'); falls back to the three-across site route.
         An unreachable or mode-less install returns MODE_UNKNOWN with a note so
         the picker greys it out rather than hiding it.
         """
-        for url in (f"{self.base_url}/sybu-data.php", self._api("unzucker/site")):
+        for url in (f"{self.base_url}/sybu-data.php", self._api("threeacross/site")):
             try:
                 r = self.session.get(url, timeout=timeout)
             except requests.RequestException as e:
@@ -203,7 +203,7 @@ class GramPoster:
         self.conn = conn
 
     def _upload_image(self, im) -> dict:
-        """POST one JPEG + its client thumbs to unzucker/gram/upload. Client
+        """POST one JPEG + its client thumbs to threeacross/gram/upload. Client
         thumbs are mandatory — the server saves them and skips its GD pass.
         Returns {path, thumb_square, thumb_aspect, width, height}."""
         opened = []
@@ -216,7 +216,7 @@ class GramPoster:
             if im.thumb_aspect and os.path.isfile(im.thumb_aspect):
                 a = open(im.thumb_aspect, "rb"); opened.append(a)
                 files["thumb_aspect"] = (os.path.basename(im.thumb_aspect), a, "image/jpeg")
-            r = self.conn.session.post(self.conn._api("unzucker/gram/upload"),
+            r = self.conn.session.post(self.conn._api("threeacross/gram/upload"),
                                        files=files, timeout=120)
         finally:
             for f in opened:
@@ -279,7 +279,7 @@ class GramPoster:
                 "images": images_payload,
                 "tags": [t.lstrip("#") for t in draft.tags.split() if t.strip()],
             }
-            r = self.conn.session.post(self.conn._api("unzucker/gram/post"),
+            r = self.conn.session.post(self.conn._api("threeacross/gram/post"),
                                        json=payload, timeout=120)
             if r.status_code in (401, 403, 429):
                 return SyncResult(False, message=_resp_msg(r, "Post create rejected (key scope / consent / rate limit)."))
@@ -308,7 +308,7 @@ class GramPoster:
             "post_id_3": post_ids[2],
             "orientation": orientation if orientation in ("h", "v") else "h",
         }
-        r = self.conn.session.post(self.conn._api("unzucker/trigram"),
+        r = self.conn.session.post(self.conn._api("threeacross/trigram"),
                                    json=payload, timeout=60)
         if r.status_code in (401, 403, 429):
             raise RuntimeError(_resp_msg(r, "Trigram link rejected (key scope / consent / rate limit)."))
@@ -326,7 +326,7 @@ class GramPoster:
         count. Falls back to the audit list, then to trusting the explicit
         server 'ok' rather than manufacturing a false failure."""
         try:
-            r = self.conn.session.get(self.conn._api("unzucker/gram/verify"),
+            r = self.conn.session.get(self.conn._api("threeacross/gram/verify"),
                                       params={"post_id": post_id}, timeout=20)
             if r.status_code == 200:
                 data = r.json()

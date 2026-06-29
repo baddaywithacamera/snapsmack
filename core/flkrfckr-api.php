@@ -587,7 +587,7 @@ if ($sub === 'albums/cover' && $method === 'POST') {
 }
 
 // ---------------------------------------------------------------------------
-// POST flkrfckr/upload — multipart image upload (mirrors unzucker/upload).
+// POST flkrfckr/upload — multipart image upload (mirrors threeacross/upload).
 // The desktop client sends the resized JPEG here over HTTPS; no FTP needed.
 // Saves under img_uploads/YYYY/MM/ and generates t_/a_ thumbnails server-side
 // via the shared core helper. Returns { path, thumb_square, thumb_aspect,

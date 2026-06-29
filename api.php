@@ -64,10 +64,13 @@ if (strpos($route, 'gyss') === 0) {
     exit;
 }
 
-// --- UNZUCKER ROUTES ---
-// Route all /api/unzucker/* requests to the Unzucker Instagram import API handler
-if (strpos($route, 'unzucker') === 0) {
-    require_once 'core/unzucker-api.php';
+// --- THREE-ACROSS ROUTES (GRAMOFSMACK carousel write API) ---
+// Shared carousel/trigram write API used by BOTH the Unzucker IG importer and
+// the SUMNABATCH offline poster. The legacy 'unzucker/*' prefix is kept as a
+// backward-compat alias so already-deployed Unzucker builds keep working until
+// they're rebuilt onto 'threeacross/*'; both dispatch to the same handler.
+if (strpos($route, 'threeacross') === 0 || strpos($route, 'unzucker') === 0) {
+    require_once 'core/threeacross-api.php';
     exit;
 }
 

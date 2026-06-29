@@ -224,6 +224,37 @@ a:hover { color: var(--sl-link-hover); }
   flex-direction: column;
   min-height: 100vh;
 }
+
+/* ── SOLO CHROME LOCK (Sean's spec) ──────────────────────────────────────────
+   Top nav pinned to the top of the window with the cover masthead OUT OF VIEW;
+   bottom navbar locked to the bottom until a drawer opens; site footer hidden
+   in solo until INFO/COMMENTS is opened (then it sits at the very bottom). The
+   bottom + footer behaviour mirrors 50-shades; the top-nav pin is NEW — other
+   skins have tiny solo headers so they never needed it. */
+
+/* Header out of view: drop the big Flickr cover on solo, keep the tab bar. */
+.sl-single-flow .sl-cover { display: none; }
+
+/* Top nav locks to the top (the masthead is now just the tab bar). */
+.sl-single-flow .sl-masthead {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  margin: 0;
+  background: var(--sl-header-bg, #ffffff);
+}
+
+/* Site footer (core #system-footer) hidden in solo until a drawer opens, then
+   it appears at the very bottom below the open info/comments pane. */
+.sl-single-flow #system-footer { display: none; }
+.sl-single-flow #footer[style*="display: block"] ~ #system-footer,
+.sl-single-flow #footer[style*="display:block"]  ~ #system-footer { display: block; }
+
+/* While a drawer is open the bottom navbar un-snaps (returns to flow) so the
+   open pane owns the bottom of the screen — "snapped to the bottom until
+   comments opened." */
+.sl-single-flow:has(#footer[style*="display: block"]) #infobox,
+.sl-single-flow:has(#footer[style*="display:block"])  #infobox { position: static; }
 /* Photo fills the space between the masthead and the bottom-pinned navbar. */
 .sl-single-flow #sl-photobox {
   flex: 1 1 auto;
