@@ -88,6 +88,31 @@ if (!defined('SNAPSMACK_RELEASE_PUBKEY')
     unset($_rpk_canonical, $_rpk_written, $_rpk_ok);
 }
 unset($_rpk_file);
+
+// ─── SECURITY SELF-HEAL (0.7.324): retire web-host cloud push ────────────────
+// SnapSmack no longer pushes backups to Google Drive / OneDrive from the web
+// host. A broad `drive.file` OAuth scope plus a server-stored refresh token on a
+// shared box is an unacceptable attack surface — a compromised server could
+// read, overwrite, or delete the user's Drive. Cloud upload is desktop-tool-only
+// now (the user's creds stay on their own machine). This self-heal deletes the
+// retired files from existing installs and purges any stored OAuth creds/tokens,
+// so updating a previously-linked blog leaves nothing on the server to abuse.
+foreach ([dirname(__DIR__) . '/smack-cloud.php', __DIR__ . '/cloud-engine.php'] as $_dead_cloud) {
+    if (is_file($_dead_cloud)) { @unlink($_dead_cloud); }
+}
+unset($_dead_cloud);
+if (isset($GLOBALS['pdo']) && $GLOBALS['pdo'] instanceof PDO) {
+    try {
+        $GLOBALS['pdo']->exec(
+            "DELETE FROM snap_settings WHERE setting_key IN (
+                'google_client_id','google_client_secret','google_refresh_token',
+                'onedrive_client_id','onedrive_client_secret','onedrive_refresh_token',
+                'cloud_last_push','cloud_last_status'
+             )"
+        );
+    } catch (\Throwable $e) { /* settings table not ready / already clean */ }
+}
+
 // Signing is enforced only when a real (non-placeholder) pubkey is present.
 if (!defined('SNAPSMACK_SIGNING_ENFORCED')) {
     define('SNAPSMACK_SIGNING_ENFORCED', SNAPSMACK_RELEASE_PUBKEY !== str_repeat('0', 64));

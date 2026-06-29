@@ -137,6 +137,10 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Jun 29</span>
+                    <a href="#cloud-keys">Your Cloud Keys Stay Yours</a>
+                </li>
+                <li>
                     <span class="idx-date">Jun 27</span>
                     <a href="#skin-drop">Slickr, Aurora, Parade — Live Today</a>
                 </li>
@@ -254,6 +258,18 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <!-- POST: CLOUD KEYS -->
+            <article class="post" id="cloud-keys">
+                <div class="post-meta">
+                    <span class="post-date">June 29, 2026</span>
+                    <span class="post-tag">Security</span>
+                </div>
+                <h2><a href="#cloud-keys">Your Cloud Keys Stay Yours</a></h2>
+                <p>We pulled a feature this week, and we'd rather tell you why than quietly let it rot in the menu. SnapSmack used to push your backups straight to Google Drive or OneDrive from your web host. It sounded handy. It was a mistake — one we only made because it seemed like a good idea until we thought about it properly.</p>
+                <p>Here's the problem. For the server to upload to your Drive on its own, it had to hold a long-lived key with broad permission over your cloud, and sit on it — on a shared web host — indefinitely. That key is a loaded gun pointed at your account. Shared servers get compromised; it's a question of when, not if. Whoever gets in doesn't just get your blog — they get a key that can read, overwrite, or <em>delete</em> your cloud files, including the very backups you set this up to protect. That's the "convenient integration turns into breach multiplier" pattern that's bitten every big CMS in turn. We're not going to be the next one.</p>
+                <p>So we took it out — not disabled, gone. The code's deleted, the menu item's gone, and the next time your site updates it deletes the stored keys itself, so a blog that had Drive linked ends up with nothing on the server to steal. Still want cloud backups? Push them from the desktop tool, where your keys live on your own machine and never touch a server we don't control — or just download or FTP your backup straight off the box. Your photos, your cloud, your keys. None of it parked somewhere it can be turned against you.</p>
+            </article>
 
             <!-- POST: SKIN DROP -->
             <article class="post" id="skin-drop">
