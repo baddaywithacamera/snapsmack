@@ -246,51 +246,38 @@ if (isset($_POST['ic_aspect_detect'])) {
         $_SESSION['gallery_flash'] = 'Security check failed — please try again.';
         header('Location: smack-skin.php?s=instant-camera'); exit;
     }
-    require_once __DIR__ . '/core/ai-provider.php';
-    // Optional per-skin AI override; falls back to the site AI config (Settings → AI).
-    $_ov = $pdo->query("SELECT setting_key, setting_val FROM snap_settings WHERE setting_key IN ('instant-camera__ic_ai_provider', 'instant-camera__ic_ai_key')")->fetchAll(PDO::FETCH_KEY_PAIR);
-    $ov_provider = trim($_ov['instant-camera__ic_ai_provider'] ?? '');
-    $ov_key      = trim($_ov['instant-camera__ic_ai_key'] ?? '');
-    $use_override = ($ov_provider !== '' && $ov_key !== '');
-    $imgs = [];
-    if (!empty($_FILES['ic_scan']['name']) && is_array($_FILES['ic_scan']['name'])) {
-        foreach ($_FILES['ic_scan']['name'] as $i => $name) {
-            if (empty($name) || ($_FILES['ic_scan']['error'][$i] ?? 1) !== UPLOAD_ERR_OK) continue;
-            $tmp  = $_FILES['ic_scan']['tmp_name'][$i];
-            $mime = @mime_content_type($tmp) ?: 'image/jpeg';
-            if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) continue;
-            $imgs[] = ['mime' => $mime, 'data' => base64_encode((string)file_get_contents($tmp))];
-            if (count($imgs) >= 3) break;
+    // Measure the aspect ratio straight from the uploaded sample's pixel
+    // dimensions — exact, free, instant. A digital/faux frame's pixels ARE its
+    // ratio (e.g. VNTG runs a touch off the standard Polaroid spec), so reading
+    // getimagesize() beats both a hardcoded standard and AI estimation. AI vision
+    // was only ever needed to measure physical print scans — dropped.
+    $tmp = '';
+    if (!empty($_FILES['ic_scan']['tmp_name'])) {
+        $tn = $_FILES['ic_scan']['tmp_name'];
+        $en = $_FILES['ic_scan']['error'];
+        if (is_array($tn)) {
+            foreach ($tn as $i => $t) { if (($en[$i] ?? 1) === UPLOAD_ERR_OK) { $tmp = $t; break; } }
+        } elseif (($en ?? 1) === UPLOAD_ERR_OK) {
+            $tmp = $tn;
         }
     }
-    if (!$imgs) {
-        $_SESSION['gallery_flash'] = 'Upload at least one print scan to detect the aspect ratio.';
-    } elseif (!$use_override && !snap_ai_configured()) {
-        $_SESSION['gallery_flash'] = 'No AI provider configured. Set one up under Settings → AI, or add a per-skin AI override in the skin settings.';
+    if ($tmp === '' || !is_uploaded_file($tmp)) {
+        $_SESSION['gallery_flash'] = 'Upload one sample image to measure the aspect ratio.';
     } else {
-        $sys = 'You are a precise image-measurement tool. The image shows a scanned instant-film print (Polaroid/Instax) on a background. Measure the PRINT itself, including its physical border, and return ONLY its width:height ratio as two integers separated by a colon, e.g. 79:97. Output nothing else.';
-        $ratios = [];
-        foreach ($imgs as $im) {
-            $r = snap_ai_vision($sys, 'Give the width:height ratio of the print in this image.', [$im], 30,
-                                $use_override ? $ov_provider : '', $use_override ? $ov_key : '');
-            if ($r['ok'] && preg_match('/(\d{1,4})\s*[:\/]\s*(\d{1,4})/', $r['text'], $m) && (int)$m[2] > 0) {
-                $ratios[] = (int)$m[1] / (int)$m[2];
-            }
-        }
-        if (!$ratios) {
-            $_SESSION['gallery_flash'] = 'The AI could not read a ratio from those scans. Try flatter, clearer scans — or just pick a standard format.';
+        $dim = @getimagesize($tmp);
+        if (!$dim || (int)$dim[0] < 1 || (int)$dim[1] < 1) {
+            $_SESSION['gallery_flash'] = 'Could not read that image — use a JPEG, PNG or WebP.';
         } else {
-            $avg = array_sum($ratios) / count($ratios);
-            $w = (int)round($avg * 1000); $h = 1000;
+            $w = (int)$dim[0]; $h = (int)$dim[1];
             $gcd = function ($a, $b) { while ($b) { [$a, $b] = [$b, $a % $b]; } return $a ?: 1; };
-            $d = $gcd($w, $h); $w = (int)($w / $d); $h = (int)($h / $d);
-            foreach (['ic_format' => 'custom', 'ic_custom_ratio' => "$w:$h"] as $k => $v) {
+            $d = $gcd($w, $h); $rw = (int)($w / $d); $rh = (int)($h / $d);
+            foreach (['ic_format' => 'custom', 'ic_custom_ratio' => "$rw:$rh"] as $k => $v) {
                 $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
                     ->execute(["instant-camera__$k", $v, $v]);
             }
             require_once __DIR__ . '/core/page-cache.php';
             page_cache_purge_all();
-            $_SESSION['gallery_flash'] = "Detected ≈ $w:$h from " . count($ratios) . " scan(s). Print format set to Custom.";
+            $_SESSION['gallery_flash'] = "Aspect ratio measured: {$rw}:{$rh} (from {$w}×{$h}px). Print format set to Custom.";
         }
     }
     header('Location: smack-skin.php?s=instant-camera&msg=updated'); exit;
@@ -1298,17 +1285,18 @@ if (!empty($google_families)) {
     <?php endif; ?>
 
     <?php if (($target_skin ?? '') === 'instant-camera'): ?>
-    <!-- INSTANT CAMERA — AI aspect-ratio detection (spec §2.3). Own multipart
-         form (forms can't nest); posts to the ic_aspect_detect handler above. -->
+    <!-- INSTANT CAMERA — measure a custom aspect ratio from one sample image
+         (getimagesize → exact W:H). Own multipart form (forms can't nest);
+         posts to the ic_aspect_detect handler above. -->
     <div class="box">
-        <h3>AI ASPECT-RATIO DETECTION</h3>
-        <p class="dim field-hint">Don't know your exact print ratio? Upload up to three representative scans and your configured AI provider will measure them and set a Custom format automatically. Averaging three scans cancels out scan skew. One-time setup — the API key never leaves the server, and you can always just pick a standard format instead.</p>
+        <h3>MEASURE ASPECT RATIO</h3>
+        <p class="dim field-hint">Using a faux or digital instant-film format that's a touch off-spec (e.g. VNTG)? Upload <strong>one</strong> sample image — the exact width:height ratio is read straight from its pixels and saved as your Custom format. Instant, no AI, no cost. For the standard formats above, just pick one.</p>
         <form method="POST" enctype="multipart/form-data" id="ic-aspect-form">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
             <div class="dash-grid">
                 <div class="lens-input-wrapper">
-                    <label>PRINT SCANS (1–3)</label>
-                    <input type="file" id="ic-scan-input" name="ic_scan[]" accept="image/jpeg,image/png,image/webp" multiple>
+                    <label>SAMPLE IMAGE</label>
+                    <input type="file" id="ic-scan-input" name="ic_scan" accept="image/jpeg,image/png,image/webp">
                     <div id="ic-scan-preview" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"></div>
                     <div id="ic-scan-progress" style="display:none;height:6px;background:rgba(127,127,127,.25);border-radius:3px;margin-top:10px;overflow:hidden;">
                         <div id="ic-scan-bar" style="height:100%;width:0;background:var(--accent,#39FF14);transition:width .15s;"></div>
@@ -1316,7 +1304,7 @@ if (!empty($google_families)) {
                 </div>
             </div>
             <div class="form-action-row">
-                <button type="submit" name="ic_aspect_detect" class="master-update-btn">DETECT ASPECT RATIO</button>
+                <button type="submit" name="ic_aspect_detect" class="master-update-btn">MEASURE ASPECT RATIO</button>
             </div>
         </form>
         <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-scan-upload.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>

@@ -249,16 +249,7 @@ include 'core/sidebar.php';
 
         <div class="box box-flex">
             <h3>CLOUD BACKUP</h3>
-            <p class="skin-desc-text">Push backups to Google Drive or OneDrive. Authorize once — refresh tokens are stored encrypted for persistent access.</p>
-            <a href="smack-cloud.php" class="btn-smack btn-block">CONFIGURE CLOUD</a>
-            <?php if (!empty($settings['cloud_last_push'])): ?>
-                <p style="margin-top: 15px; font-size: 12px; color: #888;">
-                    Last: <?php echo htmlspecialchars($settings['cloud_last_push']); ?>
-                    <?php if (!empty($settings['cloud_last_status'])): ?>
-                        — <?php echo htmlspecialchars($settings['cloud_last_status']); ?>
-                    <?php endif; ?>
-                </p>
-            <?php endif; ?>
+            <p class="skin-desc-text">Pushing backups to the cloud <em>from the web host</em> has been removed for security: a broad cloud permission (and its token) stored on a shared server is an attack surface a compromised host could use to wipe your backups. Push to your own Google Drive with the <strong>SUYB</strong> desktop tool instead — your credentials stay on your machine — or download / FTP the backup directly from the box above.</p>
         </div>
     </div>
 </div>
