@@ -799,6 +799,22 @@ include 'core/sidebar.php';
                            value="<?php echo htmlspecialchars($settings['ai_key_gemini'] ?? ''); ?>"
                            placeholder="AIza…" autocomplete="off">
                     <span class="field-hint">Get yours at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a></span>
+                    <label style="margin-top:10px;">GEMINI MODEL</label>
+                    <select name="settings[ai_gemini_model]">
+                        <?php
+                        $gem_model  = $settings['ai_gemini_model'] ?? 'gemini-3.5-flash';
+                        $gem_models = [
+                            'gemini-3.5-flash'       => 'Gemini 3.5 Flash — recommended (fast, cost-effective)',
+                            'gemini-3.1-pro-preview' => 'Gemini 3.1 Pro (preview) — maximum analytical depth',
+                            'gemini-3.1-flash-lite'  => 'Gemini 3.1 Flash-Lite — ultra-low latency, big batches',
+                        ];
+                        foreach ($gem_models as $mv => $ml):
+                            $msel = $gem_model === $mv ? 'selected' : '';
+                        ?>
+                        <option value="<?php echo $mv; ?>" <?php echo $msel; ?>><?php echo htmlspecialchars($ml); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span class="field-hint">3.5 Flash is recommended. Pro = deepest analysis; Flash-Lite = fastest for big batches.</span>
                 </div>
                 <div class="lens-input-wrapper ai-key-field" data-provider="openai" <?php echo ($ai_provider !== 'openai') ? 'style="display:none;"' : ''; ?>>
                     <label>OPENAI API KEY</label>
@@ -806,6 +822,20 @@ include 'core/sidebar.php';
                            value="<?php echo htmlspecialchars($settings['ai_key_openai'] ?? ''); ?>"
                            placeholder="sk-…" autocomplete="off">
                     <span class="field-hint">Get yours at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a></span>
+                    <label style="margin-top:10px;">CHATGPT MODEL</label>
+                    <select name="settings[ai_openai_model]">
+                        <?php
+                        $oai_model  = $settings['ai_openai_model'] ?? 'gpt-5.4-mini';
+                        $oai_models = [
+                            'gpt-5.4-mini' => 'GPT-5.4 Mini — recommended (fast, cost-effective)',
+                            'gpt-5.5'      => 'GPT-5.5 — most capable',
+                        ];
+                        foreach ($oai_models as $mv => $ml):
+                            $msel = $oai_model === $mv ? 'selected' : '';
+                        ?>
+                        <option value="<?php echo $mv; ?>" <?php echo $msel; ?>><?php echo htmlspecialchars($ml); ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
             </div>
 

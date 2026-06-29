@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.1.0"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
+BUILD_VERSION = "0.1.2"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -559,6 +559,20 @@ class EntryList(tk.Frame):
         for r in self._rows:
             r.set_selected(on)
 
+    def shuffle(self):
+        """Randomly reorder the queue. POST order follows _rows order, so this
+        randomizes the import order too. Re-packs existing rows (no thumbnail
+        reload)."""
+        import random
+        random.shuffle(self._rows)
+        for i, row in enumerate(self._rows):
+            row.row_index = i
+            row.pack_forget()
+            row.pack(fill="x", pady=(0, 2))
+        self._inner.update_idletasks()
+        self._canvas.configure(scrollregion=self._canvas.bbox("all"))
+        self._canvas.yview_moveto(0)
+
     def get_row(self, index: int) -> Optional['EntryRow']:
         if 0 <= index < len(self._rows):
             return self._rows[index]
@@ -991,6 +1005,41 @@ class App(tk.Tk):
         self.geometry(f"{WIN_W}x{WIN_H}")
         self.minsize(860, 600)
         self.configure(bg=BG_DEEP)
+
+        # Clipboard: Windows Tk sometimes fails to wire Ctrl+V on Entry/Text, and
+        # Tk ships no right-click menu — so pasting an API key was impossible.
+        # Bind cut/copy/paste at the class level for every text widget, plus a
+        # right-click context menu, so paste works by keyboard or mouse everywhere.
+        def _clip(evt_name):
+            def _h(e):
+                try:
+                    e.widget.event_generate(evt_name)
+                except tk.TclError:
+                    pass
+                return "break"
+            return _h
+
+        def _clip_menu(e):
+            w = e.widget
+            m = tk.Menu(self, tearoff=0)
+            m.add_command(label="Cut",   command=lambda: w.event_generate("<<Cut>>"))
+            m.add_command(label="Copy",  command=lambda: w.event_generate("<<Copy>>"))
+            m.add_command(label="Paste", command=lambda: w.event_generate("<<Paste>>"))
+            try:
+                w.focus_set()
+                m.tk_popup(e.x_root, e.y_root)
+            finally:
+                m.grab_release()
+            return "break"
+
+        for _cls in ("Entry", "TEntry", "Text"):
+            self.bind_class(_cls, "<Control-v>", _clip("<<Paste>>"))
+            self.bind_class(_cls, "<Control-V>", _clip("<<Paste>>"))
+            self.bind_class(_cls, "<Control-c>", _clip("<<Copy>>"))
+            self.bind_class(_cls, "<Control-C>", _clip("<<Copy>>"))
+            self.bind_class(_cls, "<Control-x>", _clip("<<Cut>>"))
+            self.bind_class(_cls, "<Control-X>", _clip("<<Cut>>"))
+            self.bind_class(_cls, "<Button-3>", _clip_menu)
 
         # Set window/taskbar icon explicitly — the exe icon set via PyInstaller
         # only affects File Explorer; tkinter needs iconbitmap() for the taskbar.
@@ -1557,6 +1606,10 @@ class App(tk.Tk):
         self._clear_btn = ttk.Button(bottom, text="Clear", style="Ghost.TButton",
                                       command=self._on_clear)
         self._clear_btn.pack(side="left", padx=(10, 0), pady=10)
+
+        self._random_btn = ttk.Button(bottom, text="Randomize", style="Ghost.TButton",
+                                       command=self._on_randomize)
+        self._random_btn.pack(side="left", padx=(6, 0), pady=10)
 
         self._prog_var = tk.DoubleVar()
         self._progress = ttk.Progressbar(bottom, variable=self._prog_var,
@@ -3779,6 +3832,16 @@ class App(tk.Tk):
             self.after(0, _done)
 
         threading.Thread(target=_enrich_thread, daemon=True).start()
+
+    # ------------------------------------------------------------------
+    # Randomize queue order
+    # ------------------------------------------------------------------
+
+    def _on_randomize(self):
+        """Shuffle the queue into a random order (the POST follows on-screen order)."""
+        if not self._entry_list.get_entries():
+            return
+        self._entry_list.shuffle()
 
     # ------------------------------------------------------------------
     # Clear queue

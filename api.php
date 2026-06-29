@@ -70,7 +70,11 @@ if (strpos($route, 'gyss') === 0) {
 // backward-compat alias so already-deployed Unzucker builds keep working until
 // they're rebuilt onto 'threeacross/*'; both dispatch to the same handler.
 if (strpos($route, 'threeacross') === 0 || strpos($route, 'unzucker') === 0) {
-    require_once 'core/threeacross-api.php';
+    // Load the renamed handler, falling back to the old filename if the git mv
+    // hasn't been run yet — so a forgotten rename can't fatal the whole API.
+    require_once is_file(__DIR__ . '/core/threeacross-api.php')
+        ? __DIR__ . '/core/threeacross-api.php'
+        : __DIR__ . '/core/unzucker-api.php';
     exit;
 }
 

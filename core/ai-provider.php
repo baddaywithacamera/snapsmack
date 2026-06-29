@@ -62,6 +62,33 @@ function snap_ai_api_key(): string {
     return $row ? trim($row['setting_val']) : '';
 }
 
+function snap_ai_gemini_model(): string {
+    // Selectable in Settings → AI. Validated against the known model ids; any
+    // other / unset value falls back to the recommended default.
+    global $pdo;
+    $allowed = ['gemini-3.5-flash', 'gemini-3.1-pro-preview', 'gemini-3.1-flash-lite'];
+    try {
+        $row = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'ai_gemini_model' LIMIT 1")->fetch();
+        $m   = $row ? trim($row['setting_val']) : '';
+    } catch (Throwable $e) {
+        $m = '';
+    }
+    return in_array($m, $allowed, true) ? $m : 'gemini-3.5-flash';
+}
+
+function snap_ai_openai_model(): string {
+    // Selectable in Settings → AI. Validated; defaults to the cost-effective mini.
+    global $pdo;
+    $allowed = ['gpt-5.4-mini', 'gpt-5.5'];
+    try {
+        $row = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'ai_openai_model' LIMIT 1")->fetch();
+        $m   = $row ? trim($row['setting_val']) : '';
+    } catch (Throwable $e) {
+        $m = '';
+    }
+    return in_array($m, $allowed, true) ? $m : 'gpt-5.4-mini';
+}
+
 function snap_ai_configured(): bool {
     // Cost responsibility must be accepted first — AI is off until then.
     return snap_ai_cost_accepted() && snap_ai_provider() !== 'none' && snap_ai_api_key() !== '';
@@ -122,8 +149,11 @@ function _snap_ai_claude(string $key, string $system, string $user, int $max_tok
 }
 
 function _snap_ai_gemini(string $key, string $system, string $user, int $max_tokens): array {
-    // Corrected to gemini-3-flash-preview for the 2026 v1beta API
-    $url     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=' . urlencode($key);
+    // Model is selectable in Settings → AI (default gemini-3.5-flash). The old
+    // 'gemini-3-flash-preview' was a non-existent id and returned "Empty
+    // response from Gemini" on every call.
+    $model   = snap_ai_gemini_model();
+    $url     = 'https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':generateContent?key=' . urlencode($key);
     $payload = json_encode([
         'system_instruction' => ['parts' => [['text' => $system]]],
         'contents'           => [['parts' => [['text' => $user]]]],
@@ -138,10 +168,12 @@ function _snap_ai_gemini(string $key, string $system, string $user, int $max_tok
 }
 
 function _snap_ai_openai(string $key, string $system, string $user, int $max_tokens): array {
-    // Updated to gpt-5.4-mini (released March 2026)
+    // Model selectable in Settings → AI (default gpt-5.4-mini). GPT-5-series chat
+    // completions require 'max_completion_tokens'; 'max_tokens' is rejected on
+    // these models and was returning an error/empty reply.
     $payload = json_encode([
-        'model'      => 'gpt-5.4-mini',
-        'max_tokens' => $max_tokens,
+        'model'                 => snap_ai_openai_model(),
+        'max_completion_tokens' => $max_tokens,
         'messages'   => [
             ['role' => 'system',  'content' => $system],
             ['role' => 'user',    'content' => $user],
@@ -221,7 +253,8 @@ function _snap_ai_gemini_vision(string $key, string $system, string $user, array
     foreach ($images as $im) {
         $parts[] = ['inline_data' => ['mime_type' => $im['mime'], 'data' => $im['data']]];
     }
-    $url     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=' . urlencode($key);
+    $model   = snap_ai_gemini_model();
+    $url     = 'https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':generateContent?key=' . urlencode($key);
     $payload = json_encode([
         'system_instruction' => ['parts' => [['text' => $system]]],
         'contents'           => [['parts' => $parts]],
@@ -240,8 +273,8 @@ function _snap_ai_openai_vision(string $key, string $system, string $user, array
         $content[] = ['type' => 'image_url', 'image_url' => ['url' => 'data:' . $im['mime'] . ';base64,' . $im['data']]];
     }
     $payload = json_encode([
-        'model'      => 'gpt-5.4-mini',
-        'max_tokens' => $max_tokens,
+        'model'                 => snap_ai_openai_model(),
+        'max_completion_tokens' => $max_tokens,
         'messages'   => [
             ['role' => 'system', 'content' => $system],
             ['role' => 'user',   'content' => $content],

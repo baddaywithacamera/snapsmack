@@ -30,11 +30,11 @@ $pdo->exec("ALTER TABLE snap_assets ADD COLUMN IF NOT EXISTS asset_border_width 
 $pdo->exec("ALTER TABLE snap_assets ADD COLUMN IF NOT EXISTS asset_border_color VARCHAR(7) NOT NULL DEFAULT '#000000'");
 
 // --- BORDER SAVE (AJAX) ---
-// Persists the per-asset global border width (0-10px) and hex colour. Border
+// Persists the per-asset global border width (0-50px) and hex colour. Border
 // is global: set once here, rendered everywhere the asset is embedded.
 if (isset($_POST['border_id'])) {
     $border_id    = (int)$_POST['border_id'];
-    $border_width = max(0, min(10, (int)($_POST['border_width'] ?? 0)));
+    $border_width = max(0, min(50, (int)($_POST['border_width'] ?? 0)));
     $border_color = (string)($_POST['border_color'] ?? '#000000');
 
     // Validate hex colour; fall back to black on anything malformed.
@@ -205,12 +205,13 @@ include 'core/sidebar.php';
 
                         <div class="asset-border-control">
                             <label class="border-label">BORDER
-                                <input type="range" class="border-width" min="0" max="10" step="1"
+                                <input type="range" class="border-width" min="0" max="50" step="1"
                                        value="<?php echo $bw; ?>"
                                        data-asset-id="<?php echo $a['id']; ?>">
                                 <span class="border-width-val"><?php echo $bw === 0 ? 'Off' : $bw . 'px'; ?></span>
                             </label>
                             <input type="color" class="border-color"
+                                   style="width:42px;height:26px;flex:0 0 42px;padding:0;cursor:pointer;vertical-align:middle;border:1px solid var(--border-color,#444);"
                                    value="<?php echo htmlspecialchars($bc); ?>"
                                    data-asset-id="<?php echo $a['id']; ?>"
                                    title="Border colour (applies everywhere this image is used)">
