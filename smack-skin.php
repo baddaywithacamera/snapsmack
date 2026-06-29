@@ -1303,18 +1303,23 @@ if (!empty($google_families)) {
     <div class="box">
         <h3>AI ASPECT-RATIO DETECTION</h3>
         <p class="dim field-hint">Don't know your exact print ratio? Upload up to three representative scans and your configured AI provider will measure them and set a Custom format automatically. Averaging three scans cancels out scan skew. One-time setup — the API key never leaves the server, and you can always just pick a standard format instead.</p>
-        <form method="POST" enctype="multipart/form-data">
+        <form method="POST" enctype="multipart/form-data" id="ic-aspect-form">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
             <div class="dash-grid">
                 <div class="lens-input-wrapper">
                     <label>PRINT SCANS (1–3)</label>
-                    <input type="file" name="ic_scan[]" accept="image/jpeg,image/png,image/webp" multiple>
+                    <input type="file" id="ic-scan-input" name="ic_scan[]" accept="image/jpeg,image/png,image/webp" multiple>
+                    <div id="ic-scan-preview" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"></div>
+                    <div id="ic-scan-progress" style="display:none;height:6px;background:rgba(127,127,127,.25);border-radius:3px;margin-top:10px;overflow:hidden;">
+                        <div id="ic-scan-bar" style="height:100%;width:0;background:var(--accent,#39FF14);transition:width .15s;"></div>
+                    </div>
                 </div>
             </div>
             <div class="form-action-row">
                 <button type="submit" name="ic_aspect_detect" class="master-update-btn">DETECT ASPECT RATIO</button>
             </div>
         </form>
+        <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-scan-upload.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
     </div>
     <?php endif; ?>
 

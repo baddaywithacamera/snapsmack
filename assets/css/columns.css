@@ -45,6 +45,18 @@
 .snapsmack-col .snap-inline-frame:first-child { margin-top: 0; }
 .snapsmack-col .snap-inline-frame:last-child  { margin-bottom: 0; }
 
+/* The [columns] parser can leave a stray <br> — one promoted to a direct grid
+   cell (a phantom second row) and one trailing inside a column after the image
+   frame. Either inflates a cell and forces a tall grid row, opening a big empty
+   band under side-by-side images (the margin rules above can't catch it because
+   the stray <br> stops the frame from being :last-child). Drop the strays so the
+   row is sized by the images alone. Root cause is in parseColumns; this is the
+   layout-side guard. */
+.snapsmack-columns > br,
+.snapsmack-col > br { display: none; }
+.snapsmack-columns > p:empty,
+.snapsmack-col > p:empty { display: none; }
+
 /* ─── RESPONSIVE ──────────────────────────────────────────── */
 
 @media (max-width: 768px) {
