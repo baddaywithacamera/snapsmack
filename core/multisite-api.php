@@ -979,7 +979,7 @@ if ($resource === 'disconnect' && $method === 'POST') {
     );
     foreach ([
         'hub_controls_timezone', 'hub_controls_akismet', 'hub_controls_ai',
-        'hub_controls_smackback', 'hub_controls_comments', 'hub_controls_email',
+        'hub_controls_smackback', 'hub_controls_comments', 'hub_controls_email', 'hub_controls_footer',
         'hub_controls_netalert',
     ] as $_ctrl_key) {
         $clear_ctrl->execute([$_ctrl_key]);
@@ -1321,9 +1321,10 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
         'smackback_enabled', 'smackback_mode',
         'global_comments_enabled',
         'site_email', 'admin_email', 'email_from', 'email_from_name', 'brevo_api_key',
+        'footer_slot_copyright', 'footer_slot_copyright_custom', 'footer_slot_theme', 'footer_slot_theme_custom',
         'download_link_required', 'download_default_mode',
         'hub_controls_timezone', 'hub_controls_akismet', 'hub_controls_ai',
-        'hub_controls_smackback', 'hub_controls_comments', 'hub_controls_email',
+        'hub_controls_smackback', 'hub_controls_comments', 'hub_controls_email', 'hub_controls_footer',
         'network_alert_receive', 'network_alert_send',
         'hub_controls_netalert',
         'network_alert_push_registered',

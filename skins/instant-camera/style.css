@@ -102,7 +102,8 @@ img { display: block; max-width: 100%; }
     z-index: 100;
     background: var(--bg-primary);
     border-bottom: 1px solid var(--border-color);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    /* No box-shadow: the card shadow's 4px blur bled faint vertical lines at the
+       nav's left/right ends. The bottom border is the only separator we want. */
 }
 
 .tg-sticky-nav-inner {

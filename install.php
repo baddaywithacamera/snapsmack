@@ -1274,7 +1274,7 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'footer_slot_copyright_custom'  => '',
                 'footer_slot_email'             => 'on',
                 'footer_slot_email_custom'      => '',
-                'footer_slot_theme'             => 'off',
+                'footer_slot_theme'             => 'on',
                 'footer_slot_theme_custom'      => '',
                 'footer_slot_powered'           => 'on',
                 'footer_slot_powered_custom'    => '',
