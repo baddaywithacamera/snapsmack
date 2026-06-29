@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $csrf_valid && isset($_POST['save_d
 $push_groups = [
     'push_timezone'  => ['timezone', 'date_format'],
     'push_akismet'   => ['akismet_key'],
-    'push_ai'        => ['ai_training_policy', 'ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai'],
+    'push_ai'        => ['ai_training_policy', 'ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_gemini_model', 'ai_openai_model'],
     'push_smackback' => ['smackback_enabled', 'smackback_mode'],
     'push_comments'  => ['global_comments_enabled'],
     'push_email'     => ['site_email'],

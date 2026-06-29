@@ -1317,7 +1317,7 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
     $allowed_keys = [
         'timezone', 'date_format',
         'akismet_key',
-        'ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_training_policy',
+        'ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_gemini_model', 'ai_openai_model', 'ai_training_policy',
         'smackback_enabled', 'smackback_mode',
         'global_comments_enabled',
         'site_email', 'admin_email', 'email_from', 'email_from_name', 'brevo_api_key',
