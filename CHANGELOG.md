@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.323 — "Pinkie Pie" (2026-06-29)
+
+- Columns gap fixed for real. The `[columns]` parser leaves stray `<br>` elements — one promoted to a grid cell (a phantom second row), one trailing inside a column after the image frame — which forced a tall grid row and opened a big empty band under side-by-side images. The earlier margin-collapse fixes couldn't catch it (the stray `<br>` stopped the frame being `:last-child`). `columns.css` now drops stray `<br>`/empty `<p>` inside columns; verified live on a content page.
+- Media Library border control: max width raised 10px → 50px (slider + server clamp) for genuinely heavy borders, and the per-asset colour picker — which was rendering at 6px wide, effectively invisible — now has a proper 42px swatch. (The save path was already wired; the invisible picker was the problem.)
+- Automatic album/category cover assignment engine added (`core/cover-assign.php`, `snapsmack_recompute_covers()`): unique cover per album/category, ranked by faves then views, most-popular-entity wins on collision, manual `cover_image_id` overrides. No schema change. Engine only — admin "Recompute covers" button + import hook still to be wired.
+- `api.php` loads the threeacross handler with a fallback to the old `unzucker-api.php` filename if the `git mv` hasn't run, so a missing rename can't fatal the API.
+
 ## 0.7.322 — "Applejack" (2026-06-29)
 
 - SUMNABATCH gram posting unblocked. The shared carousel-write API (`core/threeacross-api.php`, formerly `unzucker-api.php`) rejected the tool's `sybu` key because its auth only accepted `key_type='unzucker'`, so every `gram/upload`/`gram/post` returned 401. Auth now takes the key type(s) valid for the requested route, scoped per tool: shared reads + `trigram` accept either key, the SUMNABATCH authoring routes (`gram/*`) accept the `sybu` key, and the IG bulk-import routes (`upload`/`posts`) stay `unzucker`-only — one lock, per-tool keys, so a leaked key from one tool can't drive the other's routes. The key check is now expiry-aware with a fallback for installs predating the `expires_at` column. No client change was needed — the tool already targeted these routes.
