@@ -331,7 +331,7 @@ def draft_db_rows(draft: Draft) -> dict:
         }
 
     # ---- GRAM (single / carousel / trigram chunk): exact snap_* rows. ------
-    meta["endpoint"] = "api.php?route=unzucker/gram/post"
+    meta["endpoint"] = "api.php?route=threeacross/gram/post"
 
     def _img_row(im, idx):
         return {
@@ -428,7 +428,7 @@ def generate_draft_thumbs(draft: Draft, *, sq_size: int = 400, asp_max: int = 40
     Populate width/height/thumb_square/thumb_aspect for each image using the
     shared snap_thumbs port, baking each image's focal point + zoom into the
     square thumb. Sizes match the server generator EXACTLY (400² square + 400px
-    longest-edge aspect @ q85 — the size smack-post-gram.php and unzucker-api.php
+    longest-edge aspect @ q85 — the size smack-post-gram.php and threeacross-api.php
     actually produce), so the client thumbs are a true drop-in: the server saves
     them and skips its own GD pass. Client thumbs are mandatory.
     """

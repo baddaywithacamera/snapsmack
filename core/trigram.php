@@ -4,7 +4,7 @@
  *
  * Shared logic for the queued-publish gate that ensures all three posts in a
  * trigram group go live atomically.  Used by smack-lt-gram.php and
- * core/unzucker-api.php.  Intended for smack-post-gram.php (manual
+ * core/threeacross-api.php.  Intended for smack-post-gram.php (manual
  * publish path) — not yet wired.
  *
  * SNAPSMACK_EOF_HEADER

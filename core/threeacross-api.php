@@ -1,16 +1,32 @@
 <?php
 /**
- * SNAPSMACK - Unzucker Instagram Import API
+ * SNAPSMACK - Shared Carousel-Write API (Unzucker + SUMNABATCH)
  *
- * Authenticated JSON API for the Unzucker Instagram→SnapSmack migration
- * desktop tool. All requests require a Bearer token issued from
- * smack-api-keys.php (key_type = 'unzucker').
+ * Authenticated JSON API for the two GRAMOFSMACK desktop tools that write
+ * carousel/trigram content: the Unzucker Instagram→SnapSmack importer and the
+ * SUMNABATCH offline poster (BATCH, PLEASE). ONE interface, not two — same
+ * auth, carousel mode-lock, thumb-saving and snap_posts/snap_post_images
+ * writes — deliberately shared to keep the file count and attack surface down.
  *
- * Routes (via api.php?route=unzucker/...):
- *   GET    unzucker/ping    — connection test
- *   GET    unzucker/site    — categories + albums
- *   POST   unzucker/upload  — upload a single JPEG; returns {path} for img_file
- *   POST   unzucker/posts   — create post record from already-uploaded image paths
+ * One lock, per-tool keys (Bearer, issued from smack-api-keys.php). Each key is
+ * scoped to its own route family in the auth gate below, so a leaked key from
+ * one tool cannot drive the other's routes:
+ *   'unzucker' key → IG bulk-import routes (upload/posts) + shared reads/trigram
+ *   'sybu'     key → SUMNABATCH authoring routes (gram/*)   + shared reads/trigram
+ *
+ * NOTE: routes are 'threeacross/*'. The legacy 'unzucker/*' prefix still works
+ * as a backward-compat alias (api.php dispatches both here) so already-deployed
+ * Unzucker builds keep posting until rebuilt; it will be deprecated and dropped.
+ *
+ * Routes (via api.php?route=threeacross/...):
+ *   GET    threeacross/ping        — connection test             (either key)
+ *   GET    threeacross/site        — categories + albums          (either key)
+ *   POST   threeacross/upload      — IG import: upload one image   (unzucker)
+ *   POST   threeacross/posts       — IG import: create post(s)     (unzucker)
+ *   POST   threeacross/trigram     — link 3 posts into a trigram   (either key)
+ *   POST   threeacross/gram/upload — SUMNABATCH: image + thumbs    (sybu)
+ *   POST   threeacross/gram/post   — SUMNABATCH: create gram post  (sybu)
+ *   GET    threeacross/gram/verify — SUMNABATCH: confirm a post    (sybu)
  *
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====
@@ -53,7 +69,7 @@ $pdo->exec("ALTER TABLE snap_posts MODIFY title TEXT COLLATE utf8mb4_unicode_ci 
 // Auth
 // ---------------------------------------------------------------------------
 
-function unzucker_auth(PDO $pdo): bool {
+function unzucker_auth(PDO $pdo, array $allowed_types = ['unzucker']): bool {
     // Apache FastCGI strips Authorization; check all known landing spots.
     $header = $_SERVER['HTTP_AUTHORIZATION']
            ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
@@ -65,14 +81,34 @@ function unzucker_auth(PDO $pdo): bool {
     if (!preg_match('/^Bearer\s+([a-f0-9]{64})$/i', $header, $m)) {
         return false;
     }
-    $hash = hash('sha256', $m[1]);
-    $stmt = $pdo->prepare("
-        SELECT id FROM snap_ohsnap_keys
-        WHERE key_hash = ? AND is_active = 1 AND key_type = 'unzucker'
-        LIMIT 1
-    ");
-    $stmt->execute([$hash]);
-    $row = $stmt->fetch();
+    // One lock, per-tool keys: this shared carousel-write API is reached by the
+    // Unzucker IG importer ('unzucker' key) AND the SUMNABATCH offline poster
+    // ('sybu' key). The caller passes the key_type(s) valid for the requested
+    // route family, so each tool's key is scoped to its own doors.
+    $allowed_types = array_values(array_filter($allowed_types, 'strlen')) ?: ['unzucker'];
+    $place = implode(',', array_fill(0, count($allowed_types), '?'));
+    $hash  = hash('sha256', $m[1]);
+    // Expiry-aware (mandatory ≤4-week keys, 0.7.263); fall back without the
+    // expiry clause if the column predates the schema sync, so tools keep
+    // working until it lands.
+    try {
+        $stmt = $pdo->prepare("
+            SELECT id FROM snap_ohsnap_keys
+            WHERE key_hash = ? AND is_active = 1 AND key_type IN ($place)
+              AND (expires_at IS NULL OR expires_at > NOW())
+            LIMIT 1
+        ");
+        $stmt->execute(array_merge([$hash], $allowed_types));
+        $row = $stmt->fetch();
+    } catch (PDOException $e) {
+        $stmt = $pdo->prepare("
+            SELECT id FROM snap_ohsnap_keys
+            WHERE key_hash = ? AND is_active = 1 AND key_type IN ($place)
+            LIMIT 1
+        ");
+        $stmt->execute(array_merge([$hash], $allowed_types));
+        $row = $stmt->fetch();
+    }
     if (!$row) return false;
     $pdo->prepare("UPDATE snap_ohsnap_keys SET last_used_at = NOW() WHERE id = ?")
         ->execute([$row['id']]);
@@ -164,20 +200,37 @@ function uz_slug_base(string $ig_id, string $post_date, int $seq = 0): string {
 }
 
 // ---------------------------------------------------------------------------
-// Gate auth
-// ---------------------------------------------------------------------------
-
-if (!unzucker_auth($pdo)) {
-    uz_error(401, 'Invalid or missing API key.');
-}
-
-// ---------------------------------------------------------------------------
-// Route parsing
+// Route parsing — done before auth so each key is scoped to its route family.
 // ---------------------------------------------------------------------------
 
 $route  = $_GET['route'] ?? '';
-$sub    = preg_replace('#^unzucker/?#', '', $route);
+$sub    = preg_replace('#^(?:threeacross|unzucker)/?#', '', $route);
 $method = $_SERVER['REQUEST_METHOD'];
+
+// ---------------------------------------------------------------------------
+// Gate auth — one lock, per-tool keys (see unzucker_auth)
+//
+// Shared reads (ping/site) and the trigram linking step both tools use accept
+// either key. The SUMNABATCH offline poster (BATCH, PLEASE) drives the SON OF
+// A BATCH authoring routes (gram/*) with its 'sybu' key. The Unzucker IG
+// bulk-import "data bazooka" (upload/posts) stays 'unzucker'-only. Anything
+// else defaults to 'unzucker'.
+// ---------------------------------------------------------------------------
+
+$uz_shared_subs = ['ping', 'site', 'trigram'];          // either tool's key
+$uz_sob_subs    = ['gram/upload', 'gram/post', 'gram/verify']; // SUMNABATCH only
+
+if (in_array($sub, $uz_shared_subs, true)) {
+    $uz_allowed_key_types = ['unzucker', 'sybu'];
+} elseif (in_array($sub, $uz_sob_subs, true)) {
+    $uz_allowed_key_types = ['sybu'];
+} else {
+    $uz_allowed_key_types = ['unzucker'];
+}
+
+if (!unzucker_auth($pdo, $uz_allowed_key_types)) {
+    uz_error(401, 'Invalid or missing API key.');
+}
 
 // ---------------------------------------------------------------------------
 // Import-safety context + guards (server-enforced)
@@ -244,7 +297,7 @@ if ($method === 'POST') {
 }
 
 // ---------------------------------------------------------------------------
-// GET unzucker/ping
+// GET threeacross/ping
 // ---------------------------------------------------------------------------
 
 if ($sub === 'ping' && $method === 'GET') {
@@ -262,7 +315,7 @@ if ($sub === 'ping' && $method === 'GET') {
 }
 
 // ---------------------------------------------------------------------------
-// GET unzucker/site
+// GET threeacross/site
 // ---------------------------------------------------------------------------
 
 if ($sub === 'site' && $method === 'GET') {
@@ -285,7 +338,7 @@ if ($sub === 'site' && $method === 'GET') {
 }
 
 // ---------------------------------------------------------------------------
-// POST unzucker/posts/check  — bulk existence check by ig_id
+// POST threeacross/posts/check  — bulk existence check by ig_id
 // ---------------------------------------------------------------------------
 
 if ($sub === 'posts/check' && $method === 'POST') {
@@ -309,7 +362,7 @@ if ($sub === 'posts/check' && $method === 'POST') {
 }
 
 // ---------------------------------------------------------------------------
-// POST unzucker/posts
+// POST threeacross/posts
 // ---------------------------------------------------------------------------
 
 if ($sub === 'posts' && $method === 'POST') {
@@ -404,7 +457,7 @@ if ($sub === 'posts' && $method === 'POST') {
         $sort_order = (int)($sort_row['n'] ?? 1);
 
         // Generate the 400px square + aspect thumbnails the skins expect. The
-        // uploaded JPEG is already on disk (saved by unzucker/upload). Without
+        // uploaded JPEG is already on disk (saved by threeacross/upload). Without
         // this, img_thumb_square stays empty and both The Grid and Photogram
         // fall back to serving the full ~2000px original. 400px matches
         // RecoveryEngine::regenerateAndChecksum() so backfills stay consistent.
@@ -485,7 +538,7 @@ if ($sub === 'posts' && $method === 'POST') {
 }
 
 // ---------------------------------------------------------------------------
-// POST unzucker/upload
+// POST threeacross/upload
 // ---------------------------------------------------------------------------
 
 if ($sub === 'upload' && $method === 'POST') {
@@ -560,10 +613,10 @@ if ($sub === 'upload' && $method === 'POST') {
 }
 
 // ---------------------------------------------------------------------------
-// POST unzucker/trigram
+// POST threeacross/trigram
 // ---------------------------------------------------------------------------
 // Second call in the two-call trigram import flow.  Called after all three
-// posts have been created via POST unzucker/posts.
+// posts have been created via POST threeacross/posts.
 //
 // Body: {
 //   "post_id_1": <int>,   // L slot
@@ -667,7 +720,7 @@ if ($sub === 'trigram' && $method === 'POST') {
 // import bazooka (see $uz_is_authoring) but still carousel-mode locked.
 
 // ---------------------------------------------------------------------------
-// POST unzucker/gram/upload — full image + optional client thumbs
+// POST threeacross/gram/upload — full image + optional client thumbs
 // ---------------------------------------------------------------------------
 
 if ($sub === 'gram/upload' && $method === 'POST') {
@@ -763,7 +816,7 @@ if ($sub === 'gram/upload' && $method === 'POST') {
 }
 
 // ---------------------------------------------------------------------------
-// POST unzucker/gram/post — create a gram post with full per-image controls
+// POST threeacross/gram/post — create a gram post with full per-image controls
 // ---------------------------------------------------------------------------
 
 if ($sub === 'gram/post' && $method === 'POST') {
@@ -974,7 +1027,7 @@ if ($sub === 'gram/post' && $method === 'POST') {
 }
 
 // ---------------------------------------------------------------------------
-// GET unzucker/gram/verify — confirm a synced post exists (positive verify)
+// GET threeacross/gram/verify — confirm a synced post exists (positive verify)
 // ---------------------------------------------------------------------------
 // BATCH, PLEASE pulls the live post back after a sync and confirms it matches
 // the local draft before marking it synced (the SYBU lesson: confirm
@@ -1007,5 +1060,5 @@ if ($sub === 'gram/verify' && $method === 'GET') {
     ]);
 }
 
-uz_error(404, 'Unknown unzucker route.');
+uz_error(404, 'Unknown threeacross route.');
 // ===== SNAPSMACK EOF =====
