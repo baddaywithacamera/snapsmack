@@ -999,6 +999,13 @@ if ($sub === 'gram/post' && $method === 'POST') {
                 ]);
                 $pdo->prepare("UPDATE snap_images SET post_id = ? WHERE id = ?")->execute([$pid, $b['image_id']]);
             }
+            // Newest posts go to the TOP of the feed (Instagram-style). Seat this
+            // post at sort_order=1 and shift the rest of the published feed down,
+            // instead of leaving it at the default 0 — which the gram feed query
+            // demotes to the BOTTOM. Without this every SUMNABATCH batch landed at
+            // the end of the feed.
+            $pdo->prepare("UPDATE snap_posts SET sort_order = sort_order + 1 WHERE sort_order > 0")->execute();
+            $pdo->prepare("UPDATE snap_posts SET sort_order = 1 WHERE id = ?")->execute([$pid]);
             return $pid;
         };
 

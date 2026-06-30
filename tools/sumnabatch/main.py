@@ -1084,6 +1084,21 @@ class App(tk.Tk):
         self._apply_ttk_style()
         self._build_ui()
         self._load_config_to_ui()
+
+        # ── Window state: restore last size / maximized, then remember it ─────
+        self._normal_geometry = self._config.get('win_geometry', '') or f"{WIN_W}x{WIN_H}"
+        try:
+            # Apply the saved normal size first so un-maximizing returns to it,
+            # then maximize on top if we closed maximized last time.
+            if self._config.get('win_geometry'):
+                self.geometry(self._config['win_geometry'])
+            if self._config.get('win_maximized'):
+                self.after(0, lambda: self.state('zoomed'))   # reopen maximized
+        except Exception:
+            pass
+        self.bind('<Configure>', self._track_geometry)
+        self.protocol('WM_DELETE_WINDOW', self._on_app_close)
+
         self.after(100, self._poll_queue)
         self.after(200, self._auto_reconnect)
 
@@ -3527,6 +3542,9 @@ class App(tk.Tk):
             'copyright_text':     self._copyright_var.get().strip(),
             'post_as_grams':      (self._post_as_grams_var.get()
                                    if hasattr(self, '_post_as_grams_var') else False),
+            'drive_warning_dismissed': bool(self._config.get('drive_warning_dismissed', False)),
+            'win_maximized':      self._win_is_max(),
+            'win_geometry':       getattr(self, '_normal_geometry', ''),
         })
         self._update_ai_dot()
 
@@ -3538,6 +3556,83 @@ class App(tk.Tk):
         else:
             self._ai_dot.configure(fg=LED_OFF)
             self._ai_lbl.configure(text="NO KEY", fg=LED_OFF)
+
+    # ------------------------------------------------------------------
+    # Window state (size / maximized) persistence
+    # ------------------------------------------------------------------
+    def _win_is_max(self) -> bool:
+        try:
+            return self.state() == 'zoomed'
+        except Exception:
+            return False
+
+    def _track_geometry(self, event):
+        # Record the last NORMAL (non-maximized) geometry so un-maximizing
+        # restores a sane size and we persist the right size on close.
+        try:
+            if event.widget is self and self.state() == 'normal':
+                self._normal_geometry = self.geometry()
+        except Exception:
+            pass
+
+    def _on_app_close(self):
+        # Persist window state (size + maximized) before quitting.
+        try:
+            self._save_config()
+        except Exception:
+            pass
+        self.destroy()
+
+    def _confirm_no_drive(self) -> bool:
+        """Drive is enabled but not connected. Returns True to proceed. A
+        'Don't warn me again' tick persists (config: drive_warning_dismissed)
+        so the warning can be dismissed for good."""
+        if self._config.get('drive_warning_dismissed'):
+            return True
+
+        dlg = tk.Toplevel(self)
+        dlg.title("Google Drive not connected")
+        dlg.configure(bg=BG_CARD)
+        dlg.transient(self)
+        dlg.resizable(False, False)
+
+        result = {'ok': False}
+        dont   = tk.BooleanVar(value=False)
+
+        tk.Label(dlg, text="⚠  Google Drive is NOT connected.",
+                 bg=BG_CARD, fg=FG_WARN, font=("Segoe UI", 11, "bold"),
+                 justify="left").pack(anchor="w", padx=18, pady=(16, 8))
+        tk.Label(dlg,
+                 text="Images will be posted WITHOUT download links.\n"
+                      "You'll need to upload them to Drive manually later.\n\n"
+                      "Continue without Drive?",
+                 bg=BG_CARD, fg=FG_MAIN, font=("Segoe UI", 10),
+                 justify="left").pack(anchor="w", padx=18)
+        tk.Checkbutton(dlg, text="Don't warn me again", variable=dont,
+                       bg=BG_CARD, fg=FG_DIM, selectcolor=BG_DEEP,
+                       activebackground=BG_CARD, activeforeground=FG_DIM,
+                       font=("Segoe UI", 9)).pack(anchor="w", padx=14, pady=(12, 4))
+
+        def _close(ok):
+            result['ok'] = ok
+            if dont.get():
+                self._config['drive_warning_dismissed'] = True
+                self._save_config()
+            dlg.destroy()
+
+        btns = tk.Frame(dlg, bg=BG_CARD); btns.pack(fill="x", padx=18, pady=(8, 16))
+        ttk.Button(btns, text="No",  command=lambda: _close(False)).pack(side="right")
+        ttk.Button(btns, text="Yes", command=lambda: _close(True)).pack(side="right", padx=(0, 8))
+        dlg.bind("<Escape>", lambda e: _close(False))
+        dlg.bind("<Return>", lambda e: _close(True))
+
+        dlg.update_idletasks()
+        x = self.winfo_rootx() + max(0, (self.winfo_width()  - dlg.winfo_reqwidth())  // 2)
+        y = self.winfo_rooty() + max(0, (self.winfo_height() - dlg.winfo_reqheight()) // 3)
+        dlg.geometry(f"+{x}+{y}")
+        dlg.grab_set()
+        self.wait_window(dlg)
+        return result['ok']
 
     # ------------------------------------------------------------------
     # Browse
@@ -4154,17 +4249,9 @@ class App(tk.Tk):
                                  "Tick at least one image to post (or use Select all).")
             return
 
-        # ── Warn if Drive is enabled but not connected ─────────────────
+        # ── Warn if Drive is enabled but not connected (dismissable) ────
         if self._drive_enabled_var.get() and self._drive_service is None:
-            proceed = messagebox.askyesno(
-                "Google Drive not connected",
-                "⚠  Google Drive is NOT connected.\n\n"
-                "Images will be posted WITHOUT download links.\n"
-                "You will need to upload them to Drive manually later.\n\n"
-                "Are you sure you want to continue without Drive?",
-                icon="warning",
-            )
-            if not proceed:
+            if not self._confirm_no_drive():
                 return
 
         count = len(entries)

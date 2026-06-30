@@ -108,6 +108,47 @@ if ($_ic_format === 'custom') {
 $_ic_scrim  = max(10, min(90, (int)($settings['ic_scrim'] ?? 60))) / 100;
 $_ic_bgmode = $settings['ic_bg_mode'] ?? 'mayhem';
 
+// ── Text glow (readability over the drifting tabletop) — ported from AURORA ──
+// Profile title / tagline / bio halo. A subtle dark floor keeps text legible
+// even with no custom glow set; the Text Glow controls override it.
+$_ic_glow_hex = trim($settings['ic_glow_color'] ?? '#000000');
+$_ic_glow_sz  = max(0, min(40,  (int)($settings['ic_glow_size']    ?? 0)));
+$_ic_glow_op  = max(0, min(100, (int)($settings['ic_glow_opacity'] ?? 0)));
+$_ic_glow_css = '0 0 2px rgba(0,0,0,0.55),0 0 8px rgba(0,0,0,0.35)';
+if ($_ic_glow_sz > 0 && $_ic_glow_op > 0) {
+    $_gc = ltrim($_ic_glow_hex, '#');
+    if (strlen($_gc) === 3) $_gc = $_gc[0].$_gc[0].$_gc[1].$_gc[1].$_gc[2].$_gc[2];
+    $_gr = hexdec(substr($_gc, 0, 2)); $_gg = hexdec(substr($_gc, 2, 2)); $_gb = hexdec(substr($_gc, 4, 2));
+    $_ic_glow_css = sprintf(
+        '0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_ic_glow_sz, $_gr, $_gg, $_gb, number_format($_ic_glow_op / 100, 2),
+        $_ic_glow_sz * 2, $_gr, $_gg, $_gb, number_format($_ic_glow_op / 200, 2)
+    );
+}
+
+// ── Nav glow — ported from AURORA. Outer halo behind the menu links. ─────────
+$_ic_navglow_hex    = trim($settings['ic_nav_glow_color'] ?? '#000000');
+$_ic_navglow_sz     = max(0, min(40,  (int)($settings['ic_nav_glow_size']    ?? 0)));
+$_ic_navglow_op     = max(0, min(100, (int)($settings['ic_nav_glow_opacity'] ?? 45)));
+$_ic_navglow_css    = 'none';
+$_ic_navglow_strong = 'none';
+if ($_ic_navglow_sz > 0 && $_ic_navglow_op > 0) {
+    $_ngc = ltrim($_ic_navglow_hex, '#');
+    if (strlen($_ngc) === 3) $_ngc = $_ngc[0].$_ngc[0].$_ngc[1].$_ngc[1].$_ngc[2].$_ngc[2];
+    $_ngr = hexdec(substr($_ngc, 0, 2)); $_ngg = hexdec(substr($_ngc, 2, 2)); $_ngb = hexdec(substr($_ngc, 4, 2));
+    $_nga = number_format($_ic_navglow_op / 100, 2);
+    $_ic_navglow_css = sprintf(
+        '0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_ic_navglow_sz, $_ngr, $_ngg, $_ngb, $_nga,
+        $_ic_navglow_sz * 2, $_ngr, $_ngg, $_ngb, number_format($_ic_navglow_op / 200, 2)
+    );
+    $_ic_navglow_strong = sprintf(
+        '0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_ic_navglow_sz + 2, $_ngr, $_ngg, $_ngb, number_format(min(1, $_ic_navglow_op / 100 * 1.5), 2),
+        ($_ic_navglow_sz + 2) * 2, $_ngr, $_ngg, $_ngb, $_nga
+    );
+}
+
 // Organized Mayhem ambient background needs its shared data endpoint.
 if ($_ic_bgmode === 'mayhem') {
     require_once dirname(__DIR__, 2) . '/core/mayhem-data.php';
@@ -115,7 +156,7 @@ if ($_ic_bgmode === 'mayhem') {
 ?>
 
 <!-- INSTANT CAMERA vars: tile aspect (match the print), scrim opacity, sharp corners. -->
-<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;}</style>
+<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;}</style>
 
 <?php if ($_ic_bgmode === 'mayhem'): ?>
 <!-- Background: Organized Mayhem ambient tabletop (data-pan=0 data-ambient=1) behind the scrim. -->
