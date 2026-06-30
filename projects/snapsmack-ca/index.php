@@ -1616,9 +1616,9 @@ require_once __DIR__ . '/includes/header.php';
             <div class="security-layer">
                 <div class="layer-num">Layer 6 — Your Install</div>
                 <h3>SMACKBACK</h3>
-                <p>SMACKBACK is automated sentinel software that ships in every install and runs without configuration. On hub/spoke networks, tamper reports are cross-correlated across all spokes — the same file modified at multiple sites in sequence isn't a coincidence, it's a coordinated attack, and the response escalates accordingly.</p>
-                <p>SNAPSMACK watches its own files. PHP, JavaScript, and CSS are hashed at install time and re-verified on a schedule — and on every admin login and skin load. A modified file is caught fast.</p>
-                <p>Confirmed tamper is unmissable: the admin interface switches to a high-contrast BREACH skin that cannot be dismissed until the incident is resolved. An email alert fires. The incident response procedure kicks in.</p>
+                <p>SMACKBACK is automated sentinel software that ships in every install and runs with no configuration. It hashes every PHP, JavaScript, and CSS file at install time and re-verifies them on a schedule — and on every admin login and skin load — so a modified file is caught fast.</p>
+                <p>Confirmed tamper is unmissable: admin switches to a high-contrast BREACH skin that can't be dismissed until the incident is resolved, an email fires, and the public side drops behind a holding page so a compromised install can't serve bad code to your readers.</p>
+                <p>SMACKBACK is also federated. Opted-in installs report confirmed breaches — file hashes and incident metadata only, never your content — to the project's central server, where they're cross-correlated across the whole network. When reports cross a threshold it's not coincidence, it's an attack on the software itself: a network <strong>yellow alert</strong> goes out to every site telling owners to change passwords, rotate keys, pull the newest signed release, and watch the forum and dashboard for updates. FAFO; come at our blogs and everyone knows right away.</p>
             </div>
 
             <div class="security-layer">
@@ -1852,7 +1852,7 @@ require_once __DIR__ . '/includes/header.php';
 <!-- ── TOOLS ───────────────────────────────────────────────────────────────── -->
 <section id="tools">
     <div class="wrap">
-        <p class="section-kicker">Three ready, more coming</p>
+        <p class="section-kicker">Four ready, more coming</p>
         <h2>Companion Tools</h2>
         <p class="lede" style="margin-bottom: 48px;">Desktop apps that do the heavy lifting alongside SnapSmack. Free, same as the CMS.</p>
 
@@ -1922,6 +1922,28 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Your years of careful Instagram curation aren't gone. They're just hostage. UNZUCKER takes your Instagram data export and migrates it to SnapSmack — images, captions, hashtags, and original post dates all intact. Every carousel, every single shot, every carefully sequenced grid row. Posted at whatever rate your server can handle, spread across as many days as you need. Your archive, back in your hands, on your server.</p>
                 <p>Point it at your Instagram export folder, connect to your site, and sort your posts into the order you want them to land. UNZUCKER's grid view shows your entire archive the way it looked on Instagram — three columns, your photos, your sequence. Lock trigram groups to stitch panoramas and multi-part compositions across the grid exactly as intended. Hit Transfer &amp; Post and walk away. Throttle controls keep shared-host admins from having an aneurysm. Off-peak mode holds fire during business hours and picks back up automatically overnight.</p>
                 <p>Phase 1 is shipping now. We eat our own dog food first — unzucked.ca is running it in production.</p>
+                <p class="dl-note">[ Windows 10/11 · Linux 64-bit · Free download from the admin tools page after install ]</p>
+            </div>
+        </div>
+
+        <hr class="tool-divider">
+
+        <div class="tool-block tool-block--reversed">
+            <div class="tool-screenshot">
+                <div class="tool-screenshot-duo">
+                    <a href="img/flkr-fckr.png" data-lb="img/flkr-fckr.png">
+                        <img src="img/flkr-fckr.png" alt="FLKR FCKR — Flickr import">
+                    </a>
+                    <a href="img/slickr-landing.png" data-lb="img/slickr-landing.png">
+                        <img src="img/slickr-landing.png" alt="FLKR FCKR — imported Flickr archive live on a SnapSmack site">
+                    </a>
+                </div>
+            </div>
+            <div class="tool-copy">
+                <h3>Windows / Linux</h3>
+                <h2>FLKR FCKR</h2>
+                <p>Your Flickr export, migrated to SnapSmack — images, titles, descriptions, tags, and original upload dates, spread across as many days as your server can handle so nothing lands out of order. Point it at your export, connect to your site, and let it run. Proven on a real 10,000-image archive, imported clean.</p>
+                <p>To Flickr: treat other people's wallets as your own, and don't be shocked when someone helps them snap those wallets shut.</p>
                 <p class="dl-note">[ Windows 10/11 · Linux 64-bit · Free download from the admin tools page after install ]</p>
             </div>
         </div>

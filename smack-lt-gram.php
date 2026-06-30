@@ -352,8 +352,12 @@ include 'core/sidebar.php';
         <?php endif; ?>
 
         <?php if ($tg_slot > 0): ?>
-        <div class="ltg-badge ltg-badge--trigram"><?php echo $slot_label; ?></div>
+        <div class="ltg-badge ltg-badge--trigram" title="Locked trigram — <?php echo $slot_label; ?> slot">🔒 <?php echo $slot_label; ?></div>
         <?php endif; ?>
+
+        <label class="ltg-select-corner" title="Select for locking / publishing">
+            <input type="checkbox" class="ltg-select-cb" data-post-id="<?php echo $post['post_id']; ?>">
+        </label>
 
         <div class="ltg-tile-overlay">
             <span class="ltg-tile-title"><?php echo htmlspecialchars($post['title'] ?: '(no title)'); ?></span>
@@ -366,9 +370,6 @@ include 'core/sidebar.php';
                     <?php echo $is_queued ? 'QUEUED' : 'PUBLISH'; ?>
                 </button>
                 <?php endif; ?>
-                <label class="ltg-select-label" title="Select">
-                    <input type="checkbox" class="ltg-select-cb" data-post-id="<?php echo $post['post_id']; ?>">
-                </label>
             </div>
         </div>
 
@@ -716,7 +717,9 @@ include 'core/sidebar.php';
 /* ── States ────────────────────────────────────────────────────────────── */
 .ltg-tile--draft          { opacity: 0.65; }
 .ltg-tile--queued         { opacity: 0.80; outline: 2px dashed var(--accent, #c8a96e); outline-offset: -2px; }
-.ltg-tile--trigram        { outline: 2px solid var(--accent, #c8a96e); outline-offset: -2px; }
+.ltg-tile--trigram        { outline: 3px solid var(--accent, #c8a96e); outline-offset: -3px; }
+/* Ticked tiles get a clear ring so you can see your selection before locking. */
+.ltg-tile:has(.ltg-select-cb:checked) { outline: 3px solid #46c46a; outline-offset: -3px; }
 .ltg-tile--queued.ltg-tile--trigram { outline: 2px dashed var(--accent, #c8a96e); outline-offset: -2px; }
 .ltg-tile--warn           { outline: 2px solid #e05a5a !important; outline-offset: -2px; }
 .ltg-tile--ghost          { opacity: 0.35; }
@@ -734,8 +737,15 @@ include 'core/sidebar.php';
 }
 .ltg-badge--draft    { top: 5px; left: 5px;  background: #e08030; color: #000; }
 .ltg-badge--queued   { top: 5px; left: 5px;  background: var(--accent, #c8a96e); color: #000; }
-.ltg-badge--carousel { top: 5px; right: 5px; background: rgba(0,0,0,.65); color: #fff; }
-.ltg-badge--trigram  { bottom: 5px; right: 5px; background: var(--accent, #c8a96e); color: #000; }
+.ltg-badge--carousel { top: 38px; right: 6px; background: rgba(0,0,0,.65); color: #fff; }
+/* Locked-trigram slot label (🔒 L / M / R) — big and unmissable so the group
+   reads as locked and you can see which tile is left / middle / right. */
+.ltg-badge--trigram  {
+    bottom: 6px; right: 6px;
+    font-size: 0.95rem; font-weight: 800; padding: 4px 10px;
+    background: var(--accent, #c8a96e); color: #000;
+    border-radius: 3px; box-shadow: 0 1px 5px rgba(0,0,0,.5);
+}
 
 /* ── Warning badge ─────────────────────────────────────────────────────── */
 .ltg-warn-badge {
@@ -809,7 +819,16 @@ include 'core/sidebar.php';
     cursor:      pointer;
     margin-left: auto;
 }
-.ltg-select-cb { width: 14px; height: 14px; cursor: pointer; accent-color: var(--accent, #c8a96e); }
+/* Always-visible select target in the tile corner — a big circular hit area so
+   it's easy to click without hunting for a tiny box hidden behind hover. */
+.ltg-select-corner {
+    position: absolute; top: 6px; right: 6px; z-index: 3;
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.5); cursor: pointer;
+}
+.ltg-select-corner:hover { background: rgba(0,0,0,.72); }
+.ltg-select-cb { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent, #c8a96e); }
 
 /* ── Column slider ─────────────────────────────────────────────────────── */
 .ltg-col-label {
