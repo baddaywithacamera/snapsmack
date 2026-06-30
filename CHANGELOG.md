@@ -12,7 +12,7 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.331 — "Rarity" (2026-06-30)
+## 0.7.332 — "Rarity" (2026-06-30)
 
 - **Grid Lighttable — trigram selection.** Ticking tiles for a trigram now shows a live **L / M / R** (or **T / M / B**) disc on each ticked tile reflecting the slot it will take when locked, so the order is unmistakable before you hit LOCK. The selection also persists across reloads (saved per-session), so a refresh no longer wipes your picks; it clears automatically once you lock or publish.
 - **3-across enforcement (blog-level).** New opt-in rule that keeps the published feed to complete rows of three: a lone trailing single post auto-drops to **queued** and auto-releases the moment two more fill its row — the same hands-off gate trigrams already use. Drafts are never touched. **Creating a trigram turns it on automatically** (a blog using trigrams is committed to the 3-across grid); a checkbox in the lighttable toolbar flips it back off. Lives in `core/trigram.php` (`threeacross_settle`) wired into single + bulk publish.
