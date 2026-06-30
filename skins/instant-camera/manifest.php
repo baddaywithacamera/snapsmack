@@ -30,7 +30,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'INSTANT CAMERA',
-    'version'     => '1.0.12',
+    'version'     => '1.0.14',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'For instant-film photographers. A GRAMOFSMACK 3-across grid whose tile aspect you set to match your format (Polaroid, Instax Mini/Wide/Square, or custom) so prints show UNCROPPED — the scanned border is the frame, the skin just adds a drop shadow. Drifting Organized Mayhem tabletop behind a white scrim. Prints on a table, which is exactly what instant photography is.',
@@ -185,26 +185,64 @@ return [
             'unit'     => '%',
         ],
 
-        // ---- PAGE READABILITY PANEL ----------------------------------------
-        // Tinted panel behind static-page text so it stays readable over the
-        // animated Organized Mayhem background. Colour + opacity admin-tunable.
-        'ic_page_panel_color' => [
-            'section' => 'PAGE PANEL',
+        // ---- PANEL (all pages) ---------------------------------------------
+        // ONE backing panel behind the content column on EVERY page — landing,
+        // About/static, archive, hashtag. Tinted backing so text + prints stay
+        // readable over the animated Organized Mayhem background. Full content
+        // width, reaches the top, bleeds out by Extend each side. Colour +
+        // opacity + extend admin-tunable. (Replaces the old separate Landing
+        // Panel / Page Panel sets — one control to rule them all.)
+        'ic_panel_color' => [
+            'section' => 'PANEL',
             'type'    => 'color',
-            'label'   => 'Page Panel Colour',
+            'label'   => 'Panel Colour',
             'default' => '#ffffff',
-            'hint'    => 'Backing colour behind page text (About, static pages) so it reads over the moving background. PHP-handled → --page-panel-bg.',
+            'hint'    => 'Backing colour behind the content column on every page so it reads over the moving background. PHP-handled → --panel-bg.',
         ],
-        'ic_page_panel_opacity' => [
-            'section'  => 'PAGE PANEL',
+        'ic_panel_opacity' => [
+            'section'  => 'PANEL',
             'type'     => 'range_numeric',
-            'label'    => 'Page Panel Opacity',
+            'label'    => 'Panel Opacity',
             'default'  => '0',
             'min'      => '0',
             'max'      => '100',
             'step'     => '5',
             'unit'     => '%',
-            'hint'     => '0 = no panel (text sits straight on the background). Raise it until the text is comfortable to read.',
+            'hint'     => '0 = transparent (the tabletop shows straight through). Raise it until text + prints are comfortable to read.',
+        ],
+        'ic_panel_extend' => [
+            'section'  => 'PANEL',
+            'type'     => 'range_numeric',
+            'label'    => 'Panel Extend (gutters)',
+            'default'  => '0',
+            'min'      => '0',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => 'px',
+            'hint'     => 'How far the panel bleeds out past the content each side. 0 = flush, 100 = 100px gutters.',
+        ],
+
+        // ---- SOLO PAGE -----------------------------------------------------
+        // Backdrop behind the print on the single-post (solo) view. Defaults to
+        // solid black; drop the opacity to let the Organized Mayhem tabletop
+        // show through behind the photo.
+        'ic_solo_bg_color' => [
+            'section' => 'SOLO PAGE',
+            'type'    => 'color',
+            'label'   => 'Solo Background Colour',
+            'default' => '#000000',
+            'hint'    => 'Backdrop colour behind the photo on the single-post view. PHP-handled → --post-bg.',
+        ],
+        'ic_solo_bg_opacity' => [
+            'section'  => 'SOLO PAGE',
+            'type'     => 'range_numeric',
+            'label'    => 'Solo Background Opacity',
+            'default'  => '100',
+            'min'      => '0',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+            'hint'     => '100 = solid. Lower it to let the drifting tabletop show through behind the print.',
         ],
 
         // ---- STICKY NAVBAR -------------------------------------------------
@@ -267,6 +305,14 @@ return [
             'default' => '#e0e0e0',
             'hint'    => 'Colour of the nav divider line. PHP-handled → --ic-navline-color.',
         ],
+        'ic_navline_opacity' => [
+            'section'  => 'NAV LINES',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav Line Opacity',
+            'default'  => '100',
+            'min'      => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'     => 'Opacity of the nav divider line. PHP-handled → --ic-navline-opacity.',
+        ],
         'ic_navline_shadow_color' => [
             'section' => 'NAV LINES',
             'type'    => 'color',
@@ -287,34 +333,6 @@ return [
             'label'    => 'Nav Line Shadow Opacity',
             'default'  => '40',
             'min'      => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-        ],
-
-        // ---- LANDING PANEL -------------------------------------------------
-        // Opaque backing behind the landing feed column (like The Grid's white
-        // centre), configurable for the landing page only — for readability over
-        // busy backgrounds.
-        'ic_landing_panel_color' => [
-            'section' => 'LANDING PANEL',
-            'type'    => 'color',
-            'label'   => 'Landing Panel Colour',
-            'default' => '#ffffff',
-            'hint'    => 'Backing colour behind the landing feed column. PHP-handled → --landing-panel-bg.',
-        ],
-        'ic_landing_panel_opacity' => [
-            'section'  => 'LANDING PANEL',
-            'type'     => 'range_numeric',
-            'label'    => 'Landing Panel Opacity',
-            'default'  => '0',
-            'min'      => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'     => '0 = transparent (tabletop shows through the gaps). Raise for a solid, readable column.',
-        ],
-        'ic_landing_panel_extend' => [
-            'section'  => 'LANDING PANEL',
-            'type'     => 'range_numeric',
-            'label'    => 'Landing Panel Extend',
-            'default'  => '0',
-            'min'      => '0', 'max' => '100', 'step' => '5', 'unit' => 'px',
-            'hint'     => 'How far the panel bleeds out past the outer tiles, each side. 0 = flush with the tiles, 100 = 100px out.',
         ],
 
         // ---- GRID APPEARANCE -----------------------------------------------
