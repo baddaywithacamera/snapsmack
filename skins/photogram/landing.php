@@ -109,6 +109,11 @@ if ($_pg_carousel_site) {
     ");
     $grid_stmt->execute([$now_local]);
     $grid_posts = $grid_stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Backfill horizontal-trigram rows so the feed never shows blank gaps. Only
+    // the GRAMOFSMACK carousel path uses trigrams — the SMACKONEOUT image path
+    // below never touches this. Shared helper — see core/trigram.php.
+    require_once dirname(__DIR__, 2) . '/core/trigram.php';
+    if (function_exists('trigram_align_backfill')) $grid_posts = trigram_align_backfill($grid_posts);
     $has_more   = false;
 } else {
     // SMACKONEOUT: one tile per image, paginated for infinite scroll.
