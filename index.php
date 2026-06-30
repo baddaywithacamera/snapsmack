@@ -56,6 +56,24 @@ try {
     $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
     $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     require_once __DIR__ . '/core/maintenance-gate.php';
+
+    // ── Organized Mayhem JSON endpoint (early intercept) ──────────────────
+    // The tabletop background (ss-engine-organized-mayhem.js) fetches its photo
+    // pool from BASE_URL?ajax=mayhem. core/mayhem-data.php self-emits that JSON
+    // and exits — but ONLY before any HTML is sent. The skins include it from
+    // inside their landing template, AFTER meta.php has already streamed the
+    // <head>, so an ?ajax=mayhem hit returned the whole HTML page (and the
+    // Content-Type: application/json header silently failed) — r.json() then
+    // threw, the pool came back empty, and the background stayed blank. Handle
+    // it here, before page-cache and all rendering, so the engine gets clean
+    // JSON. BASE_URL is needed for the absolute image src/url it builds.
+    if (isset($_GET['ajax']) && $_GET['ajax'] === 'mayhem') {
+        if (!defined('BASE_URL')) {
+            define('BASE_URL', rtrim($settings['site_url'] ?? 'https://example.com/', '/') . '/');
+        }
+        require_once __DIR__ . '/core/mayhem-data.php';  // self-emits JSON + exits
+    }
+
     require_once __DIR__ . '/core/page-cache.php';
     page_cache_serve_or_start($settings);
 

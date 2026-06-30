@@ -105,7 +105,7 @@ def _build_prompt(
 
 Analyse the image carefully and respond ONLY in this exact format — no extra text:
 
-TITLE: <a haiku-style title: three phrases separated by commas, e.g. "Dark stone holds the rain, rust bleeds through the ancient wall, time carves out the mark">
+TITLE: <a short, plain, descriptive title — a few words, e.g. "Drumheller water tower at dusk". NOT a haiku, not poetic.>
 CAPTION: <a short, natural one-line caption describing the image — this becomes the post's caption/description. No hashtags.>
 TAGS: <5 to 8 space-separated hashtags, e.g. #stone #rust #texture #macro #urban>
 CATEGORY: <pick the single best match from this list, or leave blank:{cats_str}>
@@ -113,7 +113,7 @@ ALBUM: <pick the single best match from this list, or leave blank:{albums_str}>
 COLORS: <the three most visually prominent colors in the image as uppercase hex codes separated by spaces, e.g. #A3724B #2E1F0D #8C6B3A>
 
 Rules:
-- TITLE must be evocative and descriptive of what is literally in the image
+- TITLE must be a short, plain description of what is literally in the image — not a haiku, not poetic
 - CAPTION is the post's caption/description: one natural line, no hashtags
 - {tags_guidance}
 - Tags must be lowercase with no spaces within a tag
@@ -156,6 +156,7 @@ def enrich_batch(
     album_descriptions: Optional[dict] = None,
     existing_tags:      Optional[List[str]] = None,
     existing_titles:    Optional[List[str]] = None,
+    cancel_event=None,
 ) -> List[ManifestEntry]:
     """
     Process a list of ManifestEntry objects, sending each image to Gemini
@@ -194,6 +195,9 @@ def enrich_batch(
     used_titles: set = {t.strip().lower() for t in (existing_titles or [])}
 
     for i, entry in enumerate(entries, start=1):
+        if cancel_event is not None and cancel_event.is_set():
+            log.info("ENRICH cancelled by user at image %d of %d", i, total)
+            break
         if skip_filled and (entry.title.strip() or entry.caption.strip()):
             if on_progress:
                 on_progress(i, total, entry, None)

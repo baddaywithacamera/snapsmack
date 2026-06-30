@@ -87,7 +87,7 @@ class UnzuckerClient:
         try:
             resp = self._session.get(
                 f"{self.base_url}/api.php",
-                params={'route': 'unzucker/ping'},
+                params={'route': 'threeacross/ping'},
                 timeout=15,
             )
             if resp.status_code == 401:
@@ -103,7 +103,7 @@ class UnzuckerClient:
     def fetch_site_data(self) -> SiteData:
         resp = self._session.get(
             f"{self.base_url}/api.php",
-            params={'route': 'unzucker/site'},
+            params={'route': 'threeacross/site'},
             timeout=15,
         )
         resp.raise_for_status()
@@ -132,7 +132,7 @@ class UnzuckerClient:
             file_data = fh.read()
         resp = self._session.post(
             f"{self.base_url}/api.php",
-            params={'route': 'unzucker/upload'},
+            params={'route': 'threeacross/upload'},
             files={'image': (filename, file_data, 'image/jpeg')},
             headers={'Content-Type': None},   # clear session JSON header; let requests set multipart
             timeout=300,
@@ -163,7 +163,7 @@ class UnzuckerClient:
         }
         resp = self._session.post(
             f"{self.base_url}/api.php",
-            params={'route': 'unzucker/trigram'},
+            params={'route': 'threeacross/trigram'},
             data=json.dumps(payload),
             timeout=30,
         )
@@ -179,7 +179,7 @@ class UnzuckerClient:
             return {}
         resp = self._session.post(
             f"{self.base_url}/api.php",
-            params={'route': 'unzucker/posts/check'},
+            params={'route': 'threeacross/posts/check'},
             json={'ig_ids': ig_ids},
             timeout=30,
         )
@@ -213,7 +213,7 @@ class UnzuckerClient:
         }
         resp = self._session.post(
             f"{self.base_url}/api.php",
-            params={'route': 'unzucker/posts'},
+            params={'route': 'threeacross/posts'},
             data=json.dumps(payload),
             timeout=120,
         )

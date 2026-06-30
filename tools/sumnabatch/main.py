@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.1.9"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
+BUILD_VERSION = "0.1.16"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -61,16 +61,16 @@ import recovery as recovery_module
 from manifest_parser import ManifestEntry
 from poster import SnapSmackClient, SiteData
 
-# SON OF A BATCH — offline posting suite (BATCH SLAPPED + BATCH, PLEASE).
+# SUMNABATCH — offline posting suite (BATCH SLAPPED + BATCH, PLEASE).
 # Guarded so a missing optional dep can never stop SYBU's core from launching.
 try:
-    from sob_solo import build_solo_mode
-    from sob_gram import build_gram_mode
-    _SOB_AVAILABLE = True
-    _SOB_IMPORT_ERROR = ""
-except Exception as _sob_err:  # pragma: no cover - import shim
-    _SOB_AVAILABLE = False
-    _SOB_IMPORT_ERROR = str(_sob_err)
+    from sumna_solo import build_solo_mode
+    from sumna_gram import build_gram_mode
+    _SUMNA_AVAILABLE = True
+    _SUMNA_IMPORT_ERROR = ""
+except Exception as _sumna_err:  # pragma: no cover - import shim
+    _SUMNA_AVAILABLE = False
+    _SUMNA_IMPORT_ERROR = str(_sumna_err)
 
 
 # ---------------------------------------------------------------------------
@@ -1076,6 +1076,7 @@ class App(tk.Tk):
         self._posting           = False
         self._keepalive_running = False
         self._cancel_evt        = threading.Event()    # set to abort a running POST
+        self._active_conn       = None                 # disposable gram conn — closed on cancel for instant abort
         self._recovery          = None                 # recovery_module.RecoveryStore
         self._msg_queue:    queue.Queue               = queue.Queue()
 
@@ -1211,7 +1212,7 @@ class App(tk.Tk):
         tab_strip.pack(side="left", padx=(28, 0), fill="y")
         _tabs = [('post', 'POST'), ('audit', 'AUDIT'),
                  ('repair', 'BASIC REPAIR'), ('match', 'ADV. MATCH')]
-        if _SOB_AVAILABLE:
+        if _SUMNA_AVAILABLE:
             _tabs += [('slapped', 'BATCH SLAPPED'), ('gram', 'BATCH, PLEASE'),
                       ('smacktalk', 'SMACK YOUR BATCH UP')]
         _tabs += [('settings', 'SETTINGS')]
@@ -1312,7 +1313,7 @@ class App(tk.Tk):
         self._repair_frame   = tk.Frame(self, bg=BG_DEEP)
         self._settings_frame = tk.Frame(self, bg=BG_DEEP)
         self._match_frame    = tk.Frame(self, bg=BG_DEEP)
-        if _SOB_AVAILABLE:
+        if _SUMNA_AVAILABLE:
             self._slapped_frame   = tk.Frame(self, bg=BG_DEEP)
             self._gram_frame      = tk.Frame(self, bg=BG_DEEP)
             self._smacktalk_frame = tk.Frame(self, bg=BG_DEEP)
@@ -1627,6 +1628,23 @@ class App(tk.Tk):
         self._post_canvas.bind("<Enter>", lambda e: self._post_hover(True))
         self._post_canvas.bind("<Leave>", lambda e: self._post_hover(False))
 
+        # GRAM TOGGLE — sits immediately right of POST BATCH and is drawn bright
+        # gram-blue + bold so it can't be missed. Ticked => each enriched row
+        # posts as its own single gram to a carousel site; unticked => normal
+        # solo posting. Same var the post path branches on.
+        self._post_as_grams_var = tk.BooleanVar(
+            value=bool(self._config.get('post_as_grams', False)))
+        self._gram_chk = tk.Checkbutton(
+            bottom, text="▶ POST AS GRAMS (carousel)",
+            variable=self._post_as_grams_var,
+            command=self._save_config,   # remember the tick across runs
+            bg=BG_CARD, fg="#00BFFF", selectcolor=BG_DEEP,
+            activebackground=BG_CARD, activeforeground="#00BFFF",
+            font=("Segoe UI", 10, "bold"),
+            bd=0, highlightthickness=0,
+        )
+        self._gram_chk.pack(side="left", padx=(14, 0), pady=10)
+
         self._clear_btn = ttk.Button(bottom, text="Clear", style="Ghost.TButton",
                                       command=self._on_clear)
         self._clear_btn.pack(side="left", padx=(10, 0), pady=10)
@@ -1652,7 +1670,7 @@ class App(tk.Tk):
         self._build_repair_ui()
         self._build_match_ui()
         self._build_settings_ui()
-        self._build_sob_modes()
+        self._build_sumna_modes()
 
         # Phase-1 launch dedication (Richard Dimitri). Deferred so it draws over
         # the window; fully self-guarded so it can never block startup.
@@ -1663,14 +1681,14 @@ class App(tk.Tk):
             pass
 
     # ------------------------------------------------------------------
-    # SON OF A BATCH — mount the offline posting mode panels
+    # SUMNABATCH — mount the offline posting mode panels
     # ------------------------------------------------------------------
 
-    def _build_sob_modes(self):
+    def _build_sumna_modes(self):
         """Mount BATCH SLAPPED + BATCH, PLEASE; SMACK YOUR BATCH UP is a
         deferred 'coming soon' tab (it's the only mode needing a full local
         skin render, so it lands last)."""
-        if not _SOB_AVAILABLE:
+        if not _SUMNA_AVAILABLE:
             return
         try:
             build_solo_mode(self._slapped_frame, self).pack(fill="both", expand=True)
@@ -1680,7 +1698,7 @@ class App(tk.Tk):
             for fr in (self._slapped_frame, self._gram_frame):
                 for w in fr.winfo_children():
                     w.destroy()
-                tk.Label(fr, text=f"SON OF A BATCH panel failed to load:\n{e}",
+                tk.Label(fr, text=f"SUMNABATCH panel failed to load:\n{e}",
                          bg=BG_DEEP, fg=FG_ERR, font=FONT_UI, justify="left").pack(padx=20, pady=20)
         # SMACK YOUR BATCH UP — deferred longform mode.
         tk.Label(self._smacktalk_frame, text="SMACK YOUR BATCH UP", bg=BG_DEEP,
@@ -3507,6 +3525,8 @@ class App(tk.Tk):
             'gemini_api_key':     self._gemini_key_var.get().strip(),
             'gemini_last_prompt': self._gem_prompt_txt.get('1.0', 'end').strip(),
             'copyright_text':     self._copyright_var.get().strip(),
+            'post_as_grams':      (self._post_as_grams_var.get()
+                                   if hasattr(self, '_post_as_grams_var') else False),
         })
         self._update_ai_dot()
 
@@ -3841,6 +3861,8 @@ class App(tk.Tk):
         albums        = list(site_data._album_display.values()) if site_data else []
         custom_prompt = self._gem_prompt_txt.get("1.0", "end").strip()
 
+        self._cancel_evt.clear()   # fresh run — don't inherit a stale cancel flag
+
         self._enrich_btn.configure(state="disabled")
         self._bottom_enrich_canvas.configure(cursor="")
         self._bottom_enrich_canvas.unbind("<Button-1>")
@@ -3892,6 +3914,7 @@ class App(tk.Tk):
                 album_descriptions=self._site_data.album_descriptions if self._site_data else None,
                 existing_tags=self._site_data.tags if self._site_data else None,
                 existing_titles=self._site_data.titles if self._site_data else None,
+                cancel_event=self._cancel_evt,
             )
 
             def _done():
@@ -4180,21 +4203,63 @@ class App(tk.Tk):
         orient_map = {'auto': 'auto', 'landscape': '0', 'portrait': '1', 'square': '2'}
         orient_val = orient_map.get(self._def_orient_var.get().strip().lower(), 'auto')
 
-        results = poster_module.run_batch(
-            client=self._client,
-            entries=entries,
-            image_folder=image_folder,
-            site_data=self._site_data,
-            default_category=self._def_cat_var.get().strip(),
-            default_album=self._def_alb_var.get().strip(),
-            default_orientation=orient_val,
-            on_progress=on_progress,
-            drive_service=self._drive_service,
-            drive_folder_id=self._drive_folder_var.get().strip(),
-            copyright_text=self._copyright_var.get().strip(),
-            cancel_event=self._cancel_evt,
-        )
+        if self._post_as_grams_var.get():
+            # Carousel site: route each enriched row to the gram API as its own
+            # single gram. base_url + the Bearer key come straight off the live
+            # solo client's session, so no second connection form is needed.
+            import sumna_post
+            import types as _types
+            _auth = self._client.session.headers.get("Authorization", "")
+            _key  = _auth[7:].strip() if _auth.lower().startswith("bearer ") else ""
+            conn  = sumna_post.SumnaConnection(self._client.base_url, _key)
+            self._active_conn = conn  # so CANCEL can close the socket mid-upload
+
+            # run_gram_batch emits a bare SyncResult (ok / message) — it has NO
+            # .entry / .success / .exif_ok, which is exactly what _poll_queue's
+            # 'progress' handler reads. Feeding a raw SyncResult in froze the POST
+            # tab: the handler set the label to "1 / N", then AttributeError'd on
+            # result.entry, the exception escaped _poll_queue (only queue.Empty
+            # was caught), the loop never rescheduled, and the UI hung on
+            # "Posting…" forever while the worker quietly posted every image.
+            # Adapt SyncResult -> a PostResult-shaped shim here. entry is
+            # recovered by position (run_gram_batch preserves order).
+            def gram_progress(current, total_n, result):
+                try:
+                    entry = entries[current - 1]
+                except (IndexError, TypeError):
+                    entry = None
+                shim = _types.SimpleNamespace(
+                    entry=entry,
+                    success=bool(getattr(result, "ok", False)),
+                    exif_ok=True,  # gram API handles thumbs/EXIF server-side
+                    message=getattr(result, "message", ""),
+                )
+                self._msg_queue.put(('progress', current, total_n, shim))
+
+            results = sumna_post.run_gram_batch(
+                conn=conn,
+                entries=entries,
+                image_folder=image_folder,
+                on_progress=gram_progress,
+                cancel_event=self._cancel_evt,
+            )
+        else:
+            results = poster_module.run_batch(
+                client=self._client,
+                entries=entries,
+                image_folder=image_folder,
+                site_data=self._site_data,
+                default_category=self._def_cat_var.get().strip(),
+                default_album=self._def_alb_var.get().strip(),
+                default_orientation=orient_val,
+                on_progress=on_progress,
+                drive_service=self._drive_service,
+                drive_folder_id=self._drive_folder_var.get().strip(),
+                copyright_text=self._copyright_var.get().strip(),
+                cancel_event=self._cancel_evt,
+            )
         cancelled = self._cancel_evt.is_set()
+        self._active_conn = None  # run finished — don't let a later cancel touch a stale conn
         self._msg_queue.put(('done', len(results), cancelled))
 
     def _poll_queue(self):
@@ -4265,6 +4330,12 @@ class App(tk.Tk):
                     self._conn_dot.configure(fg=LED_ERR)
         except queue.Empty:
             pass
+        except Exception as _e:
+            # Belt-and-suspenders: a malformed queue message must NEVER kill the
+            # poll loop. Previously an unexpected result shape escaped here, the
+            # reschedule below was skipped, and the POST tab froze permanently.
+            # Drop the offending message, keep polling; survivors drain next tick.
+            print(f"[poll_queue] dropped bad message: {_e}")
         self.after(100, self._poll_queue)
 
     # ------------------------------------------------------------------
@@ -4437,7 +4508,7 @@ class App(tk.Tk):
             return
         if store.exists():
             store.load()
-            have = store.enriched_count()
+            have = store.enriched_count_for(entries)
             if have and messagebox.askyesno(
                 "Resume enrichment",
                 f"Saved enrichment was found for this folder:\n\n"
@@ -4473,10 +4544,26 @@ class App(tk.Tk):
         if not self._posting:
             return
         self._cancel_evt.set()
+        # Don't wait out the per-request timeout (up to 120s). The gram
+        # connection is disposable — a fresh one is built on the next run — so
+        # closing its session tears down the open socket, the in-flight upload
+        # raises, sync_gram returns, and the loop breaks at once. Done off the
+        # UI thread because close() can block briefly.
+        conn = getattr(self, "_active_conn", None)
+        if conn is not None:
+            threading.Thread(
+                target=lambda c=conn: self._abort_conn(c), daemon=True).start()
         self._post_canvas.itemconfig(self._post_text, text="CANCELLING…")
         self._post_canvas.unbind("<Button-1>")
         self._post_canvas.configure(cursor="")
-        self._set_status("Cancelling after the current image finishes…", FG_WARN)
+        self._set_status("Cancelling…", FG_WARN)
+
+    @staticmethod
+    def _abort_conn(conn):
+        try:
+            conn.session.close()
+        except Exception:
+            pass
 
     def _post_hover(self, on: bool):
         """Hover lighten for the POST button — suppressed while posting so the

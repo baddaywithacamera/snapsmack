@@ -40,6 +40,7 @@ if ($tag_row) {
             i.img_slug,
             i.img_file,
             i.img_thumb_square,
+            i.img_thumb_aspect,
             i.post_id
         FROM snap_images i
         JOIN snap_image_tags it ON it.image_id = i.id
@@ -67,7 +68,7 @@ foreach ($raw_images as $img_row) {
         $seen_post_ids[$img_row['post_id']] = true;
 
         $cover_stmt = $pdo->prepare("
-            SELECT i.id AS img_id, i.img_file, i.img_thumb_square, i.img_slug,
+            SELECT i.id AS img_id, i.img_file, i.img_thumb_square, i.img_thumb_aspect, i.img_slug,
                    p.title,
                    (SELECT COUNT(*) FROM snap_post_images spi
                     WHERE spi.post_id = p.id AND spi.sort_position >= 0) AS image_count
@@ -85,6 +86,7 @@ foreach ($raw_images as $img_row) {
             'img_id'           => $img_row['img_id'],
             'img_file'         => $img_row['img_file'],
             'img_thumb_square' => $img_row['img_thumb_square'],
+            'img_thumb_aspect' => $img_row['img_thumb_aspect'] ?? '',
             'img_slug'         => $img_row['img_slug'],
             'title'            => $img_row['title'],
             'image_count'      => 1,
@@ -118,7 +120,7 @@ $has_more = ($offset + count($raw_images)) < $total_count;
 
         <?php if (!empty($tiles)): ?>
             <?php foreach ($tiles as $tile):
-                $thumb_src   = $tile['img_thumb_square'] ?: $tile['img_file'];
+                $thumb_src   = ($tile['img_thumb_aspect'] ?? '') ?: ($tile['img_thumb_square'] ?: $tile['img_file']);
                 $post_url    = BASE_URL . '?s=' . urlencode($tile['img_slug'] ?? '');
                 $image_count = (int)($tile['image_count'] ?? 1);
                 $is_carousel = $image_count > 1;
