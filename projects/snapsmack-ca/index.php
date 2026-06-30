@@ -1935,14 +1935,15 @@ require_once __DIR__ . '/includes/header.php';
                         <img src="img/flkr-fckr.png" alt="FLKR FCKR — Flickr import">
                     </a>
                     <a href="img/slickr-landing.png" data-lb="img/slickr-landing.png">
-                        <img src="img/slickr-landing.png" alt="FLKR FCKR — imported Flickr archive live on a SnapSmack site">
+                        <img src="img/slickr-landing.png" alt="SLICKR skin — your imported Flickr archive, Flickr-style, running on SnapSmack">
                     </a>
                 </div>
             </div>
             <div class="tool-copy">
                 <h3>Windows / Linux</h3>
                 <h2>FLKR FCKR</h2>
-                <p>Your Flickr export, migrated to SnapSmack — images, titles, descriptions, tags, and original upload dates, spread across as many days as your server can handle so nothing lands out of order. Point it at your export, connect to your site, and let it run. Proven on a real 10,000-image archive, imported clean.</p>
+                <p>Your Flickr archive, migrated to SnapSmack with nothing left behind. Images, titles, descriptions, and tags, yes — but also every original upload date, every view count, every comment, and every like, carried across intact. Years of engagement don't reset to zero just because you changed addresses. Posted across as many days as your server can handle so a decade of photos doesn't all land at once. Point it at your export, connect to your site, and let it run. Proven on a real 10,000-image archive, imported clean.</p>
+                <p>And the move doesn't have to feel like one. Our complimentary <strong>SLICKR</strong> skin keeps much of the look and feel of your old Flickr — the photostream, the albums, the layout you spent years getting comfortable with — while it all runs gracefully on a blogging platform you actually own. Familiar on the outside, yours on the inside.</p>
                 <p>To Flickr: treat other people's wallets as your own, and don't be shocked when someone helps them snap those wallets shut.</p>
                 <p class="dl-note">[ Windows 10/11 · Linux 64-bit · Free download from the admin tools page after install ]</p>
             </div>

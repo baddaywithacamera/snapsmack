@@ -274,7 +274,10 @@ a:hover { color: var(--sl-link-hover); }
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 56px;
+  /* Matched to the top tab bar (44px) so the top and bottom navs read balanced,
+     not bottom-heavy. The earlier change only moved the links down here — it
+     never removed the extra ~12px of bar height. THIS does. */
+  min-height: 44px;
   padding: 0 16px;
   background: #fafafa;
   border-top: 1px solid var(--sl-header-border);
