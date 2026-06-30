@@ -113,4 +113,75 @@ function trigram_ready_count(PDO $pdo, int $trigram_id): int
     return (int)$stmt->fetchColumn();
 }
 
+/* ───────────────────────────────────────────────────────────────────────────
+   3-ACROSS ENFORCEMENT (blog-level)
+
+   When ON, the published feed is kept to COMPLETE rows of three. A trigram
+   already occupies a whole row (gated by trigram_check_and_publish above). The
+   piece this adds: trailing SINGLE (non-trigram) posts that can't fill a row are
+   parked as 'queued' and auto-release the moment enough posts exist to complete
+   the row — same hands-off behaviour as the trigram gate.
+
+   The flag lives in snap_settings (setting_key = 'gram_three_across_enforce').
+   Creating a trigram flips it ON; it can be flipped back OFF by hand.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+if (!defined('THREEACROSS_FLAG')) define('THREEACROSS_FLAG', 'gram_three_across_enforce');
+
+function threeacross_enabled(PDO $pdo): bool
+{
+    try {
+        $s = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = ? LIMIT 1");
+        $s->execute([THREEACROSS_FLAG]);
+        return ((string)$s->fetchColumn()) === '1';
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function threeacross_set_enabled(PDO $pdo, bool $on): void
+{
+    $pdo->prepare(
+        "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+    )->execute([THREEACROSS_FLAG, $on ? '1' : '0']);
+}
+
+/**
+ * Keep published SINGLE (non-trigram) posts to a multiple of three. The trailing
+ * (bottom-of-feed) 1–2 user-ready singles beyond the last complete row are parked
+ * as 'queued'; the rest are 'published'. No-op when enforcement is off. Drafts are
+ * never touched — only posts the user already pushed (published/queued) are
+ * redistributed, so this can never surface a draft.
+ *
+ * Ordering matches the landing feed exactly, so "trailing" = the real bottom of
+ * the grid (the lone post on an incomplete row).
+ *
+ * @return array ['published'=>int[], 'queued'=>int[]] — the singles it settled.
+ */
+function threeacross_settle(PDO $pdo): array
+{
+    if (!threeacross_enabled($pdo)) return ['published' => [], 'queued' => []];
+
+    $rows = $pdo->query(
+        "SELECT id FROM snap_posts
+          WHERE trigram_id IS NULL AND status IN ('published','queued')
+          ORDER BY CASE WHEN sort_order > 0 THEN 0 ELSE 1 END ASC,
+                   sort_order ASC, created_at DESC"
+    )->fetchAll(PDO::FETCH_COLUMN);
+
+    $n    = count($rows);
+    $keep = $n - ($n % 3);
+
+    $pub = $pdo->prepare("UPDATE snap_posts SET status='published' WHERE id = ? AND status <> 'published'");
+    $que = $pdo->prepare("UPDATE snap_posts SET status='queued'    WHERE id = ? AND status <> 'queued'");
+
+    $published = []; $queued = [];
+    foreach ($rows as $i => $id) {
+        if ($i < $keep) { $pub->execute([$id]); $published[] = (int)$id; }
+        else            { $que->execute([$id]); $queued[]    = (int)$id; }
+    }
+    return ['published' => $published, 'queued' => $queued];
+}
+
 // ===== SNAPSMACK EOF =====

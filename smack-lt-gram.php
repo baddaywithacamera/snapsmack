@@ -89,7 +89,13 @@ if (isset($_POST['action']) && $_POST['action'] === 'publish') {
         }
     } else {
         $pdo->prepare("UPDATE snap_posts SET status = 'published' WHERE id = ?")->execute([$id]);
-        echo json_encode(['ok' => true, 'promoted' => true, 'post_ids' => [$id]]);
+        if (threeacross_enabled($pdo)) {
+            // 3-across on: a lone trailing post may need to fall back to queued.
+            threeacross_settle($pdo);
+            echo json_encode(['ok' => true, 'promoted' => true, 'post_ids' => [$id], 'settled' => true]);
+        } else {
+            echo json_encode(['ok' => true, 'promoted' => true, 'post_ids' => [$id]]);
+        }
     }
     exit;
 }
@@ -136,11 +142,15 @@ if (isset($_POST['action']) && $_POST['action'] === 'bulk_publish') {
         }
     }
 
+    $settled = false;
+    if (threeacross_enabled($pdo)) { threeacross_settle($pdo); $settled = true; }
+
     echo json_encode([
         'ok'           => true,
         'count'        => count($published_ids),
         'published_ids'=> $published_ids,
         'queued_ids'   => $queued_ids,
+        'settled'      => $settled,
     ]);
     exit;
 }
@@ -211,7 +221,84 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_trigram') {
         echo json_encode(['ok' => false, 'err' => 'Trigram creation failed: ' . $e->getMessage()]); exit;
     }
 
+    // A trigram commits this blog to the 3-across grid — turn enforcement on so
+    // lone trailing singles are held until they complete a row. (Flip off by hand
+    // later if you remove your trigrams.)
+    threeacross_set_enabled($pdo, true);
+    threeacross_settle($pdo);
+
     echo json_encode(['ok' => true, 'trigram_id' => $trigram_id]); exit;
+}
+
+// ── AJAX: TOGGLE 3-ACROSS ENFORCEMENT ──────────────────────────────────────
+if (isset($_POST['action']) && $_POST['action'] === 'set_threeacross') {
+    header('Content-Type: application/json');
+    $on = (($_POST['on'] ?? '0') === '1');
+    threeacross_set_enabled($pdo, $on);
+    if ($on) threeacross_settle($pdo);   // turning it on may hold a lone trailing post
+    echo json_encode(['ok' => true, 'enabled' => $on]);
+    exit;
+}
+
+// ── AJAX: RANDOMIZE FEED ───────────────────────────────────────────────────
+// Shuffle the PUBLISHED feed at the ROW level: trigrams stay glued (a whole row,
+// in slot order); singles regroup into fresh rows of three; only the *position*
+// of each set changes. Non-published posts keep their relative order, parked
+// after the published block so the visible grid stays in complete rows.
+if (isset($_POST['action']) && $_POST['action'] === 'randomize') {
+    header('Content-Type: application/json');
+
+    $pub = $pdo->query("
+        SELECT p.id, p.trigram_id,
+               CASE WHEN tg.post_id_1 = p.id THEN 1
+                    WHEN tg.post_id_2 = p.id THEN 2
+                    WHEN tg.post_id_3 = p.id THEN 3
+                    ELSE 0 END AS slot
+        FROM snap_posts p
+        LEFT JOIN snap_trigrams tg ON tg.id = p.trigram_id
+        WHERE p.status = 'published'
+        ORDER BY CASE WHEN p.sort_order > 0 THEN 0 ELSE 1 END ASC,
+                 p.sort_order ASC, p.created_at DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    $units = []; $singles = []; $seen = [];
+    foreach ($pub as $r) {
+        $tg = (int)$r['trigram_id'];
+        if ($tg > 0) {
+            if (isset($seen[$tg])) continue;
+            $seen[$tg] = true;
+            $mem = array_values(array_filter($pub, fn($x) => (int)$x['trigram_id'] === $tg));
+            usort($mem, fn($a, $b) => (int)$a['slot'] <=> (int)$b['slot']);
+            $units[] = array_map(fn($m) => (int)$m['id'], $mem);
+        } else {
+            $singles[] = (int)$r['id'];
+        }
+    }
+    // Singles into rows of three; any 1–2 leftover (enforcement off) ride as a
+    // final partial unit so trigrams never misalign.
+    foreach (array_chunk($singles, 3) as $chunk) $units[] = $chunk;
+    shuffle($units);
+
+    $pdo->beginTransaction();
+    try {
+        $upd = $pdo->prepare("UPDATE snap_posts SET sort_order = ? WHERE id = ?");
+        $pos = 1;
+        foreach ($units as $u) foreach ($u as $id) $upd->execute([$pos++, $id]);
+
+        // Park non-published posts after the published block, order preserved.
+        $rest = $pdo->query("
+            SELECT id FROM snap_posts WHERE status <> 'published'
+            ORDER BY CASE WHEN sort_order > 0 THEN 0 ELSE 1 END ASC,
+                     sort_order ASC, created_at DESC
+        ")->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($rest as $id) $upd->execute([$pos++, $id]);
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'err' => 'Randomize failed: ' . $e->getMessage()]); exit;
+    }
+    echo json_encode(['ok' => true]); exit;
 }
 
 // ── FETCH ALL POSTS ────────────────────────────────────────────────────────
@@ -243,6 +330,7 @@ $posts = $pdo->query("
 $total       = count($posts);
 $draft_count = count(array_filter($posts, fn($p) => $p['status'] === 'draft'));
 $queued_count= count(array_filter($posts, fn($p) => $p['status'] === 'queued'));
+$three_on    = threeacross_enabled($pdo);
 
 $page_title = 'Grid Lighttable';
 include 'core/admin-header.php';
@@ -270,6 +358,10 @@ include 'core/sidebar.php';
                 <button class="btn btn--sm" id="ltgLockTrigramBtn" onclick="ltgLockTrigram()" title="Lock the 3 selected posts into a trigram, in the order you ticked them">🔒 LOCK TRIGRAM</button>
             </span>
             <button class="btn btn--sm" id="ltgBulkPublishBtn" style="display:none;" onclick="ltgBulkPublish()">PUBLISH SELECTED</button>
+            <button class="btn btn--sm" id="ltgRandomizeBtn" onclick="ltgRandomize()" title="Shuffle the feed — trigrams stay glued as a set, only their position moves">🎲 RANDOMIZE</button>
+            <label class="ltg-col-label" title="3-across: hold a lone trailing post as queued until two more complete its row. Creating a trigram turns this on automatically.">
+                <input type="checkbox" id="ltgThreeAcross" <?php echo $three_on ? 'checked' : ''; ?>> 3-across
+            </label>
             <label class="ltg-col-label" title="Tile size">
                 🔍 <input type="range" id="ltgZoomSlider" min="240" max="900" value="900" step="30">
             </label>
@@ -534,6 +626,10 @@ include 'core/sidebar.php';
         .then(d => {
             if (!d.ok) { btn.textContent = 'ERR'; return; }
 
+            // 3-across may have re-queued a lone trailing post elsewhere — reload
+            // so the whole grid reflects the authoritative server state.
+            if (d.settled) { location.reload(); return; }
+
             if (d.promoted) {
                 // One or more posts promoted — update all affected tiles.
                 const promotedIds = new Set(d.post_ids || [parseInt(postId)]);
@@ -603,6 +699,8 @@ include 'core/sidebar.php';
         .then(r => r.json())
         .then(d => {
             if (!d.ok) { bulkBtn.textContent = 'ERROR'; bulkBtn.disabled = false; return; }
+
+            if (d.settled) { location.reload(); return; }   // 3-across re-settled rows
 
             const publishedSet = new Set(d.published_ids || []);
             const queuedSet    = new Set(d.queued_ids    || []);
@@ -737,6 +835,33 @@ include 'core/sidebar.php';
     });
 
     restoreSelection();
+
+    // ── Randomize the feed (trigrams stay glued; only positions move) ───────
+    window.ltgRandomize = function () {
+        if (!confirm('Shuffle the whole feed? Trigrams stay glued as a set — only their position changes.')) return;
+        const btn = document.getElementById('ltgRandomizeBtn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Shuffling…'; }
+        const fd = new FormData(); fd.append('action', 'randomize');
+        fetch('smack-lt-gram.php', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+            .then(r => r.json())
+            .then(d => {
+                if (!d.ok) { alert(d.err || 'Randomize failed.'); if (btn) { btn.disabled = false; btn.textContent = '🎲 RANDOMIZE'; } return; }
+                location.reload();
+            })
+            .catch(() => { alert('Network error while randomizing.'); if (btn) { btn.disabled = false; btn.textContent = '🎲 RANDOMIZE'; } });
+    };
+
+    // ── 3-across enforcement toggle ─────────────────────────────────────────
+    const threeCb = document.getElementById('ltgThreeAcross');
+    if (threeCb) threeCb.addEventListener('change', function () {
+        const fd = new FormData();
+        fd.append('action', 'set_threeacross');
+        fd.append('on', this.checked ? '1' : '0');
+        fetch('smack-lt-gram.php', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+            .then(r => r.json())
+            .then(() => location.reload())
+            .catch(() => location.reload());
+    });
 
     // Run alignment check on load
     checkTrigramAlignment();
