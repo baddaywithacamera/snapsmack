@@ -249,6 +249,11 @@ if ($_ic_bgmode === 'mayhem') {
 <?php endif; ?>
 <!-- White scrim between background and grid (primary legibility control). -->
 <div class="ic-scrim" aria-hidden="true"></div>
+<!-- Readability panel: centred translucent column behind the content, full
+     viewport height — reaches the top AND runs behind the footer — on every
+     page (landing, static, archive, hashtag, blogroll). Width + tint + side
+     gutters are admin-tunable. -->
+<div class="ic-panel" aria-hidden="true"></div>
 
 <?php if ($_tg_has_treat): ?>
 <div class="tg-treatment-bg" style="<?php echo $_tg_bg_style; ?>" aria-hidden="true"></div>

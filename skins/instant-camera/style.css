@@ -223,7 +223,9 @@ img { display: block; max-width: 100%; }
     align-items: center;
     justify-content: center;
     gap: 32px;
-    border-bottom: 1px solid var(--border-color);
+    /* Same configurable nav line as the bottom border of .tg-sticky-nav, so the
+       line above and below the menu match. */
+    border-bottom: 1px solid color-mix(in srgb, var(--ic-navline-color, var(--border-color)) calc(var(--ic-navline-opacity, 100) * 1%), transparent);
 }
 
 .tg-profile-avatar {
@@ -1154,6 +1156,13 @@ body:has(.tg-treatment-bg).is-blogroll #scroll-stage {
    on The Grid (this stylesheet is loaded only when The Grid is active).
    ========================================================================== */
 
+/* Constrain the blogroll's scroll-stage to the content width so its sticky nav
+   matches every other page (it otherwise spans the full window). */
+body.is-blogroll #scroll-stage {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+}
+
 body.is-blogroll .blogroll-canvas {
     max-width: 680px;
     margin: 0 auto;
@@ -1325,14 +1334,14 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 body { background: transparent !important; }      /* let the fixed layers show */
 .ic-bg {
     position: fixed; inset: 0;
-    z-index: -2;
+    z-index: -3;
     overflow: hidden;
     pointer-events: none;
 }
 .ic-bg-static { background-size: cover; background-position: center center; }
 .ic-scrim {
     position: fixed; inset: 0;
-    z-index: -1;
+    z-index: -2;
     background: #ffffff;
     opacity: var(--ic-scrim, 0.6);
     pointer-events: none;
@@ -1343,18 +1352,18 @@ body { background: transparent !important; }      /* let the fixed layers show *
    --bg-primary fill. Nav links keep their glow (above) for legibility. */
 :root { --grid-bg: transparent; }
 .tg-content-wrap { background: transparent !important; }
-/* Panel (all pages): ONE backing layer behind the content column on EVERY page
-   — landing, About/static, archive, hashtag — full content width, reaching the
-   top, bleeding out past the content by Panel Extend (px, 0–100) each side.
-   Transparent until Panel Opacity is dialled up. (Replaces the old landing-only
-   panel + the separate static-page panel — one control across the whole skin.) */
-.tg-content-wrap { position: relative; }
-.tg-content-wrap::before {
-    content: "";
-    position: absolute;
+/* Panel (all pages): ONE centred translucent column behind the content on EVERY
+   page — landing, About/static, archive, hashtag, blogroll. Fixed + full
+   viewport height, so it reaches the top AND runs behind the footer. Width =
+   content column + Panel Extend (gutters) each side. Transparent until Panel
+   Opacity is dialled up. Sits above the scrim (-2), below the content (0).
+   (Replaces the old landing-only + static-page panels — one control, whole skin.) */
+.ic-panel {
+    position: fixed;
     top: 0; bottom: 0;
-    left:  calc(-1 * var(--panel-extend, 0px));
-    right: calc(-1 * var(--panel-extend, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(var(--grid-max-width, 935px) + 2 * var(--panel-extend, 0px));
     background: var(--panel-bg, transparent);
     z-index: -1;
     pointer-events: none;
@@ -1365,17 +1374,5 @@ body { background: transparent !important; }      /* let the fixed layers show *
    the landing) it stays transparent so the tabletop shows through. */
 .tg-sticky-nav                 { background: transparent !important; }
 .tg-sticky-nav.profile-hidden  { background: var(--ic-nav-bg, transparent) !important; }
-
-/* ── Sticky footer (#3) — on short pages (About, sparse archives) the system
-      footer snaps to the bottom of the viewport; on tall pages it flows after
-      the content as normal. The content column keeps its margin:0 auto, which
-      under a flex-column body still absorbs the side free space and stays
-      centred — so this can't shift the layout horizontally. Child combinators
-      target only the page-level footer; the solo modal's own footer
-      (.tg-post-ig-info > #system-footer) is left exactly as it was. ────────── */
-body { min-height: 100vh; display: flex; flex-direction: column; }
-#page-wrapper { flex: 1 0 auto; display: flex; flex-direction: column; }
-body > #system-footer,
-#page-wrapper > #system-footer { margin-top: auto; }
 
 /* ===== SNAPSMACK EOF ===== */
