@@ -45,7 +45,7 @@ import snap_stepup
 # app convention, matches unzucker), not in %APPDATA%.
 # ---------------------------------------------------------------------------
 
-BUILD_VERSION = "0.7.22"  # auto-incremented by bump_version.py on each build.bat run
+BUILD_VERSION = "0.7.25"  # auto-incremented by bump_version.py on each build.bat run
 
 if getattr(sys, 'frozen', False):
     # Running as the compiled exe — log next to flkrfckr.exe
@@ -263,7 +263,10 @@ class FlkrDckrApp(tk.Tk):
         # as seconds-as-string. 'Full Send' (0s) was removed deliberately: a
         # zero-delay firehose hammers I/O even on a local network to your own
         # server, and on shared hosting it will get someone in trouble. The
-        # fastest selectable rate is now Fast Lane (0.25s).
+        # fastest selectable rate is Fast Lane (0.25s). The DEFAULT is now
+        # 'Easy Does It (1s)': safe on shared hosting, where anything faster can
+        # get an account throttled or suspended mid-import. Users on their own
+        # hardware can dial it up — friction stays on the dangerous direction.
         _THROTTLE_OPTIONS = [
             ('Fast Lane (0.25s)', '0.25'),    ('Steady (0.5s)', '0.5'),
             ('Easy Does It (1s)', '1.0'),     ('Sunday Driver (2s)', '2.0'),
@@ -272,12 +275,12 @@ class FlkrDckrApp(tk.Tk):
         ]
         self._throttle_l2v = {l: v for l, v in _THROTTLE_OPTIONS}
         self._throttle_v2l = {v: l for l, v in _THROTTLE_OPTIONS}
-        _cur = str(self._cfg.get('throttle_delay', 0.5))
+        _cur = str(self._cfg.get('throttle_delay', 1.0))
         if _cur not in self._throttle_v2l:
             try: _cur = str(float(_cur))
             except (TypeError, ValueError): _cur = '0.5'
         lbl(bar, 'Throttle', 4, row=1)
-        self._v_throttle = tk.StringVar(value=self._throttle_v2l.get(_cur, 'Steady (0.5s)'))
+        self._v_throttle = tk.StringVar(value=self._throttle_v2l.get(_cur, 'Easy Does It (1s)'))
         ttk.Combobox(bar, textvariable=self._v_throttle,
                      values=[l for l, _ in _THROTTLE_OPTIONS],
                      width=18, state='readonly').grid(row=1, column=5, sticky='w', padx=(0, 8))

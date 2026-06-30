@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.1.2"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
+BUILD_VERSION = "0.1.9"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -316,6 +316,18 @@ class EntryRow(tk.Frame):
             self._swatch_labels.append(sw)
         self._update_swatches(self.entry.colors)
 
+        # ── Inline caption entry (posted as the description) ──────────
+        tk.Label(self, text="caption", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=190, y=128)
+        self._caption_var = tk.StringVar(value=self.entry.caption)
+        self._caption_entry = tk.Entry(
+            self, textvariable=self._caption_var,
+            bg=BG_MID, fg=FG_MAIN, insertbackground=ACCENT,
+            relief="flat", font=FONT_SMALL, bd=0,
+            highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
+        )
+        self._caption_entry.place(x=246, y=126, width=675, height=20)
+        self._caption_var.trace_add("write", lambda *a: setattr(self.entry, 'caption', self._caption_var.get()))
+
         # ── Status badge ──────────────────────────────────────────────
         self._status_lbl = tk.Label(
             self, text="PENDING", font=("Segoe UI", 7, "bold"),
@@ -394,10 +406,12 @@ class EntryRow(tk.Frame):
             return FG_MAIN
 
     def fill_from_ai(self, title: str = '', tags: str = '', category: str = '',
-                     album: str = '', colors: str = ''):
+                     album: str = '', colors: str = '', caption: str = ''):
         """Push Gemini-generated values into the live fields. Skips blank values."""
         if title:
             self._title_var.set(title)
+        if caption:
+            self._caption_var.set(caption)
         if tags:
             self._tags_var.set(tags)
         if category:
@@ -1360,6 +1374,16 @@ class App(tk.Tk):
         conn_box.grid(row=0, column=0, sticky="nsew", padx=(0, 7))
         conn_body = self._box_body(conn_box)
 
+        # Quick-load a saved profile right here on the POST page (no Settings trip).
+        self._post_profile_var = tk.StringVar()
+        tk.Label(conn_body, text="LOAD PROFILE", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_SMALL).pack(anchor="w", pady=(6, 0))
+        self._post_profile_cb = ttk.Combobox(conn_body, textvariable=self._post_profile_var,
+                                              values=profile_manager.list_profiles(),
+                                              state="readonly")
+        self._post_profile_cb.pack(fill="x")
+        self._post_profile_cb.bind("<<ComboboxSelected>>", self._on_post_profile_pick)
+
         self._field(conn_body, "SITE URL", self._url_var)
         self._field(conn_body, "API KEY",  self._api_key_var, show="•")
 
@@ -1483,7 +1507,7 @@ class App(tk.Tk):
         tk.Label(gem_body, text="API KEY", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
         gem_key_inner = tk.Frame(gem_body, bg=BG_CARD)
         gem_key_inner.pack(fill="x", pady=(2, 0))
-        self._entry(gem_key_inner, self._gemini_key_var, width=0).pack(side="left", fill="x", expand=True, padx=(0, 6))
+        self._entry(gem_key_inner, self._gemini_key_var, width=0, show="•").pack(side="left", fill="x", expand=True, padx=(0, 6))
         self._gem_test_btn = ttk.Button(gem_key_inner, text="Test Connection",
                                          style="Ghost.TButton", command=self._on_gemini_test)
         self._gem_test_btn.pack(side="left")
@@ -2438,7 +2462,16 @@ class App(tk.Tk):
         # GEMINI AI
         self._sp_gemini_var = tk.StringVar()
         gem_body = _sbox("GEMINI AI")
-        _sfield(gem_body, "API KEY", self._sp_gemini_var)
+        _sfield(gem_body, "API KEY", self._sp_gemini_var, show="•")
+        gem_test_row = tk.Frame(gem_body, bg=BG_CARD)
+        gem_test_row.pack(fill="x", pady=(6, 0))
+        self._sp_gem_test_btn = ttk.Button(gem_test_row, text="Test Connection",
+                                            style="Ghost.TButton",
+                                            command=self._on_sp_gemini_test)
+        self._sp_gem_test_btn.pack(side="left")
+        self._sp_gem_test_lbl = tk.Label(gem_test_row, text="", bg=BG_CARD,
+                                          fg=FG_DIM, font=FONT_SMALL)
+        self._sp_gem_test_lbl.pack(side="left", padx=(10, 0))
 
         # DEFAULTS
         self._sp_copyright_var = tk.StringVar()
@@ -2490,6 +2523,8 @@ class App(tk.Tk):
     def _settings_refresh_list(self, select_name: str = ''):
         """Reload the profile listbox."""
         names = profile_manager.list_profiles()
+        if hasattr(self, '_post_profile_cb'):
+            self._post_profile_cb['values'] = names
         self._profile_lb.delete(0, "end")
         sel_idx = 0
         for i, name in enumerate(names):
@@ -2585,6 +2620,28 @@ class App(tk.Tk):
         self._settings_refresh_list()
         self._sp_status_lbl.configure(text='', fg=FG_DIM)
 
+    def _apply_profile_to_post(self, p):
+        """Populate the POST-tab config fields from a profile dict (shared by the
+        Settings 'Load' button and the POST-page profile dropdown)."""
+        if not p:
+            return
+        self._url_var.set(p.get('url', ''))
+        self._api_key_var.set(p.get('api_key', ''))
+        self._goog_creds_var.set(p.get('google_credentials', ''))
+        self._drive_folder_var.set(p.get('drive_folder_id', ''))
+        self._gemini_key_var.set(p.get('gemini_api_key', ''))
+        self._copyright_var.set(p.get('copyright_text', ''))
+        self._def_cat_var.set(p.get('default_category', ''))
+        self._def_alb_var.set(p.get('default_album', ''))
+        orient = p.get('default_orientation', 'auto')
+        self._def_orient_var.set(orient.capitalize() if orient != 'auto' else 'Auto')
+
+    def _on_post_profile_pick(self, _event=None):
+        """POST-page profile dropdown → load + apply the selected profile."""
+        name = self._post_profile_var.get().strip()
+        if name:
+            self._apply_profile_to_post(profile_manager.load_profile(name))
+
     def _on_profile_load(self):
         """Load selected profile into POST tab fields and reconnect."""
         sel = self._profile_lb.curselection()
@@ -2598,16 +2655,7 @@ class App(tk.Tk):
             return
 
         # Populate POST tab config vars
-        self._url_var.set(p.get('url', ''))
-        self._api_key_var.set(p.get('api_key', ''))
-        self._goog_creds_var.set(p.get('google_credentials', ''))
-        self._drive_folder_var.set(p.get('drive_folder_id', ''))
-        self._gemini_key_var.set(p.get('gemini_api_key', ''))
-        self._copyright_var.set(p.get('copyright_text', ''))
-        self._def_cat_var.set(p.get('default_category', ''))
-        self._def_alb_var.set(p.get('default_album', ''))
-        orient = p.get('default_orientation', 'auto')
-        self._def_orient_var.set(orient.capitalize() if orient != 'auto' else 'Auto')
+        self._apply_profile_to_post(p)
         drive_on = p.get('drive_enabled', True)
         self._drive_enabled_var.set(drive_on)
         self._on_drive_toggle()
@@ -2650,6 +2698,30 @@ class App(tk.Tk):
                     text=f"✗  {m}", fg=FG_ERR))
             finally:
                 self.after(0, lambda: self._sp_test_btn.configure(state="normal"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_sp_gemini_test(self):
+        """Test the Gemini API key in the Settings form (no save required).
+        Runs in a background thread so the UI stays responsive."""
+        key = self._sp_gemini_var.get().strip()
+        if not key:
+            self._sp_gem_test_lbl.configure(text="Enter a Gemini API key first.", fg=FG_WARN)
+            return
+        self._sp_gem_test_btn.configure(state="disabled")
+        self._sp_gem_test_lbl.configure(text="Testing…", fg=FG_DIM)
+
+        def _worker():
+            try:
+                ok, msg = gemini_module.test_connection(key)
+            except Exception as exc:
+                ok, msg = False, str(exc)
+            if len(msg) > 80:
+                msg = msg[:77] + "…"
+            self.after(0, lambda: self._sp_gem_test_lbl.configure(
+                text=("✓  " + msg) if ok else ("✗  " + msg),
+                fg=(FG_OK if ok else FG_ERR)))
+            self.after(0, lambda: self._sp_gem_test_btn.configure(state="normal"))
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -3789,6 +3861,7 @@ class App(tk.Tk):
                         if row:
                             row.fill_from_ai(
                                 title=entry.title,
+                                caption=entry.caption,
                                 tags=entry.tags,
                                 category=entry.category,
                                 album=entry.album,

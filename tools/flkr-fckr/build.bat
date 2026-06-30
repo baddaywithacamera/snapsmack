@@ -37,4 +37,4 @@ pyinstaller --onefile --windowed --name flkrfckr --icon assets\icon.ico --versio
 echo.
 echo Done. Exe is in dist\flkrfckr.exe
 pause
-# ===== SNAPSMACK EOF =====
+REM ===== SNAPSMACK EOF =====

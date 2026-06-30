@@ -80,7 +80,7 @@
 
 /* ─── COLLECTIONS INDEX (collections.php) ─────────────────────────────────── */
 .collections-canvas {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 40px 20px;
 }
@@ -114,7 +114,7 @@
    currentColor + neutral translucent greys so it reads on BOTH high-key (light)
    and dark skins, since skins don't share a common --text-dim/--bg variable. */
 .collections-series {
-    max-width: 760px;
+    max-width: 1200px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
@@ -130,8 +130,8 @@
 }
 
 .series-thumb {
-    flex: 0 0 168px;
-    width: 168px;
+    flex: 0 0 300px;
+    width: 300px;
     padding: 5px;
     border: 1px solid rgba(128,128,128,0.30);
     background: rgba(128,128,128,0.05);
@@ -142,7 +142,7 @@
 .series-thumb img { display: block; width: 100%; height: auto; }
 .series-thumb-empty {
     width: 100%;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 1 / 1;
     background: rgba(128,128,128,0.12);
 }
 
@@ -156,14 +156,15 @@
     gap: 8px;
     padding: 18px 24px;
     border: 1px solid rgba(128,128,128,0.22);
+    color: #e8e8e8;
     background: radial-gradient(ellipse at center,
-                rgba(128,128,128,0.10) 0%,
-                rgba(128,128,128,0.03) 70%);
+                #5a5a5a 0%,
+                #383838 70%);
 }
 
 .series-title {
     font-family: Georgia, "Times New Roman", serif;
-    font-size: 1.15rem;
+    font-size: 2.3rem;
     letter-spacing: 0.12em;
     color: inherit;
     border-bottom: 1px solid transparent;
@@ -173,13 +174,13 @@
 .series-row:hover .series-title { border-bottom-color: currentColor; }
 
 .series-count {
-    font-size: 0.66rem;
+    font-size: 1.32rem;
     letter-spacing: 0.22em;
     text-transform: uppercase;
     opacity: 0.85;
 }
 .series-posted {
-    font-size: 0.6rem;
+    font-size: 1.2rem;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     opacity: 0.5;

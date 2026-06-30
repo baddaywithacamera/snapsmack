@@ -117,6 +117,7 @@ require_once __DIR__ . '/includes/header.php';
                     <li><a href="#q-how-techie">How techie do I have to be to run this?</a></li>
                     <li><a href="#q-resources">Resources needed?</a></li>
                     <li><a href="#q-platforms">Platforms supported?</a></li>
+                    <li><a href="#q-mobile">Why such limited mobile support?</a></li>
                     <li><a href="#q-companion-apps">Why companion apps instead of plugins?</a></li>
                     <li><a href="#q-no-apple">Why no Apple support?</a></li>
                     <li><a href="#q-noah-grey">Who is Noah Grey?</a></li>
@@ -236,6 +237,12 @@ require_once __DIR__ . '/includes/header.php';
                 <h3>Platforms supported?</h3>
                 <p><strong>Server.</strong> LAMP. Linux, Apache, MySQL/MariaDB, PHP 8.1 or newer. Nginx with PHP-FPM works in principle and several testers run it. Officially supported once it's been through enough cycles to call it tested. WIMP — Windows, IIS, MySQL, PHP — can go eat a bag of dicks. Not supported. Not going to be. Don't file bug reports. See "Why no Apple support?" for the other platform we don't build for, and why.</p>
                 <p><strong>Desktop Companion Apps.</strong> Windows 10 and up. Any recent Linux distribution. That's it. FreeBSD: no. macOS: see "Why no Apple support?" Don't ask.</p>
+            </div>
+
+            <div class="qa" id="q-mobile">
+                <h3>Why such limited mobile support?</h3>
+                <p>SnapSmack is circa 2001&ndash;2005 throwback software. There were no smartphones, people looked at images on large, chonky displays, and life was perfect. To those who say it is 2026 now, you're right, so we do offer LIMITED mobile support instead of telling mobile users to FOAD, but there are limits. Also, we've seen the ugly 70s fashions in your closet so you don't get to lecture us about missing an older era.</p>
+                <p>We do support tablets with larger screens, but phones only grudgingly. SnapSmack is too big to fit in your girly pocket.</p>
             </div>
 
             <div class="qa" id="q-companion-apps">

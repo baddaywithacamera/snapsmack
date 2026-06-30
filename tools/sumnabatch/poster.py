@@ -335,11 +335,15 @@ class SnapSmackClient:
                 if hex_tags:
                     post_tags = f"{post_tags} {hex_tags}" if post_tags else hex_tags
 
+            # Caption (AI or manual) becomes the post description; copyright is appended so it is never lost.
+            _caption = (getattr(entry, 'caption', '') or '').strip()
+            post_desc = f"{_caption}\n\n{copyright_str}" if _caption else copyright_str
+
             form_data: Dict[str, str] = {
                 'title':                entry.title,
                 'tags':                 post_tags,
                 'img_status':           'published',
-                'desc':                 copyright_str,
+                'desc':                 post_desc,
                 'allow_download':       '1' if drive_url else '0',
                 'download_url':         drive_url,
                 'orientation_override': orient,

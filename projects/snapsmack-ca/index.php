@@ -1949,9 +1949,9 @@ require_once __DIR__ . '/includes/header.php';
                 <p>The offline companion to the Light Table. GET YOUR SHIT SORTED pulls down your archive's thumbnails and the data needed to organise it, then turns your own machine into the sorting workbench — no live connection, no server load, no waiting on page loads for a ten-thousand-image back catalog. Do the work on a plane, in a basement, wherever you like. When you're done, it resyncs every change back to your site in one pass.</p>
             </div>
             <div class="coming-item">
-                <span class="tag">Tools</span>
-                <h3>UNZUCKER — Pixelfed</h3>
-                <p>The UNZUCKER currently supports Instagram imports to SnapSmack only, because that is the priority. We realize that our software is not everyone's first choice and they prefer Pixelfed for their old IG experience. Our tool can push data to Pixelfed and it will, but only after we get our own platform whipped into shape first. Then we're quite happy to revisit Mr. Zuckerberg with some of the kindness he has shown to us photographers over the past few years. Heh.</p>
+                <span class="tag">Federation</span>
+                <h3>SMACKVERSE</h3>
+                <p>Photoblogs are so last decade (or so we're told). So we built an Einstein Rosen Bridge to connect your photoblog to the wider Fediverse. Get the social reach of ActivityPub networks like Pixelfed without handing your art to some stranger's server running out of his mom's basement. Your images stay yours, presented your way, while your blog shows up as your own Pixelfed instance through a compatibility layer — comments, likes, and traffic included. This feature is a bazooka: not for cheap shared hosting, a VPS minimum, your own server preferred. For photo blogging Mack Daddies only. SMACKVERSE makes the old new again.</p>
             </div>
         </div>
     </div>

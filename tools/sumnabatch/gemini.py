@@ -23,7 +23,7 @@ log = logging.getLogger('sybu')
 # even if the library isn't installed yet.
 _genai = None
 
-MODEL_NAME = "gemini-3-flash-preview"
+MODEL_NAME = "gemini-3.5-flash"   # 'gemini-3-flash-preview' was not a real model id
 
 
 def _import_genai():
@@ -106,6 +106,7 @@ def _build_prompt(
 Analyse the image carefully and respond ONLY in this exact format — no extra text:
 
 TITLE: <a haiku-style title: three phrases separated by commas, e.g. "Dark stone holds the rain, rust bleeds through the ancient wall, time carves out the mark">
+CAPTION: <a short, natural one-line caption describing the image — this becomes the post's caption/description. No hashtags.>
 TAGS: <5 to 8 space-separated hashtags, e.g. #stone #rust #texture #macro #urban>
 CATEGORY: <pick the single best match from this list, or leave blank:{cats_str}>
 ALBUM: <pick the single best match from this list, or leave blank:{albums_str}>
@@ -113,6 +114,7 @@ COLORS: <the three most visually prominent colors in the image as uppercase hex 
 
 Rules:
 - TITLE must be evocative and descriptive of what is literally in the image
+- CAPTION is the post's caption/description: one natural line, no hashtags
 - {tags_guidance}
 - Tags must be lowercase with no spaces within a tag
 - CATEGORY must exactly match one of the options provided, or be left completely blank
@@ -123,9 +125,9 @@ Rules:
 
 def _parse_response(text: str) -> dict:
     """Extract TITLE/TAGS/CATEGORY/ALBUM/COLORS from the model response."""
-    result = {'title': '', 'tags': '', 'category': '', 'album': '', 'colors': ''}
+    result = {'title': '', 'caption': '', 'tags': '', 'category': '', 'album': '', 'colors': ''}
     for line in text.strip().splitlines():
-        m = re.match(r'^(TITLE|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)', line.strip(), re.IGNORECASE)
+        m = re.match(r'^(TITLE|CAPTION|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)', line.strip(), re.IGNORECASE)
         if m:
             key = m.group(1).lower()
             val = m.group(2).strip()
@@ -192,7 +194,7 @@ def enrich_batch(
     used_titles: set = {t.strip().lower() for t in (existing_titles or [])}
 
     for i, entry in enumerate(entries, start=1):
-        if skip_filled and entry.title.strip():
+        if skip_filled and (entry.title.strip() or entry.caption.strip()):
             if on_progress:
                 on_progress(i, total, entry, None)
             continue
@@ -230,11 +232,21 @@ def enrich_batch(
                          parsed.get('category', ''), parsed.get('album', ''),
                          parsed.get('colors', ''))
                 title    = parsed.get('title', '').strip()
+                caption  = parsed.get('caption', '').strip()
 
-                if title and title.lower() not in used_titles:
-                    # Unique title — accept it.
-                    entry.title = title
-                    used_titles.add(title.lower())
+                # GRAM posts have NO title — caption + hashtags only. Accept when we
+                # have a unique title (solo/photoblog, where title feeds the slug) OR
+                # a caption with no title (gram). Title-uniqueness only matters when a
+                # title actually exists.
+                title_ok = bool(title) and title.lower() not in used_titles
+                gram_ok  = (not title) and bool(caption)
+
+                if title_ok or gram_ok:
+                    if title:
+                        entry.title = title
+                        used_titles.add(title.lower())
+                    if parsed.get('caption'):
+                        entry.caption = parsed['caption']
                     if parsed['tags']:
                         entry.tags = parsed['tags']
                     if parsed['category']:
@@ -246,10 +258,13 @@ def enrich_batch(
                     last_error = None
                     break
                 else:
-                    # Duplicate — store for retry prompt and try again.
+                    # Title present but duplicate → keep for the retry prompt and try
+                    # again. Neither title nor caption → a genuinely empty response.
                     if title:
-                        entry.title = title   # keep for retry prompt context
-                    last_error = f"Duplicate title after {attempt} attempt(s): \"{title}\""
+                        entry.title = title
+                        last_error = f"Duplicate title after {attempt} attempt(s): \"{title}\""
+                    else:
+                        last_error = f"No title or caption returned (attempt {attempt})"
 
             if last_error:
                 if on_progress:
@@ -259,19 +274,46 @@ def enrich_batch(
                     on_progress(i, total, entry, None)
 
         except Exception as e:
-            log.error("GEMINI ERROR %s: %s", entry.file, e)
+            msg = str(e)
+            log.error("GEMINI ERROR %s: %s", entry.file, msg)
+            low = msg.lower()
+            # Cap-aware halt: a quota/billing/spending-cap error won't clear by
+            # retrying the next image, so stop cleanly instead of grinding through
+            # the rest erroring. skip_filled means re-running enrich later resumes
+            # exactly here (already-done images are skipped).
+            if any(k in low for k in ('resource_exhausted', 'quota', 'rate limit',
+                                      '429', 'exceeded', 'billing', 'spending cap')):
+                cap_msg = (f"Spending cap / quota hit at image {i} of {total} — stopping enrich. "
+                           f"Raise the cap (or wait for the reset window), then run enrich again; "
+                           f"already-enriched images are skipped, so it picks up from here.")
+                log.warning("ENRICH HALTED — %s", cap_msg)
+                if on_progress:
+                    on_progress(i, total, entry, cap_msg)
+                break
             if on_progress:
-                on_progress(i, total, entry, str(e))
+                on_progress(i, total, entry, msg)
 
     return entries
 
 
-def _load_image_part(genai, path: str):
-    """Load an image file and return a Gemini-compatible Part."""
-    ext  = os.path.splitext(path)[1].lower()
-    mime = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-            '.png': 'image/png',  '.webp': 'image/webp'}.get(ext, 'image/jpeg')
-    with open(path, 'rb') as f:
-        data = f.read()
-    return {'mime_type': mime, 'data': data}
+def _load_image_part(genai, path: str, max_edge: int = 600):
+    """Load an image, downscale to <= max_edge on its long side, and return a
+    Gemini-compatible JPEG Part. Vision is billed by image size — a 600px thumb
+    carries all the detail needed for title/tags/colour metadata at roughly a
+    third of the cost of sending the full-resolution original. Falls back to the
+    raw bytes if PIL/resize is unavailable."""
+    try:
+        import io
+        from PIL import Image as _PImg
+        im = _PImg.open(path).convert('RGB')
+        im.thumbnail((max_edge, max_edge), _PImg.LANCZOS)
+        buf = io.BytesIO()
+        im.save(buf, format='JPEG', quality=85)
+        return {'mime_type': 'image/jpeg', 'data': buf.getvalue()}
+    except Exception:
+        ext  = os.path.splitext(path)[1].lower()
+        mime = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+                '.png': 'image/png',  '.webp': 'image/webp'}.get(ext, 'image/jpeg')
+        with open(path, 'rb') as f:
+            return {'mime_type': mime, 'data': f.read()}
 # ===== SNAPSMACK EOF =====
