@@ -30,7 +30,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'INSTANT CAMERA',
-    'version'     => '1.0.10',
+    'version'     => '1.0.11',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'For instant-film photographers. A GRAMOFSMACK 3-across grid whose tile aspect you set to match your format (Polaroid, Instax Mini/Wide/Square, or custom) so prints show UNCROPPED — the scanned border is the frame, the skin just adds a drop shadow. Drifting Organized Mayhem tabletop behind a white scrim. Prints on a table, which is exactly what instant photography is.',
@@ -307,6 +307,14 @@ return [
             'default'  => '0',
             'min'      => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
             'hint'     => '0 = transparent (tabletop shows through the gaps). Raise for a solid, readable column.',
+        ],
+        'ic_landing_panel_extend' => [
+            'section'  => 'LANDING PANEL',
+            'type'     => 'range_numeric',
+            'label'    => 'Landing Panel Extend',
+            'default'  => '0',
+            'min'      => '0', 'max' => '100', 'step' => '5', 'unit' => 'px',
+            'hint'     => 'How far the panel bleeds out past the outer tiles, each side. 0 = flush with the tiles, 100 = 100px out.',
         ],
 
         // ---- GRID APPEARANCE -----------------------------------------------

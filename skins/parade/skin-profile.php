@@ -248,6 +248,7 @@ if ($_pa_nls_sz > 0 && $_pa_nls_op > 0) {
 }
 $_pa_lp_hex = trim($settings['pa_landing_panel_color'] ?? '#ffffff');
 $_pa_lp_op  = max(0, min(100, (int)($settings['pa_landing_panel_opacity'] ?? 0)));
+$_pa_lp_extend = max(0, min(100, (int)($settings['pa_landing_panel_extend'] ?? 0)));
 $_pa_landing_bg = 'transparent';
 if ($_pa_lp_op > 0) {
     $_c = ltrim($_pa_lp_hex, '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
@@ -256,7 +257,7 @@ if ($_pa_lp_op > 0) {
 ?>
 
 <!-- PARADE CSS vars: high-key field + text colours (read by style.css) -->
-<style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;--nav-line-opacity:<?php echo $_pa_nav_line_op; ?>;--nav-text-glow:<?php echo $_pa_navglow_css; ?>;--nav-text-glow-strong:<?php echo $_pa_navglow_strong; ?>;--profile-text-glow:<?php echo $_pa_glow_css; ?>;--footer-text-glow:<?php echo $_pa_ftglow_css; ?>;--page-panel-bg:<?php echo htmlspecialchars($_pa_panel_bg); ?>;--pa-navbar-bg:<?php echo htmlspecialchars($_pa_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_pa_posts_glow); ?>;--pa-navline-shadow:<?php echo htmlspecialchars($_pa_navline_shadow); ?>;--landing-panel-bg:<?php echo htmlspecialchars($_pa_landing_bg); ?>;}</style>
+<style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;--nav-line-opacity:<?php echo $_pa_nav_line_op; ?>;--nav-text-glow:<?php echo $_pa_navglow_css; ?>;--nav-text-glow-strong:<?php echo $_pa_navglow_strong; ?>;--profile-text-glow:<?php echo $_pa_glow_css; ?>;--footer-text-glow:<?php echo $_pa_ftglow_css; ?>;--page-panel-bg:<?php echo htmlspecialchars($_pa_panel_bg); ?>;--pa-navbar-bg:<?php echo htmlspecialchars($_pa_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_pa_posts_glow); ?>;--pa-navline-shadow:<?php echo htmlspecialchars($_pa_navline_shadow); ?>;--landing-panel-bg:<?php echo htmlspecialchars($_pa_landing_bg); ?>;--landing-panel-extend:<?php echo (int)$_pa_lp_extend; ?>px;}</style>
 
 <?php if ($_pa_flag_mode): ?>
 <!-- PARADE waving-flag carrier — read by ss-engine-flag-wave.js (Layer 1
