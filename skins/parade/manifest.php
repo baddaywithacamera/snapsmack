@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.2.11',
+    'version'     => '1.2.12',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
@@ -491,6 +491,11 @@ return [
             'section' => 'LANDING PANEL', 'type' => 'range_numeric', 'label' => 'Landing Panel Opacity',
             'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
             'hint'    => '0 = transparent. Raise for a solid, readable column.',
+        ],
+        'pa_landing_panel_extend' => [
+            'section' => 'LANDING PANEL', 'type' => 'range_numeric', 'label' => 'Landing Panel Extend',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => 'px',
+            'hint'    => 'How far the panel bleeds out past the outer tiles, each side. 0 = flush, 100 = 100px out.',
         ],
         'pa_carousel_indicator' => [
             'section'  => 'GRID',

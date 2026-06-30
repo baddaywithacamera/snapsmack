@@ -118,7 +118,7 @@ img { display: block; max-width: 100%; }
     position: sticky;
     top: 0;
     z-index: 100;
-    background: var(--pa-navbar-bg, transparent);
+    background: transparent;
     /* Optional admin drop shadow on the nav line (capped 3px, hard, down-right). */
     box-shadow: var(--pa-navline-shadow, none);
     transition: background 0.18s ease-in;
@@ -132,7 +132,8 @@ img { display: block; max-width: 100%; }
    stays legible over the fireworks. .profile-hidden is added by the shared nav
    engine when the profile scrolls out of view. */
 .pa-sticky-nav.profile-hidden {
-    background: color-mix(in srgb, var(--pa-bg, #ffffff) 88%, transparent);
+    /* Admin Navbar Colour+Opacity overrides the default high-key backdrop. */
+    background: var(--pa-navbar-bg, color-mix(in srgb, var(--pa-bg, #ffffff) 88%, transparent));
 }
 
 .pa-sticky-nav-inner {
@@ -1391,9 +1392,19 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 /* Content sits above the fixed fireworks layer. */
 #page-wrapper,
 .pa-content-wrap { position: relative; z-index: 1; }
-/* Landing panel — landing-ONLY (scoped to .landing-feed on the landing wrapper),
-   so it never tints static / archive / hashtag pages. Off until configured. */
-.landing-feed { background: var(--landing-panel-bg, transparent) !important; }
+/* Landing panel — landing-ONLY (scoped to .landing-feed). Renders BEHIND the
+   tiles as a backing layer that can bleed out past them by Landing Panel Extend
+   (px, 0–100) each side. .pa-content-wrap is already position:relative. */
+.landing-feed::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0;
+    left:  calc(-1 * var(--landing-panel-extend, 0px));
+    right: calc(-1 * var(--landing-panel-extend, 0px));
+    background: var(--landing-panel-bg, transparent);
+    z-index: -1;
+    pointer-events: none;
+}
 
 /* Reduced motion: the engine itself freezes to a few static coloured bursts.
    Keep the layer calm here too. */

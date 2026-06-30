@@ -213,6 +213,7 @@ if ($_au_nls_sz > 0 && $_au_nls_op > 0) {
 }
 $_au_lp_hex = trim($settings['au_landing_panel_color'] ?? '#0a0e1a');
 $_au_lp_op  = max(0, min(100, (int)($settings['au_landing_panel_opacity'] ?? 0)));
+$_au_lp_extend = max(0, min(100, (int)($settings['au_landing_panel_extend'] ?? 0)));
 $_au_landing_bg = 'transparent';
 if ($_au_lp_op > 0) {
     $_c = ltrim($_au_lp_hex, '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
@@ -221,7 +222,7 @@ if ($_au_lp_op > 0) {
 ?>
 
 <!-- AURORA tile vars: border width / corner radius / ring opacity / sky base -->
-<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_au_glow_css); ?>;--nav-line-opacity:<?php echo $_au_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_au_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_au_navglow_strong); ?>;--page-panel-bg:<?php echo htmlspecialchars($_au_panel_bg); ?>;--au-navbar-bg:<?php echo htmlspecialchars($_au_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_au_posts_glow); ?>;--au-navline-shadow:<?php echo htmlspecialchars($_au_navline_shadow); ?>;--landing-panel-bg:<?php echo htmlspecialchars($_au_landing_bg); ?>;<?php echo $_au_nav_line_css; ?>}</style>
+<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_au_glow_css); ?>;--nav-line-opacity:<?php echo $_au_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_au_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_au_navglow_strong); ?>;--page-panel-bg:<?php echo htmlspecialchars($_au_panel_bg); ?>;--au-navbar-bg:<?php echo htmlspecialchars($_au_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_au_posts_glow); ?>;--au-navline-shadow:<?php echo htmlspecialchars($_au_navline_shadow); ?>;--landing-panel-bg:<?php echo htmlspecialchars($_au_landing_bg); ?>;--landing-panel-extend:<?php echo (int)$_au_lp_extend; ?>px;<?php echo $_au_nav_line_css; ?>}</style>
 
 <!-- AURORA config carrier — read by aurora-bg.js (Layer 1 curtains) and
      aurora-wave.js (Layer 2 ring wave). -->

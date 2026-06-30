@@ -1346,12 +1346,26 @@ body { background: transparent !important; }      /* let the fixed layers show *
    --bg-primary fill. Nav links keep their glow (above) for legibility. */
 :root { --grid-bg: transparent; }
 .tg-content-wrap { background: transparent !important; }
-/* Landing panel is landing-ONLY — scoped to the .landing-feed marker on the
-   landing wrapper so it never tints archive / static / hashtag pages. */
-.landing-feed    { background: var(--landing-panel-bg, transparent) !important; }
+/* Landing panel is landing-ONLY (the .landing-feed marker, so it never tints
+   archive / static / hashtag pages) and renders as a backing layer BEHIND the
+   tiles that can bleed out past them by the Landing Panel Extend amount (px,
+   0–100) on each side. */
+.landing-feed { position: relative; }
+.landing-feed::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0;
+    left:  calc(-1 * var(--landing-panel-extend, 0px));
+    right: calc(-1 * var(--landing-panel-extend, 0px));
+    background: var(--landing-panel-bg, transparent);
+    z-index: -1;
+    pointer-events: none;
+}
 .tg-grid        { background: transparent !important; }
-/* Navbar background is admin-tunable (Navbar Colour + Opacity). Transparent by
-   default so the tabletop shows through; raise the opacity for a solid bar. */
-.tg-sticky-nav  { background: var(--ic-nav-bg, transparent) !important; }
+/* Navbar background (Navbar Colour + Opacity) applies ONLY to the stuck state —
+   the bar pinned to the top as you scroll (.profile-hidden). At rest (inline on
+   the landing) it stays transparent so the tabletop shows through. */
+.tg-sticky-nav                 { background: transparent !important; }
+.tg-sticky-nav.profile-hidden  { background: var(--ic-nav-bg, transparent) !important; }
 
 /* ===== SNAPSMACK EOF ===== */

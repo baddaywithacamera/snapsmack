@@ -114,7 +114,7 @@ img { display: block; max-width: 100%; }
     position: sticky;
     top: 0;
     z-index: 100;
-    background: var(--au-navbar-bg, transparent);
+    background: transparent;
     /* Optional admin drop shadow on the nav line (capped 3px, hard, down-right). */
     box-shadow: var(--au-navline-shadow, none);
     /* When stuck to the top (.profile-hidden) fast-fade in a backdrop. */
@@ -131,7 +131,8 @@ img { display: block; max-width: 100%; }
 /* Stuck to top: fade in 40% of the sky colour behind the nav. .profile-hidden is
    added by the shared nav engine when the profile scrolls out of view. */
 .au-sticky-nav.profile-hidden {
-    background: color-mix(in srgb, var(--au-sky, #0d0d2b) 40%, transparent);
+    /* Admin Navbar Colour+Opacity overrides the default 40% sky backdrop. */
+    background: var(--au-navbar-bg, color-mix(in srgb, var(--au-sky, #0d0d2b) 40%, transparent));
 }
 
 /* Lower half of each divider: 2px solid dark indigo, offset 2px to the right. */
@@ -1403,10 +1404,19 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 /* Content sits above the fixed aurora layer. */
 #page-wrapper,
 .au-content-wrap { position: relative; z-index: 1; }
-/* Landing panel — landing-ONLY (scoped to .landing-feed on the landing wrapper),
-   so it never tints static / archive / hashtag pages. Off (transparent) until
-   the admin sets Landing Panel opacity. */
-.landing-feed { background: var(--landing-panel-bg, transparent) !important; }
+/* Landing panel — landing-ONLY (scoped to .landing-feed). Renders BEHIND the
+   tiles as a backing layer that can bleed out past them by Landing Panel Extend
+   (px, 0–100) each side. .au-content-wrap is already position:relative. */
+.landing-feed::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0;
+    left:  calc(-1 * var(--landing-panel-extend, 0px));
+    right: calc(-1 * var(--landing-panel-extend, 0px));
+    background: var(--landing-panel-bg, transparent);
+    z-index: -1;
+    pointer-events: none;
+}
 
 /* ==========================================================================
    AURORA — LAYER 2: TILE BORDER WAVE (conic ring)

@@ -209,6 +209,7 @@ if ($_ic_nls_sz > 0 && $_ic_nls_op > 0) {
 // ── Landing feed panel — readable column over busy backgrounds (landing only) ─
 $_ic_lp_hex = trim($settings['ic_landing_panel_color'] ?? '#ffffff');
 $_ic_lp_op  = max(0, min(100, (int)($settings['ic_landing_panel_opacity'] ?? 0)));
+$_ic_lp_extend = max(0, min(100, (int)($settings['ic_landing_panel_extend'] ?? 0)));
 $_ic_landing_bg = 'transparent';
 if ($_ic_lp_op > 0) {
     $_c = ltrim($_ic_lp_hex, '#');
@@ -224,7 +225,7 @@ if ($_ic_bgmode === 'mayhem') {
 ?>
 
 <!-- INSTANT CAMERA vars: tile aspect (match the print), scrim opacity, sharp corners. -->
-<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;--page-panel-bg:<?php echo htmlspecialchars($_ic_panel_bg); ?>;--ic-nav-bg:<?php echo htmlspecialchars($_ic_nav_bg); ?>;--posts-color:<?php echo htmlspecialchars($_ic_posts_color); ?>;--posts-glow:<?php echo htmlspecialchars($_ic_posts_glow); ?>;--ic-navline-color:<?php echo htmlspecialchars($_ic_navline_color); ?>;--ic-navline-shadow:<?php echo htmlspecialchars($_ic_navline_shadow); ?>;--landing-panel-bg:<?php echo htmlspecialchars($_ic_landing_bg); ?>;}</style>
+<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;--page-panel-bg:<?php echo htmlspecialchars($_ic_panel_bg); ?>;--ic-nav-bg:<?php echo htmlspecialchars($_ic_nav_bg); ?>;--posts-color:<?php echo htmlspecialchars($_ic_posts_color); ?>;--posts-glow:<?php echo htmlspecialchars($_ic_posts_glow); ?>;--ic-navline-color:<?php echo htmlspecialchars($_ic_navline_color); ?>;--ic-navline-shadow:<?php echo htmlspecialchars($_ic_navline_shadow); ?>;--landing-panel-bg:<?php echo htmlspecialchars($_ic_landing_bg); ?>;--landing-panel-extend:<?php echo (int)$_ic_lp_extend; ?>px;}</style>
 
 <?php if ($_ic_bgmode === 'mayhem'): ?>
 <!-- Background: Organized Mayhem ambient tabletop (data-pan=0 data-ambient=1) behind the scrim. -->

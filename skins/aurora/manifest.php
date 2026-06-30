@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'AURORA',
-    'version'     => '1.0.22',
+    'version'     => '1.0.23',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Northern-lights desktop skin. A classic 3-across square grid under a slow aurora that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.',
@@ -294,6 +294,11 @@ return [
             'section' => 'LANDING PANEL', 'type' => 'range_numeric', 'label' => 'Landing Panel Opacity',
             'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
             'hint'    => '0 = transparent. Raise for a solid, readable column over the aurora.',
+        ],
+        'au_landing_panel_extend' => [
+            'section' => 'LANDING PANEL', 'type' => 'range_numeric', 'label' => 'Landing Panel Extend',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => 'px',
+            'hint'    => 'How far the panel bleeds out past the outer tiles, each side. 0 = flush, 100 = 100px out.',
         ],
         // NOTE: no "grid background / gap colour" option — unlike The Grid, AURORA
         // shows the live aurora through the gaps between tiles (the grid container
