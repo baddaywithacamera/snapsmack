@@ -126,6 +126,23 @@ if ($_ic_glow_sz > 0 && $_ic_glow_op > 0) {
     );
 }
 
+// ── Bio glow — independent halo for the bio line ONLY (its own control), so the
+// title/tagline can glow while the bio stays clean, or vice-versa. ───────────
+$_ic_bioglow_hex = trim($settings['ic_bio_glow_color'] ?? '#000000');
+$_ic_bioglow_sz  = max(0, min(40,  (int)($settings['ic_bio_glow_size']    ?? 0)));
+$_ic_bioglow_op  = max(0, min(100, (int)($settings['ic_bio_glow_opacity'] ?? 0)));
+$_ic_bioglow_css = 'none';
+if ($_ic_bioglow_sz > 0 && $_ic_bioglow_op > 0) {
+    $_bgc = ltrim($_ic_bioglow_hex, '#');
+    if (strlen($_bgc) === 3) $_bgc = $_bgc[0].$_bgc[0].$_bgc[1].$_bgc[1].$_bgc[2].$_bgc[2];
+    $_bgr = hexdec(substr($_bgc, 0, 2)); $_bgg = hexdec(substr($_bgc, 2, 2)); $_bgb = hexdec(substr($_bgc, 4, 2));
+    $_ic_bioglow_css = sprintf(
+        '0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_ic_bioglow_sz, $_bgr, $_bgg, $_bgb, number_format($_ic_bioglow_op / 100, 2),
+        $_ic_bioglow_sz * 2, $_bgr, $_bgg, $_bgb, number_format($_ic_bioglow_op / 200, 2)
+    );
+}
+
 // ── Nav glow — ported from AURORA. Outer halo behind the menu links. ─────────
 $_ic_navglow_hex    = trim($settings['ic_nav_glow_color'] ?? '#000000');
 $_ic_navglow_sz     = max(0, min(40,  (int)($settings['ic_nav_glow_size']    ?? 0)));
@@ -232,7 +249,7 @@ if ($_ic_bgmode === 'mayhem') {
 ?>
 
 <!-- INSTANT CAMERA vars: tile aspect (match the print), scrim opacity, sharp corners. -->
-<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;--panel-bg:<?php echo htmlspecialchars($_ic_panel_bg); ?>;--panel-extend:<?php echo (int)$_ic_panel_extend; ?>px;--ic-nav-bg:<?php echo htmlspecialchars($_ic_nav_bg); ?>;--posts-color:<?php echo htmlspecialchars($_ic_posts_color); ?>;--posts-glow:<?php echo htmlspecialchars($_ic_posts_glow); ?>;--ic-navline-color:<?php echo htmlspecialchars($_ic_navline_color); ?>;--ic-navline-opacity:<?php echo (int)$_ic_navline_op; ?>;--ic-navline-shadow:<?php echo htmlspecialchars($_ic_navline_shadow); ?>;--post-bg:<?php echo htmlspecialchars($_ic_solo_bg); ?>;}</style>
+<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--bio-text-glow:<?php echo htmlspecialchars($_ic_bioglow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;--panel-bg:<?php echo htmlspecialchars($_ic_panel_bg); ?>;--panel-extend:<?php echo (int)$_ic_panel_extend; ?>px;--ic-nav-bg:<?php echo htmlspecialchars($_ic_nav_bg); ?>;--posts-color:<?php echo htmlspecialchars($_ic_posts_color); ?>;--posts-glow:<?php echo htmlspecialchars($_ic_posts_glow); ?>;--ic-navline-color:<?php echo htmlspecialchars($_ic_navline_color); ?>;--ic-navline-opacity:<?php echo (int)$_ic_navline_op; ?>;--ic-navline-shadow:<?php echo htmlspecialchars($_ic_navline_shadow); ?>;--post-bg:<?php echo htmlspecialchars($_ic_solo_bg); ?>;}</style>
 
 <?php if ($_ic_bgmode === 'mayhem'): ?>
 <!-- Background: Organized Mayhem ambient tabletop (data-pan=0 data-ambient=1) behind the scrim. -->

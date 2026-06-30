@@ -313,12 +313,14 @@ img { display: block; max-width: 100%; }
 }
 
 .tg-profile-bio {
+    /* Bio glow is its OWN control (--bio-text-glow), independent of the
+       title/tagline Text Glow, so it can be turned off on the bio alone. */
     margin:      8px 0 0;
     font-size:   14px;
     line-height: 1.5;
     color:       var(--bio-color, var(--text-secondary));
     max-width:   480px;
-    text-shadow: var(--profile-text-glow, none);
+    text-shadow: var(--bio-text-glow, none);
 }
 
 

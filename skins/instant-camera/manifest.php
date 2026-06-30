@@ -30,7 +30,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'INSTANT CAMERA',
-    'version'     => '1.0.14',
+    'version'     => '1.0.15',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'For instant-film photographers. A GRAMOFSMACK 3-across grid whose tile aspect you set to match your format (Polaroid, Instax Mini/Wide/Square, or custom) so prints show UNCROPPED — the scanned border is the frame, the skin just adds a drop shadow. Drifting Organized Mayhem tabletop behind a white scrim. Prints on a table, which is exactly what instant photography is.',
@@ -155,6 +155,33 @@ return [
             'max'      => '100',
             'step'     => '5',
             'unit'     => '%',
+            'hint'     => 'Applies to the title + tagline. The bio has its own control below.',
+        ],
+
+        // ---- BIO GLOW (independent of the title/tagline Text Glow) ----------
+        // Separate halo for the bio line ONLY, so you can glow the title/tagline
+        // and leave the bio clean (or vice-versa). 0/0 = no glow on the bio.
+        'ic_bio_glow_color' => [
+            'section' => 'BIO GLOW',
+            'type'    => 'color',
+            'label'   => 'Bio Glow Colour',
+            'default' => '#000000',
+            'hint'    => 'Halo behind the bio text only. PHP-handled → --bio-text-glow.',
+        ],
+        'ic_bio_glow_size' => [
+            'section'  => 'BIO GLOW',
+            'type'     => 'range_numeric',
+            'label'    => 'Bio Glow Size',
+            'default'  => '0',
+            'min'      => '0', 'max' => '40', 'step' => '2', 'unit' => 'px',
+            'hint'     => '0 = no glow on the bio.',
+        ],
+        'ic_bio_glow_opacity' => [
+            'section'  => 'BIO GLOW',
+            'type'     => 'range_numeric',
+            'label'    => 'Bio Glow Opacity',
+            'default'  => '0',
+            'min'      => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
         ],
         'ic_nav_glow_color' => [
             'section' => 'TEXT GLOW',
