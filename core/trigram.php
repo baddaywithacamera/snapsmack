@@ -184,4 +184,83 @@ function threeacross_settle(PDO $pdo): array
     return ['published' => $published, 'queued' => $queued];
 }
 
+/**
+ * Re-lay the PUBLISHED feed as whole rows. A trigram stays glued (one row, in
+ * slot order); singles regroup into fresh rows of three. Only the position of
+ * each row-unit changes — never a trigram's internals — so the grid stays
+ * aligned. Non-published posts are parked after the published block, order
+ * preserved.
+ *
+ * @param string $mode 'shuffle' = randomize; 'chrono' = newest-first by date.
+ * @return int Number of published posts re-laid.
+ *
+ * Destructive to feed order — callers MUST gate behind step-up auth.
+ */
+function feed_relayout(PDO $pdo, string $mode): int
+{
+    $pub = $pdo->query("
+        SELECT p.id, p.trigram_id, p.created_at,
+               CASE WHEN tg.post_id_1 = p.id THEN 1
+                    WHEN tg.post_id_2 = p.id THEN 2
+                    WHEN tg.post_id_3 = p.id THEN 3
+                    ELSE 0 END AS slot
+        FROM snap_posts p
+        LEFT JOIN snap_trigrams tg ON tg.id = p.trigram_id
+        WHERE p.status = 'published'
+        ORDER BY p.created_at DESC, p.id DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    // Build row-units: ['date'=>newest member date, 'ids'=>[post ids in order]].
+    $units = []; $singles = []; $seen = [];
+    foreach ($pub as $r) {
+        $tg = (int)$r['trigram_id'];
+        if ($tg > 0) {
+            if (isset($seen[$tg])) continue;
+            $seen[$tg] = true;
+            $mem = array_values(array_filter($pub, fn($x) => (int)$x['trigram_id'] === $tg));
+            usort($mem, fn($a, $b) => (int)$a['slot'] <=> (int)$b['slot']);
+            $units[] = [
+                'date' => max(array_map(fn($m) => (string)$m['created_at'], $mem)),
+                'ids'  => array_map(fn($m) => (int)$m['id'], $mem),
+            ];
+        } else {
+            $singles[] = $r;
+        }
+    }
+    // Singles are already newest-first; chunk into rows of three.
+    foreach (array_chunk($singles, 3) as $chunk) {
+        $units[] = [
+            'date' => (string)$chunk[0]['created_at'],
+            'ids'  => array_map(fn($m) => (int)$m['id'], $chunk),
+        ];
+    }
+
+    if ($mode === 'shuffle') {
+        shuffle($units);
+    } else { // 'chrono' — newest row first
+        usort($units, fn($a, $b) => strcmp($b['date'], $a['date']));
+    }
+
+    $pdo->beginTransaction();
+    try {
+        $upd = $pdo->prepare("UPDATE snap_posts SET sort_order = ? WHERE id = ?");
+        $pos = 1;
+        foreach ($units as $u) {
+            foreach ($u['ids'] as $id) $upd->execute([$pos++, $id]);
+        }
+        // Park non-published posts after the published block, order preserved.
+        $rest = $pdo->query("
+            SELECT id FROM snap_posts WHERE status <> 'published'
+            ORDER BY CASE WHEN sort_order > 0 THEN 0 ELSE 1 END ASC,
+                     sort_order ASC, created_at DESC
+        ")->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($rest as $id) $upd->execute([$pos++, $id]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+    return $pos - 1;
+}
+
 // ===== SNAPSMACK EOF =====

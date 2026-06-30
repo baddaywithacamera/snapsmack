@@ -109,6 +109,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $log[] = "SUCCESS: Database tables optimized and defragmented.";
     }
 
+    // FEED ORDER — RANDOMIZE / RESTORE CHRONOLOGICAL (step-up: password + 2FA)
+    // Both rewrite every post's sort_order, so they sit behind a re-auth gate to
+    // prevent an accidental click. Trigrams stay glued as whole rows either way.
+    if ($action === 'randomize_feed' || $action === 'restore_chrono') {
+        require_once 'core/reauth.php';
+        require_once 'core/trigram.php';
+        $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+        if (!$ra['ok']) {
+            $log[] = "ERROR: " . htmlspecialchars($ra['error']);
+        } else {
+            try {
+                $mode = ($action === 'randomize_feed') ? 'shuffle' : 'chrono';
+                $n = feed_relayout($pdo, $mode);
+                $log[] = ($mode === 'shuffle')
+                    ? "SUCCESS: Feed randomized — {$n} published posts reshuffled, trigrams kept intact."
+                    : "SUCCESS: Feed restored to chronological order (newest first) — {$n} published posts, trigrams kept intact.";
+            } catch (Throwable $e) {
+                $log[] = "ERROR: Feed reorder failed — " . htmlspecialchars($e->getMessage()) . ".";
+            }
+        }
+    }
+
     // FORCE MOBILE SKIN UPDATE
     // Mobile-only skins (Photogram) are hidden from the gallery, so they can only
     // self-heal via the updater when the registry version is HIGHER than installed.
@@ -892,6 +914,32 @@ include 'core/sidebar.php';
             <form method="POST">
                 <input type="hidden" name="action" value="optimize">
                 <button type="submit" class="btn-smack btn-block">OPTIMIZE</button>
+            </form>
+        </div>
+
+        <div class="box box-flex">
+            <h3>&#127922; RANDOMIZE FEED</h3>
+            <p class="skin-desc-text">Shuffles the running order of your published feed. Trigrams stay glued as a set &mdash; only each set's position moves, never its L/M/R order. This rewrites every post's position, so it's guarded: enter your password and 2FA code to fire it. (Use Restore below to undo.)</p>
+            <form method="POST" onsubmit="return confirm('Randomize the whole feed order? Trigrams stay intact. You can restore chronological order afterward.');">
+                <input type="hidden" name="action" value="randomize_feed">
+                <div class="reauth-row" style="display:flex; gap:10px; margin:8px 0;">
+                    <label style="flex:1;">PASSWORD<br><input type="password" name="reauth_password" autocomplete="off" style="width:100%;"></label>
+                    <label style="flex:0 0 120px;">2FA CODE<br><input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" style="width:100%;"></label>
+                </div>
+                <button type="submit" class="btn-smack btn-block">RANDOMIZE FEED</button>
+            </form>
+        </div>
+
+        <div class="box box-flex">
+            <h3>&#8634; RESTORE CHRONOLOGICAL</h3>
+            <p class="skin-desc-text">Puts the feed back in date order, newest first &mdash; undoes a randomize. Trigrams stay glued as whole rows. Same guard: password + 2FA required so it can't be hit by accident.</p>
+            <form method="POST" onsubmit="return confirm('Restore the feed to chronological order (newest first)? Trigrams stay intact.');">
+                <input type="hidden" name="action" value="restore_chrono">
+                <div class="reauth-row" style="display:flex; gap:10px; margin:8px 0;">
+                    <label style="flex:1;">PASSWORD<br><input type="password" name="reauth_password" autocomplete="off" style="width:100%;"></label>
+                    <label style="flex:0 0 120px;">2FA CODE<br><input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" style="width:100%;"></label>
+                </div>
+                <button type="submit" class="btn-smack btn-block">RESTORE ORDER</button>
             </form>
         </div>
 
