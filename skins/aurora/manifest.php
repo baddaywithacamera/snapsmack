@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'AURORA',
-    'version'     => '1.0.21',
+    'version'     => '1.0.22',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Northern-lights desktop skin. A classic 3-across square grid under a slow aurora that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.',
@@ -243,6 +243,57 @@ return [
             'selector' => ':root',
             'property' => '--post-count-color',
             'hint'     => 'Colour of the post count number and "posts" label.',
+        ],
+
+        // ---- NAVBAR (bar background over the aurora) ───────────────────────
+        'au_navbar_color' => [
+            'section' => 'NAVBAR', 'type' => 'color', 'label' => 'Navbar Colour',
+            'default' => '#0a0e1a',
+            'hint'    => 'Background colour of the sticky nav bar. PHP-handled → --au-navbar-bg.',
+        ],
+        'au_navbar_opacity' => [
+            'section' => 'NAVBAR', 'type' => 'range_numeric', 'label' => 'Navbar Opacity',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'    => '0 = transparent. Raise for a solid bar over the aurora.',
+        ],
+        // ---- "POSTS" LABEL glow (colour is the Post Count Colour above) ────
+        'au_posts_glow_color' => [
+            'section' => 'POSTS LABEL', 'type' => 'color', 'label' => 'Posts Glow Colour',
+            'default' => '#000000',
+        ],
+        'au_posts_glow_size' => [
+            'section' => 'POSTS LABEL', 'type' => 'range_numeric', 'label' => 'Posts Glow Size',
+            'default' => '0', 'min' => '0', 'max' => '40', 'step' => '2', 'unit' => 'px',
+            'hint'    => '0 = no glow (falls back to the profile text glow).',
+        ],
+        'au_posts_glow_opacity' => [
+            'section' => 'POSTS LABEL', 'type' => 'range_numeric', 'label' => 'Posts Glow Opacity',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+        ],
+        // ---- NAV LINE drop shadow (line colour is the wave control above) ──
+        'au_navline_shadow_color' => [
+            'section' => 'NAV LINES', 'type' => 'color', 'label' => 'Nav Line Shadow Colour',
+            'default' => '#000000',
+        ],
+        'au_navline_shadow_size' => [
+            'section' => 'NAV LINES', 'type' => 'range_numeric', 'label' => 'Nav Line Shadow Size',
+            'default' => '0', 'min' => '0', 'max' => '3', 'step' => '1', 'unit' => 'px',
+            'hint'    => '0 = no shadow. Capped 3px, always down-and-right.',
+        ],
+        'au_navline_shadow_opacity' => [
+            'section' => 'NAV LINES', 'type' => 'range_numeric', 'label' => 'Nav Line Shadow Opacity',
+            'default' => '40', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+        ],
+        // ---- LANDING PANEL (readable feed column, landing only) ────────────
+        'au_landing_panel_color' => [
+            'section' => 'LANDING PANEL', 'type' => 'color', 'label' => 'Landing Panel Colour',
+            'default' => '#0a0e1a',
+            'hint'    => 'Backing colour behind the landing feed column (landing only). PHP-handled → --landing-panel-bg.',
+        ],
+        'au_landing_panel_opacity' => [
+            'section' => 'LANDING PANEL', 'type' => 'range_numeric', 'label' => 'Landing Panel Opacity',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'    => '0 = transparent. Raise for a solid, readable column over the aurora.',
         ],
         // NOTE: no "grid background / gap colour" option — unlike The Grid, AURORA
         // shows the live aurora through the gaps between tiles (the grid container

@@ -644,11 +644,13 @@
         s.id = 'om-keyframes';
         s.textContent =
             '@keyframes om-flip{0%{transform:rotate(0)}50%{transform:rotate(180deg)}100%{transform:rotate(360deg)}}' +
-            '@keyframes om-wobble{from{transform:rotate(-0.6deg)}to{transform:rotate(0.6deg)}}' +
+            // Full cycle that STARTS and ENDS at the print's resting angle (0deg)
+            // so a staggered-delay wobble never snaps into place on first run.
+            '@keyframes om-wobble{0%{transform:rotate(0deg)}25%{transform:rotate(-0.6deg)}50%{transform:rotate(0deg)}75%{transform:rotate(0.6deg)}100%{transform:rotate(0deg)}}' +
             // No preserve-3d / perspective: the tabletop is a flat 2D stack of
             // whole prints layered by z-index. 3D context is what let the warp
             // slice them.
-            '.om-alive .om-img{animation:om-wobble var(--om-w,9s) ease-in-out var(--om-d,0s) infinite alternate}' +
+            '.om-alive .om-img{animation:om-wobble var(--om-w,9s) ease-in-out var(--om-d,0s) infinite}' +
             '@media (prefers-reduced-motion: reduce){.om-alive .om-img{animation:none}}';
         document.head.appendChild(s);
     }

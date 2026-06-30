@@ -162,6 +162,61 @@ if ($_ic_panel_op > 0) {
         number_format($_ic_panel_op / 100, 2));
 }
 
+// ── Sticky navbar background — transparent by default (tabletop shows through);
+// admin can dial colour + opacity to make it solid. ────────────────────────
+$_ic_nav_hex = trim($settings['ic_nav_color'] ?? '#ffffff');
+$_ic_nav_op  = max(0, min(100, (int)($settings['ic_nav_opacity'] ?? 0)));
+$_ic_nav_bg  = 'transparent';
+if ($_ic_nav_op > 0) {
+    $_nc = ltrim($_ic_nav_hex, '#');
+    if (strlen($_nc) === 3) $_nc = $_nc[0].$_nc[0].$_nc[1].$_nc[1].$_nc[2].$_nc[2];
+    $_ic_nav_bg = sprintf('rgba(%d,%d,%d,%s)',
+        hexdec(substr($_nc, 0, 2)), hexdec(substr($_nc, 2, 2)), hexdec(substr($_nc, 4, 2)),
+        number_format($_ic_nav_op / 100, 2));
+}
+
+// ── "Posts" label colour + glow ─────────────────────────────────────────────
+$_ic_posts_color = trim($settings['ic_posts_color'] ?? '#777777');
+$_ic_pg_hex = trim($settings['ic_posts_glow_color'] ?? '#000000');
+$_ic_pg_sz  = max(0, min(40,  (int)($settings['ic_posts_glow_size']    ?? 0)));
+$_ic_pg_op  = max(0, min(100, (int)($settings['ic_posts_glow_opacity'] ?? 0)));
+$_ic_posts_glow = 'none';
+if ($_ic_pg_sz > 0 && $_ic_pg_op > 0) {
+    $_c = ltrim($_ic_pg_hex, '#');
+    if (strlen($_c) === 3) $_c = $_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
+    $_pgr = hexdec(substr($_c,0,2)); $_pgg = hexdec(substr($_c,2,2)); $_pgb = hexdec(substr($_c,4,2));
+    $_ic_posts_glow = sprintf('0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_ic_pg_sz, $_pgr, $_pgg, $_pgb, number_format($_ic_pg_op/100,2),
+        $_ic_pg_sz*2, $_pgr, $_pgg, $_pgb, number_format($_ic_pg_op/200,2));
+}
+
+// ── Nav divider line colour + (capped, down-right) drop shadow ───────────────
+$_ic_navline_color = trim($settings['ic_navline_color'] ?? '#e0e0e0');
+$_ic_nls_hex = trim($settings['ic_navline_shadow_color'] ?? '#000000');
+$_ic_nls_sz  = max(0, min(3,   (int)($settings['ic_navline_shadow_size']    ?? 0)));
+$_ic_nls_op  = max(0, min(100, (int)($settings['ic_navline_shadow_opacity'] ?? 40)));
+$_ic_navline_shadow = 'none';
+if ($_ic_nls_sz > 0 && $_ic_nls_op > 0) {
+    $_c = ltrim($_ic_nls_hex, '#');
+    if (strlen($_c) === 3) $_c = $_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
+    // Hard-edged (no blur), down-and-right, capped at 3px — identical across
+    // skins, and avoids the side-bleed a blurred shadow caused on the bar.
+    $_ic_navline_shadow = sprintf('%dpx %dpx 0 rgba(%d,%d,%d,%s)',
+        $_ic_nls_sz, $_ic_nls_sz, hexdec(substr($_c,0,2)), hexdec(substr($_c,2,2)), hexdec(substr($_c,4,2)),
+        number_format($_ic_nls_op/100,2));
+}
+
+// ── Landing feed panel — readable column over busy backgrounds (landing only) ─
+$_ic_lp_hex = trim($settings['ic_landing_panel_color'] ?? '#ffffff');
+$_ic_lp_op  = max(0, min(100, (int)($settings['ic_landing_panel_opacity'] ?? 0)));
+$_ic_landing_bg = 'transparent';
+if ($_ic_lp_op > 0) {
+    $_c = ltrim($_ic_lp_hex, '#');
+    if (strlen($_c) === 3) $_c = $_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
+    $_ic_landing_bg = sprintf('rgba(%d,%d,%d,%s)',
+        hexdec(substr($_c,0,2)), hexdec(substr($_c,2,2)), hexdec(substr($_c,4,2)), number_format($_ic_lp_op/100,2));
+}
+
 // Organized Mayhem ambient background needs its shared data endpoint.
 if ($_ic_bgmode === 'mayhem') {
     require_once dirname(__DIR__, 2) . '/core/mayhem-data.php';
@@ -169,7 +224,7 @@ if ($_ic_bgmode === 'mayhem') {
 ?>
 
 <!-- INSTANT CAMERA vars: tile aspect (match the print), scrim opacity, sharp corners. -->
-<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;--page-panel-bg:<?php echo htmlspecialchars($_ic_panel_bg); ?>;}</style>
+<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;--page-panel-bg:<?php echo htmlspecialchars($_ic_panel_bg); ?>;--ic-nav-bg:<?php echo htmlspecialchars($_ic_nav_bg); ?>;--posts-color:<?php echo htmlspecialchars($_ic_posts_color); ?>;--posts-glow:<?php echo htmlspecialchars($_ic_posts_glow); ?>;--ic-navline-color:<?php echo htmlspecialchars($_ic_navline_color); ?>;--ic-navline-shadow:<?php echo htmlspecialchars($_ic_navline_shadow); ?>;--landing-panel-bg:<?php echo htmlspecialchars($_ic_landing_bg); ?>;}</style>
 
 <?php if ($_ic_bgmode === 'mayhem'): ?>
 <!-- Background: Organized Mayhem ambient tabletop (data-pan=0 data-ambient=1) behind the scrim. -->

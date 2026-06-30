@@ -133,7 +133,7 @@ $grid_stmt = $pdo->prepare("
 $grid_stmt->execute([$now_local]);
 $grid_posts = $grid_stmt->fetchAll();
 ?>
-<div class="au-content-wrap">
+<div class="au-content-wrap landing-feed">
 
 <?php include __DIR__ . '/skin-profile.php'; ?>
 

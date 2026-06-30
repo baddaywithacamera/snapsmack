@@ -30,7 +30,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'INSTANT CAMERA',
-    'version'     => '1.0.8',
+    'version'     => '1.0.10',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'For instant-film photographers. A GRAMOFSMACK 3-across grid whose tile aspect you set to match your format (Polaroid, Instax Mini/Wide/Square, or custom) so prints show UNCROPPED — the scanned border is the frame, the skin just adds a drop shadow. Drifting Organized Mayhem tabletop behind a white scrim. Prints on a table, which is exactly what instant photography is.',
@@ -205,6 +205,108 @@ return [
             'step'     => '5',
             'unit'     => '%',
             'hint'     => '0 = no panel (text sits straight on the background). Raise it until the text is comfortable to read.',
+        ],
+
+        // ---- STICKY NAVBAR -------------------------------------------------
+        // The sticky nav floats over the tabletop. Transparent by default (the
+        // tabletop shows through); dial opacity up for a solid bar.
+        'ic_nav_color' => [
+            'section' => 'NAVBAR',
+            'type'    => 'color',
+            'label'   => 'Navbar Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Background colour of the sticky nav bar. PHP-handled → --ic-nav-bg.',
+        ],
+        'ic_nav_opacity' => [
+            'section'  => 'NAVBAR',
+            'type'     => 'range_numeric',
+            'label'    => 'Navbar Opacity',
+            'default'  => '0',
+            'min'      => '0',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+            'hint'     => '0 = fully transparent (the tabletop shows through). Raise it for a solid bar.',
+        ],
+
+        // ---- "POSTS" LABEL -------------------------------------------------
+        'ic_posts_color' => [
+            'section' => 'POSTS LABEL',
+            'type'    => 'color',
+            'label'   => 'Posts Label Colour',
+            'default' => '#777777',
+            'hint'    => 'Colour of the "posts" count word in the profile header. PHP-handled → --posts-color.',
+        ],
+        'ic_posts_glow_color' => [
+            'section' => 'POSTS LABEL',
+            'type'    => 'color',
+            'label'   => 'Posts Glow Colour',
+            'default' => '#000000',
+        ],
+        'ic_posts_glow_size' => [
+            'section'  => 'POSTS LABEL',
+            'type'     => 'range_numeric',
+            'label'    => 'Posts Glow Size',
+            'default'  => '0',
+            'min'      => '0', 'max' => '40', 'step' => '2', 'unit' => 'px',
+            'hint'     => '0 = no glow.',
+        ],
+        'ic_posts_glow_opacity' => [
+            'section'  => 'POSTS LABEL',
+            'type'     => 'range_numeric',
+            'label'    => 'Posts Glow Opacity',
+            'default'  => '0',
+            'min'      => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+        ],
+
+        // ---- NAV LINES -----------------------------------------------------
+        'ic_navline_color' => [
+            'section' => 'NAV LINES',
+            'type'    => 'color',
+            'label'   => 'Nav Line Colour',
+            'default' => '#e0e0e0',
+            'hint'    => 'Colour of the nav divider line. PHP-handled → --ic-navline-color.',
+        ],
+        'ic_navline_shadow_color' => [
+            'section' => 'NAV LINES',
+            'type'    => 'color',
+            'label'   => 'Nav Line Shadow Colour',
+            'default' => '#000000',
+        ],
+        'ic_navline_shadow_size' => [
+            'section'  => 'NAV LINES',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav Line Shadow Size',
+            'default'  => '0',
+            'min'      => '0', 'max' => '3', 'step' => '1', 'unit' => 'px',
+            'hint'     => '0 = no shadow. Capped at 3px, always cast down-and-right for consistency.',
+        ],
+        'ic_navline_shadow_opacity' => [
+            'section'  => 'NAV LINES',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav Line Shadow Opacity',
+            'default'  => '40',
+            'min'      => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+        ],
+
+        // ---- LANDING PANEL -------------------------------------------------
+        // Opaque backing behind the landing feed column (like The Grid's white
+        // centre), configurable for the landing page only — for readability over
+        // busy backgrounds.
+        'ic_landing_panel_color' => [
+            'section' => 'LANDING PANEL',
+            'type'    => 'color',
+            'label'   => 'Landing Panel Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Backing colour behind the landing feed column. PHP-handled → --landing-panel-bg.',
+        ],
+        'ic_landing_panel_opacity' => [
+            'section'  => 'LANDING PANEL',
+            'type'     => 'range_numeric',
+            'label'    => 'Landing Panel Opacity',
+            'default'  => '0',
+            'min'      => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'     => '0 = transparent (tabletop shows through the gaps). Raise for a solid, readable column.',
         ],
 
         // ---- GRID APPEARANCE -----------------------------------------------
