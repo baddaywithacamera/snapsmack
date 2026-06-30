@@ -249,7 +249,7 @@ $sql = "SELECT i.*,
         (SELECT COUNT(*) FROM snap_likes WHERE post_id = i.id) as like_count
         FROM snap_images i
         $where_sql
-        ORDER BY i.img_date DESC, i.id DESC
+        ORDER BY i.id DESC
         LIMIT $per_page OFFSET $offset";
 
 $posts = $pdo->prepare($sql);

@@ -30,7 +30,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'INSTANT CAMERA',
-    'version'     => '1.0.6',
+    'version'     => '1.0.7',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'For instant-film photographers. A GRAMOFSMACK 3-across grid whose tile aspect you set to match your format (Polaroid, Instax Mini/Wide/Square, or custom) so prints show UNCROPPED — the scanned border is the frame, the skin just adds a drop shadow. Drifting Organized Mayhem tabletop behind a white scrim. Prints on a table, which is exactly what instant photography is.',
@@ -123,6 +123,66 @@ return [
             'step'     => '5',
             'unit'     => '%',
             'hint'     => 'White layer between the background and the grid. 10% = background bold; 90% = prints float on near-white. PHP-handled → --ic-scrim.',
+        ],
+
+        // ---- TEXT GLOW (readability over the drifting tabletop) -------------
+        // Ported from AURORA / PARADE. Halos behind the profile text and the nav
+        // links so they stay legible over the Organized Mayhem background.
+        'ic_glow_color' => [
+            'section' => 'TEXT GLOW',
+            'type'    => 'color',
+            'label'   => 'Text Glow Colour',
+            'default' => '#000000',
+            'hint'    => 'Halo behind the profile title, tagline, and bio. Black for a dark halo; white for a light one. PHP-handled → --profile-text-glow.',
+        ],
+        'ic_glow_size' => [
+            'section'  => 'TEXT GLOW',
+            'type'     => 'range_numeric',
+            'label'    => 'Text Glow Size',
+            'default'  => '0',
+            'min'      => '0',
+            'max'      => '40',
+            'step'     => '2',
+            'unit'     => 'px',
+            'hint'     => '0 = use the built-in readability halo. Increase for a wider custom halo.',
+        ],
+        'ic_glow_opacity' => [
+            'section'  => 'TEXT GLOW',
+            'type'     => 'range_numeric',
+            'label'    => 'Text Glow Opacity',
+            'default'  => '0',
+            'min'      => '0',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+        ],
+        'ic_nav_glow_color' => [
+            'section' => 'TEXT GLOW',
+            'type'    => 'color',
+            'label'   => 'Nav Glow Colour',
+            'default' => '#000000',
+            'hint'    => 'Outer glow behind the menu links (Home / Blogroll / pages). PHP-handled → --nav-text-glow.',
+        ],
+        'ic_nav_glow_size' => [
+            'section'  => 'TEXT GLOW',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav Glow Size',
+            'default'  => '0',
+            'min'      => '0',
+            'max'      => '40',
+            'step'     => '2',
+            'unit'     => 'px',
+            'hint'     => '0 = no nav glow.',
+        ],
+        'ic_nav_glow_opacity' => [
+            'section'  => 'TEXT GLOW',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav Glow Opacity',
+            'default'  => '45',
+            'min'      => '0',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
         ],
 
         // ---- GRID APPEARANCE -----------------------------------------------

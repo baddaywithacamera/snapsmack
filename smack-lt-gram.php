@@ -145,6 +145,75 @@ if (isset($_POST['action']) && $_POST['action'] === 'bulk_publish') {
     exit;
 }
 
+// ── AJAX: CREATE TRIGRAM (lock 3 selected posts into an L/M/R or T/M/B set) ──
+// Selection order IS slot order: ids[0]=slot1 (L/T), ids[1]=slot2 (M), ids[2]=
+// slot3 (R/B). Mirrors core/threeacross-api.php's threeacross/trigram route so
+// the lighttable and the Unzucker/SUMNABATCH import build identical groups.
+if (isset($_POST['action']) && $_POST['action'] === 'create_trigram') {
+    header('Content-Type: application/json');
+    $ids = array_values(array_filter(array_map('intval', $_POST['ids'] ?? [])));
+    $orientation = trim($_POST['orientation'] ?? 'h');
+    if (!in_array($orientation, ['h', 'v'], true)) $orientation = 'h';
+
+    if (count($ids) !== 3 || count(array_unique($ids)) !== 3) {
+        echo json_encode(['ok' => false, 'err' => 'Select exactly three different posts to lock into a trigram.']); exit;
+    }
+    list($pid1, $pid2, $pid3) = $ids;
+
+    $ph  = implode(',', array_fill(0, 3, '?'));
+    $chk = $pdo->prepare("SELECT COUNT(*) FROM snap_posts WHERE id IN ($ph)");
+    $chk->execute($ids);
+    if ((int)$chk->fetchColumn() !== 3) {
+        echo json_encode(['ok' => false, 'err' => 'One or more selected posts no longer exist.']); exit;
+    }
+    $dup = $pdo->prepare("SELECT id FROM snap_posts WHERE id IN ($ph) AND trigram_id IS NOT NULL LIMIT 1");
+    $dup->execute($ids);
+    if ($dup->fetch()) {
+        echo json_encode(['ok' => false, 'err' => 'One of those posts is already in a trigram — unlock it first.']); exit;
+    }
+
+    // Defensive schema guards (mirror core/threeacross-api.php) so a DB that
+    // predates the group-trigram columns still works.
+    $pdo->exec("ALTER TABLE snap_trigrams
+        ADD COLUMN IF NOT EXISTS trigram_type ENUM('slice','group') NOT NULL DEFAULT 'slice'
+        COMMENT 'slice=GD/Imagick cut; group=pre-sliced external import' AFTER id");
+    $pdo->exec("ALTER TABLE snap_trigrams MODIFY source_path VARCHAR(500) NULL");
+    $pdo->exec("ALTER TABLE snap_trigrams MODIFY cut_a SMALLINT UNSIGNED NULL");
+    $pdo->exec("ALTER TABLE snap_trigrams MODIFY cut_b SMALLINT UNSIGNED NULL");
+
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare("
+            INSERT INTO snap_trigrams
+                (trigram_type, source_path, orientation, cut_a, cut_b, post_id_1, post_id_2, post_id_3)
+            VALUES ('group', NULL, ?, NULL, NULL, ?, ?, ?)
+        ")->execute([$orientation, $pid1, $pid2, $pid3]);
+        $trigram_id = (int)$pdo->lastInsertId();
+
+        $upd = $pdo->prepare("UPDATE snap_posts SET trigram_id = ? WHERE id = ?");
+        $upd->execute([$trigram_id, $pid1]);
+        $upd->execute([$trigram_id, $pid2]);
+        $upd->execute([$trigram_id, $pid3]);
+
+        // Make the three contiguous at the next clean row boundary so the set is
+        // a valid 3-across row from the moment it's locked.
+        $max_so     = (int)$pdo->query("SELECT COALESCE(MAX(sort_order), 0) FROM snap_posts")->fetchColumn();
+        $col_offset = (1 - ($max_so % 3) + 3) % 3;
+        $start      = $max_so + ($col_offset === 0 ? 3 : $col_offset);
+        $so = $pdo->prepare("UPDATE snap_posts SET sort_order = ? WHERE id = ?");
+        $so->execute([$start,     $pid1]);
+        $so->execute([$start + 1, $pid2]);
+        $so->execute([$start + 2, $pid3]);
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'err' => 'Trigram creation failed: ' . $e->getMessage()]); exit;
+    }
+
+    echo json_encode(['ok' => true, 'trigram_id' => $trigram_id]); exit;
+}
+
 // ── FETCH ALL POSTS ────────────────────────────────────────────────────────
 $posts = $pdo->query("
     SELECT
@@ -193,6 +262,13 @@ include 'core/sidebar.php';
         </h2>
         <div class="ltg-toolbar">
             <span class="ltg-save-status" id="ltgSaveStatus"></span>
+            <span class="ltg-trigram-lock" id="ltgTrigramLock" style="display:none;align-items:center;gap:6px;">
+                <select id="ltgTrigramOrient" class="btn btn--sm" title="Trigram orientation" style="padding:3px 6px;">
+                    <option value="h">Horizontal · L / M / R</option>
+                    <option value="v">Vertical · T / M / B</option>
+                </select>
+                <button class="btn btn--sm" id="ltgLockTrigramBtn" onclick="ltgLockTrigram()" title="Lock the 3 selected posts into a trigram, in the order you ticked them">🔒 LOCK TRIGRAM</button>
+            </span>
             <button class="btn btn--sm" id="ltgBulkPublishBtn" style="display:none;" onclick="ltgBulkPublish()">PUBLISH SELECTED</button>
             <label class="ltg-col-label" title="Tile size">
                 🔍 <input type="range" id="ltgZoomSlider" min="240" max="900" value="900" step="30">
@@ -255,6 +331,7 @@ include 'core/sidebar.php';
         <?php if ($thumb): ?>
         <img src="<?php echo htmlspecialchars($thumb); ?>"
              alt="<?php echo htmlspecialchars($post['title']); ?>"
+             draggable="false"
              loading="lazy">
         <?php else: ?>
         <div class="ltg-tile-no-img">
@@ -483,14 +560,27 @@ include 'core/sidebar.php';
     });
 
     // ── Bulk publish ───────────────────────────────────────────────────────
+    let trigramTickOrder = [];   // post-ids in the order their boxes were ticked
+
     grid.addEventListener('change', function (e) {
-        if (e.target.classList.contains('ltg-select-cb')) updateBulkBtn();
+        if (!e.target.classList.contains('ltg-select-cb')) return;
+        const id = e.target.dataset.postId;
+        if (e.target.checked) {
+            if (!trigramTickOrder.includes(id)) trigramTickOrder.push(id);
+        } else {
+            trigramTickOrder = trigramTickOrder.filter(x => x !== id);
+        }
+        updateBulkBtn();
     });
 
     function updateBulkBtn() {
         const checked = grid.querySelectorAll('.ltg-select-cb:checked');
         bulkBtn.style.display = checked.length > 0 ? '' : 'none';
         bulkBtn.textContent   = `PUBLISH SELECTED (${checked.length})`;
+
+        // The lock control appears only when exactly 3 posts are selected.
+        const lock = document.getElementById('ltgTrigramLock');
+        if (lock) lock.style.display = (checked.length === 3) ? 'inline-flex' : 'none';
     }
 
     window.ltgBulkPublish = function () {
@@ -535,6 +625,44 @@ include 'core/sidebar.php';
             updateBulkBtn();
         })
         .catch(() => { bulkBtn.textContent = 'ERROR'; bulkBtn.disabled = false; });
+    };
+
+    // ── Lock 3 selected posts into a trigram ───────────────────────────────
+    // Slot order = the order the boxes were ticked (first tick = L / T).
+    window.ltgLockTrigram = function () {
+        const checkedIds = [...grid.querySelectorAll('.ltg-select-cb:checked')].map(cb => cb.dataset.postId);
+        if (checkedIds.length !== 3) return;
+        let ordered = trigramTickOrder.filter(id => checkedIds.includes(id));
+        if (ordered.length !== 3) ordered = checkedIds;   // fallback: reading order
+
+        const orient = document.getElementById('ltgTrigramOrient').value;
+        const btn    = document.getElementById('ltgLockTrigramBtn');
+        btn.disabled = true; btn.textContent = 'Locking…';
+
+        const fd = new FormData();
+        fd.append('action', 'create_trigram');
+        fd.append('orientation', orient);
+        ordered.forEach(id => fd.append('ids[]', id));
+
+        fetch('smack-lt-gram.php', {
+            method:  'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body:    fd
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.ok) {
+                alert(d.err || 'Could not lock trigram.');
+                btn.disabled = false; btn.textContent = '🔒 LOCK TRIGRAM';
+                return;
+            }
+            // Reload so the set renders with its outline, L/M/R badges, and lock-drag.
+            location.reload();
+        })
+        .catch(() => {
+            alert('Network error while locking the trigram.');
+            btn.disabled = false; btn.textContent = '🔒 LOCK TRIGRAM';
+        });
     };
 
     // Run alignment check on load
@@ -634,6 +762,12 @@ include 'core/sidebar.php';
     padding:    8px;
     opacity:    0;
     transition: opacity .15s;
+    /* The overlay is a visual-only hover layer. WITHOUT this it covered the
+       whole tile at pointer-events:auto even while invisible (opacity:0), so it
+       swallowed every click and drag-grab on the tile ("boxes hard to click").
+       Let pointer events pass through to the tile; only the action controls
+       below opt back in. */
+    pointer-events: none;
 }
 .ltg-tile:hover .ltg-tile-overlay { opacity: 1; }
 .ltg-tile-title {
@@ -650,6 +784,9 @@ include 'core/sidebar.php';
     display:     flex;
     align-items: center;
     gap:         6px;
+    /* Re-enable clicks on the controls the overlay's pointer-events:none
+       disabled (publish button + select checkbox). */
+    pointer-events: auto;
 }
 
 /* ── Tile buttons ──────────────────────────────────────────────────────── */

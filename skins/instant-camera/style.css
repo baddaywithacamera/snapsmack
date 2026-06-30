@@ -175,13 +175,15 @@ img { display: block; max-width: 100%; }
     text-decoration: none;
     letter-spacing: 0.2px;
     text-transform: var(--nav-text-transform, none);
-    transition: color 0.15s;
+    text-shadow: var(--nav-text-glow, none);
+    transition: color 0.15s, text-shadow 0.15s;
 }
 
 .tg-sticky-nav-links a:hover,
 .tg-sticky-nav-links a.active {
     color: var(--text-primary);
     opacity: 1;
+    text-shadow: var(--nav-text-glow-strong, var(--nav-text-glow, none));
 }
 
 /* Top nav bar (existing) */
@@ -263,6 +265,7 @@ img { display: block; max-width: 100%; }
     font-family: var(--blog-title-font, inherit);
     margin: 0;
     color: var(--text-primary);
+    text-shadow: var(--profile-text-glow, none);
 }
 
 .tg-profile-tagline-sep {
@@ -278,6 +281,7 @@ img { display: block; max-width: 100%; }
     font-family: var(--tagline-font, inherit);
     color: var(--tagline-color, var(--text-secondary));
     margin: 0;
+    text-shadow: var(--profile-text-glow, none);
 }
 
 .tg-profile-stats {
@@ -309,6 +313,7 @@ img { display: block; max-width: 100%; }
     line-height: 1.5;
     color:       var(--text-secondary);
     max-width:   480px;
+    text-shadow: var(--profile-text-glow, none);
 }
 
 
@@ -1295,7 +1300,8 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 .tg-tile {
     aspect-ratio: var(--ic-tile-aspect, 1 / 1) !important;
     border-radius: 0 !important;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    /* Drop shadow so each print clearly lifts off the tabletop. */
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.30);
     background: transparent;
 }
 /* The print is shown WHOLE — the skin never crops it (spec §5). */
@@ -1322,8 +1328,13 @@ body { background: transparent !important; }      /* let the fixed layers show *
     opacity: var(--ic-scrim, 0.6);
     pointer-events: none;
 }
-/* Scrim/tabletop shows through the grid: transparent gaps + content column. */
+/* Scrim/tabletop shows through the grid: transparent gaps, navbar, and content
+   column. The !important on the grid beats the "Gap Colour" control (--grid-bg),
+   which otherwise repaints the gaps solid; same for the sticky nav's
+   --bg-primary fill. Nav links keep their glow (above) for legibility. */
 :root { --grid-bg: transparent; }
 .tg-content-wrap { background: transparent !important; }
+.tg-grid        { background: transparent !important; }
+.tg-sticky-nav  { background: transparent !important; }
 
 /* ===== SNAPSMACK EOF ===== */

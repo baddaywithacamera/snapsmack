@@ -132,6 +132,11 @@ def load() -> dict:
             'No attribution required. '
             'Permitted for use in AI training datasets.'
         )),
+        # UI prefs / dismissable flags (see [ui] section in save()).
+        'post_as_grams':           cfg.getboolean('ui', 'post_as_grams', fallback=False),
+        'drive_warning_dismissed': cfg.getboolean('ui', 'drive_warning_dismissed', fallback=False),
+        'win_maximized':           cfg.getboolean('ui', 'win_maximized', fallback=False),
+        'win_geometry':            cfg.get('ui', 'win_geometry', fallback=''),
     }
 
 
@@ -139,12 +144,23 @@ def save(data: dict) -> None:
     """Write config to disk."""
     cfg = configparser.ConfigParser()
 
-    # Preserve the Phase-1 dedication "don't show again" flag — dedication.py
-    # writes it directly to [ui]; rebuilding cfg from scratch here would wipe it.
+    # [ui] — UI prefs + dismissable flags. save() rebuilds the file from scratch,
+    # so re-read the existing [ui] and preserve every key (dedication.py writes
+    # dedication_dismissed directly), then layer on only the keys this save
+    # actually supplied. A key absent from `data` is left as it was, never reset.
     _existing = configparser.ConfigParser()
     _existing.read(_config_path())
-    if _existing.getboolean('ui', 'dedication_dismissed', fallback=False):
-        cfg['ui'] = {'dedication_dismissed': 'true'}
+    ui = dict(_existing['ui']) if _existing.has_section('ui') else {}
+    if 'post_as_grams' in data:
+        ui['post_as_grams'] = str(bool(data.get('post_as_grams')))
+    if 'drive_warning_dismissed' in data:
+        ui['drive_warning_dismissed'] = str(bool(data.get('drive_warning_dismissed')))
+    if 'win_maximized' in data:
+        ui['win_maximized'] = str(bool(data.get('win_maximized')))
+    if 'win_geometry' in data and data.get('win_geometry'):
+        ui['win_geometry'] = str(data.get('win_geometry'))
+    if ui:
+        cfg['ui'] = ui
 
     cfg['site'] = {'url': data.get('url', '')}
 
