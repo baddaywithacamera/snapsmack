@@ -30,7 +30,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'INSTANT CAMERA',
-    'version'     => '1.0.11',
+    'version'     => '1.0.12',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'For instant-film photographers. A GRAMOFSMACK 3-across grid whose tile aspect you set to match your format (Polaroid, Instax Mini/Wide/Square, or custom) so prints show UNCROPPED — the scanned border is the frame, the skin just adds a drop shadow. Drifting Organized Mayhem tabletop behind a white scrim. Prints on a table, which is exactly what instant photography is.',
@@ -519,6 +519,15 @@ return [
             'default'  => '#8e8e8e',
             'selector' => ':root',
             'property' => '--text-secondary',
+        ],
+        'ic_bio_color' => [
+            'section'  => 'COLOURS',
+            'type'     => 'color',
+            'label'    => 'Description / Bio Text',
+            'default'  => '#8e8e8e',
+            'selector' => ':root',
+            'property' => '--bio-color',
+            'hint'     => 'Colour of the bio paragraph under the profile. Independent of Secondary Text (matches AURORA/PARADE).',
         ],
         'ic_accent' => [
             'section'  => 'COLOURS',

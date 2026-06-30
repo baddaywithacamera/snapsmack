@@ -244,7 +244,10 @@ $_pa_nls_op  = max(0, min(100, (int)($settings['pa_navline_shadow_opacity'] ?? 4
 $_pa_navline_shadow = 'none';
 if ($_pa_nls_sz > 0 && $_pa_nls_op > 0) {
     $_c = ltrim($_pa_nls_hex, '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
-    $_pa_navline_shadow = sprintf('%dpx %dpx 0 rgba(%d,%d,%d,%s)', $_pa_nls_sz,$_pa_nls_sz, hexdec(substr($_c,0,2)),hexdec(substr($_c,2,2)),hexdec(substr($_c,4,2)), number_format($_pa_nls_op/100,2));
+    $_nr=hexdec(substr($_c,0,2)); $_ng=hexdec(substr($_c,2,2)); $_nb=hexdec(substr($_c,4,2));
+    $_na=number_format($_pa_nls_op/100,2); $_n=$_pa_nls_sz;
+    // Top + bottom lines only, no side bleed (negative spread cancels the blur horizontally).
+    $_pa_navline_shadow = sprintf('0 %1$dpx %1$dpx -%1$dpx rgba(%2$d,%3$d,%4$d,%5$s),inset 0 %1$dpx %1$dpx -%1$dpx rgba(%2$d,%3$d,%4$d,%5$s)', $_n,$_nr,$_ng,$_nb,$_na);
 }
 $_pa_lp_hex = trim($settings['pa_landing_panel_color'] ?? '#ffffff');
 $_pa_lp_op  = max(0, min(100, (int)($settings['pa_landing_panel_opacity'] ?? 0)));
