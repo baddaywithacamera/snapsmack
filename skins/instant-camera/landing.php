@@ -133,6 +133,13 @@ $grid_stmt = $pdo->prepare("
 $grid_stmt->execute([$now_local]);
 $grid_posts = $grid_stmt->fetchAll();
 
+// Backfill horizontal-trigram rows so the feed never shows blank gaps: singles
+// slide up to finish the row before a trigram instead of the row being padded
+// with phantoms. The phantom block below then only fires at the unfillable feed
+// tail (a whole panorama beats a broken one).
+require_once dirname(__DIR__, 2) . '/core/trigram.php';
+if (function_exists('trigram_align_backfill')) $grid_posts = trigram_align_backfill($grid_posts);
+
 include dirname(__DIR__, 2) . '/core/meta.php';
 ?>
 <div class="tg-content-wrap landing-feed">

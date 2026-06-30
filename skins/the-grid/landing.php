@@ -143,6 +143,12 @@ $grid_stmt = $pdo->prepare("
 $grid_stmt->execute([$now_local]);
 $grid_posts = $grid_stmt->fetchAll();
 
+// Backfill horizontal-trigram rows so the feed never shows blank gaps (singles
+// slide up to finish the row before a trigram). Phantom padding stays as the
+// tail-case safety net. Shared helper — see core/trigram.php.
+require_once dirname(__DIR__, 2) . '/core/trigram.php';
+if (function_exists('trigram_align_backfill')) $grid_posts = trigram_align_backfill($grid_posts);
+
 include dirname(__DIR__, 2) . '/core/meta.php';
 ?>
 <div class="tg-content-wrap">

@@ -263,4 +263,78 @@ function feed_relayout(PDO $pdo, string $mode): int
     return $pos - 1;
 }
 
+/**
+ * Re-order a feed post array so every HORIZONTAL trigram (L/M/R) starts at
+ * column 0 of the 3-wide grid — WITHOUT padding blank tiles. When a trigram
+ * would land mid-row, the next single (non-trigram) posts are pulled up to
+ * finish the current row, then the trigram's three members are emitted
+ * together. Result: no empty gaps, panoramas stay whole on one row, and the
+ * order only bends a hair (a single or two slide up around each trigram).
+ *
+ * Idempotent — already-aligned input comes back unchanged. Skins keep their
+ * phantom-padding as a safety net: after this pass it only fires at the very
+ * tail of the feed where no singles remain to pull (a whole panorama beats a
+ * broken one).
+ *
+ * Expects each row to carry 'trigram_id', 'trigram_slot' (1/2/3, 0 = single),
+ * and 'trigram_orientation' ('h' default, 'v' = vertical/no realign).
+ *
+ * @param array $posts Feed rows in display order.
+ * @return array Re-ordered rows.
+ */
+function trigram_align_backfill(array $posts): array
+{
+    $posts = array_values($posts);
+    $n     = count($posts);
+    $used  = array_fill(0, $n, false);
+    $out   = [];
+    $col   = 0;
+
+    for ($i = 0; $i < $n; $i++) {
+        if ($used[$i]) continue;
+        $p      = $posts[$i];
+        $slot   = (int)($p['trigram_slot'] ?? 0);
+        $orient = $p['trigram_orientation'] ?? 'h';
+
+        // Only horizontal trigram L-tiles (slot 1) need a clean row start.
+        if ($slot === 1 && $orient !== 'v') {
+            // Backfill the current row with upcoming SINGLES so the trigram
+            // begins at column 0.
+            if ($col !== 0) {
+                $need = 3 - $col;
+                for ($k = $i + 1; $k < $n && $need > 0; $k++) {
+                    if ($used[$k]) continue;
+                    if ((int)($posts[$k]['trigram_slot'] ?? 0) > 0) continue; // singles only
+                    $out[] = $posts[$k];
+                    $used[$k] = true;
+                    $col = ($col + 1) % 3;
+                    $need--;
+                }
+                // If $col is still not 0, no singles remain to pull — the skin's
+                // phantom padding handles this tail case. Emit the trigram now.
+            }
+            // Emit L, then its M (slot 2) and R (slot 3) — pulled together even
+            // if a stray single sits between them in the raw order.
+            $tgid = (int)($p['trigram_id'] ?? 0);
+            $out[] = $p; $used[$i] = true; $col = ($col + 1) % 3;
+            foreach ([2, 3] as $wantSlot) {
+                for ($k = $i + 1; $k < $n; $k++) {
+                    if ($used[$k]) continue;
+                    if ((int)($posts[$k]['trigram_id'] ?? 0) === $tgid
+                        && (int)($posts[$k]['trigram_slot'] ?? 0) === $wantSlot) {
+                        $out[] = $posts[$k]; $used[$k] = true; $col = ($col + 1) % 3;
+                        break;
+                    }
+                }
+            }
+            continue;
+        }
+
+        // Normal single (or vertical-trigram member) — emit in place.
+        $out[] = $p; $used[$i] = true; $col = ($col + 1) % 3;
+    }
+
+    return $out;
+}
+
 // ===== SNAPSMACK EOF =====

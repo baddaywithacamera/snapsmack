@@ -36,7 +36,9 @@ if (isset($_POST['action']) && $_POST['action'] === 'reorder') {
         exit;
     }
     $all_ids = $pdo->query(
-        "SELECT id FROM snap_posts ORDER BY sort_order ASC, created_at DESC"
+        "SELECT id FROM snap_posts
+          ORDER BY CASE WHEN sort_order > 0 THEN 0 ELSE 1 END ASC,
+                   sort_order ASC, created_at DESC"
     )->fetchAll(PDO::FETCH_COLUMN);
 
     $page_set  = array_flip($new_order);
@@ -266,8 +268,13 @@ $posts = $pdo->query("
     LEFT JOIN snap_post_images pi ON pi.post_id = p.id AND pi.is_cover = 1
     LEFT JOIN snap_images i       ON i.id = pi.image_id
     LEFT JOIN snap_trigrams tg    ON tg.id = p.trigram_id
-    ORDER BY p.sort_order ASC, p.created_at DESC
+    ORDER BY CASE WHEN p.sort_order > 0 THEN 0 ELSE 1 END ASC,
+             p.sort_order ASC, p.created_at DESC
 ")->fetchAll();
+
+// Same gapless realign as the public feed, so the lighttable preview matches
+// what ships: horizontal trigrams sit on a clean row, singles backfill the gaps.
+$posts = trigram_align_backfill($posts);
 
 $total       = count($posts);
 $draft_count = count(array_filter($posts, fn($p) => $p['status'] === 'draft'));
