@@ -101,7 +101,7 @@ img { display: block; max-width: 100%; }
     top: 0;
     z-index: 100;
     background: var(--bg-primary);
-    border-bottom: 1px solid var(--ic-navline-color, var(--border-color));
+    border-bottom: 1px solid color-mix(in srgb, var(--ic-navline-color, var(--border-color)) calc(var(--ic-navline-opacity, 100) * 1%), transparent);
     /* Optional admin drop shadow on the nav line — hard-edged (no blur),
        down-and-right, capped at 3px. The old 4px BLURRED shadow bled faint
        vertical lines at the bar's ends; a hard offset shadow doesn't. */
@@ -1034,11 +1034,8 @@ body.tg-modal-open { overflow: hidden; }
     max-width: 680px;
     margin: 0 auto;
     padding: 40px 28px 60px;
-    /* Optional readability panel behind page text (admin: Page Panel colour +
-       opacity). Defaults to transparent — text sits straight on the background
-       until the panel is dialled in. */
-    background: var(--page-panel-bg, transparent);
-    border-radius: 6px;
+    /* Readability panel is now the shared .tg-content-wrap::before (full content
+       width, all pages). This column just sets the reading width + padding. */
 }
 
 .tg-static-title {
@@ -1346,18 +1343,19 @@ body { background: transparent !important; }      /* let the fixed layers show *
    --bg-primary fill. Nav links keep their glow (above) for legibility. */
 :root { --grid-bg: transparent; }
 .tg-content-wrap { background: transparent !important; }
-/* Landing panel is landing-ONLY (the .landing-feed marker, so it never tints
-   archive / static / hashtag pages) and renders as a backing layer BEHIND the
-   tiles that can bleed out past them by the Landing Panel Extend amount (px,
-   0–100) on each side. */
-.landing-feed { position: relative; }
-.landing-feed::before {
+/* Panel (all pages): ONE backing layer behind the content column on EVERY page
+   — landing, About/static, archive, hashtag — full content width, reaching the
+   top, bleeding out past the content by Panel Extend (px, 0–100) each side.
+   Transparent until Panel Opacity is dialled up. (Replaces the old landing-only
+   panel + the separate static-page panel — one control across the whole skin.) */
+.tg-content-wrap { position: relative; }
+.tg-content-wrap::before {
     content: "";
     position: absolute;
     top: 0; bottom: 0;
-    left:  calc(-1 * var(--landing-panel-extend, 0px));
-    right: calc(-1 * var(--landing-panel-extend, 0px));
-    background: var(--landing-panel-bg, transparent);
+    left:  calc(-1 * var(--panel-extend, 0px));
+    right: calc(-1 * var(--panel-extend, 0px));
+    background: var(--panel-bg, transparent);
     z-index: -1;
     pointer-events: none;
 }
@@ -1367,5 +1365,17 @@ body { background: transparent !important; }      /* let the fixed layers show *
    the landing) it stays transparent so the tabletop shows through. */
 .tg-sticky-nav                 { background: transparent !important; }
 .tg-sticky-nav.profile-hidden  { background: var(--ic-nav-bg, transparent) !important; }
+
+/* ── Sticky footer (#3) — on short pages (About, sparse archives) the system
+      footer snaps to the bottom of the viewport; on tall pages it flows after
+      the content as normal. The content column keeps its margin:0 auto, which
+      under a flex-column body still absorbs the side free space and stays
+      centred — so this can't shift the layout horizontally. Child combinators
+      target only the page-level footer; the solo modal's own footer
+      (.tg-post-ig-info > #system-footer) is left exactly as it was. ────────── */
+body { min-height: 100vh; display: flex; flex-direction: column; }
+#page-wrapper { flex: 1 0 auto; display: flex; flex-direction: column; }
+body > #system-footer,
+#page-wrapper > #system-footer { margin-top: auto; }
 
 /* ===== SNAPSMACK EOF ===== */

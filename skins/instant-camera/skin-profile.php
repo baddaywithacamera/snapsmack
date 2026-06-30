@@ -114,7 +114,7 @@ $_ic_bgmode = $settings['ic_bg_mode'] ?? 'mayhem';
 $_ic_glow_hex = trim($settings['ic_glow_color'] ?? '#000000');
 $_ic_glow_sz  = max(0, min(40,  (int)($settings['ic_glow_size']    ?? 0)));
 $_ic_glow_op  = max(0, min(100, (int)($settings['ic_glow_opacity'] ?? 0)));
-$_ic_glow_css = '0 0 2px rgba(0,0,0,0.55),0 0 8px rgba(0,0,0,0.35)';
+$_ic_glow_css = 'none';  // no forced floor — Text Glow sliders at 0 = truly off
 if ($_ic_glow_sz > 0 && $_ic_glow_op > 0) {
     $_gc = ltrim($_ic_glow_hex, '#');
     if (strlen($_gc) === 3) $_gc = $_gc[0].$_gc[0].$_gc[1].$_gc[1].$_gc[2].$_gc[2];
@@ -149,11 +149,14 @@ if ($_ic_navglow_sz > 0 && $_ic_navglow_op > 0) {
     );
 }
 
-// ── Page readability panel — tinted backing behind static-page text so it
-// stays legible over the animated background. Colour + opacity admin-tunable.
-$_ic_panel_hex = trim($settings['ic_page_panel_color'] ?? '#ffffff');
-$_ic_panel_op  = max(0, min(100, (int)($settings['ic_page_panel_opacity'] ?? 0)));
-$_ic_panel_bg  = 'transparent';
+// ── Panel (all pages) — ONE tinted backing behind the content column on every
+// page (landing, About/static, archive, hashtag) so text + prints stay legible
+// over the animated background. Full content width, reaches the top, bleeds out
+// by Extend (side gutters) each side. Colour + opacity + extend admin-tunable.
+$_ic_panel_hex    = trim($settings['ic_panel_color'] ?? '#ffffff');
+$_ic_panel_op     = max(0, min(100, (int)($settings['ic_panel_opacity'] ?? 0)));
+$_ic_panel_extend = max(0, min(100, (int)($settings['ic_panel_extend'] ?? 0)));
+$_ic_panel_bg     = 'transparent';
 if ($_ic_panel_op > 0) {
     $_pc = ltrim($_ic_panel_hex, '#');
     if (strlen($_pc) === 3) $_pc = $_pc[0].$_pc[0].$_pc[1].$_pc[1].$_pc[2].$_pc[2];
@@ -192,6 +195,7 @@ if ($_ic_pg_sz > 0 && $_ic_pg_op > 0) {
 
 // ── Nav divider line colour + (capped, down-right) drop shadow ───────────────
 $_ic_navline_color = trim($settings['ic_navline_color'] ?? '#e0e0e0');
+$_ic_navline_op    = max(0, min(100, (int)($settings['ic_navline_opacity'] ?? 100)));
 $_ic_nls_hex = trim($settings['ic_navline_shadow_color'] ?? '#000000');
 $_ic_nls_sz  = max(0, min(3,   (int)($settings['ic_navline_shadow_size']    ?? 0)));
 $_ic_nls_op  = max(0, min(100, (int)($settings['ic_navline_shadow_opacity'] ?? 40)));
@@ -210,17 +214,16 @@ if ($_ic_nls_sz > 0 && $_ic_nls_op > 0) {
         $_n, $_nr, $_ng, $_nb, $_na);
 }
 
-// ── Landing feed panel — readable column over busy backgrounds (landing only) ─
-$_ic_lp_hex = trim($settings['ic_landing_panel_color'] ?? '#ffffff');
-$_ic_lp_op  = max(0, min(100, (int)($settings['ic_landing_panel_opacity'] ?? 0)));
-$_ic_lp_extend = max(0, min(100, (int)($settings['ic_landing_panel_extend'] ?? 0)));
-$_ic_landing_bg = 'transparent';
-if ($_ic_lp_op > 0) {
-    $_c = ltrim($_ic_lp_hex, '#');
-    if (strlen($_c) === 3) $_c = $_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
-    $_ic_landing_bg = sprintf('rgba(%d,%d,%d,%s)',
-        hexdec(substr($_c,0,2)), hexdec(substr($_c,2,2)), hexdec(substr($_c,4,2)), number_format($_ic_lp_op/100,2));
-}
+// ── Solo page backdrop — colour + opacity behind the print on the single-post
+// view. 100% = solid; lower it to let the Organized Mayhem tabletop show
+// through behind the photo. ─────────────────────────────────────────────────
+$_ic_solo_hex = trim($settings['ic_solo_bg_color'] ?? '#000000');
+$_ic_solo_op  = max(0, min(100, (int)($settings['ic_solo_bg_opacity'] ?? 100)));
+$_sc = ltrim($_ic_solo_hex, '#');
+if (strlen($_sc) === 3) $_sc = $_sc[0].$_sc[0].$_sc[1].$_sc[1].$_sc[2].$_sc[2];
+$_ic_solo_bg = sprintf('rgba(%d,%d,%d,%s)',
+    hexdec(substr($_sc, 0, 2)), hexdec(substr($_sc, 2, 2)), hexdec(substr($_sc, 4, 2)),
+    number_format($_ic_solo_op / 100, 2));
 
 // Organized Mayhem ambient background needs its shared data endpoint.
 if ($_ic_bgmode === 'mayhem') {
@@ -229,7 +232,7 @@ if ($_ic_bgmode === 'mayhem') {
 ?>
 
 <!-- INSTANT CAMERA vars: tile aspect (match the print), scrim opacity, sharp corners. -->
-<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;--page-panel-bg:<?php echo htmlspecialchars($_ic_panel_bg); ?>;--ic-nav-bg:<?php echo htmlspecialchars($_ic_nav_bg); ?>;--posts-color:<?php echo htmlspecialchars($_ic_posts_color); ?>;--posts-glow:<?php echo htmlspecialchars($_ic_posts_glow); ?>;--ic-navline-color:<?php echo htmlspecialchars($_ic_navline_color); ?>;--ic-navline-shadow:<?php echo htmlspecialchars($_ic_navline_shadow); ?>;--landing-panel-bg:<?php echo htmlspecialchars($_ic_landing_bg); ?>;--landing-panel-extend:<?php echo (int)$_ic_lp_extend; ?>px;}</style>
+<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;--panel-bg:<?php echo htmlspecialchars($_ic_panel_bg); ?>;--panel-extend:<?php echo (int)$_ic_panel_extend; ?>px;--ic-nav-bg:<?php echo htmlspecialchars($_ic_nav_bg); ?>;--posts-color:<?php echo htmlspecialchars($_ic_posts_color); ?>;--posts-glow:<?php echo htmlspecialchars($_ic_posts_glow); ?>;--ic-navline-color:<?php echo htmlspecialchars($_ic_navline_color); ?>;--ic-navline-opacity:<?php echo (int)$_ic_navline_op; ?>;--ic-navline-shadow:<?php echo htmlspecialchars($_ic_navline_shadow); ?>;--post-bg:<?php echo htmlspecialchars($_ic_solo_bg); ?>;}</style>
 
 <?php if ($_ic_bgmode === 'mayhem'): ?>
 <!-- Background: Organized Mayhem ambient tabletop (data-pan=0 data-ambient=1) behind the scrim. -->
