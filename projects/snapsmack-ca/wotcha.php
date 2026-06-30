@@ -138,6 +138,10 @@ require_once __DIR__ . '/includes/header.php';
             <ol>
                 <li>
                     <span class="idx-date">Jun 29</span>
+                    <a href="#feds-at-door">The Feds Are at Your Door</a>
+                </li>
+                <li>
+                    <span class="idx-date">Jun 29</span>
                     <a href="#cloud-keys">Your Cloud Keys Stay Yours</a>
                 </li>
                 <li>
@@ -258,6 +262,19 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <!-- POST: FEDS AT DOOR -->
+            <article class="post" id="feds-at-door">
+                <div class="post-meta">
+                    <span class="post-date">June 29, 2026</span>
+                    <span class="post-tag">Federation</span>
+                </div>
+                <h2><a href="#feds-at-door">The Feds Are at Your Door</a></h2>
+                <p>Photoblogs are so last decade (or so we're told). Today is social, connected. So we built an Einstein Rosen Bridge to connect your photoblog of yesterday to the wider Fediverse of the present. Get the social aspect of ActivityPub based networks like Pixelfed without handing over your art to some stranger running a sketchy server out of his mom's basement.</p>
+                <p>Your images stay under your control and are presented exactly how you like. You get to keep your blog while presenting as your own Pixelfed server instance through a compatibility layer. Fediverse users see what they expect from your Pixelfed user-id URL. You see more traffic. You see integrated comments and likes. You see yourself in control of your art the way it should be.</p>
+                <p>This feature is a bazooka and you need a lot of space to fire it in without hitting bystanders. Not for cheap shared hosting, a VPS at a minimum and your own server is preferred. For photo blogging Mack Daddies only. SMACKVERSE makes the old new again.</p>
+                <p>Currently in development and will be stable by beta release.</p>
+            </article>
 
             <!-- POST: CLOUD KEYS -->
             <article class="post" id="cloud-keys">

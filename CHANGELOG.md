@@ -12,6 +12,10 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.325 — "Rarity" (2026-06-29)
+
+- Collections index restyle (`assets/css/page-collection.css`): the series rows were capped at 760px and read dainty on a full-width skin. The list is now 1200px wide (canvas 1400px), the cover thumbnail is squared (1:1) and sized to its native 300px so it never upscales, the panel text is doubled (`.series-title` 2.3rem, count/date proportionally), and the info panel carries a mid-to-dark grey fill (`#5a5a5a`→`#383838`) with light text so the serif title reads against it. Core CSS, so this restyles the Collections page on every skin; it cache-busts through `SNAPSMACK_VERSION_SHORT`. Description field for collection rows is still to come.
+
 ## 0.7.324 — "Fluttershy" (2026-06-29)
 
 - `smack-update.php`: APPLY UPDATE and FORCE CHECK now sit side-by-side (both inside the `.update-action-row` flex) instead of stacked. The fix already existed in the file, but `smack-update.php` had been sitting uncommitted in the pre-existing pile, so it — and the staged FORCE CHECK button + GET `action=check` CSRF downgrade — had never shipped. Now committed.

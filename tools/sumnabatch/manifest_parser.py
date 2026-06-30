@@ -36,6 +36,7 @@ class ManifestEntry:
     colors:      str = ''       # space-separated hex codes from Gemini, e.g. "#A3724B #2E1F0D #8C6B3A"
     # Source line number for error reporting
     line_num:    int = 0
+    caption:     str = ''       # AI/manual caption → posted as the post description (kept separate from title)
 
 
 @dataclass
