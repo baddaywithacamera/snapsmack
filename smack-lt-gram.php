@@ -572,6 +572,8 @@ include 'core/sidebar.php';
             trigramTickOrder = trigramTickOrder.filter(x => x !== id);
         }
         updateBulkBtn();
+        renderSelectionBadges();
+        persistSelection();
     });
 
     function updateBulkBtn() {
@@ -621,6 +623,11 @@ include 'core/sidebar.php';
                 }
             });
 
+            // Posts that went live/queued leave the tick order + lose their badge.
+            trigramTickOrder = trigramTickOrder.filter(id =>
+                !publishedSet.has(parseInt(id)) && !queuedSet.has(parseInt(id)));
+            renderSelectionBadges();
+            persistSelection();
             bulkBtn.style.display = 'none';
             bulkBtn.disabled      = false;
             updateBulkBtn();
@@ -658,6 +665,7 @@ include 'core/sidebar.php';
                 return;
             }
             // Reload so the set renders with its outline, L/M/R badges, and lock-drag.
+            clearPersistedSelection();
             location.reload();
         })
         .catch(() => {
@@ -665,6 +673,70 @@ include 'core/sidebar.php';
             btn.disabled = false; btn.textContent = '🔒 LOCK TRIGRAM';
         });
     };
+
+    // ── Selection persistence + live L/M/R order badges ─────────────────────
+    // The slot a ticked post takes when locked = the order you tick it (1st =
+    // L/T, 2nd = M, 3rd = R/B). Show that letter live on each ticked tile, and
+    // remember the whole selection across reloads so a refresh never wipes it.
+    const LTG_SEL_KEY = 'ltg_selection';
+    const orientSel   = document.getElementById('ltgTrigramOrient');
+
+    function slotLabel(index) {
+        const vertical = (orientSel && orientSel.value === 'v');
+        const h  = ['L', 'M', 'R'];
+        const v  = ['T', 'M', 'B'];
+        return (index >= 0 && index < 3) ? (vertical ? v[index] : h[index]) : String(index + 1);
+    }
+
+    function renderSelectionBadges() {
+        grid.querySelectorAll('.ltg-tile').forEach(tile => {
+            const cb    = tile.querySelector('.ltg-select-cb');
+            let   badge = tile.querySelector('.ltg-sel-order');
+            const pos   = (cb && cb.checked) ? trigramTickOrder.indexOf(cb.dataset.postId) : -1;
+            if (pos === -1) { if (badge) badge.remove(); return; }
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.className = 'ltg-sel-order';
+                tile.appendChild(badge);
+            }
+            badge.textContent = slotLabel(pos);
+        });
+    }
+
+    function persistSelection() {
+        try {
+            localStorage.setItem(LTG_SEL_KEY, JSON.stringify({
+                order:  trigramTickOrder,
+                orient: orientSel ? orientSel.value : 'h'
+            }));
+        } catch (e) {}
+    }
+
+    function clearPersistedSelection() {
+        try { localStorage.removeItem(LTG_SEL_KEY); } catch (e) {}
+    }
+
+    function restoreSelection() {
+        let saved = null;
+        try { saved = JSON.parse(localStorage.getItem(LTG_SEL_KEY) || 'null'); } catch (e) {}
+        if (!saved || !Array.isArray(saved.order)) return;
+        if (orientSel && (saved.orient === 'h' || saved.orient === 'v')) orientSel.value = saved.orient;
+        const present = new Set([...grid.querySelectorAll('.ltg-select-cb')].map(cb => cb.dataset.postId));
+        trigramTickOrder = saved.order.filter(id => present.has(id));
+        trigramTickOrder.forEach(id => {
+            const cb = grid.querySelector('.ltg-select-cb[data-post-id="' + id + '"]');
+            if (cb) cb.checked = true;
+        });
+        updateBulkBtn();
+        renderSelectionBadges();
+    }
+
+    if (orientSel) orientSel.addEventListener('change', function () {
+        renderSelectionBadges();
+        persistSelection();
+    });
+
+    restoreSelection();
 
     // Run alignment check on load
     checkTrigramAlignment();
@@ -738,6 +810,25 @@ include 'core/sidebar.php';
 .ltg-badge--draft    { top: 5px; left: 5px;  background: #e08030; color: #000; }
 .ltg-badge--queued   { top: 5px; left: 5px;  background: var(--accent, #c8a96e); color: #000; }
 .ltg-badge--carousel { top: 38px; right: 6px; background: rgba(0,0,0,.65); color: #fff; }
+
+/* Live selection-order disc: which slot (L/M/R or T/M/B) a ticked tile will
+   take when locked. Centred + bold so the order is unmistakable before you
+   hit LOCK TRIGRAM. */
+.ltg-sel-order {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 40px; height: 40px;
+    padding: 0 8px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 999px;
+    background: var(--accent, #0095f6);
+    color: #fff;
+    font-size: 20px; font-weight: 800; line-height: 1;
+    box-shadow: 0 2px 10px rgba(0,0,0,.55);
+    pointer-events: none;
+    z-index: 6;
+}
 /* Locked-trigram slot label (🔒 L / M / R) — big and unmissable so the group
    reads as locked and you can see which tile is left / middle / right. */
 .ltg-badge--trigram  {
