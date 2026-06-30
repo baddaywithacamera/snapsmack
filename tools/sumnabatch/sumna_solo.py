@@ -1,5 +1,5 @@
 """
-SON OF A BATCH — sob_solo.py
+SUMNABATCH — sumna_solo.py
 BATCH SLAPPED — the SMACKONEOUT (solo) mode panel. Single-image post drafting
 for solo photoblog installs, offline-first. Slap a post up, it waits as a draft,
 you sync it when a connection shows. The fields mirror the web admin solo poster
@@ -20,9 +20,9 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from typing import Optional
 
-import sob_ui as ui
-import sob_offline as O
-from sob_post import SobConnection, SoloPoster
+import sumna_ui as ui
+import sumna_offline as O
+from sumna_post import SumnaConnection, SoloPoster
 
 
 class SoloMode(tk.Frame):
@@ -299,7 +299,7 @@ class SoloMode(tk.Frame):
         return O.Draft(draft_id=O._new_id(), kind=O.KIND_SOLO, mode=self.SUITE_MODE)
 
     # -- sync ---------------------------------------------------------------
-    def _connection(self) -> Optional[SobConnection]:
+    def _connection(self) -> Optional[SumnaConnection]:
         cfg = getattr(self.app, "_config", {}) or {}
         url = (cfg.get("url") or "").strip()
         key = (cfg.get("api_key") or "").strip()
@@ -307,7 +307,7 @@ class SoloMode(tk.Frame):
             messagebox.showwarning("Not connected",
                                    "Set the site URL + API key on the POST tab first.")
             return None
-        return SobConnection(url, key)
+        return SumnaConnection(url, key)
 
     def _sync(self):
         if not self.session:

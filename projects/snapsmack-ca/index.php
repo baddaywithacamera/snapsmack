@@ -1803,6 +1803,48 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
             </div>
 
+            <div class="theme-card" data-stats="<?php echo ss_card_stats('foreverphotograph.ing', $_demo_stats); ?>">
+                <div class="theme-main-shot">
+                    <a href="img/slickr-landing.png" data-lb="img/slickr-landing.png">
+                        <img src="img/slickr-landing.png" alt="Slickr — photostream">
+                    </a>
+                </div>
+                <div class="theme-thumbs">
+                    <a href="img/slickr-archive.png" data-lb="img/slickr-archive.png">
+                        <img src="img/slickr-archive.png" alt="Slickr — albums">
+                    </a>
+                    <a href="img/slickr-page.png" data-lb="img/slickr-page.png">
+                        <img src="img/slickr-page.png" alt="Slickr — about page">
+                    </a>
+                </div>
+                <div class="theme-info">
+                    <h3>Slickr</h3>
+                    <p>The Flickr replacement. Justified photostream, albums and collections, a stats-bar masthead with view counts, EXIF on every shot. Built for everyone fed up with Flickr.</p>
+                    <a href="https://foreverphotograph.ing" target="_blank" class="theme-link"><span class="theme-link-label">View live site</span>foreverphotograph.ing →</a>
+                </div>
+            </div>
+
+            <div class="theme-card" data-stats="<?php echo ss_card_stats('theschoolofhardnocks.ca', $_demo_stats); ?>">
+                <div class="theme-main-shot">
+                    <a href="img/parade-landing.png" data-lb="img/parade-landing.png">
+                        <img src="img/parade-landing.png" alt="Parade — landing">
+                    </a>
+                </div>
+                <div class="theme-thumbs">
+                    <a href="img/parade-archive.png" data-lb="img/parade-archive.png">
+                        <img src="img/parade-archive.png" alt="Parade — archive">
+                    </a>
+                    <a href="img/parade-page.png" data-lb="img/parade-page.png">
+                        <img src="img/parade-page.png" alt="Parade — pages">
+                    </a>
+                </div>
+                <div class="theme-info">
+                    <h3>Parade</h3>
+                    <p>Pride, in motion. Rainbow, Bi, Trans, and Two-Spirit flag palettes, an animated waving-flag or fireworks background, colour-shifting tile borders, configurable effects. Built to celebrate.</p>
+                    <a href="https://theschoolofhardnocks.ca" target="_blank" class="theme-link"><span class="theme-link-label">View live site</span>theschoolofhardnocks.ca →</a>
+                </div>
+            </div>
+
         </div>
     </div>
 </section>
@@ -1893,11 +1935,6 @@ require_once __DIR__ . '/includes/header.php';
         <h2>Coming Next</h2>
         <p class="lede" style="margin-bottom: 8px;">What's in the pipeline for the Beta release.</p>
         <div class="coming-grid">
-            <div class="coming-item">
-                <span class="tag">Skin</span>
-                <h3>SLICKR</h3>
-                <p>Your Flickr archive deserves better than an export ZIP on a hard drive. SLICKR is a skin built for the Flickr experience — the way that archive felt before the platform started dying around you. Next skin to ship before beta.</p>
-            </div>
             <div class="coming-item">
                 <span class="tag">Skin</span>
                 <h3>LOOKBOOK</h3>

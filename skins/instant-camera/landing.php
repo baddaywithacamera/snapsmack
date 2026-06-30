@@ -102,6 +102,7 @@ $grid_stmt = $pdo->prepare("
         i.id          AS img_id,
         i.img_file,
         i.img_thumb_square,
+        i.img_thumb_aspect,
         i.img_slug,
         pi.img_size_pct,
         pi.img_border_px,
@@ -167,7 +168,13 @@ include dirname(__DIR__, 2) . '/core/meta.php';
                 endfor;
             endif;
 
-            $thumb_src   = $post['img_thumb_square'] ?: $post['img_file'];
+            // Instant Camera shows prints UNCROPPED — use the aspect thumb (full
+            // image at the photo's real ratio), NOT the square center-crop, which
+            // throws away the top and bottom of portrait shots. The tile aspect is
+            // set to match the print format, so the aspect thumb sits in it whole.
+            // Fall back to the full file if the aspect thumb hasn't been generated
+            // yet (run REGENERATE ALL THUMBNAILS to backfill).
+            $thumb_src   = $post['img_thumb_aspect'] ?: ($post['img_thumb_square'] ?: $post['img_file']);
 
             // Trigram cover: grid tile shows the panorama slice when set.
             if ($tg_id > 0 && $tg_slot > 0) {

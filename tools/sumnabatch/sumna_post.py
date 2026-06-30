@@ -1,5 +1,5 @@
 """
-SON OF A BATCH — sob_post.py
+SUMNABATCH — sumna_post.py
 HTTP transport for the offline poster suite. Injected into the SyncEngine so
 the engine itself stays headless. Nothing here is rebuilt from scratch — the
 solo path reuses the exact, already-verified smack-post-solo.php contract from
@@ -31,7 +31,7 @@ from typing import List, Optional, Tuple
 
 import requests
 
-from sob_offline import (
+from sumna_offline import (
     Draft, SyncResult,
     KIND_SOLO, KIND_GRAM_CAROUSEL, KIND_GRAM_SINGLE, KIND_GRAM_TRIGRAM,
     MODE_SOLO, MODE_GRAM, MODE_SMACKTALK, MODE_UNKNOWN,
@@ -62,14 +62,14 @@ def _resp_msg(r, default: str) -> str:
 # Connection — one Bearer session shared by solo + gram, matching SYBU.
 # ---------------------------------------------------------------------------
 
-class SobConnection:
+class SumnaConnection:
     def __init__(self, base_url: str, api_key: str = "", api_path: str = "/api.php"):
         self.base_url = base_url.rstrip("/")
         self.api_path = api_path
         self.api_key = api_key
         self.session = requests.Session()
         self.session.headers.update({
-            "User-Agent": "SonOfABatch/%s" % "0.1.0",
+            "User-Agent": "Sumnabatch/%s" % "0.1.0",
             "Authorization": f"Bearer {api_key}",
             # Opt into smack-post-solo.php's deterministic AJAX reply ("success").
             "X-Requested-With": "XMLHttpRequest",
@@ -114,7 +114,7 @@ class SobConnection:
 # ---------------------------------------------------------------------------
 
 class SoloPoster:
-    def __init__(self, conn: SobConnection, site_data=None, copyright_text: str = ""):
+    def __init__(self, conn: SumnaConnection, site_data=None, copyright_text: str = ""):
         self.conn = conn
         self.site_data = site_data  # optional poster.SiteData for cat/album id lookup
         self.copyright_text = copyright_text
@@ -199,7 +199,7 @@ class SoloPoster:
 # ---------------------------------------------------------------------------
 
 class GramPoster:
-    def __init__(self, conn: SobConnection):
+    def __init__(self, conn: SumnaConnection):
         self.conn = conn
 
     def _upload_image(self, im) -> dict:
@@ -357,10 +357,58 @@ class GramPoster:
 
 
 # ---------------------------------------------------------------------------
+# Batch runner — POST-tab manifest entries -> single grams (carousel sites)
+# ---------------------------------------------------------------------------
+
+def run_gram_batch(
+    conn: "SumnaConnection",
+    entries,
+    image_folder: str,
+    on_progress=None,
+    cancel_event=None,
+):
+    """Post each selected POST-tab manifest entry as its OWN single gram via the
+    threeacross/gram API. The gram counterpart of poster.run_batch: it reuses the
+    SAME enriched batch table — the Gemini caption + hashtags already live on
+    entry.caption / entry.tags — and only changes the destination, sending single
+    grams to a carousel (GRAMOFSMACK) site instead of solo posts to the photoblog
+    endpoint that 409s there. One image per draft, split=False => the server makes
+    a post_type='single' post. Returns a list of SyncResult; never raises."""
+    from sumna_offline import DraftImage  # local import avoids a top-level cycle
+    poster = GramPoster(conn)
+    results = []
+    total = len(entries)
+    for i, entry in enumerate(entries, start=1):
+        if cancel_event is not None and cancel_event.is_set():
+            break
+        local_path = os.path.join(image_folder, getattr(entry, "file", ""))
+        if not os.path.isfile(local_path):
+            res = SyncResult(False, message=f"image not found: {local_path}")
+        else:
+            di = DraftImage(local_path=local_path,
+                            filename=os.path.basename(local_path))
+            draft = Draft(
+                draft_id=f"posttab-{i}",
+                kind=KIND_GRAM_SINGLE,
+                mode=MODE_GRAM,
+                title=(getattr(entry, "title", "") or ""),
+                caption=(getattr(entry, "caption", "") or "").strip(),
+                tags=(getattr(entry, "tags", "") or "").strip(),
+                post_type="single",
+                images=[di],
+            )
+            res = poster.sync_gram(draft)
+        results.append(res)
+        if on_progress is not None:
+            on_progress(i, total, res)
+    return results
+
+
+# ---------------------------------------------------------------------------
 # Verification helpers — best-effort pull-back via smack-audit.php.
 # ---------------------------------------------------------------------------
 
-def _audit_list(conn: SobConnection):
+def _audit_list(conn: SumnaConnection):
     """Return the published-post list, or None if the read is unavailable/out of scope."""
     try:
         r = conn.session.get(f"{conn.base_url}/smack-audit.php",
@@ -380,6 +428,37 @@ def _audit_list(conn: SobConnection):
     return data.get("posts", [])
 
 
-def _verify_by_post_id(conn: SobConnection, post_id: int):
+def _verify_by_post_id(conn: SumnaConnection, post_id: int):
     """True/False if the audit list is available; None if it isn't."""
-   
+    posts = _audit_list(conn)
+    if posts is None:
+        return None
+    return any(int(p.get("id", 0)) == int(post_id) for p in posts)
+
+
+def _verify_by_title(conn: SumnaConnection, title: str) -> bool:
+    posts = _audit_list(conn)
+    if posts is None:
+        # Audit unavailable — solo create was already body-confirmed ("success").
+        return True
+    t = (title or "").strip().lower()
+    if not t:
+        return True
+    return any((p.get("title") or "").strip().lower() == t for p in posts)
+
+
+def _server_reason(body: str) -> str:
+    import re
+    if not body:
+        return "empty response"
+    low = body.lower()
+    if "download url is required" in low:
+        return "site requires a download link for published posts, but none was set"
+    if "<form" in low or "initialize new transmission" in low:
+        return "validation failed — server re-rendered the post form"
+    if any(w in low for w in ("login", "password", "sign in", "unauthorized")):
+        return "session/login page returned — API key may be invalid or expired"
+    text = re.sub(r"<[^>]+>", " ", body)
+    text = re.sub(r"\s+", " ", text).strip()
+    return (text[:160] + "…") if len(text) > 160 else (text or "unrecognised response")
+# ===== SNAPSMACK EOF =====

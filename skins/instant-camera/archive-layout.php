@@ -63,7 +63,7 @@ include dirname(__DIR__, 2) . '/core/meta.php';
 
             // Fetch cover image + image count for this post
             $cover_stmt = $pdo->prepare("
-                SELECT i.id AS img_id, i.img_file, i.img_thumb_square, i.img_slug,
+                SELECT i.id AS img_id, i.img_file, i.img_thumb_square, i.img_thumb_aspect, i.img_slug,
                        p.title, p.slug AS post_slug, p.post_type,
                        (SELECT COUNT(*) FROM snap_post_images spi
                         WHERE spi.post_id = p.id AND spi.sort_position >= 0) AS image_count
@@ -81,6 +81,7 @@ include dirname(__DIR__, 2) . '/core/meta.php';
                 'img_id'      => $img_row['id'],
                 'img_file'    => $img_row['img_file'],
                 'img_thumb_square' => $img_row['img_thumb_square'],
+                'img_thumb_aspect' => $img_row['img_thumb_aspect'] ?? '',
                 'img_slug'    => $img_row['img_slug'],
                 'title'       => $img_row['img_title'],
                 'post_slug'   => null,
@@ -93,7 +94,7 @@ include dirname(__DIR__, 2) . '/core/meta.php';
 
     <div class="tg-grid">
         <?php foreach ($tiles as $tile):
-            $thumb_src   = $tile['img_thumb_square'] ?: $tile['img_file'];
+            $thumb_src   = ($tile['img_thumb_aspect'] ?? '') ?: ($tile['img_thumb_square'] ?: $tile['img_file']);
             $post_url    = BASE_URL . '?s=' . urlencode($tile['img_slug'] ?? '');
             $image_count = (int)($tile['image_count'] ?? 1);
             $is_carousel = $image_count > 1;

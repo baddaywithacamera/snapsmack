@@ -1,5 +1,5 @@
 """
-SON OF A BATCH — sob_offline.py
+SUMNABATCH — sumna_offline.py
 Shared offline-first engine for the SnapSmack desktop posting suite.
 
 This module is GUI-free and headless-testable. It owns:
@@ -18,7 +18,7 @@ This module is GUI-free and headless-testable. It owns:
     install's site_mode so a carousel can never be pushed at a solo site).
 
 The actual HTTP transport (solo post, gram upload/post/trigram, verify, the
-site_mode probe) lives in sob_post.py and is injected into the SyncEngine, so
+site_mode probe) lives in sumna_post.py and is injected into the SyncEngine, so
 this module stays pure and testable with a fake poster.
 
 Build order (spec v0.4): BATCH SLAPPED (solo) + BATCH, PLEASE (gram) ship
@@ -59,7 +59,7 @@ except ImportError:  # pragma: no cover - import shim for dev tree
 # ---------------------------------------------------------------------------
 
 SCHEMA_VERSION = 1          # draft-JSON structure version
-BUILD_VERSION  = "0.1.0"    # SON OF A BATCH suite build
+BUILD_VERSION  = "0.1.0"    # SUMNABATCH suite build
 EXPORT_MANIFEST_VERSION = 1  # thumb-drive export folder format
 
 # Draft kinds — each maps to a concrete SnapSmack post shape.
@@ -778,7 +778,7 @@ def export_session(session: Session, dest_dir: str) -> str:
     n_failed = sum(1 for d in drafts if d.status == ST_FAILED)
     with open(os.path.join(out, "RECOVERY.txt"), "w", encoding="utf-8") as f:
         f.write(
-            "SON OF A BATCH — recoverable batch export\n"
+            "SUMNABATCH — recoverable batch export\n"
             "=========================================\n\n"
             f"Batch:        {session.name}\n"
             f"Mode:         {session.mode}\n"
@@ -790,7 +790,7 @@ def export_session(session: Session, dest_dir: str) -> str:
             "batch: every draft (a JSON file that maps 1:1 to the database row),\n"
             "every full-resolution image, and the client-generated thumbnails.\n\n"
             "TO RECOVER / CONTINUE ON ANOTHER MACHINE:\n"
-            "  1. Open SON OF A BATCH (the SYBU suite) -> BATCH, PLEASE (or BATCH SLAPPED).\n"
+            "  1. Open SUMNABATCH (the SYBU suite) -> BATCH, PLEASE (or BATCH SLAPPED).\n"
             "  2. Click 'Import...' and choose THIS folder.\n"
             "  3. The batch loads with every post and its sync state intact —\n"
             "     already-synced posts stay done, the rest are ready to push.\n"
@@ -814,12 +814,12 @@ def import_session(export_dir: str, store: SessionStore) -> Session:
     Rejects an export whose manifest version is newer than this build understands."""
     mp = os.path.join(export_dir, "export-manifest.json")
     if not os.path.isfile(mp):
-        raise ValueError("Not a SON OF A BATCH export (no export-manifest.json).")
+        raise ValueError("Not a SUMNABATCH export (no export-manifest.json).")
     with open(mp, "r", encoding="utf-8") as f:
         manifest = json.load(f)
     if int(manifest.get("manifest_version", 0)) > EXPORT_MANIFEST_VERSION:
         raise ValueError(
-            "This export was written by a newer build. Update SON OF A BATCH to import it."
+            "This export was written by a newer build. Update SUMNABATCH to import it."
         )
     sid = _new_id()  # fresh local id so imports never collide
     dest = os.path.join(store.root, sid)

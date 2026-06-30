@@ -1,6 +1,6 @@
 """
-SON OF A BATCH — sob_ui.py
-Shared Tk widgets + palette for the SON OF A BATCH mode panels (BATCH SLAPPED,
+SUMNABATCH — sumna_ui.py
+Shared Tk widgets + palette for the SUMNABATCH mode panels (BATCH SLAPPED,
 BATCH, PLEASE). Kept separate from main.py so the panels can import a stable
 palette + helpers without a circular import. Values mirror main.py's theme.
 """

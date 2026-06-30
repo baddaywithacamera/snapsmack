@@ -1,5 +1,5 @@
 """
-SON OF A BATCH — sob_gram.py
+SUMNABATCH — sumna_gram.py
 BATCH, PLEASE — the GRAMOFSMACK (3-across grid) mode panel. Offline-first:
 compose single posts, carousels (up to 10 images), and trigrams with the EXACT
 same per-image controls as the web gram poster (smack-post-gram.php) — fit/fill,
@@ -37,9 +37,9 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog
 from typing import List, Optional
 
-import sob_ui as ui
-import sob_offline as O
-from sob_post import SobConnection, GramPoster
+import sumna_ui as ui
+import sumna_offline as O
+from sumna_post import SumnaConnection, GramPoster
 
 
 class GramMode(tk.Frame):
@@ -786,7 +786,7 @@ class GramMode(tk.Frame):
     # ======================================================================
     # SYNC WITH LIVE
     # ======================================================================
-    def _connection(self) -> Optional[SobConnection]:
+    def _connection(self) -> Optional[SumnaConnection]:
         cfg = getattr(self.app, "_config", {}) or {}
         url = (cfg.get("url") or "").strip()
         key = (cfg.get("api_key") or "").strip()
@@ -794,7 +794,7 @@ class GramMode(tk.Frame):
             messagebox.showwarning("Not connected",
                                    "Set the site URL + API key on the POST tab first.")
             return None
-        return SobConnection(url, key)
+        return SumnaConnection(url, key)
 
     def _sync(self):
         if not self.session:
