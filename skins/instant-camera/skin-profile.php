@@ -149,6 +149,19 @@ if ($_ic_navglow_sz > 0 && $_ic_navglow_op > 0) {
     );
 }
 
+// ── Page readability panel — tinted backing behind static-page text so it
+// stays legible over the animated background. Colour + opacity admin-tunable.
+$_ic_panel_hex = trim($settings['ic_page_panel_color'] ?? '#ffffff');
+$_ic_panel_op  = max(0, min(100, (int)($settings['ic_page_panel_opacity'] ?? 0)));
+$_ic_panel_bg  = 'transparent';
+if ($_ic_panel_op > 0) {
+    $_pc = ltrim($_ic_panel_hex, '#');
+    if (strlen($_pc) === 3) $_pc = $_pc[0].$_pc[0].$_pc[1].$_pc[1].$_pc[2].$_pc[2];
+    $_ic_panel_bg = sprintf('rgba(%d,%d,%d,%s)',
+        hexdec(substr($_pc, 0, 2)), hexdec(substr($_pc, 2, 2)), hexdec(substr($_pc, 4, 2)),
+        number_format($_ic_panel_op / 100, 2));
+}
+
 // Organized Mayhem ambient background needs its shared data endpoint.
 if ($_ic_bgmode === 'mayhem') {
     require_once dirname(__DIR__, 2) . '/core/mayhem-data.php';
@@ -156,7 +169,7 @@ if ($_ic_bgmode === 'mayhem') {
 ?>
 
 <!-- INSTANT CAMERA vars: tile aspect (match the print), scrim opacity, sharp corners. -->
-<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;}</style>
+<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;--page-panel-bg:<?php echo htmlspecialchars($_ic_panel_bg); ?>;}</style>
 
 <?php if ($_ic_bgmode === 'mayhem'): ?>
 <!-- Background: Organized Mayhem ambient tabletop (data-pan=0 data-ambient=1) behind the scrim. -->

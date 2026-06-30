@@ -1103,7 +1103,11 @@ body.au-modal-open { overflow: hidden; }
 .au-static-content {
     max-width: 680px;
     margin: 0 auto;
-    padding: 40px 20px 60px;
+    padding: 40px 28px 60px;
+    /* Optional readability panel behind page text (admin: Page Panel colour +
+       opacity). Transparent by default. */
+    background: var(--page-panel-bg, transparent);
+    border-radius: 6px;
 }
 
 .au-static-title {

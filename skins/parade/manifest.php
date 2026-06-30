@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.2.9',
+    'version'     => '1.2.10',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
@@ -570,6 +570,18 @@ return [
         'pa_glow_opacity' => [
             'section' => 'TEXT GLOW', 'type' => 'range_numeric', 'label' => 'Text Glow Opacity',
             'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+        ],
+
+        // ---- PAGE READABILITY PANEL ----------------------------------------
+        'pa_page_panel_color' => [
+            'section' => 'PAGE PANEL', 'type' => 'color', 'label' => 'Page Panel Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Backing colour behind page text (About, static pages) so it reads over the moving background. PHP-handled → --page-panel-bg.',
+        ],
+        'pa_page_panel_opacity' => [
+            'section' => 'PAGE PANEL', 'type' => 'range_numeric', 'label' => 'Page Panel Opacity',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'    => '0 = no panel. Raise it until the text is comfortable to read.',
         ],
 
         // ---- MENU / NAV (font, case, link colour, glow) -------------------

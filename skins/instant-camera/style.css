@@ -362,7 +362,7 @@ img { display: block; max-width: 100%; }
     transition: opacity 0.2s;
 }
 
-.tg-tile:hover img { opacity: 0.85; }
+.tg-tile:hover img { filter: brightness(0.8); }
 
 /* Carousel indicator badge (top-right corner) */
 .tg-tile-indicator {
@@ -1026,7 +1026,12 @@ body.tg-modal-open { overflow: hidden; }
 .tg-static-content {
     max-width: 680px;
     margin: 0 auto;
-    padding: 40px 20px 60px;
+    padding: 40px 28px 60px;
+    /* Optional readability panel behind page text (admin: Page Panel colour +
+       opacity). Defaults to transparent — text sits straight on the background
+       until the panel is dialled in. */
+    background: var(--page-panel-bg, transparent);
+    border-radius: 6px;
 }
 
 .tg-static-title {

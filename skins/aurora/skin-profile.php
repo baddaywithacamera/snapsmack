@@ -173,10 +173,23 @@ if ($_au_glow_sz > 0 && $_au_glow_op > 0) {
         $_au_glow_sz * 2, $_gr, $_gg, $_gb, number_format($_au_glow_op / 200, 2)
     );
 }
+
+// ── Page readability panel — tinted backing behind static-page text so it
+// stays legible over the animated aurora. Colour + opacity admin-tunable.
+$_au_panel_hex = trim($settings['au_page_panel_color'] ?? '#000000');
+$_au_panel_op  = max(0, min(100, (int)($settings['au_page_panel_opacity'] ?? 0)));
+$_au_panel_bg  = 'transparent';
+if ($_au_panel_op > 0) {
+    $_pc = ltrim($_au_panel_hex, '#');
+    if (strlen($_pc) === 3) $_pc = $_pc[0].$_pc[0].$_pc[1].$_pc[1].$_pc[2].$_pc[2];
+    $_au_panel_bg = sprintf('rgba(%d,%d,%d,%s)',
+        hexdec(substr($_pc, 0, 2)), hexdec(substr($_pc, 2, 2)), hexdec(substr($_pc, 4, 2)),
+        number_format($_au_panel_op / 100, 2));
+}
 ?>
 
 <!-- AURORA tile vars: border width / corner radius / ring opacity / sky base -->
-<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_au_glow_css); ?>;--nav-line-opacity:<?php echo $_au_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_au_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_au_navglow_strong); ?>;<?php echo $_au_nav_line_css; ?>}</style>
+<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_au_glow_css); ?>;--nav-line-opacity:<?php echo $_au_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_au_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_au_navglow_strong); ?>;--page-panel-bg:<?php echo htmlspecialchars($_au_panel_bg); ?>;<?php echo $_au_nav_line_css; ?>}</style>
 
 <!-- AURORA config carrier — read by aurora-bg.js (Layer 1 curtains) and
      aurora-wave.js (Layer 2 ring wave). -->

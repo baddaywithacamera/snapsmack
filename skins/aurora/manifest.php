@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'AURORA',
-    'version'     => '1.0.20',
+    'version'     => '1.0.21',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Northern-lights desktop skin. A classic 3-across square grid under a slow aurora that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.',
@@ -441,6 +441,28 @@ return [
             'step'     => '5',
             'unit'     => '%',
             // PHP-handled → --profile-text-glow.
+        ],
+
+        // ---- PAGE READABILITY PANEL ----------------------------------------
+        // Tinted backing behind static-page text so it stays readable over the
+        // animated aurora background. Colour + opacity admin-tunable.
+        'au_page_panel_color' => [
+            'section' => 'PAGE PANEL',
+            'type'    => 'color',
+            'label'   => 'Page Panel Colour',
+            'default' => '#000000',
+            'hint'    => 'Backing colour behind page text (About, static pages) so it reads over the moving background. PHP-handled → --page-panel-bg.',
+        ],
+        'au_page_panel_opacity' => [
+            'section'  => 'PAGE PANEL',
+            'type'     => 'range_numeric',
+            'label'    => 'Page Panel Opacity',
+            'default'  => '0',
+            'min'      => '0',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+            'hint'     => '0 = no panel (text sits straight on the background). Raise it until the text is comfortable to read.',
         ],
 
         // ---- NAV -----------------------------------------------------------

@@ -30,7 +30,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'INSTANT CAMERA',
-    'version'     => '1.0.7',
+    'version'     => '1.0.8',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'For instant-film photographers. A GRAMOFSMACK 3-across grid whose tile aspect you set to match your format (Polaroid, Instax Mini/Wide/Square, or custom) so prints show UNCROPPED — the scanned border is the frame, the skin just adds a drop shadow. Drifting Organized Mayhem tabletop behind a white scrim. Prints on a table, which is exactly what instant photography is.',
@@ -183,6 +183,28 @@ return [
             'max'      => '100',
             'step'     => '5',
             'unit'     => '%',
+        ],
+
+        // ---- PAGE READABILITY PANEL ----------------------------------------
+        // Tinted panel behind static-page text so it stays readable over the
+        // animated Organized Mayhem background. Colour + opacity admin-tunable.
+        'ic_page_panel_color' => [
+            'section' => 'PAGE PANEL',
+            'type'    => 'color',
+            'label'   => 'Page Panel Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Backing colour behind page text (About, static pages) so it reads over the moving background. PHP-handled → --page-panel-bg.',
+        ],
+        'ic_page_panel_opacity' => [
+            'section'  => 'PAGE PANEL',
+            'type'     => 'range_numeric',
+            'label'    => 'Page Panel Opacity',
+            'default'  => '0',
+            'min'      => '0',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+            'hint'     => '0 = no panel (text sits straight on the background). Raise it until the text is comfortable to read.',
         ],
 
         // ---- GRID APPEARANCE -----------------------------------------------

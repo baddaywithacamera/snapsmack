@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.329 — "Twilight Sparkle" (2026-06-30)
+
+- Organized Mayhem: prints now stay **whole**. The 3D paper-warp (`rotateX`/`rotateY` under `transform-style: preserve-3d`) foreshortened each rectangle into a wedge, and overlapping wedges read as sliced/merged images. Removed the 3D warp and the preserve-3d/perspective context — the tabletop is now a flat 2D stack of whole prints layered cleanly by z-index, overlapping one over/under another but never merging. Also fixes the same distortion in the 52 PICKUP skin, which shares the engine.
+- Instant Camera: grid tiles now **darken** on hover (`filter: brightness(0.8)`) instead of going translucent (`opacity: 0.85`), which over the transparent gaps was showing the busy tabletop straight through the tile.
+- Grid Lighttable: the select checkbox moved out of the hover-only overlay into an always-visible 28px corner target (much easier to hit), ticked tiles get a green ring, and locked trigrams now read clearly — a big **🔒 L / M / R** slot badge plus a thicker accent group outline, so it's obvious which tiles are locked together and which is left/middle/right.
+- Optional **page readability panel** for every active-background skin — a tinted backing behind static-page text (About, static pages) with admin-selectable colour and opacity (`--page-panel-bg`), so writing stays legible over the moving background. Off by default; raise the opacity in the skin's "Page Panel" controls. Added to Instant Camera (1.0.7 → 1.0.8), AURORA (1.0.20 → 1.0.21), and PARADE (1.2.9 → 1.2.10).
+
 ## 0.7.328 — "Applejack" (2026-06-30)
 
 - Organized Mayhem ambient backdrop rewritten for full coverage. The infinite pannable layout (spiral clusters cycling the pool) was wrong for a fixed backdrop — it repeated images, left the tabletop showing through gaps, and the loose overlap read as prints passing through each other. Ambient mode (`data-ambient="1"`) now uses a one-shot coverage build: each pool image placed exactly once on a viewport-filling jittered grid with heavy overlap (no gaps, no repeats), prints scaled up automatically when there are few images, and only a gentle bounded sway + zoom-in breath so the field never drifts off its edge and never regenerates clustered repeats. The pannable 52-PICKUP path is unchanged. (`assets/js/ss-engine-organized-mayhem.js`)
