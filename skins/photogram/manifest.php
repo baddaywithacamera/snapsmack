@@ -27,7 +27,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'        => 'Photogram',
-    'version'     => '2.0.7',
+    'version'     => '2.0.8',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'A shadow of what a photo-sharing app used to be. Phone-native layout: 3-column archive grid, full-aspect post view, inline likes, bottom-sheet comments. Reproduces the Pixelfed / classic Instagram experience in a self-hosted blog.',
@@ -101,6 +101,26 @@ return [
             ],
             'selector' => ':root',
             'property' => 'custom-pg-grid-gap',
+        ],
+        // Uniform tile aspect ratio for the whole site (every tile the same).
+        // Non-square ratios use the full-aspect thumbnail so portrait/landscape
+        // content actually shows, cropped to fill (cover) like classic IG.
+        'pg_tile_aspect' => [
+            'section' => 'GRID',
+            'type'    => 'select',
+            'label'   => 'Tile Aspect Ratio',
+            'default' => 'square',
+            'options' => [
+                'square'     => ['label' => 'Square (1:1)',    'css' => ':root { --pg-tile-aspect: 1 / 1; }'],
+                'portrait45' => ['label' => 'Portrait (4:5)',  'css' => ':root { --pg-tile-aspect: 4 / 5; }'],
+                'portrait34' => ['label' => 'Portrait (3:4)',  'css' => ':root { --pg-tile-aspect: 3 / 4; }'],
+                'portrait23' => ['label' => 'Portrait (2:3)',  'css' => ':root { --pg-tile-aspect: 2 / 3; }'],
+                'land43'     => ['label' => 'Landscape (4:3)', 'css' => ':root { --pg-tile-aspect: 4 / 3; }'],
+                'land32'     => ['label' => 'Landscape (3:2)', 'css' => ':root { --pg-tile-aspect: 3 / 2; }'],
+                'wide169'    => ['label' => 'Wide (16:9)',     'css' => ':root { --pg-tile-aspect: 16 / 9; }'],
+            ],
+            'selector' => ':root',
+            'property' => 'custom-pg-tile-aspect',
         ],
         'pg_tile_border_width' => [
             'section' => 'GRID',

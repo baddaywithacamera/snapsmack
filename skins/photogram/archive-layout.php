@@ -44,8 +44,12 @@ if (!empty($images)) {
     <?php foreach ($images as $img):
         $link = BASE_URL . htmlspecialchars($img['img_slug']);
 
-        // Prefer square thumbnail; fall back to constructing from full image path
-        if (!empty($img['img_thumb_square'])) {
+        // Prefer the full-aspect thumb (non-square tile ratios show real content),
+        // then the square thumb, then a constructed path. Safe if the core archive
+        // query doesn't supply img_thumb_aspect — it falls back to square.
+        if (!empty($img['img_thumb_aspect'])) {
+            $thumb = BASE_URL . ltrim($img['img_thumb_aspect'], '/');
+        } elseif (!empty($img['img_thumb_square'])) {
             $thumb = BASE_URL . ltrim($img['img_thumb_square'], '/');
         } elseif (!empty($img['img_file'])) {
             $fp    = pathinfo(ltrim($img['img_file'], '/'));

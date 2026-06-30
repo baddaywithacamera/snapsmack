@@ -88,6 +88,7 @@ if ($_pg_carousel_site) {
             i.img_slug,
             i.img_file,
             i.img_thumb_square,
+            i.img_thumb_aspect,
             (SELECT COUNT(*) FROM snap_post_images spi
               WHERE spi.post_id = p.id AND spi.sort_position >= 0) AS image_count,
             CASE
@@ -112,7 +113,7 @@ if ($_pg_carousel_site) {
 } else {
     // SMACKONEOUT: one tile per image, paginated for infinite scroll.
     $grid_stmt = $pdo->prepare("
-        SELECT id, img_title, img_slug, img_file, img_thumb_square
+        SELECT id, img_title, img_slug, img_file, img_thumb_square, img_thumb_aspect
         FROM snap_images
         WHERE img_status = 'published' AND img_date <= ?
         ORDER BY sort_order ASC, img_date DESC
@@ -126,10 +127,10 @@ if ($_pg_carousel_site) {
 // ── Helper: render one grid cell ─────────────────────────────────────────
 function pg_grid_cell(array $gi): string {
     $link = BASE_URL . htmlspecialchars($gi['img_slug']);
-    // Prefer the square thumb; fall back to the FULL image (The Grid pattern).
-    // The previous fallback built a thumbs/t_*.jpg path the importer never
-    // generated, which 404'd every tile. The full image always exists.
-    $thumb_rel = $gi['img_thumb_square'] ?: ($gi['img_file'] ?? '');
+    // Prefer the full-aspect thumb (so non-square tile ratios show real content,
+    // cropped to fill), then the square thumb, then the full image. The full
+    // image always exists, so a tile never 404s.
+    $thumb_rel = ($gi['img_thumb_aspect'] ?? '') ?: ($gi['img_thumb_square'] ?: ($gi['img_file'] ?? ''));
     $thumb     = $thumb_rel ? BASE_URL . ltrim($thumb_rel, '/') : '';
     $title = htmlspecialchars($gi['img_title']);
     $html  = '<a href="' . $link . '" class="pg-grid-cell" title="' . $title . '" aria-label="' . $title . '">';
@@ -162,7 +163,7 @@ function pg_render_carousel_grid(array $posts): string {
             }
         }
 
-        $thumb_rel = $post['img_thumb_square'] ?: ($post['img_file'] ?? '');
+        $thumb_rel = ($post['img_thumb_aspect'] ?? '') ?: ($post['img_thumb_square'] ?: ($post['img_file'] ?? ''));
         $thumb     = $thumb_rel ? BASE_URL . ltrim($thumb_rel, '/') : '';
         $link      = BASE_URL . urlencode($post['img_slug']);
         $title     = htmlspecialchars($post['title'] ?? '');
