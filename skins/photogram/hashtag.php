@@ -32,7 +32,7 @@ $offset    = ($curr_page - 1) * $per_page;
 
 if ($tag_row) {
     $grid_stmt = $pdo->prepare("
-        SELECT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_square
+        SELECT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_square, i.img_thumb_aspect
         FROM snap_images i
         JOIN snap_image_tags it ON it.image_id = i.id
         WHERE it.tag_id = ?
@@ -103,7 +103,9 @@ $pg_active_tab = 'discover'; // nearest semantic match
         <?php if (!empty($grid_images)): ?>
             <?php foreach ($grid_images as $gi):
                 $link = BASE_URL . htmlspecialchars($gi['img_slug']);
-                if (!empty($gi['img_thumb_square'])) {
+                if (!empty($gi['img_thumb_aspect'])) {
+                    $thumb = BASE_URL . ltrim($gi['img_thumb_aspect'], '/');
+                } elseif (!empty($gi['img_thumb_square'])) {
                     $thumb = BASE_URL . ltrim($gi['img_thumb_square'], '/');
                 } elseif (!empty($gi['img_file'])) {
                     $fp    = pathinfo(ltrim($gi['img_file'], '/'));

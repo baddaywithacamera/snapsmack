@@ -159,7 +159,7 @@ if ($q !== '') {
     $search_term = '%' . $q . '%';
     if ($color_family) {
         $search_stmt = $pdo->prepare("
-            SELECT DISTINCT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_square
+            SELECT DISTINCT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_square, i.img_thumb_aspect
             FROM snap_images i
             LEFT JOIN snap_image_tags it ON it.image_id = i.id
             LEFT JOIN snap_tags t ON t.id = it.tag_id
@@ -177,7 +177,7 @@ if ($q !== '') {
         $search_stmt->execute([$now, $search_term, $search_term, $tag_term, $color_family]);
     } else {
         $search_stmt = $pdo->prepare("
-            SELECT DISTINCT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_square
+            SELECT DISTINCT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_square, i.img_thumb_aspect
             FROM snap_images i
             LEFT JOIN snap_image_tags it ON it.image_id = i.id
             LEFT JOIN snap_tags t ON t.id = it.tag_id
@@ -271,7 +271,9 @@ $site_title = $settings['site_title'] ?? $site_name ?? 'Photogram';
         <main class="pg-grid" aria-label="Search results">
             <?php foreach ($results as $r):
                 $link = BASE_URL . htmlspecialchars($r['img_slug']);
-                if (!empty($r['img_thumb_square'])) {
+                if (!empty($r['img_thumb_aspect'])) {
+                    $thumb = BASE_URL . ltrim($r['img_thumb_aspect'], '/');
+                } elseif (!empty($r['img_thumb_square'])) {
                     $thumb = BASE_URL . ltrim($r['img_thumb_square'], '/');
                 } elseif (!empty($r['img_file'])) {
                     $fp    = pathinfo(ltrim($r['img_file'], '/'));

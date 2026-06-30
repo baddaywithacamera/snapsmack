@@ -30,6 +30,7 @@
     --pg-text-muted:      #8E8E8E;
     --pg-border:          #DBDBDB;
     --pg-grid-gap:        0px;
+    --pg-tile-aspect:     1 / 1;   /* uniform tile ratio, site-wide (admin) */
     --pg-avatar-radius:   50%;
     --pg-sheet-radius:    16px;
     --pg-sheet-speed:     280ms;
@@ -362,7 +363,7 @@ button {
 }
 
 .pg-grid-cell {
-    aspect-ratio: 1 / 1;
+    aspect-ratio: var(--pg-tile-aspect, 1 / 1);
     overflow: hidden;
     display: block;
     position: relative;
@@ -903,7 +904,7 @@ button {
 
 .pg-trending-card {
     position: relative;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: var(--pg-tile-aspect, 1 / 1);
     border-radius: 8px;
     overflow: hidden;
     display: block;
