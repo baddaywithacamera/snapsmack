@@ -31,6 +31,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $log[] = "SUCCESS: Purged $deleted orphaned category mappings.";
     }
 
+    // FIX ALBUM + CATEGORY COVERS
+    // Auto-assigns a UNIQUE cover for every album and category that has no manual
+    // pick. Rules live in core/cover-assign.php: most faves wins, views break the
+    // tie, no two albums (or two categories) share a cover, a manual pick
+    // (cover_image_id) overrides all. Writes featured_post_id — the column the
+    // public album/category grids actually read. Without this the grids fall back
+    // to newest-image-per-album, which happily repeats covers across albums.
+    // Idempotent — re-run any time covers look duplicated or wrong.
+    if ($action === 'recompute_covers') {
+        set_time_limit(120);
+        ini_set('memory_limit', '256M');
+        require_once __DIR__ . '/core/cover-assign.php';
+        try {
+            $report = snapsmack_recompute_covers($pdo);
+            $tally = function (array $rows, string $mode): int {
+                return count(array_filter($rows, fn($r) => ($r['mode'] ?? '') === $mode));
+            };
+            $a = $report['albums']     ?? [];
+            $c = $report['categories'] ?? [];
+            $log[] = sprintf(
+                "SUCCESS: Covers recomputed. Albums — %d auto, %d manual, %d with no available image. "
+                . "Categories — %d auto, %d manual, %d with no available image.",
+                $tally($a, 'auto'), $tally($a, 'manual'), $tally($a, 'none'),
+                $tally($c, 'auto'), $tally($c, 'manual'), $tally($c, 'none')
+            );
+        } catch (Throwable $e) {
+            $log[] = "ERROR: Cover recompute failed — " . htmlspecialchars($e->getMessage()) . ".";
+        }
+    }
+
     // VAX INJECTOR
     // Applies a signed VAX database package sent by SnapSmack support. The package
     // code + one-time token ARE the credential: core/smack-vax.php fetches the
@@ -844,6 +874,15 @@ include 'core/sidebar.php';
             <form method="POST">
                 <input type="hidden" name="action" value="sync_cats">
                 <button type="submit" class="btn-smack btn-block">CLEAN DATABASE</button>
+            </form>
+        </div>
+
+        <div class="box box-flex">
+            <h3>FIX ALBUM &amp; CATEGORY COVERS</h3>
+            <p class="skin-desc-text">Auto-assigns a unique cover to every album and category that doesn't have a manually chosen one. Most-liked image wins, views break the tie, and no two albums (or two categories) share the same cover. Manual cover picks are always kept. Run this whenever album or category covers look duplicated or wrong.</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="recompute_covers">
+                <button type="submit" class="btn-smack btn-block">FIX COVERS</button>
             </form>
         </div>
 

@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.326 — "Rainbow Dash" (2026-06-30)
+
+- Collections panel readability fixed. The 0.7.325 restyle gave the info panel a hardcoded dark fill (`#5a5a5a`→`#383838`) with light `#e8e8e8` text — fine on a dark skin, but on a light skin like Slickr it rendered near-white text on white, so the "Most Viewed"/"Most Liked" titles vanished on foreverphotograph.ing. The panel is now skin-agnostic: `color: inherit` + transparent background so the title takes the skin's own readable text colour on both light and dark skins, and the thumb/panel borders are darkened to `rgba(128,128,128,0.55)` so the frames actually show. The series list also drops its 1200px centre cap and goes full-canvas width, so the rows' left edge lines up with the COLLECTIONS heading instead of sitting indented. Core CSS; cache-busts via `SNAPSMACK_VERSION_SHORT`.
+- "Fix Album &amp; Category Covers" wired into System Maintenance — completes the 0.7.323 cover-assign engine, which shipped engine-only with the button still to be wired. The maintenance page now carries a FIX COVERS button (`action=recompute_covers`) that runs `snapsmack_recompute_covers()` and reports the per-entity auto/manual/none tally. Without it the engine was never called, so albums fell back to newest-image-per-album and repeated the same cover across albums sharing a recent image. Idempotent; manual `cover_image_id` picks always win.
+
 ## 0.7.325 — "Rarity" (2026-06-29)
 
 - Collections index restyle (`assets/css/page-collection.css`): the series rows were capped at 760px and read dainty on a full-width skin. The list is now 1200px wide (canvas 1400px), the cover thumbnail is squared (1:1) and sized to its native 300px so it never upscales, the panel text is doubled (`.series-title` 2.3rem, count/date proportionally), and the info panel carries a mid-to-dark grey fill (`#5a5a5a`→`#383838`) with light text so the serif title reads against it. Core CSS, so this restyles the Collections page on every skin; it cache-busts through `SNAPSMACK_VERSION_SHORT`. Description field for collection rows is still to come.
