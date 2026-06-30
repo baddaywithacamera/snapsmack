@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.2.10',
+    'version'     => '1.2.11',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
@@ -443,6 +443,54 @@ return [
             'default'  => '#1a1a1a',
             'selector' => ':root', 'property' => '--post-count-color',
             'hint'     => 'Colour of the post count number and label.',
+        ],
+
+        // ---- NAVBAR / POSTS GLOW / NAV-LINE SHADOW / LANDING PANEL ─────────
+        'pa_navbar_color' => [
+            'section' => 'NAVBAR', 'type' => 'color', 'label' => 'Navbar Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Background colour of the sticky nav bar. PHP-handled → --pa-navbar-bg.',
+        ],
+        'pa_navbar_opacity' => [
+            'section' => 'NAVBAR', 'type' => 'range_numeric', 'label' => 'Navbar Opacity',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'    => '0 = transparent. Raise for a solid bar.',
+        ],
+        'pa_posts_glow_color' => [
+            'section' => 'POSTS LABEL', 'type' => 'color', 'label' => 'Posts Glow Colour',
+            'default' => '#000000',
+        ],
+        'pa_posts_glow_size' => [
+            'section' => 'POSTS LABEL', 'type' => 'range_numeric', 'label' => 'Posts Glow Size',
+            'default' => '0', 'min' => '0', 'max' => '40', 'step' => '2', 'unit' => 'px',
+            'hint'    => '0 = no glow.',
+        ],
+        'pa_posts_glow_opacity' => [
+            'section' => 'POSTS LABEL', 'type' => 'range_numeric', 'label' => 'Posts Glow Opacity',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+        ],
+        'pa_navline_shadow_color' => [
+            'section' => 'NAV LINES', 'type' => 'color', 'label' => 'Nav Line Shadow Colour',
+            'default' => '#000000',
+        ],
+        'pa_navline_shadow_size' => [
+            'section' => 'NAV LINES', 'type' => 'range_numeric', 'label' => 'Nav Line Shadow Size',
+            'default' => '0', 'min' => '0', 'max' => '3', 'step' => '1', 'unit' => 'px',
+            'hint'    => '0 = no shadow. Capped 3px, always down-and-right.',
+        ],
+        'pa_navline_shadow_opacity' => [
+            'section' => 'NAV LINES', 'type' => 'range_numeric', 'label' => 'Nav Line Shadow Opacity',
+            'default' => '40', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+        ],
+        'pa_landing_panel_color' => [
+            'section' => 'LANDING PANEL', 'type' => 'color', 'label' => 'Landing Panel Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Backing colour behind the landing feed column (landing only). PHP-handled → --landing-panel-bg.',
+        ],
+        'pa_landing_panel_opacity' => [
+            'section' => 'LANDING PANEL', 'type' => 'range_numeric', 'label' => 'Landing Panel Opacity',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'    => '0 = transparent. Raise for a solid, readable column.',
         ],
         'pa_carousel_indicator' => [
             'section'  => 'GRID',

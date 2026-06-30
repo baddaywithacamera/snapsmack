@@ -135,7 +135,7 @@ $grid_posts = $grid_stmt->fetchAll();
 
 include dirname(__DIR__, 2) . '/core/meta.php';
 ?>
-<div class="tg-content-wrap">
+<div class="tg-content-wrap landing-feed">
 
 <?php include __DIR__ . '/skin-profile.php'; ?>
 

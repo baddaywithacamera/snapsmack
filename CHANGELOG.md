@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.330 — "Spike" (2026-06-30)
+
+- Organized Mayhem: smoothed the load-in — the idle wobble now starts and ends at each print's resting angle, so prints no longer twitch into place during the first few seconds.
+- Four readability/styling controls added across **all three animated-background gram skins** (Instant Camera, AURORA, PARADE): **Navbar** colour+opacity; **Posts Label** colour+glow (AURORA/PARADE already had the colour, so they gain the glow); **Nav Lines** drop shadow — capped (≤3px), hard-edged, locked down-and-right (line colour reuses each skin's existing control — Instant Camera gains a new colour control; AURORA/PARADE keep their wave-line colour); and a **Landing Panel** — optional opaque backing colour/opacity behind the landing feed column (like The Grid's white centre), scoped **landing-only** via a `.landing-feed` marker so it never tints archive/static/hashtag pages. All default off/transparent.
+- Instant Camera grid-tile hover fix: a global `a:hover{opacity:.7}` was dimming the whole tile link and letting the background show through the print — tile links now stay opaque (the brightness darken is the only hover cue).
+- Skins: Instant Camera 1.0.8 → 1.0.10, AURORA 1.0.21 → 1.0.22, PARADE 1.2.10 → 1.2.11.
+
 ## 0.7.329 — "Twilight Sparkle" (2026-06-30)
 
 - Organized Mayhem: prints now stay **whole**. The 3D paper-warp (`rotateX`/`rotateY` under `transform-style: preserve-3d`) foreshortened each rectangle into a wedge, and overlapping wedges read as sliced/merged images. Removed the 3D warp and the preserve-3d/perspective context — the tabletop is now a flat 2D stack of whole prints layered cleanly by z-index, overlapping one over/under another but never merging. Also fixes the same distortion in the 52 PICKUP skin, which shares the engine.
@@ -19,7 +26,6 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - Slickr: the bottom navbar (`#infobox` — PREV / INFO / COMMENTS / NEXT) was forced to `min-height: 56px` while the top tab bar is 44px, leaving it ~12px taller and bottom-heavy. Matched it to 44px so the two navs balance. (The previous pass only relocated the links and never removed the extra height.) Skin 1.0.16 → 1.0.17.
 - Grid Lighttable: the select checkbox moved out of the hover-only overlay into an always-visible 28px corner target (much easier to hit), ticked tiles get a green ring, and locked trigrams now read clearly — a big **🔒 L / M / R** slot badge plus a thicker accent group outline, so it's obvious which tiles are locked together and which is left/middle/right.
 - Optional **page readability panel** for every active-background skin — a tinted backing behind static-page text (About, static pages) with admin-selectable colour and opacity (`--page-panel-bg`), so writing stays legible over the moving background. Off by default; raise the opacity in the skin's "Page Panel" controls. Added to Instant Camera (1.0.7 → 1.0.8), AURORA (1.0.20 → 1.0.21), and PARADE (1.2.9 → 1.2.10).
-
 ## 0.7.328 — "Applejack" (2026-06-30)
 
 - Organized Mayhem ambient backdrop rewritten for full coverage. The infinite pannable layout (spiral clusters cycling the pool) was wrong for a fixed backdrop — it repeated images, left the tabletop showing through gaps, and the loose overlap read as prints passing through each other. Ambient mode (`data-ambient="1"`) now uses a one-shot coverage build: each pool image placed exactly once on a viewport-filling jittered grid with heavy overlap (no gaps, no repeats), prints scaled up automatically when there are few images, and only a gentle bounded sway + zoom-in breath so the field never drifts off its edge and never regenerates clustered repeats. The pannable 52-PICKUP path is unchanged. (`assets/js/ss-engine-organized-mayhem.js`)

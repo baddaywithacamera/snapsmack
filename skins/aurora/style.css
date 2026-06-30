@@ -114,7 +114,9 @@ img { display: block; max-width: 100%; }
     position: sticky;
     top: 0;
     z-index: 100;
-    background: transparent;
+    background: var(--au-navbar-bg, transparent);
+    /* Optional admin drop shadow on the nav line (capped 3px, hard, down-right). */
+    box-shadow: var(--au-navline-shadow, none);
     /* When stuck to the top (.profile-hidden) fast-fade in a backdrop. */
     transition: background 0.18s ease-in;
     /* Two-part divider line (static, no colour shifting):
@@ -352,7 +354,7 @@ img { display: block; max-width: 100%; }
 .au-profile-stat-label {
     font-size: 14px;
     color: var(--post-count-color, var(--text-secondary));
-    text-shadow: var(--profile-text-glow, none);
+    text-shadow: var(--posts-glow, var(--profile-text-glow, none));
 }
 
 .au-profile-bio {
@@ -1401,6 +1403,10 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 /* Content sits above the fixed aurora layer. */
 #page-wrapper,
 .au-content-wrap { position: relative; z-index: 1; }
+/* Landing panel — landing-ONLY (scoped to .landing-feed on the landing wrapper),
+   so it never tints static / archive / hashtag pages. Off (transparent) until
+   the admin sets Landing Panel opacity. */
+.landing-feed { background: var(--landing-panel-bg, transparent) !important; }
 
 /* ==========================================================================
    AURORA — LAYER 2: TILE BORDER WAVE (conic ring)

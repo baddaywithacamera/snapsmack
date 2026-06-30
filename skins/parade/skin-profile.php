@@ -221,10 +221,42 @@ if ($_pa_panel_op > 0) {
         hexdec(substr($_pc, 0, 2)), hexdec(substr($_pc, 2, 2)), hexdec(substr($_pc, 4, 2)),
         number_format($_pa_panel_op / 100, 2));
 }
+// ── Navbar bg, posts glow, nav-line shadow, landing panel (mirrors IC/AURORA) ─
+$_pa_navbar_hex = trim($settings['pa_navbar_color'] ?? '#ffffff');
+$_pa_navbar_op  = max(0, min(100, (int)($settings['pa_navbar_opacity'] ?? 0)));
+$_pa_navbar_bg  = 'transparent';
+if ($_pa_navbar_op > 0) {
+    $_c = ltrim($_pa_navbar_hex, '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
+    $_pa_navbar_bg = sprintf('rgba(%d,%d,%d,%s)', hexdec(substr($_c,0,2)),hexdec(substr($_c,2,2)),hexdec(substr($_c,4,2)), number_format($_pa_navbar_op/100,2));
+}
+$_pa_pg_hex = trim($settings['pa_posts_glow_color'] ?? '#000000');
+$_pa_pg_sz  = max(0, min(40,  (int)($settings['pa_posts_glow_size']    ?? 0)));
+$_pa_pg_op  = max(0, min(100, (int)($settings['pa_posts_glow_opacity'] ?? 0)));
+$_pa_posts_glow = 'none';
+if ($_pa_pg_sz > 0 && $_pa_pg_op > 0) {
+    $_c = ltrim($_pa_pg_hex, '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
+    $_r=hexdec(substr($_c,0,2)); $_g=hexdec(substr($_c,2,2)); $_b=hexdec(substr($_c,4,2));
+    $_pa_posts_glow = sprintf('0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)', $_pa_pg_sz,$_r,$_g,$_b,number_format($_pa_pg_op/100,2), $_pa_pg_sz*2,$_r,$_g,$_b,number_format($_pa_pg_op/200,2));
+}
+$_pa_nls_hex = trim($settings['pa_navline_shadow_color'] ?? '#000000');
+$_pa_nls_sz  = max(0, min(3,   (int)($settings['pa_navline_shadow_size']    ?? 0)));
+$_pa_nls_op  = max(0, min(100, (int)($settings['pa_navline_shadow_opacity'] ?? 40)));
+$_pa_navline_shadow = 'none';
+if ($_pa_nls_sz > 0 && $_pa_nls_op > 0) {
+    $_c = ltrim($_pa_nls_hex, '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
+    $_pa_navline_shadow = sprintf('%dpx %dpx 0 rgba(%d,%d,%d,%s)', $_pa_nls_sz,$_pa_nls_sz, hexdec(substr($_c,0,2)),hexdec(substr($_c,2,2)),hexdec(substr($_c,4,2)), number_format($_pa_nls_op/100,2));
+}
+$_pa_lp_hex = trim($settings['pa_landing_panel_color'] ?? '#ffffff');
+$_pa_lp_op  = max(0, min(100, (int)($settings['pa_landing_panel_opacity'] ?? 0)));
+$_pa_landing_bg = 'transparent';
+if ($_pa_lp_op > 0) {
+    $_c = ltrim($_pa_lp_hex, '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
+    $_pa_landing_bg = sprintf('rgba(%d,%d,%d,%s)', hexdec(substr($_c,0,2)),hexdec(substr($_c,2,2)),hexdec(substr($_c,4,2)), number_format($_pa_lp_op/100,2));
+}
 ?>
 
 <!-- PARADE CSS vars: high-key field + text colours (read by style.css) -->
-<style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;--nav-line-opacity:<?php echo $_pa_nav_line_op; ?>;--nav-text-glow:<?php echo $_pa_navglow_css; ?>;--nav-text-glow-strong:<?php echo $_pa_navglow_strong; ?>;--profile-text-glow:<?php echo $_pa_glow_css; ?>;--footer-text-glow:<?php echo $_pa_ftglow_css; ?>;--page-panel-bg:<?php echo htmlspecialchars($_pa_panel_bg); ?>;}</style>
+<style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;--nav-line-opacity:<?php echo $_pa_nav_line_op; ?>;--nav-text-glow:<?php echo $_pa_navglow_css; ?>;--nav-text-glow-strong:<?php echo $_pa_navglow_strong; ?>;--profile-text-glow:<?php echo $_pa_glow_css; ?>;--footer-text-glow:<?php echo $_pa_ftglow_css; ?>;--page-panel-bg:<?php echo htmlspecialchars($_pa_panel_bg); ?>;--pa-navbar-bg:<?php echo htmlspecialchars($_pa_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_pa_posts_glow); ?>;--pa-navline-shadow:<?php echo htmlspecialchars($_pa_navline_shadow); ?>;--landing-panel-bg:<?php echo htmlspecialchars($_pa_landing_bg); ?>;}</style>
 
 <?php if ($_pa_flag_mode): ?>
 <!-- PARADE waving-flag carrier — read by ss-engine-flag-wave.js (Layer 1

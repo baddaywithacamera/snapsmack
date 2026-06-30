@@ -118,7 +118,9 @@ img { display: block; max-width: 100%; }
     position: sticky;
     top: 0;
     z-index: 100;
-    background: transparent;
+    background: var(--pa-navbar-bg, transparent);
+    /* Optional admin drop shadow on the nav line (capped 3px, hard, down-right). */
+    box-shadow: var(--pa-navline-shadow, none);
     transition: background 0.18s ease-in;
     /* Single 1px divider line, top + bottom. Colour = --pa-nav-line, set by
        skin-profile.php to a fixed admin colour OR the live wave colour (track mode). */
@@ -337,6 +339,7 @@ img { display: block; max-width: 100%; }
 .pa-profile-stat-label {
     font-size: 14px;
     color: var(--post-count-color, var(--text-secondary));
+    text-shadow: var(--posts-glow, none);
 }
 
 .pa-profile-bio {
@@ -1388,6 +1391,9 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 /* Content sits above the fixed fireworks layer. */
 #page-wrapper,
 .pa-content-wrap { position: relative; z-index: 1; }
+/* Landing panel — landing-ONLY (scoped to .landing-feed on the landing wrapper),
+   so it never tints static / archive / hashtag pages. Off until configured. */
+.landing-feed { background: var(--landing-panel-bg, transparent) !important; }
 
 /* Reduced motion: the engine itself freezes to a few static coloured bursts.
    Keep the layer calm here too. */

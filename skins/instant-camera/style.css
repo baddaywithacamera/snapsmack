@@ -101,9 +101,11 @@ img { display: block; max-width: 100%; }
     top: 0;
     z-index: 100;
     background: var(--bg-primary);
-    border-bottom: 1px solid var(--border-color);
-    /* No box-shadow: the card shadow's 4px blur bled faint vertical lines at the
-       nav's left/right ends. The bottom border is the only separator we want. */
+    border-bottom: 1px solid var(--ic-navline-color, var(--border-color));
+    /* Optional admin drop shadow on the nav line — hard-edged (no blur),
+       down-and-right, capped at 3px. The old 4px BLURRED shadow bled faint
+       vertical lines at the bar's ends; a hard offset shadow doesn't. */
+    box-shadow: var(--ic-navline-shadow, none);
 }
 
 .tg-sticky-nav-inner {
@@ -304,7 +306,8 @@ img { display: block; max-width: 100%; }
 
 .tg-profile-stat-label {
     font-size: 14px;
-    color: var(--text-secondary);
+    color: var(--posts-color, var(--text-secondary));
+    text-shadow: var(--posts-glow, none);
 }
 
 .tg-profile-bio {
@@ -363,6 +366,10 @@ img { display: block; max-width: 100%; }
 }
 
 .tg-tile:hover img { filter: brightness(0.8); }
+/* The generic `a:hover{opacity:.7}` was dimming the whole tile LINK on hover,
+   letting the Organized Mayhem background show through the print. Keep tile
+   links fully opaque — the brightness darken on the image is the only hover cue. */
+.tg-tile a:hover { opacity: 1; }
 
 /* Carousel indicator badge (top-right corner) */
 .tg-tile-indicator {
@@ -1339,7 +1346,12 @@ body { background: transparent !important; }      /* let the fixed layers show *
    --bg-primary fill. Nav links keep their glow (above) for legibility. */
 :root { --grid-bg: transparent; }
 .tg-content-wrap { background: transparent !important; }
+/* Landing panel is landing-ONLY — scoped to the .landing-feed marker on the
+   landing wrapper so it never tints archive / static / hashtag pages. */
+.landing-feed    { background: var(--landing-panel-bg, transparent) !important; }
 .tg-grid        { background: transparent !important; }
-.tg-sticky-nav  { background: transparent !important; }
+/* Navbar background is admin-tunable (Navbar Colour + Opacity). Transparent by
+   default so the tabletop shows through; raise the opacity for a solid bar. */
+.tg-sticky-nav  { background: var(--ic-nav-bg, transparent) !important; }
 
 /* ===== SNAPSMACK EOF ===== */

@@ -186,10 +186,42 @@ if ($_au_panel_op > 0) {
         hexdec(substr($_pc, 0, 2)), hexdec(substr($_pc, 2, 2)), hexdec(substr($_pc, 4, 2)),
         number_format($_au_panel_op / 100, 2));
 }
+// ── Navbar bg, posts glow, nav-line shadow, landing panel (mirrors IC) ──────
+$_au_navbar_hex = trim($settings['au_navbar_color'] ?? '#0a0e1a');
+$_au_navbar_op  = max(0, min(100, (int)($settings['au_navbar_opacity'] ?? 0)));
+$_au_navbar_bg  = 'transparent';
+if ($_au_navbar_op > 0) {
+    $_c = ltrim($_au_navbar_hex, '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
+    $_au_navbar_bg = sprintf('rgba(%d,%d,%d,%s)', hexdec(substr($_c,0,2)),hexdec(substr($_c,2,2)),hexdec(substr($_c,4,2)), number_format($_au_navbar_op/100,2));
+}
+$_au_pg_hex = trim($settings['au_posts_glow_color'] ?? '#000000');
+$_au_pg_sz  = max(0, min(40,  (int)($settings['au_posts_glow_size']    ?? 0)));
+$_au_pg_op  = max(0, min(100, (int)($settings['au_posts_glow_opacity'] ?? 0)));
+$_au_posts_glow = 'none';
+if ($_au_pg_sz > 0 && $_au_pg_op > 0) {
+    $_c = ltrim($_au_pg_hex, '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
+    $_r=hexdec(substr($_c,0,2)); $_g=hexdec(substr($_c,2,2)); $_b=hexdec(substr($_c,4,2));
+    $_au_posts_glow = sprintf('0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)', $_au_pg_sz,$_r,$_g,$_b,number_format($_au_pg_op/100,2), $_au_pg_sz*2,$_r,$_g,$_b,number_format($_au_pg_op/200,2));
+}
+$_au_nls_hex = trim($settings['au_navline_shadow_color'] ?? '#000000');
+$_au_nls_sz  = max(0, min(3,   (int)($settings['au_navline_shadow_size']    ?? 0)));
+$_au_nls_op  = max(0, min(100, (int)($settings['au_navline_shadow_opacity'] ?? 40)));
+$_au_navline_shadow = 'none';
+if ($_au_nls_sz > 0 && $_au_nls_op > 0) {
+    $_c = ltrim($_au_nls_hex, '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
+    $_au_navline_shadow = sprintf('%dpx %dpx 0 rgba(%d,%d,%d,%s)', $_au_nls_sz,$_au_nls_sz, hexdec(substr($_c,0,2)),hexdec(substr($_c,2,2)),hexdec(substr($_c,4,2)), number_format($_au_nls_op/100,2));
+}
+$_au_lp_hex = trim($settings['au_landing_panel_color'] ?? '#0a0e1a');
+$_au_lp_op  = max(0, min(100, (int)($settings['au_landing_panel_opacity'] ?? 0)));
+$_au_landing_bg = 'transparent';
+if ($_au_lp_op > 0) {
+    $_c = ltrim($_au_lp_hex, '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
+    $_au_landing_bg = sprintf('rgba(%d,%d,%d,%s)', hexdec(substr($_c,0,2)),hexdec(substr($_c,2,2)),hexdec(substr($_c,4,2)), number_format($_au_lp_op/100,2));
+}
 ?>
 
 <!-- AURORA tile vars: border width / corner radius / ring opacity / sky base -->
-<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_au_glow_css); ?>;--nav-line-opacity:<?php echo $_au_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_au_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_au_navglow_strong); ?>;--page-panel-bg:<?php echo htmlspecialchars($_au_panel_bg); ?>;<?php echo $_au_nav_line_css; ?>}</style>
+<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_au_glow_css); ?>;--nav-line-opacity:<?php echo $_au_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_au_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_au_navglow_strong); ?>;--page-panel-bg:<?php echo htmlspecialchars($_au_panel_bg); ?>;--au-navbar-bg:<?php echo htmlspecialchars($_au_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_au_posts_glow); ?>;--au-navline-shadow:<?php echo htmlspecialchars($_au_navline_shadow); ?>;--landing-panel-bg:<?php echo htmlspecialchars($_au_landing_bg); ?>;<?php echo $_au_nav_line_css; ?>}</style>
 
 <!-- AURORA config carrier — read by aurora-bg.js (Layer 1 curtains) and
      aurora-wave.js (Layer 2 ring wave). -->
