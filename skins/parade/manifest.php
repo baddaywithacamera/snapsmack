@@ -80,6 +80,7 @@ return [
         'smack-progressive-reveal',  // shared grow-as-you-scroll (grid tiles + justified rows)
         'smack-tag-infinite',     // shared prefix-derived hashtag infinite scroll
         'smack-thomas',           // Thomas the Bear Easter egg — required in every fork
+        'smack-gram-search',      // bottom-left magnifier → expanding search dock
     ],
 
     'community_comments'  => true,

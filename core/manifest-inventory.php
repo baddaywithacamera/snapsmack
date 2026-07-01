@@ -978,6 +978,12 @@ return [
             'path'         => 'assets/js/ss-engine-film-damage.js',
             'has_settings' => false,
         ],
+        'smack-gram-search' => [
+            'label'        => 'Floating Search Dock (bottom-left magnifier → expanding search box; gated on search_enabled)',
+            'path'         => 'assets/js/ss-engine-gram-search.js',
+            'css'          => 'assets/css/ss-engine-gram-search.css',
+            'has_settings' => false,
+        ],
     ]
 ];
 // ===== SNAPSMACK EOF =====

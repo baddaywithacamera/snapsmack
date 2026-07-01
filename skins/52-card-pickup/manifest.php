@@ -40,6 +40,7 @@ return [
         'smack-52-pickup',
         'smack-community',
         'smack-overlay',
+        'smack-gram-search',      // bottom-left magnifier → expanding search dock
     ],
 
     'options' => [
