@@ -1053,6 +1053,14 @@ body.pa-modal-open { overflow: hidden; }
        the content box"). SnapSmack footer rule: footer == panel width on every
        carousel skin, no exceptions. .inside below keeps the text in the content
        column so the bar spans the panel while the text stays centred on content. */
+    /* Lift the footer ABOVE the .pa-content-wrap z-index:1 stacking context,
+       which contains the fixed full-viewport fireworks/flag canvas. That canvas
+       is pointer-events:none, so it painted OVER the footer while hit-tests still
+       found the footer underneath — the footer was in the DOM but invisible on
+       landing + static ("missing footer"). z-index:2 > content-wrap's 1. Verified
+       live 2026-07-01. */
+    position:   relative;
+    z-index:    2;
     border-top: 1px solid var(--border-color);
     background:  var(--footer-bg, var(--panel-bg, transparent));
     max-width:   calc(var(--grid-max-width, 935px) + 2 * var(--panel-extend, 0px));
