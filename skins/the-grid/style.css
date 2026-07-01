@@ -1000,13 +1000,15 @@ body.tg-modal-open { overflow: hidden; }
    ========================================================================== */
 
 #system-footer {
-    /* Cap the footer to the content column and centre it so the bar never spans
-       the full viewport (was full-width on landing/static, escaping the grid).
-       Matches the INSTANT CAMERA standard geometry. --footer-bg (admin colour +
-       opacity, from core/footer.php) overrides the opaque default when set. */
+    /* Footer spans the CARD — .tg-content-wrap, the layer BELOW the grid =
+       grid-max-width + the treatment gutter each side — and is centred, so the
+       bar reaches the card's edges and lines up with the grid above it. NOT the
+       inner content column (that left a gutter-width gap each side). On the
+       blogroll, #scroll-stage clamps it to grid-max-width, which is correct
+       there. --footer-bg (admin colour + opacity) overrides the default. */
     border-top: 1px solid var(--border-color);
     background: var(--footer-bg, var(--bg-primary));
-    max-width: var(--grid-max-width, 935px);
+    max-width: calc(var(--grid-max-width, 935px) + 2 * var(--grid-gutter, 0px));
     margin: 0 auto;
 }
 
