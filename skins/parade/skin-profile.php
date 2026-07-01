@@ -209,11 +209,14 @@ if ($_pa_ftglow_sz > 0 && $_pa_ftglow_op > 0) {
 // Nav companion-line opacity (0–100 → 0–1) — also previously unemitted.
 $_pa_nav_line_op = number_format(max(0, min(100, (int)($settings['pa_nav_line_opacity'] ?? 100))) / 100, 2);
 
-// ── Page readability panel — tinted backing behind static-page text so it
-// stays legible over the animated background. Colour + opacity admin-tunable.
-$_pa_panel_hex = trim($settings['pa_page_panel_color'] ?? '#ffffff');
-$_pa_panel_op  = max(0, min(100, (int)($settings['pa_page_panel_opacity'] ?? 0)));
-$_pa_panel_bg  = 'transparent';
+// ── Panel (all pages) — ONE tinted backing behind the content column on every
+// page (landing, static, archive, hashtag, blogroll). Full viewport height,
+// widened by Extend each side. Ported from INSTANT CAMERA → --panel-bg,
+// --panel-extend. Colour + opacity + extend admin-tunable.
+$_pa_panel_hex    = trim($settings['pa_panel_color'] ?? '#ffffff');
+$_pa_panel_op     = max(0, min(100, (int)($settings['pa_panel_opacity'] ?? 0)));
+$_pa_panel_extend = max(0, min(100, (int)($settings['pa_panel_extend'] ?? 0)));
+$_pa_panel_bg     = 'transparent';
 if ($_pa_panel_op > 0) {
     $_pc = ltrim($_pa_panel_hex, '#');
     if (strlen($_pc) === 3) $_pc = $_pc[0].$_pc[0].$_pc[1].$_pc[1].$_pc[2].$_pc[2];
@@ -249,18 +252,10 @@ if ($_pa_nls_sz > 0 && $_pa_nls_op > 0) {
     // Top + bottom lines only, no side bleed (negative spread cancels the blur horizontally).
     $_pa_navline_shadow = sprintf('0 %1$dpx %1$dpx -%1$dpx rgba(%2$d,%3$d,%4$d,%5$s),inset 0 %1$dpx %1$dpx -%1$dpx rgba(%2$d,%3$d,%4$d,%5$s)', $_n,$_nr,$_ng,$_nb,$_na);
 }
-$_pa_lp_hex = trim($settings['pa_landing_panel_color'] ?? '#ffffff');
-$_pa_lp_op  = max(0, min(100, (int)($settings['pa_landing_panel_opacity'] ?? 0)));
-$_pa_lp_extend = max(0, min(100, (int)($settings['pa_landing_panel_extend'] ?? 0)));
-$_pa_landing_bg = 'transparent';
-if ($_pa_lp_op > 0) {
-    $_c = ltrim($_pa_lp_hex, '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
-    $_pa_landing_bg = sprintf('rgba(%d,%d,%d,%s)', hexdec(substr($_c,0,2)),hexdec(substr($_c,2,2)),hexdec(substr($_c,4,2)), number_format($_pa_lp_op/100,2));
-}
 ?>
 
 <!-- PARADE CSS vars: high-key field + text colours (read by style.css) -->
-<style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;--nav-line-opacity:<?php echo $_pa_nav_line_op; ?>;--nav-text-glow:<?php echo $_pa_navglow_css; ?>;--nav-text-glow-strong:<?php echo $_pa_navglow_strong; ?>;--profile-text-glow:<?php echo $_pa_glow_css; ?>;--footer-text-glow:<?php echo $_pa_ftglow_css; ?>;--page-panel-bg:<?php echo htmlspecialchars($_pa_panel_bg); ?>;--pa-navbar-bg:<?php echo htmlspecialchars($_pa_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_pa_posts_glow); ?>;--pa-navline-shadow:<?php echo htmlspecialchars($_pa_navline_shadow); ?>;--landing-panel-bg:<?php echo htmlspecialchars($_pa_landing_bg); ?>;--landing-panel-extend:<?php echo (int)$_pa_lp_extend; ?>px;}</style>
+<style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;--nav-line-opacity:<?php echo $_pa_nav_line_op; ?>;--nav-text-glow:<?php echo $_pa_navglow_css; ?>;--nav-text-glow-strong:<?php echo $_pa_navglow_strong; ?>;--profile-text-glow:<?php echo $_pa_glow_css; ?>;--footer-text-glow:<?php echo $_pa_ftglow_css; ?>;--panel-bg:<?php echo htmlspecialchars($_pa_panel_bg); ?>;--panel-extend:<?php echo (int)$_pa_panel_extend; ?>px;--pa-navbar-bg:<?php echo htmlspecialchars($_pa_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_pa_posts_glow); ?>;--pa-navline-shadow:<?php echo htmlspecialchars($_pa_navline_shadow); ?>;}</style>
 
 <?php if ($_pa_flag_mode): ?>
 <!-- PARADE waving-flag carrier — read by ss-engine-flag-wave.js (Layer 1
@@ -297,6 +292,12 @@ if ($_pa_lp_op > 0) {
      data-pa-border-cycle="<?php echo $_pa_wave_cycle; ?>"
      data-pa-border-minl="<?php echo $_pa_border_minl; ?>"></div>
 <?php endif; ?>
+
+<!-- Readability panel: centred translucent column behind the content, full
+     viewport height (reaches the top, runs behind the footer) on every page
+     — landing, static, archive, hashtag, blogroll. Ported from INSTANT CAMERA.
+     Width + tint + side gutters are admin-tunable (PANEL controls). -->
+<div class="pa-panel" aria-hidden="true"></div>
 
 <?php if ($show_profile): ?>
 <!-- ── Profile Header (shared across all Grid pages) ───────────────────────── -->

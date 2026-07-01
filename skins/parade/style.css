@@ -1095,10 +1095,8 @@ body.pa-modal-open { overflow: hidden; }
     max-width: 680px;
     margin: 0 auto;
     padding: 40px 28px 60px;
-    /* Optional readability panel behind page text (admin: Page Panel colour +
-       opacity). Transparent by default. */
-    background: var(--page-panel-bg, transparent);
-    border-radius: 6px;
+    /* Readability backing is now the shared full-height .pa-panel (ported from
+       INSTANT CAMERA, covers every page) — this column just sets reading width. */
 }
 
 .pa-static-title {
@@ -1384,8 +1382,9 @@ body.is-blogroll .blogroll-peer-url { display: none; }
     inset: 0;
     /* MUST be negative — a fixed field layer painted above the propagated body
        background but behind static content. Mirrors AURORA's z-index fix that
-       stopped the fixed background covering the profile header. */
-    z-index: -1;
+       stopped the fixed background covering the profile header. The readability
+       panel (.pa-panel) sits at -1, just above this. */
+    z-index: -2;
     pointer-events: none;
     background-color: var(--pa-bg, #ffffff);
 }
@@ -1401,16 +1400,18 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 /* Content sits above the fixed fireworks layer. */
 #page-wrapper,
 .pa-content-wrap { position: relative; z-index: 1; }
-/* Landing panel — landing-ONLY (scoped to .landing-feed). Renders BEHIND the
-   tiles as a backing layer that can bleed out past them by Landing Panel Extend
-   (px, 0–100) each side. .pa-content-wrap is already position:relative. */
-.landing-feed::before {
-    content: "";
-    position: absolute;
+/* Readability panel (ALL pages) — ONE centred translucent column behind the
+   content, fixed + full viewport height so it reaches the top and runs behind
+   the footer, on every page incl. blogroll. Width = content column + Panel
+   Extend each side. Sits at -1: above the fireworks/flag background (-2), below
+   the content (+1). Ported from INSTANT CAMERA (.ic-panel). */
+.pa-panel {
+    position: fixed;
     top: 0; bottom: 0;
-    left:  calc(-1 * var(--landing-panel-extend, 0px));
-    right: calc(-1 * var(--landing-panel-extend, 0px));
-    background: var(--landing-panel-bg, transparent);
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(var(--grid-max-width, 935px) + 2 * var(--panel-extend, 0px));
+    background: var(--panel-bg, transparent);
     z-index: -1;
     pointer-events: none;
 }

@@ -174,11 +174,14 @@ if ($_au_glow_sz > 0 && $_au_glow_op > 0) {
     );
 }
 
-// ── Page readability panel — tinted backing behind static-page text so it
-// stays legible over the animated aurora. Colour + opacity admin-tunable.
-$_au_panel_hex = trim($settings['au_page_panel_color'] ?? '#000000');
-$_au_panel_op  = max(0, min(100, (int)($settings['au_page_panel_opacity'] ?? 0)));
-$_au_panel_bg  = 'transparent';
+// ── Panel (all pages) — ONE tinted backing behind the content column on every
+// page (landing, static, archive, hashtag, blogroll). Full viewport height,
+// widened by Extend each side. Ported from INSTANT CAMERA → --panel-bg,
+// --panel-extend. Colour + opacity + extend admin-tunable.
+$_au_panel_hex    = trim($settings['au_panel_color'] ?? '#0a0e1a');
+$_au_panel_op     = max(0, min(100, (int)($settings['au_panel_opacity'] ?? 0)));
+$_au_panel_extend = max(0, min(100, (int)($settings['au_panel_extend'] ?? 0)));
+$_au_panel_bg     = 'transparent';
 if ($_au_panel_op > 0) {
     $_pc = ltrim($_au_panel_hex, '#');
     if (strlen($_pc) === 3) $_pc = $_pc[0].$_pc[0].$_pc[1].$_pc[1].$_pc[2].$_pc[2];
@@ -214,18 +217,10 @@ if ($_au_nls_sz > 0 && $_au_nls_op > 0) {
     // Top + bottom lines only, no side bleed (negative spread cancels the blur horizontally).
     $_au_navline_shadow = sprintf('0 %1$dpx %1$dpx -%1$dpx rgba(%2$d,%3$d,%4$d,%5$s),inset 0 %1$dpx %1$dpx -%1$dpx rgba(%2$d,%3$d,%4$d,%5$s)', $_n,$_nr,$_ng,$_nb,$_na);
 }
-$_au_lp_hex = trim($settings['au_landing_panel_color'] ?? '#0a0e1a');
-$_au_lp_op  = max(0, min(100, (int)($settings['au_landing_panel_opacity'] ?? 0)));
-$_au_lp_extend = max(0, min(100, (int)($settings['au_landing_panel_extend'] ?? 0)));
-$_au_landing_bg = 'transparent';
-if ($_au_lp_op > 0) {
-    $_c = ltrim($_au_lp_hex, '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
-    $_au_landing_bg = sprintf('rgba(%d,%d,%d,%s)', hexdec(substr($_c,0,2)),hexdec(substr($_c,2,2)),hexdec(substr($_c,4,2)), number_format($_au_lp_op/100,2));
-}
 ?>
 
 <!-- AURORA tile vars: border width / corner radius / ring opacity / sky base -->
-<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_au_glow_css); ?>;--nav-line-opacity:<?php echo $_au_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_au_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_au_navglow_strong); ?>;--page-panel-bg:<?php echo htmlspecialchars($_au_panel_bg); ?>;--au-navbar-bg:<?php echo htmlspecialchars($_au_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_au_posts_glow); ?>;--au-navline-shadow:<?php echo htmlspecialchars($_au_navline_shadow); ?>;--landing-panel-bg:<?php echo htmlspecialchars($_au_landing_bg); ?>;--landing-panel-extend:<?php echo (int)$_au_lp_extend; ?>px;<?php echo $_au_nav_line_css; ?>}</style>
+<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_au_glow_css); ?>;--nav-line-opacity:<?php echo $_au_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_au_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_au_navglow_strong); ?>;--panel-bg:<?php echo htmlspecialchars($_au_panel_bg); ?>;--panel-extend:<?php echo (int)$_au_panel_extend; ?>px;--au-navbar-bg:<?php echo htmlspecialchars($_au_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_au_posts_glow); ?>;--au-navline-shadow:<?php echo htmlspecialchars($_au_navline_shadow); ?>;<?php echo $_au_nav_line_css; ?>}</style>
 
 <!-- AURORA config carrier — read by aurora-bg.js (Layer 1 curtains) and
      aurora-wave.js (Layer 2 ring wave). -->
@@ -238,6 +233,12 @@ if ($_au_lp_op > 0) {
      data-au-border-dir="<?php echo htmlspecialchars($_au_bdir); ?>"
      data-au-border-rhythm="<?php echo htmlspecialchars($_au_brhythm); ?>"
      data-au-border-cycle="<?php echo $_au_wave_cycle; ?>"></div>
+
+<!-- Readability panel: centred translucent column behind the content, full
+     viewport height (reaches the top, runs behind the footer) on every page
+     — landing, static, archive, hashtag, blogroll. Ported from INSTANT CAMERA.
+     Width + tint + side gutters are admin-tunable (PANEL controls). -->
+<div class="au-panel" aria-hidden="true"></div>
 
 <?php if ($_au_has_treat): ?>
 <div class="au-treatment-bg" style="<?php echo $_au_bg_style; ?>" aria-hidden="true"></div>
