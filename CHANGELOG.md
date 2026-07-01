@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.334 — "Box Seat" (2026-07-01)
+
+- **Carousel-skin FOOTER standardized to the panel.** On INSTANT CAMERA, AURORA and PARADE the footer bar was uncapped, so its background/border spilled the full viewport width across the animated background ("escaped the content box"). The footer now spans exactly the readability **PANEL width** (content column + Panel Extend), centred, tinted with the panel background so it reads as the bottom of the panel — the same content-aligned geometry as THE GRID, in each skin's own colours. Text stays in the content column. Skins bumped: **INSTANT CAMERA 1.0.16 → 1.0.17**, **AURORA 1.0.28 → 1.0.29**, **PARADE 1.2.16 → 1.2.17** (Skin Packager re-run required).
+- **My Blogs no longer links sites in maintenance.** The hub's **My Blogs** blogroll assembly (`smack-multisite-blogroll.php`) enumerated every active spoke regardless of state, so a site in maintenance mode still appeared on peers' blogrolls. The assembly now skips any spoke whose `maintenance_mode` is on. Takes effect on spokes after the hub re-pushes the blogroll.
+
 ## 0.7.333 — "Pinkie Pie" (2026-06-30)
 
 - **Site SEARCH comes to the GRAM skins.** THE GRID, AURORA and PARADE now have full-text search — across photo titles, descriptions, `#hashtags`, and even colour words ("teal", "crimson", etc. resolve to the tag colour families). A new bottom-left **magnifying-glass dock** expands into a floating search box on hover (desktop) or tap (touch; tap-away or Esc to close), and submits to a new `?q=` route in `index.php` that renders the active skin's results page. A `#tag` query jumps straight to that hashtag archive. Results render in a shared, CSS-variable-themed grid so each skin keeps its own palette and spacing. The whole thing is **off by default** and gated on the existing **Search** setting (`search_enabled`) — turn it on per site under Settings.
