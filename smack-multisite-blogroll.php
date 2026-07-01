@@ -50,7 +50,7 @@ $my_blogs_cat     = $settings['blogroll_my_blogs_cat'] ?? 'My Blogs';
 $spoke_nodes = [];
 try {
     $spoke_nodes = $pdo->query("
-        SELECT id, site_name, site_url, site_tagline, blogroll_desc
+        SELECT id, site_name, site_url, site_tagline, blogroll_desc, maintenance_mode
         FROM snap_multisite_nodes
         WHERE role = 'spoke' AND status = 'active'
         ORDER BY site_name ASC
@@ -58,7 +58,7 @@ try {
 } catch (Exception $e) {
     // Migration 059 not yet applied -- site_tagline/blogroll_desc columns missing
     $spoke_nodes = $pdo->query("
-        SELECT id, site_name, site_url, NULL AS site_tagline, NULL AS blogroll_desc
+        SELECT id, site_name, site_url, NULL AS site_tagline, NULL AS blogroll_desc, maintenance_mode
         FROM snap_multisite_nodes
         WHERE role = 'spoke' AND status = 'active'
         ORDER BY site_name ASC
@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_my_blogs_setting
     $msg = "My Blogs settings saved.";
     // Reload spoke nodes with updated descs
     try {
-        $spoke_nodes = $pdo->query("SELECT id, site_name, site_url, site_tagline, blogroll_desc FROM snap_multisite_nodes WHERE role = 'spoke' AND status = 'active' ORDER BY site_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $spoke_nodes = $pdo->query("SELECT id, site_name, site_url, site_tagline, blogroll_desc, maintenance_mode FROM snap_multisite_nodes WHERE role = 'spoke' AND status = 'active' ORDER BY site_name ASC")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) { /* ignore if columns missing */ }
 }
 
@@ -142,6 +142,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['push_blogroll'])) {
         if ($my_blogs_enabled && !empty($spoke_nodes)) {
             $my_blog_entries = [];
             foreach ($spoke_nodes as $sn) {
+                // Skip spokes currently in maintenance mode — a site that is down
+                // for maintenance must NOT be linked from any peer's blogroll.
+                // (maintenance_mode on snap_multisite_nodes is kept current by the
+                //  heartbeat sync + the hub's own push-maintenance action.)
+                if ((int)($sn['maintenance_mode'] ?? 0) === 1) continue;
                 $desc = trim($sn['blogroll_desc'] ?? '');
                 if ($desc === '') $desc = trim($sn['site_tagline'] ?? '');
                 $my_blog_entries[] = [

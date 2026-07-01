@@ -1045,8 +1045,18 @@ body.pa-modal-open { overflow: hidden; }
    ========================================================================== */
 
 #system-footer {
+    /* Footer tracks the readability PANEL: spans the full panel width
+       (content column + Panel Extend), centred, and never beyond it — the same
+       content-aligned footer geometry as THE GRID, with this skin's own colours.
+       Previously #system-footer was uncapped, so the bar/border/background
+       spilled the full viewport width across the animated background ("escapes
+       the content box"). SnapSmack footer rule: footer == panel width on every
+       carousel skin, no exceptions. .inside below keeps the text in the content
+       column so the bar spans the panel while the text stays centred on content. */
     border-top: 1px solid var(--border-color);
-    background: var(--bg-primary);
+    background:  var(--panel-bg, transparent);
+    max-width:   calc(var(--grid-max-width, 935px) + 2 * var(--panel-extend, 0px));
+    margin:      0 auto;
 }
 
 #system-footer .inside {
