@@ -180,6 +180,55 @@ function snapsmack_hash_ip($ip) {
 }
 
 /**
+ * Resolve the visitor's country to a 2-letter ISO 3166-1 code.
+ *
+ * PRIVACY: SnapSmack stats are local-only — we never send a visitor IP to a
+ * third-party geolocation API (that would contradict the "visits only, no
+ * tracking" promise). Instead we read a country code the WEBSERVER already
+ * resolved locally and exposed as an environment variable / request header.
+ *
+ * Supported sources, in priority order:
+ *   - mod_maxminddb   → set MaxMindDBEnv MM_COUNTRY_CODE <db>/country/iso_code
+ *   - mod_geoip       → GEOIP_COUNTRY_CODE (legacy)
+ *   - Cloudflare      → CF-IPCountry header (only if a site is ever fronted by CF)
+ *
+ * Returns an uppercase ISO code (e.g. "CA", "US", "GB") or null if no local
+ * resolver is configured. Bogus/reserved codes (XX, T1, etc.) map to null.
+ *
+ * One-time Apache setup per vhost (Debian/Proxmox boxes):
+ *   apt install libapache2-mod-maxminddb mmdb-bin
+ *   a2enmod maxminddb && systemctl reload apache2
+ *   # in the vhost:
+ *   MaxMindDBEnable On
+ *   MaxMindDBFile  COUNTRY_DB /usr/share/GeoIP/GeoLite2-Country.mmdb
+ *   MaxMindDBEnv   MM_COUNTRY_CODE COUNTRY_DB/country/iso_code
+ *   # keep the DB current with the geoipupdate package (weekly cron).
+ *   # behind a reverse proxy, enable mod_remoteip first so the real client IP
+ *   # is what mod_maxminddb looks up.
+ *
+ * @return string|null  Uppercase 2-letter ISO country code, or null.
+ */
+function snapsmack_geoip_country() {
+    $candidates = [
+        $_SERVER['MM_COUNTRY_CODE']         ?? null, // mod_maxminddb (preferred)
+        $_SERVER['GEOIP_COUNTRY_CODE']      ?? null, // mod_geoip (legacy)
+        $_SERVER['HTTP_CF_IPCOUNTRY']       ?? null, // Cloudflare, if ever fronted
+        $_SERVER['HTTP_X_GEO_COUNTRY']      ?? null, // generic upstream proxy
+    ];
+
+    foreach ($candidates as $code) {
+        if (empty($code)) continue;
+        $code = strtoupper(trim($code));
+        // Valid ISO 3166-1 alpha-2 only; reject reserved/placeholder codes.
+        if (preg_match('/^[A-Z]{2}$/', $code)
+            && !in_array($code, ['XX', 'T1', 'ZZ', 'A1', 'A2', 'O1'], true)) {
+            return $code;
+        }
+    }
+    return null;
+}
+
+/**
  * Log a single page hit to snap_stats.
  *
  * @param  PDO   $pdo       Database connection
@@ -233,7 +282,7 @@ function snapsmack_log_hit($pdo, $settings, $meta = []) {
             substr($ua, 0, 500),
             $parsed['browser'],
             $parsed['os'],
-            null, // country — populated by GeoIP if available (future)
+            snapsmack_geoip_country(), // local webserver GeoIP env var; null if unconfigured
             snapsmack_hash_ip($ip),
             $is_bot,
             $meta['search_term'] ?? snapsmack_extract_search_term($referrer),

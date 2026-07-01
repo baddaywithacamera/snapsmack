@@ -26,6 +26,8 @@ $_demo_sites = [
     'wateronthebrain.ca'  => 'https://wateronthebrain.ca',
     'foundtextures.ca'    => 'https://foundtextures.ca',
     'acolourlesslife.ca'  => 'https://acolourlesslife.ca',
+    'foreverphotograph.ing'   => 'https://foreverphotograph.ing',
+    'theschoolofhardnocks.ca' => 'https://theschoolofhardnocks.ca',
 ];
 
 $_demo_stats      = [];
