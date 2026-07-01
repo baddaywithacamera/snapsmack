@@ -12,6 +12,10 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.337 — "Front Row Seat" (2026-07-01)
+
+- **PARADE / AURORA footer was invisible on landing + static pages (fixed).** The footer rendered in the DOM but was painted over by the fixed full-viewport animation canvas (fireworks/flag on PARADE, aurora on AURORA): that canvas lives inside `.pa-content-wrap`/`.au-content-wrap`, which has `z-index:1`, so the whole layer stacked above the footer sibling. Because the canvas is `pointer-events:none`, hit-testing still "found" the footer underneath — which is why it looked present to scripts but was blank to the eye. Fix: `#system-footer` now takes `position:relative; z-index:2` so it sits above the content-wrap's canvas. Verified live on PARADE before shipping. The blogroll was never affected (it doesn't include the canvas layer). PARADE 1.2.18 → 1.2.19, AURORA 1.0.30 → 1.0.31; Skin Packager re-run required.
+
 ## 0.7.336 — "Ringside Seat" (2026-07-01)
 
 - **THE GRID footer no longer spans the full window.** On landing and static pages THE GRID's footer bar ran the full viewport width (escaping the grid); only the blogroll was capped. It's now capped to the content column and centred, matching the INSTANT CAMERA standard. (THE GRID 1.3.33 → 1.3.34.)
