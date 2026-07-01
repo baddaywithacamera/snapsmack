@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.2.15',
+    'version'     => '1.2.16',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
@@ -483,20 +483,25 @@ return [
             'section' => 'NAV LINES', 'type' => 'range_numeric', 'label' => 'Nav Line Shadow Opacity',
             'default' => '40', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
         ],
-        'pa_landing_panel_color' => [
-            'section' => 'LANDING PANEL', 'type' => 'color', 'label' => 'Landing Panel Colour',
+        // ---- PANEL (readability backing on EVERY page) ─────────────────────
+        // ONE centred translucent column behind the content on every page —
+        // landing, About/static, archive, hashtag, blogroll. Fixed + full
+        // viewport height; width = content column + Extend each side. Ported
+        // from INSTANT CAMERA — one control set replaces the old Landing/Page.
+        'pa_panel_color' => [
+            'section' => 'PANEL', 'type' => 'color', 'label' => 'Panel Colour',
             'default' => '#ffffff',
-            'hint'    => 'Backing colour behind the landing feed column (landing only). PHP-handled → --landing-panel-bg.',
+            'hint'    => 'Backing colour behind the content column on every page so it reads over the fireworks/flag. PHP-handled → --panel-bg.',
         ],
-        'pa_landing_panel_opacity' => [
-            'section' => 'LANDING PANEL', 'type' => 'range_numeric', 'label' => 'Landing Panel Opacity',
+        'pa_panel_opacity' => [
+            'section' => 'PANEL', 'type' => 'range_numeric', 'label' => 'Panel Opacity',
             'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'    => '0 = transparent. Raise for a solid, readable column.',
+            'hint'    => '0 = transparent (the background shows through). Raise until text is comfortable to read.',
         ],
-        'pa_landing_panel_extend' => [
-            'section' => 'LANDING PANEL', 'type' => 'range_numeric', 'label' => 'Landing Panel Extend',
+        'pa_panel_extend' => [
+            'section' => 'PANEL', 'type' => 'range_numeric', 'label' => 'Panel Extend (gutters)',
             'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => 'px',
-            'hint'    => 'How far the panel bleeds out past the outer tiles, each side. 0 = flush, 100 = 100px out.',
+            'hint'    => 'How far the panel bleeds out past the content each side. 0 = flush, 100 = 100px gutters.',
         ],
         'pa_carousel_indicator' => [
             'section'  => 'GRID',
@@ -626,17 +631,8 @@ return [
             'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
         ],
 
-        // ---- PAGE READABILITY PANEL ----------------------------------------
-        'pa_page_panel_color' => [
-            'section' => 'PAGE PANEL', 'type' => 'color', 'label' => 'Page Panel Colour',
-            'default' => '#ffffff',
-            'hint'    => 'Backing colour behind page text (About, static pages) so it reads over the moving background. PHP-handled → --page-panel-bg.',
-        ],
-        'pa_page_panel_opacity' => [
-            'section' => 'PAGE PANEL', 'type' => 'range_numeric', 'label' => 'Page Panel Opacity',
-            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'    => '0 = no panel. Raise it until the text is comfortable to read.',
-        ],
+        // (Page readability panel consolidated into the single PANEL control
+        //  above — ported from INSTANT CAMERA, covers every page incl. blogroll.)
 
         // ---- MENU / NAV (font, case, link colour, glow) -------------------
         'pa_nav_case' => [

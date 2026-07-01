@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'AURORA',
-    'version'     => '1.0.27',
+    'version'     => '1.0.28',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Northern-lights desktop skin. A classic 3-across square grid under a slow aurora that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.',
@@ -285,21 +285,26 @@ return [
             'section' => 'NAV LINES', 'type' => 'range_numeric', 'label' => 'Nav Line Shadow Opacity',
             'default' => '40', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
         ],
-        // ---- LANDING PANEL (readable feed column, landing only) ────────────
-        'au_landing_panel_color' => [
-            'section' => 'LANDING PANEL', 'type' => 'color', 'label' => 'Landing Panel Colour',
+        // ---- PANEL (readability backing on EVERY page) ─────────────────────
+        // ONE centred translucent column behind the content on every page —
+        // landing, About/static, archive, hashtag, blogroll. Fixed + full
+        // viewport height (reaches the top, runs behind the footer); width =
+        // content column + Extend each side. Ported from INSTANT CAMERA — one
+        // control set replaces the old separate Landing Panel / Page Panel.
+        'au_panel_color' => [
+            'section' => 'PANEL', 'type' => 'color', 'label' => 'Panel Colour',
             'default' => '#0a0e1a',
-            'hint'    => 'Backing colour behind the landing feed column (landing only). PHP-handled → --landing-panel-bg.',
+            'hint'    => 'Backing colour behind the content column on every page so it reads over the aurora. PHP-handled → --panel-bg.',
         ],
-        'au_landing_panel_opacity' => [
-            'section' => 'LANDING PANEL', 'type' => 'range_numeric', 'label' => 'Landing Panel Opacity',
+        'au_panel_opacity' => [
+            'section' => 'PANEL', 'type' => 'range_numeric', 'label' => 'Panel Opacity',
             'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'    => '0 = transparent. Raise for a solid, readable column over the aurora.',
+            'hint'    => '0 = transparent (the aurora shows through). Raise until text is comfortable to read.',
         ],
-        'au_landing_panel_extend' => [
-            'section' => 'LANDING PANEL', 'type' => 'range_numeric', 'label' => 'Landing Panel Extend',
+        'au_panel_extend' => [
+            'section' => 'PANEL', 'type' => 'range_numeric', 'label' => 'Panel Extend (gutters)',
             'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => 'px',
-            'hint'    => 'How far the panel bleeds out past the outer tiles, each side. 0 = flush, 100 = 100px out.',
+            'hint'    => 'How far the panel bleeds out past the content each side. 0 = flush, 100 = 100px gutters.',
         ],
         // NOTE: no "grid background / gap colour" option — unlike The Grid, AURORA
         // shows the live aurora through the gaps between tiles (the grid container
@@ -500,27 +505,8 @@ return [
             // PHP-handled → --profile-text-glow.
         ],
 
-        // ---- PAGE READABILITY PANEL ----------------------------------------
-        // Tinted backing behind static-page text so it stays readable over the
-        // animated aurora background. Colour + opacity admin-tunable.
-        'au_page_panel_color' => [
-            'section' => 'PAGE PANEL',
-            'type'    => 'color',
-            'label'   => 'Page Panel Colour',
-            'default' => '#000000',
-            'hint'    => 'Backing colour behind page text (About, static pages) so it reads over the moving background. PHP-handled → --page-panel-bg.',
-        ],
-        'au_page_panel_opacity' => [
-            'section'  => 'PAGE PANEL',
-            'type'     => 'range_numeric',
-            'label'    => 'Page Panel Opacity',
-            'default'  => '0',
-            'min'      => '0',
-            'max'      => '100',
-            'step'     => '5',
-            'unit'     => '%',
-            'hint'     => '0 = no panel (text sits straight on the background). Raise it until the text is comfortable to read.',
-        ],
+        // (Page readability panel consolidated into the single PANEL control
+        //  above — ported from INSTANT CAMERA, covers every page incl. blogroll.)
 
         // ---- NAV -----------------------------------------------------------
         'au_nav_case' => [
