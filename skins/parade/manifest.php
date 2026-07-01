@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.2.17',
+    'version'     => '1.2.18',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
@@ -768,6 +768,25 @@ return [
             'label'   => 'Dock Magnifier Colour',
             'default' => '#1a1a1a',
             'hint'    => 'Colour of the magnifying-glass icon. PHP-handled → --gsd-glass-color.',
+        ],
+
+        // ---- FOOTER (bar background — colour + user opacity slider) ---------
+        // Shared keys read by core/footer.php → --footer-bg. Lets the footer bar
+        // be dialled independently of Panel Opacity. Defaults reproduce the
+        // current footer look; the opacity slider is the user control.
+        'footer_bg_color' => [
+            'section' => 'FOOTER',
+            'type'    => 'color',
+            'label'   => 'Footer Bar Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Background colour of the footer bar. PHP-handled → --footer-bg.',
+        ],
+        'footer_bg_opacity' => [
+            'section'  => 'FOOTER',
+            'type'     => 'range_numeric',
+            'label'    => 'Footer Bar Opacity',
+            'default'  => '30', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'     => 'Transparency of the footer bar so it can be matched to the background — independent of Panel Opacity.',
         ],
     ],
 ];

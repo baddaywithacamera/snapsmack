@@ -30,7 +30,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'INSTANT CAMERA',
-    'version'     => '1.0.17',
+    'version'     => '1.0.18',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'For instant-film photographers. A GRAMOFSMACK 3-across grid whose tile aspect you set to match your format (Polaroid, Instax Mini/Wide/Square, or custom) so prints show UNCROPPED — the scanned border is the frame, the skin just adds a drop shadow. Drifting Organized Mayhem tabletop behind a white scrim. Prints on a table, which is exactly what instant photography is.',
@@ -784,6 +784,25 @@ return [
             'label'   => 'Dock Magnifier Colour',
             'default' => '#262626',
             'hint'    => 'Colour of the magnifying-glass icon. PHP-handled → --gsd-glass-color.',
+        ],
+
+        // ---- FOOTER (bar background — colour + user opacity slider) ---------
+        // Shared keys read by core/footer.php → --footer-bg. Lets the footer bar
+        // be dialled independently of Panel Opacity. Defaults reproduce the
+        // current footer look; the opacity slider is the user control.
+        'footer_bg_color' => [
+            'section' => 'FOOTER',
+            'type'    => 'color',
+            'label'   => 'Footer Bar Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Background colour of the footer bar. PHP-handled → --footer-bg.',
+        ],
+        'footer_bg_opacity' => [
+            'section'  => 'FOOTER',
+            'type'     => 'range_numeric',
+            'label'    => 'Footer Bar Opacity',
+            'default'  => '65', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'     => 'Transparency of the footer bar so it can be matched to the background — independent of Panel Opacity.',
         ],
 
     ],

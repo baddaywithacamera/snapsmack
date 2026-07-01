@@ -24,7 +24,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'The Grid',
-    'version'     => '1.3.33',
+    'version'     => '1.3.34',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Classic Instagram-style 3-column square-thumbnail photo grid. Carousel and panorama post support. Clean, minimal UI keeps the focus on the photographs.',
@@ -518,6 +518,25 @@ return [
             'label'   => 'Dock Magnifier Colour',
             'default' => '#262626',
             'hint'    => 'Colour of the magnifying-glass icon. PHP-handled → --gsd-glass-color.',
+        ],
+
+        // ---- FOOTER (bar background — colour + user opacity slider) ---------
+        // Shared keys read by core/footer.php → --footer-bg. Lets the footer bar
+        // be dialled independently of the page background. THE GRID default is
+        // an opaque white bar (its current look); the slider is the user control.
+        'footer_bg_color' => [
+            'section' => 'FOOTER',
+            'type'    => 'color',
+            'label'   => 'Footer Bar Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Background colour of the footer bar. PHP-handled → --footer-bg.',
+        ],
+        'footer_bg_opacity' => [
+            'section'  => 'FOOTER',
+            'type'     => 'range_numeric',
+            'label'    => 'Footer Bar Opacity',
+            'default'  => '100', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'     => 'Transparency of the footer bar.',
         ],
 
     ],
