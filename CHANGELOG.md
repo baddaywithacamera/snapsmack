@@ -12,7 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.332 — "Rarity" (2026-06-30)
+## 0.7.333 — "Pinkie Pie" (2026-06-30)
+
+- **Site SEARCH comes to the GRAM skins.** THE GRID, AURORA and PARADE now have full-text search — across photo titles, descriptions, `#hashtags`, and even colour words ("teal", "crimson", etc. resolve to the tag colour families). A new bottom-left **magnifying-glass dock** expands into a floating search box on hover (desktop) or tap (touch; tap-away or Esc to close), and submits to a new `?q=` route in `index.php` that renders the active skin's results page. A `#tag` query jumps straight to that hashtag archive. Results render in a shared, CSS-variable-themed grid so each skin keeps its own palette and spacing. The whole thing is **off by default** and gated on the existing **Search** setting (`search_enabled`) — turn it on per site under Settings.
+- **Search engine lifted into core, shared not copied.** The query logic (title/description/tag-slug + colour-family matching) previously lived only inside the locked PHOTOGRAM skin; it now lives in `core/search-engine.php` and is reused by every skin's `search.php` through the shared results partial (`core/gram-search-results.php`). PHOTOGRAM keeps its own `?pg=search` flow untouched. New engine `smack-gram-search` (JS + CSS) registered in the manifest inventory and wired into each GRAM skin's `require_scripts`.
+- **52 CARD PICKUP gets search too.** As a SMACKONEOUT (solo) skin, its search page follows the solo page pattern (its own header nav + footer, ghost chrome forced off) rather than the GRAM carousel layout, but shares the same core engine and results renderer.
+
+
 
 - **Grid Lighttable — trigram selection.** Ticking tiles for a trigram now shows a live **L / M / R** (or **T / M / B**) disc on each ticked tile reflecting the slot it will take when locked, so the order is unmistakable before you hit LOCK. The selection also persists across reloads (saved per-session), so a refresh no longer wipes your picks; it clears automatically once you lock or publish.
 - **3-across enforcement (blog-level).** New opt-in rule that keeps the published feed to complete rows of three: a lone trailing single post auto-drops to **queued** and auto-releases the moment two more fill its row — the same hands-off gate trigrams already use. Drafts are never touched. **Creating a trigram turns it on automatically** (a blog using trigrams is committed to the 3-across grid); a checkbox in the lighttable toolbar flips it back off. Lives in `core/trigram.php` (`threeacross_settle`) wired into single + bulk publish.
