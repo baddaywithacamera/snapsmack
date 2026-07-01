@@ -39,6 +39,11 @@ $_sp_initial       = strtoupper(substr($_sp_site_name, 0, 1));
 </head>
 <body class="pa-static-page">
 
+<!-- #page-wrapper carries z-index:1 so the footer (included below, inside this
+     wrapper) sits ABOVE the fixed fireworks/flag canvas — matching blogroll.php,
+     where the footer is visible for the same reason. Without it the footer
+     renders behind the background and disappears. -->
+<div id="page-wrapper">
 <div class="pa-content-wrap">
 
 <!-- ── Shared profile + sticky nav (identical across all Grid pages) ──────── -->
@@ -73,4 +78,6 @@ $_sp_initial       = strtoupper(substr($_sp_site_name, 0, 1));
 </div><!-- /.pa-content-wrap -->
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
+
+</div><!-- /#page-wrapper -->
 <?php // ===== SNAPSMACK EOF =====
