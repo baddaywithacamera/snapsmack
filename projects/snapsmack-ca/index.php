@@ -28,6 +28,7 @@ $_demo_sites = [
     'acolourlesslife.ca'  => 'https://acolourlesslife.ca',
     'foreverphotograph.ing'   => 'https://foreverphotograph.ing',
     'theschoolofhardnocks.ca' => 'https://theschoolofhardnocks.ca',
+    'fauxlaroid.fyi'          => 'https://fauxlaroid.fyi',
 ];
 
 $_demo_stats      = [];
@@ -1844,6 +1845,27 @@ require_once __DIR__ . '/includes/header.php';
                     <h3>Parade</h3>
                     <p>Pride, in motion. Rainbow, Bi, Trans, and Two-Spirit flag palettes, an animated waving-flag or fireworks background, colour-shifting tile borders, configurable effects. Built to celebrate.</p>
                     <a href="https://theschoolofhardnocks.ca" target="_blank" class="theme-link"><span class="theme-link-label">View live site</span>theschoolofhardnocks.ca →</a>
+                </div>
+            </div>
+
+            <div class="theme-card" data-stats="<?php echo ss_card_stats('fauxlaroid.fyi', $_demo_stats); ?>">
+                <div class="theme-main-shot">
+                    <a href="img/instantcam-landing.png" data-lb="img/instantcam-landing.png">
+                        <img src="img/instantcam-landing.png" alt="Instant Camera — landing">
+                    </a>
+                </div>
+                <div class="theme-thumbs">
+                    <a href="img/instantcam-archive.png" data-lb="img/instantcam-archive.png">
+                        <img src="img/instantcam-archive.png" alt="Instant Camera — archive">
+                    </a>
+                    <a href="img/instantcam-page.png" data-lb="img/instantcam-page.png">
+                        <img src="img/instantcam-page.png" alt="Instant Camera — pages">
+                    </a>
+                </div>
+                <div class="theme-info">
+                    <h3>Instant Camera</h3>
+                    <p>Instant nostalgia. Faux-Polaroid prints scattered across an infinite tabletop, film grain and vintage treatment, square shots framed in white. Built for the Polaroid dream on a digital budget.</p>
+                    <a href="https://fauxlaroid.fyi" target="_blank" class="theme-link"><span class="theme-link-label">View live site</span>fauxlaroid.fyi →</a>
                 </div>
             </div>
 
