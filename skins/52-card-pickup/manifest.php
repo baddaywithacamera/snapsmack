@@ -14,7 +14,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name' => '52 Card Pickup',
-    'version' => '1.4.1',
+    'version' => '1.4.2',
     'author' => 'Sean McCormick',
     'support' => 'sean@baddaywithacamera.ca',
     'description' => 'The landing IS the table. An infinite, pannable tabletop of scattered photo prints (the Organized Mayhem engine) — drag to roam, scroll to zoom, hover to lift a print, click to pick it up and read it, ESC to drop it back. Nav and footer stay hidden under the pile until you reach for the screen edges. Named for the card trick where someone throws a deck on the floor.',
@@ -176,6 +176,32 @@ return [
             'options' => $fonts,
             'selector' => 'body, .description, .meta',
             'property' => 'font-family',
+        ],
+
+        // ---- SEARCH DOCK (bottom-left magnifier) ---------------------------
+        // Shared keys read by core/gram-search-dock.php. DISC = the round pill
+        // behind the magnifier; GLASS = the magnifier icon. Colour + opacity so
+        // the dock can be matched to the background.
+        'gsd_disc_color' => [
+            'section' => 'SEARCH DOCK',
+            'type'    => 'color',
+            'label'   => 'Dock Circle Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Colour of the round dock behind the magnifier. PHP-handled → --gsd-disc-bg.',
+        ],
+        'gsd_disc_opacity' => [
+            'section'  => 'SEARCH DOCK',
+            'type'     => 'range_numeric',
+            'label'    => 'Dock Circle Opacity',
+            'default'  => '100', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'     => 'Transparency of the dock circle so it can blend into the background.',
+        ],
+        'gsd_glass_color' => [
+            'section' => 'SEARCH DOCK',
+            'type'    => 'color',
+            'label'   => 'Dock Magnifier Colour',
+            'default' => '#333333',
+            'hint'    => 'Colour of the magnifying-glass icon. PHP-handled → --gsd-glass-color.',
         ],
     ],
 

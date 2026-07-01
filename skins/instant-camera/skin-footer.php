@@ -60,6 +60,9 @@ if (!empty($requested)) {
 // All Grid engines load through the manifest above (require_scripts →
 // core/manifest-inventory.php). No direct <script> tags here.
 
+// ── Floating search dock (bottom-left magnifier; self-gates on search_enabled) ─
+include(dirname(__DIR__, 2) . '/core/gram-search-dock.php');
+
 // ── Core footer (closes </body></html>) ────────────────────────────────────
 include_once(dirname(__DIR__, 2) . '/core/footer.php');
 // ===== SNAPSMACK EOF =====
