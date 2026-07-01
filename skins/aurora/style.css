@@ -1178,6 +1178,15 @@ body:has(.au-treatment-bg).is-blogroll #scroll-stage {
     margin: 0 auto;
 }
 
+/* Constrain the blogroll's scroll-stage to the content width so its sticky nav
+   matches every other page (it otherwise spans the full window). Ported from
+   INSTANT CAMERA — applies on the normal animated-background blogroll, not just
+   when an optional treatment image is set. */
+body.is-blogroll #scroll-stage {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+}
+
 /* ==========================================================================
    AVATAR LIGHTBOX
    ========================================================================== */
