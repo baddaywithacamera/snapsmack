@@ -62,6 +62,8 @@ return [
                                   //  this engine fades them to opacity:1 on load)
         'smack-lightbox',         // click-to-zoom for content/asset images
                                   // (img[data-lightbox-src] + cursor:zoom-in)
+        'smack-gram-search',      // bottom-left magnifier → expanding search dock
+                                  // (gated on search_enabled; CSS + JS)
     ],
 
     'community_comments'  => true,

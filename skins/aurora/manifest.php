@@ -75,6 +75,7 @@ return [
         'smack-aurora-wave',
         'smack-progressive-reveal',
         'smack-tag-infinite',     // shared prefix-derived hashtag infinite scroll
+        'smack-gram-search',      // bottom-left magnifier → expanding search dock
     ],
 
     'community_comments'  => true,

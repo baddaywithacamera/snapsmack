@@ -43,6 +43,9 @@ if (!empty($requested)) {
     }
 }
 
+// Floating search dock (bottom-left magnifier; self-gates on search_enabled)
+include(dirname(__DIR__, 2) . '/core/gram-search-dock.php');
+
 // Include core footer to close the document
 include_once(dirname(__DIR__, 2) . '/core/footer.php');
 ?>

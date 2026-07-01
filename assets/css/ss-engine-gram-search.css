@@ -1,0 +1,169 @@
+/**
+ * SNAPSMACK - Floating Search Dock + Search Results styles
+ *
+ * Powers the bottom-left magnifier dock (core/gram-search-dock.php) and the
+ * shared results partial (core/gram-search-results.php). Everything is themed
+ * from each skin's CSS custom properties with literal fallbacks, so it adopts
+ * the host skin's palette/spacing on GRAM and solo skins alike.
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the marker comment at the bottom.
+ */
+
+/* ─── FLOATING MAGNIFIER DOCK ──────────────────────────────────────────── */
+.gram-search-dock {
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    z-index: 1200;
+}
+.gram-search-dock .gsd-form {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    background: var(--bg-primary, #ffffff);
+    border: 1px solid var(--border-color, #dbdbdb);
+    border-radius: 999px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+}
+.gram-search-dock .gsd-toggle {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: var(--text-primary, #262626);
+    cursor: pointer;
+}
+.gram-search-dock .gsd-input {
+    width: 0;
+    padding: 0;
+    opacity: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    font-size: 14px;
+    color: var(--text-primary, #262626);
+    transition: width 0.28s ease, opacity 0.2s ease, padding 0.28s ease;
+}
+.gram-search-dock .gsd-input::placeholder {
+    color: var(--text-secondary, #8e8e8e);
+}
+/* Touch / forced-open state expands the field everywhere. */
+.gram-search-dock.is-open .gsd-input {
+    width: 200px;
+    opacity: 1;
+    padding: 0 14px 0 2px;
+}
+/* Desktop pointers also expand on hover. */
+@media (hover: hover) and (pointer: fine) {
+    .gram-search-dock:hover .gsd-input,
+    .gram-search-dock:focus-within .gsd-input {
+        width: 200px;
+        opacity: 1;
+        padding: 0 14px 0 2px;
+    }
+}
+
+/* ─── SHARED SEARCH RESULTS ────────────────────────────────────────────── */
+.gram-search {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+    padding: 18px 16px 48px;
+}
+.gram-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 13px;
+    margin-bottom: 16px;
+    background: var(--bg-primary, #ffffff);
+    border: 1px solid var(--border-color, #dbdbdb);
+    border-radius: 10px;
+}
+.gram-search-bar-icon { color: var(--text-secondary, #8e8e8e); flex: 0 0 auto; }
+.gram-search-bar-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    font-size: 15px;
+    color: var(--text-primary, #262626);
+}
+.gram-search-bar-input::placeholder { color: var(--text-secondary, #8e8e8e); }
+.gram-search-bar-clear {
+    flex: 0 0 auto;
+    font-size: 20px;
+    line-height: 1;
+    text-decoration: none;
+    color: var(--text-secondary, #8e8e8e);
+    padding: 0 4px;
+}
+
+.gram-search-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.gram-search-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 11px;
+    font-size: 13px;
+    text-decoration: none;
+    color: var(--text-primary, #262626);
+    background: var(--bg-primary, #ffffff);
+    border: 1px solid var(--border-color, #dbdbdb);
+    border-radius: 999px;
+}
+.gram-search-tag:hover { border-color: var(--accent-color, #0095f6); }
+.gram-search-tag-hash { color: var(--accent-color, #0095f6); }
+.gram-search-tag-count { color: var(--text-secondary, #8e8e8e); font-size: 12px; }
+
+.gram-search-meta {
+    color: var(--text-secondary, #8e8e8e);
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+.gram-search-meta strong { color: var(--text-primary, #262626); }
+
+.gram-search-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--grid-gap, 2px);
+}
+.gram-search-cell {
+    position: relative;
+    display: block;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    border-radius: var(--tile-radius, 0);
+    background: var(--border-color, #eeeeee);
+}
+.gram-search-cell img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.2s ease;
+}
+.gram-search-cell:hover img { opacity: 0.85; }
+
+.gram-search-empty {
+    text-align: center;
+    color: var(--text-secondary, #8e8e8e);
+    padding: 52px 16px;
+}
+.gram-search-empty p { margin: 12px 0 0; font-size: 15px; }
+/* ===== SNAPSMACK EOF ===== */

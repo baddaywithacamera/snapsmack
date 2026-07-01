@@ -297,6 +297,34 @@ try {
         }
     }
 
+    // --- SEARCH ---
+    // ?q=term routes to the active skin's search.php if it exists, gated on the
+    // search_enabled setting. Photogram keeps its own ?pg=search flow (locked),
+    // so it is excluded here. Mirrors the hashtag dispatch above.
+    if (isset($_GET['q']) && ($settings['search_enabled'] ?? '0') === '1'
+        && $active_skin !== 'photogram') {
+        $search_template = __DIR__ . '/skins/' . $active_skin . '/search.php';
+        if (file_exists($search_template)) {
+            $search_q = trim((string)$_GET['q']);
+            // A #tag query jumps straight to that hashtag archive (before output).
+            if ($search_q !== '' && $search_q[0] === '#') {
+                $tag_candidate = substr($search_q, 1);
+                if (preg_match('/^[a-zA-Z][a-zA-Z0-9_]{0,49}$/', $tag_candidate)) {
+                    header('Location: ' . BASE_URL . '?tag=' . rawurlencode(strtolower($tag_candidate)));
+                    exit;
+                }
+            }
+            snapsmack_log_hit($pdo, $settings, ['page_type' => 'search', 'page_slug' => mb_substr($search_q, 0, 100)]);
+            include __DIR__ . '/skins/' . $active_skin . '/skin-meta.php';
+            ?><body class="is-search-page"><div id="page-wrapper"><?php
+            include $search_template;
+            ?></div><?php
+            include __DIR__ . '/core/footer-scripts.php';
+            ?></body></html><?php
+            exit;
+        }
+    }
+
     // --- REQUEST ROUTING (LATEST POST MODE) ---
     // --- IMAGE LOOKUP ---
     if ($requested_slug) {
