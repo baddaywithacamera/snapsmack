@@ -818,6 +818,33 @@ return [
             'hint'     => 'Centre = none. Drag left to darken the background, right to lighten it.',
         ],
 
+        // ---- SEARCH DOCK (bottom-left magnifier) ---------------------------
+        // Shared keys read by core/gram-search-dock.php. DISC = the round pill
+        // behind the magnifier; GLASS = the magnifier icon. Colour + opacity so
+        // the dock can be matched to the background. AURORA runs dark, so the
+        // defaults mirror its --bg-primary (#000000) / --text-primary (#eaeaea).
+        'gsd_disc_color' => [
+            'section' => 'SEARCH DOCK',
+            'type'    => 'color',
+            'label'   => 'Dock Circle Colour',
+            'default' => '#000000',
+            'hint'    => 'Colour of the round dock behind the magnifier. PHP-handled → --gsd-disc-bg.',
+        ],
+        'gsd_disc_opacity' => [
+            'section'  => 'SEARCH DOCK',
+            'type'     => 'range_numeric',
+            'label'    => 'Dock Circle Opacity',
+            'default'  => '100', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'     => 'Transparency of the dock circle so it can blend into the background.',
+        ],
+        'gsd_glass_color' => [
+            'section' => 'SEARCH DOCK',
+            'type'    => 'color',
+            'label'   => 'Dock Magnifier Colour',
+            'default' => '#eaeaea',
+            'hint'    => 'Colour of the magnifying-glass icon. PHP-handled → --gsd-glass-color.',
+        ],
+
     ],
 ];
 // ===== SNAPSMACK EOF =====

@@ -22,8 +22,33 @@
 if (($settings['search_enabled'] ?? '0') !== '1') return;
 
 $gsd_ph = htmlspecialchars($settings['search_placeholder'] ?? 'Search or #tag…');
+
+// ── Appearance controls (shared setting keys, per-skin values) ──────────────
+// DISC  = the round pill behind the magnifier (.gsd-form background).
+// GLASS = the magnifier icon itself (.gsd-toggle colour; the SVG uses
+//         stroke="currentColor", so the toggle's colour IS the glass colour).
+// Disc colour + opacity combine into one rgba; glass is a solid colour. Emitted
+// as inline CSS custom properties so this ONE shared component themes the dock
+// on every skin (no per-skin CSS). Left unset → the skin's own --bg-primary /
+// --text-primary win (current look, zero regression).
+$gsd_style_parts = [];
+$gsd_disc_color  = trim((string)($settings['gsd_disc_color'] ?? ''));
+if (preg_match('/^#?[0-9a-fA-F]{6}$/', $gsd_disc_color)) {
+    $gsd_hex = ltrim($gsd_disc_color, '#');
+    $gsd_r   = hexdec(substr($gsd_hex, 0, 2));
+    $gsd_g   = hexdec(substr($gsd_hex, 2, 2));
+    $gsd_b   = hexdec(substr($gsd_hex, 4, 2));
+    $gsd_op  = $settings['gsd_disc_opacity'] ?? '';
+    $gsd_op  = ($gsd_op === '') ? 100 : max(0, min(100, (int)$gsd_op));
+    $gsd_style_parts[] = '--gsd-disc-bg:rgba(' . $gsd_r . ',' . $gsd_g . ',' . $gsd_b . ',' . round($gsd_op / 100, 3) . ')';
+}
+$gsd_glass_color = trim((string)($settings['gsd_glass_color'] ?? ''));
+if (preg_match('/^#?[0-9a-fA-F]{6}$/', $gsd_glass_color)) {
+    $gsd_style_parts[] = '--gsd-glass-color:' . (strpos($gsd_glass_color, '#') === 0 ? $gsd_glass_color : '#' . $gsd_glass_color);
+}
+$gsd_style_attr = $gsd_style_parts ? ' style="' . htmlspecialchars(implode(';', $gsd_style_parts)) . '"' : '';
 ?>
-<div class="gram-search-dock" data-gram-search-dock>
+<div class="gram-search-dock" data-gram-search-dock<?php echo $gsd_style_attr; ?>>
     <form class="gsd-form" method="GET" action="<?php echo htmlspecialchars(BASE_URL); ?>" role="search">
         <button type="button" class="gsd-toggle" aria-label="Search" aria-expanded="false">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
