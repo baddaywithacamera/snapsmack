@@ -376,13 +376,28 @@ class EntryRow(tk.Frame):
             'enriched': "ENRICHED",
             'posting':  "POSTING",
             'ok':       "  POSTED",
-            'error':    "  ERROR",
+            'error':    "  FAILED",
             'warning':  "  WARN",
         }
         self._status_lbl.configure(
             text=labels.get(status, status.upper()),
             bg=bg, fg=fg,
         )
+        # A failed upload washes the WHOLE row bright red so it can't be missed
+        # (and it's protected from the Clear button — see EntryList.clear).
+        _row_bg = "#6E0000" if status == 'error' else BG_CARD
+        _fn_fg  = "#FFFFFF" if status == 'error' else FG_MAIN
+        for _w in (self, getattr(self, '_fname_lbl', None)):
+            if _w is None:
+                continue
+            try:
+                _w.configure(bg=_row_bg)
+            except Exception:
+                pass
+        try:
+            self._fname_lbl.configure(fg=_fn_fg)
+        except Exception:
+            pass
 
     def _update_swatches(self, colors_str: str):
         """Repaint the three colour swatch labels from a space-separated hex string."""
@@ -555,13 +570,24 @@ class EntryList(tk.Frame):
         for row in self._rows:
             row.update_combos(cats, albums)
 
-    def clear(self):
+    def clear(self, keep_errors: bool = False):
+        """Destroy rows. With keep_errors=True, FAILED rows (status 'error') are
+        kept so an accidental Clear can never wipe uploads that didn't land."""
+        survivors = []
         for row in self._rows:
-            row.destroy()
-        self._rows.clear()
+            if keep_errors and getattr(row, '_status', None) == 'error':
+                survivors.append(row)
+            else:
+                row.destroy()
+        self._rows = survivors
 
     def get_entries(self) -> List[ManifestEntry]:
         return [r.entry for r in self._rows]
+
+    def get_failed_files(self) -> List[str]:
+        """Filenames of rows that failed to post (status 'error')."""
+        return [r.entry.file for r in self._rows
+                if getattr(r, '_status', None) == 'error']
 
     def get_selected_entries(self) -> List[ManifestEntry]:
         return [r.entry for r in self._rows if r.is_selected()]
@@ -4038,15 +4064,49 @@ class App(tk.Tk):
     # Clear queue
     # ------------------------------------------------------------------
 
+    def _append_failure(self, name, reason=""):
+        """Append ONE failed upload to this run's failures file the instant it
+        fails, so a mid-run crash still leaves a complete list. The file is
+        created lazily on the first failure (self._fail_log_path is reset to
+        None at the start of every run in _on_post)."""
+        try:
+            if not getattr(self, '_fail_log_path', None):
+                import time as _t
+                base = (os.path.dirname(sys.executable)
+                        if getattr(sys, 'frozen', False)
+                        else os.path.dirname(os.path.abspath(__file__)))
+                self._fail_log_path = os.path.join(
+                    base, f"failed_uploads_{_t.strftime('%Y%m%d_%H%M%S')}.txt")
+                with open(self._fail_log_path, 'w', encoding='utf-8') as f:
+                    f.write("# Uploads that FAILED this batch — re-post these. Written live.\n")
+            with open(self._fail_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"{name}\t{reason}\n" if reason else f"{name}\n")
+                f.flush()
+        except Exception:
+            pass
+        try:
+            logging.getLogger("sumnabatch").error("POST FAILED %s — %s", name, reason)
+        except Exception:
+            pass
+
     def _on_clear(self):
         if not self._entry_list.get_entries():
             return
-        self._entry_list.clear()
+        # Never let Clear wipe FAILED uploads — they must survive so they can be
+        # re-posted rather than silently lost.
+        self._entry_list.clear(keep_errors=True)
+        remaining = len(self._entry_list.get_entries())
         self._progress['maximum'] = 1
         self._prog_var.set(0)
         self._prog_lbl.configure(text="")
-        self._queue_lbl.configure(text="QUEUE — 0 ITEMS")
-        self._set_status("Queue cleared. Load a manifest to begin.", FG_DIM)
+        if remaining:
+            self._queue_lbl.configure(text=f"QUEUE — {remaining} ITEMS")
+            self._set_status(
+                f"Cleared — {remaining} FAILED upload(s) kept (red). "
+                "Re-post them, or remove them one at a time on purpose.", FG_ERR)
+        else:
+            self._queue_lbl.configure(text="QUEUE — 0 ITEMS")
+            self._set_status("Queue cleared. Load a manifest to begin.", FG_DIM)
         if not self._cfg_visible:
             self._toggle_cfg()
 
@@ -4265,6 +4325,10 @@ class App(tk.Tk):
         ):
             return
 
+        # Fresh failures log for this run — created lazily on the first failure
+        # and appended live (crash-safe), see _append_failure.
+        self._fail_log_path = None
+
         # Recovery store for this folder — posted items are marked as they go.
         self._ensure_recovery(self._folder_var.get().strip())
         self._cancel_evt.clear()
@@ -4365,6 +4429,9 @@ class App(tk.Tk):
                         row_status = 'ok' if result.exif_ok else 'warning'
                     else:
                         row_status = 'error'
+                        # Flush this failure to disk immediately — a mid-run crash
+                        # still leaves a complete list.
+                        self._append_failure(result.entry.file, result.message)
                     if row:
                         row.set_status(row_status, result.message)
 
@@ -4385,10 +4452,17 @@ class App(tk.Tk):
                     processed = msg[1]
                     cancelled = msg[2] if len(msg) > 2 else False
                     self._set_posting(False)
+                    # Failures were already written live as they happened (see
+                    # _append_failure); here we just size them for the summary.
+                    failed = self._entry_list.get_failed_files()
                     if cancelled:
                         self._set_status(
                             f"Cancelled — {processed} posted before stop. "
                             "The rest stay in the queue.", FG_WARN)
+                    elif failed:
+                        self._set_status(
+                            f"Batch done — {processed} processed, {len(failed)} FAILED "
+                            "(red in the tray; list saved to failed_uploads_*.txt).", FG_ERR)
                     else:
                         self._set_status(f"Batch complete — {processed} processed.", FG_OK)
                         # Whole batch posted → recovery file no longer needed.
