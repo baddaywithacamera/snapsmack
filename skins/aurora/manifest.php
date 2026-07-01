@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'AURORA',
-    'version'     => '1.0.29',
+    'version'     => '1.0.30',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Northern-lights desktop skin. A classic 3-across square grid under a slow aurora that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.',
@@ -843,6 +843,25 @@ return [
             'label'   => 'Dock Magnifier Colour',
             'default' => '#eaeaea',
             'hint'    => 'Colour of the magnifying-glass icon. PHP-handled → --gsd-glass-color.',
+        ],
+
+        // ---- FOOTER (bar background — colour + user opacity slider) ---------
+        // Shared keys read by core/footer.php → --footer-bg. Lets the footer bar
+        // be dialled independently of Panel Opacity. Defaults reproduce the
+        // current footer look; the opacity slider is the user control.
+        'footer_bg_color' => [
+            'section' => 'FOOTER',
+            'type'    => 'color',
+            'label'   => 'Footer Bar Colour',
+            'default' => '#0a0e1a',
+            'hint'    => 'Background colour of the footer bar. PHP-handled → --footer-bg.',
+        ],
+        'footer_bg_opacity' => [
+            'section'  => 'FOOTER',
+            'type'     => 'range_numeric',
+            'label'    => 'Footer Bar Opacity',
+            'default'  => '45', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'     => 'Transparency of the footer bar so it can be matched to the background — independent of Panel Opacity.',
         ],
 
     ],

@@ -1000,8 +1000,14 @@ body.tg-modal-open { overflow: hidden; }
    ========================================================================== */
 
 #system-footer {
+    /* Cap the footer to the content column and centre it so the bar never spans
+       the full viewport (was full-width on landing/static, escaping the grid).
+       Matches the INSTANT CAMERA standard geometry. --footer-bg (admin colour +
+       opacity, from core/footer.php) overrides the opaque default when set. */
     border-top: 1px solid var(--border-color);
-    background: var(--bg-primary);
+    background: var(--footer-bg, var(--bg-primary));
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
 }
 
 #system-footer .inside {

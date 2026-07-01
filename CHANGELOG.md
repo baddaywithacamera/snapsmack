@@ -12,10 +12,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.336 — "Ringside Seat" (2026-07-01)
+
+- **THE GRID footer no longer spans the full window.** On landing and static pages THE GRID's footer bar ran the full viewport width (escaping the grid); only the blogroll was capped. It's now capped to the content column and centred, matching the INSTANT CAMERA standard. (THE GRID 1.3.33 → 1.3.34.)
+- **Footer bar opacity + colour control (GRAM/carousel skins).** New per-skin **FOOTER** controls — Footer Bar Colour + a Footer Bar Opacity slider — let the footer be dialled independently of Panel Opacity, so it reads cleanly over any background without forcing the whole panel more opaque. Driven from `core/footer.php` (→ inline `--footer-bg`); defaults reproduce each skin's current footer, so nothing shifts until the slider is moved. Added to INSTANT CAMERA (→1.0.18), AURORA (→1.0.30), PARADE (→1.2.18), THE GRID (→1.3.34). Skin Packager re-run required for all four.
+
 ## 0.7.335 — "Catbird Seat" (2026-07-01)
 
 - **SEARCH comes to INSTANT CAMERA.** INSTANT CAMERA was the one GRAM skin left out of the 0.7.333 search rollout — it now has the bottom-left magnifier dock, the `smack-gram-search` engine, and its own `search.php` (mirrors THE GRID's, in the shared `tg-` namespace, with the fixed background layers coming in via `skin-profile.php`), so full-text search works there like every other GRAM skin.
-- **SEARCH DOCK is now colour-matchable to the background (all GRAM skins + 52 PICKUP).** The floating magnifier dock gains a **Circle Opacity** slider plus **two colour pickers** — one for the **circle behind the glass**, one for the **glass** (magnifier) itself. Driven from the shared `core/gram-search-dock.php` via inline CSS custom properties (`--gsd-disc-bg`, `--gsd-glass-color`) so one component themes every skin; exposed as per-skin admin controls (section **SEARCH DOCK**) with defaults matching each skin's palette (AURORA dark, the rest light). Skins bumped: **INSTANT CAMERA 1.0.17, AURORA 1.0.29, PARADE 1.2.17, THE GRID 1.3.32 → 1.3.33, 52 PICKUP 1.4.1 → 1.4.2** — Skin Packager re-run required for all five. (INSTANT CAMERA/AURORA/PARADE carry the 0.7.334 footer fix in the same bump.)
+- **SEARCH DOCK is now colour-matchable to the background (GRAM/carousel skins).** The floating magnifier dock gains a **Circle Opacity** slider plus **two colour pickers** — one for the **circle behind the glass**, one for the **glass** (magnifier) itself. Driven from the shared `core/gram-search-dock.php` via inline CSS custom properties (`--gsd-disc-bg`, `--gsd-glass-color`) so one component themes every skin; exposed as per-skin admin controls (section **SEARCH DOCK**) with defaults matching each skin's palette (AURORA dark, the rest light). Skins bumped: **INSTANT CAMERA 1.0.17, AURORA 1.0.29, PARADE 1.2.17, THE GRID 1.3.32 → 1.3.33** — Skin Packager re-run required for all four. (INSTANT CAMERA/AURORA/PARADE carry the 0.7.334 footer fix in the same bump.)
 
 ## 0.7.334 — "Box Seat" (2026-07-01)
 
