@@ -78,6 +78,26 @@ try {
          ORDER BY c.cat_name ASC, b.peer_name ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
 
+    // --- RENDER-TIME MAINTENANCE FILTER ---
+    // A site in maintenance must never be LINKED from any blogroll. The pushed
+    // snapshot in snap_blogroll can be stale (a peer went down after the last
+    // push), so we also drop, at render, any peer whose URL matches a mesh node
+    // currently in maintenance. This is authoritative on a HUB (it holds live
+    // node status); on a standalone/spoke the lookup is simply empty (no-op),
+    // and those sites self-heal via the hub's auto re-push. Best-effort: any
+    // error leaves $peers untouched.
+    try {
+        $maint_rows = $pdo->query(
+            "SELECT site_url FROM snap_multisite_nodes WHERE maintenance_mode = 1"
+        )->fetchAll(PDO::FETCH_COLUMN);
+        if ($maint_rows) {
+            $maint = array_map(function ($u) { return strtolower(rtrim((string)$u, '/')); }, $maint_rows);
+            $peers = array_values(array_filter($peers, function ($p) use ($maint) {
+                return !in_array(strtolower(rtrim((string)($p['peer_url'] ?? ''), '/')), $maint, true);
+            }));
+        }
+    } catch (Exception $e) { /* no mesh table / standalone — leave $peers as-is */ }
+
 } catch (Exception $e) {
     // Fail-safe error display for database or connection issues
     die("<div style='background:#300;color:#f99;padding:20px;border:1px solid red;font-family:monospace;'><h3>BLOGROLL_TRANSMISSION_ERROR</h3>" . $e->getMessage() . "</div>");
