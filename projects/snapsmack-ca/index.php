@@ -29,6 +29,7 @@ $_demo_sites = [
     'foreverphotograph.ing'   => 'https://foreverphotograph.ing',
     'theschoolofhardnocks.ca' => 'https://theschoolofhardnocks.ca',
     'fauxlaroid.fyi'          => 'https://fauxlaroid.fyi',
+    'lightafterdark.ca'       => 'https://lightafterdark.ca',
 ];
 
 $_demo_stats      = [];
@@ -1866,6 +1867,27 @@ require_once __DIR__ . '/includes/header.php';
                     <h3>Instant Camera</h3>
                     <p>Instant nostalgia. Faux-Polaroid prints scattered across an infinite tabletop, film grain and vintage treatment, square shots framed in white. Built for the Polaroid dream on a digital budget.</p>
                     <a href="https://fauxlaroid.fyi" target="_blank" class="theme-link"><span class="theme-link-label">View live site</span>fauxlaroid.fyi →</a>
+                </div>
+            </div>
+
+            <div class="theme-card" data-stats="<?php echo ss_card_stats('lightafterdark.ca', $_demo_stats); ?>">
+                <div class="theme-main-shot">
+                    <a href="img/aurora-landing.png" data-lb="img/aurora-landing.png">
+                        <img src="img/aurora-landing.png" alt="Aurora — landing">
+                    </a>
+                </div>
+                <div class="theme-thumbs">
+                    <a href="img/aurora-archive.png" data-lb="img/aurora-archive.png">
+                        <img src="img/aurora-archive.png" alt="Aurora — archive">
+                    </a>
+                    <a href="img/aurora-page.png" data-lb="img/aurora-page.png">
+                        <img src="img/aurora-page.png" alt="Aurora — post view">
+                    </a>
+                </div>
+                <div class="theme-info">
+                    <h3>Aurora</h3>
+                    <p>Northern lights, over your grid. A slow aurora breathes colour behind a classic 3-across square grid, with a configurable wave rippling across the tile borders. Dark, dramatic, and built for after-dark shooters.</p>
+                    <a href="https://lightafterdark.ca" target="_blank" class="theme-link"><span class="theme-link-label">View live site</span>lightafterdark.ca →</a>
                 </div>
             </div>
 
