@@ -41,6 +41,7 @@ if (!defined('BASE_URL')) {
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/constants.php';
 require_once __DIR__ . '/mesh-helpers.php';
+require_once __DIR__ . '/stats-logger.php';
 
 // --- RESPONSE HELPERS ---
 function ms_respond($data, int $status = 200): void {
@@ -305,11 +306,13 @@ $pdo->prepare("UPDATE snap_multisite_nodes SET last_seen_at = NOW() WHERE id = ?
 // Returns site vitals: version, counts, backup state.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'heartbeat' && $method === 'GET') {
-    // Posts wrap images: a SMACKONEOUT post is one image, but a GRAMOFSMACK
-    // carousel/panorama post can stack many. Report the two as DISTINCT
-    // fleet-inventory counts — posts from snap_posts, images from snap_images.
-    $post_count  = (int)$pdo->query("SELECT COUNT(*) FROM snap_posts  WHERE status = 'published'")->fetchColumn();
-    $image_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
+    // Posts vs images, mode-agnostic (see snapsmack_content_counts). A post is
+    // each standalone image (post_id NULL — SMACKONEOUT / Flickr imports, where
+    // the image IS the post) plus each grouped post once (carousel/panorama).
+    // snap_images is canonical; solo images aren't wrapped in snap_posts.
+    $cc          = snapsmack_content_counts($pdo);
+    $post_count  = $cc['posts'];
+    $image_count = $cc['images'];
     $pending     = (int)$pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
 
     // Disk usage — uploads folder
@@ -633,6 +636,12 @@ if ($resource === 'stats' && $sub_action === 'daily' && $method === 'GET') {
             $payload['scroll_time_avg_ms'] = ($sc && (int)$sc['n'] > 0) ? (int)round((float)$sc['a']) : 0;
             $payload['scroll_time_n']      = $sc ? (int)$sc['n'] : 0;
         } catch (\Exception $e) { $payload['scroll_time_avg_ms'] = 0; $payload['scroll_time_n'] = 0; }
+
+        // Live content inventory so the hub rollup + per-blog breakdown are fresh
+        // on every stats load, independent of the last heartbeat sweep.
+        $cc = snapsmack_content_counts($pdo);
+        $payload['post_count']  = $cc['posts'];
+        $payload['image_count'] = $cc['images'];
     }
 
     ms_ok($payload);

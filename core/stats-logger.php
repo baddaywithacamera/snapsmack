@@ -291,6 +291,30 @@ function snapsmack_client_ip() {
 }
 
 /**
+ * Count published POSTS and IMAGES for this install, mode-agnostic.
+ *
+ * Images = every published transmission (snap_images). Posts = each standalone
+ * image (post_id NULL — the SMACKONEOUT / imported case, where the image IS the
+ * post) PLUS each grouped post once (GRAMOFSMACK carousel/panorama images share
+ * a post_id and collapse to a single post). snap_images is the canonical store;
+ * solo images are never wrapped in snap_posts, so COUNT(snap_posts) undercounts
+ * every non-carousel install.
+ *
+ * @param  PDO $pdo
+ * @return array  ['posts' => int, 'images' => int]
+ */
+function snapsmack_content_counts($pdo) {
+    $posts = 0; $images = 0;
+    try {
+        $images = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
+        $solo   = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published' AND post_id IS NULL")->fetchColumn();
+        $groups = (int)$pdo->query("SELECT COUNT(DISTINCT post_id) FROM snap_images WHERE img_status = 'published' AND post_id IS NOT NULL")->fetchColumn();
+        $posts  = $solo + $groups;
+    } catch (\Throwable $e) { /* tables may be absent on a very fresh install */ }
+    return ['posts' => $posts, 'images' => $images];
+}
+
+/**
  * Log a single page hit to snap_stats.
  *
  * @param  PDO   $pdo       Database connection
