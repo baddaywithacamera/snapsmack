@@ -329,18 +329,42 @@ function sv_verify_signature(string $raw_body): ?array {
     if (!in_array('(request-target)', $signed_names, true) || !in_array('digest', $signed_names, true)) {
         $reject('signed headers missing (request-target) or digest: ' . implode(' ', $signed_names)); return null;
     }
-    $lines = [];
+    // Assemble the signed header lines. (request-target) is deferred: it has two
+    // legitimate constructions (below) and we resolve it per candidate.
+    $fixed_lines = [];
     foreach ($signed_names as $name) {
         if ($name === '(request-target)') {
-            $target = strtolower($_SERVER['REQUEST_METHOD'] ?? 'post') . ' ' . ($_SERVER['REQUEST_URI'] ?? '/');
-            $lines[] = '(request-target): ' . $target;
+            $fixed_lines[] = null; // placeholder — filled per candidate below
         } elseif ($name === 'host') {
-            $lines[] = 'host: ' . ($_SERVER['HTTP_HOST'] ?? '');
+            $fixed_lines[] = 'host: ' . ($_SERVER['HTTP_HOST'] ?? '');
         } else {
-            $lines[] = $name . ': ' . sv_request_header($name);
+            $fixed_lines[] = $name . ': ' . sv_request_header($name);
         }
     }
-    $signing_string = implode("\n", $lines);
+
+    // (request-target) has two legitimate forms in the wild. The draft-cavage
+    // spec includes the full request path WITH its query string; Pixelfed (and
+    // some others) sign the PATH ONLY, dropping the query. Our inbox URL carries
+    // a ?ap=inbox routing param, so a query-dropping signer builds a different
+    // string than the naive full-URI one — this is what made every Pixelfed
+    // Follow 401 (confirmed: only the path-only form verifies). Accept BOTH.
+    // Each is still cryptographically bound to the same key, the same body (via
+    // Digest, already checked) and the same ±1h Date window, so tolerating the
+    // two constructions costs no security.
+    $method = strtolower($_SERVER['REQUEST_METHOD'] ?? 'post');
+    $uri     = $_SERVER['REQUEST_URI'] ?? '/';
+    $path    = parse_url($uri, PHP_URL_PATH) ?: $uri;
+    $rt_candidates = array_values(array_unique([
+        $method . ' ' . $uri,   // standards-strict: path + query
+        $method . ' ' . $path,  // Pixelfed & friends: path only
+    ]));
+    $build = function (string $rt) use ($fixed_lines): string {
+        $lines = $fixed_lines;
+        foreach ($lines as $i => $l) {
+            if ($l === null) { $lines[$i] = '(request-target): ' . $rt; }
+        }
+        return implode("\n", $lines);
+    };
 
     // Fetch the key owner's actor document (keyId minus fragment).
     $actor_url = preg_replace('/#.*$/', '', $sig['keyid']);
@@ -355,34 +379,28 @@ function sv_verify_signature(string $raw_body): ?array {
     $pubkey = openssl_pkey_get_public($pem);
     if ($pubkey === false) { $reject('openssl could not parse publicKeyPem'); return null; }
     $sig_bytes = base64_decode($sig['signature']);
-    $ok = openssl_verify($signing_string, $sig_bytes, $pubkey, OPENSSL_ALGO_SHA256);
+
+    // Verify against each (request-target) form; accept on the first that matches.
+    $signing_string = $build($rt_candidates[0]);
+    $ok = 0;
+    foreach ($rt_candidates as $rt) {
+        if (openssl_verify($build($rt), $sig_bytes, $pubkey, OPENSSL_ALGO_SHA256) === 1) {
+            $ok = 1; $signing_string = $build($rt); break;
+        }
+    }
     if ($ok !== 1) {
-        // Crypto detail: distinguishes wrong-key vs bad-signature vs openssl
-        // error. verify=-1 + an err string = openssl problem; verify=0 = the
-        // signature simply doesn't match this string+key (wrong key most likely).
-        error_log('SMACKVERSE sig: verify=' . $ok
+        // verify=0 for every form = signature doesn't match string+key.
+        error_log('SMACKVERSE sig: verify=0'
             . ' openssl_err=' . (openssl_error_string() ?: 'none')
             . ' sig_bytes=' . strlen((string)$sig_bytes)
             . ' keyId=' . $sig['keyid']
             . ' fetched_actor=' . ($actor['id'] ?? '?')
             . ' pem_fp=' . substr(hash('sha256', $pem), 0, 16));
-        error_log('SMACKVERSE sig: signing-string we built = [' . str_replace("\n", ' ⏎ ', $signing_string) . ']');
-        // Per-header value + byte length — reveals the invisible byte (leading/
-        // trailing space, \r, quote nuance) that differs from what the peer signed.
-        $hdr_dbg = [];
-        foreach ($signed_names as $name) {
-            if ($name === '(request-target)') {
-                $v = strtolower($_SERVER['REQUEST_METHOD'] ?? 'post') . ' ' . ($_SERVER['REQUEST_URI'] ?? '/');
-            } elseif ($name === 'host') {
-                $v = $_SERVER['HTTP_HOST'] ?? '';
-            } else {
-                $v = sv_request_header($name);
-            }
-            $hdr_dbg[] = $name . '(' . strlen($v) . ')=[' . $v . ']';
+        foreach ($rt_candidates as $rt) {
+            error_log('SMACKVERSE sig: tried [' . str_replace("\n", ' ⏎ ', $build($rt)) . ']');
         }
-        error_log('SMACKVERSE sig: header values ' . implode(' | ', $hdr_dbg));
         error_log('SMACKVERSE sig: raw Signature header = [' . sv_request_header('signature') . ']');
-        $reject('openssl_verify failed. Signed: ' . implode(' ', $signed_names));
+        $reject('openssl_verify failed for all request-target forms. Signed: ' . implode(' ', $signed_names));
         return null;
     }
     return $actor;
