@@ -125,9 +125,10 @@ $sv_address  = '@' . $sv_handle . '@' . $sv_dom;
 $sv_has_key  = trim($sv_settings['smackverse_public_key'] ?? '') !== '';
 $sv_key_fp   = $sv_has_key ? substr(hash('sha256', $sv_settings['smackverse_public_key']), 0, 16) : '';
 
-// Webfinger rewrite present in .htaccess?
+// Webfinger + path-style AP rewrites present in .htaccess?
 $sv_htaccess    = @file_get_contents(__DIR__ . '/.htaccess') ?: '';
 $sv_rewrite_ok  = strpos($sv_htaccess, 'smackverse.php?ap=webfinger') !== false;
+$sv_aproute_ok  = strpos($sv_htaccess, 'smackverse.php?appath=') !== false;
 
 // Delivery cron health — registration state + last-run freshness.
 require_once 'core/cron-register.php';
@@ -186,6 +187,12 @@ include 'core/sidebar.php';
                 <td><?php echo $sv_rewrite_ok
                     ? '&#10003; found'
                     : '&#10007; missing — add: <code>RewriteRule ^\.well-known/webfinger$ smackverse.php?ap=webfinger [QSA,L]</code>'; ?></td>
+            </tr>
+            <tr>
+                <td>AP path routes (.htaccess)</td>
+                <td><?php echo $sv_aproute_ok
+                    ? '&#10003; found'
+                    : '&#10007; missing — add: <code>RewriteRule ^ap/(.+)$ smackverse.php?appath=$1 [L,QSA]</code> (re-toggle SMACKVERSE or run REPAIR .htaccess)'; ?></td>
             </tr>
             <tr>
                 <td>Signing key</td>
