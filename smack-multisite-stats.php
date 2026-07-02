@@ -140,7 +140,9 @@ foreach ($spokes as $spoke) {
         'bot_total'    => $spoke_bot_total,
         'top_day'      => $spoke_top_day,
         'top_image'    => $spoke_top_images[0] ?? null,
-        'post_count'   => $spoke['post_count'],
+        'post_count'   => isset($resp['post_count'])  ? (int)$resp['post_count']  : (int)$spoke['post_count'],
+        'image_count'  => isset($resp['image_count']) ? (int)$resp['image_count'] : (int)($spoke['image_count'] ?? 0),
+        'counts_live'  => isset($resp['post_count']),
         'browsers'     => $resp['browsers']     ?? [],
         'os'           => $resp['os']           ?? [],
         'categories'   => $resp['categories']   ?? [],
@@ -182,9 +184,10 @@ $hub_name = $settings['site_name'] ?? 'Hub';
 
 // Hub content inventory — posts and images counted SEPARATELY. A GRAMOFSMACK
 // carousel/panorama is one post but many images; SMACKONEOUT is 1:1.
-$hub_post_count = $hub_image_count = 0;
-try { $hub_post_count  = (int)$pdo->query("SELECT COUNT(*) FROM snap_posts  WHERE status = 'published'")->fetchColumn(); } catch (\Exception $e) {}
-try { $hub_image_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn(); } catch (\Exception $e) {}
+require_once __DIR__ . '/core/stats-logger.php';
+$cc_hub = snapsmack_content_counts($pdo);
+$hub_post_count  = $cc_hub['posts'];
+$hub_image_count = $cc_hub['images'];
 
 // Hub engaged Scroll Time (avg ms) on GRAM landing + SMACKONEOUT archive.
 // dwell_ms is populated by the Scroll Time tracker; column/data may be absent
@@ -302,7 +305,9 @@ $spoke_stats['__hub__'] = [
     'bot_total'    => $hub_bot_total,
     'top_day'      => $hub_top_day,
     'top_image'    => $hub_top_images[0] ?? null,
-    'post_count'   => 0,
+    'post_count'   => $hub_post_count,
+    'image_count'  => $hub_image_count,
+    'counts_live'  => true,
     'is_hub'       => true,
     'browsers'     => $hub_browsers,
     'os'           => $hub_os,
@@ -340,8 +345,11 @@ $fleet_bot_pct      = $fleet_total_views > 0 ? round(($fleet_bot_total / ($fleet
 $fleet_post_count  = $hub_post_count;
 $fleet_image_count = $hub_image_count;
 foreach ($spokes as $sp) {
-    $fleet_post_count  += (int)($sp['post_count']  ?? 0);
-    $fleet_image_count += (int)($sp['image_count'] ?? 0);
+    $ss = $spoke_stats[$sp['id']] ?? [];
+    // Prefer the live count fetched this load; fall back to the last stored
+    // heartbeat value for a spoke that's offline or not yet on the new endpoint.
+    $fleet_post_count  += (int)($ss['post_count']  ?? $sp['post_count']  ?? 0);
+    $fleet_image_count += (int)($ss['image_count'] ?? $sp['image_count'] ?? 0);
 }
 
 // Fleet engaged Scroll Time — sample-count-weighted average across hub + spokes.
@@ -515,14 +523,14 @@ include 'core/sidebar.php';
                 <?php endif; ?>
                 <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">PEAK DAY</div>
             </div>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
+            <a href="#network-breakdown" title="See posts per blog below" style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center; text-decoration:none; display:block;">
                 <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_post_count); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">TOTAL POSTS</div>
-            </div>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">TOTAL POSTS &#9662;</div>
+            </a>
+            <a href="#network-breakdown" title="See images per blog below" style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center; text-decoration:none; display:block;">
                 <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_image_count); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">TOTAL IMAGES</div>
-            </div>
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">TOTAL IMAGES &#9662;</div>
+            </a>
             <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
                 <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo htmlspecialchars($fleet_scroll_label); ?></div>
                 <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">SCROLL TIME</div>
@@ -593,8 +601,9 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
     <!-- NETWORK BREAKDOWN ───────────────────────────────────────────────── -->
-    <div class="box">
+    <div class="box" id="network-breakdown">
         <h3>NETWORK BREAKDOWN</h3>
+        <p style="font-size:0.72rem; color:var(--text-muted,#888); margin:-4px 0 10px;">POSTS &amp; IMAGES are live per blog. A <span style="color:var(--accent-primary,#c66);">*</span> marks a last-stored value &mdash; that spoke is offline or not yet on 0.7.340, so it isn't reporting fresh counts.</p>
 
         <?php if (!empty($spoke_stats)):
             $max_spoke_views = max(1, max(array_column($spoke_stats, 'total_views')));
@@ -605,6 +614,8 @@ include 'core/sidebar.php';
                         <th style="text-align:left;   padding:10px 8px; color:var(--text-muted,#888);">SITE</th>
                         <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">VIEWS</th>
                         <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">UNIQUE</th>
+                        <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">POSTS</th>
+                        <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">IMAGES</th>
                         <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">AVG/DAY</th>
                         <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">BOTS</th>
                         <th style="text-align:left;   padding:10px 8px; color:var(--text-muted,#888); min-width:120px;">TOP IMAGE</th>
@@ -635,6 +646,8 @@ include 'core/sidebar.php';
                             </td>
                             <td style="padding:10px 8px; text-align:center; font-weight:700;"><?php echo number_format($sd['total_views']); ?></td>
                             <td style="padding:10px 8px; text-align:center; color:var(--text-muted,#888);"><?php echo number_format($sd['total_unique']); ?></td>
+                            <td style="padding:10px 8px; text-align:center; color:var(--text-muted,#888);"><?php echo number_format((int)($sd['post_count'] ?? 0)); if (empty($sd['counts_live']) && empty($sd['is_hub'])): ?><span title="last stored value — spoke offline or not yet on 0.7.340, not reporting fresh counts" style="color:var(--accent-primary,#c66);">&nbsp;*</span><?php endif; ?></td>
+                            <td style="padding:10px 8px; text-align:center; color:var(--text-muted,#888);"><?php echo number_format((int)($sd['image_count'] ?? 0)); ?></td>
                             <td style="padding:10px 8px; text-align:center; color:var(--text-muted,#888);"><?php echo number_format($avg_day); ?></td>
                             <td style="padding:10px 8px; text-align:center; color:var(--text-muted,#666); font-size:0.8rem;"><?php echo $bot_pct; ?>%</td>
                             <td style="padding:10px 8px;">
