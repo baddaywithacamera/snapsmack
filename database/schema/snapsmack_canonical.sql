@@ -289,9 +289,20 @@ CREATE TABLE IF NOT EXISTS `snap_comments` (
   `comment_ip`     varchar(45)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `fp_hash`        varchar(64)  COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'SHA-256 browser fingerprint',
   `is_approved`    tinyint(1)   DEFAULT '0',
+  `ap_source`      enum('local','fediverse') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'local'
+                   COMMENT 'SMACKVERSE (0.7.344): local blog comment vs a federated reply.',
+  `ap_actor_url`   varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                   COMMENT 'Remote commenter actor id (fediverse comments only).',
+  `ap_object_id`   varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                   COMMENT 'Remote Note id of an inbound comment — dedup key.',
+  `ap_note_id`     varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                   COMMENT 'The Note id we assign a LOCAL comment when federating it out, so replies thread.',
+  `ap_in_reply_to` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                   COMMENT 'The parent Note id this comment replies to (post Note or another comment Note).',
   PRIMARY KEY (`id`),
   KEY `img_id` (`img_id`),
-  KEY `idx_fp_hash` (`fp_hash`)
+  KEY `idx_fp_hash` (`fp_hash`),
+  UNIQUE KEY `uq_ap_object` (`ap_object_id`(191))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -690,6 +701,12 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
                         COMMENT 'When breach was first detected on this spoke',
   `smackback_breach_files` mediumtext  COLLATE utf8mb4_unicode_ci DEFAULT NULL
                         COMMENT 'JSON: affected files from last breach report',
+  `installed_skins`     text           COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                        COMMENT 'Cached from heartbeat (0.7.343): JSON map {slug: version} of skins installed on this spoke, so the hub only offers skin updates a spoke actually has.',
+  `smackverse_enabled`  tinyint(1)     NOT NULL DEFAULT 0
+                        COMMENT 'Cached from heartbeat (0.7.343): 1 = spoke has SMACKVERSE federation enabled.',
+  `smackverse_followers` int unsigned  NOT NULL DEFAULT 0
+                        COMMENT 'Cached from heartbeat (0.7.343): spoke fediverse follower count, for the fleet rollup.',
   `status`              enum('active','offline','disconnected') COLLATE utf8mb4_unicode_ci DEFAULT 'active',
   `connected_at`        datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -880,6 +897,20 @@ CREATE TABLE IF NOT EXISTS `snap_ap_deliveries` (
   `created_at`    datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_ap_due` (`status`, `next_try_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Federated likes (0.7.344). Kept separate from snap_likes because a remote
+-- actor has no snap_users.user_id (snap_likes' UNIQUE(post_id,user_id) can't
+-- hold it). The blog shows a COMBINED tally: native snap_likes + these.
+CREATE TABLE IF NOT EXISTS `snap_ap_likes` (
+  `id`          int unsigned NOT NULL AUTO_INCREMENT,
+  `target_type` enum('image','post') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `target_id`   int unsigned NOT NULL,
+  `actor_url`   varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at`  datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ap_like` (`target_type`, `target_id`, `actor_url`(180)),
+  KEY `idx_ap_like_target` (`target_type`, `target_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ===== SNAPSMACK EOF =====

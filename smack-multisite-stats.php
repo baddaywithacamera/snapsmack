@@ -493,6 +493,19 @@ include 'core/sidebar.php';
         <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:25px;">
             <?php
                 $active_spokes = count(array_filter($spokes, fn($s) => $s['status'] === 'active'));
+
+                // Fediverse rollup — hub's own live count + each spoke's cached
+                // heartbeat count (snap_multisite_nodes.smackverse_followers).
+                $fleet_fedi_followers = 0; $fleet_fedi_sites = 0;
+                try {
+                    if (($settings['smackverse_enabled'] ?? '0') === '1') {
+                        $fleet_fedi_followers += (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_followers WHERE is_active = 1")->fetchColumn();
+                        $fleet_fedi_sites++;
+                    }
+                    $_fr = $pdo->query("SELECT COALESCE(SUM(smackverse_followers),0) AS f, COALESCE(SUM(smackverse_enabled),0) AS s FROM snap_multisite_nodes WHERE role = 'spoke'")->fetch(PDO::FETCH_ASSOC);
+                    $fleet_fedi_followers += (int)($_fr['f'] ?? 0);
+                    $fleet_fedi_sites     += (int)($_fr['s'] ?? 0);
+                } catch (Exception $e) { /* federation cols not present yet */ }
             ?>
             <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
                 <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_total_views); ?></div>
@@ -534,6 +547,10 @@ include 'core/sidebar.php';
             <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
                 <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo htmlspecialchars($fleet_scroll_label); ?></div>
                 <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">SCROLL TIME</div>
+            </div>
+            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
+                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_fedi_followers); ?></div>
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">FEDIVERSE FOLLOWERS <span style="color:var(--text-muted,#666)">(<?php echo (int)$fleet_fedi_sites; ?> federating)</span></div>
             </div>
         </div>
 

@@ -315,6 +315,31 @@ if ($resource === 'heartbeat' && $method === 'GET') {
     $image_count = $cc['images'];
     $pending     = (int)$pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
 
+    // Installed skins (slug => version) so the hub only offers this spoke updates
+    // for skins it actually has. Best-effort — an empty map just means the hub
+    // won't gate (it falls back to offering, and the spoke would refuse an
+    // uninstalled skin at reinstall time anyway).
+    $installed_skins = [];
+    if (!function_exists('skin_registry_local')) {
+        @require_once __DIR__ . '/skin-registry.php';
+    }
+    if (function_exists('skin_registry_local')) {
+        foreach (skin_registry_local() as $_slug => $_meta) {
+            $installed_skins[$_slug] = $_meta['version'] ?? '0.0';
+        }
+    }
+
+    // SMACKVERSE federation stats for the fleet rollup (best-effort).
+    $sv_enabled_hb   = ($settings['smackverse_enabled'] ?? '0') === '1' ? 1 : 0;
+    $sv_followers_hb = 0;
+    if ($sv_enabled_hb) {
+        try {
+            $sv_followers_hb = (int)$pdo->query(
+                "SELECT COUNT(*) FROM snap_ap_followers WHERE is_active = 1"
+            )->fetchColumn();
+        } catch (Exception $e) { /* table may not exist yet */ }
+    }
+
     // Disk usage — uploads folder
     $upload_dir  = dirname(__DIR__) . '/uploads/';
     $disk_bytes  = 0;
@@ -339,6 +364,9 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         'smackback_status'   => $settings['smackback_status']   ?? (($settings['smackback_enabled'] ?? '0') === '1' ? 'pending' : 'unknown'),
         'smackback_breach_at'=> ($settings['smackback_breach_at'] ?? '') ?: null,
         'site_mode'          => $settings['site_mode']           ?? 'photoblog',
+        'installed_skins'    => $installed_skins,
+        'smackverse_enabled' => $sv_enabled_hb,
+        'smackverse_followers' => $sv_followers_hb,
         'timestamp'          => date('c'),
     ]);
 }
