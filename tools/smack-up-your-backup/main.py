@@ -338,6 +338,7 @@ class SetupWizard(tk.Toplevel):
             "and SQL backups. Use the same credentials you log in with.")
         self._field(f, "Admin username", "snap_admin_user")
         self._field(f, "Admin password", "snap_admin_pass", show="●")
+        self._field(f, "Login slug", "login_slug")
         self._admin_status = self._status_label(f)
 
         test_row = tk.Frame(f, bg=BG_DEEP)
@@ -494,7 +495,8 @@ class SetupWizard(tk.Toplevel):
         import requests
         try:
             url = self._data.get("site_url", "").rstrip("/")
-            r = requests.get(f"{url}/login.php", timeout=10,
+            slug = (self._data.get("login_slug", "snap-in") or "snap-in").strip().strip("/") or "snap-in"
+            r = requests.get(f"{url}/{slug}", timeout=10,
                              allow_redirects=False)
             if r.status_code < 400:
                 self._admin_status.set("✓ Blog is reachable")
@@ -2190,6 +2192,7 @@ class SettingsTab(tk.Frame):
         self._row(site_g, 2, "API key",         "api_key")
         self._row(site_g, 3, "Admin username",  "snap_admin_user")
         self._row(site_g, 4, "Admin password",  "snap_admin_pass", show="●")
+        self._row(site_g, 5, "Login slug",      "login_slug")
 
         test_row = tk.Frame(c, bg=BG_MID)
         test_row.pack(anchor="w", pady=(6, 0))
@@ -2634,6 +2637,7 @@ class SettingsTab(tk.Frame):
         url  = self._profile_vars["site_url"].get().strip().rstrip("/")
         user = self._profile_vars["snap_admin_user"].get().strip()
         pw   = self._profile_vars["snap_admin_pass"].get()
+        slug = ((self._profile_vars["login_slug"].get().strip() if "login_slug" in self._profile_vars else "snap-in") or "snap-in").strip("/") or "snap-in"
         if not url or not user or not pw:
             self._conn_status_var.set("Fill in URL, username, and password first")
             return
@@ -2645,7 +2649,7 @@ class SettingsTab(tk.Frame):
             try:
                 import requests
                 r = requests.post(
-                    f"{url}/login.php",
+                    f"{url}/{slug}",
                     data={"username": user, "password": pw, "ajax": "1"},
                     timeout=15, allow_redirects=False,
                 )
@@ -3109,7 +3113,7 @@ class SettingsTab(tk.Frame):
         def _run():
             try:
                 from hub_discovery import HubDiscovery
-                disc = HubDiscovery(site_url, admin_user, admin_pass)
+                disc = HubDiscovery(site_url, admin_user, admin_pass, login_slug=profile.get("login_slug", "snap-in"))
                 data = disc.fetch_suyb_data()
                 disc.close()
                 self.after(0, lambda: self._apply_cloud_config(data))

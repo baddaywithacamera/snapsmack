@@ -28,12 +28,13 @@ class HubDiscovery:
     """Connects to a SnapSmack hub and discovers its spoke network."""
 
     def __init__(self, site_url: str, admin_user: str = "", admin_pass: str = "",
-                 api_key: str = "", timeout: int = 30):
+                 api_key: str = "", timeout: int = 30, login_slug: str = "snap-in"):
         self.site_url = site_url.rstrip("/")
         self.admin_user = admin_user
         self.admin_pass = admin_pass
         self.api_key = (api_key or "").strip()
         self.timeout = timeout
+        self.login_slug = (login_slug or "snap-in").strip().strip("/") or "snap-in"
         self._session: Optional[requests.Session] = None
 
     def _ensure_session(self) -> requests.Session:
@@ -51,7 +52,7 @@ class HubDiscovery:
             self._session = s
             return s
 
-        login_url = f"{self.site_url}/login.php"
+        login_url = f"{self.site_url}/{self.login_slug}"
         try:
             resp = s.post(login_url, data={
                 "username": self.admin_user,

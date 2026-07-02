@@ -44,6 +44,10 @@ RewriteRule ^feed$ rss.php [L,QSA]
 RewriteRule ^snap-in$ snap-in.php [L,QSA]
 RewriteRule ^collections$ collections.php [L,QSA]
 RewriteRule ^collection/([a-zA-Z0-9_-]+)$ collection.php?slug=$1 [L,QSA]
+# SMACKVERSE (ActivityPub) — WebFinger discovery. Mastodon/Pixelfed hit
+# /.well-known/webfinger to resolve @handle@domain. The endpoint 404s on its
+# own unless smackverse_enabled=1, so this rewrite is harmless while off.
+RewriteRule ^\.well-known/webfinger$ smackverse.php?ap=webfinger [L,QSA]
 
 # Everything else → index.php (image slugs, static pages)
 RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]

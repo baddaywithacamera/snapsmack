@@ -74,8 +74,9 @@ def filename_token(site_url: str, fallback: str = "blog") -> str:
 class SnapSmackSession:
     """Cookie-based HTTP session to the SnapSmack admin panel."""
 
-    def __init__(self, site_url: str, api_key: str = ""):
+    def __init__(self, site_url: str, api_key: str = "", login_slug: str = "snap-in"):
         self.site_url = site_url.rstrip("/")
+        self.login_slug = (login_slug or "snap-in").strip().strip("/") or "snap-in"
         self.session  = requests.Session()
         self.session.headers.update({"User-Agent": "smack-up-your-backup/1.0"})
         self._username = ""
@@ -96,7 +97,7 @@ class SnapSmackSession:
             return
         self._username = username
         self._password = password
-        url  = f"{self.site_url}/login.php"
+        url  = f"{self.site_url}/{self.login_slug}"
         resp = self.session.post(
             url,
             data={"username": username, "password": password},
@@ -104,7 +105,9 @@ class SnapSmackSession:
             allow_redirects=True,
         )
         resp.raise_for_status()
-        if "login.php" in resp.url:
+        # Success redirects away from the login slug (to smack-admin.php); still
+        # sitting on the slug means the credentials were rejected.
+        if self.login_slug in resp.url:
             raise RuntimeError("SnapSmack login failed — check admin credentials.")
         self._logged_in = True
 
@@ -117,7 +120,7 @@ class SnapSmackSession:
             resp = self.session.get(
                 f"{self.site_url}/smack-admin.php", timeout=10, allow_redirects=True
             )
-            return "login.php" not in resp.url
+            return self.login_slug not in resp.url
         except Exception:
             return False
 
@@ -490,7 +493,8 @@ class BackupEngine:
                 return result
             self._progress("stage1", "Connecting to site…", 0.02)
             http = SnapSmackSession(self.profile["site_url"],
-                                    self.profile.get("api_key", ""))
+                                    self.profile.get("api_key", ""),
+                                    self.profile.get("login_slug", "snap-in"))
             try:
                 http.login(
                     self.profile.get("snap_admin_user", ""),
@@ -914,7 +918,7 @@ class BackupEngine:
             status_str = "clean" if verify_ok else "partial"
             size_b = os.path.getsize(zip_path) if (zip_path and os.path.exists(zip_path)) else 0
             dest = (self.profile.get("cloud_provider", "") or "cloud") if (cloud and cloud_id) else "local"
-            reporter = SnapSmackSession(self.profile["site_url"])
+            reporter = SnapSmackSession(self.profile["site_url"], login_slug=self.profile.get("login_slug", "snap-in"))
             reporter.login(
                 self.profile.get("snap_admin_user", ""),
                 self.profile.get("snap_admin_pass", ""),

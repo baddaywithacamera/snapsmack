@@ -123,6 +123,7 @@ def new_profile_template() -> Dict:
         "snap_admin_user":       "",
         "snap_admin_pass":       "",
         "api_key":               "",             # scoped 'suyb' key (Bearer); preferred over admin login
+        "login_slug":            "snap-in",       # admin-login path (CMS login slug); /login.php 403s on slug-login installs
         "backup_method":         "cloud",         # "ftp" | "cloud" | "local"
         "schedule_enabled":      False,
         "schedule_type":         "daily",        # "daily" | "weekly"

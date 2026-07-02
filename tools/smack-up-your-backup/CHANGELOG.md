@@ -19,6 +19,11 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.4 — 2026-07-02
+
+### Fixed
+- **Admin login uses the site's login slug (was hardcoded `/login.php`).** On installs with a renamed login path — the default `snap-in`, and the recommended hardened config — `/login.php` returns 403, so admin-login profiles plus the "Test Login" and reachability checks failed even with correct credentials (API-key profiles were unaffected, they skip login). Profiles gain a **Login slug** field (default `snap-in`), threaded through the backup session, hub discovery, and both Test buttons. Fixes the "403 / creds fine" failures on slug-login sites.
+
 ## 0.7.3 — 2026-04-26
 
 ### Changed

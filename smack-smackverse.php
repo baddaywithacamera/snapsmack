@@ -76,7 +76,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'enabl
     } else {
         $sv_setting_upsert('smackverse_enabled', '1');
         sv_ensure_keys($pdo, $sv_settings);   // actor is followable immediately
-        header('Location: smack-smackverse.php?msg=' . urlencode('SMACKVERSE ENABLED — the blog now answers as @' . sv_handle($sv_settings) . '@' . sv_domain($sv_settings)));
+
+        require_once 'core/cron-register.php';
+
+        // Self-heal the .htaccess WebFinger rewrite so discovery works without
+        // the user hand-editing Apache config. Falls back to the REPAIR tool.
+        list($hok, ) = cron_ensure_webfinger_htaccess(__DIR__ . '/.htaccess');
+        $sv_wf_note = $hok ? '' : ' NOTE: could not auto-add the WebFinger rule — run System Maintenance → REPAIR .htaccess.';
+
+        // Auto-register the delivery cron so the user never touches a terminal.
+        // Falls back to the checklist's manual line where the host forbids it.
+        list($cok, ) = cron_register_job('*/10 * * * *',
+            realpath(__DIR__ . '/cron-smackverse.php') ?: (__DIR__ . '/cron-smackverse.php'),
+            '# snapsmack-smackverse');
+        $sv_cron_note = $cok ? ' Delivery runs every 10 minutes.'
+                             : ' NOTE: could not auto-schedule delivery on this host — see the checklist.';
+        header('Location: smack-smackverse.php?msg=' . urlencode('SMACKVERSE ENABLED — the blog now answers as @' . sv_handle($sv_settings) . '@' . sv_domain($sv_settings) . '.' . $sv_wf_note . $sv_cron_note));
         exit;
     }
 }
@@ -84,7 +99,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'enabl
 // --- DISABLE FEDERATION (reduces access — no re-auth needed) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'disable_smackverse') {
     $sv_setting_upsert('smackverse_enabled', '0');
-    header('Location: smack-smackverse.php?msg=' . urlencode('SMACKVERSE disabled — all federation endpoints now 404. Followers are kept and resume if you re-enable.'));
+    // Pull the delivery cron — no point running a sweep that self-exits.
+    require_once 'core/cron-register.php';
+    cron_remove_job('# snapsmack-smackverse');
+    header('Location: smack-smackverse.php?msg=' . urlencode('SMACKVERSE disabled — all federation endpoints now 404, delivery task removed. Followers are kept and resume if you re-enable.'));
+    exit;
+}
+
+// Manual re-try of cron auto-registration (button appears if the auto step
+// didn't take but the host actually does support cron).
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'register_cron') {
+    require_once 'core/cron-register.php';
+    list($cok, $cmsg) = cron_register_job('*/10 * * * *',
+        realpath(__DIR__ . '/cron-smackverse.php') ?: (__DIR__ . '/cron-smackverse.php'),
+        '# snapsmack-smackverse');
+    header('Location: smack-smackverse.php?msg=' . urlencode($cmsg));
     exit;
 }
 
@@ -100,7 +129,10 @@ $sv_key_fp   = $sv_has_key ? substr(hash('sha256', $sv_settings['smackverse_publ
 $sv_htaccess    = @file_get_contents(__DIR__ . '/.htaccess') ?: '';
 $sv_rewrite_ok  = strpos($sv_htaccess, 'smackverse.php?ap=webfinger') !== false;
 
-// Delivery cron health.
+// Delivery cron health — registration state + last-run freshness.
+require_once 'core/cron-register.php';
+list($sv_cron_supported, )  = cron_capability();
+$sv_cron_registered = cron_job_registered('# snapsmack-smackverse');
 $sv_cron_last = trim($sv_settings['smackverse_cron_last_run'] ?? '');
 $sv_cron_ok   = $sv_cron_last !== '' && (time() - strtotime($sv_cron_last)) < 3600;
 
@@ -162,10 +194,23 @@ include 'core/sidebar.php';
                     : 'generated automatically when you enable'; ?></td>
             </tr>
             <tr>
-                <td>Delivery cron</td>
-                <td><?php echo $sv_cron_last === ''
-                    ? '&#10007; never run — install: <code>php cron-smackverse.php</code> every 10 minutes'
-                    : (($sv_cron_ok ? '&#10003;' : '&#9888; stale —') . ' last run ' . htmlspecialchars($sv_cron_last)); ?></td>
+                <td>Delivery task</td>
+                <td>
+                    <?php if ($sv_cron_registered): ?>
+                        &#10003; scheduled (every 10 min)<?php echo $sv_cron_last !== ''
+                            ? ' — last run ' . htmlspecialchars($sv_cron_last) . ($sv_cron_ok ? '' : ' (stale)')
+                            : ' — awaiting first run'; ?>
+                    <?php elseif ($sv_cron_supported): ?>
+                        &#9888; not scheduled yet
+                        <form method="post" action="smack-smackverse.php" style="display:inline; margin-left:8px;">
+                            <input type="hidden" name="action" value="register_cron">
+                            <button type="submit" class="btn-smack" style="padding:2px 10px;">SCHEDULE IT</button>
+                        </form>
+                    <?php else: ?>
+                        &#9888; this host won't let SnapSmack manage cron — add manually:
+                        <code>*/10 * * * * php <?php echo htmlspecialchars(__DIR__); ?>/cron-smackverse.php</code>
+                    <?php endif; ?>
+                </td>
             </tr>
             <tr>
                 <td>Followers</td>
