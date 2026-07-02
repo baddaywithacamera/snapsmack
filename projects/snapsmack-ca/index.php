@@ -1464,6 +1464,10 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Browse your entire image library by album, camera, date, or extracted colour palette. Bulk tagging, bulk album assignment, and a proper visual picker when composing posts. Your archive, actually usable.</p>
             </div>
             <div class="status-card">
+                <h3>Traffic Stats</h3>
+                <p>Privacy-first analytics baked in — visits only, no cookies, no third parties, nothing phoning home. Per-image view counts, unique visitors, referrers, bot filtering, and a country breakdown resolved on your own box, so your visitors' IPs never leave it. SCROLL TIME measures real engagement on landing feeds and archives — how long the people who scroll but never click actually stay. On multisite it all rolls up fleet-wide.</p>
+            </div>
+            <div class="status-card">
                 <h3>Multisite Management</h3>
                 <p>Run a fleet of SnapSmack sites from a single hub. Live heartbeat monitoring, aggregated comment queues, cross-posting, fleet-wide backup health, and SSO drill-through to any spoke. One dashboard. All your sites.</p>
             </div>
