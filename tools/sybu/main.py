@@ -432,6 +432,13 @@ class EntryRow(tk.Frame):
     def set_selected(self, on: bool):
         self._sel_var.set(bool(on))
 
+    # ── USE FILENAME AS TITLE ──────────────────────────────────────────
+    def use_filename_as_title(self):
+        """Fill the title from the image filename, extension stripped."""
+        base = os.path.splitext(os.path.basename(self.entry.file or ''))[0]
+        if base:
+            self._title_var.set(base)   # trace pushes it into entry.title
+
 
 # ---------------------------------------------------------------------------
 # Scrollable entry list with drag reorder
@@ -558,6 +565,16 @@ class EntryList(tk.Frame):
     def set_all_selected(self, on: bool):
         for r in self._rows:
             r.set_selected(on)
+
+    def use_filenames_as_titles(self, selected_only: bool = True) -> int:
+        """USE FILENAME AS TITLE across rows (extension stripped). Returns count."""
+        touched = 0
+        for r in self._rows:
+            if selected_only and not r.is_selected():
+                continue
+            r.use_filename_as_title()
+            touched += 1
+        return touched
 
     def get_row(self, index: int) -> Optional['EntryRow']:
         if 0 <= index < len(self._rows):
@@ -1376,6 +1393,8 @@ class App(tk.Tk):
         self._enrich_btn = ttk.Button(mfst_btn_row, text="✦ Enrich with Gemini",
                                        style="Ghost.TButton", command=self._on_enrich)
         self._enrich_btn.pack(side="left", padx=(8, 0))
+        ttk.Button(mfst_btn_row, text="Use Filename as Title", style="Ghost.TButton",
+                   command=self._on_use_filenames).pack(side="left", padx=(8, 0))
 
         # ── Box: GOOGLE DRIVE ─────────────────────────────────────────
         self._goog_creds_var   = tk.StringVar()
@@ -3672,6 +3691,17 @@ class App(tk.Tk):
             self.after(0, _update)
 
         threading.Thread(target=_test_thread, daemon=True).start()
+
+    def _on_use_filenames(self):
+        """USE FILENAME AS TITLE — fill selected rows' titles from their filenames."""
+        if not self._entry_list.get_entries():
+            messagebox.showerror("Nothing loaded", "Load images or a manifest first.")
+            return
+        if self._entry_list.selected_count() == 0:
+            messagebox.showerror("Nothing selected",
+                                 "Tick at least one image (or use Select all).")
+            return
+        self._entry_list.use_filenames_as_titles(selected_only=True)
 
     def _on_enrich(self):
         api_key = self._gemini_key_var.get().strip()

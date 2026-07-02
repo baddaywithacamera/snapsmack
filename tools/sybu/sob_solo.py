@@ -92,6 +92,7 @@ class SoloMode(tk.Frame):
         self._preview.pack(side="left", padx=(0, 8))
         pbtns = tk.Frame(prow, bg=ui.BG_CARD); pbtns.pack(side="left", fill="x")
         ui.button(pbtns, "Choose image…", self._choose_image).pack(anchor="w")
+        ui.button(pbtns, "Use filename as title", self._use_filename_as_title).pack(anchor="w", pady=(4, 0))
         tk.Label(pbtns, textvariable=self._image_path, bg=ui.BG_CARD, fg=ui.FG_DIM,
                  font=ui.FONT_SMALL, wraplength=320, justify="left").pack(anchor="w", pady=4)
 
@@ -239,6 +240,12 @@ class SoloMode(tk.Frame):
             if not self._title.get():
                 self._title.set(os.path.splitext(os.path.basename(p))[0])
             self._show_preview(p)
+
+    def _use_filename_as_title(self):
+        """USE FILENAME AS TITLE — overwrite the title from the chosen image."""
+        p = self._image_path.get().strip()
+        if p:
+            self._title.set(os.path.splitext(os.path.basename(p))[0])
 
     def _show_preview(self, path):
         thumb = ui.load_thumb(path, 96)

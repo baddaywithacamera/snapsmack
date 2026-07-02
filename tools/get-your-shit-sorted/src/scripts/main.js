@@ -554,6 +554,28 @@ document.addEventListener('DOMContentLoaded', () => {
         renderSortGrid();
     });
 
+    // USE FILENAME AS TITLE — fill the title from the photo's filename,
+    // extension stripped. Needs `filename` from gyss/photos (basename only).
+    panel.querySelector('#btn-ep-filename-title')?.addEventListener('click', () => {
+        const id = state.editPanelId;
+        if (!id || !state.session) return;
+        const p = state.session.photos.find(ph => ph.id === id);
+        if (!p) return;
+        // Fall back to the thumb URL's basename for sessions pulled before the
+        // API exposed `filename` (thumbs are named a_<original file>).
+        let fname = p.filename || '';
+        if (!fname && p.thumb_url) {
+            const tail = decodeURIComponent(p.thumb_url.split('/').pop() || '');
+            fname = tail.replace(/^a_/, '');
+        }
+        if (!fname) return;
+        const base = fname.replace(/\.[^.]+$/, '');
+        if (!base) return;
+        const input = panel.querySelector('#ep-title');
+        input.value = base;
+        input.dispatchEvent(new Event('input', { bubbles: true }));  // runs saveEdit
+    });
+
     panel.querySelector('#btn-ep-close')?.addEventListener('click', closeEditPanel);
 });
 

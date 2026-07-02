@@ -246,6 +246,19 @@ $_ic_solo_bg = sprintf('rgba(%d,%d,%d,%s)',
 if ($_ic_bgmode === 'mayhem') {
     require_once dirname(__DIR__, 2) . '/core/mayhem-data.php';
 }
+
+// ── RACETRACK palette resolution (choice → hex array for data-rt-palette) ───
+$_ic_rt_palettes = [
+    'neon' => ['#ff2d95', '#00e5ff', '#ffe600', '#7cff00', '#ff6a00', '#b967ff'],
+    'warm' => ['#ff6a00', '#ffb300', '#ff2d55', '#ff8c69', '#ffd166'],
+    'cool' => ['#00e5ff', '#4d7cff', '#7cf7d4', '#9bb8ff', '#5ce1e6'],
+];
+$_ic_rt_pal_key = $settings['ic_rt_palette'] ?? 'neon';
+if ($_ic_rt_pal_key === 'mono') {
+    $_ic_rt_pal = [trim($settings['ic_rt_color'] ?? '#ff2d95')];
+} else {
+    $_ic_rt_pal = $_ic_rt_palettes[$_ic_rt_pal_key] ?? $_ic_rt_palettes['neon'];
+}
 ?>
 
 <!-- INSTANT CAMERA vars: tile aspect (match the print), scrim opacity, sharp corners. -->
@@ -260,6 +273,24 @@ if ($_ic_bgmode === 'mayhem') {
      data-initial-count="<?php echo (int)($settings['mayhem_initial_count'] ?? 90); ?>"
      data-max-width="<?php echo (int)($settings['mayhem_max_width'] ?? 260); ?>"
      data-loading-label="Developing"></div>
+<?php elseif ($_ic_bgmode === 'racetrack'): ?>
+<!-- Background: RACETRACK — long-exposure light trails lapping a circuit. -->
+<div class="ic-bg ic-bg-racetrack" aria-hidden="true" data-racetrack
+     data-rt-speed="<?php echo max(1, min(100, (int)($settings['ic_rt_speed'] ?? 40))); ?>"
+     data-rt-count="<?php echo max(1, min(24, (int)($settings['ic_rt_count'] ?? 8))); ?>"
+     data-rt-trail="<?php echo max(5, min(100, (int)($settings['ic_rt_trail'] ?? 55))); ?>"
+     data-rt-width="<?php echo max(1, min(12, (int)($settings['ic_rt_width'] ?? 3))); ?>"
+     data-rt-opacity="<?php echo max(5, min(100, (int)($settings['ic_rt_opacity'] ?? 70))); ?>"
+     data-rt-palette='<?php echo json_encode($_ic_rt_pal); ?>'></div>
+<?php elseif ($_ic_bgmode === 'rainfall'): ?>
+<!-- Background: RAINFALL — rain streaks down the window behind the scrim. -->
+<div class="ic-bg ic-bg-rainfall" aria-hidden="true" data-rainfall
+     data-rf-density="<?php echo max(1, min(100, (int)($settings['ic_rf_density'] ?? 45))); ?>"
+     data-rf-speed="<?php echo max(1, min(100, (int)($settings['ic_rf_speed'] ?? 50))); ?>"
+     data-rf-angle="<?php echo max(-45, min(45, (int)($settings['ic_rf_angle'] ?? -12))); ?>"
+     data-rf-thickness="<?php echo max(1, min(8, (int)($settings['ic_rf_thickness'] ?? 2))); ?>"
+     data-rf-color="<?php echo htmlspecialchars(trim($settings['ic_rf_color'] ?? '#6fa8dc')); ?>"
+     data-rf-opacity="<?php echo max(5, min(100, (int)($settings['ic_rf_opacity'] ?? 50))); ?>"></div>
 <?php elseif ($_ic_bgmode === 'static' && $_tg_treat_img !== ''): ?>
 <div class="ic-bg ic-bg-static" aria-hidden="true"
      style="background-image:url('<?php echo BASE_URL . htmlspecialchars($_tg_treat_img); ?>');"></div>

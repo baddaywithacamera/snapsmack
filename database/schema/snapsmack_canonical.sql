@@ -846,4 +846,40 @@ CREATE TABLE IF NOT EXISTS `snap_ai_acceptance_audit` (
   KEY `idx_accepted_at` (`accepted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+-- ─── SMACKVERSE (ActivityPub federation, 0.7.341) ────────────────────────────
+
+-- Remote actors following this blog. actor_url is the canonical remote id;
+-- inbox/shared inbox are captured at Follow time and refreshed when re-fetched.
+CREATE TABLE IF NOT EXISTS `snap_ap_followers` (
+  `id`               int unsigned  NOT NULL AUTO_INCREMENT,
+  `actor_url`        varchar(500)  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `actor_handle`     varchar(190)  COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                     COMMENT 'Display convenience: preferredUsername@host at Follow time',
+  `inbox_url`        varchar(500)  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `shared_inbox_url` varchar(500)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `followed_at`      datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `is_active`        tinyint(1)    NOT NULL DEFAULT '1'
+                     COMMENT '0 after Undo Follow — kept for history, excluded from delivery',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ap_actor` (`actor_url`(191)),
+  KEY `idx_ap_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Outbound activity delivery queue (Accepts, Creates). Processed by
+-- cron-smackverse.php with exponential backoff; rows are deleted on success
+-- and parked as status=failed after max attempts.
+CREATE TABLE IF NOT EXISTS `snap_ap_deliveries` (
+  `id`            int unsigned  NOT NULL AUTO_INCREMENT,
+  `inbox_url`     varchar(500)  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `activity_json` mediumtext    COLLATE utf8mb4_unicode_ci NOT NULL,
+  `attempts`      int unsigned  NOT NULL DEFAULT '0',
+  `next_try_at`   datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `status`        enum('queued','failed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'queued',
+  `last_error`    varchar(500)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at`    datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_ap_due` (`status`, `next_try_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ===== SNAPSMACK EOF =====

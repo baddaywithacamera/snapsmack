@@ -867,6 +867,16 @@ return [
             'path'         => 'assets/js/ss-engine-flag-wave.js',
             'has_settings' => false,
         ],
+        'smack-racetrack' => [
+            'label'        => 'RACETRACK (long-exposure light trails lapping a circuit, canvas)',
+            'path'         => 'assets/js/ss-engine-racetrack.js',
+            'has_settings' => false,
+        ],
+        'smack-rainfall' => [
+            'label'        => 'RAINFALL (falling rain streaks + splashes, canvas)',
+            'path'         => 'assets/js/ss-engine-rainfall.js',
+            'has_settings' => false,
+        ],
         'smack-calendar' => [
             'label'        => 'Archive Calendar Sidebar (Sliding date panel)',
             'path'         => 'assets/js/ss-engine-calendar.js',
