@@ -305,10 +305,11 @@ $pdo->prepare("UPDATE snap_multisite_nodes SET last_seen_at = NOW() WHERE id = ?
 // Returns site vitals: version, counts, backup state.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'heartbeat' && $method === 'GET') {
-    // Transmissions (snap_images) are the primary content type in SnapSmack.
-    // snap_posts wraps them but the canonical count is on snap_images.
-    $post_count  = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
-    $image_count = $post_count; // same source — kept for API compat
+    // Posts wrap images: a SMACKONEOUT post is one image, but a GRAMOFSMACK
+    // carousel/panorama post can stack many. Report the two as DISTINCT
+    // fleet-inventory counts — posts from snap_posts, images from snap_images.
+    $post_count  = (int)$pdo->query("SELECT COUNT(*) FROM snap_posts  WHERE status = 'published'")->fetchColumn();
+    $image_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
     $pending     = (int)$pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
 
     // Disk usage — uploads folder
@@ -618,6 +619,20 @@ if ($resource === 'stats' && $sub_action === 'daily' && $method === 'GET') {
             }
             $payload['countries'] = $co_stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Exception $e) { $payload['countries'] = []; }
+
+        // Engaged Scroll Time on GRAM landing / SMACKONEOUT archive (avg ms).
+        // dwell_ms may not exist on older installs — fail soft to 0.
+        try {
+            if ($all_time) {
+                $sc_stmt = $pdo->query("SELECT AVG(dwell_ms) AS a, COUNT(*) AS n FROM snap_stats WHERE is_bot = 0 AND dwell_ms IS NOT NULL AND page_type IN ('landing','archive')");
+            } else {
+                $sc_stmt = $pdo->prepare("SELECT AVG(dwell_ms) AS a, COUNT(*) AS n FROM snap_stats WHERE is_bot = 0 AND dwell_ms IS NOT NULL AND page_type IN ('landing','archive') AND hit_at >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+                $sc_stmt->execute([$days]);
+            }
+            $sc = $sc_stmt->fetch(PDO::FETCH_ASSOC);
+            $payload['scroll_time_avg_ms'] = ($sc && (int)$sc['n'] > 0) ? (int)round((float)$sc['a']) : 0;
+            $payload['scroll_time_n']      = $sc ? (int)$sc['n'] : 0;
+        } catch (\Exception $e) { $payload['scroll_time_avg_ms'] = 0; $payload['scroll_time_n'] = 0; }
     }
 
     ms_ok($payload);

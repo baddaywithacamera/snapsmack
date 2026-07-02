@@ -741,6 +741,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
     <?php endif; ?>
 
 </div><!-- /#smack-public-wrap -->
+<?php if (function_exists('snapsmack_scrolltime_tag')) snapsmack_scrolltime_tag($settings); ?>
 </body>
 </html>
 <?php // ===== SNAPSMACK EOF =====

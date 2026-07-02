@@ -78,6 +78,13 @@ if (strpos($route, 'threeacross') === 0 || strpos($route, 'unzucker') === 0) {
     exit;
 }
 
+// --- STATS BEACON ROUTES ---
+// Route all /api/stats/* requests (Scroll Time dwell beacon) to the stats API.
+if (strpos($route, 'stats') === 0) {
+    require_once 'core/stats-api.php';
+    exit;
+}
+
 // --- FALLBACK: Unknown API endpoint ---
 header('HTTP/1.1 404 Not Found');
 header('Content-Type: application/json');

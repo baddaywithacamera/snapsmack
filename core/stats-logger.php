@@ -225,7 +225,69 @@ function snapsmack_geoip_country() {
             return $code;
         }
     }
+
+    // Fallback: PHP-side lookup against a LOCAL .mmdb (still no third-party
+    // call — the database lives on your box). For servers with no Apache/proxy
+    // GeoIP module available (e.g. Debian trixie, which ships php-maxminddb but
+    // NOT libapache2-mod-maxminddb). Active only when the maxminddb extension is
+    // loaded AND a readable DB is configured via the SNAPSMACK_GEOIP_DB constant
+    // (defaults to /usr/share/GeoIP/country.mmdb). Works with GeoLite2 or DB-IP.
+    if (class_exists('MaxMind\\Db\\Reader')) {
+        $db = defined('SNAPSMACK_GEOIP_DB') ? SNAPSMACK_GEOIP_DB : '/usr/share/GeoIP/country.mmdb';
+        if (is_string($db) && is_readable($db)) {
+            try {
+                $ip = snapsmack_client_ip();
+                if ($ip) {
+                    static $geoip_reader = null;
+                    if ($geoip_reader === null) {
+                        $geoip_reader = new \MaxMind\Db\Reader($db);
+                    }
+                    $rec  = $geoip_reader->get($ip);
+                    $code = $rec['country']['iso_code']
+                        ?? ($rec['registered_country']['iso_code'] ?? null);
+                    if (is_string($code)) {
+                        $code = strtoupper($code);
+                        if (preg_match('/^[A-Z]{2}$/', $code)
+                            && !in_array($code, ['XX', 'T1', 'ZZ', 'A1', 'A2', 'O1'], true)) {
+                            return $code;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Bad/locked DB or bad IP — fail quiet; stats never break the page.
+            }
+        }
+    }
+
     return null;
+}
+
+/**
+ * Resolve the real visitor IP for local GeoIP lookup, accounting for a reverse
+ * proxy. Trusts REMOTE_ADDR when it is already a public address; otherwise
+ * takes the first public address from X-Forwarded-For. XFF is spoofable, but
+ * this feeds country STATS only (never auth or access control), so best-effort
+ * is acceptable — and it never trusts a private/reserved hop.
+ *
+ * @return string|null
+ */
+function snapsmack_client_ip() {
+    $pub = FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE;
+
+    $remote = $_SERVER['REMOTE_ADDR'] ?? '';
+    if ($remote && filter_var($remote, FILTER_VALIDATE_IP, $pub)) {
+        return $remote;
+    }
+
+    $xff = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+    foreach (explode(',', $xff) as $hop) {
+        $ip = trim($hop);
+        if ($ip && filter_var($ip, FILTER_VALIDATE_IP, $pub)) {
+            return $ip;
+        }
+    }
+
+    return $remote !== '' ? $remote : null;
 }
 
 /**
@@ -241,12 +303,12 @@ function snapsmack_geoip_country() {
  */
 function snapsmack_log_hit($pdo, $settings, $meta = []) {
     // Bail if stats are disabled
-    if (($settings['stats_enabled'] ?? '1') !== '1') return;
+    if (($settings['stats_enabled'] ?? '1') !== '1') return 0;
 
     // Exclude logged-in admin if configured
     if (($settings['stats_exclude_admin'] ?? '1') === '1') {
         if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['user_login'])) {
-            return;
+            return 0;
         }
     }
 
@@ -255,7 +317,7 @@ function snapsmack_log_hit($pdo, $settings, $meta = []) {
     $ip       = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
     // Skip empty UA (almost always a bot or scanner)
-    if (empty($ua)) return;
+    if (empty($ua)) return 0;
 
     $is_bot = snapsmack_is_bot($ua) ? 1 : 0;
     $parsed = snapsmack_parse_ua($ua);
@@ -287,10 +349,75 @@ function snapsmack_log_hit($pdo, $settings, $meta = []) {
             $is_bot,
             $meta['search_term'] ?? snapsmack_extract_search_term($referrer),
         ]);
+        $hit_id = (int)$pdo->lastInsertId();
+        $GLOBALS['snapsmack_hit'] = ['id' => $hit_id, 'page_type' => $meta['page_type'] ?? 'unknown'];
+        return $hit_id;
     } catch (PDOException $e) {
         // Silently fail — stats should never break the page
         // Table might not exist yet if migration hasn't run
     }
+    return 0;
+}
+
+/**
+ * Record engaged Scroll Time (ms) against a prior page hit, from the tracker
+ * beacon. Set-once, bot-excluded, recent-window-only, and capped — a beacon
+ * cannot rewrite old rows or inject absurd durations.
+ *
+ * @param  PDO $pdo
+ * @param  int $hit_id  snap_stats.id returned by snapsmack_log_hit()
+ * @param  int $ms      engaged milliseconds reported by the client
+ * @return void
+ */
+function snapsmack_record_dwell($pdo, $hit_id, $ms) {
+    $hit_id = (int)$hit_id;
+    $ms     = (int)$ms;
+    if ($hit_id <= 0 || $ms <= 0) return;
+    if ($ms > 1800000) $ms = 1800000; // cap 30 min — above this is noise
+
+    try {
+        // Belt-and-suspenders: add the column on installs predating the canonical add.
+        $pdo->exec("ALTER TABLE snap_stats ADD COLUMN IF NOT EXISTS dwell_ms int unsigned DEFAULT NULL");
+    } catch (\Throwable $e) { /* MySQL lacking IF NOT EXISTS — canonical schema sync handles it */ }
+
+    try {
+        // Set once, humans only, recent hit only (guards replay / tampering).
+        $stmt = $pdo->prepare("UPDATE snap_stats SET dwell_ms = ?
+                               WHERE id = ? AND is_bot = 0 AND dwell_ms IS NULL
+                                 AND hit_at >= DATE_SUB(NOW(), INTERVAL 6 HOUR)");
+        $stmt->execute([$ms, $hit_id]);
+    } catch (PDOException $e) { /* never break the beacon */ }
+}
+
+/**
+ * Emit the Scroll Time tracker <script> tag when the current page qualifies:
+ * a GRAMOFSMACK landing feed, or a SMACKONEOUT (photoblog) archive. Reads the
+ * hit id stashed by snapsmack_log_hit(). No-ops on any other page or mode, or
+ * when stats produced no row. Config passes via data-* attributes (no inline
+ * JS); the tracker logic lives in assets/js/ss-engine-scrolltime.js.
+ *
+ * @param  array $settings  site settings (reads $settings['site_mode'])
+ * @return void
+ */
+function snapsmack_scrolltime_tag($settings) {
+    $hit = $GLOBALS['snapsmack_hit'] ?? null;
+    if (!$hit || empty($hit['id'])) return;
+
+    $mode = $settings['site_mode'] ?? 'photoblog';
+    $type = $hit['page_type'] ?? '';
+    $ok = ($mode === 'gramofsmack' && $type === 'landing')
+       || ($mode === 'photoblog'   && $type === 'archive');
+    if (!$ok) return;
+
+    $ver  = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1';
+    $base = defined('BASE_URL') ? BASE_URL : '/';
+    printf(
+        '<script id="ss-scrolltime" src="%sassets/js/ss-engine-scrolltime.js?v=%s" data-hit="%d" data-endpoint="%sapi.php?route=stats/dwell"></script>' . "\n",
+        htmlspecialchars($base, ENT_QUOTES),
+        htmlspecialchars((string)$ver, ENT_QUOTES),
+        (int)$hit['id'],
+        htmlspecialchars($base, ENT_QUOTES)
+    );
 }
 
 /**

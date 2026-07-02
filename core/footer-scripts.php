@@ -75,4 +75,7 @@ if (($settings['sticky_header_enabled'] ?? '') === '1'):
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-sticky-header.css">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-sticky-header.js?v=<?php echo time(); ?>"></script>
 <?php endif; ?>
+
+<?php // --- SCROLL TIME tracker: emits only on GRAM landing / SMACKONEOUT archive --- ?>
+<?php if (function_exists('snapsmack_scrolltime_tag')) snapsmack_scrolltime_tag($settings); ?>
 <?php // ===== SNAPSMACK EOF =====
