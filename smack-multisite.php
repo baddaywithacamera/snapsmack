@@ -16,6 +16,11 @@ $multisite_role = $settings['multisite_role'] ?? '';
 
 // Defensive column add — harmless if migrate-spoke-maintenance-mode.sql already ran.
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `maintenance_mode` TINYINT(1) NOT NULL DEFAULT 0");
+// Installed-skins cache (0.7.343) — reported by heartbeat; gates skin-update pushes.
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `installed_skins` TEXT DEFAULT NULL");
+// SMACKVERSE federation stats cache (0.7.343) — reported by heartbeat; fleet rollup.
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackverse_enabled` TINYINT(1) NOT NULL DEFAULT 0");
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackverse_followers` INT UNSIGNED NOT NULL DEFAULT 0");
 // Defensive adds for SMACKBACK Phase 2 columns (harmless if migration already ran).
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackback_status` VARCHAR(20) NOT NULL DEFAULT 'unknown'");
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackback_breach_at` DATETIME NULL");
@@ -518,8 +523,38 @@ if (isset($_POST['push_skin']) || isset($_POST['push_skin_all'])) {
                 $target_nodes = array_filter([$stmt->fetch(PDO::FETCH_ASSOC)]);
             }
 
+            // GATE: only push a skin update to spokes that ACTUALLY have the
+            // skin installed (Sean, 0.7.343). The heartbeat caches each spoke's
+            // installed_skins (JSON {slug: version}); a spoke that doesn't have
+            // the skin is skipped, not freshly installed. This also naturally
+            // mode-gates — a solo blog without a carousel skin simply isn't a
+            // target. null = spoke hasn't reported yet (pre-0.7.343 or no sweep):
+            // skipped and told to heartbeat first, so we never guess.
+            $node_has_skin = function (array $node, string $slug): ?bool {
+                $raw = $node['installed_skins'] ?? '';
+                if ($raw === '' || $raw === null) return null;
+                $map = json_decode($raw, true);
+                if (!is_array($map)) return null;
+                return array_key_exists($slug, $map);
+            };
+
             $skin_results = [];
+            $eligible     = [];
             foreach ($target_nodes as $tn) {
+                if (!$tn) continue;
+                $has = $node_has_skin($tn, $skin_slug);
+                if ($has === true) {
+                    $eligible[] = $tn;
+                } elseif ($has === false) {
+                    $skin_results[] = ['name' => $tn['site_name'] ?? $tn['site_url'], 'ok' => false,
+                        'detail' => 'Skipped — this skin is not installed on that spoke.'];
+                } else {
+                    $skin_results[] = ['name' => $tn['site_name'] ?? $tn['site_url'], 'ok' => false,
+                        'detail' => 'Skipped — spoke has not reported its installed skins yet (needs a heartbeat once it is on 0.7.343+).'];
+                }
+            }
+
+            foreach ($eligible as $tn) {
                 if (!$tn) continue;
                 $ch = curl_init();
                 curl_setopt_array($ch, [
@@ -696,6 +731,9 @@ if ($multisite_role === 'hub') {
                         smackback_status      = ?,
                         smackback_breach_at   = ?,
                         site_mode             = ?,
+                        installed_skins       = ?,
+                        smackverse_enabled    = ?,
+                        smackverse_followers  = ?,
                         last_seen_at          = NOW(),
                         status                = 'active'
                     WHERE id = ?
@@ -715,6 +753,10 @@ if ($multisite_role === 'hub') {
                     $hb['smackback_status']   ?? 'unknown',
                     $hb['smackback_breach_at'] ?? null,
                     $hb['site_mode']          ?? 'photoblog',
+                    isset($hb['installed_skins']) && is_array($hb['installed_skins'])
+                        ? json_encode($hb['installed_skins']) : null,
+                    (int)($hb['smackverse_enabled'] ?? 0),
+                    (int)($hb['smackverse_followers'] ?? 0),
                     $n['id'],
                 ]);
                 // Update local array so the table renders fresh data without a reload
@@ -1159,8 +1201,10 @@ include 'core/sidebar.php';
         <div class="box">
             <h3>PUSH SKIN TO SPOKES</h3>
             <p style="font-size:0.9rem; color:var(--text-muted,#888); margin-bottom:16px;">
-                Install or reinstall a skin on one or all active spokes directly from the registry.
-                No version bump required.
+                Push a skin update to spokes that already have it installed. Spokes without the
+                skin are skipped, not freshly installed — so a solo blog never gets a carousel
+                skin it doesn't run. (A spoke reports its installed skins on its heartbeat; one
+                that hasn't reported yet is skipped until it does.) No version bump required.
             </p>
 
             <?php if (!empty($skin_results)): ?>

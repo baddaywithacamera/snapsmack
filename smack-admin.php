@@ -468,6 +468,16 @@ include 'core/sidebar.php';
             <?php else: ?>
                 <p class="dim mt-20 text-sm">BLOGROLL NOT INSTALLED.</p>
             <?php endif; ?>
+            <?php
+            // SMACKVERSE federation — this blog's own fediverse reach.
+            if (($settings['smackverse_enabled'] ?? '0') === '1'):
+                $sv_followers = 0;
+                try { $sv_followers = (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_followers WHERE is_active = 1")->fetchColumn(); } catch (Exception $e) {}
+            ?>
+                <label class="mt-20">SMACKVERSE (FEDIVERSE)</label>
+                <div class="stat-row"><span class="label">FOLLOWERS:</span><span class="value"><?php echo number_format($sv_followers); ?></span></div>
+                <a href="smack-smackverse.php"><button class="btn-smack master-update-btn mt-25">MANAGE FEDERATION</button></a>
+            <?php endif; ?>
         </div>
     </div>
 

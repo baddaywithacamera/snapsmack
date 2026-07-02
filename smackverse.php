@@ -84,7 +84,13 @@ switch ($ap) {
 
     case 'note':
         if ($method !== 'GET') sv_404();
-        if (isset($_GET['post'])) {
+        if (isset($_GET['comment'])) {
+            // Dereferenceable Note for a federated local comment (approved only).
+            $cst = $pdo->prepare("SELECT * FROM snap_comments WHERE id = ? AND is_approved = 1 AND ap_source <> 'fediverse' LIMIT 1");
+            $cst->execute([(int)$_GET['comment']]);
+            $crow = $cst->fetch(PDO::FETCH_ASSOC);
+            $note = $crow ? sv_note_for_comment($pdo, $crow, $settings) : null;
+        } elseif (isset($_GET['post'])) {
             $post = sv_post_row($pdo, (int)$_GET['post']);
             $note = $post ? sv_note_for_post($pdo, $post, $settings) : null;
         } else {

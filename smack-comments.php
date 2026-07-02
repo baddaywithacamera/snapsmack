@@ -85,6 +85,14 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             $pdo->prepare("UPDATE snap_comments SET is_approved = 1 WHERE id = ?")->execute([$id]);
             $msg = "Signal authorized. Broadcasting live.";
 
+            // SMACKVERSE: federate an approved LOCAL comment out to followers as
+            // the blog actor ("<Author> wrote: …"). No-op unless federation is on;
+            // remote comments are skipped inside sv_federate_comment (never echoed).
+            if (($s_rows['smackverse_enabled'] ?? '0') === '1' && is_file(__DIR__ . '/core/smackverse.php')) {
+                require_once __DIR__ . '/core/smackverse.php';
+                try { sv_federate_comment($pdo, (int)$id, $s_rows); } catch (\Throwable $e) { /* non-fatal */ }
+            }
+
             // Send allow-vote to SMACK THE ENEMY (non-fatal)
             try {
                 $_ste_on  = ($s_rows['ste_enabled']  ?? '0') === '1';

@@ -110,6 +110,27 @@ function sv_ensure_tables(PDO $pdo): void {
         PRIMARY KEY (`id`),
         KEY `idx_ap_due` (`status`, `next_try_at`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // v0.3 interaction crossing: federated likes table + comment AP columns.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_likes` (
+        `id`          int unsigned NOT NULL AUTO_INCREMENT,
+        `target_type` enum('image','post') COLLATE utf8mb4_unicode_ci NOT NULL,
+        `target_id`   int unsigned NOT NULL,
+        `actor_url`   varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `created_at`  datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_ap_like` (`target_type`, `target_id`, `actor_url`(180)),
+        KEY `idx_ap_like_target` (`target_type`, `target_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    foreach ([
+        "ap_source enum('local','fediverse') NOT NULL DEFAULT 'local'",
+        "ap_actor_url varchar(500) DEFAULT NULL",
+        "ap_object_id varchar(500) DEFAULT NULL",
+        "ap_note_id varchar(500) DEFAULT NULL",
+        "ap_in_reply_to varchar(500) DEFAULT NULL",
+    ] as $_col) {
+        try { $pdo->exec("ALTER TABLE snap_comments ADD COLUMN IF NOT EXISTS {$_col}"); }
+        catch (Exception $e) { /* older MySQL without IF NOT EXISTS — ignore dup */ }
+    }
 }
 
 // ─── Keys ────────────────────────────────────────────────────────────────────
@@ -454,6 +475,43 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30): arra
     return [$sent, $failed];
 }
 
+// ─── Interaction crossing — target resolution ───────────────────────────────
+
+/**
+ * Resolve one of OUR Note URLs (the id we publish, ?ap=note&id=/&post=/&comment=)
+ * to a target descriptor, or null if the URL isn't ours. Used to match an
+ * inbound reply's inReplyTo / a Like's object back to the content it's about.
+ */
+function sv_resolve_target(string $url): ?array {
+    if (strpos($url, 'smackverse.php') === false) return null;
+    $q = parse_url($url, PHP_URL_QUERY) ?: '';
+    parse_str($q, $p);
+    if (($p['ap'] ?? '') !== 'note') return null;
+    if (isset($p['comment'])) return ['type' => 'comment', 'id' => (int)$p['comment']];
+    if (isset($p['post']))    return ['type' => 'post',    'id' => (int)$p['post']];
+    if (isset($p['id']))      return ['type' => 'image',   'id' => (int)$p['id']];
+    return null;
+}
+
+/** Map a target to the snap_comments.img_id it should attach to (0 if none). */
+function sv_target_image_id(PDO $pdo, array $target): int {
+    if ($target['type'] === 'image') return (int)$target['id'];
+    if ($target['type'] === 'post') {
+        $s = $pdo->prepare(
+            "SELECT image_id FROM snap_post_images WHERE post_id = ?
+             ORDER BY is_cover DESC, sort_position ASC LIMIT 1"
+        );
+        $s->execute([(int)$target['id']]);
+        return (int)($s->fetchColumn() ?: 0);
+    }
+    if ($target['type'] === 'comment') {
+        $s = $pdo->prepare("SELECT img_id FROM snap_comments WHERE id = ? LIMIT 1");
+        $s->execute([(int)$target['id']]);
+        return (int)($s->fetchColumn() ?: 0);
+    }
+    return 0;
+}
+
 // ─── Inbox handling ──────────────────────────────────────────────────────────
 
 /**
@@ -496,35 +554,182 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             'object'   => $activity,
         ];
         sv_queue_delivery($pdo, $inbox, json_encode($accept, JSON_UNESCAPED_SLASHES));
-        return 202;
-    }
 
-    if ($type === 'Undo') {
-        $obj = $activity['object'] ?? [];
-        if (is_array($obj) && ($obj['type'] ?? '') === 'Follow') {
-            $pdo->prepare("UPDATE snap_ap_followers SET is_active = 0 WHERE actor_url = ?")
-                ->execute([$actor_id]);
+        // Backfill: send this NEW follower our most-recent posts to THAT
+        // follower's inbox only (not a network blast), so their view of the
+        // blog isn't an empty grid. Recent-only; count = smackverse_backfill_count
+        // (default 10, 0 disables). Skipped on a re-follow (already following).
+        $backfill = (int)($settings['smackverse_backfill_count'] ?? 10);
+        $is_refollow = (bool)$pdo->query(
+            "SELECT 1 FROM snap_ap_followers WHERE actor_url = " . $pdo->quote($actor_id)
+            . " AND followed_at < DATE_SUB(NOW(), INTERVAL 1 MINUTE) LIMIT 1"
+        )->fetchColumn();
+        if ($backfill > 0 && !$is_refollow) {
+            foreach (sv_recent_creates($pdo, $settings, $backfill) as $create_json) {
+                sv_queue_delivery($pdo, $inbox, $create_json);
+            }
         }
         return 202;
     }
 
+    if ($type === 'Undo') {
+        $obj   = $activity['object'] ?? [];
+        $otype = is_array($obj) ? ($obj['type'] ?? '') : '';
+        if ($otype === 'Follow') {
+            $pdo->prepare("UPDATE snap_ap_followers SET is_active = 0 WHERE actor_url = ?")
+                ->execute([$actor_id]);
+        } elseif ($otype === 'Like') {
+            // Un-like: drop the federated like on our target.
+            $liked = is_array($obj['object'] ?? null) ? ($obj['object']['id'] ?? '') : ($obj['object'] ?? '');
+            $t = is_string($liked) ? sv_resolve_target($liked) : null;
+            if ($t && $t['type'] !== 'comment') {
+                $pdo->prepare("DELETE FROM snap_ap_likes WHERE target_type = ? AND target_id = ? AND actor_url = ?")
+                    ->execute([$t['type'], (int)$t['id'], $actor_id]);
+            }
+        }
+        return 202;
+    }
+
+    if ($type === 'Like') {
+        // A remote actor liked one of our posts → federated like (combined tally).
+        $obj = is_array($activity['object'] ?? null) ? ($activity['object']['id'] ?? '') : ($activity['object'] ?? '');
+        $t = is_string($obj) ? sv_resolve_target($obj) : null;
+        if ($t && $t['type'] !== 'comment') {
+            try {
+                $pdo->prepare("INSERT IGNORE INTO snap_ap_likes (target_type, target_id, actor_url) VALUES (?, ?, ?)")
+                    ->execute([$t['type'], (int)$t['id'], $actor_id]);
+            } catch (Exception $e) { /* table may lag on a fresh install */ }
+        }
+        return 202;
+    }
+
+    if ($type === 'Create') {
+        // A federated REPLY to one of our posts → a comment (into moderation).
+        $obj = $activity['object'] ?? [];
+        if (!is_array($obj) || ($obj['type'] ?? '') !== 'Note') return 202;
+        $in_reply = $obj['inReplyTo'] ?? '';
+        if (!is_string($in_reply) || $in_reply === '') return 202;  // not a reply to us
+        $target = sv_resolve_target($in_reply);
+        if ($target === null) return 202;
+        $img_id = sv_target_image_id($pdo, $target);
+        if ($img_id <= 0) return 202;
+
+        $note_id = (string)($obj['id'] ?? '');
+        if ($note_id === '') return 202;
+        // Sanitize to plain text — we never render remote HTML.
+        $text = trim(html_entity_decode(strip_tags((string)($obj['content'] ?? '')), ENT_QUOTES, 'UTF-8'));
+        if ($text === '') return 202;
+        if (mb_strlen($text) > 5000) $text = mb_substr($text, 0, 5000);
+        $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
+
+        try {
+            // is_approved = 0 → lands in the normal comment moderation queue.
+            $pdo->prepare(
+                "INSERT INTO snap_comments
+                    (img_id, comment_author, comment_url, comment_text, comment_date,
+                     is_approved, ap_source, ap_actor_url, ap_object_id, ap_in_reply_to)
+                 VALUES (?, ?, ?, ?, NOW(), 0, 'fediverse', ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE comment_text = VALUES(comment_text)"
+            )->execute([$img_id, substr($handle, 0, 100), $actor_id, $text, $actor_id, $note_id, $in_reply]);
+        } catch (Exception $e) { /* dup or column lag — ignore */ }
+        return 202;
+    }
+
     if ($type === 'Delete') {
-        // A remote actor deleting itself — drop them from followers.
+        // Remote actor deleting itself → drop from followers; deleting a Note →
+        // remove the federated comment it produced.
         $obj = is_array($activity['object'] ?? null)
             ? ($activity['object']['id'] ?? '') : ($activity['object'] ?? '');
         if ($obj === $actor_id) {
             $pdo->prepare("UPDATE snap_ap_followers SET is_active = 0 WHERE actor_url = ?")
                 ->execute([$actor_id]);
+        } elseif (is_string($obj) && $obj !== '') {
+            try {
+                $pdo->prepare("DELETE FROM snap_comments WHERE ap_object_id = ? AND ap_source = 'fediverse'")
+                    ->execute([$obj]);
+            } catch (Exception $e) { /* ignore */ }
         }
         return 202;
     }
 
-    // Everything else (Like, Announce, Create replies, …): acknowledged,
-    // not yet stored. v0.3 surfaces boosts/likes into stats.
+    // Everything else (Announce, etc.): acknowledged, not stored.
     return 202;
 }
 
 // ─── Documents: webfinger / actor / outbox / followers ──────────────────────
+
+/**
+ * Bio → actor summary HTML. The fediverse renders summary as HTML, so we
+ * escape the admin's plain-text bio (no raw-HTML injection) and then turn any
+ * http(s):// URL into a real clickable link — the admin just types the full
+ * URL (e.g. https://fauxlaroid.fyi) and it becomes a link in the fediverse bio.
+ * rel="nofollow noopener me" — the "me" enables fediverse link verification if
+ * the linked site links back.
+ */
+function sv_bio_html(string $raw): string {
+    $esc = htmlspecialchars(trim($raw), ENT_QUOTES);
+    $esc = preg_replace_callback('~\bhttps?://[^\s<]+~i', function ($m) {
+        $u = rtrim($m[0], '.,;:)!?');   // don't swallow trailing punctuation
+        return '<a href="' . $u . '" rel="nofollow noopener me">' . $u . '</a>';
+    }, $esc);
+    return nl2br($esc);
+}
+
+/**
+ * The actor summary: the admin's bio (linkified) with an automatic
+ * "See <blog> for more." link back to the blog appended — so the fediverse
+ * profile always points home without the admin editing the description. The
+ * link text is the blog's domain; rel="me" lets the blog verify the link if it
+ * links back. Skipped only if the bio already contains the site URL.
+ */
+function sv_actor_summary(array $settings): string {
+    $bio  = sv_bio_html($settings['site_description'] ?? '');
+    $base = rtrim(sv_base($settings), '/');
+    $host = parse_url($base, PHP_URL_HOST) ?: $base;
+    if ($base === '' || $host === '') return $bio;
+
+    // Don't duplicate if the admin already linked the site in the bio.
+    if (stripos($bio, $host) !== false) return $bio;
+
+    $link = 'See <a href="' . htmlspecialchars($base, ENT_QUOTES)
+          . '" rel="nofollow noopener me">' . htmlspecialchars($host, ENT_QUOTES)
+          . '</a> for more.';
+    return $bio === '' ? $link : $bio . '<br><br>' . $link;
+}
+
+/**
+ * Resolve the blog avatar as an ActivityStreams Image, or null.
+ *
+ * skin_avatar is a PER-SKIN setting stored prefixed ("<skin>__skin_avatar");
+ * the bare key is empty in raw snap_settings, so we apply the active skin's
+ * overlay first (exactly like the front end does). The file must exist on disk
+ * — we never advertise a broken icon — and the mediaType is derived from the
+ * extension (Pixelfed/Mastodon reject a PNG served as image/jpeg).
+ */
+function sv_avatar(array $settings): ?array {
+    $slug = trim($settings['active_skin'] ?? '');
+    $s = $settings;
+    if ($slug !== '') {
+        if (!function_exists('snapsmack_apply_skin_settings')) {
+            @require_once __DIR__ . '/skin-settings.php';
+        }
+        if (function_exists('snapsmack_apply_skin_settings')) {
+            snapsmack_apply_skin_settings($s, $slug);
+        }
+    }
+    $path = trim($s['skin_avatar'] ?? '');
+    if ($path === '') return null;
+    $abs = dirname(__DIR__) . '/' . ltrim($path, '/');  // core/.. = site root
+    if (!is_file($abs)) return null;
+    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    $types = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
+              'gif' => 'image/gif', 'webp' => 'image/webp'];
+    return [
+        'type'      => 'Image',
+        'mediaType' => $types[$ext] ?? 'image/jpeg',
+        'url'       => sv_base($settings) . ltrim($path, '/'),
+    ];
+}
 
 /** WebFinger JRD for acct:<handle>@<domain>. Returns null on mismatch. */
 function sv_webfinger(string $resource, array $settings): ?array {
@@ -553,7 +758,7 @@ function sv_actor_doc(PDO $pdo, array &$settings): array {
         'type'              => 'Person',
         'preferredUsername' => sv_handle($settings),
         'name'              => $settings['site_name'] ?? 'SnapSmack',
-        'summary'           => nl2br(htmlspecialchars(trim($settings['site_description'] ?? ''))),
+        'summary'           => sv_actor_summary($settings),
         'url'               => rtrim(sv_base($settings), '/'),
         'inbox'             => sv_inbox_url($settings),
         'outbox'            => sv_outbox_url($settings),
@@ -563,14 +768,8 @@ function sv_actor_doc(PDO $pdo, array &$settings): array {
         'discoverable'      => true,
     ];
 
-    $avatar = trim($settings['skin_avatar'] ?? '');
-    if ($avatar !== '') {
-        $doc['icon'] = [
-            'type'      => 'Image',
-            'mediaType' => 'image/jpeg',
-            'url'       => sv_base($settings) . ltrim($avatar, '/'),
-        ];
-    }
+    $icon = sv_avatar($settings);
+    if ($icon !== null) $doc['icon'] = $icon;
 
     $pub = sv_ensure_keys($pdo, $settings);
     if ($pub !== '') {
@@ -802,6 +1001,112 @@ function sv_note_for_post(PDO $pdo, array $post, array $settings): ?array {
     return $note;
 }
 
+/**
+ * The federated Note that represents the content a comment sits on: the
+ * image's POST Note if the image is grouped, else the standalone image Note.
+ */
+function sv_content_note_id_for_image(PDO $pdo, int $img_id, array $settings): ?string {
+    $s = $pdo->prepare("SELECT post_id FROM snap_images WHERE id = ? LIMIT 1");
+    $s->execute([$img_id]);
+    $row = $s->fetch(PDO::FETCH_ASSOC);
+    if (!$row) return null;
+    $base = sv_base($settings);
+    return !empty($row['post_id'])
+        ? $base . 'smackverse.php?ap=note&post=' . (int)$row['post_id']
+        : $base . 'smackverse.php?ap=note&id=' . $img_id;
+}
+
+/**
+ * Build a Note for a LOCAL blog comment being federated out. Single-actor
+ * rule: it's authored by the blog, with "<Author> wrote:" in the body so the
+ * fediverse sees who said it. Threads under the content's Note (or the parent
+ * comment's Note for a fediverse reply chain).
+ */
+function sv_note_for_comment(PDO $pdo, array $c, array $settings): ?array {
+    $img_id = (int)$c['img_id'];
+    $parent = trim($c['ap_in_reply_to'] ?? '');
+    if ($parent === '') $parent = sv_content_note_id_for_image($pdo, $img_id, $settings);
+    if (!$parent) return null;
+
+    $base    = sv_base($settings);
+    $note_id = $c['ap_note_id'] ?: ($base . 'smackverse.php?ap=note&comment=' . (int)$c['id']);
+    $author  = trim($c['comment_author'] ?? '') ?: 'Someone';
+    $body    = trim($c['comment_text'] ?? '');
+    $content = '<p><strong>' . htmlspecialchars($author) . '</strong> wrote:</p><p>'
+             . nl2br(htmlspecialchars($body)) . '</p>';
+
+    return [
+        '@context'     => 'https://www.w3.org/ns/activitystreams',
+        'id'           => $note_id,
+        'type'         => 'Note',
+        'attributedTo' => sv_actor_url($settings),
+        'inReplyTo'    => $parent,
+        'to'           => ['https://www.w3.org/ns/activitystreams#Public'],
+        'cc'           => [sv_followers_url($settings)],
+        'published'    => gmdate('Y-m-d\TH:i:s\Z', strtotime($c['comment_date'] ?? 'now')),
+        'content'      => $content,
+    ];
+}
+
+/**
+ * Federate an APPROVED local comment out as the blog actor. No-op for remote
+ * comments (never echo them back) and unapproved ones. Called from the comment
+ * approval path. Assigns + persists a stable Note id, then queues delivery to
+ * every follower.
+ */
+function sv_federate_comment(PDO $pdo, int $comment_id, array $settings): void {
+    if (!sv_enabled($settings)) return;
+    $s = $pdo->prepare("SELECT * FROM snap_comments WHERE id = ? LIMIT 1");
+    $s->execute([$comment_id]);
+    $c = $s->fetch(PDO::FETCH_ASSOC);
+    if (!$c) return;
+    if (($c['ap_source'] ?? 'local') === 'fediverse') return;  // don't boomerang remote comments
+    if ((int)($c['is_approved'] ?? 0) !== 1) return;           // only approved
+
+    if (empty($c['ap_note_id'])) {
+        $c['ap_note_id'] = sv_base($settings) . 'smackverse.php?ap=note&comment=' . (int)$c['id'];
+        $pdo->prepare("UPDATE snap_comments SET ap_note_id = ? WHERE id = ?")
+            ->execute([$c['ap_note_id'], (int)$c['id']]);
+    }
+    $note = sv_note_for_comment($pdo, $c, $settings);
+    if ($note === null) return;
+
+    $create = [
+        '@context'  => 'https://www.w3.org/ns/activitystreams',
+        'id'        => $note['id'] . '#create',
+        'type'      => 'Create',
+        'actor'     => sv_actor_url($settings),
+        'published' => $note['published'],
+        'to'        => $note['to'],
+        'cc'        => $note['cc'],
+        'object'    => $note,
+    ];
+    $json = json_encode($create, JSON_UNESCAPED_SLASHES);
+    foreach (sv_follower_inboxes($pdo) as $inbox) {
+        sv_queue_delivery($pdo, $inbox, $json);
+    }
+}
+
+/** Combined like tally for a target: native snap_likes + federated snap_ap_likes. */
+function sv_combined_like_count(PDO $pdo, string $target_type, int $target_id, int $native): int {
+    $ap = 0;
+    try {
+        $s = $pdo->prepare("SELECT COUNT(*) FROM snap_ap_likes WHERE target_type = ? AND target_id = ?");
+        $s->execute([$target_type, $target_id]);
+        $ap = (int)$s->fetchColumn();
+    } catch (Exception $e) { /* table may lag */ }
+    return $native + $ap;
+}
+
+/** Federated-only like count for a target (for a "+N fediverse" breakout). */
+function sv_fedi_like_count(PDO $pdo, string $target_type, int $target_id): int {
+    try {
+        $s = $pdo->prepare("SELECT COUNT(*) FROM snap_ap_likes WHERE target_type = ? AND target_id = ?");
+        $s->execute([$target_type, $target_id]);
+        return (int)$s->fetchColumn();
+    } catch (Exception $e) { return 0; }
+}
+
 /** Wrap a Note in its Create activity. */
 function sv_create_for_note(array $note, array $settings): array {
     return [
@@ -882,6 +1187,67 @@ function sv_outbox_doc(PDO $pdo, array $settings, bool $page): array {
         'partOf'       => $outbox,
         'orderedItems' => $items,
     ];
+}
+
+/**
+ * Build Create-activity JSON for the N most-recent content units (standalone
+ * images + grouped posts merged, newest first, then reversed to oldest-first
+ * for tidy delivery). Used for the backfill sent to a NEW follower. Reuses the
+ * same Note builders as the sweep, so trigram/carousel shaping is identical.
+ */
+function sv_recent_creates(PDO $pdo, array $settings, int $limit = 10): array {
+    if ($limit < 1) return [];
+    $units = [];
+    try {
+        $imgs = $pdo->query(
+            "SELECT * FROM snap_images
+             WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL
+             ORDER BY img_date DESC LIMIT " . (int)$limit
+        )->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($imgs as $img) $units[] = ['date' => $img['img_date'], 'kind' => 'image', 'row' => $img];
+
+        $posts = $pdo->query(
+            "SELECT * FROM snap_posts
+             WHERE status = 'published' AND created_at <= NOW()
+               AND post_type IN ('single','carousel','panorama')
+             ORDER BY created_at DESC LIMIT " . (int)$limit
+        )->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($posts as $p) $units[] = ['date' => $p['created_at'], 'kind' => 'post', 'row' => $p];
+    } catch (Exception $e) {
+        return [];
+    }
+    usort($units, fn($a, $b) => strcmp($b['date'], $a['date']));
+    $units = array_slice($units, 0, $limit);
+
+    // Never backfill a PARTIAL trigram — a trio is a 3-across banner and 1-2 of
+    // 3 looks broken. Drop any trigram whose full trio isn't inside the window,
+    // so an all-trigram blog lands on a multiple of 3 (a limit of 10 trims to 9;
+    // set smackverse_backfill_count to 12 to send four trios). Non-trigram posts
+    // and standalone images are unaffected.
+    $trio_counts = [];
+    foreach ($units as $u) {
+        if ($u['kind'] === 'post' && (int)($u['row']['trigram_id'] ?? 0) > 0) {
+            $tg = (int)$u['row']['trigram_id'];
+            $trio_counts[$tg] = ($trio_counts[$tg] ?? 0) + 1;
+        }
+    }
+    $units = array_values(array_filter($units, function ($u) use ($trio_counts) {
+        if ($u['kind'] !== 'post') return true;
+        $tg = (int)($u['row']['trigram_id'] ?? 0);
+        if ($tg === 0) return true;
+        return ($trio_counts[$tg] ?? 0) >= 3;   // keep only complete trios
+    }));
+
+    $units = array_reverse($units);  // oldest-first for tidy delivery
+
+    $out = [];
+    foreach ($units as $u) {
+        $note = ($u['kind'] === 'post')
+            ? sv_note_for_post($pdo, $u['row'], $settings)
+            : sv_note_for_image($pdo, $u['row'], $settings);
+        if ($note !== null) $out[] = json_encode(sv_create_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
+    }
+    return $out;
 }
 
 // ─── Publish sweep (PULL model — zero posting-flow edits) ────────────────────
