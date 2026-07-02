@@ -354,12 +354,20 @@ function sv_verify_signature(string $raw_body): ?array {
 
     $pubkey = openssl_pkey_get_public($pem);
     if ($pubkey === false) { $reject('openssl could not parse publicKeyPem'); return null; }
-    $ok = openssl_verify($signing_string, base64_decode($sig['signature']), $pubkey, OPENSSL_ALGO_SHA256);
+    $sig_bytes = base64_decode($sig['signature']);
+    $ok = openssl_verify($signing_string, $sig_bytes, $pubkey, OPENSSL_ALGO_SHA256);
     if ($ok !== 1) {
-        // Dump the EXACT signing string we built (newlines shown as ⏎) so the
-        // byte that differs from the peer's is visible in the error log.
+        // Crypto detail: distinguishes wrong-key vs bad-signature vs openssl
+        // error. verify=-1 + an err string = openssl problem; verify=0 = the
+        // signature simply doesn't match this string+key (wrong key most likely).
+        error_log('SMACKVERSE sig: verify=' . $ok
+            . ' openssl_err=' . (openssl_error_string() ?: 'none')
+            . ' sig_bytes=' . strlen((string)$sig_bytes)
+            . ' keyId=' . $sig['keyid']
+            . ' fetched_actor=' . ($actor['id'] ?? '?')
+            . ' pem_fp=' . substr(hash('sha256', $pem), 0, 16));
         error_log('SMACKVERSE sig: signing-string we built = [' . str_replace("\n", ' ⏎ ', $signing_string) . ']');
-        $reject('openssl_verify failed (signing-string mismatch). Signed: ' . implode(' ', $signed_names));
+        $reject('openssl_verify failed. Signed: ' . implode(' ', $signed_names));
         return null;
     }
     return $actor;

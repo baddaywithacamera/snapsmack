@@ -12,6 +12,10 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.347 — "Fluttershy" (2026-07-03)
+
+- **SMACKVERSE: crypto diagnostics on signature failure.** When `openssl_verify` fails, the error log now records the verify return code (−1 = openssl error vs 0 = key/signature mismatch), any `openssl_error_string()`, the decoded signature byte length (256 = a well-formed RSA-2048 sig), the keyId, the actor id we fetched, and the public-key fingerprint — pinpointing wrong-key vs bad-signature vs openssl-error to fix the Pixelfed 401 exactly. Diagnostic only.
+
 ## 0.7.346 — "Rarity" (2026-07-03)
 
 - **SMACKVERSE: instant follow/Accept delivery + signing-string diagnostics.** The inbox now delivers everything it just queued (the Accept, the backfill posts) **in the same request** — it flushes the acknowledgement to the sender via `fastcgi_finish_request()`, then processes the delivery queue — so a follow completes in seconds instead of waiting up to 10 minutes for the cron tick. The cron stays as the retry backstop. Also: when signature verification fails at `openssl_verify`, the exact signing string we reconstruct is now dumped to the error log (newlines shown as ⏎), so the byte that differs from Pixelfed 0.12.7's is visible and the 401 can be fixed precisely rather than guessed.
