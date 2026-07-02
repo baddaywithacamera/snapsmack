@@ -1351,6 +1351,11 @@ body { background: transparent !important; }      /* let the fixed layers show *
     pointer-events: none;
 }
 .ic-bg-static { background-size: cover; background-position: center center; }
+/* RACETRACK / RAINFALL ambient canvases fill the fixed .ic-bg layer. The
+   engines draw at half resolution and the stretch reads as glow; the extra
+   blur on RACETRACK sells the long-exposure look. */
+.ic-bg canvas.ic-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ic-bg-racetrack canvas.ic-canvas { filter: blur(0.6px); }
 .ic-scrim {
     position: fixed; inset: 0;
     z-index: -2;

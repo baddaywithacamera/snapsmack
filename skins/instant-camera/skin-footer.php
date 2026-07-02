@@ -39,6 +39,16 @@
 $skin_manifest = include __DIR__ . '/manifest.php';
 $requested     = $skin_manifest['require_scripts'] ?? [];
 
+// Background engines are mutually exclusive (PARADE pattern): Organized Mayhem
+// loads by default; RACETRACK / RAINFALL replace it when selected. Static mode
+// loads no engine at all.
+$_ic_bg_engine = $settings['ic_bg_mode'] ?? 'mayhem';
+if ($_ic_bg_engine !== 'mayhem') {
+    $requested = array_values(array_filter($requested, function ($h) { return $h !== 'smack-organized-mayhem'; }));
+    if ($_ic_bg_engine === 'racetrack') $requested[] = 'smack-racetrack';
+    if ($_ic_bg_engine === 'rainfall')  $requested[] = 'smack-rainfall';
+}
+
 // Skin asset cache-buster: core version + skin version (skin JS busts on skin bump).
 $skin_asset_v = SNAPSMACK_VERSION_SHORT . (!empty($skin_manifest['version']) ? '-' . $skin_manifest['version'] : '');
 

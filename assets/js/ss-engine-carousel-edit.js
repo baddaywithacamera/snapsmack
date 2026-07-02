@@ -44,7 +44,11 @@
 (function () {
     'use strict';
 
-    var MAX_FILES  = 20;
+    // 10 = the composer's MAX_IMAGES AND Pixelfed's carousel ceiling (10 photos
+    // per post). The editor previously allowed 20, letting a posted carousel
+    // grow past what the composer — and the fediverse — accept. Total includes
+    // the cover (the cover is a member, not an extra).
+    var MAX_FILES  = 10;
     var ACCEPTED   = ['image/jpeg', 'image/png', 'image/webp'];
 
     // Tracks image IDs removed in this session

@@ -328,7 +328,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $max_pos_stmt->execute([$post_id]);
         $next_pos = (int)$max_pos_stmt->fetchColumn() + 1;
 
-        for ($i = 0; $i < $files_count && $current_count < 20; $i++) {
+        // Cap 10 TOTAL (cover included) — matches the composer's MAX_IMAGES and
+        // Pixelfed's 10-photo carousel ceiling, so an edited post stays federable.
+        for ($i = 0; $i < $files_count && $current_count < 10; $i++) {
             if ($_FILES['new_img_files']['error'][$i] !== UPLOAD_ERR_OK) continue;
 
             $tmp_name  = $_FILES['new_img_files']['tmp_name'][$i];
@@ -825,7 +827,7 @@ include 'core/sidebar.php';
                 <h3 style="margin:0;">SOURCE ASSETS</h3>
                 <div style="display:flex; gap:12px; align-items:center;">
                     <span class="dim" style="font-size:12px; letter-spacing:1px;">
-                        <?php echo count($post_images); ?> / 20 images
+                        <?php echo count($post_images); ?> / 10 images
                     </span>
                     <button type="button" id="ce-add-toggle" class="btn-secondary">+ ADD MORE IMAGES</button>
                 </div>

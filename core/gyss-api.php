@@ -229,6 +229,7 @@ if ($resource === 'photos' && $method === 'GET') {
             'category_name' => $row['category_name'],
             'album_id'      => $row['album_id'] !== null ? (int)$row['album_id'] : null,
             'album_name'    => $row['album_name'],
+            'filename'      => basename((string)$row['img_file']),
             'thumb_url'     => gy_thumb_url($row['img_file']),
         ];
     }
