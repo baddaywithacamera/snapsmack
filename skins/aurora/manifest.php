@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'AURORA',
-    'version'     => '1.0.31',
+    'version'     => '1.0.32',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Northern-lights desktop skin. A classic 3-across square grid under a slow aurora that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.',
@@ -253,9 +253,14 @@ return [
             'hint'    => 'Background colour of the sticky nav bar. PHP-handled → --au-navbar-bg.',
         ],
         'au_navbar_opacity' => [
-            'section' => 'NAVBAR', 'type' => 'range_numeric', 'label' => 'Navbar Opacity',
+            'section' => 'NAVBAR', 'type' => 'range_numeric', 'label' => 'Navbar Opacity — Landing',
             'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'    => '0 = transparent. Raise for a solid bar over the aurora.',
+            'hint'    => 'Landing page only. 0 = transparent. Raise for a solid bar over the aurora.',
+        ],
+        'au_navbar_opacity_inner' => [
+            'section' => 'NAVBAR', 'type' => 'range_numeric', 'label' => 'Navbar Opacity — Other Pages',
+            'default' => '', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'    => 'Archive / post / static pages. Leave blank to match the Landing value.',
         ],
         // ---- "POSTS" LABEL glow (colour is the Post Count Colour above) ────
         'au_posts_glow_color' => [

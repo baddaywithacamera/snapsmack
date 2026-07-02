@@ -185,7 +185,15 @@ if ($_ic_panel_op > 0) {
 // ── Sticky navbar background — transparent by default (tabletop shows through);
 // admin can dial colour + opacity to make it solid. ────────────────────────
 $_ic_nav_hex = trim($settings['ic_nav_color'] ?? '#ffffff');
-$_ic_nav_op  = max(0, min(100, (int)($settings['ic_nav_opacity'] ?? 0)));
+// Split navbar opacity: landing wants the hero/background to show through;
+// content pages usually want the bar more solid for readability. The inner
+// value falls back to the landing value when left blank, so existing installs
+// look identical until the admin sets Other Pages separately.
+$_ic_nav_op_landing = max(0, min(100, (int)($settings['ic_nav_opacity'] ?? 0)));
+$_ic_nav_op_inner   = ($settings['ic_nav_opacity_inner'] ?? '') !== ''
+    ? max(0, min(100, (int)$settings['ic_nav_opacity_inner']))
+    : $_ic_nav_op_landing;
+$_ic_nav_op  = $_tg_on_home ? $_ic_nav_op_landing : $_ic_nav_op_inner;
 $_ic_nav_bg  = 'transparent';
 if ($_ic_nav_op > 0) {
     $_nc = ltrim($_ic_nav_hex, '#');
@@ -264,37 +272,55 @@ if ($_ic_rt_pal_key === 'mono') {
 <!-- INSTANT CAMERA vars: tile aspect (match the print), scrim opacity, sharp corners. -->
 <style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--bio-text-glow:<?php echo htmlspecialchars($_ic_bioglow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;--panel-bg:<?php echo htmlspecialchars($_ic_panel_bg); ?>;--panel-extend:<?php echo (int)$_ic_panel_extend; ?>px;--ic-nav-bg:<?php echo htmlspecialchars($_ic_nav_bg); ?>;--posts-color:<?php echo htmlspecialchars($_ic_posts_color); ?>;--posts-glow:<?php echo htmlspecialchars($_ic_posts_glow); ?>;--ic-navline-color:<?php echo htmlspecialchars($_ic_navline_color); ?>;--ic-navline-opacity:<?php echo (int)$_ic_navline_op; ?>;--ic-navline-shadow:<?php echo htmlspecialchars($_ic_navline_shadow); ?>;--post-bg:<?php echo htmlspecialchars($_ic_solo_bg); ?>;}</style>
 
-<?php if ($_ic_bgmode === 'mayhem'): ?>
+<?php
+// Background carrier(s). Single modes emit exactly one carrier (unchanged).
+// Cycle mode emits every available background inside #ic-bg-cycle and the
+// crossfade engine (smack-bg-cycle) rotates them on a timer. The static image
+// is a cycle stop only when a Treatment image is set.
+$_ic_cycle       = ($_ic_bgmode === 'cycle');
+$_ic_cycle_secs  = max(5, min(60, (int)($settings['ic_cycle_secs'] ?? 15)));
+$_cl             = $_ic_cycle ? ' ic-bg-cyclelayer' : '';
+$_show_mayhem    = ($_ic_bgmode === 'mayhem'    || $_ic_cycle);
+$_show_racetrack = ($_ic_bgmode === 'racetrack' || $_ic_cycle);
+$_show_rainfall  = ($_ic_bgmode === 'rainfall'  || $_ic_cycle);
+$_show_static    = (($_ic_bgmode === 'static'   || $_ic_cycle) && $_tg_treat_img !== '');
+?>
+<?php if ($_ic_cycle): ?><div id="ic-bg-cycle" data-secs="<?php echo (int)$_ic_cycle_secs; ?>"><?php endif; ?>
+<?php if ($_show_mayhem): ?>
 <!-- Background: Organized Mayhem ambient tabletop (data-pan=0 data-ambient=1) behind the scrim. -->
-<div class="ic-bg ic-bg-mayhem" aria-hidden="true"
+<div class="ic-bg ic-bg-mayhem<?php echo $_cl; ?>" aria-hidden="true"
      data-mayhem
      data-api-url="<?php echo BASE_URL; ?>?ajax=mayhem"
      data-pan="0" data-ambient="1"
      data-initial-count="<?php echo (int)($settings['mayhem_initial_count'] ?? 90); ?>"
      data-max-width="<?php echo (int)($settings['mayhem_max_width'] ?? 260); ?>"
      data-loading-label="Developing"></div>
-<?php elseif ($_ic_bgmode === 'racetrack'): ?>
+<?php endif; ?>
+<?php if ($_show_racetrack): ?>
 <!-- Background: RACETRACK — long-exposure light trails lapping a circuit. -->
-<div class="ic-bg ic-bg-racetrack" aria-hidden="true" data-racetrack
+<div class="ic-bg ic-bg-racetrack<?php echo $_cl; ?>" aria-hidden="true" data-racetrack
      data-rt-speed="<?php echo max(1, min(100, (int)($settings['ic_rt_speed'] ?? 40))); ?>"
      data-rt-count="<?php echo max(1, min(24, (int)($settings['ic_rt_count'] ?? 8))); ?>"
      data-rt-trail="<?php echo max(5, min(100, (int)($settings['ic_rt_trail'] ?? 55))); ?>"
      data-rt-width="<?php echo max(1, min(12, (int)($settings['ic_rt_width'] ?? 3))); ?>"
      data-rt-opacity="<?php echo max(5, min(100, (int)($settings['ic_rt_opacity'] ?? 70))); ?>"
      data-rt-palette='<?php echo json_encode($_ic_rt_pal); ?>'></div>
-<?php elseif ($_ic_bgmode === 'rainfall'): ?>
+<?php endif; ?>
+<?php if ($_show_rainfall): ?>
 <!-- Background: RAINFALL — rain streaks down the window behind the scrim. -->
-<div class="ic-bg ic-bg-rainfall" aria-hidden="true" data-rainfall
+<div class="ic-bg ic-bg-rainfall<?php echo $_cl; ?>" aria-hidden="true" data-rainfall
      data-rf-density="<?php echo max(1, min(100, (int)($settings['ic_rf_density'] ?? 45))); ?>"
      data-rf-speed="<?php echo max(1, min(100, (int)($settings['ic_rf_speed'] ?? 50))); ?>"
      data-rf-angle="<?php echo max(-45, min(45, (int)($settings['ic_rf_angle'] ?? -12))); ?>"
      data-rf-thickness="<?php echo max(1, min(8, (int)($settings['ic_rf_thickness'] ?? 2))); ?>"
      data-rf-color="<?php echo htmlspecialchars(trim($settings['ic_rf_color'] ?? '#6fa8dc')); ?>"
      data-rf-opacity="<?php echo max(5, min(100, (int)($settings['ic_rf_opacity'] ?? 50))); ?>"></div>
-<?php elseif ($_ic_bgmode === 'static' && $_tg_treat_img !== ''): ?>
-<div class="ic-bg ic-bg-static" aria-hidden="true"
+<?php endif; ?>
+<?php if ($_show_static): ?>
+<div class="ic-bg ic-bg-static<?php echo $_cl; ?>" aria-hidden="true"
      style="background-image:url('<?php echo BASE_URL . htmlspecialchars($_tg_treat_img); ?>');"></div>
 <?php endif; ?>
+<?php if ($_ic_cycle): ?></div><?php endif; ?>
 <!-- White scrim between background and grid (primary legibility control). -->
 <div class="ic-scrim" aria-hidden="true"></div>
 <!-- Readability panel: centred translucent column behind the content, full

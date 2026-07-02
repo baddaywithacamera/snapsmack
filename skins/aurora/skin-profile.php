@@ -191,7 +191,13 @@ if ($_au_panel_op > 0) {
 }
 // ── Navbar bg, posts glow, nav-line shadow, landing panel (mirrors IC) ──────
 $_au_navbar_hex = trim($settings['au_navbar_color'] ?? '#0a0e1a');
-$_au_navbar_op  = max(0, min(100, (int)($settings['au_navbar_opacity'] ?? 0)));
+// Split navbar opacity — landing vs content pages (inner falls back to landing
+// when blank, so existing installs are unchanged until Other Pages is set).
+$_au_navbar_op_landing = max(0, min(100, (int)($settings['au_navbar_opacity'] ?? 0)));
+$_au_navbar_op_inner   = ($settings['au_navbar_opacity_inner'] ?? '') !== ''
+    ? max(0, min(100, (int)$settings['au_navbar_opacity_inner']))
+    : $_au_navbar_op_landing;
+$_au_navbar_op  = $_au_on_home ? $_au_navbar_op_landing : $_au_navbar_op_inner;
 $_au_navbar_bg  = 'transparent';
 if ($_au_navbar_op > 0) {
     $_c = ltrim($_au_navbar_hex, '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
