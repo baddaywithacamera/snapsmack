@@ -65,6 +65,9 @@ sv_ensure_keys($pdo, $settings);
 list($units, $queued) = sv_sweep_new_posts($pdo, $settings);
 list($sent, $failed)  = sv_process_deliveries($pdo, $settings, 30);
 
+// Health stamp for the SMACKVERSE admin page's delivery panel.
+sv_set_setting($pdo, $settings, 'smackverse_cron_last_run', date('Y-m-d H:i:s'));
+
 echo sprintf(
     "SMACKVERSE sweep: %d new unit(s), %d delivery(ies) queued. Queue run: %d sent, %d retrying/failed.\n",
     $units, $queued, $sent, $failed

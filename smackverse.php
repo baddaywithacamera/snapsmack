@@ -97,6 +97,11 @@ switch ($ap) {
 
     case 'inbox':
         if ($method !== 'POST') sv_404();
+        // Rate limit BEFORE any work — every inbox POST otherwise costs a
+        // signature check including a remote key fetch. Login-pattern limiter.
+        if (!sv_inbox_rate_ok($pdo, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0')) {
+            http_response_code(429); exit;
+        }
         $raw = file_get_contents('php://input') ?: '';
         if ($raw === '' || strlen($raw) > 524288) {
             http_response_code(400); exit;

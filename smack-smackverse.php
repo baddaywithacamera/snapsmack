@@ -1,0 +1,281 @@
+<?php
+/**
+ * SNAPSMACK - SMACKVERSE Federation Admin
+ *
+ * The blog's fediverse control room. One blog = ONE actor — the site
+ * itself, never per-user (hard design rule; see the spec). This page:
+ *   - shows the blog's fediverse address (@handle@domain) with a live
+ *     preview while editing
+ *   - the FEDERATION SWITCH: enabling GRANTS a public attack surface →
+ *     requires password + 2FA (step-up, core/reauth.php); disabling
+ *     reduces access → no re-auth
+ *   - readiness checklist (webfinger rewrite, signing key, delivery cron)
+ *   - follower list + outbound delivery queue health
+ *
+ * Spec: _spec/smackverse-activitypub-spec-v0_1.md
+ */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+require_once 'core/auth-smack.php';
+require_once 'core/smackverse.php';
+
+$msg = '';
+
+// Settings snapshot (smackverse helpers read from this array).
+$sv_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
+                   ->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Defensive: federation tables (canonical schema owns the real delivery).
+sv_ensure_tables($pdo);
+
+$sv_setting_upsert = function (string $key, string $val) use ($pdo, &$sv_settings) {
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+                   ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+        ->execute([$key, $val]);
+    $sv_settings[$key] = $val;
+};
+
+// Active follower count is needed by both the handle guard and the display.
+$sv_follower_count = 0;
+try {
+    $sv_follower_count = (int)$pdo->query(
+        "SELECT COUNT(*) FROM snap_ap_followers WHERE is_active = 1"
+    )->fetchColumn();
+} catch (PDOException $e) { /* table just created — zero */ }
+
+// --- SAVE HANDLE ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_handle') {
+    $raw = strtolower(trim($_POST['sv_handle'] ?? ''));
+    $handle = trim(preg_replace('/[^a-z0-9_]+/', '_', $raw), '_');
+    if ($handle === '' || strlen($handle) > 60) {
+        $msg = 'HANDLE NOT SAVED — use 1-60 characters: letters, numbers, underscores.';
+    } elseif (sv_enabled($sv_settings) && $sv_follower_count > 0 && empty($_POST['confirm_rename'])) {
+        // Renaming a live actor STRANDS every follower (WebFinger identity breaks).
+        $msg = 'HANDLE NOT SAVED — this blog has ' . $sv_follower_count
+             . ' follower(s). Renaming strands them all. Tick the confirmation box if you really mean it.';
+    } else {
+        $sv_setting_upsert('smackverse_handle', $handle);
+        header('Location: smack-smackverse.php?msg=' . urlencode('Handle saved: @' . $handle . '@' . sv_domain($sv_settings)));
+        exit;
+    }
+}
+
+// --- ENABLE FEDERATION (step-up: password + TOTP — grants a public surface) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'enable_smackverse') {
+    require_once 'core/reauth.php';
+    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    if (!$ra['ok']) {
+        $msg = 'FEDERATION NOT ENABLED — ' . $ra['error'];
+    } else {
+        $sv_setting_upsert('smackverse_enabled', '1');
+        sv_ensure_keys($pdo, $sv_settings);   // actor is followable immediately
+        header('Location: smack-smackverse.php?msg=' . urlencode('SMACKVERSE ENABLED — the blog now answers as @' . sv_handle($sv_settings) . '@' . sv_domain($sv_settings)));
+        exit;
+    }
+}
+
+// --- DISABLE FEDERATION (reduces access — no re-auth needed) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'disable_smackverse') {
+    $sv_setting_upsert('smackverse_enabled', '0');
+    header('Location: smack-smackverse.php?msg=' . urlencode('SMACKVERSE disabled — all federation endpoints now 404. Followers are kept and resume if you re-enable.'));
+    exit;
+}
+
+// --- STATE FOR RENDER ---
+$sv_on       = sv_enabled($sv_settings);
+$sv_handle   = sv_handle($sv_settings);
+$sv_dom      = sv_domain($sv_settings);
+$sv_address  = '@' . $sv_handle . '@' . $sv_dom;
+$sv_has_key  = trim($sv_settings['smackverse_public_key'] ?? '') !== '';
+$sv_key_fp   = $sv_has_key ? substr(hash('sha256', $sv_settings['smackverse_public_key']), 0, 16) : '';
+
+// Webfinger rewrite present in .htaccess?
+$sv_htaccess    = @file_get_contents(__DIR__ . '/.htaccess') ?: '';
+$sv_rewrite_ok  = strpos($sv_htaccess, 'smackverse.php?ap=webfinger') !== false;
+
+// Delivery cron health.
+$sv_cron_last = trim($sv_settings['smackverse_cron_last_run'] ?? '');
+$sv_cron_ok   = $sv_cron_last !== '' && (time() - strtotime($sv_cron_last)) < 3600;
+
+// Queue counts + followers.
+$sv_q_queued = 0; $sv_q_failed = 0; $sv_followers = [];
+try {
+    $sv_q_queued  = (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_deliveries WHERE status = 'queued'")->fetchColumn();
+    $sv_q_failed  = (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_deliveries WHERE status = 'failed'")->fetchColumn();
+    $sv_followers = $pdo->query(
+        "SELECT actor_handle, actor_url, followed_at FROM snap_ap_followers
+         WHERE is_active = 1 ORDER BY followed_at DESC LIMIT 200"
+    )->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { /* fresh install */ }
+
+include 'core/admin-header.php';
+include 'core/sidebar.php';
+?>
+
+<div class="main">
+
+    <div class="header-row header-row--ruled">
+        <h2>SMACKVERSE</h2>
+    </div>
+
+    <?php if (isset($_GET['msg'])): ?>
+        <div class="alert alert-success">&gt; <?php echo htmlspecialchars($_GET['msg']); ?></div>
+    <?php endif; ?>
+    <?php if ($msg): ?>
+        <div class="alert alert-warn">&gt; <?php echo htmlspecialchars($msg); ?></div>
+    <?php endif; ?>
+
+    <!-- STATUS -->
+    <div class="box mb-20">
+        <h3>THIS BLOG IN THE FEDIVERSE</h3>
+        <p class="dim mb-20">
+            SMACKVERSE makes this blog ONE citizen of the fediverse: people on Mastodon,
+            Pixelfed, and friends can search the address below, follow it, and get new posts
+            in their timeline. The blog stays home base — federation is syndication, not
+            migration. Everyone who posts here posts as the blog: one site, one voice, one address.
+        </p>
+        <p style="font-size:20px;"><code><?php echo htmlspecialchars($sv_address); ?></code>
+            <?php if ($sv_on): ?>
+                <span class="alert-success" style="padding:2px 10px; margin-left:10px;">LIVE</span>
+            <?php else: ?>
+                <span class="dim" style="margin-left:10px;">NOT FEDERATING</span>
+            <?php endif; ?>
+        </p>
+        <table class="admin-table" style="max-width:640px;">
+            <tr>
+                <td>WebFinger rewrite (.htaccess)</td>
+                <td><?php echo $sv_rewrite_ok
+                    ? '&#10003; found'
+                    : '&#10007; missing — add: <code>RewriteRule ^\.well-known/webfinger$ smackverse.php?ap=webfinger [QSA,L]</code>'; ?></td>
+            </tr>
+            <tr>
+                <td>Signing key</td>
+                <td><?php echo $sv_has_key
+                    ? '&#10003; present (SHA-256 ' . htmlspecialchars($sv_key_fp) . '…)'
+                    : 'generated automatically when you enable'; ?></td>
+            </tr>
+            <tr>
+                <td>Delivery cron</td>
+                <td><?php echo $sv_cron_last === ''
+                    ? '&#10007; never run — install: <code>php cron-smackverse.php</code> every 10 minutes'
+                    : (($sv_cron_ok ? '&#10003;' : '&#9888; stale —') . ' last run ' . htmlspecialchars($sv_cron_last)); ?></td>
+            </tr>
+            <tr>
+                <td>Followers</td>
+                <td><?php echo (int)$sv_follower_count; ?></td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- IDENTITY -->
+    <div class="box mb-20">
+        <h3>FEDIVERSE HANDLE</h3>
+        <p class="dim mb-20">
+            The name this blog answers to. Letters, numbers, and underscores; the domain comes
+            from your Site URL. <strong>Changing the handle after people follow you strands
+            every follower</strong> — their apps know you by the old address.
+        </p>
+        <form method="post" action="smack-smackverse.php">
+            <input type="hidden" name="action" value="save_handle">
+            <div class="lens-input-wrapper">
+                <label>HANDLE</label>
+                <input type="text" id="sv-handle-input" name="sv_handle" maxlength="60"
+                       value="<?php echo htmlspecialchars($sv_handle); ?>" autocomplete="off">
+            </div>
+            <p>Will answer as:
+                <code id="sv-handle-preview" data-sv-domain="<?php echo htmlspecialchars($sv_dom); ?>"><?php echo htmlspecialchars($sv_address); ?></code>
+            </p>
+            <?php if ($sv_on && $sv_follower_count > 0): ?>
+            <label style="display:block; margin-bottom:10px;">
+                <input type="checkbox" name="confirm_rename" value="1">
+                I understand this strands all <?php echo (int)$sv_follower_count; ?> follower(s).
+            </label>
+            <?php endif; ?>
+            <button type="submit" class="btn-smack">SAVE HANDLE</button>
+        </form>
+    </div>
+
+    <!-- FEDERATION SWITCH -->
+    <div class="box mb-20">
+        <h3>FEDERATION SWITCH</h3>
+        <?php if ($sv_on): ?>
+            <div class="alert alert-success">&#10003; SMACKVERSE is ON. The blog is discoverable and followable at <code><?php echo htmlspecialchars($sv_address); ?></code>.</div>
+            <form method="post" action="smack-smackverse.php">
+                <input type="hidden" name="action" value="disable_smackverse">
+                <button type="submit" class="btn-smack">DISABLE FEDERATION</button>
+            </form>
+            <p class="dim" style="margin-top:10px;">
+                Disabling 404s every federation endpoint immediately. Followers are kept and
+                pick back up if you re-enable.
+            </p>
+        <?php else: ?>
+            <p class="dim mb-20">
+                Enabling opens public federation endpoints on this site (discovery documents
+                plus a signature-verified inbox — rate-limited, and unverified requests change
+                nothing). It is still a new public surface, so turning it ON requires your
+                password and 2FA code. New posts start federating from the moment you enable;
+                nothing already published is pushed out.
+            </p>
+            <form method="post" action="smack-smackverse.php">
+                <input type="hidden" name="action" value="enable_smackverse">
+                <div class="reauth-row">
+                    <div class="lens-input-wrapper">
+                        <label>PASSWORD</label>
+                        <input type="password" name="reauth_password" autocomplete="off">
+                    </div>
+                    <div class="lens-input-wrapper">
+                        <label>2FA CODE (IF ENABLED)</label>
+                        <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" class="input-code">
+                    </div>
+                </div>
+                <button type="submit" class="master-update-btn">ENABLE SMACKVERSE</button>
+            </form>
+        <?php endif; ?>
+    </div>
+
+    <!-- FOLLOWERS -->
+    <div class="box mb-20">
+        <h3>FOLLOWERS<?php echo $sv_follower_count ? ' (' . (int)$sv_follower_count . ')' : ''; ?></h3>
+        <?php if (!$sv_followers): ?>
+            <p class="dim">Nobody yet. Once you're enabled, search <code><?php echo htmlspecialchars($sv_address); ?></code> from any Mastodon or Pixelfed account and hit follow.</p>
+        <?php else: ?>
+            <table class="admin-table">
+                <tr><th>WHO</th><th>ACTOR</th><th>SINCE</th></tr>
+                <?php foreach ($sv_followers as $f): ?>
+                <tr>
+                    <td><?php echo htmlspecialchars($f['actor_handle'] ?? ''); ?></td>
+                    <td><code><?php echo htmlspecialchars($f['actor_url']); ?></code></td>
+                    <td><?php echo htmlspecialchars($f['followed_at']); ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </table>
+        <?php endif; ?>
+    </div>
+
+    <!-- DELIVERY QUEUE -->
+    <div class="box mb-20">
+        <h3>DELIVERY QUEUE</h3>
+        <p class="dim mb-20">
+            Outbound activity (Accepts + new-post deliveries), processed by the cron with
+            retry backoff. Rows disappear on success; FAILED rows gave up after 8 tries and
+            are kept for inspection.
+        </p>
+        <table class="admin-table" style="max-width:420px;">
+            <tr><td>Queued</td><td><?php echo (int)$sv_q_queued; ?></td></tr>
+            <tr><td>Failed</td><td><?php echo (int)$sv_q_failed; ?></td></tr>
+            <tr><td>Last cron run</td><td><?php echo $sv_cron_last !== '' ? htmlspecialchars($sv_cron_last) : 'never'; ?></td></tr>
+        </table>
+    </div>
+
+</div>
+
+<script src="assets/js/ss-engine-smackverse-admin.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+<?php include 'core/admin-footer.php'; ?>
+<?php // ===== SNAPSMACK EOF =====
