@@ -147,19 +147,72 @@ function sv_ensure_keys(PDO $pdo, array &$settings): string {
 // ─── SSRF-guarded remote fetch ───────────────────────────────────────────────
 
 /**
- * True when a URL is safe to contact: http(s), resolvable, and NOT a
- * private/reserved/loopback address. Blocks redirect-free SSRF; redirects
- * are disabled on every outbound request so this check holds.
+ * Resolve a URL for outbound contact. Returns ['host','port','ip','pin']
+ * when the target is public (http(s), resolvable, NOT private/reserved/
+ * loopback), null otherwise. The caller MUST hand 'pin' to CURLOPT_RESOLVE
+ * so cURL contacts the exact IP that passed this check — without the pin,
+ * a hostile DNS server can answer the validation lookup with a public IP
+ * and cURL's second lookup with a LAN address (DNS rebinding).
  */
-function sv_url_is_public(string $url): bool {
+function sv_resolve_public(string $url): ?array {
     $p = parse_url($url);
-    if (!$p || !in_array($p['scheme'] ?? '', ['http', 'https'], true)) return false;
+    if (!$p || !in_array($p['scheme'] ?? '', ['http', 'https'], true)) return null;
     $host = $p['host'] ?? '';
-    if ($host === '') return false;
+    if ($host === '') return null;
+    $port = (int)($p['port'] ?? (($p['scheme'] === 'https') ? 443 : 80));
     $ip = filter_var($host, FILTER_VALIDATE_IP) ? $host : gethostbyname($host);
-    if ($ip === $host && !filter_var($ip, FILTER_VALIDATE_IP)) return false; // did not resolve
-    return (bool)filter_var($ip, FILTER_VALIDATE_IP,
-        FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+    if (!filter_var($ip, FILTER_VALIDATE_IP)) return null; // did not resolve
+    if (!filter_var($ip, FILTER_VALIDATE_IP,
+        FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return null;
+    return ['host' => $host, 'port' => $port, 'ip' => $ip,
+            'pin' => [$host . ':' . $port . ':' . $ip]];
+}
+
+/** Boolean convenience wrapper over sv_resolve_public() for validation-only checks. */
+function sv_url_is_public(string $url): bool {
+    return sv_resolve_public($url) !== null;
+}
+
+/**
+ * Inbox rate limit — reuses snap_rate_limits / snap_ip_bans (the login /
+ * FLKR FCKR pattern). Every inbox POST costs a signature check including a
+ * remote key fetch, so it is not free to serve: cap 60 per 10 minutes per
+ * IP; a sustained flood (>180 in the window) earns a 24-hour auto-ban.
+ * Best-effort: a limiter failure never blocks legitimate federation.
+ */
+function sv_inbox_rate_ok(PDO $pdo, string $ip): bool {
+    try {
+        $b = $pdo->prepare("SELECT 1 FROM snap_ip_bans WHERE ip = ? AND expires_at > NOW() LIMIT 1");
+        $b->execute([$ip]);
+        if ($b->fetchColumn()) return false;
+
+        $pdo->prepare(
+            "INSERT INTO snap_rate_limits (ip, action, count, window_start)
+             VALUES (?, 'smackverse_inbox', 1, NOW())
+             ON DUPLICATE KEY UPDATE
+               count        = IF(window_start < DATE_SUB(NOW(), INTERVAL 10 MINUTE), 1, count + 1),
+               window_start = IF(window_start < DATE_SUB(NOW(), INTERVAL 10 MINUTE), NOW(), window_start)"
+        )->execute([$ip]);
+        $q = $pdo->prepare(
+            "SELECT count FROM snap_rate_limits
+             WHERE ip = ? AND action = 'smackverse_inbox'
+               AND window_start >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
+        );
+        $q->execute([$ip]);
+        $n = (int)($q->fetchColumn() ?: 0);
+
+        if ($n > 180) {
+            $pdo->prepare(
+                "INSERT INTO snap_ip_bans (ip, reason, banned_at, expires_at)
+                 VALUES (?, 'auto:smackverse_inbox', NOW(), DATE_ADD(NOW(), INTERVAL 24 HOUR))
+                 ON DUPLICATE KEY UPDATE reason = VALUES(reason), banned_at = NOW(), expires_at = VALUES(expires_at)"
+            )->execute([$ip]);
+            return false;
+        }
+        return $n <= 60;
+    } catch (PDOException $e) {
+        return true; // never block federation on a limiter hiccup
+    }
 }
 
 /**
@@ -168,11 +221,13 @@ function sv_url_is_public(string $url): bool {
  */
 function sv_fetch_ap(string $url): ?array {
     if (!function_exists('curl_init')) return null;
-    if (!sv_url_is_public($url)) return null;
+    $res = sv_resolve_public($url);
+    if ($res === null) return null;
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_RESOLVE        => $res['pin'], // pin the vetted IP — DNS-rebinding guard
         CURLOPT_TIMEOUT        => 8,
         CURLOPT_CONNECTTIMEOUT => 5,
         CURLOPT_HTTPHEADER     => [
@@ -313,7 +368,8 @@ function sv_signed_headers(array $settings, string $url, string $body): ?array {
 /** POST a signed activity to a remote inbox. Returns [bool ok, string info]. */
 function sv_deliver(array $settings, string $inbox_url, string $activity_json): array {
     if (!function_exists('curl_init')) return [false, 'curl missing'];
-    if (!sv_url_is_public($inbox_url))  return [false, 'inbox url not public'];
+    $res = sv_resolve_public($inbox_url);
+    if ($res === null) return [false, 'inbox url not public'];
     $headers = sv_signed_headers($settings, $inbox_url, $activity_json);
     if ($headers === null) return [false, 'no signing key'];
 
@@ -324,6 +380,7 @@ function sv_deliver(array $settings, string $inbox_url, string $activity_json): 
         CURLOPT_HTTPHEADER     => $headers,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_RESOLVE        => $res['pin'], // pin the vetted IP — DNS-rebinding guard
         CURLOPT_TIMEOUT        => 10,
         CURLOPT_CONNECTTIMEOUT => 5,
     ]);
