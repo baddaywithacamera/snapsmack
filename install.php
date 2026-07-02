@@ -1408,6 +1408,7 @@ RewriteRule ^archive$ archive.php [L,QSA]
 RewriteRule ^rss$ rss.php [L,QSA]
 RewriteRule ^feed$ rss.php [L,QSA]
 RewriteRule ^snap-in$ snap-in.php [L,QSA]
+RewriteRule ^\.well-known/webfinger$ smackverse.php?ap=webfinger [L,QSA]
 
 RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
 

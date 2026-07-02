@@ -25,7 +25,14 @@
     var endpoint = cfg.getAttribute('data-endpoint') || '';
     if (!hit || !endpoint) return;
 
-    var IDLE_MS = 5000;        // idle after 5s with no activity
+    // Idle grace: how long stillness still counts as engaged reading after the
+    // last scroll/move. On a PHOTO blog, lingering 30-60s on one image without
+    // touching the trackpad IS the engaged read we want to capture — a 5s cutoff
+    // (the original value) discarded almost all of it, counting only active
+    // trackpad motion and collapsing a 10-minute browse to seconds. 30s captures
+    // contemplative viewing while still self-limiting an abandoned tab (it counts
+    // at most IDLE_MS past the last input, then freezes until activity resumes).
+    var IDLE_MS = 30000;
     var engaged = 0;           // accumulated engaged milliseconds
     var lastTick = null;       // timestamp of the previous accumulation tick
     var lastActivity = Date.now();

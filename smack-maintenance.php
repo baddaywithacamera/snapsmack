@@ -89,7 +89,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $vax_resp = @file_get_contents($vax_url, false, $vax_ctx);
             $vax_status = 0;
-            if (isset($http_response_header[0]) && preg_match('#\s(\d{3})\s#', $http_response_header[0], $vm)) {
+            // PHP 8.4+ deprecates the $http_response_header magic variable in
+            // favour of http_get_last_response_headers(); prefer it where it
+            // exists, fall back to the variable on older runtimes.
+            $vax_hdrs = function_exists('http_get_last_response_headers')
+                ? (http_get_last_response_headers() ?? [])
+                : ($http_response_header ?? []);
+            if (isset($vax_hdrs[0]) && preg_match('#\s(\d{3})\s#', $vax_hdrs[0], $vm)) {
                 $vax_status = (int) $vm[1];
             }
             if ($vax_resp === false) {
@@ -771,6 +777,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'Proxy-aware HTTPS'      => 'X-Forwarded-Proto',
                     'Clean URL router'       => 'RewriteRule ^([a-zA-Z0-9_-]+)$ index.php',
                     'snap-in named route'    => 'RewriteRule ^snap-in$',
+                    'SMACKVERSE webfinger'   => 'well-known/webfinger',
                     'Security headers'       => 'X-Frame-Options',
                     'Sensitive files'        => 'FilesMatch "(^\\.ht',
                     'Core PHP blocking'      => 'FilesMatch "^(db|auth|constants',

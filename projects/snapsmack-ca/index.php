@@ -1655,7 +1655,7 @@ require_once __DIR__ . '/includes/header.php';
 <section id="themes">
     <div class="wrap">
         <h2>Production Ready Skins</h2>
-        <p class="lede">Seven skins. Seven live sites. Not demos stuffed with stock photos — each is a real photographer's actual online portfolio. Click any screenshot to zoom in, then visit the live site. Hover a card for live site stats. Nine more skins are in development.</p>
+        <p class="lede">Eleven skins. Eleven live sites. Not demos stuffed with stock photos — each is a real photographer's actual online portfolio. Click any screenshot to zoom in, then visit the live site. Hover a card for live site stats. More skins are in development.</p>
         <div class="theme-grid">
 
             <div class="theme-card" data-stats="<?php echo ss_card_stats('unzucked.ca', $_demo_stats); ?>">
