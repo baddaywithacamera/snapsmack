@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.2.19',
+    'version'     => '1.2.20',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
@@ -453,9 +453,14 @@ return [
             'hint'    => 'Background colour of the sticky nav bar. PHP-handled → --pa-navbar-bg.',
         ],
         'pa_navbar_opacity' => [
-            'section' => 'NAVBAR', 'type' => 'range_numeric', 'label' => 'Navbar Opacity',
+            'section' => 'NAVBAR', 'type' => 'range_numeric', 'label' => 'Navbar Opacity — Landing',
             'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'    => '0 = transparent. Raise for a solid bar.',
+            'hint'    => 'Landing page only. 0 = transparent. Raise for a solid bar.',
+        ],
+        'pa_navbar_opacity_inner' => [
+            'section' => 'NAVBAR', 'type' => 'range_numeric', 'label' => 'Navbar Opacity — Other Pages',
+            'default' => '', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'    => 'Archive / post / static pages. Leave blank to match the Landing value.',
         ],
         'pa_posts_glow_color' => [
             'section' => 'POSTS LABEL', 'type' => 'color', 'label' => 'Posts Glow Colour',

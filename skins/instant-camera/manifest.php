@@ -30,7 +30,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'INSTANT CAMERA',
-    'version'     => '1.0.19',
+    'version'     => '1.0.20',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'For instant-film photographers. A GRAMOFSMACK 3-across grid whose tile aspect you set to match your format (Polaroid, Instax Mini/Wide/Square, or custom) so prints show UNCROPPED — the scanned border is the frame, the skin just adds a drop shadow. Drifting Organized Mayhem tabletop behind a white scrim. Prints on a table, which is exactly what instant photography is.',
@@ -113,9 +113,19 @@ return [
                 'racetrack' => 'RACETRACK (long-exposure light trails)',
                 'rainfall'  => 'RAINFALL (rain on the window)',
                 'static'    => 'Static image (set under Treatment)',
+                'cycle'     => 'Cycle all (timed crossfade)',
             ],
-            'hint'    => 'Organized Mayhem scatters your photos on a slow-drifting table behind the grid. RACETRACK laps light trails around a circuit; RAINFALL streaks rain down the glass. Static uses the Treatment background image below. Mutually exclusive — only the chosen engine loads.',
-            // PHP-handled: skin-profile.php emits the matching carrier; skin-footer.php loads only the chosen engine.
+            'hint'    => 'Organized Mayhem scatters your photos on a slow-drifting table behind the grid. RACETRACK laps light trails around a circuit; RAINFALL streaks rain down the glass. Static uses the Treatment background image below. Cycle all rotates through every background on a timer with a 2-second crossfade. Single modes are mutually exclusive — only the chosen engine loads.',
+            // PHP-handled: skin-profile.php emits the matching carrier(s); skin-footer.php loads the chosen engine(s).
+        ],
+        'ic_cycle_secs' => [
+            'section'   => 'INSTANT CAMERA',
+            'type'      => 'range_numeric',
+            'label'     => 'Cycle — Seconds Per Background',
+            'default'   => '15', 'min' => '5', 'max' => '60', 'step' => '1',
+            'unit'      => 's',
+            'show_when' => ['ic_bg_mode' => 'cycle'],
+            'hint'      => 'Cycle mode only. How long each background holds before the 2-second crossfade to the next. The Static image is included as a stop when you have set a Treatment image below.',
         ],
 
         // ---- RACETRACK (background engine — long-exposure light trails) -----
@@ -409,13 +419,24 @@ return [
         'ic_nav_opacity' => [
             'section'  => 'NAVBAR',
             'type'     => 'range_numeric',
-            'label'    => 'Navbar Opacity',
+            'label'    => 'Navbar Opacity — Landing',
             'default'  => '0',
             'min'      => '0',
             'max'      => '100',
             'step'     => '5',
             'unit'     => '%',
-            'hint'     => '0 = fully transparent (the tabletop shows through). Raise it for a solid bar.',
+            'hint'     => 'Landing page only. 0 = fully transparent (the tabletop shows through). Raise it for a solid bar.',
+        ],
+        'ic_nav_opacity_inner' => [
+            'section'  => 'NAVBAR',
+            'type'     => 'range_numeric',
+            'label'    => 'Navbar Opacity — Other Pages',
+            'default'  => '',
+            'min'      => '0',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+            'hint'     => 'Archive / post / static pages, where content sits under the bar and usually wants it more solid than the landing hero. Leave blank to match the Landing value.',
         ],
 
         // ---- "POSTS" LABEL -------------------------------------------------

@@ -877,6 +877,11 @@ return [
             'path'         => 'assets/js/ss-engine-rainfall.js',
             'has_settings' => false,
         ],
+        'smack-bg-cycle' => [
+            'label'        => 'Background cycle crossfader (rotates stacked bg layers on a timer)',
+            'path'         => 'assets/js/ss-engine-bg-cycle.js',
+            'has_settings' => false,
+        ],
         'smack-calendar' => [
             'label'        => 'Archive Calendar Sidebar (Sliding date panel)',
             'path'         => 'assets/js/ss-engine-calendar.js',

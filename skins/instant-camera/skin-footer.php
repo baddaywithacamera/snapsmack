@@ -39,11 +39,17 @@
 $skin_manifest = include __DIR__ . '/manifest.php';
 $requested     = $skin_manifest['require_scripts'] ?? [];
 
-// Background engines are mutually exclusive (PARADE pattern): Organized Mayhem
-// loads by default; RACETRACK / RAINFALL replace it when selected. Static mode
-// loads no engine at all.
+// Background engines: single modes are mutually exclusive (PARADE pattern) —
+// Organized Mayhem loads by default; RACETRACK / RAINFALL replace it when
+// selected; Static loads no engine. CYCLE loads ALL engines plus the crossfader
+// so every background renders and rotates on a timer.
 $_ic_bg_engine = $settings['ic_bg_mode'] ?? 'mayhem';
-if ($_ic_bg_engine !== 'mayhem') {
+if ($_ic_bg_engine === 'cycle') {
+    // Keep mayhem (already in require_scripts) and add the rest + the cycler.
+    $requested[] = 'smack-racetrack';
+    $requested[] = 'smack-rainfall';
+    $requested[] = 'smack-bg-cycle';
+} elseif ($_ic_bg_engine !== 'mayhem') {
     $requested = array_values(array_filter($requested, function ($h) { return $h !== 'smack-organized-mayhem'; }));
     if ($_ic_bg_engine === 'racetrack') $requested[] = 'smack-racetrack';
     if ($_ic_bg_engine === 'rainfall')  $requested[] = 'smack-rainfall';
