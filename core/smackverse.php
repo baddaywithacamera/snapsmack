@@ -367,6 +367,21 @@ function sv_verify_signature(string $raw_body): ?array {
             . ' fetched_actor=' . ($actor['id'] ?? '?')
             . ' pem_fp=' . substr(hash('sha256', $pem), 0, 16));
         error_log('SMACKVERSE sig: signing-string we built = [' . str_replace("\n", ' ⏎ ', $signing_string) . ']');
+        // Per-header value + byte length — reveals the invisible byte (leading/
+        // trailing space, \r, quote nuance) that differs from what the peer signed.
+        $hdr_dbg = [];
+        foreach ($signed_names as $name) {
+            if ($name === '(request-target)') {
+                $v = strtolower($_SERVER['REQUEST_METHOD'] ?? 'post') . ' ' . ($_SERVER['REQUEST_URI'] ?? '/');
+            } elseif ($name === 'host') {
+                $v = $_SERVER['HTTP_HOST'] ?? '';
+            } else {
+                $v = sv_request_header($name);
+            }
+            $hdr_dbg[] = $name . '(' . strlen($v) . ')=[' . $v . ']';
+        }
+        error_log('SMACKVERSE sig: header values ' . implode(' | ', $hdr_dbg));
+        error_log('SMACKVERSE sig: raw Signature header = [' . sv_request_header('signature') . ']');
         $reject('openssl_verify failed. Signed: ' . implode(' ', $signed_names));
         return null;
     }

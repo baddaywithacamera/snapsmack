@@ -12,6 +12,10 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.348 — "Spike" (2026-07-03)
+
+- **SMACKVERSE: per-header signature diagnostics.** On `openssl_verify` failure the error log now records each signed header's value and byte length, plus the raw Signature header — to pin the exact invisible byte (whitespace, `\r`, quote nuance) where our reconstructed signing string diverges from Pixelfed's. Diagnostic only; the key fetch was already confirmed correct.
+
 ## 0.7.347 — "Fluttershy" (2026-07-03)
 
 - **SMACKVERSE: crypto diagnostics on signature failure.** When `openssl_verify` fails, the error log now records the verify return code (−1 = openssl error vs 0 = key/signature mismatch), any `openssl_error_string()`, the decoded signature byte length (256 = a well-formed RSA-2048 sig), the keyId, the actor id we fetched, and the public-key fingerprint — pinpointing wrong-key vs bad-signature vs openssl-error to fix the Pixelfed 401 exactly. Diagnostic only.
