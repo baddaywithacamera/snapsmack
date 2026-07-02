@@ -12,7 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.348 — "Spike" (2026-07-03)
+## 0.7.349 — "Pinkie Pie" (2026-07-03)
+
+- **SMACKVERSE: the Pixelfed 401 is fixed — inbound Follows now verify.** Root cause, proven in openssl before a single line changed: Pixelfed 0.12.7 builds the HTTP-signature `(request-target)` from the request **path only** and drops the query string, while our inbox URL carries a `?ap=inbox` routing param. Every strict signer includes the query; Pixelfed doesn't — so our reconstructed signing string never matched its signature, and every Follow 401'd for two weeks. Eight signing-string variants were tested against the captured signature + key with raw `openssl dgst`; only the path-only form returned `Verified OK`. `sv_verify_signature()` now verifies against **both** legitimate `(request-target)` constructions — full path+query (draft-cavage strict) and path-only (Pixelfed and friends) — and accepts on the first that matches. This is not a relaxation: both forms are still cryptographically bound to the real fetched key, the already-verified body Digest, and the ±1h Date window, so tolerating the two constructions loses no security while restoring interop with the query-dropping majority. Failure logging now dumps every `(request-target)` form it tried, so any future peer quirk is one grep away. Gated OFF with the rest of SMACKVERSE.
+- **GRAM: new posts now sort to the TOP of the Grid Lighttable (matches the public feed).** The admin lighttable used the inverse of the public feed's ordering `CASE` — `THEN 0 ELSE 1` vs the feed's `THEN 1 ELSE 0` — so freshly published singles (which carry `sort_order = 0` until curated) were shoved to the bottom of the lighttable while appearing correctly on top of the live site. The lighttable now uses the same expression as the feed, so new-on-top is consistent across admin and public. (Ordering only; the separate fixes for singles bypassing the 3-across gate and square-crop posts losing their frame are tracked and land next.)
+
+
 
 - **SMACKVERSE: per-header signature diagnostics.** On `openssl_verify` failure the error log now records each signed header's value and byte length, plus the raw Signature header — to pin the exact invisible byte (whitespace, `\r`, quote nuance) where our reconstructed signing string diverges from Pixelfed's. Diagnostic only; the key fetch was already confirmed correct.
 

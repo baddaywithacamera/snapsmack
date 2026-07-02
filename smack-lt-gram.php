@@ -268,7 +268,7 @@ $posts = $pdo->query("
     LEFT JOIN snap_post_images pi ON pi.post_id = p.id AND pi.is_cover = 1
     LEFT JOIN snap_images i       ON i.id = pi.image_id
     LEFT JOIN snap_trigrams tg    ON tg.id = p.trigram_id
-    ORDER BY CASE WHEN p.sort_order > 0 THEN 0 ELSE 1 END ASC,
+    ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
              p.sort_order ASC, p.created_at DESC
 ")->fetchAll();
 
