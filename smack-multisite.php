@@ -478,6 +478,14 @@ if (isset($_POST['push_maintenance']) || isset($_POST['push_maintenance_all'])) 
             $maintenance_results[] = $result;
         }
 
+        // Auto-heal the blogroll: any spoke that just flipped maintenance state
+        // must be added to / removed from every peer's snapshot immediately,
+        // without the operator visiting the blogroll page and clicking Push.
+        if (array_filter($maintenance_results, fn($r) => !empty($r['ok']))) {
+            require_once 'core/blogroll-push.php';
+            blogroll_push_to_all_spokes($pdo, $settings);
+        }
+
         if ($is_ajax) {
             if (ob_get_level()) ob_end_clean();
             header('Content-Type: application/json');
@@ -648,6 +656,7 @@ $hub_site_mode       = $settings['site_mode']            ?? 'photoblog';
 // --- HEARTBEAT SWEEP (hub only, once per page load) ---
 // Calls each active spoke's heartbeat endpoint and caches the stats locally.
 if ($multisite_role === 'hub') {
+    $blogroll_needs_repush = false;   // set when any spoke's maintenance flips
     foreach ($nodes as &$n) {
         if ($n['role'] !== 'spoke' || $n['status'] === 'disconnected') continue;
 
@@ -715,6 +724,12 @@ if ($multisite_role === 'hub') {
                 $n['pending_comments']    = $hb['pending_comments']   ?? $n['pending_comments'];
                 $n['last_backup_status']  = $hb['last_backup_status'] ?? $n['last_backup_status'];
                 $n['update_track']        = $hb['update_track']       ?? 'stable';
+                // Detect a maintenance flip (old $n value vs the fresh heartbeat)
+                // BEFORE overwriting it — a change means peers' blogroll snapshots
+                // are now stale and must be re-pushed once the sweep finishes.
+                if ((int)($n['maintenance_mode'] ?? 0) !== (int)($hb['maintenance_mode'] ?? 0)) {
+                    $blogroll_needs_repush = true;
+                }
                 $n['maintenance_mode']    = (int)($hb['maintenance_mode'] ?? 0);
                 $n['smackback_status']    = $hb['smackback_status']   ?? 'unknown';
                 $n['smackback_breach_at'] = $hb['smackback_breach_at'] ?? null;
@@ -735,6 +750,13 @@ if ($multisite_role === 'hub') {
         }
     }
     unset($n);
+
+    // A spoke changed maintenance state this sweep → self-heal every peer's
+    // blogroll snapshot (add the recovered site back, drop the downed one).
+    if ($blogroll_needs_repush) {
+        require_once 'core/blogroll-push.php';
+        blogroll_push_to_all_spokes($pdo, $settings);
+    }
 
     // Reload nodes so status changes are reflected
     $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts, UNIX_TIMESTAMP(last_backup_at) AS last_backup_ts FROM snap_multisite_nodes ORDER BY role ASC, site_name ASC")->fetchAll(PDO::FETCH_ASSOC);
