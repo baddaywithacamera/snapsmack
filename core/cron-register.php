@@ -79,33 +79,49 @@ function cron_register_job(string $schedule, string $script_abs, string $tag): a
  * the full canonical block is still what System Maintenance → REPAIR writes.
  */
 function cron_ensure_webfinger_htaccess(string $htaccess_path): array {
-    $rule = 'RewriteRule ^\\.well-known/webfinger$ smackverse.php?ap=webfinger [L,QSA]';
+    // Both SMACKVERSE rewrites, keyed by their presence-check needle.
+    // The /ap/ path routes exist because AP object ids must be
+    // query-string-free — Pixelfed HTML-encodes '&' when dereferencing
+    // object URLs, so ?ap=note&post=N ids 404 on their side (0.7.350).
+    $rules = [
+        'well-known/webfinger' =>
+            "# SMACKVERSE (ActivityPub) WebFinger discovery — harmless while disabled.\n"
+            . 'RewriteRule ^\\.well-known/webfinger$ smackverse.php?ap=webfinger [L,QSA]' . "\n",
+        'smackverse.php?appath=' =>
+            "# SMACKVERSE (ActivityPub) path-style object routes — harmless while disabled.\n"
+            . 'RewriteRule ^ap/(.+)$ smackverse.php?appath=$1 [L,QSA]' . "\n",
+    ];
     if (!is_file($htaccess_path)) {
         return [false, '.htaccess not found — run System Maintenance → REPAIR .htaccess.'];
     }
     $content = file_get_contents($htaccess_path);
     if ($content === false) return [false, 'Could not read .htaccess.'];
-    if (strpos($content, 'well-known/webfinger') !== false) {
-        return [true, 'WebFinger rewrite already present.'];
+
+    $missing = [];
+    foreach ($rules as $needle => $line) {
+        if (strpos($content, $needle) === false) $missing[$needle] = $line;
+    }
+    if (!$missing) {
+        return [true, 'SMACKVERSE rewrites already present.'];
     }
     if (!is_writable($htaccess_path)) {
-        return [false, '.htaccess is not writable — run System Maintenance → REPAIR .htaccess, or add the rule by hand.'];
+        return [false, '.htaccess is not writable — run System Maintenance → REPAIR .htaccess, or add the rules by hand.'];
     }
 
     // Insert directly above the catch-all "everything → index.php" router so
-    // the dotted/slashed webfinger path is matched first. Fall back to
-    // appending inside the SnapSmack block if the catch-all isn't found.
+    // the dotted/slashed AP paths are matched first. Fall back to appending
+    // inside the SnapSmack block if the catch-all isn't found.
     $catchall = '/^(\s*RewriteRule\s+\^\(\[a-zA-Z0-9_\-\]\+\)\$\s+index\.php.*)$/m';
-    $line = "# SMACKVERSE (ActivityPub) WebFinger discovery — harmless while disabled.\n{$rule}\n";
+    $block = implode('', $missing);
     if (preg_match($catchall, $content)) {
-        $new = preg_replace($catchall, $line . '$1', $content, 1);
+        $new = preg_replace($catchall, $block . '$1', $content, 1);
     } else {
-        $new = rtrim($content) . "\n\n{$line}";
+        $new = rtrim($content) . "\n\n{$block}";
     }
     if ($new === null || @file_put_contents($htaccess_path, $new, LOCK_EX) === false) {
-        return [false, 'Could not write the WebFinger rule — run System Maintenance → REPAIR .htaccess.'];
+        return [false, 'Could not write the SMACKVERSE rules — run System Maintenance → REPAIR .htaccess.'];
     }
-    return [true, 'WebFinger rewrite added to .htaccess.'];
+    return [true, 'SMACKVERSE rewrites added to .htaccess.'];
 }
 
 /** Remove the job carrying $tag. Safe when nothing is registered. */

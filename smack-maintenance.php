@@ -778,6 +778,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'Clean URL router'       => 'RewriteRule ^([a-zA-Z0-9_-]+)$ index.php',
                     'snap-in named route'    => 'RewriteRule ^snap-in$',
                     'SMACKVERSE webfinger'   => 'well-known/webfinger',
+                    'SMACKVERSE AP routes'   => 'smackverse.php?appath=',
                     'Security headers'       => 'X-Frame-Options',
                     'Sensitive files'        => 'FilesMatch "(^\\.ht',
                     'Core PHP blocking'      => 'FilesMatch "^(db|auth|constants',

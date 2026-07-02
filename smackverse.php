@@ -2,14 +2,20 @@
 /**
  * SNAPSMACK — SMACKVERSE public router (ActivityPub, v0.2 FOLLOW + DELIVER)
  *
- * Public federation endpoints. Routes (?ap=):
+ * Public federation endpoints. Canonical routes are PATH-STYLE (0.7.350+),
+ * rewritten here by .htaccess as ?appath= — AP object ids must carry no
+ * query string because Pixelfed HTML-encodes '&' when dereferencing:
+ *   /ap/actor      — the blog's actor document (application/activity+json)
+ *   /ap/outbox     — OrderedCollection shell; ?page=1 = 20 newest Notes
+ *   /ap/followers  — OrderedCollection (totalItems only; list stays private)
+ *   /ap/inbox      — POST inbox (see below)
+ *   /ap/note/i/N   — Note for a standalone image
+ *   /ap/note/p/N   — Note for a grouped post (ONE multi-attachment Note,
+ *                    the Pixelfed carousel shape)
+ *   /ap/note/c/N   — Note for a federated local comment
+ * Legacy query routes (?ap=actor, ?ap=note&post=N…) still resolve for
+ * anything already federated. Routes (?ap=):
  *   webfinger — resolves acct:<handle>@<domain> (rewrite /.well-known/webfinger here)
- *   actor     — the blog's actor document (application/activity+json)
- *   outbox    — OrderedCollection shell; &page=1 = 20 newest Notes
- *   followers — OrderedCollection (totalItems only; member list stays private)
- *   note      — dereferenceable Note JSON: &id=N (standalone image) or
- *               &post=N (grouped post → ONE multi-attachment Note, the
- *               Pixelfed carousel shape)
  *   inbox     — POST; HTTP-signature verified (draft-cavage + Digest + Date).
  *               Follow → follower stored + Accept queued. Undo/Delete →
  *               follower deactivated. Everything else acknowledged (202).
@@ -53,6 +59,21 @@ try {
 // Hard gate: pretend none of this exists until the flag is on.
 if (!sv_enabled($settings)) {
     sv_404();
+}
+
+// Path-style routes (/ap/actor, /ap/note/p/N…) arrive via the .htaccess
+// rewrite as ?appath=. AP object ids must be query-string-free — Pixelfed
+// HTML-encodes '&' when it fetches object URLs (?a=1&b=2 becomes &amp; and
+// 404s) — so paths are canonical as of 0.7.350. Legacy ?ap= URLs still work
+// below for anything already federated.
+if (isset($_GET['appath'])) {
+    $seg = explode('/', trim((string)$_GET['appath'], '/'));
+    $_GET['ap'] = $seg[0] ?? '';
+    if (($seg[0] ?? '') === 'note') {
+        $key = ['p' => 'post', 'i' => 'id', 'c' => 'comment'][$seg[1] ?? ''] ?? null;
+        if ($key === null || !isset($seg[2])) sv_404();
+        $_GET[$key] = $seg[2];
+    }
 }
 
 $ap     = $_GET['ap'] ?? '';

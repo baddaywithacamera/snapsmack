@@ -66,10 +66,15 @@ function sv_handle(array $settings): string {
     return $h !== '' ? $h : 'photoblog';
 }
 
-function sv_actor_url(array $settings): string     { return sv_base($settings) . 'smackverse.php?ap=actor'; }
-function sv_inbox_url(array $settings): string     { return sv_base($settings) . 'smackverse.php?ap=inbox'; }
-function sv_outbox_url(array $settings): string    { return sv_base($settings) . 'smackverse.php?ap=outbox'; }
-function sv_followers_url(array $settings): string { return sv_base($settings) . 'smackverse.php?ap=followers'; }
+// AP endpoint/object URLs are PATH-STYLE (/ap/…, rewritten to smackverse.php
+// by .htaccess) as of 0.7.350. They must stay query-string-free: Pixelfed
+// HTML-encodes '&' when dereferencing object ids (?a=1&b=2 arrives as
+// ?a=1&amp;b=2 → 404), which silently killed every delivered Note. The old
+// ?ap= query routes still resolve for anything already federated.
+function sv_actor_url(array $settings): string     { return sv_base($settings) . 'ap/actor'; }
+function sv_inbox_url(array $settings): string     { return sv_base($settings) . 'ap/inbox'; }
+function sv_outbox_url(array $settings): string    { return sv_base($settings) . 'ap/outbox'; }
+function sv_followers_url(array $settings): string { return sv_base($settings) . 'ap/followers'; }
 function sv_key_id(array $settings): string        { return sv_actor_url($settings) . '#main-key'; }
 
 /** Upsert a snap_settings row and mirror it into the in-memory array. */
@@ -543,6 +548,12 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30): arra
  * inbound reply's inReplyTo / a Like's object back to the content it's about.
  */
 function sv_resolve_target(string $url): ?array {
+    // Path-style ids (0.7.350+): /ap/note/{p|i|c}/N
+    if (preg_match('~/ap/note/([pic])/(\d+)~', $url, $m)) {
+        $map = ['p' => 'post', 'i' => 'image', 'c' => 'comment'];
+        return ['type' => $map[$m[1]], 'id' => (int)$m[2]];
+    }
+    // Legacy query-string ids (pre-0.7.350) — anything already federated.
     if (strpos($url, 'smackverse.php') === false) return null;
     $q = parse_url($url, PHP_URL_QUERY) ?: '';
     parse_str($q, $p);
@@ -968,7 +979,7 @@ function sv_post_images(PDO $pdo, int $post_id): array {
 function sv_note_for_image(PDO $pdo, array $img, array $settings): array {
     $base      = sv_base($settings);
     $permalink = $base . $img['img_slug'];
-    $note_id   = $base . 'smackverse.php?ap=note&id=' . (int)$img['id'];
+    $note_id   = $base . 'ap/note/i/' . (int)$img['id'];
 
     $title = trim($img['img_title'] ?? '');
     $desc  = trim($img['img_description'] ?? '');
@@ -1032,7 +1043,7 @@ function sv_note_for_post(PDO $pdo, array $post, array $settings): ?array {
     $cover   = $images[0];
     foreach ($images as $im) { if (!empty($im['is_cover'])) { $cover = $im; break; } }
     $permalink = $base . $cover['img_slug'];
-    $note_id   = $base . 'smackverse.php?ap=note&post=' . (int)$post['id'];
+    $note_id   = $base . 'ap/note/p/' . (int)$post['id'];
 
     $title = trim($post['title'] ?? '');
     $desc  = trim($post['description'] ?? '');
@@ -1114,8 +1125,8 @@ function sv_content_note_id_for_image(PDO $pdo, int $img_id, array $settings): ?
     if (!$row) return null;
     $base = sv_base($settings);
     return !empty($row['post_id'])
-        ? $base . 'smackverse.php?ap=note&post=' . (int)$row['post_id']
-        : $base . 'smackverse.php?ap=note&id=' . $img_id;
+        ? $base . 'ap/note/p/' . (int)$row['post_id']
+        : $base . 'ap/note/i/' . $img_id;
 }
 
 /**
@@ -1131,7 +1142,7 @@ function sv_note_for_comment(PDO $pdo, array $c, array $settings): ?array {
     if (!$parent) return null;
 
     $base    = sv_base($settings);
-    $note_id = $c['ap_note_id'] ?: ($base . 'smackverse.php?ap=note&comment=' . (int)$c['id']);
+    $note_id = $c['ap_note_id'] ?: ($base . 'ap/note/c/' . (int)$c['id']);
     $author  = trim($c['comment_author'] ?? '') ?: 'Someone';
     $body    = trim($c['comment_text'] ?? '');
     $content = '<p><strong>' . htmlspecialchars($author) . '</strong> wrote:</p><p>'
@@ -1166,7 +1177,7 @@ function sv_federate_comment(PDO $pdo, int $comment_id, array $settings): void {
     if ((int)($c['is_approved'] ?? 0) !== 1) return;           // only approved
 
     if (empty($c['ap_note_id'])) {
-        $c['ap_note_id'] = sv_base($settings) . 'smackverse.php?ap=note&comment=' . (int)$c['id'];
+        $c['ap_note_id'] = sv_base($settings) . 'ap/note/c/' . (int)$c['id'];
         $pdo->prepare("UPDATE snap_comments SET ap_note_id = ? WHERE id = ?")
             ->execute([$c['ap_note_id'], (int)$c['id']]);
     }
@@ -1249,7 +1260,7 @@ function sv_outbox_doc(PDO $pdo, array $settings, bool $page): array {
             'id'         => $outbox,
             'type'       => 'OrderedCollection',
             'totalItems' => $total,
-            'first'      => $outbox . '&page=1',
+            'first'      => $outbox . '?page=1',
         ];
     }
 
@@ -1284,7 +1295,7 @@ function sv_outbox_doc(PDO $pdo, array $settings, bool $page): array {
     }
     return [
         '@context'     => 'https://www.w3.org/ns/activitystreams',
-        'id'           => $outbox . '&page=1',
+        'id'           => $outbox . '?page=1',
         'type'         => 'OrderedCollectionPage',
         'partOf'       => $outbox,
         'orderedItems' => $items,

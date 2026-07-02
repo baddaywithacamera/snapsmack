@@ -48,6 +48,10 @@ RewriteRule ^collection/([a-zA-Z0-9_-]+)$ collection.php?slug=$1 [L,QSA]
 # /.well-known/webfinger to resolve @handle@domain. The endpoint 404s on its
 # own unless smackverse_enabled=1, so this rewrite is harmless while off.
 RewriteRule ^\.well-known/webfinger$ smackverse.php?ap=webfinger [L,QSA]
+# SMACKVERSE (ActivityPub) — path-style object routes (/ap/actor, /ap/note/p/N…).
+# AP ids must be query-string-free: Pixelfed HTML-encodes '&' when it fetches
+# object URLs, so ?a=1&b=2 ids 404 on their side. Harmless while off.
+RewriteRule ^ap/(.+)$ smackverse.php?appath=$1 [L,QSA]
 
 # Everything else → index.php (image slugs, static pages)
 RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
