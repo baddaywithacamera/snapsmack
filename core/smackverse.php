@@ -293,29 +293,41 @@ function sv_request_header(string $name): string {
  * actor id matches the activity's actor field.
  */
 function sv_verify_signature(string $raw_body): ?array {
+    // Diagnostic: logs the exact rejection reason to the PHP error log with a
+    // greppable prefix ("SMACKVERSE sig:"). Cheap; helps chase interop issues.
+    $reject = function (string $why): void { error_log('SMACKVERSE sig: REJECT — ' . $why); };
+
     $sig_header = sv_request_header('signature');
-    if ($sig_header === '') return null;
+    if ($sig_header === '') { $reject('no Signature header'); return null; }
     $sig = sv_parse_signature_header($sig_header);
-    if (empty($sig['keyid']) || empty($sig['signature']) || empty($sig['headers'])) return null;
+    if (empty($sig['keyid']) || empty($sig['signature']) || empty($sig['headers'])) {
+        $reject('Signature header missing keyId/signature/headers'); return null;
+    }
 
-    // Digest: required for POSTs; must match the raw body.
-    $digest_hdr = sv_request_header('digest');
-    if ($digest_hdr === '') return null;
-    $expected = 'SHA-256=' . base64_encode(hash('sha256', $raw_body, true));
-    if (!hash_equals($expected, trim($digest_hdr))) return null;
+    // Digest: required for POSTs; must match the raw body. Compare case-
+    // insensitively on the algorithm token (SHA-256 vs sha-256) — only the
+    // base64 payload is security-relevant and must match exactly.
+    $digest_hdr = trim(sv_request_header('digest'));
+    if ($digest_hdr === '') { $reject('no Digest header'); return null; }
+    $want_b64 = base64_encode(hash('sha256', $raw_body, true));
+    $got_b64  = preg_replace('/^sha-256=/i', '', $digest_hdr);
+    if (!hash_equals($want_b64, $got_b64)) {
+        $reject('digest mismatch (body hash != Digest header)'); return null;
+    }
 
-    // Date: within ±1 hour.
+    // Date: within ±1 hour (replay guard).
     $date_hdr = sv_request_header('date');
-    if ($date_hdr === '') return null;
+    if ($date_hdr === '') { $reject('no Date header'); return null; }
     $ts = strtotime($date_hdr);
-    if ($ts === false || abs(time() - $ts) > 3600) return null;
+    if ($ts === false || abs(time() - $ts) > 3600) { $reject('Date outside ±1h window'); return null; }
 
-    // Rebuild the signing string from the signed-header list.
+    // Rebuild the signing string from the signed-header list. Require the
+    // security-critical pair (request-target)+digest; date is standard but not
+    // all signers include it, so we don't hard-fail on it (the ±1h window above
+    // already limits replay).
     $signed_names = preg_split('/\s+/', strtolower(trim($sig['headers'])));
-    if (!in_array('(request-target)', $signed_names, true)
-        || !in_array('date', $signed_names, true)
-        || !in_array('digest', $signed_names, true)) {
-        return null; // refuse weak signatures
+    if (!in_array('(request-target)', $signed_names, true) || !in_array('digest', $signed_names, true)) {
+        $reject('signed headers missing (request-target) or digest: ' . implode(' ', $signed_names)); return null;
     }
     $lines = [];
     foreach ($signed_names as $name) {
@@ -333,17 +345,22 @@ function sv_verify_signature(string $raw_body): ?array {
     // Fetch the key owner's actor document (keyId minus fragment).
     $actor_url = preg_replace('/#.*$/', '', $sig['keyid']);
     $actor = sv_fetch_ap($actor_url);
-    if (!$actor) return null;
+    if (!$actor) { $reject('could not fetch signer actor: ' . $actor_url); return null; }
     $pem = $actor['publicKey']['publicKeyPem'] ?? '';
-    if ($pem === '') return null;
+    if ($pem === '') { $reject('signer actor has no publicKeyPem'); return null; }
     // The key must belong to the actor document that serves it.
     $owner = $actor['publicKey']['owner'] ?? ($actor['id'] ?? '');
-    if ($owner !== ($actor['id'] ?? '')) return null;
+    if ($owner !== ($actor['id'] ?? '')) { $reject('publicKey.owner != actor.id'); return null; }
 
     $pubkey = openssl_pkey_get_public($pem);
-    if ($pubkey === false) return null;
+    if ($pubkey === false) { $reject('openssl could not parse publicKeyPem'); return null; }
     $ok = openssl_verify($signing_string, base64_decode($sig['signature']), $pubkey, OPENSSL_ALGO_SHA256);
-    return $ok === 1 ? $actor : null;
+    if ($ok !== 1) {
+        $reject('openssl_verify failed (signing-string mismatch). Signed: ' . implode(' ', $signed_names)
+                . ' | request-target=' . strtolower($_SERVER['REQUEST_METHOD'] ?? 'post') . ' ' . ($_SERVER['REQUEST_URI'] ?? '/'));
+        return null;
+    }
+    return $actor;
 }
 
 /**
@@ -809,6 +826,54 @@ function sv_media_type(string $file): string {
 }
 
 /**
+ * Pre-baked federation frame (`f_` sidecar) URL for an image, or null.
+ * Pixelfed/Mastodon can't CSS-frame, so the elegant matte/border/shadow is
+ * baked into `f_<file>` (client-side at post time; server-baked only inside
+ * the bounded backfill window). Convention-based like t_/a_ — no schema.
+ * Spec: _spec/smackverse-frame-bake-spec-v0_1.md
+ */
+function sv_frame_url(array $img, array $settings): ?string {
+    $file = $img['img_file'] ?? '';
+    if ($file === '') return null;
+    $rel = dirname($file) . '/thumbs/f_' . basename($file);
+    $rel = ltrim(str_replace('\\', '/', $rel), '/');
+    $abs = dirname(__DIR__) . '/' . $rel;   // core/.. = site root
+    if (!is_file($abs)) return null;
+    return sv_base($settings) . $rel;
+}
+
+/**
+ * ActivityStreams focalPoint [x,y] from the stored img_focus_x/y (0..100),
+ * or null when centered/absent. Lets Pixelfed's own square grid-tile crop
+ * center on the composed focal point instead of dead-center.
+ *   x: 0→-1 (left) .. 100→+1 (right);  y: 0(top)→+1 .. 100(bottom)→-1.
+ */
+function sv_focal_point(array $img): ?array {
+    if (!isset($img['img_focus_x'], $img['img_focus_y'])) return null;
+    $fx = (int)$img['img_focus_x']; $fy = (int)$img['img_focus_y'];
+    if ($fx === 50 && $fy === 50) return null;   // center = default, omit
+    return [round(($fx / 100) * 2 - 1, 3), round(1 - ($fy / 100) * 2, 3)];
+}
+
+/**
+ * Build one image Document attachment: prefer the baked `f_` frame (elegance),
+ * else the raw file at full res; attach focalPoint when off-center.
+ */
+function sv_image_attachment(array $img, array $settings, string $alt = ''): array {
+    $frame = sv_frame_url($img, $settings);
+    $url   = $frame ?? (sv_base($settings) . ltrim($img['img_file'] ?? '', '/'));
+    $type  = $frame ? 'image/jpeg' : sv_media_type($img['img_file'] ?? '');
+    if ($alt === '') {
+        $alt = trim($img['img_title'] ?? '');
+        if ($alt === '') $alt = trim($img['img_description'] ?? '');
+    }
+    $att = ['type' => 'Document', 'mediaType' => $type, 'url' => $url, 'name' => $alt];
+    $fp = sv_focal_point($img);
+    if ($fp !== null) $att['focalPoint'] = $fp;
+    return $att;
+}
+
+/**
  * Fetch one published STANDALONE image row by id, or null. Grouped images
  * (post_id set) federate through their post's Note, never individually —
  * that is what keeps carousels Pixelfed-shaped (one Note, many attachments).
@@ -838,7 +903,11 @@ function sv_post_row(PDO $pdo, int $id): ?array {
 /** The post's images in carousel order (is_cover first within ties). */
 function sv_post_images(PDO $pdo, int $post_id): array {
     $stmt = $pdo->prepare(
-        "SELECT i.*, pi.sort_position, pi.is_cover
+        // pi.img_focus_x/y override i.* so focalPoint reflects the per-image
+        // crop the composer set (they alias over the base image columns).
+        "SELECT i.*, pi.sort_position, pi.is_cover,
+                pi.img_focus_x, pi.img_focus_y, pi.img_zoom,
+                pi.img_border_px, pi.img_border_color, pi.img_bg_color, pi.img_shadow, pi.img_size_pct
          FROM snap_post_images pi
          JOIN snap_images i ON i.id = pi.image_id
          WHERE pi.post_id = ? AND i.img_status = 'published'
@@ -898,12 +967,7 @@ function sv_note_for_image(PDO $pdo, array $img, array $settings): array {
         'published'    => gmdate('Y-m-d\TH:i:s\Z', strtotime($img['img_date'])),
         'url'          => $permalink,
         'content'      => $content,
-        'attachment'   => [[
-            'type'      => 'Document',
-            'mediaType' => sv_media_type($img['img_file']),
-            'url'       => $base . ltrim($img['img_file'], '/'),
-            'name'      => $title !== '' ? $title : $desc,
-        ]],
+        'attachment'   => [sv_image_attachment($img, $settings, $title !== '' ? $title : $desc)],
     ];
     if (!empty($tagobjs)) $note['tag'] = $tagobjs;
     return $note;
@@ -954,14 +1018,9 @@ function sv_note_for_post(PDO $pdo, array $post, array $settings): ?array {
     $images = array_slice($images, 0, 10);
     $attachments = [];
     foreach ($images as $im) {
-        $alt = trim($im['img_title'] ?? '');
-        if ($alt === '') $alt = trim($im['img_description'] ?? '');
-        $attachments[] = [
-            'type'      => 'Document',
-            'mediaType' => sv_media_type($im['img_file']),
-            'url'       => $base . ltrim($im['img_file'], '/'),
-            'name'      => $alt,
-        ];
+        // Prefer the baked f_ frame (elegance) + per-image focalPoint; the
+        // sv_post_images query carries img_focus_x/y for the focal crop.
+        $attachments[] = sv_image_attachment($im, $settings);
     }
 
     // Hashtags: union of member images' tags (GRAM stores tags per image).
