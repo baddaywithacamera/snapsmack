@@ -604,6 +604,7 @@ CREATE TABLE IF NOT EXISTS `snap_stats` (
   `ip_hash`       varchar(64)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_bot`        tinyint(1)    NOT NULL DEFAULT 0,
   `search_term`   varchar(255)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `dwell_ms`      int unsigned  DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_hit_at`   (`hit_at`),
   KEY `idx_is_bot`   (`is_bot`),

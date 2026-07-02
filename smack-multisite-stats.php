@@ -147,6 +147,8 @@ foreach ($spokes as $spoke) {
         'search_terms' => $resp['search_terms'] ?? [],
         'peak_hours'   => $resp['peak_hours']   ?? [],
         'countries'    => $resp['countries']    ?? [],
+        'scroll_time_avg_ms' => $resp['scroll_time_avg_ms'] ?? 0,
+        'scroll_time_n'      => $resp['scroll_time_n']      ?? 0,
     ];
 
     // Attach site info to each image and add to fleet pool
@@ -177,6 +179,24 @@ foreach ($spokes as $spoke) {
 // HUB's own stats — pulled directly from local DB
 // ─────────────────────────────────────────────────────────────────────────────
 $hub_name = $settings['site_name'] ?? 'Hub';
+
+// Hub content inventory — posts and images counted SEPARATELY. A GRAMOFSMACK
+// carousel/panorama is one post but many images; SMACKONEOUT is 1:1.
+$hub_post_count = $hub_image_count = 0;
+try { $hub_post_count  = (int)$pdo->query("SELECT COUNT(*) FROM snap_posts  WHERE status = 'published'")->fetchColumn(); } catch (\Exception $e) {}
+try { $hub_image_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn(); } catch (\Exception $e) {}
+
+// Hub engaged Scroll Time (avg ms) on GRAM landing + SMACKONEOUT archive.
+// dwell_ms is populated by the Scroll Time tracker; column/data may be absent
+// until that feature is deployed — stays null-safe (renders as "—") if so.
+$hub_scroll_avg = null; $hub_scroll_n = 0;
+try {
+    $sd_sub = $period > 0 ? "AND hit_at >= DATE_SUB(NOW(), INTERVAL {$period} DAY)" : '';
+    $row = $pdo->query("SELECT AVG(dwell_ms) AS a, COUNT(*) AS n FROM snap_stats
+                        WHERE is_bot = 0 AND dwell_ms IS NOT NULL
+                          AND page_type IN ('landing','archive') {$sd_sub}")->fetch(PDO::FETCH_ASSOC);
+    if ($row && (int)$row['n'] > 0) { $hub_scroll_avg = (float)$row['a']; $hub_scroll_n = (int)$row['n']; }
+} catch (\Exception $e) {}
 
 // Daily rows for chart
 $hub_data = [];
@@ -315,6 +335,29 @@ $fleet_total_views  = array_sum(array_column($fleet_daily, 'views'));
 $fleet_total_unique = array_sum(array_column($fleet_daily, 'unique'));
 $fleet_bot_total    = array_sum(array_column($spoke_stats, 'bot_total'));
 $fleet_bot_pct      = $fleet_total_views > 0 ? round(($fleet_bot_total / ($fleet_total_views + $fleet_bot_total)) * 100, 1) : 0;
+
+// Fleet content inventory: posts + images across all registered spokes + hub.
+$fleet_post_count  = $hub_post_count;
+$fleet_image_count = $hub_image_count;
+foreach ($spokes as $sp) {
+    $fleet_post_count  += (int)($sp['post_count']  ?? 0);
+    $fleet_image_count += (int)($sp['image_count'] ?? 0);
+}
+
+// Fleet engaged Scroll Time — sample-count-weighted average across hub + spokes.
+// Spokes surface scroll_time_avg_ms / scroll_time_n via the enriched stats API
+// once the Scroll Time feature ships fleet-wide; absent values are skipped.
+$scroll_sum = 0.0; $scroll_n = 0;
+if ($hub_scroll_n > 0) { $scroll_sum += $hub_scroll_avg * $hub_scroll_n; $scroll_n += $hub_scroll_n; }
+foreach ($spoke_stats as $sd) {
+    $n = (int)($sd['scroll_time_n'] ?? 0);
+    if ($n > 0) { $scroll_sum += (float)($sd['scroll_time_avg_ms'] ?? 0) * $n; $scroll_n += $n; }
+}
+$fleet_scroll_avg_ms = $scroll_n > 0 ? $scroll_sum / $scroll_n : null;
+$fleet_scroll_label  = $fleet_scroll_avg_ms === null ? '—' : (function ($ms) {
+    $s = (int) round($ms / 1000);
+    return $s >= 60 ? intdiv($s, 60) . 'm ' . ($s % 60) . 's' : $s . 's';
+})($fleet_scroll_avg_ms);
 
 // Fleet top day
 $fleet_top_day = ['date' => null, 'views' => 0];
@@ -471,6 +514,18 @@ include 'core/sidebar.php';
                     <div style="font-size:1.4rem; font-weight:900; color:var(--text-muted,#555);">—</div>
                 <?php endif; ?>
                 <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">PEAK DAY</div>
+            </div>
+            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
+                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_post_count); ?></div>
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">TOTAL POSTS</div>
+            </div>
+            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
+                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_image_count); ?></div>
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">TOTAL IMAGES</div>
+            </div>
+            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
+                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo htmlspecialchars($fleet_scroll_label); ?></div>
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">SCROLL TIME</div>
             </div>
         </div>
 

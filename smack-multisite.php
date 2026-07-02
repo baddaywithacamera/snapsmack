@@ -635,7 +635,7 @@ function ss_backup_dot(int $ts): array {
 $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts, UNIX_TIMESTAMP(last_backup_at) AS last_backup_ts FROM snap_multisite_nodes ORDER BY role ASC, site_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Hub self-entry data — shown as first row in Connected Spokes table
-$hub_post_count      = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
+$hub_post_count      = (int)$pdo->query("SELECT COUNT(*) FROM snap_posts WHERE status = 'published'")->fetchColumn();
 $hub_pending         = (int)$pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
 $hub_backup_status   = $settings['last_backup_status']  ?? 'unknown';
 $hub_backup_ts       = !empty($settings['last_backup_at']) ? (int)strtotime((string)$settings['last_backup_at']) : 0;
