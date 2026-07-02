@@ -137,6 +137,10 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Jul 1</span>
+                    <a href="#box-seat">A Box Seat on Your Own Numbers</a>
+                </li>
+                <li>
                     <span class="idx-date">Jun 29</span>
                     <a href="#feds-at-door">The Feds Are at Your Door</a>
                 </li>
@@ -262,6 +266,19 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <!-- POST: BOX SEAT -->
+            <article class="post" id="box-seat">
+                <div class="post-meta">
+                    <span class="post-date">July 1, 2026</span>
+                    <span class="post-tag">Stats</span>
+                </div>
+                <h2><a href="#box-seat">A Box Seat on Your Own Numbers</a></h2>
+                <p>Here's an uncomfortable truth about a photoblog: most of the people who look never click. They land on your grid, scroll through a dozen frames, take it in, and leave without ever opening a single post. Your view counts never saw them. As far as your stats were concerned, they were never there.</p>
+                <p><strong>SCROLL TIME</strong> changes that. On GRAMOFSMACK landing feeds and SMACKONEOUT archives, SnapSmack now measures how long a visitor was actually <em>engaged</em> — the clock only runs while they're on the page and doing something, and it stops the moment they tab away or go idle, so a tab left open in the background never inflates the number. It reports home when they leave, and it never sets a cookie. The result is one honest figure: how long people really spend with your work, including everyone who browsed and bounced without clicking a thing.</p>
+                <p>You can also see where they're coming from. The <strong>COUNTRIES</strong> panel breaks your traffic down by country — resolved entirely on your own server against a local database, because shipping your visitors' IP addresses off to some geolocation API is exactly the kind of thing we tell you never to do. Your readers' locations are your business, not a third party's.</p>
+                <p>And the fleet rollup finally counts straight. A SMACKONEOUT post is one photograph; a GRAMOFSMACK carousel is one post carrying up to ten. Lumping those together was never honest, so the FLEET STATS page now counts <strong>posts and images separately</strong> — nine tiles across, TOTAL POSTS and TOTAL IMAGES sitting alongside views, visitors, bots, and your peak day. A box seat on your own numbers, and none of it phones home.</p>
+            </article>
 
             <!-- POST: FEDS AT DOOR -->
             <article class="post" id="feds-at-door">
