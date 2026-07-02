@@ -12,6 +12,10 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.346 — "Rarity" (2026-07-03)
+
+- **SMACKVERSE: instant follow/Accept delivery + signing-string diagnostics.** The inbox now delivers everything it just queued (the Accept, the backfill posts) **in the same request** — it flushes the acknowledgement to the sender via `fastcgi_finish_request()`, then processes the delivery queue — so a follow completes in seconds instead of waiting up to 10 minutes for the cron tick. The cron stays as the retry backstop. Also: when signature verification fails at `openssl_verify`, the exact signing string we reconstruct is now dumped to the error log (newlines shown as ⏎), so the byte that differs from Pixelfed 0.12.7's is visible and the 401 can be fixed precisely rather than guessed.
+
 ## 0.7.345 — "Applejack" (2026-07-03)
 
 - **SMACKVERSE: federation frame + focal point — foundation wired (elegance for Pixelfed).** Pixelfed strips all CSS, so the blog's matted/bordered/drop-shadowed tile treatment is lost — a federated photo lands naked on a black void. The fix is a pre-baked framed sidecar (`f_<file>`), and this ships the wiring for it: the Note builders now prefer `f_` when it exists (falling back to the raw full-res image, so nothing changes until frames are baked), and every attachment carries a `focalPoint` derived from the stored `img_focus_x/y` so Pixelfed's own square grid-tile crop centers on the composed focal point instead of dead-center. Convention-based (`f_` beside `t_`/`a_`), no schema change. The actual bake — client-side Pillow (desktop tools) + Canvas (web composer), with a bounded server bake for only the backfill window (≤~12, cached, never the archive) — is specced in `_spec/smackverse-frame-bake-spec-v0_1.md` and gets built + calibrated by eye against unzucked once a post lands live on Pixelfed. Golden rule held: the shared server never composites at scale.

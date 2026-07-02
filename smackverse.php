@@ -128,6 +128,14 @@ switch ($ap) {
             $code = 500;
         }
         http_response_code($code);
+        // INSTANT response: acknowledge to the sender first, then deliver any
+        // Accept / backfill this request just queued — so a follow completes in
+        // seconds, not on the next 10-minute cron tick. fastcgi_finish_request
+        // flushes the 202 to the caller, then we keep running.
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+        try { sv_process_deliveries($pdo, $settings, 20); } catch (\Throwable $e) { /* cron will retry */ }
         exit;
 
     default:
