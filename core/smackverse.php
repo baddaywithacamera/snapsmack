@@ -1586,71 +1586,126 @@ function sv_resync_recent(PDO $pdo, array $settings, ?int $limit = null): array 
 }
 
 /**
- * Outbox: OrderedCollection shell; ?page=1 returns the 20 newest Notes.
- * Content units mirror snapsmack_content_counts(): standalone images
- * (post_id NULL) each as one Note; grouped posts as ONE multi-attachment
- * Note (Pixelfed carousel shape).
+ * Outbox — a FULLY CRAWLABLE, paginated OrderedCollection (the "load existing
+ * inventory" surface a remote server pulls to backfill a profile's whole back
+ * catalogue, not just the newest page).
+ *
+ *   $page < 1  → the shell: OrderedCollection with totalItems + first + last.
+ *   $page >= 1 → an OrderedCollectionPage: 20 items newest-first, chained with
+ *                next (older) / prev (newer) so a puller can walk the entire
+ *                history. A crawler follows `first`, then `next` until it runs
+ *                out — Mastodon does this natively; Pixelfed's on-follow
+ *                importer walks `next` too. Without these links a puller only
+ *                ever sees the latest page, which was our old dead-end.
+ *
+ * Content units mirror the site's public streams: standalone images (post_id
+ * NULL) each as one Note; grouped posts as ONE multi-attachment Note (Pixelfed
+ * carousel shape). The window is produced by a single UNION ordered + sliced in
+ * SQL, so only the page's own Notes are ever built regardless of library size.
  */
-function sv_outbox_doc(PDO $pdo, array $settings, bool $page): array {
-    $outbox = sv_outbox_url($settings);
-    if (!$page) {
-        $total = 0;
-        try {
-            $total  = (int)$pdo->query(
-                "SELECT COUNT(*) FROM snap_images
-                 WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL"
-            )->fetchColumn();
-            $total += (int)$pdo->query(
-                "SELECT COUNT(*) FROM snap_posts
-                 WHERE status = 'published' AND created_at <= NOW()
-                   AND post_type IN ('single','carousel','panorama')"
-            )->fetchColumn();
-        } catch (Exception $e) { /* shell stays valid */ }
+function sv_outbox_doc(PDO $pdo, array $settings, int $page = 0): array {
+    $outbox  = sv_outbox_url($settings);
+    $perPage = 20;
+
+    // Total published content units (standalone images + grouped posts).
+    $total = 0;
+    try {
+        $total  = (int)$pdo->query(
+            "SELECT COUNT(*) FROM snap_images
+             WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL"
+        )->fetchColumn();
+        $total += (int)$pdo->query(
+            "SELECT COUNT(*) FROM snap_posts
+             WHERE status = 'published' AND created_at <= NOW()
+               AND post_type IN ('single','carousel','panorama')"
+        )->fetchColumn();
+    } catch (Exception $e) { /* shell/page stay valid on error */ }
+
+    $lastPage = max(1, (int)ceil($total / $perPage));
+
+    // Shell — advertise first AND last so the collection is walkable both ways.
+    if ($page < 1) {
         return [
             '@context'   => 'https://www.w3.org/ns/activitystreams',
             'id'         => $outbox,
             'type'       => 'OrderedCollection',
             'totalItems' => $total,
             'first'      => $outbox . '?page=1',
+            'last'       => $outbox . '?page=' . $lastPage,
         ];
     }
 
-    // Merge the two streams, newest first, 20 items.
-    $units = [];
-    try {
-        $imgs = $pdo->query(
-            "SELECT * FROM snap_images
-             WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL
-             ORDER BY img_date DESC LIMIT 20"
-        )->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($imgs as $img) $units[] = ['date' => $img['img_date'], 'kind' => 'image', 'row' => $img];
+    if ($page > $lastPage) $page = $lastPage;
+    $offset = ($page - 1) * $perPage;
 
-        $posts = $pdo->query(
-            "SELECT * FROM snap_posts
-             WHERE status = 'published' AND created_at <= NOW()
-               AND post_type IN ('single','carousel','panorama')
-             ORDER BY created_at DESC LIMIT 20"
-        )->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($posts as $p) $units[] = ['date' => $p['created_at'], 'kind' => 'post', 'row' => $p];
+    // One merged, globally-ordered window (newest first). The DB sorts + slices,
+    // so pages never overlap or skip; deterministic tie-break on kind + id keeps
+    // pagination stable when timestamps collide.
+    $index = [];
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT id, d, kind FROM (
+                SELECT id, img_date AS d, 'image' AS kind FROM snap_images
+                  WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL
+                UNION ALL
+                SELECT id, created_at AS d, 'post' AS kind FROM snap_posts
+                  WHERE status = 'published' AND created_at <= NOW()
+                    AND post_type IN ('single','carousel','panorama')
+             ) u
+             ORDER BY d DESC, kind ASC, id DESC
+             LIMIT " . (int)$perPage . " OFFSET " . (int)$offset
+        );
+        $stmt->execute();
+        $index = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) { /* empty page */ }
 
-    usort($units, function ($a, $b) { return strcmp($b['date'], $a['date']); });
-    $units = array_slice($units, 0, 20);
+    // Bulk-fetch the full rows for just this window, keyed by id per kind.
+    $imgIds  = [];
+    $postIds = [];
+    foreach ($index as $u) {
+        if ($u['kind'] === 'post') $postIds[] = (int)$u['id'];
+        else                       $imgIds[]  = (int)$u['id'];
+    }
+    $imgRows = [];
+    $postRows = [];
+    try {
+        if ($imgIds) {
+            $in = implode(',', array_map('intval', $imgIds));
+            foreach ($pdo->query("SELECT * FROM snap_images WHERE id IN ($in)")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $imgRows[(int)$r['id']] = $r;
+            }
+        }
+        if ($postIds) {
+            $in = implode(',', array_map('intval', $postIds));
+            foreach ($pdo->query("SELECT * FROM snap_posts WHERE id IN ($in)")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $postRows[(int)$r['id']] = $r;
+            }
+        }
+    } catch (Exception $e) { /* partial page rather than a hard fail */ }
 
     $items = [];
-    foreach ($units as $u) {
-        $note = ($u['kind'] === 'post')
-            ? sv_note_for_post($pdo, $u['row'], $settings)
-            : sv_note_for_image($pdo, $u['row'], $settings);
+    foreach ($index as $u) {
+        $id = (int)$u['id'];
+        if ($u['kind'] === 'post') {
+            $row  = $postRows[$id] ?? null;
+            $note = $row ? sv_note_for_post($pdo, $row, $settings) : null;
+        } else {
+            $row  = $imgRows[$id] ?? null;
+            $note = $row ? sv_note_for_image($pdo, $row, $settings) : null;
+        }
         if ($note !== null) $items[] = sv_create_for_note($note, $settings);
     }
-    return [
+
+    $doc = [
         '@context'     => 'https://www.w3.org/ns/activitystreams',
-        'id'           => $outbox . '?page=1',
+        'id'           => $outbox . '?page=' . $page,
         'type'         => 'OrderedCollectionPage',
         'partOf'       => $outbox,
         'orderedItems' => $items,
     ];
+    if ($page < $lastPage) $doc['next'] = $outbox . '?page=' . ($page + 1);
+    if ($page > 1)         $doc['prev'] = $outbox . '?page=' . ($page - 1);
+    return $doc;
 }
 
 /**
