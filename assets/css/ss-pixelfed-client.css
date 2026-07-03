@@ -161,6 +161,53 @@
 .sspf-btn:hover { background: var(--pf-accent-2); }
 .sspf-btn.sspf-btn-ghost { background: transparent; border: 1px solid var(--pf-border); color: var(--pf-text); }
 
+.sspf-profile-info { min-width: 0; }
+.sspf-profile-bio { margin-top: 10px; font-size: .9rem; line-height: 1.45; color: var(--pf-muted); max-width: 520px; white-space: pre-wrap; }
+.sspf-profile-self { margin-top: 12px; font-size: .82rem; color: var(--pf-muted); font-style: italic; }
+.sspf-grid a { position: relative; }
+.sspf-grid-multi { position: absolute; top: 6px; right: 8px; color: #fff; font-size: .9rem; text-shadow: 0 1px 3px rgba(0,0,0,.7); pointer-events: none; }
+
+/* ── Follow control on a crawled profile ── */
+.sspf-follow-wrap { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.sspf-flash { font-size: .82rem; color: var(--pf-muted); }
+
+/* ── Post lightbox ── */
+.sspf-lightbox {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,.72);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 40px 16px; overflow-y: auto;
+}
+.sspf-lightbox-card {
+    position: relative;
+    background: var(--pf-surface);
+    border: 1px solid var(--pf-border);
+    border-radius: var(--pf-radius);
+    max-width: 560px; width: 100%;
+    box-shadow: 0 10px 40px rgba(0,0,0,.5);
+    overflow: hidden;
+}
+.sspf-lightbox-close {
+    position: absolute; top: 8px; right: 10px; z-index: 2;
+    width: 32px; height: 32px; border-radius: 50%;
+    border: none; cursor: pointer;
+    background: rgba(0,0,0,.55); color: #fff; font-size: 1rem; line-height: 1;
+}
+.sspf-lightbox-img { width: 100%; display: block; background: #000; }
+.sspf-lightbox-caption { padding: 14px 16px; font-size: .92rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.sspf-lightbox-actions { display: flex; gap: 10px; padding: 0 16px 14px; flex-wrap: wrap; }
+.sspf-lightbox-actions .sspf-btn { padding: 8px 14px; font-size: .82rem; }
+.sspf-reply-box { padding: 0 16px 16px; }
+.sspf-reply-input {
+    width: 100%; min-height: 72px; resize: vertical;
+    padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--pf-border);
+    background: var(--pf-surface-2); color: var(--pf-text);
+    font: inherit; font-size: .9rem; margin-bottom: 10px; outline: none;
+}
+.sspf-reply-input:focus { border-color: var(--pf-accent); }
+.sspf-reply-msg { font-size: .82rem; color: var(--pf-muted); margin-top: 8px; }
+
 /* ── Responsive: collapse nav on narrow admin viewports ── */
 @media (max-width: 720px) {
     .sspf-body { flex-direction: column; }

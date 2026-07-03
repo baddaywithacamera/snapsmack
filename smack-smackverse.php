@@ -358,11 +358,13 @@ include 'core/sidebar.php';
     <div class="box mb-20">
         <h3>RESYNC RECENT POSTS</h3>
         <p class="dim mb-20">
-            Re-federates your <?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 10); ?> most
-            recent posts to every follower: their servers are told to DROP the cached copies, then fresh
-            ones are delivered. Use after anything that changes how posts render out there (thumbnail
-            regen, cover changes, frame fixes) — remote servers ignore plain re-sends, so this is the
-            only way a fix reaches posts they've already seen. Original post dates are preserved.
+            Re-pushes your <?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 10); ?> most
+            recent posts to every follower as a signed Update — the same post, refreshed IN PLACE
+            (current thumbnails, covers, full carousel stacks). Nothing is deleted or dropped: an Update
+            just replaces the copy their server already holds, so likes and replies survive. Use after
+            anything that changes how a post renders out there (thumbnail regen, cover changes, frame
+            fixes) — plain re-sends get ignored, an Update doesn't. Rolls out one at a time on the
+            delivery cron, in order. (Posts sharing an exact timestamp won't be re-ordered.)
         </p>
         <form method="post" action="smack-smackverse.php"
               onsubmit="return confirm('Re-federate your recent posts? Remote servers will drop and re-ingest them — likes/comments on the OLD copies over there do not carry over.');">
