@@ -29,6 +29,8 @@ require_once 'core/snap-tags.php';
 set_time_limit(600);
 ini_set('memory_limit', '512M');
 
+require_once __DIR__ . '/core/thumb-generator.php';   // t_/a_ + fediverse p_ bakes
+
 $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
 $settings      = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
@@ -341,6 +343,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
                                   $s['size'], $s['bpx'], $s['bcol'], $s['bg'], $s['shadow'], 'fit', $s['fx'], $s['fy'], $s['zoom']]);
                 }
                 $up->execute([$pid, $img['image_id']]);
+
+                // Fediverse bake (p_): curated square render at post time, so
+                // federation ships the tile look, never the raw file.
+                if (function_exists('snapsmack_generate_fedi_bake')) {
+                    $img_file = $pdo->query("SELECT img_file FROM snap_images WHERE id = " . (int)$img['image_id'])->fetchColumn();
+                    if ($img_file) {
+                        $bake_style = ($s['crop'] === 'fill')
+                            ? ['size_pct' => 100, 'border_px' => 0]
+                            : ['size_pct' => (int)$s['size'], 'border_px' => (int)$s['bpx'],
+                               'border_color' => (string)$s['bcol'], 'bg_color' => (string)$s['bg']];
+                        snapsmack_generate_fedi_bake($img_file, __DIR__, $bake_style,
+                            (int)$s['fx'], (int)$s['fy'], (int)$s['zoom']);
+                    }
+                }
             }
             // Tags from caption + manual tags, applied to this post's cover image.
             snap_sync_tags($pdo, $imgs[0]['image_id'], $desc . ' ' . $manual_tags);

@@ -293,6 +293,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // --- Fediverse bake (p_) — regenerate for EVERY image on EVERY save ---
+    // Unconditional on purpose: Save IS the "regen the pretty renders" action.
+    // Bakes carry the freshly persisted style + crop (curated square, 1080²),
+    // and sv_image_attachment federates them in preference to the raw file.
+    if (function_exists('snapsmack_generate_fedi_bake')) {
+        $bk = $pdo->prepare(
+            "SELECT pi.img_size_pct, pi.img_border_px, pi.img_border_color,
+                    pi.img_bg_color, pi.img_focus_x, pi.img_focus_y, pi.img_zoom,
+                    i.img_file
+             FROM snap_post_images pi JOIN snap_images i ON i.id = pi.image_id
+             WHERE pi.post_id = ?"
+        );
+        $bk->execute([$post_id]);
+        foreach ($bk->fetchAll(PDO::FETCH_ASSOC) as $brow) {
+            snapsmack_generate_fedi_bake($brow['img_file'], __DIR__, [
+                'size_pct'     => (int)$brow['img_size_pct'],
+                'border_px'    => (int)$brow['img_border_px'],
+                'border_color' => (string)$brow['img_border_color'],
+                'bg_color'     => (string)$brow['img_bg_color'],
+            ], (int)$brow['img_focus_x'], (int)$brow['img_focus_y'], (int)$brow['img_zoom']);
+        }
+    }
+
     // --- Update per-image EXIF overrides ---
     foreach ($exif_overrides as $img_id => $fields) {
         $img_id = (int)$img_id;

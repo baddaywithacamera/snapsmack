@@ -619,7 +619,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         // Queue the Accept back to the follower's own inbox.
         $accept = [
             '@context' => 'https://www.w3.org/ns/activitystreams',
-            'id'       => sv_actor_url($settings) . '&accept=' . bin2hex(random_bytes(8)),
+            'id'       => sv_actor_url($settings) . '#accept-' . bin2hex(random_bytes(8)),
             'type'     => 'Accept',
             'actor'    => sv_actor_url($settings),
             'object'   => $activity,
@@ -910,11 +910,30 @@ function sv_focal_point(array $img): ?array {
 }
 
 /**
- * Build one image Document attachment: prefer the baked `f_` frame (elegance),
- * else the raw file at full res; attach focalPoint when off-center.
+ * The FEDIVERSE BAKE (p_) — the 1080² square render carrying the curated
+ * crop + frame (snapsmack_generate_fedi_bake). Convention-based, no schema:
+ * thumbs/p_<basename>.jpg next to the source. Null when not (yet) baked.
+ */
+function sv_fedi_bake_url(array $img, array $settings): ?string {
+    $file = $img['img_file'] ?? '';
+    if ($file === '') return null;
+    $rel = dirname($file) . '/thumbs/p_' . pathinfo($file, PATHINFO_FILENAME) . '.jpg';
+    $rel = ltrim(str_replace('\\', '/', $rel), '/');
+    $abs = dirname(__DIR__) . '/' . $rel;   // core/.. = site root
+    if (!is_file($abs)) return null;
+    return sv_base($settings) . $rel;
+}
+
+/**
+ * Build one image Document attachment. Preference order:
+ *   1. p_ fediverse bake — the curated square (crop + frame), 1080². The
+ *      remote grid mirrors the blog's feed (Sean + Opus decision).
+ *   2. f_ legacy frame bake (older convention), 3. raw file at full res.
+ * focalPoint ships only with the raw file — the bakes ARE the crop.
  */
 function sv_image_attachment(array $img, array $settings, string $alt = ''): array {
-    $frame = sv_frame_url($img, $settings);
+    $bake  = sv_fedi_bake_url($img, $settings);
+    $frame = $bake ?? sv_frame_url($img, $settings);
     $url   = $frame ?? (sv_base($settings) . ltrim($img['img_file'] ?? '', '/'));
     $type  = $frame ? 'image/jpeg' : sv_media_type($img['img_file'] ?? '');
     if ($alt === '') {
@@ -922,8 +941,10 @@ function sv_image_attachment(array $img, array $settings, string $alt = ''): arr
         if ($alt === '') $alt = trim($img['img_description'] ?? '');
     }
     $att = ['type' => 'Document', 'mediaType' => $type, 'url' => $url, 'name' => $alt];
-    $fp = sv_focal_point($img);
-    if ($fp !== null) $att['focalPoint'] = $fp;
+    if ($frame === null) {   // raw file only — the bakes already ARE the crop
+        $fp = sv_focal_point($img);
+        if ($fp !== null) $att['focalPoint'] = $fp;
+    }
     return $att;
 }
 
