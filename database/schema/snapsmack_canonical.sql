@@ -105,6 +105,12 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
                       COMMENT 'Manual feed order. 0 = unset (falls back to created_at DESC).',
   `user_id`           int unsigned   DEFAULT NULL
                       COMMENT 'FK to snap_users — post author/owner (multi-user attribution). NULL = legacy/unattributed. Web-admin wiring pending.',
+  `fedi_enabled`      tinyint(1)     NOT NULL DEFAULT 1
+                      COMMENT 'SMACKVERSE (0.7.367): 1 = eligible to federate; 0 = never push this post to the fediverse.',
+  `fedi_pushed_at`    datetime       DEFAULT NULL
+                      COMMENT 'SMACKVERSE (0.7.367): last time this post was pushed to the fediverse. NULL = staged, not yet pushed.',
+  `fedi_published_at` datetime       DEFAULT NULL
+                      COMMENT 'SMACKVERSE (0.7.367): fediverse date LABEL override (the Note published ts). NULL = use created_at. Does NOT change remote order — order is delivery order.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_slug` (`slug`),
   KEY `idx_status` (`status`),
