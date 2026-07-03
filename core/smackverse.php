@@ -1102,18 +1102,48 @@ function sv_avatar(array $settings): ?array {
 }
 
 /** WebFinger JRD for acct:<handle>@<domain>. Returns null on mismatch. */
+/**
+ * Public human-facing profile URL — the address a Pixelfed user expects for a
+ * profile (instance/username). This page content-negotiates: a browser gets a
+ * Pixelfed-faithful HTML profile, a fediverse server gets the actor JSON.
+ */
+function sv_profile_url(array $settings): string {
+    return rtrim(sv_base($settings), '/') . '/' . rawurlencode(sv_handle($settings));
+}
+
 function sv_webfinger(string $resource, array $settings): ?array {
     $acct = 'acct:' . sv_handle($settings) . '@' . sv_domain($settings);
     if (strcasecmp(trim($resource), $acct) !== 0) return null;
     return [
         'subject' => $acct,
-        'aliases' => [sv_actor_url($settings), rtrim(sv_base($settings), '/')],
+        'aliases' => [sv_actor_url($settings), sv_profile_url($settings), rtrim(sv_base($settings), '/')],
         'links'   => [
             ['rel' => 'self', 'type' => 'application/activity+json', 'href' => sv_actor_url($settings)],
             ['rel' => 'http://webfinger.net/rel/profile-page', 'type' => 'text/html',
-             'href' => rtrim(sv_base($settings), '/')],
+             'href' => sv_profile_url($settings)],
         ],
     ];
+}
+
+/**
+ * Remote-follow doorway for the public profile's Follow button. A VISITOR (a
+ * user of some other instance, not logged in here) gives their handle; we
+ * webfinger THEIR instance for its ostatus subscribe template and hand it our
+ * actor uri, so they land on their own server to confirm following us — the
+ * exact flow Pixelfed/Mastodon use when you follow a profile from outside.
+ * Returns the redirect URL, or null if the handle can't be resolved.
+ */
+function sv_remote_follow_url(string $visitor_handle, array $settings): ?string {
+    $h = ltrim(trim($visitor_handle), '@');
+    if (!preg_match('/^([^@\s\/]+)@([^@\s\/]+\.[^@\s\/]+)$/', $h, $m)) return null;
+    $doc = sv_fetch_ap('https://' . $m[2] . '/.well-known/webfinger?resource=' . rawurlencode('acct:' . $h));
+    if (!is_array($doc)) return null;
+    foreach (($doc['links'] ?? []) as $l) {
+        if (($l['rel'] ?? '') === 'http://ostatus.org/schema/1.0/subscribe' && !empty($l['template'])) {
+            return str_replace('{uri}', rawurlencode(sv_actor_url($settings)), (string)$l['template']);
+        }
+    }
+    return null;
 }
 
 /** The actor (Person) document. One blog = one actor = the site itself. */
@@ -1129,7 +1159,7 @@ function sv_actor_doc(PDO $pdo, array &$settings): array {
         'preferredUsername' => sv_handle($settings),
         'name'              => $settings['site_name'] ?? 'SnapSmack',
         'summary'           => sv_actor_summary($settings),
-        'url'               => rtrim(sv_base($settings), '/'),
+        'url'               => sv_profile_url($settings),
         'inbox'             => sv_inbox_url($settings),
         'outbox'            => sv_outbox_url($settings),
         'followers'         => sv_followers_url($settings),
@@ -2361,23 +2391,153 @@ function sv_delete_for_note_id(string $note_id, array $settings): array {
  *
  * @return array [notes_resynced, update_deliveries_queued]
  */
-function sv_resync_recent(PDO $pdo, array $settings, ?int $limit = null): array {
+/**
+ * Push recent posts to followers. Two modes:
+ *   'create' (default) — SEED: send each Note as a Create. A Create for a post
+ *       the remote doesn't have creates it; a Create for one it already has is
+ *       harmlessly ignored (idempotent, no Delete/tombstone). This is how you
+ *       get your WHOLE back catalogue onto a follower who only ever received the
+ *       (capped) follow-backfill — an Update can't, because you can't update a
+ *       post the remote never created.
+ *   'update' — REFRESH: send an Update per Note, to propagate render changes
+ *       (new thumbnails, covers, frames) to posts the remote ALREADY holds.
+ *
+ * @return array [notes_built, activities_queued]
+ */
+function sv_resync_recent(PDO $pdo, array $settings, ?int $limit = null, string $mode = 'create'): array {
     if ($limit === null) $limit = (int)($settings['smackverse_backfill_count'] ?? 10);
     $creates = sv_recent_creates($pdo, $settings, $limit);
     $inboxes = sv_follower_inboxes($pdo);
     if (!$creates || !$inboxes) return [0, 0];
 
-    // One Update per Note (the Note rides inside each Create we already built,
-    // so we unwrap it and re-wrap as an Update — same id, freshly stamped).
     $n = 0;
     foreach ($creates as $cjson) {
-        $c    = json_decode($cjson, true);
-        $note = $c['object'] ?? null;
-        if (!is_array($note) || empty($note['id'])) continue;
-        $upd = json_encode(sv_update_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
-        foreach ($inboxes as $ib) { sv_queue_delivery($pdo, $ib, $upd); $n++; }
+        if ($mode === 'update') {
+            $c    = json_decode($cjson, true);
+            $note = $c['object'] ?? null;
+            if (!is_array($note) || empty($note['id'])) continue;
+            $payload = json_encode(sv_update_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
+        } else {
+            $payload = $cjson;   // Create as built: seeds missing, idempotent for existing
+        }
+        foreach ($inboxes as $ib) { sv_queue_delivery($pdo, $ib, $payload); $n++; }
     }
     return [count($creates), $n];
+}
+
+/** Retract (Delete/Tombstone) one of OUR Notes from every follower. Paced by
+ *  the delivery cron. Fediverse-legal: deleting your own post is standard. */
+function sv_retract_note(PDO $pdo, array $settings, string $note_id): int {
+    if ($note_id === '') return 0;
+    $del = json_encode(sv_delete_for_note_id($note_id, $settings), JSON_UNESCAPED_SLASHES);
+    $n = 0;
+    foreach (sv_follower_inboxes($pdo) as $ib) { sv_queue_delivery($pdo, $ib, $del); $n++; }
+    return $n;
+}
+
+/** Seed (Create) one grouped post's Note to every follower. */
+function sv_seed_post(PDO $pdo, array $settings, int $post_id): int {
+    $post = sv_post_row($pdo, $post_id);
+    if (!$post) return 0;
+    $note = sv_note_for_post($pdo, $post, $settings);
+    if ($note === null) return 0;
+    $create = json_encode(sv_create_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
+    $n = 0;
+    foreach (sv_follower_inboxes($pdo) as $ib) { sv_queue_delivery($pdo, $ib, $create); $n++; }
+    return $n;
+}
+
+/**
+ * Convert several separate posts / standalone images into ONE carousel post,
+ * and make the fediverse match: retract each old single Note from followers
+ * (Delete) and seed the new carousel Note (Create). Fediverse-legal and
+ * mannerly — Delete + Create of your OWN content, DIFFERENT ids (the old single
+ * ids are tombstoned and never reused), paced by the delivery cron. A
+ * deliberate one-shot cleanup, never an auto-reconcile.
+ *
+ * @param int[] $image_ids  images to combine, in carousel order
+ * @param int   $cover_id   which image is the cover (0 → first)
+ * @return array [bool ok, string message]
+ */
+function sv_convert_to_carousel(PDO $pdo, array $settings, array $image_ids, int $cover_id = 0): array {
+    $image_ids = array_values(array_unique(array_filter(array_map('intval', $image_ids))));
+    if (count($image_ids) < 2) return [false, 'Pick at least two images to combine into a carousel.'];
+    if ($cover_id === 0) $cover_id = $image_ids[0];
+    if (!in_array($cover_id, $image_ids, true)) $cover_id = $image_ids[0];
+
+    // Capture each image's CURRENT federation Note id (before regrouping) so we
+    // can retract the exact ids that went out, plus the old posts to clean up.
+    $base = sv_base($settings);
+    $old_notes = []; $old_posts = [];
+    foreach ($image_ids as $iid) {
+        $s = $pdo->prepare("SELECT id, post_id FROM snap_images WHERE id = ? AND img_status = 'published' LIMIT 1");
+        $s->execute([$iid]);
+        $img = $s->fetch(PDO::FETCH_ASSOC);
+        if (!$img) return [false, "Image #$iid isn't a published image — aborted, nothing changed."];
+        $pid = (int)($img['post_id'] ?? 0);
+        if ($pid > 0) { $old_notes[$base . 'ap/note/p/' . $pid] = true; $old_posts[$pid] = true; }
+        else          { $old_notes[$base . 'ap/note/i/' . $iid] = true; }
+    }
+
+    try {
+        $pdo->beginTransaction();
+        $slug = 'ig-' . gmdate('Ymd-His') . '-' . substr(bin2hex(random_bytes(3)), 0, 4);
+        $pdo->prepare("INSERT INTO snap_posts
+              (title, slug, description, post_type, status, created_at,
+               allow_comments, allow_download, download_url, panorama_rows,
+               post_img_size_pct, post_border_px, post_border_color, post_bg_color, post_shadow)
+             VALUES ('', ?, '', 'carousel', 'published', NOW(), 1, 0, '', 1, 100, 0, '#000000', '#ffffff', 0)")
+            ->execute([$slug]);
+        $new_pid = (int)$pdo->lastInsertId();
+
+        $pos = 0;
+        foreach ($image_ids as $iid) {
+            $ps = $pdo->prepare("SELECT img_size_pct, img_border_px, img_border_color, img_bg_color,
+                                        img_shadow, img_crop_mode, img_focus_x, img_focus_y, img_zoom
+                                 FROM snap_post_images WHERE image_id = ? LIMIT 1");
+            $ps->execute([$iid]);
+            $stl = $ps->fetch(PDO::FETCH_ASSOC) ?: [
+                'img_size_pct' => 100, 'img_border_px' => 0, 'img_border_color' => '#000000',
+                'img_bg_color' => '#ffffff', 'img_shadow' => 0, 'img_crop_mode' => 'fill',
+                'img_focus_x' => 50, 'img_focus_y' => 50, 'img_zoom' => 100];
+            // UNIQUE(image_id) — one pivot per image; drop the old before re-linking.
+            $pdo->prepare("DELETE FROM snap_post_images WHERE image_id = ?")->execute([$iid]);
+            $pdo->prepare("INSERT INTO snap_post_images
+                  (post_id, image_id, sort_position, is_cover, img_size_pct, img_border_px,
+                   img_border_color, img_bg_color, img_shadow, img_crop_mode, img_focus_x, img_focus_y, img_zoom)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                ->execute([$new_pid, $iid, $pos, ($iid === $cover_id ? 1 : 0),
+                           $stl['img_size_pct'], $stl['img_border_px'], $stl['img_border_color'], $stl['img_bg_color'],
+                           $stl['img_shadow'], $stl['img_crop_mode'], $stl['img_focus_x'], $stl['img_focus_y'], $stl['img_zoom']]);
+            $pdo->prepare("UPDATE snap_images SET post_id = ? WHERE id = ?")->execute([$new_pid, $iid]);
+            $pos++;
+        }
+
+        // Delete now-empty old single posts.
+        foreach (array_keys($old_posts) as $pid) {
+            $c = $pdo->prepare("SELECT COUNT(*) FROM snap_post_images WHERE post_id = ?");
+            $c->execute([$pid]);
+            if ((int)$c->fetchColumn() === 0) {
+                $pdo->prepare("DELETE FROM snap_posts WHERE id = ?")->execute([$pid]);
+            }
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        return [false, 'Convert failed — nothing changed. (' . substr($e->getMessage(), 0, 160) . ')'];
+    }
+
+    // Federation: retract the old single Notes, seed the new carousel Note.
+    $retracted = 0; $seeded = 0;
+    if (sv_enabled($settings)) {
+        foreach (array_keys($old_notes) as $nid) $retracted += sv_retract_note($pdo, $settings, $nid);
+        $seeded = sv_seed_post($pdo, $settings, $new_pid);
+    }
+    $msg = 'Combined ' . count($image_ids) . ' images into carousel post #' . $new_pid . '. ';
+    $msg .= sv_enabled($settings)
+        ? "Queued Delete of the old singles to $retracted follower-inbox(es) and a Create for the carousel — they roll out on the delivery cron."
+        : 'Federation is off, so nothing was sent out.';
+    return [true, $msg];
 }
 
 /**
