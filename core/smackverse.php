@@ -1189,7 +1189,33 @@ function sv_note_for_comment(PDO $pdo, array $c, array $settings): ?array {
     $content = '<p><strong>' . htmlspecialchars($author) . '</strong> wrote:</p><p>'
              . nl2br(htmlspecialchars($body)) . '</p>';
 
-    return [
+    // If this replies to a FEDIVERSE comment, MENTION its author — the Mention
+    // tag is what makes their server notify them. That's the difference
+    // between shouting into the void and an actual conversation.
+    $mention = null;
+    if ($parent !== '') {
+        try {
+            $ps = $pdo->prepare(
+                "SELECT ap_actor_url, comment_author FROM snap_comments
+                 WHERE ap_object_id = ? AND ap_source = 'fediverse' LIMIT 1"
+            );
+            $ps->execute([$parent]);
+            $pr = $ps->fetch(PDO::FETCH_ASSOC);
+            $ah = $pr ? trim($pr['ap_actor_url'] ?? '') : '';
+            if ($ah !== '') {
+                $host = parse_url($ah, PHP_URL_HOST) ?: '';
+                $user = trim((string)($pr['comment_author'] ?? ''));
+                $user = $user !== '' ? preg_replace('/[@\s].*$/', '', ltrim($user, '@'))
+                                     : basename(parse_url($ah, PHP_URL_PATH) ?: '');
+                $name = '@' . $user . ($host !== '' ? '@' . $host : '');
+                $mention = ['type' => 'Mention', 'href' => $ah, 'name' => $name];
+                $content = '<p><a href="' . htmlspecialchars($ah) . '" class="u-url mention">'
+                         . htmlspecialchars($name) . '</a></p>' . $content;
+            }
+        } catch (Exception $e) { /* mention is best-effort */ }
+    }
+
+    $note = [
         '@context'     => 'https://www.w3.org/ns/activitystreams',
         'id'           => $note_id,
         'type'         => 'Note',
@@ -1200,6 +1226,11 @@ function sv_note_for_comment(PDO $pdo, array $c, array $settings): ?array {
         'published'    => gmdate('Y-m-d\TH:i:s\Z', strtotime($c['comment_date'] ?? 'now')),
         'content'      => $content,
     ];
+    if ($mention !== null) {
+        $note['tag']  = [$mention];
+        $note['cc'][] = $mention['href'];
+    }
+    return $note;
 }
 
 /**
@@ -1239,6 +1270,16 @@ function sv_federate_comment(PDO $pdo, int $comment_id, array $settings): void {
     foreach (sv_follower_inboxes($pdo) as $inbox) {
         sv_queue_delivery($pdo, $inbox, $json);
     }
+
+    // Deliver to the MENTIONED commenter's own inbox too — they may not be a
+    // follower, and without this a reply to their comment never reaches them.
+    foreach (($note['tag'] ?? []) as $t) {
+        if (($t['type'] ?? '') === 'Mention' && !empty($t['href'])) {
+            $adoc  = sv_fetch_ap((string)$t['href']);
+            $inbox = is_array($adoc) ? (string)($adoc['inbox'] ?? '') : '';
+            if ($inbox !== '') sv_queue_delivery($pdo, $inbox, $json);
+        }
+    }
 }
 
 /** Combined like tally for a target: native snap_likes + federated snap_ap_likes. */
@@ -1273,6 +1314,58 @@ function sv_create_for_note(array $note, array $settings): array {
         'cc'        => $note['cc'],
         'object'    => $note,
     ];
+}
+
+/** Delete activity for a Note id — tells remote servers to drop their cached
+ *  copy (Tombstone object, Mastodon convention). Unique fragment id so a
+ *  re-issued Delete is never deduped away. */
+function sv_delete_for_note_id(string $note_id, array $settings): array {
+    return [
+        '@context' => 'https://www.w3.org/ns/activitystreams',
+        'id'       => $note_id . '#delete-' . bin2hex(random_bytes(6)),
+        'type'     => 'Delete',
+        'actor'    => sv_actor_url($settings),
+        'to'       => ['https://www.w3.org/ns/activitystreams#Public'],
+        'object'   => ['id' => $note_id, 'type' => 'Tombstone'],
+    ];
+}
+
+/**
+ * RESYNC: re-federate the N most recent posts to all active followers.
+ * Remote servers cache statuses by Note id and DEDUP re-delivered Creates,
+ * so a changed render (new bakes, slice covers, fixed attachments) never
+ * reaches a server that already ingested the old copy. Resync sends a
+ * signed Delete for each Note first (remote drops its cache), lets the
+ * remote settle, then re-delivers fresh Creates. Deletes for Notes the
+ * remote never had are ignored — harmless.
+ *
+ * @return array [notes_resynced, create_deliveries]
+ */
+function sv_resync_recent(PDO $pdo, array $settings, ?int $limit = null): array {
+    if ($limit === null) $limit = (int)($settings['smackverse_backfill_count'] ?? 10);
+    $creates = sv_recent_creates($pdo, $settings, $limit);
+    $inboxes = sv_follower_inboxes($pdo);
+    if (!$creates || !$inboxes) return [0, 0];
+
+    // Pass 1: Deletes — the remote must forget its cached copies first.
+    foreach ($creates as $cjson) {
+        $c   = json_decode($cjson, true);
+        $nid = $c['object']['id'] ?? null;
+        if (!$nid) continue;
+        $del = json_encode(sv_delete_for_note_id($nid, $settings), JSON_UNESCAPED_SLASHES);
+        foreach ($inboxes as $ib) sv_queue_delivery($pdo, $ib, $del);
+    }
+    sv_process_deliveries($pdo, $settings, 200);
+    if (PHP_SAPI === 'cli') sleep(5);   // let the remote's async delete workers settle
+
+    // Pass 2: fresh Creates (original published dates ride in the Notes, so
+    // remote grids keep chronological order).
+    $n = 0;
+    foreach ($creates as $cjson) {
+        foreach ($inboxes as $ib) { sv_queue_delivery($pdo, $ib, $cjson); $n++; }
+    }
+    sv_process_deliveries($pdo, $settings, 200);
+    return [count($creates), $n];
 }
 
 /**

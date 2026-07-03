@@ -47,6 +47,17 @@ $lc_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_likes WHERE post_id = ?");
 $lc_stmt->execute([$post_id]);
 $like_count = (int)$lc_stmt->fetchColumn();
 
+// SMACKVERSE: fold federated likes into the tally. The dock's $img is the
+// image row, so image-target likes key on its id; if the image rides in a
+// grouped post, post-target likes (Likes on the post Note) count too.
+if (($settings['smackverse_enabled'] ?? '0') === '1' && is_file(__DIR__ . '/smackverse.php')) {
+    require_once __DIR__ . '/smackverse.php';
+    $like_count = sv_combined_like_count($pdo, 'image', $post_id, $like_count);
+    if (!empty($img['post_id'])) {
+        $like_count = sv_combined_like_count($pdo, 'post', (int)$img['post_id'], $like_count);
+    }
+}
+
 $user_liked = false;
 if ($community_user) {
     $ul_stmt = $pdo->prepare("SELECT id FROM snap_likes WHERE post_id = ? AND user_id = ? LIMIT 1");

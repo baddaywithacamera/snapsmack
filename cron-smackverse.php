@@ -12,7 +12,9 @@
  * existing library is never blasted at followers.
  *
  * USAGE:
- *   php cron-smackverse.php
+ *   php cron-smackverse.php             — normal sweep + queue run
+ *   php cron-smackverse.php resync [N]  — re-federate the N most recent posts
+ *                                         (Delete remote caches, re-Create)
  *
  * RECOMMENDED CRON SCHEDULE (every 10 minutes):
  *   0,10,20,30,40,50 * * * *  /usr/bin/php /path/to/cron-smackverse.php >> /dev/null 2>&1
@@ -61,6 +63,23 @@ if (!sv_enabled($settings)) {
 
 sv_ensure_tables($pdo);
 sv_ensure_keys($pdo, $settings);
+
+// RESYNC mode: php cron-smackverse.php resync [N]
+// Re-federates the N most recent posts (default: smackverse_backfill_count)
+// to all active followers: Delete each cached Note remotely, then re-deliver
+// fresh Creates. Use after a render change (bakes, covers, attachments) —
+// remote servers dedup plain re-Creates against their cache, so this is the
+// only way a fix reaches an already-federated post.
+if (($argv[1] ?? '') === 'resync') {
+    $limit = isset($argv[2]) ? max(1, (int)$argv[2]) : null;
+    list($rs_notes, $rs_deliveries) = sv_resync_recent($pdo, $settings, $limit);
+    if ($rs_notes === 0) {
+        echo "SMACKVERSE resync: nothing to do (no recent notes or no active followers).\n";
+    } else {
+        echo sprintf("SMACKVERSE resync: %d note(s) re-federated (%d Create deliveries).\n", $rs_notes, $rs_deliveries);
+    }
+    exit(0);
+}
 
 list($units, $queued) = sv_sweep_new_posts($pdo, $settings);
 list($sent, $failed)  = sv_process_deliveries($pdo, $settings, 30);
