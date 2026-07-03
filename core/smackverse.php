@@ -499,6 +499,31 @@ function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json): 
         ->execute([$inbox_url, $activity_json]);
 }
 
+/** Base gap in seconds between consecutive POSTS in a paced drain (clamped
+ *  1..120, default 10). The breathing room a remote gets to ingest one Note
+ *  before the next lands — the cure for out-of-order posts on a burst. */
+function sv_delivery_cadence(array $settings): int {
+    return max(1, min(120, (int)($settings['smackverse_delivery_cadence_secs'] ?? 10)));
+}
+
+/** Extra seconds added per EXTRA carousel layer (clamped 0..30, default 2). A
+ *  post with L attachments earns post_gap + layer_gap·(L−1) of settle time
+ *  before the next send, so the remote finishes fetching every frame of a fat
+ *  stack — the cure for cover-lands-but-stack-doesn't. A single image (L=1)
+ *  pays nothing extra. */
+function sv_layer_cadence(array $settings): int {
+    return max(0, min(30, (int)($settings['smackverse_layer_cadence_secs'] ?? 2)));
+}
+
+/** Attachment (carousel layer) count carried by a queued activity's Note, so
+ *  the paced drain can size the post-send settle gap. 0 for non-Note activities
+ *  (Delete/Follow/Accept/Undo). */
+function sv_activity_attachment_count(string $activity_json): int {
+    $a   = json_decode($activity_json, true);
+    $att = is_array($a) ? ($a['object']['attachment'] ?? null) : null;
+    return is_array($att) ? count($att) : 0;
+}
+
 /** Distinct delivery inboxes for all active followers (sharedInbox preferred). */
 function sv_follower_inboxes(PDO $pdo): array {
     $rows = $pdo->query(
@@ -516,8 +541,20 @@ function sv_follower_inboxes(PDO $pdo): array {
  * Process due queued deliveries. Success → row deleted; failure → backoff
  * (5min · 2^attempts, capped 24h); parked as status=failed after 8 tries.
  * Returns [sent, failed_now].
+ *
+ * MEASURED CADENCE ($cadence_secs > 0): pause between consecutive sends so a
+ * remote ingests one activity — and finishes fetching its media — before the
+ * next arrives. Rows are already ordered oldest-first (id ASC), so a paced run
+ * lands posts on the remote in strict chronological order with no concurrent
+ * async workers to shuffle same-second timestamps or drop half a carousel
+ * stack. The gap SCALES with the layer count of the post just sent: a fat
+ * carousel earns cadence + layer_gap·(layers−1) of settle time so the remote
+ * finishes pulling every frame before the next Note lands; a single image pays
+ * only the base gap. Only ever call with a cadence from a detached context
+ * (CLI cron or a post-fastcgi_finish_request web tail) — never inline before a
+ * response.
  */
-function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30): array {
+function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $cadence_secs = 0): array {
     $now  = date('Y-m-d H:i:s');
     $stmt = $pdo->prepare(
         "SELECT * FROM snap_ap_deliveries
@@ -527,8 +564,16 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30): arra
     $stmt->execute([$now]);
     $due = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $sent = 0; $failed = 0;
+    $layer_gap = ($cadence_secs > 0) ? sv_layer_cadence($settings) : 0;
+    $sent = 0; $failed = 0; $prev_layers = 0; $i = 0;
     foreach ($due as $row) {
+        // Settle gap BEFORE every send except the first, sized by the PREVIOUS
+        // post's layer count — one activity in flight at a time, oldest first,
+        // heavy stacks given proportionally longer to fully land.
+        if ($cadence_secs > 0 && $i++ > 0) {
+            sleep($cadence_secs + $layer_gap * max(0, $prev_layers - 1));
+        }
+        $prev_layers = sv_activity_attachment_count($row['activity_json']);
         list($ok, $info) = sv_deliver($settings, $row['inbox_url'], $row['activity_json']);
         if ($ok) {
             $pdo->prepare("DELETE FROM snap_ap_deliveries WHERE id = ?")->execute([$row['id']]);
@@ -1512,7 +1557,14 @@ function sv_delete_for_note_id(string $note_id, array $settings): array {
  * so the follow-up Create for that same id was silently dropped by Pixelfed/
  * Mastodon and the posts vanished instead of refreshing.
  *
- * @return array [notes_resynced, update_deliveries]
+ * ENQUEUE ONLY — this just fills the delivery queue (oldest-first) and returns.
+ * The caller drains at MEASURED CADENCE from a detached context (see
+ * sv_process_deliveries) so the Updates land on the remote one at a time, in
+ * order, with no burst to shuffle timestamps or truncate carousel stacks. A
+ * duplicate Update (e.g. the cron picking up a straggler the web tail already
+ * sent) is harmless — an Update is idempotent, unlike a Create or a Delete.
+ *
+ * @return array [notes_resynced, update_deliveries_queued]
  */
 function sv_resync_recent(PDO $pdo, array $settings, ?int $limit = null): array {
     if ($limit === null) $limit = (int)($settings['smackverse_backfill_count'] ?? 10);
@@ -1530,7 +1582,6 @@ function sv_resync_recent(PDO $pdo, array $settings, ?int $limit = null): array 
         $upd = json_encode(sv_update_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
         foreach ($inboxes as $ib) { sv_queue_delivery($pdo, $ib, $upd); $n++; }
     }
-    sv_process_deliveries($pdo, $settings, 200);
     return [count($creates), $n];
 }
 

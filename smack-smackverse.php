@@ -106,21 +106,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'disab
     exit;
 }
 
-// RESYNC: re-federate the most recent posts to all active followers —
-// Delete their cached copies, then re-deliver fresh Creates. Remote servers
-// dedup re-sent Creates against their cache, so this is the ONLY way a fixed
-// render (bakes, covers, attachments) reaches an already-federated post.
+// RESYNC: re-federate the most recent posts to all active followers by pushing
+// a signed Update per Note — same id, current render (cover + full carousel
+// stack), replacing the remote's cached copy in place. Enqueued oldest-first,
+// then drained at MEASURED CADENCE from a detached tail so the posts land on
+// the remote one at a time, in chronological order, with no burst to shuffle
+// same-second timestamps or truncate a stack.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resync') {
     if (!sv_enabled($sv_settings)) {
         header('Location: smack-smackverse.php?msg=' . urlencode('SMACKVERSE is off — nothing to resync.'));
         exit;
     }
-    set_time_limit(120);
     list($rs_notes, $rs_deliveries) = sv_resync_recent($pdo, $sv_settings);
-    $msg_out = $rs_notes === 0
-        ? 'RESYNC: nothing to do — no recent posts or no active followers.'
-        : sprintf('RESYNC: %d post(s) re-federated (%d deliveries). Give the remote servers a minute to chew.', $rs_notes, $rs_deliveries);
+    if ($rs_notes === 0) {
+        header('Location: smack-smackverse.php?msg=' . urlencode('RESYNC: nothing to do — no recent posts or no active followers.'));
+        exit;
+    }
+    $cadence = sv_delivery_cadence($sv_settings);
+    $msg_out = sprintf(
+        'RESYNC: %d post(s) queued (%d deliveries), rolling out oldest-first ~%ds apart (longer after fat carousels, so every layer lands) — your remote profile rebuilds in order. Give it a few minutes.',
+        $rs_notes, $rs_deliveries, $cadence
+    );
+    // PRG redirect FIRST, then keep running detached to drain the queue at
+    // cadence — the browser never waits on the paced send.
     header('Location: smack-smackverse.php?msg=' . urlencode($msg_out));
+    if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+    ignore_user_abort(true);
+    @set_time_limit(0);
+    try { sv_process_deliveries($pdo, $sv_settings, 200, $cadence); } catch (\Throwable $e) { /* cron drains the rest */ }
     exit;
 }
 

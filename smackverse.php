@@ -159,11 +159,15 @@ switch ($ap) {
         // INSTANT response: acknowledge to the sender first, then deliver any
         // Accept / backfill this request just queued — so a follow completes in
         // seconds, not on the next 10-minute cron tick. fastcgi_finish_request
-        // flushes the 202 to the caller, then we keep running.
+        // flushes the 202 to the caller, then we keep running. The drain is
+        // paced (measured cadence) so a new follower's backfill lands oldest-
+        // first in order, not shuffled by the remote's async workers.
         if (function_exists('fastcgi_finish_request')) {
             fastcgi_finish_request();
         }
-        try { sv_process_deliveries($pdo, $settings, 20); } catch (\Throwable $e) { /* cron will retry */ }
+        @set_time_limit(0);
+        try { sv_process_deliveries($pdo, $settings, 200, sv_delivery_cadence($settings)); }
+        catch (\Throwable $e) { /* cron will retry */ }
         exit;
 
     default:
