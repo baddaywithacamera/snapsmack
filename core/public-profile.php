@@ -36,19 +36,33 @@ $pp_followers = 0; $pp_following = 0; $pp_posts = 0;
 try { $pp_followers = (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_followers WHERE is_active = 1")->fetchColumn(); } catch (Throwable $e) {}
 try { $pp_following = (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_following WHERE state = 'accepted'")->fetchColumn(); } catch (Throwable $e) {}
 try {
+    // is_cover lives on the snap_post_images PIVOT, not snap_images — the old
+    // query referenced it on the wrong table, threw, and silently counted 0.
     $pp_posts = (int)$pdo->query(
-        "SELECT COUNT(*) FROM snap_images
-         WHERE img_status = 'published' AND img_date <= NOW() AND (post_id IS NULL OR is_cover = 1)"
+        "SELECT COUNT(*) FROM snap_posts
+         WHERE status = 'published' AND created_at <= NOW()
+           AND post_type IN ('single','carousel','panorama')"
     )->fetchColumn();
 } catch (Throwable $e) {}
 
-// Photo grid — one tile per post (carousel cover) plus standalone images.
+// Photo grid — one tile per published post (its cover), in the blog's grid
+// order (sort_order), so the profile mirrors the home feed. Cover = the
+// is_cover pivot row, falling back to the first image if none is flagged.
 $pp_tiles = [];
 try {
     $st = $pdo->query(
-        "SELECT id, post_id, img_file, img_slug FROM snap_images
-         WHERE img_status = 'published' AND img_date <= NOW() AND (post_id IS NULL OR is_cover = 1)
-         ORDER BY img_date DESC LIMIT 60"
+        "SELECT i.id, i.post_id, i.img_file, i.img_slug
+         FROM snap_posts p
+         JOIN snap_post_images pi ON pi.post_id = p.id
+            AND pi.image_id = (SELECT image_id FROM snap_post_images
+                               WHERE post_id = p.id
+                               ORDER BY is_cover DESC, sort_position ASC LIMIT 1)
+         JOIN snap_images i ON i.id = pi.image_id AND i.img_status = 'published'
+         WHERE p.status = 'published' AND p.created_at <= NOW()
+           AND p.post_type IN ('single','carousel','panorama')
+         ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
+                  p.sort_order ASC, p.created_at DESC
+         LIMIT 60"
     );
     $pp_tiles = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 } catch (Throwable $e) { $pp_tiles = []; }

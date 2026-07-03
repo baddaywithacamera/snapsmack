@@ -2713,16 +2713,25 @@ function sv_ordered_units(PDO $pdo, array $settings, int $limit): array {
     $units = [];
     try {
         if ($is_carousel) {
+            // Carry trigram slot + orientation (same shape the grid computes) so
+            // the visual row-alignment pass below can run identically to the feed.
             $posts = $pdo->query(
-                "SELECT * FROM snap_posts
-                 WHERE status = 'published' AND created_at <= NOW()
-                   AND post_type IN ('single','carousel','panorama')
-                   AND fedi_enabled = 1
-                 ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
-                          sort_order ASC, created_at DESC, id DESC
+                "SELECT p.*,
+                        CASE WHEN tg.post_id_1 = p.id THEN 1
+                             WHEN tg.post_id_2 = p.id THEN 2
+                             WHEN tg.post_id_3 = p.id THEN 3
+                             ELSE NULL END AS trigram_slot,
+                        tg.orientation AS trigram_orientation
+                 FROM snap_posts p
+                 LEFT JOIN snap_trigrams tg ON tg.id = p.trigram_id
+                 WHERE p.status = 'published' AND p.created_at <= NOW()
+                   AND p.post_type IN ('single','carousel','panorama')
+                   AND p.fedi_enabled = 1
+                 ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
+                          p.sort_order ASC, p.created_at DESC, p.id DESC
                  LIMIT " . (int)$limit
             )->fetchAll(PDO::FETCH_ASSOC);
-            // Emitted TOP-OF-GRID-FIRST (display order).
+            // Emitted TOP-OF-GRID-FIRST (raw sort_order; realigned below).
             foreach ($posts as $p) $units[] = ['date' => $p['created_at'], 'kind' => 'post', 'row' => $p];
         } else {
             // Photoblog / essay modes keep the original date-merged behaviour.
@@ -2767,6 +2776,22 @@ function sv_ordered_units(PDO $pdo, array $settings, int $limit): array {
         if ($tg === 0) return true;
         return ($trio_counts[$tg] ?? 0) >= 3;   // keep only complete trios
     }));
+
+    // Match the DISPLAYED grid EXACTLY. Carousel mode renders through
+    // trigram_align_backfill (singles slide up so a trigram row starts at column
+    // 0, and L/M/R are glued), so the on-screen order diverges from raw sort_order
+    // right where a trigram meets singles. Federate that SAME visual order or the
+    // trigram row swaps with its neighbour on the remote (the "2nd/3rd row
+    // flipped" bug). Runs on the trio-complete set, before the delivery reverse.
+    if ($is_carousel) {
+        if (!function_exists('trigram_align_backfill')) require_once __DIR__ . '/trigram.php';
+        if (function_exists('trigram_align_backfill')) {
+            $rows  = trigram_align_backfill(array_map(function ($u) { return $u['row']; }, $units));
+            $units = array_map(function ($r) {
+                return ['date' => $r['created_at'], 'kind' => 'post', 'row' => $r];
+            }, $rows);
+        }
+    }
 
     // Delivery order = REVERSE of display order, so the top-of-grid unit arrives
     // LAST and lands on top of the remote profile (Pixelfed = arrival-id desc).
