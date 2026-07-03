@@ -14,7 +14,8 @@
  * USAGE:
  *   php cron-smackverse.php             — normal sweep + queue run
  *   php cron-smackverse.php resync [N]  — re-federate the N most recent posts
- *                                         (Delete remote caches, re-Create)
+ *                                         (signed Update per Note, same id,
+ *                                          drained at measured cadence)
  *
  * RECOMMENDED CRON SCHEDULE (every 10 minutes):
  *   0,10,20,30,40,50 * * * *  /usr/bin/php /path/to/cron-smackverse.php >> /dev/null 2>&1
@@ -65,24 +66,32 @@ sv_ensure_tables($pdo);
 sv_ensure_keys($pdo, $settings);
 
 // RESYNC mode: php cron-smackverse.php resync [N]
-// Re-federates the N most recent posts (default: smackverse_backfill_count)
-// to all active followers: Delete each cached Note remotely, then re-deliver
-// fresh Creates. Use after a render change (bakes, covers, attachments) —
-// remote servers dedup plain re-Creates against their cache, so this is the
-// only way a fix reaches an already-federated post.
+// Re-federates the N most recent posts (default: smackverse_backfill_count) to
+// all active followers by pushing a signed Update per Note — same id, current
+// render (cover + full carousel stack), replacing the remote's cached copy in
+// place. Use after a render change (bakes, covers, attachments): remote servers
+// dedup plain re-Creates against their cache, and a Delete tombstones the id
+// forever, so an Update is the only path that actually refreshes a federated
+// post. Enqueued oldest-first, then drained at measured cadence so the posts
+// land in chronological order with no burst to shuffle them.
 if (($argv[1] ?? '') === 'resync') {
     $limit = isset($argv[2]) ? max(1, (int)$argv[2]) : null;
     list($rs_notes, $rs_deliveries) = sv_resync_recent($pdo, $settings, $limit);
     if ($rs_notes === 0) {
         echo "SMACKVERSE resync: nothing to do (no recent notes or no active followers).\n";
     } else {
-        echo sprintf("SMACKVERSE resync: %d note(s) re-federated (%d Create deliveries).\n", $rs_notes, $rs_deliveries);
+        list($rsent, $rfailed) = sv_process_deliveries($pdo, $settings, 200, sv_delivery_cadence($settings));
+        echo sprintf("SMACKVERSE resync: %d note(s) re-federated (%d Update deliveries; %d sent, %d retrying).\n",
+                     $rs_notes, $rs_deliveries, $rsent, $rfailed);
     }
     exit(0);
 }
 
 list($units, $queued) = sv_sweep_new_posts($pdo, $settings);
-list($sent, $failed)  = sv_process_deliveries($pdo, $settings, 30);
+// Paced drain: same measured cadence as resync so a first-follow backfill (and
+// any sweep burst) lands on the remote in order, not shuffled by its async
+// workers. CLI/cron context, so the inter-send sleeps cost nothing user-facing.
+list($sent, $failed)  = sv_process_deliveries($pdo, $settings, 30, sv_delivery_cadence($settings));
 
 // Health stamp for the SMACKVERSE admin page's delivery panel.
 sv_set_setting($pdo, $settings, 'smackverse_cron_last_run', date('Y-m-d H:i:s'));
