@@ -1356,7 +1356,7 @@ function sv_resync_recent(PDO $pdo, array $settings, ?int $limit = null): array 
         foreach ($inboxes as $ib) sv_queue_delivery($pdo, $ib, $del);
     }
     sv_process_deliveries($pdo, $settings, 200);
-    if (PHP_SAPI === 'cli') sleep(5);   // let the remote's async delete workers settle
+    sleep(PHP_SAPI === 'cli' ? 5 : 3);  // let the remote's async delete workers settle
 
     // Pass 2: fresh Creates (original published dates ride in the Notes, so
     // remote grids keep chronological order).

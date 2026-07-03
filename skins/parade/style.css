@@ -507,13 +507,29 @@ img { display: block; max-width: 100%; }
 }
 
 .pa-tile--framed img {
-    /* override fill-tile behaviour */
+    /* Border/shadow hug the IMAGE itself (natural aspect), not a square box.
+       Landscape: size% of WIDTH, height follows. Portrait override below. */
     width:        var(--tile-img-size, 100%);
-    height:       var(--tile-img-size, 100%);
+    height:       auto;
+    max-width:    var(--tile-img-size, 100%);
+    max-height:   100%;
+    margin:       auto;   /* bulletproof flex centring — splits matte evenly */
     object-fit:   contain;
     border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
+    /* Fill the sub-pixel object-fit:contain letterbox with the border colour
+       instead of letting the tile bg show through as a thin sliver between
+       the image and its border (the "white line" bug). Falls back to
+       transparent when there's no border, preserving the matte. */
+    background-color: var(--tile-border-c, transparent);
     box-sizing:   border-box;
     transition:   opacity 0.2s;
+}
+.pa-tile--framed.pa-tile--portrait img {
+    /* Portrait: size% of HEIGHT so it can't overflow the square tile. */
+    width:        auto;
+    height:       var(--tile-img-size, 100%);
+    max-width:    100%;
+    max-height:   var(--tile-img-size, 100%);
 }
 
 /* ── Trigram row ──────────────────────────────────────────────────────────

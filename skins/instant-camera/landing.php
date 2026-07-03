@@ -126,7 +126,7 @@ $grid_stmt = $pdo->prepare("
     LEFT JOIN snap_trigrams tg ON tg.id = p.trigram_id
     WHERE p.status = 'published'
       AND p.created_at <= ?
-    ORDER BY CASE WHEN p.sort_order > 0 THEN 0 ELSE 1 END ASC,
+    ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
              p.sort_order ASC,
              p.created_at DESC
 ");

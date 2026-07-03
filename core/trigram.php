@@ -166,7 +166,7 @@ function threeacross_settle(PDO $pdo): array
     $rows = $pdo->query(
         "SELECT id FROM snap_posts
           WHERE trigram_id IS NULL AND status IN ('published','queued')
-          ORDER BY CASE WHEN sort_order > 0 THEN 0 ELSE 1 END ASC,
+          ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
                    sort_order ASC, created_at DESC"
     )->fetchAll(PDO::FETCH_COLUMN);
 
@@ -251,7 +251,7 @@ function feed_relayout(PDO $pdo, string $mode): int
         // Park non-published posts after the published block, order preserved.
         $rest = $pdo->query("
             SELECT id FROM snap_posts WHERE status <> 'published'
-            ORDER BY CASE WHEN sort_order > 0 THEN 0 ELSE 1 END ASC,
+            ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
                      sort_order ASC, created_at DESC
         ")->fetchAll(PDO::FETCH_COLUMN);
         foreach ($rest as $id) $upd->execute([$pos++, $id]);
