@@ -108,6 +108,16 @@ if ($show_likes || $show_reactions) {
     $lc_stmt->execute([$post_id]);
     $like_count = (int)$lc_stmt->fetchColumn();
 
+    // SMACKVERSE: fold federated likes into the tally (same semantics as the
+    // dock — image-target likes on this image, post-target likes if grouped).
+    if (($settings['smackverse_enabled'] ?? '0') === '1' && is_file(__DIR__ . '/smackverse.php')) {
+        require_once __DIR__ . '/smackverse.php';
+        $like_count = sv_combined_like_count($pdo, 'image', $post_id, $like_count);
+        if (!empty($img['post_id'])) {
+            $like_count = sv_combined_like_count($pdo, 'post', (int)$img['post_id'], $like_count);
+        }
+    }
+
     if ($community_user) {
         $ul_stmt = $pdo->prepare("SELECT id FROM snap_likes WHERE post_id = ? AND user_id = ? LIMIT 1");
         $ul_stmt->execute([$post_id, $community_user['id']]);
