@@ -67,27 +67,82 @@
     });
 
     function loadPanel(name) {
-        if (name === 'home')    { loadHome(bodyFor('home')); return; }
+        if (name === 'home' || name === 'local' || name === 'global') { loadFeedPanel(bodyFor(name), name); return; }
+        if (name === 'notifications') { loadNotifications(bodyFor('notifications')); return; }
         if (name === 'profile') { loadProfile(bodyFor('profile'), ''); return; }
         if (name === 'search')  { loadProfile(bodyFor('search'), searchQuery); return; }
-        // Local / Global / Notifications: endpoint is wired:false; keep placeholder.
     }
 
-    // ── Home feed (live crawl of accounts the blog follows) ───────────────────
-    function loadHome(body) {
+    // ── Feed panels: Home (ingested), Local, Global (instance timelines) ──────
+    var loadingLabel = { home: 'Loading your home feed…', local: 'Loading the local timeline…', global: 'Loading the federated timeline…' };
+    function loadFeedPanel(body, panel) {
         if (!body) return;
         body.innerHTML = '';
-        body.appendChild(noteEl('Loading your home feed…'));
-        fetch('smack-pixelfed.php?ajax=home', { headers: { 'X-Requested-With': 'fetch' } })
+        body.appendChild(noteEl(loadingLabel[panel] || 'Loading…'));
+        fetch('smack-pixelfed.php?ajax=' + panel, { headers: { 'X-Requested-With': 'fetch' } })
             .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
             .then(function (data) {
                 if (!data.ok) { body.innerHTML = ''; body.appendChild(noteEl(data.msg || 'Nothing here.')); return; }
+                if (!(data.items || []).length && data.msg) { body.innerHTML = ''; body.appendChild(noteEl(data.msg)); return; }
                 renderFeed(body, data.items || []);
             })
             .catch(function () {
                 body.innerHTML = '';
-                body.appendChild(noteEl('Couldn’t load your home feed just now — try again.'));
+                body.appendChild(noteEl('Couldn’t reach the fediverse just now — try again.'));
             });
+    }
+
+    // ── Notifications (who's engaging with you) ───────────────────────────────
+    function loadNotifications(body) {
+        if (!body) return;
+        body.innerHTML = '';
+        body.appendChild(noteEl('Loading notifications…'));
+        fetch('smack-pixelfed.php?ajax=notifications', { headers: { 'X-Requested-With': 'fetch' } })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+            .then(function (data) {
+                if (!data.ok) { body.innerHTML = ''; body.appendChild(noteEl(data.msg || 'Nothing here.')); return; }
+                renderNotifications(body, data.items || []);
+                // Opening the panel clears the badge.
+                if ((data.unread || 0) > 0) {
+                    post({ sspf_action: 'mark_read' }).then(function () { setBadge(0); }).catch(function () {});
+                }
+            })
+            .catch(function () {
+                body.innerHTML = '';
+                body.appendChild(noteEl('Couldn’t load notifications just now — try again.'));
+            });
+    }
+
+    var VERB = { follow: 'followed you', like: 'applauded your post', reply: 'replied to you', mention: 'mentioned you', boost: 'boosted your post' };
+    function renderNotifications(body, items) {
+        body.innerHTML = '';
+        if (!items.length) {
+            body.appendChild(noteEl('No notifications yet. Follow people and engage — when they follow, applaud, reply or boost you, it shows up here.'));
+            return;
+        }
+        items.forEach(function (n) {
+            var row = el('div', 'sspf-notif' + (Number(n.is_read) ? '' : ' sspf-notif-unread'));
+            if (n.avatar_url) { var av = el('img', 'sspf-avatar'); av.src = n.avatar_url; av.alt = ''; row.appendChild(av); }
+            else { row.appendChild(el('div', 'sspf-avatar')); }
+            var body2 = el('div', 'sspf-notif-body');
+            var line = el('div', 'sspf-notif-line');
+            line.appendChild(el('strong', null, n.actor_name || n.actor_handle || 'Someone'));
+            line.appendChild(document.createTextNode(' ' + (VERB[n.ntype] || 'interacted') + (n.actor_handle ? ' · @' + n.actor_handle : '')));
+            body2.appendChild(line);
+            if (n.content) body2.appendChild(el('div', 'sspf-notif-text', n.content));
+            row.appendChild(body2);
+            body.appendChild(row);
+        });
+    }
+
+    function setBadge(n) {
+        var link = app.querySelector('.sspf-nav a[data-panel="notifications"]');
+        if (!link) return;
+        var b = link.querySelector('.sspf-badge');
+        if (n > 0) {
+            if (!b) { b = el('span', 'sspf-badge'); link.appendChild(document.createTextNode(' ')); link.appendChild(b); }
+            b.textContent = String(n);
+        } else if (b) { b.remove(); }
     }
 
     function renderFeed(body, items) {
@@ -120,18 +175,9 @@
 
             if (enabled) {
                 var actions = el('div', 'sspf-card-actions');
-                var applaud = el('button', null, '👏');
-                applaud.title = 'Applaud';
-                applaud.addEventListener('click', function () {
-                    applaud.disabled = true;
-                    post({ sspf_action: 'like', object: p.id, actor: a.id }).then(function (r) {
-                        applaud.textContent = r.ok ? '👏 ✓' : '👏';
-                        if (!r.ok) applaud.disabled = false;
-                    }).catch(function () { applaud.disabled = false; });
-                });
-                actions.appendChild(applaud);
-                var reply = el('button', null, '💬');
-                reply.title = 'Reply';
+                actions.appendChild(applaudButton(a, p));
+                actions.appendChild(boostButton(a, p));
+                var reply = el('button', 'sspf-actbtn'); reply.textContent = '💬'; reply.title = 'Reply';
                 reply.addEventListener('click', function () { openPost(a, p); });
                 actions.appendChild(reply);
                 card.appendChild(actions);
@@ -264,6 +310,35 @@
         return wrap;
     }
 
+    // ── shared interaction buttons (applaud toggle, boost) ────────────────────
+    function applaudButton(a, p) {
+        var btn = el('button', 'sspf-actbtn');
+        var liked = false;
+        btn.textContent = '👏'; btn.title = 'Applaud';
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            btn.disabled = true;
+            post({ sspf_action: liked ? 'unlike' : 'like', object: p.id, actor: a.id }).then(function (r) {
+                btn.disabled = false;
+                if (r.ok) { liked = !liked; btn.textContent = liked ? '👏 ✓' : '👏'; btn.classList.toggle('sspf-on', liked); }
+            }).catch(function () { btn.disabled = false; });
+        });
+        return btn;
+    }
+    function boostButton(a, p) {
+        var btn = el('button', 'sspf-actbtn');
+        btn.textContent = '🔁'; btn.title = 'Boost to your followers';
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            btn.disabled = true;
+            post({ sspf_action: 'boost', object: p.id }).then(function (r) {
+                btn.disabled = false;
+                if (r.ok) { btn.textContent = '🔁 ✓'; btn.classList.add('sspf-on'); }
+            }).catch(function () { btn.disabled = false; });
+        });
+        return btn;
+    }
+
     // ── carousel (multi-image post): one frame at a time, arrows + dots ───────
     function buildCarousel(images) {
         var wrap  = el('div', 'sspf-carousel');
@@ -323,16 +398,28 @@
         var actions = el('div', 'sspf-lightbox-actions');
 
         if (enabled) {
-            var applaud = el('button', 'sspf-btn', '👏 Applaud');
+            var applaud = el('button', 'sspf-btn'); applaud.textContent = '👏 Applaud';
+            var liked = false;
             applaud.addEventListener('click', function () {
                 applaud.disabled = true;
-                post({ sspf_action: 'like', object: p.id, actor: a.id }).then(function (r) {
-                    applaud.textContent = r.ok ? '👏 Applauded' : '👏 Applaud';
-                    if (!r.ok) applaud.disabled = false;
+                post({ sspf_action: liked ? 'unlike' : 'like', object: p.id, actor: a.id }).then(function (r) {
+                    applaud.disabled = false;
+                    if (r.ok) { liked = !liked; applaud.textContent = liked ? '👏 Applauded' : '👏 Applaud'; }
                     msgline.textContent = r.msg || '';
                 }).catch(function () { applaud.disabled = false; });
             });
             actions.appendChild(applaud);
+
+            var boost = el('button', 'sspf-btn sspf-btn-ghost'); boost.textContent = '🔁 Boost';
+            boost.addEventListener('click', function () {
+                boost.disabled = true;
+                post({ sspf_action: 'boost', object: p.id }).then(function (r) {
+                    boost.disabled = false;
+                    if (r.ok) boost.textContent = '🔁 Boosted';
+                    msgline.textContent = r.msg || '';
+                }).catch(function () { boost.disabled = false; });
+            });
+            actions.appendChild(boost);
 
             var replyBtn = el('button', 'sspf-btn sspf-btn-ghost', '💬 Reply');
             actions.appendChild(replyBtn);

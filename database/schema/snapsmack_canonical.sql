@@ -930,4 +930,95 @@ CREATE TABLE IF NOT EXISTS `snap_ap_likes` (
   KEY `idx_ap_like_target` (`target_type`, `target_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ─── SMACKVERSE reader / engagement (0.7.365) ────────────────────────────────
+-- The fediverse client is a first-class feature, not a push-only broadcaster:
+-- a blog that only publishes is a spambot. These tables back the READER and the
+-- two-way engagement loop (see, be seen, reply back). GRAMOFSMACK-first; the
+-- tables are mode-agnostic (harmless when the client is gated off).
+
+-- Cache of remote actor docs so timelines/notifications render without
+-- re-fetching every actor on every page load.
+CREATE TABLE IF NOT EXISTS `snap_ap_actors` (
+  `id`               int unsigned NOT NULL AUTO_INCREMENT,
+  `actor_url`        varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `handle`           varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `name`             varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `avatar_url`       varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `inbox_url`        varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `shared_inbox_url` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `summary`          text         COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `profile_url`      varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `fetched_at`       datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ap_actor_cache` (`actor_url`(191))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Inbound engagement aimed at the blog: the loop-closer. Populated by the
+-- inbox handler on Follow / Like / reply Create / Mention / Announce.
+CREATE TABLE IF NOT EXISTS `snap_ap_notifications` (
+  `id`           int unsigned NOT NULL AUTO_INCREMENT,
+  `ntype`        enum('follow','like','reply','mention','boost') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `actor_url`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `actor_handle` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `object_id`    varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                 COMMENT 'reply Note id / liked / boosted object',
+  `target_url`   varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                 COMMENT 'our post they engaged, when applicable',
+  `content`      text         COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_read`      tinyint(1)   NOT NULL DEFAULT '0',
+  `created_at`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ap_notif` (`ntype`, `actor_url`(150), `object_id`(150)),
+  KEY `idx_ap_notif_read` (`is_read`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Ingested inbound posts — the Home reader (Creates + Announces from accounts
+-- the blog follows), and later cached Local/Global entries. De-duped on the
+-- remote Note id.
+CREATE TABLE IF NOT EXISTS `snap_ap_timeline` (
+  `id`           int unsigned NOT NULL AUTO_INCREMENT,
+  `object_id`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `actor_url`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `actor_handle` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `content`      mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `media_json`   mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                 COMMENT 'JSON array of image URLs',
+  `url`          varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `in_reply_to`  varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_boost`     tinyint(1)   NOT NULL DEFAULT '0',
+  `boosted_by`   varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `source`       enum('home','local','global') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'home',
+  `published`    datetime     DEFAULT NULL,
+  `fetched_at`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ap_tl` (`object_id`(191)),
+  KEY `idx_ap_tl_src` (`source`, `published`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Durable outbound replies to REMOTE objects: gives each reply a permalinked,
+-- dereferenceable Note (/ap/note/r/<token>) so it threads and the other person
+-- can reply back — retiring the fire-and-forget tokenised id.
+CREATE TABLE IF NOT EXISTS `snap_ap_outbound_replies` (
+  `id`           int unsigned NOT NULL AUTO_INCREMENT,
+  `token`        varchar(40)  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `in_reply_to`  varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `to_actor_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `to_handle`    varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `content`      text         COLLATE utf8mb4_unicode_ci NOT NULL,
+  `published`    datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ap_reply_token` (`token`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- What the blog has applauded remotely — gives Applaud real state + Undo.
+CREATE TABLE IF NOT EXISTS `snap_ap_outbound_likes` (
+  `id`         int unsigned NOT NULL AUTO_INCREMENT,
+  `object_id`  varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `like_id`    varchar(600) COLLATE utf8mb4_unicode_ci NOT NULL
+               COMMENT 'our Like activity id — the Undo wraps it',
+  `created_at` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ap_out_like` (`object_id`(191))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ===== SNAPSMACK EOF =====
