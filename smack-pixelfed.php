@@ -83,6 +83,16 @@ if (isset($_GET['ajax'])) {
     header('Content-Type: application/json; charset=utf-8');
     $panel = preg_replace('/[^a-z]/', '', (string)$_GET['ajax']);
 
+    if ($panel === 'home') {
+        // Live crawl of the accounts the blog follows (accepted). Empty when
+        // off or when nothing is followed yet.
+        if (!$sv_on) { echo json_encode(['ok' => true, 'items' => []]); exit; }
+        @set_time_limit(30);
+        $items = sv_home_feed($pdo, 6, 40);
+        echo json_encode(['ok' => true, 'items' => $items], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
     if ($panel === 'profile' || $panel === 'search') {
         // profile with no handle = this blog's own actor.
         $target = trim((string)($_GET['handle'] ?? ''));
@@ -99,7 +109,7 @@ if (isset($_GET['ajax'])) {
                 . '" — check the handle (format: @user@host) or the server may be blocking us.']);
             exit;
         }
-        $posts = sv_crawl_outbox($actor['outbox'], 36);
+        $posts = sv_fetch_gallery($actor, 36);
         list($state, $row_id) = sv_following_state($pdo, $actor['id']);
         $is_self = ($actor['id'] === sv_actor_url($sv_settings));
         echo json_encode([
@@ -174,14 +184,13 @@ include 'core/sidebar.php';
                 <a data-panel="global"><span class="sspf-ico">&#9673;</span> Global</a>
                 <a data-panel="notifications"><span class="sspf-ico">&#9829;</span> Notifications</a>
                 <a data-panel="profile"><span class="sspf-ico">&#9673;</span> Profile</a>
-                <a data-panel="search"><span class="sspf-ico">&#9906;</span> Search</a>
             </nav>
 
             <div class="sspf-content">
                 <section class="sspf-panel active" data-panel="home">
                     <h3 class="sspf-panel-title">Home</h3>
                     <div class="sspf-panel-body">
-                        <div class="sspf-note">Posts from accounts <strong>SMACKVERSE follows</strong> appear here once the reader ingest lands (next phase).</div>
+                        <div class="sspf-note">Loading the latest photos from accounts <strong>SMACKVERSE follows</strong>…</div>
                     </div>
                 </section>
 

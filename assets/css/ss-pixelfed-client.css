@@ -129,7 +129,8 @@
 .sspf-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--pf-surface-2); object-fit: cover; flex-shrink: 0; }
 .sspf-card-user { font-weight: 600; font-size: .9rem; }
 .sspf-card-sub { color: var(--pf-muted); font-size: .78rem; }
-.sspf-card-media { width: 100%; display: block; background: #000; aspect-ratio: 1 / 1; object-fit: cover; }
+.sspf-card-media { width: 100%; display: block; background: #000; aspect-ratio: 1 / 1; object-fit: cover; cursor: pointer; }
+.sspf-card-multi { padding: 8px 14px 0; }
 .sspf-card-actions { display: flex; gap: 18px; padding: 12px 14px; font-size: 1.15rem; }
 .sspf-card-actions button { background: none; border: none; color: var(--pf-text); cursor: pointer; font-size: inherit; padding: 0; }
 .sspf-card-actions button:hover { color: var(--pf-accent); }

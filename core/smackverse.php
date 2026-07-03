@@ -1297,6 +1297,130 @@ function sv_following_state(PDO $pdo, string $actor_url): array {
     return [(string)$row['state'], (int)$row['id']];
 }
 
+/**
+ * Fetch a plain-JSON document (Mastodon-compatible REST API). Separate from
+ * sv_fetch_ap so we send Accept: application/json and a bigger size cap — a
+ * statuses list is far larger than one Note. Same SSRF guard + IP pin.
+ */
+function sv_fetch_json(string $url, int $timeout = 12): ?array {
+    if (!function_exists('curl_init')) return null;
+    $res = sv_resolve_public($url);
+    if ($res === null) return null;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_RESOLVE        => $res['pin'],
+        CURLOPT_TIMEOUT        => $timeout,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_HTTPHEADER     => [
+            'Accept: application/json',
+            'User-Agent: SnapSmack-SMACKVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
+        ],
+    ]);
+    $body = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    if ($body === false || $code < 200 || $code >= 300) return null;
+    if (strlen($body) > 2097152) return null;   // 2MB
+    $doc = json_decode($body, true);
+    return is_array($doc) ? $doc : null;
+}
+
+/**
+ * A remote account's recent MEDIA posts via the Mastodon-compatible REST API
+ * (implemented by BOTH Pixelfed and Mastodon). This is the real way to read a
+ * Pixelfed account's photos: Pixelfed's ActivityPub outbox is a bare stub
+ * (totalItems only, no items/pages), so an AP outbox crawl always comes back
+ * empty for Pixelfed. Steps: lookup the acct → numeric id, then pull statuses
+ * with only_media. Returns [] when the instance has no REST API (pure-AP
+ * servers) so the caller can fall back to the outbox crawl.
+ */
+function sv_masto_statuses(string $host, string $username, int $max = 36): array {
+    $host = trim($host);
+    $username = trim($username);
+    if ($host === '' || $username === '') return [];
+    $base = 'https://' . $host;
+
+    $look = sv_fetch_json($base . '/api/v1/accounts/lookup?acct=' . rawurlencode($username));
+    if (!is_array($look) || empty($look['id'])) return [];
+    $acct_id = preg_replace('/[^A-Za-z0-9]/', '', (string)$look['id']);
+    if ($acct_id === '') return [];
+
+    $limit = max(1, min($max, 40));
+    $rows = sv_fetch_json($base . '/api/v1/accounts/' . $acct_id . '/statuses?limit=' . $limit . '&only_media=1');
+    if (!is_array($rows)) return [];
+
+    $posts = [];
+    foreach ($rows as $st) {
+        if (!is_array($st)) continue;
+        $imgs = [];
+        foreach (($st['media_attachments'] ?? []) as $m) {
+            if (!is_array($m)) continue;
+            if (($m['type'] ?? '') !== 'image') continue;   // photos only
+            $u = (string)($m['url'] ?? ($m['preview_url'] ?? ''));
+            if ($u !== '') $imgs[] = $u;
+        }
+        if (!$imgs) continue;
+        $posts[] = [
+            'id'        => (string)($st['uri'] ?? ($st['url'] ?? '')),   // canonical AP id for like/reply
+            'url'       => (string)($st['url'] ?? ($st['uri'] ?? '')),   // HTML permalink
+            'published' => (string)($st['created_at'] ?? ''),
+            'text'      => trim(strip_tags((string)($st['content'] ?? ''))),
+            'images'    => $imgs,
+            'count'     => count($imgs),
+        ];
+        if (count($posts) >= $max) break;
+    }
+    return $posts;
+}
+
+/**
+ * Universal recent-photo fetch for a crawled actor: Mastodon REST API first
+ * (Pixelfed + Mastodon), AP outbox crawl as fallback (pure-AP servers such as
+ * our own SnapSmack blog, whose outbox IS fully populated). $actor is a
+ * sv_crawl_actor() result.
+ */
+function sv_fetch_gallery(array $actor, int $max = 36): array {
+    $posts = sv_masto_statuses((string)($actor['host'] ?? ''), (string)($actor['username'] ?? ''), $max);
+    if ($posts) return $posts;
+    return sv_crawl_outbox((string)($actor['outbox'] ?? ''), $max);
+}
+
+/**
+ * Home feed by live crawl: merge the recent photos of the accounts the blog
+ * FOLLOWS (accepted only), newest first. No ingest tables — this pulls on
+ * demand, bounded by an account cap and an ~18s wall-clock budget so a busy
+ * follow list can't stall the request. A push/ingest timeline is the Phase-3
+ * upgrade for scale; this lights up Home now.
+ */
+function sv_home_feed(PDO $pdo, int $per_account = 6, int $max = 40): array {
+    $rows = $pdo->query(
+        "SELECT actor_url FROM snap_ap_following WHERE state='accepted' ORDER BY followed_at DESC LIMIT 15"
+    )->fetchAll(PDO::FETCH_COLUMN);
+
+    $feed = [];
+    $deadline = microtime(true) + 18.0;
+    foreach ($rows as $actor_url) {
+        if (microtime(true) > $deadline) break;
+        $actor = sv_crawl_actor((string)$actor_url);
+        if ($actor === null) continue;
+        foreach (sv_fetch_gallery($actor, $per_account) as $p) {
+            $p['author'] = [
+                'handle' => $actor['handle'],
+                'name'   => $actor['name'],
+                'avatar' => $actor['avatar'],
+                'id'     => $actor['id'],
+                'host'   => $actor['host'],
+                'url'    => $actor['url'],
+            ];
+            $feed[] = $p;
+        }
+    }
+    usort($feed, static function ($a, $b) { return strcmp((string)$b['published'], (string)$a['published']); });
+    return array_slice($feed, 0, $max);
+}
+
 // ─── Notes (one published snap_image = one Note, mirroring rss.php) ─────────
 
 /** Media type from an image file extension. */
