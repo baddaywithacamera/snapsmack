@@ -12,6 +12,10 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.359 — "Trixie" (2026-07-03)
+
+- **SMACKVERSE HOTFIX: paced delivery no longer runs inside a web request — kills the Cloudflare 524 / origin-timeout outage.** 0.7.358 added a measured-cadence drain but wired it into two web contexts (the RESYNC button and the AP inbox handler) behind `fastcgi_finish_request()`. Where that doesn't truly detach, the per-post sleeps hold a PHP-FPM worker for minutes; inbound federation POSTs then pile up sleeping workers, the pool starves, and the whole site times out (524) — even on a plain page load. Fixed by the rule that should have held from the start: **web requests never sleep.** The RESYNC button now enqueues Updates and returns immediately; the inbox handler drains only briefly and UNPACED (the `Accept` still goes out in seconds). ALL measured-cadence draining now happens exclusively in the CLI delivery cron (`cron-smackverse.php`), which refuses web invocation and has no HTTP timeout. Ordering and whole-stack settling are unchanged — they just happen on the cron, where sleeping is free.
+
 ## 0.7.358 — "Sunset Shimmer" (2026-07-03)
 
 - **SMACKVERSE: RESYNC pushes an UPDATE per post, not a DELETE-then-reCREATE — the posts stop vanishing.** The old resync sent a `Delete` (Tombstone) for each Note, waited, then re-sent a `Create` with the same id. But a `Delete` tombstones that Note id on the remote *permanently* — Pixelfed/Mastodon silently drop the follow-up `Create` for a dead id, so resync deleted your posts and nothing came back. Rewritten to send a signed `Update` wrapping the same Note (`sv_update_for_note`): it replaces the remote's cached copy IN PLACE — permalinks, likes and replies survive — and carries the CURRENT render (cover leading + every carousel layer), which is what actually reaches a server that already ingested an older cover-only copy. An `Update` is idempotent, so a duplicate (cron picking up a straggler the web tail already sent) is harmless. `sv_delete_for_note_id` is retained for a future real-unpublish path but is no longer used by resync.

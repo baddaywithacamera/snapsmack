@@ -122,18 +122,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resyn
         header('Location: smack-smackverse.php?msg=' . urlencode('RESYNC: nothing to do — no recent posts or no active followers.'));
         exit;
     }
+    // ENQUEUE ONLY — never drip inside a web request. The paced drain (with its
+    // per-post sleeps) runs in the CLI delivery cron, which has no HTTP timeout;
+    // draining here would hold a PHP worker for minutes and trip Cloudflare 524.
     $cadence = sv_delivery_cadence($sv_settings);
     $msg_out = sprintf(
-        'RESYNC: %d post(s) queued (%d deliveries), rolling out oldest-first ~%ds apart (longer after fat carousels, so every layer lands) — your remote profile rebuilds in order. Give it a few minutes.',
+        'RESYNC: %d post(s) queued (%d Update deliveries). The delivery cron rolls them out oldest-first ~%ds apart (longer after fat carousels) so your remote profile rebuilds in order — allow up to a cron cycle to start. Run `php cron-smackverse.php` for an immediate paced push.',
         $rs_notes, $rs_deliveries, $cadence
     );
-    // PRG redirect FIRST, then keep running detached to drain the queue at
-    // cadence — the browser never waits on the paced send.
     header('Location: smack-smackverse.php?msg=' . urlencode($msg_out));
-    if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
-    ignore_user_abort(true);
-    @set_time_limit(0);
-    try { sv_process_deliveries($pdo, $sv_settings, 200, $cadence); } catch (\Throwable $e) { /* cron drains the rest */ }
     exit;
 }
 
