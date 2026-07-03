@@ -6,7 +6,9 @@
  * rewritten here by .htaccess as ?appath= — AP object ids must carry no
  * query string because Pixelfed HTML-encodes '&' when dereferencing:
  *   /ap/actor      — the blog's actor document (application/activity+json)
- *   /ap/outbox     — OrderedCollection shell; ?page=1 = 20 newest Notes
+ *   /ap/outbox     — OrderedCollection shell (first+last); ?page=N = 20 Notes,
+ *                    newest-first, chained next/prev so the whole catalogue is
+ *                    crawlable by a remote puller
  *   /ap/followers  — OrderedCollection (totalItems only; list stays private)
  *   /ap/following  — OrderedCollection (totalItems only; accounts the blog
  *                    actor follows — outbound Follow, 0.7.356)
@@ -97,7 +99,8 @@ switch ($ap) {
 
     case 'outbox':
         if ($method !== 'GET') sv_404();
-        sv_respond(sv_outbox_doc($pdo, $settings, isset($_GET['page'])));
+        $ob_page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 0;
+        sv_respond(sv_outbox_doc($pdo, $settings, $ob_page));
         break;
 
     case 'followers':
