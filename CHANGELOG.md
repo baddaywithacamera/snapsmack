@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.355 — "Starlight Glimmer" (2026-07-02)
+
+- **SMACKVERSE: RESYNC is a button now.** SMACKVERSE Federation page gets a RESYNC RECENT POSTS box — same operation as `cron-smackverse.php resync` (Delete remote caches → settle → fresh Creates), no terminal required. Disabled while federation is off; confirm dialog spells out that remote likes/comments on the old copies don't carry over.
+- **ADMIN: status pills no longer inflate the page header.** A pill's vertical padding added ~12px of header-row height, pushing the title's rule away from the title on every page that carries one (Signal Control, Fediverse). Scoped negative vertical margin in the admin geometry stylesheet: pill renders identically, header stays title-height, rule hugs the title.
+- **SHIPPING STRAGGLERS: this release actually delivers four fixes described under 0.7.353 that missed both the 0.7.353 and 0.7.354 packages** (committed late): the `threeacross_settle()` inverted-ordering fix (core/trigram.php — the "posts vanish when locking a trigram" bug), the AURORA + PARADE feed-ordering + framed-tile port (skins, 1.0.33 / 1.2.21), and INSTANT CAMERA's feed-ordering flip (now 1.0.22, superseding the 1.0.21 package which carried only the frame gate).
+
 ## 0.7.354 — "Zecora" (2026-07-02)
 
 - **NEW: FEDIVERSE — a dedicated sidebar page for fediverse interaction (`smack-fediverse.php`).** Federation isn't plumbing, it's people, so the conversation gets its own room instead of hiding inside Signal Control: incoming fediverse replies (fediverse-only moderation queue), CONVERSATIONS with a REPLY tool, FEDIVERSE APPLAUSE (who liked what), and the follower list. Replies posted here federate as the blog actor, thread `inReplyTo` the commenter's Note, carry a `Mention` tag, and are delivered directly to the commenter's own inbox (they may not be a follower) — so they get a real notification on their server, not a reply into the void. Delivery is pushed immediately, no waiting for the cron. Settings/health stay in SMACKVERSE Federation.

@@ -280,6 +280,17 @@ h2 {
     align-items: center;
 }
 
+/* A status pill in the page header must not INFLATE the header row — its
+   vertical padding otherwise adds ~12px of row height, pushing the title's
+   rule away from the title on every page that carries a pill (Signal
+   Control, Fediverse, …). Negative vertical margin cancels the padding's
+   height contribution; the pill still renders full-size, centred on the
+   title line. */
+.header-row .status-pill {
+    margin-top: -6px;
+    margin-bottom: -6px;
+}
+
 /* --- TAB SELECTOR --- */
 .tab-selector {
     display: flex;

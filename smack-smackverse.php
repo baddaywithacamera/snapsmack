@@ -106,6 +106,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'disab
     exit;
 }
 
+// RESYNC: re-federate the most recent posts to all active followers —
+// Delete their cached copies, then re-deliver fresh Creates. Remote servers
+// dedup re-sent Creates against their cache, so this is the ONLY way a fixed
+// render (bakes, covers, attachments) reaches an already-federated post.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resync') {
+    if (!sv_enabled($sv_settings)) {
+        header('Location: smack-smackverse.php?msg=' . urlencode('SMACKVERSE is off — nothing to resync.'));
+        exit;
+    }
+    set_time_limit(120);
+    list($rs_notes, $rs_deliveries) = sv_resync_recent($pdo, $sv_settings);
+    $msg_out = $rs_notes === 0
+        ? 'RESYNC: nothing to do — no recent posts or no active followers.'
+        : sprintf('RESYNC: %d post(s) re-federated (%d deliveries). Give the remote servers a minute to chew.', $rs_notes, $rs_deliveries);
+    header('Location: smack-smackverse.php?msg=' . urlencode($msg_out));
+    exit;
+}
+
 // Manual re-try of cron auto-registration (button appears if the auto step
 // didn't take but the host actually does support cron).
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'register_cron') {
@@ -324,6 +342,23 @@ include 'core/sidebar.php';
             <tr><td>Failed</td><td><?php echo (int)$sv_q_failed; ?></td></tr>
             <tr><td>Last cron run</td><td><?php echo $sv_cron_last !== '' ? htmlspecialchars($sv_cron_last) : 'never'; ?></td></tr>
         </table>
+    </div>
+
+    <!-- RESYNC -->
+    <div class="box mb-20">
+        <h3>RESYNC RECENT POSTS</h3>
+        <p class="dim mb-20">
+            Re-federates your <?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 10); ?> most
+            recent posts to every follower: their servers are told to DROP the cached copies, then fresh
+            ones are delivered. Use after anything that changes how posts render out there (thumbnail
+            regen, cover changes, frame fixes) — remote servers ignore plain re-sends, so this is the
+            only way a fix reaches posts they've already seen. Original post dates are preserved.
+        </p>
+        <form method="post" action="smack-smackverse.php"
+              onsubmit="return confirm('Re-federate your recent posts? Remote servers will drop and re-ingest them — likes/comments on the OLD copies over there do not carry over.');">
+            <input type="hidden" name="action" value="resync">
+            <button type="submit" class="btn-smack" <?php echo $sv_on ? '' : 'disabled'; ?>>RESYNC</button>
+        </form>
     </div>
 
 </div>

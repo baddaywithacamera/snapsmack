@@ -103,6 +103,9 @@ $grid_stmt = $pdo->prepare("
         i.id          AS img_id,
         i.img_file,
         i.img_thumb_square,
+        i.img_thumb_aspect,
+        i.img_width,
+        i.img_height,
         i.img_slug,
         pi.img_size_pct,
         pi.img_border_px,
@@ -126,7 +129,7 @@ $grid_stmt = $pdo->prepare("
     LEFT JOIN snap_trigrams tg ON tg.id = p.trigram_id
     WHERE p.status = 'published'
       AND p.created_at <= ?
-    ORDER BY CASE WHEN p.sort_order > 0 THEN 0 ELSE 1 END ASC,
+    ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
              p.sort_order ASC,
              p.created_at DESC
 ");
@@ -176,6 +179,7 @@ if (function_exists('trigram_align_backfill')) $grid_posts = trigram_align_backf
             endif;
 
             $thumb_src   = $post['img_thumb_square'] ?: $post['img_file'];
+            $is_slice_tile = false; // true only when a physical slice file fronts this tile
 
             // Trigram cover: grid tile shows the panorama slice when set.
             if ($au_id > 0 && $au_slot > 0) {
@@ -184,7 +188,10 @@ if (function_exists('trigram_align_backfill')) $grid_posts = trigram_align_backf
                     : (['L','M','R'][$au_slot - 1] ?? '');
                 if ($au_label !== '') {
                     $au_rel = 'trigrams/trigram-' . $au_id . '-' . $au_label . '.jpg';
-                    if (is_file(dirname(__DIR__, 2) . '/' . $au_rel)) $thumb_src = $au_rel;
+                    if (is_file(dirname(__DIR__, 2) . '/' . $au_rel)) {
+                        $thumb_src = $au_rel;
+                        $is_slice_tile = true;
+                    }
                 }
             }
 
@@ -203,10 +210,22 @@ if (function_exists('trigram_align_backfill')) $grid_posts = trigram_align_backf
                 $tile_class .= ' au-tile--trigram';
             }
 
-            if ($tile_frame['is_framed']) $tile_class .= ' au-tile--framed';
+            // Frame gate rides on SLICE-FILE EXISTENCE, not trigram membership:
+            // slice-fronted tiles are always full-bleed; triptychs (no slice
+            // files) keep their per-image frames — matching the fediverse bake.
+            // A framed tile must use the ASPECT thumbnail (natural ratio),
+            // otherwise we'd be matting an already-square-cropped image.
+            $do_frame = ($tile_frame['is_framed'] && !$is_slice_tile);
+            if ($do_frame) {
+                $thumb_src = $post['img_thumb_aspect'] ?: ($post['img_thumb_square'] ?: $post['img_file']);
+                $tile_class .= ' au-tile--framed';
+                if ((int)$post['img_height'] > (int)$post['img_width']) {
+                    $tile_class .= ' au-tile--portrait';
+                }
+            }
 
             $tile_css_vars = '';
-            if ($tile_frame['is_framed']) {
+            if ($do_frame) {
                 $tile_css_vars = sprintf(
                     '--tile-bg:%s; --tile-img-size:%d%%; --tile-border-w:%dpx; --tile-border-c:%s; --tile-shadow:%s;',
                     htmlspecialchars($tile_frame['bg_color']),
