@@ -117,7 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resyn
         header('Location: smack-smackverse.php?msg=' . urlencode('SMACKVERSE is off — nothing to resync.'));
         exit;
     }
-    list($rs_notes, $rs_deliveries) = sv_resync_recent($pdo, $sv_settings);
+    $rs_count = isset($_POST['resync_count']) ? max(1, min(500, (int)$_POST['resync_count'])) : null;
+    list($rs_notes, $rs_deliveries) = sv_resync_recent($pdo, $sv_settings, $rs_count);
     if ($rs_notes === 0) {
         header('Location: smack-smackverse.php?msg=' . urlencode('RESYNC: nothing to do — no recent posts or no active followers.'));
         exit;
@@ -358,17 +359,26 @@ include 'core/sidebar.php';
     <div class="box mb-20">
         <h3>RESYNC RECENT POSTS</h3>
         <p class="dim mb-20">
-            Re-pushes your <?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 10); ?> most
-            recent posts to every follower as a signed Update — the same post, refreshed IN PLACE
-            (current thumbnails, covers, full carousel stacks). Nothing is deleted or dropped: an Update
-            just replaces the copy their server already holds, so likes and replies survive. Use after
-            anything that changes how a post renders out there (thumbnail regen, cover changes, frame
-            fixes) — plain re-sends get ignored, an Update doesn't. Rolls out one at a time on the
-            delivery cron, in order. (Posts sharing an exact timestamp won't be re-ordered.)
+            Re-pushes your most recent posts to every follower as a signed Update — the same post,
+            refreshed IN PLACE (current thumbnails, covers, full carousel stacks). Nothing is deleted or
+            dropped: an Update just replaces the copy their server already holds, so likes and replies
+            survive. Use after anything that changes how a post renders out there (thumbnail regen, cover
+            changes, frame fixes) — plain re-sends get ignored, an Update doesn't. Rolls out one at a time
+            on the delivery cron, in order. (Posts sharing an exact timestamp won't be re-ordered.)
+            <br><br>
+            <strong>How many?</strong> Pixelfed does not pull your back catalogue — it only shows what you
+            PUSH — so this count is how much of your blog reaches it. Raise it to seed your whole library
+            (each post rolls out ~10&nbsp;s apart on the cron, so a big number takes a while to fully land).
         </p>
         <form method="post" action="smack-smackverse.php"
-              onsubmit="return confirm('Re-federate your recent posts? Remote servers will drop and re-ingest them — likes/comments on the OLD copies over there do not carry over.');">
+              onsubmit="return confirm('Re-push your recent posts as in-place Updates? Likes and replies on the remote copies are preserved — an Update refreshes the post, it does not delete it.');">
             <input type="hidden" name="action" value="resync">
+            <label class="dim" style="display:block; margin-bottom:12px;">
+                Posts to push:
+                <input type="number" name="resync_count" min="1" max="500"
+                       value="<?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 10); ?>"
+                       style="width:90px; margin-left:6px;">
+            </label>
             <button type="submit" class="btn-smack" <?php echo $sv_on ? '' : 'disabled'; ?>>RESYNC</button>
         </form>
     </div>

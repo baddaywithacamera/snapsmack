@@ -264,6 +264,49 @@
         return wrap;
     }
 
+    // ── carousel (multi-image post): one frame at a time, arrows + dots ───────
+    function buildCarousel(images) {
+        var wrap  = el('div', 'sspf-carousel');
+        var track = el('div', 'sspf-carousel-track');
+        images.forEach(function (src) {
+            var slide = el('div', 'sspf-carousel-slide');
+            var im = el('img'); im.src = src; im.alt = '';
+            slide.appendChild(im);
+            track.appendChild(slide);
+        });
+        wrap.appendChild(track);
+
+        if (images.length > 1) {
+            var idx  = 0;
+            var dots = [];
+            function go(n) {
+                idx = (n + images.length) % images.length;
+                track.style.transform = 'translateX(-' + (idx * 100) + '%)';
+                dots.forEach(function (d, i) { d.classList.toggle('active', i === idx); });
+            }
+            var prev = el('button', 'sspf-carousel-nav sspf-carousel-prev', '‹');
+            prev.addEventListener('click', function (e) { e.stopPropagation(); go(idx - 1); });
+            var next = el('button', 'sspf-carousel-nav sspf-carousel-next', '›');
+            next.addEventListener('click', function (e) { e.stopPropagation(); go(idx + 1); });
+            wrap.appendChild(prev);
+            wrap.appendChild(next);
+
+            var dotwrap = el('div', 'sspf-carousel-dots');
+            images.forEach(function (_, i) {
+                var d = el('span', 'sspf-carousel-dot' + (i === 0 ? ' active' : ''));
+                d.addEventListener('click', function (e) { e.stopPropagation(); go(i); });
+                dotwrap.appendChild(d);
+                dots.push(d);
+            });
+            wrap.appendChild(dotwrap);
+            var counter = el('div', 'sspf-carousel-count', '1 / ' + images.length);
+            wrap.appendChild(counter);
+            var origGo = go;
+            go = function (n) { origGo(n); counter.textContent = (idx + 1) + ' / ' + images.length; };
+        }
+        return wrap;
+    }
+
     // ── post lightbox: image(s) + caption + applaud / reply ───────────────────
     function openPost(a, p) {
         var ov   = el('div', 'sspf-lightbox');
@@ -273,9 +316,7 @@
         close.addEventListener('click', function () { ov.remove(); });
         card.appendChild(close);
 
-        p.images.forEach(function (src) {
-            var im = el('img', 'sspf-lightbox-img'); im.src = src; im.alt = ''; card.appendChild(im);
-        });
+        card.appendChild(buildCarousel(p.images || []));
         if (p.text) card.appendChild(el('div', 'sspf-lightbox-caption', p.text));
 
         var msgline = el('div', 'sspf-reply-msg');

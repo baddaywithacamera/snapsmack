@@ -195,6 +195,25 @@
     background: rgba(0,0,0,.55); color: #fff; font-size: 1rem; line-height: 1;
 }
 .sspf-lightbox-img { width: 100%; display: block; background: #000; }
+
+/* ── Carousel (multi-image post) ── */
+.sspf-carousel { position: relative; overflow: hidden; background: #000; }
+.sspf-carousel-track { display: flex; transition: transform .25s ease; }
+.sspf-carousel-slide { min-width: 100%; }
+.sspf-carousel-slide img { width: 100%; display: block; }
+.sspf-carousel-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 38px; height: 38px; border-radius: 50%; border: none;
+    background: rgba(0,0,0,.5); color: #fff; font-size: 1.5rem; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.sspf-carousel-nav:hover { background: rgba(0,0,0,.78); }
+.sspf-carousel-prev { left: 8px; }
+.sspf-carousel-next { right: 8px; }
+.sspf-carousel-dots { position: absolute; bottom: 10px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; }
+.sspf-carousel-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.45); cursor: pointer; }
+.sspf-carousel-dot.active { background: #fff; }
+.sspf-carousel-count { position: absolute; top: 8px; right: 10px; background: rgba(0,0,0,.6); color: #fff; font-size: .72rem; padding: 2px 8px; border-radius: 999px; }
 .sspf-lightbox-caption { padding: 14px 16px; font-size: .92rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
 .sspf-lightbox-actions { display: flex; gap: 10px; padding: 0 16px 14px; flex-wrap: wrap; }
 .sspf-lightbox-actions .sspf-btn { padding: 8px 14px; font-size: .82rem; }

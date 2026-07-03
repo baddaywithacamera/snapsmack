@@ -1348,9 +1348,27 @@ function sv_masto_statuses(string $host, string $username, int $max = 36): array
     if ($acct_id === '') return [];
 
     $limit = max(1, min($max, 40));
-    $rows = sv_fetch_json($base . '/api/v1/accounts/' . $acct_id . '/statuses?limit=' . $limit . '&only_media=1');
-    if (!is_array($rows)) return [];
+    // Mastodon serves /api/v1/accounts/{id}/statuses publicly. Pixelfed GATES
+    // that route behind auth (it returns empty for a guest) but exposes the SAME
+    // data unauthenticated at /api/pixelfed/v1/... — the route its own logged-out
+    // web UI uses. Try Mastodon first (covers real Mastodon), fall back to the
+    // Pixelfed public route (covers Pixelfed).
+    $rows  = sv_fetch_json($base . '/api/v1/accounts/' . $acct_id . '/statuses?limit=' . $limit . '&only_media=1');
+    $posts = sv_masto_map_statuses(is_array($rows) ? $rows : [], $max);
+    if (!$posts) {
+        $rows  = sv_fetch_json($base . '/api/pixelfed/v1/accounts/' . $acct_id . '/statuses?limit=' . $limit);
+        $posts = sv_masto_map_statuses(is_array($rows) ? $rows : [], $max);
+    }
+    return $posts;
+}
 
+/**
+ * Map a Mastodon/Pixelfed status list into our render-ready post shape. Both
+ * the Mastodon and the Pixelfed public routes return the same status entity
+ * (Pixelfed adds `content_text`, which we prefer for a clean caption). Photos
+ * only — a status with no image attachment is skipped.
+ */
+function sv_masto_map_statuses(array $rows, int $max): array {
     $posts = [];
     foreach ($rows as $st) {
         if (!is_array($st)) continue;
@@ -1362,11 +1380,14 @@ function sv_masto_statuses(string $host, string $username, int $max = 36): array
             if ($u !== '') $imgs[] = $u;
         }
         if (!$imgs) continue;
+        $text = (isset($st['content_text']) && $st['content_text'] !== '')
+            ? (string)$st['content_text']
+            : trim(strip_tags((string)($st['content'] ?? '')));
         $posts[] = [
             'id'        => (string)($st['uri'] ?? ($st['url'] ?? '')),   // canonical AP id for like/reply
             'url'       => (string)($st['url'] ?? ($st['uri'] ?? '')),   // HTML permalink
             'published' => (string)($st['created_at'] ?? ''),
-            'text'      => trim(strip_tags((string)($st['content'] ?? ''))),
+            'text'      => $text,
             'images'    => $imgs,
             'count'     => count($imgs),
         ];
