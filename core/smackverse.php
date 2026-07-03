@@ -1460,6 +1460,29 @@ function sv_create_for_note(array $note, array $settings): array {
     ];
 }
 
+/** Wrap a Note in an Update activity — replaces the remote's cached copy IN
+ *  PLACE (same Note id, keeping permalinks/likes/replies). Update is how the
+ *  fediverse propagates edits: unlike a Delete it leaves no tombstone, and
+ *  unlike a re-Create it is not deduped away. Stamps `updated` on both the
+ *  activity and the Note so Mastodon/Pixelfed treat it as a genuine edit and
+ *  re-render — an Update whose object carries no newer `updated` than the
+ *  cached copy is ignored. Fresh unique activity id so it is never deduped. */
+function sv_update_for_note(array $note, array $settings): array {
+    $now = gmdate('Y-m-d\TH:i:s\Z');
+    $note['updated'] = $now;
+    return [
+        '@context'  => 'https://www.w3.org/ns/activitystreams',
+        'id'        => $note['id'] . '#update-' . bin2hex(random_bytes(6)),
+        'type'      => 'Update',
+        'actor'     => sv_actor_url($settings),
+        'published' => $note['published'],
+        'updated'   => $now,
+        'to'        => $note['to'],
+        'cc'        => $note['cc'],
+        'object'    => $note,
+    ];
+}
+
 /** Delete activity for a Note id — tells remote servers to drop their cached
  *  copy (Tombstone object, Mastodon convention). Unique fragment id so a
  *  re-issued Delete is never deduped away. */
@@ -1477,13 +1500,19 @@ function sv_delete_for_note_id(string $note_id, array $settings): array {
 /**
  * RESYNC: re-federate the N most recent posts to all active followers.
  * Remote servers cache statuses by Note id and DEDUP re-delivered Creates,
- * so a changed render (new bakes, slice covers, fixed attachments) never
- * reaches a server that already ingested the old copy. Resync sends a
- * signed Delete for each Note first (remote drops its cache), lets the
- * remote settle, then re-delivers fresh Creates. Deletes for Notes the
- * remote never had are ignored — harmless.
+ * so a changed render (new bakes, slice covers, fixed attachments, the full
+ * carousel stack under a cover) never reaches a server that already ingested
+ * the old copy.
  *
- * @return array [notes_resynced, create_deliveries]
+ * We push a signed Update per Note — the standard fediverse edit path. Update
+ * carries the CURRENT complete Note (cover leading + every stack attachment)
+ * and replaces the remote's cached copy IN PLACE, keeping the same Note id so
+ * permalinks, likes and replies survive. This deliberately replaces the old
+ * Delete→settle→re-Create dance: a Delete tombstones the Note id permanently,
+ * so the follow-up Create for that same id was silently dropped by Pixelfed/
+ * Mastodon and the posts vanished instead of refreshing.
+ *
+ * @return array [notes_resynced, update_deliveries]
  */
 function sv_resync_recent(PDO $pdo, array $settings, ?int $limit = null): array {
     if ($limit === null) $limit = (int)($settings['smackverse_backfill_count'] ?? 10);
@@ -1491,22 +1520,15 @@ function sv_resync_recent(PDO $pdo, array $settings, ?int $limit = null): array 
     $inboxes = sv_follower_inboxes($pdo);
     if (!$creates || !$inboxes) return [0, 0];
 
-    // Pass 1: Deletes — the remote must forget its cached copies first.
-    foreach ($creates as $cjson) {
-        $c   = json_decode($cjson, true);
-        $nid = $c['object']['id'] ?? null;
-        if (!$nid) continue;
-        $del = json_encode(sv_delete_for_note_id($nid, $settings), JSON_UNESCAPED_SLASHES);
-        foreach ($inboxes as $ib) sv_queue_delivery($pdo, $ib, $del);
-    }
-    sv_process_deliveries($pdo, $settings, 200);
-    sleep(PHP_SAPI === 'cli' ? 5 : 3);  // let the remote's async delete workers settle
-
-    // Pass 2: fresh Creates (original published dates ride in the Notes, so
-    // remote grids keep chronological order).
+    // One Update per Note (the Note rides inside each Create we already built,
+    // so we unwrap it and re-wrap as an Update — same id, freshly stamped).
     $n = 0;
     foreach ($creates as $cjson) {
-        foreach ($inboxes as $ib) { sv_queue_delivery($pdo, $ib, $cjson); $n++; }
+        $c    = json_decode($cjson, true);
+        $note = $c['object'] ?? null;
+        if (!is_array($note) || empty($note['id'])) continue;
+        $upd = json_encode(sv_update_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
+        foreach ($inboxes as $ib) { sv_queue_delivery($pdo, $ib, $upd); $n++; }
     }
     sv_process_deliveries($pdo, $settings, 200);
     return [count($creates), $n];
