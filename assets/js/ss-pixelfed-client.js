@@ -67,9 +67,77 @@
     });
 
     function loadPanel(name) {
+        if (name === 'home')    { loadHome(bodyFor('home')); return; }
         if (name === 'profile') { loadProfile(bodyFor('profile'), ''); return; }
         if (name === 'search')  { loadProfile(bodyFor('search'), searchQuery); return; }
-        // Reader timelines: their endpoint is wired:false; keep the placeholder.
+        // Local / Global / Notifications: endpoint is wired:false; keep placeholder.
+    }
+
+    // ── Home feed (live crawl of accounts the blog follows) ───────────────────
+    function loadHome(body) {
+        if (!body) return;
+        body.innerHTML = '';
+        body.appendChild(noteEl('Loading your home feed…'));
+        fetch('smack-pixelfed.php?ajax=home', { headers: { 'X-Requested-With': 'fetch' } })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+            .then(function (data) {
+                if (!data.ok) { body.innerHTML = ''; body.appendChild(noteEl(data.msg || 'Nothing here.')); return; }
+                renderFeed(body, data.items || []);
+            })
+            .catch(function () {
+                body.innerHTML = '';
+                body.appendChild(noteEl('Couldn’t load your home feed just now — try again.'));
+            });
+    }
+
+    function renderFeed(body, items) {
+        body.innerHTML = '';
+        if (!items.length) {
+            body.appendChild(noteEl('Nothing yet. Search a handle up top and follow some accounts — their latest photos land here.'));
+            return;
+        }
+        items.forEach(function (p) {
+            var a = p.author || {};
+            var card = el('div', 'sspf-card');
+
+            var head = el('div', 'sspf-card-head');
+            if (a.avatar) { var av = el('img', 'sspf-avatar'); av.src = a.avatar; av.alt = ''; head.appendChild(av); }
+            else { head.appendChild(el('div', 'sspf-avatar')); }
+            var who = el('div');
+            who.appendChild(el('div', 'sspf-card-user', a.name || a.handle || ''));
+            who.appendChild(el('div', 'sspf-card-sub', a.handle || ''));
+            head.appendChild(who);
+            card.appendChild(head);
+
+            if (p.images && p.images[0]) {
+                var im = el('img', 'sspf-card-media'); im.src = p.images[0];
+                im.alt = (p.text || '').slice(0, 120); im.loading = 'lazy';
+                im.addEventListener('click', function () { openPost(a, p); });
+                card.appendChild(im);
+            }
+            if (p.count > 1) card.appendChild(el('div', 'sspf-card-sub sspf-card-multi', p.count + ' photos — tap to view all'));
+            if (p.text) card.appendChild(el('div', 'sspf-card-caption', p.text));
+
+            if (enabled) {
+                var actions = el('div', 'sspf-card-actions');
+                var applaud = el('button', null, '👏');
+                applaud.title = 'Applaud';
+                applaud.addEventListener('click', function () {
+                    applaud.disabled = true;
+                    post({ sspf_action: 'like', object: p.id, actor: a.id }).then(function (r) {
+                        applaud.textContent = r.ok ? '👏 ✓' : '👏';
+                        if (!r.ok) applaud.disabled = false;
+                    }).catch(function () { applaud.disabled = false; });
+                });
+                actions.appendChild(applaud);
+                var reply = el('button', null, '💬');
+                reply.title = 'Reply';
+                reply.addEventListener('click', function () { openPost(a, p); });
+                actions.appendChild(reply);
+                card.appendChild(actions);
+            }
+            body.appendChild(card);
+        });
     }
 
     // ── POST helper (CSRF-signed) ─────────────────────────────────────────────
