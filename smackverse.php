@@ -113,8 +113,50 @@ switch ($ap) {
         sv_respond(sv_following_doc($settings, $pdo));
         break;
 
+    case 'remote-follow':
+        // Public profile Follow button: a visitor from another instance gives
+        // their handle; we bounce them to THEIR server to confirm following us.
+        if ($method !== 'GET') sv_404();
+        $vh  = (string)($_GET['handle'] ?? '');
+        $dst = sv_remote_follow_url($vh, $settings);
+        if ($dst === null) {
+            header('Location: ' . sv_profile_url($settings) . '?follow=badhandle');
+            exit;
+        }
+        header('Location: ' . $dst, true, 302);
+        exit;
+
+    case 'remote-interact':
+        // Like / Reply / Boost from a visitor's OWN instance: bounce them to
+        // their server's authorize_interaction for one of OUR objects — the
+        // standard Mastodon/Pixelfed remote-interaction flow.
+        if ($method !== 'GET') sv_404();
+        $ri_h   = ltrim(trim((string)($_GET['handle'] ?? '')), '@');
+        $ri_uri = (string)($_GET['uri'] ?? '');
+        // Only ever bounce interactions for OUR OWN objects (no open redirect).
+        if (!preg_match('/^[^@\s\/]+@([^@\s\/]+\.[^@\s\/]+)$/', $ri_h, $rm)
+            || strpos($ri_uri, sv_base($settings)) !== 0) {
+            header('Location: ' . sv_profile_url($settings));
+            exit;
+        }
+        header('Location: https://' . $rm[1] . '/authorize_interaction?uri=' . rawurlencode($ri_uri), true, 302);
+        exit;
+
     case 'note':
         if ($method !== 'GET') sv_404();
+        // Content negotiation: a browser gets the Pixelfed-faithful HTML post
+        // view; a fediverse server gets the Note JSON below. Only post/image
+        // notes have a human view (reply/comment stay JSON-only).
+        $pp_acc  = $_SERVER['HTTP_ACCEPT'] ?? '';
+        $pp_html = stripos($pp_acc, 'activity+json') === false
+                && stripos($pp_acc, 'ld+json') === false
+                && stripos($pp_acc, 'text/html') !== false;
+        if ($pp_html && (isset($_GET['post']) || isset($_GET['id']))) {
+            $GLOBALS['pp_post_kind'] = isset($_GET['post']) ? 'post' : 'image';
+            $GLOBALS['pp_post_id']   = (int)($_GET['post'] ?? ($_GET['id'] ?? 0));
+            require __DIR__ . '/core/public-post.php';
+            exit;
+        }
         if (isset($_GET['reply'])) {
             // Dereferenceable Note for a durable outbound reply to a remote post.
             $note = sv_outbound_reply_doc($pdo, (string)$_GET['reply'], $settings);

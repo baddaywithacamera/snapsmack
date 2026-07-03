@@ -429,8 +429,8 @@ function snapsmack_scrolltime_tag($settings) {
 
     $mode = $settings['site_mode'] ?? 'photoblog';
     $type = $hit['page_type'] ?? '';
-    $ok = ($mode === 'gramofsmack' && $type === 'landing')
-       || ($mode === 'photoblog'   && $type === 'archive');
+    $ok = ($mode === 'carousel'  && $type === 'landing')
+       || ($mode === 'photoblog' && $type === 'archive');
     if (!$ok) return;
 
     $ver  = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1';

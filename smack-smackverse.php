@@ -112,13 +112,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'disab
 // then drained at MEASURED CADENCE from a detached tail so the posts land on
 // the remote one at a time, in chronological order, with no burst to shuffle
 // same-second timestamps or truncate a stack.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'convert_carousel') {
+    $cc_ids   = array_filter(array_map('intval', preg_split('/[\s,]+/', trim((string)($_POST['cc_images'] ?? '')))));
+    $cc_cover = (int)($_POST['cc_cover'] ?? 0);
+    list($cc_ok, $cc_msg) = sv_convert_to_carousel($pdo, $sv_settings, $cc_ids, $cc_cover);
+    header('Location: smack-smackverse.php?msg=' . urlencode($cc_msg));
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resync') {
     if (!sv_enabled($sv_settings)) {
         header('Location: smack-smackverse.php?msg=' . urlencode('SMACKVERSE is off — nothing to resync.'));
         exit;
     }
     $rs_count = isset($_POST['resync_count']) ? max(1, min(500, (int)$_POST['resync_count'])) : null;
-    list($rs_notes, $rs_deliveries) = sv_resync_recent($pdo, $sv_settings, $rs_count);
+    $rs_mode  = (($_POST['resync_mode'] ?? 'create') === 'update') ? 'update' : 'create';
+    list($rs_notes, $rs_deliveries) = sv_resync_recent($pdo, $sv_settings, $rs_count, $rs_mode);
     if ($rs_notes === 0) {
         header('Location: smack-smackverse.php?msg=' . urlencode('RESYNC: nothing to do — no recent posts or no active followers.'));
         exit;
@@ -357,21 +366,25 @@ include 'core/sidebar.php';
 
     <!-- RESYNC -->
     <div class="box mb-20">
-        <h3>RESYNC RECENT POSTS</h3>
+        <h3>PUSH POSTS TO FOLLOWERS</h3>
         <p class="dim mb-20">
-            Re-pushes your most recent posts to every follower as a signed Update — the same post,
-            refreshed IN PLACE (current thumbnails, covers, full carousel stacks). Nothing is deleted or
-            dropped: an Update just replaces the copy their server already holds, so likes and replies
-            survive. Use after anything that changes how a post renders out there (thumbnail regen, cover
-            changes, frame fixes) — plain re-sends get ignored, an Update doesn't. Rolls out one at a time
-            on the delivery cron, in order. (Posts sharing an exact timestamp won't be re-ordered.)
+            Pixelfed never pulls your back catalogue — it only shows what you PUSH — so this is how your
+            posts reach every follower. Two ways to push:
             <br><br>
-            <strong>How many?</strong> Pixelfed does not pull your back catalogue — it only shows what you
-            PUSH — so this count is how much of your blog reaches it. Raise it to seed your whole library
-            (each post rolls out ~10&nbsp;s apart on the cron, so a big number takes a while to fully land).
+            <strong>Seed missing posts (default):</strong> sends each post as a <em>Create</em>. A follower
+            who only got the capped follow-backfill (e.g. 12) but is missing the rest gets the missing ones
+            created; posts they already have are harmlessly ignored. <em>This is how you get your whole
+            library onto a follower.</em> An Update can't do this — you can't update a post the remote never
+            received (that was the old "stuck at 12" bug).
+            <br><br>
+            <strong>Refresh existing renders:</strong> sends an <em>Update</em> per post — use only after a
+            thumbnail/cover/frame change, to refresh posts the follower ALREADY holds (likes/replies survive).
+            <br><br>
+            Either way it rolls out one post at a time on the delivery cron (~10&nbsp;s apart), so a big
+            number lands over a few minutes.
         </p>
         <form method="post" action="smack-smackverse.php"
-              onsubmit="return confirm('Re-push your recent posts as in-place Updates? Likes and replies on the remote copies are preserved — an Update refreshes the post, it does not delete it.');">
+              onsubmit="return confirm('Push your recent posts to followers? Seed = create any they are missing; Refresh = update ones they already have.');">
             <input type="hidden" name="action" value="resync">
             <label class="dim" style="display:block; margin-bottom:12px;">
                 Posts to push:
@@ -379,7 +392,40 @@ include 'core/sidebar.php';
                        value="<?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 10); ?>"
                        style="width:90px; margin-left:6px;">
             </label>
-            <button type="submit" class="btn-smack" <?php echo $sv_on ? '' : 'disabled'; ?>>RESYNC</button>
+            <label class="dim" style="display:block; margin-bottom:12px;">
+                Mode:
+                <select name="resync_mode" style="margin-left:6px;">
+                    <option value="create">Seed missing posts (Create)</option>
+                    <option value="update">Refresh existing renders (Update)</option>
+                </select>
+            </label>
+            <button type="submit" class="btn-smack" <?php echo $sv_on ? '' : 'disabled'; ?>>PUSH</button>
+        </form>
+    </div>
+
+    <!-- COMBINE INTO CAROUSEL -->
+    <div class="box mb-20">
+        <h3>COMBINE POSTS INTO A CAROUSEL</h3>
+        <p class="dim mb-20">
+            Separate posts that should be one carousel — and they already went out to followers as singles?
+            Enter the image IDs in the order you want them and pick the cover. This groups them into one
+            carousel post, then does the fediverse-legal cleanup: a <em>Delete</em> for each old single goes
+            to your followers and a <em>Create</em> for the new carousel, paced on the delivery cron. The old
+            IDs are tombstoned for good (never reused) — a deliberate one-shot, not an auto-reconcile.
+            <strong>Double-check the IDs: the old single posts are deleted locally and cannot be undone.</strong>
+        </p>
+        <form method="post" action="smack-smackverse.php"
+              onsubmit="return confirm('Combine these images into ONE carousel? The old single posts are deleted locally and retracted from your followers. This cannot be undone.');">
+            <input type="hidden" name="action" value="convert_carousel">
+            <label class="dim" style="display:block; margin-bottom:12px;">
+                Image IDs (comma-separated, in order):
+                <input type="text" name="cc_images" placeholder="e.g. 412, 413, 414" style="width:240px; margin-left:6px;">
+            </label>
+            <label class="dim" style="display:block; margin-bottom:12px;">
+                Cover image ID (blank = first):
+                <input type="number" name="cc_cover" min="0" style="width:90px; margin-left:6px;">
+            </label>
+            <button type="submit" class="btn-smack">COMBINE INTO CAROUSEL</button>
         </form>
     </div>
 
