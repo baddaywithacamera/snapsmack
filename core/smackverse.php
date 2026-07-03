@@ -1064,6 +1064,239 @@ function sv_unfollow_actor(PDO $pdo, array $settings, int $row_id): array {
     return [true, 'Unfollowed ' . ($row['actor_handle'] ?: $row['actor_url']) . '.'];
 }
 
+// ─── Pixelfed client: remote profile crawl + interactions (0.7.362) ─────────
+
+/**
+ * Normalise a remote actor into the fields the Pixelfed client renders.
+ * Accepts @user@host or a raw actor URL (webfingers a handle first). Returns
+ * null when the actor can't be resolved or fetched. Follower/following/post
+ * counts are best-effort (collection shells are small); a null count is hidden
+ * in the UI rather than shown as zero.
+ */
+function sv_crawl_actor(string $target): ?array {
+    $target = trim($target);
+    if ($target === '') return null;
+    $actor_url = (stripos($target, 'https://') === 0) ? $target : sv_webfinger_lookup($target);
+    if ($actor_url === null || $actor_url === '') return null;
+    $doc = sv_fetch_ap($actor_url);
+    if (!is_array($doc) || empty($doc['id'])) return null;
+
+    $host   = parse_url((string)$doc['id'], PHP_URL_HOST) ?: '';
+    $user   = (string)($doc['preferredUsername'] ?? '');
+    $handle = ($user !== '' && $host !== '') ? '@' . $user . '@' . $host : '';
+
+    // Avatar: `icon` may be an object, an array of objects, or a bare string.
+    $avatar = '';
+    $icon = $doc['icon'] ?? null;
+    if (is_array($icon)) {
+        if (isset($icon['url']))         $avatar = (string)$icon['url'];
+        elseif (isset($icon[0]['url']))  $avatar = (string)$icon[0]['url'];
+    } elseif (is_string($icon)) {
+        $avatar = $icon;
+    }
+
+    $count = static function ($url): ?int {
+        if (!is_string($url) || $url === '') return null;
+        $c = sv_fetch_ap($url);
+        return (is_array($c) && isset($c['totalItems'])) ? (int)$c['totalItems'] : null;
+    };
+
+    return [
+        'id'        => (string)$doc['id'],
+        'handle'    => $handle,
+        'username'  => $user,
+        'host'      => $host,
+        'name'      => (string)($doc['name'] ?? $user),
+        'summary'   => isset($doc['summary']) ? (string)$doc['summary'] : '',
+        'avatar'    => $avatar,
+        'url'       => (string)($doc['url'] ?? $doc['id']),
+        'inbox'     => (string)($doc['inbox'] ?? ''),
+        'outbox'    => (string)($doc['outbox'] ?? ''),
+        'followers' => $count($doc['followers'] ?? ''),
+        'following' => $count($doc['following'] ?? ''),
+        'posts'     => $count($doc['outbox'] ?? ''),
+    ];
+}
+
+/**
+ * One outbox unit → a render-ready post, or null to skip. Only original
+ * image-bearing Creates/Notes pass; boosts (Announce) and text-only notes are
+ * dropped (this is a photo grid). A URL-string object is dereferenced once.
+ */
+function sv_outbox_item_to_post($act): ?array {
+    if (!is_array($act)) return null;
+    $type = $act['type'] ?? '';
+    if ($type !== 'Create' && $type !== 'Note') return null;   // skip Announce/boost etc.
+    $obj = ($type === 'Note') ? $act : ($act['object'] ?? null);
+    if (is_string($obj)) $obj = sv_fetch_ap($obj);
+    if (!is_array($obj)) return null;
+    $otype = $obj['type'] ?? '';
+    if ($otype !== 'Note' && $otype !== 'Image') return null;
+
+    $images = [];
+    foreach (($obj['attachment'] ?? []) as $att) {
+        if (!is_array($att)) continue;
+        $mt = (string)($att['mediaType'] ?? '');
+        if ($mt !== '' && stripos($mt, 'image/') !== 0) continue;   // images only
+        $u = $att['url'] ?? '';
+        if (is_array($u)) $u = $u['href'] ?? ($u[0]['href'] ?? '');
+        $u = (string)$u;
+        if ($u === '') continue;
+        $images[] = $u;
+    }
+    if (!$images) return null;
+
+    return [
+        'id'        => (string)($obj['id'] ?? ''),
+        'url'       => (string)($obj['url'] ?? $obj['id'] ?? ''),
+        'published' => (string)($obj['published'] ?? ''),
+        'text'      => trim(strip_tags((string)($obj['content'] ?? ''))),
+        'images'    => $images,
+        'count'     => count($images),
+    ];
+}
+
+/**
+ * Walk a remote actor's paginated outbox and return up to $max recent image
+ * posts, newest first — mirroring how Pixelfed's own remote-import path reads
+ * an outbox (shell → first → follow `next`). Bounded by a page guard so a
+ * hostile/huge outbox can't run us forever.
+ */
+function sv_crawl_outbox(string $outbox_url, int $max = 36): array {
+    $posts = [];
+    $outbox_url = trim($outbox_url);
+    if ($outbox_url === '') return $posts;
+    $shell = sv_fetch_ap($outbox_url);
+    if (!is_array($shell)) return $posts;
+
+    $first = $shell['first'] ?? '';
+    $page_url = is_array($first) ? (string)($first['id'] ?? '') : (string)$first;
+    // Some servers inline orderedItems directly on the shell (no `first`).
+    $page = $page_url !== '' ? sv_fetch_ap($page_url) : $shell;
+
+    $guard = 0;
+    while (is_array($page) && count($posts) < $max && $guard < 6) {
+        $guard++;
+        $items = $page['orderedItems'] ?? ($page['items'] ?? []);
+        if (is_array($items)) {
+            foreach ($items as $act) {
+                if (count($posts) >= $max) break;
+                $p = sv_outbox_item_to_post($act);
+                if ($p !== null) $posts[] = $p;
+            }
+        }
+        $next = $page['next'] ?? '';
+        $next_url = is_array($next) ? (string)($next['id'] ?? '') : (string)$next;
+        if ($next_url === '' || $next_url === $page_url) break;
+        $page_url = $next_url;
+        $page = sv_fetch_ap($next_url);
+    }
+    return $posts;
+}
+
+/**
+ * Applaud (Like) a remote object as the blog actor. Re-fetches the target's
+ * author server-side to find the inbox (never trusts a client-supplied inbox),
+ * delivers a signed Like. Fire-and-forget — no local state is kept for remote
+ * likes (no schema for it), so the client just marks the button applauded.
+ *
+ * @return array [bool ok, string message]
+ */
+function sv_like_remote(PDO $pdo, array $settings, string $object_id, string $actor_url): array {
+    $object_id = trim($object_id);
+    $actor_url = trim($actor_url);
+    if ($object_id === '' || stripos($object_id, 'https://') !== 0) return [false, 'That post has no usable id.'];
+    if (stripos($actor_url, 'https://') !== 0) return [false, 'That account has no usable id.'];
+    $actor = sv_fetch_ap($actor_url);
+    if (!is_array($actor) || empty($actor['inbox'])) return [false, 'Could not reach that account to applaud.'];
+    $inbox = (string)$actor['inbox'];
+    if (!sv_url_is_public($inbox)) return [false, 'That account inbox is not a public URL.'];
+
+    $like = [
+        '@context' => 'https://www.w3.org/ns/activitystreams',
+        'id'       => sv_actor_url($settings) . '#like-' . bin2hex(random_bytes(8)),
+        'type'     => 'Like',
+        'actor'    => sv_actor_url($settings),
+        'object'   => $object_id,
+    ];
+    sv_queue_delivery($pdo, $inbox, json_encode($like, JSON_UNESCAPED_SLASHES));
+    sv_process_deliveries($pdo, $settings, 10);
+    return [true, 'Applause sent.'];
+}
+
+/**
+ * Reply to a remote object as the blog actor: a public Note inReplyTo the
+ * target, mentioning + cc'ing its author, delivered to their inbox. Author
+ * inbox is re-resolved server-side. The Note is tokenised under this actor and
+ * delivered INLINE (most servers store the inbox copy). CAVEAT: no local row
+ * is kept, so the id is not dereferenceable afterward — a future phase gives
+ * fediverse replies a home table + a real permalink.
+ *
+ * @return array [bool ok, string message]
+ */
+function sv_reply_remote(PDO $pdo, array $settings, string $object_id, string $actor_url, string $content): array {
+    $object_id = trim($object_id);
+    $actor_url = trim($actor_url);
+    $content   = trim($content);
+    if ($object_id === '' || stripos($object_id, 'https://') !== 0) return [false, 'That post has no usable id.'];
+    if ($content === '') return [false, 'Write something first.'];
+    if (mb_strlen($content) > 2000) $content = mb_substr($content, 0, 2000);
+    $actor = sv_fetch_ap($actor_url);
+    if (!is_array($actor) || empty($actor['inbox']) || empty($actor['id'])) return [false, 'Could not reach that account to reply.'];
+    $inbox = (string)$actor['inbox'];
+    if (!sv_url_is_public($inbox)) return [false, 'That account inbox is not a public URL.'];
+
+    $their_id     = (string)$actor['id'];
+    $their_user   = (string)($actor['preferredUsername'] ?? '');
+    $their_handle = $their_user . '@' . (parse_url($their_id, PHP_URL_HOST) ?: '');
+    $now          = gmdate('Y-m-d\TH:i:s\Z');
+    $note_id      = sv_actor_url($settings) . '#reply-' . bin2hex(random_bytes(10));
+    $safe         = nl2br(htmlspecialchars($content, ENT_QUOTES, 'UTF-8'));
+
+    $note = [
+        'id'           => $note_id,
+        'type'         => 'Note',
+        'attributedTo' => sv_actor_url($settings),
+        'inReplyTo'    => $object_id,
+        'published'    => $now,
+        'content'      => '<p><span class="h-card"><a href="' . htmlspecialchars($their_id, ENT_QUOTES)
+                          . '">@' . htmlspecialchars($their_user, ENT_QUOTES) . '</a></span> ' . $safe . '</p>',
+        'to'           => ['https://www.w3.org/ns/activitystreams#Public'],
+        'cc'           => [$their_id, sv_followers_url($settings)],
+        'tag'          => [[
+            'type' => 'Mention',
+            'href' => $their_id,
+            'name' => '@' . $their_handle,
+        ]],
+    ];
+    $create = [
+        '@context' => 'https://www.w3.org/ns/activitystreams',
+        'id'       => $note_id . '/activity',
+        'type'     => 'Create',
+        'actor'    => sv_actor_url($settings),
+        'to'       => $note['to'],
+        'cc'       => $note['cc'],
+        'object'   => $note,
+    ];
+    sv_queue_delivery($pdo, $inbox, json_encode($create, JSON_UNESCAPED_SLASHES));
+    sv_process_deliveries($pdo, $settings, 10);
+    return [true, 'Reply sent to @' . $their_handle . '.'];
+}
+
+/**
+ * Follow-state lookup for a resolved actor URL: returns [state, row_id] where
+ * state is '', 'pending', 'accepted' or 'rejected'. Lets the client show the
+ * right Follow/Pending/Unfollow control on a crawled profile.
+ */
+function sv_following_state(PDO $pdo, string $actor_url): array {
+    if ($actor_url === '') return ['', 0];
+    $s = $pdo->prepare("SELECT id, state FROM snap_ap_following WHERE actor_url = ? LIMIT 1");
+    $s->execute([$actor_url]);
+    $row = $s->fetch(PDO::FETCH_ASSOC);
+    if (!$row) return ['', 0];
+    return [(string)$row['state'], (int)$row['id']];
+}
+
 // ─── Notes (one published snap_image = one Note, mirroring rss.php) ─────────
 
 /** Media type from an image file extension. */

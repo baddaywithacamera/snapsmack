@@ -28,13 +28,92 @@ $sv_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
 sv_ensure_tables($pdo);
 $sv_on = sv_enabled($sv_settings);
 
+// ── POST interactions (JSON) — follow / unfollow / like / reply ─────────────
+// CSRF is already enforced globally in core/auth-smack.php before we get here.
+// Every branch returns JSON and exits before any chrome is emitted.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sspf_action'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    $act = (string)$_POST['sspf_action'];
+
+    if (!$sv_on) {
+        echo json_encode(['ok' => false, 'msg' => 'SMACKVERSE is off — flip it on in Federation first.']);
+        exit;
+    }
+
+    $ok = false; $msg = 'Unknown action.'; $extra = [];
+    switch ($act) {
+        case 'follow':
+            list($ok, $msg) = sv_follow_actor($pdo, $sv_settings, (string)($_POST['target'] ?? ''));
+            if ($ok) {
+                $resolved = (stripos((string)($_POST['target'] ?? ''), 'https://') === 0)
+                    ? (string)$_POST['target']
+                    : (string)sv_webfinger_lookup((string)($_POST['target'] ?? ''));
+                list($st, $rid) = sv_following_state($pdo, $resolved);
+                $extra = ['state' => $st, 'row_id' => $rid];
+            }
+            break;
+
+        case 'unfollow':
+            list($ok, $msg) = sv_unfollow_actor($pdo, $sv_settings, (int)($_POST['row_id'] ?? 0));
+            if ($ok) $extra = ['state' => '', 'row_id' => 0];
+            break;
+
+        case 'like':
+            list($ok, $msg) = sv_like_remote($pdo, $sv_settings,
+                (string)($_POST['object'] ?? ''), (string)($_POST['actor'] ?? ''));
+            break;
+
+        case 'reply':
+            list($ok, $msg) = sv_reply_remote($pdo, $sv_settings,
+                (string)($_POST['object'] ?? ''), (string)($_POST['actor'] ?? ''),
+                (string)($_POST['content'] ?? ''));
+            break;
+    }
+    echo json_encode(array_merge(['ok' => $ok, 'msg' => $msg], $extra), JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 // ── AJAX (JSON) — must return BEFORE any chrome is emitted ──────────────────
-// Phase 1: the reader endpoints aren't wired yet, so every panel returns a safe
-// empty payload. The client treats "not wired" as a static placeholder, so this
-// never errors; each panel goes live as its endpoint lands.
+// profile/search are LIVE: they webfinger → crawl the actor's outbox (0.7.360
+// paginated collection) → return a Pixelfed-style profile + photo grid with the
+// blog's follow-state so the client can offer Follow / Unfollow / Applaud /
+// Reply. The reader timelines (home/local/global/notifications) land in the
+// next phase and return a safe empty payload so those panels stay quiet.
 if (isset($_GET['ajax'])) {
     header('Content-Type: application/json; charset=utf-8');
     $panel = preg_replace('/[^a-z]/', '', (string)$_GET['ajax']);
+
+    if ($panel === 'profile' || $panel === 'search') {
+        // profile with no handle = this blog's own actor.
+        $target = trim((string)($_GET['handle'] ?? ''));
+        if ($target === '' && $panel === 'profile') {
+            $target = sv_actor_url($sv_settings);
+        }
+        if ($target === '') {
+            echo json_encode(['ok' => false, 'msg' => 'Type a handle like @user@host.']);
+            exit;
+        }
+        $actor = sv_crawl_actor($target);
+        if ($actor === null) {
+            echo json_encode(['ok' => false, 'msg' => 'Could not resolve "' . $target
+                . '" — check the handle (format: @user@host) or the server may be blocking us.']);
+            exit;
+        }
+        $posts = sv_crawl_outbox($actor['outbox'], 36);
+        list($state, $row_id) = sv_following_state($pdo, $actor['id']);
+        $is_self = ($actor['id'] === sv_actor_url($sv_settings));
+        echo json_encode([
+            'ok'        => true,
+            'actor'     => $actor,
+            'posts'     => $posts,
+            'state'     => $state,
+            'row_id'    => $row_id,
+            'is_self'   => $is_self,
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    // Reader timelines — not wired yet.
     echo json_encode(['panel' => $panel, 'items' => [], 'wired' => false], JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -130,14 +209,14 @@ include 'core/sidebar.php';
                 <section class="sspf-panel" data-panel="profile">
                     <h3 class="sspf-panel-title">Profile</h3>
                     <div class="sspf-panel-body">
-                        <div class="sspf-note">Your blog actor <strong><?php echo htmlspecialchars($sv_handle ?: 'this blog'); ?></strong> as the fediverse sees it — rendered from your own outbox. Wiring in progress.</div>
+                        <div class="sspf-note">Loading your blog actor <strong><?php echo htmlspecialchars($sv_handle ?: 'this blog'); ?></strong> as the fediverse sees it — rendered from your own outbox…</div>
                     </div>
                 </section>
 
                 <section class="sspf-panel" data-panel="search">
                     <h3 class="sspf-panel-title">Search</h3>
                     <div class="sspf-panel-body">
-                        <div class="sspf-note">Type a handle like <strong>@user@host</strong> above. Their real Pixelfed profile and posts render here from a crawl of their outbox — with follow / like / reply — replacing the old follow box. Wiring in progress.</div>
+                        <div class="sspf-note">Type a handle like <strong>@user@host</strong> in the bar above. Their real profile and posts render here from a crawl of their outbox — with follow / applaud / reply.</div>
                     </div>
                 </section>
             </div>
