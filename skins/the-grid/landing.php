@@ -185,6 +185,7 @@ include dirname(__DIR__, 2) . '/core/meta.php';
             endif;
 
             $thumb_src   = $post['img_thumb_square'] ?: $post['img_file'];
+            $is_slice_tile = false; // true only when a physical slice file fronts this tile
 
             // Trigram cover: when the post belongs to a trigram, the grid tile
             // shows the panorama slice (trigrams/trigram-{id}-{L|M|R}.jpg), not the
@@ -197,6 +198,7 @@ include dirname(__DIR__, 2) . '/core/meta.php';
                     $tg_rel = 'trigrams/trigram-' . $tg_id . '-' . $tg_label . '.jpg';
                     if (is_file(dirname(__DIR__, 2) . '/' . $tg_rel)) {
                         $thumb_src = $tg_rel;
+                        $is_slice_tile = true;
                     }
                 }
             }
@@ -208,12 +210,16 @@ include dirname(__DIR__, 2) . '/core/meta.php';
 
             // ── Tile class ───────────────────────────────────────────────
             $tile_frame = $tg_resolve_tile_frame($post, $post);
-            $is_trigram_tile = ($tg_id > 0 && $tg_slot > 0);
             // Per spec, a fit-mode cover (size<100 / border / matte) is matted on
-            // the tile, NOT cropped. Trigram slices are square covers and never
-            // framed. A framed tile must use the ASPECT thumbnail, otherwise we'd
-            // be matting an already-square-cropped image.
-            $do_frame = ($tile_frame['is_framed'] && !$is_trigram_tile);
+            // the tile, NOT cropped. The frame gate rides on SLICE-FILE EXISTENCE,
+            // not trigram membership (Sean's taxonomy, 2026-07-02): slice trigrams
+            // and carousel trigrams have physical slice files fronting the tiles —
+            // always full-bleed, never framed. A TRIPTYCH (three distinct posts
+            // locked as a row, no slice files) keeps per-image frames and
+            // natural-aspect presentation, matching its fediverse bake. A framed
+            // tile must use the ASPECT thumbnail, otherwise we'd be matting an
+            // already-square-cropped image.
+            $do_frame = ($tile_frame['is_framed'] && !$is_slice_tile);
             if ($do_frame) {
                 $thumb_src = $post['img_thumb_aspect'] ?: ($post['img_thumb_square'] ?: $post['img_file']);
             }

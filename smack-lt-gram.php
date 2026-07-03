@@ -35,11 +35,16 @@ if (isset($_POST['action']) && $_POST['action'] === 'reorder') {
         echo json_encode(['ok' => false, 'error' => 'No IDs']);
         exit;
     }
-    $all_ids = $pdo->query(
+    // Canonical list uses the SAME ordering as the lighttable + public feed
+    // (new sort_order=0 group first, then sorted ascending). This was inverted
+    // (THEN 0 ELSE 1) — the same bug class 0.7.349 fixed in the display query —
+    // so any subset reorder recomputed positions against a back-to-front list
+    // and scrambled the blog.
+    $all_ids = array_map('intval', $pdo->query(
         "SELECT id FROM snap_posts
-          ORDER BY CASE WHEN sort_order > 0 THEN 0 ELSE 1 END ASC,
+          ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
                    sort_order ASC, created_at DESC"
-    )->fetchAll(PDO::FETCH_COLUMN);
+    )->fetchAll(PDO::FETCH_COLUMN));
 
     $page_set  = array_flip($new_order);
     $stripped  = array_values(array_filter($all_ids, fn($id) => !isset($page_set[$id])));
@@ -55,10 +60,38 @@ if (isset($_POST['action']) && $_POST['action'] === 'reorder') {
     }
     array_splice($stripped, $insert_at, 0, $new_order);
 
+    // Trigram-atomic backstop: a locked trio always travels as ONE block in
+    // slot order (L,M,R), anchored where its earliest member sits. The drag UI
+    // already keeps trios together client-side; this guarantees it server-side
+    // no matter what the payload looked like, so a trio can never interleave
+    // with other posts and wreck the public feed's rows.
+    $tg_map = [];
+    foreach ($pdo->query("SELECT post_id_1, post_id_2, post_id_3 FROM snap_trigrams") as $tg) {
+        $trio = [(int)$tg['post_id_1'], (int)$tg['post_id_2'], (int)$tg['post_id_3']];
+        foreach ($trio as $m) $tg_map[$m] = $trio;
+    }
+    if ($tg_map) {
+        $in_seq = array_flip($stripped);
+        $final  = [];
+        $placed = [];
+        foreach ($stripped as $id) {
+            if (isset($placed[$id])) continue;
+            foreach ($tg_map[$id] ?? [$id] as $m) {
+                if (!isset($placed[$m]) && isset($in_seq[$m])) {
+                    $final[]    = $m;
+                    $placed[$m] = true;
+                }
+            }
+        }
+        $stripped = $final;
+    }
+
     $stmt = $pdo->prepare("UPDATE snap_posts SET sort_order = ? WHERE id = ?");
+    $pdo->beginTransaction();
     foreach ($stripped as $pos => $id) {
         $stmt->execute([$pos + 1, $id]);
     }
+    $pdo->commit();
     echo json_encode(['ok' => true]);
     exit;
 }
@@ -207,15 +240,35 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_trigram') {
         $upd->execute([$trigram_id, $pid2]);
         $upd->execute([$trigram_id, $pid3]);
 
-        // Make the three contiguous at the next clean row boundary so the set is
-        // a valid 3-across row from the moment it's locked.
-        $max_so     = (int)$pdo->query("SELECT COALESCE(MAX(sort_order), 0) FROM snap_posts")->fetchColumn();
-        $col_offset = (1 - ($max_so % 3) + 3) % 3;
-        $start      = $max_so + ($col_offset === 0 ? 3 : $col_offset);
+        // Lock PINS IN PLACE — it must never move the trio. (The old code
+        // assigned MAX(sort_order)+1..+3, i.e. the largest sort numbers on the
+        // blog, which sent every freshly locked trigram to the BOTTOM of the
+        // feed.) Materialise the full feed sequence (same ordering as the
+        // lighttable + public feed), pull the three together in slot order at
+        // the earliest position any member holds, snap the block to a 3-column
+        // row boundary, and renumber the sequence — so nothing visibly moves
+        // and the trio is a valid row from the moment it's locked. New posts
+        // still land on top (they arrive with sort_order 0).
+        $seq = array_map('intval', $pdo->query(
+            "SELECT id FROM snap_posts
+              ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
+                       sort_order ASC, created_at DESC"
+        )->fetchAll(PDO::FETCH_COLUMN));
+
+        $first_idx = null;
+        foreach ($seq as $i => $sid) {
+            if (in_array($sid, $ids, true)) { $first_idx = $i; break; }
+        }
+        if ($first_idx === null) $first_idx = 0;
+
+        $seq       = array_values(array_diff($seq, $ids));
+        $insert_at = min((int)(intdiv($first_idx, 3) * 3), count($seq));
+        array_splice($seq, $insert_at, 0, [$pid1, $pid2, $pid3]);
+
         $so = $pdo->prepare("UPDATE snap_posts SET sort_order = ? WHERE id = ?");
-        $so->execute([$start,     $pid1]);
-        $so->execute([$start + 1, $pid2]);
-        $so->execute([$start + 2, $pid3]);
+        foreach ($seq as $pos => $sid) {
+            $so->execute([$pos + 1, $sid]);
+        }
 
         $pdo->commit();
     } catch (Throwable $e) {

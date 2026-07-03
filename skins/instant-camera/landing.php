@@ -184,13 +184,17 @@ include dirname(__DIR__, 2) . '/core/meta.php';
             $thumb_src   = $post['img_thumb_aspect'] ?: ($post['img_thumb_square'] ?: $post['img_file']);
 
             // Trigram cover: grid tile shows the panorama slice when set.
+            $is_slice_tile = false; // true only when a physical slice file fronts this tile
             if ($tg_id > 0 && $tg_slot > 0) {
                 $tg_label = ($tg_orient === 'v')
                     ? (['T','M','B'][$tg_slot - 1] ?? '')
                     : (['L','M','R'][$tg_slot - 1] ?? '');
                 if ($tg_label !== '') {
                     $tg_rel = 'trigrams/trigram-' . $tg_id . '-' . $tg_label . '.jpg';
-                    if (is_file(dirname(__DIR__, 2) . '/' . $tg_rel)) $thumb_src = $tg_rel;
+                    if (is_file(dirname(__DIR__, 2) . '/' . $tg_rel)) {
+                        $thumb_src = $tg_rel;
+                        $is_slice_tile = true;
+                    }
                 }
             }
 
@@ -209,10 +213,14 @@ include dirname(__DIR__, 2) . '/core/meta.php';
                 $tile_class .= ' tg-tile--trigram';
             }
 
-            if ($tile_frame['is_framed']) $tile_class .= ' tg-tile--framed';
+            // Frame gate rides on SLICE-FILE EXISTENCE, not trigram membership:
+            // slice-fronted tiles are always full-bleed; triptychs (no slice
+            // files) keep their per-image frames — matching the fediverse bake.
+            $do_frame = ($tile_frame['is_framed'] && !$is_slice_tile);
+            if ($do_frame) $tile_class .= ' tg-tile--framed';
 
             $tile_css_vars = '';
-            if ($tile_frame['is_framed']) {
+            if ($do_frame) {
                 $tile_css_vars = sprintf(
                     '--tile-bg:%s; --tile-img-size:%d%%; --tile-border-w:%dpx; --tile-border-c:%s; --tile-shadow:%s;',
                     htmlspecialchars($tile_frame['bg_color']),
