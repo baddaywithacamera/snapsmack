@@ -35,7 +35,10 @@ $is_json          = ($_GET['format'] ?? '') === 'json';
 $load_newer       = ($_GET['newer'] ?? '') === '1';  // Load posts NEWER than cursor (upward scroll)
 
 // ── Profile data for author row ─────────────────────────────────────────────
-$site_title  = $settings['site_title']       ?? $site_name ?? 'Photogram';
+// site_name is the setting the admin actually edits (BLOG NAME); site_title is
+// a legacy key nothing writes — preferring it showed stale (and HTML-encoded)
+// names, the fauxlaroid "&amp; in the title" bug.
+$site_title  = $site_name ?? $settings['site_name'] ?? $settings['site_title'] ?? 'Photogram';
 // Photogram is the mobile half of the active desktop skin — inherit ITS profile
 // avatar. Skin settings are stored scoped as "<skin>__<key>" (Grid: tg_avatar,
 // other skins: skin_avatar). Fall back to site logo / favicon if none is set.

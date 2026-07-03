@@ -51,7 +51,7 @@ if ($tag_row) {
 $has_more = ($offset + count($grid_images)) < $total_count;
 
 // ── Profile / skin data ───────────────────────────────────────────────────────
-$site_title  = $settings['site_title'] ?? $site_name ?? 'Photogram';
+$site_title  = $site_name ?? $settings['site_name'] ?? $settings['site_title'] ?? 'Photogram'; // site_name = the real setting; site_title = legacy
 $pg_active_tab = 'discover'; // nearest semantic match
 ?>
 

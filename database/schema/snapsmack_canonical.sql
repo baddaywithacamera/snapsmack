@@ -883,6 +883,23 @@ CREATE TABLE IF NOT EXISTS `snap_ap_followers` (
   KEY `idx_ap_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Accounts the BLOG ACTOR follows (0.7.356) — outbound Follow for reach:
+-- following a photographer puts the blog in their notifications, which is
+-- how follow-backs happen. Publisher-only: no content ingestion, no reader.
+CREATE TABLE IF NOT EXISTS `snap_ap_following` (
+  `id`           int unsigned  NOT NULL AUTO_INCREMENT,
+  `actor_url`    varchar(500)  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `actor_handle` varchar(190)  COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                 COMMENT 'Display convenience: preferredUsername@host at Follow time',
+  `inbox_url`    varchar(500)  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `follow_id`    varchar(600)  COLLATE utf8mb4_unicode_ci NOT NULL
+                 COMMENT 'Our Follow activity id — inbound Accept/Reject matches it; Undo wraps it.',
+  `state`        enum('pending','accepted','rejected') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `followed_at`  datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ap_following` (`actor_url`(191))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Outbound activity delivery queue (Accepts, Creates). Processed by
 -- cron-smackverse.php with exponential backoff; rows are deleted on success
 -- and parked as status=failed after max attempts.

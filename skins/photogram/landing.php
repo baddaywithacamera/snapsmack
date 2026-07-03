@@ -204,7 +204,7 @@ if ($is_json) {
 }
 
 // ── Profile data from settings ────────────────────────────────────────────
-$site_title  = $settings['site_title']       ?? $site_name ?? 'Photogram';
+$site_title  = $site_name ?? $settings['site_name'] ?? $settings['site_title'] ?? 'Photogram'; // site_name = the real setting; site_title = legacy
 $site_desc   = $settings['site_description'] ?? '';
 $site_url    = $settings['site_url']         ?? '';
 // Photogram is the mobile half of the active desktop skin — inherit ITS profile

@@ -8,7 +8,8 @@
  *   /ap/actor      — the blog's actor document (application/activity+json)
  *   /ap/outbox     — OrderedCollection shell; ?page=1 = 20 newest Notes
  *   /ap/followers  — OrderedCollection (totalItems only; list stays private)
- *   /ap/following  — OrderedCollection (always empty — a blog follows no one)
+ *   /ap/following  — OrderedCollection (totalItems only; accounts the blog
+ *                    actor follows — outbound Follow, 0.7.356)
  *   /ap/inbox      — POST inbox (see below)
  *   /ap/note/i/N   — Note for a standalone image
  *   /ap/note/p/N   — Note for a grouped post (ONE multi-attachment Note,
@@ -106,7 +107,7 @@ switch ($ap) {
 
     case 'following':
         if ($method !== 'GET') sv_404();
-        sv_respond(sv_following_doc($settings));
+        sv_respond(sv_following_doc($settings, $pdo));
         break;
 
     case 'note':

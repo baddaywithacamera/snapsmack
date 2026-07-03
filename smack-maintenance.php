@@ -173,6 +173,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
                 if (!empty($result['success'])) {
                     $log[] = "SUCCESS: Force-reinstalled mobile skin \"" . htmlspecialchars($slug) . "\" (v" . htmlspecialchars($entry['version'] ?? '?') . ") from the registry.";
+                    // Recompile its option CSS against the fresh manifest — the
+                    // mobile skin is never active, so the normal save-time
+                    // compiler never runs for it (core/skin-compile-mobile.php).
+                    require_once __DIR__ . '/core/skin-compile-mobile.php';
+                    try {
+                        if (snapsmack_compile_mobile_css($pdo)) {
+                            $log[] = "SUCCESS: Recompiled \"" . htmlspecialchars($slug) . "\" option CSS (custom_css_mobile).";
+                        }
+                    } catch (Throwable $e) {
+                        $log[] = "WARNING: Option CSS recompile failed — " . htmlspecialchars($e->getMessage());
+                    }
                 } else {
                     $log[] = "ERROR: \"" . htmlspecialchars($slug) . "\" — " . htmlspecialchars($result['message'] ?? 'install failed') . ".";
                 }

@@ -25,7 +25,7 @@ require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 require_once dirname(__DIR__, 2) . '/core/snap-tags.php';
 
 // ── Profile data ──────────────────────────────────────────────────────────
-$site_title  = $settings['site_title']       ?? $site_name ?? 'Photogram';
+$site_title  = $site_name ?? $settings['site_name'] ?? $settings['site_title'] ?? 'Photogram'; // site_name = the real setting; site_title = legacy
 // Photogram is the mobile half of the active desktop skin — inherit ITS profile
 // avatar. Skin settings are stored scoped as "<skin>__<key>" (Grid: tg_avatar,
 // other skins: skin_avatar). Fall back to site logo / favicon if none is set.

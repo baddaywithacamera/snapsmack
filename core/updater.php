@@ -2014,6 +2014,11 @@ function updater_check_skin_registry(PDO $pdo, bool $fast = false): array {
                 $mobile_entry['signature'] ?? '',
                 defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : ''
             );
+            // Recompile the mobile skin's option CSS against the fresh manifest
+            // (the skin is never active, so the normal save-time compiler never
+            // touches it — see core/skin-compile-mobile.php).
+            require_once __DIR__ . '/skin-compile-mobile.php';
+            try { snapsmack_compile_mobile_css($pdo); } catch (Throwable $e) { /* non-fatal */ }
             // Self-handled — don't also surface it as a manual update notice.
             $updated_skins = array_values(array_filter(
                 $updated_skins,
