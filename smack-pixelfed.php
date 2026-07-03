@@ -27,6 +27,10 @@ $sv_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                    ->fetchAll(PDO::FETCH_KEY_PAIR);
 sv_ensure_tables($pdo);
 $sv_on = sv_enabled($sv_settings);
+// GRAMOFSMACK-first: the two-way client is gated to carousel mode while we
+// prove it out, then widens to the other install modes. (core/header.php:41)
+$sv_mode = (string)($sv_settings['site_mode'] ?? 'photoblog');
+$sv_gram = ($sv_mode === 'carousel');
 
 // ── POST interactions (JSON) — follow / unfollow / like / reply ─────────────
 // CSRF is already enforced globally in core/auth-smack.php before we get here.
@@ -68,6 +72,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sspf_action'])) {
                 (string)($_POST['object'] ?? ''), (string)($_POST['actor'] ?? ''),
                 (string)($_POST['content'] ?? ''));
             break;
+
+        case 'unlike':
+            list($ok, $msg) = sv_unlike_remote($pdo, $sv_settings,
+                (string)($_POST['object'] ?? ''), (string)($_POST['actor'] ?? ''));
+            break;
+
+        case 'boost':
+            list($ok, $msg) = sv_boost_remote($pdo, $sv_settings, (string)($_POST['object'] ?? ''));
+            break;
+
+        case 'mark_read':
+            sv_mark_notifications_read($pdo);
+            $ok = true; $msg = ''; $extra = ['unread' => 0];
+            break;
     }
     echo json_encode(array_merge(['ok' => $ok, 'msg' => $msg], $extra), JSON_UNESCAPED_SLASHES);
     exit;
@@ -84,12 +102,45 @@ if (isset($_GET['ajax'])) {
     $panel = preg_replace('/[^a-z]/', '', (string)$_GET['ajax']);
 
     if ($panel === 'home') {
-        // Live crawl of the accounts the blog follows (accepted). Empty when
-        // off or when nothing is followed yet.
         if (!$sv_on) { echo json_encode(['ok' => true, 'items' => []]); exit; }
-        @set_time_limit(30);
-        $items = sv_home_feed($pdo, 6, 40);
+        // Real reader: the ingested inbound timeline (posts from accounts we
+        // follow, pushed to our inbox). Seed with a live crawl until inbound
+        // Creates accrue, so Home is never empty right after you follow someone.
+        $items = sv_home_timeline($pdo, 60);
+        if (!$items) { @set_time_limit(30); $items = sv_home_feed($pdo, 6, 40); }
         echo json_encode(['ok' => true, 'items' => $items], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    if ($panel === 'notifications') {
+        if (!$sv_on) { echo json_encode(['ok' => true, 'items' => [], 'unread' => 0]); exit; }
+        echo json_encode([
+            'ok'     => true,
+            'items'  => sv_notifications($pdo, 60),
+            'unread' => sv_unread_count($pdo),
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    if ($panel === 'local' || $panel === 'global') {
+        if (!$sv_on) { echo json_encode(['ok' => true, 'items' => []]); exit; }
+        // Discovery: a chosen instance's public timeline. Use the configured
+        // home instance, else the host of an account we already follow.
+        $host = trim((string)($sv_settings['smackverse_home_instance'] ?? ''));
+        if ($host === '') {
+            try {
+                $h = (string)$pdo->query("SELECT actor_url FROM snap_ap_following WHERE state='accepted' ORDER BY followed_at DESC LIMIT 1")->fetchColumn();
+                if ($h !== '') $host = parse_url($h, PHP_URL_HOST) ?: '';
+            } catch (Exception $e) { /* none yet */ }
+        }
+        $host = preg_replace('/[^a-z0-9.\-]/i', '', $host);
+        if ($host === '') {
+            echo json_encode(['ok' => true, 'items' => [],
+                'msg' => 'Follow someone (or set a home instance) and the ' . $panel . ' timeline lights up.']);
+            exit;
+        }
+        @set_time_limit(30);
+        echo json_encode(['ok' => true, 'items' => sv_public_timeline($host, $panel === 'local', 30)], JSON_UNESCAPED_SLASHES);
         exit;
     }
 
@@ -109,9 +160,11 @@ if (isset($_GET['ajax'])) {
                 . '" — check the handle (format: @user@host) or the server may be blocking us.']);
             exit;
         }
-        $posts = sv_fetch_gallery($actor, 36);
-        list($state, $row_id) = sv_following_state($pdo, $actor['id']);
         $is_self = ($actor['id'] === sv_actor_url($sv_settings));
+        // Own profile shows your WHOLE feed; a remote profile is capped so we
+        // don't hammer someone else's server (a "load more" is the future lift).
+        $posts = sv_fetch_gallery($actor, $is_self ? 500 : 36);
+        list($state, $row_id) = sv_following_state($pdo, $actor['id']);
         echo json_encode([
             'ok'        => true,
             'actor'     => $actor,
@@ -137,6 +190,8 @@ try {
     if ($sv_host !== '') $sv_handle = '@' . $sv_user . '@' . $sv_host;
 } catch (Throwable $e) { /* handle stays blank rather than break the page */ }
 
+$sv_unread = ($sv_on && $sv_gram) ? sv_unread_count($pdo) : 0;
+
 $page_title = "SMACKVERSE — Pixelfed";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
@@ -160,9 +215,18 @@ include 'core/sidebar.php';
         </div>
     <?php endif; ?>
 
+    <?php if (!$sv_gram): ?>
+        <div class="box">
+            <p>The SMACKVERSE client is <strong>GRAMOFSMACK-only</strong> for now while we prove it out — your
+               install mode is <strong><?php echo htmlspecialchars($sv_mode); ?></strong>. Federation itself works
+               in every mode from <a href="smack-smackverse.php">Federation</a>; the interactive client widens to
+               the other install modes soon.</p>
+        </div>
+    <?php else: ?>
     <div class="sspf-app"
          data-actor="<?php echo htmlspecialchars($sv_handle, ENT_QUOTES); ?>"
          data-enabled="<?php echo $sv_on ? '1' : '0'; ?>"
+         data-unread="<?php echo (int)$sv_unread; ?>"
          data-default-panel="home">
 
         <div class="sspf-topbar">
@@ -182,7 +246,7 @@ include 'core/sidebar.php';
                 <a data-panel="home" class="active"><span class="sspf-ico">&#8962;</span> Home</a>
                 <a data-panel="local"><span class="sspf-ico">&#9711;</span> Local</a>
                 <a data-panel="global"><span class="sspf-ico">&#9673;</span> Global</a>
-                <a data-panel="notifications"><span class="sspf-ico">&#9829;</span> Notifications</a>
+                <a data-panel="notifications"><span class="sspf-ico">&#9829;</span> Notifications<?php if ($sv_unread > 0): ?> <span class="sspf-badge"><?php echo (int)$sv_unread; ?></span><?php endif; ?></a>
                 <a data-panel="profile"><span class="sspf-ico">&#9673;</span> Profile</a>
             </nav>
 
@@ -231,6 +295,7 @@ include 'core/sidebar.php';
             </div>
         </div>
     </div>
+    <?php endif; ?>
 </div>
 
 <script src="assets/js/ss-pixelfed-client.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>

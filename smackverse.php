@@ -74,7 +74,7 @@ if (isset($_GET['appath'])) {
     $seg = explode('/', trim((string)$_GET['appath'], '/'));
     $_GET['ap'] = $seg[0] ?? '';
     if (($seg[0] ?? '') === 'note') {
-        $key = ['p' => 'post', 'i' => 'id', 'c' => 'comment'][$seg[1] ?? ''] ?? null;
+        $key = ['p' => 'post', 'i' => 'id', 'c' => 'comment', 'r' => 'reply'][$seg[1] ?? ''] ?? null;
         if ($key === null || !isset($seg[2])) sv_404();
         $_GET[$key] = $seg[2];
     }
@@ -115,7 +115,10 @@ switch ($ap) {
 
     case 'note':
         if ($method !== 'GET') sv_404();
-        if (isset($_GET['comment'])) {
+        if (isset($_GET['reply'])) {
+            // Dereferenceable Note for a durable outbound reply to a remote post.
+            $note = sv_outbound_reply_doc($pdo, (string)$_GET['reply'], $settings);
+        } elseif (isset($_GET['comment'])) {
             // Dereferenceable Note for a federated local comment (approved only).
             $cst = $pdo->prepare("SELECT * FROM snap_comments WHERE id = ? AND is_approved = 1 AND ap_source <> 'fediverse' LIMIT 1");
             $cst->execute([(int)$_GET['comment']]);

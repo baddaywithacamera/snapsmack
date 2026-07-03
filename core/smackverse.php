@@ -149,6 +149,75 @@ function sv_ensure_tables(PDO $pdo): void {
         try { $pdo->exec("ALTER TABLE snap_comments ADD COLUMN IF NOT EXISTS {$_col}"); }
         catch (Exception $e) { /* older MySQL without IF NOT EXISTS — ignore dup */ }
     }
+
+    // Reader / engagement (0.7.365): the two-way client. Mirrors of the
+    // canonical tables so they exist the instant SMACKVERSE runs, before a
+    // schema sync. See database/schema/snapsmack_canonical.sql for the notes.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_actors` (
+        `id`               int unsigned NOT NULL AUTO_INCREMENT,
+        `actor_url`        varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `handle`           varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `name`             varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `avatar_url`       varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `inbox_url`        varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `shared_inbox_url` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `summary`          text         COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `profile_url`      varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `fetched_at`       datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_ap_actor_cache` (`actor_url`(191))
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_notifications` (
+        `id`           int unsigned NOT NULL AUTO_INCREMENT,
+        `ntype`        enum('follow','like','reply','mention','boost') COLLATE utf8mb4_unicode_ci NOT NULL,
+        `actor_url`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `actor_handle` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `object_id`    varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `target_url`   varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `content`      text         COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `is_read`      tinyint(1)   NOT NULL DEFAULT '0',
+        `created_at`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_ap_notif` (`ntype`, `actor_url`(150), `object_id`(150)),
+        KEY `idx_ap_notif_read` (`is_read`, `created_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_timeline` (
+        `id`           int unsigned NOT NULL AUTO_INCREMENT,
+        `object_id`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `actor_url`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `actor_handle` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `content`      mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `media_json`   mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `url`          varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `in_reply_to`  varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `is_boost`     tinyint(1)   NOT NULL DEFAULT '0',
+        `boosted_by`   varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `source`       enum('home','local','global') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'home',
+        `published`    datetime     DEFAULT NULL,
+        `fetched_at`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_ap_tl` (`object_id`(191)),
+        KEY `idx_ap_tl_src` (`source`, `published`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_outbound_replies` (
+        `id`           int unsigned NOT NULL AUTO_INCREMENT,
+        `token`        varchar(40)  COLLATE utf8mb4_unicode_ci NOT NULL,
+        `in_reply_to`  varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `to_actor_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `to_handle`    varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `content`      text         COLLATE utf8mb4_unicode_ci NOT NULL,
+        `published`    datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_ap_reply_token` (`token`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_outbound_likes` (
+        `id`         int unsigned NOT NULL AUTO_INCREMENT,
+        `object_id`  varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `like_id`    varchar(600) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `created_at` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_ap_out_like` (`object_id`(191))
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 }
 
 // ─── Keys ────────────────────────────────────────────────────────────────────
@@ -648,6 +717,104 @@ function sv_target_image_id(PDO $pdo, array $target): int {
  * actor returned by sv_verify_signature(); its id MUST equal the
  * activity's actor (checked here). Returns an HTTP status code.
  */
+// ─── Reader / engagement ingest (0.7.365) ───────────────────────────────────
+
+/** Upsert a remote actor doc into the render cache (avatar/name/handle/inbox). */
+function sv_cache_actor(PDO $pdo, array $actor_doc): void {
+    $url = (string)($actor_doc['id'] ?? '');
+    if ($url === '') return;
+    $host   = parse_url($url, PHP_URL_HOST) ?: '';
+    $user   = (string)($actor_doc['preferredUsername'] ?? '');
+    $handle = ($user !== '' && $host !== '') ? $user . '@' . $host : '';
+    $avatar = '';
+    $icon = $actor_doc['icon'] ?? null;
+    if (is_array($icon))      $avatar = (string)($icon['url'] ?? ($icon[0]['url'] ?? ''));
+    elseif (is_string($icon)) $avatar = $icon;
+    $shared = $actor_doc['endpoints']['sharedInbox'] ?? null;
+    try {
+        $pdo->prepare(
+            "INSERT INTO snap_ap_actors
+                (actor_url, handle, name, avatar_url, inbox_url, shared_inbox_url, summary, profile_url, fetched_at)
+             VALUES (?,?,?,?,?,?,?,?,NOW())
+             ON DUPLICATE KEY UPDATE handle=VALUES(handle), name=VALUES(name), avatar_url=VALUES(avatar_url),
+                 inbox_url=VALUES(inbox_url), shared_inbox_url=VALUES(shared_inbox_url),
+                 summary=VALUES(summary), profile_url=VALUES(profile_url), fetched_at=NOW()"
+        )->execute([
+            substr($url, 0, 500), substr($handle, 0, 190),
+            substr((string)($actor_doc['name'] ?? $user), 0, 255), substr($avatar, 0, 600),
+            substr((string)($actor_doc['inbox'] ?? ''), 0, 500),
+            $shared ? substr((string)$shared, 0, 500) : null,
+            (string)($actor_doc['summary'] ?? ''),
+            substr((string)($actor_doc['url'] ?? $url), 0, 600),
+        ]);
+    } catch (Exception $e) { /* table may lag on a fresh install */ }
+}
+
+/** Record an inbound engagement notification (deduped on type+actor+object). */
+function sv_notify(PDO $pdo, string $ntype, string $actor_url, string $handle = '',
+                   ?string $object_id = null, ?string $target_url = null, ?string $content = null): void {
+    if ($actor_url === '') return;
+    try {
+        $pdo->prepare(
+            "INSERT IGNORE INTO snap_ap_notifications
+                (ntype, actor_url, actor_handle, object_id, target_url, content)
+             VALUES (?,?,?,?,?,?)"
+        )->execute([
+            $ntype, substr($actor_url, 0, 500), substr($handle, 0, 190),
+            $object_id !== null ? substr($object_id, 0, 500) : null,
+            $target_url !== null ? substr($target_url, 0, 500) : null,
+            $content !== null ? mb_substr($content, 0, 2000) : null,
+        ]);
+    } catch (Exception $e) { /* table may lag on a fresh install */ }
+}
+
+/** True when the blog follows this actor (accepted) — gates timeline ingest. */
+function sv_is_following(PDO $pdo, string $actor_url): bool {
+    if ($actor_url === '') return false;
+    try {
+        $s = $pdo->prepare("SELECT 1 FROM snap_ap_following WHERE actor_url = ? AND state = 'accepted' LIMIT 1");
+        $s->execute([$actor_url]);
+        return (bool)$s->fetchColumn();
+    } catch (Exception $e) { return false; }
+}
+
+/** Ingest a remote Note into the home timeline (image posts only, de-duped). */
+function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $handle = '',
+                            bool $is_boost = false, ?string $boosted_by = null): void {
+    $otype = $obj['type'] ?? '';
+    if ($otype !== 'Note' && $otype !== 'Image') return;
+    $object_id = (string)($obj['id'] ?? '');
+    if ($object_id === '') return;
+
+    $images = [];
+    foreach (($obj['attachment'] ?? []) as $att) {
+        if (!is_array($att)) continue;
+        $mt = (string)($att['mediaType'] ?? '');
+        if ($mt !== '' && stripos($mt, 'image/') !== 0) continue;
+        $u = $att['url'] ?? '';
+        if (is_array($u)) $u = $u['href'] ?? ($u[0]['href'] ?? '');
+        if ((string)$u !== '') $images[] = (string)$u;
+    }
+    if (!$images) return;   // photo client — skip text-only
+
+    $pub = isset($obj['published']) ? date('Y-m-d H:i:s', strtotime((string)$obj['published'])) : null;
+    try {
+        $pdo->prepare(
+            "INSERT INTO snap_ap_timeline
+                (object_id, actor_url, actor_handle, content, media_json, url, in_reply_to, is_boost, boosted_by, source, published)
+             VALUES (?,?,?,?,?,?,?,?,?,'home',?)
+             ON DUPLICATE KEY UPDATE content=VALUES(content), media_json=VALUES(media_json), fetched_at=NOW()"
+        )->execute([
+            substr($object_id, 0, 500), substr($actor_url, 0, 500), substr($handle, 0, 190),
+            mb_substr(trim(strip_tags((string)($obj['content'] ?? ''))), 0, 4000),
+            json_encode($images, JSON_UNESCAPED_SLASHES),
+            substr((string)($obj['url'] ?? $object_id), 0, 600),
+            isset($obj['inReplyTo']) && is_string($obj['inReplyTo']) ? substr($obj['inReplyTo'], 0, 500) : null,
+            $is_boost ? 1 : 0, $boosted_by ? substr($boosted_by, 0, 500) : null, $pub,
+        ]);
+    } catch (Exception $e) { /* table may lag on a fresh install */ }
+}
+
 function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $actor_doc): int {
     $actor_id = $actor_doc['id'] ?? '';
     $act_actor = is_array($activity['actor'] ?? null)
@@ -698,6 +865,8 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 sv_queue_delivery($pdo, $inbox, $create_json);
             }
         }
+        sv_cache_actor($pdo, $actor_doc);
+        sv_notify($pdo, 'follow', $actor_id, $handle, null, sv_actor_url($settings), null);
         return 202;
     }
 
@@ -750,39 +919,63 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 $pdo->prepare("INSERT IGNORE INTO snap_ap_likes (target_type, target_id, actor_url) VALUES (?, ?, ?)")
                     ->execute([$t['type'], (int)$t['id'], $actor_id]);
             } catch (Exception $e) { /* table may lag on a fresh install */ }
+            $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
+            sv_cache_actor($pdo, $actor_doc);
+            sv_notify($pdo, 'like', $actor_id, $handle, (string)$obj, (string)$obj, null);
         }
         return 202;
     }
 
     if ($type === 'Create') {
-        // A federated REPLY to one of our posts → a comment (into moderation).
         $obj = $activity['object'] ?? [];
-        if (!is_array($obj) || ($obj['type'] ?? '') !== 'Note') return 202;
-        $in_reply = $obj['inReplyTo'] ?? '';
-        if (!is_string($in_reply) || $in_reply === '') return 202;  // not a reply to us
-        $target = sv_resolve_target($in_reply);
-        if ($target === null) return 202;
-        $img_id = sv_target_image_id($pdo, $target);
-        if ($img_id <= 0) return 202;
+        if (!is_array($obj) || (($obj['type'] ?? '') !== 'Note' && ($obj['type'] ?? '') !== 'Image')) return 202;
+        $handle   = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
+        $note_id  = (string)($obj['id'] ?? '');
+        $in_reply = is_string($obj['inReplyTo'] ?? null) ? (string)$obj['inReplyTo'] : '';
 
-        $note_id = (string)($obj['id'] ?? '');
-        if ($note_id === '') return 202;
-        // Sanitize to plain text — we never render remote HTML.
-        $text = trim(html_entity_decode(strip_tags((string)($obj['content'] ?? '')), ENT_QUOTES, 'UTF-8'));
-        if ($text === '') return 202;
-        if (mb_strlen($text) > 5000) $text = mb_substr($text, 0, 5000);
-        $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
+        // (a) A reply to one of OUR posts → moderation comment + a notification.
+        $target = ($in_reply !== '') ? sv_resolve_target($in_reply) : null;
+        $img_id = $target ? sv_target_image_id($pdo, $target) : 0;
+        if ($img_id > 0) {
+            if ($note_id !== '') {
+                $text = trim(html_entity_decode(strip_tags((string)($obj['content'] ?? '')), ENT_QUOTES, 'UTF-8'));
+                if ($text !== '') {
+                    if (mb_strlen($text) > 5000) $text = mb_substr($text, 0, 5000);
+                    try {
+                        // is_approved = 0 → normal comment moderation queue.
+                        $pdo->prepare(
+                            "INSERT INTO snap_comments
+                                (img_id, comment_author, comment_url, comment_text, comment_date,
+                                 is_approved, ap_source, ap_actor_url, ap_object_id, ap_in_reply_to)
+                             VALUES (?, ?, ?, ?, NOW(), 0, 'fediverse', ?, ?, ?)
+                             ON DUPLICATE KEY UPDATE comment_text = VALUES(comment_text)"
+                        )->execute([$img_id, substr($handle, 0, 100), $actor_id, $text, $actor_id, $note_id, $in_reply]);
+                    } catch (Exception $e) { /* dup or column lag — ignore */ }
+                    sv_cache_actor($pdo, $actor_doc);
+                    sv_notify($pdo, 'reply', $actor_id, $handle, $note_id, $in_reply, $text);
+                }
+            }
+            return 202;
+        }
 
-        try {
-            // is_approved = 0 → lands in the normal comment moderation queue.
-            $pdo->prepare(
-                "INSERT INTO snap_comments
-                    (img_id, comment_author, comment_url, comment_text, comment_date,
-                     is_approved, ap_source, ap_actor_url, ap_object_id, ap_in_reply_to)
-                 VALUES (?, ?, ?, ?, NOW(), 0, 'fediverse', ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE comment_text = VALUES(comment_text)"
-            )->execute([$img_id, substr($handle, 0, 100), $actor_id, $text, $actor_id, $note_id, $in_reply]);
-        } catch (Exception $e) { /* dup or column lag — ignore */ }
+        // (b) Not a reply to us, but it @-mentions us → a mention notification.
+        $mentions_us = false;
+        foreach (($obj['tag'] ?? []) as $tg) {
+            if (is_array($tg) && ($tg['type'] ?? '') === 'Mention' && ($tg['href'] ?? '') === sv_actor_url($settings)) {
+                $mentions_us = true; break;
+            }
+        }
+        if ($mentions_us && $note_id !== '') {
+            sv_cache_actor($pdo, $actor_doc);
+            sv_notify($pdo, 'mention', $actor_id, $handle, $note_id, sv_actor_url($settings),
+                      trim(strip_tags((string)($obj['content'] ?? ''))));
+        }
+
+        // (c) A normal post from an account we FOLLOW → the home timeline (reader).
+        if (sv_is_following($pdo, $actor_id)) {
+            sv_cache_actor($pdo, $actor_doc);
+            sv_ingest_timeline($pdo, $obj, $actor_id, $handle);
+        }
         return 202;
     }
 
@@ -803,7 +996,33 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         return 202;
     }
 
-    // Everything else (Announce, etc.): acknowledged, not stored.
+    if ($type === 'Announce') {
+        // A boost (reblog). $object is the boosted post (usually a URL).
+        $obj    = $activity['object'] ?? '';
+        $obj_id = is_array($obj) ? (string)($obj['id'] ?? '') : (string)$obj;
+        if ($obj_id !== '') {
+            $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
+            // Boost of OUR post → notification.
+            $t = sv_resolve_target($obj_id);
+            if ($t && $t['type'] !== 'comment') {
+                sv_cache_actor($pdo, $actor_doc);
+                sv_notify($pdo, 'boost', $actor_id, $handle, $obj_id, $obj_id, null);
+            }
+            // Boost BY someone we follow → surface the boosted post in home.
+            if (sv_is_following($pdo, $actor_id) && stripos($obj_id, 'https://') === 0) {
+                $boosted = sv_fetch_ap($obj_id);
+                if (is_array($boosted)) {
+                    $battr = is_array($boosted['attributedTo'] ?? null)
+                        ? (string)($boosted['attributedTo']['id'] ?? '')
+                        : (string)($boosted['attributedTo'] ?? '');
+                    sv_ingest_timeline($pdo, $boosted, $battr !== '' ? $battr : $actor_id, '', true, $actor_id);
+                }
+            }
+        }
+        return 202;
+    }
+
+    // Everything else: acknowledged, not stored.
     return 202;
 }
 
@@ -1174,8 +1393,11 @@ function sv_crawl_outbox(string $outbox_url, int $max = 36): array {
     // Some servers inline orderedItems directly on the shell (no `first`).
     $page = $page_url !== '' ? sv_fetch_ap($page_url) : $shell;
 
+    // Walk enough pages to satisfy $max (our outbox pages are 20 units each);
+    // the loop still stops the moment the outbox runs out (next=null).
     $guard = 0;
-    while (is_array($page) && count($posts) < $max && $guard < 6) {
+    $max_pages = max(4, (int)ceil($max / 15) + 2);
+    while (is_array($page) && count($posts) < $max && $guard < $max_pages) {
         $guard++;
         $items = $page['orderedItems'] ?? ($page['items'] ?? []);
         if (is_array($items)) {
@@ -1212,25 +1434,85 @@ function sv_like_remote(PDO $pdo, array $settings, string $object_id, string $ac
     $inbox = (string)$actor['inbox'];
     if (!sv_url_is_public($inbox)) return [false, 'That account inbox is not a public URL.'];
 
+    $like_id = sv_actor_url($settings) . '#like-' . bin2hex(random_bytes(8));
     $like = [
         '@context' => 'https://www.w3.org/ns/activitystreams',
-        'id'       => sv_actor_url($settings) . '#like-' . bin2hex(random_bytes(8)),
+        'id'       => $like_id,
         'type'     => 'Like',
         'actor'    => sv_actor_url($settings),
         'object'   => $object_id,
     ];
     sv_queue_delivery($pdo, $inbox, json_encode($like, JSON_UNESCAPED_SLASHES));
     sv_process_deliveries($pdo, $settings, 10);
+    try {
+        $pdo->prepare("INSERT INTO snap_ap_outbound_likes (object_id, like_id) VALUES (?,?)
+                       ON DUPLICATE KEY UPDATE like_id=VALUES(like_id)")
+            ->execute([substr($object_id, 0, 500), substr($like_id, 0, 600)]);
+    } catch (Exception $e) { /* table may lag */ }
     return [true, 'Applause sent.'];
 }
 
+/** Undo a remote applause (Like) — sends Undo{Like} and drops the state row. */
+function sv_unlike_remote(PDO $pdo, array $settings, string $object_id, string $actor_url): array {
+    $object_id = trim($object_id);
+    $actor_url = trim($actor_url);
+    $s = $pdo->prepare("SELECT like_id FROM snap_ap_outbound_likes WHERE object_id = ? LIMIT 1");
+    $s->execute([$object_id]);
+    $like_id = (string)($s->fetchColumn() ?: '');
+    if ($like_id === '') return [false, 'You have not applauded that.'];
+    $actor = sv_fetch_ap($actor_url);
+    if (!is_array($actor) || empty($actor['inbox'])) return [false, 'Could not reach that account.'];
+    $inbox = (string)$actor['inbox'];
+    if (!sv_url_is_public($inbox)) return [false, 'That account inbox is not a public URL.'];
+    $undo = [
+        '@context' => 'https://www.w3.org/ns/activitystreams',
+        'id'       => $like_id . '#undo-' . bin2hex(random_bytes(6)),
+        'type'     => 'Undo',
+        'actor'    => sv_actor_url($settings),
+        'object'   => ['id' => $like_id, 'type' => 'Like', 'actor' => sv_actor_url($settings), 'object' => $object_id],
+    ];
+    sv_queue_delivery($pdo, $inbox, json_encode($undo, JSON_UNESCAPED_SLASHES));
+    sv_process_deliveries($pdo, $settings, 10);
+    $pdo->prepare("DELETE FROM snap_ap_outbound_likes WHERE object_id = ?")->execute([$object_id]);
+    return [true, 'Applause withdrawn.'];
+}
+
+/** Has the blog applauded this remote object? (like-state for the UI) */
+function sv_has_liked(PDO $pdo, string $object_id): bool {
+    if ($object_id === '') return false;
+    try {
+        $s = $pdo->prepare("SELECT 1 FROM snap_ap_outbound_likes WHERE object_id = ? LIMIT 1");
+        $s->execute([$object_id]);
+        return (bool)$s->fetchColumn();
+    } catch (Exception $e) { return false; }
+}
+
+/** Boost (Announce) a remote post to the blog's followers. */
+function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
+    $object_id = trim($object_id);
+    if ($object_id === '' || stripos($object_id, 'https://') !== 0) return [false, 'That post has no usable id.'];
+    $inboxes = sv_follower_inboxes($pdo);
+    if (!$inboxes) return [false, 'No followers to boost to yet.'];
+    $announce = [
+        '@context'  => 'https://www.w3.org/ns/activitystreams',
+        'id'        => sv_actor_url($settings) . '#boost-' . bin2hex(random_bytes(8)),
+        'type'      => 'Announce',
+        'actor'     => sv_actor_url($settings),
+        'published' => gmdate('Y-m-d\TH:i:s\Z'),
+        'to'        => ['https://www.w3.org/ns/activitystreams#Public'],
+        'cc'        => [sv_followers_url($settings)],
+        'object'    => $object_id,
+    ];
+    $json = json_encode($announce, JSON_UNESCAPED_SLASHES);
+    foreach ($inboxes as $inbox) sv_queue_delivery($pdo, $inbox, $json);
+    sv_process_deliveries($pdo, $settings, 20);
+    return [true, 'Boosted to your followers.'];
+}
+
 /**
- * Reply to a remote object as the blog actor: a public Note inReplyTo the
- * target, mentioning + cc'ing its author, delivered to their inbox. Author
- * inbox is re-resolved server-side. The Note is tokenised under this actor and
- * delivered INLINE (most servers store the inbox copy). CAVEAT: no local row
- * is kept, so the id is not dereferenceable afterward — a future phase gives
- * fediverse replies a home table + a real permalink.
+ * Reply to a remote object as the blog actor. The reply gets a DURABLE row and
+ * a real permalink (/ap/note/r/<token>) so it dereferences, threads, and the
+ * other person can reply back — retiring the old fire-and-forget id.
  *
  * @return array [bool ok, string message]
  */
@@ -1249,29 +1531,20 @@ function sv_reply_remote(PDO $pdo, array $settings, string $object_id, string $a
     $their_id     = (string)$actor['id'];
     $their_user   = (string)($actor['preferredUsername'] ?? '');
     $their_handle = $their_user . '@' . (parse_url($their_id, PHP_URL_HOST) ?: '');
-    $now          = gmdate('Y-m-d\TH:i:s\Z');
-    $note_id      = sv_actor_url($settings) . '#reply-' . bin2hex(random_bytes(10));
-    $safe         = nl2br(htmlspecialchars($content, ENT_QUOTES, 'UTF-8'));
 
-    $note = [
-        'id'           => $note_id,
-        'type'         => 'Note',
-        'attributedTo' => sv_actor_url($settings),
-        'inReplyTo'    => $object_id,
-        'published'    => $now,
-        'content'      => '<p><span class="h-card"><a href="' . htmlspecialchars($their_id, ENT_QUOTES)
-                          . '">@' . htmlspecialchars($their_user, ENT_QUOTES) . '</a></span> ' . $safe . '</p>',
-        'to'           => ['https://www.w3.org/ns/activitystreams#Public'],
-        'cc'           => [$their_id, sv_followers_url($settings)],
-        'tag'          => [[
-            'type' => 'Mention',
-            'href' => $their_id,
-            'name' => '@' . $their_handle,
-        ]],
-    ];
+    $token = bin2hex(random_bytes(12));
+    try {
+        $pdo->prepare(
+            "INSERT INTO snap_ap_outbound_replies (token, in_reply_to, to_actor_url, to_handle, content)
+             VALUES (?,?,?,?,?)"
+        )->execute([$token, substr($object_id, 0, 500), substr($their_id, 0, 500), substr($their_handle, 0, 190), $content]);
+    } catch (Exception $e) { return [false, 'Could not save the reply.']; }
+
+    $note = sv_outbound_reply_doc($pdo, $token, $settings);
+    if ($note === null) return [false, 'Could not build the reply.'];
     $create = [
         '@context' => 'https://www.w3.org/ns/activitystreams',
-        'id'       => $note_id . '/activity',
+        'id'       => $note['id'] . '/activity',
         'type'     => 'Create',
         'actor'    => sv_actor_url($settings),
         'to'       => $note['to'],
@@ -1281,6 +1554,133 @@ function sv_reply_remote(PDO $pdo, array $settings, string $object_id, string $a
     sv_queue_delivery($pdo, $inbox, json_encode($create, JSON_UNESCAPED_SLASHES));
     sv_process_deliveries($pdo, $settings, 10);
     return [true, 'Reply sent to @' . $their_handle . '.'];
+}
+
+/** Build the dereferenceable AP Note for a stored outbound reply, or null. */
+function sv_outbound_reply_doc(PDO $pdo, string $token, array $settings): ?array {
+    if (!preg_match('/^[a-f0-9]{8,48}$/', $token)) return null;
+    $s = $pdo->prepare("SELECT * FROM snap_ap_outbound_replies WHERE token = ? LIMIT 1");
+    $s->execute([$token]);
+    $r = $s->fetch(PDO::FETCH_ASSOC);
+    if (!$r) return null;
+    $their_id   = (string)$r['to_actor_url'];
+    $their_user = explode('@', (string)$r['to_handle'])[0];
+    $safe       = nl2br(htmlspecialchars((string)$r['content'], ENT_QUOTES, 'UTF-8'));
+    $permalink  = sv_base($settings) . 'ap/note/r/' . $r['token'];
+    return [
+        '@context'     => 'https://www.w3.org/ns/activitystreams',
+        'id'           => $permalink,
+        'type'         => 'Note',
+        'attributedTo' => sv_actor_url($settings),
+        'inReplyTo'    => (string)$r['in_reply_to'],
+        'published'    => gmdate('Y-m-d\TH:i:s\Z', strtotime((string)$r['published'])),
+        'url'          => $permalink,
+        'content'      => '<p><span class="h-card"><a href="' . htmlspecialchars($their_id, ENT_QUOTES)
+                          . '">@' . htmlspecialchars($their_user, ENT_QUOTES) . '</a></span> ' . $safe . '</p>',
+        'to'           => ['https://www.w3.org/ns/activitystreams#Public'],
+        'cc'           => [$their_id, sv_followers_url($settings)],
+        'tag'          => [['type' => 'Mention', 'href' => $their_id, 'name' => '@' . (string)$r['to_handle']]],
+    ];
+}
+
+// ─── Reader / engagement queries (for the client) ───────────────────────────
+
+/** Recent inbound notifications joined with the actor cache, newest first. */
+function sv_notifications(PDO $pdo, int $limit = 60): array {
+    try {
+        $s = $pdo->prepare(
+            "SELECT n.*, a.name AS actor_name, a.avatar_url, a.profile_url
+             FROM snap_ap_notifications n
+             LEFT JOIN snap_ap_actors a ON a.actor_url = n.actor_url
+             ORDER BY n.created_at DESC LIMIT " . (int)$limit
+        );
+        $s->execute();
+        return $s->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Exception $e) { return []; }
+}
+
+/** Count of unread notifications (badge). */
+function sv_unread_count(PDO $pdo): int {
+    try { return (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_notifications WHERE is_read = 0")->fetchColumn(); }
+    catch (Exception $e) { return 0; }
+}
+
+/** Mark all notifications read. */
+function sv_mark_notifications_read(PDO $pdo): void {
+    try { $pdo->exec("UPDATE snap_ap_notifications SET is_read = 1 WHERE is_read = 0"); }
+    catch (Exception $e) { /* table may lag */ }
+}
+
+/** Home reader from the ingested timeline, newest first (client post shape). */
+function sv_home_timeline(PDO $pdo, int $limit = 60): array {
+    try {
+        $s = $pdo->prepare(
+            "SELECT t.*, a.name AS actor_name, a.avatar_url
+             FROM snap_ap_timeline t
+             LEFT JOIN snap_ap_actors a ON a.actor_url = t.actor_url
+             WHERE t.source = 'home'
+             ORDER BY COALESCE(t.published, t.fetched_at) DESC LIMIT " . (int)$limit
+        );
+        $s->execute();
+        $rows = $s->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Exception $e) { return []; }
+    $out = [];
+    foreach ($rows as $r) {
+        $imgs = json_decode((string)$r['media_json'], true);
+        if (!is_array($imgs) || !$imgs) continue;
+        $out[] = [
+            'id' => $r['object_id'], 'url' => $r['url'], 'published' => $r['published'],
+            'text' => $r['content'], 'images' => $imgs, 'count' => count($imgs),
+            'is_boost' => (int)$r['is_boost'],
+            'author' => [
+                'handle' => $r['actor_handle'], 'name' => $r['actor_name'] ?: $r['actor_handle'],
+                'avatar' => $r['avatar_url'], 'id' => $r['actor_url'],
+                'host'   => parse_url((string)$r['actor_url'], PHP_URL_HOST) ?: '',
+            ],
+        ];
+    }
+    return $out;
+}
+
+/** Local/Global discovery: a chosen instance's public timeline via REST. */
+function sv_public_timeline(string $host, bool $local, int $limit = 30): array {
+    $host = trim($host);
+    if ($host === '') return [];
+    $base = 'https://' . $host;
+    $q = 'limit=' . max(1, min($limit, 40)) . '&only_media=true' . ($local ? '&local=true' : '');
+    $rows = sv_fetch_json($base . '/api/pixelfed/v1/timelines/public?' . $q);
+    if (!is_array($rows) || !$rows) $rows = sv_fetch_json($base . '/api/v1/timelines/public?' . $q);
+    if (!is_array($rows)) return [];
+    $out = [];
+    foreach ($rows as $st) {
+        if (!is_array($st)) continue;
+        $imgs = [];
+        foreach (($st['media_attachments'] ?? []) as $m) {
+            if (is_array($m) && ($m['type'] ?? '') === 'image') {
+                $u = (string)($m['url'] ?? ($m['preview_url'] ?? '')); if ($u !== '') $imgs[] = $u;
+            }
+        }
+        if (!$imgs) continue;
+        $acct = is_array($st['account'] ?? null) ? $st['account'] : [];
+        $out[] = [
+            'id'        => (string)($st['uri'] ?? ($st['url'] ?? '')),
+            'url'       => (string)($st['url'] ?? ($st['uri'] ?? '')),
+            'published' => (string)($st['created_at'] ?? ''),
+            'text'      => (isset($st['content_text']) && $st['content_text'] !== '')
+                            ? (string)$st['content_text']
+                            : trim(strip_tags((string)($st['content'] ?? ''))),
+            'images'    => $imgs, 'count' => count($imgs),
+            'author'    => [
+                'handle' => (string)($acct['acct'] ?? ''),
+                'name'   => (string)($acct['display_name'] ?? ($acct['username'] ?? '')),
+                'avatar' => (string)($acct['avatar'] ?? ''),
+                'id'     => (string)($acct['url'] ?? ''),
+                'host'   => parse_url((string)($acct['url'] ?? ''), PHP_URL_HOST) ?: $host,
+            ],
+        ];
+        if (count($out) >= $limit) break;
+    }
+    return $out;
 }
 
 /**
@@ -1504,12 +1904,15 @@ function sv_fedi_bake_url(array $img, array $settings): ?string {
  *   2. f_ legacy frame bake (older convention), 3. raw file at full res.
  * focalPoint ships only with the raw file — the bakes ARE the crop.
  */
-function sv_image_attachment(array $img, array $settings, string $alt = ''): array {
+function sv_image_attachment(array $img, array $settings, string $alt = '', bool $derive = true): array {
     $bake  = sv_fedi_bake_url($img, $settings);
     $frame = $bake ?? sv_frame_url($img, $settings);
     $url   = $frame ?? (sv_base($settings) . ltrim($img['img_file'] ?? '', '/'));
     $type  = $frame ? 'image/jpeg' : sv_media_type($img['img_file'] ?? '');
-    if ($alt === '') {
+    // $derive=false lets a carousel pass a per-image alt (or none) WITHOUT the
+    // description fallback — otherwise every frame of a post whose members all
+    // carry the same caption gets that whole caption repeated as its alt text.
+    if ($alt === '' && $derive) {
         $alt = trim($img['img_title'] ?? '');
         if ($alt === '') $alt = trim($img['img_description'] ?? '');
     }
@@ -1585,8 +1988,14 @@ function sv_note_for_image(PDO $pdo, array $img, array $settings): array {
 
     $title = trim($img['img_title'] ?? '');
     $desc  = trim($img['img_description'] ?? '');
-    $content = '<p><a href="' . htmlspecialchars($permalink) . '">'
-             . htmlspecialchars($title !== '' ? $title : 'Untitled') . '</a></p>';
+    // No title → no caption line. Never federate the literal word "Untitled"
+    // (Pixelfed posts have no titles anyway — an untitled post reads as a clean
+    // image + whatever caption/tags exist).
+    $content = '';
+    if ($title !== '') {
+        $content .= '<p><a href="' . htmlspecialchars($permalink) . '">'
+                  . htmlspecialchars($title) . '</a></p>';
+    }
     if ($desc !== '') {
         $content .= '<p>' . nl2br(htmlspecialchars($desc)) . '</p>';
     }
@@ -1649,8 +2058,12 @@ function sv_note_for_post(PDO $pdo, array $post, array $settings): ?array {
 
     $title = trim($post['title'] ?? '');
     $desc  = trim($post['description'] ?? '');
-    $content = '<p><a href="' . htmlspecialchars($permalink) . '">'
-             . htmlspecialchars($title !== '' ? $title : 'Untitled') . '</a></p>';
+    // No title → no caption line. Never federate the literal word "Untitled".
+    $content = '';
+    if ($title !== '') {
+        $content .= '<p><a href="' . htmlspecialchars($permalink) . '">'
+                  . htmlspecialchars($title) . '</a></p>';
+    }
     if ($desc !== '') {
         $content .= '<p>' . nl2br(htmlspecialchars($desc)) . '</p>';
     }
@@ -1682,7 +2095,11 @@ function sv_note_for_post(PDO $pdo, array $post, array $settings): ?array {
     foreach ($images as $im) {
         // Prefer the baked f_ frame (elegance) + per-image focalPoint; the
         // sv_post_images query carries img_focus_x/y for the focal crop.
-        $attachments[] = sv_image_attachment($im, $settings);
+        // Per-image alt only (this image's own title) — NEVER the shared post
+        // caption, or every carousel frame repeats the whole essay. derive=false
+        // stops the description fallback.
+        $imAlt = trim($im['img_title'] ?? '');
+        $attachments[] = sv_image_attachment($im, $settings, $imAlt, false);
     }
 
     // Hashtags: union of member images' tags (GRAM stores tags per image).
