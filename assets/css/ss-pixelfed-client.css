@@ -1,0 +1,170 @@
+/*
+ * SNAPSMACK — SMACKVERSE Pixelfed Client (faithful pixelfed.ca look)
+ * SNAPSMACK_EOF_HEADER — last non-empty line MUST be the CSS EOF marker
+ *   (five equals, space, the words SNAPSMACK EOF, space, five equals) wrapped
+ *   as a CSS comment. Missing/different = truncated. Restore before saving.
+ * Scoped entirely under .sspf-app so it never bleeds into admin chrome.
+ * Theming is CSS-variable driven; light/dark is flipped by data-theme on the
+ * root (.sspf-app), persisted client-side in ss-pixelfed-client.js.
+ */
+
+/* ── Palette: geometry is Pixelfed-exact, COLOURS are borrowed from the active
+   admin skin's colour variables (assets/adminthemes/<theme>/…colours….css), so
+   the client always matches whatever admin theme is live — no separate theme,
+   no light/dark toggle. Fallbacks keep it sane if a theme omits a variable. ── */
+.sspf-app {
+    --pf-bg:        var(--bg-primary, #0b0b0f);
+    --pf-surface:   var(--bg-panel, var(--bg-secondary, #16161c));
+    --pf-surface-2: var(--bg-hover, var(--bg-elevated, #1d1d25));
+    --pf-border:    var(--border, #2a2a34);
+    --pf-text:      var(--text-primary, #e8e8ef);
+    --pf-muted:     var(--text-secondary, var(--text-muted, #9a9aa8));
+    --pf-accent:    var(--accent, #6366f1);
+    --pf-accent-2:  var(--accent-primary, var(--heat, var(--accent, #a855f7)));
+    --pf-danger:    var(--danger, #ef4444);
+    --pf-radius:    14px;
+    --pf-shadow:    0 1px 3px rgba(0,0,0,.4);
+
+    color: var(--pf-text);
+    background: var(--pf-bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    min-height: 70vh;
+    border-radius: var(--pf-radius);
+    overflow: hidden;
+}
+
+/* ── Top bar: logo · search · theme toggle · actor ── */
+.sspf-topbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 18px;
+    background: var(--pf-surface);
+    border-bottom: 1px solid var(--pf-border);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+.sspf-logo {
+    font-weight: 800;
+    font-size: 1.05rem;
+    letter-spacing: .5px;
+    background: linear-gradient(90deg, var(--pf-accent), var(--pf-accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    white-space: nowrap;
+}
+.sspf-search {
+    flex: 1;
+    max-width: 460px;
+}
+.sspf-search input {
+    width: 100%;
+    padding: 9px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--pf-border);
+    background: var(--pf-surface-2);
+    color: var(--pf-text);
+    font-size: .9rem;
+    outline: none;
+}
+.sspf-search input:focus { border-color: var(--pf-accent); }
+.sspf-topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.sspf-actor { font-size: .85rem; color: var(--pf-muted); white-space: nowrap; }
+
+/* ── Body: left nav · content pane ── */
+.sspf-body { display: flex; align-items: flex-start; }
+.sspf-nav {
+    width: 210px;
+    flex-shrink: 0;
+    padding: 16px 10px;
+    border-right: 1px solid var(--pf-border);
+    background: var(--pf-surface);
+    min-height: 60vh;
+}
+.sspf-nav a {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    color: var(--pf-text);
+    text-decoration: none;
+    font-size: .95rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+.sspf-nav a .sspf-ico { width: 20px; text-align: center; opacity: .85; }
+.sspf-nav a:hover { background: var(--pf-surface-2); }
+.sspf-nav a.active { background: var(--pf-surface-2); color: var(--pf-accent); }
+.sspf-nav a.active .sspf-ico { opacity: 1; }
+
+.sspf-content { flex: 1; padding: 22px; min-width: 0; }
+.sspf-panel { display: none; }
+.sspf-panel.active { display: block; }
+.sspf-panel-title { font-size: 1.15rem; font-weight: 700; margin: 0 0 16px; }
+
+/* ── Status / empty / loading states ── */
+.sspf-note {
+    background: var(--pf-surface);
+    border: 1px dashed var(--pf-border);
+    border-radius: var(--pf-radius);
+    padding: 26px;
+    text-align: center;
+    color: var(--pf-muted);
+    font-size: .92rem;
+}
+.sspf-note strong { color: var(--pf-text); }
+
+/* ── Status card (post) — pixelfed feed card ── */
+.sspf-card {
+    background: var(--pf-surface);
+    border: 1px solid var(--pf-border);
+    border-radius: var(--pf-radius);
+    box-shadow: var(--pf-shadow);
+    margin: 0 auto 22px;
+    max-width: 560px;
+    overflow: hidden;
+}
+.sspf-card-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+.sspf-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--pf-surface-2); object-fit: cover; flex-shrink: 0; }
+.sspf-card-user { font-weight: 600; font-size: .9rem; }
+.sspf-card-sub { color: var(--pf-muted); font-size: .78rem; }
+.sspf-card-media { width: 100%; display: block; background: #000; aspect-ratio: 1 / 1; object-fit: cover; }
+.sspf-card-actions { display: flex; gap: 18px; padding: 12px 14px; font-size: 1.15rem; }
+.sspf-card-actions button { background: none; border: none; color: var(--pf-text); cursor: pointer; font-size: inherit; padding: 0; }
+.sspf-card-actions button:hover { color: var(--pf-accent); }
+.sspf-card-caption { padding: 0 14px 14px; font-size: .9rem; line-height: 1.4; }
+
+/* ── Profile header + grid (pixelfed profile view) ── */
+.sspf-profile-head { display: flex; gap: 26px; align-items: center; padding: 8px 4px 24px; flex-wrap: wrap; }
+.sspf-profile-avatar { width: 92px; height: 92px; border-radius: 50%; background: var(--pf-surface-2); object-fit: cover; }
+.sspf-profile-name { font-size: 1.25rem; font-weight: 700; }
+.sspf-profile-handle { color: var(--pf-muted); font-size: .9rem; margin-bottom: 8px; }
+.sspf-profile-stats { display: flex; gap: 22px; font-size: .88rem; }
+.sspf-profile-stats b { display: block; font-size: 1rem; }
+.sspf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.sspf-grid a { display: block; aspect-ratio: 1 / 1; background: var(--pf-surface-2); border-radius: 4px; overflow: hidden; }
+.sspf-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ── Buttons ── */
+.sspf-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 18px;
+    border-radius: 999px;
+    border: none;
+    background: var(--pf-accent);
+    color: #fff;
+    font-weight: 600;
+    font-size: .88rem;
+    cursor: pointer;
+}
+.sspf-btn:hover { background: var(--pf-accent-2); }
+.sspf-btn.sspf-btn-ghost { background: transparent; border: 1px solid var(--pf-border); color: var(--pf-text); }
+
+/* ── Responsive: collapse nav on narrow admin viewports ── */
+@media (max-width: 720px) {
+    .sspf-body { flex-direction: column; }
+    .sspf-nav { width: 100%; display: flex; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--pf-border); min-height: 0; }
+    .sspf-nav a { white-space: nowrap; }
+}
+/* ===== SNAPSMACK EOF ===== */
