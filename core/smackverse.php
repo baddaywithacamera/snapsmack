@@ -75,6 +75,7 @@ function sv_actor_url(array $settings): string     { return sv_base($settings) .
 function sv_inbox_url(array $settings): string     { return sv_base($settings) . 'ap/inbox'; }
 function sv_outbox_url(array $settings): string    { return sv_base($settings) . 'ap/outbox'; }
 function sv_followers_url(array $settings): string { return sv_base($settings) . 'ap/followers'; }
+function sv_following_url(array $settings): string { return sv_base($settings) . 'ap/following'; }
 function sv_key_id(array $settings): string        { return sv_actor_url($settings) . '#main-key'; }
 
 /** Upsert a snap_settings row and mirror it into the in-memory array. */
@@ -834,6 +835,7 @@ function sv_actor_doc(PDO $pdo, array &$settings): array {
         'inbox'             => sv_inbox_url($settings),
         'outbox'            => sv_outbox_url($settings),
         'followers'         => sv_followers_url($settings),
+        'following'         => sv_following_url($settings),
         'endpoints'         => ['sharedInbox' => sv_inbox_url($settings)],
         'manuallyApprovesFollowers' => false,
         'discoverable'      => true,
@@ -866,6 +868,18 @@ function sv_followers_doc(PDO $pdo, array $settings): array {
         'id'         => sv_followers_url($settings),
         'type'       => 'OrderedCollection',
         'totalItems' => $total,
+    ];
+}
+
+/** Following collection — a blog actor follows no one; published so remote
+ *  UIs render "0 Following" instead of a blank (Mastodon/Pixelfed both expect
+ *  the field on the actor). */
+function sv_following_doc(array $settings): array {
+    return [
+        '@context'   => 'https://www.w3.org/ns/activitystreams',
+        'id'         => sv_following_url($settings),
+        'type'       => 'OrderedCollection',
+        'totalItems' => 0,
     ];
 }
 
@@ -1074,16 +1088,22 @@ function sv_note_for_post(PDO $pdo, array $post, array $settings): ?array {
         $content .= '<p>' . nl2br(htmlspecialchars($desc)) . '</p>';
     }
 
-    // Trigram slots federate INDIVIDUALLY (Sean's call, 2026-07-02): the blog
-    // keeps the 3-across banner presentation; Pixelfed gets each slot as a
-    // normal post. For a trigram CAROUSEL the slice-cover is blog-side
-    // wayfinding, not content — drop it from attachments so the remote post
-    // leads with real photos. (A trigram SINGLE's only image IS its slice; it
-    // federates as-is.) The permalink above stays the slice-cover URL — that
-    // is the tile the blog actually links.
+    // Trigram slots federate INDIVIDUALLY: the blog keeps the 3-across banner
+    // presentation; Pixelfed gets each slot as a normal post. For a trigram
+    // CAROUSEL the slice-cover FEDERATES and LEADS the attachments (Sean's
+    // call, 2026-07-02 — overriding the earlier drop-the-cover decision): the
+    // remote grid tile is the Note's FIRST attachment, so leading with the
+    // slice makes the three tiles reassemble the 3-across banner on the
+    // remote profile — same WYSIWYG rule as the frames. Members follow in
+    // carousel order. (A trigram SINGLE's only image IS its slice; it
+    // federates as-is.)
     if (!empty($post['trigram_id']) && count($images) > 1) {
-        $images = array_values(array_filter($images, function ($im) { return empty($im['is_cover']); }));
-        if (!$images) return null;
+        $lead = []; $rest = [];
+        foreach ($images as $im) {
+            if (!empty($im['is_cover'])) $lead[] = $im;
+            else                         $rest[] = $im;
+        }
+        $images = array_merge($lead, $rest);
     }
 
     // Attachments: every member image, carousel order, alt text per image.
