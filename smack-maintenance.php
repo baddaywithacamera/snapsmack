@@ -209,6 +209,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             WHERE id = ?
         ");
 
+        // Shared generator + per-image focal crop for missing-thumb rebuilds.
+        require_once __DIR__ . '/core/thumb-generator.php';
+        $sync_pi_stmt = $pdo->prepare(
+            "SELECT img_focus_x, img_focus_y, img_zoom
+             FROM snap_post_images WHERE image_id = ?
+             ORDER BY post_id DESC LIMIT 1"
+        );
+
         foreach ($batch as $img) {
             $file = $img['img_file'];
             if (!file_exists($file)) continue;
@@ -230,72 +238,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (file_exists($sq_thumb)) $registered_paths[] = realpath($sq_thumb);
             if (file_exists($aspect_thumb)) $registered_paths[] = realpath($aspect_thumb);
 
-            // Rebuild missing thumbnails
+            // Rebuild missing thumbnails — focal-aware via the shared generator.
+            // (Was an inline centre-crop that ignored the image's saved focal
+            // point/zoom, so a repair pass silently reverted curated crops.)
             $need_square = !file_exists($sq_thumb);
             $need_aspect = !file_exists($aspect_thumb);
 
             if ($need_square || $need_aspect) {
-                list($orig_w, $orig_h) = getimagesize($file);
-                $mime = mime_content_type($file);
-                $src = null;
-
-                if ($mime == 'image/jpeg') { $src = @imagecreatefromjpeg($file); }
-                elseif ($mime == 'image/png') { $src = @imagecreatefrompng($file); }
-                elseif ($mime == 'image/webp') { $src = @imagecreatefromwebp($file); }
-
-                if ($src) {
-                    // --- SQUARE THUMB (t_) — 400x400 center-cropped ---
-                    if ($need_square) {
-                        $sq_size = 400;
-                        $min_dim = min($orig_w, $orig_h);
-                        $off_x = ($orig_w - $min_dim) / 2;
-                        $off_y = ($orig_h - $min_dim) / 2;
-
-                        $sq_dst = imagecreatetruecolor($sq_size, $sq_size);
-                        if ($mime != 'image/jpeg') { imagealphablending($sq_dst, false); imagesavealpha($sq_dst, true); }
-                        imagecopyresampled($sq_dst, $src, 0, 0, $off_x, $off_y, $sq_size, $sq_size, $min_dim, $min_dim);
-
-                        if ($mime == 'image/png') imagepng($sq_dst, $sq_thumb, 8);
-                        elseif ($mime == 'image/webp') imagewebp($sq_dst, $sq_thumb, 78);
-                        else imagejpeg($sq_dst, $sq_thumb, 82);
-
-                        imagedestroy($sq_dst);
+                $sync_pi_stmt->execute([$img['id']]);
+                $sync_pi = $sync_pi_stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+                $result = snapsmack_generate_thumbs(
+                    $file, __DIR__, 400, 600,
+                    max(0,   min(100, (int)($sync_pi['img_focus_x'] ?? 50))),
+                    max(0,   min(100, (int)($sync_pi['img_focus_y'] ?? 50))),
+                    max(100, min(300, (int)($sync_pi['img_zoom']    ?? 100)))
+                );
+                if ($result) {
+                    if ($need_square && file_exists($sq_thumb)) {
                         $registered_paths[] = realpath($sq_thumb);
                         $fixed_square++;
                     }
-
-                    // --- ASPECT THUMB (a_) — 400px on the long side ---
-                    if ($need_aspect) {
-                        $aspect_long = 400;
-
-                        if ($orig_w >= $orig_h) {
-                            $a_w = $aspect_long;
-                            $a_h = round($orig_h * ($aspect_long / $orig_w));
-                        } else {
-                            $a_h = $aspect_long;
-                            $a_w = round($orig_w * ($aspect_long / $orig_h));
-                        }
-
-                        // Don't upscale tiny images
-                        if ($orig_w < $aspect_long && $orig_h < $aspect_long) {
-                            $a_w = $orig_w;
-                            $a_h = $orig_h;
-                        }
-
-                        $a_dst = imagecreatetruecolor($a_w, $a_h);
-                        if ($mime != 'image/jpeg') { imagealphablending($a_dst, false); imagesavealpha($a_dst, true); }
-                        imagecopyresampled($a_dst, $src, 0, 0, 0, 0, $a_w, $a_h, $orig_w, $orig_h);
-
-                        if ($mime == 'image/png') imagepng($a_dst, $aspect_thumb, 8);
-                        elseif ($mime == 'image/webp') imagewebp($a_dst, $aspect_thumb, 78);
-                        else imagejpeg($a_dst, $aspect_thumb, 82);
-
-                        imagedestroy($a_dst);
+                    if ($need_aspect && file_exists($aspect_thumb)) {
                         $registered_paths[] = realpath($aspect_thumb);
                         $fixed_aspect++;
                     }
-
-                    imagedestroy($src);
                 }
             }
 
@@ -359,9 +325,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
     // REGENERATE ALL THUMBNAILS
-    // Force-regenerates square + aspect thumbs for every image in the DB using
-    // core/thumb-generator.php. Unlike sync_assets, this overwrites existing
-    // thumbs so quality settings (e.g. masonry_use_thumbs size) take effect.
+    // Force-regenerates square + aspect thumbs AND the fediverse bake (p_) for
+    // every image in the DB using core/thumb-generator.php. Unlike sync_assets,
+    // this overwrites existing thumbs. Focal-aware: each image's saved crop
+    // (img_focus_x/y, img_zoom) and frame styling from snap_post_images drive
+    // the square crop and the bake — same render the carousel editor's Save
+    // produces, so a bulk run here is the "regen everything" button.
     if ($action === 'regen_thumbs') {
         set_time_limit(120);
         ini_set('memory_limit', '256M');
@@ -378,20 +347,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $images->execute([$batch_size, $offset]);
         $rows = $images->fetchAll(PDO::FETCH_ASSOC);
 
+        // Per-image crop + frame styling from the post that carries the image.
+        // Images not attached to any post regen with defaults (centre crop,
+        // unframed bake). If an image somehow sits in multiple posts, the most
+        // recent post's styling wins.
+        $pi_stmt = $pdo->prepare(
+            "SELECT img_focus_x, img_focus_y, img_zoom, img_size_pct,
+                    img_border_px, img_border_color, img_bg_color
+             FROM snap_post_images WHERE image_id = ?
+             ORDER BY post_id DESC LIMIT 1"
+        );
+
         $upd = $pdo->prepare("UPDATE snap_images SET img_thumb_square=?, img_thumb_aspect=? WHERE id=?");
-        $done = 0;
-        $fail = 0;
+        $done  = 0;
+        $baked = 0;
+        $fail  = 0;
         foreach ($rows as $row) {
-            $result = snapsmack_generate_thumbs($row['img_file'], __DIR__);
-            if ($result) {
-                $upd->execute([$result['sq_path'], $result['asp_path'], $row['id']]);
-                $done++;
-            } else {
+            $pi_stmt->execute([$row['id']]);
+            $pi = $pi_stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            $fx = max(0,   min(100, (int)($pi['img_focus_x'] ?? 50)));
+            $fy = max(0,   min(100, (int)($pi['img_focus_y'] ?? 50)));
+            $zm = max(100, min(300, (int)($pi['img_zoom']    ?? 100)));
+
+            // 400px square matches the live t_ inventory (Grid tiles render at
+            // 305px); 600px aspect is the generator default.
+            $result = snapsmack_generate_thumbs($row['img_file'], __DIR__, 400, 600, $fx, $fy, $zm);
+            if (!$result) {
                 $fail++;
+                continue;
+            }
+            $upd->execute([$result['sq_path'], $result['asp_path'], $row['id']]);
+            $done++;
+
+            // Fediverse bake (p_) — curated 1080² square that federates.
+            if (function_exists('snapsmack_generate_fedi_bake')) {
+                $bake = snapsmack_generate_fedi_bake($row['img_file'], __DIR__, [
+                    'size_pct'     => (int)($pi['img_size_pct']        ?? 100),
+                    'border_px'    => (int)($pi['img_border_px']       ?? 0),
+                    'border_color' => (string)($pi['img_border_color'] ?? '#000000'),
+                    'bg_color'     => (string)($pi['img_bg_color']     ?? '#ffffff'),
+                ], $fx, $fy, $zm);
+                if ($bake) $baked++;
             }
         }
 
-        $msg = "BATCH {$offset}–{$batch_end} of {$total}: Regenerated {$done} thumbs.";
+        $msg = "BATCH {$offset}–{$batch_end} of {$total}: Regenerated {$done} thumb sets + {$baked} fediverse bakes.";
         if ($fail)    $msg .= " {$fail} skipped (missing/unreadable source).";
         if (!$has_more) $msg .= " <strong>ALL DONE.</strong>";
         else            $msg .= " <strong>" . ($total - $batch_end) . " images remaining.</strong>";
@@ -971,7 +971,7 @@ include 'core/sidebar.php';
 
         <div class="box box-flex">
             <h3>REGENERATE ALL THUMBNAILS</h3>
-            <p class="skin-desc-text">Force-regenerates square and aspect thumbnails for every image, overwriting existing ones. Use this after changing thumbnail quality settings.</p>
+            <p class="skin-desc-text">Force-regenerates square and aspect thumbnails plus the SMACKVERSE fediverse bake for every image, overwriting existing ones. Honours each image's saved focal point, zoom, and frame styling. Use after changing thumbnail settings or to backfill bakes for posts made before SMACKVERSE.</p>
             <?php if (!empty($regen_thumbs_has_more)): ?>
                 <form method="POST">
                     <input type="hidden" name="action" value="regen_thumbs">
