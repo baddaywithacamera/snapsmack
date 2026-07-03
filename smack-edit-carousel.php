@@ -83,6 +83,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $allow_cmt    = (int)($_POST['allow_comments'] ?? 1);
     $allow_dl     = (int)($_POST['allow_download'] ?? 0);
     $dl_url       = trim($_POST['download_url']    ?? '');
+    // SMACKVERSE (0.7.367): per-post federation toggle + fediverse date-LABEL
+    // override (blank = use the post date; never changes remote row order).
+    $fedi_enabled = ((string)($_POST['fedi_enabled'] ?? '1') === '0') ? 0 : 1;
+    $fedi_pub_raw = trim($_POST['fedi_published_at'] ?? '');
+    $fedi_pub     = $fedi_pub_raw !== '' ? str_replace('T', ' ', $fedi_pub_raw) : null;
     $raw_date     = $_POST['img_date']             ?? '';
     $post_date    = !empty($raw_date) ? str_replace('T', ' ', $raw_date) : date('Y-m-d H:i:s');
     $sort_order   = $_POST['sort_order']           ?? [];      // array of image IDs in new order
@@ -133,12 +138,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         SET title = ?, description = ?, status = ?, created_at = ?,
             panorama_rows = ?, allow_comments = ?, allow_download = ?, download_url = ?,
             post_img_size_pct = ?, post_border_px = ?, post_border_color = ?,
-            post_bg_color = ?, post_shadow = ?
+            post_bg_color = ?, post_shadow = ?,
+            fedi_enabled = ?, fedi_published_at = ?
         WHERE id = ?
     ")->execute([$title, $desc, $status, $post_date,
                  $pano_rows, $allow_cmt, $allow_dl, $dl_url,
                  $post_style_size, $post_style_bpx, $post_style_bc,
                  $post_style_bg,   $post_style_shadow,
+                 $fedi_enabled, $fedi_pub,
                  $post_id]);
 
     // --- Cascade status + date to this post's images ---
@@ -776,6 +783,21 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>DOWNLOAD URL (EXTERNAL)</label>
                         <input type="text" name="download_url" value="<?php echo htmlspecialchars($post['download_url'] ?? ''); ?>" placeholder="Google Drive, Dropbox, etc.">
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>PUSH TO FEDIVERSE?</label>
+                        <select name="fedi_enabled" class="full-width-select">
+                            <option value="1" <?php echo (!isset($post['fedi_enabled']) || $post['fedi_enabled']) ? 'selected' : ''; ?>>ENABLED</option>
+                            <option value="0" <?php echo (isset($post['fedi_enabled']) && !$post['fedi_enabled']) ? 'selected' : ''; ?>>DISABLED &mdash; keep off the fediverse</option>
+                        </select>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>FEDIVERSE DATE (LABEL ONLY &mdash; BLANK = POST DATE)</label>
+                        <input type="datetime-local" name="fedi_published_at" class="full-width-select edit-timestamp"
+                               onclick="this.showPicker()"
+                               value="<?php echo !empty($post['fedi_published_at']) ? date('Y-m-d\TH:i', strtotime($post['fedi_published_at'])) : ''; ?>">
                     </div>
                 </div>
             </div>

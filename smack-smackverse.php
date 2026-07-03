@@ -70,11 +70,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
 // --- ENABLE FEDERATION (step-up: password + TOTP — grants a public surface) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'enable_smackverse') {
     require_once 'core/reauth.php';
-    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    $ra  = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    $ack = !empty($_POST['participation_ack']);
     if (!$ra['ok']) {
         $msg = 'FEDERATION NOT ENABLED — ' . $ra['error'];
+    } elseif (!$ack) {
+        // Informed consent: federating is joining a community, not spraying images
+        // at it. No enable without acknowledging that participation is expected.
+        $msg = 'FEDERATION NOT ENABLED — please read and check the participation acknowledgment. The fediverse is a community you take part in, not a place to dump images.';
     } else {
         $sv_setting_upsert('smackverse_enabled', '1');
+        $sv_setting_upsert('smackverse_participation_ack', date('Y-m-d H:i:s'));
         sv_ensure_keys($pdo, $sv_settings);   // actor is followable immediately
 
         require_once 'core/cron-register.php';
@@ -106,6 +112,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'disab
     exit;
 }
 
+// PUSH MODE (0.7.367): AUTO = the publish sweep federates new posts as they go
+// live; MANUAL = nothing auto-fires, you stage + arrange the grid, then PUSH.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'set_push_mode') {
+    $pm = (($_POST['push_mode'] ?? 'auto') === 'manual') ? 'manual' : 'auto';
+    $sv_setting_upsert('smackverse_push_mode', $pm);
+    $msg_pm = $pm === 'manual'
+        ? 'PUSH MODE = MANUAL. New posts, imports and batch uploads now WAIT — arrange the grid, then hit PUSH TO FEDIVERSE (Seed) to send them in order. Nothing auto-fires.'
+        : 'PUSH MODE = AUTO. New posts federate automatically as they publish (the original behaviour).';
+    header('Location: smack-smackverse.php?msg=' . urlencode($msg_pm));
+    exit;
+}
+
 // RESYNC: re-federate the most recent posts to all active followers by pushing
 // a signed Update per Note — same id, current render (cover + full carousel
 // stack), replacing the remote's cached copy in place. Enqueued oldest-first,
@@ -127,19 +145,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resyn
     }
     $rs_count = isset($_POST['resync_count']) ? max(1, min(500, (int)$_POST['resync_count'])) : null;
     $rs_mode  = (($_POST['resync_mode'] ?? 'create') === 'update') ? 'update' : 'create';
-    list($rs_notes, $rs_deliveries) = sv_resync_recent($pdo, $sv_settings, $rs_count, $rs_mode);
-    if ($rs_notes === 0) {
-        header('Location: smack-smackverse.php?msg=' . urlencode('RESYNC: nothing to do — no recent posts or no active followers.'));
-        exit;
-    }
     // ENQUEUE ONLY — never drip inside a web request. The paced drain (with its
     // per-post sleeps) runs in the CLI delivery cron, which has no HTTP timeout;
     // draining here would hold a PHP worker for minutes and trip Cloudflare 524.
     $cadence = sv_delivery_cadence($sv_settings);
-    $msg_out = sprintf(
-        'RESYNC: %d post(s) queued (%d Update deliveries). The delivery cron rolls them out oldest-first ~%ds apart (longer after fat carousels) so your remote profile rebuilds in order — allow up to a cron cycle to start. Run `php cron-smackverse.php` for an immediate paced push.',
-        $rs_notes, $rs_deliveries, $cadence
-    );
+    if ($rs_mode === 'update') {
+        // Refresh renders the followers ALREADY hold (same Note id, in place).
+        list($rs_notes, $rs_deliveries) = sv_resync_recent($pdo, $sv_settings, $rs_count, 'update');
+        if ($rs_notes === 0) {
+            header('Location: smack-smackverse.php?msg=' . urlencode('REFRESH: nothing to do — no recent posts or no active followers.'));
+            exit;
+        }
+        $msg_out = sprintf(
+            'REFRESH: %d post(s) queued (%d Update deliveries). The delivery cron rolls them out oldest-first ~%ds apart. Run `php cron-smackverse.php` for an immediate paced push.',
+            $rs_notes, $rs_deliveries, $cadence
+        );
+    } else {
+        // SEED = full ordered rebuild: every post in EXACT grid order, carousels
+        // intact, each post's caption + hashtags in its Note, and its approved
+        // local comments queued as threaded replies right behind it.
+        list($rs_posts, $rs_comments, $rs_deliveries) = sv_reseed_all($pdo, $sv_settings, $rs_count);
+        if ($rs_posts === 0) {
+            header('Location: smack-smackverse.php?msg=' . urlencode('SEED: nothing to do — no posts or no active followers.'));
+            exit;
+        }
+        $msg_out = sprintf(
+            'SEED: %d post(s) + %d comment(s) queued (%d deliveries) in EXACT grid order, carousels intact, captions + hashtags + comments included. The delivery cron rolls them out one at a time ~%ds apart so the remote profile rebuilds top-to-bottom. Run `php cron-smackverse.php` for an immediate paced push.',
+            $rs_posts, $rs_comments, $rs_deliveries, $cadence
+        );
+    }
     header('Location: smack-smackverse.php?msg=' . urlencode($msg_out));
     exit;
 }
@@ -325,6 +359,18 @@ include 'core/sidebar.php';
                         <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" class="input-code">
                     </div>
                 </div>
+                <div class="lens-input-wrapper" style="margin-top:14px;">
+                    <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer; font-weight:normal;">
+                        <input type="checkbox" name="participation_ack" value="1" style="margin-top:3px; flex:0 0 auto;">
+                        <span class="dim">
+                            <strong>The fediverse is a community, not a broadcast channel.</strong> Federating means
+                            you show up: read replies, answer the people who signal on your work, follow and boost
+                            others. An account that only fires images out and never engages is spam &mdash; and
+                            instances defederate it. I understand participation is expected: I'm here to take part,
+                            not just push pictures.
+                        </span>
+                    </label>
+                </div>
                 <button type="submit" class="master-update-btn">ENABLE SMACKVERSE</button>
             </form>
         <?php endif; ?>
@@ -364,6 +410,38 @@ include 'core/sidebar.php';
         </table>
     </div>
 
+    <!-- PUSH MODE -->
+    <?php $sv_pmode  = (($sv_settings['smackverse_push_mode'] ?? 'auto') === 'manual') ? 'manual' : 'auto';
+          $sv_staged = function_exists('sv_staged_count') ? sv_staged_count($pdo) : 0; ?>
+    <div class="box mb-20">
+        <h3>PUSH MODE — <?php echo $sv_pmode === 'manual' ? 'MANUAL' : 'AUTO'; ?></h3>
+        <?php if ($sv_staged > 0): ?>
+        <p class="dim mb-20" style="font-weight:600;">
+            &#9679; <?php echo (int)$sv_staged; ?> post<?php echo $sv_staged === 1 ? '' : 's'; ?>
+            staged, not yet pushed (new or edited since last push).
+        </p>
+        <?php endif; ?>
+        <p class="dim mb-20">
+            <strong>AUTO:</strong> new posts federate to followers automatically as they publish.
+            <br><br>
+            <strong>MANUAL:</strong> nothing auto-fires. New posts, imports and batch uploads publish to the
+            blog and WAIT — arrange them on the grid lighttable, then use <em>PUSH POSTS TO FOLLOWERS</em>
+            (Seed) below to send them in your curated order. This is how the fediverse stays in your exact
+            grid order and you never chase a wrong-order import that already went out.
+        </p>
+        <form method="post" action="smack-smackverse.php">
+            <input type="hidden" name="action" value="set_push_mode">
+            <label class="dim" style="display:block; margin-bottom:12px;">
+                Mode:
+                <select name="push_mode" style="margin-left:6px;">
+                    <option value="auto"   <?php echo $sv_pmode === 'auto'   ? 'selected' : ''; ?>>AUTO — federate on publish</option>
+                    <option value="manual" <?php echo $sv_pmode === 'manual' ? 'selected' : ''; ?>>MANUAL — stage, arrange, then push</option>
+                </select>
+            </label>
+            <button type="submit" class="btn-smack" <?php echo $sv_on ? '' : 'disabled'; ?>>SAVE PUSH MODE</button>
+        </form>
+    </div>
+
     <!-- RESYNC -->
     <div class="box mb-20">
         <h3>PUSH POSTS TO FOLLOWERS</h3>
@@ -371,11 +449,13 @@ include 'core/sidebar.php';
             Pixelfed never pulls your back catalogue — it only shows what you PUSH — so this is how your
             posts reach every follower. Two ways to push:
             <br><br>
-            <strong>Seed missing posts (default):</strong> sends each post as a <em>Create</em>. A follower
-            who only got the capped follow-backfill (e.g. 12) but is missing the rest gets the missing ones
-            created; posts they already have are harmlessly ignored. <em>This is how you get your whole
-            library onto a follower.</em> An Update can't do this — you can't update a post the remote never
-            received (that was the old "stuck at 12" bug).
+            <strong>Seed / full rebuild (default):</strong> sends every post as a <em>Create</em>, in your
+            EXACT grid order (carousels intact, caption + hashtags in each Note), and queues each post's
+            approved comments as threaded replies right behind it. A follower who only got the capped
+            follow-backfill (e.g. 12) gets the rest; posts they already have are harmlessly ignored. <em>This
+            is how you get your whole library onto a follower, in order.</em> An Update can't do this — you
+            can't update a post the remote never received (that was the old "stuck at 12" bug). For a clean
+            rebuild, purge the profile on the remote first (unfollow so it drops the cached copies), then Seed.
             <br><br>
             <strong>Refresh existing renders:</strong> sends an <em>Update</em> per post — use only after a
             thumbnail/cover/frame change, to refresh posts the follower ALREADY holds (likes/replies survive).
@@ -395,7 +475,7 @@ include 'core/sidebar.php';
             <label class="dim" style="display:block; margin-bottom:12px;">
                 Mode:
                 <select name="resync_mode" style="margin-left:6px;">
-                    <option value="create">Seed missing posts (Create)</option>
+                    <option value="create">Seed / full rebuild — every post in grid order + carousels + comments (Create)</option>
                     <option value="update">Refresh existing renders (Update)</option>
                 </select>
             </label>

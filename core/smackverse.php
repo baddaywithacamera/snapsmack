@@ -150,6 +150,18 @@ function sv_ensure_tables(PDO $pdo): void {
         catch (Exception $e) { /* older MySQL without IF NOT EXISTS — ignore dup */ }
     }
 
+    // Per-post federation controls (0.7.367): PUSH-mode gate + staged/pushed
+    // state + fediverse date-label override. Belt-and-suspenders so they exist
+    // the instant SMACKVERSE runs, before the canonical schema sync lands them.
+    foreach ([
+        "fedi_enabled tinyint(1) NOT NULL DEFAULT 1",
+        "fedi_pushed_at datetime DEFAULT NULL",
+        "fedi_published_at datetime DEFAULT NULL",
+    ] as $_col) {
+        try { $pdo->exec("ALTER TABLE snap_posts ADD COLUMN IF NOT EXISTS {$_col}"); }
+        catch (Exception $e) { /* older MySQL without IF NOT EXISTS — ignore dup */ }
+    }
+
     // Reader / engagement (0.7.365): the two-way client. Mirrors of the
     // canonical tables so they exist the instant SMACKVERSE runs, before a
     // schema sync. See database/schema/snapsmack_canonical.sql for the notes.
@@ -2158,7 +2170,11 @@ function sv_note_for_post(PDO $pdo, array $post, array $settings): ?array {
         'attributedTo' => sv_actor_url($settings),
         'to'           => ['https://www.w3.org/ns/activitystreams#Public'],
         'cc'           => [sv_followers_url($settings)],
-        'published'    => gmdate('Y-m-d\TH:i:s\Z', strtotime($post['created_at'])),
+        // Fediverse date LABEL: fedi_published_at override, else the post date.
+        // (This is only the displayed age — remote ROW ORDER is delivery order.)
+        'published'    => gmdate('Y-m-d\TH:i:s\Z', strtotime(
+                              !empty($post['fedi_published_at']) ? $post['fedi_published_at'] : $post['created_at']
+                          )),
         'url'          => $permalink,
         'summary'      => null,
         'sensitive'    => false,
@@ -2671,29 +2687,67 @@ function sv_outbox_doc(PDO $pdo, array $settings, int $page = 0): array {
  * follower and by RESYNC. Reuses the same Note builders as the sweep, so
  * trigram/carousel shaping is identical.
  */
-function sv_recent_creates(PDO $pdo, array $settings, int $limit = 10): array {
+function sv_ordered_units(PDO $pdo, array $settings, int $limit): array {
     if ($limit < 1) return [];
+
+    // Pixelfed (and every Mastodon-API server) sorts a REMOTE profile purely by
+    // ARRIVAL order — the local snowflake id it stamps when it ingests each Note.
+    // The AP `published` timestamp only drives the "22h/1w" age label, never the
+    // row position (verified in pixelfed-dev: accountStatusesById → orderByDesc
+    // ('id'); Helpers sets created_at from published but the id is a fresh
+    // snowflake at ingest). So the ONLY way to control the remote grid order is to
+    // DELIVER in the order we want, one at a time — top-of-grid must arrive LAST
+    // so it gets the highest id and lands on top.
+    //
+    // In CAROUSEL/GRAM mode the visible home grid is POSTS ONLY, laid out by the
+    // stored snap_posts.sort_order (feed_relayout's canonical arrangement — the
+    // exact order a visitor sees, whether chrono or hand-shuffled), NOT by raw
+    // date. We therefore ENUMERATE posts in grid order and DELIVER reversed. Each
+    // post federates as ONE Note (carousel = multi-attachment), so a carousel can
+    // never fragment into singles, and standalone images (post_id NULL) — which
+    // are not on the grid — are NOT federated as profile posts in this mode.
+    // (If sort_order is unset the CASE falls back to created_at DESC — exactly the
+    // grid's own fallback, so this is safe on a blog that never ran a relayout.)
+    $is_carousel = (($settings['site_mode'] ?? 'photoblog') === 'carousel');
+
     $units = [];
     try {
-        $imgs = $pdo->query(
-            "SELECT * FROM snap_images
-             WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL
-             ORDER BY img_date DESC LIMIT " . (int)$limit
-        )->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($imgs as $img) $units[] = ['date' => $img['img_date'], 'kind' => 'image', 'row' => $img];
+        if ($is_carousel) {
+            $posts = $pdo->query(
+                "SELECT * FROM snap_posts
+                 WHERE status = 'published' AND created_at <= NOW()
+                   AND post_type IN ('single','carousel','panorama')
+                   AND fedi_enabled = 1
+                 ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
+                          sort_order ASC, created_at DESC, id DESC
+                 LIMIT " . (int)$limit
+            )->fetchAll(PDO::FETCH_ASSOC);
+            // Emitted TOP-OF-GRID-FIRST (display order).
+            foreach ($posts as $p) $units[] = ['date' => $p['created_at'], 'kind' => 'post', 'row' => $p];
+        } else {
+            // Photoblog / essay modes keep the original date-merged behaviour.
+            $imgs = $pdo->query(
+                "SELECT * FROM snap_images
+                 WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL
+                 ORDER BY img_date DESC LIMIT " . (int)$limit
+            )->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($imgs as $img) $units[] = ['date' => $img['img_date'], 'kind' => 'image', 'row' => $img];
 
-        $posts = $pdo->query(
-            "SELECT * FROM snap_posts
-             WHERE status = 'published' AND created_at <= NOW()
-               AND post_type IN ('single','carousel','panorama')
-             ORDER BY created_at DESC LIMIT " . (int)$limit
-        )->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($posts as $p) $units[] = ['date' => $p['created_at'], 'kind' => 'post', 'row' => $p];
+            $posts = $pdo->query(
+                "SELECT * FROM snap_posts
+                 WHERE status = 'published' AND created_at <= NOW()
+                   AND post_type IN ('single','carousel','panorama')
+                   AND fedi_enabled = 1
+                 ORDER BY created_at DESC LIMIT " . (int)$limit
+            )->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($posts as $p) $units[] = ['date' => $p['created_at'], 'kind' => 'post', 'row' => $p];
+
+            usort($units, fn($a, $b) => strcmp($b['date'], $a['date']));
+            $units = array_slice($units, 0, $limit);
+        }
     } catch (Exception $e) {
         return [];
     }
-    usort($units, fn($a, $b) => strcmp($b['date'], $a['date']));
-    $units = array_slice($units, 0, $limit);
 
     // Never backfill a PARTIAL trigram — a trio is a 3-across banner and 1-2 of
     // 3 looks broken. Drop any trigram whose full trio isn't inside the window,
@@ -2714,17 +2768,116 @@ function sv_recent_creates(PDO $pdo, array $settings, int $limit = 10): array {
         return ($trio_counts[$tg] ?? 0) >= 3;   // keep only complete trios
     }));
 
-    $units = array_reverse($units);  // oldest-first for tidy delivery
-    $units = sv_reverse_trigram_group_units($units);  // then fix trio slot order
+    // Delivery order = REVERSE of display order, so the top-of-grid unit arrives
+    // LAST and lands on top of the remote profile (Pixelfed = arrival-id desc).
+    $units = array_reverse($units);
 
+    // In carousel mode the grid keeps each trio contiguous by sort_order, so the
+    // global reverse already emits it slot3→slot1 — the remote row then reads
+    // left-to-right (slot1 arrives last = highest id = leftmost). Only the
+    // date-merged modes, where a trio isn't guaranteed contiguous, still need the
+    // explicit slot-order pass.
+    if (!$is_carousel) {
+        $units = sv_reverse_trigram_group_units($units);
+    }
+
+    return $units;
+}
+
+/** The ordered units as JSON Create activities, in delivery order. Thin wrapper
+ *  over sv_ordered_units — the single source of federation order. */
+function sv_recent_creates(PDO $pdo, array $settings, int $limit = 10): array {
+    if ($limit < 1) return [];
     $out = [];
-    foreach ($units as $u) {
+    foreach (sv_ordered_units($pdo, $settings, $limit) as $u) {
         $note = ($u['kind'] === 'post')
             ? sv_note_for_post($pdo, $u['row'], $settings)
             : sv_note_for_image($pdo, $u['row'], $settings);
         if ($note !== null) $out[] = json_encode(sv_create_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
     }
     return $out;
+}
+
+/** Approved LOCAL (non-fediverse) comment ids attached to a content unit, in
+ *  post order (oldest first). For a grouped post that means comments on ANY of
+ *  its member images; for a standalone image, that image's comments. Remote
+ *  (fediverse-sourced) comments are excluded — they already live out there. */
+function sv_unit_comment_ids(PDO $pdo, array $u): array {
+    if (($u['kind'] ?? '') === 'image') {
+        $iids = [(int)($u['row']['id'] ?? 0)];
+    } else {
+        $iids = array_map(fn($im) => (int)$im['id'], sv_post_images($pdo, (int)($u['row']['id'] ?? 0)));
+    }
+    $iids = array_values(array_filter($iids));
+    if (!$iids) return [];
+    $in = implode(',', array_map('intval', $iids));
+    try {
+        $rows = $pdo->query(
+            "SELECT id FROM snap_comments
+             WHERE img_id IN ($in) AND is_approved = 1
+               AND (ap_source IS NULL OR ap_source <> 'fediverse')
+             ORDER BY id ASC"
+        )->fetchAll(PDO::FETCH_COLUMN);
+    } catch (Exception $e) { return []; }
+    return array_map('intval', $rows);
+}
+
+/**
+ * FULL ordered (re)seed for a clean rebuild — Sean's four hard requirements:
+ *   1. EVERY published post goes out (up to $limit; set it to the full count).
+ *   2. EXACT grid order — sv_ordered_units delivers bottom-of-grid first so the
+ *      top-of-grid post arrives last and lands on top (Pixelfed = arrival order).
+ *   3. Carousels INTACT — one multi-attachment Note per post (sv_note_for_post).
+ *   4. Comments + hashtags TRAVEL — hashtags ride inside the Note; each post's
+ *      approved LOCAL comments are queued as threaded reply Creates immediately
+ *      AFTER the post's Note, so they thread correctly on arrival. Replies are
+ *      excluded from the remote profile grid (Pixelfed: whereNull in_reply_to_id),
+ *      so interleaving them never disturbs post order.
+ *
+ * @return array [postsQueued, commentsQueued, deliveries]
+ */
+function sv_reseed_all(PDO $pdo, array $settings, ?int $limit = null): array {
+    if (!sv_enabled($settings)) return [0, 0, 0];
+    if ($limit === null) $limit = (int)($settings['smackverse_backfill_count'] ?? 10);
+
+    $units   = sv_ordered_units($pdo, $settings, $limit);
+    $inboxes = sv_follower_inboxes($pdo);
+    if (!$units || !$inboxes) return [0, 0, 0];
+
+    $posts = 0; $comments = 0; $deliveries = 0;
+    $mark_pushed = $pdo->prepare("UPDATE snap_posts SET fedi_pushed_at = NOW() WHERE id = ?");
+    foreach ($units as $u) {
+        $note = ($u['kind'] === 'post')
+            ? sv_note_for_post($pdo, $u['row'], $settings)
+            : sv_note_for_image($pdo, $u['row'], $settings);
+        if ($note === null) continue;
+        $create = json_encode(sv_create_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
+        foreach ($inboxes as $ib) { sv_queue_delivery($pdo, $ib, $create); $deliveries++; }
+        if ($u['kind'] === 'post') $mark_pushed->execute([(int)$u['row']['id']]);
+        $posts++;
+        // Threaded local comments right after their content Note (same FIFO queue
+        // → the parent Note always arrives first). sv_federate_comment fans out
+        // to follower inboxes (and any mentioned commenter) itself.
+        foreach (sv_unit_comment_ids($pdo, $u) as $cid) {
+            sv_federate_comment($pdo, $cid, $settings);
+            $comments++;
+        }
+    }
+    return [$posts, $comments, $deliveries];
+}
+
+/** How many published, federation-eligible posts are STAGED — never pushed, or
+ *  edited since their last push. Drives the "N staged" hint on the SMACKVERSE
+ *  page in MANUAL push mode. */
+function sv_staged_count(PDO $pdo): int {
+    try {
+        return (int)$pdo->query(
+            "SELECT COUNT(*) FROM snap_posts
+             WHERE status = 'published' AND fedi_enabled = 1
+               AND post_type IN ('single','carousel','panorama')
+               AND (fedi_pushed_at IS NULL OR updated_at > fedi_pushed_at)"
+        )->fetchColumn();
+    } catch (Exception $e) { return 0; }
 }
 
 // ─── Publish sweep (PULL model — zero posting-flow edits) ────────────────────
@@ -2802,6 +2955,16 @@ function sv_sweep_new_posts(PDO $pdo, array &$settings): array {
         sv_set_setting($pdo, $settings, 'smackverse_last_post_federated_id', '0');
         return [0, 0];
     }
+    // MANUAL push mode (0.7.367): the sweep NEVER auto-federates. New posts,
+    // imports and batch uploads publish to the blog and WAIT — you arrange the
+    // grid lighttable, then push deliberately from the SMACKVERSE page (Seed /
+    // full rebuild) in your curated order. We keep the markers current to NOW so
+    // flipping back to AUTO doesn't blast the whole staged backlog at followers.
+    if (($settings['smackverse_push_mode'] ?? 'auto') === 'manual') {
+        sv_set_setting($pdo, $settings, 'smackverse_last_img_federated_at',  $now);
+        sv_set_setting($pdo, $settings, 'smackverse_last_post_federated_at', $now);
+        return [0, 0];
+    }
     // Markers are (datetime, id) PAIRS: the id tie-break means same-second
     // content is never skipped when a sweep stops mid-second (e.g. batch
     // posts sharing a timestamp, or a deferred trigram trio).
@@ -2845,6 +3008,7 @@ function sv_sweep_new_posts(PDO $pdo, array &$settings): array {
     $stmt = $pdo->prepare(
         "SELECT * FROM snap_posts
          WHERE status = 'published' AND post_type IN ('single','carousel','panorama')
+           AND fedi_enabled = 1
            AND (created_at > ? OR (created_at = ? AND id > ?)) AND created_at <= ?
          ORDER BY created_at ASC, id ASC LIMIT 21"
     );
@@ -2862,8 +3026,10 @@ function sv_sweep_new_posts(PDO $pdo, array &$settings): array {
         array_pop($rows);                                    // defer the partial trio
     }
     $rows = array_slice($rows, 0, 20);
+    $sweep_mark = $pdo->prepare("UPDATE snap_posts SET fedi_pushed_at = NOW() WHERE id = ?");
     foreach (sv_reverse_trigram_groups($rows) as $post) {
         $fanout(sv_note_for_post($pdo, $post, $settings));
+        $sweep_mark->execute([(int)$post['id']]);
         $units++;
     }
     if ($rows) {

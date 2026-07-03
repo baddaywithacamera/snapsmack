@@ -51,6 +51,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
     $allow_dl     = (int)($_POST['allow_download']  ?? 0);
     $dl_url       = trim($_POST['download_url'] ?? '');
     $manual_tags  = trim($_POST['tags'] ?? '');
+    // SMACKVERSE (0.7.367): per-post federation toggle. Default ENABLED (eligible
+    // to push); in MANUAL push mode the post still waits for a deliberate push.
+    $fedi_enabled = ((string)($_POST['fedi_enabled'] ?? '1') === '0') ? 0 : 1;
 
     // GramOfSmack has no per-post title (classic IG). Slug is timestamp-based,
     // matching the importer's ig-<ts> convention; caption + tags drive discovery.
@@ -310,7 +313,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         // Shared creator: one snap_posts row + its pivot rows from a list of
         // processed images (in order). Returns the new post id.
         $make_post = function (array $images, string $ptype, int $rows) use (
-            $pdo, $desc, $status, $post_date, $allow_cmt, $allow_dl, $dl_url, $manual_tags
+            $pdo, $desc, $status, $post_date, $allow_cmt, $allow_dl, $dl_url, $manual_tags, $fedi_enabled
         ) {
             $imgs = array_values($images);
             $slug = 'ig-' . date('Ymd-His') . '-' . substr(bin2hex(random_bytes(4)), 0, 8);
@@ -319,10 +322,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
                     (title, slug, description, post_type, status, created_at,
                      allow_comments, allow_download, download_url, panorama_rows,
                      post_img_size_pct, post_border_px, post_border_color,
-                     post_bg_color, post_shadow)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 100, 0, '#000000', '#ffffff', 0)
+                     post_bg_color, post_shadow, fedi_enabled)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 100, 0, '#000000', '#ffffff', 0, ?)
             ")->execute(['', $slug, $desc, $ptype, $status, $post_date,
-                         $allow_cmt, $allow_dl, $dl_url, $rows]);
+                         $allow_cmt, $allow_dl, $dl_url, $rows, $fedi_enabled]);
             $pid = (int)$pdo->lastInsertId();
 
             $pi = $pdo->prepare("
@@ -581,6 +584,14 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
                         <select name="allow_download" class="full-width-select">
                             <option value="0">DISABLED</option>
                             <option value="1">ENABLED</option>
+                        </select>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>PUSH TO FEDIVERSE?</label>
+                        <select name="fedi_enabled" class="full-width-select">
+                            <option value="1">ENABLED</option>
+                            <option value="0">DISABLED &mdash; keep this post off the fediverse</option>
                         </select>
                     </div>
 
