@@ -329,6 +329,15 @@ if (isset($_POST['save_skin_settings'])) {
         }
     }
 
+    // MOBILE SKIN: the compiler further down (4c) only compiles the ACTIVE
+    // skin's options into custom_css_public — the mobile-only skin is never
+    // active, so its options compile into custom_css_mobile instead. Doing it
+    // here makes a settings save take effect on phones immediately.
+    if (defined('SNAPSMACK_MOBILE_SKIN') && $save_skin === SNAPSMACK_MOBILE_SKIN) {
+        require_once __DIR__ . '/core/skin-compile-mobile.php';
+        try { snapsmack_compile_mobile_css($pdo); } catch (Throwable $e) { /* non-fatal */ }
+    }
+
     // Handle type:'image' skin options — uploaded files override the hidden input value.
     if (!empty($_FILES['skin_img_opt']['name'])) {
         $upload_dir = __DIR__ . '/uploads/skin-avatars/';

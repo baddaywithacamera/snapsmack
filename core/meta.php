@@ -327,6 +327,35 @@ if (!empty($skin_variant_url)): ?>
 </style>
 <?php endif; ?>
 
+<?php
+// ── Mobile skin option CSS (Photogram) ──────────────────────────────────────
+// The mobile skin is never the ACTIVE skin, so its options never compile into
+// custom_css_public — they compile into custom_css_mobile instead (see
+// core/skin-compile-mobile.php) and emit ONLY when the mobile skin serves.
+// Version-stamped self-heal: a skin update (or a blob that has never been
+// compiled) mismatches the target stamp → recompile inline, once.
+if (defined('SNAPSMACK_MOBILE_SKIN') && SNAPSMACK_MOBILE_SKIN !== ''
+    && (($active_skin ?? '') === SNAPSMACK_MOBILE_SKIN) && isset($pdo)) {
+    require_once __DIR__ . '/skin-compile-mobile.php';
+    $_mob_target = snapsmack_mobile_css_target_stamp();
+    if ($_mob_target !== '' && (($settings['custom_css_mobile_stamp'] ?? '') !== $_mob_target
+                                || ($settings['custom_css_mobile'] ?? '') === '')) {
+        try {
+            if (snapsmack_compile_mobile_css($pdo)) {
+                $settings['custom_css_mobile'] = $pdo->query(
+                    "SELECT setting_val FROM snap_settings WHERE setting_key = 'custom_css_mobile'"
+                )->fetchColumn() ?: '';
+                $settings['custom_css_mobile_stamp'] = $_mob_target;
+            }
+        } catch (Throwable $e) { /* render must never die over option CSS */ }
+    }
+    if (!empty($settings['custom_css_mobile'])) {
+        echo '<style id="snapsmack-mobile-skin-css">' . "\n"
+           . $settings['custom_css_mobile'] . "\n</style>\n";
+    }
+}
+?>
+
 <?php if (!empty($settings['static_content_width']) || isset($settings['static_content_gutter'])): ?>
 <style id="snapsmack-layout-vars">
 :root {

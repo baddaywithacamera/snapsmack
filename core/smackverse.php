@@ -116,6 +116,18 @@ function sv_ensure_tables(PDO $pdo): void {
         PRIMARY KEY (`id`),
         KEY `idx_ap_due` (`status`, `next_try_at`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // Outbound follows (0.7.356): who the BLOG ACTOR follows.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_following` (
+        `id`           int unsigned NOT NULL AUTO_INCREMENT,
+        `actor_url`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `actor_handle` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `inbox_url`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `follow_id`    varchar(600) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `state`        enum('pending','accepted','rejected') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+        `followed_at`  datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_ap_following` (`actor_url`(191))
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     // v0.3 interaction crossing: federated likes table + comment AP columns.
     $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_likes` (
         `id`          int unsigned NOT NULL AUTO_INCREMENT,
@@ -644,6 +656,28 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         return 202;
     }
 
+    if ($type === 'Accept' || $type === 'Reject') {
+        // Response to OUR outbound Follow (sv_follow_actor). The sender is the
+        // account we followed (signature already verified upstream); match on
+        // our Follow activity id, fall back to the actor when servers echo a
+        // bare object id instead of the full Follow.
+        $obj = $activity['object'] ?? [];
+        $fid = is_array($obj) ? (string)($obj['id'] ?? '') : (string)$obj;
+        $new_state = ($type === 'Accept') ? 'accepted' : 'rejected';
+        try {
+            $upd = $pdo->prepare(
+                "UPDATE snap_ap_following SET state = ? WHERE follow_id = ? AND actor_url = ?"
+            );
+            $upd->execute([$new_state, $fid, $actor_id]);
+            if ($upd->rowCount() === 0) {
+                $pdo->prepare(
+                    "UPDATE snap_ap_following SET state = ? WHERE actor_url = ? AND state = 'pending'"
+                )->execute([$new_state, $actor_id]);
+            }
+        } catch (Exception $e) { /* table may lag on a fresh install */ }
+        return 202;
+    }
+
     if ($type === 'Undo') {
         $obj   = $activity['object'] ?? [];
         $otype = is_array($obj) ? ($obj['type'] ?? '') : '';
@@ -871,16 +905,118 @@ function sv_followers_doc(PDO $pdo, array $settings): array {
     ];
 }
 
-/** Following collection — a blog actor follows no one; published so remote
- *  UIs render "0 Following" instead of a blank (Mastodon/Pixelfed both expect
- *  the field on the actor). */
-function sv_following_doc(array $settings): array {
+/** Following collection — accounts the blog actor follows (totalItems only;
+ *  the list stays private, mirroring the followers collection). */
+function sv_following_doc(array $settings, ?PDO $pdo = null): array {
+    $total = 0;
+    if ($pdo !== null) {
+        try {
+            $total = (int)$pdo->query(
+                "SELECT COUNT(*) FROM snap_ap_following WHERE state = 'accepted'"
+            )->fetchColumn();
+        } catch (Exception $e) { /* table may not exist yet */ }
+    }
     return [
         '@context'   => 'https://www.w3.org/ns/activitystreams',
         'id'         => sv_following_url($settings),
         'type'       => 'OrderedCollection',
-        'totalItems' => 0,
+        'totalItems' => $total,
     ];
+}
+
+// ─── Outbound Follow (0.7.356) — the blog actor follows people ──────────────
+// Reach mechanics: following a photographer lands the blog in THEIR
+// notifications — that's how follow-backs happen. Publisher-only: we ingest
+// nothing from the accounts we follow (no reader, no timeline).
+
+/** Resolve @user@host to an actor URL via the remote server's webfinger. */
+function sv_webfinger_lookup(string $handle): ?string {
+    $handle = ltrim(trim($handle), '@');
+    if (!preg_match('/^([^@\s\/]+)@([^@\s\/]+\.[^@\s\/]+)$/', $handle, $m)) return null;
+    $doc = sv_fetch_ap('https://' . $m[2] . '/.well-known/webfinger?resource='
+                       . rawurlencode('acct:' . $handle));
+    foreach (($doc['links'] ?? []) as $l) {
+        if (($l['rel'] ?? '') === 'self' && !empty($l['href'])
+            && stripos((string)($l['type'] ?? ''), 'activity') !== false) {
+            return (string)$l['href'];
+        }
+    }
+    return null;
+}
+
+/**
+ * Follow a fediverse account as the blog actor. Accepts @user@host or a raw
+ * actor URL. Queues a signed Follow to their inbox and records it pending;
+ * the inbound Accept flips it to accepted (Reject → rejected).
+ *
+ * @return array [bool ok, string message]
+ */
+function sv_follow_actor(PDO $pdo, array $settings, string $target): array {
+    $target = trim($target);
+    if ($target === '') return [false, 'Give me a handle (@user@host) or an actor URL.'];
+
+    $actor_url = (stripos($target, 'https://') === 0)
+        ? $target
+        : sv_webfinger_lookup($target);
+    if ($actor_url === null || $actor_url === '') {
+        return [false, 'Could not resolve "' . $target . '" — check the handle (format: @user@host).'];
+    }
+    if ($actor_url === sv_actor_url($settings)) {
+        return [false, 'That is this blog. Following yourself is cheaper in therapy.'];
+    }
+
+    $doc = sv_fetch_ap($actor_url);
+    if (!is_array($doc) || empty($doc['inbox']) || empty($doc['id'])) {
+        return [false, 'Fetched the actor but it has no usable inbox — server may be blocking or down.'];
+    }
+    $inbox = (string)$doc['inbox'];
+    if (!sv_url_is_public($inbox)) return [false, 'Actor inbox is not a public URL.'];
+    $canonical = (string)$doc['id'];
+    $handle    = ($doc['preferredUsername'] ?? '') . '@' . (parse_url($canonical, PHP_URL_HOST) ?: '');
+
+    $follow_id = sv_actor_url($settings) . '#follow-' . bin2hex(random_bytes(8));
+    $pdo->prepare(
+        "INSERT INTO snap_ap_following (actor_url, actor_handle, inbox_url, follow_id, state)
+         VALUES (?, ?, ?, ?, 'pending')
+         ON DUPLICATE KEY UPDATE actor_handle=VALUES(actor_handle), inbox_url=VALUES(inbox_url),
+                                 follow_id=VALUES(follow_id), state='pending', followed_at=NOW()"
+    )->execute([$canonical, substr($handle, 0, 190), $inbox, $follow_id]);
+
+    $follow = [
+        '@context' => 'https://www.w3.org/ns/activitystreams',
+        'id'       => $follow_id,
+        'type'     => 'Follow',
+        'actor'    => sv_actor_url($settings),
+        'object'   => $canonical,
+    ];
+    sv_queue_delivery($pdo, $inbox, json_encode($follow, JSON_UNESCAPED_SLASHES));
+    sv_process_deliveries($pdo, $settings, 10);
+    return [true, 'Follow sent to ' . $handle . ' — it shows as PENDING until their server accepts (usually seconds).'];
+}
+
+/** Unfollow: signed Undo wrapping the original Follow, then drop the row. */
+function sv_unfollow_actor(PDO $pdo, array $settings, int $row_id): array {
+    $s = $pdo->prepare("SELECT * FROM snap_ap_following WHERE id = ? LIMIT 1");
+    $s->execute([$row_id]);
+    $row = $s->fetch(PDO::FETCH_ASSOC);
+    if (!$row) return [false, 'Unknown follow row.'];
+
+    $undo = [
+        '@context' => 'https://www.w3.org/ns/activitystreams',
+        'id'       => $row['follow_id'] . '#undo-' . bin2hex(random_bytes(6)),
+        'type'     => 'Undo',
+        'actor'    => sv_actor_url($settings),
+        'object'   => [
+            'id'     => $row['follow_id'],
+            'type'   => 'Follow',
+            'actor'  => sv_actor_url($settings),
+            'object' => $row['actor_url'],
+        ],
+    ];
+    sv_queue_delivery($pdo, $row['inbox_url'], json_encode($undo, JSON_UNESCAPED_SLASHES));
+    sv_process_deliveries($pdo, $settings, 10);
+    $pdo->prepare("DELETE FROM snap_ap_following WHERE id = ?")->execute([$row_id]);
+    return [true, 'Unfollowed ' . ($row['actor_handle'] ?: $row['actor_url']) . '.'];
 }
 
 // ─── Notes (one published snap_image = one Note, mirroring rss.php) ─────────
@@ -958,6 +1094,14 @@ function sv_image_attachment(array $img, array $settings, string $alt = ''): arr
     if ($frame === null) {   // raw file only — the bakes already ARE the crop
         $fp = sv_focal_point($img);
         if ($fp !== null) $att['focalPoint'] = $fp;
+        // Dimension metadata — only trustworthy for the raw file. A frame/bake
+        // pads or crops the original px, and we don't read the baked file off
+        // disk here, so emitting img_width/img_height against a baked URL
+        // would lie about its actual size. Raw-file case: the DB columns are
+        // exactly the served file's dimensions.
+        $w = (int)($img['img_width'] ?? 0);
+        $h = (int)($img['img_height'] ?? 0);
+        if ($w > 0 && $h > 0) { $att['width'] = $w; $att['height'] = $h; }
     }
     return $att;
 }
@@ -1439,8 +1583,10 @@ function sv_outbox_doc(PDO $pdo, array $settings, bool $page): array {
 /**
  * Build Create-activity JSON for the N most-recent content units (standalone
  * images + grouped posts merged, newest first, then reversed to oldest-first
- * for tidy delivery). Used for the backfill sent to a NEW follower. Reuses the
- * same Note builders as the sweep, so trigram/carousel shaping is identical.
+ * for tidy delivery, with trigram trios re-reversed to slot order 3→2→1 —
+ * see sv_reverse_trigram_group_units). Used for the backfill sent to a NEW
+ * follower and by RESYNC. Reuses the same Note builders as the sweep, so
+ * trigram/carousel shaping is identical.
  */
 function sv_recent_creates(PDO $pdo, array $settings, int $limit = 10): array {
     if ($limit < 1) return [];
@@ -1486,6 +1632,7 @@ function sv_recent_creates(PDO $pdo, array $settings, int $limit = 10): array {
     }));
 
     $units = array_reverse($units);  // oldest-first for tidy delivery
+    $units = sv_reverse_trigram_group_units($units);  // then fix trio slot order
 
     $out = [];
     foreach ($units as $u) {
@@ -1516,6 +1663,32 @@ function sv_reverse_trigram_groups(array $rows): array {
         $flush();
         if ($rtg !== 0) { $tg = $rtg; $buf[] = $r; }
         else            { $tg = 0;    $out[] = $r; }
+    }
+    $flush();
+    return $out;
+}
+
+/**
+ * Same consecutive-run reversal as sv_reverse_trigram_groups, but for the
+ * {date,kind,row} unit wrapper sv_recent_creates uses (standalone images and
+ * grouped posts interleaved). An image unit — or a post with trigram_id 0 —
+ * breaks a run, same rule as the sweep's post-only version. Without this,
+ * backfill-on-follow and RESYNC deliver trigram trios in whatever order
+ * created_at happened to sort them, which only reads L→M→R on the remote
+ * grid by coincidence; the sweep path has always applied this, backfill/
+ * resync never did.
+ */
+function sv_reverse_trigram_group_units(array $units): array {
+    $out = []; $buf = []; $tg = 0;
+    $flush = function () use (&$out, &$buf) {
+        if ($buf) { $out = array_merge($out, array_reverse($buf)); $buf = []; }
+    };
+    foreach ($units as $u) {
+        $rtg = ($u['kind'] === 'post') ? (int)($u['row']['trigram_id'] ?? 0) : 0;
+        if ($rtg !== 0 && $rtg === $tg) { $buf[] = $u; continue; }
+        $flush();
+        if ($rtg !== 0) { $tg = $rtg; $buf[] = $u; }
+        else            { $tg = 0;    $out[] = $u; }
     }
     $flush();
     return $out;

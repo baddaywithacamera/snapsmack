@@ -197,7 +197,7 @@ if ($q !== '') {
     $result_count = count($results);
 }
 
-$site_title = $settings['site_title'] ?? $site_name ?? 'Photogram';
+$site_title = $site_name ?? $settings['site_name'] ?? $settings['site_title'] ?? 'Photogram'; // site_name = the real setting; site_title = legacy
 ?>
 
 <?php include __DIR__ . '/skin-meta.php'; ?>

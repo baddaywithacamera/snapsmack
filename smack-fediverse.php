@@ -84,6 +84,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reply
     }
 }
 
+// FOLLOW someone as the blog (POST): resolve, send Follow, record pending.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'follow') {
+    if (!$sv_on) {
+        $msg = 'SMACKVERSE is off — enable federation before following anyone.';
+    } else {
+        list($f_ok, $f_msg) = sv_follow_actor($pdo, $sv_settings, (string)($_POST['follow_target'] ?? ''));
+        $msg = htmlspecialchars($f_msg);
+    }
+}
+
+// UNFOLLOW (POST): signed Undo, row dropped.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'unfollow') {
+    list($u_ok, $u_msg) = sv_unfollow_actor($pdo, $sv_settings, (int)($_POST['following_id'] ?? 0));
+    $msg = htmlspecialchars($u_msg);
+}
+
 // Approve / terminate (GET, house style).
 if (isset($_GET['action'], $_GET['id'])) {
     $id = (int)$_GET['id'];
@@ -146,6 +162,14 @@ try {
     $followers = $pdo->query(
         "SELECT actor_url, followed_at FROM snap_ap_followers WHERE is_active = 1
          ORDER BY followed_at DESC LIMIT 100"
+    )->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) { /* table may lag */ }
+
+$following = [];
+try {
+    $following = $pdo->query(
+        "SELECT id, actor_url, actor_handle, state, followed_at FROM snap_ap_following
+         ORDER BY followed_at DESC LIMIT 200"
     )->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) { /* table may lag */ }
 
@@ -320,6 +344,43 @@ include 'core/sidebar.php';
                 </div>
             <?php endif; ?>
         </div>
+    </div>
+
+    <div class="box mt-30">
+        <h3>FOLLOWING<?php echo $following ? ' (' . count($following) . ')' : ''; ?></h3>
+        <p class="skin-desc-text">Accounts this blog follows, as the blog. Following a photographer puts you in their notifications — that's how follow-backs happen. The blog ingests nothing from them; this is a handshake, not a feed reader.</p>
+        <form method="POST" class="signal-search-group" style="margin-bottom:14px;">
+            <input type="hidden" name="action" value="follow">
+            <input type="text" name="follow_target" placeholder="@photographer@pixelfed.ca" required
+                   <?php echo $sv_on ? '' : 'disabled'; ?>>
+            <button type="submit" class="btn-smack" <?php echo $sv_on ? '' : 'disabled'; ?>>FOLLOW</button>
+        </form>
+        <?php if (!$following): ?>
+            <p>Not following anyone yet. Go find the photographers.</p>
+        <?php else: ?>
+            <div class="recent-list">
+                <?php foreach ($following as $fw): ?>
+                    <div class="recent-item">
+                        <div class="item-text">
+                            <a href="<?php echo htmlspecialchars($fw['actor_url']); ?>" target="_blank" rel="noopener">
+                                <?php echo htmlspecialchars($fw['actor_handle'] ?: $fedi_handle($fw['actor_url'])); ?>
+                            </a>
+                            <span class="status-pill <?php echo $fw['state'] === 'accepted' ? 'status-online' : 'status-offline'; ?>"
+                                  style="margin-left:8px;"><?php echo strtoupper($fw['state']); ?></span>
+                            <span class="signal-meta">since <?php echo htmlspecialchars($fw['followed_at'] ?? ''); ?></span>
+                        </div>
+                        <div class="item-actions">
+                            <form method="POST" style="display:inline;"
+                                  onsubmit="return confirm('Unfollow <?php echo htmlspecialchars($fw['actor_handle'] ?: 'this account'); ?>?');">
+                                <input type="hidden" name="action" value="unfollow">
+                                <input type="hidden" name="following_id" value="<?php echo (int)$fw['id']; ?>">
+                                <button type="submit" class="btn-clear">UNFOLLOW</button>
+                            </form>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 
