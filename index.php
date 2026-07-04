@@ -85,7 +85,10 @@ try {
 
     // Override defaults with database values if they exist
     $active_skin = ($settings['active_skin'] ?? '') ?: $active_skin;
-    $site_name = $settings['site_name'] ?? $site_name;
+    // Decode any HTML entities stored in the name (some import/legacy paths
+    // saved it pre-encoded, e.g. "it&#039;s"); skins re-escape on output, so
+    // decoding here prevents the double-encode that showed the raw &#039;.
+    $site_name = html_entity_decode((string)($settings['site_name'] ?? $site_name), ENT_QUOTES | ENT_HTML5);
 
     // Force Pocket Rocket on mobile devices (phones only, not tablets)
     if (snapsmack_is_mobile() && SNAPSMACK_MOBILE_SKIN !== '' && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
