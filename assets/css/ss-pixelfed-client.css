@@ -275,4 +275,13 @@
     .sspf-nav { width: 100%; display: flex; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--pf-border); min-height: 0; }
     .sspf-nav a { white-space: nowrap; }
 }
+/* ── Authenticated search results: account list ── */
+.sspf-results-label { font-size: .72rem; letter-spacing: 2px; text-transform: uppercase; opacity: .6; margin: 16px 4px 8px; }
+.sspf-acct-list { display: flex; flex-direction: column; gap: 2px; }
+.sspf-acct-row { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-bottom: 1px solid var(--pf-border); }
+.sspf-acct-row:last-child { border-bottom: none; }
+.sspf-acct-who { flex: 1 1 auto; min-width: 0; }
+.sspf-acct-who .sspf-card-user, .sspf-acct-who .sspf-card-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sspf-results-feed { margin-top: 4px; }
+
 /* ===== SNAPSMACK EOF ===== */
