@@ -166,20 +166,30 @@ if (isset($_GET['ajax'])) {
             $looks_handle = (strpos($target, '@') !== false && strpos($target, ' ') === false)
                           || stripos($target, 'https://') === 0;
 
-            // Bare word + a piggyback account → authenticated ACCOUNT search on
-            // that instance (the fediverse has no public account search). Take
-            // the top hit and resolve it to a profile below, reusing the profile
-            // render. Explicit #tags and handles skip this; no account = old path.
+            // Bare word + a piggyback account → authenticated search on that
+            // instance (the fediverse has no public account search). Return real
+            // ACCOUNT results AND full-text PHOTO results (mode 'results').
+            // Explicit #tags and handles skip this; no account = old hashtag path.
             if ($target !== '' && $target[0] !== '#' && !$looks_handle
                 && function_exists('sv_authed_search') && sv_pick_search_account($pdo)) {
-                $sr = sv_authed_search($pdo, $sv_settings, $target, 'accounts');
-                if (is_array($sr) && !empty($sr['accounts'][0])) {
-                    $top  = $sr['accounts'][0];
-                    $acct = (string)($top['acct'] ?? '');
-                    $url  = (string)($top['url'] ?? '');
-                    if ($acct !== '' && strpos($acct, '@') !== false) { $target = '@' . ltrim($acct, '@'); $looks_handle = true; }
-                    elseif ($url !== '')                              { $target = $url;                     $looks_handle = true; }
+                $sr = sv_authed_search($pdo, $sv_settings, $target, '');
+                if (is_array($sr)) {
+                    $sr_accts = [];
+                    foreach (($sr['accounts'] ?? []) as $ac) { if (is_array($ac)) $sr_accts[] = sv_map_account_card($ac); }
+                    $sr_items = [];
+                    foreach (($sr['statuses'] ?? []) as $st) { if (is_array($st)) { $row = sv_map_status_row($st); if ($row) $sr_items[] = $row; } }
+                    if ($sr_accts || $sr_items) {
+                        echo json_encode([
+                            'ok'       => true,
+                            'mode'     => 'results',
+                            'query'    => $target,
+                            'accounts' => $sr_accts,
+                            'items'    => $sr_items,
+                        ], JSON_UNESCAPED_SLASHES);
+                        exit;
+                    }
                 }
+                // no authed results → fall through to the public hashtag path
             }
 
             if ($target[0] === '#' || !$looks_handle) {

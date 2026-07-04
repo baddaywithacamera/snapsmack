@@ -186,6 +186,41 @@
         });
     }
 
+    // ── authenticated search results: account list + photo feed ───────────────
+    function renderResults(body, data) {
+        body.innerHTML = '';
+        body.appendChild(el('h3', 'sspf-panel-title', 'Results for “' + (data.query || '') + '”'));
+        var accts = data.accounts || [];
+        if (accts.length) {
+            body.appendChild(el('div', 'sspf-results-label', 'Accounts'));
+            var list = el('div', 'sspf-acct-list');
+            accts.forEach(function (ac) {
+                var row = el('div', 'sspf-acct-row');
+                if (ac.avatar) { var av = el('img', 'sspf-avatar'); av.src = ac.avatar; av.alt = ''; row.appendChild(av); }
+                else { row.appendChild(el('div', 'sspf-avatar')); }
+                var who = el('div', 'sspf-acct-who');
+                who.appendChild(el('div', 'sspf-card-user', ac.name || ac.handle || ''));
+                who.appendChild(el('div', 'sspf-card-sub', ac.handle || ''));
+                row.appendChild(who);
+                var view = el('button', 'sspf-btn', 'View');
+                view.addEventListener('click', function () { loadProfile(body, ac.handle || ac.url); });
+                row.appendChild(view);
+                list.appendChild(row);
+            });
+            body.appendChild(list);
+        }
+        var items = data.items || [];
+        if (items.length) {
+            body.appendChild(el('div', 'sspf-results-label', 'Photos'));
+            var feed = el('div', 'sspf-results-feed');
+            body.appendChild(feed);
+            renderFeed(feed, items);   // renderFeed clears the div it is given, then fills
+        }
+        if (!accts.length && !items.length) {
+            body.appendChild(noteEl('No accounts or photos matched “' + (data.query || '') + '”.'));
+        }
+    }
+
     // ── POST helper (CSRF-signed) ─────────────────────────────────────────────
     function post(params) {
         var fd = new FormData();
@@ -227,6 +262,8 @@
                     }
                     return;
                 }
+                // Authenticated (piggyback) search: an account LIST + a photo feed.
+                if (data.mode === 'results') { renderResults(body, data); return; }
                 renderProfile(body, data);
             })
             .catch(function () {

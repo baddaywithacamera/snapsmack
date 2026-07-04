@@ -1884,6 +1884,50 @@ function sv_public_timeline(string $host, bool $local, int $limit = 30): array {
  * by hashtag. Same status→row shape as sv_public_timeline(), so the client's
  * feed renderer handles it unchanged.
  */
+/** Map a Mastodon/Pixelfed status entity to the client feed-row shape, or null if it has no image. */
+function sv_map_status_row(array $st, string $fallback_host = ''): ?array {
+    $imgs = [];
+    foreach (($st['media_attachments'] ?? []) as $m) {
+        if (is_array($m) && ($m['type'] ?? '') === 'image') {
+            $u = (string)($m['url'] ?? ($m['preview_url'] ?? '')); if ($u !== '') $imgs[] = $u;
+        }
+    }
+    if (!$imgs) return null;
+    $acct = is_array($st['account'] ?? null) ? $st['account'] : [];
+    return [
+        'id'        => (string)($st['uri'] ?? ($st['url'] ?? '')),
+        'url'       => (string)($st['url'] ?? ($st['uri'] ?? '')),
+        'published' => (string)($st['created_at'] ?? ''),
+        'text'      => (isset($st['content_text']) && $st['content_text'] !== '')
+                        ? (string)$st['content_text']
+                        : trim(strip_tags((string)($st['content'] ?? ''))),
+        'images'    => $imgs, 'count' => count($imgs),
+        'author'    => [
+            'handle' => (string)($acct['acct'] ?? ''),
+            'name'   => (string)($acct['display_name'] ?? ($acct['username'] ?? '')),
+            'avatar' => (string)($acct['avatar'] ?? ''),
+            'id'     => (string)($acct['url'] ?? ''),
+            'host'   => parse_url((string)($acct['url'] ?? ''), PHP_URL_HOST) ?: $fallback_host,
+        ],
+    ];
+}
+
+/** Map a Mastodon/Pixelfed account entity to the client account-card shape (handle = full @user@host). */
+function sv_map_account_card(array $acct): array {
+    $handle = (string)($acct['acct'] ?? ($acct['username'] ?? ''));
+    if ($handle !== '' && strpos($handle, '@') === false) {
+        $h = parse_url((string)($acct['url'] ?? ''), PHP_URL_HOST);
+        if ($h) $handle .= '@' . $h;
+    }
+    return [
+        'name'      => (string)($acct['display_name'] ?? ($acct['username'] ?? $handle)),
+        'handle'    => $handle !== '' ? ('@' . ltrim($handle, '@')) : '',
+        'avatar'    => (string)($acct['avatar'] ?? ''),
+        'url'       => (string)($acct['url'] ?? ''),
+        'followers' => isset($acct['followers_count']) ? (int)$acct['followers_count'] : null,
+    ];
+}
+
 function sv_hashtag_timeline(string $host, string $tag, int $limit = 40): array {
     $host = preg_replace('/[^a-z0-9.\-]/i', '', trim($host));
     $tag  = preg_replace('/[^a-z0-9_]/i', '', ltrim(trim($tag), '#'));
