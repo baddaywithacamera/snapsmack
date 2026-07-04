@@ -36,7 +36,6 @@
     var engaged = 0;           // accumulated engaged milliseconds
     var lastTick = null;       // timestamp of the previous accumulation tick
     var lastActivity = Date.now();
-    var sent = false;
 
     function isActive() {
         return document.visibilityState === 'visible' &&
@@ -63,11 +62,12 @@
         });
 
     function send() {
-        if (sent) return;
         tick();
         var ms = Math.round(engaged);
         if (ms < 1000) return;   // ignore sub-second / no real engagement
-        sent = true;             // set-once client-side; server also enforces set-once
+        // No client set-once: report the LATEST engaged time on every hidden /
+        // pagehide / unload. The server keeps the MAX, so a mid-visit tab switch
+        // (or phone lock) no longer freezes the number at a few seconds.
         var payload = JSON.stringify({ hit: hit, ms: ms });
         if (navigator.sendBeacon) {
             navigator.sendBeacon(endpoint, new Blob([payload], { type: 'application/json' }));

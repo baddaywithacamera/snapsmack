@@ -295,6 +295,19 @@ if (isset($_POST['action']) && $_POST['action'] === 'set_threeacross') {
     exit;
 }
 
+// IMPRINT ORDER FOR FEDIVERSE — stamp fedi_published_at down the grid so the top
+// is newest. The fediverse sorts a profile by post date, so this makes a remote
+// profile reproduce THIS exact lighttable order for anyone who ingests it fresh.
+if (isset($_POST['action']) && $_POST['action'] === 'imprint_fedi') {
+    require_once __DIR__ . '/core/smackverse.php';
+    if (!isset($settings) || !is_array($settings)) {
+        $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+    }
+    $imp_n = (($settings['smackverse_enabled'] ?? '0') === '1') ? sv_sync_fedi_dates($pdo, $settings) : 0;
+    header('Location: smack-lt-gram.php?imprinted=' . (int)$imp_n);
+    exit;
+}
+
 // Feed Randomize + Restore-chronological now live in smack-maintenance.php,
 // behind step-up auth (password + 2FA) so they can't be hit by accident.
 
@@ -360,6 +373,13 @@ include 'core/sidebar.php';
                 <button class="btn btn--sm" id="ltgLockTrigramBtn" onclick="ltgLockTrigram()" title="Lock the 3 selected posts into a trigram, in the order you ticked them">🔒 LOCK TRIGRAM</button>
             </span>
             <button class="btn btn--sm" id="ltgBulkPublishBtn" style="display:none;" onclick="ltgBulkPublish()">PUBLISH SELECTED</button>
+            <?php if (($settings['smackverse_enabled'] ?? '0') === '1'): ?>
+                <?php if (isset($_GET['imprinted'])): ?><span style="color:#4ade80; font-size:.85rem;">&#10003; Imprinted <?php echo (int)$_GET['imprinted']; ?> posts to fediverse order</span><?php endif; ?>
+                <form method="post" style="display:inline;" onsubmit="return confirm('Imprint this grid order onto your fediverse post dates? The top of the grid becomes newest, so a fresh fediverse follower sees this exact order.\n\n(Followers who already have your posts keep the order they first received — the fediverse pins a post\'s date at first sight.)');">
+                    <input type="hidden" name="action" value="imprint_fedi">
+                    <button type="submit" class="btn btn--sm" title="Stamp fediverse post dates to match this grid order — top = newest">&#128424; IMPRINT ORDER FOR FEDIVERSE</button>
+                </form>
+            <?php endif; ?>
             <label class="ltg-col-label" title="3-across: hold a lone trailing post as queued until two more complete its row. Creating a trigram turns this on automatically.">
                 <input type="checkbox" id="ltgThreeAcross" <?php echo $three_on ? 'checked' : ''; ?>> 3-across
             </label>

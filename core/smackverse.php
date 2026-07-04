@@ -78,6 +78,15 @@ function sv_followers_url(array $settings): string { return sv_base($settings) .
 function sv_following_url(array $settings): string { return sv_base($settings) . 'ap/following'; }
 function sv_key_id(array $settings): string        { return sv_actor_url($settings) . '#main-key'; }
 
+/** Federation GENERATION suffix for Note ids. A RE-IMPRINT bumps the generation
+ *  so every Note gets a brand-new id — the only way to make a remote that pinned
+ *  the old dates re-ingest fresh. Gen 1 (default) = no suffix, so nothing changes
+ *  until you deliberately re-imprint. Dereference is unaffected: (int)"861~2" === 861. */
+function sv_gen_suffix(array $settings): string {
+    $g = (int)($settings['smackverse_fedi_gen'] ?? 1);
+    return $g > 1 ? '~' . $g : '';
+}
+
 /** Upsert a snap_settings row and mirror it into the in-memory array. */
 function sv_set_setting(PDO $pdo, array &$settings, string $key, string $val): void {
     $ins = $pdo->prepare(
@@ -2027,7 +2036,7 @@ function sv_post_images(PDO $pdo, int $post_id): array {
 function sv_note_for_image(PDO $pdo, array $img, array $settings): array {
     $base      = sv_base($settings);
     $permalink = $base . $img['img_slug'];
-    $note_id   = $base . 'ap/note/i/' . (int)$img['id'];
+    $note_id   = $base . 'ap/note/i/' . (int)$img['id'] . sv_gen_suffix($settings);
 
     $title = trim($img['img_title'] ?? '');
     $desc  = trim($img['img_description'] ?? '');
@@ -2097,7 +2106,7 @@ function sv_note_for_post(PDO $pdo, array $post, array $settings): ?array {
     $cover   = $images[0];
     foreach ($images as $im) { if (!empty($im['is_cover'])) { $cover = $im; break; } }
     $permalink = $base . $cover['img_slug'];
-    $note_id   = $base . 'ap/note/p/' . (int)$post['id'];
+    $note_id   = $base . 'ap/note/p/' . (int)$post['id'] . sv_gen_suffix($settings);
 
     $title = trim($post['title'] ?? '');
     $desc  = trim($post['description'] ?? '');
@@ -2894,6 +2903,41 @@ function sv_reseed_all(PDO $pdo, array $settings, ?int $limit = null): array {
         }
     }
     return [$posts, $comments, $deliveries];
+}
+
+/**
+ * RE-IMPRINT — force followers that pinned the OLD dates to re-ingest in the
+ * current grid order.
+ *
+ * The fediverse fixes a post's date at first sight, so a follower who already
+ * holds your posts never re-sorts no matter how you reseed. This bumps the
+ * federation GENERATION (so every Note gets a brand-new id), retracts the
+ * current generation's Notes from every follower, then seeds everything fresh
+ * under the new ids (dates imprinted first). The remote deletes the stale posts
+ * and ingests the new-id posts clean, in your exact order. Same stable actor,
+ * so followers are kept. A deliberate one-shot; it doubles the delivery queue
+ * (a Delete + a Create per post), paced by the cron.
+ *
+ * @return array [retracted, posts_seeded, deliveries]
+ */
+function sv_reimprint(PDO $pdo, array &$settings, ?int $limit = null): array {
+    if (!sv_enabled($settings)) return [0, 0, 0];
+    // Retract the CURRENT-generation Notes (before the bump) from every follower.
+    $base   = sv_base($settings);
+    $suffix = sv_gen_suffix($settings);
+    $retracted = 0;
+    foreach (sv_ordered_units($pdo, $settings, 100000) as $u) {
+        $nid = ($u['kind'] === 'post')
+            ? $base . 'ap/note/p/' . (int)$u['row']['id'] . $suffix
+            : $base . 'ap/note/i/' . (int)$u['row']['id'] . $suffix;
+        $retracted += sv_retract_note($pdo, $settings, $nid);
+    }
+    // Bump the generation → all NEW Note ids carry the new suffix.
+    $newgen = (int)($settings['smackverse_fedi_gen'] ?? 1) + 1;
+    sv_set_setting($pdo, $settings, 'smackverse_fedi_gen', (string)$newgen);
+    // Seed everything fresh under the new ids (sv_reseed_all imprints dates first).
+    list($posts, , $deliveries) = sv_reseed_all($pdo, $settings, $limit);
+    return [$retracted, $posts, $deliveries];
 }
 
 /**
