@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sspf_action'])) {
 // ── AJAX (JSON) — must return BEFORE any chrome is emitted ──────────────────
 // profile/search are LIVE: they webfinger → crawl the actor's outbox (0.7.360
 // paginated collection) → return a Pixelfed-style profile + photo grid with the
-// blog's follow-state so the client can offer Follow / Unfollow / Applaud /
+// blog's follow-state so the client can offer Follow / Unfollow / Like /
 // Reply. The reader timelines (home/local/global/notifications) land in the
 // next phase and return a safe empty payload so those panels stay quiet.
 if (isset($_GET['ajax'])) {
@@ -313,7 +313,7 @@ include 'core/sidebar.php';
                 <section class="sspf-panel" data-panel="notifications">
                     <h3 class="sspf-panel-title">Notifications</h3>
                     <div class="sspf-panel-body">
-                        <div class="sspf-note">Follows, applause and replies aimed at you land here once notifications ingest is wired.</div>
+                        <div class="sspf-note">Follows, likes and replies aimed at you land here once notifications ingest is wired.</div>
                     </div>
                 </section>
 
@@ -327,7 +327,7 @@ include 'core/sidebar.php';
                 <section class="sspf-panel" data-panel="search">
                     <h3 class="sspf-panel-title">Search</h3>
                     <div class="sspf-panel-body">
-                        <div class="sspf-note">Search the bar above two ways: a handle like <strong>@user@host</strong> renders that account's real profile and posts (with follow / applaud / reply), or a <strong>#hashtag</strong> (or any word) pulls recent photos tagged that way from your home instance.</div>
+                        <div class="sspf-note">Search the bar above two ways: a handle like <strong>@user@host</strong> renders that account's real profile and posts (with follow / like / reply), or a <strong>#hashtag</strong> (or any word) pulls recent photos tagged that way from your home instance.</div>
                     </div>
                 </section>
             </div>

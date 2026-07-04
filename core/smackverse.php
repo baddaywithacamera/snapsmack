@@ -1469,10 +1469,10 @@ function sv_crawl_outbox(string $outbox_url, int $max = 36): array {
 }
 
 /**
- * Applaud (Like) a remote object as the blog actor. Re-fetches the target's
+ * Like a remote object as the blog actor. Re-fetches the target's
  * author server-side to find the inbox (never trusts a client-supplied inbox),
  * delivers a signed Like. Fire-and-forget — no local state is kept for remote
- * likes (no schema for it), so the client just marks the button applauded.
+ * likes here, so the client just marks the button liked.
  *
  * @return array [bool ok, string message]
  */
@@ -1482,7 +1482,7 @@ function sv_like_remote(PDO $pdo, array $settings, string $object_id, string $ac
     if ($object_id === '' || stripos($object_id, 'https://') !== 0) return [false, 'That post has no usable id.'];
     if (stripos($actor_url, 'https://') !== 0) return [false, 'That account has no usable id.'];
     $actor = sv_fetch_ap($actor_url);
-    if (!is_array($actor) || empty($actor['inbox'])) return [false, 'Could not reach that account to applaud.'];
+    if (!is_array($actor) || empty($actor['inbox'])) return [false, 'Could not reach that account to like.'];
     $inbox = (string)$actor['inbox'];
     if (!sv_url_is_public($inbox)) return [false, 'That account inbox is not a public URL.'];
 
@@ -1501,17 +1501,17 @@ function sv_like_remote(PDO $pdo, array $settings, string $object_id, string $ac
                        ON DUPLICATE KEY UPDATE like_id=VALUES(like_id)")
             ->execute([substr($object_id, 0, 500), substr($like_id, 0, 600)]);
     } catch (Exception $e) { /* table may lag */ }
-    return [true, 'Applause sent.'];
+    return [true, 'Liked.'];
 }
 
-/** Undo a remote applause (Like) — sends Undo{Like} and drops the state row. */
+/** Undo a remote Like — sends Undo{Like} and drops the state row. */
 function sv_unlike_remote(PDO $pdo, array $settings, string $object_id, string $actor_url): array {
     $object_id = trim($object_id);
     $actor_url = trim($actor_url);
     $s = $pdo->prepare("SELECT like_id FROM snap_ap_outbound_likes WHERE object_id = ? LIMIT 1");
     $s->execute([$object_id]);
     $like_id = (string)($s->fetchColumn() ?: '');
-    if ($like_id === '') return [false, 'You have not applauded that.'];
+    if ($like_id === '') return [false, 'You have not liked that.'];
     $actor = sv_fetch_ap($actor_url);
     if (!is_array($actor) || empty($actor['inbox'])) return [false, 'Could not reach that account.'];
     $inbox = (string)$actor['inbox'];
@@ -1526,10 +1526,10 @@ function sv_unlike_remote(PDO $pdo, array $settings, string $object_id, string $
     sv_queue_delivery($pdo, $inbox, json_encode($undo, JSON_UNESCAPED_SLASHES));
     sv_process_deliveries($pdo, $settings, 10);
     $pdo->prepare("DELETE FROM snap_ap_outbound_likes WHERE object_id = ?")->execute([$object_id]);
-    return [true, 'Applause withdrawn.'];
+    return [true, 'Like removed.'];
 }
 
-/** Has the blog applauded this remote object? (like-state for the UI) */
+/** Has the blog liked this remote object? (like-state for the UI) */
 function sv_has_liked(PDO $pdo, string $object_id): bool {
     if ($object_id === '') return false;
     try {
@@ -2679,6 +2679,17 @@ function sv_outbox_doc(PDO $pdo, array $settings, int $page = 0): array {
     // One merged, globally-ordered window (newest first). The DB sorts + slices,
     // so pages never overlap or skip; deterministic tie-break on kind + id keeps
     // pagination stable when timestamps collide.
+    //
+    // HARD OVERRIDE: posts order by fedi_published_at — the grid order the
+    // lighttable "IMPRINT ORDER FOR FEDIVERSE" tool stamps, strictly decreasing
+    // down the grid (sv_sync_fedi_dates) — falling back to created_at only for a
+    // post never imprinted. created_at is the ORIGINAL capture/import date: wonky
+    // for imported libraries and identical across a same-shot trigram row, so
+    // ordering the outbox by it flipped neighbouring rows and scrambled a
+    // trigram's L/M/R (the tie broke on id). The delivered Notes already publish
+    // fedi_published_at (sv_note_for_post), so the outbox — new-follower backfill
+    // and the admin client's own-actor crawl — must order by the same key, or a
+    // fresh ingest reproduces the wonky dates instead of your curated grid.
     $index = [];
     try {
         $stmt = $pdo->prepare(
@@ -2686,7 +2697,7 @@ function sv_outbox_doc(PDO $pdo, array $settings, int $page = 0): array {
                 SELECT id, img_date AS d, 'image' AS kind FROM snap_images
                   WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL
                 UNION ALL
-                SELECT id, created_at AS d, 'post' AS kind FROM snap_posts
+                SELECT id, COALESCE(fedi_published_at, created_at) AS d, 'post' AS kind FROM snap_posts
                   WHERE status = 'published' AND created_at <= NOW()
                     AND post_type IN ('single','carousel','panorama')
              ) u

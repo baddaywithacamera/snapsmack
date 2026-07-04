@@ -1016,7 +1016,7 @@ CREATE TABLE IF NOT EXISTS `snap_ap_outbound_replies` (
   UNIQUE KEY `uq_ap_reply_token` (`token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- What the blog has applauded remotely — gives Applaud real state + Undo.
+-- What the blog has liked remotely — gives Like real state + Undo.
 CREATE TABLE IF NOT EXISTS `snap_ap_outbound_likes` (
   `id`         int unsigned NOT NULL AUTO_INCREMENT,
   `object_id`  varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
