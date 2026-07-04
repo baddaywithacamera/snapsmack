@@ -112,6 +112,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
                     ADD COLUMN IF NOT EXISTS img_zoom    SMALLINT UNSIGNED NOT NULL DEFAULT 100");
     } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
 
+    // Defensive: the carousel-styling + fediverse-push columns on snap_posts.
+    // Canonical carries them all, but an install whose schema never synced is
+    // missing them — and unlike the snap_post_images adds above, these had NO
+    // belt-and-suspenders add here. The manual gram INSERT sets every one of
+    // them, so a single missing column ("Unknown column …") killed the whole
+    // post, while the batch/import path (which omits fedi_enabled and the
+    // styling columns) kept working. Pure structural adds; match canonical.
+    try {
+        $pdo->exec("ALTER TABLE snap_posts
+                    ADD COLUMN IF NOT EXISTS panorama_rows     tinyint          NOT NULL DEFAULT 1,
+                    ADD COLUMN IF NOT EXISTS post_img_size_pct tinyint unsigned NOT NULL DEFAULT 100,
+                    ADD COLUMN IF NOT EXISTS post_border_px    tinyint unsigned NOT NULL DEFAULT 0,
+                    ADD COLUMN IF NOT EXISTS post_border_color char(7)          NOT NULL DEFAULT '#000000',
+                    ADD COLUMN IF NOT EXISTS post_bg_color     char(7)          NOT NULL DEFAULT '#ffffff',
+                    ADD COLUMN IF NOT EXISTS post_shadow       tinyint unsigned NOT NULL DEFAULT 0,
+                    ADD COLUMN IF NOT EXISTS fedi_enabled      tinyint(1)       NOT NULL DEFAULT 1,
+                    ADD COLUMN IF NOT EXISTS fedi_pushed_at    datetime         DEFAULT NULL,
+                    ADD COLUMN IF NOT EXISTS fedi_published_at datetime         DEFAULT NULL");
+    } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
+
     $raw_date  = $_POST['img_date'] ?? '';
     $post_date = !empty($raw_date) ? str_replace('T', ' ', $raw_date) : date('Y-m-d H:i:s');
 
