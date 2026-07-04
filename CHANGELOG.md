@@ -15,6 +15,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 ## 0.7.376 — "The Crystal Empire" (2026-07-04)
 
 - **Security (audit 032, finding 1): piggyback search tokens now encrypt under a dedicated per-install key.** The token key fell back to the shared public default salt (`snapsmack-default-salt-change-me`) on installs without a `download_salt`, which reduced "encrypted at rest" to obfuscation — anyone able to read the DB could recover the token. `sv_search_salt()` now generates and persists a random per-install secret (`smackverse_search_key`) on first use, independent of `download_salt`, so a stored token is genuinely encrypted and rotating `download_salt` never orphans it. (No stored tokens are affected — the feature is new and the earlier save path was failing; if you did manage to save one, re-add it.)
+- **Piggyback search accounts now verify the token when you add them.** Adding an account previously stored the token blind — a bad, expired, or wrong-instance token failed silently later with no clue why. The add now calls the instance's `/api/v1/accounts/verify_credentials` first: an invalid token is rejected on the spot with a clear message, and a valid one is confirmed ("verified as @handle") and auto-fills the username. Works against any Mastodon- or Pixelfed-compatible instance.
 
 ## 0.7.375 — "Ponyville Confidential" (2026-07-04)
 

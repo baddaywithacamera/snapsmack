@@ -444,6 +444,15 @@ function sv_add_search_account(PDO $pdo, array $settings, string $host, string $
     $token = trim($token);
     if ($host === '' || !preg_match('/^[a-z0-9.\-]+\.[a-z]{2,}$/', $host)) return [false, 'Enter a valid instance host, e.g. pixelfed.social.'];
     if ($token === '') return [false, 'Paste the access token from that instance.'];
+    // Verify the token actually authenticates BEFORE storing it, so a bad, expired,
+    // or wrong-instance token fails loudly here instead of silently later. Uses the
+    // standard Mastodon/Pixelfed "who am I" endpoint; a valid token returns the
+    // account object, an invalid one 401s (sv_authed_get → null).
+    $who = sv_authed_get('https://' . $host . '/api/v1/accounts/verify_credentials', $token);
+    if (!is_array($who) || empty($who['id'])) {
+        return [false, 'That token did not authenticate on ' . $host . '. Check it is a valid, unexpired read-scope token for that exact instance.'];
+    }
+    if ($username === '' && !empty($who['username'])) $username = (string)$who['username'];
     $salt = sv_search_salt($pdo, $settings);
     $enc = sv_search_token_encrypt($token, $salt);
     if ($enc === '') return [false, 'Could not encrypt the token.'];
@@ -451,7 +460,7 @@ function sv_add_search_account(PDO $pdo, array $settings, string $host, string $
                    VALUES (?,?,?,1)
                    ON DUPLICATE KEY UPDATE username=VALUES(username), token_enc=VALUES(token_enc), is_active=1")
         ->execute([substr($host, 0, 190), substr($username, 0, 190), $enc]);
-    return [true, 'Search account added for ' . $host . '.'];
+    return [true, 'Search account added for ' . $host . ($username !== '' ? ' — verified as @' . $username : '') . '.'];
 }
 
 function sv_delete_search_account(PDO $pdo, int $id): void {
