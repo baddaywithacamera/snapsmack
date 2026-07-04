@@ -1318,4 +1318,92 @@ body.is-blogroll .blogroll-peer-url { display: none; }
     color: var(--text-secondary);
 }
 
+/* ==========================================================================
+   SUDDEN IMPACT — Instagram in dot matrix.
+   The Grid's structure rendered as a 1985 Okidata 192 thermal printout: plain
+   continuous-feed paper, DotMatrix type throughout, thermal B&W tiles, dashed
+   double-rule dot-matrix nav + footer. Strictly monochrome. Overrides The Grid.
+   ========================================================================= */
+:root {
+    /* IMPACT PRINTER plain-paper palette */
+    --bg-primary:  #f0ede5; --bg-secondary:#e8e5dc; --bg-chrome:#dfdcd3;
+    --border:      #ccc8bc;
+    --text-primary:#2a2520; --text-secondary:#5a5347; --text-dim:#8a8275;
+    --accent:      #3d3730; --accent-hover:#1a1510;
+    /* Remap The Grid's own tokens onto paper + ink */
+    --bg:          #f0ede5;
+    --text:        #2a2520;
+    --text-muted:  #8a8275;
+    --input-bg:    #f5f2ea;
+    --grid-gap:    10px;
+}
+
+/* Plain continuous-feed thermal paper, DotMatrix ink. */
+html, body {
+    background: url('assets/textures/tractor-feed-paper-texture%2001.jpg') repeat-y center top;
+    background-size: 100% auto;
+    color: #2a2520;
+    font-family: 'DotMatrix', 'Courier New', monospace;
+}
+/* DotMatrix on every surface (Courier fallback keeps it monospaced if the face
+   hasn't loaded yet). */
+body, h1, h2, h3, h4, h5, p, a, span, div, li,
+button, input, select, textarea,
+.tg-sticky-nav-links a, .tg-tab, .tg-post-ig-sitename, .tg-post-ig-caption,
+.tg-post-ig-caption-user, .tg-post-caption-block, .tg-exif-label, .tg-exif-value {
+    font-family: 'DotMatrix', 'Courier New', monospace !important;
+}
+
+/* ---- TILES: thermal B&W print in a dashed ASCII frame ---- */
+.tg-tile {
+    background: #f5f2ea;
+    border: 2px dashed var(--border);
+    padding: 3px;
+}
+/* Optional "fake thermal" treatment for a photographer WITHOUT a toy camera —
+   pushes a normal photo toward the printout look. Real thermal scans are already
+   dithered, so this is close to a no-op on them. If it reads well, THIS is the
+   block to lift into IMPACT PRINTER for phone shooters. pixelated keeps the dots
+   crunchy instead of letting the browser smooth them into grey on downscale. */
+.tg-tile img { filter: grayscale(1) contrast(1.35) brightness(1.06); image-rendering: pixelated; }
+.tg-tile:hover img { filter: grayscale(1) contrast(1.5); opacity: 1; }
+.tg-tile-indicator, .tg-tile-indicator--icon { color: #2a2520; filter: none; }
+
+/* ---- NAV: dashed DOUBLE-RULE dot-matrix lines, not thin bars ---- */
+.tg-sticky-nav, .tg-sticky-nav-inner {
+    background: transparent;
+    box-shadow: none;
+    border-top: 1px dashed var(--border);
+    border-bottom: 1px dashed var(--border);
+    padding-top: 4px; padding-bottom: 4px;
+}
+.tg-sticky-nav::before, .tg-sticky-nav::after {
+    content: ""; display: block; height: 0;
+    border-top: 1px dashed var(--border);
+    margin: 2px 0;
+}
+.tg-sticky-nav-links a { color: #2a2520; text-transform: uppercase; letter-spacing: 1px; }
+.tg-sticky-nav-links a:hover, .tg-sticky-nav-links a.active {
+    color: #1a1510; border-bottom: 1px dashed var(--accent);
+}
+
+/* ---- FOOTER: dot matrix, dashed double rule ---- */
+#system-footer, .tg-footer, footer, .tg-site-footer {
+    background: transparent;
+    color: #8a8275;
+    font-family: 'DotMatrix', 'Courier New', monospace;
+    border-top: 1px dashed var(--border);
+}
+#system-footer::before, footer::before {
+    content: ""; display: block; height: 0;
+    border-top: 1px dashed var(--border);
+    margin-bottom: 4px;
+}
+
+/* Buttons / inputs — dashed thermal chrome. */
+button, .btn, input, select {
+    background: #f5f2ea; color: #2a2520;
+    border: 1px dashed var(--border);
+}
+
 /* ===== SNAPSMACK EOF ===== */
