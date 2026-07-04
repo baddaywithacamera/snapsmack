@@ -195,8 +195,12 @@ $hub_image_count = $cc_hub['images'];
 $hub_scroll_avg = null; $hub_scroll_n = 0;
 try {
     $sd_sub = $period > 0 ? "AND hit_at >= DATE_SUB(NOW(), INTERVAL {$period} DAY)" : '';
+    // Count only ENGAGED reads (10s+): a landing-feed average over every hit is
+    // dominated by drive-by bounces (and the short frozen samples from before the
+    // tracker was fixed), which pins it near ~12-14s no matter the real reads.
+    // The >= 10000ms floor drops bounces + NULLs and reflects actual reading time.
     $row = $pdo->query("SELECT AVG(dwell_ms) AS a, COUNT(*) AS n FROM snap_stats
-                        WHERE is_bot = 0 AND dwell_ms IS NOT NULL
+                        WHERE is_bot = 0 AND dwell_ms >= 10000
                           AND page_type IN ('landing','archive') {$sd_sub}")->fetch(PDO::FETCH_ASSOC);
     if ($row && (int)$row['n'] > 0) { $hub_scroll_avg = (float)$row['a']; $hub_scroll_n = (int)$row['n']; }
 } catch (\Exception $e) {}

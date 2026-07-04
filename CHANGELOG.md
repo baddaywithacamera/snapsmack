@@ -15,6 +15,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 ## 0.7.375 — "Ponyville Confidential" (2026-07-04)
 
 - **Fixed: adding a PIGGYBACK SEARCH ACCOUNT silently failed on installs without a `download_salt`.** The token encryption keyed off `download_salt` and *rejected* the save when it was unset — unlike the rest of the codebase (download.php, FTP passwords, likes), which falls back to a default salt. `sv_search_salt()` now uses that same fallback, so the account actually saves and the token encrypts.
+- **SCROLL TIME now reflects real reads, not drive-by bounces.** The tile averaged *every* landing/archive hit, so the mass of visitors who bounce in a few seconds (plus the short frozen samples from before the tracker fix) held it near ~12-14s regardless of how long engaged readers actually stayed. It now averages only **engaged reads (10s+)**, on both the hub and the fleet rollup, so the number tracks genuine reading time.
 
 ## 0.7.374 — "Read It and Weep" (2026-07-04)
 
