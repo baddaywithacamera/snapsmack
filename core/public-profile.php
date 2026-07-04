@@ -27,6 +27,7 @@ $pp_handle = sv_handle($settings);
 $pp_host   = sv_domain($settings);
 $pp_name   = $pp_actor['name'] ?? ($settings['site_name'] ?? $pp_handle);
 $pp_bio    = trim(strip_tags((string)($settings['smackverse_bio'] ?? ($settings['site_description'] ?? ''))));
+$pp_tagline = trim((string)($settings['site_tagline'] ?? ''));
 
 $pp_avatar = '';
 if (isset($pp_actor['icon']['url'])) $pp_avatar = (string)$pp_actor['icon']['url'];
@@ -115,8 +116,9 @@ header('Pragma: no-cache');
   a{ color:inherit; text-decoration:none; }
   .pp-topbar{ position:sticky; top:0; z-index:10; background:#fff; border-bottom:1px solid var(--line); }
   .pp-topbar-in{ max-width:1040px; margin:0 auto; padding:12px 18px; display:flex; align-items:center; }
-  .pp-logo{ font-weight:800; letter-spacing:.4px; font-size:1.05rem;
-            background:linear-gradient(90deg,#6366f1,#a855f7); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .pp-logo{ font-size:1.05rem; color:var(--fg); text-decoration:none; }
+  .pp-logo-title{ font-weight:800; letter-spacing:.2px; }
+  .pp-logo-tag{ color:var(--muted); font-weight:400; }
   .pp-topbar-handle{ margin-left:auto; color:var(--muted); font-size:.85rem; }
   .pp-shell{ max-width:1040px; margin:0 auto; padding:26px 18px 70px; display:flex; gap:30px; align-items:flex-start; }
   .pp-side{ width:330px; flex:0 0 330px; text-align:center; }
@@ -144,6 +146,8 @@ header('Pragma: no-cache');
   .pp-side-foot{ text-align:left; color:var(--muted); font-size:.75rem; margin-top:14px; }
   .pp-side-foot a{ margin-right:12px; }
   .pp-powered{ text-align:left; color:var(--muted); font-size:.72rem; font-weight:600; margin-top:10px; }
+  .pp-powered a{ color:inherit; text-decoration:none; }
+  .pp-powered a:hover{ color:var(--accent); }
   .pp-main{ flex:1; min-width:0; }
   .pp-lay{ position:absolute; opacity:0; pointer-events:none; }
   .pp-tabbar{ display:flex; align-items:center; border-bottom:1px solid var(--line); }
@@ -174,7 +178,7 @@ header('Pragma: no-cache');
 </head>
 <body>
   <header class="pp-topbar"><div class="pp-topbar-in">
-    <span class="pp-logo">SMACKVERSE</span>
+    <a class="pp-logo" href="<?php echo pp_e($pp_base); ?>"><b class="pp-logo-title"><?php echo pp_e($pp_name); ?></b><?php if ($pp_tagline !== ''): ?><span class="pp-logo-tag"> / <?php echo pp_e($pp_tagline); ?></span><?php endif; ?></a>
     <span class="pp-topbar-handle"><?php echo pp_e($pp_full_handle); ?></span>
   </div></header>
 
@@ -200,7 +204,7 @@ header('Pragma: no-cache');
       <?php $pp_joined = !empty($pp_actor['published']) ? date('F Y', strtotime((string)$pp_actor['published'])) : ''; ?>
       <?php if ($pp_joined !== ''): ?><div class="pp-joined">&#128339; Joined <?php echo pp_e($pp_joined); ?></div><?php endif; ?>
       <nav class="pp-side-foot"><a href="<?php echo pp_e($pp_base); ?>">Home</a><a href="<?php echo pp_e($pp_base); ?>about">About</a></nav>
-      <div class="pp-powered">Powered by SNAPSMACK</div>
+      <div class="pp-powered">Powered by <a href="https://snapsmack.ca" target="_blank" rel="noopener">SNAPSMACK</a></div>
     </aside>
 
     <main class="pp-main">

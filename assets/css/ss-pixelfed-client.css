@@ -4,29 +4,42 @@
  *   (five equals, space, the words SNAPSMACK EOF, space, five equals) wrapped
  *   as a CSS comment. Missing/different = truncated. Restore before saving.
  * Scoped entirely under .sspf-app so it never bleeds into admin chrome.
- * Theming is CSS-variable driven; light/dark is flipped by data-theme on the
- * root (.sspf-app), persisted client-side in ss-pixelfed-client.js.
+ * Colour tracks the live admin theme: the client inherits the admin body's
+ * background + text colour and pulls --accent from the theme; surfaces are a
+ * neutral translucent veil that adapts to any light or dark theme. No separate
+ * palette, no light/dark toggle.
  */
 
-/* ── Palette: geometry is Pixelfed-exact, COLOURS are borrowed from the active
-   admin skin's colour variables (assets/adminthemes/<theme>/…colours….css), so
-   the client always matches whatever admin theme is live — no separate theme,
-   no light/dark toggle. Fallbacks keep it sane if a theme omits a variable. ── */
+/* ── Palette: geometry is Pixelfed-exact; COLOUR tracks the live admin theme.
+   Admin themes only expose --accent as a CSS variable — every other colour is
+   painted straight onto admin selectors, so there are no bg/panel/text tokens
+   for the client to read. Instead of hardcoding a dark palette, we INHERIT the
+   admin body's own background + text colour and lift surfaces with a neutral
+   translucent veil that works on ANY theme: a dark theme gets a subtle light
+   veil, a light theme a subtle dark one. Only the accent is pulled from the
+   theme (--accent), which every admin theme defines. ── */
 .sspf-app {
-    --pf-bg:        var(--bg-primary, #0b0b0f);
-    --pf-surface:   var(--bg-panel, var(--bg-secondary, #16161c));
-    --pf-surface-2: var(--bg-hover, var(--bg-elevated, #1d1d25));
-    --pf-border:    var(--border, #2a2a34);
-    --pf-text:      var(--text-primary, #e8e8ef);
-    --pf-muted:     var(--text-secondary, var(--text-muted, #9a9aa8));
     --pf-accent:    var(--accent, #6366f1);
-    --pf-accent-2:  var(--accent-primary, var(--heat, var(--accent, #a855f7)));
-    --pf-danger:    var(--danger, #ef4444);
-    --pf-radius:    14px;
-    --pf-shadow:    0 1px 3px rgba(0,0,0,.4);
+    --pf-accent-2:  var(--accent, #a855f7);
+    --pf-danger:    #ef4444;
 
-    color: var(--pf-text);
-    background: var(--pf-bg);
+    /* Theme-agnostic surfaces: a grey veil over the inherited background. */
+    --pf-veil:      128, 128, 128;
+    --pf-surface:   rgba(var(--pf-veil), .10);
+    --pf-surface-2: rgba(var(--pf-veil), .18);
+    --pf-border:    rgba(var(--pf-veil), .30);
+
+    /* Text = the admin theme's own body colour; muted = a faded version of it.
+       (color-mix where supported; a neutral grey is the fallback.) */
+    --pf-text:      currentColor;
+    --pf-muted:     #8a8a93;
+    --pf-muted:     color-mix(in srgb, currentColor 60%, transparent);
+
+    --pf-radius:    14px;
+    --pf-shadow:    0 1px 3px rgba(0,0,0,.28);
+
+    color: inherit;
+    background: transparent;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     min-height: 70vh;
     border-radius: var(--pf-radius);
