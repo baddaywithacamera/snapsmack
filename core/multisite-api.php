@@ -655,9 +655,9 @@ if ($resource === 'stats' && $sub_action === 'daily' && $method === 'GET') {
         // dwell_ms may not exist on older installs — fail soft to 0.
         try {
             if ($all_time) {
-                $sc_stmt = $pdo->query("SELECT AVG(dwell_ms) AS a, COUNT(*) AS n FROM snap_stats WHERE is_bot = 0 AND dwell_ms IS NOT NULL AND page_type IN ('landing','archive')");
+                $sc_stmt = $pdo->query("SELECT AVG(dwell_ms) AS a, COUNT(*) AS n FROM snap_stats WHERE is_bot = 0 AND dwell_ms >= 10000 AND page_type IN ('landing','archive')");
             } else {
-                $sc_stmt = $pdo->prepare("SELECT AVG(dwell_ms) AS a, COUNT(*) AS n FROM snap_stats WHERE is_bot = 0 AND dwell_ms IS NOT NULL AND page_type IN ('landing','archive') AND hit_at >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+                $sc_stmt = $pdo->prepare("SELECT AVG(dwell_ms) AS a, COUNT(*) AS n FROM snap_stats WHERE is_bot = 0 AND dwell_ms >= 10000 AND page_type IN ('landing','archive') AND hit_at >= DATE_SUB(NOW(), INTERVAL ? DAY)");
                 $sc_stmt->execute([$days]);
             }
             $sc = $sc_stmt->fetch(PDO::FETCH_ASSOC);
