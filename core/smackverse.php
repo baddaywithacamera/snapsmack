@@ -1320,7 +1320,7 @@ function sv_actor_doc(PDO $pdo, array &$settings): array {
         'id'                => $actor,
         'type'              => 'Person',
         'preferredUsername' => sv_handle($settings),
-        'name'              => $settings['site_name'] ?? 'SnapSmack',
+        'name'              => html_entity_decode((string)($settings['site_name'] ?? 'SnapSmack'), ENT_QUOTES | ENT_HTML5),
         'summary'           => sv_actor_summary($settings),
         'url'               => sv_profile_url($settings),
         'inbox'             => sv_inbox_url($settings),
