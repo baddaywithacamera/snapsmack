@@ -132,6 +132,9 @@ header('Pragma: no-cache');
                     background:var(--panel); color:var(--fg); font-size:.85rem; }
   .pp-follow button{ width:100%; padding:9px; border:none; border-radius:8px; background:var(--accent);
                      color:#fff; font-weight:700; font-size:.9rem; cursor:pointer; }
+  .pp-follow-hint{ text-align:left; color:var(--muted); font-size:.78rem; line-height:1.45; margin-bottom:2px; }
+  .pp-follow-hint code{ font-size:.76rem; background:var(--panel); border:1px solid var(--line);
+                        border-radius:5px; padding:1px 5px; white-space:nowrap; }
   .pp-err{ color:#f87171; font-size:.78rem; margin-bottom:6px; text-align:left; }
   .pp-biobox{ text-align:left; background:var(--panel); border:1px solid var(--line); border-radius:12px;
               padding:14px; font-size:.86rem; line-height:1.5; }
@@ -189,6 +192,7 @@ header('Pragma: no-cache');
       </div>
       <form class="pp-follow" method="get" action="<?php echo pp_e($pp_base); ?>ap/remote-follow">
         <?php if ($pp_followerr): ?><div class="pp-err">Couldn't read that handle — use <strong>you@your-instance.social</strong>.</div><?php endif; ?>
+        <div class="pp-follow-hint">Follow <?php echo pp_e($pp_full_handle); ?> from your own Mastodon or Pixelfed account. Type your handle below (like <code>you@mastodon.social</code>) and you'll be sent to your own instance to confirm. There's no account to create here.</div>
         <input type="text" name="handle" placeholder="you@your-instance" aria-label="Your fediverse handle" required>
         <button type="submit">Follow</button>
       </form>
