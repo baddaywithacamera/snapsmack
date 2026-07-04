@@ -148,6 +148,23 @@ function sv_ensure_tables(PDO $pdo): void {
         UNIQUE KEY `uq_ap_like` (`target_type`, `target_id`, `actor_url`(180)),
         KEY `idx_ap_like_target` (`target_type`, `target_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // Piggyback search accounts (0.7.373): a read-only OAuth token on a trusted
+    // instance, so the blog can proxy that instance's AUTHENTICATED
+    // /api/v2/search (account + full-text discovery the public endpoints can't
+    // give). token_enc = AES-256-CBC, keyed off the site download_salt; it never
+    // leaves the server.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_search_accounts` (
+        `id`            int unsigned NOT NULL AUTO_INCREMENT,
+        `instance_host` varchar(190) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `username`      varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `token_enc`     text         COLLATE utf8mb4_unicode_ci NOT NULL,
+        `is_active`     tinyint(1)   NOT NULL DEFAULT '1',
+        `created_at`    datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `last_used_at`  datetime     DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_search_host` (`instance_host`),
+        KEY `idx_search_active` (`is_active`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     foreach ([
         "ap_source enum('local','fediverse') NOT NULL DEFAULT 'local'",
         "ap_actor_url varchar(500) DEFAULT NULL",
@@ -371,6 +388,130 @@ function sv_fetch_ap(string $url): ?array {
     if (strlen($body) > 524288) return null;
     $doc = json_decode($body, true);
     return is_array($doc) ? $doc : null;
+}
+
+/* ── Piggyback authenticated search (0.7.373) ───────────────────────────────
+ * A read-only account+token on a trusted instance lets the blog proxy that
+ * instance's AUTHENTICATED /api/v2/search — real account + full-text discovery
+ * the fediverse's public endpoints (hashtag timeline / outbox / webfinger)
+ * cannot provide. The token is stored encrypted and is NEVER sent to the
+ * browser. Params + response shape follow Pixelfed's SearchApiV2Service:
+ * q, resolve, type(accounts|hashtags|statuses), limit → {accounts,hashtags,statuses}. */
+
+/** Encryption key material for a stored search token: the site download_salt. */
+function sv_search_salt(array $settings): string {
+    return (string)($settings['download_salt'] ?? '');
+}
+
+function sv_search_token_encrypt(string $plaintext, string $salt): string {
+    if ($salt === '' || $plaintext === '') return '';
+    $key = hash('sha256', $salt, true);
+    $iv  = openssl_random_pseudo_bytes(16);
+    $enc = openssl_encrypt($plaintext, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
+    return ($enc === false) ? '' : base64_encode($iv . $enc);
+}
+
+function sv_search_token_decrypt(string $ciphertext, string $salt): string {
+    if ($salt === '' || $ciphertext === '') return '';
+    $data = base64_decode($ciphertext, true);
+    if ($data === false || strlen($data) < 17) return '';
+    $key = hash('sha256', $salt, true);
+    $iv  = substr($data, 0, 16);
+    $enc = substr($data, 16);
+    $dec = openssl_decrypt($enc, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
+    return ($dec !== false) ? $dec : '';
+}
+
+/** Add (or replace) a piggyback account. $host = bare host, e.g. pixelfed.social. */
+function sv_add_search_account(PDO $pdo, array $settings, string $host, string $username, string $token): array {
+    sv_ensure_tables($pdo);
+    $host  = strtolower(trim(preg_replace('#^https?://#i', '', trim($host)), " /\t\r\n"));
+    $token = trim($token);
+    if ($host === '' || !preg_match('/^[a-z0-9.\-]+\.[a-z]{2,}$/', $host)) return [false, 'Enter a valid instance host, e.g. pixelfed.social.'];
+    if ($token === '') return [false, 'Paste the access token from that instance.'];
+    $salt = sv_search_salt($settings);
+    if ($salt === '') return [false, 'This install has no download_salt to key the encryption — cannot store a token safely.'];
+    $enc = sv_search_token_encrypt($token, $salt);
+    if ($enc === '') return [false, 'Could not encrypt the token.'];
+    $pdo->prepare("INSERT INTO snap_ap_search_accounts (instance_host, username, token_enc, is_active)
+                   VALUES (?,?,?,1)
+                   ON DUPLICATE KEY UPDATE username=VALUES(username), token_enc=VALUES(token_enc), is_active=1")
+        ->execute([substr($host, 0, 190), substr($username, 0, 190), $enc]);
+    return [true, 'Search account added for ' . $host . '.'];
+}
+
+function sv_delete_search_account(PDO $pdo, int $id): void {
+    $pdo->prepare("DELETE FROM snap_ap_search_accounts WHERE id = ?")->execute([$id]);
+}
+
+/** UI-safe list: host/username/id ONLY — never the token. */
+function sv_list_search_accounts(PDO $pdo): array {
+    try {
+        return $pdo->query("SELECT id, instance_host, username, is_active, last_used_at
+                            FROM snap_ap_search_accounts ORDER BY instance_host")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) { return []; }
+}
+
+/** Pick the active account to search through (first active). */
+function sv_pick_search_account(PDO $pdo): ?array {
+    try {
+        $r = $pdo->query("SELECT * FROM snap_ap_search_accounts WHERE is_active = 1 ORDER BY id LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        return $r ?: null;
+    } catch (Exception $e) { return null; }
+}
+
+/** Authenticated GET with a Bearer token, SSRF-guarded (pins the vetted IP). */
+function sv_authed_get(string $url, string $token): ?array {
+    if (!function_exists('curl_init')) return null;
+    $res = sv_resolve_public($url);
+    if ($res === null) return null;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_RESOLVE        => $res['pin'],
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_HTTPHEADER     => [
+            'Accept: application/json',
+            'Authorization: Bearer ' . $token,
+            'User-Agent: SnapSmack-SMACKVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
+        ],
+    ]);
+    $body = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    if ($body === false || $code < 200 || $code >= 300) return null;
+    if (strlen($body) > 1048576) return null;
+    $doc = json_decode($body, true);
+    return is_array($doc) ? $doc : null;
+}
+
+/**
+ * Proxy a piggyback instance's authenticated /api/v2/search.
+ * $type = '' (all) | 'accounts' | 'hashtags' | 'statuses'.
+ * Returns Pixelfed/Mastodon-shaped ['accounts','hashtags','statuses'], or null
+ * if no account is configured / the call fails.
+ */
+function sv_authed_search(PDO $pdo, array $settings, string $q, string $type = ''): ?array {
+    $q = trim($q);
+    if ($q === '') return null;
+    $acct = sv_pick_search_account($pdo);
+    if (!$acct) return null;
+    $token = sv_search_token_decrypt((string)$acct['token_enc'], sv_search_salt($settings));
+    if ($token === '') return null;
+    $host   = (string)$acct['instance_host'];
+    $params = ['q' => $q, 'resolve' => '1', 'limit' => '20'];
+    if (in_array($type, ['accounts', 'hashtags', 'statuses'], true)) $params['type'] = $type;
+    $url = 'https://' . $host . '/api/v2/search?' . http_build_query($params);
+    $doc = sv_authed_get($url, $token);
+    if (!is_array($doc)) return null;
+    try { $pdo->prepare("UPDATE snap_ap_search_accounts SET last_used_at = NOW() WHERE id = ?")->execute([(int)$acct['id']]); } catch (Exception $e) {}
+    return [
+        'accounts' => is_array($doc['accounts'] ?? null) ? $doc['accounts'] : [],
+        'hashtags' => is_array($doc['hashtags'] ?? null) ? $doc['hashtags'] : [],
+        'statuses' => is_array($doc['statuses'] ?? null) ? $doc['statuses'] : [],
+    ];
 }
 
 // ─── HTTP Signatures (draft-cavage — Mastodon dialect) ──────────────────────

@@ -165,6 +165,23 @@ if (isset($_GET['ajax'])) {
         if ($panel === 'search') {
             $looks_handle = (strpos($target, '@') !== false && strpos($target, ' ') === false)
                           || stripos($target, 'https://') === 0;
+
+            // Bare word + a piggyback account → authenticated ACCOUNT search on
+            // that instance (the fediverse has no public account search). Take
+            // the top hit and resolve it to a profile below, reusing the profile
+            // render. Explicit #tags and handles skip this; no account = old path.
+            if ($target !== '' && $target[0] !== '#' && !$looks_handle
+                && function_exists('sv_authed_search') && sv_pick_search_account($pdo)) {
+                $sr = sv_authed_search($pdo, $sv_settings, $target, 'accounts');
+                if (is_array($sr) && !empty($sr['accounts'][0])) {
+                    $top  = $sr['accounts'][0];
+                    $acct = (string)($top['acct'] ?? '');
+                    $url  = (string)($top['url'] ?? '');
+                    if ($acct !== '' && strpos($acct, '@') !== false) { $target = '@' . ltrim($acct, '@'); $looks_handle = true; }
+                    elseif ($url !== '')                              { $target = $url;                     $looks_handle = true; }
+                }
+            }
+
             if ($target[0] === '#' || !$looks_handle) {
                 $tag = preg_replace('/[^a-z0-9_]/i', '', ltrim($target, '#'));
                 if ($tag === '') { echo json_encode(['ok' => false, 'msg' => 'Enter a hashtag like #sunset.']); exit; }
