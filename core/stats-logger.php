@@ -399,11 +399,12 @@ function snapsmack_record_dwell($pdo, $hit_id, $ms) {
     if ($hit_id <= 0 || $ms <= 0) return;
     if ($ms > 1800000) $ms = 1800000; // cap 30 min — above this is noise
 
-    try {
-        // Belt-and-suspenders: add the column on installs predating the canonical add.
-        $pdo->exec("ALTER TABLE snap_stats ADD COLUMN IF NOT EXISTS dwell_ms int unsigned DEFAULT NULL");
-    } catch (\Throwable $e) { /* MySQL lacking IF NOT EXISTS — canonical schema sync handles it */ }
-
+    // dwell_ms is guaranteed by the canonical schema sync — NEVER run DDL here.
+    // An ALTER TABLE in this per-beacon hot path takes an exclusive metadata lock
+    // on snap_stats; a pending exclusive lock queues AHEAD of concurrent hit
+    // INSERTs and stalls page-view logging (the "stats stopped incrementing"
+    // regression that arrived with the scroll-time beacon). If the column is
+    // somehow absent the UPDATE below simply no-ops — hits are never affected.
     try {
         // Set once, humans only, recent hit only (guards replay / tampering).
         $stmt = $pdo->prepare("UPDATE snap_stats SET dwell_ms = ?
