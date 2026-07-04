@@ -52,6 +52,7 @@ $pp_tiles = [];
 try {
     $st = $pdo->query(
         "SELECT i.id, i.post_id, i.img_file, i.img_slug,
+                i.img_thumb_square, i.img_thumb_aspect,
                 p.created_at, p.post_type,
                 (SELECT COUNT(*) FROM snap_post_images c WHERE c.post_id = p.id) AS image_count
          FROM snap_posts p
@@ -105,12 +106,12 @@ header('Pragma: no-cache');
 <title><?php echo pp_e($pp_name); ?> (<?php echo pp_e($pp_full_handle); ?>)</title>
 <link rel="alternate" type="application/activity+json" href="<?php echo pp_e(sv_actor_url($settings)); ?>">
 <style>
-  :root{ --bg:#000; --panel:#16181c; --line:#26272b; --fg:#e7e9ea; --muted:#8b98a5; --accent:#4c8dff; }
+  :root{ --bg:#fff; --panel:#fafafa; --line:#dbdbdb; --fg:#161616; --muted:#8e8e8e; --accent:#3897f0; }
   *{ box-sizing:border-box; }
   body{ margin:0; background:var(--bg); color:var(--fg);
         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
   a{ color:inherit; text-decoration:none; }
-  .pp-topbar{ position:sticky; top:0; z-index:10; background:#0a0a0b; border-bottom:1px solid var(--line); }
+  .pp-topbar{ position:sticky; top:0; z-index:10; background:#fff; border-bottom:1px solid var(--line); }
   .pp-topbar-in{ max-width:1040px; margin:0 auto; padding:12px 18px; display:flex; align-items:center; }
   .pp-logo{ font-weight:800; letter-spacing:.4px; font-size:1.05rem;
             background:linear-gradient(90deg,#6366f1,#a855f7); -webkit-background-clip:text; background-clip:text; color:transparent; }
@@ -209,7 +210,11 @@ header('Pragma: no-cache');
       <?php if ($pp_tiles): ?>
         <div class="pp-grid">
           <?php foreach ($pp_tiles as $t):
-              $thumb = pp_thumb((string)$t['img_file'], $pp_base);
+              // Same source INSTANT CAMERA uses — the clean aspect/square thumb,
+              // not the framed default, so framed posts stop rendering inset.
+              $tsrc  = trim((string)($t['img_thumb_aspect'] ?? '')) ?: trim((string)($t['img_thumb_square'] ?? ''));
+              $thumb = $tsrc !== '' ? $pp_base . ltrim(str_replace('\\', '/', $tsrc), '/')
+                                    : pp_thumb((string)$t['img_file'], $pp_base);
               // Link to the Pixelfed-faithful single-post view (content-negotiated).
               $link  = !empty($t['post_id'])
                   ? $pp_base . 'ap/note/p/' . (int)$t['post_id']

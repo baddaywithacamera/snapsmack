@@ -178,6 +178,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resyn
     exit;
 }
 
+// RE-IMPRINT — bump the federation generation, retract the current Notes, and
+// reseed everything under fresh ids so followers stuck in the old order re-ingest
+// clean. The only lever that reaches an already-poisoned follower.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reimprint') {
+    if (!sv_enabled($sv_settings)) {
+        header('Location: smack-smackverse.php?msg=' . urlencode('SMACKVERSE is off — nothing to re-imprint.'));
+        exit;
+    }
+    $ri_count = isset($_POST['reimprint_count']) ? max(1, min(1000, (int)$_POST['reimprint_count'])) : null;
+    list($ri_ret, $ri_posts, $ri_deliv) = sv_reimprint($pdo, $sv_settings, $ri_count);
+    $cadence = sv_delivery_cadence($sv_settings);
+    header('Location: smack-smackverse.php?msg=' . urlencode(sprintf(
+        'RE-IMPRINT: retracted %d old Note(s) and re-seeded %d post(s) under fresh ids (%d deliveries) in your current grid order. Followers delete the stale copies and re-ingest clean — let the delivery cron drain (~%ds each). This is the fix for a follower stuck in the old order.',
+        $ri_ret, $ri_posts, $ri_deliv, $cadence
+    )));
+    exit;
+}
+
 // Manual re-try of cron auto-registration (button appears if the auto step
 // didn't take but the host actually does support cron).
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'register_cron') {
@@ -480,6 +498,31 @@ include 'core/sidebar.php';
                 </select>
             </label>
             <button type="submit" class="btn-smack" <?php echo $sv_on ? '' : 'disabled'; ?>>PUSH</button>
+        </form>
+    </div>
+
+    <!-- RE-IMPRINT -->
+    <div class="box mb-20">
+        <h3>RE-IMPRINT ORDER &mdash; fix stuck followers</h3>
+        <p class="dim mb-20">
+            The fediverse pins a post's date the first time a follower sees it &mdash; so a follower already
+            holding your posts never re-sorts, no matter how many times you Seed. RE-IMPRINT is the fix: it
+            stamps your current grid order into the dates, gives every post a <strong>new note id</strong>,
+            retracts the old copies from your followers, and re-sends them fresh. Followers delete the stale
+            posts and re-ingest them clean, in your exact grid order. <strong>Same account &mdash; your
+            followers are kept.</strong> It's heavy on the delivery queue (a delete + a create per post), so it
+            drains over a while. Use it after arranging the grid when a plain Seed didn't move the order.
+        </p>
+        <form method="post" action="smack-smackverse.php"
+              onsubmit="return confirm('RE-IMPRINT: give every post a new fediverse id, retract the old ones from followers, and re-send in your current grid order? Followers re-ingest clean. Safe (nothing is lost) but it sends a lot of deliveries.');">
+            <input type="hidden" name="action" value="reimprint">
+            <label class="dim" style="display:block; margin-bottom:12px;">
+                Posts to re-imprint:
+                <input type="number" name="reimprint_count" min="1" max="1000"
+                       value="<?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 10); ?>"
+                       style="width:90px; margin-left:6px;">
+            </label>
+            <button type="submit" class="btn-smack" <?php echo $sv_on ? '' : 'disabled'; ?>>RE-IMPRINT ORDER</button>
         </form>
     </div>
 

@@ -406,9 +406,12 @@ function snapsmack_record_dwell($pdo, $hit_id, $ms) {
     // regression that arrived with the scroll-time beacon). If the column is
     // somehow absent the UPDATE below simply no-ops — hits are never affected.
     try {
-        // Set once, humans only, recent hit only (guards replay / tampering).
-        $stmt = $pdo->prepare("UPDATE snap_stats SET dwell_ms = ?
-                               WHERE id = ? AND is_bot = 0 AND dwell_ms IS NULL
+        // Keep the MAX engaged time for this hit (humans only, recent window).
+        // GREATEST means repeated beacons over a visit converge on the true total
+        // instead of freezing at the first (short) tab-away sample. Capped at
+        // 30 min upstream, so this can't be inflated unbounded.
+        $stmt = $pdo->prepare("UPDATE snap_stats SET dwell_ms = GREATEST(COALESCE(dwell_ms, 0), ?)
+                               WHERE id = ? AND is_bot = 0
                                  AND hit_at >= DATE_SUB(NOW(), INTERVAL 6 HOUR)");
         $stmt->execute([$ms, $hit_id]);
     } catch (PDOException $e) { /* never break the beacon */ }
