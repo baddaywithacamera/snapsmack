@@ -92,6 +92,23 @@ if (isset($_POST['action']) && $_POST['action'] === 'reorder') {
         $stmt->execute([$pos + 1, $id]);
     }
     $pdo->commit();
+
+    // Keep the federation HARD OVERRIDE current: any tray reorder re-stamps
+    // fedi_published_at down the NEW grid, so the outbox and any fresh ingest
+    // reproduce exactly what was just arranged (sv_sync_fedi_dates walks the
+    // same sort_order + trigram_align_backfill order this save just wrote).
+    // Existing followers still need a deliberate RE-IMPRINT to re-sort — the
+    // fediverse pins a post's date at first ingest — but new followers, the
+    // admin outbox crawl, and re-seeds stay honest without a manual imprint.
+    if (!function_exists('sv_sync_fedi_dates')) { @require_once __DIR__ . '/core/smackverse.php'; }
+    if (function_exists('sv_sync_fedi_dates')) {
+        try {
+            $sv_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
+                               ->fetchAll(PDO::FETCH_KEY_PAIR);
+            sv_sync_fedi_dates($pdo, $sv_settings);
+        } catch (Throwable $e) { /* never let the imprint break a reorder save */ }
+    }
+
     echo json_encode(['ok' => true]);
     exit;
 }
@@ -378,6 +395,7 @@ include 'core/sidebar.php';
         </h2>
         <div class="ltg-toolbar">
             <span class="ltg-save-status" id="ltgSaveStatus"></span>
+            <button class="btn btn--sm" id="ltgConfirmOrder" disabled title="Write this exact order everywhere — feed AND fediverse. Locked trigrams stay put; nothing saves until you click this.">&#10003; CONFIRM ORDER</button>
             <span class="ltg-trigram-lock" id="ltgTrigramLock" style="display:none;align-items:center;gap:6px;">
                 <select id="ltgTrigramOrient" class="btn btn--sm" title="Trigram orientation" style="padding:3px 6px;">
                     <option value="h">Horizontal · L / M / R</option>
@@ -639,12 +657,40 @@ include 'core/sidebar.php';
                 }
             }
 
-            saveOrder();
+            markDirty();
             checkTrigramAlignment();
         }
     });
 
-    // ── Save order ─────────────────────────────────────────────────────────
+    // ── Confirm-order write ────────────────────────────────────────────────
+    // Dragging no longer auto-saves. The tray is a scratch surface: arrange
+    // freely (locked trigrams stay glued and never jump mid-arrange), then
+    // CONFIRM ORDER writes it ONCE — sort_order for the feed AND a re-stamp of
+    // fedi_published_at for the fediverse outbox/backfill (server side). Order
+    // you set = order everywhere, in one deliberate commit.
+    let ltgDirty = false;
+    const confirmBtn = document.getElementById('ltgConfirmOrder');
+
+    function markDirty() {
+        ltgDirty = true;
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.style.background = 'var(--accent, #c8a96e)';
+            confirmBtn.style.color = '#111';
+            confirmBtn.style.fontWeight = '600';
+        }
+        setStatus('dirty');
+    }
+    function clearDirty() {
+        ltgDirty = false;
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.style.background = '';
+            confirmBtn.style.color = '';
+            confirmBtn.style.fontWeight = '';
+        }
+    }
+
     function saveOrder() {
         const ids = [...grid.querySelectorAll('.ltg-tile')].map(t => t.dataset.postId);
         setStatus('saving');
@@ -657,12 +703,17 @@ include 'core/sidebar.php';
             body:    fd
         })
         .then(r => r.json())
-        .then(d => setStatus(d.ok ? 'saved' : 'error'))
+        .then(d => { setStatus(d.ok ? 'saved' : 'error'); if (d.ok) clearDirty(); })
         .catch(() => setStatus('error'));
     }
+    function confirmOrder() { if (ltgDirty) saveOrder(); }
+    if (confirmBtn) confirmBtn.addEventListener('click', confirmOrder);
+    window.addEventListener('beforeunload', function (e) {
+        if (ltgDirty) { e.preventDefault(); e.returnValue = ''; }
+    });
 
     function setStatus(state) {
-        const map = { saving: 'Saving…', saved: 'Saved ✓', error: 'Error — reload and retry' };
+        const map = { saving: 'Saving…', saved: 'Saved ✓', dirty: 'Unsaved — click CONFIRM ORDER', error: 'Error — reload and retry' };
         status.textContent   = map[state] || '';
         status.dataset.state = state;
         if (state === 'saved') setTimeout(() => { if (status.dataset.state === 'saved') status.textContent = ''; }, 2500);
