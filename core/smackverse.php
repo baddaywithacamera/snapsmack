@@ -1736,6 +1736,63 @@ function sv_public_timeline(string $host, bool $local, int $limit = 30): array {
 }
 
 /**
+ * Public HASHTAG timeline from a chosen instance — the media posts tagged
+ * #<tag>, newest-first. Mastodon AND Pixelfed both expose
+ * /api/v1/timelines/tag/<tag> unauthenticated for public posts, so a
+ * single-actor blog (no account on that instance) can still discover photos
+ * by hashtag. Same status→row shape as sv_public_timeline(), so the client's
+ * feed renderer handles it unchanged.
+ */
+function sv_hashtag_timeline(string $host, string $tag, int $limit = 40): array {
+    $host = preg_replace('/[^a-z0-9.\-]/i', '', trim($host));
+    $tag  = preg_replace('/[^a-z0-9_]/i', '', ltrim(trim($tag), '#'));
+    if ($host === '' || $tag === '') return [];
+    $base = 'https://' . $host;
+    $q    = 'limit=' . max(1, min($limit, 40)) . '&only_media=true';
+    $rows = sv_fetch_json($base . '/api/v1/timelines/tag/' . rawurlencode($tag) . '?' . $q);
+    if (!is_array($rows) || !$rows) {
+        // Pixelfed's older discovery route, then the AS2 tag collection as a
+        // last resort (its items are URLs only — skipped by the media filter,
+        // which is fine: we simply show nothing rather than a broken card).
+        $rows = sv_fetch_json($base . '/api/pixelfed/v1/discover/tag?hashtag=' . rawurlencode($tag) . '&' . $q);
+    }
+    if (!is_array($rows)) return [];
+    // Pixelfed's discover route wraps posts under a 'posts'/'data' key.
+    if (isset($rows['posts']) && is_array($rows['posts'])) $rows = $rows['posts'];
+    elseif (isset($rows['data']) && is_array($rows['data'])) $rows = $rows['data'];
+    $out = [];
+    foreach ($rows as $st) {
+        if (!is_array($st)) continue;
+        $imgs = [];
+        foreach (($st['media_attachments'] ?? []) as $m) {
+            if (is_array($m) && ($m['type'] ?? '') === 'image') {
+                $u = (string)($m['url'] ?? ($m['preview_url'] ?? '')); if ($u !== '') $imgs[] = $u;
+            }
+        }
+        if (!$imgs) continue;
+        $acct = is_array($st['account'] ?? null) ? $st['account'] : [];
+        $out[] = [
+            'id'        => (string)($st['uri'] ?? ($st['url'] ?? '')),
+            'url'       => (string)($st['url'] ?? ($st['uri'] ?? '')),
+            'published' => (string)($st['created_at'] ?? ''),
+            'text'      => (isset($st['content_text']) && $st['content_text'] !== '')
+                            ? (string)$st['content_text']
+                            : trim(strip_tags((string)($st['content'] ?? ''))),
+            'images'    => $imgs, 'count' => count($imgs),
+            'author'    => [
+                'handle' => (string)($acct['acct'] ?? ''),
+                'name'   => (string)($acct['display_name'] ?? ($acct['username'] ?? '')),
+                'avatar' => (string)($acct['avatar'] ?? ''),
+                'id'     => (string)($acct['url'] ?? ''),
+                'host'   => parse_url((string)($acct['url'] ?? ''), PHP_URL_HOST) ?: $host,
+            ],
+        ];
+        if (count($out) >= $limit) break;
+    }
+    return $out;
+}
+
+/**
  * Follow-state lookup for a resolved actor URL: returns [state, row_id] where
  * state is '', 'pending', 'accepted' or 'rejected'. Lets the client show the
  * right Follow/Pending/Unfollow control on a crawled profile.

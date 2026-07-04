@@ -151,13 +151,50 @@ if (isset($_GET['ajax'])) {
             $target = sv_actor_url($sv_settings);
         }
         if ($target === '') {
-            echo json_encode(['ok' => false, 'msg' => 'Type a handle like @user@host.']);
+            echo json_encode(['ok' => false, 'msg' => 'Type a handle (@user@host) or a #hashtag.']);
             exit;
         }
+
+        // SEARCH query taxonomy (the Profile panel is always an actor lookup):
+        //   • @user@host / user@host / https://…  → resolve THAT actor's profile
+        //   • #tag, or any plain word              → hashtag PHOTO search
+        // The fediverse has no unauthenticated full-text ACCOUNT search (you
+        // need an account on an instance), so a bare word is treated as a
+        // hashtag — the useful "find photos about X" default. Handles still
+        // resolve exactly. Home instance = configured, else a followed host.
+        if ($panel === 'search') {
+            $looks_handle = (strpos($target, '@') !== false && strpos($target, ' ') === false)
+                          || stripos($target, 'https://') === 0;
+            if ($target[0] === '#' || !$looks_handle) {
+                $tag = preg_replace('/[^a-z0-9_]/i', '', ltrim($target, '#'));
+                if ($tag === '') { echo json_encode(['ok' => false, 'msg' => 'Enter a hashtag like #sunset.']); exit; }
+                $host = trim((string)($sv_settings['smackverse_home_instance'] ?? ''));
+                if ($host === '') {
+                    try {
+                        $h = (string)$pdo->query("SELECT actor_url FROM snap_ap_following WHERE state='accepted' ORDER BY followed_at DESC LIMIT 1")->fetchColumn();
+                        if ($h !== '') $host = parse_url($h, PHP_URL_HOST) ?: '';
+                    } catch (Exception $e) { /* none yet */ }
+                }
+                $host = preg_replace('/[^a-z0-9.\-]/i', '', $host);
+                if ($host === '') {
+                    echo json_encode(['ok' => false, 'msg' => 'Follow someone (or set a home instance) so hashtag search has a server to ask.']);
+                    exit;
+                }
+                @set_time_limit(30);
+                echo json_encode([
+                    'ok'    => true,
+                    'mode'  => 'feed',
+                    'title' => '#' . $tag,
+                    'items' => sv_hashtag_timeline($host, $tag, 40),
+                ], JSON_UNESCAPED_SLASHES);
+                exit;
+            }
+        }
+
         $actor = sv_crawl_actor($target);
         if ($actor === null) {
             echo json_encode(['ok' => false, 'msg' => 'Could not resolve "' . $target
-                . '" — check the handle (format: @user@host) or the server may be blocking us.']);
+                . '" — check the handle (format: @user@host), or try a #hashtag to search photos.']);
             exit;
         }
         $is_self = ($actor['id'] === sv_actor_url($sv_settings));
@@ -167,6 +204,7 @@ if (isset($_GET['ajax'])) {
         list($state, $row_id) = sv_following_state($pdo, $actor['id']);
         echo json_encode([
             'ok'        => true,
+            'mode'      => 'profile',
             'actor'     => $actor,
             'posts'     => $posts,
             'state'     => $state,
@@ -232,7 +270,7 @@ include 'core/sidebar.php';
         <div class="sspf-topbar">
             <span class="sspf-logo">SMACKVERSE</span>
             <div class="sspf-search">
-                <input type="text" placeholder="Search people — @user@host" aria-label="Search the fediverse">
+                <input type="text" placeholder="@user@host  ·  #hashtag" aria-label="Search the fediverse by handle or hashtag">
             </div>
             <div class="sspf-topbar-right">
                 <?php if ($sv_handle !== ''): ?>
@@ -289,7 +327,7 @@ include 'core/sidebar.php';
                 <section class="sspf-panel" data-panel="search">
                     <h3 class="sspf-panel-title">Search</h3>
                     <div class="sspf-panel-body">
-                        <div class="sspf-note">Type a handle like <strong>@user@host</strong> in the bar above. Their real profile and posts render here from a crawl of their outbox — with follow / applaud / reply.</div>
+                        <div class="sspf-note">Search the bar above two ways: a handle like <strong>@user@host</strong> renders that account's real profile and posts (with follow / applaud / reply), or a <strong>#hashtag</strong> (or any word) pulls recent photos tagged that way from your home instance.</div>
                     </div>
                 </section>
             </div>

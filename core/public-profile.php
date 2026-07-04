@@ -157,14 +157,8 @@ header('Pragma: no-cache');
   .pp-badge{ position:absolute; right:6px; bottom:6px; background:rgba(0,0,0,.62); color:#fff;
              font-size:.68rem; font-weight:600; padding:2px 6px; border-radius:5px; }
   .pp-multi{ position:absolute; right:6px; top:6px; color:#fff; line-height:0; filter:drop-shadow(0 1px 2px rgba(0,0,0,.7)); }
-  /* Framed prints — matte + border + shadow, mirroring The Grid's .tg-tile--framed. */
-  .pp-tile--framed{ background:var(--tile-bg,#fff); display:flex; align-items:center; justify-content:center; overflow:visible; }
-  .pp-tile--framed img{ width:var(--tile-img-size,100%); height:auto; max-width:var(--tile-img-size,100%); max-height:100%;
-                        margin:auto; object-fit:contain;
-                        border:var(--tile-border-w,0) solid var(--tile-border-c,transparent);
-                        background-color:var(--tile-border-c,transparent);
-                        box-shadow:var(--tile-shadow,none); box-sizing:border-box; }
-  .pp-tile--framed.pp-tile--portrait img{ width:auto; height:var(--tile-img-size,100%); max-width:100%; max-height:var(--tile-img-size,100%); }
+  /* Tiles show the pre-baked pixelfed square (crop + frame baked in) — no CSS
+     matte needed; the tile is a plain square cover, exactly like Pixelfed. */
   #pplay-mason:checked ~ .pp-grid{ display:block; column-count:3; column-gap:3px; }
   #pplay-mason:checked ~ .pp-grid .pp-tile{ aspect-ratio:auto; break-inside:avoid; margin-bottom:3px; }
   #pplay-mason:checked ~ .pp-grid .pp-tile img{ height:auto; }
@@ -220,39 +214,28 @@ header('Pragma: no-cache');
       <?php if ($pp_tiles): ?>
         <div class="pp-grid">
           <?php
-          // Shadow levels mirror The Grid's $_tg_shadow_map exactly.
-          $pp_shadow_map = ['0'=>'none','1'=>'3px 3px 8px rgba(0,0,0,.20)',
-                            '2'=>'6px 6px 18px rgba(0,0,0,.40)','3'=>'12px 12px 32px rgba(0,0,0,.60)'];
           foreach ($pp_tiles as $t):
-              // Whole-photo aspect thumb so a framed post shows its full image in
-              // the matte, exactly like the blog grid; square crop as fallback.
-              $tsrc  = trim((string)($t['img_thumb_aspect'] ?? '')) ?: trim((string)($t['img_thumb_square'] ?? ''));
-              $thumb = $tsrc !== '' ? $pp_base . ltrim(str_replace('\\', '/', $tsrc), '/')
-                                    : pp_thumb((string)$t['img_file'], $pp_base);
+              // Pixelfed-friendly image: the SAME baked square the Note ships as
+              // its attachment — p_ fedi bake ?? f_ frame bake. The crop + frame
+              // are baked into the pixels, so the tile needs ZERO CSS matte and
+              // is byte-for-byte what a Pixelfed viewer sees (Sean's call: stop
+              // monkeying with CSS, grab the baked version). Falls back to the
+              // square/aspect thumb only for posts not yet baked, so nothing
+              // renders blank.
+              $thumb = sv_fedi_bake_url($t, $settings) ?? sv_frame_url($t, $settings);
+              if ($thumb === null) {
+                  $tsrc  = trim((string)($t['img_thumb_square'] ?? '')) ?: trim((string)($t['img_thumb_aspect'] ?? ''));
+                  $thumb = $tsrc !== '' ? $pp_base . ltrim(str_replace('\\', '/', $tsrc), '/')
+                                        : pp_thumb((string)$t['img_file'], $pp_base);
+              }
               // Link to the Pixelfed-faithful single-post view (content-negotiated).
               $link  = !empty($t['post_id'])
                   ? $pp_base . 'ap/note/p/' . (int)$t['post_id']
                   : $pp_base . 'ap/note/i/' . (int)$t['id'];
               $multi = (int)($t['image_count'] ?? 0) > 1;
               $ago   = pp_timeago($t['created_at'] ?? null);
-              // Per-image framing — a matte (size < 100%), a border, or a shadow
-              // makes it a framed print. Same rule as tg_resolve_tile_frame.
-              $_sz  = (int)($t['img_size_pct']  ?? 100);
-              $_bpx = (int)($t['img_border_px'] ?? 0);
-              $_sh  = (string)($t['img_shadow'] ?? '0');
-              $framed   = ($_sz < 100 || $_bpx > 0 || (int)$_sh > 0);
-              $portrait = ((int)($t['img_height'] ?? 0) > (int)($t['img_width'] ?? 0));
-              $cls = 'pp-tile' . ($framed ? ' pp-tile--framed' : '') . ($framed && $portrait ? ' pp-tile--portrait' : '');
-              $sty = '';
-              if ($framed) {
-                  $sty = sprintf('--tile-bg:%s;--tile-img-size:%d%%;--tile-border-w:%dpx;--tile-border-c:%s;--tile-shadow:%s;',
-                      preg_replace('/[^#a-z0-9]/i', '', (string)($t['img_bg_color'] ?? '#ffffff')),
-                      max(1, min(100, $_sz)),
-                      max(0, min(40, $_bpx)),
-                      preg_replace('/[^#a-z0-9]/i', '', (string)($t['img_border_color'] ?? '#000000')),
-                      $pp_shadow_map[$_sh] ?? 'none');
-              } ?>
-            <a class="<?php echo $cls; ?>"<?php echo $sty !== '' ? ' style="' . pp_e($sty) . '"' : ''; ?> href="<?php echo pp_e($link); ?>">
+              ?>
+            <a class="pp-tile" href="<?php echo pp_e($link); ?>">
               <img loading="lazy" src="<?php echo pp_e($thumb); ?>" alt="">
               <?php if ($multi): ?><span class="pp-multi"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h11a2 2 0 0 1 2 2v11h-2V6H7V4zm-3 4h11a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"/></svg></span><?php endif; ?>
               <?php if ($ago !== ''): ?><span class="pp-badge"><?php echo pp_e($ago); ?></span><?php endif; ?>

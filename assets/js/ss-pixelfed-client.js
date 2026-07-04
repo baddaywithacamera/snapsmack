@@ -203,7 +203,7 @@
         if (!body) return;
         if (handle === '' && body === bodyFor('search')) {
             body.innerHTML = '';
-            body.appendChild(noteEl('Search any account by handle — @user@host — in the bar above. Their real profile and photos render here, with follow / applaud / reply.'));
+            body.appendChild(noteEl('Search the bar above by handle — @user@host — for an account’s profile (follow / applaud / reply), or a #hashtag (or any word) to pull recent photos tagged that way.'));
             return;
         }
         body.innerHTML = '';
@@ -214,6 +214,19 @@
             .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
             .then(function (data) {
                 if (!data.ok) { body.innerHTML = ''; body.appendChild(noteEl(data.msg || 'Nothing here.')); return; }
+                // Hashtag search returns a photo FEED, not a single profile.
+                if (data.mode === 'feed') {
+                    if (!data.items || !data.items.length) {
+                        body.innerHTML = '';
+                        body.appendChild(noteEl('No public photos found for ' + (data.title || 'that tag') + ' on your home instance.'));
+                        return;
+                    }
+                    renderFeed(body, data.items);   // clears the body, then fills
+                    if (data.title) {
+                        body.insertBefore(el('h3', 'sspf-panel-title', 'Photos tagged ' + data.title), body.firstChild);
+                    }
+                    return;
+                }
                 renderProfile(body, data);
             })
             .catch(function () {
