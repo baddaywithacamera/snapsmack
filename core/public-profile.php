@@ -25,9 +25,9 @@ $pp_base   = rtrim(defined('BASE_URL') ? BASE_URL : sv_base($settings), '/') . '
 $pp_actor  = sv_actor_doc($pdo, $settings);
 $pp_handle = sv_handle($settings);
 $pp_host   = sv_domain($settings);
-$pp_name   = $pp_actor['name'] ?? ($settings['site_name'] ?? $pp_handle);
-$pp_bio    = trim(strip_tags((string)($settings['smackverse_bio'] ?? ($settings['site_description'] ?? ''))));
-$pp_tagline = trim((string)($settings['site_tagline'] ?? ''));
+$pp_name   = html_entity_decode((string)($pp_actor['name'] ?? ($settings['site_name'] ?? $pp_handle)), ENT_QUOTES | ENT_HTML5);
+$pp_bio    = html_entity_decode(trim(strip_tags((string)($settings['smackverse_bio'] ?? ($settings['site_description'] ?? '')))), ENT_QUOTES | ENT_HTML5);
+$pp_tagline = html_entity_decode(trim((string)($settings['site_tagline'] ?? '')), ENT_QUOTES | ENT_HTML5);
 
 $pp_avatar = '';
 if (isset($pp_actor['icon']['url'])) $pp_avatar = (string)$pp_actor['icon']['url'];

@@ -12,6 +12,10 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.374 — "Read It and Weep" (2026-07-04)
+
+- **Fixed: the apostrophe catastrophe on the SMACKVERSE paths.** 0.7.372 decoded the double-encoded blog name (`it&#039;s`) on the main render path and the single-post view, but the `/zuckit` public profile and the ActivityPub actor document read settings on their own paths and still showed/federated the raw entity. Both now `html_entity_decode()` the name (plus the profile's tagline and bio) on load and escape on output, so the apostrophe renders correctly on `/zuckit` and in the display name Pixelfed/Mastodon ingest. (Remote servers cache the actor name — a profile Update or re-follow refreshes an already-known follower.)
+
 ## 0.7.373 — "Hearts and Hooves Day" (2026-07-04)
 
 - **Grid Lighttable: arrange-then-CONFIRM, so the sorting table is the source of truth.** Dragging tiles used to save on every drop — which re-stamped the fediverse dates mid-arrange and let a locked trigram jump before you were done, so the remote pinned a half-finished order. Now dragging only stages: a **CONFIRM ORDER** button lights up while you have unsaved changes, and clicking it writes the arrangement once — `sort_order` for the feed and a re-stamp of `fedi_published_at` for the fediverse override, together. A leave-page guard warns if you navigate away with unsaved changes. Arrange → **CONFIRM ORDER** → **RE-IMPRINT** reproduces your exact grid on followers.
