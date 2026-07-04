@@ -398,9 +398,13 @@ function sv_fetch_ap(string $url): ?array {
  * browser. Params + response shape follow Pixelfed's SearchApiV2Service:
  * q, resolve, type(accounts|hashtags|statuses), limit → {accounts,hashtags,statuses}. */
 
-/** Encryption key material for a stored search token: the site download_salt. */
+/** Encryption key material for a stored search token: the site download_salt,
+ *  falling back to the codebase-wide default (same as download.php / FtpEngine /
+ *  likes) so the feature works on installs that never set one — the strict-empty
+ *  version was silently rejecting the add. */
 function sv_search_salt(array $settings): string {
-    return (string)($settings['download_salt'] ?? '');
+    $s = trim((string)($settings['download_salt'] ?? ''));
+    return $s !== '' ? $s : 'snapsmack-default-salt-change-me';
 }
 
 function sv_search_token_encrypt(string $plaintext, string $salt): string {

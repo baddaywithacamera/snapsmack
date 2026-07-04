@@ -12,6 +12,10 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.375 — "Ponyville Confidential" (2026-07-04)
+
+- **Fixed: adding a PIGGYBACK SEARCH ACCOUNT silently failed on installs without a `download_salt`.** The token encryption keyed off `download_salt` and *rejected* the save when it was unset — unlike the rest of the codebase (download.php, FTP passwords, likes), which falls back to a default salt. `sv_search_salt()` now uses that same fallback, so the account actually saves and the token encrypts.
+
 ## 0.7.374 — "Read It and Weep" (2026-07-04)
 
 - **Fixed: the apostrophe catastrophe on the SMACKVERSE paths.** 0.7.372 decoded the double-encoded blog name (`it&#039;s`) on the main render path and the single-post view, but the `/zuckit` public profile and the ActivityPub actor document read settings on their own paths and still showed/federated the raw entity. Both now `html_entity_decode()` the name (plus the profile's tagline and bio) on load and escape on output, so the apostrophe renders correctly on `/zuckit` and in the display name Pixelfed/Mastodon ingest. (Remote servers cache the actor name — a profile Update or re-follow refreshes an already-known follower.)
