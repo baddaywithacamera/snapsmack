@@ -483,6 +483,15 @@ function sv_pick_search_account(PDO $pdo): ?array {
     } catch (Exception $e) { return null; }
 }
 
+/** Every active piggyback search account. Different instances see different
+ *  slices of the network, so search fans out across all of them and merges. */
+function sv_active_search_accounts(PDO $pdo): array {
+    try {
+        $r = $pdo->query("SELECT * FROM snap_ap_search_accounts WHERE is_active = 1 ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+        return is_array($r) ? $r : [];
+    } catch (Exception $e) { return []; }
+}
+
 /** Authenticated GET with a Bearer token, SSRF-guarded (pins the vetted IP). */
 function sv_authed_get(string $url, string $token): ?array {
     if (!function_exists('curl_init')) return null;
@@ -511,29 +520,44 @@ function sv_authed_get(string $url, string $token): ?array {
 }
 
 /**
- * Proxy a piggyback instance's authenticated /api/v2/search.
- * $type = '' (all) | 'accounts' | 'hashtags' | 'statuses'.
- * Returns Pixelfed/Mastodon-shaped ['accounts','hashtags','statuses'], or null
- * if no account is configured / the call fails.
+ * Fan a query out across EVERY active piggyback account's authenticated
+ * /api/v2/search and merge the results — different instances index different
+ * slices of the network, so more accounts = broader reach. $type = '' (all) |
+ * 'accounts' | 'hashtags' | 'statuses'. Returns Pixelfed/Mastodon-shaped
+ * ['accounts','hashtags','statuses'], de-duplicated, or null if no account is
+ * configured / every call fails. Bounded by a wall-clock budget so a slow or
+ * large account set can't tie up the FPM worker.
  */
 function sv_authed_search(PDO $pdo, array $settings, string $q, string $type = ''): ?array {
     $q = trim($q);
     if ($q === '') return null;
-    $acct = sv_pick_search_account($pdo);
-    if (!$acct) return null;
-    $token = sv_search_token_decrypt((string)$acct['token_enc'], sv_search_salt($pdo, $settings));
-    if ($token === '') return null;
-    $host   = (string)$acct['instance_host'];
+    $accts = sv_active_search_accounts($pdo);
+    if (!$accts) return null;
+    $salt   = sv_search_salt($pdo, $settings);
     $params = ['q' => $q, 'resolve' => '1', 'limit' => '20'];
     if (in_array($type, ['accounts', 'hashtags', 'statuses'], true)) $params['type'] = $type;
-    $url = 'https://' . $host . '/api/v2/search?' . http_build_query($params);
-    $doc = sv_authed_get($url, $token);
-    if (!is_array($doc)) return null;
-    try { $pdo->prepare("UPDATE snap_ap_search_accounts SET last_used_at = NOW() WHERE id = ?")->execute([(int)$acct['id']]); } catch (Exception $e) {}
+    $qs = http_build_query($params);
+    $deadline = microtime(true) + 20.0;
+    $acc_out = []; $tag_out = []; $st_out = []; $got = false;
+    foreach ($accts as $acct) {
+        if (microtime(true) > $deadline) break;
+        $token = sv_search_token_decrypt((string)$acct['token_enc'], $salt);
+        if ($token === '') continue;
+        $host = preg_replace('/[^a-z0-9.\-]/i', '', (string)$acct['instance_host']);
+        if ($host === '') continue;
+        $doc = sv_authed_get('https://' . $host . '/api/v2/search?' . $qs, $token);
+        if (!is_array($doc)) continue;
+        $got = true;
+        try { $pdo->prepare("UPDATE snap_ap_search_accounts SET last_used_at = NOW() WHERE id = ?")->execute([(int)$acct['id']]); } catch (Exception $e) {}
+        foreach (($doc['accounts'] ?? []) as $a) { if (is_array($a)) { $k = strtolower((string)($a['acct'] ?? ($a['id'] ?? ''))); if ($k !== '' && !isset($acc_out[$k])) $acc_out[$k] = $a; } }
+        foreach (($doc['hashtags'] ?? []) as $h) { if (is_array($h)) { $k = strtolower((string)($h['name'] ?? '')); if ($k !== '' && !isset($tag_out[$k])) $tag_out[$k] = $h; } }
+        foreach (($doc['statuses'] ?? []) as $s) { if (is_array($s)) { $k = (string)($s['uri'] ?? ($s['url'] ?? ($s['id'] ?? ''))); if ($k !== '' && !isset($st_out[$k])) $st_out[$k] = $s; } }
+    }
+    if (!$got) return null;
     return [
-        'accounts' => is_array($doc['accounts'] ?? null) ? $doc['accounts'] : [],
-        'hashtags' => is_array($doc['hashtags'] ?? null) ? $doc['hashtags'] : [],
-        'statuses' => is_array($doc['statuses'] ?? null) ? $doc['statuses'] : [],
+        'accounts' => array_values($acc_out),
+        'hashtags' => array_values($tag_out),
+        'statuses' => array_values($st_out),
     ];
 }
 
@@ -2019,27 +2043,37 @@ function sv_hashtag_timeline(string $host, string $tag, int $limit = 40): array 
 function sv_authed_hashtag_timeline(PDO $pdo, array $settings, string $tag, int $limit = 40): ?array {
     $tag = preg_replace('/[^a-z0-9_]/i', '', ltrim(trim($tag), '#'));
     if ($tag === '') return null;
-    $acct = sv_pick_search_account($pdo);
-    if (!$acct) return null;
-    $token = sv_search_token_decrypt((string)$acct['token_enc'], sv_search_salt($pdo, $settings));
-    if ($token === '') return null;
-    $host = preg_replace('/[^a-z0-9.\-]/i', '', (string)$acct['instance_host']);
-    if ($host === '') return null;
+    $accts = sv_active_search_accounts($pdo);
+    if (!$accts) return null;
+    $salt = sv_search_salt($pdo, $settings);
     $lim  = max(1, min($limit, 40));
-    $url  = 'https://' . $host . '/api/v1/timelines/tag/' . rawurlencode($tag) . '?limit=' . $lim . '&only_media=true';
-    $rows = sv_authed_get($url, $token);
-    if (!is_array($rows)) return null;
-    if (isset($rows['posts']) && is_array($rows['posts'])) $rows = $rows['posts'];
-    elseif (isset($rows['data']) && is_array($rows['data'])) $rows = $rows['data'];
-    try { $pdo->prepare("UPDATE snap_ap_search_accounts SET last_used_at = NOW() WHERE id = ?")->execute([(int)$acct['id']]); } catch (Exception $e) {}
-    $out = [];
-    foreach ($rows as $st) {
-        if (!is_array($st)) continue;
-        $row = sv_map_tag_status($st, $host);
-        if ($row) $out[] = $row;
-        if (count($out) >= $lim) break;
+    $deadline = microtime(true) + 20.0;
+    $merged = [];  // de-dupe across instances by post id/uri
+    foreach ($accts as $acct) {
+        if (microtime(true) > $deadline) break;
+        $token = sv_search_token_decrypt((string)$acct['token_enc'], $salt);
+        if ($token === '') continue;
+        $host = preg_replace('/[^a-z0-9.\-]/i', '', (string)$acct['instance_host']);
+        if ($host === '') continue;
+        $url  = 'https://' . $host . '/api/v1/timelines/tag/' . rawurlencode($tag) . '?limit=' . $lim . '&only_media=true';
+        $rows = sv_authed_get($url, $token);
+        if (!is_array($rows)) continue;
+        if (isset($rows['posts']) && is_array($rows['posts'])) $rows = $rows['posts'];
+        elseif (isset($rows['data']) && is_array($rows['data'])) $rows = $rows['data'];
+        try { $pdo->prepare("UPDATE snap_ap_search_accounts SET last_used_at = NOW() WHERE id = ?")->execute([(int)$acct['id']]); } catch (Exception $e) {}
+        foreach ($rows as $st) {
+            if (!is_array($st)) continue;
+            $row = sv_map_tag_status($st, $host);
+            if (!$row) continue;
+            $key = $row['id'] !== '' ? $row['id'] : ($row['url'] !== '' ? $row['url'] : implode('|', $row['images']));
+            if (!isset($merged[$key])) $merged[$key] = $row;
+        }
     }
-    return $out;
+    // Accounts existed but none answered → null so the caller tries the public path.
+    if (!$merged) return null;
+    $out = array_values($merged);
+    usort($out, function ($a, $b) { return strcmp((string)$b['published'], (string)$a['published']); });
+    return array_slice($out, 0, $lim);
 }
 
 /**
