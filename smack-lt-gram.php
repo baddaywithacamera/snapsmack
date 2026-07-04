@@ -320,8 +320,21 @@ $posts = $pdo->query("
         p.sort_order,
         p.trigram_id,
         p.created_at,
+        p.post_img_size_pct,
+        p.post_border_px,
+        p.post_border_color,
+        p.post_bg_color,
+        p.post_shadow,
         i.img_thumb_square,
+        i.img_thumb_aspect,
         i.img_file,
+        i.img_width,
+        i.img_height,
+        pi.img_size_pct,
+        pi.img_border_px,
+        pi.img_border_color,
+        pi.img_bg_color,
+        pi.img_shadow,
         (SELECT COUNT(*) FROM snap_post_images spi WHERE spi.post_id = p.id) AS image_count,
         CASE
             WHEN tg.post_id_1 = p.id THEN 1
@@ -405,8 +418,52 @@ include 'core/sidebar.php';
     </div>
 
     <div class="ltg-grid" id="ltgGrid">
-    <?php foreach ($posts as $post):
+    <?php
+    // Frame resolver — mirrors skins/the-grid/landing.php so the lighttable
+    // previews the SAME matte/border/shadow the live feed renders. The tray is
+    // WYSIWYG: framed tiles must obey the CSS, not be flat square crops.
+    if (!isset($settings) || !is_array($settings)) {
+        $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+    }
+    $ltg_customize_level = $settings['tg_customize_level'] ?? 'per_grid';
+    $_ltg_shadow_map = [
+        '0' => 'none',
+        '1' => '3px 3px 8px rgba(0,0,0,.20)',
+        '2' => '6px 6px 18px rgba(0,0,0,.40)',
+        '3' => '12px 12px 32px rgba(0,0,0,.60)',
+    ];
+    $ltg_resolve_tile_frame = function ($row) use ($settings, $ltg_customize_level, $_ltg_shadow_map) {
+        $pi_sz  = (int)($row['img_size_pct']  ?? 100);
+        $pi_bpx = (int)($row['img_border_px'] ?? 0);
+        $pi_sh  = (string)($row['img_shadow'] ?? '0');
+        $has_per_image = ($pi_sz < 100 || $pi_bpx > 0 || (int)$pi_sh > 0);
+        if ($ltg_customize_level === 'per_image' || $has_per_image) {
+            $sz = $pi_sz; $bpx = $pi_bpx;
+            $bc = $row['img_border_color'] ?? '#000000';
+            $bg = $row['img_bg_color']     ?? '#ffffff';
+            $sh = $pi_sh;
+        } elseif ($ltg_customize_level === 'per_carousel') {
+            $sz  = (int)($row['post_img_size_pct'] ?? 100);
+            $bpx = (int)($row['post_border_px']    ?? 0);
+            $bc  = $row['post_border_color'] ?? '#000000';
+            $bg  = $row['post_bg_color']     ?? '#ffffff';
+            $sh  = (string)($row['post_shadow']    ?? '0');
+        } else { // per_grid
+            $sz  = (int)($settings['tg_frame_size_pct']  ?? 100);
+            $bpx = (int)($settings['tg_frame_border_px'] ?? 0);
+            $bc  = $settings['tg_frame_border_color'] ?? '#000000';
+            $bg  = $settings['tg_frame_bg_color']     ?? '#ffffff';
+            $sh  = (string)($settings['tg_frame_shadow'] ?? '0');
+        }
+        return [
+            'size_pct' => $sz, 'border_px' => $bpx, 'border_color' => $bc,
+            'bg_color' => $bg, 'shadow_css' => $_ltg_shadow_map[$sh] ?? 'none',
+            'is_framed' => ($sz < 100 || $bpx > 0 || (int)$sh > 0),
+        ];
+    };
+    foreach ($posts as $post):
         $thumb      = $post['img_thumb_square'] ?: $post['img_file'];
+        $is_slice_tile = false;
         $is_draft   = ($post['status'] === 'draft');
         $is_queued  = ($post['status'] === 'queued');
         $tg_id      = (int)$post['trigram_id'];
@@ -422,7 +479,10 @@ include 'core/sidebar.php';
                 : (['L','M','R'][$tg_slot - 1] ?? '');
             if ($tg_label !== '') {
                 $tg_rel = 'trigrams/trigram-' . $tg_id . '-' . $tg_label . '.jpg';
-                if (is_file(__DIR__ . '/' . $tg_rel)) $thumb = $tg_rel;
+                if (is_file(__DIR__ . '/' . $tg_rel)) {
+                    $thumb = $tg_rel;
+                    $is_slice_tile = true; // panorama slice fronts the tile — never framed
+                }
             }
         }
 
@@ -430,16 +490,43 @@ include 'core/sidebar.php';
         $slot_labels_v = [1 => 'T', 2 => 'M', 3 => 'B'];
         $slot_label = $tg_slot ? ($tg_orient === 'v' ? $slot_labels_v[$tg_slot] : $slot_labels_h[$tg_slot]) : '';
 
+        // Frame gate rides on SLICE-FILE EXISTENCE, not trigram membership
+        // (Sean's taxonomy): panorama/carousel slices are full-bleed; a triptych
+        // (three framed posts locked as a row, no slice files) and plain singles
+        // keep their per-image matte/border/shadow. Framed tiles use the ASPECT
+        // thumb — matting an already-square crop would double-crop it.
+        $tile_frame = $ltg_resolve_tile_frame($post);
+        $do_frame   = ($tile_frame['is_framed'] && !$is_slice_tile);
+        if ($do_frame) {
+            $thumb = $post['img_thumb_aspect'] ?: ($post['img_thumb_square'] ?: $post['img_file']);
+        }
+
         $tile_classes = 'ltg-tile';
         if ($is_draft)   $tile_classes .= ' ltg-tile--draft';
         if ($is_queued)  $tile_classes .= ' ltg-tile--queued';
         if ($tg_id > 0)  $tile_classes .= ' ltg-tile--trigram';
+        $tile_css_vars = '';
+        if ($do_frame) {
+            $tile_classes .= ' ltg-tile--framed';
+            if ((int)$post['img_height'] > (int)$post['img_width']) {
+                $tile_classes .= ' ltg-tile--portrait';
+            }
+            $tile_css_vars = sprintf(
+                '--tile-bg:%s; --tile-img-size:%d%%; --tile-border-w:%dpx; --tile-border-c:%s; --tile-shadow:%s;',
+                htmlspecialchars($tile_frame['bg_color']),
+                $tile_frame['size_pct'],
+                $tile_frame['border_px'],
+                htmlspecialchars($tile_frame['border_color']),
+                htmlspecialchars($tile_frame['shadow_css'])
+            );
+        }
     ?>
     <div class="<?php echo $tile_classes; ?>"
          data-post-id="<?php echo $post['post_id']; ?>"
          data-trigram-id="<?php echo $tg_id; ?>"
          data-trigram-slot="<?php echo $tg_slot; ?>"
-         data-status="<?php echo htmlspecialchars($post['status']); ?>">
+         data-status="<?php echo htmlspecialchars($post['status']); ?>"
+         <?php if ($tile_css_vars): ?>style="<?php echo $tile_css_vars; ?>"<?php endif; ?>>
 
         <?php if ($thumb): ?>
         <img src="<?php echo htmlspecialchars($thumb); ?>"
@@ -901,6 +988,32 @@ include 'core/sidebar.php';
     object-fit:  cover;
     display:     block;
     pointer-events: none;
+}
+
+/* ── Framed tile (matte / border / shadow) ─────────────────────────────────
+   WYSIWYG preview of the live-feed frame. Emitted when a tile's cover carries
+   per-image/carousel/grid styling (size<100 / border / shadow) AND is not a
+   panorama slice. Mirrors skins/the-grid/style.css .tg-tile--framed. */
+.ltg-tile--framed        { background: var(--tile-bg, #fff); }
+.ltg-tile--framed a,
+.ltg-tile--framed        { display: flex; align-items: center; justify-content: center; }
+.ltg-tile--framed img {
+    width:        var(--tile-img-size, 100%);
+    height:       auto;
+    max-width:    var(--tile-img-size, 100%);
+    max-height:   100%;
+    margin:       auto;
+    object-fit:   contain;
+    border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
+    background-color: var(--tile-border-c, transparent);
+    box-shadow:   var(--tile-shadow, none);
+    box-sizing:   border-box;
+}
+.ltg-tile--framed.ltg-tile--portrait img {
+    width:        auto;
+    height:       var(--tile-img-size, 100%);
+    max-width:    100%;
+    max-height:   var(--tile-img-size, 100%);
 }
 
 /* ── No-image placeholder ──────────────────────────────────────────────── */
