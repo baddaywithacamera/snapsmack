@@ -873,6 +873,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             . " AND followed_at < DATE_SUB(NOW(), INTERVAL 1 MINUTE) LIMIT 1"
         )->fetchColumn();
         if ($backfill > 0 && !$is_refollow) {
+            sv_sync_fedi_dates($pdo, $settings);   // grid-order dates before backfill
             foreach (sv_recent_creates($pdo, $settings, $backfill) as $create_json) {
                 sv_queue_delivery($pdo, $inbox, $create_json);
             }
@@ -2865,6 +2866,10 @@ function sv_reseed_all(PDO $pdo, array $settings, ?int $limit = null): array {
     if (!sv_enabled($settings)) return [0, 0, 0];
     if ($limit === null) $limit = (int)($settings['smackverse_backfill_count'] ?? 10);
 
+    // Encode grid order into published dates FIRST — that's what the remote sorts
+    // by. Without this the delivery order is irrelevant and rows swap by date.
+    sv_sync_fedi_dates($pdo, $settings);
+
     $units   = sv_ordered_units($pdo, $settings, $limit);
     $inboxes = sv_follower_inboxes($pdo);
     if (!$units || !$inboxes) return [0, 0, 0];
@@ -2889,6 +2894,42 @@ function sv_reseed_all(PDO $pdo, array $settings, ?int $limit = null): array {
         }
     }
     return [$posts, $comments, $deliveries];
+}
+
+/**
+ * Encode the BLOG GRID ORDER into each post's fediverse `published` date.
+ *
+ * THE thing that actually controls remote order: Pixelfed (and Mastodon web)
+ * sort a profile by the Note's `published` timestamp — NOT by delivery/arrival
+ * order. Our grid orders by `sort_order`, which can disagree with capture date
+ * (a manual arrangement, or two posts shot the same day in feed order). Where it
+ * disagrees, the remote floats the chronologically-newer post above the older
+ * one and the grid rows swap.
+ *
+ * Fix: walk the grid TOP-to-BOTTOM and assign strictly-DECREASING published
+ * timestamps. Each post keeps its real `created_at` where that already preserves
+ * grid order; only an out-of-order post is nudged just below its predecessor
+ * (1s steps), so date labels stay honest on a chronological feed and only the
+ * genuinely-reordered posts shift. sv_note_for_post already prefers
+ * fedi_published_at, so a reseed then lands in exact grid order on the remote.
+ *
+ * @return int posts restamped
+ */
+function sv_sync_fedi_dates(PDO $pdo, array $settings): int {
+    // Grid display order (top first) = the delivery enumerator, un-reversed.
+    $units = array_reverse(sv_ordered_units($pdo, $settings, 100000));
+    if (!$units) return 0;
+    $upd  = $pdo->prepare("UPDATE snap_posts SET fedi_published_at = ? WHERE id = ?");
+    $prev = null; $n = 0;
+    foreach ($units as $u) {
+        if (($u['kind'] ?? '') !== 'post') continue;   // fedi_published_at is per-post
+        $created = strtotime((string)($u['row']['created_at'] ?? 'now')) ?: time();
+        $fp = ($prev === null) ? $created : min($created, $prev - 1);
+        $prev = $fp;
+        $upd->execute([date('Y-m-d H:i:s', $fp), (int)($u['row']['id'] ?? 0)]);
+        $n++;
+    }
+    return $n;
 }
 
 /** How many published, federation-eligible posts are STAGED — never pushed, or

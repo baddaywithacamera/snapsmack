@@ -51,7 +51,9 @@ try {
 $pp_tiles = [];
 try {
     $st = $pdo->query(
-        "SELECT i.id, i.post_id, i.img_file, i.img_slug
+        "SELECT i.id, i.post_id, i.img_file, i.img_slug,
+                p.created_at, p.post_type,
+                (SELECT COUNT(*) FROM snap_post_images c WHERE c.post_id = p.id) AS image_count
          FROM snap_posts p
          JOIN snap_post_images pi ON pi.post_id = p.id
             AND pi.image_id = (SELECT image_id FROM snap_post_images
@@ -74,11 +76,27 @@ function pp_thumb(string $file, string $base): string {
     return $base . $rel;
 }
 function pp_e(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
+function pp_timeago(?string $dt): string {
+    if (!$dt) return '';
+    $t = strtotime($dt); if ($t === false) return '';
+    $d = max(0, time() - $t);
+    if ($d < 60)      return $d . 's';
+    if ($d < 3600)    return floor($d / 60) . 'm';
+    if ($d < 86400)   return floor($d / 3600) . 'h';
+    if ($d < 604800)  return floor($d / 86400) . 'd';
+    if ($d < 2629800) return floor($d / 604800) . 'w';
+    if ($d < 31557600)return floor($d / 2629800) . 'mo';
+    return floor($d / 31557600) . 'y';
+}
 
 $pp_full_handle = '@' . $pp_handle . '@' . $pp_host;
 $pp_followerr   = ($_GET['follow'] ?? '') === 'badhandle';
 http_response_code(200);
 header('Content-Type: text/html; charset=utf-8');
+// Never let Cloudflare/browser serve a stale profile — it changes as posts and
+// counts change, and a cached copy also means the page's PHP never runs.
+header('Cache-Control: private, no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
 ?><!DOCTYPE html>
 <html lang="en">
 <head>
@@ -87,91 +105,128 @@ header('Content-Type: text/html; charset=utf-8');
 <title><?php echo pp_e($pp_name); ?> (<?php echo pp_e($pp_full_handle); ?>)</title>
 <link rel="alternate" type="application/activity+json" href="<?php echo pp_e(sv_actor_url($settings)); ?>">
 <style>
-  :root{ --pp-bg:#fff; --pp-fg:#161616; --pp-muted:#6b7280; --pp-line:#e6e6e6; --pp-accent:#6366f1; --pp-tile:#f2f2f2; }
+  :root{ --bg:#000; --panel:#16181c; --line:#26272b; --fg:#e7e9ea; --muted:#8b98a5; --accent:#4c8dff; }
   *{ box-sizing:border-box; }
-  body{ margin:0; background:var(--pp-bg); color:var(--pp-fg);
+  body{ margin:0; background:var(--bg); color:var(--fg);
         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
-  .pp-top{ border-bottom:1px solid var(--pp-line); }
-  .pp-top-inner{ max-width:935px; margin:0 auto; padding:14px 20px; display:flex; align-items:center; gap:14px; }
-  .pp-logo{ font-weight:800; letter-spacing:.3px; font-size:1.1rem;
+  a{ color:inherit; text-decoration:none; }
+  .pp-topbar{ position:sticky; top:0; z-index:10; background:#0a0a0b; border-bottom:1px solid var(--line); }
+  .pp-topbar-in{ max-width:1040px; margin:0 auto; padding:12px 18px; display:flex; align-items:center; }
+  .pp-logo{ font-weight:800; letter-spacing:.4px; font-size:1.05rem;
             background:linear-gradient(90deg,#6366f1,#a855f7); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .pp-top-handle{ margin-left:auto; color:var(--pp-muted); font-size:.9rem; }
-  .pp-wrap{ max-width:935px; margin:0 auto; padding:30px 20px 60px; }
-  .pp-head{ display:flex; gap:40px; align-items:flex-start; padding-bottom:34px; border-bottom:1px solid var(--pp-line); flex-wrap:wrap; }
-  .pp-avatar{ width:150px; height:150px; border-radius:50%; object-fit:cover; background:var(--pp-tile); flex-shrink:0; }
-  .pp-info{ min-width:240px; flex:1; }
-  .pp-namerow{ display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
-  .pp-username{ font-size:1.5rem; font-weight:300; }
-  .pp-follow{ display:inline-flex; align-items:center; gap:8px; }
-  .pp-follow input{ padding:7px 10px; border:1px solid var(--pp-line); border-radius:8px; font-size:.85rem; min-width:190px; }
-  .pp-follow button{ padding:7px 18px; border:none; border-radius:8px; background:var(--pp-accent); color:#fff; font-weight:600; font-size:.85rem; cursor:pointer; }
-  .pp-stats{ display:flex; gap:40px; margin:20px 0; font-size:1rem; }
-  .pp-stats b{ font-weight:700; }
-  .pp-stats span{ color:var(--pp-muted); }
-  .pp-name{ font-weight:700; }
-  .pp-bio{ margin-top:4px; white-space:pre-wrap; max-width:560px; line-height:1.45; }
-  .pp-err{ margin-top:10px; color:#b91c1c; font-size:.85rem; }
-  .pp-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin-top:28px; }
-  .pp-grid a{ display:block; aspect-ratio:1/1; background:var(--pp-tile); overflow:hidden; }
-  .pp-grid img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .pp-empty{ margin-top:40px; text-align:center; color:var(--pp-muted); }
-  .pp-foot{ max-width:935px; margin:0 auto; padding:24px 20px 50px; color:var(--pp-muted); font-size:.8rem; text-align:center; }
-  @media (max-width:640px){ .pp-head{ gap:20px; } .pp-avatar{ width:86px; height:86px; } .pp-stats{ gap:24px; } }
+  .pp-topbar-handle{ margin-left:auto; color:var(--muted); font-size:.85rem; }
+  .pp-shell{ max-width:1040px; margin:0 auto; padding:26px 18px 70px; display:flex; gap:30px; align-items:flex-start; }
+  .pp-side{ width:330px; flex:0 0 330px; text-align:center; }
+  .pp-side-av{ width:150px; height:150px; border-radius:50%; object-fit:cover; background:var(--panel); }
+  .pp-side-name{ font-weight:700; font-size:1.15rem; margin-top:14px; }
+  .pp-side-handle{ color:var(--accent); font-size:.95rem; display:block; margin-top:2px; }
+  .pp-counts{ display:flex; justify-content:center; gap:34px; margin:18px 0; }
+  .pp-counts div{ line-height:1.2; }
+  .pp-counts b{ display:block; font-weight:700; font-size:1.1rem; }
+  .pp-counts span{ color:var(--muted); font-size:.82rem; }
+  .pp-follow{ display:flex; flex-direction:column; gap:8px; margin-bottom:18px; }
+  .pp-follow input{ width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:8px;
+                    background:var(--panel); color:var(--fg); font-size:.85rem; }
+  .pp-follow button{ width:100%; padding:9px; border:none; border-radius:8px; background:var(--accent);
+                     color:#fff; font-weight:700; font-size:.9rem; cursor:pointer; }
+  .pp-err{ color:#f87171; font-size:.78rem; margin-bottom:6px; text-align:left; }
+  .pp-biobox{ text-align:left; background:var(--panel); border:1px solid var(--line); border-radius:12px;
+              padding:14px; font-size:.86rem; line-height:1.5; }
+  .pp-biobox a{ color:var(--accent); }
+  .pp-joined{ text-align:left; color:var(--muted); font-size:.8rem; margin-top:14px;
+              background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .pp-side-foot{ text-align:left; color:var(--muted); font-size:.75rem; margin-top:14px; }
+  .pp-side-foot a{ margin-right:12px; }
+  .pp-powered{ text-align:left; color:var(--muted); font-size:.72rem; font-weight:600; margin-top:10px; }
+  .pp-main{ flex:1; min-width:0; }
+  .pp-lay{ position:absolute; opacity:0; pointer-events:none; }
+  .pp-tabbar{ display:flex; align-items:center; border-bottom:1px solid var(--line); }
+  .pp-tab{ padding:12px 4px; font-weight:700; font-size:.82rem; letter-spacing:.06em; text-transform:uppercase;
+           border-bottom:2px solid var(--fg); margin-bottom:-1px; }
+  .pp-toggle{ margin-left:auto; display:flex; gap:16px; }
+  .pp-toggle label{ color:var(--muted); font-size:1.1rem; cursor:pointer; line-height:1; }
+  #pplay-grid:checked ~ .pp-tabbar label[for="pplay-grid"],
+  #pplay-mason:checked ~ .pp-tabbar label[for="pplay-mason"],
+  #pplay-list:checked ~ .pp-tabbar label[for="pplay-list"]{ color:var(--fg); }
+  .pp-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:3px; margin-top:20px; }
+  .pp-tile{ position:relative; display:block; aspect-ratio:1/1; background:var(--panel); overflow:hidden; }
+  .pp-tile img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .pp-badge{ position:absolute; right:6px; bottom:6px; background:rgba(0,0,0,.62); color:#fff;
+             font-size:.68rem; font-weight:600; padding:2px 6px; border-radius:5px; }
+  .pp-multi{ position:absolute; right:6px; top:6px; color:#fff; line-height:0; filter:drop-shadow(0 1px 2px rgba(0,0,0,.7)); }
+  #pplay-mason:checked ~ .pp-grid{ display:block; column-count:3; column-gap:3px; }
+  #pplay-mason:checked ~ .pp-grid .pp-tile{ aspect-ratio:auto; break-inside:avoid; margin-bottom:3px; }
+  #pplay-mason:checked ~ .pp-grid .pp-tile img{ height:auto; }
+  #pplay-list:checked ~ .pp-grid{ display:block; max-width:560px; margin:20px auto 0; }
+  #pplay-list:checked ~ .pp-grid .pp-tile{ aspect-ratio:auto; margin-bottom:14px; border-radius:8px; }
+  #pplay-list:checked ~ .pp-grid .pp-tile img{ height:auto; }
+  .pp-empty{ margin-top:50px; text-align:center; color:var(--muted); }
+  @media (max-width:820px){ .pp-shell{ flex-direction:column; } .pp-side{ width:100%; flex-basis:auto; } }
 </style>
 </head>
 <body>
-  <div class="pp-top"><div class="pp-top-inner">
+  <header class="pp-topbar"><div class="pp-topbar-in">
     <span class="pp-logo">SMACKVERSE</span>
-    <span class="pp-top-handle"><?php echo pp_e($pp_full_handle); ?></span>
-  </div></div>
+    <span class="pp-topbar-handle"><?php echo pp_e($pp_full_handle); ?></span>
+  </div></header>
 
-  <div class="pp-wrap">
-    <div class="pp-head">
+  <div class="pp-shell">
+    <aside class="pp-side">
       <?php if ($pp_avatar !== ''): ?>
-        <img class="pp-avatar" src="<?php echo pp_e($pp_avatar); ?>" alt="">
+        <img class="pp-side-av" src="<?php echo pp_e($pp_avatar); ?>" alt="">
+      <?php else: ?><div class="pp-side-av"></div><?php endif; ?>
+      <div class="pp-side-name"><?php echo pp_e($pp_name); ?></div>
+      <a class="pp-side-handle" href="<?php echo pp_e(sv_actor_url($settings)); ?>"><?php echo pp_e($pp_full_handle); ?></a>
+      <div class="pp-counts">
+        <div><b><?php echo number_format($pp_posts); ?></b><span>Posts</span></div>
+        <div><b><?php echo number_format($pp_followers); ?></b><span>Followers</span></div>
+        <div><b><?php echo number_format($pp_following); ?></b><span>Following</span></div>
+      </div>
+      <form class="pp-follow" method="get" action="<?php echo pp_e($pp_base); ?>ap/remote-follow">
+        <?php if ($pp_followerr): ?><div class="pp-err">Couldn't read that handle — use <strong>you@your-instance.social</strong>.</div><?php endif; ?>
+        <input type="text" name="handle" placeholder="you@your-instance" aria-label="Your fediverse handle" required>
+        <button type="submit">Follow</button>
+      </form>
+      <div class="pp-biobox"><?php echo nl2br(pp_e($pp_bio)); ?><?php if ($pp_bio !== ''): ?><br><br><?php endif; ?>See <a href="<?php echo pp_e($pp_base); ?>"><?php echo pp_e($pp_host); ?></a> for more.</div>
+      <?php $pp_joined = !empty($pp_actor['published']) ? date('F Y', strtotime((string)$pp_actor['published'])) : ''; ?>
+      <?php if ($pp_joined !== ''): ?><div class="pp-joined">&#128339; Joined <?php echo pp_e($pp_joined); ?></div><?php endif; ?>
+      <nav class="pp-side-foot"><a href="<?php echo pp_e($pp_base); ?>">Home</a><a href="<?php echo pp_e($pp_base); ?>about">About</a></nav>
+      <div class="pp-powered">Powered by SNAPSMACK</div>
+    </aside>
+
+    <main class="pp-main">
+      <input type="radio" name="pplay" id="pplay-grid" class="pp-lay" checked>
+      <input type="radio" name="pplay" id="pplay-mason" class="pp-lay">
+      <input type="radio" name="pplay" id="pplay-list" class="pp-lay">
+      <div class="pp-tabbar">
+        <span class="pp-tab">Posts</span>
+        <span class="pp-toggle">
+          <label for="pplay-grid" title="Grid">&#9638;</label>
+          <label for="pplay-mason" title="Masonry">&#9636;</label>
+          <label for="pplay-list" title="List">&#9776;</label>
+        </span>
+      </div>
+      <?php if ($pp_tiles): ?>
+        <div class="pp-grid">
+          <?php foreach ($pp_tiles as $t):
+              $thumb = pp_thumb((string)$t['img_file'], $pp_base);
+              // Link to the Pixelfed-faithful single-post view (content-negotiated).
+              $link  = !empty($t['post_id'])
+                  ? $pp_base . 'ap/note/p/' . (int)$t['post_id']
+                  : $pp_base . 'ap/note/i/' . (int)$t['id'];
+              $multi = (int)($t['image_count'] ?? 0) > 1;
+              $ago   = pp_timeago($t['created_at'] ?? null); ?>
+            <a class="pp-tile" href="<?php echo pp_e($link); ?>">
+              <img loading="lazy" src="<?php echo pp_e($thumb); ?>" alt="">
+              <?php if ($multi): ?><span class="pp-multi"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h11a2 2 0 0 1 2 2v11h-2V6H7V4zm-3 4h11a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"/></svg></span><?php endif; ?>
+              <?php if ($ago !== ''): ?><span class="pp-badge"><?php echo pp_e($ago); ?></span><?php endif; ?>
+            </a>
+          <?php endforeach; ?>
+        </div>
       <?php else: ?>
-        <div class="pp-avatar"></div>
+        <div class="pp-empty">No public posts yet.</div>
       <?php endif; ?>
-      <div class="pp-info">
-        <div class="pp-namerow">
-          <span class="pp-username"><?php echo pp_e($pp_handle); ?></span>
-          <form class="pp-follow" method="get" action="<?php echo pp_e($pp_base); ?>ap/remote-follow">
-            <input type="text" name="handle" placeholder="you@your-instance" aria-label="Your fediverse handle" required>
-            <button type="submit">Follow</button>
-          </form>
-        </div>
-        <?php if ($pp_followerr): ?>
-          <div class="pp-err">Couldn't read that handle — use the form <strong>you@your-instance.social</strong>.</div>
-        <?php endif; ?>
-        <div class="pp-stats">
-          <span><b><?php echo number_format($pp_posts); ?></b> posts</span>
-          <span><b><?php echo number_format($pp_followers); ?></b> followers</span>
-          <span><b><?php echo number_format($pp_following); ?></b> following</span>
-        </div>
-        <div class="pp-name"><?php echo pp_e($pp_name); ?></div>
-        <?php if ($pp_bio !== ''): ?><div class="pp-bio"><?php echo pp_e($pp_bio); ?></div><?php endif; ?>
-      </div>
-    </div>
-
-    <?php if ($pp_tiles): ?>
-      <div class="pp-grid">
-        <?php foreach ($pp_tiles as $t):
-            $thumb = pp_thumb((string)$t['img_file'], $pp_base);
-            // Link to the Pixelfed-faithful single-post view (content-negotiated).
-            $link  = !empty($t['post_id'])
-                ? $pp_base . 'ap/note/p/' . (int)$t['post_id']
-                : $pp_base . 'ap/note/i/' . (int)$t['id']; ?>
-          <a href="<?php echo pp_e($link); ?>"><img loading="lazy" src="<?php echo pp_e($thumb); ?>" alt=""></a>
-        <?php endforeach; ?>
-      </div>
-    <?php else: ?>
-      <div class="pp-empty">No public posts yet.</div>
-    <?php endif; ?>
-  </div>
-
-  <div class="pp-foot">
-    Following <?php echo pp_e($pp_full_handle); ?> from Mastodon, Pixelfed or any fediverse app:
-    search that handle in your app, or use the Follow box above.
+    </main>
   </div>
 </body>
 </html>
