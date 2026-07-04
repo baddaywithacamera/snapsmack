@@ -507,15 +507,15 @@ include 'core/sidebar.php';
                     $fleet_fedi_sites     += (int)($_fr['s'] ?? 0);
                 } catch (Exception $e) { /* federation cols not present yet */ }
 
-                // SMACKVERSE engagement (hub) — following, inbound applause/boosts/
+                // SMACKVERSE engagement (hub) — following, inbound likes/boosts/
                 // replies (typed in snap_ap_notifications), and views referred by an
                 // instance we federate with or a common fediverse platform pattern.
-                $fedi_following = 0; $fedi_applause = 0; $fedi_boosts = 0; $fedi_replies = 0; $fedi_ref_views = 0;
+                $fedi_following = 0; $fedi_likes = 0; $fedi_boosts = 0; $fedi_replies = 0; $fedi_ref_views = 0;
                 try {
                     if (($settings['smackverse_enabled'] ?? '0') === '1') {
                         $fedi_following = (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_following WHERE state = 'accepted'")->fetchColumn();
                         $_nt = $pdo->query("SELECT type, COUNT(*) c FROM snap_ap_notifications GROUP BY type")->fetchAll(PDO::FETCH_KEY_PAIR);
-                        $fedi_applause = (int)($_nt['like']  ?? 0);
+                        $fedi_likes = (int)($_nt['like']  ?? 0);
                         $fedi_boosts   = (int)($_nt['boost'] ?? 0);
                         $fedi_replies  = (int)($_nt['reply'] ?? 0) + (int)($_nt['mention'] ?? 0);
                         $_rows = $pdo->query(
@@ -584,8 +584,8 @@ include 'core/sidebar.php';
                 <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">FEDIVERSE FOLLOWING</div>
             </div>
             <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fedi_applause); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">APPLAUSE RECEIVED</div>
+                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fedi_likes); ?></div>
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">LIKES RECEIVED</div>
             </div>
             <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
                 <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fedi_boosts); ?></div>

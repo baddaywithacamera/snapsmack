@@ -8,7 +8,7 @@
  * Client-side layer for the faithful-Pixelfed admin page. Tab switching plus a
  * render layer that talks to the page's own AJAX endpoints:
  *   - Profile / Search are LIVE: they crawl a remote actor's outbox and render
- *     a Pixelfed-style profile + photo grid, with Follow / Unfollow / Applaud /
+ *     a Pixelfed-style profile + photo grid, with Follow / Unfollow / Like /
  *     Reply (all as the single blog actor).
  *   - Home / Local / Global / Notifications stay quiet until the reader ingest
  *     lands (next phase) — their endpoint returns wired:false.
@@ -113,11 +113,11 @@
             });
     }
 
-    var VERB = { follow: 'followed you', like: 'applauded your post', reply: 'replied to you', mention: 'mentioned you', boost: 'boosted your post' };
+    var VERB = { follow: 'followed you', like: 'liked your post', reply: 'replied to you', mention: 'mentioned you', boost: 'boosted your post' };
     function renderNotifications(body, items) {
         body.innerHTML = '';
         if (!items.length) {
-            body.appendChild(noteEl('No notifications yet. Follow people and engage — when they follow, applaud, reply or boost you, it shows up here.'));
+            body.appendChild(noteEl('No notifications yet. Follow people and engage — when they follow, like, reply or boost you, it shows up here.'));
             return;
         }
         items.forEach(function (n) {
@@ -175,7 +175,7 @@
 
             if (enabled) {
                 var actions = el('div', 'sspf-card-actions');
-                actions.appendChild(applaudButton(a, p));
+                actions.appendChild(likeButton(a, p));
                 actions.appendChild(boostButton(a, p));
                 var reply = el('button', 'sspf-actbtn'); reply.textContent = '💬'; reply.title = 'Reply';
                 reply.addEventListener('click', function () { openPost(a, p); });
@@ -203,7 +203,7 @@
         if (!body) return;
         if (handle === '' && body === bodyFor('search')) {
             body.innerHTML = '';
-            body.appendChild(noteEl('Search the bar above by handle — @user@host — for an account’s profile (follow / applaud / reply), or a #hashtag (or any word) to pull recent photos tagged that way.'));
+            body.appendChild(noteEl('Search the bar above by handle — @user@host — for an account’s profile (follow / like / reply), or a #hashtag (or any word) to pull recent photos tagged that way.'));
             return;
         }
         body.innerHTML = '';
@@ -323,17 +323,19 @@
         return wrap;
     }
 
-    // ── shared interaction buttons (applaud toggle, boost) ────────────────────
-    function applaudButton(a, p) {
+    // ── shared interaction buttons (like toggle, boost) ───────────────────────
+    // Like = Pixelfed's heart: outline when not liked, solid red (#ed4956) when
+    // liked. The action is a real ActivityPub Like/Undo (sspf_action like/unlike).
+    function likeButton(a, p) {
         var btn = el('button', 'sspf-actbtn');
         var liked = false;
-        btn.textContent = '👏'; btn.title = 'Applaud';
+        btn.textContent = '♡'; btn.title = 'Like';
         btn.addEventListener('click', function (e) {
             e.stopPropagation();
             btn.disabled = true;
             post({ sspf_action: liked ? 'unlike' : 'like', object: p.id, actor: a.id }).then(function (r) {
                 btn.disabled = false;
-                if (r.ok) { liked = !liked; btn.textContent = liked ? '👏 ✓' : '👏'; btn.classList.toggle('sspf-on', liked); }
+                if (r.ok) { liked = !liked; btn.textContent = liked ? '♥' : '♡'; btn.style.color = liked ? '#ed4956' : ''; btn.classList.toggle('sspf-on', liked); }
             }).catch(function () { btn.disabled = false; });
         });
         return btn;
@@ -395,7 +397,7 @@
         return wrap;
     }
 
-    // ── post lightbox: image(s) + caption + applaud / reply ───────────────────
+    // ── post lightbox: image(s) + caption + like / reply ──────────────────────
     function openPost(a, p) {
         var ov   = el('div', 'sspf-lightbox');
         var card = el('div', 'sspf-lightbox-card');
@@ -411,17 +413,17 @@
         var actions = el('div', 'sspf-lightbox-actions');
 
         if (enabled) {
-            var applaud = el('button', 'sspf-btn'); applaud.textContent = '👏 Applaud';
+            var likeBtn = el('button', 'sspf-btn'); likeBtn.textContent = '♡ Like';
             var liked = false;
-            applaud.addEventListener('click', function () {
-                applaud.disabled = true;
+            likeBtn.addEventListener('click', function () {
+                likeBtn.disabled = true;
                 post({ sspf_action: liked ? 'unlike' : 'like', object: p.id, actor: a.id }).then(function (r) {
-                    applaud.disabled = false;
-                    if (r.ok) { liked = !liked; applaud.textContent = liked ? '👏 Applauded' : '👏 Applaud'; }
+                    likeBtn.disabled = false;
+                    if (r.ok) { liked = !liked; likeBtn.textContent = liked ? '♥ Liked' : '♡ Like'; likeBtn.style.color = liked ? '#ed4956' : ''; }
                     msgline.textContent = r.msg || '';
-                }).catch(function () { applaud.disabled = false; });
+                }).catch(function () { likeBtn.disabled = false; });
             });
-            actions.appendChild(applaud);
+            actions.appendChild(likeBtn);
 
             var boost = el('button', 'sspf-btn sspf-btn-ghost'); boost.textContent = '🔁 Boost';
             boost.addEventListener('click', function () {

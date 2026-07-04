@@ -8,7 +8,7 @@
  *   - live conversations with a REPLY tool — replies federate as the blog
  *     actor, MENTION the commenter, and deliver straight to their server so
  *     they get a real notification
- *   - fediverse likes (who applauded what)
+ *   - fediverse likes (who liked what)
  *   - current followers
  *
  * Settings/health/handle live in smack-smackverse.php (SMACKVERSE Federation).
@@ -293,7 +293,7 @@ include 'core/sidebar.php';
 
     <div class="dash-grid dash-grid-2 mt-30">
         <div class="box box-flex">
-            <h3>FEDIVERSE APPLAUSE</h3>
+            <h3>FEDIVERSE LIKES</h3>
             <p class="skin-desc-text">Likes from out there. They fold into the like counts on your posts.</p>
             <?php if (!$likes): ?>
                 <p>No likes yet.</p>
