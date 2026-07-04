@@ -1027,4 +1027,20 @@ CREATE TABLE IF NOT EXISTS `snap_ap_outbound_likes` (
   UNIQUE KEY `uq_ap_out_like` (`object_id`(191))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Piggyback search accounts — a read-only OAuth token on a trusted instance so
+-- the blog can proxy that instance's authenticated /api/v2/search. token_enc =
+-- AES-256-CBC keyed off download_salt; never sent to the browser.
+CREATE TABLE IF NOT EXISTS `snap_ap_search_accounts` (
+  `id`            int unsigned NOT NULL AUTO_INCREMENT,
+  `instance_host` varchar(190) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `username`      varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `token_enc`     text         COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_active`     tinyint(1)   NOT NULL DEFAULT '1',
+  `created_at`    datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_used_at`  datetime     DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_search_host` (`instance_host`),
+  KEY `idx_search_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ===== SNAPSMACK EOF =====

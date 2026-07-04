@@ -124,6 +124,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'set_p
     exit;
 }
 
+// PIGGYBACK SEARCH ACCOUNT (0.7.373): store a read-only OAuth token on a trusted
+// instance so the client can proxy that instance's authenticated /api/v2/search
+// (account + full-text discovery). Storing a credential is step-up gated
+// (password + 2FA), mirroring enable. The token is encrypted at rest.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_search_account') {
+    require_once 'core/reauth.php';
+    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    if (!$ra['ok']) {
+        header('Location: smack-smackverse.php?msg=' . urlencode('SEARCH ACCOUNT NOT ADDED — ' . $ra['error']));
+        exit;
+    }
+    list($sa_ok, $sa_msg) = sv_add_search_account(
+        $pdo, $sv_settings,
+        (string)($_POST['sa_host'] ?? ''),
+        (string)($_POST['sa_username'] ?? ''),
+        (string)($_POST['sa_token'] ?? '')
+    );
+    header('Location: smack-smackverse.php?msg=' . urlencode($sa_msg));
+    exit;
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_search_account') {
+    sv_delete_search_account($pdo, (int)($_POST['sa_id'] ?? 0));
+    header('Location: smack-smackverse.php?msg=' . urlencode('Search account removed.'));
+    exit;
+}
+
 // RESYNC: re-federate the most recent posts to all active followers by pushing
 // a signed Update per Note — same id, current render (cover + full carousel
 // stack), replacing the remote's cached copy in place. Enqueued oldest-first,
@@ -549,6 +575,62 @@ include 'core/sidebar.php';
                 <input type="number" name="cc_cover" min="0" style="width:90px; margin-left:6px;">
             </label>
             <button type="submit" class="btn-smack">COMBINE INTO CAROUSEL</button>
+        </form>
+    </div>
+
+    <div class="box">
+        <h3>PIGGYBACK SEARCH ACCOUNTS</h3>
+        <p class="dim mb-20">
+            The fediverse has no global index and no unauthenticated account search — a bare word can only
+            find <em>hashtags</em>. Give the blog a <strong>read-only</strong> account + token on one instance
+            you trust and the client can proxy that instance's authenticated search for real
+            <strong>accounts and full text</strong>. Generate a token in that instance's own settings
+            (read scopes are enough); it is stored <strong>encrypted</strong> and never leaves the server.
+            Remove it any time here, or revoke it on the instance.
+        </p>
+        <?php $sv_search_accounts = function_exists('sv_list_search_accounts') ? sv_list_search_accounts($pdo) : []; ?>
+        <?php if ($sv_search_accounts): ?>
+        <table class="dim" style="width:100%; margin-bottom:18px; border-collapse:collapse;">
+            <?php foreach ($sv_search_accounts as $sa): ?>
+            <tr style="border-bottom:1px solid var(--border,#333);">
+                <td style="padding:8px 6px;">
+                    <strong><?php echo htmlspecialchars($sa['instance_host']); ?></strong><?php echo !empty($sa['username']) ? ' &middot; @' . htmlspecialchars($sa['username']) : ''; ?>
+                </td>
+                <td style="padding:8px 6px; text-align:right;">
+                    <form method="post" action="smack-smackverse.php" style="display:inline;"
+                          onsubmit="return confirm('Remove this search account? The stored token is deleted — revoke it on the instance too if you want it dead there.');">
+                        <input type="hidden" name="action" value="delete_search_account">
+                        <input type="hidden" name="sa_id" value="<?php echo (int)$sa['id']; ?>">
+                        <button type="submit" class="btn-smack">REMOVE</button>
+                    </form>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </table>
+        <?php endif; ?>
+        <form method="post" action="smack-smackverse.php" autocomplete="off">
+            <input type="hidden" name="action" value="add_search_account">
+            <label class="dim" style="display:block; margin-bottom:12px;">
+                Instance host:
+                <input type="text" name="sa_host" placeholder="pixelfed.social" style="width:220px; margin-left:6px;">
+            </label>
+            <label class="dim" style="display:block; margin-bottom:12px;">
+                Username on that instance (optional label):
+                <input type="text" name="sa_username" placeholder="yourname" style="width:220px; margin-left:6px;">
+            </label>
+            <label class="dim" style="display:block; margin-bottom:12px;">
+                Access token:
+                <input type="password" name="sa_token" placeholder="paste a read-scope token" style="width:320px; margin-left:6px;" autocomplete="new-password">
+            </label>
+            <div class="reauth-row" style="margin:14px 0;">
+                <label class="dim" style="display:block; margin-bottom:8px;">Confirm password:
+                    <input type="password" name="reauth_password" autocomplete="off" style="margin-left:6px;">
+                </label>
+                <label class="dim" style="display:block;">2FA code:
+                    <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" class="input-code" style="margin-left:6px;">
+                </label>
+            </div>
+            <button type="submit" class="btn-smack">ADD SEARCH ACCOUNT</button>
         </form>
     </div>
 
