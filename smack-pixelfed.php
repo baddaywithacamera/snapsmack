@@ -195,6 +195,25 @@ if (isset($_GET['ajax'])) {
             if ($target[0] === '#' || !$looks_handle) {
                 $tag = preg_replace('/[^a-z0-9_]/i', '', ltrim($target, '#'));
                 if ($tag === '') { echo json_encode(['ok' => false, 'msg' => 'Enter a hashtag like #sunset.']); exit; }
+
+                // Piggyback account first: Pixelfed gates the tag timeline behind
+                // auth, so the public path returns nothing. An authenticated pull
+                // on the account's own instance is what actually enriches search.
+                if (function_exists('sv_authed_hashtag_timeline') && sv_pick_search_account($pdo)) {
+                    @set_time_limit(30);
+                    $authed = sv_authed_hashtag_timeline($pdo, $sv_settings, $tag, 40);
+                    if (is_array($authed) && $authed) {
+                        echo json_encode([
+                            'ok'    => true,
+                            'mode'  => 'feed',
+                            'title' => '#' . $tag,
+                            'items' => $authed,
+                        ], JSON_UNESCAPED_SLASHES);
+                        exit;
+                    }
+                    // authed returned nothing → fall through to the public path
+                }
+
                 $host = trim((string)($sv_settings['smackverse_home_instance'] ?? ''));
                 if ($host === '') {
                     try {

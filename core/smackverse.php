@@ -1951,6 +1951,36 @@ function sv_map_account_card(array $acct): array {
     ];
 }
 
+/** Map one Mastodon/Pixelfed status row to our compact photo-card shape.
+ *  Returns null for text-only rows (no image attachments). Shared by the
+ *  public and authenticated hashtag-timeline paths so they stay in lockstep. */
+function sv_map_tag_status(array $st, string $fallback_host): ?array {
+    $imgs = [];
+    foreach (($st['media_attachments'] ?? []) as $m) {
+        if (is_array($m) && ($m['type'] ?? '') === 'image') {
+            $u = (string)($m['url'] ?? ($m['preview_url'] ?? '')); if ($u !== '') $imgs[] = $u;
+        }
+    }
+    if (!$imgs) return null;
+    $acct = is_array($st['account'] ?? null) ? $st['account'] : [];
+    return [
+        'id'        => (string)($st['uri'] ?? ($st['url'] ?? '')),
+        'url'       => (string)($st['url'] ?? ($st['uri'] ?? '')),
+        'published' => (string)($st['created_at'] ?? ''),
+        'text'      => (isset($st['content_text']) && $st['content_text'] !== '')
+                        ? (string)$st['content_text']
+                        : trim(strip_tags((string)($st['content'] ?? ''))),
+        'images'    => $imgs, 'count' => count($imgs),
+        'author'    => [
+            'handle' => (string)($acct['acct'] ?? ''),
+            'name'   => (string)($acct['display_name'] ?? ($acct['username'] ?? '')),
+            'avatar' => (string)($acct['avatar'] ?? ''),
+            'id'     => (string)($acct['url'] ?? ''),
+            'host'   => parse_url((string)($acct['url'] ?? ''), PHP_URL_HOST) ?: $fallback_host,
+        ],
+    ];
+}
+
 function sv_hashtag_timeline(string $host, string $tag, int $limit = 40): array {
     $host = preg_replace('/[^a-z0-9.\-]/i', '', trim($host));
     $tag  = preg_replace('/[^a-z0-9_]/i', '', ltrim(trim($tag), '#'));
@@ -1971,31 +2001,43 @@ function sv_hashtag_timeline(string $host, string $tag, int $limit = 40): array 
     $out = [];
     foreach ($rows as $st) {
         if (!is_array($st)) continue;
-        $imgs = [];
-        foreach (($st['media_attachments'] ?? []) as $m) {
-            if (is_array($m) && ($m['type'] ?? '') === 'image') {
-                $u = (string)($m['url'] ?? ($m['preview_url'] ?? '')); if ($u !== '') $imgs[] = $u;
-            }
-        }
-        if (!$imgs) continue;
-        $acct = is_array($st['account'] ?? null) ? $st['account'] : [];
-        $out[] = [
-            'id'        => (string)($st['uri'] ?? ($st['url'] ?? '')),
-            'url'       => (string)($st['url'] ?? ($st['uri'] ?? '')),
-            'published' => (string)($st['created_at'] ?? ''),
-            'text'      => (isset($st['content_text']) && $st['content_text'] !== '')
-                            ? (string)$st['content_text']
-                            : trim(strip_tags((string)($st['content'] ?? ''))),
-            'images'    => $imgs, 'count' => count($imgs),
-            'author'    => [
-                'handle' => (string)($acct['acct'] ?? ''),
-                'name'   => (string)($acct['display_name'] ?? ($acct['username'] ?? '')),
-                'avatar' => (string)($acct['avatar'] ?? ''),
-                'id'     => (string)($acct['url'] ?? ''),
-                'host'   => parse_url((string)($acct['url'] ?? ''), PHP_URL_HOST) ?: $host,
-            ],
-        ];
+        $row = sv_map_tag_status($st, $host);
+        if ($row) $out[] = $row;
         if (count($out) >= $limit) break;
+    }
+    return $out;
+}
+
+/**
+ * Authenticated hashtag timeline via the piggyback search account. Pixelfed
+ * gates /api/v1/timelines/tag behind auth, so the unauthenticated public path
+ * returns nothing on most instances; this runs the same endpoint with the
+ * account's Bearer token on the account's own instance (a large instance = a
+ * real federated tag feed). Returns null when there's no account or the call
+ * fails, so the caller can fall back to the public path.
+ */
+function sv_authed_hashtag_timeline(PDO $pdo, array $settings, string $tag, int $limit = 40): ?array {
+    $tag = preg_replace('/[^a-z0-9_]/i', '', ltrim(trim($tag), '#'));
+    if ($tag === '') return null;
+    $acct = sv_pick_search_account($pdo);
+    if (!$acct) return null;
+    $token = sv_search_token_decrypt((string)$acct['token_enc'], sv_search_salt($pdo, $settings));
+    if ($token === '') return null;
+    $host = preg_replace('/[^a-z0-9.\-]/i', '', (string)$acct['instance_host']);
+    if ($host === '') return null;
+    $lim  = max(1, min($limit, 40));
+    $url  = 'https://' . $host . '/api/v1/timelines/tag/' . rawurlencode($tag) . '?limit=' . $lim . '&only_media=true';
+    $rows = sv_authed_get($url, $token);
+    if (!is_array($rows)) return null;
+    if (isset($rows['posts']) && is_array($rows['posts'])) $rows = $rows['posts'];
+    elseif (isset($rows['data']) && is_array($rows['data'])) $rows = $rows['data'];
+    try { $pdo->prepare("UPDATE snap_ap_search_accounts SET last_used_at = NOW() WHERE id = ?")->execute([(int)$acct['id']]); } catch (Exception $e) {}
+    $out = [];
+    foreach ($rows as $st) {
+        if (!is_array($st)) continue;
+        $row = sv_map_tag_status($st, $host);
+        if ($row) $out[] = $row;
+        if (count($out) >= $lim) break;
     }
     return $out;
 }
