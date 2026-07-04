@@ -94,6 +94,17 @@ switch ($ap) {
 
     case 'actor':
         if ($method !== 'GET') sv_404();
+        // Content negotiation: a human browser hitting the actor id (e.g. by
+        // clicking the handle link on Mastodon/Pixelfed) is bounced to the
+        // Pixelfed-faithful profile page; a fediverse server still gets the
+        // actor JSON. Same rule the note case uses below.
+        $ac_acc = $_SERVER['HTTP_ACCEPT'] ?? '';
+        if (stripos($ac_acc, 'activity+json') === false
+            && stripos($ac_acc, 'ld+json') === false
+            && stripos($ac_acc, 'text/html') !== false) {
+            header('Location: ' . sv_profile_url($settings), true, 302);
+            exit;
+        }
         sv_respond(sv_actor_doc($pdo, $settings));
         break;
 
