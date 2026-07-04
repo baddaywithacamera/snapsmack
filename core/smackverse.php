@@ -398,13 +398,24 @@ function sv_fetch_ap(string $url): ?array {
  * browser. Params + response shape follow Pixelfed's SearchApiV2Service:
  * q, resolve, type(accounts|hashtags|statuses), limit → {accounts,hashtags,statuses}. */
 
-/** Encryption key material for a stored search token: the site download_salt,
- *  falling back to the codebase-wide default (same as download.php / FtpEngine /
- *  likes) so the feature works on installs that never set one — the strict-empty
- *  version was silently rejecting the add. */
-function sv_search_salt(array $settings): string {
-    $s = trim((string)($settings['download_salt'] ?? ''));
-    return $s !== '' ? $s : 'snapsmack-default-salt-change-me';
+/** Encryption key material for a stored search token: a DEDICATED per-install
+ *  secret. Once set it is authoritative and stable (independent of download_salt,
+ *  so rotating that never orphans a stored token). Generated random on first use
+ *  and persisted — NEVER the shared public default salt, which would reduce
+ *  "encrypted at rest" to mere obfuscation (audit 032, finding 1). */
+function sv_search_salt(PDO $pdo, array $settings): string {
+    $k = trim((string)($settings['smackverse_search_key'] ?? ''));
+    if ($k !== '') return $k;
+    try {
+        $new = bin2hex(random_bytes(32));
+        // Insert-if-absent; a concurrent request that won keeps its value.
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackverse_search_key', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = setting_val")->execute([$new]);
+        $stored = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'smackverse_search_key' LIMIT 1")->fetchColumn();
+        return ($stored !== false && $stored !== null && $stored !== '') ? (string)$stored : $new;
+    } catch (Exception $e) {
+        return $new; // in-memory fallback: still per-install random, not the public default
+    }
 }
 
 function sv_search_token_encrypt(string $plaintext, string $salt): string {
@@ -433,8 +444,7 @@ function sv_add_search_account(PDO $pdo, array $settings, string $host, string $
     $token = trim($token);
     if ($host === '' || !preg_match('/^[a-z0-9.\-]+\.[a-z]{2,}$/', $host)) return [false, 'Enter a valid instance host, e.g. pixelfed.social.'];
     if ($token === '') return [false, 'Paste the access token from that instance.'];
-    $salt = sv_search_salt($settings);
-    if ($salt === '') return [false, 'This install has no download_salt to key the encryption — cannot store a token safely.'];
+    $salt = sv_search_salt($pdo, $settings);
     $enc = sv_search_token_encrypt($token, $salt);
     if ($enc === '') return [false, 'Could not encrypt the token.'];
     $pdo->prepare("INSERT INTO snap_ap_search_accounts (instance_host, username, token_enc, is_active)
@@ -502,7 +512,7 @@ function sv_authed_search(PDO $pdo, array $settings, string $q, string $type = '
     if ($q === '') return null;
     $acct = sv_pick_search_account($pdo);
     if (!$acct) return null;
-    $token = sv_search_token_decrypt((string)$acct['token_enc'], sv_search_salt($settings));
+    $token = sv_search_token_decrypt((string)$acct['token_enc'], sv_search_salt($pdo, $settings));
     if ($token === '') return null;
     $host   = (string)$acct['instance_host'];
     $params = ['q' => $q, 'resolve' => '1', 'limit' => '20'];
