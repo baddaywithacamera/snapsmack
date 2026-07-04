@@ -43,7 +43,8 @@ if ($pk_kind === 'post') {
 
 // Author (this blog).
 $pk_handle = '@' . sv_handle($settings) . '@' . sv_domain($settings);
-$pk_name   = $settings['site_name'] ?? sv_handle($settings);
+$pk_name    = html_entity_decode((string)($settings['site_name'] ?? sv_handle($settings)), ENT_QUOTES | ENT_HTML5);
+$pk_tagline = html_entity_decode(trim((string)($settings['site_tagline'] ?? '')), ENT_QUOTES | ENT_HTML5);
 $pk_av     = sv_avatar($settings);
 $pk_avatar = is_array($pk_av) ? (string)($pk_av['url'] ?? '') : '';
 
@@ -85,8 +86,9 @@ header('Content-Type: text/html; charset=utf-8');
         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
   .pk-top{ border-bottom:1px solid var(--pk-line); background:var(--pk-card); }
   .pk-top-inner{ max-width:935px; margin:0 auto; padding:14px 20px; display:flex; align-items:center; gap:14px; }
-  .pk-logo{ font-weight:800; font-size:1.1rem; background:linear-gradient(90deg,#6366f1,#a855f7);
-            -webkit-background-clip:text; background-clip:text; color:transparent; text-decoration:none; }
+  .pk-logo{ font-size:1.1rem; color:var(--pk-fg); text-decoration:none; }
+  .pk-logo-title{ font-weight:800; letter-spacing:.2px; }
+  .pk-logo-tag{ color:var(--pk-muted); font-weight:400; }
   .pk-back{ margin-left:auto; color:var(--pk-muted); font-size:.9rem; text-decoration:none; }
   .pk-wrap{ max-width:640px; margin:26px auto; background:var(--pk-card); border:1px solid var(--pk-line); border-radius:6px; overflow:hidden; }
   .pk-head{ display:flex; align-items:center; gap:10px; padding:12px 14px; }
@@ -113,7 +115,7 @@ header('Content-Type: text/html; charset=utf-8');
 </head>
 <body>
   <div class="pk-top"><div class="pk-top-inner">
-    <a class="pk-logo" href="<?php echo pk_e(sv_profile_url($settings)); ?>">SMACKVERSE</a>
+    <a class="pk-logo" href="<?php echo pk_e(sv_profile_url($settings)); ?>"><b class="pk-logo-title"><?php echo pk_e($pk_name); ?></b><?php if ($pk_tagline !== ''): ?><span class="pk-logo-tag"> / <?php echo pk_e($pk_tagline); ?></span><?php endif; ?></a>
     <a class="pk-back" href="<?php echo pk_e(sv_profile_url($settings)); ?>">← <?php echo pk_e($pk_handle); ?></a>
   </div></div>
 
