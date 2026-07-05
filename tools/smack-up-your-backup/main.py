@@ -564,6 +564,7 @@ class ProfileDialog(tk.Toplevel):
                              activebackground=BG_MID, font=FONT_BODY)
         cb.grid(row=row, column=0, columnspan=2, sticky="w", pady=3)
         self._vars[key] = var
+        return cb
 
     def _build(self):
         pad = {"padx": 20, "pady": 6}
@@ -577,37 +578,53 @@ class ProfileDialog(tk.Toplevel):
         self._field(f, 2,  "Site URL",            "site_url")
         self._field(f, 3,  "API key",             "api_key")
 
-        tk.Label(f, text="FTP", bg=BG_MID, fg=ACCENT,
-                 font=FONT_HEAD).grid(row=3, column=0, columnspan=2, sticky="w", pady=(12, 4))
-        self._field(f, 4,  "Host",                "ftp_host")
-        self._field(f, 5,  "Port",                "ftp_port")
-        self._field(f, 6,  "Username",            "ftp_user")
-        self._field(f, 7,  "Password",            "ftp_pass", show="●")
-        self._field(f, 8,  "Remote directory",    "ftp_remote_dir")
-        self._check(f, 9,  "Use FTP_TLS",         "ftp_ssl")
+        # NOTE: heading and every field below were shifted down one row — the
+        # old layout gridded this heading at row 3, the SAME row as the API key
+        # field above, so the "API key" label rendered on top of "FTP".
+        tk.Label(f, text="FTP / SFTP", bg=BG_MID, fg=ACCENT,
+                 font=FONT_HEAD).grid(row=4, column=0, columnspan=2, sticky="w", pady=(12, 4))
+        # Protocol selector — FTP or SFTP. transport.make_client() keys on
+        # profile["transport"]; the SFTP engine (sftp_client.py via paramiko) is
+        # already wired into backup/restore/audit. Port auto-swaps 21<->22 and
+        # TLS is greyed out under SFTP (SSH is already encrypted).
+        tk.Label(f, text="Protocol", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(row=5, column=0, sticky="w", padx=(0, 8), pady=3)
+        self._transport_var = tk.StringVar(value=str(self._data.get("transport", "ftp") or "ftp"))
+        ttk.Combobox(f, textvariable=self._transport_var, values=["ftp", "sftp"],
+                     font=FONT_MONO, state="readonly", width=10).grid(
+            row=5, column=1, sticky="w", pady=3)
+        self._vars["transport"] = self._transport_var
+        self._transport_var.trace_add("write", lambda *a: self._on_transport_change())
+        self._field(f, 6,  "Host",                "ftp_host")
+        self._field(f, 7,  "Port",                "ftp_port")
+        self._field(f, 8,  "Username",            "ftp_user")
+        self._field(f, 9,  "Password",            "ftp_pass", show="●")
+        self._field(f, 10, "Remote directory",    "ftp_remote_dir")
+        self._tls_chk = self._check(f, 11, "Use FTP_TLS", "ftp_ssl")
 
         tk.Label(f, text="SnapSmack Admin", bg=BG_MID, fg=ACCENT,
-                 font=FONT_HEAD).grid(row=10, column=0, columnspan=2, sticky="w", pady=(12, 4))
-        self._field(f, 11, "Admin username",       "snap_admin_user")
-        self._field(f, 12, "Admin password",       "snap_admin_pass", show="●")
+                 font=FONT_HEAD).grid(row=12, column=0, columnspan=2, sticky="w", pady=(12, 4))
+        self._field(f, 13, "Admin username",       "snap_admin_user")
+        self._field(f, 14, "Admin password",       "snap_admin_pass", show="●")
 
         tk.Label(f, text="Cloud", bg=BG_MID, fg=ACCENT,
-                 font=FONT_HEAD).grid(row=13, column=0, columnspan=3, sticky="w", pady=(12, 4))
-        self._field(f, 14, "Provider", "cloud_provider")
-        self._field(f, 15, "Creds override (optional)",     "cloud_credentials_file")
+                 font=FONT_HEAD).grid(row=15, column=0, columnspan=3, sticky="w", pady=(12, 4))
+        self._field(f, 16, "Provider", "cloud_provider")
+        self._field(f, 17, "Creds override (optional)",     "cloud_credentials_file")
         tk.Button(f, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
                   relief="flat", font=FONT_SMALL, padx=8, pady=2,
-                  command=self._browse_credentials).grid(row=15, column=2, padx=(4, 0), pady=3)
-        self._field(f, 16, "Cloud folder ID",      "cloud_folder_id")
+                  command=self._browse_credentials).grid(row=17, column=2, padx=(4, 0), pady=3)
+        self._field(f, 18, "Cloud folder ID",      "cloud_folder_id")
 
         tk.Label(f, text="Backup", bg=BG_MID, fg=ACCENT,
-                 font=FONT_HEAD).grid(row=17, column=0, columnspan=3, sticky="w", pady=(12, 4))
-        self._field(f, 18, "Local backup directory", "backup_dir")
+                 font=FONT_HEAD).grid(row=19, column=0, columnspan=3, sticky="w", pady=(12, 4))
+        self._field(f, 20, "Local backup directory", "backup_dir")
         tk.Button(f, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
                   relief="flat", font=FONT_SMALL, padx=8, pady=2,
-                  command=self._browse_backup_dir).grid(row=18, column=2, padx=(4, 0), pady=3)
-        self._field(f, 19, "Pacing delay (sec)",    "pacing_delay")
-        self._field(f, 20, "Batch size (0=unlimited)", "batch_size")
+                  command=self._browse_backup_dir).grid(row=20, column=2, padx=(4, 0), pady=3)
+        self._field(f, 21, "Pacing delay (sec)",    "pacing_delay")
+        self._field(f, 22, "Batch size (0=unlimited)", "batch_size")
+        self._on_transport_change()   # reflect initial protocol (port + TLS state)
 
         # Buttons
         btn_frame = tk.Frame(self, bg=BG_MID)
@@ -630,6 +647,24 @@ class ProfileDialog(tk.Toplevel):
         d = _dlg_dir(self, title="Choose local backup folder")
         if d and "backup_dir" in self._vars:
             self._vars["backup_dir"].set(d)
+
+    def _on_transport_change(self) -> None:
+        """Swap the default port on FTP<->SFTP (only when it's still the other
+        protocol's default, so a custom port is never lost) and grey the TLS box,
+        which applies to plain FTP only — SFTP is SSH-encrypted already."""
+        try:
+            is_sftp = (self._transport_var.get() == "sftp")
+            if getattr(self, "_tls_chk", None) is not None:
+                self._tls_chk.config(state="disabled" if is_sftp else "normal")
+            port_var = self._vars.get("ftp_port")
+            if port_var is not None:
+                cur = str(port_var.get() or "").strip()
+                if is_sftp and cur in ("", "21"):
+                    port_var.set("22")
+                elif not is_sftp and cur in ("", "22"):
+                    port_var.set("21")
+        except Exception:
+            pass
 
     def _save(self):
         name = self._vars["name"].get().strip()

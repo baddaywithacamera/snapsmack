@@ -92,6 +92,24 @@ switch ($ap) {
         sv_respond($jrd, 200, 'application/jrd+json');
         break;
 
+    case 'nodeinfo':
+        // NodeInfo discovery (/.well-known/nodeinfo) — points crawlers/peers at
+        // the 2.0 document. Standard two-step fediverse software discovery.
+        if ($method !== 'GET') sv_404();
+        sv_respond([
+            'links' => [[
+                'rel'  => 'http://nodeinfo.diaspora.software/ns/schema/2.0',
+                'href' => sv_base($settings) . 'nodeinfo/2.0',
+            ]],
+        ], 200, 'application/json');
+        break;
+
+    case 'nodeinfo2':
+        // The NodeInfo 2.0 document itself (/nodeinfo/2.0).
+        if ($method !== 'GET') sv_404();
+        sv_respond(sv_nodeinfo_doc($pdo, $settings), 200, 'application/json');
+        break;
+
     case 'actor':
         if ($method !== 'GET') sv_404();
         // Content negotiation: a human browser hitting the actor id (e.g. by
