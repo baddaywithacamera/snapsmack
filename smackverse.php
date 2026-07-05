@@ -203,9 +203,17 @@ switch ($ap) {
         if (!is_array($activity)) {
             http_response_code(400); exit;
         }
+        // Diagnostic refs (best-effort, from the still-unverified body).
+        $log_verb  = is_string($activity['type'] ?? null) ? (string)$activity['type'] : '?';
+        $log_actor = is_array($activity['actor']  ?? null) ? (string)($activity['actor']['id']  ?? '') : (string)($activity['actor']  ?? '');
+        $log_obj   = is_array($activity['object'] ?? null) ? (string)($activity['object']['id'] ?? '') : (string)($activity['object'] ?? '');
         // Signature first — unverified requests change NOTHING.
         $actor_doc = sv_verify_signature($raw);
         if ($actor_doc === null) {
+            // Log the rejection so a Like/reply that fails signature verification
+            // is visible instead of vanishing silently — prime suspect when a
+            // federated like never lands. Best-effort; no-ops if table absent.
+            if (function_exists('sv_inbox_log')) sv_inbox_log($pdo, $log_verb, $log_actor, $log_obj, 'REJECTED: signature verify failed');
             http_response_code(401); exit;
         }
         try {

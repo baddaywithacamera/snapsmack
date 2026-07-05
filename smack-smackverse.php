@@ -149,6 +149,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     header('Location: smack-smackverse.php?msg=' . urlencode('Search account removed.'));
     exit;
 }
+// TEST a stored search account: decrypt its token and re-verify it live against
+// the instance's verify_credentials (same one-shot check add() runs). Confirms a
+// key is still valid after a rotation without re-pasting it. Read-only, no reauth.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'test_search_account') {
+    $tr = function_exists('sv_test_search_account')
+        ? sv_test_search_account($pdo, $sv_settings, (int)($_POST['sa_id'] ?? 0))
+        : ['ok' => false, 'handle' => '', 'error' => 'Test unavailable.'];
+    $tmsg = $tr['ok']
+        ? 'Search account OK' . ($tr['handle'] !== '' ? ' — verified as @' . $tr['handle'] : '.')
+        : 'Search account FAILED — ' . $tr['error'];
+    header('Location: smack-smackverse.php?msg=' . urlencode($tmsg));
+    exit;
+}
 
 // RESYNC: re-federate the most recent posts to all active followers by pushing
 // a signed Update per Note — same id, current render (cover + full carousel
@@ -597,6 +610,11 @@ include 'core/sidebar.php';
                     <strong><?php echo htmlspecialchars($sa['instance_host']); ?></strong><?php echo !empty($sa['username']) ? ' &middot; @' . htmlspecialchars($sa['username']) : ''; ?>
                 </td>
                 <td style="padding:8px 6px; text-align:right;">
+                    <form method="post" action="smack-smackverse.php" style="display:inline; margin-right:6px;">
+                        <input type="hidden" name="action" value="test_search_account">
+                        <input type="hidden" name="sa_id" value="<?php echo (int)$sa['id']; ?>">
+                        <button type="submit" class="btn-smack">TEST</button>
+                    </form>
                     <form method="post" action="smack-smackverse.php" style="display:inline;"
                           onsubmit="return confirm('Remove this search account? The stored token is deleted — revoke it on the instance too if you want it dead there.');">
                         <input type="hidden" name="action" value="delete_search_account">
