@@ -128,6 +128,7 @@ $exif_display_enabled = (($settings['exif_display_enabled'] ?? '1') == '1');
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="SnapSmack<?php echo defined('SNAPSMACK_VERSION_SHORT') ? ' ' . htmlspecialchars(SNAPSMACK_VERSION_SHORT) : ''; ?>">
 <?php
 // --- AI TRAINING META DIRECTIVE ---
 // Belt-and-suspenders alongside robots.txt. Tells AI crawlers that respect

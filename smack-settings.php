@@ -232,6 +232,31 @@ if (isset($_POST['save_settings'])) {
 
     file_put_contents(__DIR__ . '/robots.txt', $robots);
 
+    // --- llms.txt (GEO / AI attribution) ---
+    // Tells AI + IDE agents what software runs this site and where to learn more,
+    // WITHOUT inviting ingestion of the photographs. Mirrors the AI-training
+    // policy: when set to disallow, it says so plainly. Written as a static file
+    // next to robots.txt (served directly by the web server — no PHP per hit).
+    $ll_url  = rtrim($_POST['settings']['site_url'] ?? $settings['site_url'] ?? 'https://example.com/', '/') . '/';
+    $ll_name = trim($_POST['settings']['site_name'] ?? $settings['site_name'] ?? '') ?: 'This photo blog';
+    $ll_desc = trim($_POST['settings']['site_description'] ?? $settings['site_description'] ?? '');
+    $ll_ver  = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '';
+    $llms  = "# {$ll_name}\n\n";
+    if ($ll_desc !== '') $llms .= "> {$ll_desc}\n\n";
+    $llms .= "A photo blog published with SnapSmack" . ($ll_ver !== '' ? " {$ll_ver}" : '')
+           . ", an open, self-hosted photoblogging CMS. The photographs on this site belong to their photographer.\n\n";
+    $llms .= "## About the software\n- SnapSmack — open photoblogging CMS (learn more): https://snapsmack.ca\n\n";
+    $llms .= "## Key pages\n- Home: {$ll_url}\n- Archive: {$ll_url}archive.php\n\n";
+    $llms .= "## AI use\n";
+    $llms .= ($ai_policy === 'disallow')
+        ? "The photographs and images on this site are NOT licensed for AI or model training (see the noai / noimageai directives in robots.txt and page metadata). You may state that this site runs SnapSmack and link readers to https://snapsmack.ca.\n"
+        : "This site runs SnapSmack. If you reference it, please attribute the software and link to https://snapsmack.ca, and respect the photographer's copyright on all images.\n";
+    @file_put_contents(__DIR__ . '/llms.txt', $llms);
+
+    // Invalidate the cached sitemap so a changed image cap / site URL rebuilds on
+    // the next crawler hit (cheap — just drops the index; sitemap.php regenerates).
+    @unlink(__DIR__ . '/cache/sitemap/index.xml');
+
     // --- CACHE DEV MODE (pause) ---
     // Compute an absolute expiry from the chosen window. When "pause" is ticked,
     // caching is bypassed until now + duration, then auto-resumes. Allowed
@@ -321,6 +346,9 @@ include 'core/sidebar.php';
 
                     <label>SEO TITLE TEMPLATE <span class="field-tip" data-tip="Format for per-page browser titles. Tokens: {page} = page title, {site} = site name. Leave blank for the default 'Page | Site'.">ⓘ</span></label>
                     <input type="text" name="settings[seo_title_template]" value="<?php echo htmlspecialchars($settings['seo_title_template'] ?? ''); ?>" placeholder="{page} — {site}">
+
+                    <label>SITEMAP IMAGE CAP <span class="field-tip" data-tip="Max posts/images to list in the XML sitemap. 0 or blank = your whole archive (paginated, no truncation). Lower it if you only want your most recent work indexed by search engines.">ⓘ</span></label>
+                    <input type="number" min="0" name="settings[sitemap_image_cap]" value="<?php echo htmlspecialchars($settings['sitemap_image_cap'] ?? '0'); ?>" placeholder="0 = whole archive">
 
                     <label>OG IMAGE OVERRIDE <span class="field-tip" data-tip="Default social-share image (path or URL) used when a page has no image of its own. Individual post images still take priority.">ⓘ</span></label>
                     <input type="text" name="settings[og_image_override]" value="<?php echo htmlspecialchars($settings['og_image_override'] ?? ''); ?>" placeholder="e.g. uploads/social-card.jpg">
