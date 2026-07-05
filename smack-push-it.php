@@ -405,22 +405,32 @@ include 'core/sidebar.php';
             <?php $render_result('comments'); ?>
         </div>
 
-        <!-- ── CONTACT EMAIL ─────────────────────────────────────────────── -->
+        <!-- ── EMAIL & COMMUNICATIONS ──────────────────────────────────────── -->
         <div class="box">
-            <h3>CONTACT EMAIL</h3>
+            <h3>EMAIL &amp; COMMUNICATIONS</h3>
+            <p class="dim" style="font-size:0.82rem;margin:0 0 14px;">
+                Pushing this group syncs your whole outbound-email setup to the fleet:
+                <strong>site email</strong>, <strong>admin email</strong>, <strong>sender email &amp; name</strong>,
+                and your <strong>Brevo API key</strong> — so every spoke sends mail through this hub's Brevo account.
+                Enter Brevo once here on the hub, push, and all your blogs email properly with nothing to re-enter on each one.
+            </p>
             <div class="dash-grid" style="margin-bottom:16px;">
                 <div class="lens-input-wrapper">
                     <label>SITE EMAIL</label>
                     <div class="read-only-display"><?php echo htmlspecialchars($settings['site_email'] ?? '(not set)'); ?></div>
                 </div>
                 <div class="lens-input-wrapper">
-                    <label>HUB CONTROLS THIS SETTING</label>
+                    <label>BREVO API KEY</label>
+                    <div class="read-only-display"><?php echo trim($settings['brevo_api_key'] ?? '') !== '' ? '•••••••• set — pushes to fleet' : '(not set)'; ?></div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>HUB CONTROLS THIS GROUP</label>
                     <label class="toggle-switch">
                         <input type="checkbox" name="hub_controls[email]" value="1"
                                <?php echo ($settings['hub_controls_email'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their site contact email.</span>
+                    <span class="dim" style="font-size:0.82rem;">When on, spokes can't change their email/comms settings — and they send through this hub's Brevo account (one shared fleet sender).</span>
                 </div>
             </div>
             <?php $render_result('email'); ?>
