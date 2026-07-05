@@ -13,7 +13,7 @@ Same visual family as Smack Your Batch Up.
 
 
 
-BUILD_VERSION = "0.7.4"
+BUILD_VERSION = "0.7.5"
 
 import os
 import queue
@@ -609,7 +609,12 @@ class ProfileDialog(tk.Toplevel):
 
         tk.Label(f, text="Cloud", bg=BG_MID, fg=ACCENT,
                  font=FONT_HEAD).grid(row=15, column=0, columnspan=3, sticky="w", pady=(12, 4))
-        self._field(f, 16, "Provider", "cloud_provider")
+        tk.Label(f, text="Provider", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(row=16, column=0, sticky="w", padx=(0, 8), pady=3)
+        self._cloud_prov_var = tk.StringVar(value=str(self._data.get("cloud_provider", "none") or "none"))
+        ttk.Combobox(f, textvariable=self._cloud_prov_var, values=["google_drive", "onedrive", "none"],
+                     font=FONT_MONO, state="readonly", width=18).grid(row=16, column=1, sticky="w", pady=3)
+        self._vars["cloud_provider"] = self._cloud_prov_var
         self._field(f, 17, "Creds override (optional)",     "cloud_credentials_file")
         tk.Button(f, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
                   relief="flat", font=FONT_SMALL, padx=8, pady=2,
@@ -625,6 +630,20 @@ class ProfileDialog(tk.Toplevel):
         self._field(f, 21, "Pacing delay (sec)",    "pacing_delay")
         self._field(f, 22, "Batch size (0=unlimited)", "batch_size")
         self._on_transport_change()   # reflect initial protocol (port + TLS state)
+
+        # ── Connection tests ──────────────────────────────────────────────
+        test_frame = tk.Frame(self, bg=BG_MID)
+        test_frame.pack(fill="x", padx=20, pady=(4, 0))
+        for _label, _cmd in (("Test Login",     self._test_login),
+                             ("Test FTP/SFTP",  self._test_conn),
+                             ("Test Cloud",     self._test_cloud)):
+            tk.Button(test_frame, text=_label, bg=BG_CARD, fg=FG_MAIN,
+                      relief="flat", font=FONT_SMALL, padx=8, pady=2,
+                      command=_cmd).pack(side="left", padx=(0, 6))
+        self._test_status_var = tk.StringVar(value="")
+        tk.Label(test_frame, textvariable=self._test_status_var, bg=BG_MID,
+                 fg=FG_DIM, font=FONT_SMALL, wraplength=330, justify="left",
+                 anchor="w").pack(side="left", padx=(6, 0), fill="x", expand=True)
 
         # Buttons
         btn_frame = tk.Frame(self, bg=BG_MID)
@@ -665,6 +684,106 @@ class ProfileDialog(tk.Toplevel):
                     port_var.set("21")
         except Exception:
             pass
+
+    def _snapshot(self) -> dict:
+        """Live form → a profile dict (same shape _save builds), so the Test
+        buttons exercise exactly what a saved profile would — no Save required."""
+        data = dict(self._data)
+        for key, var in self._vars.items():
+            try:
+                data[key] = var.get()
+            except Exception:
+                pass
+        return data
+
+    def _test_login(self) -> None:
+        """Admin/API login test — mirrors the Settings tab: Bearer key if set,
+        else the form login, both through the engine session (correct UA)."""
+        p       = self._snapshot()
+        url     = str(p.get("site_url", "")).strip().rstrip("/")
+        user    = str(p.get("snap_admin_user", "")).strip()
+        pw      = str(p.get("snap_admin_pass", ""))
+        api_key = str(p.get("api_key", "")).strip()
+        slug    = (str(p.get("login_slug", "snap-in")).strip().strip("/") or "snap-in")
+        if not url or (not api_key and (not user or not pw)):
+            self._test_status_var.set("Need URL + API key (or admin username & password)")
+            return
+        self._test_status_var.set("Testing login…")
+        self.update_idletasks()
+        import threading
+        def _run():
+            try:
+                import backup_engine
+                sess = backup_engine.SnapSmackSession(url, api_key=api_key, login_slug=slug)
+                if api_key:
+                    r = sess.session.get(f"{url}/smack-admin.php", timeout=15, allow_redirects=True)
+                    if r.status_code < 400 and slug not in r.url:
+                        msg = "✓ API key valid"
+                    elif r.status_code in (401, 403):
+                        msg = f"⚠ API key rejected (HTTP {r.status_code})"
+                    else:
+                        msg = f"⚠ HTTP {r.status_code}"
+                else:
+                    sess.login(user, pw)   # raises on bad credentials
+                    msg = "✓ Login successful"
+            except Exception as e:
+                msg = f"✗ {e}"
+            self.after(0, lambda: self._test_status_var.set(msg))
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _test_conn(self) -> None:
+        """FTP/SFTP connection test — the transport factory keys on the snapshot's
+        'transport', so it dials the exact protocol the profile would."""
+        p    = self._snapshot()
+        host = str(p.get("ftp_host", "")).strip()
+        if not host:
+            self._test_status_var.set("Fill in the host first")
+            return
+        is_sftp = str(p.get("transport", "ftp")).lower() == "sftp"
+        proto   = "SFTP" if is_sftp else "FTP"
+        try:
+            port = int(p.get("ftp_port") or (22 if is_sftp else 21))
+        except (ValueError, TypeError):
+            port = 22 if is_sftp else 21
+        self._test_status_var.set(f"Connecting to {host}:{port} ({proto})…")
+        self.update_idletasks()
+        import threading
+        def _run():
+            try:
+                import transport
+                client = transport.make_client(p, transfer_delay=0)
+                client.connect()
+                client.disconnect()
+                msg = f"✓ Connected to {host} ({proto})"
+            except Exception as e:
+                msg = f"✗ {host}:{port} — {e}"
+            self.after(0, lambda: self._test_status_var.set(msg))
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _test_cloud(self) -> None:
+        """Cloud credentials test — builds the same client the backup uses and
+        does a lightweight authenticated round-trip (Google Drive today)."""
+        p = self._snapshot()
+        if not str(p.get("cloud_credentials_file", "")).strip():
+            self._test_status_var.set("Set the cloud credentials JSON first")
+            return
+        self._test_status_var.set("Testing cloud…")
+        self.update_idletasks()
+        import threading
+        def _run():
+            try:
+                import cloud_client as _cc
+                client = _cc.get_cloud_client(p)
+                if not client:
+                    msg = "Pick a provider + set credentials first"
+                elif not hasattr(client, "test_connection"):
+                    msg = f"Test not supported for provider '{p.get('cloud_provider', '')}'"
+                else:
+                    _ok, msg = client.test_connection()
+            except Exception as e:
+                msg = f"✗ {e}"
+            self.after(0, lambda: self._test_status_var.set(msg))
+        threading.Thread(target=_run, daemon=True).start()
 
     def _save(self):
         name = self._vars["name"].get().strip()
