@@ -272,6 +272,40 @@ function sv_ensure_tables(PDO $pdo): void {
         PRIMARY KEY (`id`),
         UNIQUE KEY `uq_ap_out_like` (`object_id`(191))
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // One-time recovery (0.7.379): re-file the PIXELFED likes that the
+    // pre-0.7.379 resolver dropped as UNRESOLVED. The INBOX LOG (0.7.378)
+    // captured actor + object URL for every miss, so now that public permalinks
+    // resolve we can replay them — map each logged permalink back to its post/
+    // image via snap_images.img_slug and INSERT IGNORE the like. Runs once per
+    // install (flag in snap_settings); INSERT IGNORE + the unique like key make
+    // a re-run harmless regardless. Only the public-permalink form was missed,
+    // so /ap/ object refs (id + reply forms) are skipped.
+    try {
+        $done = $pdo->query(
+            "SELECT setting_val FROM snap_settings
+             WHERE setting_key = 'smackverse_permalink_like_backfill' LIMIT 1"
+        )->fetchColumn();
+        if (!$done) {
+            $pdo->exec(
+                "INSERT IGNORE INTO snap_ap_likes (target_type, target_id, actor_url)
+                 SELECT CASE WHEN i.post_id > 0 THEN 'post' ELSE 'image' END,
+                        CASE WHEN i.post_id > 0 THEN i.post_id ELSE i.id END,
+                        l.actor_url
+                 FROM snap_ap_inbox_log l
+                 JOIN snap_images i
+                   ON i.img_slug = SUBSTRING_INDEX(l.object_ref, '/', -1)
+                 WHERE l.verb = 'Like'
+                   AND l.outcome LIKE 'UNRESOLVED%'
+                   AND l.object_ref NOT LIKE '%/ap/%'"
+            );
+            $pdo->prepare(
+                "INSERT INTO snap_settings (setting_key, setting_val)
+                 VALUES ('smackverse_permalink_like_backfill', '1')
+                 ON DUPLICATE KEY UPDATE setting_val = '1'"
+            )->execute();
+        }
+    } catch (Exception $e) { /* log/tables may lag on a fresh install — skip */ }
 }
 
 // ─── Keys ────────────────────────────────────────────────────────────────────
