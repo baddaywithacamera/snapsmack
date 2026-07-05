@@ -13,12 +13,10 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -e
 
-# ── Read BUILD_VERSION from main.py ──────────────────────────────────────────
-BUILD_VER=$(python3 -c "
-import re, sys
-m = re.search(r'BUILD_VERSION\s*=\s*\"([^\"]+)\"', open('main.py').read())
-print(m.group(1) if m else sys.exit(1))
-")
+# ── Auto-increment the patch version in main.py, then read it back ───────────
+#    bump_version.py bumps BUILD_VERSION and prints the new value on stdout.
+BUILD_VER=$(python3 bump_version.py) || { echo "version bump failed"; exit 1; }
+export SUYB_BUILD_VER="${BUILD_VER}"
 EXE_NAME="smackupyourbackup-${BUILD_VER}"
 echo "Build version: ${BUILD_VER}"
 echo "Output name:   ${EXE_NAME}"

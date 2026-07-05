@@ -982,20 +982,57 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
  * to a target descriptor, or null if the URL isn't ours. Used to match an
  * inbound reply's inReplyTo / a Like's object back to the content it's about.
  */
-function sv_resolve_target(string $url): ?array {
-    // Path-style ids (0.7.350+): /ap/note/{p|i|c}/N
+function sv_resolve_target(string $url, ?PDO $pdo = null): ?array {
+    // Path-style ids (0.7.350+): /ap/note/{p|i|c}/N — the Note `id` we publish.
     if (preg_match('~/ap/note/([pic])/(\d+)~', $url, $m)) {
         $map = ['p' => 'post', 'i' => 'image', 'c' => 'comment'];
         return ['type' => $map[$m[1]], 'id' => (int)$m[2]];
     }
+    // Reply notes we publish: /ap/note/r/<token> — the blog's OWN outbound reply.
+    // A like/undo on one of these. Token → snap_ap_outbound_replies row id.
+    if ($pdo !== null && preg_match('~/ap/note/r/([A-Za-z0-9]+)~', $url, $mr)) {
+        try {
+            $st = $pdo->prepare(
+                "SELECT id FROM snap_ap_outbound_replies WHERE token = ? LIMIT 1");
+            $st->execute([$mr[1]]);
+            $rid = (int)$st->fetchColumn();
+            if ($rid > 0) return ['type' => 'reply', 'id' => $rid];
+        } catch (Exception $e) { /* table lag — fall through to null */ }
+        return null;
+    }
     // Legacy query-string ids (pre-0.7.350) — anything already federated.
-    if (strpos($url, 'smackverse.php') === false) return null;
-    $q = parse_url($url, PHP_URL_QUERY) ?: '';
-    parse_str($q, $p);
-    if (($p['ap'] ?? '') !== 'note') return null;
-    if (isset($p['comment'])) return ['type' => 'comment', 'id' => (int)$p['comment']];
-    if (isset($p['post']))    return ['type' => 'post',    'id' => (int)$p['post']];
-    if (isset($p['id']))      return ['type' => 'image',   'id' => (int)$p['id']];
+    if (strpos($url, 'smackverse.php') !== false) {
+        $q = parse_url($url, PHP_URL_QUERY) ?: '';
+        parse_str($q, $p);
+        if (($p['ap'] ?? '') === 'note') {
+            if (isset($p['comment'])) return ['type' => 'comment', 'id' => (int)$p['comment']];
+            if (isset($p['post']))    return ['type' => 'post',    'id' => (int)$p['post']];
+            if (isset($p['id']))      return ['type' => 'image',   'id' => (int)$p['id']];
+        }
+        return null;
+    }
+    // Public permalink form (site_url + img_slug), e.g. /ig-20260624-061822-0705.
+    // This is what PIXELFED likes reference: Pixelfed sends the Note's `url`
+    // (the human permalink) as the Like object, NOT the AP `id`. Resolve the
+    // slug against snap_images — a post's public URL is its cover image's slug,
+    // so an image row carrying a post_id maps to the POST (matching how the
+    // /ap/note/p/N id resolves), otherwise to the standalone image.
+    if ($pdo !== null) {
+        $slug = trim((string)(parse_url($url, PHP_URL_PATH) ?? ''), '/');
+        if ($slug !== '' && strncmp($slug, 'ap/', 3) !== 0) {
+            try {
+                $st = $pdo->prepare(
+                    "SELECT id, post_id FROM snap_images WHERE img_slug = ? LIMIT 1");
+                $st->execute([$slug]);
+                if ($row = $st->fetch(PDO::FETCH_ASSOC)) {
+                    $pid = (int)($row['post_id'] ?? 0);
+                    return $pid > 0
+                        ? ['type' => 'post',  'id' => $pid]
+                        : ['type' => 'image', 'id' => (int)$row['id']];
+                }
+            } catch (Exception $e) { /* column/table lag — fall through to null */ }
+        }
+    }
     return null;
 }
 
@@ -1238,8 +1275,10 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         } elseif ($otype === 'Like') {
             // Un-like: drop the federated like on our target.
             $liked = is_array($obj['object'] ?? null) ? ($obj['object']['id'] ?? '') : ($obj['object'] ?? '');
-            $t = is_string($liked) ? sv_resolve_target($liked) : null;
-            if ($t && $t['type'] !== 'comment') {
+            $t = is_string($liked) ? sv_resolve_target($liked, $pdo) : null;
+            // Only image/post likes are stored in snap_ap_likes; comment & reply
+            // likes never got a row, so there's nothing to undo for them.
+            if ($t && $t['type'] !== 'comment' && $t['type'] !== 'reply') {
                 $pdo->prepare("DELETE FROM snap_ap_likes WHERE target_type = ? AND target_id = ? AND actor_url = ?")
                     ->execute([$t['type'], (int)$t['id'], $actor_id]);
             }
@@ -1251,8 +1290,16 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         // A remote actor liked one of our posts → federated like (combined tally).
         $obj = is_array($activity['object'] ?? null) ? ($activity['object']['id'] ?? '') : ($activity['object'] ?? '');
         $obj_s = is_string($obj) ? $obj : '';
-        $t = is_string($obj) ? sv_resolve_target($obj) : null;
-        if ($t && $t['type'] !== 'comment') {
+        $t = is_string($obj) ? sv_resolve_target($obj, $pdo) : null;
+        if ($t && $t['type'] === 'reply') {
+            // Like on the blog's OWN outbound reply. There's no photo to add it
+            // to (the like tally is per image/post), but it IS a real interaction
+            // — surface it as a notification instead of dropping it silently.
+            $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
+            sv_cache_actor($pdo, $actor_doc);
+            sv_notify($pdo, 'like', $actor_id, $handle, (string)$obj, (string)$obj, null);
+            sv_inbox_log($pdo, 'Like', $actor_id, $obj_s, 'resolved reply:' . $t['id'] . ' — notified');
+        } elseif ($t && $t['type'] !== 'comment') {
             $inserted = false;
             try {
                 $st = $pdo->prepare("INSERT IGNORE INTO snap_ap_likes (target_type, target_id, actor_url) VALUES (?, ?, ?)");
@@ -1283,7 +1330,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         $in_reply = is_string($obj['inReplyTo'] ?? null) ? (string)$obj['inReplyTo'] : '';
 
         // (a) A reply to one of OUR posts → moderation comment + a notification.
-        $target = ($in_reply !== '') ? sv_resolve_target($in_reply) : null;
+        $target = ($in_reply !== '') ? sv_resolve_target($in_reply, $pdo) : null;
         $img_id = $target ? sv_target_image_id($pdo, $target) : 0;
         if ($img_id > 0) {
             if ($note_id !== '') {
@@ -1352,7 +1399,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         if ($obj_id !== '') {
             $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
             // Boost of OUR post → notification.
-            $t = sv_resolve_target($obj_id);
+            $t = sv_resolve_target($obj_id, $pdo);
             if ($t && $t['type'] !== 'comment') {
                 sv_cache_actor($pdo, $actor_doc);
                 sv_notify($pdo, 'boost', $actor_id, $handle, $obj_id, $obj_id, null);
