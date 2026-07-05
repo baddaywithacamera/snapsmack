@@ -190,32 +190,42 @@
 /* ── Post lightbox ── */
 .sspf-lightbox {
     position: fixed; inset: 0; z-index: 9999;
-    background: rgba(0,0,0,.72);
+    /* Heavier scrim + blur so the busy grid behind is fully suppressed — the
+       old .72 scrim let it bleed through and made the modal read as muddy. */
+    background: rgba(0,0,0,.82);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
     display: flex; align-items: flex-start; justify-content: center;
     padding: 40px 16px; overflow-y: auto;
 }
 .sspf-lightbox-card {
     position: relative;
-    background: var(--pf-surface);
+    /* SOLID, theme-tracking panel — NOT the translucent grey veil used for inline
+       feed surfaces. A modal floating over a scrim must be opaque or it looks
+       dark and nasty; --admin-input-bg is the opaque surface every admin theme
+       defines (falls back to a neutral dark panel). */
+    background: var(--admin-input-bg, #1c1f26);
     border: 1px solid var(--pf-border);
     border-radius: var(--pf-radius);
     max-width: 560px; width: 100%;
-    box-shadow: 0 10px 40px rgba(0,0,0,.5);
+    box-shadow: 0 18px 60px rgba(0,0,0,.6);
     overflow: hidden;
 }
 .sspf-lightbox-close {
-    position: absolute; top: 8px; right: 10px; z-index: 2;
-    width: 32px; height: 32px; border-radius: 50%;
+    position: absolute; top: 10px; right: 12px; z-index: 3;
+    width: 34px; height: 34px; border-radius: 50%;
     border: none; cursor: pointer;
-    background: rgba(0,0,0,.55); color: #fff; font-size: 1rem; line-height: 1;
+    background: rgba(0,0,0,.65); color: #fff; font-size: 1.05rem; line-height: 1;
 }
-.sspf-lightbox-img { width: 100%; display: block; background: #000; }
+.sspf-lightbox-close:hover { background: rgba(0,0,0,.85); }
+/* Bound the media so a mixed-aspect carousel doesn't open a giant black void:
+   cap the height, contain + centre each image on a near-black stage. */
+.sspf-lightbox-img { width: 100%; display: block; max-height: 64vh; object-fit: contain; background: #0c0c0e; }
 
 /* ── Carousel (multi-image post) ── */
-.sspf-carousel { position: relative; overflow: hidden; background: #000; }
-.sspf-carousel-track { display: flex; transition: transform .25s ease; }
-.sspf-carousel-slide { min-width: 100%; }
-.sspf-carousel-slide img { width: 100%; display: block; }
+.sspf-carousel { position: relative; overflow: hidden; background: #0c0c0e; }
+.sspf-carousel-track { display: flex; transition: transform .25s ease; align-items: center; }
+.sspf-carousel-slide { min-width: 100%; display: flex; align-items: center; justify-content: center; }
+.sspf-carousel-slide img { width: 100%; max-height: 64vh; object-fit: contain; display: block; }
 .sspf-carousel-nav {
     position: absolute; top: 50%; transform: translateY(-50%);
     width: 38px; height: 38px; border-radius: 50%; border: none;
@@ -229,8 +239,8 @@
 .sspf-carousel-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.45); cursor: pointer; }
 .sspf-carousel-dot.active { background: #fff; }
 .sspf-carousel-count { position: absolute; top: 8px; right: 10px; background: rgba(0,0,0,.6); color: #fff; font-size: .72rem; padding: 2px 8px; border-radius: 999px; }
-.sspf-lightbox-caption { padding: 14px 16px; font-size: .92rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
-.sspf-lightbox-actions { display: flex; gap: 10px; padding: 0 16px 14px; flex-wrap: wrap; }
+.sspf-lightbox-caption { padding: 16px; font-size: .95rem; line-height: 1.55; color: var(--pf-text); white-space: pre-wrap; word-break: break-word; border-top: 1px solid var(--pf-border); }
+.sspf-lightbox-actions { display: flex; gap: 10px; padding: 12px 16px; flex-wrap: wrap; align-items: center; border-top: 1px solid var(--pf-border); }
 .sspf-lightbox-actions .sspf-btn { padding: 8px 14px; font-size: .82rem; }
 .sspf-reply-box { padding: 0 16px 16px; }
 .sspf-reply-input {
