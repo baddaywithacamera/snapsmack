@@ -141,6 +141,8 @@
 .sspf-card-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
 .sspf-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--pf-surface-2); object-fit: cover; flex-shrink: 0; }
 .sspf-card-user { font-weight: 600; font-size: .9rem; }
+.sspf-card-userlink { cursor: pointer; }
+.sspf-card-userlink:hover .sspf-card-user { text-decoration: underline; }
 .sspf-card-sub { color: var(--pf-muted); font-size: .78rem; }
 .sspf-card-media { width: 100%; display: block; background: #000; aspect-ratio: 1 / 1; object-fit: cover; cursor: pointer; }
 .sspf-card-multi { padding: 8px 14px 0; }

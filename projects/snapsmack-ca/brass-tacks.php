@@ -118,6 +118,7 @@ require_once __DIR__ . '/includes/header.php';
                     <li><a href="#q-resources">Resources needed?</a></li>
                     <li><a href="#q-platforms">Platforms supported?</a></li>
                     <li><a href="#q-mobile">Why such limited mobile support?</a></li>
+                    <li><a href="#q-mobile-app">Will there be a mobile app for posting?</a></li>
                     <li><a href="#q-companion-apps">Why companion apps instead of plugins?</a></li>
                     <li><a href="#q-no-apple">Why no Apple support?</a></li>
                     <li><a href="#q-noah-grey">Who is Noah Grey?</a></li>
@@ -147,6 +148,7 @@ require_once __DIR__ . '/includes/header.php';
                 <ol>
                     <li><a href="#q-stay-free">Is SnapSmack going to stay free?</a></li>
                     <li><a href="#q-add-feature">Will you add [feature]?</a></li>
+                    <li><a href="#q-video">When is video support coming?</a></li>
                     <li><a href="#q-whats-next">What's next?</a></li>
                 </ol>
             </div>
@@ -242,7 +244,12 @@ require_once __DIR__ . '/includes/header.php';
             <div class="qa" id="q-mobile">
                 <h3>Why such limited mobile support?</h3>
                 <p>SnapSmack is circa 2001&ndash;2005 throwback software. There were no smartphones, people looked at images on large, chonky displays, and life was perfect. To those who say it is 2026 now, you're right, so we do offer LIMITED mobile support instead of telling mobile users to FOAD, but there are limits. Also, we've seen the ugly 70s fashions in your closet so you don't get to lecture us about missing an older era.</p>
-                <p>We do support tablets with larger screens, but phones only grudgingly. SnapSmack is too big to fit in your girly pocket.</p>
+                <p>We support tablets with larger screens just fine. For phones you get exactly one mobile skin &mdash; PHOTOGRAM &mdash; and that's the whole of it; everything else assumes a proper display. SnapSmack is built to be <em>seen</em>, on a screen big enough to do the photography justice. It's too big to fit in your girly pocket.</p>
+            </div>
+
+            <div class="qa" id="q-mobile-app">
+                <h3>Will there be a mobile app for posting?</h3>
+                <p>No &mdash; at least not one from us. SnapSmack is throwback software to a time before smartphones; people posted from a computer back in the day (think 2001&ndash;2005). Today you post from a computer, or a large-screen tablet in desktop mode. A phone posting app was never in the vision &mdash; this project has a specific scope and we're keeping it. If someone else wants to build one, good on them; we won't block it.</p>
             </div>
 
             <div class="qa" id="q-companion-apps">
@@ -301,7 +308,7 @@ require_once __DIR__ . '/includes/header.php';
                 <h3>Why are you ripping off Instagram?</h3>
                 <p>We're not ripping them off, we're taking back what's ours. Greymatter, Pixelpost, Movable Type — those were blogging 1.0. When Instagram arrived it sort of became blogging 2.0, in a manner of speaking. No hosting costs or headaches. No setting up a server or learning CSS. You could just SHARE your images and the audience was there waiting. Yeah, it was boring looking, but the appeal was obvious, so a lot of blogs were abandoned for Instagram. Photogs found hacks like splitting an image across 3, 6, or 9 tiles to punch Insta up visually, and they were happy, even as enshittification crept into the platform.</p>
                 <p>Then in 2025 Meta threw photographers under the bus. They yoinked the three-across grid, destroying so many years of careful work by photographers who curated their feeds, in favour of creepy preteen influencer videos. It sucked.</p>
-                <p>We can't do anything about the social aspect, but we can help you get the look you loved back. GRAMOFSMACK is the classic-Instagram install — the curated three-across feed, square tiles, cover spreads, and carousel posts up to ten deep, the way it looked when Instagram was still about photographs. Leave it stock and period-correct, or bolt on the modern flourishes — the animated carousel skins, AURORA and PARADE — spinning rims on a Model T, if that's your thing. The Grid is the default skin; on phones it serves Photogram automatically.</p>
+                <p>And these days we CAN do something about the social aspect, too &mdash; SMACKVERSE. Now you host your own images and retain control while feeding them into the Fediverse, a more ethical alternative to Insta. As for the look you loved, that's the easy part. GRAMOFSMACK is the classic-Instagram install — the curated three-across feed, square tiles, cover spreads, and carousel posts up to ten deep, the way it looked when Instagram was still about photographs. Leave it stock and period-correct, or bolt on the modern flourishes — the animated carousel skins, AURORA and PARADE — spinning rims on a Model T, if that's your thing. The Grid is the default skin; on phones it serves Photogram automatically.</p>
             </div>
 
             <div class="qa" id="q-content-locked">
@@ -380,6 +387,11 @@ require_once __DIR__ . '/includes/header.php';
             <div class="qa" id="q-add-feature">
                 <h3>Will you add [feature]?</h3>
                 <p>Odds are no, but I'm open to ideas. The hard rule is no bloat — SnapSmack is a photo publishing tool first and stays that way. If a feature doesn't serve that, it doesn't ship.</p>
+            </div>
+
+            <div class="qa" id="q-video">
+                <h3>When is video support coming?</h3>
+                <p>Never. SnapSmack is photo blogging software. Videos are not photos. We're not trying to be everything to everyone &mdash; we have a specific focus, which is photography (see what I did there???), and we're staying firmly in that lane. Besides, every time a photo product bolts on video it goes straight into the crapper. <em>*cough*</em> Instagram <em>*cough*</em></p>
             </div>
 
             <div class="qa" id="q-whats-next">

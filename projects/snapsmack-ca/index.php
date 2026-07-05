@@ -1420,6 +1420,10 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Client/server community built into the software. Reactions, comments, following — limited to blog owners. No public signups, no spammers, no trolls.</p>
             </div>
             <div class="status-card">
+                <h3>SMACKVERSE</h3>
+                <p>Live. Your photoblog speaks ActivityPub — it shows up across the Fediverse as its own Pixelfed-compatible instance, comments, likes, boosts and traffic included, without handing your art to some stranger's server running out of his mom's basement. Two-way: browse, heart, reply and follow right from your admin, and your grid federates in the exact order you set it. Your images stay yours, presented your way. For photo blogging Mack Daddies only.</p>
+            </div>
+            <div class="status-card">
                 <h3>Two-Factor Authentication</h3>
                 <p>TOTP-based 2FA compatible with any authenticator app — open-source ones first. QR setup, recovery codes, the works. Now required: a 30-day grace period after install, then it's mandatory for every admin. Lost everything? A documented emergency override means you're never locked out of your own site.</p>
             </div>
@@ -2057,11 +2061,6 @@ require_once __DIR__ . '/includes/header.php';
                 <span class="tag">Tools</span>
                 <h3>GET YOUR SHIT SORTED</h3>
                 <p>The offline companion to the Light Table. GET YOUR SHIT SORTED pulls down your archive's thumbnails and the data needed to organise it, then turns your own machine into the sorting workbench — no live connection, no server load, no waiting on page loads for a ten-thousand-image back catalog. Do the work on a plane, in a basement, wherever you like. When you're done, it resyncs every change back to your site in one pass.</p>
-            </div>
-            <div class="coming-item">
-                <span class="tag">Federation</span>
-                <h3>SMACKVERSE</h3>
-                <p>Photoblogs are so last decade (or so we're told). So we built an Einstein Rosen Bridge to connect your photoblog to the wider Fediverse. Get the social reach of ActivityPub networks like Pixelfed without handing your art to some stranger's server running out of his mom's basement. Your images stay yours, presented your way, while your blog shows up as your own Pixelfed instance through a compatibility layer — comments, likes, and traffic included. This feature is a bazooka: not for cheap shared hosting, a VPS minimum, your own server preferred. For photo blogging Mack Daddies only. SMACKVERSE makes the old new again.</p>
             </div>
         </div>
     </div>
