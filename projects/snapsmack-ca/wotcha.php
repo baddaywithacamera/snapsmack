@@ -137,6 +137,10 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Jul 5</span>
+                    <a href="#posse">POSSE Is Not for Pussies</a>
+                </li>
+                <li>
                     <span class="idx-date">Jul 1</span>
                     <a href="#box-seat">A Box Seat on Your Own Numbers</a>
                 </li>
@@ -266,6 +270,21 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <!-- POST: POSSE -->
+            <article class="post" id="posse">
+                <div class="post-meta">
+                    <span class="post-date">July 5, 2026</span>
+                    <span class="post-tag">Federation</span>
+                </div>
+                <h2><a href="#posse">POSSE Is Not for Pussies</a></h2>
+                <p>There's an old web principle with an ugly acronym: POSSE — Publish on your Own Site, Syndicate Elsewhere. Around here it reads a little blunter: <strong>Put On Server, Syndicate Elsewhere</strong>. Your photographs live on a box you own. Copies go out to the networks where the people are. The original never leaves home.</p>
+                <p>That's the whole design of SMACKVERSE, and it's the opposite of how the silos want it. Instagram wants your work to live on <em>their</em> server, so that the day you leave, you leave it behind. POSSE flips that. The canonical thing — the full-resolution image, the caption you wrote, the date you took it — sits on your site, at your URL, under your control. What goes out to the fediverse is a syndicated copy that points back home. Delete the copy, break the network, watch the platform get bought and gutted — your archive doesn't care. It was never theirs to lose.</p>
+                <p>And it runs both ways. The likes, the replies, the boosts your syndicated posts pick up out there don't stay stranded on someone else's server. They feed back to the post they belong to, on your site. Syndicate out, gather the conversation back. Your work and its audience end up in the same place: yours.</p>
+                <p>We're drawing the line at two networks, on purpose. The <strong>fediverse</strong> — ActivityPub, Pixelfed, Mastodon — because it's open, self-hostable, and owned by nobody, which is the entire ethos in one protocol. And <strong>Bluesky</strong>, when it lands, because that's where a lot of eyeballs actually are, and reach is reach. Fediverse is the principle; Bluesky is the pragmatism. That's the list. No Threads, no chasing every new silo that launches — two networks, each chosen for a reason, door closed.</p>
+                <p>Here's the part the name is honest about. POSSE is not for pussies. It asks the one thing the free silos never do: that you run your own server. Not a cheap shared box — a VPS at minimum, your own iron preferred. Owning your art means hosting your art, and hosting means responsibility. The reward is that nobody can deplatform you, rug-pull you, train a model on your catalogue, or quietly turn a decade of your work into engagement bait. The bill is that it's yours to run. If that trade sounds like too much, the silos are right over there, waiting to own you. If it sounds like freedom, you already knew that before you finished reading this.</p>
+                <p>SMACKVERSE is in fine-tuning for beta. Bluesky syndication follows. Same principle, one more door out.</p>
+            </article>
 
             <!-- POST: BOX SEAT -->
             <article class="post" id="box-seat">
