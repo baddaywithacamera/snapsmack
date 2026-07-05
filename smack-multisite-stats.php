@@ -518,7 +518,7 @@ include 'core/sidebar.php';
                 try {
                     if (($settings['smackverse_enabled'] ?? '0') === '1') {
                         $fedi_following = (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_following WHERE state = 'accepted'")->fetchColumn();
-                        $_nt = $pdo->query("SELECT type, COUNT(*) c FROM snap_ap_notifications GROUP BY type")->fetchAll(PDO::FETCH_KEY_PAIR);
+                        $_nt = $pdo->query("SELECT ntype, COUNT(*) c FROM snap_ap_notifications GROUP BY ntype")->fetchAll(PDO::FETCH_KEY_PAIR);
                         $fedi_likes = (int)($_nt['like']  ?? 0);
                         $fedi_boosts   = (int)($_nt['boost'] ?? 0);
                         $fedi_replies  = (int)($_nt['reply'] ?? 0) + (int)($_nt['mention'] ?? 0);

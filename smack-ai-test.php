@@ -35,7 +35,7 @@ if ($post_provider && in_array($post_provider, $valid_providers, true) && $post_
     // Test with the form values directly — no save required
     $result = match ($post_provider) {
         'claude' => _snap_ai_claude($post_api_key, 'You are a connection test. Respond with exactly: OK', 'Connection test — reply with OK only.', 16),
-        'gemini' => _snap_ai_gemini($post_api_key, 'You are a connection test. Respond with exactly: OK', 'Connection test — reply with OK only.', 16),
+        'gemini' => _snap_ai_gemini($post_api_key, 'You are a connection test. Respond with exactly: OK', 'Connection test — reply with OK only.', 256),
         'openai' => _snap_ai_openai($post_api_key, 'You are a connection test. Respond with exactly: OK', 'Connection test — reply with OK only.', 16),
     };
     $provider_labels = ['claude' => 'Claude', 'gemini' => 'Gemini', 'openai' => 'ChatGPT'];
@@ -49,7 +49,7 @@ if ($post_provider && in_array($post_provider, $valid_providers, true) && $post_
     $result = snap_ai_complete(
         'You are a connection test. Respond with exactly: OK',
         'Connection test — reply with OK only.',
-        16
+        256
     );
     $provider_labels = ['claude' => 'Claude', 'gemini' => 'Gemini', 'openai' => 'ChatGPT'];
     $label = $provider_labels[snap_ai_provider()] ?? snap_ai_provider();

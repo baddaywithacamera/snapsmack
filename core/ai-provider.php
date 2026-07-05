@@ -157,14 +157,43 @@ function _snap_ai_gemini(string $key, string $system, string $user, int $max_tok
     $payload = json_encode([
         'system_instruction' => ['parts' => [['text' => $system]]],
         'contents'           => [['parts' => [['text' => $user]]]],
-        'generationConfig'   => ['maxOutputTokens' => $max_tokens],
+        'generationConfig'   => _snap_ai_gemini_gencfg($model, $max_tokens),
     ]);
     $response = _snap_ai_post($url, $payload, ['content-type: application/json']);
     if (!$response['ok']) return $response;
     $data = json_decode($response['body'], true);
     $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
-    if ($text === '') return ['ok' => false, 'text' => '', 'error' => 'Empty response from Gemini.'];
+    if ($text === '') return ['ok' => false, 'text' => '', 'error' => _snap_ai_gemini_empty_reason($data)];
     return ['ok' => true, 'text' => $text, 'error' => ''];
+}
+
+/**
+ * Build Gemini generationConfig. On the 3.x "thinking" models a small
+ * maxOutputTokens is consumed entirely by internal reasoning tokens, so the
+ * candidate comes back with NO text part → "Empty response from Gemini" (the
+ * regression the connection test hit at max_tokens=16). For short utility calls
+ * (spell-check, AI-assist, connection test) we disable thinking so the whole
+ * budget goes to visible output — cheaper and faster too. The 'pro' model can
+ * reject a zero budget, so we leave its thinking alone and only give it room.
+ */
+function _snap_ai_gemini_gencfg(string $model, int $max_tokens): array {
+    $cfg = ['maxOutputTokens' => $max_tokens];
+    if (strpos($model, 'pro') === false) {
+        $cfg['thinkingConfig'] = ['thinkingBudget' => 0];
+    }
+    return $cfg;
+}
+
+/** Turn an empty-candidate Gemini response into a diagnosable error string. */
+function _snap_ai_gemini_empty_reason(?array $data): string {
+    $fr = $data['candidates'][0]['finishReason'] ?? '';
+    if ($fr === 'MAX_TOKENS') {
+        return 'Gemini hit the output-token limit before returning text (thinking budget exhausted it). Raise max tokens or disable thinking.';
+    }
+    if ($fr === 'SAFETY' || $fr === 'PROHIBITED_CONTENT') {
+        return 'Gemini blocked the response (' . $fr . ').';
+    }
+    return 'Empty response from Gemini' . ($fr !== '' ? " (finishReason: {$fr})." : '.');
 }
 
 function _snap_ai_openai(string $key, string $system, string $user, int $max_tokens): array {
@@ -258,12 +287,13 @@ function _snap_ai_gemini_vision(string $key, string $system, string $user, array
     $payload = json_encode([
         'system_instruction' => ['parts' => [['text' => $system]]],
         'contents'           => [['parts' => $parts]],
-        'generationConfig'   => ['maxOutputTokens' => $max_tokens],
+        'generationConfig'   => _snap_ai_gemini_gencfg($model, $max_tokens),
     ]);
     $response = _snap_ai_post($url, $payload, ['content-type: application/json']);
     if (!$response['ok']) return $response;
-    $text = json_decode($response['body'], true)['candidates'][0]['content']['parts'][0]['text'] ?? '';
-    return $text === '' ? ['ok' => false, 'text' => '', 'error' => 'Empty response from Gemini.']
+    $data = json_decode($response['body'], true);
+    $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+    return $text === '' ? ['ok' => false, 'text' => '', 'error' => _snap_ai_gemini_empty_reason($data)]
                         : ['ok' => true, 'text' => $text, 'error' => ''];
 }
 

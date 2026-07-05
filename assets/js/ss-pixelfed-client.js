@@ -158,9 +158,15 @@
             var head = el('div', 'sspf-card-head');
             if (a.avatar) { var av = el('img', 'sspf-avatar'); av.src = a.avatar; av.alt = ''; head.appendChild(av); }
             else { head.appendChild(el('div', 'sspf-avatar')); }
-            var who = el('div');
+            var who = el('div', 'sspf-card-who');
             who.appendChild(el('div', 'sspf-card-user', a.name || a.handle || ''));
             who.appendChild(el('div', 'sspf-card-sub', a.handle || ''));
+            var profRef = a.handle || a.id || '';
+            if (profRef) {
+                who.classList.add('sspf-card-userlink');
+                who.title = 'View ' + (a.handle || a.name || 'profile');
+                who.addEventListener('click', function () { loadProfile(body, profRef); });
+            }
             head.appendChild(who);
             card.appendChild(head);
 

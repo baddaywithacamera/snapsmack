@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.377 — "Too Many Pinkie Pies" (2026-07-05)
+
+- **Fixed: the Gemini AI button always failed with "Empty response from Gemini."** The connection test asked Gemini for a reply capped at 16 output tokens, but the 3.x models spend output tokens on internal *thinking* before emitting any visible text — so the whole budget was consumed by reasoning and the response came back with no text part (an HTTP 200 with an empty candidate, which read as "empty"). The test budget is raised to 256, and short utility calls (spell-check, AI-assist, connection test) now send `thinkingConfig.thinkingBudget = 0` on the flash / flash-lite models so the full budget goes to the visible answer — cheaper and faster too (the `pro` model keeps its thinking, since it can reject a zero budget). Empty responses now surface the model's `finishReason` (e.g. hit MAX_TOKENS, or a safety block) instead of a bare "empty," so the next failure is diagnosable. This matches how SUMNABATCH always worked — its SDK call sets no output cap, so thinking never starved the answer.
+- **Fixed: FLEET STATS showed 0 fediverse likes / boosts / replies even when notifications existed.** The rollup queried `SELECT type … FROM snap_ap_notifications`, but that column is `ntype`; the bad query threw and was swallowed, zeroing the engagement tiles. Corrected to `ntype`.
+
 ## 0.7.376 — "The Crystal Empire" (2026-07-04)
 
 - **Security (audit 032, finding 1): piggyback search tokens now encrypt under a dedicated per-install key.** The token key fell back to the shared public default salt (`snapsmack-default-salt-change-me`) on installs without a `download_salt`, which reduced "encrypted at rest" to obfuscation — anyone able to read the DB could recover the token. `sv_search_salt()` now generates and persists a random per-install secret (`smackverse_search_key`) on first use, independent of `download_salt`, so a stored token is genuinely encrypted and rotating `download_salt` never orphans it. (No stored tokens are affected — the feature is new and the earlier save path was failing; if you did manage to save one, re-add it.)
