@@ -1371,15 +1371,20 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 $text = trim(html_entity_decode(strip_tags((string)($obj['content'] ?? '')), ENT_QUOTES, 'UTF-8'));
                 if ($text !== '') {
                     if (mb_strlen($text) > 5000) $text = mb_substr($text, 0, 5000);
+                    // Auto-approve inbound fediverse replies by default so they
+                    // land live on the post immediately (matches how the fediverse
+                    // normally works — you TERMINATE the ones you don't want).
+                    // Setting-gated: fedi_auto_approve_replies = '0' restores the
+                    // AUTHORIZE moderation queue; absent/anything else = on.
+                    $approved = (($settings['fedi_auto_approve_replies'] ?? '1') === '0') ? 0 : 1;
                     try {
-                        // is_approved = 0 → normal comment moderation queue.
                         $pdo->prepare(
                             "INSERT INTO snap_comments
                                 (img_id, comment_author, comment_url, comment_text, comment_date,
                                  is_approved, ap_source, ap_actor_url, ap_object_id, ap_in_reply_to)
-                             VALUES (?, ?, ?, ?, NOW(), 0, 'fediverse', ?, ?, ?)
+                             VALUES (?, ?, ?, ?, NOW(), ?, 'fediverse', ?, ?, ?)
                              ON DUPLICATE KEY UPDATE comment_text = VALUES(comment_text)"
-                        )->execute([$img_id, substr($handle, 0, 100), $actor_id, $text, $actor_id, $note_id, $in_reply]);
+                        )->execute([$img_id, substr($handle, 0, 100), $actor_id, $text, $approved, $actor_id, $note_id, $in_reply]);
                     } catch (Exception $e) { /* dup or column lag — ignore */ }
                     sv_cache_actor($pdo, $actor_doc);
                     sv_notify($pdo, 'reply', $actor_id, $handle, $note_id, $in_reply, $text);
@@ -3125,6 +3130,49 @@ function sv_convert_to_carousel(PDO $pdo, array $settings, array $image_ids, int
         ? "Queued Delete of the old singles to $retracted follower-inbox(es) and a Create for the carousel — they roll out on the delivery cron."
         : 'Federation is off, so nothing was sent out.';
     return [true, $msg];
+}
+
+/** Total published, federatable content units (standalone images + grouped
+ *  posts) — the same basis as the outbox totalItems. Used for NodeInfo usage. */
+function sv_public_unit_count(PDO $pdo): int {
+    $n = 0;
+    try {
+        $n  = (int)$pdo->query(
+            "SELECT COUNT(*) FROM snap_images
+             WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL"
+        )->fetchColumn();
+        $n += (int)$pdo->query(
+            "SELECT COUNT(*) FROM snap_posts
+             WHERE status = 'published' AND created_at <= NOW()
+               AND post_type IN ('single','carousel','panorama')"
+        )->fetchColumn();
+    } catch (Exception $e) { /* best-effort count */ }
+    return $n;
+}
+
+/**
+ * NodeInfo 2.0 document — the standard fediverse software/usage descriptor a
+ * directory crawler (FediList, fediverse.observer) or a peer reads after the
+ * two-step /.well-known/nodeinfo discovery link. SnapSmack is a single-actor
+ * server: one user, registrations closed, ActivityPub only. Name + description
+ * reuse the actor doc's exact source so identity is consistent across surfaces.
+ */
+function sv_nodeinfo_doc(PDO $pdo, array $settings): array {
+    return [
+        'version'           => '2.0',
+        'software'          => ['name' => 'snapsmack', 'version' => SNAPSMACK_VERSION_SHORT],
+        'protocols'         => ['activitypub'],
+        'services'          => ['inbound' => [], 'outbound' => []],
+        'openRegistrations' => false,
+        'usage'             => [
+            'users'      => ['total' => 1, 'activeHalfyear' => 1, 'activeMonth' => 1],
+            'localPosts' => sv_public_unit_count($pdo),
+        ],
+        'metadata'          => [
+            'nodeName'        => html_entity_decode((string)($settings['site_name'] ?? 'SnapSmack'), ENT_QUOTES | ENT_HTML5),
+            'nodeDescription' => sv_actor_summary($settings),
+        ],
+    ];
 }
 
 /**

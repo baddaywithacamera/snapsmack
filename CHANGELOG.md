@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.380 — "A Friend in Deed" (2026-07-05)
+
+- **Inbound fediverse replies now auto-approve and land live on the post immediately.** Replies from the fediverse used to drop into the INCOMING TRANSMISSIONS moderation queue and sit there until you hit AUTHORIZE — friction that doesn't match how the fediverse normally works. They now post straight into CONVERSATIONS on their photo the moment they arrive; you TERMINATE the ones you don't want. Setting-gated via `fedi_auto_approve_replies` (defaults on; set to `'0'` to restore the AUTHORIZE queue), so it's a one-flip toggle later without touching code.
+- **Added a NodeInfo endpoint — SnapSmack now identifies itself to the fediverse.** A directory crawler (FediList) was hitting `/.well-known/nodeinfo` and getting a 404, so SnapSmack was invisible/unidentified to fediverse directories and to peers that probe NodeInfo before federating. The standard two-step discovery is now served — `/.well-known/nodeinfo` → `/nodeinfo/2.0` — reporting software `snapsmack` + version, `activitypub`, registrations closed, and the live post count, with `nodeName`/`nodeDescription` reusing the actor document's exact source. Routed in `.htaccess` exactly like WebFinger (404s while `smackverse_enabled = 0`). **Note:** the two new `.htaccess` rewrite rules must reach the server for the clean `/.well-known/nodeinfo` path to resolve.
+
 ## 0.7.379 — "Hearts and Hooves Day" (2026-07-05)
 
 - **Fixed: PIXELFED likes never landed — the INBOX LOG showed every one as `UNRESOLVED`.** A Like from Pixelfed references the Note's `url` (the human permalink, e.g. `/ig-20260624-061822-0705`), not the ActivityPub `id` (`/ap/note/p/N`) that `sv_resolve_target()` knew how to match — so every like from a Pixelfed follower resolved to nothing and was dropped on the floor. The resolver now also accepts the public permalink form: it looks the slug up in `snap_images` and maps it to the **post** (when the image carries a `post_id`, matching how the `/ap/note/p/N` id resolves) or the standalone **image**, and the DB handle is threaded into all four inbox call sites. Like a post from Pixelfed and the log now reads `resolved post:N — recorded` with a tick in FEDIVERSE LIKES. This is exactly the drop the 0.7.378 INBOX LOG was built to catch — and it caught it.
