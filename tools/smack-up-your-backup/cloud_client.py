@@ -343,6 +343,24 @@ class DriveClient:
         except Exception:
             return False
 
+    def test_connection(self) -> tuple:
+        """Lightweight auth + access check for the Settings 'Test' button.
+        Builds the Drive service (validates the credentials) and, when a folder
+        is configured, fetches its metadata — this catches the most common silent
+        failure: a service-account key that authenticates fine but was never
+        granted access to the target folder. Returns (ok: bool, msg: str)."""
+        try:
+            svc = self._svc()
+            if self.folder_id:
+                meta = svc.files().get(
+                    fileId=self.folder_id, fields="id,name").execute()
+                return True, f"✓ Connected — folder '{meta.get('name', self.folder_id)}' accessible"
+            about = svc.about().get(fields="user").execute()
+            who = (about.get("user", {}) or {}).get("emailAddress", "authenticated")
+            return True, f"✓ Connected as {who} (no folder ID set)"
+        except Exception as e:
+            return False, f"✗ {e}"
+
 
 # ---------------------------------------------------------------------------
 # Box — OAuth 2.0 (no SDK, raw requests + local redirect server)

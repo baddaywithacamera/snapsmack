@@ -2471,8 +2471,17 @@ class SettingsTab(tk.Frame):
                  insertbackground=ACCENT, relief="flat",
                  font=FONT_MONO, width=W).grid(row=5, column=1, sticky="ew", pady=3)
 
-        self._action_btn(c, "Save Defaults", self._save,
-                         primary=True).pack(anchor="w", pady=(10, 0))
+        gc_btn_row = tk.Frame(c, bg=BG_MID)
+        gc_btn_row.pack(anchor="w", pady=(10, 0))
+        self._action_btn(gc_btn_row, "Save Defaults", self._save,
+                         primary=True).pack(side="left")
+        self._action_btn(gc_btn_row, "Test",
+                         self._test_cloud).pack(side="left", padx=(8, 0))
+        self._gc_test_var = tk.StringVar(value="")
+        tk.Label(gc_btn_row, textvariable=self._gc_test_var,
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL,
+                 wraplength=360, justify="left").pack(
+            side="left", padx=(12, 0))
 
         # ── AI File Matching card ───────────────────────────────────────
         c = self._card(right)
@@ -2644,24 +2653,67 @@ class SettingsTab(tk.Frame):
         self._conn_status_var.set("Testing login…")
         self.update_idletasks()
 
+        api_key = (self._profile_vars["api_key"].get().strip()
+                   if "api_key" in self._profile_vars else "")
+
         import threading
         def _run():
+            # Route through the same session the real backup uses: it carries the
+            # smack-up-your-backup User-Agent (a bare python-requests UA is what
+            # SMACKBACK/WAF was 403ing) and follows the login redirect. When an
+            # API key is set the backup never form-logs in — it uses the Bearer
+            # key — so test THAT path, not a form POST that isn't even exercised.
             try:
-                import requests
-                r = requests.post(
-                    f"{url}/{slug}",
-                    data={"username": user, "password": pw, "ajax": "1"},
-                    timeout=15, allow_redirects=False,
-                )
-                if r.status_code == 200 and "success" in r.text.lower():
-                    msg = "✓ Login successful"
-                elif r.status_code < 400:
-                    msg = f"✓ Site reachable (HTTP {r.status_code})"
+                import backup_engine
+                sess = backup_engine.SnapSmackSession(
+                    url, api_key=api_key, login_slug=slug)
+                if api_key:
+                    r = sess.session.get(
+                        f"{url}/smack-admin.php", timeout=15,
+                        allow_redirects=True)
+                    if r.status_code < 400 and slug not in r.url:
+                        msg = "✓ API key valid"
+                    elif r.status_code in (401, 403):
+                        msg = f"⚠ API key rejected (HTTP {r.status_code})"
+                    else:
+                        msg = f"⚠ HTTP {r.status_code}"
                 else:
-                    msg = f"⚠ HTTP {r.status_code}"
+                    sess.login(user, pw)   # raises on bad credentials
+                    msg = "✓ Login successful"
             except Exception as e:
                 msg = f"✗ {e}"
             self.after(0, lambda: self._conn_status_var.set(msg))
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _test_cloud(self) -> None:
+        """Test the Global Cloud Config credentials (currently Google Drive).
+        Builds a cloud client from the LIVE form values (no need to Save first)
+        and does a lightweight authenticated round-trip on a background thread."""
+        gc = {
+            "cloud_provider":         self._gc_provider_var.get().strip(),
+            "cloud_credentials_file": self._gc_creds_var.get().strip(),
+            "cloud_folder_id":        self._gc_folder_var.get().strip(),
+        }
+        if not gc["cloud_credentials_file"]:
+            self._gc_test_var.set("Set the Credentials JSON first")
+            return
+        self._gc_test_var.set("Testing…")
+        self.update_idletasks()
+
+        import threading
+        def _run():
+            try:
+                import cloud_client as _cc
+                client = _cc.get_cloud_client({}, global_cloud=gc)
+                if not client:
+                    msg = "Set provider + credentials JSON first"
+                elif not hasattr(client, "test_connection"):
+                    msg = f"Test not supported for provider '{gc['cloud_provider']}'"
+                else:
+                    _ok, msg = client.test_connection()
+            except Exception as e:
+                msg = f"✗ {e}"
+            self.after(0, lambda: self._gc_test_var.set(msg))
         threading.Thread(target=_run, daemon=True).start()
 
     def _test_ftp(self) -> None:

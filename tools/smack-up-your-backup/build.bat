@@ -5,11 +5,16 @@ REM  Requires: Python 3.11+, pip install -r requirements.txt
 REM  Output:   C:\SmackUpYourBackup\smackupyourbackup-{version}.exe
 REM ─────────────────────────────────────────────────────────────────────────
 
-REM ── Read BUILD_VERSION from main.py ───────────────────────────────────────
-for /f "tokens=3 delims= " %%V in ('findstr /C:"BUILD_VERSION = " main.py') do set RAW_VER=%%V
-set BUILD_VER=%RAW_VER:"=%
+REM ── Auto-increment the patch version in main.py, then read it back ────────
+REM  bump_version.py bumps BUILD_VERSION and prints the new value on stdout.
+for /f "delims=" %%V in ('python bump_version.py') do set BUILD_VER=%%V
+if "%BUILD_VER%"=="" (
+    echo ERROR: version bump failed ^(bump_version.py^). Aborting.
+    pause
+    exit /b 1
+)
 set EXE_NAME=smackupyourbackup-%BUILD_VER%.exe
-echo Build version: %BUILD_VER%
+echo Build version: %BUILD_VER%  ^(auto-incremented^)
 echo Output name:   %EXE_NAME%
 
 REM ── Clean stale build artifacts (prevents OneDrive / AV lock errors) ──────
@@ -25,18 +30,11 @@ if exist dist (
 echo Installing dependencies...
 pip install -r requirements.txt
 
-REM ── Use versioned spec file (sets recursion limit + all hidden imports) ──────
-set SPEC_FILE=smackupyourbackup-%BUILD_VER%.spec
-if not exist %SPEC_FILE% (
-    echo ERROR: Spec file %SPEC_FILE% not found.
-    echo Make sure the spec file exists for this version.
-    pause
-    exit /b 1
-)
-
+REM ── Build with the single generic spec (version comes from the env var) ──────
+set SUYB_BUILD_VER=%BUILD_VER%
 echo.
-echo Building %EXE_NAME% using %SPEC_FILE%...
-pyinstaller --clean %SPEC_FILE%
+echo Building %EXE_NAME% using smackupyourbackup.spec...
+pyinstaller --clean smackupyourbackup.spec
 
 echo.
 if exist dist\%EXE_NAME% (
