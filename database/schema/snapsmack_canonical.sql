@@ -1043,4 +1043,15 @@ CREATE TABLE IF NOT EXISTS `snap_ap_search_accounts` (
   KEY `idx_search_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `snap_ap_inbox_log` (
+  `id`          bigint unsigned NOT NULL AUTO_INCREMENT,
+  `received_at` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `verb`        varchar(40)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `actor_url`   varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `object_ref`  varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `outcome`     varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_inbox_log_time` (`received_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ===== SNAPSMACK EOF =====

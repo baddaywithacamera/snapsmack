@@ -157,6 +157,17 @@ try {
 $like_title_img  = $pdo->prepare("SELECT img_title FROM snap_images WHERE id = ? LIMIT 1");
 $like_title_post = $pdo->prepare("SELECT title FROM snap_posts WHERE id = ? LIMIT 1");
 
+// Inbound activity diagnostic log — every inbox POST + its outcome, so a Like
+// or reply that never landed is visible (rejected sig / unresolved target /
+// recorded). Newest first, recent slice only. Table may lag on fresh installs.
+$inbox_log = [];
+try {
+    $inbox_log = $pdo->query(
+        "SELECT verb, actor_url, object_ref, outcome, received_at
+         FROM snap_ap_inbox_log ORDER BY id DESC LIMIT 40"
+    )->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) { /* table not created yet */ }
+
 $followers = [];
 try {
     $followers = $pdo->query(
@@ -284,6 +295,32 @@ include 'core/sidebar.php';
                                        onclick="return confirm('Terminate this transmission? Any replies stay on the post.');">TERMINATE</a>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <div class="box mt-30">
+        <h3>INBOX LOG <span style="opacity:0.6; font-size:0.8rem; letter-spacing:1px;">— DIAGNOSTIC</span></h3>
+        <p class="skin-desc-text">Every inbound fediverse activity and what happened to it — so a like or reply that never landed is visible instead of silently gone. <strong>REJECTED</strong> = signature failed (never got in); <strong>UNRESOLVED</strong> = we couldn't match the liked post to a local one; <strong>recorded</strong> = it worked. Newest first.</p>
+        <?php if (!$inbox_log): ?>
+            <p>Nothing logged yet. It fills the next time anything hits the inbox — like one of your posts from Pixelfed and refresh.</p>
+        <?php else: ?>
+            <div class="recent-list">
+                <?php foreach ($inbox_log as $ev): ?>
+                    <?php $bad = (stripos((string)($ev['outcome'] ?? ''), 'REJECT') !== false
+                               || stripos((string)($ev['outcome'] ?? ''), 'UNRESOLVED') !== false); ?>
+                    <div class="recent-item">
+                        <div class="item-text">
+                            <strong><?php echo htmlspecialchars((string)($ev['verb'] ?? '?')); ?></strong>
+                            from <?php echo htmlspecialchars($fedi_handle((string)($ev['actor_url'] ?? ''))); ?>
+                            — <span style="color:<?php echo $bad ? '#c55400' : 'var(--text,inherit)'; ?>; font-weight:600;"><?php echo htmlspecialchars((string)($ev['outcome'] ?? '')); ?></span>
+                            <?php if (!empty($ev['object_ref'])): ?>
+                                <br><span class="signal-meta" style="word-break:break-all; opacity:0.7;"><?php echo htmlspecialchars((string)$ev['object_ref']); ?></span>
+                            <?php endif; ?>
+                            <span class="signal-meta"><?php echo htmlspecialchars((string)($ev['received_at'] ?? '')); ?></span>
                         </div>
                     </div>
                 <?php endforeach; ?>

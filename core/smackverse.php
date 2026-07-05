@@ -165,6 +165,22 @@ function sv_ensure_tables(PDO $pdo): void {
         UNIQUE KEY `uq_search_host` (`instance_host`),
         KEY `idx_search_active` (`is_active`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // Inbound activity diagnostic log (0.7.377): one row per inbox POST — verb,
+    // actor, object ref, and outcome (sig-fail / handled code / like-resolve
+    // result). Bounded ring (sv_inbox_log trims to the most recent rows). This
+    // is how we SEE why a federated Like or reply did or didn't land instead of
+    // guessing from empty tables — the inbox swallows errors by design.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_inbox_log` (
+        `id`          bigint unsigned NOT NULL AUTO_INCREMENT,
+        `received_at` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `verb`        varchar(40)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `actor_url`   varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `object_ref`  varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `outcome`     varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        KEY `idx_inbox_log_time` (`received_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     foreach ([
         "ap_source enum('local','fediverse') NOT NULL DEFAULT 'local'",
         "ap_actor_url varchar(500) DEFAULT NULL",
@@ -437,22 +453,55 @@ function sv_search_token_decrypt(string $ciphertext, string $salt): string {
     return ($dec !== false) ? $dec : '';
 }
 
+/**
+ * Verify a piggyback token against its instance's verify_credentials endpoint.
+ * Single source of truth for "does this token authenticate on this host" —
+ * reused by both add (verify-before-store) and the standalone TEST button, so
+ * there is exactly one verify path, not two that can drift.
+ * Returns ['ok'=>bool, 'handle'=>string, 'error'=>string].
+ */
+function sv_verify_search_credentials(string $host, string $token): array {
+    $host  = strtolower(trim(preg_replace('#^https?://#i', '', trim($host)), " /\t\r\n"));
+    $token = trim($token);
+    if ($host === '' || !preg_match('/^[a-z0-9.\-]+\.[a-z]{2,}$/', $host)) {
+        return ['ok' => false, 'handle' => '', 'error' => 'Enter a valid instance host, e.g. pixelfed.social.'];
+    }
+    if ($token === '') {
+        return ['ok' => false, 'handle' => '', 'error' => 'Paste the access token from that instance.'];
+    }
+    // Standard Mastodon/Pixelfed "who am I": a valid token returns the account
+    // object, an invalid/expired/wrong-instance one 401s (sv_authed_get → null).
+    $who = sv_authed_get('https://' . $host . '/api/v1/accounts/verify_credentials', $token);
+    if (!is_array($who) || empty($who['id'])) {
+        return ['ok' => false, 'handle' => '', 'error' => 'That token did not authenticate on ' . $host . '. Check it is a valid, unexpired read-scope token for that exact instance.'];
+    }
+    return ['ok' => true, 'handle' => (string)($who['username'] ?? ''), 'error' => ''];
+}
+
+/** TEST a stored account by id: decrypt the token, re-verify it live. Returns
+ *  ['ok'=>bool,'handle'=>string,'error'=>string]. Used by the TEST button. */
+function sv_test_search_account(PDO $pdo, array $settings, int $id): array {
+    try {
+        $s = $pdo->prepare("SELECT instance_host, token_enc FROM snap_ap_search_accounts WHERE id = ? LIMIT 1");
+        $s->execute([$id]);
+        $acct = $s->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) { $acct = null; }
+    if (!$acct) return ['ok' => false, 'handle' => '', 'error' => 'Account not found.'];
+    $token = sv_search_token_decrypt((string)$acct['token_enc'], sv_search_salt($pdo, $settings));
+    if ($token === '') return ['ok' => false, 'handle' => '', 'error' => 'Could not decrypt the stored token — re-add the account.'];
+    return sv_verify_search_credentials((string)$acct['instance_host'], $token);
+}
+
 /** Add (or replace) a piggyback account. $host = bare host, e.g. pixelfed.social. */
 function sv_add_search_account(PDO $pdo, array $settings, string $host, string $username, string $token): array {
     sv_ensure_tables($pdo);
     $host  = strtolower(trim(preg_replace('#^https?://#i', '', trim($host)), " /\t\r\n"));
     $token = trim($token);
-    if ($host === '' || !preg_match('/^[a-z0-9.\-]+\.[a-z]{2,}$/', $host)) return [false, 'Enter a valid instance host, e.g. pixelfed.social.'];
-    if ($token === '') return [false, 'Paste the access token from that instance.'];
-    // Verify the token actually authenticates BEFORE storing it, so a bad, expired,
-    // or wrong-instance token fails loudly here instead of silently later. Uses the
-    // standard Mastodon/Pixelfed "who am I" endpoint; a valid token returns the
-    // account object, an invalid one 401s (sv_authed_get → null).
-    $who = sv_authed_get('https://' . $host . '/api/v1/accounts/verify_credentials', $token);
-    if (!is_array($who) || empty($who['id'])) {
-        return [false, 'That token did not authenticate on ' . $host . '. Check it is a valid, unexpired read-scope token for that exact instance.'];
-    }
-    if ($username === '' && !empty($who['username'])) $username = (string)$who['username'];
+    // Verify BEFORE storing so a bad/expired/wrong-instance token fails loudly
+    // here instead of silently at search time. One shared verify path.
+    $vr = sv_verify_search_credentials($host, $token);
+    if (!$vr['ok']) return [false, $vr['error']];
+    if ($username === '' && $vr['handle'] !== '') $username = $vr['handle'];
     $salt = sv_search_salt($pdo, $settings);
     $enc = sv_search_token_encrypt($token, $salt);
     if ($enc === '') return [false, 'Could not encrypt the token.'];
@@ -490,6 +539,56 @@ function sv_active_search_accounts(PDO $pdo): array {
         $r = $pdo->query("SELECT * FROM snap_ap_search_accounts WHERE is_active = 1 ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
         return is_array($r) ? $r : [];
     } catch (Exception $e) { return []; }
+}
+
+/**
+ * Spoke → hub search proxy (Option B / hub-proxied piggyback search).
+ * When THIS install is a spoke with a connected hub, borrow the hub's
+ * authenticated piggyback search instead of storing any OAuth token locally —
+ * the token stays on the hub only. Reuses the canonical spoke→hub transport:
+ * look up the hub node, present its api_key_remote as a Bearer (cf.
+ * core/smackback.php). Returns the hub's mapped result rows, or NULL to signal
+ * the caller to fall back to public unauthenticated search (no hub, not a
+ * spoke, transport error, or the hub has no active accounts).
+ *
+ * @param string $kind  'hashtag' or 'query'
+ */
+function sv_hub_search(PDO $pdo, array $settings, string $kind, string $term, int $limit = 40): ?array {
+    if (($settings['multisite_role'] ?? '') === 'hub') return null; // hub uses its own accounts directly
+    if (!function_exists('curl_init')) return null;
+    $kind = ($kind === 'hashtag') ? 'hashtag' : 'query';
+    $term = trim($term);
+    if ($term === '') return null;
+    try {
+        $hub = $pdo->query("SELECT site_url, api_key_remote FROM snap_multisite_nodes WHERE role = 'hub' LIMIT 1")
+                   ->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) { $hub = null; }
+    if (!$hub || empty($hub['site_url']) || empty($hub['api_key_remote'])) return null;
+
+    $url  = rtrim((string)$hub['site_url'], '/') . '/api.php?route=multisite/search';
+    $body = json_encode(['kind' => $kind, 'term' => $term, 'limit' => max(1, min(80, $limit))]);
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $body,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 12,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $hub['api_key_remote'],
+            'User-Agent: SnapSmack-SMACKVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
+        ],
+    ]);
+    $resp = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    if ($resp === false || $code < 200 || $code >= 300) return null;
+    if (strlen($resp) > 2097152) return null;
+    $doc = json_decode($resp, true);
+    // proxied=false → hub has no accounts / smackverse off → fall back to public.
+    if (!is_array($doc) || empty($doc['ok']) || empty($doc['proxied'])) return null;
+    return (isset($doc['results']) && is_array($doc['results'])) ? $doc['results'] : [];
 }
 
 /** Authenticated GET with a Bearer token, SSRF-guarded (pins the vetted IP). */
@@ -977,6 +1076,34 @@ function sv_notify(PDO $pdo, string $ntype, string $actor_url, string $handle = 
     } catch (Exception $e) { /* table may lag on a fresh install */ }
 }
 
+/**
+ * Diagnostic: record one inbound inbox activity + its outcome. Best-effort and
+ * never throws (a logging failure must not affect inbox handling). Trims the
+ * table to the most recent ~500 rows so it can't grow unbounded. Read it on the
+ * SMACKVERSE Interactions page to see why a federated Like/reply did or didn't
+ * land — the inbox intentionally swallows errors, so without this the tables
+ * just look mysteriously empty. See [[project_smackverse_single_actor]].
+ */
+function sv_inbox_log(PDO $pdo, string $verb, string $actor, ?string $object, string $outcome): void {
+    try {
+        $pdo->prepare(
+            "INSERT INTO snap_ap_inbox_log (verb, actor_url, object_ref, outcome) VALUES (?,?,?,?)"
+        )->execute([
+            substr($verb, 0, 40),
+            substr($actor, 0, 500),
+            $object !== null ? substr($object, 0, 500) : null,
+            substr($outcome, 0, 190),
+        ]);
+        // Cheap bounded ring: prune only occasionally (when we happen to land on
+        // a round id) so we don't run a DELETE on every single inbox POST.
+        if (random_int(1, 25) === 1) {
+            $pdo->exec("DELETE FROM snap_ap_inbox_log WHERE id < (
+                SELECT * FROM (SELECT MAX(id) - 500 FROM snap_ap_inbox_log) AS t
+            )");
+        }
+    } catch (Exception $e) { /* table may lag on a fresh install — never fatal */ }
+}
+
 /** True when the blog follows this actor (accepted) — gates timeline ingest. */
 function sv_is_following(PDO $pdo, string $actor_url): bool {
     if ($actor_url === '') return false;
@@ -1123,15 +1250,27 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
     if ($type === 'Like') {
         // A remote actor liked one of our posts → federated like (combined tally).
         $obj = is_array($activity['object'] ?? null) ? ($activity['object']['id'] ?? '') : ($activity['object'] ?? '');
+        $obj_s = is_string($obj) ? $obj : '';
         $t = is_string($obj) ? sv_resolve_target($obj) : null;
         if ($t && $t['type'] !== 'comment') {
+            $inserted = false;
             try {
-                $pdo->prepare("INSERT IGNORE INTO snap_ap_likes (target_type, target_id, actor_url) VALUES (?, ?, ?)")
-                    ->execute([$t['type'], (int)$t['id'], $actor_id]);
+                $st = $pdo->prepare("INSERT IGNORE INTO snap_ap_likes (target_type, target_id, actor_url) VALUES (?, ?, ?)");
+                $st->execute([$t['type'], (int)$t['id'], $actor_id]);
+                $inserted = $st->rowCount() > 0;
             } catch (Exception $e) { /* table may lag on a fresh install */ }
             $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
             sv_cache_actor($pdo, $actor_doc);
             sv_notify($pdo, 'like', $actor_id, $handle, (string)$obj, (string)$obj, null);
+            sv_inbox_log($pdo, 'Like', $actor_id, $obj_s,
+                'resolved ' . $t['type'] . ':' . $t['id'] . ($inserted ? ' — recorded' : ' — already had it'));
+        } else {
+            // The most likely silent-drop point: the liked object URL didn't map
+            // to a local post. Log it with the exact object so we can see what
+            // Pixelfed actually sent vs. what sv_resolve_target() expects.
+            sv_inbox_log($pdo, 'Like', $actor_id, $obj_s,
+                $t === null ? 'UNRESOLVED target — object URL did not map to a local post'
+                            : 'skipped: like target is a comment');
         }
         return 202;
     }

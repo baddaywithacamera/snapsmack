@@ -229,27 +229,6 @@ include 'core/sidebar.php';
         </div>
         <?php endif; ?>
 
-        <!-- STEP-UP AUTH — one entry covers every push on this page -->
-        <div class="box">
-            <h3>CONFIRM IT'S YOU</h3>
-            <p class="dim" style="font-size:0.85rem; margin-bottom:14px;">
-                Pushing settings to your fleet needs your password — and your 2FA code if you have it turned on.
-                One entry here covers every push button on this page.
-            </p>
-            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
-                <div>
-                    <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">PASSWORD</label>
-                    <input type="password" name="reauth_password" autocomplete="off"
-                           style="padding:8px 10px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
-                </div>
-                <div>
-                    <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">2FA CODE (if enabled)</label>
-                    <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off"
-                           style="padding:8px 10px; width:120px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
-                </div>
-            </div>
-        </div>
-
         <?php
         // Helper: render push results for a group
         $render_result = function(string $group) use ($push_results): void {
@@ -481,6 +460,28 @@ include 'core/sidebar.php';
                         onclick="return confirm('Reset push registration on all spokes?')">
                     FORCE RE-REGISTER PUSH
                 </button>
+            </div>
+        </div>
+
+        <!-- STEP-UP AUTH — one entry covers every push on this page. Sits right
+             above PUSH IT ALL so there's no fill-at-top-then-scroll-to-push. -->
+        <div class="box">
+            <h3>CONFIRM IT'S YOU</h3>
+            <p class="dim" style="font-size:0.85rem; margin-bottom:14px;">
+                Pushing settings to your fleet needs your password — and your 2FA code if you have it turned on.
+                One entry here covers every push button on this page. Fill it in, then hit PUSH IT ALL below (or any group's PUSH button above).
+            </p>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+                <div>
+                    <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">PASSWORD</label>
+                    <input type="password" name="reauth_password" autocomplete="off"
+                           style="padding:8px 10px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                </div>
+                <div>
+                    <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">2FA CODE (if enabled)</label>
+                    <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off"
+                           style="padding:8px 10px; width:120px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                </div>
             </div>
         </div>
 

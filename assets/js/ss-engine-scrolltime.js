@@ -81,10 +81,26 @@
         }
     }
 
+    // Periodic flush: report incrementally during a long read instead of only
+    // on page-leave. A 20-minute uninterrupted read used to hinge entirely on a
+    // clean unload beacon firing — and sendBeacon on pagehide/beforeunload is
+    // unreliable (tab crash, browser drop, OS kill), so the whole read could be
+    // lost. Now we report every time engaged time grows by 15s. The server keeps
+    // the MAX, so repeated reports converge on the true total, never double-count.
+    var lastSent = 0;
+    setInterval(function () {
+        tick();
+        if (engaged - lastSent >= 15000) {
+            lastSent = engaged;
+            send();
+        }
+    }, 15000);
+
     document.addEventListener('visibilitychange', function () {
         tick();
         if (document.visibilityState === 'hidden') {
             send();
+            lastSent = engaged;
         } else {
             lastTick = Date.now();
         }

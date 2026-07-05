@@ -247,6 +247,50 @@ if ($resource === 'peers' && $sub_action === 'list' && $method === 'GET') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/search  (hub-proxied piggyback search — Option B)
+// Spoke-initiated. A spoke borrows the hub's AUTHENTICATED Pixelfed/Mastodon
+// search so the OAuth token never leaves the hub — one place to add/test/rotate,
+// no secret fan-out to spoke DBs. Uses api_key_remote auth (spoke→hub), exactly
+// like multisite/ping above; sits ABOVE the api_key_local block on purpose.
+// Body: {"kind":"hashtag"|"query","term":"...","limit":40}
+// Returns {ok, proxied, results}. proxied=false → hub has no usable accounts,
+// so the spoke falls back to its own public unauthenticated search.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'search' && $method === 'POST') {
+    $skey = '';
+    if (preg_match('/^Bearer\s+(\S+)$/i', ms_get_auth_header(), $psm)) $skey = $psm[1];
+    if (!$skey) ms_err('Authorization header required', 401);
+
+    $sstmt = $pdo->prepare(
+        "SELECT id FROM snap_multisite_nodes WHERE api_key_remote = ? AND role = 'spoke' LIMIT 1"
+    );
+    $sstmt->execute([$skey]);
+    if (!$sstmt->fetch(PDO::FETCH_ASSOC)) ms_err('Invalid key or spoke not registered', 401);
+
+    if (($settings['multisite_role'] ?? '') !== 'hub') ms_err('This node is not a hub', 403);
+
+    $body  = json_decode(file_get_contents('php://input') ?: '', true);
+    $kind  = (is_array($body) && ($body['kind'] ?? '') === 'hashtag') ? 'hashtag' : 'query';
+    $term  = is_array($body) ? trim((string)($body['term'] ?? '')) : '';
+    $limit = is_array($body) ? (int)($body['limit'] ?? 40) : 40;
+    if ($term === '') ms_err('term required', 400);
+
+    if (!function_exists('sv_active_search_accounts')) { @require_once __DIR__ . '/smackverse.php'; }
+
+    // No usable accounts (or SMACKVERSE off) → tell the spoke to fall back to public.
+    if (($settings['smackverse_enabled'] ?? '0') !== '1'
+        || !function_exists('sv_active_search_accounts')
+        || !sv_active_search_accounts($pdo)) {
+        ms_ok(['proxied' => false, 'results' => []]);
+    }
+
+    $results = ($kind === 'hashtag')
+        ? sv_authed_hashtag_timeline($pdo, $settings, $term, $limit)
+        : sv_authed_search($pdo, $settings, $term);
+    ms_ok(['proxied' => true, 'results' => is_array($results) ? $results : []]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // BEARER TOKEN AUTH — all endpoints below require this
 // ─────────────────────────────────────────────────────────────────────────────
 $api_key = '';

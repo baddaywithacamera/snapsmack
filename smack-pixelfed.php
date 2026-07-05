@@ -171,8 +171,13 @@ if (isset($_GET['ajax'])) {
             // ACCOUNT results AND full-text PHOTO results (mode 'results').
             // Explicit #tags and handles skip this; no account = old hashtag path.
             if ($target !== '' && $target[0] !== '#' && !$looks_handle
-                && function_exists('sv_authed_search') && sv_pick_search_account($pdo)) {
-                $sr = sv_authed_search($pdo, $sv_settings, $target, '');
+                && function_exists('sv_authed_search')) {
+                // Local account → search directly. Spoke with no local account →
+                // borrow the hub's authenticated search (Option B): the OAuth token
+                // stays on the hub, this spoke just relays the query and results.
+                $sr = sv_pick_search_account($pdo)
+                    ? sv_authed_search($pdo, $sv_settings, $target, '')
+                    : (function_exists('sv_hub_search') ? sv_hub_search($pdo, $sv_settings, 'query', $target, 40) : null);
                 if (is_array($sr)) {
                     $sr_accts = [];
                     foreach (($sr['accounts'] ?? []) as $ac) { if (is_array($ac)) $sr_accts[] = sv_map_account_card($ac); }
@@ -199,20 +204,27 @@ if (isset($_GET['ajax'])) {
                 // Piggyback account first: Pixelfed gates the tag timeline behind
                 // auth, so the public path returns nothing. An authenticated pull
                 // on the account's own instance is what actually enriches search.
+                $authed = null;
                 if (function_exists('sv_authed_hashtag_timeline') && sv_pick_search_account($pdo)) {
                     @set_time_limit(30);
                     $authed = sv_authed_hashtag_timeline($pdo, $sv_settings, $tag, 40);
-                    if (is_array($authed) && $authed) {
-                        echo json_encode([
-                            'ok'    => true,
-                            'mode'  => 'feed',
-                            'title' => '#' . $tag,
-                            'items' => $authed,
-                        ], JSON_UNESCAPED_SLASHES);
-                        exit;
-                    }
-                    // authed returned nothing → fall through to the public path
                 }
+                // Spoke with no local account → borrow the hub's authenticated
+                // hashtag search (Option B). No-op on the hub / standalone (null).
+                if ((!is_array($authed) || !$authed) && function_exists('sv_hub_search')) {
+                    @set_time_limit(30);
+                    $authed = sv_hub_search($pdo, $sv_settings, 'hashtag', $tag, 40);
+                }
+                if (is_array($authed) && $authed) {
+                    echo json_encode([
+                        'ok'    => true,
+                        'mode'  => 'feed',
+                        'title' => '#' . $tag,
+                        'items' => $authed,
+                    ], JSON_UNESCAPED_SLASHES);
+                    exit;
+                }
+                // nothing authed → fall through to the public path
 
                 $host = trim((string)($sv_settings['smackverse_home_instance'] ?? ''));
                 if ($host === '') {
