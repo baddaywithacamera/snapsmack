@@ -131,7 +131,7 @@ def new_profile_template() -> Dict:
         "schedule_day":          "monday",       # weekday for weekly schedule
         "schedule_time":         "02:00",        # HH:MM 24-hour local time
         "last_scheduled_run":    "",
-        "cloud_provider":        "none",        # "google_drive" | "onedrive" | "none"
+        "cloud_provider":        "none",        # "google_drive" | "none"
         "cloud_credentials_file":"",
         "cloud_folder_id":       "",
         "backup_dir":            "",
