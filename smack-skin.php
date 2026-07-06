@@ -1755,6 +1755,54 @@ if (!empty($google_families)) {
                 </div>
             <?php endforeach; ?>
         </div>
+
+        <?php
+        // ── Cleanup: remove installed skins the mode filter hides ───────────────
+        // The gallery above hides skins that don't fit this site's mode (carousel
+        // vs photoblog), plus mobile-only and development skins — which ALSO hid
+        // their REMOVE button, so an installed skin you can't use here was stuck on
+        // disk with no way to delete it through the CMS. List every such on-disk
+        // skin so it can be removed. Active skin + the auto-assigned mobile skin +
+        // protected skins are never listed.
+        $cleanup_skins = [];
+        foreach ($local_skins as $slug => $skin) {
+            if ($slug === $current_db_active) continue;
+            if (defined('SNAPSMACK_MOBILE_SKIN') && SNAPSMACK_MOBILE_SKIN !== '' && $slug === SNAPSMACK_MOBILE_SKIN) continue;
+            if (in_array($slug, $protected_skins, true)) continue;
+            $carousel = !empty($skin['features']['carousel']);
+            $hidden = !empty($skin['features']['mobile_only'])
+                   || (($skin['status'] ?? 'stable') === 'development')
+                   || ($carousel !== $is_carousel);
+            if ($hidden) $cleanup_skins[$slug] = $skin;
+        }
+        ?>
+        <?php if (!empty($cleanup_skins)): ?>
+        <div style="margin-top:28px; padding-top:18px; border-top:1px solid var(--border,#333);">
+            <h3 style="margin:0 0 6px; font-size:0.95rem;">INSTALLED, BUT NOT USABLE IN THIS MODE</h3>
+            <p style="margin:0 0 14px; font-size:0.85rem; color:var(--text-muted,#888);">
+                These skins are on disk but don't fit this site's current mode (or are mobile-only / development),
+                so they're hidden from the gallery above. Remove any you don't need — an idle skin is a live
+                <code>manifest.php</code> sitting on disk.
+            </p>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+            <?php foreach ($cleanup_skins as $slug => $skin): ?>
+                <div style="display:flex; align-items:center; gap:12px; padding:8px 12px; border:1px solid var(--border,#2a2a2a); border-radius:6px;">
+                    <span style="font-weight:600; min-width:160px;"><?php echo htmlspecialchars($skin['name'] ?? $slug); ?></span>
+                    <span style="color:var(--text-muted,#888); font-size:0.82rem; flex:1;"><?php echo htmlspecialchars($slug); ?> &middot; v<?php echo htmlspecialchars($skin['version'] ?? '?'); ?></span>
+                    <form method="POST" style="margin:0;">
+                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                        <input type="hidden" name="gallery_action" value="remove">
+                        <input type="hidden" name="skin_slug" value="<?php echo htmlspecialchars($slug); ?>">
+                        <button type="submit" class="gallery-btn remove"
+                                onclick="return confirm('Remove skin \'<?php echo htmlspecialchars($skin['name'] ?? $slug); ?>\'? This deletes the skin directory.');">
+                            REMOVE
+                        </button>
+                    </form>
+                </div>
+            <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
     <?php endif; ?>
 
 <?php endif; ?>
