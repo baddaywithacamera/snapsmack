@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.383 — "Dragon Quest" (2026-07-06)
+
+- (Rolling entry — Sean amends before deploy.) Carries everything staged in the
+  working tree after 0.7.382 shipped.
+
 ## 0.7.382 — "It's About Time" (2026-07-06)
 
 - **Fixed: the Multisite hub page fatally 500'd right after 0.7.381 (`Data truncated for column 'last_backup_status'`).** SUYB / `suyb-complete.php` report backup status in a richer vocabulary — `clean` / `partial` / `failed`, defaulting to `clean` — but `snap_multisite_nodes.last_backup_status` is `enum('ok','failed','unknown')`. Once 0.7.381's fixed backup-complete ping actually started landing a status, a spoke's reported `clean` hit an enum that doesn't contain it → truncation → fatal under strict SQL mode → the whole Multisite Management page (and the hub dashboard) went down. The hub now **normalizes** any reported status to the enum at every read/write boundary (`clean`/`partial` → `ok`, `failed` → `failed`, anything unrecognised → `unknown`), so no reported value can ever truncate that column or fatal the page again. Code-only — no schema change, no migration.
