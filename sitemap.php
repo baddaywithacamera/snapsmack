@@ -48,10 +48,19 @@ $index_file = $cache_dir . 'index.xml';
 /** XML-wrap a list of [loc, lastmod] rows into a <urlset> string. */
 function ss_sitemap_urlset(array $urls): string {
     $out  = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-    $out .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+    $out .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"' . "\n";
+    $out .= '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">' . "\n";
     foreach ($urls as $u) {
         $out .= "  <url>\n    <loc>" . htmlspecialchars($u[0], ENT_XML1) . "</loc>\n";
         if (!empty($u[1])) $out .= '    <lastmod>' . htmlspecialchars($u[1], ENT_XML1) . "</lastmod>\n";
+        // Image entry (this is a photo platform): a page carrying an image gets an
+        // <image:image> with the full-size loc, plus title/caption when present.
+        if (!empty($u[2])) {
+            $out .= "    <image:image>\n      <image:loc>" . htmlspecialchars($u[2], ENT_XML1) . "</image:loc>\n";
+            if (!empty($u[3])) $out .= '      <image:title>'   . htmlspecialchars($u[3], ENT_XML1) . "</image:title>\n";
+            if (!empty($u[4])) $out .= '      <image:caption>' . htmlspecialchars($u[4], ENT_XML1) . "</image:caption>\n";
+            $out .= "    </image:image>\n";
+        }
         $out .= "  </url>\n";
     }
     return $out . "</urlset>\n";
@@ -76,18 +85,31 @@ function ss_sitemap_urls(PDO $pdo, string $site_url, bool $is_carousel, int $cap
     $lim  = ' LIMIT ' . ($cap > 0 ? (int)$cap : 200000);   // hard ceiling even when "unlimited"
     try {
         if ($is_carousel) {
-            $st = $pdo->prepare("SELECT slug, updated_at FROM snap_posts WHERE status='published' AND created_at <= ? ORDER BY updated_at DESC{$lim}");
+            // Post + its cover image, so each post URL carries an <image:image>.
+            $st = $pdo->prepare(
+                "SELECT p.slug, p.updated_at, p.title AS post_title, i.img_file, i.img_title
+                   FROM snap_posts p
+                   LEFT JOIN snap_post_images pi ON pi.post_id = p.id AND pi.is_cover = 1
+                   LEFT JOIN snap_images i       ON i.id = pi.image_id
+                  WHERE p.status='published' AND p.created_at <= ?
+                  ORDER BY p.updated_at DESC{$lim}");
             $st->execute([$now]);
             foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
                 if (($r['slug'] ?? '') === '') continue;
-                $urls[] = [$site_url . ltrim((string)$r['slug'], '/'), substr((string)$r['updated_at'], 0, 10)];
+                $img   = ($r['img_file'] ?? '') !== '' ? $site_url . ltrim((string)$r['img_file'], '/') : '';
+                $title = (string)($r['post_title'] ?? '') ?: (string)($r['img_title'] ?? '');
+                $urls[] = [$site_url . ltrim((string)$r['slug'], '/'), substr((string)$r['updated_at'], 0, 10),
+                           $img, mb_substr($title, 0, 200), ''];
             }
         } else {
-            $st = $pdo->prepare("SELECT img_slug, img_date FROM snap_images WHERE img_status='published' AND img_date <= ? ORDER BY img_date DESC{$lim}");
+            $st = $pdo->prepare("SELECT img_slug, img_date, img_file, img_title, img_description FROM snap_images WHERE img_status='published' AND img_date <= ? ORDER BY img_date DESC{$lim}");
             $st->execute([$now]);
             foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
                 if (($r['img_slug'] ?? '') === '') continue;
-                $urls[] = [$site_url . ltrim((string)$r['img_slug'], '/'), substr((string)$r['img_date'], 0, 10)];
+                $img = ($r['img_file'] ?? '') !== '' ? $site_url . ltrim((string)$r['img_file'], '/') : '';
+                $urls[] = [$site_url . ltrim((string)$r['img_slug'], '/'), substr((string)$r['img_date'], 0, 10),
+                           $img, mb_substr((string)($r['img_title'] ?? ''), 0, 200),
+                           mb_substr((string)($r['img_description'] ?? ''), 0, 1000)];
             }
         }
     } catch (PDOException $e) {

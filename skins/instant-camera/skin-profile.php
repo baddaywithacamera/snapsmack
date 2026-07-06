@@ -384,14 +384,13 @@ $_show_static    = (($_ic_bgmode === 'static'   || $_ic_cycle) && $_tg_treat_img
         <?php endif; ?>
 
         <ul class="tg-sticky-nav-links">
-            <li><a href="<?php echo BASE_URL; ?>" class="<?php echo $_tg_on_home ? 'active' : ''; ?>">Home</a></li>
-            <?php if (($settings['blogroll_enabled'] ?? '1') == '1'): ?>
-            <li><a href="<?php echo BASE_URL; ?>blogroll.php" class="<?php echo $_tg_on_blogroll ? 'active' : ''; ?>">Blogroll</a></li>
-            <?php endif; ?>
-            <?php foreach ($nav_pages as $nav_page): ?>
-            <li><a href="<?php echo BASE_URL . 'page.php?slug=' . htmlspecialchars($nav_page['slug']); ?>"
-                   class="<?php echo ($nav_page['slug'] === $_tg_active_slug) ? 'active' : ''; ?>"><?php echo htmlspecialchars($nav_page['title']); ?></a></li>
-            <?php endforeach; ?>
+            <?php
+            // Nav order is driven by the Menu Manager (nav_menu_json) via the
+            // shared partial, falling back to Home + Blogroll + pages when no
+            // menu has been saved. $_tg_on_home / $_tg_on_blogroll /
+            // $_tg_active_slug / $nav_pages / $settings / $pdo are in scope.
+            include dirname(__DIR__, 2) . '/core/gram-nav-links.php';
+            ?>
         </ul>
     </div>
 </nav>

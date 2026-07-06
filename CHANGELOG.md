@@ -12,6 +12,10 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.382 — "It's About Time" (2026-07-06)
+
+- **Fixed: the Multisite hub page fatally 500'd right after 0.7.381 (`Data truncated for column 'last_backup_status'`).** SUYB / `suyb-complete.php` report backup status in a richer vocabulary — `clean` / `partial` / `failed`, defaulting to `clean` — but `snap_multisite_nodes.last_backup_status` is `enum('ok','failed','unknown')`. Once 0.7.381's fixed backup-complete ping actually started landing a status, a spoke's reported `clean` hit an enum that doesn't contain it → truncation → fatal under strict SQL mode → the whole Multisite Management page (and the hub dashboard) went down. The hub now **normalizes** any reported status to the enum at every read/write boundary (`clean`/`partial` → `ok`, `failed` → `failed`, anything unrecognised → `unknown`), so no reported value can ever truncate that column or fatal the page again. Code-only — no schema change, no migration.
+
 ## 0.7.381 — "Putting Your Hoof Down" (2026-07-06)
 
 - **Multisite: new FLEET SKIN STATUS board.** Multisite Management now shows, per active spoke, its currently-active skin and how each installed skin compares to the registry — `UP TO DATE` / `UPDATE READY` / `NOT IN REGISTRY` badges — with a one-click `UPDATE` per skin and a fleet-wide `UPDATE ALL` that pushes a skin only to the spokes actually behind on it (already-current spokes are skipped, not re-pushed). It reuses the existing signed skin-reinstall path, so a skin a spoke doesn't run is never forced onto it, and a spoke that hasn't reported yet shows `not reported`. The heartbeat now also reports each spoke's active skin (new `active_skin` column) so the board can flag which installed skin is live.

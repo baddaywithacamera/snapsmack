@@ -32,6 +32,31 @@ $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackback
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `update_track` VARCHAR(10) NOT NULL DEFAULT 'stable'");
 // Defensive add for install mode column.
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `site_mode` VARCHAR(20) NOT NULL DEFAULT 'photoblog'");
+// Backup-freshness cache — written by suyb-complete.php + the spoke heartbeat,
+// read by the dashboard and the Fleet board (SELECT at the node query below
+// references last_backup_at directly). These are in canonical but had NO
+// defensive guard here, so a hub whose schema hadn't synced them (e.g. right
+// after the 0.7.381 Fleet-board deploy) fataled the whole page with a
+// missing-column error → HTTP 500. Guarded now so it self-heals on load.
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `last_backup_at` datetime DEFAULT NULL");
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `last_backup_size` bigint unsigned DEFAULT NULL");
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `last_backup_status` enum('ok','failed','unknown') DEFAULT 'unknown'");
+
+// Coerce any reported backup status into enum('ok','failed','unknown') before it
+// touches the column. SUYB / suyb-complete.php speak a richer vocabulary —
+// 'clean'/'partial'/'failed', default 'clean' — but the node column is a 3-value
+// enum, so writing a spoke's reported 'clean' TRUNCATES and fatals the whole page
+// under strict SQL mode. (This is the hub-500 that surfaced after 0.7.381, once
+// the fixed backup-complete ping actually started landing a status.) Map, don't
+// trust: clean/partial → ok, failed → failed, anything else → unknown.
+if (!function_exists('ms_norm_backup_status')) {
+    function ms_norm_backup_status($s): string {
+        $s = strtolower(trim((string)$s));
+        if ($s === 'failed') return 'failed';
+        if ($s === 'ok' || $s === 'clean' || $s === 'partial') return 'ok';
+        return 'unknown';
+    }
+}
 
 // --- SSRF GUARD ---
 // Returns true if the URL resolves to a private/loopback/reserved address.
@@ -243,7 +268,7 @@ if (isset($_POST['ping']) && isset($_POST['ping_id'])) {
                     $hb['last_backup_at']     ?? null,
                     $hb['last_backup_size']   ?? null,
                     $hb['last_backup_dest']   ?? null,
-                    $hb['last_backup_status'] ?? 'unknown',
+                    ms_norm_backup_status($hb['last_backup_status'] ?? 'unknown'),
                     $hb['disk_usage_bytes']   ?? null,
                     $hb['site_tagline']       ?? null,
                     $hb['update_track']       ?? 'stable',
@@ -704,7 +729,7 @@ $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts, UN
 require_once __DIR__ . '/core/stats-logger.php';
 $hub_post_count      = snapsmack_content_counts($pdo)['posts'];
 $hub_pending         = (int)$pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
-$hub_backup_status   = $settings['last_backup_status']  ?? 'unknown';
+$hub_backup_status   = ms_norm_backup_status($settings['last_backup_status']  ?? 'unknown');
 $hub_backup_ts       = !empty($settings['last_backup_at']) ? (int)strtotime((string)$settings['last_backup_at']) : 0;
 $hub_site_name       = $settings['site_name']            ?? 'Hub';
 $hub_site_url        = rtrim($settings['site_url']       ?? '', '/');
@@ -769,7 +794,7 @@ if ($multisite_role === 'hub') {
                     $hb['last_backup_at']     ?? null,
                     $hb['last_backup_size']   ?? null,
                     $hb['last_backup_dest']   ?? null,
-                    $hb['last_backup_status'] ?? 'unknown',
+                    ms_norm_backup_status($hb['last_backup_status'] ?? 'unknown'),
                     $hb['disk_usage_bytes']   ?? null,
                     $hb['site_tagline']       ?? null,
                     $hb['update_track']       ?? 'stable',
@@ -789,7 +814,7 @@ if ($multisite_role === 'hub') {
                 $n['post_count']          = $hb['post_count']         ?? $n['post_count'];
                 $n['image_count']         = $hb['image_count']        ?? $n['image_count'];
                 $n['pending_comments']    = $hb['pending_comments']   ?? $n['pending_comments'];
-                $n['last_backup_status']  = $hb['last_backup_status'] ?? $n['last_backup_status'];
+                $n['last_backup_status']  = ms_norm_backup_status($hb['last_backup_status'] ?? ($n['last_backup_status'] ?? 'unknown'));
                 $n['update_track']        = $hb['update_track']       ?? 'stable';
                 // Detect a maintenance flip (old $n value vs the fresh heartbeat)
                 // BEFORE overwriting it — a change means peers' blogroll snapshots

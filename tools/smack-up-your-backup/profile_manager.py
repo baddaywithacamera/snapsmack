@@ -151,7 +151,7 @@ def new_profile_template() -> Dict:
         "cloud_folder_id":       "",
         "backup_dir":            "",
         "last_backup_date":      "",
-        "pacing_delay":          2,
+        "pacing_delay":          0,              # Full Send — FTP download doesn't strain a server; throttle per-profile only for fragile shared hosts
         "batch_size":            0,
     }
 

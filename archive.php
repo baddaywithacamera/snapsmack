@@ -68,6 +68,17 @@ try {
     // Overlay skin-scoped settings so each skin retains its own customizations
     snapsmack_apply_skin_settings($settings, $active_skin);
 
+    // --- ARCHIVE DISABLED? ---
+    // Archive is a disable-able feature: archive_layout === 'none' turns it off
+    // entirely (no nav link — see core/header.php + core/gram-nav-links.php — and
+    // no entry in the Menu Manager). Belt-and-suspenders: also make the page
+    // itself unreachable, so a stale/bookmarked archive.php URL bounces home
+    // rather than rendering an empty archive.
+    if (($settings['archive_layout'] ?? 'square') === 'none') {
+        header('Location: ' . BASE_URL, true, 302);
+        exit;
+    }
+
     // --- ARCHIVE LAYOUT MODE ---
     // Owner sets the default in Archive Appearance. Visitor can override via ?layout=
     // URL param if the owner has enabled multiple modes. Preference persists via JS/localStorage.

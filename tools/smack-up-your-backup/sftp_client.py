@@ -368,6 +368,23 @@ class SFTPClient:
 
             except Exception as e:
                 last_error = str(e)
+                # A "no such file" for a path that exists on the server almost
+                # always means the profile's Remote directory is wrong. Unlike
+                # FTP (whose login is usually chrooted to the site root), SFTP
+                # paths are absolute from the filesystem root — so Remote
+                # directory must be the FULL server path, not '/'. Rewrite the
+                # opaque errno into something the user can act on.
+                if getattr(e, "errno", None) == 2 or "No such file" in last_error:
+                    last_error = (
+                        f"Remote file not found: {remote_full}. Check the profile's "
+                        f"Remote directory — SFTP paths are absolute (not chrooted like "
+                        f"FTP), so it must be the full server path "
+                        f"(e.g. /var/www/sites/yourblog), not '/'."
+                    )
+                    # No point retrying a path that doesn't exist.
+                    if on_progress:
+                        on_progress(base, 0, remote_size, False)
+                    return False, last_error
                 if attempt == 0:
                     time.sleep(5)
                     try:
