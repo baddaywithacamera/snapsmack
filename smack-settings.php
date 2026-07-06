@@ -205,7 +205,12 @@ if (isset($_POST['save_settings'])) {
     // --- REGENERATE ROBOTS.TXT ---
     // Build a robots.txt that reflects the AI training policy.
     $ai_policy = $_POST['settings']['ai_training_policy'] ?? 'no_opinion';
-    $ai_bots   = ['GPTBot', 'ChatGPT-User', 'CCBot', 'Google-Extended', 'anthropic-ai', 'ClaudeBot', 'Bytespider'];
+    // AI TRAINING crawlers — governed by the policy toggle below.
+    $ai_bots   = ['GPTBot', 'ChatGPT-User', 'CCBot', 'Google-Extended', 'anthropic-ai', 'ClaudeBot', 'Bytespider', 'Applebot-Extended', 'Amazonbot'];
+    // SEARCH / answer-engine crawlers — these send citations and traffic, so they
+    // stay ALLOWED even when AI training is disallowed (opting out of training
+    // shouldn't cost you search visibility).
+    $search_bots = ['OAI-SearchBot', 'PerplexityBot'];
 
     $robots  = "# SNAPSMACK — auto-generated robots.txt\n";
     $robots .= "# Regenerated each time Global Configuration is saved.\n\n";
@@ -226,7 +231,14 @@ if (isset($_POST['save_settings'])) {
             $robots .= "Disallow: /\n\n";
         }
     }
-    // 'no_opinion' = no AI-specific directives at all.
+    // 'no_opinion' = no AI-specific directives for the training bots.
+
+    // Search / answer-engine crawlers stay allowed regardless of the training
+    // policy — blocking them would cost citations and referral traffic.
+    foreach ($search_bots as $bot) {
+        $robots .= "User-agent: {$bot}\n";
+        $robots .= "Allow: /\n\n";
+    }
 
     $robots .= "Sitemap: " . ($_POST['settings']['site_url'] ?? 'https://example.com/') . "sitemap.xml\n";
 

@@ -179,6 +179,16 @@ class SnapSmackSession:
             data["destination"] = destination
         resp = self.session.post(url, data=data, timeout=30)
         resp.raise_for_status()
+        # A 2xx with a non-JSON body almost always means we were bounced to the
+        # HTML login page (session not authenticated). Surface that plainly
+        # rather than letting json() raise "Expecting value: line 1 column 1".
+        ctype = resp.headers.get("Content-Type", "")
+        if "application/json" not in ctype:
+            raise RuntimeError(
+                "backup-complete endpoint returned a non-JSON response "
+                f"(Content-Type: {ctype or 'none'}) — likely not authenticated "
+                "or suyb-complete.php is not deployed on this site."
+            )
         body = resp.json()
         if not body.get("ok"):
             raise RuntimeError(body.get("error", "backup-complete rejected"))
@@ -587,7 +597,7 @@ class BackupEngine:
             self._progress("stage3", "Connecting…", 0.18)
             ftp = transport.make_client(
                 self.profile,
-                transfer_delay = float(self.profile.get("pacing_delay", 2)),
+                transfer_delay = float(self.profile.get("pacing_delay") or 0),
                 batch_size     = int(self.profile.get("batch_size", 0)),
             )
             try:
@@ -918,12 +928,13 @@ class BackupEngine:
             status_str = "clean" if verify_ok else "partial"
             size_b = os.path.getsize(zip_path) if (zip_path and os.path.exists(zip_path)) else 0
             dest = (self.profile.get("cloud_provider", "") or "cloud") if (cloud and cloud_id) else "local"
-            reporter = SnapSmackSession(self.profile["site_url"], login_slug=self.profile.get("login_slug", "snap-in"))
-            reporter.login(
-                self.profile.get("snap_admin_user", ""),
-                self.profile.get("snap_admin_pass", ""),
-            )
-            reporter.report_backup_complete(status_str, size_b, dest)
+            # Reuse the session that already authenticated for the whole backup
+            # (it carries the scoped 'suyb' Bearer key). Spinning up a fresh
+            # SnapSmackSession + re-login here was the bug: the fresh session had
+            # no api_key, and if the re-login didn't stick the POST hit the
+            # endpoint unauthenticated, got redirected to a 200 HTML login page,
+            # and resp.json() blew up with "Expecting value: line 1 column 1".
+            http.report_backup_complete(status_str, size_b, dest)
             self._log(f"Reported backup status to site: {status_str}.")
         except Exception as e:
             self._log(f"Backup-complete ping failed (non-fatal): {e}")

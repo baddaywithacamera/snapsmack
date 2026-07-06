@@ -63,8 +63,8 @@ return [
         'smack-keyboard',
         'smack-community',
         'smack-archive-toggle',
-        'smack-chaplin-film',
-        'smack-chaplin-overlay',
+        'smack-film',            // moved to /assets/js as a general-purpose engine (was smack-chaplin-film)
+        'smack-cinema-overlay',  // moved to /assets/js as a general-purpose engine (was smack-chaplin-overlay)
     ],
 
     'options' => [

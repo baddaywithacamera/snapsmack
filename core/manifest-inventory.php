@@ -922,14 +922,18 @@ return [
             'path'         => 'skins/alfred/assets/js/alfred-nav.js',
             'has_settings' => false,
         ],
-        'smack-chaplin-film' => [
-            'label'        => 'Chaplin Film Effects Engine (scratches, flicker, grain)',
-            'path'         => 'skins/chaplin/assets/js/ss-engine-chaplin-film.js',
+        // General-purpose film engines — live in the CMS library (/assets/js),
+        // not a skin. Originated in Chaplin; any skin may require these handles.
+        // (Layer 2 will parameterise the DOM hooks so a skin needn't reproduce
+        // Chaplin's markup — until then they target #chap-film-bg / .chap-* etc.)
+        'smack-film' => [
+            'label'        => 'Film Effects Engine (scratches, flicker, grain)',
+            'path'         => 'assets/js/ss-engine-film.js',
             'has_settings' => false,
         ],
-        'smack-chaplin-overlay' => [
-            'label'        => 'Chaplin Overlay Controller + Film Init',
-            'path'         => 'skins/chaplin/assets/js/ss-engine-chaplin-overlay.js',
+        'smack-cinema-overlay' => [
+            'label'        => 'Cinema Overlay Controller + Film Init',
+            'path'         => 'assets/js/ss-engine-cinema-overlay.js',
             'has_settings' => false,
         ],
         'smack-lazyload' => [

@@ -141,14 +141,14 @@ if ($_tg_has_treat) {
         <?php endif; ?>
 
         <ul class="tg-sticky-nav-links">
-            <li><a href="<?php echo BASE_URL; ?>" class="<?php echo $_tg_on_home ? 'active' : ''; ?>">Home</a></li>
-            <?php if (($settings['blogroll_enabled'] ?? '1') == '1'): ?>
-            <li><a href="<?php echo BASE_URL; ?>blogroll.php" class="<?php echo $_tg_on_blogroll ? 'active' : ''; ?>">Blogroll</a></li>
-            <?php endif; ?>
-            <?php foreach ($nav_pages as $nav_page): ?>
-            <li><a href="<?php echo BASE_URL . 'page.php?slug=' . htmlspecialchars($nav_page['slug']); ?>"
-                   class="<?php echo ($nav_page['slug'] === $_tg_active_slug) ? 'active' : ''; ?>"><?php echo htmlspecialchars($nav_page['title']); ?></a></li>
-            <?php endforeach; ?>
+            <?php
+            // Nav content is driven by the Menu Manager (nav_menu_json) via the
+            // shared partial — one source of truth for every GRAMOFSMACK skin's
+            // nav. Falls back to Home + Blogroll + pages when no menu is saved.
+            // Active-state is derived inside the partial, so the skin namespace
+            // ($_tg_/$_au_/$_pa_) doesn't matter.
+            include dirname(__DIR__, 2) . '/core/gram-nav-links.php';
+            ?>
         </ul>
     </div>
 </nav>

@@ -46,10 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
         // for legacy reads but pinned to 'thumbs,masonry' regardless of input.
         $_POST['settings']['archive_layouts_available'] = 'thumbs,masonry';
 
-        // Normalise default layout to thumbs|masonry.
+        // Normalise default layout to thumbs|masonry, or 'none' (archive
+        // disabled). 'none' MUST survive: the UI offers a Disabled option and
+        // core (header.php, gram-nav-links.php, archive.php) treats 'none' as
+        // the off switch — before this it was forced back to 'thumbs', so the
+        // Disabled choice silently did nothing.
         $_def = $_POST['settings']['archive_layout'] ?? 'thumbs';
         if (in_array($_def, ['square', 'cropped', 'croppedwithcalendar'], true)) $_def = 'thumbs';
-        if (!in_array($_def, ['thumbs', 'masonry'], true)) $_def = 'thumbs';
+        if (!in_array($_def, ['thumbs', 'masonry', 'none'], true)) $_def = 'thumbs';
         $_POST['settings']['archive_layout'] = $_def;
 
         // Coerce checkboxes to '0'/'1'.
@@ -139,7 +143,9 @@ $current_layout = $settings['archive_layout'] ?? 'thumbs';
 if (in_array($current_layout, ['square', 'cropped', 'croppedwithcalendar'], true)) {
     $current_layout = 'thumbs';
 }
-if (!isset($all_layouts[$current_layout])) $current_layout = 'thumbs';
+// 'none' (archive disabled) is a valid state — keep it so the Disabled option
+// stays selected; only unknown values fall back to thumbs.
+if ($current_layout !== 'none' && !isset($all_layouts[$current_layout])) $current_layout = 'thumbs';
 
 $thumb_style = $settings['archive_thumb_style'] ?? 'cropped';
 if (!in_array($thumb_style, ['square', 'cropped'], true)) $thumb_style = 'cropped';
@@ -199,7 +205,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                             </option>
                         <?php endforeach; ?>
                         <option value="none" <?php echo ($current_layout === 'none') ? 'selected' : ''; ?>>
-                            DISABLED (HIDE ARCHIVE FROM NAV)
+                            DISABLED (NO ARCHIVE — REMOVED FROM NAV &amp; MENU MANAGER)
                         </option>
                     </select>
                 </div>

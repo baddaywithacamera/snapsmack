@@ -13,7 +13,7 @@ Same visual family as Smack Your Batch Up.
 
 
 
-BUILD_VERSION = "0.7.10"
+BUILD_VERSION = "0.7.12"
 
 import os
 import queue
@@ -70,6 +70,24 @@ TAB_SCHEDULER  = "scheduler"
 TAB_SETTINGS   = "settings"
 TAB_CLOUD_SYNC = "cloud_sync"
 TAB_HELP       = "help"
+
+# Transfer speed tiers — (label, delay_seconds_as_str). Mirrors UNZUCKER's
+# SERVER THROTTLE list verbatim so the two tools speak the same language. The
+# value is the per-file pacing delay handed to the FTP/SFTP client. SUYB
+# defaults to "Full Send" (no delay): pulling files DOWN over FTP doesn't tax a
+# server the way UNZUCKER's posting + thumbnail generation does, so there's no
+# reason to crawl unless a specific shared host demands it.
+SPEED_TIERS = [
+    ("Full Send",       "0.0"),   # no delay — the SUYB default
+    ("Fast Lane",       "0.25"),
+    ("Steady",          "0.5"),
+    ("Easy Does It",    "1.0"),
+    ("Sunday Driver",   "2.0"),
+    ("Pump da Brakes",  "5.0"),
+    ("Grandma's Pace",  "10.0"),
+    ("Geological Time", "30.0"),  # barely-alive shared host
+]
+SPEED_DEFAULT = "0.0"   # Full Send
 
 
 # ---------------------------------------------------------------------------
@@ -566,6 +584,39 @@ class ProfileDialog(tk.Toplevel):
         self._vars[key] = var
         return cb
 
+    def _speed(self, frame, row, label, key):
+        """Named fast→slow transfer-speed picker (mirrors UNZUCKER's throttle).
+        Stores the numeric per-file delay in self._vars[key] so the backup
+        engine keeps reading profile[key] via float(). Displayed as a readonly
+        combobox to match the 'Provider' selector in this same form."""
+        tk.Label(frame, text=label, bg=BG_MID, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(row=row, column=0, sticky="w", padx=(0, 8), pady=3)
+
+        # Map the stored numeric delay back to a tier label (tolerant of "2" vs
+        # "2.0"); fall back to Full Send when unset or unrecognised.
+        try:
+            cur_val = float(self._data.get(key, SPEED_DEFAULT) or SPEED_DEFAULT)
+        except (ValueError, TypeError):
+            cur_val = float(SPEED_DEFAULT)
+        cur_label = next((lbl for lbl, v in SPEED_TIERS if float(v) == cur_val),
+                         SPEED_TIERS[0][0])
+
+        # The picker's own display var holds the label; the value var (registered
+        # in self._vars, so _save persists it) holds the numeric delay string.
+        disp_var  = tk.StringVar(value=cur_label)
+        value_var = tk.StringVar(value=next(v for lbl, v in SPEED_TIERS if lbl == cur_label))
+        self._vars[key] = value_var
+        label_to_value = {lbl: v for lbl, v in SPEED_TIERS}
+
+        def _on_pick(*_a):
+            value_var.set(label_to_value.get(disp_var.get(), SPEED_DEFAULT))
+        disp_var.trace_add("write", _on_pick)
+
+        ttk.Combobox(frame, textvariable=disp_var,
+                     values=[lbl for lbl, _ in SPEED_TIERS],
+                     font=FONT_MONO, state="readonly", width=18).grid(
+            row=row, column=1, sticky="w", pady=3)
+
     def _build(self):
         pad = {"padx": 20, "pady": 6}
         f   = tk.Frame(self, bg=BG_MID)
@@ -639,7 +690,7 @@ class ProfileDialog(tk.Toplevel):
         tk.Button(f, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
                   relief="flat", font=FONT_SMALL, padx=8, pady=2,
                   command=self._browse_backup_dir).grid(row=21, column=2, padx=(4, 0), pady=3)
-        self._field(f, 22, "Pacing delay (sec)",    "pacing_delay")
+        self._speed(f, 22, "Transfer speed",         "pacing_delay")
         self._field(f, 23, "Batch size (0=unlimited)", "batch_size")
         self._on_transport_change()   # reflect initial protocol (port + TLS state)
         self._refresh_cloud_auth()    # reveal the Google auth button if creds preset
@@ -3865,14 +3916,19 @@ class SchedulerTab(tk.Frame):
 
         vars_ = {}
 
-        # Blog name + URL — wider so names don't get clipped
-        info = tk.Frame(row, bg=BG_MID, width=220)
+        # Blog name + URL. Don't pin the frame height — a fixed-width box with
+        # pack_propagate(False) but no height collapses and clips the name to a
+        # sliver. Let the frame size to its content vertically; a fixed label
+        # width (chars) keeps the column aligned with the "Blog" header, and
+        # wraplength wraps any unusually long name instead of clipping it.
+        info = tk.Frame(row, bg=BG_MID)
         info.pack(side="left")
-        info.pack_propagate(False)
         tk.Label(info, text=name, bg=BG_MID, fg=FG_MAIN,
-                 font=FONT_HEAD, anchor="w", wraplength=210).pack(anchor="w")
+                 font=FONT_HEAD, anchor="w", width=24, wraplength=220,
+                 justify="left").pack(anchor="w")
         tk.Label(info, text=profile.get("site_url", ""),
-                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL, anchor="w").pack(anchor="w")
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL, anchor="w",
+                 width=32).pack(anchor="w")
 
         # Enabled checkbox
         enabled_var = tk.BooleanVar(value=bool(profile.get("schedule_enabled", False)))

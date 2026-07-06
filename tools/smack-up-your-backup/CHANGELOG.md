@@ -19,6 +19,14 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.11 — 2026-07-06
+
+### Fixed
+- **Backup-complete ping no longer fails silently — hub dashboard now reflects the backup.** The completion ping built a *fresh* session and re-logged in from scratch (with no scoped `suyb` Bearer key) instead of reusing the session that had already authenticated for the whole backup. When that re-login didn't stick, the POST to `suyb-complete.php` hit an unauthenticated redirect to the HTML login page and `resp.json()` died with `Expecting value: line 1 column 1 (char 0)` — so the site never recorded `last_backup_at` and the Multisite BACKUP dot stayed red. The ping now reuses the already-authenticated backup session. Also hardened: a non-JSON response now raises a clear "not authenticated / endpoint not deployed" message instead of a cryptic parse error.
+
+### Changed
+- **Transfer speed picker replaces the freeform "Pacing delay (sec)" field.** The profile editor now offers UNZUCKER's named fast→slow tiers (Full Send → Geological Time) for consistency across the toolset. **Default is now Full Send (no delay)** — pulling files down over FTP doesn't strain a server the way posting + thumbnail generation does, so there's no reason to throttle unless a specific fragile shared host demands it. Existing profiles keep their current delay (shown as the matching tier); new profiles default to Full Send. Per-profile, so one shared-host blog can crawl while the rest run flat out.
+
 ## 0.7.4 — 2026-07-02
 
 ### Fixed

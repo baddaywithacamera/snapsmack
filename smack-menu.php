@@ -131,6 +131,12 @@ $builtin_items = [
     ['id' => 'wall',     'type' => 'wall',     'label' => 'FLOATING GALLERY'],
     ['id' => 'blogroll', 'type' => 'blogroll', 'label' => 'BLOGROLL'],
 ];
+// When archive is disabled (Archive Appearance → Disabled), drop it from the
+// add-pool too so it can't be re-added as a dead link — matches the auto-build
+// skip above and the nav renderers.
+if (($settings['archive_layout'] ?? 'square') === 'none') {
+    $builtin_items = array_values(array_filter($builtin_items, fn($i) => $i['type'] !== 'archive'));
+}
 if ($homepage_mode === 'static_page') {
     array_splice($builtin_items, 1, 0, [
         ['id' => 'blog', 'type' => 'blog', 'label' => 'BLOG'],
