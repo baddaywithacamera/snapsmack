@@ -13,7 +13,7 @@ Same visual family as Smack Your Batch Up.
 
 
 
-BUILD_VERSION = "0.7.5"
+BUILD_VERSION = "0.7.6"
 
 import os
 import queue
@@ -612,7 +612,7 @@ class ProfileDialog(tk.Toplevel):
         tk.Label(f, text="Provider", bg=BG_MID, fg=FG_DIM,
                  font=FONT_SMALL, anchor="w").grid(row=16, column=0, sticky="w", padx=(0, 8), pady=3)
         self._cloud_prov_var = tk.StringVar(value=str(self._data.get("cloud_provider", "none") or "none"))
-        ttk.Combobox(f, textvariable=self._cloud_prov_var, values=["google_drive", "onedrive", "none"],
+        ttk.Combobox(f, textvariable=self._cloud_prov_var, values=["google_drive", "none"],
                      font=FONT_MONO, state="readonly", width=18).grid(row=16, column=1, sticky="w", pady=3)
         self._vars["cloud_provider"] = self._cloud_prov_var
         self._field(f, 17, "Creds override (optional)",     "cloud_credentials_file")
@@ -716,13 +716,22 @@ class ProfileDialog(tk.Toplevel):
                 import backup_engine
                 sess = backup_engine.SnapSmackSession(url, api_key=api_key, login_slug=slug)
                 if api_key:
-                    r = sess.session.get(f"{url}/smack-admin.php", timeout=15, allow_redirects=True)
-                    if r.status_code < 400 and slug not in r.url:
+                    # The suyb Bearer key authenticates API endpoints (validated by
+                    # core/api-auth.php), NOT the admin PAGE — GETting smack-admin.php
+                    # with the key just 302s to the login slug and reads as HTTP 200.
+                    # Test the real key path the backup uses: suyb-export.php.
+                    r = sess.session.get(f"{url}/suyb-export.php?type=schema",
+                                         timeout=15, allow_redirects=False, stream=True)
+                    code = r.status_code
+                    r.close()
+                    if code == 200:
                         msg = "✓ API key valid"
-                    elif r.status_code in (401, 403):
-                        msg = f"⚠ API key rejected (HTTP {r.status_code})"
+                    elif code in (401, 403):
+                        msg = f"⚠ API key rejected (HTTP {code})"
+                    elif code in (301, 302, 303, 307, 308):
+                        msg = "⚠ API key not accepted — redirected to login"
                     else:
-                        msg = f"⚠ HTTP {r.status_code}"
+                        msg = f"⚠ HTTP {code}"
                 else:
                     sess.login(user, pw)   # raises on bad credentials
                     msg = "✓ Login successful"
@@ -1188,7 +1197,7 @@ class BackupTab(tk.Frame):
                             return v
                     return ""
                 provider = _pick(profile.get("cloud_provider"), gc.get("cloud_provider")) or "none"
-                if provider in ("google_drive", "onedrive"):
+                if provider == "google_drive":
                     msg = (f"Cloud provider is set to '{provider}' but no credentials "
                            f"file is configured.\n\nGo to Settings → Global Cloud Config, "
                            f"set the Credentials JSON and click Save Defaults.\n\n"
@@ -2439,7 +2448,7 @@ class SettingsTab(tk.Frame):
             row=0, column=0, sticky="w", padx=(0, 10), pady=3)
         cloud_prov_var = tk.StringVar()
         ttk.Combobox(cloud_g, textvariable=cloud_prov_var,
-                     values=["google_drive", "onedrive", "none"],
+                     values=["google_drive", "none"],
                      font=FONT_MONO, state="readonly", width=18).grid(
             row=0, column=1, sticky="w", pady=3)
         self._profile_vars["cloud_provider"] = cloud_prov_var
@@ -2576,7 +2585,7 @@ class SettingsTab(tk.Frame):
             row=0, column=0, sticky="w", padx=(0, 10), pady=3)
         self._gc_provider_var = tk.StringVar()
         ttk.Combobox(gc_g, textvariable=self._gc_provider_var,
-                     values=["google_drive", "onedrive", "none"],
+                     values=["google_drive", "none"],
                      font=FONT_MONO, state="readonly", width=18).grid(
             row=0, column=1, sticky="w", pady=3)
 
@@ -2822,15 +2831,23 @@ class SettingsTab(tk.Frame):
                 sess = backup_engine.SnapSmackSession(
                     url, api_key=api_key, login_slug=slug)
                 if api_key:
+                    # The suyb Bearer key authenticates API endpoints (core/
+                    # api-auth.php), NOT the admin PAGE — GETting smack-admin.php
+                    # with the key just 302s to the login slug and reads as 200.
+                    # Test the real key path the backup uses: suyb-export.php.
                     r = sess.session.get(
-                        f"{url}/smack-admin.php", timeout=15,
-                        allow_redirects=True)
-                    if r.status_code < 400 and slug not in r.url:
+                        f"{url}/suyb-export.php?type=schema", timeout=15,
+                        allow_redirects=False, stream=True)
+                    code = r.status_code
+                    r.close()
+                    if code == 200:
                         msg = "✓ API key valid"
-                    elif r.status_code in (401, 403):
-                        msg = f"⚠ API key rejected (HTTP {r.status_code})"
+                    elif code in (401, 403):
+                        msg = f"⚠ API key rejected (HTTP {code})"
+                    elif code in (301, 302, 303, 307, 308):
+                        msg = "⚠ API key not accepted — redirected to login"
                     else:
-                        msg = f"⚠ HTTP {r.status_code}"
+                        msg = f"⚠ HTTP {code}"
                 else:
                     sess.login(user, pw)   # raises on bad credentials
                     msg = "✓ Login successful"
@@ -3629,7 +3646,7 @@ The checkpoint is deleted after a successful, verified backup completion.
 
 "Checksum mismatch" — a downloaded file's SHA-256 didn't match the manifest. SUYB retries automatically. If it keeps failing, the source file on the server may be corrupt.
 
-"Cloud upload skipped — no cloud provider configured" — check Settings → Global Cloud Config: Provider should be google_drive or onedrive, and the Credentials JSON path should be filled in. Click Save Defaults after making changes.
+"Cloud upload skipped — no cloud provider configured" — check Settings → Global Cloud Config: Provider should be google_drive, and the Credentials JSON path should be filled in. Click Save Defaults after making changes.
 
 "Cloud upload skipped — provider configured but no credentials" — the provider is set but the credentials file path is empty or wrong. Check the file exists at the path shown.
 
@@ -3965,7 +3982,7 @@ class CloudSyncTab(tk.Frame):
             return
         _pmap  = {"google_drive": "Google Drive", "onedrive": "OneDrive", "backblaze_b2": "Backblaze B2"}
         src_p  = _pmap.get(job.get("source_provider", "google_drive"), "—")
-        dst_p  = _pmap.get(job.get("dest_provider", "onedrive"), "—")
+        dst_p  = _pmap.get(job.get("dest_provider", "backblaze_b2"), "—")
         src_folder = job.get("source_folder") or job.get("source_folder_id", "") or "—"
         dst_folder = job.get("dest_folder") or job.get("dest_folder_path", "") or "—"
         self._src_lbl.configure(text=f"Source:  {src_p} — {src_folder}")
@@ -4021,7 +4038,7 @@ class CloudSyncTab(tk.Frame):
         # Validate required fields (provider-aware)
         missing = []
         src_p = job.get("source_provider", "google_drive")
-        dst_p = job.get("dest_provider", "onedrive")
+        dst_p = job.get("dest_provider", "backblaze_b2")
 
         if src_p in ("google_drive", "box"):
             if not job.get("source_credentials_file"):
@@ -4649,7 +4666,10 @@ def _offer_save_to_library(parent, path):
 class _SyncJobDialog(tk.Toplevel):
     """Create / edit a cloud sync job config."""
 
-    PROVIDERS = [("Google Drive", "google_drive"), ("OneDrive", "onedrive"), ("Backblaze B2", "backblaze_b2")]
+    # OneDrive retired (Sean's call, superseded by Backblaze B2). Not offered as a
+    # sync destination anymore; the dormant onedrive auth plumbing in cloud_client
+    # stays for any legacy job, but it's no longer a selectable option.
+    PROVIDERS = [("Google Drive", "google_drive"), ("Backblaze B2", "backblaze_b2")]
 
     def __init__(self, parent, config: dict, title: str = "Sync Job"):
         super().__init__(parent)
