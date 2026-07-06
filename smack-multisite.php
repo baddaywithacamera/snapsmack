@@ -18,6 +18,9 @@ $multisite_role = $settings['multisite_role'] ?? '';
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `maintenance_mode` TINYINT(1) NOT NULL DEFAULT 0");
 // Installed-skins cache (0.7.343) — reported by heartbeat; gates skin-update pushes.
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `installed_skins` TEXT DEFAULT NULL");
+// Active-skin cache — reported by heartbeat; drives the Fleet skin-status board.
+// Empty for spokes that haven't heartbeated on a build that reports it yet.
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `active_skin` VARCHAR(64) NOT NULL DEFAULT ''");
 // SMACKVERSE federation stats cache (0.7.343) — reported by heartbeat; fleet rollup.
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackverse_enabled` TINYINT(1) NOT NULL DEFAULT 0");
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackverse_followers` INT UNSIGNED NOT NULL DEFAULT 0");
@@ -538,12 +541,32 @@ if (isset($_POST['push_skin']) || isset($_POST['push_skin_all'])) {
                 return array_key_exists($slug, $map);
             };
 
+            // "Update all that are behind" (Fleet skin-status board): with
+            // only_stale set we skip any spoke already on skin_version, so a
+            // fleet-wide push only touches the spokes that actually need it.
+            $only_stale   = !empty($_POST['only_stale']);
+            $skin_version = trim($_POST['skin_version'] ?? '');
+            $node_skin_ver = function (array $node, string $slug): ?string {
+                $raw = $node['installed_skins'] ?? '';
+                if ($raw === '' || $raw === null) return null;
+                $map = json_decode($raw, true);
+                return is_array($map) ? ($map[$slug] ?? null) : null;
+            };
+
             $skin_results = [];
             $eligible     = [];
             foreach ($target_nodes as $tn) {
                 if (!$tn) continue;
                 $has = $node_has_skin($tn, $skin_slug);
                 if ($has === true) {
+                    if ($only_stale && $skin_version !== '') {
+                        $cur = (string)($node_skin_ver($tn, $skin_slug) ?? '');
+                        if ($cur !== '' && !snap_version_compare($skin_version, $cur, '>')) {
+                            $skin_results[] = ['name' => $tn['site_name'] ?? $tn['site_url'], 'ok' => true,
+                                'detail' => 'Skipped — already up to date (v' . $cur . ').'];
+                            continue;
+                        }
+                    }
                     $eligible[] = $tn;
                 } elseif ($has === false) {
                     $skin_results[] = ['name' => $tn['site_name'] ?? $tn['site_url'], 'ok' => false,
@@ -732,6 +755,7 @@ if ($multisite_role === 'hub') {
                         smackback_breach_at   = ?,
                         site_mode             = ?,
                         installed_skins       = ?,
+                        active_skin           = ?,
                         smackverse_enabled    = ?,
                         smackverse_followers  = ?,
                         last_seen_at          = NOW(),
@@ -755,6 +779,7 @@ if ($multisite_role === 'hub') {
                     $hb['site_mode']          ?? 'photoblog',
                     isset($hb['installed_skins']) && is_array($hb['installed_skins'])
                         ? json_encode($hb['installed_skins']) : null,
+                    (string)($hb['active_skin'] ?? ''),
                     (int)($hb['smackverse_enabled'] ?? 0),
                     (int)($hb['smackverse_followers'] ?? 0),
                     $n['id'],
@@ -776,6 +801,7 @@ if ($multisite_role === 'hub') {
                 $n['smackback_status']    = $hb['smackback_status']   ?? 'unknown';
                 $n['smackback_breach_at'] = $hb['smackback_breach_at'] ?? null;
                 $n['site_mode']           = $hb['site_mode']           ?? 'photoblog';
+                $n['active_skin']         = $hb['active_skin']         ?? ($n['active_skin'] ?? '');
             }
         } else {
             // Only mark offline if the spoke hasn't been seen recently.
@@ -811,6 +837,53 @@ if ($multisite_role === 'hub') {
     $reg            = skin_registry_fetch($registry_url);
     $registry_skins = $reg['skins'] ?? [];
 }
+
+// Fleet skin-status resolver — turn a spoke's cached installed_skins (JSON
+// {slug: version}) plus its reported active_skin into badge-ready rows compared
+// against the registry's latest. Reused by the board below. A spoke that hasn't
+// reported installed_skins yet returns reported=false ("not reported yet");
+// a spoke on an older build reports installed_skins but an empty active_skin,
+// so the board still shows update-ready badges, just without the ACTIVE flag.
+$skin_status_for_node = function (array $node) use ($registry_skins) {
+    $raw    = $node['installed_skins'] ?? '';
+    $map    = ($raw === '' || $raw === null) ? null : json_decode($raw, true);
+    $active = trim((string)($node['active_skin'] ?? ''));
+    if (!is_array($map)) {
+        return ['reported' => false, 'active' => $active, 'skins' => []];
+    }
+    $rows = [];
+    foreach ($map as $slug => $ver) {
+        $reg    = $registry_skins[$slug] ?? null;
+        $latest = $reg['version'] ?? null;
+        if ($reg === null) {
+            $state = 'custom';   // not in the registry — forked/local, no push offered
+        } elseif ($latest !== null && snap_version_compare($latest, (string)$ver, '>')) {
+            $state = 'update';
+        } else {
+            $state = 'current';
+        }
+        $rows[$slug] = [
+            'slug'      => $slug,
+            'name'      => $reg['name'] ?? $slug,
+            'version'   => (string)$ver,
+            'latest'    => $latest,
+            'state'     => $state,
+            'is_active' => ($active !== '' && $active === $slug),
+            'url'       => $reg['download_url'] ?? '',
+            'sig'       => $reg['signature']    ?? '',
+        ];
+    }
+    // Active skin first, then update-ready, then current, then custom.
+    uasort($rows, function ($a, $b) {
+        if ($a['is_active'] !== $b['is_active']) return $a['is_active'] ? -1 : 1;
+        $rank = ['update' => 0, 'current' => 1, 'custom' => 2];
+        $ra = $rank[$a['state']] ?? 3;
+        $rb = $rank[$b['state']] ?? 3;
+        if ($ra !== $rb) return $ra <=> $rb;
+        return strcasecmp($a['name'], $b['name']);
+    });
+    return ['reported' => true, 'active' => $active, 'skins' => $rows];
+};
 
 // Get registration token if it exists and is still valid (read from DB, not session)
 $reg_token         = $settings['multisite_reg_token']         ?? '';
@@ -1263,6 +1336,137 @@ include 'core/sidebar.php';
             <?php else: ?>
                 <p style="color:var(--text-muted,#888);">Skin registry unavailable -- check your connection to snapsmack.ca.</p>
             <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($active_spokes)): ?>
+        <div class="box">
+            <h3>FLEET SKIN STATUS</h3>
+            <p style="font-size:0.9rem; color:var(--text-muted,#888); margin-bottom:16px;">
+                Each spoke's active skin and how its installed skins compare to the registry.
+                <strong>Update ready</strong> means a newer version is published — hit UPDATE to send the
+                signed reinstall (the same gated path as PUSH SKIN, so a skin a spoke doesn't run is never
+                forced on). A spoke that hasn't reported its skins yet shows <em>not reported</em>.
+            </p>
+            <?php if (empty($registry_skins)): ?>
+                <p style="color:var(--text-muted,#888); font-size:0.85rem;">Registry unavailable — installed versions shown, but update badges need the registry.</p>
+            <?php endif; ?>
+
+            <?php
+                // Resolve every spoke once, and roll up update-ready skins across
+                // the fleet so one click can update every spoke behind on a skin.
+                $spoke_skin_status = [];
+                $fleet_updates     = [];
+                foreach ($active_spokes as $sp) {
+                    $st = $skin_status_for_node($sp);
+                    $spoke_skin_status[$sp['id']] = $st;
+                    foreach ($st['skins'] as $sk) {
+                        if ($sk['state'] !== 'update' || $sk['url'] === '') continue;
+                        if (!isset($fleet_updates[$sk['slug']])) {
+                            $fleet_updates[$sk['slug']] = [
+                                'name'   => $sk['name'],
+                                'latest' => (string)$sk['latest'],
+                                'url'    => $sk['url'],
+                                'sig'    => $sk['sig'],
+                                'count'  => 0,
+                            ];
+                        }
+                        $fleet_updates[$sk['slug']]['count']++;
+                    }
+                }
+            ?>
+            <?php if (!empty($fleet_updates)): ?>
+            <div style="margin-bottom:16px; padding:12px 14px; border:1px solid rgba(200,140,0,0.35); border-radius:6px; background:rgba(200,140,0,0.06);">
+                <div style="font-size:0.78rem; letter-spacing:0.05em; color:#e0a020; margin-bottom:10px;">UPDATES READY ACROSS THE FLEET</div>
+                <?php foreach ($fleet_updates as $fslug => $fu): ?>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:5px 0;">
+                    <span style="font-size:0.9rem;">
+                        <?php echo htmlspecialchars($fu['name']); ?> &rarr; v<?php echo htmlspecialchars($fu['latest']); ?>
+                        <span style="color:var(--text-muted,#888); font-size:0.82rem;">
+                            — <?php echo (int)$fu['count']; ?> spoke<?php echo $fu['count'] === 1 ? '' : 's'; ?> behind
+                        </span>
+                    </span>
+                    <form method="POST" style="margin:0;">
+                        <input type="hidden" name="skin_slug"    value="<?php echo htmlspecialchars($fslug); ?>">
+                        <input type="hidden" name="download_url" value="<?php echo htmlspecialchars($fu['url']); ?>">
+                        <input type="hidden" name="signature"    value="<?php echo htmlspecialchars($fu['sig']); ?>">
+                        <input type="hidden" name="skin_version" value="<?php echo htmlspecialchars($fu['latest']); ?>">
+                        <input type="hidden" name="only_stale"   value="1">
+                        <button type="submit" name="push_skin_all" class="btn-smack"
+                                style="width:auto;height:auto;margin-top:0;padding:4px 14px;font-size:0.75rem;"
+                                onclick="return confirm('Update this skin on all <?php echo (int)$fu['count']; ?> spoke(s) that are behind?');">
+                            UPDATE ALL
+                        </button>
+                    </form>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
+            <div style="display:flex; flex-direction:column; gap:14px;">
+            <?php foreach ($active_spokes as $sp): ?>
+                <?php $st = $spoke_skin_status[$sp['id']] ?? $skin_status_for_node($sp); ?>
+                <div style="border:1px solid var(--border,#333); border-radius:6px; padding:12px 14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                        <strong style="font-size:1rem;"><?php echo htmlspecialchars($sp['site_name'] ?: $sp['site_url']); ?></strong>
+                        <span style="font-size:0.8rem; color:var(--text-muted,#888);">
+                            <?php if ($st['active'] !== ''): ?>
+                                active: <code><?php echo htmlspecialchars($st['active']); ?></code>
+                            <?php else: ?>
+                                active skin not reported yet
+                            <?php endif; ?>
+                        </span>
+                    </div>
+
+                    <?php if (!$st['reported']): ?>
+                        <p style="margin:8px 0 0; font-size:0.85rem; color:var(--text-muted,#888);">
+                            Not reported yet — this spoke needs a heartbeat on 0.7.343+ to list its skins.
+                        </p>
+                    <?php elseif (empty($st['skins'])): ?>
+                        <p style="margin:8px 0 0; font-size:0.85rem; color:var(--text-muted,#888);">No skins reported.</p>
+                    <?php else: ?>
+                        <table style="width:100%; border-collapse:collapse; margin-top:10px; font-size:0.88rem;">
+                        <?php foreach ($st['skins'] as $sk): ?>
+                            <tr style="border-top:1px solid var(--border,#2a2a2a);">
+                                <td style="padding:6px 8px 6px 0;">
+                                    <?php echo htmlspecialchars($sk['name']); ?>
+                                    <?php if ($sk['is_active']): ?>
+                                        <span style="margin-left:6px; font-size:0.7rem; padding:1px 6px; border-radius:3px; background:rgba(93,234,93,0.15); color:#5dea5d;">ACTIVE</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="padding:6px 8px; color:var(--text-muted,#888); white-space:nowrap;">
+                                    v<?php echo htmlspecialchars($sk['version']); ?><?php if ($sk['state'] === 'update'): ?> &rarr; v<?php echo htmlspecialchars((string)$sk['latest']); ?><?php endif; ?>
+                                </td>
+                                <td style="padding:6px 8px; white-space:nowrap;">
+                                    <?php if ($sk['state'] === 'update'): ?>
+                                        <span style="font-size:0.72rem; padding:2px 8px; border-radius:3px; background:rgba(200,140,0,0.18); color:#e0a020;">UPDATE READY</span>
+                                    <?php elseif ($sk['state'] === 'current'): ?>
+                                        <span style="font-size:0.72rem; padding:2px 8px; border-radius:3px; background:rgba(93,234,93,0.12); color:#5dea5d;">UP TO DATE</span>
+                                    <?php else: ?>
+                                        <span style="font-size:0.72rem; padding:2px 8px; border-radius:3px; background:rgba(150,150,150,0.15); color:#999;">NOT IN REGISTRY</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="padding:6px 0 6px 8px; text-align:right; white-space:nowrap;">
+                                    <?php if ($sk['state'] === 'update' && $sk['url'] !== ''): ?>
+                                        <form method="POST" style="display:inline; margin:0;">
+                                            <input type="hidden" name="spoke_id"     value="<?php echo (int)$sp['id']; ?>">
+                                            <input type="hidden" name="skin_slug"    value="<?php echo htmlspecialchars($sk['slug']); ?>">
+                                            <input type="hidden" name="download_url" value="<?php echo htmlspecialchars($sk['url']); ?>">
+                                            <input type="hidden" name="signature"    value="<?php echo htmlspecialchars($sk['sig']); ?>">
+                                            <button type="submit" name="push_skin" class="btn-smack"
+                                                    style="width:auto;height:auto;margin-top:0;padding:4px 12px;font-size:0.75rem;">
+                                                UPDATE
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </table>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+            </div>
         </div>
         <?php endif; ?>
 

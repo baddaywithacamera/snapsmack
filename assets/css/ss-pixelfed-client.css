@@ -242,7 +242,7 @@
 .sspf-lightbox-caption { padding: 16px; font-size: .95rem; line-height: 1.55; color: var(--pf-text); white-space: pre-wrap; word-break: break-word; border-top: 1px solid var(--pf-border); }
 .sspf-lightbox-actions { display: flex; gap: 10px; padding: 12px 16px; flex-wrap: wrap; align-items: center; border-top: 1px solid var(--pf-border); }
 .sspf-lightbox-actions .sspf-btn { padding: 8px 14px; font-size: .82rem; }
-.sspf-reply-box { padding: 0 16px 16px; }
+.sspf-reply-box { padding: 14px 16px 16px; border-top: 1px solid var(--pf-border); }
 .sspf-reply-input {
     width: 100%; min-height: 72px; resize: vertical;
     padding: 10px 12px; border-radius: 10px;
@@ -252,6 +252,28 @@
 }
 .sspf-reply-input:focus { border-color: var(--pf-accent); }
 .sspf-reply-msg { font-size: .82rem; color: var(--pf-muted); margin-top: 8px; }
+
+/* ── Reply thread (existing replies + ones you send this session) ── */
+.sspf-thread { padding: 4px 16px 16px; border-top: 1px solid var(--pf-border); }
+.sspf-thread-head {
+    font-size: .72rem; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--pf-muted); margin: 14px 0 10px;
+}
+.sspf-thread-list { display: flex; flex-direction: column; gap: 10px; }
+.sspf-reply {
+    background: var(--pf-surface-2);
+    border: 1px solid var(--pf-border);
+    border-radius: 12px;
+    padding: 9px 12px;
+}
+/* Your own replies — accent-tinted left edge so they read as "mine" and you can
+   see them land, the way a like fills the heart. */
+.sspf-reply-mine { border-left: 3px solid var(--pf-accent); }
+.sspf-reply-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.sspf-reply-av { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex: none; }
+.sspf-reply-who { font-weight: 600; font-size: .82rem; color: var(--pf-text); }
+.sspf-reply-handle { font-size: .76rem; color: var(--pf-muted); }
+.sspf-reply-text { font-size: .88rem; line-height: 1.5; color: var(--pf-text); white-space: pre-wrap; word-break: break-word; }
 
 /* ── Notification badge on the nav ── */
 .sspf-badge {

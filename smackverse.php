@@ -228,9 +228,22 @@ switch ($ap) {
         // Signature first — unverified requests change NOTHING.
         $actor_doc = sv_verify_signature($raw);
         if ($actor_doc === null) {
-            // Log the rejection so a Like/reply that fails signature verification
-            // is visible instead of vanishing silently — prime suspect when a
-            // federated like never lands. Best-effort; no-ops if table absent.
+            // A Delete we can't verify is almost always routine fediverse garbage
+            // collection: a remote instance purging a (usually spam) account
+            // broadcasts a Delete, but the actor — and its signing key — is
+            // ALREADY gone, so verification can NEVER succeed (the key fetch
+            // 404s). Mastodon itself just drops these. We do the same: still take
+            // NO action (unverified = changes nothing), ACK with 202, and DON'T
+            // write a scary REJECTED line — otherwise the activity log is buried
+            // under thousands of them. Verification is untouched for everything
+            // else (Follow/Like/reply still fail-closed and logged).
+            if ($log_verb === 'Delete') {
+                http_response_code(202); exit;
+            }
+            // Everything else: log the rejection so a Like/reply that fails
+            // signature verification is visible instead of vanishing silently —
+            // prime suspect when a federated like never lands. Best-effort; no-ops
+            // if table absent.
             if (function_exists('sv_inbox_log')) sv_inbox_log($pdo, $log_verb, $log_actor, $log_obj, 'REJECTED: signature verify failed');
             http_response_code(401); exit;
         }

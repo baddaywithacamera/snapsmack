@@ -7,9 +7,11 @@
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Smack Up Your Backup — build script (macOS / Linux)
+#  Smack Up Your Backup — build script (Git Bash on Windows / Linux / macOS)
 #  Requires: Python 3.11+, pip install -r requirements.txt
-#  Output:   ~/SmackUpYourBackup/smackupyourbackup-{version}
+#  Output:   C:\suyb\smackupyourbackup-{version}   (git-bash path: /c/suyb)
+#  Portable app: the exe + its config.ini live together in this stable folder,
+#  so settings persist across rebuilds. Do NOT deploy into %APPDATA%/$HOME.
 # ─────────────────────────────────────────────────────────────────────────────
 set -e
 
@@ -59,7 +61,7 @@ pyinstaller \
     main.py
 
 echo ""
-DEPLOY_DIR="${HOME}/SmackUpYourBackup"
+DEPLOY_DIR="/c/suyb"
 if [ -f "dist/${EXE_NAME}" ]; then
     echo "Build successful: dist/${EXE_NAME}"
     echo ""

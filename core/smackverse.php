@@ -2184,6 +2184,57 @@ function sv_map_status_row(array $st, string $fallback_host = ''): ?array {
     ];
 }
 
+/**
+ * Fetch the reply thread (descendants) for a remote status via the
+ * Mastodon-compatible context API. Both Pixelfed and Mastodon expose
+ * GET /api/v1/statuses/{id}/context for PUBLIC posts (no auth). Returns a list
+ * of light comment rows [{name, handle, avatar, text, url, created}] oldest
+ * first, or [] on any failure — the UI then just shows "No replies yet." rather
+ * than erroring. Unlike sv_map_status_row this KEEPS text-only rows (replies are
+ * usually plain text with no image attachment).
+ */
+function sv_status_replies(string $object_url): array {
+    $object_url = trim($object_url);
+    if ($object_url === '' || stripos($object_url, 'https://') !== 0) return [];
+    $host = parse_url($object_url, PHP_URL_HOST);
+    $path = (string)parse_url($object_url, PHP_URL_PATH);
+    if (!$host || $path === '') return [];
+    // Status id = last purely-numeric path segment (Mastodon /@user/123,
+    // Pixelfed /p/user/123). Non-numeric slugs (rare) simply yield no thread.
+    $segments = array_values(array_filter(explode('/', $path), 'strlen'));
+    $sid = '';
+    for ($i = count($segments) - 1; $i >= 0; $i--) {
+        if (ctype_digit($segments[$i])) { $sid = $segments[$i]; break; }
+    }
+    if ($sid === '') return [];
+    $host = preg_replace('/[^a-z0-9.\-]/i', '', $host);
+    $ctx  = sv_fetch_json("https://{$host}/api/v1/statuses/{$sid}/context", 12);
+    if (!is_array($ctx)) return [];
+    $out = [];
+    foreach (($ctx['descendants'] ?? []) as $st) {
+        if (!is_array($st)) continue;
+        $acct = is_array($st['account'] ?? null) ? $st['account'] : [];
+        $text = (isset($st['content_text']) && $st['content_text'] !== '')
+                ? (string)$st['content_text']
+                : trim(strip_tags((string)($st['content'] ?? '')));
+        if ($text === '') continue;
+        $handle = (string)($acct['acct'] ?? '');
+        if ($handle !== '' && strpos($handle, '@') === false) {
+            $h = parse_url((string)($acct['url'] ?? ''), PHP_URL_HOST);
+            if ($h) $handle .= '@' . $h;
+        }
+        $out[] = [
+            'name'    => (string)($acct['display_name'] ?? ($acct['username'] ?? $handle)),
+            'handle'  => $handle !== '' ? ('@' . ltrim($handle, '@')) : '',
+            'avatar'  => (string)($acct['avatar'] ?? ''),
+            'text'    => $text,
+            'url'     => (string)($st['url'] ?? ($st['uri'] ?? '')),
+            'created' => (string)($st['created_at'] ?? ''),
+        ];
+    }
+    return $out;
+}
+
 /** Map a Mastodon/Pixelfed account entity to the client account-card shape (handle = full @user@host). */
 function sv_map_account_card(array $acct): array {
     $handle = (string)($acct['acct'] ?? ($acct['username'] ?? ''));

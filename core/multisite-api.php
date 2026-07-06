@@ -409,6 +409,7 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         'smackback_breach_at'=> ($settings['smackback_breach_at'] ?? '') ?: null,
         'site_mode'          => $settings['site_mode']           ?? 'photoblog',
         'installed_skins'    => $installed_skins,
+        'active_skin'        => $settings['active_skin'] ?? '',
         'smackverse_enabled' => $sv_enabled_hb,
         'smackverse_followers' => $sv_followers_hb,
         'timestamp'          => date('c'),

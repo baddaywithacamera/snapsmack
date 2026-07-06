@@ -89,6 +89,16 @@ if (!defined('SNAPSMACK_RELEASE_PUBKEY')
 }
 unset($_rpk_file);
 
+// ─── .HTACCESS SELF-HEAL (0.7.380): reconcile the SnapSmack rules block ───────
+// A rule change (e.g. a new SMACKVERSE route) ships in core/htaccess-template,
+// but .htaccess is a protected file, so it used to need a manual HTACCESS REPAIR
+// on every blog. Reconcile it here the moment the new files land — drift-gated
+// (a no-op once current) and preserving any host-added rules above the block.
+// Runs on updater.php load, exactly like the pubkey self-heal above; the
+// function is defined lower in this file (top-level defs are hoisted).
+try { updater_reconcile_htaccess(); }
+catch (\Throwable $e) { error_log('SnapSmack Updater: .htaccess self-heal skipped — ' . $e->getMessage()); }
+
 // ─── SECURITY SELF-HEAL (0.7.324): retire web-host cloud push ────────────────
 // SnapSmack no longer pushes backups to Google Drive / OneDrive from the web
 // host. A broad `drive.file` OAuth scope plus a server-stored refresh token on a
@@ -1395,6 +1405,63 @@ function updater_set_version(PDO $pdo, string $version_short, string $version_fu
         error_log('SnapSmack Updater: Failed to update version — ' . $e->getMessage());
         return false;
     }
+}
+
+/**
+ * Self-heal the root .htaccess SnapSmack rules block from core/htaccess-template
+ * on update, so a rule change lands automatically instead of needing a manual
+ * System Maintenance → HTACCESS REPAIR on every blog. Uses the SAME strip-and-
+ * append logic as that REPAIR action (smack-maintenance.php): it only replaces
+ * the marked SnapSmack block and preserves any host-added rules above it.
+ *
+ * DRIFT-GATED: the write always embeds the template verbatim, so the presence
+ * check below can never ping-pong — once reconciled it's a no-op.
+ * FAIL-SAFE: a missing/invalid template writes NOTHING (never a broken
+ * .htaccess); a write failure is logged, never fatal. Returns [changed, note].
+ */
+function updater_reconcile_htaccess(): array {
+    $marker        = '# SNAPSMACK-HTACCESS-RULES';
+    $htaccess_path = dirname(__DIR__) . '/.htaccess';
+    $template_path = __DIR__ . '/htaccess-template';
+
+    // Never touch .htaccess without a valid template to write from.
+    if (!is_file($template_path)) {
+        return ['changed' => false, 'note' => 'template missing — skipped'];
+    }
+    $template = rtrim((string)@file_get_contents($template_path));
+    if ($template === '' || strpos($template, $marker) === false) {
+        return ['changed' => false, 'note' => 'template invalid — skipped'];
+    }
+
+    $existing = is_file($htaccess_path) ? (string)@file_get_contents($htaccess_path) : '';
+
+    // Already carrying the current template block verbatim → nothing to do.
+    if ($existing !== '' && strpos($existing, $template) !== false) {
+        return ['changed' => false, 'note' => 'already current'];
+    }
+
+    // Strip the old SnapSmack block (marker → end) plus any trailing separator/
+    // blank lines it left behind, exactly as the REPAIR action does, leaving
+    // only host-added rules; then append the fresh template block.
+    $host = $existing;
+    if (strpos($host, $marker) !== false) {
+        $host  = preg_replace('/' . preg_quote($marker, '/') . '.*$/s', '', $host);
+        $lines = explode("\n", rtrim($host));
+        while (!empty($lines) && preg_match('/^(#\s*[-\x{2500}]*)?$/u', rtrim(end($lines)))) {
+            array_pop($lines);
+        }
+        $host = implode("\n", $lines) . "\n";
+    }
+    $desired = $host . "\n" . $template . "\n";
+
+    $ok = @file_put_contents($htaccess_path, $desired, LOCK_EX);
+    if ($ok === false) {
+        error_log('SnapSmack Updater: .htaccess self-heal could not write ' . $htaccess_path
+                . ' — run System Maintenance → HTACCESS REPAIR manually.');
+        return ['changed' => false, 'note' => 'write failed'];
+    }
+    error_log('SnapSmack Updater: .htaccess SnapSmack rules self-healed from template.');
+    return ['changed' => true, 'note' => 'regenerated'];
 }
 
 

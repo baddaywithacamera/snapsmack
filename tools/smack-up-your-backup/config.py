@@ -17,7 +17,9 @@ import sys
 
 
 def _app_dir() -> str:
-    """Persistent app directory — next to the .exe when frozen, source dir otherwise."""
+    """Persistent app directory — next to the .exe when frozen, source dir otherwise.
+    SUYB is a PORTABLE thumb-drive utility: the ini and all state ride next to the
+    executable. Never write to %APPDATA%, the registry, or anywhere else in Windows."""
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))
