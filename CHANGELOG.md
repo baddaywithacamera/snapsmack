@@ -12,6 +12,10 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.385 — "Dragon Quest" (2026-07-06)
+
+- **Fixed: you couldn't remove an installed skin that doesn't match the site's mode.** The skin gallery hides skins that don't fit the current mode (carousel vs photoblog), plus mobile-only and development skins — and hiding the card also hid its REMOVE button, so a carousel skin left on a photoblog (or a mobile-only skin) was stuck on disk with no way to delete it through the CMS. A new "Installed, but not usable in this mode" list under the gallery surfaces every such on-disk skin with a REMOVE button. The active skin and the auto-assigned mobile skin are never listed.
+
 ## 0.7.384 — "Dragon Quest" (2026-07-06)
 
 - **Fixed: removing a skin left its files (and folder) behind.** The recursive delete behind REMOVE was a bare `unlink`/`rmdir` with no error handling — the moment one file wouldn't delete on the first try, it silently gave up and left the rest of the skin on disk (so a "removed" skin still sat in `skins/`, and the Fleet board rightly kept listing it). It now handles symlinks, chmod-then-retries a stubborn file or directory, and reports back whether everything actually went. If something still can't be deleted, REMOVE now names the leftover files and points at file ownership/permissions instead of failing silently.
