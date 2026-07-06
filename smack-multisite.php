@@ -257,6 +257,8 @@ if (isset($_POST['ping']) && isset($_POST['ping_id'])) {
                         disk_usage_bytes   = ?,
                         site_tagline       = ?,
                         update_track       = ?,
+                        installed_skins    = ?,
+                        active_skin        = ?,
                         last_seen_at       = NOW(),
                         status             = 'active'
                     WHERE id = ?
@@ -272,6 +274,9 @@ if (isset($_POST['ping']) && isset($_POST['ping_id'])) {
                     $hb['disk_usage_bytes']   ?? null,
                     $hb['site_tagline']       ?? null,
                     $hb['update_track']       ?? 'stable',
+                    isset($hb['installed_skins']) && is_array($hb['installed_skins'])
+                        ? json_encode($hb['installed_skins']) : null,
+                    (string)($hb['active_skin'] ?? ''),
                     $n['id'],
                 ]);
                 $msg = "Ping OK — {$n['site_name']} is online (HTTP {$hb_code}).";

@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.384 — "Dragon Quest" (2026-07-06)
+
+- **Fixed: removing a skin left its files (and folder) behind.** The recursive delete behind REMOVE was a bare `unlink`/`rmdir` with no error handling — the moment one file wouldn't delete on the first try, it silently gave up and left the rest of the skin on disk (so a "removed" skin still sat in `skins/`, and the Fleet board rightly kept listing it). It now handles symlinks, chmod-then-retries a stubborn file or directory, and reports back whether everything actually went. If something still can't be deleted, REMOVE now names the leftover files and points at file ownership/permissions instead of failing silently.
+- **Fleet Skin Status board: the per-spoke PING now also refreshes `installed_skins` and `active_skin`,** so you can force a spoke's skin status current on demand instead of waiting for the periodic sweep.
+
 ## 0.7.383 — "Dragon Quest" (2026-07-06)
 
 - (Rolling entry — Sean amends before deploy.) Carries everything staged in the
