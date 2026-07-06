@@ -381,7 +381,19 @@ function skin_registry_remove(string $slug, string $active_skin): array {
     _skin_rmdir_recursive($target);
 
     if (is_dir($target)) {
-        return ['success' => false, 'message' => 'Failed to remove skin directory. Check file permissions.'];
+        // Something survived. Name a few leftovers so it's clear whether this is a
+        // server-side ownership/permissions problem (a deploy issue — the web user
+        // can't delete files it doesn't own) rather than a silent code no-op.
+        $leftover = [];
+        try {
+            $it = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($target, FilesystemIterator::SKIP_DOTS));
+            foreach ($it as $f) { $leftover[] = basename($f->getPathname()); if (count($leftover) >= 6) break; }
+        } catch (\Throwable $e) { /* best-effort */ }
+        $detail = $leftover ? ' Left behind: ' . implode(', ', $leftover) . '.' : '';
+        return ['success' => false,
+                'message' => 'Could not fully remove skin "' . $slug . '" — check ownership/permissions '
+                           . 'on the skins directory (the web server must own these files to delete them).' . $detail];
     }
 
     // SMACKBACK: remove manifest entries for this skin
@@ -395,16 +407,32 @@ function skin_registry_remove(string $slug, string $active_skin): array {
 // --- INTERNAL HELPERS ---
 
 /**
- * Recursively delete a directory and its contents.
+ * Recursively delete a directory and its contents. Returns true only if the
+ * directory (and everything under it) is gone afterwards.
+ *
+ * Hardened: the old version was a bare unlink/rmdir with no error handling, so a
+ * single file that wouldn't delete on the first try left the rest of the skin
+ * behind silently. Now it handles symlinks (unlink, never recurse into them) and
+ * chmod-then-retries a stubborn file/dir before giving up, and it reports its
+ * success up the chain so the caller can tell the user what actually happened.
  */
-function _skin_rmdir_recursive(string $dir): void {
-    if (!is_dir($dir)) return;
-    $items = array_diff(scandir($dir), ['.', '..']);
-    foreach ($items as $item) {
+function _skin_rmdir_recursive(string $dir): bool {
+    if (is_link($dir)) return @unlink($dir);
+    if (!is_dir($dir))  return !file_exists($dir) ? true : @unlink($dir);
+
+    $ok = true;
+    foreach (array_diff(scandir($dir) ?: [], ['.', '..']) as $item) {
         $path = $dir . '/' . $item;
-        is_dir($path) ? _skin_rmdir_recursive($path) : unlink($path);
+        if (is_link($path)) {
+            $ok = (@unlink($path) || !file_exists($path)) && $ok;
+        } elseif (is_dir($path)) {
+            $ok = _skin_rmdir_recursive($path) && $ok;
+        } else {
+            if (!@unlink($path)) { @chmod($path, 0664); $ok = (@unlink($path) || !file_exists($path)) && $ok; }
+        }
     }
-    rmdir($dir);
+    if (!@rmdir($dir)) { @chmod($dir, 0775); $ok = (@rmdir($dir) || !is_dir($dir)) && $ok; }
+    return $ok;
 }
 
 /**
