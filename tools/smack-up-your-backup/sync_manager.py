@@ -89,7 +89,7 @@ def new_job_template() -> Dict:
         "source_folder":           "",
         "source_b2_key_id":        "",
         "source_b2_app_key":       "",
-        "dest_provider":           "onedrive",
+        "dest_provider":           "backblaze_b2",
         "dest_credentials_file":   "",
         "dest_folder":             "",
         "dest_b2_key_id":          "",

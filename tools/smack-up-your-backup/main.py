@@ -310,7 +310,7 @@ class SetupWizard(tk.Toplevel):
         for icon, text in [
             ("📦", "Downloads your blog's recovery kit, database, and media files"),
             ("🔄", "Differential backups — only grabs what changed since last time"),
-            ("☁️",  "Optionally uploads to Google Drive or OneDrive"),
+            ("☁️",  "Optionally uploads to Google Drive"),
             ("🔍", "Audit mode checks your server for missing or orphaned files"),
             ("⏪", "Restore mode puts everything back if disaster strikes"),
         ]:
@@ -2379,7 +2379,7 @@ class SettingsTab(tk.Frame):
         self._method_var = tk.StringVar(value="ftp")
         for val, label in [
             ("ftp",   "FTP — differential sync"),
-            ("cloud", "Cloud — Google Drive / OneDrive"),
+            ("cloud", "Cloud — Google Drive"),
             ("local", "Local only — no upload"),
         ]:
             tk.Radiobutton(
@@ -3532,7 +3532,7 @@ Smack Up Your Backup downloads a complete backup of your SnapSmack blog and pack
 3. SQL dumps — downloads a full database export and a schema-only export.
 4. Media download — connects via FTP and downloads every media file. In differential mode, unchanged files (same checksum as last run) are skipped. In full mode, everything is re-downloaded.
 5. Package — bundles the kit, SQL dumps, and media into a dated ZIP.
-6. Cloud push — uploads the ZIP to Google Drive or OneDrive if configured.
+6. Cloud push — uploads the ZIP to Google Drive if configured.
 7. Verify — checks the ZIP for CRC errors, verifies the cloud upload size, and uploads an updated backup-state.json to your server.
 
 Every downloaded file is SHA-256 verified against the manifest. A mismatch triggers one automatic retry. If it fails again, the file is logged as failed but the rest of the backup continues.
@@ -3604,13 +3604,11 @@ Automatic Backup Schedule — per-profile. Set frequency (daily or weekly), the 
 Automatic Backups (global) — enable the system tray so closing minimizes SUYB instead of quitting, and optionally launch SUYB at Windows startup so scheduled backups run without manual intervention.
 """),
     ("Cloud setup", """
-SUYB supports Google Drive and OneDrive.
+SUYB supports Google Drive.
 
 Google Drive — uses OAuth. Download an OAuth client secret JSON from Google Cloud Console → APIs & Services → Credentials → Create OAuth 2.0 Client ID → Desktop app. Point SUYB at it in Settings → Global Cloud Config → Credentials JSON and click Save Defaults. The first backup run opens a browser for a one-time consent click; after that the token refreshes silently in the background. Backups are stored in your own Google Drive under the folder ID you configure.
 
-OneDrive — uses MSAL. Set your credentials JSON in the profile's Credentials JSON field.
-
-Set the Cloud Folder ID to the Google Drive folder ID (from the URL) or OneDrive folder path where backups should be stored.
+Set the Cloud Folder ID to the Google Drive folder ID (from the URL) where backups should be stored.
 
 After configuring cloud, click Save Defaults (for global config) or Save Profile (for per-profile). Run a backup and check the log for "Cloud upload complete".
 """),
@@ -3848,7 +3846,7 @@ class SchedulerTab(tk.Frame):
 
 
 class CloudSyncTab(tk.Frame):
-    """Cloud-to-Cloud sync tab: Google Drive → OneDrive differential file sync."""
+    """Cloud-to-Cloud sync tab: Google Drive → Backblaze B2 differential file sync."""
 
     def __init__(self, parent, app, **kwargs):
         super().__init__(parent, bg=BG_DEEP, **kwargs)
@@ -3980,7 +3978,7 @@ class CloudSyncTab(tk.Frame):
         job = sync_manager.load_job(name)
         if not job:
             return
-        _pmap  = {"google_drive": "Google Drive", "onedrive": "OneDrive", "backblaze_b2": "Backblaze B2"}
+        _pmap  = {"google_drive": "Google Drive", "backblaze_b2": "Backblaze B2"}
         src_p  = _pmap.get(job.get("source_provider", "google_drive"), "—")
         dst_p  = _pmap.get(job.get("dest_provider", "backblaze_b2"), "—")
         src_folder = job.get("source_folder") or job.get("source_folder_id", "") or "—"
@@ -4053,7 +4051,7 @@ class CloudSyncTab(tk.Frame):
             if not job.get("source_folder"):
                 missing.append("Source bucket name")
 
-        if dst_p in ("onedrive", "google_drive", "box"):
+        if dst_p in ("google_drive", "box"):
             if not job.get("dest_credentials_file"):
                 missing.append("Destination credentials file (OAuth JSON)")
             if not job.get("dest_folder"):
@@ -4666,9 +4664,8 @@ def _offer_save_to_library(parent, path):
 class _SyncJobDialog(tk.Toplevel):
     """Create / edit a cloud sync job config."""
 
-    # OneDrive retired (Sean's call, superseded by Backblaze B2). Not offered as a
-    # sync destination anymore; the dormant onedrive auth plumbing in cloud_client
-    # stays for any legacy job, but it's no longer a selectable option.
+    # OneDrive retired (Sean's call) — Microsoft's auth model never worked,
+    # nothing ever wrote to it, so it's fully removed, not just hidden.
     PROVIDERS = [("Google Drive", "google_drive"), ("Backblaze B2", "backblaze_b2")]
 
     def __init__(self, parent, config: dict, title: str = "Sync Job"):
@@ -4895,25 +4892,6 @@ class _SyncJobDialog(tk.Toplevel):
                 command=lambda: self._test_b2(b2_key_var, b2_appkey_var, folder_var, auth_status_var),
             )
             auth_status_var.set("")
-        else:  # onedrive
-            header.configure(text=f"── {label}: OneDrive {'─' * 24}")
-            creds_lbl.configure(text="MS app credentials JSON:")
-            folder_lbl.configure(text="Folder name:")
-            folder_hint.configure(
-                text='  Folder in your OneDrive root, e.g. "FoundTexturesBackup"'
-                '\n  Credentials JSON: {"client_id": "your-azure-app-client-id"}'
-            )
-            auth_btn.configure(
-                text="Authenticate with Microsoft",
-                state="normal",
-                command=lambda: self._do_auth(
-                    cloud_module.authenticate_onedrive,
-                    auth_status_var, creds_var,
-                ),
-            )
-            creds = creds_var.get()
-            if creds:
-                auth_status_var.set(cloud_module.get_onedrive_token_status(creds))
 
     # ------------------------------------------------------------------
     # Build
@@ -4965,7 +4943,7 @@ class _SyncJobDialog(tk.Toplevel):
                              self._src_auth_status)
 
         # Dest endpoint
-        self._dst_provider_var  = tk.StringVar(value=c.get("dest_provider", "onedrive"))
+        self._dst_provider_var  = tk.StringVar(value=c.get("dest_provider", "backblaze_b2"))
         self._dst_creds_var     = tk.StringVar(value=c.get("dest_credentials_file", ""))
         self._dst_folder_var    = tk.StringVar(
             value=c.get("dest_folder") or c.get("dest_folder_path", "")
