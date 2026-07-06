@@ -13,7 +13,7 @@ Same visual family as Smack Your Batch Up.
 
 
 
-BUILD_VERSION = "0.7.6"
+BUILD_VERSION = "0.7.10"
 
 import os
 import queue
@@ -619,17 +619,30 @@ class ProfileDialog(tk.Toplevel):
         tk.Button(f, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
                   relief="flat", font=FONT_SMALL, padx=8, pady=2,
                   command=self._browse_credentials).grid(row=17, column=2, padx=(4, 0), pady=3)
-        self._field(f, 18, "Cloud folder ID",      "cloud_folder_id")
+        # Authenticate with Google — only meaningful for an OAuth client-secret
+        # JSON, so it stays hidden until the creds field points at one. Mirrors
+        # the Settings tab's auth button so the OAuth path is reachable straight
+        # from the profile popup (result lands on the shared test-status line).
+        self._cloud_auth_btn = tk.Button(
+            f, text="Authenticate with Google", bg=BG_CARD, fg=FG_MAIN,
+            relief="flat", font=FONT_SMALL, padx=8, pady=2,
+            command=self._authenticate_cloud)
+        self._cloud_auth_btn.grid(row=18, column=1, sticky="w", pady=(0, 3))
+        self._cloud_auth_btn.grid_remove()   # shown only for OAuth client secrets
+        self._vars["cloud_credentials_file"].trace_add(
+            "write", lambda *a: self._refresh_cloud_auth())
+        self._field(f, 19, "Cloud folder ID",      "cloud_folder_id")
 
         tk.Label(f, text="Backup", bg=BG_MID, fg=ACCENT,
-                 font=FONT_HEAD).grid(row=19, column=0, columnspan=3, sticky="w", pady=(12, 4))
-        self._field(f, 20, "Local backup directory", "backup_dir")
+                 font=FONT_HEAD).grid(row=20, column=0, columnspan=3, sticky="w", pady=(12, 4))
+        self._field(f, 21, "Local backup directory", "backup_dir")
         tk.Button(f, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
                   relief="flat", font=FONT_SMALL, padx=8, pady=2,
-                  command=self._browse_backup_dir).grid(row=20, column=2, padx=(4, 0), pady=3)
-        self._field(f, 21, "Pacing delay (sec)",    "pacing_delay")
-        self._field(f, 22, "Batch size (0=unlimited)", "batch_size")
+                  command=self._browse_backup_dir).grid(row=21, column=2, padx=(4, 0), pady=3)
+        self._field(f, 22, "Pacing delay (sec)",    "pacing_delay")
+        self._field(f, 23, "Batch size (0=unlimited)", "batch_size")
         self._on_transport_change()   # reflect initial protocol (port + TLS state)
+        self._refresh_cloud_auth()    # reveal the Google auth button if creds preset
 
         # ── Connection tests ──────────────────────────────────────────────
         test_frame = tk.Frame(self, bg=BG_MID)
@@ -773,13 +786,25 @@ class ProfileDialog(tk.Toplevel):
         """Cloud credentials test — builds the same client the backup uses and
         does a lightweight authenticated round-trip (Google Drive today)."""
         p = self._snapshot()
-        if not str(p.get("cloud_credentials_file", "")).strip():
+        creds = str(p.get("cloud_credentials_file", "")).strip()
+        if not creds:
             self._test_status_var.set("Set the cloud credentials JSON first")
+            return
+        # Common mistake: pasting the client-ID string instead of Browsing to
+        # the downloaded client_secret_*.json. Catch it before we try to auth.
+        if not os.path.isfile(creds):
+            if creds.endswith("apps.googleusercontent.com"):
+                self._test_status_var.set(
+                    "That's the client ID — Browse to the downloaded "
+                    "client_secret_*.json instead.")
+            else:
+                self._test_status_var.set("Credentials file not found")
             return
         self._test_status_var.set("Testing cloud…")
         self.update_idletasks()
         import threading
         def _run():
+            new_folder = None
             try:
                 import cloud_client as _cc
                 client = _cc.get_cloud_client(p)
@@ -789,9 +814,77 @@ class ProfileDialog(tk.Toplevel):
                     msg = f"Test not supported for provider '{p.get('cloud_provider', '')}'"
                 else:
                     _ok, msg = client.test_connection()
+                    # Stamp the resolved folder ID back into the field so the user
+                    # can see it / jump to the folder (Save persists it).
+                    if _ok and hasattr(client, "resolved_folder_id"):
+                        try:
+                            new_folder = client.resolved_folder_id()
+                        except Exception:
+                            new_folder = None
             except Exception as e:
                 msg = f"✗ {e}"
-            self.after(0, lambda: self._test_status_var.set(msg))
+            def _apply():
+                self._test_status_var.set(msg)
+                if new_folder and "cloud_folder_id" in self._vars:
+                    self._vars["cloud_folder_id"].set(new_folder)
+            self.after(0, _apply)
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _refresh_cloud_auth(self) -> None:
+        """Show the Authenticate button only when the creds override points at an
+        OAuth client-secret JSON. If the field holds the pasted client-ID string
+        instead, nudge the user toward the downloaded client_secret file."""
+        import cloud_client as cc
+        btn = getattr(self, "_cloud_auth_btn", None)
+        if btn is None:
+            return
+        path = str(self._vars.get("cloud_credentials_file",
+                                  tk.StringVar()).get()).strip()
+        if not path:
+            btn.grid_remove()
+            return
+        if cc._is_oauth_client_secret(path):
+            btn.grid()
+            return
+        btn.grid_remove()
+        if not os.path.isfile(path) and path.endswith("apps.googleusercontent.com"):
+            self._test_status_var.set(
+                "That's the client ID — Browse to the downloaded "
+                "client_secret_*.json instead.")
+
+    def _authenticate_cloud(self) -> None:
+        """Run the Google OAuth consent flow for the profile's creds override,
+        mirroring the Settings tab. Result → the shared test-status line."""
+        import cloud_client as cc
+        import threading
+        path = str(self._vars.get("cloud_credentials_file",
+                                  tk.StringVar()).get()).strip()
+        if not path:
+            self._test_status_var.set("Set the cloud credentials JSON first")
+            return
+        if not os.path.isfile(path):
+            if path.endswith("apps.googleusercontent.com"):
+                self._test_status_var.set(
+                    "That's the client ID — Browse to the downloaded "
+                    "client_secret_*.json instead.")
+            else:
+                self._test_status_var.set("Credentials file not found")
+            return
+        if not cc._is_oauth_client_secret(path):
+            self._test_status_var.set(
+                "Not an OAuth client secret — service-account keys don't need this.")
+            return
+        self._test_status_var.set("Opening browser for Google login…")
+        self._cloud_auth_btn.configure(state="disabled")
+        self.update_idletasks()
+
+        def _run():
+            success, msg = cc.authenticate_oauth(path)
+            def _done():
+                self._test_status_var.set(msg)
+                self._cloud_auth_btn.configure(state="normal")
+            self.after(0, _done)
+
         threading.Thread(target=_run, daemon=True).start()
 
     def _save(self):
@@ -2873,6 +2966,7 @@ class SettingsTab(tk.Frame):
 
         import threading
         def _run():
+            new_folder = None
             try:
                 import cloud_client as _cc
                 client = _cc.get_cloud_client({}, global_cloud=gc)
@@ -2882,9 +2976,20 @@ class SettingsTab(tk.Frame):
                     msg = f"Test not supported for provider '{gc['cloud_provider']}'"
                 else:
                     _ok, msg = client.test_connection()
+                    # Stamp the resolved folder ID back into the field so the user
+                    # can see it / jump to the folder (Save Defaults persists it).
+                    if _ok and hasattr(client, "resolved_folder_id"):
+                        try:
+                            new_folder = client.resolved_folder_id()
+                        except Exception:
+                            new_folder = None
             except Exception as e:
                 msg = f"✗ {e}"
-            self.after(0, lambda: self._gc_test_var.set(msg))
+            def _apply():
+                self._gc_test_var.set(msg)
+                if new_folder:
+                    self._gc_folder_var.set(new_folder)
+            self.after(0, _apply)
         threading.Thread(target=_run, daemon=True).start()
 
     def _test_ftp(self) -> None:
@@ -5299,7 +5404,7 @@ class App(tk.Tk):
 
     def _load_profile(self, name: str) -> None:
         p = profile_manager.load_profile(name)
-        if p:
+        if p and p.get("name"):
             self._current_profile = p
             self._tab_backup.refresh(p)
             self._tab_settings.load_profile(p)

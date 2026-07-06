@@ -19,6 +19,7 @@ from typing import Dict, List, Optional
 
 
 def _app_dir() -> str:
+    # Portable app: sync jobs ride next to the executable, never in %APPDATA%.
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))

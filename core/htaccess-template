@@ -48,6 +48,11 @@ RewriteRule ^collection/([a-zA-Z0-9_-]+)$ collection.php?slug=$1 [L,QSA]
 # /.well-known/webfinger to resolve @handle@domain. The endpoint 404s on its
 # own unless smackverse_enabled=1, so this rewrite is harmless while off.
 RewriteRule ^\.well-known/webfinger$ smackverse.php?ap=webfinger [L,QSA]
+# SMACKVERSE (ActivityPub) — NodeInfo discovery. Directory crawlers (FediList,
+# fediverse.observer) and some peers read /.well-known/nodeinfo → /nodeinfo/2.0
+# to identify the software/version. 404s while smackverse_enabled=0, like above.
+RewriteRule ^\.well-known/nodeinfo$ smackverse.php?ap=nodeinfo [L,QSA]
+RewriteRule ^nodeinfo/2\.0$ smackverse.php?ap=nodeinfo2 [L,QSA]
 # SMACKVERSE (ActivityPub) — path-style object routes (/ap/actor, /ap/note/p/N…).
 # AP ids must be query-string-free: Pixelfed HTML-encodes '&' when it fetches
 # object URLs, so ?a=1&b=2 ids 404 on their side. Harmless while off.

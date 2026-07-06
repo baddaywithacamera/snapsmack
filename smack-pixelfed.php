@@ -122,6 +122,18 @@ if (isset($_GET['ajax'])) {
         exit;
     }
 
+    if ($panel === 'thread') {
+        // Reply thread for one post: fetch the remote status's context
+        // (descendants) so the lightbox can show the conversation, not just a
+        // "sent" flash. object = the post's status URL/URI (client sends p.id).
+        if (!$sv_on) { echo json_encode(['ok' => true, 'items' => []]); exit; }
+        $object = trim((string)($_GET['object'] ?? ''));
+        if ($object === '') { echo json_encode(['ok' => true, 'items' => []]); exit; }
+        @set_time_limit(20);
+        echo json_encode(['ok' => true, 'items' => sv_status_replies($object)], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
     if ($panel === 'local' || $panel === 'global') {
         if (!$sv_on) { echo json_encode(['ok' => true, 'items' => []]); exit; }
         // Discovery: a chosen instance's public timeline. Use the configured

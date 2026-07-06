@@ -187,16 +187,66 @@ def _hash_file(path: str, algo: str) -> str:
 
 
 class DriveClient:
+    # Name of the app-owned folder SUYB creates/uses when no app-VISIBLE folder
+    # ID is configured. The OAuth 'drive.file' scope can only see files/folders
+    # the app itself created, so we never rely on a folder made by hand in the
+    # Drive web UI (files().get on one of those 404s).
+    APP_FOLDER_NAME = "SUYB Backups"
+
     def __init__(self, credentials_file: str, folder_id: str, readonly: bool = False):
         self.credentials_file = credentials_file
         self.folder_id        = folder_id
         self._readonly        = readonly
         self._service         = None
+        self._resolved_folder = None
 
     def _svc(self):
         if not self._service:
             self._service = _get_drive_service(self.credentials_file, readonly=self._readonly)
         return self._service
+
+    def _folder(self) -> str:
+        """Resolve the Drive folder to back up into, creating it if needed.
+
+        drive.file only lets the app see files/folders it created, so a folder
+        made by hand in the browser is invisible (files().get 404s — the classic
+        "File not found" on a folder that plainly exists). Logic: if a folder ID
+        is configured AND the app can actually see it, use it; otherwise
+        find-or-create an app-owned APP_FOLDER_NAME folder and use that. Cached
+        for the session."""
+        if self._resolved_folder:
+            return self._resolved_folder
+        svc = self._svc()
+        fid = (self.folder_id or "").strip()
+        if fid:
+            try:
+                svc.files().get(fileId=fid, fields="id").execute()
+                self._resolved_folder = fid
+                return fid
+            except Exception:
+                pass  # not app-visible (made by hand?) — fall through and self-heal
+        # Reuse our own folder if we made one before, else create it.
+        try:
+            q = ("mimeType='application/vnd.google-apps.folder' and "
+                 f"name='{self.APP_FOLDER_NAME}' and trashed=false")
+            hits = svc.files().list(
+                q=q, spaces="drive", fields="files(id,name)", pageSize=1
+            ).execute().get("files", [])
+            if hits:
+                self._resolved_folder = hits[0]["id"]
+                return self._resolved_folder
+        except Exception:
+            pass
+        meta = {"name": self.APP_FOLDER_NAME,
+                "mimeType": "application/vnd.google-apps.folder"}
+        created = svc.files().create(body=meta, fields="id").execute()
+        self._resolved_folder = created["id"]
+        return self._resolved_folder
+
+    def resolved_folder_id(self) -> str:
+        """The Drive folder ID actually in use — resolves/creates it if needed.
+        Callers write this back into the profile so the user can see/keep it."""
+        return self._folder()
 
     def upload_file(
         self,
@@ -215,7 +265,7 @@ class DriveClient:
             resumable=True,
             chunksize=CHUNK_SIZE,
         )
-        meta = {"name": remote_name, "parents": [self.folder_id]}
+        meta = {"name": remote_name, "parents": [self._folder()]}
         req  = svc.files().create(body=meta, media_body=media, fields="id")
 
         response = None
@@ -249,7 +299,7 @@ class DriveClient:
         Paginates automatically — Google Drive caps each page at 1000 items.
         """
         svc   = self._svc()
-        query = f"'{self.folder_id}' in parents and trashed=false"
+        query = f"'{self._folder()}' in parents and trashed=false"
         if name_filter:
             safe_filter = name_filter.replace("'", "\\'")
             query += f" and name contains '{safe_filter}'"
@@ -351,13 +401,9 @@ class DriveClient:
         granted access to the target folder. Returns (ok: bool, msg: str)."""
         try:
             svc = self._svc()
-            if self.folder_id:
-                meta = svc.files().get(
-                    fileId=self.folder_id, fields="id,name").execute()
-                return True, f"✓ Connected — folder '{meta.get('name', self.folder_id)}' accessible"
-            about = svc.about().get(fields="user").execute()
-            who = (about.get("user", {}) or {}).get("emailAddress", "authenticated")
-            return True, f"✓ Connected as {who} (no folder ID set)"
+            fid  = self._folder()   # resolves + creates the app-owned folder if needed
+            meta = svc.files().get(fileId=fid, fields="id,name").execute()
+            return True, f"✓ Connected — backing up to '{meta.get('name', fid)}'"
         except Exception as e:
             return False, f"✗ {e}"
 

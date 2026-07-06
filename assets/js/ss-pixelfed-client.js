@@ -440,6 +440,43 @@
         return wrap;
     }
 
+    // ── reply thread bubbles (existing replies + ones you send) ───────────────
+    function replyBubble(item, mine) {
+        var b = el('div', 'sspf-reply' + (mine ? ' sspf-reply-mine' : ''));
+        var head = el('div', 'sspf-reply-head');
+        if (item.avatar) { var av = el('img', 'sspf-reply-av'); av.src = item.avatar; av.alt = ''; head.appendChild(av); }
+        head.appendChild(el('span', 'sspf-reply-who', item.name || item.handle || (mine ? 'You' : 'Someone')));
+        if (item.handle) head.appendChild(el('span', 'sspf-reply-handle', item.handle));
+        b.appendChild(head);
+        b.appendChild(el('div', 'sspf-reply-text', item.text || ''));
+        return b;
+    }
+    function loadThread(container, p) {
+        container.innerHTML = '';
+        container.appendChild(el('div', 'sspf-thread-head', 'Replies'));
+        var list = el('div', 'sspf-thread-list');
+        container.appendChild(list);
+        container._list = list;              // stashed so the composer can append
+        list.appendChild(noteEl('Loading replies…'));
+        fetch('smack-pixelfed.php?ajax=thread&object=' + encodeURIComponent(p.id || ''),
+              { headers: { 'X-Requested-With': 'fetch' } })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+            .then(function (data) {
+                list.innerHTML = '';
+                var items = (data && data.items) || [];
+                if (!items.length) { list.appendChild(noteEl('No replies yet.')); return; }
+                items.forEach(function (it) { list.appendChild(replyBubble(it, false)); });
+            })
+            .catch(function () { list.innerHTML = ''; list.appendChild(noteEl('Couldn’t load replies.')); });
+    }
+    function threadAppendMine(container, text) {
+        var list = container && container._list;
+        if (!list) return;
+        var ph = list.querySelector('.sspf-note');   // drop the "No replies yet." placeholder
+        if (ph) ph.remove();
+        list.appendChild(replyBubble({ name: 'You', text: text }, true));
+    }
+
     // ── post lightbox: image(s) + caption + like / reply ──────────────────────
     function openPost(a, p) {
         var ov   = el('div', 'sspf-lightbox');
@@ -488,6 +525,11 @@
         actions.appendChild(view);
         card.appendChild(actions);
 
+        // Reply thread — existing replies (fetched) + ones you send this session.
+        var thread = el('div', 'sspf-thread');
+        card.appendChild(thread);
+        loadThread(thread, p);
+
         if (enabled) {
             var replyBox = el('div', 'sspf-reply-box');
             replyBox.style.display = 'none';
@@ -510,7 +552,7 @@
                 post({ sspf_action: 'reply', object: p.id, actor: a.id, content: t }).then(function (r) {
                     send.disabled = false;
                     msgline.textContent = r.msg || '';
-                    if (r.ok) ta.value = '';
+                    if (r.ok) { ta.value = ''; threadAppendMine(thread, t); }
                 }).catch(function () { send.disabled = false; msgline.textContent = 'Reply failed — try again.'; });
             });
         } else {

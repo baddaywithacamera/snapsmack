@@ -20,7 +20,8 @@ from typing import Dict, List, Optional
 
 
 def _app_dir() -> str:
-    """Persistent app directory — next to the .exe when frozen, source dir otherwise."""
+    """Persistent app directory — next to the .exe when frozen, source dir otherwise.
+    Portable app: profiles ride next to the executable, never in %APPDATA%."""
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))
@@ -46,17 +47,25 @@ def _profile_path(name: str) -> str:
 
 
 def list_profiles() -> List[str]:
-    """Return sorted list of profile display names."""
+    """Return sorted list of profile display names.
+
+    Only JSONs that are actually profiles (a dict with a non-empty 'name') count.
+    Stray JSONs that happen to live in this folder — e.g. a saved
+    google-drive-auth.json — are skipped so they can't poison the profile list or
+    crash the loader downstream.
+    """
     os.makedirs(PROFILES_DIR, exist_ok=True)
     names = []
     for fname in os.listdir(PROFILES_DIR):
-        if fname.endswith(".json"):
-            try:
-                with open(os.path.join(PROFILES_DIR, fname)) as f:
-                    data = json.load(f)
-                names.append(data.get("name", fname[:-5]))
-            except Exception:
-                pass
+        if not fname.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(PROFILES_DIR, fname)) as f:
+                data = json.load(f)
+        except Exception:
+            continue
+        if isinstance(data, dict) and str(data.get("name", "")).strip():
+            names.append(data["name"])
     return sorted(names)
 
 
@@ -81,6 +90,12 @@ def load_profile(name: str) -> Optional[Dict]:
 
     with open(path) as f:
         data = json.load(f)
+
+    # A JSON without a 'name' isn't a profile (e.g. a stray creds file dropped in
+    # the profiles folder). Return None rather than a half-built dict the UI would
+    # choke on (KeyError: 'name' on startup).
+    if not (isinstance(data, dict) and str(data.get("name", "")).strip()):
+        return None
 
     # Deobfuscate passwords
     data["ftp_pass"]        = _deobfuscate(data.get("ftp_pass_enc", ""))
