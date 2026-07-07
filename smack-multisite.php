@@ -592,17 +592,17 @@ if (isset($_POST['push_skin']) || isset($_POST['push_skin_all'])) {
                     if ($only_stale && $skin_version !== '') {
                         $cur = (string)($node_skin_ver($tn, $skin_slug) ?? '');
                         if ($cur !== '' && !snap_version_compare($skin_version, $cur, '>')) {
-                            $skin_results[] = ['name' => $tn['site_name'] ?? $tn['site_url'], 'ok' => true,
+                            $skin_results[] = ['name' => $tn['site_name'] ?? $tn['site_url'], 'ok' => true, 'skipped' => true,
                                 'detail' => 'Skipped — already up to date (v' . $cur . ').'];
                             continue;
                         }
                     }
                     $eligible[] = $tn;
                 } elseif ($has === false) {
-                    $skin_results[] = ['name' => $tn['site_name'] ?? $tn['site_url'], 'ok' => false,
+                    $skin_results[] = ['name' => $tn['site_name'] ?? $tn['site_url'], 'ok' => false, 'skipped' => true,
                         'detail' => 'Skipped — this skin is not installed on that spoke.'];
                 } else {
-                    $skin_results[] = ['name' => $tn['site_name'] ?? $tn['site_url'], 'ok' => false,
+                    $skin_results[] = ['name' => $tn['site_name'] ?? $tn['site_url'], 'ok' => false, 'skipped' => true,
                         'detail' => 'Skipped — spoke has not reported its installed skins yet (needs a heartbeat once it is on 0.7.343+).'];
                 }
             }
@@ -1313,7 +1313,11 @@ include 'core/sidebar.php';
             <?php if (!empty($skin_results)): ?>
                 <div style="margin-bottom:14px;">
                     <?php foreach ($skin_results as $sr): ?>
-                        <?php if ($sr['ok']): ?>
+                        <?php if (!empty($sr['skipped'])): ?>
+                            <div class="alert alert-muted" style="margin-bottom:6px;">
+                                – <strong><?php echo htmlspecialchars($sr['name']); ?></strong> — <?php echo htmlspecialchars($sr['detail']); ?>
+                            </div>
+                        <?php elseif ($sr['ok']): ?>
                             <div class="alert alert-success" style="margin-bottom:6px;">
                                 ✓ <strong><?php echo htmlspecialchars($sr['name']); ?></strong> — <?php echo htmlspecialchars($sr['detail'] ?: 'Skin installed successfully.'); ?>
                             </div>
