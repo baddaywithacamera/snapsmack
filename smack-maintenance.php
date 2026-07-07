@@ -115,6 +115,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $log[] = "SUCCESS: Database tables optimized and defragmented.";
     }
 
+    // REBUILD CRAWLER FILES — robots.txt + llms.txt regenerated from the current
+    // AI-training policy WITHOUT re-saving Global Configuration. One source of
+    // truth: core/site-files.php (same output as the settings save).
+    if ($action === 'rebuild_robots') {
+        require_once __DIR__ . '/core/site-files.php';
+        $s = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+        $res = snapsmack_write_site_files($s);
+        $log[] = $res['robots']
+            ? "SUCCESS: robots.txt and llms.txt regenerated from the current AI-training policy."
+            : "ERROR: Could not write robots.txt — check write permissions on the site root.";
+    }
+
+    // REBUILD SITEMAP — drop the cached pages and warm it with a loopback hit so
+    // the next crawler gets a fresh index immediately, not a cold-cache rebuild.
+    if ($action === 'rebuild_sitemap') {
+        require_once __DIR__ . '/core/site-files.php';
+        $cleared = snapsmack_rebuild_sitemap();
+        @file_get_contents(rtrim(BASE_URL, '/') . '/sitemap.php', false,
+            stream_context_create(['http' => ['timeout' => 15, 'ignore_errors' => true]]));
+        $log[] = "SUCCESS: Sitemap rebuilt (cleared {$cleared} cached page(s) and regenerated).";
+    }
+
     // FEED ORDER — RANDOMIZE / RESTORE CHRONOLOGICAL (step-up: password + 2FA)
     // Both rewrite every post's sort_order, so they sit behind a re-auth gate to
     // prevent an accidental click. Trigrams stay glued as whole rows either way.
@@ -933,6 +955,24 @@ include 'core/sidebar.php';
             <form method="POST">
                 <input type="hidden" name="action" value="optimize">
                 <button type="submit" class="btn-smack btn-block">OPTIMIZE</button>
+            </form>
+        </div>
+
+        <div class="box box-flex">
+            <h3>REBUILD ROBOTS.TXT</h3>
+            <p class="skin-desc-text">Regenerates robots.txt and llms.txt from your current AI-training policy &mdash; no need to re-save Global Configuration. Use it to refresh a stale file, e.g. after changing the policy or clearing a CDN cache.</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="rebuild_robots">
+                <button type="submit" class="btn-smack btn-block">REBUILD ROBOTS.TXT</button>
+            </form>
+        </div>
+
+        <div class="box box-flex">
+            <h3>REBUILD SITEMAP.XML</h3>
+            <p class="skin-desc-text">Clears the cached sitemap and regenerates it now, so crawlers get an up-to-date index of your posts and images immediately instead of waiting for the hourly refresh.</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="rebuild_sitemap">
+                <button type="submit" class="btn-smack btn-block">REBUILD SITEMAP.XML</button>
             </form>
         </div>
 
