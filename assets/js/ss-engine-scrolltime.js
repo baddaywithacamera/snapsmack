@@ -26,13 +26,17 @@
     if (!hit || !endpoint) return;
 
     // Idle grace: how long stillness still counts as engaged reading after the
-    // last scroll/move. On a PHOTO blog, lingering 30-60s on one image without
-    // touching the trackpad IS the engaged read we want to capture — a 5s cutoff
-    // (the original value) discarded almost all of it, counting only active
-    // trackpad motion and collapsing a 10-minute browse to seconds. 30s captures
-    // contemplative viewing while still self-limiting an abandoned tab (it counts
-    // at most IDLE_MS past the last input, then freezes until activity resumes).
-    var IDLE_MS = 30000;
+    // last scroll/move. On a PHOTO blog, lingering on one image without touching
+    // the trackpad IS the engaged read we want to capture — a 5s cutoff (the
+    // original value) discarded almost all of it, counting only active trackpad
+    // motion and collapsing a 10-minute browse to seconds. 30s was still shorter
+    // than real contemplative viewing (people sit on a good photo well past that),
+    // so genuine reads clipped near the cap. 120s captures a real linger while
+    // still self-limiting a walked-away tab — hidden/backgrounded tabs are paused
+    // separately by the visibilitychange handler, so this only loosens the case
+    // of a tab left open in the foreground. It counts at most IDLE_MS past the
+    // last input, then freezes until activity resumes.
+    var IDLE_MS = 120000;
     var engaged = 0;           // accumulated engaged milliseconds
     var lastTick = null;       // timestamp of the previous accumulation tick
     var lastActivity = Date.now();

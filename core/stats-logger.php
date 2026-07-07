@@ -419,8 +419,8 @@ function snapsmack_record_dwell($pdo, $hit_id, $ms) {
 
 /**
  * Emit the Scroll Time tracker <script> tag when the current page qualifies:
- * a GRAMOFSMACK landing feed, or a SMACKONEOUT (photoblog) archive. Reads the
- * hit id stashed by snapsmack_log_hit(). No-ops on any other page or mode, or
+ * a GRAMOFSMACK landing feed, or a SMACKONEOUT (photoblog) home feed / archive.
+ * Reads the hit id stashed by snapsmack_log_hit(). No-ops on any other page/mode,
  * when stats produced no row. Config passes via data-* attributes (no inline
  * JS); the tracker logic lives in assets/js/ss-engine-scrolltime.js.
  *
@@ -433,8 +433,14 @@ function snapsmack_scrolltime_tag($settings) {
 
     $mode = $settings['site_mode'] ?? 'photoblog';
     $type = $hit['page_type'] ?? '';
+    // Emit on every page that shows a scrollable feed: the carousel (GRAMOFSMACK)
+    // landing, and BOTH the photoblog (SMACKONEOUT) home landing feed AND its
+    // /archive grid. The home feed logs as page_type 'landing' (index.php:495),
+    // so gating photoblog on 'archive' alone left the one page visitors actually
+    // scroll — the front feed — with no tracker at all, pinning Scroll Time near
+    // zero. The rollup already counts page_type IN ('landing','archive').
     $ok = ($mode === 'carousel'  && $type === 'landing')
-       || ($mode === 'photoblog' && $type === 'archive');
+       || ($mode === 'photoblog' && ($type === 'landing' || $type === 'archive'));
     if (!$ok) return;
 
     $ver  = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1';

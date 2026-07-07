@@ -81,7 +81,13 @@ $exclude_dirs = [
     'node_modules',
     'projects',
     'tools',               // Dev-only tools
-    // Additional skins are available via the skin gallery — none excluded here.
+    'skins',               // NEVER bundle skins. The installer fetches ONLY the
+                           // mode-appropriate default(s) + PHOTOGRAM from snapsmack.ca
+                           // (see install.php "FETCH MODE-APPROPRIATE SKINS" +
+                           // projects/snapsmack-ca/install-manifest.php). Bundling the
+                           // whole skins/ tree was planting all ~19 skins on every fresh
+                           // install — each skin manifest.php is live PHP, so every unused
+                           // skin is needless attack surface. Skins are gallery-on-demand.
 ];
 
 // Individual files to skip
