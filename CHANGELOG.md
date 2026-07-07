@@ -12,6 +12,10 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.389 — "Inspiration Manifestation" (2026-07-07)
+
+- **Fixed: multisite Remote Login (SSO) returned HTTP 500 on every attempt.** `smack-multisite-sso.php` carried **trailing NUL bytes (`0x00`) appended after its EOF marker** — invisible corruption that PHP cannot parse, so the file died with `syntax error, unexpected character 0x00` before executing a line, and every "Remote Login" click from the hub dashboard 500'd (confirmed in the live error log). No logic was wrong; the file simply wouldn't parse. The NUL padding was stripped, restoring the file to a clean parse (content and CRLF line endings preserved, EOF marker intact). The same trailing-NUL artifact was swept from sibling files caught in the same pass. This is exactly the failure the EOF-marker convention exists to catch — a source file not ending on its marker was treated as corrupted and repaired. (Verified against the real filesystem, not the sandbox mount, after an initial over-broad reading falsely implicated dozens of files that turned out to be intact.)
+
 ## 0.7.388 — "Trade Ya!" (2026-07-07)
 
 - **robots.txt + llms.txt generation is now one shared function, and the `Sitemap:` URL is no longer broken.** The robots generator lived inline in the Global Configuration save and emitted `Sitemap: <site_url>sitemap.xml` — with no trailing-slash normalization, so any install whose `site_url` lacked a trailing slash advertised a dead pointer (e.g. `https://foreverphotograph.ingsitemap.xml`), and crawlers couldn't find the sitemap at all. The logic now lives in `core/site-files.php` (`snapsmack_generate_robots` / `_llms` / `snapsmack_write_site_files` / `snapsmack_rebuild_sitemap`), the URL is normalized with `rtrim(site_url,'/')."/"`, and the settings save just calls it — so every producer emits byte-identical, correct output.
