@@ -372,7 +372,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="login-aux">
-            <a href="snap-in.php?tab=recovery" class="login-aux-link">Forgot password?</a>
+            <a href="?tab=recovery" class="login-aux-link">Forgot password?</a>
         </div>
 
         <div style="text-align:center; margin-top:14px; padding-top:14px; border-top:1px solid var(--border,rgba(255,255,255,0.08));">

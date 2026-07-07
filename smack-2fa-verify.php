@@ -41,11 +41,21 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// --- LOGIN SLUG ---
+// Logins ALWAYS route through the configured pretty slug (default /snap-in),
+// NEVER the raw snap-in.php file. snap-in.php 403s any direct hit on the .php
+// (DIRECT ACCESS PROTECTION), so a bare `Location: snap-in.php` dead-ends every
+// failed/incomplete 2FA in a 403 loop with no way back to the login form.
+$login_slug = $pdo->query(
+    "SELECT setting_val FROM snap_settings WHERE setting_key = 'login_slug' LIMIT 1"
+)->fetchColumn() ?: 'snap-in';
+$login_url = '/' . ltrim($login_slug, '/');
+
 // --- GUARD ---
 // Only reachable if snap-in.php planted a pending user ID.
 // If it's missing, the user hasn't passed password verification — send them back.
 if (empty($_SESSION['totp_pending_user_id'])) {
-    header("Location: snap-in.php");
+    header('Location: ' . $login_url);
     exit;
 }
 
@@ -67,7 +77,7 @@ if ($_SESSION['totp_fail_count'] >= 5) {
     // Too many failures — wipe the pending session and force a fresh login.
     session_unset();
     session_destroy();
-    header("Location: snap-in.php?err=2fa_locked");
+    header('Location: ' . $login_url . '?err=2fa_locked');
     exit;
 }
 
@@ -341,7 +351,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </form>
             </div>
 
-            <a href="snap-in.php" class="login-aux-link">&larr; BACK TO LOGIN</a>
+            <a href="<?php echo htmlspecialchars($login_url, ENT_QUOTES); ?>" class="login-aux-link">&larr; BACK TO LOGIN</a>
         </div>
     </div>
     <script src="assets/js/smack-login.js"></script>

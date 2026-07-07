@@ -223,17 +223,46 @@ class SnapSmackSession:
 
         self._stream_to_file(resp, local_path, on_progress)
 
-    def download_recovery_kit(self, local_path: str, on_progress: Optional[Callable] = None) -> None:
-        """Trigger recovery kit export and download the .tar.gz."""
-        # Trigger export — smack-disaster.php expects action=export&type=recovery_kit
+    def download_recovery_kit(self, local_path: str, on_progress: Optional[Callable] = None,
+                              on_status: Optional[Callable] = None) -> None:
+        """Trigger recovery kit export and download the .tar.gz.
+
+        on_status(elapsed_seconds) is ticked once a second WHILE the server builds
+        the kit — the POST returns nothing until the whole tar is ready, which on a
+        big archive is minutes — so the UI shows a live "still building" counter
+        instead of looking hung. on_progress(received, total) takes over the moment
+        bytes actually start streaming."""
+        import threading, time
         trigger_url = f"{self.site_url}/smack-disaster.php"
-        resp = self.session.post(
-            trigger_url,
-            data={"action": "export", "type": "recovery_kit"},
-            timeout=60,
-            allow_redirects=True,
-        )
-        resp.raise_for_status()
+
+        # Heartbeat thread: keep the UI alive during the (possibly multi-minute)
+        # server-side build. Stops the instant the POST returns and streaming begins.
+        _build_done = threading.Event()
+        def _heartbeat():
+            t0 = time.time()
+            while not _build_done.wait(1.0):
+                if on_status:
+                    try:
+                        on_status(int(time.time() - t0))
+                    except Exception:
+                        pass
+        _hb = threading.Thread(target=_heartbeat, daemon=True)
+        _hb.start()
+        try:
+            # (connect, read). The recovery kit is built server-side BEFORE the
+            # first byte comes back, so on a big archive (10k+ images) that build
+            # can take minutes (a flat 60s read timeout used to kill it mid-build,
+            # while the site was never down). Generous read window; the heartbeat
+            # above keeps the UI moving meanwhile.
+            resp = self.session.post(
+                trigger_url,
+                data={"action": "export", "type": "recovery_kit"},
+                timeout=(30, 600),
+                allow_redirects=True,
+            )
+            resp.raise_for_status()
+        finally:
+            _build_done.set()
 
         # The export returns a download URL or streams directly
         # Try streaming the response as the kit file
@@ -249,7 +278,7 @@ class SnapSmackSession:
             if kit_url:
                 if not kit_url.startswith("http"):
                     kit_url = f"{self.site_url}/{kit_url.lstrip('/')}"
-                dl_resp = self.session.get(kit_url, stream=True, timeout=120)
+                dl_resp = self.session.get(kit_url, stream=True, timeout=(30, 600))
                 dl_resp.raise_for_status()
                 self._stream_to_file(dl_resp, local_path, on_progress)
                 return
@@ -512,18 +541,28 @@ class BackupEngine:
                 )
             except Exception as e:
                 result["errors"].append(f"Login failed: {e}")
+                self._write_log_file(backup_dir, file_token, timestamp, result)
                 return result
 
-            self._progress("stage1", "Downloading recovery kit…", 0.05)
+            self._progress("stage1", "Building recovery kit on the server…", 0.03)
             try:
                 http.download_recovery_kit(
                     kit_path,
                     on_progress=lambda r, t: self._progress(
                         "stage1", f"Downloading kit… {r // 1024}KB", 0.05 + 0.10 * (r / max(t, 1))
                     ),
+                    on_status=lambda secs: self._progress(
+                        "stage1",
+                        f"Building recovery kit on the server… {secs}s"
+                        + (" (large archives can take a few minutes)" if secs >= 20 else ""),
+                        # creep the bar toward the 5% download hand-off so it visibly
+                        # moves without faking a real % of an unknown build.
+                        min(0.045, 0.01 + secs * 0.0005),
+                    ),
                 )
             except Exception as e:
                 result["errors"].append(f"Recovery kit download failed: {e}")
+                self._write_log_file(backup_dir, file_token, timestamp, result)
                 return result
 
             result["kit_path"] = kit_path
