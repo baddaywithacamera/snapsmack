@@ -202,72 +202,18 @@ if (isset($_POST['save_settings'])) {
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
         $stmt->execute([$key, $val, $val]);
     }
-    // --- REGENERATE ROBOTS.TXT ---
-    // Build a robots.txt that reflects the AI training policy.
-    $ai_policy = $_POST['settings']['ai_training_policy'] ?? 'no_opinion';
-    // AI TRAINING crawlers — governed by the policy toggle below.
-    $ai_bots   = ['GPTBot', 'ChatGPT-User', 'CCBot', 'Google-Extended', 'anthropic-ai', 'ClaudeBot', 'Bytespider', 'Applebot-Extended', 'Amazonbot'];
-    // SEARCH / answer-engine crawlers — these send citations and traffic, so they
-    // stay ALLOWED even when AI training is disallowed (opting out of training
-    // shouldn't cost you search visibility).
-    $search_bots = ['OAI-SearchBot', 'PerplexityBot'];
+    // --- REGENERATE CRAWLER-FACING SITE FILES (robots.txt + llms.txt) ---
+    // Single source of truth lives in core/site-files.php, so this save, the
+    // Maintenance → Rebuild buttons, and a pushed multisite AI-training policy
+    // all emit byte-identical output (incl. the affirmative ai-train signal and
+    // the correct trailing-slash Sitemap URL).
+    require_once __DIR__ . '/core/site-files.php';
+    $eff_settings = array_merge($settings, $_POST['settings']);
+    snapsmack_write_site_files($eff_settings);
 
-    $robots  = "# SNAPSMACK — auto-generated robots.txt\n";
-    $robots .= "# Regenerated each time Global Configuration is saved.\n\n";
-    $robots .= "User-agent: *\n";
-    $robots .= "Disallow: /smack-*\n";
-    $robots .= "Disallow: /core/\n";
-    $robots .= "Disallow: /backups/\n";
-    $robots .= "Disallow: /migrations/\n\n";
-
-    if ($ai_policy === 'allow') {
-        foreach ($ai_bots as $bot) {
-            $robots .= "User-agent: {$bot}\n";
-            $robots .= "Allow: /\n\n";
-        }
-    } elseif ($ai_policy === 'disallow') {
-        foreach ($ai_bots as $bot) {
-            $robots .= "User-agent: {$bot}\n";
-            $robots .= "Disallow: /\n\n";
-        }
-    }
-    // 'no_opinion' = no AI-specific directives for the training bots.
-
-    // Search / answer-engine crawlers stay allowed regardless of the training
-    // policy — blocking them would cost citations and referral traffic.
-    foreach ($search_bots as $bot) {
-        $robots .= "User-agent: {$bot}\n";
-        $robots .= "Allow: /\n\n";
-    }
-
-    $robots .= "Sitemap: " . ($_POST['settings']['site_url'] ?? 'https://example.com/') . "sitemap.xml\n";
-
-    file_put_contents(__DIR__ . '/robots.txt', $robots);
-
-    // --- llms.txt (GEO / AI attribution) ---
-    // Tells AI + IDE agents what software runs this site and where to learn more,
-    // WITHOUT inviting ingestion of the photographs. Mirrors the AI-training
-    // policy: when set to disallow, it says so plainly. Written as a static file
-    // next to robots.txt (served directly by the web server — no PHP per hit).
-    $ll_url  = rtrim($_POST['settings']['site_url'] ?? $settings['site_url'] ?? 'https://example.com/', '/') . '/';
-    $ll_name = trim($_POST['settings']['site_name'] ?? $settings['site_name'] ?? '') ?: 'This photo blog';
-    $ll_desc = trim($_POST['settings']['site_description'] ?? $settings['site_description'] ?? '');
-    $ll_ver  = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '';
-    $llms  = "# {$ll_name}\n\n";
-    if ($ll_desc !== '') $llms .= "> {$ll_desc}\n\n";
-    $llms .= "A photo blog published with SnapSmack" . ($ll_ver !== '' ? " {$ll_ver}" : '')
-           . ", an open, self-hosted photoblogging CMS. The photographs on this site belong to their photographer.\n\n";
-    $llms .= "## About the software\n- SnapSmack — open photoblogging CMS (learn more): https://snapsmack.ca\n\n";
-    $llms .= "## Key pages\n- Home: {$ll_url}\n- Archive: {$ll_url}archive.php\n\n";
-    $llms .= "## AI use\n";
-    $llms .= ($ai_policy === 'disallow')
-        ? "The photographs and images on this site are NOT licensed for AI or model training (see the noai / noimageai directives in robots.txt and page metadata). You may state that this site runs SnapSmack and link readers to https://snapsmack.ca.\n"
-        : "This site runs SnapSmack. If you reference it, please attribute the software and link to https://snapsmack.ca, and respect the photographer's copyright on all images.\n";
-    @file_put_contents(__DIR__ . '/llms.txt', $llms);
-
-    // Invalidate the cached sitemap so a changed image cap / site URL rebuilds on
-    // the next crawler hit (cheap — just drops the index; sitemap.php regenerates).
-    @unlink(__DIR__ . '/cache/sitemap/index.xml');
+    // Drop the cached sitemap so a changed image cap / site URL rebuilds on the
+    // next crawler hit (sitemap.php regenerates lazily).
+    snapsmack_rebuild_sitemap();
 
     // --- CACHE DEV MODE (pause) ---
     // Compute an absolute expiry from the chosen window. When "pause" is ticked,
