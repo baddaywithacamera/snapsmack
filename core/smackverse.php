@@ -416,9 +416,20 @@ function sv_inbox_rate_ok(PDO $pdo, string $ip): bool {
  * timeout, 512KB cap. Returns decoded array or null.
  */
 function sv_fetch_ap(string $url): ?array {
-    if (!function_exists('curl_init')) return null;
+    // Every failure path logs a DISTINCT reason (HTTP code, curl errno,
+    // resolver block, oversize, non-JSON) so the caller's blanket "could not
+    // fetch signer actor" reject can be diagnosed: 401 = the remote wants an
+    // authorized (signed) GET, 429 = we're being rate-limited (cache actors),
+    // 404/410 = bogus/dead actor (correctly refused), transport = TLS/DNS/pin.
+    if (!function_exists('curl_init')) {
+        error_log('SMACKVERSE fetch: curl_init unavailable — ' . $url);
+        return null;
+    }
     $res = sv_resolve_public($url);
-    if ($res === null) return null;
+    if ($res === null) {
+        error_log('SMACKVERSE fetch: blocked by SSRF guard / unresolvable host — ' . $url);
+        return null;
+    }
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
@@ -431,13 +442,34 @@ function sv_fetch_ap(string $url): ?array {
             'User-Agent: SnapSmack-SMACKVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
         ],
     ]);
-    $body = curl_exec($ch);
-    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $body  = curl_exec($ch);
+    $code  = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $cerr  = curl_errno($ch);
+    $cmsg  = curl_error($ch);
+    $ctype = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
     curl_close($ch);
-    if ($body === false || $code < 200 || $code >= 300) return null;
-    if (strlen($body) > 524288) return null;
+    if ($body === false || $cerr !== 0) {
+        error_log('SMACKVERSE fetch: transport error curl_errno=' . $cerr
+            . ' (' . ($cmsg !== '' ? $cmsg : 'none') . ') http=' . $code . ' — ' . $url);
+        return null;
+    }
+    if ($code < 200 || $code >= 300) {
+        error_log('SMACKVERSE fetch: HTTP ' . $code
+            . ' ctype=' . ($ctype !== '' ? $ctype : '?')
+            . ' bytes=' . strlen((string)$body) . ' — ' . $url);
+        return null;
+    }
+    if (strlen($body) > 524288) {
+        error_log('SMACKVERSE fetch: oversize body ' . strlen($body) . ' bytes — ' . $url);
+        return null;
+    }
     $doc = json_decode($body, true);
-    return is_array($doc) ? $doc : null;
+    if (!is_array($doc)) {
+        error_log('SMACKVERSE fetch: non-JSON/non-object body (' . json_last_error_msg()
+            . ') ctype=' . ($ctype !== '' ? $ctype : '?') . ' bytes=' . strlen((string)$body) . ' — ' . $url);
+        return null;
+    }
+    return $doc;
 }
 
 /* ── Piggyback authenticated search (0.7.373) ───────────────────────────────

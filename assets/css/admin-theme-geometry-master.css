@@ -1839,6 +1839,16 @@ input[type="range"]:active::-webkit-slider-thumb {
     border-color: #c47f00;
     color: #ffbb33;
 }
+/* Neutral/informational alert — for benign, non-actionable outcomes (e.g. a
+   skin push SKIPPED because the spoke doesn't run that skin). Reserves red
+   (alert-error) for real failures and green (alert-success) for real wins, so
+   a wall of skips no longer reads as a wall of errors. Hardcoded like the rules
+   above so it stays consistent across all admin colour themes. */
+.alert-muted {
+    background: #1a1a1a;
+    border-color: #555555;
+    color: #aaaaaa;
+}
 
 /* Update notification banner (dashboard) */
 .alert-update {
