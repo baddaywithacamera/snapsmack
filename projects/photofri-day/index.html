@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF marker for HTML:
+  an HTML comment containing five equals, space, 'SNAPSMACK EOF', space, five equals.
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PHOTOFRI.DAY — Coming Soon</title>
+<meta name="description" content="A weekly photo challenge for SNAPSMACK photographers. Your photos stay on your own blog. Coming soon.">
+<meta name="robots" content="index, follow">
+
+<meta property="og:title" content="PHOTOFRI.DAY — Coming Soon">
+<meta property="og:description" content="A weekly photo challenge for SNAPSMACK photographers. Your photos stay yours.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://photofri.day/">
+
+<style>
+  :root {
+    --red:   #D40000;
+    --link:  #F50A0A;
+    --black: #111111;
+    --ink:   #f4f4f4;
+    --muted: #9a9a9a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--black);
+    color: var(--ink);
+    font-family: Georgia, 'Times New Roman', serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* faint radial vignette so the black isn't flat */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 30%, rgba(212,0,0,0.10), transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 48px 24px;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  .kicker {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    color: var(--red);
+    margin-bottom: 22px;
+    padding-left: 0.42em;
+  }
+
+  h1 {
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 0.92;
+    font-size: clamp(2.6rem, 11vw, 6rem);
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  h1 .dot { color: var(--red); }
+
+  .rule {
+    width: 64px;
+    height: 4px;
+    background: var(--red);
+    margin: 30px auto;
+  }
+
+  .lede {
+    font-size: clamp(1.05rem, 2.6vw, 1.35rem);
+    line-height: 1.6;
+    color: var(--ink);
+    max-width: 34em;
+  }
+
+  .sub {
+    margin-top: 20px;
+    font-size: 0.98rem;
+    line-height: 1.7;
+    color: var(--muted);
+    max-width: 34em;
+  }
+  .sub strong { color: var(--ink); font-weight: normal; border-bottom: 1px solid var(--red); }
+
+  .badge {
+    margin-top: 40px;
+    display: inline-block;
+    font-family: 'Arial Black', Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.74rem;
+    color: var(--ink);
+    background: var(--red);
+    padding: 11px 20px;
+  }
+
+  footer {
+    position: relative;
+    z-index: 1;
+    border-top: 3px solid var(--red);
+    padding: 22px 24px;
+    text-align: center;
+  }
+  footer p {
+    font-family: 'Courier New', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    color: #888;
+  }
+  footer a { color: var(--link); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+  <main class="wrap">
+    <p class="kicker">Every Friday · Wherever you are</p>
+
+    <h1>PHOTOFRI<span class="dot">.</span>DAY</h1>
+
+    <div class="rule"></div>
+
+    <p class="lede">
+      A weekly photo challenge for photographers who run their own blog.
+      One theme a week. Shoot it, post it, share it.
+    </p>
+
+    <p class="sub">
+      The twist: your photo never leaves <strong>your</strong> site. No uploads,
+      no cropping, no compression, no silo. The challenge points home to your work —
+      the way it should be.
+    </p>
+
+    <span class="badge">Coming Soon</span>
+  </main>
+
+  <footer>
+    <p>Part of the SNAPSMACK network · <a href="https://snapsmack.ca/">snapsmack.ca</a></p>
+  </footer>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
