@@ -149,6 +149,8 @@ require_once __DIR__ . '/includes/header.php';
                     <li><a href="#q-stay-free">Is SnapSmack going to stay free?</a></li>
                     <li><a href="#q-add-feature">Will you add [feature]?</a></li>
                     <li><a href="#q-video">When is video support coming?</a></li>
+                    <li><a href="#q-private-galleries">Will you be adding support for private image galleries?</a></li>
+                    <li><a href="#q-watermarking">Will you add image watermarking as a feature?</a></li>
                     <li><a href="#q-whats-next">What's next?</a></li>
                 </ol>
             </div>
@@ -205,7 +207,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>SnapSmack is what I need to stop paying everyone else to be able to share my photography in a way that works for me. I'm a prolific photographer and a power user who can flatten a shared hosting environment in ten seconds flat, so I needed something better and affordable. The arrival of AI and vibe coding let me build bespoke software that suits me. The truth is, if it works for me it will probably work for nearly everyone else because I'm a literal worst-case scenario as photographers who publish their work to the web go.</p>
                 <p>This software is a gift from one photographer to others. I know you're all sick of paying the photography tax like I am. SnapSmack is free now, and forever. I have no plans to turn it into a paid product. Further to that, it's open source and under a copyleft license so I can't. Neither can anyone else. They can fork it, build off it, but not charge for it. It's free and staying that way.</p>
                 <p>If you want to support me, hit my tip jar, buy gear from my affiliate links, watch a few of my videos which I have monetized — hey, lenses ain't free bro. You can support me, but you don't have to in order to use the product. That's the point.</p>
-                <p>The only catch is there is no catch. Word.</p>
+                <p>The only catch is there is no catch. Word to your mother.</p>
             </div>
 
             <div class="qa" id="q-reimagining">
@@ -392,6 +394,16 @@ require_once __DIR__ . '/includes/header.php';
             <div class="qa" id="q-video">
                 <h3>When is video support coming?</h3>
                 <p>Never. SnapSmack is photo blogging software. Videos are not photos. We're not trying to be everything to everyone &mdash; we have a specific focus, which is photography (see what I did there???), and we're staying firmly in that lane. Besides, every time a photo product bolts on video it goes straight into the crapper. <em>*cough*</em> Instagram <em>*cough*</em></p>
+            </div>
+
+            <div class="qa" id="q-private-galleries">
+                <h3>Will you be adding support for private image galleries?</h3>
+                <p>No. SnapSmack is a photo blogging platform. Blogging is, by its very nature, public sharing of content. Adding private galleries is mission creep away from the software's intended purpose. The other issue is that private content online quite often gets exposed by accident or by malicious intent, creating legal liability issues for the creator of the software that hosted them. I do not wish to have this kind of headache and refuse to go there for this other reason. There's lots of good, free software already for maintaining private galleries. We suggest using that instead.</p>
+            </div>
+
+            <div class="qa" id="q-watermarking">
+                <h3>Will you add image watermarking as a feature?</h3>
+                <p>No. Watermarking is mostly superfluous these days and is easily negated by powerful and ubiquitous AI tools. If you really want watermarks on your images you should add them in your post production.</p>
             </div>
 
             <div class="qa" id="q-whats-next">
