@@ -88,6 +88,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // override (blank = use the post date; never changes remote row order).
     $fedi_enabled = ((string)($_POST['fedi_enabled'] ?? '1') === '0') ? 0 : 1;
     $fedi_pub_raw = trim($_POST['fedi_published_at'] ?? '');
+    // Full-compat (0.7.393): profile pin + sensitive / content-warning.
+    $is_pinned       = !empty($_POST['is_pinned'])    ? 1 : 0;
+    $is_sensitive    = !empty($_POST['is_sensitive']) ? 1 : 0;
+    $content_warning = substr(trim($_POST['content_warning'] ?? ''), 0, 255);
     $fedi_pub     = $fedi_pub_raw !== '' ? str_replace('T', ' ', $fedi_pub_raw) : null;
     $raw_date     = $_POST['img_date']             ?? '';
     $post_date    = !empty($raw_date) ? str_replace('T', ' ', $raw_date) : date('Y-m-d H:i:s');
@@ -140,13 +144,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             panorama_rows = ?, allow_comments = ?, allow_download = ?, download_url = ?,
             post_img_size_pct = ?, post_border_px = ?, post_border_color = ?,
             post_bg_color = ?, post_shadow = ?,
-            fedi_enabled = ?, fedi_published_at = ?
+            fedi_enabled = ?, fedi_published_at = ?,
+            is_pinned = ?, is_sensitive = ?, content_warning = ?
         WHERE id = ?
     ")->execute([$title, $desc, $status, $post_date,
                  $pano_rows, $allow_cmt, $allow_dl, $dl_url,
                  $post_style_size, $post_style_bpx, $post_style_bc,
                  $post_style_bg,   $post_style_shadow,
                  $fedi_enabled, $fedi_pub,
+                 $is_pinned, $is_sensitive, $content_warning,
                  $post_id]);
 
     // --- Cascade status + date to this post's images ---
@@ -566,6 +572,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         snap_sync_tags($pdo, $cover_img_id, ($desc ?? '') . ' ' . $manual_tags);
     }
 
+    // Federate the edit: if this post was already pushed to followers, send an
+    // AP Update (or a Delete/Tombstone if it just went unpublished) so remote
+    // copies reflect the change — caption, tags, media, status. First-time
+    // publishes are left to the cron Create path. Enqueue-only.
+    if (is_file(__DIR__ . '/core/smackverse.php')) {
+        require_once __DIR__ . '/core/smackverse.php';
+        if (function_exists('sv_federate_post_change')) {
+            sv_federate_post_change($pdo, $settings, (int)$post_id);
+        }
+    }
+
     // Content changed — flush the page cache so the edit appears immediately.
     require_once __DIR__ . '/core/page-cache.php';
     page_cache_purge_all();
@@ -822,6 +839,25 @@ include 'core/sidebar.php';
                         <input type="datetime-local" name="fedi_published_at" class="full-width-select edit-timestamp"
                                onclick="this.showPicker()"
                                value="<?php echo !empty($post['fedi_published_at']) ? date('Y-m-d\TH:i', strtotime($post['fedi_published_at'])) : ''; ?>">
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>PIN TO PROFILE?</label>
+                        <select name="is_pinned" class="full-width-select">
+                            <option value="0" <?php echo empty($post['is_pinned']) ? 'selected' : ''; ?>>NO</option>
+                            <option value="1" <?php echo !empty($post['is_pinned']) ? 'selected' : ''; ?>>YES &mdash; feature on the fediverse profile</option>
+                        </select>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>SENSITIVE / CONTENT WARNING</label>
+                        <select name="is_sensitive" class="full-width-select">
+                            <option value="0" <?php echo empty($post['is_sensitive']) ? 'selected' : ''; ?>>NOT SENSITIVE</option>
+                            <option value="1" <?php echo !empty($post['is_sensitive']) ? 'selected' : ''; ?>>MARK SENSITIVE &mdash; hide behind a warning</option>
+                        </select>
+                        <input type="text" name="content_warning" class="full-width-select" style="margin-top:8px;"
+                               maxlength="255" placeholder="Content-warning text (optional, shown before the image)"
+                               value="<?php echo htmlspecialchars($post['content_warning'] ?? ''); ?>">
                     </div>
                 </div>
             </div>

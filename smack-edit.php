@@ -105,6 +105,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $manual_tags = trim($_POST['tags'] ?? '');
+    // Full-compat (0.7.393): sensitive / content-warning for the federated Note.
+    $is_sensitive    = !empty($_POST['is_sensitive']) ? 1 : 0;
+    $content_warning = substr(trim($_POST['content_warning'] ?? ''), 0, 255);
     $selected_cats        = $_POST['cat_ids']        ?? [];
     $selected_albums      = $_POST['album_ids']      ?? [];
     $selected_collections = $_POST['collection_ids'] ?? [];
@@ -181,11 +184,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $display_json = !empty($display_opts) ? json_encode($display_opts) : null;
 
     // Update the primary image record with all modified fields.
-    $stmt = $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_film = ?, img_exif = ?, img_status = ?, img_date = ?, img_orientation = ?, allow_comments = ?, allow_download = ?, download_url = ?, img_display_options = ? WHERE id = ?");
-    $stmt->execute([$title, $desc, $film_val, json_encode($updated_exif), $status, $custom_date, $orientation, $allow_comments, $allow_download, $download_url, $display_json, $id]);
+    $stmt = $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_film = ?, img_exif = ?, img_status = ?, img_date = ?, img_orientation = ?, allow_comments = ?, allow_download = ?, download_url = ?, img_display_options = ?, is_sensitive = ?, content_warning = ? WHERE id = ?");
+    $stmt->execute([$title, $desc, $film_val, json_encode($updated_exif), $status, $custom_date, $orientation, $allow_comments, $allow_download, $download_url, $display_json, $is_sensitive, $content_warning, $id]);
 
     // Sync hashtags from title + description + manual tags field.
     snap_sync_tags($pdo, $id, $title . ' ' . $desc . ' ' . $manual_tags);
+
+    // Federate the edit to followers — Update if this image (or its parent post)
+    // was already pushed, Delete/Tombstone if it just went unpublished. New
+    // posts are seeded by the cron Create path. Enqueue-only.
+    if (is_file(__DIR__ . '/core/smackverse.php')) {
+        require_once __DIR__ . '/core/smackverse.php';
+        if (function_exists('sv_federate_image_change')) {
+            sv_federate_image_change($pdo, $settings, (int)$id);
+        }
+    }
 
     // Delete and re-populate category mappings.
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
@@ -383,6 +396,17 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>TAGS</label>
                         <input type="text" name="tags" placeholder="#concrete #rust #peeling — space-separated hashtags" value="<?php echo htmlspecialchars($existing_tags_str); ?>">
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>SENSITIVE / CONTENT WARNING</label>
+                        <select name="is_sensitive" class="full-width-select">
+                            <option value="0" <?php echo empty($post['is_sensitive']) ? 'selected' : ''; ?>>NOT SENSITIVE</option>
+                            <option value="1" <?php echo !empty($post['is_sensitive']) ? 'selected' : ''; ?>>MARK SENSITIVE &mdash; hide behind a warning</option>
+                        </select>
+                        <input type="text" name="content_warning" style="margin-top:8px;" maxlength="255"
+                               placeholder="Content-warning text (optional, shown before the image)"
+                               value="<?php echo htmlspecialchars($post['content_warning'] ?? ''); ?>">
                     </div>
                 </div>
 
