@@ -78,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ? trim($_POST['title'] ?? '')
                         : trim($_POST['title'] ?? 'Untitled Transmission');
     $desc         = trim($_POST['desc']            ?? '');
+    $manual_tags  = trim($_POST['tags']            ?? '');
     $status       = $_POST['img_status']           ?? 'published';
     $pano_rows    = max(1, min(3, (int)($_POST['panorama_rows'] ?? 1)));
     $allow_cmt    = (int)($_POST['allow_comments'] ?? 1);
@@ -545,14 +546,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ->execute([$post_id]);
     }
 
-    // Sync hashtags from description (cover image carries the post's tags)
+    // Sync hashtags from the caption AND the dedicated TAGS field (cover image
+    // carries the post's tags). Manual tags let you add discovery tags like
+    // #catsofpixelfed without cluttering the visible caption.
     $cover_stmt = $pdo->prepare(
         "SELECT image_id FROM snap_post_images WHERE post_id = ? AND is_cover = 1 LIMIT 1"
     );
     $cover_stmt->execute([$post_id]);
     $cover_img_id = (int)$cover_stmt->fetchColumn();
+    if (!$cover_img_id) {
+        // No cover flag yet (e.g. a single promoted to carousel) — fall back to
+        // the post's first image so tags never silently drop.
+        $cover_img_id = (int)$pdo->query(
+            "SELECT image_id FROM snap_post_images WHERE post_id = " . (int)$post_id
+            . " ORDER BY sort_position ASC LIMIT 1"
+        )->fetchColumn();
+    }
     if ($cover_img_id) {
-        snap_sync_tags($pdo, $cover_img_id, $desc ?? '');
+        snap_sync_tags($pdo, $cover_img_id, ($desc ?? '') . ' ' . $manual_tags);
     }
 
     // Content changed — flush the page cache so the edit appears immediately.
@@ -593,6 +604,14 @@ $images_stmt = $pdo->prepare("
 ");
 $images_stmt->execute([$post_id]);
 $post_images = $images_stmt->fetchAll();
+
+// Existing hashtags for the TAGS field — carried on the cover image, falling
+// back to the first image if this post has no cover flag set yet.
+$_tag_img_id = 0;
+foreach ($post_images as $_pi) { if (!empty($_pi['is_cover'])) { $_tag_img_id = (int)$_pi['id']; break; } }
+if (!$_tag_img_id && !empty($post_images)) { $_tag_img_id = (int)$post_images[0]['id']; }
+$existing_tags     = $_tag_img_id ? snap_get_tags($pdo, $_tag_img_id) : [];
+$existing_tags_str = implode(' ', array_map(function ($t) { return '#' . $t['slug']; }, $existing_tags));
 
 // Load categories and albums (photoblog mode only)
 $_edit_is_carousel = ($settings['site_mode'] ?? 'photoblog') === 'carousel';
@@ -745,6 +764,11 @@ include 'core/sidebar.php';
                             </div>
                         </div>
                         <textarea id="desc" name="desc" placeholder="Post-level description. EXIF notes go per image below."><?php echo htmlspecialchars($post['description']); ?></textarea>
+                    </div>
+
+                    <div class="lens-input-wrapper post-tags-wrap">
+                        <label>TAGS</label>
+                        <input type="text" name="tags" placeholder="#catsofpixelfed #catsofmastodon — space-separated hashtags" value="<?php echo htmlspecialchars($existing_tags_str); ?>">
                     </div>
                 </div>
 

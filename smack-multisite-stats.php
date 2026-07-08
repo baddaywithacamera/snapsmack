@@ -514,7 +514,7 @@ include 'core/sidebar.php';
                 // SMACKVERSE engagement (hub) — following, inbound likes/boosts/
                 // replies (typed in snap_ap_notifications), and views referred by an
                 // instance we federate with or a common fediverse platform pattern.
-                $fedi_following = 0; $fedi_likes = 0; $fedi_boosts = 0; $fedi_replies = 0; $fedi_ref_views = 0;
+                $fedi_following = 0; $fedi_likes = 0; $fedi_boosts = 0; $fedi_replies = 0;
                 try {
                     if (($settings['smackverse_enabled'] ?? '0') === '1') {
                         $fedi_following = (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_following WHERE state = 'accepted'")->fetchColumn();
@@ -522,19 +522,6 @@ include 'core/sidebar.php';
                         $fedi_likes = (int)($_nt['like']  ?? 0);
                         $fedi_boosts   = (int)($_nt['boost'] ?? 0);
                         $fedi_replies  = (int)($_nt['reply'] ?? 0) + (int)($_nt['mention'] ?? 0);
-                        $_rows = $pdo->query(
-                            "SELECT actor_url FROM snap_ap_followers WHERE is_active = 1
-                             UNION SELECT actor_url FROM snap_ap_following WHERE state = 'accepted'"
-                        )->fetchAll(PDO::FETCH_COLUMN);
-                        $_hosts = [];
-                        foreach ($_rows as $_u) { $_h = parse_url((string)$_u, PHP_URL_HOST); if ($_h) $_hosts[strtolower($_h)] = true; }
-                        $_cond = ["referrer_host LIKE '%pixelfed%'", "referrer_host LIKE '%mastodon%'",
-                                  "referrer_host LIKE '%mstdn%'", "referrer_host LIKE '%fedi%'"];
-                        $_prm = [];
-                        foreach (array_keys($_hosts) as $_h) { $_cond[] = "referrer_host = ?"; $_prm[] = $_h; }
-                        $_st = $pdo->prepare("SELECT COUNT(*) FROM snap_stats WHERE is_bot = 0 AND referrer_host IS NOT NULL AND (" . implode(' OR ', $_cond) . ")");
-                        $_st->execute($_prm);
-                        $fedi_ref_views = (int)$_st->fetchColumn();
                     }
                     // Fleet rollup (0.7.391): add each spoke's cached heartbeat
                     // engagement on top of the hub-local counts above, mirroring the
@@ -615,10 +602,6 @@ include 'core/sidebar.php';
             <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
                 <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fedi_replies); ?></div>
                 <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">REPLIES &amp; MENTIONS</div>
-            </div>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fedi_ref_views); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">VIEWS FROM FEDIVERSE</div>
             </div>
         </div>
 
