@@ -164,6 +164,28 @@ class SnapSmackSession:
 
         self._stream_to_file(resp, local_path, on_progress)
 
+    def fetch_inventory(self) -> dict:
+        """Fetch the lightweight file inventory (client-side manifest gen).
+
+        Returns the manifest dict (paths + sizes, checksums null) from
+        suyb-export.php?type=inventory. The client fills in the checksums as it
+        downloads each file, then builds the recovery kit itself — so the server
+        never hashes anything. Fast JSON call, no multi-minute build."""
+        url = f"{self.site_url}/suyb-export.php?type=inventory"
+        resp = self.session.get(url, timeout=(30, 120))
+        resp.raise_for_status()
+        ctype = resp.headers.get("Content-Type", "")
+        if "application/json" not in ctype:
+            raise RuntimeError(
+                f"Unexpected response from suyb-export.php?type=inventory "
+                f"(Content-Type: {ctype or 'none'}) — likely not authenticated "
+                "or an older SnapSmack without the inventory endpoint."
+            )
+        data = resp.json()
+        if not data.get("ok") or "manifest" not in data:
+            raise RuntimeError(data.get("error", "inventory: unexpected response"))
+        return data["manifest"]
+
     def report_backup_complete(self, status: str = "clean",
                                size_bytes: int = 0,
                                destination: str = "") -> None:
@@ -527,7 +549,7 @@ class BackupEngine:
             prev_state      = {}
             already_done    = set()
 
-            # ── Stage 1: Pull recovery kit ───────────────────────────
+            # ── Stage 1: Connect + authenticate ──────────────────────
             if self._cancelled:
                 return result
             self._progress("stage1", "Connecting to site…", 0.02)
@@ -544,31 +566,11 @@ class BackupEngine:
                 self._write_log_file(backup_dir, file_token, timestamp, result)
                 return result
 
-            self._progress("stage1", "Building recovery kit on the server…", 0.03)
-            try:
-                http.download_recovery_kit(
-                    kit_path,
-                    on_progress=lambda r, t: self._progress(
-                        "stage1", f"Downloading kit… {r // 1024}KB", 0.05 + 0.10 * (r / max(t, 1))
-                    ),
-                    on_status=lambda secs: self._progress(
-                        "stage1",
-                        f"Building recovery kit on the server… {secs}s"
-                        + (" (large archives can take a few minutes)" if secs >= 20 else ""),
-                        # creep the bar toward the 5% download hand-off so it visibly
-                        # moves without faking a real % of an unknown build.
-                        min(0.045, 0.01 + secs * 0.0005),
-                    ),
-                )
-            except Exception as e:
-                result["errors"].append(f"Recovery kit download failed: {e}")
-                self._write_log_file(backup_dir, file_token, timestamp, result)
-                return result
-
-            result["kit_path"] = kit_path
-            self._log(f"Recovery kit saved: {kit_path}")
-
-            # ── Stage 1b: Pull SQL dumps ─────────────────────────────
+            # ── Stage 1a: Pull SQL dumps ─────────────────────────────
+            # SQL is fetched BEFORE the inventory: generateSqlDump() on the server
+            # get-or-creates site_uuid, so the inventory then reports it for the
+            # cross-mode restore guard. No server-side kit build anymore — the
+            # client assembles the kit itself in Stage 4.
             if self._cancelled:
                 return result
             self._progress("stage1", "Downloading SQL dumps…", 0.12)
@@ -604,14 +606,41 @@ class BackupEngine:
                 self._log(f"Schema SQL dump failed (non-fatal): {e}")
                 result["errors"].append(f"SQL dump (schema) failed: {e}")
 
-        # ── Stage 2: Parse manifest ──────────────────────────────────
+            # ── Stage 1b: Fetch file inventory (client-side manifest) ──
+            # Lightweight list (paths + sizes, NO server hashing). Persisted to a
+            # deterministic path so a resumed run can reload it — the kit itself
+            # isn't built until Stage 4.
+            if self._cancelled:
+                return result
+            self._progress("stage1", "Fetching file inventory…", 0.15)
+            try:
+                inv_manifest = http.fetch_inventory()
+            except Exception as e:
+                result["errors"].append(f"Inventory fetch failed: {e}")
+                self._write_log_file(backup_dir, file_token, timestamp, result)
+                return result
+            inventory_path = os.path.join(backup_dir, f"{file_token}_inventory_{timestamp}.json")
+            try:
+                with open(inventory_path, "w", encoding="utf-8") as _invf:
+                    json.dump(inv_manifest, _invf)
+            except Exception as e:
+                result["errors"].append(f"Could not save inventory: {e}")
+                return result
+            self._log(f"Inventory: {len(inv_manifest.get('files', {}))} files "
+                      f"(client hashes each on download)")
+
+        # ── Stage 2: Load manifest (from the saved inventory) ────────
+        # Deterministic path — works for both fresh and resumed runs (the
+        # original run persisted it; the kit isn't built until Stage 4).
         if self._cancelled:
             return result
-        self._progress("stage2", "Parsing manifest…", 0.15)
+        self._progress("stage2", "Reading inventory…", 0.15)
+        inventory_path = os.path.join(backup_dir, f"{file_token}_inventory_{timestamp}.json")
         try:
-            manifest = manifest_reader.from_tar(kit_path)
+            with open(inventory_path, "r", encoding="utf-8") as _invf:
+                manifest = manifest_reader.from_dict(json.load(_invf))
         except Exception as e:
-            result["errors"].append(f"Manifest parse error: {e}")
+            result["errors"].append(f"Manifest load error: {e}")
             return result
 
         media_files = {k: v for k, v in manifest.files.items() if not v.bundled}
@@ -707,27 +736,29 @@ class BackupEngine:
                 on_progress=lambda fn, r, t, s: None,
             )
 
-            # ── Post-download checksum verification ──────────────────
-            if ok and record.checksum and os.path.exists(local_path):
-                actual = ftp_module.FTPClient.sha256_file(local_path)
-                if actual != record.checksum:
-                    self._log(f"✗ Checksum mismatch: {record.restores_to} — retrying once")
+            # ── Post-download integrity: size check + capture client hash ──
+            # The inventory carries no checksums (server did no hashing). We verify
+            # the transfer by expected size, then record the SHA-256 we compute
+            # here — that client hash becomes the kit manifest's authoritative
+            # checksum.
+            if ok and os.path.exists(local_path):
+                actual_size = os.path.getsize(local_path)
+                if record.size and actual_size != record.size:
+                    self._log(f"✗ Size mismatch: {record.restores_to} "
+                              f"(expected {record.size}, got {actual_size}) — retrying once")
                     ok, dl_err = ftp.download_file(
                         record.restores_to, local_path,
                         on_progress=lambda fn, r, t, s: None,
                     )
                     if ok:
-                        actual = ftp_module.FTPClient.sha256_file(local_path)
-                        if actual != record.checksum:
-                            dl_err = f"checksum wrong after retry (expected {record.checksum[:8]}… got {actual[:8]}…)"
-                            self._log(
-                                f"✗ Checksum wrong after retry: {record.restores_to}\n"
-                                f"  Expected: {record.checksum}\n"
-                                f"  Got:      {actual}"
-                            )
+                        actual_size = os.path.getsize(local_path)
+                        if record.size and actual_size != record.size:
+                            dl_err = (f"size wrong after retry "
+                                      f"(expected {record.size}, got {actual_size})")
+                            self._log(f"✗ Size wrong after retry: {record.restores_to}")
                             ok = False
-                        else:
-                            self._log(f"✓ Checksum OK on retry: {record.restores_to}")
+                if ok:
+                    record.checksum = ftp_module.FTPClient.sha256_file(local_path)
 
             if ok:
                 result["files_downloaded"] += 1
@@ -811,9 +842,44 @@ class BackupEngine:
             "files":              new_state_files,
         }
 
+        # ── Build the recovery kit client-side (manifest.json + SQL) ──
+        # The server built no kit; we assemble it here from the inventory — now
+        # carrying our client-computed checksums — plus the SQL dump. Identical
+        # .tar.gz layout to the server's kit, so restore is unchanged.
+        try:
+            final_manifest = json.loads(json.dumps(manifest.raw))  # deep copy of inventory
+            for _k, _rec in manifest.files.items():
+                if _rec.checksum and _k in final_manifest.get("files", {}):
+                    final_manifest["files"][_k]["checksum"] = _rec.checksum
+            final_manifest["export_type"] = "recovery-kit"
+            if result.get("sql_full_path") and os.path.exists(result["sql_full_path"]):
+                with open(result["sql_full_path"], "rb") as _sf:
+                    _sql_bytes = _sf.read()
+                final_manifest.setdefault("files", {})["database.sql"] = {
+                    "size":     len(_sql_bytes),
+                    "checksum": "sha256:" + hashlib.sha256(_sql_bytes).hexdigest(),
+                    "bundled":  True,
+                }
+            kit_prefix   = os.path.splitext(os.path.splitext(os.path.basename(kit_path))[0])[0]
+            manifest_tmp = os.path.join(backup_dir, f"{file_token}_manifest_{timestamp}.json")
+            with open(manifest_tmp, "w", encoding="utf-8") as _mf:
+                json.dump(final_manifest, _mf, indent=2)
+            with tarfile.open(kit_path, "w:gz") as _tf:
+                _tf.add(manifest_tmp, arcname=f"{kit_prefix}/manifest.json")
+                if result.get("sql_full_path") and os.path.exists(result["sql_full_path"]):
+                    _tf.add(result["sql_full_path"], arcname=f"{kit_prefix}/database.sql")
+            os.remove(manifest_tmp)
+            result["kit_path"] = kit_path
+            self._log(f"Recovery kit built client-side: {os.path.basename(kit_path)}")
+        except Exception as e:
+            result["errors"].append(f"Kit build failed: {e}")
+            if ftp:
+                ftp.disconnect()
+            return result
+
         try:
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-                # Include the recovery kit
+                # Include the recovery kit (built above, client-side)
                 zf.write(kit_path, os.path.basename(kit_path))
                 # Include SQL dumps (if available)
                 if result.get("sql_full_path") and os.path.exists(result["sql_full_path"]):

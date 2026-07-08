@@ -63,6 +63,12 @@ def _parse_dict(data: dict) -> Manifest:
     return m
 
 
+def from_dict(data: dict) -> Manifest:
+    """Parse a manifest dict (e.g. the JSON from suyb-export.php?type=inventory)
+    into a Manifest. Same shape as the manifest.json inside a recovery kit."""
+    return _parse_dict(data)
+
+
 def from_tar(tar_path: str) -> Optional[Manifest]:
     """Extract and parse manifest.json from a recovery kit .tar.gz."""
     try:

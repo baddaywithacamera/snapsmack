@@ -376,12 +376,25 @@ if ($resource === 'heartbeat' && $method === 'GET') {
     // SMACKVERSE federation stats for the fleet rollup (best-effort).
     $sv_enabled_hb   = ($settings['smackverse_enabled'] ?? '0') === '1' ? 1 : 0;
     $sv_followers_hb = 0;
+    $sv_following_hb = 0; $sv_likes_hb = 0; $sv_boosts_hb = 0; $sv_replies_hb = 0;
     if ($sv_enabled_hb) {
         try {
             $sv_followers_hb = (int)$pdo->query(
                 "SELECT COUNT(*) FROM snap_ap_followers WHERE is_active = 1"
             )->fetchColumn();
-        } catch (Exception $e) { /* table may not exist yet */ }
+            $sv_following_hb = (int)$pdo->query(
+                "SELECT COUNT(*) FROM snap_ap_following WHERE state = 'accepted'"
+            )->fetchColumn();
+            // Typed engagement — same source the hub's own rollup reads for its
+            // local site (snap_ap_notifications.ntype), so a spoke reports the
+            // identical numbers the fleet board would compute if it were the hub.
+            $_nt = $pdo->query(
+                "SELECT ntype, COUNT(*) c FROM snap_ap_notifications GROUP BY ntype"
+            )->fetchAll(PDO::FETCH_KEY_PAIR);
+            $sv_likes_hb   = (int)($_nt['like']  ?? 0);
+            $sv_boosts_hb  = (int)($_nt['boost'] ?? 0);
+            $sv_replies_hb = (int)($_nt['reply'] ?? 0) + (int)($_nt['mention'] ?? 0);
+        } catch (Exception $e) { /* tables may not exist yet */ }
     }
 
     // Disk usage — uploads folder
@@ -412,6 +425,10 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         'active_skin'        => $settings['active_skin'] ?? '',
         'smackverse_enabled' => $sv_enabled_hb,
         'smackverse_followers' => $sv_followers_hb,
+        'smackverse_following' => $sv_following_hb,
+        'smackverse_likes'     => $sv_likes_hb,
+        'smackverse_boosts'    => $sv_boosts_hb,
+        'smackverse_replies'   => $sv_replies_hb,
         'timestamp'          => date('c'),
     ]);
 }

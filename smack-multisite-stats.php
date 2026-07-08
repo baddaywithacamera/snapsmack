@@ -536,6 +536,23 @@ include 'core/sidebar.php';
                         $_st->execute($_prm);
                         $fedi_ref_views = (int)$_st->fetchColumn();
                     }
+                    // Fleet rollup (0.7.391): add each spoke's cached heartbeat
+                    // engagement on top of the hub-local counts above, mirroring the
+                    // FEDIVERSE FOLLOWERS rollup. Without this the tiles only ever
+                    // showed the hub site's own numbers, so a fleet of spokes full of
+                    // follows and Pixelfed likes still read 0. Unconditional — spokes
+                    // federate even when the hub site itself doesn't.
+                    $_fe = $pdo->query(
+                        "SELECT COALESCE(SUM(smackverse_following),0) fo,
+                                COALESCE(SUM(smackverse_likes),0)     li,
+                                COALESCE(SUM(smackverse_boosts),0)    bo,
+                                COALESCE(SUM(smackverse_replies),0)   re
+                         FROM snap_multisite_nodes WHERE role = 'spoke'"
+                    )->fetch(PDO::FETCH_ASSOC);
+                    $fedi_following += (int)($_fe['fo'] ?? 0);
+                    $fedi_likes     += (int)($_fe['li'] ?? 0);
+                    $fedi_boosts    += (int)($_fe['bo'] ?? 0);
+                    $fedi_replies   += (int)($_fe['re'] ?? 0);
                 } catch (Exception $e) { /* fedi tables absent */ }
             ?>
             <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
