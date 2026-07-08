@@ -76,6 +76,8 @@ function sv_inbox_url(array $settings): string     { return sv_base($settings) .
 function sv_outbox_url(array $settings): string    { return sv_base($settings) . 'ap/outbox'; }
 function sv_followers_url(array $settings): string { return sv_base($settings) . 'ap/followers'; }
 function sv_following_url(array $settings): string { return sv_base($settings) . 'ap/following'; }
+function sv_featured_url(array $settings): string      { return sv_base($settings) . 'ap/featured'; }
+function sv_featured_tags_url(array $settings): string { return sv_base($settings) . 'ap/featured-tags'; }
 function sv_key_id(array $settings): string        { return sv_actor_url($settings) . '#main-key'; }
 
 /** Federation GENERATION suffix for Note ids. A RE-IMPRINT bumps the generation
@@ -181,6 +183,34 @@ function sv_ensure_tables(PDO $pdo): void {
         PRIMARY KEY (`id`),
         KEY `idx_inbox_log_time` (`received_at`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // Direct Messages (0.7.394): the blog's single-actor DM inbox — one thread
+    // per remote actor. note_id dedups inbound + drives unsend/Delete. is_request
+    // flags a DM from an account we don't follow (message-requests bucket).
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_dms` (
+        `id`               bigint unsigned NOT NULL AUTO_INCREMENT,
+        `remote_actor_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `remote_handle`    varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `direction`        enum('in','out') COLLATE utf8mb4_unicode_ci NOT NULL,
+        `note_id`          varchar(600) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `in_reply_to`      varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `body`             text         COLLATE utf8mb4_unicode_ci,
+        `media_url`        varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `is_request`       tinyint(1)   NOT NULL DEFAULT 0,
+        `is_read`          tinyint(1)   NOT NULL DEFAULT 0,
+        `is_deleted`       tinyint(1)   NOT NULL DEFAULT 0,
+        `created_at`       datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_dm_note` (`note_id`(191)),
+        KEY `idx_dm_thread` (`remote_actor_url`(191), `created_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // Notifications gain a 'dm' type (defensive MODIFY — CREATE IF NOT EXISTS
+    // cannot widen an existing enum).
+    try {
+        $pdo->exec("ALTER TABLE snap_ap_notifications MODIFY `ntype`
+            enum('follow','like','reply','mention','boost','dm')
+            COLLATE utf8mb4_unicode_ci NOT NULL");
+    } catch (Exception $e) { /* table may lag on a fresh install */ }
     foreach ([
         "ap_source enum('local','fediverse') NOT NULL DEFAULT 'local'",
         "ap_actor_url varchar(500) DEFAULT NULL",
@@ -199,8 +229,21 @@ function sv_ensure_tables(PDO $pdo): void {
         "fedi_enabled tinyint(1) NOT NULL DEFAULT 1",
         "fedi_pushed_at datetime DEFAULT NULL",
         "fedi_published_at datetime DEFAULT NULL",
+        // Full-compat (0.7.393): profile pin + sensitive / content-warning.
+        "is_pinned tinyint(1) NOT NULL DEFAULT 0",
+        "is_sensitive tinyint(1) NOT NULL DEFAULT 0",
+        "content_warning varchar(255) DEFAULT NULL",
     ] as $_col) {
         try { $pdo->exec("ALTER TABLE snap_posts ADD COLUMN IF NOT EXISTS {$_col}"); }
+        catch (Exception $e) { /* older MySQL without IF NOT EXISTS — ignore dup */ }
+    }
+    // Full-compat (0.7.393): per-image blurhash placeholder + sensitive / CW.
+    foreach ([
+        "blurhash varchar(50) DEFAULT NULL",
+        "is_sensitive tinyint(1) NOT NULL DEFAULT 0",
+        "content_warning varchar(255) DEFAULT NULL",
+    ] as $_col) {
+        try { $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS {$_col}"); }
         catch (Exception $e) { /* older MySQL without IF NOT EXISTS — ignore dup */ }
     }
 
@@ -439,7 +482,7 @@ function sv_inbox_rate_ok(PDO $pdo, string $ip): bool {
  * GET a remote ActivityPub document (actor, mostly). No redirects, 8s
  * timeout, 512KB cap. Returns decoded array or null.
  */
-function sv_fetch_ap(string $url): ?array {
+function sv_fetch_ap(string $url, ?array $settings = null): ?array {
     // Every failure path logs a DISTINCT reason (HTTP code, curl errno,
     // resolver block, oversize, non-JSON) so the caller's blanket "could not
     // fetch signer actor" reject can be diagnosed: 401 = the remote wants an
@@ -454,6 +497,19 @@ function sv_fetch_ap(string $url): ?array {
         error_log('SMACKVERSE fetch: blocked by SSRF guard / unresolvable host — ' . $url);
         return null;
     }
+    // Authorized-fetch: sign the GET when a key is reachable (passed in, or the
+    // page-level $settings global). Instances in secure mode 401 an unsigned GET,
+    // so without this we can't fetch their actors/objects (can't follow/interact).
+    // Falls back to the plain unsigned headers when no key is configured.
+    $hdrs = [
+        'Accept: application/activity+json, application/ld+json',
+        'User-Agent: SnapSmack-SMACKVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
+    ];
+    $sv_settings = $settings ?? ($GLOBALS['settings'] ?? null);
+    if (is_array($sv_settings)) {
+        $signed = sv_signed_get_headers($sv_settings, $url);
+        if ($signed !== null) $hdrs = $signed;
+    }
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
@@ -461,10 +517,7 @@ function sv_fetch_ap(string $url): ?array {
         CURLOPT_RESOLVE        => $res['pin'], // pin the vetted IP — DNS-rebinding guard
         CURLOPT_TIMEOUT        => 8,
         CURLOPT_CONNECTTIMEOUT => 5,
-        CURLOPT_HTTPHEADER     => [
-            'Accept: application/activity+json, application/ld+json',
-            'User-Agent: SnapSmack-SMACKVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
-        ],
+        CURLOPT_HTTPHEADER     => $hdrs,
     ]);
     $body  = curl_exec($ch);
     $code  = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
@@ -931,6 +984,42 @@ function sv_signed_headers(array $settings, string $url, string $body): ?array {
     ];
 }
 
+/**
+ * Signed GET headers (draft-cavage) for authorized-fetch instances that refuse
+ * unsigned object/actor fetches. Same key + keyId as the POST path; signs
+ * `(request-target) host date` only — a GET has no body, so no digest or
+ * content-type. Returns null when no key is configured (caller falls back to an
+ * unsigned GET, unchanged behaviour).
+ */
+function sv_signed_get_headers(array $settings, string $url): ?array {
+    $priv = $settings['smackverse_private_key'] ?? '';
+    if ($priv === '') return null;
+    $pkey = openssl_pkey_get_private($priv);
+    if ($pkey === false) return null;
+
+    $p    = parse_url($url);
+    $host = $p['host'] ?? '';
+    $path = ($p['path'] ?? '/') . (isset($p['query']) ? '?' . $p['query'] : '');
+    $date = gmdate('D, d M Y H:i:s') . ' GMT';
+
+    $signing_string = "(request-target): get {$path}\n"
+                    . "host: {$host}\n"
+                    . "date: {$date}";
+    if (!openssl_sign($signing_string, $raw_sig, $pkey, OPENSSL_ALGO_SHA256)) return null;
+
+    $sig_header = 'keyId="' . sv_key_id($settings) . '",'
+                . 'algorithm="rsa-sha256",'
+                . 'headers="(request-target) host date",'
+                . 'signature="' . base64_encode($raw_sig) . '"';
+    return [
+        'Host: ' . $host,
+        'Date: ' . $date,
+        'Signature: ' . $sig_header,
+        'Accept: application/activity+json, application/ld+json',
+        'User-Agent: SnapSmack-SMACKVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
+    ];
+}
+
 /** POST a signed activity to a remote inbox. Returns [bool ok, string info]. */
 function sv_deliver(array $settings, string $inbox_url, string $activity_json): array {
     if (!function_exists('curl_init')) return [false, 'curl missing'];
@@ -1241,6 +1330,53 @@ function sv_is_following(PDO $pdo, string $actor_url): bool {
     } catch (Exception $e) { return false; }
 }
 
+/** True when an inbound activity/object is DIRECT-addressed to us (a DM): no
+ *  as:Public anywhere in to/cc, and our actor appears in to/cc or a Mention tag.
+ *  The sender chose direct visibility → it is private, whatever it replies to. */
+function sv_is_direct(array $activity, array $obj, array $settings): bool {
+    $me     = sv_actor_url($settings);
+    $public = 'https://www.w3.org/ns/activitystreams#Public';
+    $aud = [];
+    foreach ([$activity['to'] ?? [], $activity['cc'] ?? [], $obj['to'] ?? [], $obj['cc'] ?? []] as $set) {
+        if (is_string($set)) { $aud[] = $set; }
+        elseif (is_array($set)) { foreach ($set as $v) { if (is_string($v)) $aud[] = $v; } }
+    }
+    foreach ($aud as $a) {
+        if ($a === $public || $a === 'Public' || $a === 'as:Public') return false; // public → not a DM
+    }
+    if (in_array($me, $aud, true)) return true;
+    foreach (($obj['tag'] ?? []) as $tg) {
+        if (is_array($tg) && ($tg['type'] ?? '') === 'Mention' && ($tg['href'] ?? '') === $me) return true;
+    }
+    return false;
+}
+
+/** Store an inbound DM (idempotent by note id), flag request-status, notify. */
+function sv_capture_dm(PDO $pdo, array $settings, array $obj, string $actor_id, string $handle): void {
+    $note_id = (string)($obj['id'] ?? '');
+    if ($note_id === '') return;
+    $text = trim(html_entity_decode(strip_tags((string)($obj['content'] ?? '')), ENT_QUOTES, 'UTF-8'));
+    if (mb_strlen($text) > 5000) $text = mb_substr($text, 0, 5000);
+    // First image attachment, if any (media receive).
+    $media = null;
+    foreach (($obj['attachment'] ?? []) as $att) {
+        if (is_array($att) && !empty($att['url']) && stripos((string)($att['mediaType'] ?? ''), 'image/') === 0) {
+            $media = substr((string)$att['url'], 0, 600); break;
+        }
+    }
+    $in_reply   = is_string($obj['inReplyTo'] ?? null) ? substr((string)$obj['inReplyTo'], 0, 600) : null;
+    $is_request = sv_is_following($pdo, $actor_id) ? 0 : 1;
+    try {
+        $pdo->prepare(
+            "INSERT INTO snap_ap_dms
+                (remote_actor_url, remote_handle, direction, note_id, in_reply_to, body, media_url, is_request)
+             VALUES (?, ?, 'in', ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE body = VALUES(body), media_url = VALUES(media_url)"
+        )->execute([$actor_id, substr($handle, 0, 190), $note_id, $in_reply, $text, $media, $is_request]);
+        sv_notify($pdo, 'dm', $actor_id, $handle, $note_id, sv_actor_url($settings), $text);
+    } catch (Exception $e) { /* table may lag on a fresh install */ }
+}
+
 /** Ingest a remote Note into the home timeline (image posts only, de-duped). */
 function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $handle = '',
                             bool $is_boost = false, ?string $boosted_by = null): void {
@@ -1372,6 +1508,17 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 $pdo->prepare("DELETE FROM snap_ap_likes WHERE target_type = ? AND target_id = ? AND actor_url = ?")
                     ->execute([$t['type'], (int)$t['id'], $actor_id]);
             }
+        } elseif ($otype === 'Announce') {
+            // Un-boost: a remote retracted a boost of one of our posts. Drop the
+            // boost notification so the tally decrements — mirrors Undo Like. The
+            // Undo wraps the original Announce, whose `object` is the boosted Note.
+            $boosted = is_array($obj['object'] ?? null) ? ($obj['object']['id'] ?? '') : ($obj['object'] ?? '');
+            if (is_string($boosted) && $boosted !== '') {
+                $pdo->prepare(
+                    "DELETE FROM snap_ap_notifications
+                     WHERE ntype = 'boost' AND actor_url = ? AND object_id = ?"
+                )->execute([$actor_id, $boosted]);
+            }
         }
         return 202;
     }
@@ -1418,6 +1565,15 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         $handle   = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
         $note_id  = (string)($obj['id'] ?? '');
         $in_reply = is_string($obj['inReplyTo'] ?? null) ? (string)$obj['inReplyTo'] : '';
+
+        // (0) DM FIRST: a DIRECT-addressed Note (audience is not public) is a
+        // private message. Capture it to the DM inbox and STOP — it must never
+        // become a public comment or a home-timeline row, whatever it replies to.
+        if (sv_is_direct($activity, $obj, $settings)) {
+            sv_cache_actor($pdo, $actor_doc);
+            sv_capture_dm($pdo, $settings, $obj, $actor_id, $handle);
+            return 202;
+        }
 
         // (a) A reply to one of OUR posts → moderation comment + a notification.
         $target = ($in_reply !== '') ? sv_resolve_target($in_reply, $pdo) : null;
@@ -1483,6 +1639,11 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 $pdo->prepare("DELETE FROM snap_comments WHERE ap_object_id = ? AND ap_source = 'fediverse'")
                     ->execute([$obj]);
             } catch (Exception $e) { /* ignore */ }
+            // Remote unsend of a DM they sent us → mark the thread row deleted.
+            try {
+                $pdo->prepare("UPDATE snap_ap_dms SET is_deleted = 1 WHERE note_id = ? AND remote_actor_url = ?")
+                    ->execute([$obj, $actor_id]);
+            } catch (Exception $e) { /* table may lag */ }
         }
         return 202;
     }
@@ -1655,6 +1816,8 @@ function sv_actor_doc(PDO $pdo, array &$settings): array {
         'outbox'            => sv_outbox_url($settings),
         'followers'         => sv_followers_url($settings),
         'following'         => sv_following_url($settings),
+        'featured'          => sv_featured_url($settings),
+        'featuredTags'      => sv_featured_tags_url($settings),
         'endpoints'         => ['sharedInbox' => sv_inbox_url($settings)],
         'manuallyApprovesFollowers' => false,
         'discoverable'      => true,
@@ -1709,6 +1872,59 @@ function sv_following_doc(array $settings, ?PDO $pdo = null): array {
     ];
 }
 
+/** Featured collection — posts pinned to the profile (Pixelfed "featured").
+ *  Lists the pinned Note ids newest-first, capped, as an OrderedCollection. */
+function sv_featured_doc(PDO $pdo, array $settings): array {
+    $items = [];
+    try {
+        $rows = $pdo->query(
+            "SELECT id FROM snap_posts
+             WHERE is_pinned = 1 AND status = 'published' AND created_at <= NOW()
+             ORDER BY created_at DESC LIMIT 20"
+        )->fetchAll(PDO::FETCH_COLUMN);
+        $base = sv_base($settings);
+        foreach ($rows as $pid) {
+            $items[] = $base . 'ap/note/p/' . (int)$pid . sv_gen_suffix($settings);
+        }
+    } catch (Exception $e) { /* is_pinned column may lag on a fresh install */ }
+    return [
+        '@context'     => 'https://www.w3.org/ns/activitystreams',
+        'id'           => sv_featured_url($settings),
+        'type'         => 'OrderedCollection',
+        'totalItems'   => count($items),
+        'orderedItems' => $items,
+    ];
+}
+
+/** Featured tags collection — the actor's most-used hashtags as Hashtag items,
+ *  the way Pixelfed/Mastodon surface a profile tag cloud. Frequency-derived, so
+ *  no pin table is needed. */
+function sv_featured_tags_doc(PDO $pdo, array $settings): array {
+    $items = [];
+    try {
+        $base = sv_base($settings);
+        $rows = $pdo->query(
+            "SELECT t.tag, t.slug, COUNT(*) c
+             FROM snap_image_tags it JOIN snap_tags t ON t.id = it.tag_id
+             GROUP BY t.id ORDER BY c DESC, t.tag ASC LIMIT 10"
+        )->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $t) {
+            $items[] = [
+                'type' => 'Hashtag',
+                'href' => $base . '?tag=' . rawurlencode($t['slug']),
+                'name' => '#' . preg_replace('/\s+/', '', (string)$t['tag']),
+            ];
+        }
+    } catch (Exception $e) { /* tag tables optional */ }
+    return [
+        '@context'     => 'https://www.w3.org/ns/activitystreams',
+        'id'           => sv_featured_tags_url($settings),
+        'type'         => 'OrderedCollection',
+        'totalItems'   => count($items),
+        'orderedItems' => $items,
+    ];
+}
+
 // ─── Outbound Follow (0.7.356) — the blog actor follows people ──────────────
 // Reach mechanics: following a photographer lands the blog in THEIR
 // notifications — that's how follow-backs happen. Publisher-only: we ingest
@@ -1727,6 +1943,108 @@ function sv_webfinger_lookup(string $handle): ?string {
         }
     }
     return null;
+}
+
+/**
+ * Send a Direct Message as the blog actor. $target is @user@host or an actor
+ * URL; $body is plain text; $media_url optionally attaches one image (e.g. a
+ * photo or a shared-post link handled by the caller). Direct visibility: the
+ * recipient only, a Mention tag, and NO Public — a private message. Delivered +
+ * stored. Fediverse DMs are NOT end-to-end encrypted; the UI says so.
+ * The Note id is under ap/dm/ which has no route, so DMs are never served to an
+ * unauthenticated fetch — the recipient already has the full Note from delivery.
+ *
+ * @return array [bool ok, string message]
+ */
+function sv_send_dm(PDO $pdo, array $settings, string $target, string $body,
+                    ?string $media_url = null, ?string $in_reply_to = null): array {
+    $target = trim($target);
+    $body   = trim($body);
+    if ($target === '') return [false, 'Give me a recipient (@user@host or an actor URL).'];
+    if ($body === '' && ($media_url === null || $media_url === '')) return [false, 'Nothing to send.'];
+
+    $actor_url = (stripos($target, 'https://') === 0) ? $target : sv_webfinger_lookup($target);
+    if ($actor_url === null || $actor_url === '') return [false, 'Could not resolve "' . $target . '".'];
+    if ($actor_url === sv_actor_url($settings)) return [false, 'You can\'t DM yourself.'];
+
+    $doc = sv_fetch_ap($actor_url, $settings);
+    if (!is_array($doc) || empty($doc['inbox']) || empty($doc['id'])) {
+        return [false, 'Fetched the actor but it has no usable inbox.'];
+    }
+    $inbox = trim((string)($doc['endpoints']['sharedInbox'] ?? ''));
+    if ($inbox === '') $inbox = (string)$doc['inbox'];
+    if (!sv_url_is_public($inbox)) return [false, 'That account inbox is not reachable.'];
+    $handle = ($doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_url, PHP_URL_HOST) ?: '');
+
+    $note_id = sv_base($settings) . 'ap/dm/' . bin2hex(random_bytes(10)); // never served (private)
+    $now     = gmdate('Y-m-d\TH:i:s\Z');
+    $content = '<p>' . nl2br(htmlspecialchars($body, ENT_QUOTES)) . '</p>';
+
+    $note = [
+        'id'           => $note_id,
+        'type'         => 'Note',
+        'attributedTo' => sv_actor_url($settings),
+        'to'           => [$actor_url],
+        'cc'           => [],
+        'published'    => $now,
+        'content'      => $content,
+        'tag'          => [['type' => 'Mention', 'href' => $actor_url, 'name' => '@' . $handle]],
+    ];
+    if ($in_reply_to !== null && $in_reply_to !== '') $note['inReplyTo'] = $in_reply_to;
+    if ($media_url !== null && $media_url !== '') {
+        $note['attachment'] = [[
+            'type'      => 'Document',
+            'mediaType' => sv_media_type($media_url),
+            'url'       => $media_url,
+        ]];
+    }
+    $create = [
+        '@context'  => 'https://www.w3.org/ns/activitystreams',
+        'id'        => $note_id . '/activity',
+        'type'      => 'Create',
+        'actor'     => sv_actor_url($settings),
+        'published' => $now,
+        'to'        => [$actor_url],
+        'cc'        => [],
+        'object'    => $note,
+    ];
+    sv_queue_delivery($pdo, $inbox, json_encode($create, JSON_UNESCAPED_SLASHES));
+    sv_process_deliveries($pdo, $settings, 10);
+
+    try {
+        $pdo->prepare(
+            "INSERT INTO snap_ap_dms
+                (remote_actor_url, remote_handle, direction, note_id, in_reply_to, body, media_url, is_request, is_read)
+             VALUES (?, ?, 'out', ?, ?, ?, ?, 0, 1)"
+        )->execute([$actor_url, substr($handle, 0, 190), $note_id, $in_reply_to, mb_substr($body, 0, 5000), $media_url]);
+    } catch (Exception $e) { /* table may lag */ }
+
+    return [true, 'Message sent to ' . $handle . '.'];
+}
+
+/** Unsend a DM we sent: Delete/Tombstone to the recipient, mark the row deleted. */
+function sv_unsend_dm(PDO $pdo, array $settings, int $dm_id): array {
+    $s = $pdo->prepare("SELECT * FROM snap_ap_dms WHERE id = ? AND direction = 'out' LIMIT 1");
+    $s->execute([$dm_id]);
+    $row = $s->fetch(PDO::FETCH_ASSOC);
+    if (!$row) return [false, 'Unknown message (or not one you sent).'];
+
+    $doc   = sv_fetch_ap($row['remote_actor_url'], $settings);
+    $inbox = is_array($doc) ? (trim((string)($doc['endpoints']['sharedInbox'] ?? '')) ?: (string)($doc['inbox'] ?? '')) : '';
+    if ($inbox !== '' && sv_url_is_public($inbox)) {
+        $del = [
+            '@context' => 'https://www.w3.org/ns/activitystreams',
+            'id'       => $row['note_id'] . '#delete-' . bin2hex(random_bytes(6)),
+            'type'     => 'Delete',
+            'actor'    => sv_actor_url($settings),
+            'to'       => [$row['remote_actor_url']],
+            'object'   => ['id' => $row['note_id'], 'type' => 'Tombstone'],
+        ];
+        sv_queue_delivery($pdo, $inbox, json_encode($del, JSON_UNESCAPED_SLASHES));
+        sv_process_deliveries($pdo, $settings, 10);
+    }
+    $pdo->prepare("UPDATE snap_ap_dms SET is_deleted = 1 WHERE id = ?")->execute([$dm_id]);
+    return [true, 'Message unsent.'];
 }
 
 /**
@@ -2066,6 +2384,67 @@ function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
     return [true, $author_inbox !== ''
         ? 'Boosted — sent to the post author and your followers.'
         : 'Boosted to your followers.'];
+}
+
+/**
+ * Un-boost (Undo Announce) a remote post — retract a prior boost from our
+ * followers and the origin author, mirroring sv_boost_remote's delivery set.
+ * Fire-and-forget like the boost itself: the Undo is built from the object id
+ * (there is no boost-state table), and an Undo for a boost the remote never saw
+ * is a harmless no-op there.
+ *
+ * @return array [bool ok, string message]
+ */
+function sv_unboost_remote(PDO $pdo, array $settings, string $object_id): array {
+    $object_id = trim($object_id);
+    if ($object_id === '' || stripos($object_id, 'https://') !== 0) return [false, 'That post has no usable id.'];
+
+    // Resolve the origin author (same as the boost) so the retraction reaches the
+    // instance whose reblog count we bumped.
+    $author_id    = '';
+    $author_inbox = '';
+    $obj = sv_fetch_ap($object_id);
+    if (is_array($obj)) {
+        $author_id = is_array($obj['attributedTo'] ?? null)
+            ? (string)($obj['attributedTo']['id'] ?? '')
+            : (string)($obj['attributedTo'] ?? '');
+        if ($author_id !== '') {
+            $author = sv_fetch_ap($author_id);
+            if (is_array($author)) {
+                $cand = trim((string)($author['endpoints']['sharedInbox'] ?? ''));
+                if ($cand === '') $cand = trim((string)($author['inbox'] ?? ''));
+                if ($cand !== '' && sv_url_is_public($cand)) $author_inbox = $cand;
+            }
+        }
+    }
+
+    $targets = sv_follower_inboxes($pdo);
+    if ($author_inbox !== '') $targets[] = $author_inbox;
+    $targets = array_values(array_unique($targets));
+    if (!$targets) return [false, 'Nowhere to send the un-boost — no followers and the author is unreachable.'];
+
+    $cc = [sv_followers_url($settings)];
+    if ($author_id !== '') $cc[] = $author_id;
+
+    $undo = [
+        '@context'  => 'https://www.w3.org/ns/activitystreams',
+        'id'        => sv_actor_url($settings) . '#unboost-' . bin2hex(random_bytes(8)),
+        'type'      => 'Undo',
+        'actor'     => sv_actor_url($settings),
+        'published' => gmdate('Y-m-d\TH:i:s\Z'),
+        'to'        => ['https://www.w3.org/ns/activitystreams#Public'],
+        'cc'        => $cc,
+        'object'    => [
+            'type'   => 'Announce',
+            'actor'  => sv_actor_url($settings),
+            'object' => $object_id,
+        ],
+    ];
+    $json = json_encode($undo, JSON_UNESCAPED_SLASHES);
+    foreach ($targets as $inbox) sv_queue_delivery($pdo, $inbox, $json);
+    sv_process_deliveries($pdo, $settings, 20);
+
+    return [true, 'Un-boosted — retraction sent to your followers' . ($author_inbox !== '' ? ' and the post author.' : '.')];
 }
 
 /**
@@ -2691,6 +3070,8 @@ function sv_image_attachment(array $img, array $settings, string $alt = '', bool
         $w = (int)($img['img_width'] ?? 0);
         $h = (int)($img['img_height'] ?? 0);
         if ($w > 0 && $h > 0) { $att['width'] = $w; $att['height'] = $h; }
+        // Blurhash placeholder (populated lazily by the note builders).
+        if (!empty($img['blurhash'])) $att['blurhash'] = (string)$img['blurhash'];
     }
     return $att;
 }
@@ -2749,6 +3130,12 @@ function sv_note_for_image(PDO $pdo, array $img, array $settings): array {
     $permalink = $base . $img['img_slug'];
     $note_id   = $base . 'ap/note/i/' . (int)$img['id'] . sv_gen_suffix($settings);
 
+    // Populate the blurhash placeholder on first federation (cached thereafter).
+    if (is_file(__DIR__ . '/blurhash.php')) {
+        require_once __DIR__ . '/blurhash.php';
+        $img['blurhash'] = snapsmack_ensure_image_blurhash($pdo, $img);
+    }
+
     $title = trim($img['img_title'] ?? '');
     $desc  = trim($img['img_description'] ?? '');
     // No title → no caption line. Never federate the literal word "Untitled"
@@ -2794,6 +3181,8 @@ function sv_note_for_image(PDO $pdo, array $img, array $settings): array {
         'cc'           => [sv_followers_url($settings)],
         'published'    => gmdate('Y-m-d\TH:i:s\Z', strtotime($img['img_date'])),
         'url'          => $permalink,
+        'summary'      => (!empty($img['content_warning']) ? trim($img['content_warning']) : null),
+        'sensitive'    => (!empty($img['is_sensitive']) || !empty($img['content_warning'])),
         'content'      => $content,
         'attachment'   => [sv_image_attachment($img, $settings, $title !== '' ? $title : $desc)],
     ];
@@ -2862,6 +3251,10 @@ function sv_note_for_post(PDO $pdo, array $post, array $settings): ?array {
         // caption, or every carousel frame repeats the whole essay. derive=false
         // stops the description fallback.
         $imAlt = trim($im['img_title'] ?? '');
+        if (is_file(__DIR__ . '/blurhash.php')) {
+            require_once __DIR__ . '/blurhash.php';
+            $im['blurhash'] = snapsmack_ensure_image_blurhash($pdo, $im);
+        }
         $attachments[] = sv_image_attachment($im, $settings, $imAlt, false);
     }
 
@@ -2897,8 +3290,8 @@ function sv_note_for_post(PDO $pdo, array $post, array $settings): ?array {
                               !empty($post['fedi_published_at']) ? $post['fedi_published_at'] : $post['created_at']
                           )),
         'url'          => $permalink,
-        'summary'      => null,
-        'sensitive'    => false,
+        'summary'      => (!empty($post['content_warning']) ? trim($post['content_warning']) : null),
+        'sensitive'    => (!empty($post['is_sensitive']) || !empty($post['content_warning'])),
         'content'      => $content,
         'attachment'   => $attachments,
     ];
@@ -3182,6 +3575,66 @@ function sv_seed_post(PDO $pdo, array $settings, int $post_id): int {
     $n = 0;
     foreach (sv_follower_inboxes($pdo) as $ib) { sv_queue_delivery($pdo, $ib, $create); $n++; }
     return $n;
+}
+
+/**
+ * Editor hook — reconcile a POST's fediverse state after an admin edit. One
+ * entry point so every editor calls the same thing. Acts ONLY on posts already
+ * federated (fedi_pushed_at set): first publish stays the cron's Create path and
+ * is never double-sent from here.
+ *   - still published + fedi on → Update (propagate caption / tag / media edits)
+ *   - unpublished, or fedi turned off → Delete/Tombstone + clear fedi_pushed_at
+ *     so a later re-publish sends a fresh Create (not an Update to a dead id).
+ * Loads the row directly (NOT sv_post_row, which is published-only, so an
+ * unpublish would otherwise never retract). No-op when SMACKVERSE is off, the
+ * post was never pushed, or there are no followers. Enqueue-only.
+ */
+function sv_federate_post_change(PDO $pdo, array $settings, int $post_id): void {
+    if (($settings['smackverse_enabled'] ?? '0') !== '1') return;
+    $s = $pdo->prepare("SELECT * FROM snap_posts WHERE id = ? LIMIT 1");
+    $s->execute([$post_id]);
+    $post = $s->fetch(PDO::FETCH_ASSOC);
+    if (!$post || empty($post['fedi_pushed_at'])) return;
+
+    $published = (($post['status'] ?? '') === 'published');
+    $fedi_on   = (int)($post['fedi_enabled'] ?? 1) === 1;
+
+    if ($published && $fedi_on) {
+        $note = sv_note_for_post($pdo, $post, $settings);
+        if ($note === null) return; // no live images — nothing to Update
+        $payload = json_encode(sv_update_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
+        foreach (sv_follower_inboxes($pdo) as $ib) { sv_queue_delivery($pdo, $ib, $payload); }
+    } else {
+        $note_id = sv_base($settings) . 'ap/note/p/' . (int)$post_id . sv_gen_suffix($settings);
+        sv_retract_note($pdo, $settings, $note_id);
+        $pdo->prepare("UPDATE snap_posts SET fedi_pushed_at = NULL WHERE id = ?")->execute([$post_id]);
+    }
+}
+
+/**
+ * Editor hook for a STANDALONE image (SMACKONEOUT solo image with no post row).
+ * If the image belongs to a post, delegates to sv_federate_post_change. Else
+ * Updates (published) or retracts (unpublished) the image's own Note. An Update
+ * or Delete for a Note a remote never ingested is a harmless no-op on the remote,
+ * so this is safe to fire on any edit of a fedi-enabled solo image.
+ */
+function sv_federate_image_change(PDO $pdo, array $settings, int $img_id): void {
+    if (($settings['smackverse_enabled'] ?? '0') !== '1') return;
+    $s = $pdo->prepare("SELECT * FROM snap_images WHERE id = ? LIMIT 1");
+    $s->execute([$img_id]);
+    $img = $s->fetch(PDO::FETCH_ASSOC);
+    if (!$img) return;
+    if (!empty($img['post_id'])) { sv_federate_post_change($pdo, $settings, (int)$img['post_id']); return; }
+
+    $fedi_on = (int)($img['fedi_enabled'] ?? 1) === 1;
+    if (($img['img_status'] ?? '') === 'published' && $fedi_on) {
+        $note    = sv_note_for_image($pdo, $img, $settings);
+        $payload = json_encode(sv_update_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
+        foreach (sv_follower_inboxes($pdo) as $ib) { sv_queue_delivery($pdo, $ib, $payload); }
+    } else {
+        $note_id = sv_base($settings) . 'ap/note/i/' . $img_id . sv_gen_suffix($settings);
+        sv_retract_note($pdo, $settings, $note_id);
+    }
 }
 
 /**

@@ -68,6 +68,12 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
                         COMMENT 'Manual display order. Lower = earlier in feed. 0 = unset (falls back to img_date DESC).',
   `modified_at`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                         COMMENT 'Auto-updated on any row change. Used by GYSS for conflict detection.',
+  `blurhash`            varchar(50)    COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                        COMMENT 'SMACKVERSE (0.7.393): Blurhash placeholder for federated media; filled lazily on first federation.',
+  `is_sensitive`        tinyint(1)     NOT NULL DEFAULT 0
+                        COMMENT 'SMACKVERSE (0.7.393): 1 = mark the federated Note sensitive (blurred behind a CW).',
+  `content_warning`     varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                        COMMENT 'SMACKVERSE (0.7.393): Note.summary content-warning text shown before a sensitive image.',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -111,6 +117,12 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
                       COMMENT 'SMACKVERSE (0.7.367): last time this post was pushed to the fediverse. NULL = staged, not yet pushed.',
   `fedi_published_at` datetime       DEFAULT NULL
                       COMMENT 'SMACKVERSE (0.7.367): fediverse date LABEL override (the Note published ts). NULL = use created_at. Does NOT change remote order — order is delivery order.',
+  `is_pinned`         tinyint(1)     NOT NULL DEFAULT 0
+                      COMMENT 'SMACKVERSE (0.7.393): 1 = pinned to the profile featured collection.',
+  `is_sensitive`      tinyint(1)     NOT NULL DEFAULT 0
+                      COMMENT 'SMACKVERSE (0.7.393): 1 = mark the federated Note sensitive (blurred behind a CW).',
+  `content_warning`   varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                      COMMENT 'SMACKVERSE (0.7.393): Note.summary content-warning text shown before a sensitive post.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_slug` (`slug`),
   KEY `idx_status` (`status`),
@@ -973,7 +985,7 @@ CREATE TABLE IF NOT EXISTS `snap_ap_actors` (
 -- inbox handler on Follow / Like / reply Create / Mention / Announce.
 CREATE TABLE IF NOT EXISTS `snap_ap_notifications` (
   `id`           int unsigned NOT NULL AUTO_INCREMENT,
-  `ntype`        enum('follow','like','reply','mention','boost') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ntype`        enum('follow','like','reply','mention','boost','dm') COLLATE utf8mb4_unicode_ci NOT NULL,
   `actor_url`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
   `actor_handle` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `object_id`    varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
@@ -986,6 +998,27 @@ CREATE TABLE IF NOT EXISTS `snap_ap_notifications` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_ap_notif` (`ntype`, `actor_url`(150), `object_id`(150)),
   KEY `idx_ap_notif_read` (`is_read`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Direct Messages (0.7.394): the blog's single-actor DM inbox — one thread per
+-- remote actor. note_id dedups inbound + drives unsend/Delete. is_request flags
+-- a DM from an account the blog does not follow (message-requests bucket).
+CREATE TABLE IF NOT EXISTS `snap_ap_dms` (
+  `id`               bigint unsigned NOT NULL AUTO_INCREMENT,
+  `remote_actor_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `remote_handle`    varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `direction`        enum('in','out') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `note_id`          varchar(600) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `in_reply_to`      varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `body`             text         COLLATE utf8mb4_unicode_ci,
+  `media_url`        varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_request`       tinyint(1)   NOT NULL DEFAULT 0,
+  `is_read`          tinyint(1)   NOT NULL DEFAULT 0,
+  `is_deleted`       tinyint(1)   NOT NULL DEFAULT 0,
+  `created_at`       datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_dm_note` (`note_id`(191)),
+  KEY `idx_dm_thread` (`remote_actor_url`(191), `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Ingested inbound posts — the Home reader (Creates + Announces from accounts

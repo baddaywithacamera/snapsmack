@@ -142,6 +142,16 @@ switch ($ap) {
         sv_respond(sv_following_doc($settings, $pdo));
         break;
 
+    case 'featured':
+        if ($method !== 'GET') sv_404();
+        sv_respond(sv_featured_doc($pdo, $settings));
+        break;
+
+    case 'featured-tags':
+        if ($method !== 'GET') sv_404();
+        sv_respond(sv_featured_tags_doc($pdo, $settings));
+        break;
+
     case 'remote-follow':
         // Public profile Follow button: a visitor from another instance gives
         // their handle; we bounce them to THEIR server to confirm following us.
