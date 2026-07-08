@@ -713,6 +713,14 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
                         COMMENT 'Cached from heartbeat (0.7.343): 1 = spoke has SMACKVERSE federation enabled.',
   `smackverse_followers` int unsigned  NOT NULL DEFAULT 0
                         COMMENT 'Cached from heartbeat (0.7.343): spoke fediverse follower count, for the fleet rollup.',
+  `smackverse_following` int unsigned  NOT NULL DEFAULT 0
+                        COMMENT 'Cached from heartbeat (0.7.391): spoke accepted-following count, for the fleet rollup.',
+  `smackverse_likes`    int unsigned   NOT NULL DEFAULT 0
+                        COMMENT 'Cached from heartbeat (0.7.391): spoke inbound fediverse like count, for the fleet rollup.',
+  `smackverse_boosts`   int unsigned   NOT NULL DEFAULT 0
+                        COMMENT 'Cached from heartbeat (0.7.391): spoke inbound boost count, for the fleet rollup.',
+  `smackverse_replies`  int unsigned   NOT NULL DEFAULT 0
+                        COMMENT 'Cached from heartbeat (0.7.391): spoke inbound reply+mention count, for the fleet rollup.',
   `active_skin`         varchar(64)    COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
                         COMMENT 'Cached from heartbeat: slug of the active skin on this spoke, for the Fleet skin-status board. Empty until the spoke heartbeats a build that reports it.',
   `status`              enum('active','offline','disconnected') COLLATE utf8mb4_unicode_ci DEFAULT 'active',

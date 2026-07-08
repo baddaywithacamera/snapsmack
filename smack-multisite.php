@@ -24,6 +24,12 @@ $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `active_sk
 // SMACKVERSE federation stats cache (0.7.343) — reported by heartbeat; fleet rollup.
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackverse_enabled` TINYINT(1) NOT NULL DEFAULT 0");
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackverse_followers` INT UNSIGNED NOT NULL DEFAULT 0");
+// SMACKVERSE engagement rollup (0.7.391) — reported by heartbeat; summed on the
+// Fleet board so Following/Likes/Boosts/Replies aren't hub-local-only.
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackverse_following` INT UNSIGNED NOT NULL DEFAULT 0");
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackverse_likes` INT UNSIGNED NOT NULL DEFAULT 0");
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackverse_boosts` INT UNSIGNED NOT NULL DEFAULT 0");
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackverse_replies` INT UNSIGNED NOT NULL DEFAULT 0");
 // Defensive adds for SMACKBACK Phase 2 columns (harmless if migration already ran).
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackback_status` VARCHAR(20) NOT NULL DEFAULT 'unknown'");
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackback_breach_at` DATETIME NULL");
@@ -259,6 +265,12 @@ if (isset($_POST['ping']) && isset($_POST['ping_id'])) {
                         update_track       = ?,
                         installed_skins    = ?,
                         active_skin        = ?,
+                        smackverse_enabled    = ?,
+                        smackverse_followers  = ?,
+                        smackverse_following  = ?,
+                        smackverse_likes      = ?,
+                        smackverse_boosts     = ?,
+                        smackverse_replies    = ?,
                         last_seen_at       = NOW(),
                         status             = 'active'
                     WHERE id = ?
@@ -277,6 +289,12 @@ if (isset($_POST['ping']) && isset($_POST['ping_id'])) {
                     isset($hb['installed_skins']) && is_array($hb['installed_skins'])
                         ? json_encode($hb['installed_skins']) : null,
                     (string)($hb['active_skin'] ?? ''),
+                    (int)($hb['smackverse_enabled'] ?? 0),
+                    (int)($hb['smackverse_followers'] ?? 0),
+                    (int)($hb['smackverse_following'] ?? 0),
+                    (int)($hb['smackverse_likes'] ?? 0),
+                    (int)($hb['smackverse_boosts'] ?? 0),
+                    (int)($hb['smackverse_replies'] ?? 0),
                     $n['id'],
                 ]);
                 $msg = "Ping OK — {$n['site_name']} is online (HTTP {$hb_code}).";
@@ -788,6 +806,10 @@ if ($multisite_role === 'hub') {
                         active_skin           = ?,
                         smackverse_enabled    = ?,
                         smackverse_followers  = ?,
+                        smackverse_following  = ?,
+                        smackverse_likes      = ?,
+                        smackverse_boosts     = ?,
+                        smackverse_replies    = ?,
                         last_seen_at          = NOW(),
                         status                = 'active'
                     WHERE id = ?
@@ -812,6 +834,10 @@ if ($multisite_role === 'hub') {
                     (string)($hb['active_skin'] ?? ''),
                     (int)($hb['smackverse_enabled'] ?? 0),
                     (int)($hb['smackverse_followers'] ?? 0),
+                    (int)($hb['smackverse_following'] ?? 0),
+                    (int)($hb['smackverse_likes'] ?? 0),
+                    (int)($hb['smackverse_boosts'] ?? 0),
+                    (int)($hb['smackverse_replies'] ?? 0),
                     $n['id'],
                 ]);
                 // Update local array so the table renders fresh data without a reload

@@ -14,6 +14,8 @@
  *   type=full     — Full SQL dump (schema + all data)  [default]
  *   type=keys     — snap_users only (emergency credential recovery)
  *   type=kit      — Recovery kit (.tar.gz with manifest + SQL dump)
+ *   type=inventory — File inventory JSON (paths + sizes, NO hashing) for SUYB
+ *                    client-side manifest/kit generation (Windows/Linux path)
  *
  * Response:
  *   type=schema|full|keys → Content-Type: application/sql, streamed as download
@@ -41,10 +43,10 @@ require_once 'core/export-engine.php';
 
 $type = $_GET['type'] ?? 'full';
 
-if (!in_array($type, ['schema', 'full', 'keys', 'kit'], true)) {
+if (!in_array($type, ['schema', 'full', 'keys', 'kit', 'inventory'], true)) {
     http_response_code(400);
     header('Content-Type: application/json');
-    echo json_encode(['ok' => false, 'error' => 'Invalid type. Use: schema, full, keys, or kit']);
+    echo json_encode(['ok' => false, 'error' => 'Invalid type. Use: schema, full, keys, kit, or inventory']);
     exit;
 }
 
@@ -57,6 +59,25 @@ $siteName = $settings['site_name'] ?? '';
 $siteSlug = preg_replace('/[^A-Za-z0-9_-]+/', '_', trim($siteName));
 $siteSlug = trim($siteSlug, '_') ?: 'snapsmack';
 $timestamp = date('Y-m-d_H-i');
+
+if ($type === 'inventory') {
+    // Lightweight manifest for SUYB client-side kit generation: file list with
+    // restore paths + sizes (NO server-side hashing), plus metadata, stats, and
+    // the database image map. The client computes checksums as it downloads each
+    // file over FTP and builds the manifest/kit itself. This keeps the hashing
+    // load off the server — the whole point of the tool.
+    try {
+        $manifest = $exporter->exportInventory();
+    } catch (Exception $e) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+        echo json_encode(['ok' => false, 'error' => 'Inventory failed: ' . $e->getMessage()]);
+        exit;
+    }
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => true, 'manifest' => $manifest], JSON_UNESCAPED_SLASHES);
+    exit;
+}
 
 if ($type === 'kit') {
     // Full recovery kit — .tar.gz with manifest + SQL

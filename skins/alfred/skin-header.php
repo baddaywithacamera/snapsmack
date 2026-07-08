@@ -224,5 +224,8 @@ function _alfred_default_nav_items(array $settings, array $alfred_pages): array 
 <?php else: ?>
     <h1 class="blog-title"><a href="<?php echo BASE_URL; ?>"><?php echo htmlspecialchars($site_display_name); ?></a></h1>
 <?php endif; ?>
+<?php $alfred_tagline = trim($settings['site_tagline'] ?? ''); if ($alfred_tagline !== ''): ?>
+    <p class="blog-description"><?php echo htmlspecialchars($alfred_tagline); ?></p>
+<?php endif; ?>
 </header><!-- /.header -->
 <?php // ===== SNAPSMACK EOF =====

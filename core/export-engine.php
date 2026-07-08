@@ -191,6 +191,112 @@ class SnapSmackExport {
         return $gzPath;
     }
 
+    /**
+     * Lightweight inventory for SUYB (client-side manifest generation).
+     *
+     * Returns the SAME manifest structure as exportRecoveryKit(), but does NOT
+     * hash any media file (checksum => null) and does NOT bundle the SQL dump or
+     * build a tarball. The SUYB client fetches the SQL separately (type=full),
+     * computes each file's SHA-256 as it downloads it over FTP, fills in the
+     * null checksums, adds the database.sql entry, and tars the kit itself.
+     *
+     * This moves the expensive per-file hashing off the server: a 10k-image blog
+     * no longer blocks a request for minutes hashing gigabytes it never bundles.
+     * The manual exportRecoveryKit() path (non-SUYB / Mac owners) is unchanged.
+     *
+     * NOTE: the client fetches the SQL dump (type=full) BEFORE the inventory,
+     * because generateSqlDump() get-or-creates site_uuid — so by the time this
+     * runs the uuid is present for the cross-mode restore guard.
+     *
+     * @return array manifest with null checksums, ready for the client to complete
+     */
+    public function exportInventory(): array {
+        $manifest = [
+            'snapsmack_version' => $this->settings['installed_version'] ?? '0.8',
+            'export_date'       => date('c'),
+            'export_type'       => 'inventory',
+            'site_name'         => $this->settings['site_name'] ?? '',
+            'site_url'          => $this->settings['site_url'] ?? '',
+            'site_mode'         => $this->settings['site_mode'] ?? 'photoblog',
+            'site_uuid'         => (string)($this->settings['site_uuid'] ?? ''),
+            'active_skin'       => $this->settings['active_skin'] ?? '50-shades-of-noah-grey',
+            'active_variant'    => $this->settings['active_skin_variant'] ?? 'dark',
+            'php_version'       => PHP_VERSION,
+            'files'               => [],
+            'directory_structure' => [],
+            'database_images'    => [],
+            'stats'              => [
+                'total_images'   => 0,
+                'total_comments' => 0,
+                'total_pages'    => 0,
+                'branding_files' => 0,
+                'media_files'    => 0,
+                'skin_files'     => 0,
+                'upload_files'   => 0,
+                'total_media_bytes' => 0,
+            ],
+        ];
+
+        // site_uuid: read authoritatively (the SQL export get-or-creates it).
+        if ($manifest['site_uuid'] === '') {
+            try {
+                $manifest['site_uuid'] = (string)($this->pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_uuid' LIMIT 1")->fetchColumn() ?: '');
+            } catch (Exception $e) { /* non-fatal */ }
+        }
+
+        // Stats — cheap COUNT queries only.
+        try { $manifest['stats']['total_images']   = (int) $this->pdo->query("SELECT COUNT(*) FROM snap_images")->fetchColumn(); } catch (Exception $e) {}
+        try { $manifest['stats']['total_comments'] = (int) $this->pdo->query("SELECT COUNT(*) FROM snap_comments")->fetchColumn(); } catch (Exception $e) {}
+        try { $manifest['stats']['total_pages']    = (int) $this->pdo->query("SELECT COUNT(*) FROM snap_pages")->fetchColumn(); } catch (Exception $e) {}
+
+        // File inventory — paths + sizes ONLY, no hashing (hashFiles = false).
+        $brandingDir = $this->baseDir . '/assets/img';
+        if (is_dir($brandingDir)) {
+            $manifest = $this->inventoryDirectory($brandingDir, 'assets/img', $manifest, 'branding_files', false);
+        }
+        $mediaDir = $this->baseDir . '/media_assets';
+        if (is_dir($mediaDir)) {
+            $manifest = $this->inventoryDirectory($mediaDir, 'media_assets', $manifest, 'media_files', false);
+        }
+        $skinSlug = $this->settings['active_skin'] ?? '50-shades-of-noah-grey';
+        $skinDir  = $this->baseDir . '/skins/' . $skinSlug;
+        if (is_dir($skinDir)) {
+            $manifest = $this->inventoryDirectory($skinDir, "skins/{$skinSlug}", $manifest, 'skin_files', false);
+        }
+        $uploadsDir = $this->baseDir . '/img_uploads';
+        if (is_dir($uploadsDir)) {
+            $manifest = $this->inventoryDirectory($uploadsDir, 'img_uploads', $manifest, 'upload_files', false);
+        }
+
+        // Database image map — same as the kit; lets the client cross-reference
+        // FTP files against what the DB expects without parsing SQL.
+        try {
+            $rows = $this->pdo->query("SELECT id, img_file, img_title, img_slug FROM snap_images ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as $row) {
+                $manifest['database_images'][] = [
+                    'id'    => (int) $row['id'],
+                    'file'  => $row['img_file'],
+                    'title' => $row['img_title'],
+                    'slug'  => $row['img_slug'],
+                ];
+            }
+        } catch (Exception $e) { /* snap_images may not exist on a fresh schema */ }
+
+        // Directory structure — derived from inventoried paths.
+        $dirs = [];
+        foreach ($manifest['files'] as $key => $meta) {
+            $restoreTo = $meta['restores_to'] ?? $key;
+            $dir = dirname($restoreTo);
+            if ($dir !== '.' && !isset($dirs[$dir])) {
+                $dirs[$dir] = true;
+            }
+        }
+        ksort($dirs);
+        $manifest['directory_structure'] = array_keys($dirs);
+
+        return $manifest;
+    }
+
     // =================================================================
     // WORDPRESS WXR EXPORT
     // =================================================================
@@ -663,7 +769,8 @@ class SnapSmackExport {
         string $sourceDir,
         string $restorePrefix,
         array $manifest,
-        string $statKey
+        string $statKey,
+        bool $hashFiles = true
     ): array {
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($sourceDir, RecursiveDirectoryIterator::SKIP_DOTS),
@@ -685,7 +792,7 @@ class SnapSmackExport {
 
             $manifest['files'][$restorePath] = [
                 'size'        => $fileSize,
-                'checksum'    => 'sha256:' . hash_file('sha256', $realPath),
+                'checksum'    => $hashFiles ? ('sha256:' . hash_file('sha256', $realPath)) : null,
                 'restores_to' => $restorePath,
                 'bundled'     => false,
             ];

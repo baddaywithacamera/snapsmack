@@ -306,6 +306,30 @@ function sv_ensure_tables(PDO $pdo): void {
             )->execute();
         }
     } catch (Exception $e) { /* log/tables may lag on a fresh install — skip */ }
+
+    // One-time purge (0.7.391): before 0.7.381 taught the inbox to drop
+    // unverifiable Delete tombstones quietly, every remote account-purge broadcast
+    // was logged as a scary REJECTED row — burying real Likes/Follows in the
+    // 500-row diagnostic ring and lingering for days on low-traffic spokes.
+    // 0.7.381 stopped new ones; this clears the historical backlog once. Flag-
+    // guarded; a re-run is a harmless no-op (nothing left to match).
+    try {
+        $done = $pdo->query(
+            "SELECT setting_val FROM snap_settings
+             WHERE setting_key = 'smackverse_delete_log_purge' LIMIT 1"
+        )->fetchColumn();
+        if (!$done) {
+            $pdo->exec(
+                "DELETE FROM snap_ap_inbox_log
+                 WHERE verb = 'Delete' AND outcome LIKE 'REJECTED%'"
+            );
+            $pdo->prepare(
+                "INSERT INTO snap_settings (setting_key, setting_val)
+                 VALUES ('smackverse_delete_log_purge', '1')
+                 ON DUPLICATE KEY UPDATE setting_val = '1'"
+            )->execute();
+        }
+    } catch (Exception $e) { /* log/tables may lag on a fresh install — skip */ }
 }
 
 // ─── Keys ────────────────────────────────────────────────────────────────────
@@ -1984,12 +2008,47 @@ function sv_has_liked(PDO $pdo, string $object_id): bool {
     } catch (Exception $e) { return false; }
 }
 
-/** Boost (Announce) a remote post to the blog's followers. */
+/**
+ * Boost (Announce) a remote post. Delivered to our followers AND to the boosted
+ * post's ORIGIN author — Mastodon/Pixelfed both do this, and it's what makes the
+ * reblog actually register on the origin instance (its reblog count, the boost
+ * showing against that post). Without the origin delivery the Announce only fans
+ * out to our own followers and pixelfed.ca — the place you're looking — never
+ * hears about it. Origin delivery happens even with zero followers, so boosting
+ * works before you've built an audience.
+ */
 function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
     $object_id = trim($object_id);
     if ($object_id === '' || stripos($object_id, 'https://') !== 0) return [false, 'That post has no usable id.'];
-    $inboxes = sv_follower_inboxes($pdo);
-    if (!$inboxes) return [false, 'No followers to boost to yet.'];
+
+    // Resolve the boosted post's author so we can notify the origin instance.
+    $author_id    = '';
+    $author_inbox = '';
+    $obj = sv_fetch_ap($object_id);
+    if (is_array($obj)) {
+        $author_id = is_array($obj['attributedTo'] ?? null)
+            ? (string)($obj['attributedTo']['id'] ?? '')
+            : (string)($obj['attributedTo'] ?? '');
+        if ($author_id !== '') {
+            $author = sv_fetch_ap($author_id);
+            if (is_array($author)) {
+                $cand = trim((string)($author['endpoints']['sharedInbox'] ?? ''));
+                if ($cand === '') $cand = trim((string)($author['inbox'] ?? ''));
+                if ($cand !== '' && sv_url_is_public($cand)) $author_inbox = $cand;
+            }
+        }
+    }
+
+    // Delivery set = followers + origin author. If we can reach neither, the
+    // boost genuinely has nowhere to go.
+    $targets = sv_follower_inboxes($pdo);
+    if ($author_inbox !== '') $targets[] = $author_inbox;
+    $targets = array_values(array_unique($targets));
+    if (!$targets) return [false, 'Could not reach the post author, and you have no followers yet — nowhere to boost to.'];
+
+    $cc = [sv_followers_url($settings)];
+    if ($author_id !== '') $cc[] = $author_id;
+
     $announce = [
         '@context'  => 'https://www.w3.org/ns/activitystreams',
         'id'        => sv_actor_url($settings) . '#boost-' . bin2hex(random_bytes(8)),
@@ -1997,13 +2056,16 @@ function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
         'actor'     => sv_actor_url($settings),
         'published' => gmdate('Y-m-d\TH:i:s\Z'),
         'to'        => ['https://www.w3.org/ns/activitystreams#Public'],
-        'cc'        => [sv_followers_url($settings)],
+        'cc'        => $cc,
         'object'    => $object_id,
     ];
     $json = json_encode($announce, JSON_UNESCAPED_SLASHES);
-    foreach ($inboxes as $inbox) sv_queue_delivery($pdo, $inbox, $json);
+    foreach ($targets as $inbox) sv_queue_delivery($pdo, $inbox, $json);
     sv_process_deliveries($pdo, $settings, 20);
-    return [true, 'Boosted to your followers.'];
+
+    return [true, $author_inbox !== ''
+        ? 'Boosted — sent to the post author and your followers.'
+        : 'Boosted to your followers.'];
 }
 
 /**

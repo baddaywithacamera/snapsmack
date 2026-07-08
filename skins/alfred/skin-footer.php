@@ -42,5 +42,12 @@ if (!empty($requested)) {
 }
 
 include_once dirname(__DIR__, 2) . '/core/footer.php';
+
+// Global public engines: consent banner, comms/HUD, the Thomas the Bear easter
+// egg (REQUIRED in every skin fork), the Social Profile Dock (Alfred's chosen
+// social surface), sticky header, and the SCROLL TIME tracker. Mainline
+// controllers include this on every public page; Alfred renders its own
+// document via preload.php, so it must pull the shared engine loader itself.
+include dirname(__DIR__, 2) . '/core/footer-scripts.php';
 ?>
 <?php // ===== SNAPSMACK EOF =====
