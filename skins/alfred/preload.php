@@ -59,18 +59,18 @@ if ($_alfred_post_slug || $_alfred_post_id) {
     try {
         if ($_alfred_post_slug) {
             $stmt = $pdo->prepare(
-                "SELECT p.*, a.asset_path AS featured_image_path
+                "SELECT p.*, i.img_file AS featured_image_path
                  FROM snap_posts p
-                 LEFT JOIN snap_assets a ON a.id = p.featured_asset_id
+                 LEFT JOIN snap_images i ON i.id = p.featured_image_id
                  WHERE p.slug = ? AND p.post_type = 'longform' AND p.status = 'published'
                  LIMIT 1"
             );
             $stmt->execute([$_alfred_post_slug]);
         } else {
             $stmt = $pdo->prepare(
-                "SELECT p.*, a.asset_path AS featured_image_path
+                "SELECT p.*, i.img_file AS featured_image_path
                  FROM snap_posts p
-                 LEFT JOIN snap_assets a ON a.id = p.featured_asset_id
+                 LEFT JOIN snap_images i ON i.id = p.featured_image_id
                  WHERE p.id = ? AND p.post_type = 'longform' AND p.status = 'published'
                  LIMIT 1"
             );
@@ -214,9 +214,10 @@ try {
     $_alfred_total = (int)$count_stmt->fetchColumn();
 
     $feed_stmt = $pdo->prepare(
-        "SELECT p.id, p.title, p.slug, p.created_at, a.asset_path AS featured_image_path
+        "SELECT p.id, p.title, p.slug, p.created_at,
+                COALESCE(i.img_thumb_square, i.img_file) AS featured_image_path
          FROM snap_posts p
-         LEFT JOIN snap_assets a ON a.id = p.featured_asset_id
+         LEFT JOIN snap_images i ON i.id = p.featured_image_id
          WHERE p.post_type = 'longform' AND p.status = 'published'
          ORDER BY p.created_at DESC
          LIMIT ? OFFSET ?"
