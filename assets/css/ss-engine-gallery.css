@@ -399,6 +399,13 @@
     z-index: 9999;
 }
 
+/* ── UPLOAD DROP ZONE ────────────────────────────────────────────────── */
+/* Highlight the shared .file-upload-wrapper drop zone while dragging over it. */
+#gal-drop-zone.drag-over {
+    border-color: var(--accent, #7aad5a);
+    background: rgba(122, 173, 90, 0.08);
+}
+
 /* ── RESPONSIVE ──────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
     .gallery-grid {

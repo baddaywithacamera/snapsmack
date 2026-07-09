@@ -128,7 +128,7 @@ if (isset($_GET['delete'])) {
     $del_id = (int)$_GET['delete'];
     $pdo->prepare("DELETE FROM snap_post_cat_map WHERE post_id = ?")->execute([$del_id]);
     $pdo->prepare("DELETE FROM snap_post_album_map WHERE post_id = ?")->execute([$del_id]);
-    $pdo->prepare("DELETE FROM snap_tags WHERE image_id = ?")->execute([$del_id]);
+    $pdo->prepare("DELETE FROM snap_image_tags WHERE image_id = ?")->execute([$del_id]);
     $pdo->prepare("DELETE FROM snap_posts WHERE id = ? AND post_type = 'longform'")->execute([$del_id]);
     require_once __DIR__ . '/core/page-cache.php';
     page_cache_purge_all();
@@ -257,7 +257,7 @@ if (isset($_GET['edit'])) {
         $ea->execute([$ep_id]);
         $edit_albums = array_column($ea->fetchAll(PDO::FETCH_ASSOC), 'album_id');
         // Load existing tags
-        $et = $pdo->prepare("SELECT tag FROM snap_tags WHERE image_id = ?");
+        $et = $pdo->prepare("SELECT t.tag FROM snap_image_tags it JOIN snap_tags t ON t.id = it.tag_id WHERE it.image_id = ?");
         $et->execute([$ep_id]);
         $edit_tags_arr = array_column($et->fetchAll(PDO::FETCH_ASSOC), 'tag');
         $edit_tags_str = implode(' ', array_map(fn($t) => '#' . $t, $edit_tags_arr));

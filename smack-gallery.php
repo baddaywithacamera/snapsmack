@@ -20,6 +20,59 @@
 
 require_once 'core/auth-smack.php';
 
+// ── AJAX: UPLOAD ─────────────────────────────────────────────────────────────
+// Ingests one or more uploaded image files into snap_images — i.e. POST images,
+// the Gallery. Reuses the exact solo-post pipeline via core/image-ingest.php so
+// Gallery uploads are identical to photo-post-editor uploads. This is NOT the
+// reusable-asset Library (snap_assets); that lives in smack-media.php.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'upload') {
+    header('Content-Type: application/json');
+    require_once __DIR__ . '/core/image-ingest.php';
+    require_once __DIR__ . '/core/snap-tags.php';
+
+    $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+    $status   = in_array($_POST['status'] ?? '', ['published', 'draft'], true) ? $_POST['status'] : 'published';
+
+    $results = [];
+    $errors  = [];
+
+    if (!empty($_FILES['img_file']) && is_array($_FILES['img_file']['name'])) {
+        // Multiple files (img_file[])
+        $count = count($_FILES['img_file']['name']);
+        for ($i = 0; $i < $count; $i++) {
+            if (($_FILES['img_file']['error'][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) continue;
+            $one = [
+                'name'     => $_FILES['img_file']['name'][$i],
+                'type'     => $_FILES['img_file']['type'][$i]     ?? '',
+                'tmp_name' => $_FILES['img_file']['tmp_name'][$i],
+                'error'    => $_FILES['img_file']['error'][$i],
+                'size'     => $_FILES['img_file']['size'][$i]     ?? 0,
+            ];
+            $r = snap_ingest_image($pdo, $settings, $one, ['status' => $status]);
+            if ($r['ok']) { $results[] = $r; } else { $errors[] = ($one['name'] ?: 'file') . ': ' . $r['error']; }
+        }
+    } elseif (!empty($_FILES['img_file'])) {
+        // Single file
+        $r = snap_ingest_image($pdo, $settings, $_FILES['img_file'], ['status' => $status]);
+        if ($r['ok']) { $results[] = $r; } else { $errors[] = $r['error']; }
+    } else {
+        echo json_encode(['ok' => false, 'error' => 'No file received.']);
+        exit;
+    }
+
+    if (!empty($results)) {
+        require_once __DIR__ . '/core/page-cache.php';
+        page_cache_purge_all();
+    }
+
+    echo json_encode([
+        'ok'       => empty($errors),
+        'uploaded' => count($results),
+        'errors'   => $errors,
+    ]);
+    exit;
+}
+
 // ── AJAX ENDPOINT ────────────────────────────────────────────────────────────
 // Returns JSON for the gallery grid. Handles search, filtering, pagination.
 if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
@@ -314,12 +367,39 @@ include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
-<link rel="stylesheet" href="assets/css/ss-engine-gallery.css?v=079L">
+<link rel="stylesheet" href="assets/css/ss-engine-gallery.css?v=080L">
 
 <div class="main">
     <div class="header-row header-row--ruled">
         <h2>MEDIA GALLERY</h2>
         <span class="dim" id="gallery-count"><?php echo number_format($total_images); ?> images</span>
+    </div>
+
+    <!-- ── UPLOAD (INJECT POST IMAGES) ──────────────────────────────────── -->
+    <div class="box" id="gallery-upload-box">
+        <h3>INJECT POST IMAGES</h3>
+        <p class="dim" style="font-size:12px;margin:-4px 0 12px;">
+            Uploads land here as post images (the Gallery). Drop several at once. For reusable page/header assets, use MEDIA LIBRARY instead.
+        </p>
+
+        <div class="progress-container" id="gal-p-container">
+            <div class="progress-bar" id="gal-p-bar"></div>
+        </div>
+
+        <div class="file-upload-wrapper" id="gal-drop-zone">
+            <div class="file-custom-btn">CHOOSE FILE(S)</div>
+            <span id="gal-file-name-display" class="file-name-display">No signal selected... or drag &amp; drop here.</span>
+            <input type="file" id="gal-file-input" accept="image/*" multiple class="file-input-hidden">
+        </div>
+
+        <div class="gallery-upload-meta" style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <label for="gal-upload-status" style="font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);">Status</label>
+            <select id="gal-upload-status" class="gallery-select gallery-select--sm">
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+            </select>
+            <span id="gal-upload-msg" class="dim" style="font-size:12px;"></span>
+        </div>
     </div>
 
     <!-- ── FILTER BAR ──────────────────────────────────────────────────── -->
@@ -445,7 +525,7 @@ include 'core/sidebar.php';
     </div>
 </div>
 
-<script src="assets/js/ss-engine-gallery.js?v=079L"></script>
+<script src="assets/js/ss-engine-gallery.js?v=080L"></script>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
