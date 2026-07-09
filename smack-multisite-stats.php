@@ -371,6 +371,19 @@ $fleet_scroll_label  = $fleet_scroll_avg_ms === null ? '—' : (function ($ms) {
     return $s >= 60 ? intdiv($s, 60) . 'm ' . ($s % 60) . 's' : $s . 's';
 })($fleet_scroll_avg_ms);
 
+// CUMULATIVE engaged Scroll Time across the whole fleet — the TOTAL time real
+// visitors spent reading, summed over hub + every spoke ($scroll_sum is already
+// Σ(avg_i × n_i) = total engaged ms). This is the headline number; the average
+// above is retained as a secondary line.
+$fleet_scroll_total_ms    = $scroll_sum;
+$fleet_scroll_total_label = ($scroll_n <= 0) ? '—' : (function ($ms) {
+    $s = (int) round($ms / 1000);
+    if ($s >= 86400) { return intdiv($s, 86400) . 'd ' . intdiv($s % 86400, 3600) . 'h'; }
+    if ($s >= 3600)  { return intdiv($s, 3600)  . 'h ' . intdiv($s % 3600, 60)   . 'm'; }
+    if ($s >= 60)    { return intdiv($s, 60)    . 'm ' . ($s % 60)                . 's'; }
+    return $s . 's';
+})($fleet_scroll_total_ms);
+
 // Fleet top day
 $fleet_top_day = ['date' => null, 'views' => 0];
 foreach ($fleet_daily as $date => $day) {
@@ -580,8 +593,9 @@ include 'core/sidebar.php';
                 <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">TOTAL IMAGES &#9662;</div>
             </a>
             <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo htmlspecialchars($fleet_scroll_label); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">SCROLL TIME</div>
+                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo htmlspecialchars($fleet_scroll_total_label); ?></div>
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">SCROLL TIME (TOTAL)</div>
+                <div style="font-size:0.64rem; color:var(--text-muted,#666); margin-top:6px;"><?php echo htmlspecialchars($fleet_scroll_label); ?> avg &middot; <?php echo number_format($scroll_n); ?> reads</div>
             </div>
             <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
                 <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_fedi_followers); ?></div>
