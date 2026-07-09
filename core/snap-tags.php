@@ -286,7 +286,15 @@ function snap_render_caption_html(string $text, string $base_url, string $css_cl
     // page as live HTML — a stored-XSS vector (secaudit #024 UZ-11). Escape ALL markup
     // first, then re-introduce only the formatting WE generate: <br> line breaks here
     // and safe hashtag anchors in the callback below.
-    $safe = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+    //
+    // Normalise pre-encoded input FIRST: Flickr imports and some composers store
+    // captions already HTML-encoded (e.g. it&#39;s), so escaping again renders a
+    // literal &#39; on the page. Fully decode entities (iteratively, to collapse
+    // double-encoding), THEN escape once — the final htmlspecialchars still
+    // neutralises any markup, so XSS safety is preserved.
+    $decoded = $text; $prev = null;
+    while ($decoded !== $prev) { $prev = $decoded; $decoded = html_entity_decode($decoded, ENT_QUOTES, 'UTF-8'); }
+    $safe = htmlspecialchars($decoded, ENT_QUOTES, 'UTF-8');
     $safe = nl2br($safe);
 
     // Convert #hashtags to anchor links (includes digit-leading hex codes like #007a8b)

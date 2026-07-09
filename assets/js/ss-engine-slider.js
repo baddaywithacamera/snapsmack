@@ -169,6 +169,10 @@
     if (this.autoAdvance) {
       this._startAutoPlay();
     }
+
+    // Preload the first view + a page of lookahead so the very first toggle
+    // reveals a loaded frame instead of an empty one.
+    this._preloadWindow();
   };
 
   /**
@@ -278,6 +282,34 @@
 
     // Set track total width so flexbox doesn't compress slides
     this.trackElement.style.width = offset + 'px';
+  };
+
+  /**
+   * Preload the images around the current index so a navigation reveals a
+   * fully-loaded frame instead of an empty one that pops in AFTER the slide
+   * finishes moving. Nearby lazy <img>s are flipped to eager (which triggers an
+   * immediate load for an in-DOM element) and the cache is warmed with a
+   * throwaway Image(); far-off slides stay lazy so we don't load the whole set.
+   */
+  SnapSlider.prototype._preloadWindow = function() {
+    // Warm the next TWO images/pages ahead (plus one behind for a snappy back
+    // toggle). Forward-biased since you almost always advance forward.
+    var ahead  = this.perView * 2 + 1;
+    var behind = this.perView + 1;
+    var from = Math.max(0, this.currentIndex - behind);
+    var to   = Math.min(this.totalSlides - 1, this.currentIndex + ahead);
+    for (var i = from; i <= to; i++) {
+      var slide = this.slides[i];
+      var img = slide && slide.querySelector('img');
+      if (!img) continue;
+      var ds = img.getAttribute('data-src');
+      if (ds && !img.getAttribute('src')) { img.setAttribute('src', ds); img.removeAttribute('data-src'); }
+      if (img.getAttribute('loading') === 'lazy') img.loading = 'eager';
+      if (!img.complete) {
+        var pre = new Image();
+        pre.src = img.currentSrc || img.src || img.getAttribute('src') || '';
+      }
+    }
   };
 
   /**
@@ -524,6 +556,9 @@
     }
 
     this.currentIndex = index;
+    // Warm the next lookahead BEFORE the transition, so the incoming frame is
+    // already loaded as it slides in.
+    this._preloadWindow();
     this._updateSlidePosition(true);
     this._dispatchChangeEvent();
   };
