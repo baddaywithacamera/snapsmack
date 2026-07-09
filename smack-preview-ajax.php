@@ -16,6 +16,14 @@
  */
 
 
+// Preview is a non-mutating, session-gated render of admin-supplied content: it
+// stores nothing and returns output only to the caller's own browser. The
+// shortcode toolbar posts it via a target=_blank form with no CSRF token, so
+// exempt it from the global csrf_check() in auth-smack.php (same pattern used by
+// other read-only POST endpoints). Session auth is still enforced by auth-smack.
+require_once __DIR__ . '/core/csrf.php';
+csrf_exempt();
+
 require_once __DIR__ . '/core/auth-smack.php';
 require_once __DIR__ . '/core/parser.php';
 require_once __DIR__ . '/core/skin-settings.php';

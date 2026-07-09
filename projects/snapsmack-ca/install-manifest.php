@@ -30,7 +30,7 @@ if (!in_array($mode, ['photoblog', 'carousel', 'smacktalk'], true)) {
 $mode_defaults = [
     'photoblog' => 'new-horizon',
     'carousel'  => 'the-grid',
-    'smacktalk' => 'new-horizon',
+    'smacktalk' => 'alfred',
 ];
 $default_skin = $mode_defaults[$mode] ?? 'new-horizon';
 

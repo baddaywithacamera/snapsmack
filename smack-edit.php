@@ -25,6 +25,17 @@ $pdo->exec("ALTER TABLE snap_collection_items ADD COLUMN IF NOT EXISTS `item_typ
 $pdo->exec("ALTER TABLE snap_collection_items ADD COLUMN IF NOT EXISTS `item_id`   INT UNSIGNED NOT NULL DEFAULT 0");
 $pdo->exec("ALTER TABLE snap_collection_items ADD COLUMN IF NOT EXISTS `sort_order` INT NOT NULL DEFAULT 0");
 
+// Fediverse sensitivity fields (0.7.393) on snap_images. These are normally added
+// by the SMACKVERSE canonical schema sync, but a self-hosted site deployed by
+// direct code copy (bypassing the updater's schema diff) never gets them — yet
+// the UPDATE below writes them unconditionally, which fatals with
+// "Unknown column 'is_sensitive'". Belt-and-suspenders per the new-column checklist.
+try {
+    $pdo->exec("ALTER TABLE snap_images
+                ADD COLUMN IF NOT EXISTS is_sensitive    TINYINT(1)   NOT NULL DEFAULT 0,
+                ADD COLUMN IF NOT EXISTS content_warning VARCHAR(255) DEFAULT NULL");
+} catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
+
 // Load and apply skin-aware settings early so the frame save handler and
 // form rendering both use the actual skin defaults, not hardcoded fallbacks.
 // admin-header.php checks isset($settings) and skips its own load if set.
