@@ -517,34 +517,49 @@ class SnapSmack {
      */
     private function parseImages($content) {
         return preg_replace_callback(
-            '/\[img:\s*(\d+)(?:\s*\|\s*(small|wall|full))?(?:\s*\|\s*(left|center|right))?\s*\]/i',
+            '/\[img:\s*(g)?\s*(\d+)(?:\s*\|\s*(small|wall|full))?(?:\s*\|\s*(left|center|right))?\s*\]/i',
             function ($matches) {
-                $id    = $matches[1];
-                $size  = $matches[2] ?? 'full';
-                $align = $matches[3] ?? 'center';
+                $gallery = !empty($matches[1]);   // optional 'g' prefix ([img:gID]) forces Gallery
+                $id      = $matches[2];
+                $size    = $matches[3] ?? 'full';
+                $align   = $matches[4] ?? 'center';
 
-                // --- ASSET LOOKUP (PRIORITY 1) ---
-                // Try media assets first (smack-media.php uploads). The global
-                // per-asset border (width + colour) rides along on this existing
-                // SELECT — zero extra queries, applied everywhere [img:ID] renders.
-                // Fallback SELECT (no border cols) protects blogs where the schema
-                // sync hasn't added the columns yet — avoids an Unknown-column fatal.
-                try {
-                    $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name, asset_border_width as bw, asset_border_color as bc FROM snap_assets WHERE id = ? LIMIT 1");
-                    $stmt->execute([$id]);
-                    $asset = $stmt->fetch();
-                } catch (\PDOException $e) {
-                    $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name FROM snap_assets WHERE id = ? LIMIT 1");
-                    $stmt->execute([$id]);
-                    $asset = $stmt->fetch();
-                }
+                $asset = false;
 
-                // --- FALLBACK TO SNAP_IMAGES (PRIORITY 2) ---
-                // snap_images has no border columns; defaults leave it borderless.
-                if (!$asset) {
+                if ($gallery) {
+                    // --- GALLERY-FORCED LOOKUP (snap_images only) ---
+                    // [img:gID] unambiguously targets a POST image (the Gallery),
+                    // sidestepping the id-space collision with snap_assets: both
+                    // tables number from 1, so a plain [img:ID] would resolve the
+                    // Library asset of the same id first. snap_images has no border
+                    // columns; defaults leave it borderless.
                     $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name FROM snap_images WHERE id = ? LIMIT 1");
                     $stmt->execute([$id]);
                     $asset = $stmt->fetch();
+                } else {
+                    // --- ASSET LOOKUP (PRIORITY 1) ---
+                    // Try media assets first (smack-media.php uploads). The global
+                    // per-asset border (width + colour) rides along on this existing
+                    // SELECT — zero extra queries, applied everywhere [img:ID] renders.
+                    // Fallback SELECT (no border cols) protects blogs where the schema
+                    // sync hasn't added the columns yet — avoids an Unknown-column fatal.
+                    try {
+                        $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name, asset_border_width as bw, asset_border_color as bc FROM snap_assets WHERE id = ? LIMIT 1");
+                        $stmt->execute([$id]);
+                        $asset = $stmt->fetch();
+                    } catch (\PDOException $e) {
+                        $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name FROM snap_assets WHERE id = ? LIMIT 1");
+                        $stmt->execute([$id]);
+                        $asset = $stmt->fetch();
+                    }
+
+                    // --- FALLBACK TO SNAP_IMAGES (PRIORITY 2) ---
+                    // snap_images has no border columns; defaults leave it borderless.
+                    if (!$asset) {
+                        $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name FROM snap_images WHERE id = ? LIMIT 1");
+                        $stmt->execute([$id]);
+                        $asset = $stmt->fetch();
+                    }
                 }
 
                 if (!$asset) return "";

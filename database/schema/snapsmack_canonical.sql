@@ -104,7 +104,9 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
   `content`           longtext       COLLATE utf8mb4_unicode_ci DEFAULT NULL
                       COMMENT 'Body content for longform (SmackTalk) posts — migration 041',
   `featured_asset_id` int unsigned   DEFAULT NULL
-                      COMMENT 'Hero image for longform posts — FK to snap_assets.id — migration 041',
+                      COMMENT 'Legacy hero image for longform posts — FK to snap_assets.id (Library). Superseded by featured_image_id (Gallery) as the cover source — migration 041',
+  `featured_image_id` int unsigned   DEFAULT NULL
+                      COMMENT 'Cover/featured image for longform posts — FK to snap_images.id (the Gallery). Drives the post banner + listing thumbnail (0.7.393). Gallery-sourced, like a GRAMOFSMACK cover.',
   `trigram_id`        int unsigned   DEFAULT NULL
                       COMMENT 'FK to snap_trigrams.id — NULL = normal post cover',
   `sort_order`        int            NOT NULL DEFAULT 0

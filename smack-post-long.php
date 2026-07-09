@@ -42,6 +42,15 @@ try {
     }
 } catch (PDOException $e) { /* silently skip */ }
 
+// Defensive: ensure the Gallery cover column exists (canonical schema is the
+// source of truth; this only catches an install caught mid-update). Pure
+// structural add — no migration file. featured_image_id = FK to snap_images
+// (the Gallery), the cover/featured image source, superseding the old
+// Library-only featured_asset_id.
+try {
+    $pdo->exec("ALTER TABLE snap_posts ADD COLUMN IF NOT EXISTS featured_image_id INT UNSIGNED DEFAULT NULL");
+} catch (PDOException $e) { /* older engine without IF NOT EXISTS — canonical sync handles it */ }
+
 // --- PLAIN TEXT ↔ HTML HELPERS (same as smack-pages.php) ---
 function smack_autop_long(string $text): string {
     if (trim($text) === '') return '';
@@ -64,7 +73,7 @@ function smack_autop_long(string $text): string {
         $trimmed = trim($chunk);
         if (str_starts_with($trimmed, '<!--BLOCK:')) {
             $chunk = $trimmed;
-        } elseif (preg_match('/^\[img:\s*\d+(?:\s*\|[^\]]*)*\]$/', $trimmed)) {
+        } elseif (preg_match('/^\[img:\s*g?\s*\d+(?:\s*\|[^\]]*)*\]$/', $trimmed)) {
             $chunk = $trimmed;
         } elseif (preg_match('/^\[mosaic:\d+\]$/', $trimmed)) {
             $chunk = $trimmed;
@@ -144,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_long'])) {
     $raw_content      = $_POST['content'] ?? '';
     $status           = in_array($_POST['status'] ?? '', ['published','draft']) ? $_POST['status'] : 'published';
     $allow_comments   = (int)($_POST['allow_comments'] ?? 1);
-    $featured_asset   = !empty($_POST['featured_asset_id']) ? (int)$_POST['featured_asset_id'] : null;
+    $featured_image   = !empty($_POST['featured_image_id']) ? (int)$_POST['featured_image_id'] : null;
     $manual_tags      = trim($_POST['tags'] ?? '');
     $selected_cats    = $_POST['cat_ids'] ?? [];
     $selected_albums  = $_POST['album_ids'] ?? [];
@@ -185,11 +194,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_long'])) {
         $upd = $pdo->prepare("
             UPDATE snap_posts
             SET title=?, slug=?, content=?, status=?, allow_comments=?,
-                featured_asset_id=?" .
+                featured_image_id=?" .
                 ($custom_date ? ", created_at=?" : "") . "
             WHERE id=? AND post_type='longform'
         ");
-        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_asset];
+        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image];
         if ($custom_date) $params[] = $custom_date;
         $params[] = $post_id;
         $upd->execute($params);
@@ -212,12 +221,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_long'])) {
         // INSERT
         $ins = $pdo->prepare("
             INSERT INTO snap_posts
-                (title, slug, content, post_type, status, allow_comments, featured_asset_id" .
+                (title, slug, content, post_type, status, allow_comments, featured_image_id" .
                 ($custom_date ? ", created_at" : "") . ")
             VALUES (?, ?, ?, 'longform', ?, ?, ?" .
                 ($custom_date ? ", ?" : "") . ")
         ");
-        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_asset];
+        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image];
         if ($custom_date) $params[] = $custom_date;
         $ins->execute($params);
         $new_id = (int)$pdo->lastInsertId();
@@ -275,16 +284,15 @@ $all_posts  = $pdo->query(
      LIMIT 200"
 )->fetchAll();
 
-// Fetch featured asset for edit mode
-$featured_asset_data = null;
-if ($edit_post && !empty($edit_post['featured_asset_id'])) {
-    $fas = $pdo->prepare("SELECT id, asset_name, asset_path FROM snap_assets WHERE id = ?");
-    $fas->execute([$edit_post['featured_asset_id']]);
-    $featured_asset_data = $fas->fetch(PDO::FETCH_ASSOC) ?: null;
+// Fetch the cover image (from the Gallery / snap_images) for edit mode.
+// Covers are POST content, so they live in the Gallery — NOT the reusable-asset
+// Library. featured_image_id → snap_images.
+$featured_image_data = null;
+if ($edit_post && !empty($edit_post['featured_image_id'])) {
+    $fis = $pdo->prepare("SELECT id, img_title AS name, img_file, img_thumb_square FROM snap_images WHERE id = ?");
+    $fis->execute([$edit_post['featured_image_id']]);
+    $featured_image_data = $fis->fetch(PDO::FETCH_ASSOC) ?: null;
 }
-
-// Media library for featured image picker
-$all_assets = $pdo->query("SELECT id, asset_name, asset_path FROM snap_assets ORDER BY created_at DESC LIMIT 300")->fetchAll();
 
 $page_title = "SmackTalk — Longform Post";
 include 'core/admin-header.php';
@@ -373,6 +381,7 @@ include 'core/sidebar.php';
                     <button type="button" class="sc-btn" data-action="spacer" title="Vertical Spacer (1-100px)">SPACER</button>
                     <span class="sc-sep"></span>
                     <button type="button" class="sc-btn" id="mosaic-insert-btn" title="Insert MOSAIC panel">MOSAIC</button>
+                    <button type="button" class="sc-btn" id="gallery-insert-btn" title="Insert an image already in the Media Gallery">GALLERY</button>
                     <button type="button" class="sc-btn sc-btn-preview" data-action="preview" title="Preview in New Tab">PREVIEW</button>
                 </div>
             </div>
@@ -495,31 +504,29 @@ include 'core/sidebar.php';
                         </select>
                     </div>
 
-                    <!-- HERO IMAGE (from media library) -->
+                    <!-- COVER IMAGE (from the Media Gallery — POST content, NOT the Library) -->
                     <div class="lens-input-wrapper mt-10">
-                        <label>HERO IMAGE <span class="field-tip" data-tip="Primary image for this post, selected from your media library.">ⓘ</span></label>
-                        <input type="hidden" name="featured_asset_id" id="long-hero-asset-id"
-                               value="<?php echo $featured_asset_data ? (int)$featured_asset_data['id'] : ''; ?>">
-                        <div id="long-hero-preview" style="margin-top:6px;">
-                            <?php if ($featured_asset_data): ?>
-                                <?php $hero_url = BASE_URL . ltrim($featured_asset_data['asset_path'], '/'); ?>
-                                <img src="<?php echo htmlspecialchars($hero_url); ?>"
+                        <label>COVER IMAGE <span class="field-tip" data-tip="The post's cover / featured image — shown as the banner on the post and as its thumbnail in the post listing. Chosen from your Media Gallery (post images), like a GRAMOFSMACK cover.">ⓘ</span></label>
+                        <input type="hidden" name="featured_image_id" id="long-cover-image-id"
+                               value="<?php echo $featured_image_data ? (int)$featured_image_data['id'] : ''; ?>">
+                        <div id="long-cover-preview" style="margin-top:6px;">
+                            <?php if ($featured_image_data): ?>
+                                <?php $cover_url = BASE_URL . ltrim(($featured_image_data['img_thumb_square'] ?: $featured_image_data['img_file']), '/'); ?>
+                                <img src="<?php echo htmlspecialchars($cover_url); ?>"
                                      style="width:100%;max-width:200px;height:auto;border-radius:3px;border:1px solid var(--border);"
                                      alt="">
-                                <span class="dim" style="display:block;font-size:11px;margin-top:4px;"><?php echo htmlspecialchars($featured_asset_data['asset_name']); ?></span>
+                                <span class="dim" style="display:block;font-size:11px;margin-top:4px;"><?php echo htmlspecialchars($featured_image_data['name'] ?? ''); ?></span>
                             <?php else: ?>
                                 <div style="width:100%;max-width:200px;height:80px;background:var(--card-bg);border:1px dashed var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;">
-                                    <span class="dim" style="font-size:10px;text-align:center;padding:4px;">NO HERO</span>
+                                    <span class="dim" style="font-size:10px;text-align:center;padding:4px;">NO COVER</span>
                                 </div>
                             <?php endif; ?>
                         </div>
                         <div style="display:flex;gap:8px;margin-top:8px;">
-                            <button type="button" onclick="openHeroPicker()" class="btn-secondary" style="font-size:11px;padding:5px 12px;">
-                                <?php echo $featured_asset_data ? 'CHANGE' : 'SELECT HERO'; ?>
+                            <button type="button" id="long-cover-btn" class="btn-secondary" style="font-size:11px;padding:5px 12px;">
+                                <?php echo $featured_image_data ? 'CHANGE' : 'SELECT COVER'; ?>
                             </button>
-                            <?php if ($featured_asset_data): ?>
-                                <button type="button" onclick="clearHero()" class="btn-secondary" style="font-size:11px;padding:5px 12px;color:var(--dim);">REMOVE</button>
-                            <?php endif; ?>
+                            <button type="button" id="long-cover-remove" class="btn-secondary" style="font-size:11px;padding:5px 12px;color:var(--dim);<?php echo $featured_image_data ? '' : 'display:none;'; ?>">REMOVE</button>
                         </div>
                     </div>
 
@@ -592,21 +599,27 @@ include 'core/sidebar.php';
     </div>
 </div>
 
-<!-- HERO IMAGE PICKER MODAL (media library) -->
-<div id="hero-picker-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9001;overflow-y:auto;">
+<!-- GALLERY IMAGE PICKER MODAL (snap_images / POST images) -->
+<div id="gallery-pick-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9002;overflow-y:auto;">
     <div style="background:var(--bg);margin:40px auto;max-width:860px;border-radius:4px;border:1px solid var(--border);padding:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;">SELECT HERO IMAGE</span>
-            <button type="button" onclick="closeHeroPicker()" style="background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;line-height:1;">×</button>
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;">INSERT IMAGE FROM GALLERY</span>
+            <button type="button" id="gallery-pick-close" style="background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;line-height:1;">×</button>
         </div>
-        <input type="text" id="hero-search" placeholder="Filter by name…" oninput="filterHeroGrid(this.value)"
+        <input type="text" id="gallery-pick-search" placeholder="Search titles, descriptions, tags…"
                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--text);font-size:13px;margin-bottom:12px;box-sizing:border-box;">
-        <div id="hero-asset-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:480px;overflow-y:auto;"></div>
+        <div id="gallery-pick-grid"
+             data-base="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES); ?>"
+             style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:480px;overflow-y:auto;"></div>
+        <p id="gallery-pick-empty" class="dim" style="font-size:12px;padding:10px;display:none;">
+            No images in the Gallery yet. <a href="smack-gallery.php" target="_blank" style="color:var(--link);">Upload some →</a>
+        </p>
     </div>
 </div>
 
 <script src="assets/js/smack-asset-picker.js"></script>
 <script src="assets/js/shortcode-toolbar.js"></script>
+<script src="assets/js/smack-longform-gallery-picker.js"></script>
 
 <script>
 // --- Slug auto-generation ---
@@ -701,63 +714,5 @@ document.getElementById('mosaic-modal').addEventListener('click', function (e) {
     if (e.target === this) closeMosaicModal();
 });
 
-// --- HERO ASSET PICKER ---
-var _heroAssets = <?php echo json_encode(array_values($all_assets), JSON_HEX_TAG); ?>;
-var _heroBase   = <?php echo json_encode(BASE_URL); ?>;
-
-function openHeroPicker() {
-    document.getElementById('hero-picker-modal').style.display = 'block';
-    document.getElementById('hero-search').value = '';
-    renderHeroGrid(_heroAssets);
-}
-function closeHeroPicker() {
-    document.getElementById('hero-picker-modal').style.display = 'none';
-}
-function filterHeroGrid(q) {
-    q = q.toLowerCase();
-    var filtered = q ? _heroAssets.filter(function (a) {
-        return a.asset_name.toLowerCase().indexOf(q) !== -1;
-    }) : _heroAssets;
-    renderHeroGrid(filtered);
-}
-function renderHeroGrid(assets) {
-    var grid = document.getElementById('hero-asset-grid');
-    if (!assets.length) {
-        grid.innerHTML = '<p class="dim" style="font-size:12px;padding:10px;">No assets found.</p>';
-        return;
-    }
-    var html = '';
-    assets.forEach(function (a) {
-        var src = _heroBase + a.asset_path.replace(/^\//, '');
-        html += '<div onclick="selectHeroAsset(' + a.id + ',\'' + src + '\',\'' + a.asset_name.replace(/'/g, "\\'") + '\')"'
-              + ' style="cursor:pointer;border:2px solid transparent;border-radius:3px;overflow:hidden;aspect-ratio:1;background:#111;">'
-              + '<img src="' + src + '" style="width:100%;height:100%;object-fit:cover;" loading="lazy">'
-              + '</div>';
-    });
-    grid.innerHTML = html;
-}
-function selectHeroAsset(id, src, name) {
-    document.getElementById('long-hero-asset-id').value = id;
-    document.getElementById('long-hero-preview').innerHTML =
-        '<img src="' + src + '" style="width:100%;max-width:200px;height:auto;border-radius:3px;border:1px solid var(--border);" alt="">'
-        + '<span class="dim" style="display:block;font-size:11px;margin-top:4px;">' + name + '</span>'
-        + '<div style="display:flex;gap:8px;margin-top:8px;">'
-        + '<button type="button" onclick="openHeroPicker()" class="btn-secondary" style="font-size:11px;padding:5px 12px;">CHANGE</button>'
-        + '<button type="button" onclick="clearHero()" class="btn-secondary" style="font-size:11px;padding:5px 12px;color:var(--dim);">REMOVE</button>'
-        + '</div>';
-    closeHeroPicker();
-}
-function clearHero() {
-    document.getElementById('long-hero-asset-id').value = '';
-    document.getElementById('long-hero-preview').innerHTML =
-        '<div style="width:100%;max-width:200px;height:80px;background:var(--card-bg);border:1px dashed var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;">'
-        + '<span class="dim" style="font-size:10px;text-align:center;padding:4px;">NO HERO</span></div>'
-        + '<div style="display:flex;gap:8px;margin-top:8px;">'
-        + '<button type="button" onclick="openHeroPicker()" class="btn-secondary" style="font-size:11px;padding:5px 12px;">SELECT HERO</button>'
-        + '</div>';
-}
-document.getElementById('hero-picker-modal').addEventListener('click', function (e) {
-    if (e.target === this) closeHeroPicker();
-});
 </script>
 <?php // ===== SNAPSMACK EOF =====
