@@ -25,6 +25,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 $_ui_pimpmobile    = ($_SESSION['user_ui_mode'] ?? 'bigwheel') === 'pimpmobile';
 $_longform_enabled = ($settings['enable_longform'] ?? '0')        === '1';
 $_site_is_carousel = ($settings['site_mode']      ?? 'photoblog') === 'carousel';
+$_site_is_smacktalk = ($settings['site_mode']     ?? 'photoblog') === 'smacktalk';
 
 // --- CONDITIONAL PIMPOTRON DETECTION ---
 $_sidebar_pimpotron = false;
@@ -88,10 +89,21 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-admin.php') ? 'active' : ''; ?>">
                         <a href="smack-admin.php">Dashboard</a>
                     </li>
-                    <li class="<?php echo in_array($current_page, ['smack-post-solo.php','smack-post-gram.php']) ? 'active' : ''; ?>">
-                        <a href="<?php echo $_site_is_carousel ? 'smack-post-gram.php' : 'smack-post-solo.php'; ?>">New Post</a>
+                    <?php
+                    // NEW POST routes by install mode: SMACKTALK → longform editor,
+                    // GRAMOFSMACK (carousel) → gram composer, SMACKONEOUT → solo.
+                    // (Matches smack-admin.php's dashboard routing.)
+                    $_new_post_href  = $_site_is_smacktalk ? 'smack-post-long.php'
+                                     : ($_site_is_carousel ? 'smack-post-gram.php' : 'smack-post-solo.php');
+                    $_new_post_pages = $_site_is_smacktalk ? ['smack-post-long.php']
+                                     : ['smack-post-solo.php','smack-post-gram.php'];
+                    ?>
+                    <li class="<?php echo in_array($current_page, $_new_post_pages) ? 'active' : ''; ?>">
+                        <a href="<?php echo $_new_post_href; ?>">New Post</a>
                     </li>
-                    <?php if ($_ui_pimpmobile && $_longform_enabled): ?>
+                    <?php // Separate longform link only for non-SMACKTALK sites that enabled longform as an add-on
+                          // (on a SMACKTALK site NEW POST already IS the longform editor). ?>
+                    <?php if ($_ui_pimpmobile && $_longform_enabled && !$_site_is_smacktalk): ?>
                     <li class="<?php echo ($current_page == 'smack-post-long.php') ? 'active' : ''; ?>">
                         <a href="smack-post-long.php">New Longform Post</a>
                     </li>

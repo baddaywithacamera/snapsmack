@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.395 — "Rock Solid Friendship" (2026-07-09)
+
+- **Fleet SCROLL TIME is now the cumulative total, not an average.** The Fleet Stats rollup tile (`smack-multisite-stats.php`) now shows the *total* engaged reading time summed across the hub + every spoke — the number that was actually asked for. The per-read average and the read count are retained as a small subline. (The code already summed `Σ(avg × n)` to derive the average; this surfaces that sum directly. Still computed live per page load, engaged reads of 10s+ on landing/archive.)
+- **SMACKTALK sites now open the longform editor from "New Post".** The admin sidebar's New Post link only branched carousel-vs-solo and never handled SMACKTALK, so a SmackTalk site (e.g. baddaywithacamera.ca) dropped you into the solo *photo* editor. It now routes by install mode — SMACKTALK → `smack-post-long.php`, GRAMOFSMACK → gram composer, SMACKONEOUT → solo — matching the dashboard's routing. The separate "New Longform Post" link is hidden on SMACKTALK (New Post already is longform) and still shows for a photoblog with longform enabled as an add-on. `core/sidebar.php`.
+
 ## 0.7.394 — "The Saddle Row Review" (2026-07-09)
 
 - **The Media Gallery now has its own uploader.** Post images (the `snap_images` Gallery) could only be created through a photo-post editor or a Flickr import — the Gallery page itself was browse-only, which made it a dead end when you just wanted to add images (e.g. to illustrate a SMACKTALK long-form post). It now has an **INJECT POST IMAGES** box at the top: choose-files or drag-and-drop, **multi-file**, with a Published/Draft toggle. New uploads land in the grid immediately. This is distinct from the reusable-asset **Media Library** (`snap_assets`, `smack-media.php`) — Library = reusable page/header assets, Gallery = post images.
