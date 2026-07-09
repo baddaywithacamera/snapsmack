@@ -251,7 +251,7 @@ function pg_render_feed_item(array $img, array $comm, string $site_title, string
     <?php if (!empty($img['img_title']) || !empty($img['img_description'])): ?>
         <div class="pg-caption">
             <?php if (!empty($img['img_title'])): ?>
-                <div class="pg-caption-title"><?php echo htmlspecialchars($img['img_title']); ?></div>
+                <div class="pg-caption-title"><?php echo htmlspecialchars(html_entity_decode($img['img_title'], ENT_QUOTES, 'UTF-8')); ?></div>
             <?php endif; ?>
             <?php if (!empty($img['img_description'])): ?>
                 <div class="pg-caption-body"><?php echo snap_render_caption_html($img['img_description'], BASE_URL, 'pg-caption-hashtag'); ?></div>

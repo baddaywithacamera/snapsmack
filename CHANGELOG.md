@@ -14,7 +14,14 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ## 0.7.392 — "Slice of Life" (2026-07-08)
 
-Three batches of SMACKVERSE work landing together (392 hadn't deployed yet, so it all rides under one version): Direct Messages, the fediverse full-compatibility completion, and the fleet-board/editor tweaks.
+Four batches of SMACKVERSE work landing together (392 hadn't deployed yet, so it all rides under one version): the network relay, Direct Messages, the fediverse full-compatibility completion, and the fleet-board/editor tweaks.
+
+### SMACKVERSE network relay (phase 1) — the SnapSmack network stops being a bunch of islands. Spec: `_spec/smackverse-relay-node-spec-v1.md`; the relay service lives in `projects/smackverse-relay/`.
+
+- **The relay itself** (`projects/smackverse-relay/`) — a standalone AP relay that runs on its own host (its own Proxmox CT, not the snapsmack LXC). Blogs subscribe; each subscriber's *public* posts fan out to every other subscriber, so each blog's home reader fills with the whole network without following everyone by hand. **No image storage** — the relay fans out activity ids + text; photos always load from the origin blog. Reuses the SnapSmack AP primitives (signing, signature verify, delivery queue, SSRF guard). Private/DM Notes are never fanned (audience check). Ships with schema, config, a token-gated operator console (approve subscribers, block/unblock domains, allowlist, flip open-mode), a drain cron, and a deploy README.
+- **Trust model: allowlist by default, one flip to open.** New subscribers land *pending* until approved (or their domain is allowlisted — your own fleet joins frictionlessly); a single console toggle switches to open-subscribe + blocklist when the network goes public. A blocklist drops a domain's inbound and excludes it from fan-out.
+- **CMS side: JOIN / LEAVE NETWORK** (SMACKVERSE → Federation). Joining sends the relay-follow (`Follow` with object = the Public collection); because the relay is recorded as a followed account, its fan-out `Announce`s ingest into the home reader through the path installs already run — no new inbound code. Pushable fleet-wide from the hub so all your sites join at once. `sv_relay_join()` / `sv_relay_leave()`.
+- Phase 2 (network search / discovery index) stays scoped in the spec, unbuilt, per the plan.
 
 ### Direct Messages — Pixelfed Direct for the single-actor model. Spec: `_spec/direct-messages-spec-v1.md`.
 
@@ -40,6 +47,14 @@ Three batches of SMACKVERSE work landing together (392 hadn't deployed yet, so i
 
 - **Added the missing TAGS field to the multi-image (carousel / GRAMOFSMACK) post editor.** `smack-edit-carousel.php` synced hashtags from the caption only and had no dedicated tags input — so there was no way to add or edit discovery tags on a carousel/GRAM post without stuffing them into the visible caption (and imported posts, whose tags live separately from the caption text, couldn't be edited at all). It now carries the same TAGS field the single-image editor (`smack-edit.php`) already had: pre-populated from the post's existing tags (read off the cover image, first-image fallback), space-separated hashtags, folded into the tag sync on save alongside the caption. Add `#catsofpixelfed #catsofmastodon` without touching your caption. (Asked-for repeatedly; the single/GRAM editors had it, the carousel editor was the one that got skipped.)
 - **Removed the VIEWS FROM FEDIVERSE tile from the Fleet board.** It counted non-bot hits whose HTTP referrer was a fediverse instance — but push-based federation means followers see your photos *in their own feed* and rarely click through, so the number sat near-permanently zero and carried no signal. Rather than roll it up across spokes (briefly staged then reverted), it's dropped entirely: the tile, the hub-local referrer-view computation, and the staged heartbeat plumbing/column are all removed. The remaining engagement tiles (followers, following, likes, boosts, replies) are unaffected. (SCROLL TIME was investigated too and is working correctly — it's a sample-weighted average of engaged reads that already rolls up across spokes; admin visits are excluded by design.)
+
+### Skins — Galleria / Hip-to-be-Square slider preloading
+
+- **Fixed: the framed slider slid in an empty frame that then popped in.** The Galleria / Hip-to-be-Square landing slider left every off-screen slide on native `loading="lazy"`, so toggling to the next image slid an empty frame in and *then* loaded it — killing the effect. The shared `SnapSlider` engine (`assets/js/ss-engine-slider.js`) now preloads the **next two frames ahead** (plus one behind for a snappy back-toggle) around the current slide — flips nearby lazy images to eager + warms the cache with a throwaway `Image()` — on init and again ahead of each transition, so the incoming frame is already loaded as it slides in. Far-off slides stay lazy. Both skins share the engine, so both are fixed at once.
+
+### Captions — apostrophes rendered as literal `&#39;`
+
+- **Fixed: apostrophes (and other entities) showed as a literal `&#39;` in captions** (reported on Photogram). Flickr-imported / some composer-saved captions are stored already HTML-encoded, and the caption renderer escaped them a second time, so `it's` came out as `it&#39;s`. `snap_render_caption_html()` now decodes entities first — iteratively, to unwind double-encoding — then escapes once; Photogram's visible caption title does the same. XSS safety is unchanged (the final escape still neutralises markup). Central fix, so every skin's caption body is corrected at once, not just Photogram.
 
 ## 0.7.391 — "Magical Mystery Cure" (2026-07-08)
 

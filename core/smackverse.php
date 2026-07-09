@@ -2047,6 +2047,83 @@ function sv_unsend_dm(PDO $pdo, array $settings, int $dm_id): array {
     return [true, 'Message unsent.'];
 }
 
+// ─── SMACKVERSE network relay (0.7.392) — join/leave the fan-out relay ───────
+// The relay lets every SnapSmack blog see the whole network's public posts
+// without following each one. Joining = a relay-follow (Follow with object = the
+// Public collection) to the relay actor. Because we record the relay in
+// snap_ap_following, its fan-out Announces ingest via the normal followed-account
+// path — no new inbound code. See projects/smackverse-relay/.
+
+function sv_relay_actor_url(array $settings): string {
+    $u = trim($settings['smackverse_relay_url'] ?? '');
+    return $u !== '' ? $u : 'https://smackverse.snapsmack.ca/actor';
+}
+
+/** Join the SMACKVERSE network relay. Idempotent. @return [bool ok, string msg] */
+function sv_relay_join(PDO $pdo, array $settings): array {
+    $relay = sv_relay_actor_url($settings);
+    if ($relay === sv_actor_url($settings)) return [false, 'That is this blog.'];
+    $doc = sv_fetch_ap($relay, $settings);
+    if (!is_array($doc) || empty($doc['inbox'])) return [false, 'Could not reach the relay actor at ' . $relay . '.'];
+    $inbox = (string)$doc['inbox'];
+    if (!sv_url_is_public($inbox)) return [false, 'Relay inbox is not reachable.'];
+
+    $follow_id = sv_actor_url($settings) . '#relayjoin-' . bin2hex(random_bytes(8));
+    // Record the relay as a following row so its fan-out Announces ingest into
+    // the home timeline via sv_is_following() — the trust gate is the follow.
+    $pdo->prepare(
+        "INSERT INTO snap_ap_following (actor_url, actor_handle, inbox_url, follow_id, state)
+         VALUES (?, 'smackverse-relay', ?, ?, 'pending')
+         ON DUPLICATE KEY UPDATE inbox_url=VALUES(inbox_url), follow_id=VALUES(follow_id), state='pending', followed_at=NOW()"
+    )->execute([$relay, $inbox, $follow_id]);
+
+    $follow = [
+        '@context' => 'https://www.w3.org/ns/activitystreams',
+        'id'       => $follow_id,
+        'type'     => 'Follow',
+        'actor'    => sv_actor_url($settings),
+        'object'   => 'https://www.w3.org/ns/activitystreams#Public',
+        'to'       => [$relay],
+    ];
+    sv_queue_delivery($pdo, $inbox, json_encode($follow, JSON_UNESCAPED_SLASHES));
+    sv_process_deliveries($pdo, $settings, 10);
+
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackverse_relay_joined','1') ON DUPLICATE KEY UPDATE setting_val='1'")->execute();
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackverse_relay_url',?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$relay]);
+    return [true, 'Joined the SMACKVERSE network relay (' . (parse_url($relay, PHP_URL_HOST) ?: $relay) . '). Pending its Accept — usually seconds. Posts from across the network will start landing in your reader.'];
+}
+
+/** Leave the relay: Undo the relay-follow, drop the row. @return [bool ok, msg] */
+function sv_relay_leave(PDO $pdo, array $settings): array {
+    $relay = sv_relay_actor_url($settings);
+    $s = $pdo->prepare("SELECT * FROM snap_ap_following WHERE actor_url = ? LIMIT 1");
+    $s->execute([$relay]);
+    $row = $s->fetch(PDO::FETCH_ASSOC);
+
+    $doc   = sv_fetch_ap($relay, $settings);
+    $inbox = is_array($doc) ? (string)($doc['inbox'] ?? '') : '';
+    if ($inbox !== '' && sv_url_is_public($inbox)) {
+        $undo = [
+            '@context' => 'https://www.w3.org/ns/activitystreams',
+            'id'       => sv_actor_url($settings) . '#relayleave-' . bin2hex(random_bytes(6)),
+            'type'     => 'Undo',
+            'actor'    => sv_actor_url($settings),
+            'to'       => [$relay],
+            'object'   => [
+                'id'     => $row['follow_id'] ?? ($relay . '#follow'),
+                'type'   => 'Follow',
+                'actor'  => sv_actor_url($settings),
+                'object' => 'https://www.w3.org/ns/activitystreams#Public',
+            ],
+        ];
+        sv_queue_delivery($pdo, $inbox, json_encode($undo, JSON_UNESCAPED_SLASHES));
+        sv_process_deliveries($pdo, $settings, 10);
+    }
+    $pdo->prepare("DELETE FROM snap_ap_following WHERE actor_url = ?")->execute([$relay]);
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackverse_relay_joined','0') ON DUPLICATE KEY UPDATE setting_val='0'")->execute();
+    return [true, 'Left the SMACKVERSE network relay.'];
+}
+
 /**
  * Follow a fediverse account as the blog actor. Accepts @user@host or a raw
  * actor URL. Queues a signed Follow to their inbox and records it pending;

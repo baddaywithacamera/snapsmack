@@ -246,6 +246,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regis
     exit;
 }
 
+// JOIN / LEAVE the SMACKVERSE network relay.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'relay_join') {
+    if (!sv_enabled($sv_settings)) {
+        header('Location: smack-smackverse.php?msg=' . urlencode('Enable SMACKVERSE first.'));
+    } else {
+        list(, $rmsg) = sv_relay_join($pdo, $sv_settings);
+        header('Location: smack-smackverse.php?msg=' . urlencode($rmsg));
+    }
+    exit;
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'relay_leave') {
+    list(, $rmsg) = sv_relay_leave($pdo, $sv_settings);
+    header('Location: smack-smackverse.php?msg=' . urlencode($rmsg));
+    exit;
+}
+
 // --- STATE FOR RENDER ---
 $sv_on       = sv_enabled($sv_settings);
 $sv_handle   = sv_handle($sv_settings);
@@ -429,6 +445,30 @@ include 'core/sidebar.php';
                     </label>
                 </div>
                 <button type="submit" class="master-update-btn">ENABLE SMACKVERSE</button>
+            </form>
+        <?php endif; ?>
+    </div>
+
+    <!-- NETWORK RELAY -->
+    <div class="box mb-20">
+        <h3>SMACKVERSE NETWORK</h3>
+        <?php
+            $relay_joined = ($sv_settings['smackverse_relay_joined'] ?? '0') === '1';
+            $relay_host   = parse_url(sv_relay_actor_url($sv_settings), PHP_URL_HOST) ?: 'smackverse.snapsmack.ca';
+        ?>
+        <p class="dim mb-20">Join the SnapSmack network relay and this blog's home reader fills with public posts from every participating SnapSmack site — no following each one by hand. No images are stored on the relay (photos load from the origin blog), and you keep federating directly regardless, so the relay is never a single point of failure.</p>
+        <?php if (!$sv_on): ?>
+            <p class="dim">Enable SMACKVERSE above first.</p>
+        <?php elseif ($relay_joined): ?>
+            <p>Connected to <code><?php echo htmlspecialchars($relay_host); ?></code>.</p>
+            <form method="POST" onsubmit="return confirm('Leave the SMACKVERSE network relay?');">
+                <input type="hidden" name="action" value="relay_leave">
+                <button type="submit" class="btn-clear">LEAVE NETWORK</button>
+            </form>
+        <?php else: ?>
+            <form method="POST">
+                <input type="hidden" name="action" value="relay_join">
+                <button type="submit" class="master-update-btn">JOIN NETWORK</button>
             </form>
         <?php endif; ?>
     </div>
