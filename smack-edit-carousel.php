@@ -112,6 +112,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ADD COLUMN IF NOT EXISTS img_focus_y TINYINT UNSIGNED NOT NULL DEFAULT 50,
                     ADD COLUMN IF NOT EXISTS img_zoom    SMALLINT UNSIGNED NOT NULL DEFAULT 100");
     } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
+
+    // Fediverse post fields (0.7.393) on snap_posts — same rationale as the
+    // crop columns above: normally added by the SMACKVERSE canonical sync, but a
+    // direct-deploy install that skipped the updater never gets them, and the
+    // UPDATE below writes them unconditionally (Unknown column 'is_sensitive').
+    try {
+        $pdo->exec("ALTER TABLE snap_posts
+                    ADD COLUMN IF NOT EXISTS is_pinned       TINYINT(1)   NOT NULL DEFAULT 0,
+                    ADD COLUMN IF NOT EXISTS is_sensitive    TINYINT(1)   NOT NULL DEFAULT 0,
+                    ADD COLUMN IF NOT EXISTS content_warning VARCHAR(255) DEFAULT NULL");
+    } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
     require_once __DIR__ . '/core/thumb-generator.php';
 
     // --- Frame style (per_carousel: one set for the whole post) ---

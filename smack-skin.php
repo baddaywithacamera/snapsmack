@@ -1496,9 +1496,13 @@ if (!empty($google_families)) {
                     if (!empty($skin['features']['mobile_only'])) continue;
                     // Development skins are not shown in the gallery
                     if (($skin['status'] ?? 'stable') === 'development') continue;
-                    // Mode filter: only show skins matching the site's mode
-                    $skin_carousel = !empty($skin['features']['carousel']);
-                    if ($skin_carousel !== $is_carousel) continue;
+                    // Mode filter: only show skins matching the site's install mode
+                    // (same three-mode rule as the main gallery path above).
+                    $skin_carousel  = !empty($skin['features']['carousel']);
+                    $skin_smacktalk = in_array('smacktalk', $skin['modes'] ?? []);
+                    if ($is_carousel  && !$skin_carousel)  continue;
+                    if ($is_smacktalk && !$skin_smacktalk) continue;
+                    if (!$is_carousel && !$is_smacktalk && ($skin_carousel || $skin_smacktalk)) continue;
                 ?>
                     <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                         <div class="skin-card-screenshot">
@@ -1568,9 +1572,16 @@ if (!empty($google_families)) {
                 if (!empty($skin['features']['mobile_only'])) continue;
                 // Development skins are not shown in the gallery
                 if (($skin['status'] ?? 'stable') === 'development') continue;
-                // Mode filter: only show skins matching the site's mode
-                $skin_carousel = !empty($skin['features']['carousel']);
-                if ($skin_carousel !== $is_carousel) continue;
+                // Mode filter: only show skins matching the site's install mode.
+                // Mirrors the Customize selector — carousel sites see carousel skins;
+                // SMACKTALK sites see only skins declaring 'smacktalk' in modes[]
+                // (Alfred, the sole SMACKTALK skin); photoblog sees neither.
+                // (Registry entries carry modes[] from the Skin Packager.)
+                $skin_carousel  = !empty($skin['features']['carousel']);
+                $skin_smacktalk = in_array('smacktalk', $skin['modes'] ?? []);
+                if ($is_carousel  && !$skin_carousel)  continue;
+                if ($is_smacktalk && !$skin_smacktalk) continue;
+                if (!$is_carousel && !$is_smacktalk && ($skin_carousel || $skin_smacktalk)) continue;
             ?>
                 <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                     <!-- Screenshot(s) -->

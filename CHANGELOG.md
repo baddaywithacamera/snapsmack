@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.396 — "The Cart Before the Ponies" (2026-07-09)
+
+- **Fixed a live fatal editing images/posts on installs missing the 0.7.393 fedi columns.** `smack-edit.php` (single image) and `smack-edit-carousel.php` (carousel/GRAM post) write `is_sensitive` / `content_warning` (and `is_pinned`) unconditionally, but those columns are normally added by the SMACKVERSE schema sync — a site deployed by direct code copy (bypassing the updater's canonical diff) never got them, so saving an edit threw `Unknown column 'is_sensitive'` (seen on hekeepsdroningon.ca). Both editors now carry the belt-and-suspenders `ADD COLUMN IF NOT EXISTS` the new-column checklist requires, so they self-heal on next save.
+- **Fixed "CSRF token mismatch" on Preview.** The shortcode-toolbar PREVIEW button posts to `smack-preview-ajax.php` via a `target=_blank` form with no CSRF token, which the global `csrf_check()` in `auth-smack.php` rejected. Preview is a non-mutating, session-gated render (stores nothing, returns output only to the caller), so it now calls `csrf_exempt()` — the documented pattern for read-only POST endpoints.
+- **SMACKTALK skin gating — only Alfred is offered/valid for SMACKTALK.** New Horizon's manifest wrongly claimed `modes: ['photoblog','smacktalk']` despite having no longform renderer (`post_modes: ['image']`), so it passed the mode gate and could sit active on a SMACKTALK site. Corrected to `['photoblog']`. The **skin GALLERY tab** only ever filtered carousel-vs-not (never SMACKTALK), so a SMACKTALK site saw the entire photoblog gallery; both gallery render paths now apply the same three-mode filter as the Customize selector, so a SMACKTALK site sees only skins declaring `smacktalk` (Alfred). The marketing install-manifest's `smacktalk => new-horizon` default is corrected to `alfred`.
+  - **Operational:** re-run the **Skin Packager** (Smack Central) so `registry.json` reflects New Horizon as photoblog-only — until then the live registry still lists it as SMACKTALK-compatible. And on baddaywithacamera.ca, install + activate **Alfred** (it's the only SMACKTALK skin) to replace New Horizon.
+
 ## 0.7.395 — "Rock Solid Friendship" (2026-07-09)
 
 - **Fleet SCROLL TIME is now the cumulative total, not an average.** The Fleet Stats rollup tile (`smack-multisite-stats.php`) now shows the *total* engaged reading time summed across the hub + every spoke — the number that was actually asked for. The per-read average and the read count are retained as a small subline. (The code already summed `Σ(avg × n)` to derive the average; this surfaces that sum directly. Still computed live per page load, engaged reads of 10s+ on landing/archive.)
