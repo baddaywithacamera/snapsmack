@@ -12,6 +12,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.393 — "Amending Fences" (2026-07-09)
+
+- **The Media Gallery now has its own uploader.** Post images (the `snap_images` Gallery) could only be created through a photo-post editor or a Flickr import — the Gallery page itself was browse-only, which made it a dead end when you just wanted to add images (e.g. to illustrate a SMACKTALK long-form post). It now has an **INJECT POST IMAGES** box at the top: choose-files or drag-and-drop, **multi-file**, with a Published/Draft toggle. New uploads land in the grid immediately. This is distinct from the reusable-asset **Media Library** (`snap_assets`, `smack-media.php`) — Library = reusable page/header assets, Gallery = post images.
+- **Shared ingest pipeline.** The upload runs the *exact* photo-post processing pipeline — EXIF preservation + optional copyright embedding, orientation correction, resize-to-config-limits, square + aspect thumbnails, SHA-256 checksum, and colour-palette extraction — so a Gallery-uploaded image is indistinguishable from one made through the post editor. That pipeline was extracted verbatim into a new shared `core/image-ingest.php` (`snap_ingest_image()`), leaving `smack-post-solo.php`'s working uploader untouched for now (it can migrate onto the shared helper in a later pass).
+- No schema change — `snap_images` and all columns already exist.
+- **Known adjacent gap (not addressed here):** the SMACKTALK long-form editor's HERO + inline `[img:]` pickers still read only the Library, and its IMG button's picker script is broken on that page (falls back to typing an ID by hand). Wiring the long-form editor to the Gallery + fixing that picker is the next step.
+
+- **Fixed: editing or deleting a SMACKTALK (long-form) post fatal-errored** (`Unknown column 'image_id' in 'WHERE'`, `smack-post-long.php`). The tag *load* (edit mode) and the delete *cleanup* queried the `snap_tags` dictionary directly for `image_id`; tag associations live in the `snap_image_tags` join, which the save side already wrote to correctly. Both now go through the join, so opening a long-form post to edit — and deleting one — work again. (Gotcha scan turned up no other file with the same mistake.)
+
 ## 0.7.392 — "Slice of Life" (2026-07-08)
 
 Four batches of SMACKVERSE work landing together (392 hadn't deployed yet, so it all rides under one version): the network relay, Direct Messages, the fediverse full-compatibility completion, and the fleet-board/editor tweaks.

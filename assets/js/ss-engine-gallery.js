@@ -531,6 +531,103 @@
         }
     });
 
+    // ── UPLOAD (INJECT POST IMAGES) ──────────────────────────────────────
+    // Posts files to smack-gallery.php (action=upload) which runs the shared
+    // snap_ingest_image() pipeline, then refreshes the grid so new post images
+    // appear immediately.
+    var upInput   = document.getElementById('gal-file-input');
+    var upZone    = document.getElementById('gal-drop-zone');
+    var upStatus  = document.getElementById('gal-upload-status');
+    var upMsg     = document.getElementById('gal-upload-msg');
+    var upPCont   = document.getElementById('gal-p-container');
+    var upPBar    = document.getElementById('gal-p-bar');
+    var upNameLbl = document.getElementById('gal-file-name-display');
+
+    function uploadFiles(fileList) {
+        if (!fileList || !fileList.length) return;
+
+        var fd = new FormData();
+        fd.append('action', 'upload');
+        fd.append('status', upStatus ? upStatus.value : 'published');
+        for (var i = 0; i < fileList.length; i++) {
+            if (fileList[i].type && fileList[i].type.indexOf('image/') !== 0) continue;
+            fd.append('img_file[]', fileList[i]);
+        }
+
+        if (upNameLbl) {
+            upNameLbl.textContent = fileList.length === 1
+                ? fileList[0].name
+                : fileList.length + ' files selected';
+        }
+        if (upMsg)   upMsg.textContent = 'Transmitting…';
+        if (upPCont) upPCont.style.display = 'block';
+        if (upPBar)  upPBar.style.width = '0%';
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'smack-gallery.php', true);
+        xhr.upload.onprogress = function (e) {
+            if (e.lengthComputable && upPBar) {
+                upPBar.style.width = ((e.loaded / e.total) * 100) + '%';
+            }
+        };
+        xhr.onload = function () {
+            if (upPCont) upPCont.style.display = 'none';
+            if (upPBar)  upPBar.style.width = '0%';
+            var res = null;
+            try { res = JSON.parse(xhr.responseText); } catch (e) { /* ignore */ }
+
+            if (xhr.status === 200 && res && res.ok) {
+                if (upMsg) upMsg.textContent = 'Uploaded ' + res.uploaded + ' image' + (res.uploaded === 1 ? '' : 's') + '.';
+            } else if (res && res.errors && res.errors.length) {
+                if (upMsg) upMsg.textContent = 'Uploaded ' + (res.uploaded || 0) + ', ' + res.errors.length + ' failed: ' + res.errors[0];
+            } else {
+                if (upMsg) upMsg.textContent = 'Upload failed.';
+            }
+
+            if (upInput) upInput.value = '';
+            if (upNameLbl) upNameLbl.textContent = 'No signal selected... or drag & drop here.';
+
+            // Refresh grid + camera list so new images (and any new cameras) show up.
+            if (res && (res.uploaded || 0) > 0) {
+                loadCameras();
+                fetchImages(false);
+            }
+        };
+        xhr.onerror = function () {
+            if (upPCont) upPCont.style.display = 'none';
+            if (upMsg)   upMsg.textContent = 'Network error during upload.';
+        };
+        xhr.send(fd);
+    }
+
+    if (upZone) {
+        upZone.addEventListener('click', function () {
+            if (upInput) upInput.click();
+        });
+        ['dragenter', 'dragover'].forEach(function (evt) {
+            upZone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                upZone.classList.add('drag-over');
+            });
+        });
+        ['dragleave', 'drop'].forEach(function (evt) {
+            upZone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                upZone.classList.remove('drag-over');
+            });
+        });
+        upZone.addEventListener('drop', function (e) {
+            if (e.dataTransfer && e.dataTransfer.files) uploadFiles(e.dataTransfer.files);
+        });
+    }
+    if (upInput) {
+        upInput.addEventListener('change', function () {
+            if (this.files && this.files.length) uploadFiles(this.files);
+        });
+    }
+
     // ── INIT ─────────────────────────────────────────────────────────────
     loadCameras();
     fetchImages(false);
