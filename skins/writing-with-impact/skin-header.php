@@ -14,7 +14,8 @@
  */
 
 $wwi_header_image = trim($settings['header_image'] ?? '');
-$wwi_header_logo  = trim($settings['header_logo'] ?? ($settings['header_logo_url'] ?? ($settings['site_logo'] ?? '')));
+// ?: (not ??) so the empty header_logo default falls through to the Global Vibe keys.
+$wwi_header_logo  = trim(($settings['header_logo'] ?? '') ?: ($settings['header_logo_url'] ?? '') ?: ($settings['site_logo'] ?? ''));
 $site_display_name = $settings['site_name'] ?? 'SNAPSMACK';
 $wwi_tagline       = trim($settings['site_tagline'] ?? '');
 $wwi_paper         = (($settings['paper_style'] ?? 'plain') === 'greenbar') ? 'paper-greenbar' : 'paper-plain';

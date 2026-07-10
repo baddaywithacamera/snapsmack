@@ -27,7 +27,10 @@ $alfred_header_image = trim($settings['header_image'] ?? '');
 // so a logo uploaded in Global Vibe actually shows — matching photogram and
 // new-horizon, which read header_logo_url. Previously ALFRED read only its own
 // key, so a Global Vibe logo upload had no effect on it.
-$alfred_header_logo  = trim($settings['header_logo'] ?? ($settings['header_logo_url'] ?? ($settings['site_logo'] ?? '')));
+// Use ?: (not ??) so an EMPTY skin-option default falls through to the Global Vibe
+// keys. header_logo defaults to '' and ?? only skips null, so the old chain stopped
+// at '' and never read an uploaded header_logo_url/site_logo — logo never showed. (0.7.399)
+$alfred_header_logo  = trim(($settings['header_logo'] ?? '') ?: ($settings['header_logo_url'] ?? '') ?: ($settings['site_logo'] ?? ''));
 $alfred_retina_logo  = ($settings['retina_logo'] ?? '0') === '1';
 
 // Build header-image inline style
