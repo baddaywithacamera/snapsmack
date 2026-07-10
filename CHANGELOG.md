@@ -12,6 +12,17 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.397 — "Green Isn't Your Color" (2026-07-10)
+
+The SMACKTALK path went from half-wired to actually working end to end.
+
+- **Shortcodes now render on published SMACKTALK posts.** ALFRED echoed post content raw and never ran the parser, so `[img:]`, `[columns]`, `[spacer:]`, data shortcodes, etc. showed as literal bracket text on the live post (they rendered in PREVIEW only). `skins/alfred/preload.php` now runs the body through `parseContent()` and loads `shortcodes.css`/`columns.css`.
+- **MOSAICs render — and pull from the Gallery.** `parser.php parseMosaics()` was a `// TODO` no-op, so `[mosaic:ID]` never expanded. Implemented it: it resolves the mosaic's image ids against `snap_images` (the Gallery — mosaic images are POST content, not Library assets), emits the `data-mosaic` div, and `ss-engine-mosaic.js` packs the justified tiles (now enqueued on ALFRED's post view). The builder (`smack-mosaics.php`) picker now sources from the Media Gallery. Tiles show the light aspect thumb; the lightbox opens the full image.
+- **ALFRED ARCHIVE + a navigable lightbox everywhere.** ALFRED's ARCHIVE nav now shows a grid of the site's published Gallery photographs (`?view=archive`, own `preload.php` branch), each opening a full-screen lightbox that steps through the whole set. The shared `ss-engine-lightbox.js` was rewritten from single-image to a navigable gallery lightbox (on-screen ‹›arrows, ArrowLeft/Right keys, touch swipe, clamped at ends) — so **every** skin's inline and post-image lightboxes get prev/next, degrading to no-arrows on a single image. **SLICKR** was missing the shared photo lightbox entirely (`smack-lightbox` added to its manifest).
+- **ALFRED footer + logo brought in line with the platform rules.** ALFRED now renders the configured footer slot bar (`core/footer.php`) instead of a hardcoded credits line, and reads the shared Global Vibe logo keys (`header_logo_url` → `site_logo`) so an uploaded logo shows.
+- **Fixed the Configuration page 500** (`smack-settings.php` — `array_merge(null,…)`; now re-reads settings from the DB on save, so save/rebuild works), the **orphan-post purge deleting SMACKTALK posts** (`smack-manage.php` — longform posts legitimately have no images; purge + count now exclude `post_type='longform'`), the **Preview CSRF mismatch** (`smack-preview-ajax.php` — read-only render, now `csrf_exempt()`), and a `$action` warning in `smack-maintenance.php`.
+- **SMACKTALK skin gating:** New Horizon corrected to photoblog-only, the skin GALLERY tab now filters by all three install modes (SMACKTALK sees only ALFRED), install-manifest default `smacktalk => alfred`. Admin longform "VIEW" link fixed (`post.php` → `?id=`).
+
 ## 0.7.396 — "The Cart Before the Ponies" (2026-07-09)
 
 - **Fixed a live fatal editing images/posts on installs missing the 0.7.393 fedi columns.** `smack-edit.php` (single image) and `smack-edit-carousel.php` (carousel/GRAM post) write `is_sensitive` / `content_warning` (and `is_pinned`) unconditionally, but those columns are normally added by the SMACKVERSE schema sync — a site deployed by direct code copy (bypassing the updater's canonical diff) never got them, so saving an edit threw `Unknown column 'is_sensitive'` (seen on hekeepsdroningon.ca). Both editors now carry the belt-and-suspenders `ADD COLUMN IF NOT EXISTS` the new-column checklist requires, so they self-heal on next save.

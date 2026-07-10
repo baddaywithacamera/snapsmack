@@ -30,6 +30,129 @@
 // Only intercept when Alfred is actually the active skin
 if (($settings['active_skin'] ?? '') !== 'alfred') return;
 
+// ============================================================
+//  ARCHIVE VIEW  (grid of INDIVIDUAL PHOTOGRAPHS → lightbox)
+// ============================================================
+//
+// ALFRED's ARCHIVE nav link (?view=archive) shows the site's individual
+// published photographs — rows in snap_images (the Media Gallery), NOT posts
+// and NOT snap_assets. Each thumbnail opens a full-screen lightbox that
+// navigates the WHOLE archive set (swipe / arrow buttons / arrow keys).
+//
+// Placed BEFORE the single/feed routing so ?view=archive is claimed here first.
+if (($_GET['view'] ?? '') === 'archive') {
+
+    // Respect the archive disable switch (matches core archive.php + the nav gate).
+    if (($settings['archive_layout'] ?? 'square') === 'none') {
+        header('Location: ' . BASE_URL, true, 302);
+        exit();
+    }
+
+    // Pull every published photograph, newest first. Thumbnail = img_thumb_square
+    // (relative path already stored in DB) with fallback to a derived square-crop
+    // thumb path then the full file; full image = img_file. Same fallback shape
+    // used by smack-gallery.php.
+    try {
+        $_alfred_arch_stmt = $pdo->query(
+            "SELECT id, img_title, img_file, img_thumb_square, img_thumb_aspect
+             FROM snap_images
+             WHERE img_status = 'published'
+             ORDER BY img_date DESC, id DESC"
+        );
+        $_alfred_images = $_alfred_arch_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $_alfred_images = [];
+    }
+
+    // Resolve thumb + full URLs for each image.
+    $_alfred_tiles = [];
+    foreach ($_alfred_images as $_img) {
+        $full_rel = ltrim($_img['img_file'] ?? '', '/');
+        if ($full_rel === '') continue;
+
+        // Thumb: prefer stored square thumb, then aspect thumb, then derived
+        // thumbs/t_<file>, finally the full image itself.
+        $thumb_rel = '';
+        if (!empty($_img['img_thumb_square'])) {
+            $thumb_rel = ltrim($_img['img_thumb_square'], '/');
+        } elseif (!empty($_img['img_thumb_aspect'])) {
+            $thumb_rel = ltrim($_img['img_thumb_aspect'], '/');
+        } else {
+            $dir  = trim(str_replace(basename($full_rel), '', $full_rel), '/');
+            $base = basename($full_rel);
+            $thumb_rel = ($dir !== '' ? $dir . '/' : '') . 'thumbs/t_' . $base;
+        }
+
+        $_alfred_tiles[] = [
+            'full'  => BASE_URL . $full_rel,
+            'thumb' => BASE_URL . $thumb_rel,
+            'title' => (string)($_img['img_title'] ?? ''),
+        ];
+    }
+
+    $page_title = 'ARCHIVE';
+
+    ?><!DOCTYPE html>
+<html lang="<?php echo htmlspecialchars($settings['site_language'] ?? 'en'); ?>">
+<head>
+<?php include __DIR__ . '/skin-meta.php'; ?>
+</head>
+<body class="archive alfred-archive">
+
+<?php include __DIR__ . '/skin-header.php'; ?>
+
+<main class="content" role="main">
+
+    <section class="section-inner">
+
+        <?php if (empty($_alfred_tiles)): ?>
+        <p style="color:#fff;text-align:center;padding:4rem 0;">NO PHOTOGRAPHS YET.</p>
+        <?php else: ?>
+
+        <div class="alfred-archive-grid">
+        <?php foreach ($_alfred_tiles as $_t): ?>
+            <a href="<?php echo htmlspecialchars($_t['full'], ENT_QUOTES); ?>"
+               class="alfred-archive-tile"
+               data-full="<?php echo htmlspecialchars($_t['full'], ENT_QUOTES); ?>"
+               data-title="<?php echo htmlspecialchars($_t['title'], ENT_QUOTES); ?>"
+               title="<?php echo htmlspecialchars($_t['title'], ENT_QUOTES); ?>">
+                <img src="<?php echo htmlspecialchars($_t['thumb'], ENT_QUOTES); ?>"
+                     alt="<?php echo htmlspecialchars($_t['title'], ENT_QUOTES); ?>"
+                     loading="lazy">
+            </a>
+        <?php endforeach; ?>
+        </div><!-- /.alfred-archive-grid -->
+
+        <?php endif; ?>
+
+    </section><!-- /.section-inner -->
+
+</main><!-- /.content -->
+
+<!-- Full-screen archive lightbox (navigates the WHOLE set) -->
+<div id="alfred-archive-lightbox" class="alfred-lightbox" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="Photograph viewer">
+    <button type="button" class="alfred-lb-close" aria-label="Close">&#10005;</button>
+    <button type="button" class="alfred-lb-prev" aria-label="Previous photograph">&#8249;</button>
+    <img class="alfred-lb-img" src="" alt="">
+    <button type="button" class="alfred-lb-next" aria-label="Next photograph">&#8250;</button>
+    <p class="alfred-lb-caption"></p>
+</div>
+
+<?php
+// Enqueue the ALFRED archive lightbox engine (external JS — no inline scripts
+// in skins). skin-footer.php loads manifest scripts + core footer scripts; this
+// archive-specific engine is only needed on this view, so it's enqueued here.
+?>
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-alfred-archive.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+
+<?php include __DIR__ . '/skin-footer.php'; ?>
+
+</body>
+</html>
+<?php
+    exit();
+}
+
 // --- ROUTING ---
 
 $_alfred_post_slug = $_GET['post'] ?? null;
@@ -125,6 +248,8 @@ if ($_alfred_post_slug || $_alfred_post_id) {
 <html lang="<?php echo htmlspecialchars($settings['site_language'] ?? 'en'); ?>">
 <head>
 <?php include __DIR__ . '/skin-meta.php'; ?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/columns.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/shortcodes.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 </head>
 <body class="single">
 
@@ -148,7 +273,16 @@ if ($_alfred_post_slug || $_alfred_post_id) {
 
         <div class="post-inner">
             <div class="post-content entry-content">
-                <?php echo $_alfred_post['content'] ?? ''; ?>
+                <?php
+                // Run the post body through the shortcode parser — [img:], [mosaic:],
+                // [columns], [dropcap], [spacer:], data shortcodes, etc. Without this
+                // the published post shows raw [...] bracket text (the save side
+                // deliberately leaves shortcodes literal for the renderer to expand;
+                // ALFRED was echoing them unparsed, so only PREVIEW rendered them).
+                require_once dirname(__DIR__, 2) . '/core/parser.php';
+                $_alfred_parser = new SnapSmack($pdo);
+                echo $_alfred_parser->parseContent($_alfred_post['content'] ?? '');
+                ?>
             </div>
 
             <div class="post-meta">
@@ -185,6 +319,11 @@ if ($_alfred_post_slug || $_alfred_post_id) {
     <?php endif; ?>
 
 </main><!-- /.content -->
+
+<?php // MOSAIC render engine — packs [mosaic:ID] blocks (now expanded by the
+      // parser into .snap-mosaic[data-mosaic]) into a justified tiled gallery.
+      // Only needed on the single-post view, where post body content renders. ?>
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
 

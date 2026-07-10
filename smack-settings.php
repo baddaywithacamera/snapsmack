@@ -208,7 +208,12 @@ if (isset($_POST['save_settings'])) {
     // all emit byte-identical output (incl. the affirmative ai-train signal and
     // the correct trailing-slash Sitemap URL).
     require_once __DIR__ . '/core/site-files.php';
-    $eff_settings = array_merge($settings, $_POST['settings']);
+    // Re-read the full settings straight from the DB (we just wrote every posted
+    // key above). $settings isn't loaded yet in this save handler — relying on it
+    // here fatal-errored the whole Configuration page (array_merge(null,...)).
+    // Re-reading also guarantees site_url / ai_training_policy reflect what was
+    // just saved, even if the posted form didn't include every key.
+    $eff_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
     snapsmack_write_site_files($eff_settings);
 
     // Drop the cached sitemap so a changed image cap / site URL rebuilds on the

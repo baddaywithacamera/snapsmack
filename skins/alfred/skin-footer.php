@@ -3,8 +3,8 @@
  * SNAPSMACK - Skin footer for the Alfred skin
  * v1.0.0
  *
- * Renders the .credits bar, loads manifest-required scripts,
- * includes core footer to close the document.
+ * Loads manifest-required scripts, then includes the core footer (the
+ * configured slot bar) and the shared public engine loader to close the doc.
  */
 
 /**
@@ -15,16 +15,13 @@
  */
 
 
-$site_display_name = $settings['site_name'] ?? 'SNAPSMACK';
-?>
-<footer class="credits" role="contentinfo">
-    <div class="section-inner">
-        <p><a href="<?php echo BASE_URL; ?>"><?php echo htmlspecialchars(strtoupper($site_display_name)); ?></a></p>
-        <p>Powered by <a href="https://snapsmack.ca" target="_blank" rel="noopener noreferrer">SnapSmack</a></p>
-    </div>
-</footer>
+// Every skin's visible footer IS the configured slot bar rendered by
+// core/footer.php (COPYRIGHT · EMAIL · THEME · POWERED BY · PRIVACY · RSS,
+// each ON / CUSTOM / OFF per Global Vibe). No skin renders its own hardcoded
+// footer — a user who wants a different look uses SMACK YOUR CSS UP. ALFRED's
+// old hardcoded .credits bar duplicated two slots and hid the rest, so the
+// footer configuration never showed; removed.
 
-<?php
 // Load manifest-required scripts
 $skin_manifest = include __DIR__ . '/manifest.php';
 $requested     = $skin_manifest['require_scripts'] ?? [];

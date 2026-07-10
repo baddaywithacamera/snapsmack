@@ -18,9 +18,14 @@ require_once 'core/auth-smack.php';
 
 $log = [];
 
+// Action can arrive via POST (form submits) or GET (read-only view links such
+// as the .htaccess viewer further down). Read it once here so every handler —
+// inside or outside the POST block — sees a defined value. (Was: undefined
+// $action warning + dead htaccess-view links on GET.)
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
+
 // --- ACTION HANDLERS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'];
 
     // REGISTRY SYNC
     // Removes ghost entries in the mapping table for images that have been deleted.

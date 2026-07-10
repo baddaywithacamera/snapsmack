@@ -108,10 +108,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['purge_orphans'])) {
         header('Location: smack-manage.php?purge_err=' . urlencode($ra['error']));
         exit;
     }
+    // Orphans = IMAGE-based posts (carousel/panorama) that lost all their images.
+    // LONGFORM (SmackTalk) posts are TEXT — they legitimately have zero
+    // snap_post_images rows, so they must NEVER be treated as orphans or this
+    // tool silently deletes every SmackTalk post. Exclude them explicitly.
     $orphans = $pdo->query(
         "SELECT p.id FROM snap_posts p
          LEFT JOIN snap_post_images pi ON pi.post_id = p.id
-         WHERE pi.id IS NULL"
+         WHERE pi.id IS NULL
+           AND p.post_type <> 'longform'"
     )->fetchAll(PDO::FETCH_COLUMN);
     foreach ($orphans as $pid) {
         $pid = (int)$pid;
@@ -288,7 +293,8 @@ if (!empty($_GET['purge_err'])) {
 $orphan_count = (int)$pdo->query(
     "SELECT COUNT(*) FROM snap_posts p
      LEFT JOIN snap_post_images pi ON pi.post_id = p.id
-     WHERE pi.id IS NULL"
+     WHERE pi.id IS NULL
+       AND p.post_type <> 'longform'"
 )->fetchColumn();
 
 $page_title = "Manage Archive";
@@ -326,7 +332,7 @@ include 'core/sidebar.php';
             <?php if (function_exists('csrf_field')) csrf_field(); ?>
             <input type="hidden" name="purge_orphans" value="1">
             <input type="password" name="reauth_password" placeholder="Password"
-                   autocomplete="current-password" required>
+                   autocomplete="current-password" required style="width:220px;">
             <input type="text" name="reauth_totp" placeholder="2FA code" inputmode="numeric"
                    autocomplete="one-time-code" maxlength="10" required style="width:110px;">
             <button type="submit" class="btn-smack btn-danger">Purge Orphaned Posts</button>

@@ -22,7 +22,12 @@
 
 // --- Skin options ---
 $alfred_header_image = trim($settings['header_image'] ?? '');
-$alfred_header_logo  = trim($settings['header_logo']  ?? '');
+// ALFRED honours its own header_logo skin option first, then falls back to the
+// shared Global Vibe logo settings (header_logo_url, then the masthead site_logo)
+// so a logo uploaded in Global Vibe actually shows — matching photogram and
+// new-horizon, which read header_logo_url. Previously ALFRED read only its own
+// key, so a Global Vibe logo upload had no effect on it.
+$alfred_header_logo  = trim($settings['header_logo'] ?? ($settings['header_logo_url'] ?? ($settings['site_logo'] ?? '')));
 $alfred_retina_logo  = ($settings['retina_logo'] ?? '0') === '1';
 
 // Build header-image inline style
@@ -75,7 +80,7 @@ if (!function_exists('_alfred_nav_resolve_url')) {
             case 'custom':
             case 'external':   return $url;
             case 'home':       return $base;
-            case 'archive':    return $base . 'archive.php';
+            case 'archive':    return $base . '?view=archive';
             case 'albums':     return $base . 'albums.php';
             case 'wall':       return $base . 'gallery-wall.php';
             case 'blogroll':   return $base . 'blogroll.php';
@@ -146,7 +151,10 @@ function _alfred_default_nav_items(array $settings, array $alfred_pages): array 
 
     $archive_enabled = ($settings['archive_layout'] ?? 'square') !== 'none';
     if ($archive_enabled) {
-        $items[] = ['label' => 'ARCHIVE', 'url' => $base . 'archive.php'];
+        // ALFRED's ARCHIVE is a grid of INDIVIDUAL PHOTOGRAPHS (snap_images),
+        // rendered by its own preload.php archive branch — not core archive.php
+        // (which shows the generic layout). Route to ALFRED's own view.
+        $items[] = ['label' => 'ARCHIVE', 'url' => $base . '?view=archive'];
     }
 
     if (($settings['blogroll_enabled'] ?? '1') == '1') {
