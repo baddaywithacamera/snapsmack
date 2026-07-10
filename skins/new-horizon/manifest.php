@@ -22,7 +22,7 @@ $fonts = $inventory['fonts'] ?? [];
 foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label'];
 
 return [
-    'name'          => 'New Horizon',
+    'name'          => 'NEW HORIZON',
     'version'       => '1.3.0',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',

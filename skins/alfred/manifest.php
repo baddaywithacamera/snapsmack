@@ -21,11 +21,11 @@
  */
 
 return [
-    'name'            => 'Alfred',
+    'name'            => 'ALFRED',
     'version'         => '1.0.0',
     'author'          => 'Sean McCormick',
     'author_email'    => 'sean@baddaywithacamera.ca',
-    'description'     => 'A SmackTalk skin for photographers who write. Faithful recreation of Anders Norén\'s Hitchcock WordPress theme — dark navigation, Montserrat headings, Droid Serif body text, full-width header image. Named for Alfred Hitchcock.',
+    'description'     => 'A SMACKTALK skin for photographers who write. Faithful recreation of Anders Norén\'s Hitchcock WordPress theme — dark navigation, Montserrat headings, Droid Serif body text, full-width header image. Named for Alfred Hitchcock.',
     'status'          => 'stable',      // Flipped for the SMACKTALK/Noah Grey rollout.
                                         // NOTE: 'stable' only makes ALFRED eligible for
                                         // the gallery/registry — it does NOT publish it.

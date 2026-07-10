@@ -47,7 +47,7 @@ import ai_client
 # App constants
 # ============================================================
 
-APP_TITLE   = "SmackPress"
+APP_TITLE   = "SMACKPRESS"
 APP_VERSION = "0.1.0"
 NAV_WIDTH   = 280
 CARD_WIDTH  = 320
@@ -84,12 +84,12 @@ def _run_in_thread(fn, *args, callback=None):
 class SettingsDialog(ctk.CTkToplevel):
     def __init__(self, parent):
         super().__init__(parent)
-        self.title("SmackPress — Settings")
+        self.title("SMACKPRESS — Settings")
         self.geometry("560x680")
         self.resizable(False, False)
         self.grab_set()
 
-        ctk.CTkLabel(self, text="SmackPress Settings",
+        ctk.CTkLabel(self, text="SMACKPRESS Settings",
                      font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(20, 10))
 
         frame = ctk.CTkScrollableFrame(self, width=500, height=520)
@@ -104,7 +104,7 @@ class SettingsDialog(ctk.CTkToplevel):
             ("wp_app_password", "Application Password"),
             ("SnapSmack", None),
             ("snap_url",        "SnapSmack site URL"),
-            ("snap_api_key",    "SmackPress API key"),
+            ("snap_api_key",    "SMACKPRESS API key"),
             ("AI (optional)", None),
             ("ai_provider",     "Provider (none | gemini | openai | anthropic)"),
             ("ai_model",        "Model (leave blank for default)"),
@@ -543,14 +543,21 @@ class CardStack(ctk.CTkFrame):
             return
 
         def _make():
-            # Upload each image that hasn't been uploaded yet
-            asset_ids = []
+            # Download each WordPress image and ingest it into the SnapSmack Gallery,
+            # collecting the returned Gallery image ids. The mosaic renderer resolves
+            # these ids against snap_images, so they must be Gallery ids — not WP ids.
+            gallery_ids = []
             for img in self._images:
-                # We don't have local paths — insert placeholder shortcode
-                # Real workflow: Python would download image then upload
-                # For now push the wp image URL as a note
-                asset_ids.append(img["id"])  # wp attachment id as placeholder
-            return smacktalk_client.create_mosaic(title, asset_ids)
+                url = img.get("url") or img.get("source_url") or img.get("src")
+                if not url:
+                    continue
+                up = smacktalk_client.upload_media_from_url(url, img.get("filename"))
+                gallery_ids.append(up["image_id"])
+            if not gallery_ids:
+                raise smacktalk_client.SnapError(
+                    "None of this post's images had a usable URL to import."
+                )
+            return smacktalk_client.create_mosaic(title, gallery_ids)
 
         def _done(result):
             if isinstance(result, Exception):
@@ -720,7 +727,7 @@ class SmackPressApp:
                 self.canvas._status_var.set("Push failed.")
                 return
             snap_id  = result.get("post_id")
-            snap_url = result.get("post_url", "")
+            snap_url = result.get("url", "")
             db.mark_migrated(post["id"], snap_id, snap_url)
             self.canvas._status_var.set(f"✓ Pushed → {snap_url}")
             self.cards._mig_label.configure(text=f"✓ {snap_url}")

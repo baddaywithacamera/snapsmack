@@ -25,7 +25,7 @@ $fonts = $inventory['fonts'] ?? [];
 foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label'];
 
 return [
-    'name'            => 'Rational Geo',
+    'name'            => 'RATIONAL GEO',
     'version'         => '2.1.4',
     'author'          => 'Sean McCormick',
     'author_email'    => 'sean@baddaywithacamera.ca',

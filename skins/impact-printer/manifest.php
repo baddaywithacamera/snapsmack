@@ -28,7 +28,7 @@ foreach ($dm_keys as $k) {
 }
 
 return [
-    'name'          => 'Impact Printer',
+    'name'          => 'IMPACT PRINTER',
     'version'       => '2.1.0',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',

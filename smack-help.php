@@ -248,7 +248,7 @@ set the gap (0–20px), and save. Each saved mosaic gets a shortcode like
 <code>[mosaic:3]</code>.</p>
 
 <h4>Inserting Into a Post</h4>
-<p>In the SmackTalk longform editor, click the MOSAIC button in the toolbar to open the mosaic
+<p>In the SMACKTALK longform editor, click the MOSAIC button in the toolbar to open the mosaic
 picker. Click a mosaic to insert its shortcode at the cursor position. The mosaic renders
 at the full column width when the post is viewed.</p>
 
@@ -260,15 +260,15 @@ HTML
 
 $help_topics['longform-post'] = [
     'section'  => 'The Good Shit',
-    'title'    => 'Longform Post (SmackTalk)',
+    'title'    => 'Longform Post (SMACKTALK)',
     'icon'     => '&#x270E;',
     'content'  => <<<'HTML'
-<h3>SmackTalk — Longform Posts</h3>
-<p>Longform posts are the SmackTalk post type — writing at equal billing with photography.
+<h3>SMACKTALK — Longform Posts</h3>
+<p>Longform posts are the SMACKTALK post type — writing at equal billing with photography.
 They use the full shortcode toolbar and support embedded MOSAIC panels inline.</p>
 
 <h4>Structure</h4>
-<p>A typical SmackTalk post has a hero image, an opening section of writing, one or more
+<p>A typical SMACKTALK post has a hero image, an opening section of writing, one or more
 MOSAIC panels with images, and more writing between and after them. There is no limit on
 length or the number of embedded panels.</p>
 
@@ -786,7 +786,7 @@ They are processed by the parser and converted to HTML when the page is displaye
 <p>Inline images open a full-screen lightbox viewer when clicked or tapped. The lightbox
 always shows the full-size original file, regardless of the size variant specified in
 the shortcode.</p>
-<p>In the Impact Printer skin, archive thumbnails always display the ASCII box border
+<p>In the IMPACT PRINTER skin, archive thumbnails always display the ASCII box border
 (no picker — it's hardcoded for consistency). Hero and inline page images each have
 independent style and weight controls under
 <strong>Smooth Your Skin → PRINT HEAD</strong>.</p>
@@ -3263,7 +3263,7 @@ $help_topics['server-files'] = [
 <p>Open source licenses for the fonts and JavaScript libraries bundled with SnapSmack. Required for legal compliance with the fonts you use. Do not delete.</p>
 
 <h4>skins/</h4>
-<p>Installed themes. Each subdirectory is one skin. The base release ships with 50 Shades of Noah Grey, New Horizon, Galleria, Rational Geo, and Photogram (mobile). Additional skins can be installed from Smack Central → Skin Packager. To remove a skin, uninstall it through the admin — do not delete the directory manually while it is the active skin or you will get a 500 error.</p>
+<p>Installed themes. Each subdirectory is one skin. The base release ships with 50 SHADES OF NOAH GREY, NEW HORIZON, GALLERIA, RATIONAL GEO, and PHOTOGRAM (mobile). Additional skins can be installed from Smack Central → Skin Packager. To remove a skin, uninstall it through the admin — do not delete the directory manually while it is the active skin or you will get a 500 error.</p>
 
 <h4>Files in the Root</h4>
 <p>The PHP files in the root directory are SnapSmack's public-facing pages and admin screens — <code>index.php</code>, <code>smack-admin.php</code>, and so on. These are overwritten on every update. <code>install.php</code> self-deletes after a successful install; if it is still present, delete it manually. <code>.htaccess</code> handles URL rewriting and HTTPS redirection — do not delete it or your site will break.</p>

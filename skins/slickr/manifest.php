@@ -17,7 +17,7 @@
  */
 
 return [
-    'name'         => 'Slickr',
+    'name'         => 'SLICKR',
     'version'      => '1.0.17',
     'author'       => 'Sean McCormick',
     'author_email' => 'sean@baddaywithacamera.ca',

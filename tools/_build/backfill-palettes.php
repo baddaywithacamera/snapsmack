@@ -1,15 +1,12 @@
-/**
- * SNAPSMACK_EOF_HEADER
- *     <?php // ===== SNAPSMACK EOF =====
- * Last non-empty line of this file MUST match the line above.
- * Missing or different = truncated/corrupted. Restore before saving.
- */
-
-
 #!/usr/bin/env php
 <?php
 /**
  * SNAPSMACK - Colour Palette Backfill Utility
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
  *
  * Extracts colour palettes from all images that lack palette data
  * and backfills the img_display_options JSON column.

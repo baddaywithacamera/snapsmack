@@ -32,11 +32,11 @@ if (!headers_sent()) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Alfred &mdash; SmackTalk</title>
+<title>ALFRED &mdash; SMACKTALK</title>
 </head>
 <body style="background:#1d1d1d;color:#fff;font-family:sans-serif;text-align:center;padding:4rem;">
-    <h1 style="text-transform:uppercase;letter-spacing:.1em;">Alfred</h1>
-    <p style="color:#999;">This skin requires SmackTalk mode.</p>
+    <h1 style="text-transform:uppercase;letter-spacing:.1em;">ALFRED</h1>
+    <p style="color:#999;">This skin requires SMACKTALK mode.</p>
     <p><a href="<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>" style="color:#1e73be;">Return to front</a></p>
 </body>
 </html>
