@@ -571,7 +571,7 @@ include 'core/sidebar.php';
                     </div>
                 </div>
                 <div class="item-actions">
-                    <a href="<?php echo htmlspecialchars(BASE_URL . 'post.php?id=' . $lp['id']); ?>" class="action-view" target="_blank" rel="noopener">VIEW</a>
+                    <a href="<?php echo htmlspecialchars(BASE_URL . '?id=' . $lp['id']); ?>" class="action-view" target="_blank" rel="noopener">VIEW</a>
                     <a href="?edit=<?php echo (int)$lp['id']; ?>" class="action-edit">EDIT</a>
                 </div>
             </div>

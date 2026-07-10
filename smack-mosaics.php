@@ -43,8 +43,18 @@ if ($is_ajax && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action']
     header('Content-Type: application/json');
 
     if ($_POST['action'] === 'list_assets') {
+        // Mosaic images are POST content, so they come from the GALLERY
+        // (snap_images), NOT the reusable-asset Library. Aliased to asset_name /
+        // asset_path so the existing picker/preview JS reads them unchanged; the
+        // saved ids are Gallery image ids, which core/parser.php resolves against
+        // snap_images. Prefer the light aspect thumb for the picker/preview tile.
         $assets = $pdo->query(
-            "SELECT id, asset_name, asset_path FROM snap_assets ORDER BY created_at DESC LIMIT 500"
+            "SELECT id,
+                    img_title AS asset_name,
+                    COALESCE(NULLIF(img_thumb_aspect, ''), img_file) AS asset_path
+             FROM snap_images
+             WHERE img_status = 'published'
+             ORDER BY img_date DESC LIMIT 500"
         )->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode($assets);
         exit;
@@ -57,7 +67,7 @@ if ($is_ajax && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action']
         $gap       = max(0, min(20, (int)($_POST['gap'] ?? 4)));
 
         if (empty($asset_ids)) {
-            echo json_encode(['ok' => false, 'error' => 'Select at least one asset.']);
+            echo json_encode(['ok' => false, 'error' => 'Select at least one image.']);
             exit;
         }
 
@@ -160,13 +170,13 @@ include 'core/sidebar.php';
                 </div>
 
                 <div class="lens-input-wrapper mt-16">
-                    <button type="button" onclick="togglePicker()" class="btn-secondary" style="width:100%;">+ ADD IMAGES FROM MEDIA LIBRARY</button>
+                    <button type="button" onclick="togglePicker()" class="btn-secondary" style="width:100%;">+ ADD IMAGES FROM MEDIA GALLERY</button>
                 </div>
 
                 <!-- ASSET PICKER (hidden) -->
                 <div id="asset-picker" style="display:none;margin-top:12px;border:1px solid var(--border);border-radius:3px;padding:12px;background:var(--card-bg);">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                        <span style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);">MEDIA LIBRARY</span>
+                        <span style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);">MEDIA GALLERY</span>
                         <button type="button" onclick="togglePicker()" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:18px;line-height:1;">×</button>
                     </div>
                     <div id="asset-picker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;max-height:360px;overflow-y:auto;"></div>

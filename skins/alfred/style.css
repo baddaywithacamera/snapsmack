@@ -1603,38 +1603,33 @@ p.comment-form-author { margin-right: 5%; }
 /* -------------------------------------------------------------------------- */
 
 
-.credits {
+/* Configured footer slot bar (core/footer.php). ALFRED's visible footer IS
+   this bar now — the old hardcoded .credits two-liner was removed so the
+   Global Vibe footer slots (copyright / email / THEME / powered-by / privacy /
+   RSS) actually show. Styled to match ALFRED's prior footer treatment; a user
+   who wants a different look uses SMACK YOUR CSS UP. */
+#system-footer {
     padding: 60px 0;
     position: relative;
     z-index: 2;
 }
 
-.credits a { text-decoration: none; }
-
-.credits p {
+#system-footer .footer-metadata-bar p {
     text-align: center;
     text-transform: uppercase;
-}
-
-.credits p:first-child {
-    color: #fff;
-    font-size: 1.175em;
-    font-weight: 600;
-    letter-spacing: 0.025em;
-}
-
-.credits p:first-child a { color: #fff; }
-.credits p:first-child a:hover { color: var(--alfred-accent); }
-
-.credits p + p {
     color: #666;
     font-size: 0.825em;
     font-weight: 500;
-    margin-top: 12px;
+    margin: 0;
+    line-height: 1.9;
 }
 
-.credits p + p a { color: #666; }
-.credits p + p a:hover { opacity: 0.5; }
+#system-footer a,
+#system-footer .footer-link { color: #666; text-decoration: none; }
+#system-footer a:hover,
+#system-footer .footer-link:hover { color: var(--alfred-accent); }
+
+#system-footer .sep { margin: 0 10px; color: #3a3a3a; }
 
 
 /* -------------------------------------------------------------------------- */
@@ -1849,7 +1844,7 @@ p.comment-form-author { margin-right: 5%; }
 @media (max-width: 600px) {
 
     .header,
-    .credits { padding: 40px 0; }
+    #system-footer { padding: 40px 0; }
 
     /* Navigation */
 
@@ -1994,6 +1989,162 @@ p.comment-form-author { margin-right: 5%; }
 
     .archive-title { font-size: 1.25em; }
 
+}
+
+/* ============================================================
+   ARCHIVE VIEW — grid of individual photographs + lightbox
+   (ALFRED ?view=archive, rendered by preload.php archive branch)
+   ============================================================ */
+
+.alfred-archive-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-gap: 4px;
+    margin: 40px 0;
+}
+
+.alfred-archive-tile {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+    background: #111;
+    cursor: pointer;
+}
+
+.alfred-archive-tile img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease, opacity 0.3s ease;
+}
+
+.alfred-archive-tile:hover img,
+.alfred-archive-tile:focus img {
+    transform: scale(1.05);
+    opacity: 0.9;
+}
+
+.alfred-archive-tile:focus {
+    outline: 2px solid var(--alfred-accent, #1e73be);
+    outline-offset: -2px;
+}
+
+/* --- Full-screen lightbox --- */
+.alfred-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.94);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: pan-y;
+}
+
+.alfred-lightbox[hidden] { display: none; }
+
+.alfred-lightbox.is-open { opacity: 1; }
+
+.alfred-lb-img {
+    max-width: 92vw;
+    max-height: 88vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    box-shadow: 0 10px 60px rgba(0, 0, 0, 0.6);
+}
+
+.alfred-lb-caption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 18px;
+    margin: 0;
+    padding: 0 20px;
+    text-align: center;
+    color: #fff;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    pointer-events: none;
+}
+
+.alfred-lb-close,
+.alfred-lb-prev,
+.alfred-lb-next {
+    position: absolute;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    color: #fff;
+    border: 0;
+    cursor: pointer;
+    line-height: 1;
+    transition: background 0.2s ease, color 0.2s ease;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.alfred-lb-close:hover,
+.alfred-lb-prev:hover,
+.alfred-lb-next:hover {
+    background: var(--alfred-accent, #1e73be);
+}
+
+.alfred-lb-close {
+    top: 18px;
+    right: 18px;
+    width: 44px;
+    height: 44px;
+    font-size: 1.4rem;
+    border-radius: 50%;
+}
+
+.alfred-lb-prev,
+.alfred-lb-next {
+    top: 50%;
+    transform: translateY(-50%);
+    width: 56px;
+    height: 88px;
+    font-size: 2.6rem;
+}
+
+.alfred-lb-prev { left: 14px; }
+.alfred-lb-next { right: 14px; }
+
+.alfred-lb-prev[hidden],
+.alfred-lb-next[hidden] { display: none; }
+
+.alfred-lb-prev:disabled,
+.alfred-lb-next:disabled {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Lock background scroll while the lightbox is open */
+body.alfred-lb-open { overflow: hidden; }
+
+@media (max-width: 767px) {
+    .alfred-archive-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        grid-gap: 2px;
+    }
+    .alfred-lb-prev,
+    .alfred-lb-next {
+        width: 44px;
+        height: 66px;
+        font-size: 2rem;
+    }
+    .alfred-lb-prev { left: 6px; }
+    .alfred-lb-next { right: 6px; }
 }
 
 /* ===== SNAPSMACK EOF ===== */

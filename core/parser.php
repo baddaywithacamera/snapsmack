@@ -221,12 +221,74 @@ class SnapSmack {
     // =========================================================================
 
     /**
-     * Parse [mosaic:ID] shortcodes into data-attribute divs for ss-engine-mosaic.js.
-     * TODO: full implementation pending. Currently passes content through unchanged
-     * so existing posts render without error.
+     * Parse [mosaic:ID] shortcodes into the <div class="snap-mosaic" data-mosaic="…">
+     * container that ss-engine-mosaic.js reads and packs into a justified tiled
+     * gallery. A mosaic (snap_mosaics) stores an ordered JSON id list (column name
+     * `asset_ids`, kept for back-compat) — these are GALLERY image ids (snap_images),
+     * NOT Library assets: mosaic images are POST content and live in the Gallery.
+     *
+     * Each id resolves to {src, full, width, height, alt, id} — the shape the engine
+     * expects. snap_images already stores dimensions (img_width/img_height) and an
+     * aspect thumbnail, so tiles load the light thumb while the lightbox opens the
+     * full image (engine reads `full` for data-lightbox-src, falling back to `src`).
+     * Order is preserved.
      */
     private function parseMosaics($content) {
-        return $content;
+        return preg_replace_callback('/\[mosaic:\s*(\d+)\s*\]/i', function ($m) {
+            $id = (int)$m[1];
+
+            try {
+                $stmt = $this->pdo->prepare("SELECT asset_ids, gap FROM snap_mosaics WHERE id = ? LIMIT 1");
+                $stmt->execute([$id]);
+                $mosaic = $stmt->fetch(\PDO::FETCH_ASSOC);
+            } catch (\PDOException $e) {
+                return ''; // table absent or query failed — drop the shortcode
+            }
+            if (!$mosaic) return '';
+
+            $image_ids = json_decode($mosaic['asset_ids'] ?? '[]', true);
+            if (!is_array($image_ids) || empty($image_ids)) return '';
+            $gap = max(0, min(20, (int)($mosaic['gap'] ?? 4)));
+
+            $base = defined('BASE_URL') ? BASE_URL : (rtrim($this->config['site_url'] ?? '/', '/') . '/');
+
+            // Fetch the Gallery images once, then walk the id list to preserve order.
+            $ph   = implode(',', array_fill(0, count($image_ids), '?'));
+            $stmt = $this->pdo->prepare(
+                "SELECT id, img_title, img_file, img_thumb_aspect, img_width, img_height
+                 FROM snap_images WHERE id IN ($ph)"
+            );
+            $stmt->execute(array_map('intval', $image_ids));
+            $by_id = [];
+            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $r) { $by_id[(int)$r['id']] = $r; }
+
+            $images = [];
+            foreach ($image_ids as $iid) {
+                $iid = (int)$iid;
+                if (!isset($by_id[$iid])) continue;
+                $full_rel = ltrim((string)$by_id[$iid]['img_file'], '/');
+                if ($full_rel === '') continue;
+                $thumb_rel = !empty($by_id[$iid]['img_thumb_aspect'])
+                    ? ltrim((string)$by_id[$iid]['img_thumb_aspect'], '/')
+                    : $full_rel;
+
+                $item = [
+                    'src'  => $base . $thumb_rel,   // light aspect thumb for the tile
+                    'full' => $base . $full_rel,    // full image for the lightbox
+                    'alt'  => (string)($by_id[$iid]['img_title'] ?? ''),
+                    'id'   => $iid,
+                ];
+                $w = (int)($by_id[$iid]['img_width'] ?? 0);
+                $h = (int)($by_id[$iid]['img_height'] ?? 0);
+                if ($w > 0 && $h > 0) { $item['width'] = $w; $item['height'] = $h; }
+                $images[] = $item;
+            }
+            if (empty($images)) return '';
+
+            return '<div class="snap-mosaic" data-mosaic="'
+                . htmlspecialchars(json_encode($images), ENT_QUOTES)
+                . '" data-gap="' . $gap . '"></div>';
+        }, $content);
     }
 
     /**

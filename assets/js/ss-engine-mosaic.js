@@ -47,7 +47,7 @@
             var img = images[i];
             var ar  = (img.width && img.height) ? img.width / img.height : 1.5;
 
-            currentRow.push({ src: img.src, alt: img.alt || '', id: img.id, ar: ar });
+            currentRow.push({ src: img.src, full: img.full || img.src, alt: img.alt || '', id: img.id, ar: ar });
             currentAR += ar;
 
             // What would row height be if we closed the row here?
@@ -104,6 +104,7 @@
 
             result.push({
                 src:          img.src,
+                full:         img.full || img.src,
                 alt:          img.alt,
                 id:           img.id,
                 renderWidth:  renderWidth,
@@ -153,7 +154,7 @@
                       + ' alt="' + img.alt + '"'
                       + ' loading="lazy"'
                       + ' data-asset-id="' + (img.id || '') + '"'
-                      + ' data-lightbox-src="' + img.src + '"'
+                      + ' data-lightbox-src="' + (img.full || img.src) + '"'
                       + ' style="width:100%;height:100%;object-fit:cover;cursor:zoom-in;display:block;">';
                 html += '</div>';
             }

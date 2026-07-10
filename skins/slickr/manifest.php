@@ -47,6 +47,7 @@ return [
         'smack-archive-toggle',
         'smack-calendar',
         'smack-grid-lightbox',     // shared avatar lightbox (derives prefix from #sl-lightbox); click the profile avatar to view it full-screen
+        'smack-lightbox',          // shared PHOTO lightbox: binds .post-image (sl-image) + inline [img:] data-lightbox-src → click-to-zoom + prev/next navigation. Was missing, so slickr photos had no lightbox at all.
     ],
 
     'community_comments'  => '1',
