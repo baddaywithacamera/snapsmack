@@ -15,7 +15,8 @@
  */
 
 $stanley_header_image = trim($settings['header_image'] ?? '');
-$stanley_header_logo  = trim($settings['header_logo'] ?? ($settings['header_logo_url'] ?? ($settings['site_logo'] ?? '')));
+// ?: (not ??) so the empty header_logo default falls through to the Global Vibe keys.
+$stanley_header_logo  = trim(($settings['header_logo'] ?? '') ?: ($settings['header_logo_url'] ?? '') ?: ($settings['site_logo'] ?? ''));
 $site_display_name    = $settings['site_name'] ?? 'SNAPSMACK';
 $stanley_tagline      = trim($settings['site_tagline'] ?? '');
 

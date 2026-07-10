@@ -110,27 +110,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearanc
     if (isset($_POST['settings']) && is_array($_POST['settings'])) {
         $v_settings = $_POST['settings'];
 
-        // --- HEADER LOGO UPLOAD (Image Engine) ---
-        if (!empty($_FILES['logo_upload']['name'])) {
-            $target_dir = 'assets/img/';
-            if (!is_dir($target_dir)) mkdir($target_dir, 0755, true);
-            $logo_allowed_ext  = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
-            $logo_allowed_mime = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp'];
-            $ext   = strtolower(pathinfo($_FILES['logo_upload']['name'], PATHINFO_EXTENSION));
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mime  = finfo_file($finfo, $_FILES['logo_upload']['tmp_name']);
-            finfo_close($finfo);
-            if (in_array($ext, $logo_allowed_ext) && in_array($mime, $logo_allowed_mime)) {
-                if (move_uploaded_file($_FILES['logo_upload']['tmp_name'], $target_dir . 'logo.' . $ext)) {
-                    $v_settings['header_logo_url'] = '/assets/img/logo.' . $ext;
-                    // Uploading a header logo is an explicit intent to use an image
-                    // header — flip header_type so it renders immediately instead of
-                    // silently sitting behind a text header. (0.7.398)
-                    $v_settings['header_type'] = 'image';
-                }
-            }
-        }
-
         // --- FAVICON UPLOAD (Image Engine) ---
         if (!empty($_FILES['favicon_upload']['name'])) {
             $target_dir = 'assets/img/';
@@ -165,6 +144,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearanc
                 $target_file = $upload_dir . time() . '_' . $file_name;
                 if (move_uploaded_file($_FILES['site_logo_file']['tmp_name'], $target_file)) {
                     $v_settings['site_logo'] = $target_file;
+                    // Single source of truth for the logo: this is now the ONLY logo
+                    // uploader (the duplicate Image Engine "HEADER LOGO ASSET" box is
+                    // gone). Mirror to header_logo_url so every consumer picks it up —
+                    // ALFRED/STANLEY/WWI header chains, photogram, and new-horizon's OG
+                    // image all read header_logo_url. (0.7.399)
+                    $v_settings['header_logo_url'] = '/' . ltrim($target_file, '/');
                 }
             }
         }
@@ -403,15 +388,10 @@ include 'core/sidebar.php';
                         <?php endif; ?>
                     </div>
                     <div class="post-col-right">
-                        <label>HEADER LOGO ASSET</label>
-                        <div class="file-upload-wrapper" onclick="document.getElementById('logo-input').click()">
-                            <div class="file-custom-btn">UPLOAD</div>
-                            <div class="file-name-display" id="logo-name">
-                                <?php echo !empty($settings['header_logo_url']) ? "CURRENT" : "SELECT FILE"; ?>
-                            </div>
-                            <input type="file" name="logo_upload" id="logo-input" accept="image/*" class="file-input-hidden" onchange="document.getElementById('logo-name').innerText = this.files[0].name;">
-                        </div>
-
+                        <!-- The site logo has a single uploader now: GLOBAL BRANDING
+                             (MASTHEAD) above. The old duplicate "HEADER LOGO ASSET" box
+                             wrote a second key (header_logo_url) and confused which one
+                             actually rendered — removed in 0.7.399. -->
                         <label>FAVICON</label>
                         <div class="file-upload-wrapper" onclick="document.getElementById('favicon-input').click()">
                             <div class="file-custom-btn">UPLOAD</div>

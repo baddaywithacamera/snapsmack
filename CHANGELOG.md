@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.399 — "Look Before You Sleep" (2026-07-10)
+
+The logo fix, finished properly — after inspecting the live DOM instead of the settings page.
+
+- **The uploaded site logo now actually renders on ALFRED** (and the new STANLEY / WRITING WITH IMPACT skins). The upload and the `core/header.php` fix in 0.7.398 were both fine, but ALFRED renders its *own* `skin-header.php` and never calls `core/header.php`. ALFRED built its logo from `$settings['header_logo'] ?? $settings['header_logo_url'] ?? $settings['site_logo']` — and its own `header_logo` skin-option defaults to an **empty string**, which `??` does *not* skip (it only skips `null`). So the chain stopped at `''` and never read the uploaded logo, rendering the text title every time. Switched all three skins to `?:`, which falls through on empty. (Confirmed against the live site: `/assets/img/logo.png` was a real 200 the whole time — the file was there, the skin just wasn't looking past `''`.)
+- **One logo uploader instead of two.** GLOBAL VIBE had *two* logo uploaders writing *two* different keys — the GLOBAL BRANDING (MASTHEAD) box (`site_logo`) and an IMAGE ENGINE "HEADER LOGO ASSET" box (`header_logo_url`) — so which one actually showed depended on undocumented precedence. Removed the Image Engine duplicate; the masthead uploader is now the single control and mirrors its file to `header_logo_url` so every skin, plus the OG social-card image, picks it up from one place.
+
 ## 0.7.398 — "Read It and Weep" (2026-07-10)
 
 Housekeeping and rescue: a companion tool that never once ran, a logo uploader that never showed, two new SMACKTALK skins, and a naming sweep.
