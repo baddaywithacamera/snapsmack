@@ -23,7 +23,7 @@ foreach (is_array($inventory) ? ($inventory['local_fonts'] ?? []) : [] as $_k =>
 unset($_mf_inv);
 
 return [
-    'name'        => 'The Grid',
+    'name'        => 'THE GRID',
     'version'     => '1.3.36',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',

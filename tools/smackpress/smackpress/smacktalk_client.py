@@ -50,16 +50,22 @@ def _request(method: str, path: str, body: dict | None = None,
     )
     try:
         with urllib.request.urlopen(req, timeout=60) as resp:
-            return json.loads(resp.read().decode())
+            result = json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:
         msg = e.read().decode()
         try:
             err = json.loads(msg)
-            raise SnapError(err.get("error", msg))
-        except (json.JSONDecodeError, KeyError):
+        except json.JSONDecodeError:
             raise SnapError(f"HTTP {e.code}: {msg}")
+        raise SnapError(err.get("message", err.get("error", msg)))
     except urllib.error.URLError as e:
         raise SnapError(f"Connection error: {e.reason}")
+
+    # House contract: {"status": "ok", ...flat fields}  OR
+    #                 {"status": "error", "message": "..."}
+    if isinstance(result, dict) and result.get("status") == "error":
+        raise SnapError(result.get("message", "Unknown API error"))
+    return result
 
 
 # --------------------------------------------------------------------------
@@ -103,9 +109,38 @@ def upload_media(filepath: str | Path, filename: str | None = None) -> dict:
     except urllib.error.URLError as e:
         raise SnapError(f"Media upload connection error: {e.reason}")
 
-    if not result.get("success"):
-        raise SnapError(result.get("error", "Unknown upload error"))
-    return result["data"]
+    if result.get("status") != "ok":
+        raise SnapError(result.get("message", "Unknown upload error"))
+    return result   # flat: {status, image_id, asset_id, thumb, title}
+
+
+def upload_media_from_url(url: str, filename: str | None = None) -> dict:
+    """
+    Download a remote image (e.g. a WordPress attachment URL) to a temp file and
+    upload it into the SnapSmack GALLERY. Returns the flat upload dict (image_id…).
+    """
+    import tempfile
+    if not url:
+        raise SnapError("No image URL to download.")
+    if not filename:
+        filename = url.split("/")[-1].split("?")[0] or "image.jpg"
+    try:
+        dl = urllib.request.Request(url, headers={"User-Agent": "SmackPress/1.0"})
+        with urllib.request.urlopen(dl, timeout=120) as resp:
+            data = resp.read()
+    except urllib.error.URLError as e:
+        raise SnapError(f"Could not download {url}: {e.reason}")
+    suffix = os.path.splitext(filename)[1] or ".jpg"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(data)
+        tmp_path = tmp.name
+    try:
+        return upload_media(tmp_path, filename)
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
 
 
 # --------------------------------------------------------------------------
@@ -119,32 +154,21 @@ def create_post(payload: dict) -> dict:
     Optional: slug, tags (space-separated), category_id, status (draft|publish).
     Returns {post_id, post_url}.
     """
-    result = _request("POST", "/posts", body=payload)
-    if not result.get("success"):
-        raise SnapError(result.get("error", "Unknown error creating post"))
-    return result["data"]
+    return _request("POST", "/posts", body=payload)   # flat: {status, post_id, slug, url}
 
 
 def update_post(post_id: int, payload: dict) -> dict:
     """Update an existing SMACKTALK post."""
-    result = _request("POST", "/posts", body={"post_id": post_id, **payload})
-    if not result.get("success"):
-        raise SnapError(result.get("error", "Unknown error updating post"))
-    return result["data"]
+    return _request("POST", "/posts", body={"post_id": post_id, **payload})
 
 
 def get_post(post_id: int) -> dict:
-    result = _request("GET", f"/posts/{post_id}")
-    if not result.get("success"):
-        raise SnapError(result.get("error", "Post not found"))
-    return result["data"]
+    return _request("GET", f"/posts/{post_id}")
 
 
 def get_categories() -> list:
     result = _request("GET", "/categories")
-    if not result.get("success"):
-        raise SnapError(result.get("error", "Could not fetch categories"))
-    return result["data"]
+    return result.get("categories", [])
 
 
 # --------------------------------------------------------------------------
@@ -156,13 +180,10 @@ def create_mosaic(title: str, asset_ids: list[int], gap: int = 4) -> dict:
     Create a mosaic and return {mosaic_id}.
     The caller is responsible for inserting [mosaic:ID] into post content.
     """
-    result = _request("POST", "/mosaics", body={
+    return _request("POST", "/mosaics", body={
         "title":     title,
         "asset_ids": asset_ids,
         "gap":       gap,
-    })
-    if not result.get("success"):
-        raise SnapError(result.get("error", "Could not create mosaic"))
-    return result["data"]
+    })   # flat: {status, mosaic_id, shortcode}
 
 # ===== SNAPSMACK EOF =====

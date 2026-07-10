@@ -123,6 +123,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearanc
             if (in_array($ext, $logo_allowed_ext) && in_array($mime, $logo_allowed_mime)) {
                 if (move_uploaded_file($_FILES['logo_upload']['tmp_name'], $target_dir . 'logo.' . $ext)) {
                     $v_settings['header_logo_url'] = '/assets/img/logo.' . $ext;
+                    // Uploading a header logo is an explicit intent to use an image
+                    // header — flip header_type so it renders immediately instead of
+                    // silently sitting behind a text header. (0.7.398)
+                    $v_settings['header_type'] = 'image';
                 }
             }
         }

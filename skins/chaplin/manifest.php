@@ -33,7 +33,7 @@ $vintage_fonts = array_filter($all_fonts, function ($label, $key) use ($vintage_
 if (empty($vintage_fonts)) $vintage_fonts = $all_fonts;
 
 return [
-    'name'        => 'Chaplin',
+    'name'        => 'CHAPLIN',
     'version'     => '0.2.12',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',

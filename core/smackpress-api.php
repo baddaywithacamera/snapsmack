@@ -16,9 +16,10 @@
 
 /**
  * SNAPSMACK_EOF_HEADER
- *     <?php // ===== SNAPSMACK EOF =====
+ *     // ===== SNAPSMACK EOF =====
  * Last non-empty line of this file MUST match the line above.
  * Missing or different = truncated/corrupted. Restore before saving.
+ * (Pure-PHP file — no closing tag, so the marker is a PHP comment, not <?php.)
  */
 
 header('Content-Type: application/json');
@@ -128,22 +129,24 @@ if ($sub === 'media/upload' && $method === 'POST') {
     if (empty($_FILES['file'])) {
         smackpress_error(400, 'No file uploaded.');
     }
-    $target_dir = 'media_assets/';
-    if (!is_dir($target_dir)) @mkdir($target_dir, 0755, true);
-    $ext       = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
-    $file_name = time() . '_' . uniqid() . '.' . strtolower($ext);
-    $target    = $target_dir . $file_name;
-    if (!move_uploaded_file($_FILES['file']['tmp_name'], $target)) {
-        smackpress_error(500, 'File upload failed.');
+    // Ingest into the GALLERY (snap_images) via the shared pipeline so migrated
+    // images render exactly like native SMACKTALK post images: usable inline as
+    // [img:gID], as mosaic cells, and as a featured_image_id cover. Writing to the
+    // Library (snap_assets) here would leave mosaics and covers blank, because the
+    // renderer (core/parser.php) resolves mosaic + cover ids against snap_images. (0.7.398)
+    if (!function_exists('snap_ingest_image')) {
+        require_once __DIR__ . '/image-ingest.php';
     }
-    $checksum = hash_file('sha256', $target);
-    $stmt = $pdo->prepare("INSERT INTO snap_assets (asset_name, asset_path, asset_checksum) VALUES (?, ?, ?)");
-    $stmt->execute([$_FILES['file']['name'], $target, $checksum]);
-    $asset_id = (int) $pdo->lastInsertId();
+    $ingest = snap_ingest_image($pdo, $settings, $_FILES['file'], ['status' => 'published']);
+    if (empty($ingest['ok'])) {
+        smackpress_error(500, $ingest['error'] ?? 'Image ingest failed.');
+    }
+    $image_id = (int) $ingest['id'];
     smackpress_ok([
-        'asset_id'   => $asset_id,
-        'asset_path' => $target,
-        'asset_url'  => $base_url . $target,
+        'image_id' => $image_id,
+        'asset_id' => $image_id,   // back-compat alias for older callers
+        'thumb'    => $ingest['thumb'] ?? '',
+        'title'    => $ingest['title'] ?? '',
     ]);
 }
 
@@ -157,14 +160,22 @@ if ($sub === 'posts' && $method === 'POST') {
     $post_id        = !empty($body['post_id']) ? (int)$body['post_id'] : null;
     $title          = trim($body['title'] ?? '');
     $slug           = trim($body['slug'] ?? '');
-    $raw_content    = $body['content'] ?? '';
+    $raw_content    = $body['content'] ?? $body['content_raw'] ?? '';
     $status         = in_array($body['status'] ?? '', ['published','draft']) ? $body['status'] : 'draft';
     $allow_comments = (int)($body['allow_comments'] ?? 0);
-    $featured_asset = !empty($body['featured_asset_id']) ? (int)$body['featured_asset_id'] : null;
+    // Cover: prefer featured_image_id (Gallery / snap_images). Legacy callers may
+    // send featured_asset_id — since media/upload now ingests to the Gallery, that
+    // id is also a snap_images id, so we treat it as the cover too.
+    $featured_image = !empty($body['featured_image_id']) ? (int)$body['featured_image_id']
+                    : (!empty($body['featured_asset_id']) ? (int)$body['featured_asset_id'] : null);
     $manual_tags    = trim($body['tags'] ?? '');
     $selected_cats  = array_map('intval', $body['cat_ids'] ?? []);
+    if (empty($selected_cats) && !empty($body['category_id'])) {
+        $selected_cats = [(int)$body['category_id']];   // single-category alias
+    }
     $selected_albums= array_map('intval', $body['album_ids'] ?? []);
-    $custom_date    = !empty($body['created_at']) ? $body['created_at'] : null;
+    $custom_date    = !empty($body['created_at']) ? $body['created_at']
+                    : (!empty($body['date']) ? $body['date'] : null);
 
     if ($title === '') smackpress_error(422, 'Title is required.');
 
@@ -178,10 +189,10 @@ if ($sub === 'posts' && $method === 'POST') {
         $stmt->execute([$post_id]);
         if (!$stmt->fetch()) smackpress_error(404, 'Post not found.');
 
-        $sql = "UPDATE snap_posts SET title=?, slug=?, content=?, status=?, allow_comments=?, featured_asset_id=?"
+        $sql = "UPDATE snap_posts SET title=?, slug=?, content=?, status=?, allow_comments=?, featured_image_id=?"
              . ($custom_date ? ", created_at=?" : "")
              . " WHERE id=? AND post_type='longform'";
-        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_asset];
+        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image];
         if ($custom_date) $params[] = $custom_date;
         $params[] = $post_id;
         $pdo->prepare($sql)->execute($params);
@@ -203,11 +214,11 @@ if ($sub === 'posts' && $method === 'POST') {
             if (!$check->fetch()) break;
             $slug = $base_slug . '-' . (++$n);
         }
-        $sql = "INSERT INTO snap_posts (title,slug,content,post_type,status,allow_comments,featured_asset_id"
+        $sql = "INSERT INTO snap_posts (title,slug,content,post_type,status,allow_comments,featured_image_id"
              . ($custom_date ? ",created_at" : "")
              . ") VALUES(?,?,?,'longform',?,?,?"
              . ($custom_date ? ",?" : "") . ")";
-        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_asset];
+        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image];
         if ($custom_date) $params[] = $custom_date;
         $pdo->prepare($sql)->execute($params);
         $new_id = (int)$pdo->lastInsertId();
@@ -264,5 +275,5 @@ if ($sub === 'mosaics' && $method === 'POST') {
 // =====================================================================
 // FALLBACK
 // =====================================================================
-smackpress_error(404, 'Unknown SmackPress API endpoint.');
-<?php // ===== SNAPSMACK EOF =====
+smackpress_error(404, 'Unknown SMACKPRESS API endpoint.');
+// ===== SNAPSMACK EOF =====

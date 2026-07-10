@@ -20,7 +20,7 @@ $fonts = $inventory['fonts'] ?? [];
 foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label'];
 
 return [
-    'name'        => 'Show N Tell',
+    'name'        => 'SHOW N TELL',
     'version'     => '1.2.0',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',

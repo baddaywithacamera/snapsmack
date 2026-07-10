@@ -34,7 +34,19 @@ if (!defined('BASE_URL')) {
 // Ensure all config variables are defined to prevent undefined index errors
 $site_display_name = $site_name ?? 'SNAPSMACK';
 $header_type = $settings['header_type'] ?? 'text';
+// Unify the two logo settings so either uploader works: the Image Engine
+// "HEADER LOGO ASSET" (header_logo_url) and the masthead "Custom Logo Image"
+// (site_logo) both feed the header logo. header_logo_url wins if both are set.
 $logo_path   = $settings['header_logo_url'] ?? '';
+if ($logo_path === '') {
+    $logo_path = $settings['site_logo'] ?? '';
+}
+// If a logo has been uploaded, show it — unless the header was EXPLICITLY set to
+// text. Previously a logo only rendered when header_type was ALSO 'image', so
+// uploading a header logo did nothing until the type was separately flipped. (0.7.398)
+if ($logo_path !== '' && ($settings['header_type'] ?? '') !== 'text') {
+    $header_type = 'image';
+}
 
 // GramOfSmack (carousel) mastheads are text-only — no logo image, matching the
 // Instagram-style header. Force text regardless of any stored header_type.
