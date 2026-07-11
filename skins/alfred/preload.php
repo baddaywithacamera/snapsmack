@@ -259,10 +259,17 @@ if ($_alfred_post_slug || $_alfred_post_id) {
 
     <article class="post-container">
 
-        <?php if (!empty($_alfred_post['featured_image_path'])): ?>
-        <figure class="featured-media">
+        <?php if (!empty($_alfred_post['featured_image_path'])):
+            // Cover framed to ALFRED's shape (1:1), with the post's pan/zoom applied
+            // non-destructively (object-position + scale). Must match manifest cover_aspect.
+            $_cpx = isset($_alfred_post['cover_pos_x']) ? (int)$_alfred_post['cover_pos_x'] : 50;
+            $_cpy = isset($_alfred_post['cover_pos_y']) ? (int)$_alfred_post['cover_pos_y'] : 50;
+            $_cz  = isset($_alfred_post['cover_zoom'])  ? (int)$_alfred_post['cover_zoom']  : 100;
+        ?>
+        <figure class="featured-media" style="aspect-ratio:1/1;overflow:hidden;">
             <img src="<?php echo BASE_URL . ltrim($_alfred_post['featured_image_path'], '/'); ?>"
-                 alt="<?php echo htmlspecialchars($_alfred_post['title']); ?>">
+                 alt="<?php echo htmlspecialchars($_alfred_post['title']); ?>"
+                 style="width:100%;height:100%;object-fit:cover;object-position:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform-origin:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform:scale(<?php echo number_format($_cz / 100, 3); ?>);display:block;">
         </figure>
         <?php endif; ?>
 

@@ -48,6 +48,10 @@ return [
     ],
     'default_variant' => 'default',
 
+    // SMACKTALK post-cover frame shape (CSS aspect-ratio). Pan/zoom crops within
+    // it; the admin cover cropper frames to this exact ratio.
+    'cover_aspect'    => '1/1',
+
     'features' => [
         'supports_wall'   => false,
         'has_landing'     => false,
@@ -96,6 +100,15 @@ return [
             'default'  => '0',
             'options'  => ['0' => 'No', '1' => 'Yes (display at half size)'],
             'help'     => 'If your logo is uploaded at 2x resolution, enable this to display it at half size for sharp rendering on retina screens.',
+        ],
+
+        'show_tagline' => [
+            'section'  => 'HEADER',
+            'type'     => 'select',
+            'label'    => 'Show Tagline',
+            'default'  => '1',
+            'options'  => ['1' => 'Show', '0' => 'Hide'],
+            'help'     => 'Hide the site tagline under the logo/title (useful when your logo already includes it). The tagline still appears in RSS and social/SEO meta.',
         ],
 
         /* ============================================================

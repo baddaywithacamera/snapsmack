@@ -36,6 +36,9 @@ return [
     ],
     'default_variant' => 'default',
 
+    // SMACKTALK post-cover frame shape (CSS aspect-ratio). Pan/zoom crops within it.
+    'cover_aspect'   => '4/3',
+
     'features' => [
         'supports_wall'  => false,
         'has_landing'    => false,
@@ -72,6 +75,14 @@ return [
             'label'   => 'Custom Logo',
             'default' => '',
             'help'    => 'Upload a logo to replace the site title text in the banner. Transparent PNG recommended.',
+        ],
+        'show_tagline' => [
+            'section' => 'HEADER',
+            'type'    => 'select',
+            'label'   => 'Show Tagline',
+            'default' => '1',
+            'options' => ['1' => 'Show', '0' => 'Hide'],
+            'help'    => 'Hide the tagline under the banner (useful when your logo already includes it). Still used in RSS and social/SEO meta.',
         ],
 
         /* ===== COLOURS ===== */

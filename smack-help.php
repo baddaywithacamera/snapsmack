@@ -971,7 +971,7 @@ immediately — any tool using it loses access at once. Generate a fresh key to 
 type for the tool you are setting up:</p>
 <ul>
     <li><strong>Oh Snap!</strong> — for the Oh Snap! skin designer desktop app</li>
-    <li><strong>SmackPress</strong> — for the SmackPress WordPress migration workbench</li>
+    <li><strong>SMACKPRESS</strong> — for the SMACKPRESS WordPress migration workbench</li>
     <li><strong>FLKR FCKR Import</strong> — for the FLKR FCKR Flickr import tool. Revoke
     this key when your import is complete — it only needs to exist long enough to run the
     migration.</li>
@@ -2959,6 +2959,103 @@ is not a realistic option on any normal hosting setup. FLKR FCKR was built speci
 because there is no server-side solution that scales to a real Flickr archive. The desktop
 tool approach also gives you live progress, pause/resume control, and the ability to exclude
 specific photos or albums before the import starts.</p>
+HTML
+];
+
+$help_topics['smackpress'] = [
+    'section'  => 'Desktop Tools',
+    'title'    => 'SMACKPRESS — WordPress Migration',
+    'icon'     => '&#x1F5DE;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>SMACKPRESS — WordPress &rarr; SMACKTALK Migration</h3>
+<p>SMACKPRESS is a standalone desktop workbench that moves your writing off WordPress and
+into SnapSmack as SMACKTALK longform posts &mdash; one considered post at a time. It is not a
+bulk importer and does not try to be. Migrating a writing archive is an editorial act, not a
+data dump: you re-read each piece, tidy it for its new home, decide what carries over, and
+publish it deliberately. SMACKPRESS gives you a three-pane cockpit to do exactly that, with
+your WordPress source on one side and your SMACKTALK draft on the other.</p>
+<p>It runs on your computer, not your server. It reads WordPress through a small companion
+plugin (read-only, over a WordPress Application Password) and writes to SnapSmack through the
+authenticated SMACKPRESS API &mdash; so nothing touches your database directly and nothing is
+migrated until you press the button.</p>
+
+<h4>What You Need First</h4>
+<ol>
+    <li><strong>Install the companion plugin on WordPress</strong> &mdash;
+    <code>smackpress-wp-companion.php</code>. It adds a read-only
+    <code>/wp-json/smackpress/v1</code> endpoint that lists your posts, expands galleries,
+    and resolves image URLs so the workbench does not have to make hundreds of calls.</li>
+    <li><strong>Create a WordPress Application Password</strong> &mdash; in WordPress under
+    Users &rarr; Profile &rarr; Application Passwords. SMACKPRESS uses it to read your posts
+    over HTTPS; it never needs your real WordPress password.</li>
+    <li><strong>Generate a SMACKPRESS API key</strong> &mdash; go to
+    <strong>Admin &rarr; Boring Ass Stuff &rarr; SMACK YOUR API KEYS</strong> and generate a
+    new key of type <em>SMACKPRESS</em>. Copy it once &mdash; it is shown only that one time.
+    The key is scoped to the migration endpoints only.</li>
+    <li><strong>Configure the workbench</strong> &mdash; launch SMACKPRESS, open Settings, and
+    enter your WordPress URL / username / Application Password, your SnapSmack URL and the
+    SMACKPRESS key, and (optionally) an AI provider and key for the rewrite assist. Click
+    <em>Test connections</em> to confirm both sides answer.</li>
+</ol>
+
+<h4>The Workbench &mdash; Three Panes</h4>
+<ul>
+    <li><strong>Navigator (left)</strong> &mdash; your WordPress posts, filterable by status
+    (publish / private / draft / any) and searchable. A green check marks posts you have
+    already migrated, so you never do one twice.</li>
+    <li><strong>Working Canvas (centre)</strong> &mdash; the top pane shows the original
+    WordPress source (read-only); the bottom pane is your editable SMACKTALK draft. Between
+    them sit <em>AI rewrite</em>, <em>Reset</em> (revert the draft to the raw WordPress body),
+    and <em>&rarr; SnapSmack</em> (the push).</li>
+    <li><strong>Card Stack (right)</strong> &mdash; post metadata, a Tags field, a Category
+    picker (pulled live from your SMACKTALK categories), the post's images with
+    <em>Create mosaic from gallery</em>, the migration status, and <em>Hide WP post</em>.</li>
+</ul>
+
+<h4>Migrating a Post</h4>
+<ol>
+    <li>Click a post in the Navigator. Its source loads on top and a starting draft (the
+    WordPress body, or your saved notes) loads below.</li>
+    <li>Edit the draft into shape. Your edits are saved locally as you type, so you can leave
+    a post half-finished and come back to it. Use <em>AI rewrite</em> if you configured a
+    provider &mdash; it rewrites the body against your system prompt, and you can still edit
+    the result by hand.</li>
+    <li>Set the <strong>tags</strong> and pick a <strong>category</strong> on the right.</li>
+    <li>To bring images across, click <strong>Create mosaic from gallery</strong>. SMACKPRESS
+    downloads the post's WordPress images, ingests them into your SnapSmack <em>Gallery</em>
+    (the same place post images live natively), builds a mosaic, and drops a
+    <code>[mosaic:ID]</code> shortcode into your draft. Move that shortcode to wherever you
+    want the images to sit in the piece.</li>
+    <li>Press <strong>&rarr; SnapSmack</strong>. The post is created as a SMACKTALK longform
+    <strong>draft</strong> &mdash; nothing goes public automatically. The Navigator marks it
+    migrated and records the new URL.</li>
+    <li>Open the draft in SnapSmack (the SMACKTALK longform editor), give it a final read, and
+    publish when you are happy with it.</li>
+    <li>Optional: back in SMACKPRESS, click <strong>Hide WP post</strong> to set the WordPress
+    original to private so the two do not both sit live.</li>
+</ol>
+
+<h4>What Carries Over</h4>
+<ul>
+    <li><strong>Title, body text, and the original publish date.</strong></li>
+    <li><strong>Tags and one category.</strong></li>
+    <li><strong>Images &mdash; via mosaics.</strong> Use <em>Create mosaic from gallery</em>
+    to pull a post's images into a Gallery mosaic. Because they land in the Gallery, they
+    render exactly like native SMACKTALK post images and are reusable elsewhere on the site.</li>
+</ul>
+<p>Posts always arrive as <strong>drafts</strong>. SMACKPRESS is deliberate by design: you do
+the final read and hit publish inside SnapSmack, so nothing goes live until you say so.</p>
+
+<h4>Good to Know</h4>
+<ul>
+    <li>The WordPress side is <strong>read-only</strong> apart from the optional
+    <em>Hide WP post</em> action &mdash; SMACKPRESS never edits or deletes your WordPress
+    content.</li>
+    <li>Migration status is tracked locally, so re-opening a migrated post shows its SnapSmack
+    URL and you will not accidentally duplicate it.</li>
+    <li>When a migration run is finished, revoke the SMACKPRESS API key from the API Keys page.</li>
+</ul>
 HTML
 ];
 

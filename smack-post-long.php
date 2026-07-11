@@ -51,6 +51,15 @@ try {
     $pdo->exec("ALTER TABLE snap_posts ADD COLUMN IF NOT EXISTS featured_image_id INT UNSIGNED DEFAULT NULL");
 } catch (PDOException $e) { /* older engine without IF NOT EXISTS — canonical sync handles it */ }
 
+// Defensive: per-post SMACKTALK cover pan/zoom (non-destructive; applied via
+// object-position + scale at render). Cover frame shape is per-skin (manifest
+// cover_aspect). Canonical schema is the source of truth; this catches mid-update.
+try {
+    $pdo->exec("ALTER TABLE snap_posts ADD COLUMN IF NOT EXISTS cover_pos_x TINYINT UNSIGNED NOT NULL DEFAULT 50");
+    $pdo->exec("ALTER TABLE snap_posts ADD COLUMN IF NOT EXISTS cover_pos_y TINYINT UNSIGNED NOT NULL DEFAULT 50");
+    $pdo->exec("ALTER TABLE snap_posts ADD COLUMN IF NOT EXISTS cover_zoom SMALLINT UNSIGNED NOT NULL DEFAULT 100");
+} catch (PDOException $e) { /* older engine — canonical sync handles it */ }
+
 // --- PLAIN TEXT ↔ HTML HELPERS (same as smack-pages.php) ---
 function smack_autop_long(string $text): string {
     if (trim($text) === '') return '';
@@ -154,6 +163,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_long'])) {
     $status           = in_array($_POST['status'] ?? '', ['published','draft']) ? $_POST['status'] : 'published';
     $allow_comments   = (int)($_POST['allow_comments'] ?? 1);
     $featured_image   = !empty($_POST['featured_image_id']) ? (int)$_POST['featured_image_id'] : null;
+    $cover_pos_x      = max(0,   min(100, (int)($_POST['cover_pos_x'] ?? 50)));
+    $cover_pos_y      = max(0,   min(100, (int)($_POST['cover_pos_y'] ?? 50)));
+    $cover_zoom       = max(100, min(300, (int)($_POST['cover_zoom']  ?? 100)));
     $manual_tags      = trim($_POST['tags'] ?? '');
     $selected_cats    = $_POST['cat_ids'] ?? [];
     $selected_albums  = $_POST['album_ids'] ?? [];
@@ -194,11 +206,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_long'])) {
         $upd = $pdo->prepare("
             UPDATE snap_posts
             SET title=?, slug=?, content=?, status=?, allow_comments=?,
-                featured_image_id=?" .
+                featured_image_id=?, cover_pos_x=?, cover_pos_y=?, cover_zoom=?" .
                 ($custom_date ? ", created_at=?" : "") . "
             WHERE id=? AND post_type='longform'
         ");
-        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image];
+        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image, $cover_pos_x, $cover_pos_y, $cover_zoom];
         if ($custom_date) $params[] = $custom_date;
         $params[] = $post_id;
         $upd->execute($params);
@@ -221,12 +233,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_long'])) {
         // INSERT
         $ins = $pdo->prepare("
             INSERT INTO snap_posts
-                (title, slug, content, post_type, status, allow_comments, featured_image_id" .
+                (title, slug, content, post_type, status, allow_comments, featured_image_id, cover_pos_x, cover_pos_y, cover_zoom" .
                 ($custom_date ? ", created_at" : "") . ")
-            VALUES (?, ?, ?, 'longform', ?, ?, ?" .
+            VALUES (?, ?, ?, 'longform', ?, ?, ?, ?, ?, ?" .
                 ($custom_date ? ", ?" : "") . ")
         ");
-        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image];
+        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image, $cover_pos_x, $cover_pos_y, $cover_zoom];
         if ($custom_date) $params[] = $custom_date;
         $ins->execute($params);
         $new_id = (int)$pdo->lastInsertId();
@@ -528,6 +540,36 @@ include 'core/sidebar.php';
                             </button>
                             <button type="button" id="long-cover-remove" class="btn-secondary" style="font-size:11px;padding:5px 12px;color:var(--dim);<?php echo $featured_image_data ? '' : 'display:none;'; ?>">REMOVE</button>
                         </div>
+                        <?php
+                        // Cover framing (pan/zoom). Non-destructive: object-position + scale,
+                        // rendered identically by the SMACKTALK skins. The stage is framed to
+                        // the ACTIVE skin's cover shape (manifest cover_aspect).
+                        $_ck_skin   = preg_replace('/[^a-z0-9_-]/', '', (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='active_skin'")->fetchColumn() ?: 'alfred'));
+                        $_ck_mf     = __DIR__ . '/skins/' . $_ck_skin . '/manifest.php';
+                        $cover_aspect = '1/1';
+                        if (is_file($_ck_mf)) { $_m = include $_ck_mf; if (is_array($_m) && !empty($_m['cover_aspect'])) $cover_aspect = (string)$_m['cover_aspect']; }
+                        $cv_px = isset($edit_post['cover_pos_x']) ? (int)$edit_post['cover_pos_x'] : 50;
+                        $cv_py = isset($edit_post['cover_pos_y']) ? (int)$edit_post['cover_pos_y'] : 50;
+                        $cv_z  = isset($edit_post['cover_zoom'])  ? (int)$edit_post['cover_zoom']  : 100;
+                        $cover_full = $featured_image_data ? BASE_URL . ltrim($featured_image_data['img_file'], '/') : '';
+                        ?>
+                        <div id="long-cover-crop-wrap" style="margin-top:10px;<?php echo $featured_image_data ? '' : 'display:none;'; ?>">
+                            <label style="font-size:11px;">COVER FRAMING <span class="dim" style="font-weight:normal;">(drag to position, slide to zoom)</span></label>
+                            <div id="lc-stage" data-aspect="<?php echo htmlspecialchars($cover_aspect, ENT_QUOTES); ?>"
+                                 style="position:relative;width:100%;max-width:260px;aspect-ratio:<?php echo htmlspecialchars($cover_aspect, ENT_QUOTES); ?>;overflow:hidden;background:#111;border-radius:4px;border:1px solid var(--border);cursor:grab;touch-action:none;user-select:none;margin-top:4px;">
+                                <img id="lc-cover-img" src="<?php echo htmlspecialchars($cover_full, ENT_QUOTES); ?>" alt=""
+                                     style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:<?php echo $cv_px; ?>% <?php echo $cv_py; ?>%;transform-origin:<?php echo $cv_px; ?>% <?php echo $cv_py; ?>%;transform:scale(<?php echo number_format($cv_z / 100, 3); ?>);pointer-events:none;">
+                            </div>
+                            <input type="hidden" name="cover_pos_x" id="lc-pos-x" value="<?php echo $cv_px; ?>">
+                            <input type="hidden" name="cover_pos_y" id="lc-pos-y" value="<?php echo $cv_py; ?>">
+                            <input type="hidden" name="cover_zoom"  id="lc-zoom-val" value="<?php echo $cv_z; ?>">
+                            <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+                                <label style="font-size:11px;display:flex;align-items:center;gap:6px;">ZOOM
+                                    <input type="range" id="lc-zoom" min="100" max="300" step="1" value="<?php echo $cv_z; ?>" style="width:120px;">
+                                </label>
+                                <button type="button" id="lc-recenter" class="btn-secondary" style="font-size:11px;padding:4px 10px;">RE-CENTRE</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="lens-input-wrapper mt-20">
@@ -620,6 +662,7 @@ include 'core/sidebar.php';
 <script src="assets/js/smack-asset-picker.js"></script>
 <script src="assets/js/shortcode-toolbar.js"></script>
 <script src="assets/js/smack-longform-gallery-picker.js"></script>
+<script src="assets/js/ss-engine-longform-cover-crop.js"></script>
 
 <script>
 // --- Slug auto-generation ---

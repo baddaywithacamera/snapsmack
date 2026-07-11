@@ -111,7 +111,7 @@ $_use_json  = is_array($_nav_items) && count($_nav_items) > 0;
         <?php else: ?>
         <h1 class="wwi-title"><a href="<?php echo BASE_URL; ?>"><?php echo htmlspecialchars($site_display_name); ?></a></h1>
         <?php endif; ?>
-        <?php if ($wwi_tagline !== ''): ?><p class="wwi-tagline"><?php echo htmlspecialchars($wwi_tagline); ?></p><?php endif; ?>
+        <?php if ($wwi_tagline !== '' && ($settings['show_tagline'] ?? '1') === '1'): ?><p class="wwi-tagline"><?php echo htmlspecialchars($wwi_tagline); ?></p><?php endif; ?>
     </header>
 
     <nav id="wwi-nav" class="navigation" role="navigation">
