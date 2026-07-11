@@ -193,9 +193,15 @@ if ($_st_post_slug || $_st_post_id) {
 <main class="content" role="main">
     <article class="post-container">
 
-        <?php if (!empty($_st_post['featured_image_path'])): ?>
-        <figure class="featured-media">
-            <img src="<?php echo BASE_URL . ltrim($_st_post['featured_image_path'], '/'); ?>" alt="<?php echo htmlspecialchars($_st_post['title']); ?>">
+        <?php if (!empty($_st_post['featured_image_path'])):
+            // Cover framed to STANLEY's shape (4:3) with the post's pan/zoom (must match manifest cover_aspect).
+            $_cpx = isset($_st_post['cover_pos_x']) ? (int)$_st_post['cover_pos_x'] : 50;
+            $_cpy = isset($_st_post['cover_pos_y']) ? (int)$_st_post['cover_pos_y'] : 50;
+            $_cz  = isset($_st_post['cover_zoom'])  ? (int)$_st_post['cover_zoom']  : 100;
+        ?>
+        <figure class="featured-media" style="aspect-ratio:4/3;overflow:hidden;">
+            <img src="<?php echo BASE_URL . ltrim($_st_post['featured_image_path'], '/'); ?>" alt="<?php echo htmlspecialchars($_st_post['title']); ?>"
+                 style="width:100%;height:100%;object-fit:cover;object-position:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform-origin:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform:scale(<?php echo number_format($_cz / 100, 3); ?>);display:block;">
         </figure>
         <?php endif; ?>
 

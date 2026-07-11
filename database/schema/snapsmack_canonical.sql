@@ -109,6 +109,12 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
                       COMMENT 'Cover/featured image for longform posts — FK to snap_images.id (the Gallery). Drives the post banner + listing thumbnail (0.7.393). Gallery-sourced, like a GRAMOFSMACK cover.',
   `trigram_id`        int unsigned   DEFAULT NULL
                       COMMENT 'FK to snap_trigrams.id — NULL = normal post cover',
+  `cover_pos_x`       tinyint unsigned  NOT NULL DEFAULT 50
+                      COMMENT 'SMACKTALK cover pan, horizontal %, 0-100 (50=centre). Non-destructive: object-position at render. Cover frame shape is per-skin (manifest cover_aspect).',
+  `cover_pos_y`       tinyint unsigned  NOT NULL DEFAULT 50
+                      COMMENT 'SMACKTALK cover pan, vertical %, 0-100 (50=centre).',
+  `cover_zoom`        smallint unsigned NOT NULL DEFAULT 100
+                      COMMENT 'SMACKTALK cover zoom %, 100-300 (100=no zoom). Applied as transform:scale at render.',
   `sort_order`        int            NOT NULL DEFAULT 0
                       COMMENT 'Manual feed order. 0 = unset (falls back to created_at DESC).',
   `user_id`           int unsigned   DEFAULT NULL

@@ -116,7 +116,7 @@ $stanley_show_sidebar = ($settings['show_sidebar'] ?? '1') === '1';
         <?php else: ?>
         <h1 class="stanley-blog-title"><a href="<?php echo BASE_URL; ?>"><?php echo htmlspecialchars($site_display_name); ?></a></h1>
         <?php endif; ?>
-        <?php if ($stanley_tagline !== ''): ?><p class="stanley-blog-desc"><?php echo htmlspecialchars($stanley_tagline); ?></p><?php endif; ?>
+        <?php if ($stanley_tagline !== '' && ($settings['show_tagline'] ?? '1') === '1'): ?><p class="stanley-blog-desc"><?php echo htmlspecialchars($stanley_tagline); ?></p><?php endif; ?>
     </div>
 
     <nav id="stanley-nav" class="navigation" role="navigation">

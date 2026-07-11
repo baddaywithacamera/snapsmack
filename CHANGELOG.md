@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.400 — "Ponyville Confidential" (2026-07-10)
+
+- **SMACKTALK post covers get a pan/zoom crop tool** — the same non-destructive framing GRAMOFSMACK covers use, instead of a blind centre-crop. The longform COVER IMAGE picker now shows a **COVER FRAMING** widget (drag to position, slide to zoom) framed to the active skin's cover shape; it's WYSIWYG, so what you frame is what ships. Nothing is re-encoded — the crop is stored as a per-post position + zoom (`cover_pos_x` / `cover_pos_y` / `cover_zoom` on `snap_posts`) and applied via `object-position` + `scale` at render. Cover frame shape is declared per skin in the manifest (`cover_aspect`): **ALFRED 1:1**, **STANLEY 4:3**, **WRITING WITH IMPACT 4:3**. Reuses the existing masthead-cropper pattern and a small dedicated engine (`ss-engine-longform-cover-crop.js`) that re-points when you swap covers.
+- **Hide the tagline** — a new **Show Tagline** option (HEADER section) on ALFRED, STANLEY, and WRITING WITH IMPACT drops the tagline from the header (handy when your logo already includes it) while keeping it in RSS and social/SEO meta.
+
 ## 0.7.399 — "Look Before You Sleep" (2026-07-10)
 
 The logo fix, finished properly — after inspecting the live DOM instead of the settings page.

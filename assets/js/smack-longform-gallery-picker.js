@@ -147,6 +147,13 @@
             '<span class="dim" style="display:block;font-size:11px;margin-top:4px;">' + name + '</span>';
         if (coverBtn)  coverBtn.textContent = 'CHANGE';
         if (coverDel)  coverDel.style.display = '';
+        // Re-point the cover framing cropper at the new (full) image and reset framing.
+        if (window.SnapLongCoverCrop) {
+            var full = base + String(img.img_file || img.thumb || '').replace(/^\//, '');
+            window.SnapLongCoverCrop.setImage(full);
+            window.SnapLongCoverCrop.reset();
+            window.SnapLongCoverCrop.show();
+        }
     }
 
     function clearCover() {
@@ -157,6 +164,7 @@
             '<span class="dim" style="font-size:10px;text-align:center;padding:4px;">NO COVER</span></div>';
         if (coverBtn) coverBtn.textContent = 'SELECT COVER';
         if (coverDel) coverDel.style.display = 'none';
+        if (window.SnapLongCoverCrop) window.SnapLongCoverCrop.hide();
     }
 
     // ── WIRING ───────────────────────────────────────────────────────────────
