@@ -37,37 +37,61 @@ $pp_followers = 0; $pp_following = 0; $pp_posts = 0;
 try { $pp_followers = (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_followers WHERE is_active = 1")->fetchColumn(); } catch (Throwable $e) {}
 try { $pp_following = (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_following WHERE state = 'accepted'")->fetchColumn(); } catch (Throwable $e) {}
 try {
-    // is_cover lives on the snap_post_images PIVOT, not snap_images — the old
-    // query referenced it on the wrong table, threw, and silently counted 0.
-    $pp_posts = (int)$pdo->query(
+    // MODE-AWARE (Sean + Claude, 0.7.40x): mirror sv_outbox_doc. Count standalone
+    // published images (photoblog / SMACKONEOUT: post_id IS NULL) AND grouped
+    // posts (GRAMOFSMACK: single/carousel/panorama). The old query counted ONLY
+    // snap_posts, so a photoblog whose content lives entirely in snap_images
+    // reported 0 here while its outbox — and every remote — showed them all.
+    $pp_posts  = (int)$pdo->query(
+        "SELECT COUNT(*) FROM snap_images
+         WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL"
+    )->fetchColumn();
+    $pp_posts += (int)$pdo->query(
         "SELECT COUNT(*) FROM snap_posts
          WHERE status = 'published' AND created_at <= NOW()
            AND post_type IN ('single','carousel','panorama')"
     )->fetchColumn();
 } catch (Throwable $e) {}
 
-// Photo grid — one tile per published post (its cover), in the blog's grid
-// order (sort_order), so the profile mirrors the home feed. Cover = the
-// is_cover pivot row, falling back to the first image if none is flagged.
+// Photo grid — mode-aware, one tile per published unit, ordered by the SAME key
+// the outbox federates on (sv_outbox_doc): COALESCE(fedi_published_at,created_at)
+// for grouped posts, img_date for standalone images — so the profile grid mirrors
+// both the lighttable's imprinted grid order and what remotes actually show.
+// GRAMOFSMACK posts come through the cover-pivot join; SMACKONEOUT photoblog
+// images (post_id IS NULL) come through the UNION branch — the drawer the old
+// posts-only query never opened. created_at stays the real display date for
+// timeago; d is ordering only.
 $pp_tiles = [];
 try {
     $st = $pdo->query(
-        "SELECT i.id, i.post_id, i.img_file, i.img_slug,
-                i.img_thumb_square, i.img_thumb_aspect, i.img_width, i.img_height,
-                pi.img_size_pct, pi.img_border_px, pi.img_border_color,
-                pi.img_bg_color, pi.img_shadow,
-                p.created_at, p.post_type,
-                (SELECT COUNT(*) FROM snap_post_images c WHERE c.post_id = p.id) AS image_count
-         FROM snap_posts p
-         JOIN snap_post_images pi ON pi.post_id = p.id
-            AND pi.image_id = (SELECT image_id FROM snap_post_images
-                               WHERE post_id = p.id
-                               ORDER BY is_cover DESC, sort_position ASC LIMIT 1)
-         JOIN snap_images i ON i.id = pi.image_id AND i.img_status = 'published'
-         WHERE p.status = 'published' AND p.created_at <= NOW()
-           AND p.post_type IN ('single','carousel','panorama')
-         ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
-                  p.sort_order ASC, p.created_at DESC
+        "SELECT * FROM (
+            SELECT i.id, i.post_id, i.img_file, i.img_slug,
+                   i.img_thumb_square, i.img_thumb_aspect, i.img_width, i.img_height,
+                   pi.img_size_pct, pi.img_border_px, pi.img_border_color,
+                   pi.img_bg_color, pi.img_shadow,
+                   p.created_at, p.post_type,
+                   (SELECT COUNT(*) FROM snap_post_images c WHERE c.post_id = p.id) AS image_count,
+                   COALESCE(p.fedi_published_at, p.created_at) AS d, 'post' AS kind
+              FROM snap_posts p
+              JOIN snap_post_images pi ON pi.post_id = p.id
+                 AND pi.image_id = (SELECT image_id FROM snap_post_images
+                                    WHERE post_id = p.id
+                                    ORDER BY is_cover DESC, sort_position ASC LIMIT 1)
+              JOIN snap_images i ON i.id = pi.image_id AND i.img_status = 'published'
+             WHERE p.status = 'published' AND p.created_at <= NOW()
+               AND p.post_type IN ('single','carousel','panorama')
+            UNION ALL
+            SELECT i.id, i.post_id, i.img_file, i.img_slug,
+                   i.img_thumb_square, i.img_thumb_aspect, i.img_width, i.img_height,
+                   NULL AS img_size_pct, NULL AS img_border_px, NULL AS img_border_color,
+                   NULL AS img_bg_color, NULL AS img_shadow,
+                   i.img_date AS created_at, NULL AS post_type,
+                   1 AS image_count,
+                   i.img_date AS d, 'image' AS kind
+              FROM snap_images i
+             WHERE i.img_status = 'published' AND i.img_date <= NOW() AND i.post_id IS NULL
+         ) u
+         ORDER BY d DESC, kind ASC, id DESC
          LIMIT 60"
     );
     $pp_tiles = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];

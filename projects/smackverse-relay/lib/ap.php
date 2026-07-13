@@ -8,11 +8,79 @@
 
 require_once __DIR__ . '/db.php';
 
-/** Ensure the relay keypair exists; return [privatePem, publicPem]. */
+// ── Secret at-rest encryption ───────────────────────────────────────────────
+// The relay's PRIVATE key lives in relay_settings; storing it in the clear is
+// the exact sin the CMS spent days scrubbing (core/secret-store.php, 0.7.401).
+// This mirrors that envelope EXACTLY — sentinel "enc:v1:" + base64(iv.ct),
+// AES-256-CBC, key = sha256(KEK) — so the two stores stay format-compatible.
+// The KEK lives in config.php ('secret_kek'); with NO KEK set, encrypt/decrypt
+// degrade to plaintext passthrough so a key is never lost (safe no-op rollout).
+if (!defined('RELAY_SECRET_SENTINEL')) define('RELAY_SECRET_SENTINEL', 'enc:v1:');
+
+/** Key-encryption-key material (config.php 'secret_kek'); '' = encryption off. */
+function relay_kek(): string {
+    $c = relay_config();
+    return (string)($c['secret_kek'] ?? '');
+}
+
+function relay_secret_is_encrypted(string $v): bool {
+    return strncmp($v, RELAY_SECRET_SENTINEL, strlen(RELAY_SECRET_SENTINEL)) === 0;
+}
+
+/** Encrypt a secret for storage. Idempotent; empty or no-KEK inputs pass through. */
+function relay_secret_encrypt(string $plaintext): string {
+    if ($plaintext === '' || relay_secret_is_encrypted($plaintext)) return $plaintext;
+    $kek = relay_kek();
+    if ($kek === '') return $plaintext;              // no KEK: never lose the value
+    $key = hash('sha256', $kek, true);
+    $iv  = openssl_random_pseudo_bytes(16);
+    $ct  = openssl_encrypt($plaintext, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
+    if ($ct === false) return $plaintext;
+    return RELAY_SECRET_SENTINEL . base64_encode($iv . $ct);
+}
+
+/** Decrypt an at-rest secret. Legacy plaintext (no sentinel) returns verbatim;
+ *  an encrypted value with no/failed KEK returns '' so the caller can detect it
+ *  (relay_keys() then mints fresh rather than signing with a garbage key). */
+function relay_secret_decrypt(string $value): string {
+    if (!relay_secret_is_encrypted($value)) return $value;
+    $kek = relay_kek();
+    if ($kek === '') return '';
+    $raw = base64_decode(substr($value, strlen(RELAY_SECRET_SENTINEL)), true);
+    if ($raw === false || strlen($raw) < 17) return '';
+    $key = hash('sha256', $kek, true);
+    $iv  = substr($raw, 0, 16);
+    $ct  = substr($raw, 16);
+    $pt  = openssl_decrypt($ct, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
+    return ($pt !== false) ? $pt : '';
+}
+
+/**
+ * Ensure the relay keypair exists; return [privatePem (decrypted), publicPem].
+ * The private key is stored ENCRYPTED at rest (relay_secret_encrypt); the public
+ * key stays plaintext by design. A keypair minted before this fix (stored in the
+ * clear) is transparently re-encrypted in place the first time it's used.
+ */
 function relay_keys(): array {
-    $priv = relay_setting('private_key', '');
-    $pub  = relay_setting('public_key', '');
-    if ($priv !== '' && $pub !== '') return [$priv, $pub];
+    $privStored = (string)relay_setting('private_key', '');
+    $pub        = (string)relay_setting('public_key', '');
+    if ($privStored !== '' && $pub !== '') {
+        $priv = relay_secret_decrypt($privStored);
+        if ($priv !== '' && openssl_pkey_get_private($priv) !== false) {
+            // Upgrade a legacy plaintext key to encrypted-at-rest, in place, so a
+            // key minted before this change stops sitting in the clear the moment
+            // it is first touched — no migration script needed.
+            if (!relay_secret_is_encrypted($privStored) && relay_kek() !== '') {
+                $enc = relay_secret_encrypt($priv);
+                if (relay_secret_is_encrypted($enc)) relay_set('private_key', $enc);
+            }
+            return [$priv, $pub];
+        }
+        // Stored key won't decrypt/parse (KEK missing, rotated, or corruption).
+        // With zero followers this recovers by minting fresh; WITH followers it
+        // would strand them, so it is logged loudly as a last resort.
+        error_log('SMACKVERSE relay: stored private key failed to decrypt/parse — minting a fresh keypair.');
+    }
     $res = openssl_pkey_new([
         'private_key_bits' => 2048,
         'private_key_type' => OPENSSL_KEYTYPE_RSA,
@@ -20,8 +88,8 @@ function relay_keys(): array {
     openssl_pkey_export($res, $priv);
     $d   = openssl_pkey_get_details($res);
     $pub = $d['key'];
-    relay_set('private_key', $priv);
-    relay_set('public_key', $pub);
+    relay_set('private_key', relay_secret_encrypt($priv));  // ENCRYPTED at rest
+    relay_set('public_key', $pub);                          // public — plaintext by design
     return [$priv, $pub];
 }
 
