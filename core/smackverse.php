@@ -127,6 +127,17 @@ function sv_ensure_tables(PDO $pdo): void {
         PRIMARY KEY (`id`),
         KEY `idx_ap_due` (`status`, `next_try_at`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // First-follow backfill jobs: a NEW follower's catalogue backfill is recorded
+    // here by the inbox Follow handler and built + paced by the cron
+    // (sv_process_backfill_jobs) — never inside the inbox POST.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_backfill_jobs` (
+        `id`         int unsigned NOT NULL AUTO_INCREMENT,
+        `actor_url`  varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `inbox_url`  varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `created_at` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_ap_backfill_actor` (`actor_url`(191))
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     // Outbound follows (0.7.356): who the BLOG ACTOR follows.
     $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_following` (
         `id`           int unsigned NOT NULL AUTO_INCREMENT,
@@ -1450,20 +1461,22 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         ];
         sv_queue_delivery($pdo, $inbox, json_encode($accept, JSON_UNESCAPED_SLASHES));
 
-        // Backfill: send this NEW follower our most-recent posts to THAT
-        // follower's inbox only (not a network blast), so their view of the
-        // blog isn't an empty grid. Recent-only; count = smackverse_backfill_count
-        // (default 10, 0 disables). Skipped on a re-follow (already following).
-        $backfill = (int)($settings['smackverse_backfill_count'] ?? 10);
+        // Backfill: seed this NEW follower with our recent catalogue so their view
+        // of the blog isn't an empty grid. DEFERRED to the paced cron
+        // (sv_process_backfill_jobs): building up to smackverse_backfill_count
+        // (default 200) Notes must NEVER happen inside this inbox POST — we only
+        // record a one-shot job; the cron builds, paces, and adds the over-500
+        // "more on the site" pointer. Skipped on a re-follow (already following).
+        $backfill = (int)($settings['smackverse_backfill_count'] ?? 200);
         $is_refollow = (bool)$pdo->query(
             "SELECT 1 FROM snap_ap_followers WHERE actor_url = " . $pdo->quote($actor_id)
             . " AND followed_at < DATE_SUB(NOW(), INTERVAL 1 MINUTE) LIMIT 1"
         )->fetchColumn();
         if ($backfill > 0 && !$is_refollow) {
-            sv_sync_fedi_dates($pdo, $settings);   // grid-order dates before backfill
-            foreach (sv_recent_creates($pdo, $settings, $backfill) as $create_json) {
-                sv_queue_delivery($pdo, $inbox, $create_json);
-            }
+            $pdo->prepare(
+                "INSERT INTO snap_ap_backfill_jobs (actor_url, inbox_url) VALUES (?, ?)
+                 ON DUPLICATE KEY UPDATE inbox_url = VALUES(inbox_url), created_at = NOW()"
+            )->execute([$actor_id, $inbox]);
         }
         sv_cache_actor($pdo, $actor_doc);
         sv_notify($pdo, 'follow', $actor_id, $handle, null, sv_actor_url($settings), null);
@@ -3612,7 +3625,7 @@ function sv_delete_for_note_id(string $note_id, array $settings): array {
  * @return array [notes_built, activities_queued]
  */
 function sv_resync_recent(PDO $pdo, array $settings, ?int $limit = null, string $mode = 'create'): array {
-    if ($limit === null) $limit = (int)($settings['smackverse_backfill_count'] ?? 10);
+    if ($limit === null) $limit = (int)($settings['smackverse_backfill_count'] ?? 200);
     $creates = sv_recent_creates($pdo, $settings, $limit);
     $inboxes = sv_follower_inboxes($pdo);
     if (!$creates || !$inboxes) return [0, 0];
@@ -4128,6 +4141,107 @@ function sv_recent_creates(PDO $pdo, array $settings, int $limit = 10): array {
     return $out;
 }
 
+/**
+ * Federatable unit total — how many posts/images a follower would see on the
+ * remote profile (mode-aware; mirrors sv_ordered_units' source sets, no limit).
+ * Drives the over-500 "more on the site" backfill addendum and its count.
+ */
+function sv_federatable_total(PDO $pdo, array $settings): int {
+    $is_carousel = (($settings['site_mode'] ?? 'photoblog') === 'carousel');
+    try {
+        if ($is_carousel) {
+            return (int)$pdo->query(
+                "SELECT COUNT(*) FROM snap_posts
+                 WHERE status = 'published' AND created_at <= NOW()
+                   AND post_type IN ('single','carousel','panorama') AND fedi_enabled = 1"
+            )->fetchColumn();
+        }
+        $imgs = (int)$pdo->query(
+            "SELECT COUNT(*) FROM snap_images
+             WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL"
+        )->fetchColumn();
+        $posts = (int)$pdo->query(
+            "SELECT COUNT(*) FROM snap_posts
+             WHERE status = 'published' AND created_at <= NOW()
+               AND post_type IN ('single','carousel','panorama') AND fedi_enabled = 1"
+        )->fetchColumn();
+        return $imgs + $posts;
+    } catch (Exception $e) {
+        return 0;
+    }
+}
+
+/**
+ * The "more on the site" backfill addendum — one welcome Note delivered AFTER the
+ * capped backfill when the catalogue is bigger than the window, so a new follower
+ * knows there is a deeper gallery and where to find it. Stamped now so it arrives
+ * last and lands on top; links back to the blog (images always load from origin).
+ */
+function sv_backfill_addendum_create(PDO $pdo, array $settings, int $shown, int $total): string {
+    $site = rtrim(sv_base($settings), '/');
+    $name = trim((string)($settings['site_name'] ?? '')) ?: $site;
+    $content = '<p>You\'re now following <strong>' . htmlspecialchars($name) . '</strong>. '
+             . 'This is the latest ' . number_format($shown) . ' of ' . number_format($total)
+             . ' photographs — see the full gallery at <a href="' . htmlspecialchars($site) . '/">'
+             . htmlspecialchars(preg_replace('#^https?://#', '', $site)) . '</a>.</p>';
+    $now  = gmdate('Y-m-d\TH:i:s\Z');
+    $note = [
+        '@context'     => 'https://www.w3.org/ns/activitystreams',
+        'id'           => sv_base($settings) . 'ap/note/welcome-' . bin2hex(random_bytes(8)),
+        'type'         => 'Note',
+        'attributedTo' => sv_actor_url($settings),
+        'to'           => ['https://www.w3.org/ns/activitystreams#Public'],
+        'cc'           => [sv_followers_url($settings)],
+        'published'    => $now,
+        'url'          => $site . '/',
+        'sensitive'    => false,
+        'content'      => $content,
+    ];
+    return json_encode(sv_create_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
+}
+
+/**
+ * Process pending first-follow backfill jobs (recorded by the inbox Follow
+ * handler). Builds up to smackverse_backfill_count (default 200) recent Creates
+ * via sv_recent_creates — reusing the exact grid/trigram delivery order — queues
+ * them to each follower's inbox for the paced drain, then (catalogue over 500) a
+ * single "more on the site" addendum Note. One-shot: the job row is deleted once
+ * queued. Bounded per run so a burst of new follows can't build a giant tick; the
+ * rest are picked up next cron. Grid-order dates are synced once up front, and the
+ * Create set is built once and shared across this tick's jobs.
+ * Returns [jobsProcessed, deliveriesQueued].
+ */
+function sv_process_backfill_jobs(PDO $pdo, array $settings, int $max_jobs = 3): array {
+    $cap = (int)($settings['smackverse_backfill_count'] ?? 200);
+    if ($cap < 1) return [0, 0];
+    try {
+        $jobs = $pdo->query(
+            "SELECT * FROM snap_ap_backfill_jobs ORDER BY id ASC LIMIT " . max(1, $max_jobs)
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) { return [0, 0]; }
+    if (!$jobs) return [0, 0];
+
+    sv_sync_fedi_dates($pdo, $settings);              // grid-order dates before building
+    $creates = sv_recent_creates($pdo, $settings, $cap);
+    $shown   = count($creates);
+    $total   = sv_federatable_total($pdo, $settings);
+
+    $jobsDone = 0; $queued = 0;
+    foreach ($jobs as $job) {
+        $inbox = (string)$job['inbox_url'];
+        if ($inbox !== '') {
+            foreach ($creates as $create_json) { sv_queue_delivery($pdo, $inbox, $create_json); $queued++; }
+            if ($total > 500) {
+                sv_queue_delivery($pdo, $inbox, sv_backfill_addendum_create($pdo, $settings, $shown, $total));
+                $queued++;
+            }
+        }
+        $pdo->prepare("DELETE FROM snap_ap_backfill_jobs WHERE id = ?")->execute([$job['id']]);
+        $jobsDone++;
+    }
+    return [$jobsDone, $queued];
+}
+
 /** Approved LOCAL (non-fediverse) comment ids attached to a content unit, in
  *  post order (oldest first). For a grouped post that means comments on ANY of
  *  its member images; for a standalone image, that image's comments. Remote
@@ -4168,7 +4282,7 @@ function sv_unit_comment_ids(PDO $pdo, array $u): array {
  */
 function sv_reseed_all(PDO $pdo, array $settings, ?int $limit = null): array {
     if (!sv_enabled($settings)) return [0, 0, 0];
-    if ($limit === null) $limit = (int)($settings['smackverse_backfill_count'] ?? 10);
+    if ($limit === null) $limit = (int)($settings['smackverse_backfill_count'] ?? 200);
 
     // Encode grid order into published dates FIRST — that's what the remote sorts
     // by. Without this the delivery order is irrelevant and rows swap by date.

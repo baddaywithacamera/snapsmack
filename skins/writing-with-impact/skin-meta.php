@@ -15,9 +15,7 @@
 
 include dirname(__DIR__, 2) . '/core/meta.php';
 
-$skin_slug = $settings['active_skin'] ?? 'writing-with-impact';
-$skin_base = BASE_URL . 'skins/' . $skin_slug . '/';
-$v         = SNAPSMACK_VERSION_SHORT;
-?>
-<link rel="stylesheet" href="<?php echo $skin_base; ?>style.css?v=<?php echo $v; ?>">
-<?php // ===== SNAPSMACK EOF =====
+// core/meta.php already emits this skin's style.css (with a version + skin-version
+// cache-bust). We do NOT re-load it here: a second <link> double-loads the baseline
+// AFTER the compiled customization CSS, which can override user customizations. (0.7.400)
+// ===== SNAPSMACK EOF =====

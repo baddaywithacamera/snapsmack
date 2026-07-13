@@ -27,5 +27,7 @@ $v         = SNAPSMACK_VERSION_SHORT;
 ?>
 <link rel="stylesheet" href="<?php echo $skin_base; ?>assets/css/font-awesome.css?v=<?php echo $v; ?>">
 <link rel="stylesheet" href="<?php echo $skin_base; ?>assets/css/fonts.css?v=<?php echo $v; ?>">
-<link rel="stylesheet" href="<?php echo $skin_base; ?>style.css?v=<?php echo $v; ?>">
+<?php // NOTE: style.css is emitted by core/meta.php (above) with a version+skin-version
+      // cache-bust. Do NOT re-load it here — a second <link> double-loads the baseline
+      // AFTER the compiled customization CSS and can override user tweaks. (0.7.400) ?>
 <?php // ===== SNAPSMACK EOF =====

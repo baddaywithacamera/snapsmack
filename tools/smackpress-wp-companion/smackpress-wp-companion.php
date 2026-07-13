@@ -6,7 +6,7 @@
  *              so the SmackPress desktop tool can pull posts from WordPress and mark
  *              migrated posts as private. Authenticate with a WordPress Application Password.
  *              Delete this plugin once migration is complete.
- * Version:     1.0.0
+ * Version:     1.1.0
  * Author:      SnapSmack
  * License:     GPL-2.0-or-later
  *
@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Constants
  * --------------------------------------------------------------------- */
 
-define( 'SMACKPRESS_COMPANION_VERSION', '1.0.0' );
+define( 'SMACKPRESS_COMPANION_VERSION', '1.1.0' );
 define( 'SMACKPRESS_NS',  'smackpress/v1' );
 define( 'SMACKPRESS_META', 'smackpress_migrated_to' );
 
@@ -44,13 +44,15 @@ add_action( 'init',          'smackpress_register_meta' );
  * --------------------------------------------------------------------- */
 
 function smackpress_register_meta() {
-    register_post_meta( 'post', SMACKPRESS_META, [
-        'type'         => 'string',
-        'description'  => 'SnapSmack post URL this WP post was migrated to.',
-        'single'       => true,
-        'show_in_rest' => true,
-        'auth_callback' => '__return_true',
-    ] );
+    foreach ( [ 'post', 'page' ] as $ptype ) {
+        register_post_meta( $ptype, SMACKPRESS_META, [
+            'type'         => 'string',
+            'description'  => 'SnapSmack URL this WP post/page was migrated to.',
+            'single'       => true,
+            'show_in_rest' => true,
+            'auth_callback' => '__return_true',
+        ] );
+    }
 }
 
 /* -----------------------------------------------------------------------
@@ -71,6 +73,7 @@ function smackpress_register_routes() {
             'status'   => [ 'default' => 'publish', 'sanitize_callback' => 'sanitize_text_field' ],
             'search'   => [ 'default' => '',   'sanitize_callback' => 'sanitize_text_field' ],
             'category' => [ 'default' => 0,    'sanitize_callback' => 'absint' ],
+            'type'     => [ 'default' => 'post', 'sanitize_callback' => 'sanitize_key' ],
         ],
     ] );
 
@@ -145,6 +148,8 @@ function smackpress_get_posts( WP_REST_Request $request ) {
     $per_page = min( 100, max( 1, $request->get_param( 'per_page' ) ) );
     $search   = $request->get_param( 'search' );
     $category = $request->get_param( 'category' );
+    $type     = in_array( $request->get_param( 'type' ), [ 'post', 'page' ], true )
+              ? $request->get_param( 'type' ) : 'post';
 
     // Allow comma-separated status list, e.g. "publish,private"
     $raw_status = $request->get_param( 'status' );
@@ -156,7 +161,7 @@ function smackpress_get_posts( WP_REST_Request $request ) {
     }
 
     $args = [
-        'post_type'      => 'post',
+        'post_type'      => $type,
         'post_status'    => $statuses,
         'posts_per_page' => $per_page,
         'paged'          => $page,
@@ -166,8 +171,8 @@ function smackpress_get_posts( WP_REST_Request $request ) {
     if ( $search !== '' ) {
         $args['s'] = $search;
     }
-    if ( $category > 0 ) {
-        $args['cat'] = $category;
+    if ( $category > 0 && $type === 'post' ) {
+        $args['cat'] = $category;   // pages carry no categories
     }
 
     $query = new WP_Query( $args );
@@ -197,7 +202,7 @@ function smackpress_get_post( WP_REST_Request $request ) {
     $id   = (int) $request->get_param( 'id' );
     $post = get_post( $id );
 
-    if ( ! $post || $post->post_type !== 'post' ) {
+    if ( ! $post || ! in_array( $post->post_type, [ 'post', 'page' ], true ) ) {
         return new WP_Error( 'smackpress_not_found', 'Post not found.', [ 'status' => 404 ] );
     }
 
@@ -214,7 +219,7 @@ function smackpress_hide_post( WP_REST_Request $request ) {
     $migrated_to = $request->get_param( 'migrated_to_url' );
 
     $post = get_post( $id );
-    if ( ! $post || $post->post_type !== 'post' ) {
+    if ( ! $post || ! in_array( $post->post_type, [ 'post', 'page' ], true ) ) {
         return new WP_Error( 'smackpress_not_found', 'Post not found.', [ 'status' => 404 ] );
     }
 
@@ -314,6 +319,7 @@ function smackpress_shape_post( WP_Post $post, bool $full ): array {
 
     $shaped = [
         'id'             => $post->ID,
+        'type'           => $post->post_type,
         'date'           => $post->post_date,
         'date_gmt'       => $post->post_date_gmt,
         'slug'           => $post->post_name,

@@ -70,17 +70,21 @@ return [
         /* ===== HEADER ===== */
         'header_image' => [
             'section' => 'HEADER',
-            'type'    => 'asset',
+            'type'    => 'image',
             'label'   => 'Header Image (optional)',
             'default' => '',
+            'accept'  => 'image/jpeg,image/png,image/webp',
             'help'    => 'Optional masthead image printed above the title. Leave blank for a pure dot-matrix nameplate.',
+            'hint'    => 'Leave blank for a pure dot-matrix nameplate.',
         ],
         'header_logo' => [
             'section' => 'HEADER',
-            'type'    => 'asset',
+            'type'    => 'image',
             'label'   => 'Custom Logo',
             'default' => '',
+            'accept'  => 'image/jpeg,image/png,image/webp,image/svg+xml',
             'help'    => 'Upload a logo to replace the dot-matrix site title. Transparent PNG recommended.',
+            'hint'    => 'Transparent PNG recommended.',
         ],
         'show_tagline' => [
             'section' => 'HEADER',

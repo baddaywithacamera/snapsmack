@@ -12,10 +12,19 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.401 — "Secret of My Excess" (2026-07-13)
+
+The security fix flagged as never-actually-done, finally landing — plus fediverse followers stop arriving to an empty feed.
+
+- **SUYB backup dumps no longer leak secrets** — "Smack Up Your Backup" dumped `snap_settings` and `snap_multisite_nodes` verbatim, so API keys, tokens and OAuth secrets rode out in cleartext inside the SQL file even after 0.7.261 hardened the key itself. `core/export-engine.php` now redacts them: any `snap_settings` row whose key fragment-matches a secret (`_key`, `_token`, `_secret`, `password`, `_pass`, `_salt`, `api_key`, `client_secret`, `bearer`, `private_key`) has its value replaced with `__REDACTED__`, and `api_key_local` / `api_key_remote` on `snap_multisite_nodes` are blanked. Scope is tight — only those two tables, only non-empty values — so a restored dump still works; you re-enter the secrets post-restore. Redaction, not encrypt-at-rest (that's still to come).
+- **Fediverse follower backfill** — a new Pixelfed follower used to get nothing. Now a follow enqueues a backfill job (`snap_ap_backfill_jobs`) delivered **paced by cron, never in the web request**, default **on**, capped at **200** posts. Over 500 federatable posts, a "more on the site" addendum Note links back so the archive stays discoverable without dumping the whole history. (`core/smackverse.php`, `cron-smackverse.php`.)
+- **COLDSNAP 0.1.1** — overnight tool bump.
+
 ## 0.7.400 — "Ponyville Confidential" (2026-07-10)
 
 - **SMACKTALK post covers get a pan/zoom crop tool** — the same non-destructive framing GRAMOFSMACK covers use, instead of a blind centre-crop. The longform COVER IMAGE picker now shows a **COVER FRAMING** widget (drag to position, slide to zoom) framed to the active skin's cover shape; it's WYSIWYG, so what you frame is what ships. Nothing is re-encoded — the crop is stored as a per-post position + zoom (`cover_pos_x` / `cover_pos_y` / `cover_zoom` on `snap_posts`) and applied via `object-position` + `scale` at render. Cover frame shape is declared per skin in the manifest (`cover_aspect`): **ALFRED 1:1**, **STANLEY 4:3**, **WRITING WITH IMPACT 4:3**. Reuses the existing masthead-cropper pattern and a small dedicated engine (`ss-engine-longform-cover-crop.js`) that re-points when you swap covers.
 - **Hide the tagline** — a new **Show Tagline** option (HEADER section) on ALFRED, STANLEY, and WRITING WITH IMPACT drops the tagline from the header (handy when your logo already includes it) while keeping it in RSS and social/SEO meta.
+- **ALFRED header background image is now settable, with size controls.** ALFRED's "Header Background Image" (and Custom Logo) fields were declared `type:'asset'`, which the appearance editor has no working picker for — so they rendered as dead text fields. Switched both to `type:'image'` (real uploader). Added **Header Image Height** (Full screen / Tall / Medium / Short) and **Header Image Fit** (Cover / Contain / Actual size), driven by CSS variables so they apply reliably regardless of stylesheet order.
 
 ## 0.7.399 — "Look Before You Sleep" (2026-07-10)
 

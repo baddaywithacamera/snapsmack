@@ -664,6 +664,35 @@ class SnapSmackExport {
      *                      'keys' = snap_users table only (for emergency recovery)
      * @return string  SQL dump as a string
      */
+    /**
+     * Strip live secrets out of a dumped row so backups never carry credentials
+     * off-box in cleartext (security audit). snap_settings rows whose key looks
+     * sensitive, and known secret columns (multisite node keys), are replaced
+     * with a placeholder; the owner re-provisions those on restore. bcrypt user
+     * hashes are left intact (already hashed + needed for restore).
+     */
+    private function redactSecrets(string $table, array $row): array {
+        $isSensitive = static function (string $name): bool {
+            $n = strtolower($name);
+            foreach (['_key','_token','_secret','password','_pass','_salt','api_key','apikey','client_secret','bearer','private_key'] as $frag) {
+                if (str_contains($n, $frag)) return true;
+            }
+            return false;
+        };
+        if ($table === 'snap_settings'
+            && isset($row['setting_key'], $row['setting_val'])
+            && $row['setting_val'] !== null && $row['setting_val'] !== ''
+            && $isSensitive((string)$row['setting_key'])) {
+            $row['setting_val'] = '__REDACTED__';
+        }
+        if ($table === 'snap_multisite_nodes') {
+            foreach (['api_key_local', 'api_key_remote'] as $c) {
+                if (!empty($row[$c])) $row[$c] = '__REDACTED__';
+            }
+        }
+        return $row;
+    }
+
     public function generateSqlDump(string $type = 'full'): string {
         // Origin stamp — binds the dump to the site (and MODE) it came from, so a
         // cross-mode restore is a visible, deliberate act rather than a silent foul.
@@ -733,6 +762,7 @@ class SnapSmackExport {
                 $rows = $this->pdo->query("SELECT * FROM `{$table}`")->fetchAll(PDO::FETCH_ASSOC);
                 if ($rows) {
                     foreach ($rows as $row) {
+                        $row = $this->redactSecrets($table, $row);
                         $keys = array_map(fn($k) => "`{$k}`", array_keys($row));
                         $vals = array_map(
                             fn($v) => $v === null ? "NULL" : $this->pdo->quote($v),
