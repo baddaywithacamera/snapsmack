@@ -97,12 +97,18 @@ list($bf_jobs, $bf_queued) = sv_process_backfill_jobs($pdo, $settings);
 // workers. CLI/cron context, so the inter-send sleeps cost nothing user-facing.
 list($sent, $failed)  = sv_process_deliveries($pdo, $settings, 30, sv_delivery_cadence($settings));
 
+// Profile propagation (AP spec): if the actor's bio, avatar or display name
+// changed since we last federated it, push a signed Update(Actor) so followers'
+// cached profiles refresh. Detected by fingerprint, so a profile edit made through
+// ANY save path lands within a cron tick — no per-page hook to forget.
+$actor_upd = sv_maybe_push_actor_update($pdo, $settings);
+
 // Health stamp for the SMACKVERSE admin page's delivery panel.
 sv_set_setting($pdo, $settings, 'smackverse_cron_last_run', date('Y-m-d H:i:s'));
 
 echo sprintf(
-    "SMACKVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed.\n",
-    $units, $queued, $bf_jobs, $bf_queued, $sent, $failed
+    "SMACKVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed; profile-update: %d follower(s).\n",
+    $units, $queued, $bf_jobs, $bf_queued, $sent, $failed, $actor_upd
 );
 exit(0);
 // ===== SNAPSMACK EOF =====
