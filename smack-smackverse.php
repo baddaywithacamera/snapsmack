@@ -124,6 +124,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'set_p
     exit;
 }
 
+// REFRESH PROFILE ON REMOTES: push a signed Update(Actor) so followers' cached
+// profile (display name, bio, avatar) refreshes NOW instead of waiting on the
+// cron's auto-detect. AP spec: a profile edit propagates only via Update(Actor).
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'push_profile_update') {
+    $ppn = sv_push_actor_update($pdo, $sv_settings);
+    // Keep the fingerprint in step so the cron doesn't immediately re-push the
+    // same state on its next run.
+    sv_set_setting($pdo, $sv_settings, 'smackverse_actor_fp', sv_actor_profile_fingerprint($pdo, $sv_settings));
+    $ppmsg = $ppn > 0
+        ? "PROFILE UPDATE queued to {$ppn} follower inbox(es) — your name, bio and avatar refresh on the remotes as the delivery cron drains (~a minute or two)."
+        : 'No active followers to update yet — remotes fetch your current profile the moment someone follows.';
+    header('Location: smack-smackverse.php?msg=' . urlencode($ppmsg));
+    exit;
+}
+
 // PIGGYBACK SEARCH ACCOUNT (0.7.373): store a read-only OAuth token on a trusted
 // instance so the client can proxy that instance's authenticated /api/v2/search
 // (account + full-text discovery). Storing a credential is step-up gated
@@ -505,6 +520,23 @@ include 'core/sidebar.php';
             <tr><td>Failed</td><td><?php echo (int)$sv_q_failed; ?></td></tr>
             <tr><td>Last cron run</td><td><?php echo $sv_cron_last !== '' ? htmlspecialchars($sv_cron_last) : 'never'; ?></td></tr>
         </table>
+    </div>
+
+    <!-- PROFILE ON THE FEDIVERSE -->
+    <div class="box mb-20">
+        <h3>YOUR PROFILE ON THE FEDIVERSE</h3>
+        <p class="dim mb-20">
+            Remote servers (Pixelfed, Mastodon) <strong>cache</strong> your profile — display
+            name, bio and avatar — from the last time they saw it. Editing your bio or avatar
+            on this site does not reach them on its own; the fediverse propagates a profile
+            edit with a signed <em>Update</em>. The delivery cron auto-detects a change and
+            pushes it to your followers within a few minutes — use this button to refresh
+            every follower <strong>now</strong>.
+        </p>
+        <form method="post" action="smack-smackverse.php">
+            <input type="hidden" name="action" value="push_profile_update">
+            <button type="submit" class="btn-smack">REFRESH PROFILE ON REMOTES</button>
+        </form>
     </div>
 
     <!-- PUSH MODE -->

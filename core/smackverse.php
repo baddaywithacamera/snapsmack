@@ -3587,6 +3587,85 @@ function sv_delete_for_note_id(string $note_id, array $settings): array {
     ];
 }
 
+// ─── Profile propagation — Update(Actor) (AP spec) ───────────────────────────
+// A profile edit (display name, bio/summary, avatar) does NOT reach remotes on
+// its own: Mastodon/Pixelfed cache the actor doc when they first see it and only
+// refresh on a signed Update(Actor). These are the pieces that make a bio/avatar
+// change actually propagate to followers, to spec.
+
+/**
+ * Build an Update(Actor) activity wrapping the FULL current actor document, with
+ * `updated` stamped so remotes treat it as a genuine edit and re-render (an
+ * Update carrying no fresher state is ignored). Fresh unique id → never deduped.
+ */
+function sv_actor_update_activity(PDO $pdo, array &$settings): array {
+    $actor = sv_actor_doc($pdo, $settings);
+    $actor['updated'] = gmdate('Y-m-d\TH:i:s\Z');
+    return [
+        '@context' => [
+            'https://www.w3.org/ns/activitystreams',
+            'https://w3id.org/security/v1',
+        ],
+        'id'     => sv_actor_url($settings) . '#profile-update-' . bin2hex(random_bytes(6)),
+        'type'   => 'Update',
+        'actor'  => sv_actor_url($settings),
+        'to'     => ['https://www.w3.org/ns/activitystreams#Public'],
+        'cc'     => [sv_followers_url($settings)],
+        'object' => $actor,
+    ];
+}
+
+/**
+ * Queue an Update(Actor) to every active follower inbox (sharedInbox preferred).
+ * The signed delivery cron sends them like any other activity. Returns the number
+ * of inboxes queued (0 when there are no followers).
+ */
+function sv_push_actor_update(PDO $pdo, array &$settings): int {
+    $inboxes = sv_follower_inboxes($pdo);
+    if (!$inboxes) return 0;
+    $json = json_encode(sv_actor_update_activity($pdo, $settings),
+                        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    foreach ($inboxes as $inbox) {
+        sv_queue_delivery($pdo, $inbox, $json);
+    }
+    return count($inboxes);
+}
+
+/**
+ * Stable fingerprint of the PROFILE-VISIBLE actor fields (display name, handle,
+ * summary/bio, avatar url, follow-approval flag). It changes exactly when a remote
+ * would render a different profile, and ignores volatile/structural fields (keys,
+ * collection URLs) that never affect the cached profile.
+ */
+function sv_actor_profile_fingerprint(PDO $pdo, array &$settings): string {
+    $a = sv_actor_doc($pdo, $settings);
+    return hash('sha256', json_encode([
+        'name'    => $a['name'] ?? '',
+        'user'    => $a['preferredUsername'] ?? '',
+        'summary' => $a['summary'] ?? '',
+        'icon'    => $a['icon']['url'] ?? '',
+        'mafo'    => $a['manuallyApprovesFollowers'] ?? false,
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+}
+
+/**
+ * Auto-propagate a profile edit. When the actor's profile fingerprint differs
+ * from the last one we federated, push an Update(Actor) to followers and record
+ * the new fingerprint. Driven from the delivery cron, so a bio/avatar/name edit
+ * made through ANY save path reaches followers within a cron tick — no per-handler
+ * hooks to miss. The first run records the fingerprint but still pushes when
+ * followers already exist, so a profile changed before this shipped syncs once.
+ * Returns deliveries queued.
+ */
+function sv_maybe_push_actor_update(PDO $pdo, array &$settings): int {
+    $fp   = sv_actor_profile_fingerprint($pdo, $settings);
+    $seen = trim((string)($settings['smackverse_actor_fp'] ?? ''));
+    if ($seen === $fp) return 0;
+    $queued = sv_push_actor_update($pdo, $settings);
+    sv_set_setting($pdo, $settings, 'smackverse_actor_fp', $fp);
+    return $queued;
+}
+
 /**
  * RESYNC: re-federate the N most recent posts to all active followers.
  * Remote servers cache statuses by Note id and DEDUP re-delivered Creates,
