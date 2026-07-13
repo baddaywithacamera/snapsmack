@@ -72,7 +72,8 @@ def _request(method: str, path: str, body: dict | None = None,
 # Media
 # --------------------------------------------------------------------------
 
-def upload_media(filepath: str | Path, filename: str | None = None) -> dict:
+def upload_media(filepath: str | Path, filename: str | None = None,
+                 caption_from_filename: bool | None = None) -> dict:
     """
     Upload a local file to SnapSmack media library.
     Returns {asset_id, asset_url}.
@@ -83,7 +84,14 @@ def upload_media(filepath: str | Path, filename: str | None = None) -> dict:
     mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
 
     boundary = "SmackPressBoundary"
-    body  = (
+    body = b""
+    if caption_from_filename is not None:
+        body += (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="caption_from_filename"\r\n\r\n'
+            f'{"1" if caption_from_filename else "0"}\r\n'
+        ).encode()
+    body += (
         f"--{boundary}\r\n"
         f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
         f'Content-Type: {mime}\r\n'
@@ -114,7 +122,8 @@ def upload_media(filepath: str | Path, filename: str | None = None) -> dict:
     return result   # flat: {status, image_id, asset_id, thumb, title}
 
 
-def upload_media_from_url(url: str, filename: str | None = None) -> dict:
+def upload_media_from_url(url: str, filename: str | None = None,
+                          caption_from_filename: bool | None = None) -> dict:
     """
     Download a remote image (e.g. a WordPress attachment URL) to a temp file and
     upload it into the SnapSmack GALLERY. Returns the flat upload dict (image_id…).
@@ -135,7 +144,8 @@ def upload_media_from_url(url: str, filename: str | None = None) -> dict:
         tmp.write(data)
         tmp_path = tmp.name
     try:
-        return upload_media(tmp_path, filename)
+        return upload_media(tmp_path, filename,
+                            caption_from_filename=caption_from_filename)
     finally:
         try:
             os.unlink(tmp_path)
@@ -169,6 +179,26 @@ def get_post(post_id: int) -> dict:
 def get_categories() -> list:
     result = _request("GET", "/categories")
     return result.get("categories", [])
+
+
+# --------------------------------------------------------------------------
+# Pages (WordPress Pages -> SnapSmack static pages / snap_pages)
+# --------------------------------------------------------------------------
+
+def create_page(payload: dict) -> dict:
+    """
+    Create a new SnapSmack static page (snap_pages).
+    Required: title. Optional: slug, content_raw/content, status
+    (published|draft) or is_active, image_asset, image_size, image_align,
+    image_shadow, menu_order.
+    Returns {page_id, slug, url, is_active}.
+    """
+    return _request("POST", "/pages", body=payload)
+
+
+def update_page(page_id: int, payload: dict) -> dict:
+    """Update an existing SnapSmack static page."""
+    return _request("POST", "/pages", body={"page_id": page_id, **payload})
 
 
 # --------------------------------------------------------------------------

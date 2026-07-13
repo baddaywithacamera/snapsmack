@@ -911,7 +911,7 @@ input[type="button"],
 .header-image,
 .header-image:after {
     height: 900px;
-    height: 100vh;
+    height: var(--alfred-header-h, 100vh);   /* Global Vibe → SMOOTH YOUR SKIN: Header Image Height */
     position: absolute;
     z-index: 1;
     right: 0;
@@ -922,7 +922,7 @@ input[type="button"],
     background-image: url(assets/images/bg.jpg);
     background-repeat: no-repeat;
     background-position: top center;
-    background-size: cover;
+    background-size: var(--alfred-header-fit, cover);   /* Header Image Fit */
 }
 
 .header-image:after {
@@ -1611,13 +1611,15 @@ p.comment-form-author { margin-right: 5%; }
 #system-footer {
     padding: 60px 0;
     position: relative;
-    z-index: 2;
+    z-index: 2;                 /* lift above the full-viewport .header-image (z-index 1) */
+    color: #9a9a9a;             /* base: readable on ALFRED's near-black canvas */
+    background: #1d1d1d;         /* solid backing so it never reads over the header image */
 }
 
 #system-footer .footer-metadata-bar p {
     text-align: center;
     text-transform: uppercase;
-    color: #666;
+    color: #9a9a9a;             /* was #666 — too dim on #1d1d1d; bumped for contrast */
     font-size: 0.825em;
     font-weight: 500;
     margin: 0;
@@ -1625,11 +1627,11 @@ p.comment-form-author { margin-right: 5%; }
 }
 
 #system-footer a,
-#system-footer .footer-link { color: #666; text-decoration: none; }
+#system-footer .footer-link { color: #9a9a9a; text-decoration: none; }
 #system-footer a:hover,
 #system-footer .footer-link:hover { color: var(--alfred-accent); }
 
-#system-footer .sep { margin: 0 10px; color: #3a3a3a; }
+#system-footer .sep { margin: 0 10px; color: #555; }
 
 
 /* -------------------------------------------------------------------------- */

@@ -224,11 +224,28 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
         return ['ok' => false, 'error' => 'Unsupported file type: .' . $file_ext];
     }
 
-    $title = trim($opts['title'] ?? '');
+    $explicit_title = trim($opts['title'] ?? '');
+    $title = $explicit_title;
     if ($title === '') {
         $title = pathinfo($orig_name, PATHINFO_FILENAME) ?: 'Untitled Transmission';
     }
     $desc           = trim($opts['description'] ?? '');
+
+    // Caption-from-filename: explicit opt wins, else the site setting. When on,
+    // a blank caption (and an auto-derived title) is filled from the tidied file
+    // name; camera-default names (IMG_1234, DSC0012…) are skipped for the caption.
+    $cap_from_fn = array_key_exists('caption_from_filename', $opts)
+        ? (bool)$opts['caption_from_filename']
+        : (($settings['caption_from_filename'] ?? '0') === '1');
+    if ($cap_from_fn) {
+        $pretty = snap_caption_from_filename($orig_name);
+        if ($desc === '' && $pretty !== '') {
+            $desc = $pretty;
+        }
+        if ($explicit_title === '' && $pretty !== '') {
+            $title = $pretty;
+        }
+    }
     $status         = in_array($opts['status'] ?? '', ['published', 'draft'], true) ? $opts['status'] : 'published';
     $custom_date    = !empty($opts['img_date']) ? $opts['img_date'] : date('Y-m-d H:i:s');
     $allow_comments = (int)($opts['allow_comments'] ?? 1);
@@ -477,4 +494,28 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
         'title' => $title,
     ];
 }
+
+/**
+ * Turn a file name into a human caption, or '' for camera-default names.
+ * Strips the extension, converts - and _ to spaces, collapses whitespace.
+ * Returns '' for IMG_1234 / DSC0012 / DJI_0001 / date-stamp style names so
+ * they never become ugly captions.
+ */
+function snap_caption_from_filename(string $orig_name): string {
+    $base = pathinfo($orig_name, PATHINFO_FILENAME);
+    $junk = [
+        '/^_?(img|dsc|dscf|dscn|dji|gopr|gh|pxl|mvimg|vid|mov)[ _-]?\\d+.*$/i',
+        '/^p\\d{6,}$/i',
+        '/^\\d{4}[ _-]?\\d{2}[ _-]?\\d{2}([ _-]?\\d{2,6})?$/',
+        '/^screenshot.*/i',
+        '/^untitled.*/i',
+    ];
+    foreach ($junk as $rx) {
+        if (preg_match($rx, $base)) return '';
+    }
+    $s = preg_replace('/[_\\-]+/', ' ', $base);
+    $s = preg_replace('/\\s{2,}/', ' ', $s);
+    return trim($s);
+}
+
 // ===== SNAPSMACK EOF =====

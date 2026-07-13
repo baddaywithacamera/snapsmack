@@ -68,17 +68,27 @@ def test_connection() -> dict:
 
 
 def get_posts(page: int = 1, per_page: int = 20,
-              status: str = "publish", search: str = "", category: int = 0) -> dict:
+              status: str = "publish", search: str = "", category: int = 0,
+              post_type: str = "post") -> dict:
     """
     Returns {posts, total, total_pages, page, per_page}.
     status may be comma-separated, e.g. "publish,private".
+    post_type is "post" (default) or "page".
     """
-    params: dict = {"page": page, "per_page": per_page, "status": status}
+    params: dict = {"page": page, "per_page": per_page, "status": status,
+                    "type": post_type}
     if search:
         params["search"] = search
-    if category:
+    if category and post_type == "post":
         params["category"] = category
     return _request("GET", "/posts", params=params)
+
+
+def get_pages(page: int = 1, per_page: int = 20,
+              status: str = "publish", search: str = "") -> dict:
+    """Convenience wrapper: list WordPress Pages instead of posts."""
+    return get_posts(page=page, per_page=per_page, status=status,
+                     search=search, post_type="page")
 
 
 def get_post(wp_id: int) -> dict:

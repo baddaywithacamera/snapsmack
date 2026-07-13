@@ -34,8 +34,9 @@ except ImportError:
 
 # Ensure the smackpress package directory is on the path when running directly
 _HERE = Path(__file__).resolve().parent
-if str(_HERE) not in sys.path:
-    sys.path.insert(0, str(_HERE))
+_PKG = _HERE / "smackpress"
+if str(_PKG) not in sys.path:
+    sys.path.insert(0, str(_PKG))
 
 import config
 import db
@@ -182,10 +183,21 @@ class NavigatorPane(ctk.CTkFrame):
         # Header
         hdr = ctk.CTkFrame(self, fg_color="transparent")
         hdr.pack(fill="x", padx=8, pady=(8, 4))
-        ctk.CTkLabel(hdr, text="WordPress Posts",
+        ctk.CTkLabel(hdr, text="WordPress",
                      font=ctk.CTkFont(weight="bold")).pack(side="left")
         ctk.CTkButton(hdr, text="⟳", width=30,
                       command=self.refresh).pack(side="right")
+
+        # Type filter (Posts vs Pages)
+        type_frame = ctk.CTkFrame(self, fg_color="transparent")
+        type_frame.pack(fill="x", padx=8, pady=(2, 0))
+        ctk.CTkLabel(type_frame, text="Type:").pack(side="left")
+        self._type_var = ctk.StringVar(value=config.get("last_wp_type") or "Posts")
+        type_menu = ctk.CTkOptionMenu(type_frame,
+                                      values=["Posts", "Pages"],
+                                      variable=self._type_var,
+                                      command=lambda _: self._reset())
+        type_menu.pack(side="left", padx=4)
 
         # Status filter
         filter_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -229,8 +241,12 @@ class NavigatorPane(ctk.CTkFrame):
         self._page = 1
         self.refresh()
 
+    def _post_type(self) -> str:
+        return "page" if self._type_var.get() == "Pages" else "post"
+
     def refresh(self):
         config.set("last_wp_status", self._status_var.get())
+        config.set("last_wp_type", self._type_var.get())
         for w in self._list_frame.winfo_children():
             w.destroy()
         self._loading_label = ctk.CTkLabel(self._list_frame, text="Loading…")
@@ -242,6 +258,7 @@ class NavigatorPane(ctk.CTkFrame):
                 per_page=20,
                 status=self._status_var.get(),
                 search=self._search_var.get(),
+                post_type=self._post_type(),
             )
 
         def _done(result):
@@ -462,6 +479,15 @@ class CardStack(ctk.CTkFrame):
         self._img_frame = ctk.CTkScrollableFrame(self, height=200)
         self._img_frame.pack(fill="x", padx=8, pady=4)
 
+        self._caption_fn_var = ctk.BooleanVar(
+            value=(config.get("caption_from_filename") or "1") == "1")
+        ctk.CTkCheckBox(self, text="Caption images from filename",
+                        variable=self._caption_fn_var,
+                        command=lambda: config.set(
+                            "caption_from_filename",
+                            "1" if self._caption_fn_var.get() else "0")
+                        ).pack(padx=8, pady=(2, 4), fill="x")
+
         ctk.CTkButton(self, text="Create mosaic from gallery",
                       command=self._create_mosaic).pack(padx=8, pady=4, fill="x")
 
@@ -551,7 +577,9 @@ class CardStack(ctk.CTkFrame):
                 url = img.get("url") or img.get("source_url") or img.get("src")
                 if not url:
                     continue
-                up = smacktalk_client.upload_media_from_url(url, img.get("filename"))
+                up = smacktalk_client.upload_media_from_url(
+                    url, img.get("filename"),
+                    caption_from_filename=self._caption_fn_var.get())
                 gallery_ids.append(up["image_id"])
             if not gallery_ids:
                 raise smacktalk_client.SnapError(
@@ -680,6 +708,7 @@ class SmackPressApp:
                 wp_title=result.get("title", ""),
                 wp_date=result.get("date", "")[:10],
                 wp_status=result.get("status", "publish"),
+                wp_type=result.get("type", "post"),
             )
             self.canvas.load_post(post_summary, result)
             self.cards.load_post(post_summary, result)
@@ -690,7 +719,7 @@ class SmackPressApp:
         pass  # Future: update word count, preview, etc.
 
     def push_post(self):
-        """Push the current draft to SnapSmack."""
+        """Push the current draft to SnapSmack (a longform post, or a static page)."""
         if not self._current_post_full:
             return
 
@@ -700,36 +729,52 @@ class SmackPressApp:
             mb.showwarning("Empty draft", "Write something before pushing.")
             return
 
-        payload = {
-            "title":       post.get("title", ""),
-            "content_raw": draft,
-            "date":        post.get("date", "")[:10],
-            "tags":        self.cards.get_tags(),
-            "status":      "draft",
-        }
-        cat_id = self.cards.get_category_id()
-        if cat_id:
-            payload["category_id"] = cat_id
+        is_page = (post.get("type") == "page")
+        local   = db.get_post(post["id"])
 
-        local = db.get_post(post["id"])
-        if local and local["snap_post_id"]:
-            # Update existing
-            payload["post_id"] = local["snap_post_id"]
+        if is_page:
+            payload = {
+                "title":       post.get("title", ""),
+                "content_raw": draft,
+                # Pages land active/visible: the CMS page editor has no
+                # draft/reactivate toggle, so an inactive page would be stranded.
+                "status":      "published",
+            }
+            if local and local["snap_post_id"]:
+                payload["page_id"] = local["snap_post_id"]
+            push_fn = smacktalk_client.create_page
+            id_key  = "page_id"
+        else:
+            payload = {
+                "title":       post.get("title", ""),
+                "content_raw": draft,
+                "date":        post.get("date", "")[:10],
+                "tags":        self.cards.get_tags(),
+                "status":      "draft",
+            }
+            cat_id = self.cards.get_category_id()
+            if cat_id:
+                payload["category_id"] = cat_id
+            if local and local["snap_post_id"]:
+                payload["post_id"] = local["snap_post_id"]
+            push_fn = smacktalk_client.create_post
+            id_key  = "post_id"
 
-        self.canvas._status_var.set("⏳ Pushing to SnapSmack…")
+        kind = "page" if is_page else "post"
+        self.canvas._status_var.set(f"⏳ Pushing {kind} to SnapSmack…")
 
         def _push():
-            return smacktalk_client.create_post(payload)
+            return push_fn(payload)
 
         def _done(result):
             if isinstance(result, Exception):
                 mb.showerror("SnapSmack", str(result))
                 self.canvas._status_var.set("Push failed.")
                 return
-            snap_id  = result.get("post_id")
+            snap_id  = result.get(id_key)
             snap_url = result.get("url", "")
             db.mark_migrated(post["id"], snap_id, snap_url)
-            self.canvas._status_var.set(f"✓ Pushed → {snap_url}")
+            self.canvas._status_var.set(f"✓ Pushed {kind} → {snap_url}")
             self.cards._mig_label.configure(text=f"✓ {snap_url}")
 
         _run_in_thread(_push, callback=_done)

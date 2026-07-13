@@ -404,6 +404,14 @@ include 'core/sidebar.php';
                     </select>
                 </div>
 
+                <div class="lens-input-wrapper">
+                    <label>CAPTION IMAGES FROM FILENAME <span class="field-tip" data-tip="When ON, a newly uploaded image with no caption takes its caption (and title) from the file name: hyphens/underscores become spaces, and camera-default names like IMG_1234 or DSC0012 are skipped. Applies to every uploader on this site.">ⓘ</span></label>
+                    <select name="settings[caption_from_filename]">
+                        <option value="0" <?php echo (($settings['caption_from_filename'] ?? '0') == '0') ? 'selected' : ''; ?>>OFF (DEFAULT)</option>
+                        <option value="1" <?php echo (($settings['caption_from_filename'] ?? '0') == '1') ? 'selected' : ''; ?>>ON — caption = file name</option>
+                    </select>
+                </div>
+
                     <label>AI TRAINING CRAWLERS <span class="field-tip" data-tip="Controls robots.txt directives for GPTBot, ClaudeBot, CCBot, Google-Extended, and ByteSpider. Regenerated on save.">ⓘ</span></label>
                     <select name="settings[ai_training_policy]">
                         <option value="no_opinion" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'no_opinion') ? 'selected' : ''; ?>>NO OPINION (DEFAULT)</option>

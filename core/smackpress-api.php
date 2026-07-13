@@ -137,7 +137,12 @@ if ($sub === 'media/upload' && $method === 'POST') {
     if (!function_exists('snap_ingest_image')) {
         require_once __DIR__ . '/image-ingest.php';
     }
-    $ingest = snap_ingest_image($pdo, $settings, $_FILES['file'], ['status' => 'published']);
+    $upload_opts = ['status' => 'published'];
+    if (isset($_POST['caption_from_filename'])) {
+        $upload_opts['caption_from_filename'] =
+            ($_POST['caption_from_filename'] === '1' || $_POST['caption_from_filename'] === 'true');
+    }
+    $ingest = snap_ingest_image($pdo, $settings, $_FILES['file'], $upload_opts);
     if (empty($ingest['ok'])) {
         smackpress_error(500, $ingest['error'] ?? 'Image ingest failed.');
     }
@@ -270,6 +275,72 @@ if ($sub === 'mosaics' && $method === 'POST') {
     $stmt->execute([$title, json_encode($asset_ids), $gap]);
     $mosaic_id = (int)$pdo->lastInsertId();
     smackpress_ok(['mosaic_id' => $mosaic_id, 'shortcode' => '[mosaic:' . $mosaic_id . ']']);
+}
+
+// =====================================================================
+// ROUTE: POST smackpress/pages — create or update a static page (snap_pages)
+// =====================================================================
+if ($sub === 'pages' && $method === 'POST') {
+    $body = json_decode(file_get_contents('php://input'), true);
+    if (!$body) smackpress_error(400, 'Invalid JSON body.');
+
+    $page_id     = !empty($body['page_id']) ? (int)$body['page_id'] : null;
+    $title       = trim($body['title'] ?? '');
+    $slug        = trim($body['slug'] ?? '');
+    $raw_content = $body['content'] ?? $body['content_raw'] ?? '';
+
+    // status/is_active → snap_pages.is_active. Default ACTIVE: the page editor
+    // (smack-pages.php) has no reactivate toggle, so an inactive page created
+    // here could not be switched on from admin. Callers may still force
+    // is_active=0 explicitly if they want it hidden.
+    if (isset($body['is_active'])) {
+        $is_active = $body['is_active'] ? 1 : 0;
+    } elseif (isset($body['status'])) {
+        $is_active = in_array($body['status'], ['published','publish','active'], true) ? 1 : 0;
+    } else {
+        $is_active = 1;
+    }
+
+    $image_asset  = trim($body['image_asset'] ?? '');
+    $raw_size     = $body['image_size']  ?? 'full';
+    $raw_align    = $body['image_align'] ?? 'center';
+    $image_size   = in_array($raw_size,  ['full','medium','small'], true) ? $raw_size  : 'full';
+    $image_align  = in_array($raw_align, ['center','left','right'],  true) ? $raw_align : 'center';
+    $image_shadow = !empty($body['image_shadow']) ? 1 : 0;
+    $menu_order   = (int)($body['menu_order'] ?? 0);
+
+    if ($title === '') smackpress_error(422, 'Title is required.');
+
+    $slug = $slug !== '' ? long_slugify($slug) : long_slugify($title);
+    $content_html = smack_autop_long($raw_content);
+
+    if ($page_id) {
+        // UPDATE
+        $chk = $pdo->prepare("SELECT id FROM snap_pages WHERE id = ?");
+        $chk->execute([$page_id]);
+        if (!$chk->fetch()) smackpress_error(404, 'Page not found.');
+
+        $pdo->prepare(
+            "UPDATE snap_pages SET title=?, slug=?, content=?, image_asset=?, image_size=?, image_align=?, image_shadow=?, is_active=?, menu_order=? WHERE id=?"
+        )->execute([$title, $slug, $content_html, $image_asset, $image_size, $image_align, $image_shadow, $is_active, $menu_order, $page_id]);
+        $pid = $page_id;
+    } else {
+        // INSERT — ensure unique slug (snap_pages.slug is UNIQUE)
+        $base_slug = $slug; $n = 0;
+        while (true) {
+            $c = $pdo->prepare("SELECT id FROM snap_pages WHERE slug = ?");
+            $c->execute([$slug]);
+            if (!$c->fetch()) break;
+            $slug = $base_slug . '-' . (++$n);
+        }
+        $pdo->prepare(
+            "INSERT INTO snap_pages (title, slug, content, image_asset, image_size, image_align, image_shadow, is_active, menu_order) VALUES (?,?,?,?,?,?,?,?,?)"
+        )->execute([$title, $slug, $content_html, $image_asset, $image_size, $image_align, $image_shadow, $is_active, $menu_order]);
+        $pid = (int)$pdo->lastInsertId();
+    }
+
+    $page_url = $base_url . 'page.php?slug=' . rawurlencode($slug);
+    smackpress_ok(['page_id' => $pid, 'slug' => $slug, 'url' => $page_url, 'is_active' => $is_active]);
 }
 
 // =====================================================================

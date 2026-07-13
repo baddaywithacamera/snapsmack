@@ -8,9 +8,18 @@ credentials, SnapSmack API key, AI provider, etc.) live here.
 
 import sqlite3
 import os
+import sys
 from pathlib import Path
 
-DB_DIR  = Path.home() / ".smackpress"
+
+def _app_dir() -> Path:
+    """Portable: state rides next to the .exe when frozen, else next to app.py."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent.parent
+
+
+DB_DIR  = _app_dir()
 DB_PATH = DB_DIR / "smackpress.db"
 
 _SCHEMA = """
@@ -29,7 +38,8 @@ CREATE TABLE IF NOT EXISTS posts (
     snap_url        TEXT    DEFAULT NULL,
     migrated_at     TEXT    DEFAULT NULL,
     hidden_at       TEXT    DEFAULT NULL,
-    notes           TEXT    DEFAULT ''
+    notes           TEXT    DEFAULT '',
+    wp_type         TEXT    DEFAULT 'post'
 );
 
 CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(wp_status);
@@ -52,6 +62,7 @@ _DEFAULTS = {
     ),
     "last_wp_page":     "1",
     "last_wp_status":   "publish",
+    "caption_from_filename": "1",
     "window_width":     "1400",
     "window_height":    "900",
 }
@@ -62,6 +73,11 @@ def _conn() -> sqlite3.Connection:
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
     con.executescript(_SCHEMA)
+    # Migrate DBs created before pages support (adds wp_type if absent).
+    try:
+        con.execute("ALTER TABLE posts ADD COLUMN wp_type TEXT DEFAULT 'post'")
+    except sqlite3.OperationalError:
+        pass  # column already exists
     con.commit()
     # Seed defaults for any missing keys
     for k, v in _DEFAULTS.items():

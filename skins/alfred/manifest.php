@@ -79,18 +79,53 @@ return [
 
         'header_image' => [
             'section'  => 'HEADER',
-            'type'     => 'asset',
+            'type'     => 'image',
             'label'    => 'Header Background Image',
             'default'  => '',
-            'help'     => 'Full-width image displayed behind the site logo. Recommended: 1440×900px minimum. Leave blank for the default dark grey.',
+            'accept'   => 'image/jpeg,image/png,image/webp',
+            'help'     => 'Full-width image displayed behind the site logo. Recommended: 1440×900px minimum. Leave blank for the default.',
+            'hint'     => 'Recommended 1440×900px or larger. Leave blank for the default.',
+        ],
+
+        'header_image_height' => [
+            'section'  => 'HEADER',
+            'type'     => 'select',
+            'label'    => 'Header Image Height',
+            'default'  => '100vh',
+            'options'  => [
+                '100vh' => 'Full screen',
+                '640px' => 'Tall (640px)',
+                '460px' => 'Medium (460px)',
+                '320px' => 'Short (320px)',
+            ],
+            'selector' => ':root',
+            'property' => '--alfred-header-h',
+            'help'     => 'How tall the header background image area is.',
+        ],
+
+        'header_image_fit' => [
+            'section'  => 'HEADER',
+            'type'     => 'select',
+            'label'    => 'Header Image Fit',
+            'default'  => 'cover',
+            'options'  => [
+                'cover'   => 'Cover (fill the area, may crop)',
+                'contain' => 'Contain (show the whole image, no crop)',
+                'auto'    => 'Actual size',
+            ],
+            'selector' => ':root',
+            'property' => '--alfred-header-fit',
+            'help'     => 'How the image fills the header area.',
         ],
 
         'header_logo' => [
             'section'  => 'HEADER',
-            'type'     => 'asset',
+            'type'     => 'image',
             'label'    => 'Custom Logo',
             'default'  => '',
+            'accept'   => 'image/jpeg,image/png,image/webp,image/svg+xml',
             'help'     => 'Upload a logo image to replace the site title text. Transparent PNG recommended.',
+            'hint'     => 'Transparent PNG recommended.',
         ],
 
         'retina_logo' => [

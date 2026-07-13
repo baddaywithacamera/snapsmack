@@ -64,17 +64,21 @@ return [
         /* ===== HEADER ===== */
         'header_image' => [
             'section' => 'HEADER',
-            'type'    => 'asset',
+            'type'    => 'image',
             'label'   => 'Header Banner Image',
             'default' => '',
+            'accept'  => 'image/jpeg,image/png,image/webp',
             'help'    => 'Optional photo for the blue banner (the classic Kubrick sky-and-hills spot). Recommended 960x220px. Leave blank for the default blue gradient.',
+            'hint'    => 'Recommended 960x220px. Leave blank for the default blue gradient.',
         ],
         'header_logo' => [
             'section' => 'HEADER',
-            'type'    => 'asset',
+            'type'    => 'image',
             'label'   => 'Custom Logo',
             'default' => '',
+            'accept'  => 'image/jpeg,image/png,image/webp,image/svg+xml',
             'help'    => 'Upload a logo to replace the site title text in the banner. Transparent PNG recommended.',
+            'hint'    => 'Transparent PNG recommended.',
         ],
         'show_tagline' => [
             'section' => 'HEADER',
