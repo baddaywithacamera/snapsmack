@@ -12,6 +12,84 @@ a small CT is plenty.
 Everything below is a fresh Debian 12 CT. Adjust IDs/IPs/paths to your basement
 Proxmox. `~15 min` end to end.
 
+> **Two paths.** If you're standing up a brand-new relay, start at §1. If the relay
+> already exists on **CT106** (it does, as of 2026-07-13) and you're re-homing it to
+> **photoblogs.fyi** with the DB on **CT110**, do **§0 first** — sections 1–7 are then
+> reference for the pieces §0 points back to.
+
+---
+
+## 0. RE-HOME MIGRATION → photoblogs.fyi (existing CT106 relay)
+
+**State (2026-07-13):** relay app runs on **CT106 = 192.168.1.16** against a *local*
+MariaDB (db `smack`). **Target:** DB consolidated onto **CT110 = 192.168.1.20** as
+`smackverse_relay`; public identity re-homed to **photoblogs.fyi**; private key
+**encrypted at rest**. **Zero subscribers today, so the identity + key changes are
+FREE now** — do the disruptive ones first; the pure-infra DB move can trail.
+
+Backup BEFORE go-live. Dump already pulled: `C:\Users\neutr\Documents\smack_2026-07-13.sql`
+(plain `mysqldump smack`, loads into any db name). Keys are in Bitwarden.
+
+### 0a. Encrypt the key — do FIRST, while 0 followers  ⟵ code shipped, needs the KEK
+`lib/ap.php` now stores the relay private key AES-256-CBC encrypted (`enc:v1:`
+envelope, same as the CMS `core/secret-store.php`) and decrypts in-memory only at
+sign time. **It is inert until a KEK exists in the live `config.php`.** On **CT106**:
+
+```bash
+php -r 'echo bin2hex(random_bytes(32)), "\n";'   # generate the KEK ON the box
+nano /srv/smackverse-relay/config.php            # add:  'secret_kek' => '<that value>',
+```
+
+Save that KEK to Bitwarden next to `db_pass`. With it set, a **fresh** key is born
+encrypted; a **legacy plaintext** key already in `relay_settings` is transparently
+re-encrypted in place the next time the relay signs. Losing the KEK = the stored key
+can't be decrypted and the relay mints a fresh one (fine at 0 followers, strands them
+later — hence: back it up).
+
+### 0b. Re-home to photoblogs.fyi — free while 0 followers
+`config.php` on CT106: `domain → photoblogs.fyi`. Route the hostname into CT106 the
+SAME way it's served today — via the Cloudflare **"snapsmack"** tunnel (add the
+hostname to the tunnel, or A-record — your ingress). New actor id
+`https://photoblogs.fyi/actor`; the fresh **encrypted** keypair mints on the first
+`/actor` hit. Retire the `smackverse.snapsmack.ca` vhost (301 optional). Update the
+CMS default relay URL.
+
+### 0c. Verify identity
+```bash
+curl -s https://photoblogs.fyi/actor | head -c 400 ; echo    # Application actor + publicKey
+curl -s 'https://photoblogs.fyi/.well-known/webfinger?resource=acct:relay@photoblogs.fyi'
+```
+
+### 0d. Move the DB CT106 → CT110 — pure infra, can trail (costs the same anytime)
+On **CT110 (192.168.1.20)**: `mysql -e "SHOW DATABASES;"` — `smack` collides with the
+CMS DB, so use the clean name:
+```bash
+mysql -e "CREATE DATABASE smackverse_relay CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -e "CREATE USER 'relay'@'192.168.1.16' IDENTIFIED BY 'PICK_A_STRONG_PASS'; \
+          GRANT ALL ON smackverse_relay.* TO 'relay'@'192.168.1.16'; FLUSH PRIVILEGES;"
+mysql smackverse_relay < smack_2026-07-13.sql      # dump loads into any name
+# confirm MariaDB binds on the LAN (bind-address), not just 127.0.0.1
+```
+Then repoint CT106 `config.php`: `db_host → 192.168.1.20`, `db_name → smackverse_relay`,
+`db_user → relay`, new pass. Drop `mariadb-server` from CT106 (app-only after).
+
+### 0e. Wire the backup
+Add `smackverse_relay` to `DATABASES=()` in `/usr/local/bin/mariadb_backup.sh`
+(b2 CLI → OptiplexSQL). Run it once; confirm it lands in B2.
+
+### 0f. Go live
+Allowlist the fleet in `admin.php`, JOIN from one blog, confirm fan-out (§8).
+
+### 0g. Security debt from the key-pull night
+CT106 SSH was left open (`PermitRootLogin yes` + password) to pull the key. Re-lock:
+```bash
+sed -i 's/^PermitRootLogin yes/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+sshd -t && systemctl restart ssh
+```
+Clear the root password from the FileZilla site's Comments box.
+
+---
+
 ## 1. Create the CT (run on the Proxmox host)
 
 ```bash
@@ -124,9 +202,11 @@ Open the operator console:
 
 ## Notes / gotchas
 
-- **Keypair** generates on first `/actor` hit and is stored in `relay_settings`.
-  Back up that row (or the whole DB) once live — losing it means re-subscribing
-  everyone.
+- **Keypair** generates on first `/actor` hit and is stored in `relay_settings`,
+  **encrypted at rest** when `secret_kek` is set in `config.php` (see §0a) — the
+  private key never sits in the DB in the clear. Back up the KEK *and* that row (or
+  the whole DB) once live: losing the row means re-subscribing everyone; losing the
+  KEK means the relay can't read its own key and mints a fresh one.
 - The relay stores **no images** — only activity ids + text fan out; photos always
   load from the origin blog. Storage/bandwidth stay tiny.
 - Additive, never a SPOF: if this CT is down, blogs still federate directly. Safe to
