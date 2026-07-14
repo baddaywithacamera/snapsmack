@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.404 — "Party of One" (2026-07-14)
+
+The SMACKVERSE client leaves the admin and becomes its own Pixelfed. A standalone page runs your blog as a fediverse actor — follow, like, comment, boost, search, DMs, timelines and notifications — in a UI matched to Pixelfed itself.
+
+- **Standalone Pixelfed-compatible client (`pixel.php`)** — the two-way SMACKVERSE client moves out of the admin chrome into its own owner-only page (`auth-smack`) that reads and behaves like a real Pixelfed instance: three-column shell, black default with a white/black toggle, home / local / global timelines, a profile with grid / masonry / list layouts, inline single-post comments with reply, notifications with filter tabs, native Direct messages, and handle + hashtag search. Built by observing the live pixelfed.ca UI and reproduced with entirely original markup / CSS / JS — no Pixelfed source (GPL) is used. Interactions (follow/unfollow, like/unlike, boost, reply, DM, mark-read) reuse the existing `core/smackverse.php` engine through the page's own `?ajax` read + `sspf_action` POST router, so nothing about the federation engine is rebuilt. Posting stays in the blog; this is the interaction surface. New files: `pixel.php`, `assets/css/ss-pixel.css`, `assets/js/ss-pixel.js`.
+- **SMACKVERSE help topic** — `smack-help.php` gains a `SMACKVERSE → Pixelfed Client` section (admin-only) documenting how the client opens, its panels, and every interaction — the first in-app help for the fediverse layer.
+
 ## 0.7.403 — "Amending Fences" (2026-07-14)
 
 The search box stops pretending. The Pixelfed client comes off its leash to every mode, and the GYSS desktop tool builds again.

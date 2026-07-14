@@ -3368,6 +3368,94 @@ HTML
 ];
 
 // =========================================================================
+//  SMACKVERSE — FEDIVERSE
+// =========================================================================
+
+$help_topics['smackverse-pixelfed'] = [
+    'section'  => 'SMACKVERSE',
+    'title'    => 'Pixelfed Client',
+    'icon'     => '&#x1F310;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>SMACKVERSE &mdash; Pixelfed Client</h3>
+<p>SMACKVERSE is SnapSmack's two-way fediverse layer. Your blog already federates
+<em>out</em> as an ActivityPub actor &mdash; every photo you publish reaches followers on
+Pixelfed, Mastodon and the wider fediverse. The <strong>Pixelfed client</strong> is the
+other half: a standalone page (<code>pixel.php</code>) that lets you interact with that
+network from inside SnapSmack &mdash; follow people, like and comment, boost, search, send
+direct messages, and read your timelines &mdash; in an interface built to look and feel like
+Pixelfed itself.</p>
+<p><strong>Posting is not here.</strong> You publish photos the normal way, through the blog;
+the client is purely the interaction surface. Think of it as your Pixelfed app, pointed at
+your own blog's fediverse identity.</p>
+
+<h4>Opening it</h4>
+<p>Browse to <code>pixel.php</code> on your site (for example
+<code>https://yourblog.tld/pixel.php</code>). It is <strong>owner-only</strong> &mdash; you
+must be logged into the admin; there is no public access. The page renders standalone, with
+none of the admin chrome, so it reads as a clean Pixelfed client. It requires SMACKVERSE to be
+switched on in <strong>Federation</strong> first; if it is off, the client still loads but
+stays quiet until you enable it.</p>
+
+<h4>Layout</h4>
+<p>Three columns, like Pixelfed's own web app. The left rail is your blog's identity card and
+the navigation. The centre column is whatever panel you are viewing. The right rail is a live
+notifications preview.</p>
+<p>The background defaults to black. The <strong>moon / sun toggle</strong> in the top bar
+switches to a white theme, and your choice is remembered on that browser.</p>
+
+<h4>The panels</h4>
+<ul>
+    <li><strong>Home</strong> &mdash; the latest photos from the accounts your blog follows,
+    newest first. If your ingested timeline is still filling, it seeds from a live crawl so Home
+    is never empty right after you follow someone.</li>
+    <li><strong>Local / Global</strong> &mdash; the public timelines of your home instance (set
+    one in Federation, or the client borrows the host of someone you already follow).</li>
+    <li><strong>Discover</strong> &mdash; a photo grid drawn from the global timeline.</li>
+    <li><strong>Notifications</strong> &mdash; follows, likes, comments and boosts aimed at you,
+    with filter tabs (All / Mentions / Likes / Followers / Reblogs / DMs). Opening the panel
+    marks them read and clears the badge.</li>
+    <li><strong>Direct Messages</strong> &mdash; your DM threads and conversations. Open a thread
+    to read it and reply. Note that fediverse DMs are <em>not</em> end-to-end encrypted &mdash;
+    the client reminds you at the top of every conversation.</li>
+    <li><strong>Profile</strong> &mdash; your blog's actor as the fediverse sees it, rendered
+    from your own outbox: avatar, bio, follower / following / post counts, and your photo grid
+    with grid / masonry / list layouts.</li>
+</ul>
+
+<h4>Interacting</h4>
+<p>Every action runs as your blog's actor and is delivered, signed, to the remote server:</p>
+<ul>
+    <li><strong>Like / Unlike</strong> &mdash; tap the heart on any post.</li>
+    <li><strong>Comment</strong> &mdash; the Comment button opens the thread inline; existing
+    replies load beneath the post and you can add your own.</li>
+    <li><strong>Boost</strong> &mdash; reshare a post to your followers.</li>
+    <li><strong>Follow / Unfollow</strong> &mdash; from any profile. A remote follow may show as
+    "Requested" until the other server accepts it.</li>
+    <li><strong>Search</strong> &mdash; the top bar takes a handle (<code>@user@host</code>) to
+    open that account's real profile, or a <code>#hashtag</code> (or any word) to pull recent
+    photos tagged that way. Press Enter to run it.</li>
+</ul>
+
+<h4>One client, both modes</h4>
+<p>The client works the same whether your blog runs as GRAMOFSMACK (carousels) or SMACKONEOUT
+(standalone images) &mdash; federation is protocol-level and mode-agnostic, so a photoblog
+interacts exactly the way a carousel blog does.</p>
+
+<h4>Good to know</h4>
+<ul>
+    <li>A remote account showing "0 followers" for you is a Pixelfed-side display quirk, not a
+    SnapSmack bug &mdash; your follow was accepted.</li>
+    <li>Some instances gate hashtag and account search behind a login; where a public lookup
+    returns nothing, search falls back gracefully rather than erroring.</li>
+    <li>Interactions need SMACKVERSE enabled. If it is off, the buttons will tell you to switch
+    it on in Federation.</li>
+</ul>
+HTML
+];
+
+
+// =========================================================================
 //  SKIN HELP HOOK
 // =========================================================================
 
