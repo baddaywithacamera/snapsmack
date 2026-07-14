@@ -1556,10 +1556,10 @@ input[type="range"]:active::-webkit-slider-thumb {
 
 /* --- ADMIN FOOTER --- */
 #admin-universal-footer {
-    position: fixed;
-    bottom: 0;
-    left: 240px;
-    right: 0;
+    /* 0.7.405: flow with the page (was position:fixed) so full-page screen-caps
+       of long lists (e.g. Multisite) don't get sliced by a pinned footer. */
+    position: static;
+    margin-left: 240px;
     border-top-width: 1px;
     border-top-style: solid;
     padding: 15px 80px;
@@ -3617,7 +3617,7 @@ input[type="range"]:active::-webkit-slider-thumb {
     }
 
     #admin-universal-footer {
-        left: 0;
+        margin-left: 0;
         padding: 15px 25px;
     }
 
@@ -6012,7 +6012,7 @@ input[type="range"]:active::-webkit-slider-thumb {
     }
 
     #admin-universal-footer {
-        left: 0;
+        margin-left: 0;
         padding: 15px 25px;
     }
 

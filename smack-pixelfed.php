@@ -333,6 +333,13 @@ if (isset($_GET['ajax'])) {
     exit;
 }
 
+/* 0.7.405: this in-admin client is SUPERSEDED by the standalone pixel.php client
+   (Pixelfed-faithful, correct fedi order). The ?ajax / sspf_action endpoints
+   above still answer — kept in case anything calls them — but a plain page view
+   now forwards to the real client instead of rendering the old order-scrambled UI. */
+header('Location: pixel.php');
+exit;
+
 // Blog actor handle for the top bar (@user@host), read from the actor document.
 $sv_handle = '';
 try {
