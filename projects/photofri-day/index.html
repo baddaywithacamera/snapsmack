@@ -17,6 +17,12 @@
 <meta property="og:description" content="A weekly photo challenge for the whole Fediverse. Your photos stay yours — we just point people home to your work. Coming September 2026.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://photofri.day/">
+<meta property="og:image" content="https://photofri.day/img/logo-pf-black.png">
+
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png">
+<link rel="icon" href="img/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
 
 <style>
   :root {
@@ -60,9 +66,15 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 56px 24px;
+    padding: 30px 24px;
     max-width: 760px;
     margin: 0 auto;
+  }
+
+  .logo-mark {
+    width: clamp(80px, 17vw, 112px);
+    height: auto;
+    margin-bottom: 16px;
   }
 
   .kicker {
@@ -87,7 +99,7 @@
   h1 .dot { color: var(--red); }
 
   .tagline {
-    margin-top: 20px;
+    margin-top: 14px;
     font-family: 'Arial Black', Arial, sans-serif;
     text-transform: uppercase;
     letter-spacing: 0.02em;
@@ -100,7 +112,7 @@
     width: 64px;
     height: 4px;
     background: var(--red);
-    margin: 30px auto;
+    margin: 20px auto;
   }
 
   .lede {
@@ -111,27 +123,27 @@
   }
 
   .sub {
-    margin-top: 20px;
+    margin-top: 16px;
     font-size: 0.98rem;
     line-height: 1.7;
     color: var(--muted);
-    max-width: 34em;
+    max-width: 46em;
   }
   .sub strong { color: var(--ink); font-weight: normal; border-bottom: 1px solid var(--red); }
 
   /* participation links */
   .participate {
-    margin-top: 40px;
+    margin-top: 30px;
     width: 100%;
-    max-width: 46em;
+    max-width: 40em;
   }
   .participate .label {
     font-family: 'Courier New', monospace;
     text-transform: uppercase;
     letter-spacing: 0.2em;
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     color: var(--muted);
-    margin: 0 0 34px;
+    margin: 0 0 30px;
     line-height: 1.7;
   }
   .links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -140,15 +152,15 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    padding: 17px 22px;
+    gap: 14px;
+    padding: 14px 18px;
     border: 2px solid var(--red);
     color: var(--ink);
     text-decoration: none;
     font-family: 'Arial Black', Arial, sans-serif;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    font-size: 0.98rem;
+    font-size: 0.82rem;
     transition: background 0.15s, color 0.15s, transform 0.15s;
   }
   .pill:hover, .pill:focus-visible {
@@ -160,11 +172,11 @@
   .pill-main {
     display: flex;
     align-items: center;
-    gap: 13px;
+    gap: 11px;
   }
   .pill .ico {
-    width: 30px;
-    height: 30px;
+    width: 22px;
+    height: 22px;
     object-fit: contain;
     display: block;
     flex: none;
@@ -174,13 +186,13 @@
     font-weight: normal;
     text-transform: none;
     letter-spacing: 0;
-    font-size: 0.88rem;
+    font-size: 0.74rem;
     color: var(--muted);
   }
   .pill:hover .host, .pill:focus-visible .host { color: #ffd0d0; }
 
   .badge {
-    margin-top: 44px;
+    margin-top: 40px;
     display: inline-block;
     font-family: 'Arial Black', Arial, sans-serif;
     text-transform: uppercase;
@@ -211,16 +223,16 @@
 <body>
 
   <main class="wrap">
-    <p class="kicker">Every Friday · Anywhere on the Fediverse</p>
+    <img class="logo-mark" src="img/logo-pf-whiteondark-trans.png" alt="" width="850" height="850">
 
     <h1>PHOTOFRI<span class="dot">.</span>DAY</h1>
 
-    <p class="tagline">Your Photo Fri<span class="dot">.</span>day. Federated.</p>
+    <p class="tagline">The Federated Weekly Photo Challenge</p>
 
     <div class="rule"></div>
 
     <p class="lede">
-      A weekly photo challenge for the whole Fediverse. One theme, every Friday; shoot it and <span style="color: var(--link); font-weight: bold;">#share</span> it from wherever you are.
+      A weekly photo challenge for the whole Fediverse. One theme, every Friday; shoot it and <span style="color: var(--link); font-weight: bold;">#share</span> it from wherever you already are.
     </p>
 
     <p class="sub">
