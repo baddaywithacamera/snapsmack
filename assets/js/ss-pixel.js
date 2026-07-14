@@ -68,6 +68,24 @@
     return out.replace(/\n/g, "<br>");
   }
 
+  /* Render a fediverse bio: it arrives as HTML (<br>, <a>, <p>). Render it,
+     but strip scripts / event handlers / javascript: URLs first. */
+  function bioHTML(str) {
+    if (!str) return "";
+    var d = document.createElement("div");
+    d.innerHTML = String(str);
+    $all("script,style,iframe,object,embed,link,meta", d).forEach(function (n) { n.remove(); });
+    $all("*", d).forEach(function (n) {
+      Array.prototype.slice.call(n.attributes).forEach(function (at) {
+        var nm = at.name.toLowerCase();
+        if (nm.indexOf("on") === 0) n.removeAttribute(at.name);
+        if ((nm === "href" || nm === "src") && /^\s*javascript:/i.test(at.value)) n.removeAttribute(at.name);
+      });
+      if (n.tagName === "A") { n.setAttribute("target", "_blank"); n.setAttribute("rel", "noopener nofollow"); }
+    });
+    return d.innerHTML;
+  }
+
   // Inline line-icons (generic UI glyphs, stroke = currentColor) for the clean
   // Pixelfed look — no color emoji. Original SVG, not lifted from Pixelfed.
   function svg(w, body, fill) {
@@ -247,6 +265,7 @@
         (res.state === "accepted" ? "Following" : res.state === "pending" ? "Requested" : "Follow") + "</button>";
     }
     var left = node('<div class="sx-prof-left">' +
+      '<button class="sx-prof-back" aria-label="Back to home">&#8249;</button>' +
       '<img class="sx-prof-av" src="' + avatar(a.avatar) + '" alt="">' +
       '<div class="sx-prof-name">' + esc(a.name || a.username) + "</div>" +
       '<div class="sx-prof-handle">' + esc(a.handle) + "</div>" +
@@ -255,7 +274,7 @@
         "<div><b>" + (a.followers != null ? a.followers : "–") + "</b><span>Followers</span></div>" +
         "<div><b>" + (a.following != null ? a.following : "–") + "</b><span>Following</span></div>" +
       "</div>" + followBtn +
-      (a.summary ? '<div class="sx-prof-bio">' + linkifyCaption(a.summary) + "</div>" : "") +
+      (a.summary ? '<div class="sx-prof-bio">' + bioHTML(a.summary) + "</div>" : "") +
       (a.url ? '<div class="sx-prof-meta">&#128279; <a href="' + esc(a.url) + '" target="_blank" rel="noopener">' + esc((a.url || "").replace(/^https?:\/\//, "")) + "</a></div>" : "") +
       "</div>");
     var main = node('<div class="sx-prof-main">' +
@@ -289,6 +308,8 @@
         });
       }
     });
+    var backBtn = $(".sx-prof-back", left);
+    if (backBtn) backBtn.addEventListener("click", function () { loadPanel("home"); });
     wrap.appendChild(left); wrap.appendChild(main);
     container.innerHTML = ""; container.appendChild(wrap);
   }
@@ -296,7 +317,7 @@
   /* ---- direct messages --------------------------------------------------- */
   function renderDirect(container, res) {
     var wrap = node('<div class="sx-dm-wrap"><div class="sx-dm-list"></div>' +
-      '<div class="sx-dm-side"><button class="active">Inbox</button><button>Sent</button><button>Requests</button></div></div>');
+      '<div class="sx-dm-side"><button class="sx-dm-compose">&#9993; Compose</button><button class="active">Inbox</button><button>Sent</button><button>Requests</button></div></div>');
     var list = $(".sx-dm-list", wrap);
     var threads = res.threads || [];
     if (!threads.length) list.appendChild(node('<div class="sx-note">No messages yet.</div>'));
@@ -375,9 +396,13 @@
   /* ---- panel loading / routing ------------------------------------------- */
   var loaded = {};
   function bodyOf(panel) { return $('.sx-panel[data-panel="' + panel + '"] .sx-panel-body'); }
+  var FEED_PANELS = { home: 1, local: 1, global: 1 };
   function showPanel(panel) {
     $all(".sx-panel").forEach(function (p) { p.classList.toggle("active", p.getAttribute("data-panel") === panel); });
     $all(".sx-nav a").forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-panel") === panel); });
+    // right notifications rail only on feed views; profile takes over the whole width
+    app.classList.toggle("profile-mode", panel === "profile");
+    app.classList.toggle("wide", panel !== "profile" && !FEED_PANELS[panel]);
     window.scrollTo(0, 0);
   }
   function loadPanel(panel, force) {
@@ -468,6 +493,16 @@
     try { localStorage.setItem("pixel-theme", next); } catch (e) {}
     themeBtn.innerHTML = next === "dark" ? "&#9790;" : "&#9728;";
   });
+
+  // account menu — login indicator + logout
+  var accBtn = $(".sx-me-btn"), accMenu = $(".sx-account-menu");
+  if (accBtn && accMenu) {
+    accBtn.addEventListener("click", function (e) { e.stopPropagation(); accMenu.hidden = !accMenu.hidden; });
+    accMenu.addEventListener("click", function (e) { e.stopPropagation(); });
+    document.addEventListener("click", function () { accMenu.hidden = true; });
+    var accProf = accMenu.querySelector('[data-panel="profile"]');
+    if (accProf) accProf.addEventListener("click", function (e) { e.preventDefault(); accMenu.hidden = true; loadPanel("profile"); });
+  }
 
   loadPanel(app.getAttribute("data-default-panel") || "home");
   loadRail();

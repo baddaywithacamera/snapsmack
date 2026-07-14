@@ -226,7 +226,20 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
     </div>
     <div class="sx-top-right">
       <button class="sx-theme" aria-label="Toggle light/dark">&#9790;</button>
-      <img class="sx-me" src="<?php echo px_e($sv_avatar); ?>" alt="You">
+      <div class="sx-account">
+        <button class="sx-me-btn" aria-label="Your account" aria-haspopup="true">
+          <img class="sx-me" src="<?php echo px_e($sv_avatar); ?>" alt="You">
+        </button>
+        <div class="sx-account-menu" hidden>
+          <div class="sx-account-who">
+            <span class="sx-account-status">&#9679; Signed in</span>
+            <span class="sx-account-handle"><?php echo px_e($sv_handle ?: 'this blog'); ?></span>
+          </div>
+          <a href="pixel.php" data-panel="profile" class="sx-account-item">My profile</a>
+          <a href="index.php" class="sx-account-item">Back to blog</a>
+          <a href="logout.php" class="sx-account-item sx-account-logout">Log out</a>
+        </div>
+      </div>
     </div>
   </div>
 </header>
