@@ -93,7 +93,9 @@ def main() -> None:
     old, text = read_version()
     new = next_version(old)
     bump_main(old, new, text)
-    clone_spec(old, new)
+    # No per-version spec clone: build.bat uses the single fixed sumnabatch.spec
+    # (it auto-bundles every local .py). Cloning smackyourbatchup-<ver>.spec was
+    # the SYBU pattern that propagated a truncated spec into 0.7.19/0.7.20.
     stub_changelog(new)
     print(new)
 

@@ -69,6 +69,7 @@
     function loadPanel(name) {
         if (name === 'home' || name === 'local' || name === 'global') { loadFeedPanel(bodyFor(name), name); return; }
         if (name === 'notifications') { loadNotifications(bodyFor('notifications')); return; }
+        if (name === 'direct') { loadDirect(bodyFor('direct')); return; }
         if (name === 'profile') { loadProfile(bodyFor('profile'), ''); return; }
         if (name === 'search')  { loadProfile(bodyFor('search'), searchQuery); return; }
     }
@@ -143,6 +144,114 @@
             if (!b) { b = el('span', 'sspf-badge'); link.appendChild(document.createTextNode(' ')); link.appendChild(b); }
             b.textContent = String(n);
         } else if (b) { b.remove(); }
+    }
+
+    // ── Direct messages (native DM inbox: threads → conversation → send) ───────
+    function loadDirect(body) {
+        if (!body) return;
+        body.innerHTML = '';
+        body.appendChild(noteEl('Loading your messages…'));
+        fetch('smack-pixelfed.php?ajax=direct', { headers: { 'X-Requested-With': 'fetch' } })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+            .then(function (data) {
+                if (!data.ok) { body.innerHTML = ''; body.appendChild(noteEl(data.msg || 'Messaging is off.')); return; }
+                renderDMThreads(body, data.threads || []);
+            })
+            .catch(function () { body.innerHTML = ''; body.appendChild(noteEl('Couldn’t load messages just now — try again.')); });
+    }
+
+    function renderDMThreads(body, threads) {
+        body.innerHTML = '';
+        body.appendChild(dmComposer(null, '', null));   // start a NEW conversation
+        if (!threads.length) {
+            body.appendChild(noteEl('No conversations yet. Message a @user@host above; replies to a DM you receive show up here.'));
+            return;
+        }
+        var list = el('div', 'sspf-dm-threads');
+        threads.forEach(function (t) {
+            var row = el('div', 'sspf-dm-thread');
+            var top = el('div', 'sspf-dm-thread-top');
+            top.appendChild(el('span', 'sspf-dm-who', t.handle || t.remote_actor_url));
+            if (Number(t.unread) > 0) { var b = el('span', 'sspf-badge'); b.textContent = String(t.unread); top.appendChild(b); }
+            if (Number(t.is_request) === 1) { top.appendChild(el('span', 'sspf-dm-request', 'REQUEST')); }
+            row.appendChild(top);
+            row.appendChild(el('div', 'sspf-dm-preview', t.last_body || ''));
+            row.appendChild(el('div', 'sspf-dm-time', t.last_at || ''));
+            row.addEventListener('click', function () { openDMThread(body, t.remote_actor_url, t.handle || t.remote_actor_url); });
+            list.appendChild(row);
+        });
+        body.appendChild(list);
+    }
+
+    function openDMThread(body, actorUrl, handle) {
+        body.innerHTML = '';
+        var back = el('button', 'sspf-btn sspf-btn-ghost', '‹ All messages');
+        back.addEventListener('click', function () { loadDirect(body); });
+        body.appendChild(back);
+        body.appendChild(el('h3', 'sspf-panel-title', handle));
+        var convo = el('div', 'sspf-dm-convo');
+        convo.appendChild(noteEl('Loading conversation…'));
+        body.appendChild(convo);
+        body.appendChild(dmComposer(actorUrl, handle, convo));
+        fetch('smack-pixelfed.php?ajax=direct&actor=' + encodeURIComponent(actorUrl), { headers: { 'X-Requested-With': 'fetch' } })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+            .then(function (data) {
+                convo.innerHTML = '';
+                var msgs = (data && data.messages) || [];
+                if (!msgs.length) { convo.appendChild(noteEl('No messages in this thread yet.')); return; }
+                msgs.forEach(function (m) { convo.appendChild(dmBubble(m)); });
+                convo.scrollTop = convo.scrollHeight;
+            })
+            .catch(function () { convo.innerHTML = ''; convo.appendChild(noteEl('Couldn’t load this conversation.')); });
+    }
+
+    function dmBubble(m) {
+        var mine = (m.direction === 'out');
+        var b = el('div', 'sspf-dm-bubble' + (mine ? ' sspf-dm-mine' : ''));
+        if (Number(m.is_deleted)) { b.appendChild(el('div', 'sspf-dm-text', '(message unsent)')); return b; }
+        if (m.body) b.appendChild(el('div', 'sspf-dm-text', m.body));
+        if (m.media_url) {
+            var a = el('a', 'sspf-dm-media', '[attached image]');
+            a.href = m.media_url; a.target = '_blank'; a.rel = 'noopener';
+            b.appendChild(a);
+        }
+        b.appendChild(el('div', 'sspf-dm-time', m.created_at || ''));
+        return b;
+    }
+
+    // Composer: target === null means "type a @user@host to start"; else a reply.
+    function dmComposer(target, handle, convo) {
+        var wrap = el('div', 'sspf-dm-composer');
+        var toInput = null;
+        if (target === null) {
+            toInput = el('input', 'sspf-dm-to');
+            toInput.type = 'text';
+            toInput.placeholder = '@user@host — start a message';
+            wrap.appendChild(toInput);
+        }
+        var ta = el('textarea', 'sspf-dm-input');
+        ta.placeholder = (target === null) ? 'Message…' : 'Reply to ' + (handle || 'them') + '…';
+        wrap.appendChild(ta);
+        var send = el('button', 'sspf-btn', 'Send');
+        wrap.appendChild(send);
+        var flash = el('span', 'sspf-flash');
+        wrap.appendChild(flash);
+        if (!enabled) { send.disabled = true; flash.textContent = 'Federation is off.'; }
+        send.addEventListener('click', function () {
+            var to   = (target !== null) ? target : (toInput ? toInput.value.trim() : '');
+            var text = ta.value.trim();
+            if (!to || !text) { flash.textContent = 'Need a recipient and a message.'; return; }
+            send.disabled = true;
+            post({ sspf_action: 'dm_send', target: to, body: text }).then(function (r) {
+                send.disabled = false;
+                flash.textContent = r.msg || '';
+                if (r.ok) {
+                    ta.value = '';
+                    if (convo) { convo.appendChild(dmBubble({ direction: 'out', body: text, created_at: '' })); convo.scrollTop = convo.scrollHeight; }
+                }
+            }).catch(function () { send.disabled = false; flash.textContent = 'Send failed — try again.'; });
+        });
+        return wrap;
     }
 
     function renderFeed(body, items) {

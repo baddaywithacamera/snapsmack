@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.403 — "Amending Fences" (2026-07-14)
+
+The search box stops pretending. The Pixelfed client comes off its leash to every mode, and the GYSS desktop tool builds again.
+
+- **Search actually filters now** — the archive search box was performative: it read only `$_GET['q']`, but the search forms and the stats logger submit `?search=`, so every "search" quietly returned the full, unfiltered set. `archive.php` now aliases `q ?? search` across the filter, the album-view guard and the stats term, and `core/search-engine.php` mirrors it in both the colour and non-colour branches so the archive path and the skin path can't silently drift apart again. Both paths also gained **album-name and category-name matching** (EXISTS against the image→album and image→category maps), so a query that matches an album or category title returns that set's images. `php -l` clean; placeholder/param counts verified.
+- **Pixelfed client ungated to every mode** — the Pixelfed client is no longer limited to a subset of modes. True-aspect feed and masonry grid, a native Direct tab, and full actor identity (`@context`, display name, website, pronouns, indexable flag, attachments). Inbox handling gains `Update` / `Delete` / `Move`, and SMACKONEOUT reaches GRAM parity (caption drops the leading title, `fedi_published_at` honoured). Touches `smack-pixelfed.php`, `core/smackverse.php`, `smack-smackverse.php`, `cron-smackverse.php`, the Pixelfed client JS/CSS and the canonical schema.
+- **GYSS desktop tool builds again** — `tools/gyss/` gained the `src-tauri/icons/` set the build required, an importmap plus `withGlobalTauri` and Tauri core/path shims so `@tauri-apps/api` resolves in the bundler-less webview, and a `capabilities/default.json` granting `core:default` (clears the `appDataDir` / `join` permission error). Build runs, the app launches, and CONNECT reaches the backend.
+
 ## 0.7.402 — "Under Lock and Key" (2026-07-13)
 
 Encrypt-at-rest reaches the SMACKVERSE relay, the fediverse profile stops claiming an empty catalogue, and a profile edit finally propagates to your followers.

@@ -67,6 +67,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
     }
 }
 
+// --- SAVE PROFILE (federated display name / website / pronouns → actor doc) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_profile') {
+    $sv_setting_upsert('smackverse_display_name', trim((string)($_POST['sv_display_name'] ?? '')));
+    $sv_setting_upsert('smackverse_website',      trim((string)($_POST['sv_website'] ?? '')));
+    $sv_setting_upsert('smackverse_pronouns',     trim((string)($_POST['sv_pronouns'] ?? '')));
+    // The delivery cron's fingerprint check (sv_maybe_push_actor_update) auto-pushes
+    // an Update(Actor) to followers within a tick; REFRESH PROFILE forces it now.
+    header('Location: smack-smackverse.php?msg=' . urlencode('Profile saved — display name, website and pronouns propagate to followers within a cron tick (or hit REFRESH PROFILE ON REMOTES to push now).'));
+    exit;
+}
+
 // --- ENABLE FEDERATION (step-up: password + TOTP — grants a public surface) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'enable_smackverse') {
     require_once 'core/reauth.php';
@@ -411,6 +422,34 @@ include 'core/sidebar.php';
             </label>
             <?php endif; ?>
             <button type="submit" class="btn-smack">SAVE HANDLE</button>
+        </form>
+    </div>
+
+    <!-- PROFILE (federated display name / website / pronouns) -->
+    <div class="box mb-20">
+        <h3>PROFILE</h3>
+        <p class="skin-desc-text">How your blog presents as a fediverse account — the display name, website link and pronouns Pixelfed and Mastodon show on your profile. Separate from the @handle above; leave DISPLAY NAME blank to use your Site Name, PRONOUNS blank to hide them.</p>
+        <form method="post" action="smack-smackverse.php">
+            <input type="hidden" name="action" value="save_profile">
+            <div class="lens-input-wrapper">
+                <label>DISPLAY NAME</label>
+                <input type="text" name="sv_display_name" maxlength="120"
+                       value="<?php echo htmlspecialchars((string)($sv_settings['smackverse_display_name'] ?? '')); ?>"
+                       placeholder="<?php echo htmlspecialchars((string)($sv_settings['site_name'] ?? 'Your blog')); ?>" autocomplete="off">
+            </div>
+            <div class="lens-input-wrapper">
+                <label>WEBSITE</label>
+                <input type="text" name="sv_website" maxlength="200"
+                       value="<?php echo htmlspecialchars((string)($sv_settings['smackverse_website'] ?? '')); ?>"
+                       placeholder="<?php echo htmlspecialchars((string)($sv_settings['site_url'] ?? 'https://your.site')); ?>" autocomplete="off">
+            </div>
+            <div class="lens-input-wrapper">
+                <label>PRONOUNS</label>
+                <input type="text" name="sv_pronouns" maxlength="40"
+                       value="<?php echo htmlspecialchars((string)($sv_settings['smackverse_pronouns'] ?? '')); ?>"
+                       placeholder="e.g. she/her — leave blank to hide" autocomplete="off">
+            </div>
+            <button type="submit" class="btn-smack">SAVE PROFILE</button>
         </form>
     </div>
 

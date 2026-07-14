@@ -335,11 +335,15 @@ class SnapSmackClient:
                 if hex_tags:
                     post_tags = f"{post_tags} {hex_tags}" if post_tags else hex_tags
 
+            # Caption (AI or manual) becomes the post description; copyright is appended so it is never lost.
+            _caption = (getattr(entry, 'caption', '') or '').strip()
+            post_desc = f"{_caption}\n\n{copyright_str}" if _caption else copyright_str
+
             form_data: Dict[str, str] = {
                 'title':                entry.title,
                 'tags':                 post_tags,
                 'img_status':           'published',
-                'desc':                 copyright_str,
+                'desc':                 post_desc,
                 'allow_download':       '1' if drive_url else '0',
                 'download_url':         drive_url,
                 'orientation_override': orient,
@@ -442,6 +446,138 @@ def run_batch(
         results.append(result)
         on_progress(i, total, result)
 
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Live GRAM posting (GRAMOFSMACK single grams to carousel sites)
+# ---------------------------------------------------------------------------
+# Self-contained so SYBU needs NO offline (sumna_*) modules. Each entry is
+# posted as its own post_type='single' gram via the three-across API
+# (api.php?route=threeacross/gram/*): upload the image, then create the post.
+# Ported from ColdSnap's proven contract; image controls use the DraftImage
+# defaults (crop 'fit', 100%, no border, centred focus, single/no-split).
+
+class GramConnection:
+    """Disposable Bearer session for the gram API — kept SEPARATE from the main
+    SnapSmackClient session so CANCEL can close it mid-upload (see _abort_conn)
+    without tearing down the live client."""
+
+    def __init__(self, base_url: str, api_key: str = '', api_path: str = '/api.php'):
+        self.base_url = base_url.rstrip('/')
+        self.api_path = api_path
+        self.api_key  = api_key
+        self.session  = requests.Session()
+        self.session.headers.update({
+            'User-Agent':     'SYBU/1.0',
+            'Authorization':  f'Bearer {api_key}',
+            'X-Requested-With': 'XMLHttpRequest',
+        })
+
+    def _api(self, route: str) -> str:
+        return f"{self.base_url}{self.api_path}?route={route}"
+
+
+def _resp_msg(r, default: str) -> str:
+    """Surface the server's JSON 'message' (consent gate / rate limit / scope)."""
+    try:
+        m = (r.json() or {}).get('message')
+        if m:
+            return str(m)
+    except Exception:
+        pass
+    return default
+
+
+def _gram_upload(conn: 'GramConnection', local_path: str) -> dict:
+    """Upload one image to threeacross/gram/upload. Returns the server dict
+    (path, thumb_square, thumb_aspect, width, height). Raises on failure."""
+    with open(local_path, 'rb') as fh:
+        files = {'image': (os.path.basename(local_path), fh, _mime(local_path))}
+        r = conn.session.post(conn._api('threeacross/gram/upload'), files=files, timeout=120)
+    if r.status_code in (401, 403, 429):
+        raise RuntimeError(_resp_msg(r, 'Image upload rejected (key scope / consent / rate limit).'))
+    r.raise_for_status()
+    data = r.json()
+    if data.get('status') != 'ok' or not data.get('path'):
+        raise RuntimeError(data.get('error', 'upload failed (no path returned)'))
+    return data
+
+
+def post_gram(conn: 'GramConnection', entry: ManifestEntry, image_folder: str) -> PostResult:
+    """Post one POST-tab entry as its own single gram. Never raises — always
+    returns a PostResult (same shape the solo path returns, so _poll_queue reads
+    .entry / .success / .exif_ok / .message with no shim)."""
+    local_path = os.path.join(image_folder, entry.file)
+    if not os.path.isfile(local_path):
+        return PostResult(entry, False, f"image not found: {local_path}")
+    try:
+        up = _gram_upload(conn, local_path)
+        controls = {
+            'path':         up.get('path', ''),
+            'thumb_square': up.get('thumb_square', ''),
+            'thumb_aspect': up.get('thumb_aspect', ''),
+            'width':  int(up.get('width', 0) or 0),
+            'height': int(up.get('height', 0) or 0),
+            'crop_mode': 'fit', 'size_pct': 100,
+            'border_px': 0, 'border_color': '#000000', 'bg_color': '#ffffff',
+            'shadow': 0, 'focus_x': 50, 'focus_y': 50, 'zoom': 100,
+            'is_cover': False, 'sort_position': 0, 'split': False,
+        }
+        _caption = (getattr(entry, 'caption', '') or '').strip()
+        payload = {
+            'title':          entry.title or '',
+            'body':           _caption,
+            'post_date':      None,
+            'status':         'published',
+            'post_type':      'single',
+            'panorama_rows':  1,
+            'allow_comments': 1,
+            'allow_download': 0,
+            'download_url':   '',
+            'images':         [controls],
+            'tags':           [t.lstrip('#') for t in (entry.tags or '').split() if t.strip()],
+        }
+        r = conn.session.post(conn._api('threeacross/gram/post'), json=payload, timeout=120)
+        if r.status_code in (401, 403, 429):
+            return PostResult(entry, False, _resp_msg(r, 'Post create rejected (key scope / consent / rate limit).'))
+        r.raise_for_status()
+        data = r.json()
+    except requests.RequestException as e:
+        log.error("GRAM NETWORK ERROR %s: %s", entry.file, e)
+        return PostResult(entry, False, f"Network error: {e}")
+    except Exception as e:
+        log.error("GRAM ERROR %s: %s", entry.file, e)
+        return PostResult(entry, False, str(e))
+
+    post_id   = int(data.get('post_id') or 0)
+    split_ids = [int(x) for x in (data.get('split_post_ids') or [])]
+    if data.get('status') != 'ok' or (not post_id and not split_ids):
+        return PostResult(entry, False, data.get('error', 'server did not confirm the post'))
+    log.info("GRAM OK %s — post_id=%s", entry.file, post_id or (split_ids[0] if split_ids else 0))
+    return PostResult(entry, True, 'Posted (gram)')
+
+
+def run_gram_batch(
+    conn:         'GramConnection',
+    entries:      List[ManifestEntry],
+    image_folder: str,
+    on_progress:  Callable[[int, int, PostResult], None] = None,
+    cancel_event=None,
+) -> List[PostResult]:
+    """Gram counterpart of run_batch — post each selected entry as its own single
+    gram to a GRAMOFSMACK (carousel) site. Same enriched batch table (Gemini
+    caption + tags already on the entry), different destination. Returns a list
+    of PostResult; never raises."""
+    results = []
+    total   = len(entries)
+    for i, entry in enumerate(entries, start=1):
+        if cancel_event is not None and cancel_event.is_set():
+            break
+        result = post_gram(conn, entry, image_folder)
+        results.append(result)
+        if on_progress is not None:
+            on_progress(i, total, result)
     return results
 
 

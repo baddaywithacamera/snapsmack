@@ -74,6 +74,8 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
                         COMMENT 'SMACKVERSE (0.7.393): 1 = mark the federated Note sensitive (blurred behind a CW).',
   `content_warning`     varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                         COMMENT 'SMACKVERSE (0.7.393): Note.summary content-warning text shown before a sensitive image.',
+  `fedi_published_at`   datetime       DEFAULT NULL
+                        COMMENT 'SMACKVERSE (0.7.403): fediverse date LABEL override for a standalone SMACKONEOUT image (Note published ts). NULL = use img_date. Stamped by IMPRINT ORDER FOR FEDIVERSE, at parity with snap_posts.',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

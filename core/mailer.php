@@ -21,6 +21,8 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
+require_once __DIR__ . '/secret-store.php';
+
 if (!function_exists('snapsmack_mail_settings')) {
 function snapsmack_mail_settings(PDO $pdo): array {
     try {
@@ -51,7 +53,7 @@ function snapsmack_send_mail(string $to, string $subject, string $body, array $o
     $from_email = $opts['from_email'] ?? ($settings['email_from'] ?? ('noreply@' . $host));
     $from_name  = $opts['from_name']  ?? ($settings['email_from_name'] ?? ($settings['site_name'] ?? 'SnapSmack'));
     $reply_to   = trim($opts['reply_to'] ?? '');
-    $brevo_key  = trim($settings['brevo_api_key'] ?? '');
+    $brevo_key  = secret_decrypt(trim($settings['brevo_api_key'] ?? ''));
 
     // ── Brevo HTTP API path ────────────────────────────────────────────────
     if ($brevo_key !== '' && function_exists('curl_init')) {

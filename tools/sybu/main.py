@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.19"   # integer build counter — +1 each rebuild (dropped letter suffixes after 0.7.9k)
+BUILD_VERSION = "0.1.21"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -61,16 +61,11 @@ import recovery as recovery_module
 from manifest_parser import ManifestEntry
 from poster import SnapSmackClient, SiteData
 
-# SON OF A BATCH — offline posting suite (BATCH SLAPPED + BATCH, PLEASE).
-# Guarded so a missing optional dep can never stop SYBU's core from launching.
-try:
-    from sob_solo import build_solo_mode
-    from sob_gram import build_gram_mode
-    _SOB_AVAILABLE = True
-    _SOB_IMPORT_ERROR = ""
-except Exception as _sob_err:  # pragma: no cover - import shim
-    _SOB_AVAILABLE = False
-    _SOB_IMPORT_ERROR = str(_sob_err)
+# Offline posting suite (BATCH SLAPPED / BATCH, PLEASE) now lives in COLD SNAP
+# (tools/coldsnap). SMACK YOUR BATCH UP is the LIVE poster only — no offline
+# modes here. Flag kept False so any residual guards stay inert.
+_SUMNA_AVAILABLE = False
+_SUMNA_IMPORT_ERROR = ""
 
 
 # ---------------------------------------------------------------------------
@@ -316,6 +311,18 @@ class EntryRow(tk.Frame):
             self._swatch_labels.append(sw)
         self._update_swatches(self.entry.colors)
 
+        # ── Inline caption entry (posted as the description) ──────────
+        tk.Label(self, text="caption", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=190, y=128)
+        self._caption_var = tk.StringVar(value=self.entry.caption)
+        self._caption_entry = tk.Entry(
+            self, textvariable=self._caption_var,
+            bg=BG_MID, fg=FG_MAIN, insertbackground=ACCENT,
+            relief="flat", font=FONT_SMALL, bd=0,
+            highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
+        )
+        self._caption_entry.place(x=246, y=126, width=675, height=20)
+        self._caption_var.trace_add("write", lambda *a: setattr(self.entry, 'caption', self._caption_var.get()))
+
         # ── Status badge ──────────────────────────────────────────────
         self._status_lbl = tk.Label(
             self, text="PENDING", font=("Segoe UI", 7, "bold"),
@@ -364,13 +371,28 @@ class EntryRow(tk.Frame):
             'enriched': "ENRICHED",
             'posting':  "POSTING",
             'ok':       "  POSTED",
-            'error':    "  ERROR",
+            'error':    "  FAILED",
             'warning':  "  WARN",
         }
         self._status_lbl.configure(
             text=labels.get(status, status.upper()),
             bg=bg, fg=fg,
         )
+        # A failed upload washes the WHOLE row bright red so it can't be missed
+        # (and it's protected from the Clear button — see EntryList.clear).
+        _row_bg = "#6E0000" if status == 'error' else BG_CARD
+        _fn_fg  = "#FFFFFF" if status == 'error' else FG_MAIN
+        for _w in (self, getattr(self, '_fname_lbl', None)):
+            if _w is None:
+                continue
+            try:
+                _w.configure(bg=_row_bg)
+            except Exception:
+                pass
+        try:
+            self._fname_lbl.configure(fg=_fn_fg)
+        except Exception:
+            pass
 
     def _update_swatches(self, colors_str: str):
         """Repaint the three colour swatch labels from a space-separated hex string."""
@@ -394,10 +416,12 @@ class EntryRow(tk.Frame):
             return FG_MAIN
 
     def fill_from_ai(self, title: str = '', tags: str = '', category: str = '',
-                     album: str = '', colors: str = ''):
+                     album: str = '', colors: str = '', caption: str = ''):
         """Push Gemini-generated values into the live fields. Skips blank values."""
         if title:
             self._title_var.set(title)
+        if caption:
+            self._caption_var.set(caption)
         if tags:
             self._tags_var.set(tags)
         if category:
@@ -431,13 +455,6 @@ class EntryRow(tk.Frame):
 
     def set_selected(self, on: bool):
         self._sel_var.set(bool(on))
-
-    # ── USE FILENAME AS TITLE ──────────────────────────────────────────
-    def use_filename_as_title(self):
-        """Fill the title from the image filename, extension stripped."""
-        base = os.path.splitext(os.path.basename(self.entry.file or ''))[0]
-        if base:
-            self._title_var.set(base)   # trace pushes it into entry.title
 
 
 # ---------------------------------------------------------------------------
@@ -548,13 +565,24 @@ class EntryList(tk.Frame):
         for row in self._rows:
             row.update_combos(cats, albums)
 
-    def clear(self):
+    def clear(self, keep_errors: bool = False):
+        """Destroy rows. With keep_errors=True, FAILED rows (status 'error') are
+        kept so an accidental Clear can never wipe uploads that didn't land."""
+        survivors = []
         for row in self._rows:
-            row.destroy()
-        self._rows.clear()
+            if keep_errors and getattr(row, '_status', None) == 'error':
+                survivors.append(row)
+            else:
+                row.destroy()
+        self._rows = survivors
 
     def get_entries(self) -> List[ManifestEntry]:
         return [r.entry for r in self._rows]
+
+    def get_failed_files(self) -> List[str]:
+        """Filenames of rows that failed to post (status 'error')."""
+        return [r.entry.file for r in self._rows
+                if getattr(r, '_status', None) == 'error']
 
     def get_selected_entries(self) -> List[ManifestEntry]:
         return [r.entry for r in self._rows if r.is_selected()]
@@ -566,15 +594,19 @@ class EntryList(tk.Frame):
         for r in self._rows:
             r.set_selected(on)
 
-    def use_filenames_as_titles(self, selected_only: bool = True) -> int:
-        """USE FILENAME AS TITLE across rows (extension stripped). Returns count."""
-        touched = 0
-        for r in self._rows:
-            if selected_only and not r.is_selected():
-                continue
-            r.use_filename_as_title()
-            touched += 1
-        return touched
+    def shuffle(self):
+        """Randomly reorder the queue. POST order follows _rows order, so this
+        randomizes the import order too. Re-packs existing rows (no thumbnail
+        reload)."""
+        import random
+        random.shuffle(self._rows)
+        for i, row in enumerate(self._rows):
+            row.row_index = i
+            row.pack_forget()
+            row.pack(fill="x", pady=(0, 2))
+        self._inner.update_idletasks()
+        self._canvas.configure(scrollregion=self._canvas.bbox("all"))
+        self._canvas.yview_moveto(0)
 
     def get_row(self, index: int) -> Optional['EntryRow']:
         if 0 <= index < len(self._rows):
@@ -1009,6 +1041,41 @@ class App(tk.Tk):
         self.minsize(860, 600)
         self.configure(bg=BG_DEEP)
 
+        # Clipboard: Windows Tk sometimes fails to wire Ctrl+V on Entry/Text, and
+        # Tk ships no right-click menu — so pasting an API key was impossible.
+        # Bind cut/copy/paste at the class level for every text widget, plus a
+        # right-click context menu, so paste works by keyboard or mouse everywhere.
+        def _clip(evt_name):
+            def _h(e):
+                try:
+                    e.widget.event_generate(evt_name)
+                except tk.TclError:
+                    pass
+                return "break"
+            return _h
+
+        def _clip_menu(e):
+            w = e.widget
+            m = tk.Menu(self, tearoff=0)
+            m.add_command(label="Cut",   command=lambda: w.event_generate("<<Cut>>"))
+            m.add_command(label="Copy",  command=lambda: w.event_generate("<<Copy>>"))
+            m.add_command(label="Paste", command=lambda: w.event_generate("<<Paste>>"))
+            try:
+                w.focus_set()
+                m.tk_popup(e.x_root, e.y_root)
+            finally:
+                m.grab_release()
+            return "break"
+
+        for _cls in ("Entry", "TEntry", "Text"):
+            self.bind_class(_cls, "<Control-v>", _clip("<<Paste>>"))
+            self.bind_class(_cls, "<Control-V>", _clip("<<Paste>>"))
+            self.bind_class(_cls, "<Control-c>", _clip("<<Copy>>"))
+            self.bind_class(_cls, "<Control-C>", _clip("<<Copy>>"))
+            self.bind_class(_cls, "<Control-x>", _clip("<<Cut>>"))
+            self.bind_class(_cls, "<Control-X>", _clip("<<Cut>>"))
+            self.bind_class(_cls, "<Button-3>", _clip_menu)
+
         # Set window/taskbar icon explicitly — the exe icon set via PyInstaller
         # only affects File Explorer; tkinter needs iconbitmap() for the taskbar.
         try:
@@ -1030,6 +1097,7 @@ class App(tk.Tk):
         self._posting           = False
         self._keepalive_running = False
         self._cancel_evt        = threading.Event()    # set to abort a running POST
+        self._active_conn       = None                 # disposable gram conn — closed on cancel for instant abort
         self._recovery          = None                 # recovery_module.RecoveryStore
         self._msg_queue:    queue.Queue               = queue.Queue()
 
@@ -1037,6 +1105,21 @@ class App(tk.Tk):
         self._apply_ttk_style()
         self._build_ui()
         self._load_config_to_ui()
+
+        # ── Window state: restore last size / maximized, then remember it ─────
+        self._normal_geometry = self._config.get('win_geometry', '') or f"{WIN_W}x{WIN_H}"
+        try:
+            # Apply the saved normal size first so un-maximizing returns to it,
+            # then maximize on top if we closed maximized last time.
+            if self._config.get('win_geometry'):
+                self.geometry(self._config['win_geometry'])
+            if self._config.get('win_maximized'):
+                self.after(0, lambda: self.state('zoomed'))   # reopen maximized
+        except Exception:
+            pass
+        self.bind('<Configure>', self._track_geometry)
+        self.protocol('WM_DELETE_WINDOW', self._on_app_close)
+
         self.after(100, self._poll_queue)
         self.after(200, self._auto_reconnect)
 
@@ -1158,21 +1241,18 @@ class App(tk.Tk):
                    command=self._show_help).pack(side="right", padx=14, pady=6)
 
         # Centre: tab strip
-        self._active_tab     = 'post'
+        self._active_tab     = 'solo'
         self._tab_btns       = {}
         self._tab_indicators = {}
         tab_strip = tk.Frame(header, bg=BG_CARD)
         tab_strip.pack(side="left", padx=(28, 0), fill="y")
-        _tabs = [('post', 'POST'), ('audit', 'AUDIT'),
-                 ('repair', 'BASIC REPAIR'), ('match', 'ADV. MATCH')]
-        if _SOB_AVAILABLE:
-            _tabs += [('slapped', 'BATCH SLAPPED'), ('gram', 'BATCH, PLEASE'),
-                      ('smacktalk', 'SMACK YOUR BATCH UP')]
-        _tabs += [('settings', 'SETTINGS')]
+        _tabs = [('solo', 'SMACKONEOUT'), ('gram', 'GRAMOFSMACK'),
+                 ('audit', 'AUDIT'), ('repair', 'BASIC REPAIR'),
+                 ('match', 'ADV. MATCH'), ('settings', 'SETTINGS')]
         for _tname, _tlabel in _tabs:
             _cell = tk.Frame(tab_strip, bg=BG_CARD)
             _cell.pack(side="left")
-            _active = (_tname == 'post')
+            _active = (_tname == 'solo')
             _btn = tk.Label(_cell, text=_tlabel,
                             bg=BG_CARD, fg=ACCENT if _active else FG_DIM,
                             font=FONT_BOLD, padx=16, cursor="hand2")
@@ -1266,10 +1346,6 @@ class App(tk.Tk):
         self._repair_frame   = tk.Frame(self, bg=BG_DEEP)
         self._settings_frame = tk.Frame(self, bg=BG_DEEP)
         self._match_frame    = tk.Frame(self, bg=BG_DEEP)
-        if _SOB_AVAILABLE:
-            self._slapped_frame   = tk.Frame(self, bg=BG_DEEP)
-            self._gram_frame      = tk.Frame(self, bg=BG_DEEP)
-            self._smacktalk_frame = tk.Frame(self, bg=BG_DEEP)
         self._post_frame.pack(fill="both", expand=True)
         # other frames packed by _switch_tab()
 
@@ -1327,6 +1403,16 @@ class App(tk.Tk):
         conn_box  = self._box(cols, "CONNECTION")
         conn_box.grid(row=0, column=0, sticky="nsew", padx=(0, 7))
         conn_body = self._box_body(conn_box)
+
+        # Quick-load a saved profile right here on the POST page (no Settings trip).
+        self._post_profile_var = tk.StringVar()
+        tk.Label(conn_body, text="LOAD PROFILE", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_SMALL).pack(anchor="w", pady=(6, 0))
+        self._post_profile_cb = ttk.Combobox(conn_body, textvariable=self._post_profile_var,
+                                              values=profile_manager.list_profiles(),
+                                              state="readonly")
+        self._post_profile_cb.pack(fill="x")
+        self._post_profile_cb.bind("<<ComboboxSelected>>", self._on_post_profile_pick)
 
         self._field(conn_body, "SITE URL", self._url_var)
         self._field(conn_body, "API KEY",  self._api_key_var, show="•")
@@ -1393,8 +1479,6 @@ class App(tk.Tk):
         self._enrich_btn = ttk.Button(mfst_btn_row, text="✦ Enrich with Gemini",
                                        style="Ghost.TButton", command=self._on_enrich)
         self._enrich_btn.pack(side="left", padx=(8, 0))
-        ttk.Button(mfst_btn_row, text="Use Filename as Title", style="Ghost.TButton",
-                   command=self._on_use_filenames).pack(side="left", padx=(8, 0))
 
         # ── Box: GOOGLE DRIVE ─────────────────────────────────────────
         self._goog_creds_var   = tk.StringVar()
@@ -1453,7 +1537,7 @@ class App(tk.Tk):
         tk.Label(gem_body, text="API KEY", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
         gem_key_inner = tk.Frame(gem_body, bg=BG_CARD)
         gem_key_inner.pack(fill="x", pady=(2, 0))
-        self._entry(gem_key_inner, self._gemini_key_var, width=0).pack(side="left", fill="x", expand=True, padx=(0, 6))
+        self._entry(gem_key_inner, self._gemini_key_var, width=0, show="•").pack(side="left", fill="x", expand=True, padx=(0, 6))
         self._gem_test_btn = ttk.Button(gem_key_inner, text="Test Connection",
                                          style="Ghost.TButton", command=self._on_gemini_test)
         self._gem_test_btn.pack(side="left")
@@ -1573,9 +1657,19 @@ class App(tk.Tk):
         self._post_canvas.bind("<Enter>", lambda e: self._post_hover(True))
         self._post_canvas.bind("<Leave>", lambda e: self._post_hover(False))
 
+        # Post mode is driven by the active tab now — SMACKONEOUT (solo) vs
+        # GRAMOFSMACK (single grams). _switch_tab sets this var; the post path
+        # still branches on it. No visible checkbox.
+        self._post_as_grams_var = tk.BooleanVar(
+            value=bool(self._config.get('post_as_grams', False)))
+
         self._clear_btn = ttk.Button(bottom, text="Clear", style="Ghost.TButton",
                                       command=self._on_clear)
         self._clear_btn.pack(side="left", padx=(10, 0), pady=10)
+
+        self._random_btn = ttk.Button(bottom, text="Randomize", style="Ghost.TButton",
+                                       command=self._on_randomize)
+        self._random_btn.pack(side="left", padx=(6, 0), pady=10)
 
         self._prog_var = tk.DoubleVar()
         self._progress = ttk.Progressbar(bottom, variable=self._prog_var,
@@ -1594,36 +1688,24 @@ class App(tk.Tk):
         self._build_repair_ui()
         self._build_match_ui()
         self._build_settings_ui()
-        self._build_sob_modes()
+        self._build_sumna_modes()
 
-    # ------------------------------------------------------------------
-    # SON OF A BATCH — mount the offline posting mode panels
-    # ------------------------------------------------------------------
-
-    def _build_sob_modes(self):
-        """Mount BATCH SLAPPED + BATCH, PLEASE; SMACK YOUR BATCH UP is a
-        deferred 'coming soon' tab (it's the only mode needing a full local
-        skin render, so it lands last)."""
-        if not _SOB_AVAILABLE:
-            return
+        # Phase-1 launch dedication (Richard Dimitri). Deferred so it draws over
+        # the window; fully self-guarded so it can never block startup.
         try:
-            build_solo_mode(self._slapped_frame, self).pack(fill="both", expand=True)
-            build_gram_mode(self._gram_frame, self).pack(fill="both", expand=True)
-        except Exception as e:
-            # Never let a panel error take down the whole tool.
-            for fr in (self._slapped_frame, self._gram_frame):
-                for w in fr.winfo_children():
-                    w.destroy()
-                tk.Label(fr, text=f"SON OF A BATCH panel failed to load:\n{e}",
-                         bg=BG_DEEP, fg=FG_ERR, font=FONT_UI, justify="left").pack(padx=20, pady=20)
-        # SMACK YOUR BATCH UP — deferred longform mode.
-        tk.Label(self._smacktalk_frame, text="SMACK YOUR BATCH UP", bg=BG_DEEP,
-                 fg=ACCENT, font=FONT_TITLE).pack(anchor="w", padx=20, pady=(24, 4))
-        tk.Label(self._smacktalk_frame,
-                 text="Longform / photo-essay mode — coming soon.\n\nIt's the only mode that "
-                      "needs a full local skin render, so it ships after a tested SmackTalk "
-                      "install. Build BATCH SLAPPED + BATCH, PLEASE here in the meantime.",
-                 bg=BG_DEEP, fg=FG_DIM, font=FONT_UI, justify="left").pack(anchor="w", padx=20)
+            import dedication
+            self.after(400, lambda: dedication.maybe_show(self))
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------------
+    # SUMNABATCH — mount the offline posting mode panels
+    # ------------------------------------------------------------------
+
+    def _build_sumna_modes(self):
+        """Offline modes (BATCH SLAPPED / BATCH, PLEASE) moved to COLD SNAP.
+        Nothing to mount in the live tool."""
+        return
 
     # ------------------------------------------------------------------
     # Tab switching
@@ -1641,11 +1723,13 @@ class App(tk.Tk):
         self._repair_frame.pack_forget()
         self._match_frame.pack_forget()
         self._settings_frame.pack_forget()
-        for _attr in ('_slapped_frame', '_gram_frame', '_smacktalk_frame'):
-            _fr = getattr(self, _attr, None)
-            if _fr is not None:
-                _fr.pack_forget()
-        if tab == 'post':
+        if tab == 'solo':
+            self._post_as_grams_var.set(False)
+            self._save_config()
+            self._post_frame.pack(fill="both", expand=True)
+        elif tab == 'gram':
+            self._post_as_grams_var.set(True)
+            self._save_config()
             self._post_frame.pack(fill="both", expand=True)
         elif tab == 'audit':
             self._audit_frame.pack(fill="both", expand=True)
@@ -1656,12 +1740,6 @@ class App(tk.Tk):
             self._match_frame.pack(fill="both", expand=True)
         elif tab == 'settings':
             self._settings_frame.pack(fill="both", expand=True)
-        elif tab == 'slapped' and hasattr(self, '_slapped_frame'):
-            self._slapped_frame.pack(fill="both", expand=True)
-        elif tab == 'gram' and hasattr(self, '_gram_frame'):
-            self._gram_frame.pack(fill="both", expand=True)
-        elif tab == 'smacktalk' and hasattr(self, '_smacktalk_frame'):
-            self._smacktalk_frame.pack(fill="both", expand=True)
         self._active_tab = tab
 
     # ------------------------------------------------------------------
@@ -2396,7 +2474,16 @@ class App(tk.Tk):
         # GEMINI AI
         self._sp_gemini_var = tk.StringVar()
         gem_body = _sbox("GEMINI AI")
-        _sfield(gem_body, "API KEY", self._sp_gemini_var)
+        _sfield(gem_body, "API KEY", self._sp_gemini_var, show="•")
+        gem_test_row = tk.Frame(gem_body, bg=BG_CARD)
+        gem_test_row.pack(fill="x", pady=(6, 0))
+        self._sp_gem_test_btn = ttk.Button(gem_test_row, text="Test Connection",
+                                            style="Ghost.TButton",
+                                            command=self._on_sp_gemini_test)
+        self._sp_gem_test_btn.pack(side="left")
+        self._sp_gem_test_lbl = tk.Label(gem_test_row, text="", bg=BG_CARD,
+                                          fg=FG_DIM, font=FONT_SMALL)
+        self._sp_gem_test_lbl.pack(side="left", padx=(10, 0))
 
         # DEFAULTS
         self._sp_copyright_var = tk.StringVar()
@@ -2448,6 +2535,8 @@ class App(tk.Tk):
     def _settings_refresh_list(self, select_name: str = ''):
         """Reload the profile listbox."""
         names = profile_manager.list_profiles()
+        if hasattr(self, '_post_profile_cb'):
+            self._post_profile_cb['values'] = names
         self._profile_lb.delete(0, "end")
         sel_idx = 0
         for i, name in enumerate(names):
@@ -2543,6 +2632,28 @@ class App(tk.Tk):
         self._settings_refresh_list()
         self._sp_status_lbl.configure(text='', fg=FG_DIM)
 
+    def _apply_profile_to_post(self, p):
+        """Populate the POST-tab config fields from a profile dict (shared by the
+        Settings 'Load' button and the POST-page profile dropdown)."""
+        if not p:
+            return
+        self._url_var.set(p.get('url', ''))
+        self._api_key_var.set(p.get('api_key', ''))
+        self._goog_creds_var.set(p.get('google_credentials', ''))
+        self._drive_folder_var.set(p.get('drive_folder_id', ''))
+        self._gemini_key_var.set(p.get('gemini_api_key', ''))
+        self._copyright_var.set(p.get('copyright_text', ''))
+        self._def_cat_var.set(p.get('default_category', ''))
+        self._def_alb_var.set(p.get('default_album', ''))
+        orient = p.get('default_orientation', 'auto')
+        self._def_orient_var.set(orient.capitalize() if orient != 'auto' else 'Auto')
+
+    def _on_post_profile_pick(self, _event=None):
+        """POST-page profile dropdown → load + apply the selected profile."""
+        name = self._post_profile_var.get().strip()
+        if name:
+            self._apply_profile_to_post(profile_manager.load_profile(name))
+
     def _on_profile_load(self):
         """Load selected profile into POST tab fields and reconnect."""
         sel = self._profile_lb.curselection()
@@ -2556,16 +2667,7 @@ class App(tk.Tk):
             return
 
         # Populate POST tab config vars
-        self._url_var.set(p.get('url', ''))
-        self._api_key_var.set(p.get('api_key', ''))
-        self._goog_creds_var.set(p.get('google_credentials', ''))
-        self._drive_folder_var.set(p.get('drive_folder_id', ''))
-        self._gemini_key_var.set(p.get('gemini_api_key', ''))
-        self._copyright_var.set(p.get('copyright_text', ''))
-        self._def_cat_var.set(p.get('default_category', ''))
-        self._def_alb_var.set(p.get('default_album', ''))
-        orient = p.get('default_orientation', 'auto')
-        self._def_orient_var.set(orient.capitalize() if orient != 'auto' else 'Auto')
+        self._apply_profile_to_post(p)
         drive_on = p.get('drive_enabled', True)
         self._drive_enabled_var.set(drive_on)
         self._on_drive_toggle()
@@ -2574,7 +2676,7 @@ class App(tk.Tk):
         self._save_config()
 
         # Switch to POST and connect
-        self._switch_tab('post')
+        self._switch_tab('solo')
         self._on_connect()
 
     def _on_sp_test_connection(self):
@@ -2608,6 +2710,30 @@ class App(tk.Tk):
                     text=f"✗  {m}", fg=FG_ERR))
             finally:
                 self.after(0, lambda: self._sp_test_btn.configure(state="normal"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_sp_gemini_test(self):
+        """Test the Gemini API key in the Settings form (no save required).
+        Runs in a background thread so the UI stays responsive."""
+        key = self._sp_gemini_var.get().strip()
+        if not key:
+            self._sp_gem_test_lbl.configure(text="Enter a Gemini API key first.", fg=FG_WARN)
+            return
+        self._sp_gem_test_btn.configure(state="disabled")
+        self._sp_gem_test_lbl.configure(text="Testing…", fg=FG_DIM)
+
+        def _worker():
+            try:
+                ok, msg = gemini_module.test_connection(key)
+            except Exception as exc:
+                ok, msg = False, str(exc)
+            if len(msg) > 80:
+                msg = msg[:77] + "…"
+            self.after(0, lambda: self._sp_gem_test_lbl.configure(
+                text=("✓  " + msg) if ok else ("✗  " + msg),
+                fg=(FG_OK if ok else FG_ERR)))
+            self.after(0, lambda: self._sp_gem_test_btn.configure(state="normal"))
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -3393,6 +3519,11 @@ class App(tk.Tk):
             'gemini_api_key':     self._gemini_key_var.get().strip(),
             'gemini_last_prompt': self._gem_prompt_txt.get('1.0', 'end').strip(),
             'copyright_text':     self._copyright_var.get().strip(),
+            'post_as_grams':      (self._post_as_grams_var.get()
+                                   if hasattr(self, '_post_as_grams_var') else False),
+            'drive_warning_dismissed': bool(self._config.get('drive_warning_dismissed', False)),
+            'win_maximized':      self._win_is_max(),
+            'win_geometry':       getattr(self, '_normal_geometry', ''),
         })
         self._update_ai_dot()
 
@@ -3404,6 +3535,83 @@ class App(tk.Tk):
         else:
             self._ai_dot.configure(fg=LED_OFF)
             self._ai_lbl.configure(text="NO KEY", fg=LED_OFF)
+
+    # ------------------------------------------------------------------
+    # Window state (size / maximized) persistence
+    # ------------------------------------------------------------------
+    def _win_is_max(self) -> bool:
+        try:
+            return self.state() == 'zoomed'
+        except Exception:
+            return False
+
+    def _track_geometry(self, event):
+        # Record the last NORMAL (non-maximized) geometry so un-maximizing
+        # restores a sane size and we persist the right size on close.
+        try:
+            if event.widget is self and self.state() == 'normal':
+                self._normal_geometry = self.geometry()
+        except Exception:
+            pass
+
+    def _on_app_close(self):
+        # Persist window state (size + maximized) before quitting.
+        try:
+            self._save_config()
+        except Exception:
+            pass
+        self.destroy()
+
+    def _confirm_no_drive(self) -> bool:
+        """Drive is enabled but not connected. Returns True to proceed. A
+        'Don't warn me again' tick persists (config: drive_warning_dismissed)
+        so the warning can be dismissed for good."""
+        if self._config.get('drive_warning_dismissed'):
+            return True
+
+        dlg = tk.Toplevel(self)
+        dlg.title("Google Drive not connected")
+        dlg.configure(bg=BG_CARD)
+        dlg.transient(self)
+        dlg.resizable(False, False)
+
+        result = {'ok': False}
+        dont   = tk.BooleanVar(value=False)
+
+        tk.Label(dlg, text="⚠  Google Drive is NOT connected.",
+                 bg=BG_CARD, fg=FG_WARN, font=("Segoe UI", 11, "bold"),
+                 justify="left").pack(anchor="w", padx=18, pady=(16, 8))
+        tk.Label(dlg,
+                 text="Images will be posted WITHOUT download links.\n"
+                      "You'll need to upload them to Drive manually later.\n\n"
+                      "Continue without Drive?",
+                 bg=BG_CARD, fg=FG_MAIN, font=("Segoe UI", 10),
+                 justify="left").pack(anchor="w", padx=18)
+        tk.Checkbutton(dlg, text="Don't warn me again", variable=dont,
+                       bg=BG_CARD, fg=FG_DIM, selectcolor=BG_DEEP,
+                       activebackground=BG_CARD, activeforeground=FG_DIM,
+                       font=("Segoe UI", 9)).pack(anchor="w", padx=14, pady=(12, 4))
+
+        def _close(ok):
+            result['ok'] = ok
+            if dont.get():
+                self._config['drive_warning_dismissed'] = True
+                self._save_config()
+            dlg.destroy()
+
+        btns = tk.Frame(dlg, bg=BG_CARD); btns.pack(fill="x", padx=18, pady=(8, 16))
+        ttk.Button(btns, text="No",  command=lambda: _close(False)).pack(side="right")
+        ttk.Button(btns, text="Yes", command=lambda: _close(True)).pack(side="right", padx=(0, 8))
+        dlg.bind("<Escape>", lambda e: _close(False))
+        dlg.bind("<Return>", lambda e: _close(True))
+
+        dlg.update_idletasks()
+        x = self.winfo_rootx() + max(0, (self.winfo_width()  - dlg.winfo_reqwidth())  // 2)
+        y = self.winfo_rooty() + max(0, (self.winfo_height() - dlg.winfo_reqheight()) // 3)
+        dlg.geometry(f"+{x}+{y}")
+        dlg.grab_set()
+        self.wait_window(dlg)
+        return result['ok']
 
     # ------------------------------------------------------------------
     # Browse
@@ -3692,17 +3900,6 @@ class App(tk.Tk):
 
         threading.Thread(target=_test_thread, daemon=True).start()
 
-    def _on_use_filenames(self):
-        """USE FILENAME AS TITLE — fill selected rows' titles from their filenames."""
-        if not self._entry_list.get_entries():
-            messagebox.showerror("Nothing loaded", "Load images or a manifest first.")
-            return
-        if self._entry_list.selected_count() == 0:
-            messagebox.showerror("Nothing selected",
-                                 "Tick at least one image (or use Select all).")
-            return
-        self._entry_list.use_filenames_as_titles(selected_only=True)
-
     def _on_enrich(self):
         api_key = self._gemini_key_var.get().strip()
         if not api_key:
@@ -3738,6 +3935,8 @@ class App(tk.Tk):
         albums        = list(site_data._album_display.values()) if site_data else []
         custom_prompt = self._gem_prompt_txt.get("1.0", "end").strip()
 
+        self._cancel_evt.clear()   # fresh run — don't inherit a stale cancel flag
+
         self._enrich_btn.configure(state="disabled")
         self._bottom_enrich_canvas.configure(cursor="")
         self._bottom_enrich_canvas.unbind("<Button-1>")
@@ -3758,6 +3957,7 @@ class App(tk.Tk):
                         if row:
                             row.fill_from_ai(
                                 title=entry.title,
+                                caption=entry.caption,
                                 tags=entry.tags,
                                 category=entry.category,
                                 album=entry.album,
@@ -3788,6 +3988,7 @@ class App(tk.Tk):
                 album_descriptions=self._site_data.album_descriptions if self._site_data else None,
                 existing_tags=self._site_data.tags if self._site_data else None,
                 existing_titles=self._site_data.titles if self._site_data else None,
+                cancel_event=self._cancel_evt,
             )
 
             def _done():
@@ -3803,18 +4004,62 @@ class App(tk.Tk):
         threading.Thread(target=_enrich_thread, daemon=True).start()
 
     # ------------------------------------------------------------------
+    # Randomize queue order
+    # ------------------------------------------------------------------
+
+    def _on_randomize(self):
+        """Shuffle the queue into a random order (the POST follows on-screen order)."""
+        if not self._entry_list.get_entries():
+            return
+        self._entry_list.shuffle()
+
+    # ------------------------------------------------------------------
     # Clear queue
     # ------------------------------------------------------------------
+
+    def _append_failure(self, name, reason=""):
+        """Append ONE failed upload to this run's failures file the instant it
+        fails, so a mid-run crash still leaves a complete list. The file is
+        created lazily on the first failure (self._fail_log_path is reset to
+        None at the start of every run in _on_post)."""
+        try:
+            if not getattr(self, '_fail_log_path', None):
+                import time as _t
+                base = (os.path.dirname(sys.executable)
+                        if getattr(sys, 'frozen', False)
+                        else os.path.dirname(os.path.abspath(__file__)))
+                self._fail_log_path = os.path.join(
+                    base, f"failed_uploads_{_t.strftime('%Y%m%d_%H%M%S')}.txt")
+                with open(self._fail_log_path, 'w', encoding='utf-8') as f:
+                    f.write("# Uploads that FAILED this batch — re-post these. Written live.\n")
+            with open(self._fail_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"{name}\t{reason}\n" if reason else f"{name}\n")
+                f.flush()
+        except Exception:
+            pass
+        try:
+            logging.getLogger("sumnabatch").error("POST FAILED %s — %s", name, reason)
+        except Exception:
+            pass
 
     def _on_clear(self):
         if not self._entry_list.get_entries():
             return
-        self._entry_list.clear()
+        # Never let Clear wipe FAILED uploads — they must survive so they can be
+        # re-posted rather than silently lost.
+        self._entry_list.clear(keep_errors=True)
+        remaining = len(self._entry_list.get_entries())
         self._progress['maximum'] = 1
         self._prog_var.set(0)
         self._prog_lbl.configure(text="")
-        self._queue_lbl.configure(text="QUEUE — 0 ITEMS")
-        self._set_status("Queue cleared. Load a manifest to begin.", FG_DIM)
+        if remaining:
+            self._queue_lbl.configure(text=f"QUEUE — {remaining} ITEMS")
+            self._set_status(
+                f"Cleared — {remaining} FAILED upload(s) kept (red). "
+                "Re-post them, or remove them one at a time on purpose.", FG_ERR)
+        else:
+            self._queue_lbl.configure(text="QUEUE — 0 ITEMS")
+            self._set_status("Queue cleared. Load a manifest to begin.", FG_DIM)
         if not self._cfg_visible:
             self._toggle_cfg()
 
@@ -4017,17 +4262,9 @@ class App(tk.Tk):
                                  "Tick at least one image to post (or use Select all).")
             return
 
-        # ── Warn if Drive is enabled but not connected ─────────────────
+        # ── Warn if Drive is enabled but not connected (dismissable) ────
         if self._drive_enabled_var.get() and self._drive_service is None:
-            proceed = messagebox.askyesno(
-                "Google Drive not connected",
-                "⚠  Google Drive is NOT connected.\n\n"
-                "Images will be posted WITHOUT download links.\n"
-                "You will need to upload them to Drive manually later.\n\n"
-                "Are you sure you want to continue without Drive?",
-                icon="warning",
-            )
-            if not proceed:
+            if not self._confirm_no_drive():
                 return
 
         count = len(entries)
@@ -4040,6 +4277,10 @@ class App(tk.Tk):
             "They'll appear in the archive in the order shown.",
         ):
             return
+
+        # Fresh failures log for this run — created lazily on the first failure
+        # and appended live (crash-safe), see _append_failure.
+        self._fail_log_path = None
 
         # Recovery store for this folder — posted items are marked as they go.
         self._ensure_recovery(self._folder_var.get().strip())
@@ -4066,21 +4307,43 @@ class App(tk.Tk):
         orient_map = {'auto': 'auto', 'landscape': '0', 'portrait': '1', 'square': '2'}
         orient_val = orient_map.get(self._def_orient_var.get().strip().lower(), 'auto')
 
-        results = poster_module.run_batch(
-            client=self._client,
-            entries=entries,
-            image_folder=image_folder,
-            site_data=self._site_data,
-            default_category=self._def_cat_var.get().strip(),
-            default_album=self._def_alb_var.get().strip(),
-            default_orientation=orient_val,
-            on_progress=on_progress,
-            drive_service=self._drive_service,
-            drive_folder_id=self._drive_folder_var.get().strip(),
-            copyright_text=self._copyright_var.get().strip(),
-            cancel_event=self._cancel_evt,
-        )
+        if self._post_as_grams_var.get():
+            # Carousel/GRAMOFSMACK site: post each enriched row as its OWN single
+            # gram via the LIVE gram API in poster.py. The Bearer key comes off the
+            # live solo client's session; the gram runner uses a DISPOSABLE session
+            # (so CANCEL can close it mid-upload without tearing down the live
+            # client) and returns PostResult directly — the same shape _poll_queue
+            # reads for solo posts, so no result-shim is needed. (Was: sumna_post,
+            # removed in the SYBU split — the live gram path now lives in poster.)
+            _auth = self._client.session.headers.get("Authorization", "")
+            _key  = _auth[7:].strip() if _auth.lower().startswith("bearer ") else ""
+            conn  = poster_module.GramConnection(self._client.base_url, _key)
+            self._active_conn = conn  # so CANCEL can close the socket mid-upload
+
+            results = poster_module.run_gram_batch(
+                conn=conn,
+                entries=entries,
+                image_folder=image_folder,
+                on_progress=on_progress,
+                cancel_event=self._cancel_evt,
+            )
+        else:
+            results = poster_module.run_batch(
+                client=self._client,
+                entries=entries,
+                image_folder=image_folder,
+                site_data=self._site_data,
+                default_category=self._def_cat_var.get().strip(),
+                default_album=self._def_alb_var.get().strip(),
+                default_orientation=orient_val,
+                on_progress=on_progress,
+                drive_service=self._drive_service,
+                drive_folder_id=self._drive_folder_var.get().strip(),
+                copyright_text=self._copyright_var.get().strip(),
+                cancel_event=self._cancel_evt,
+            )
         cancelled = self._cancel_evt.is_set()
+        self._active_conn = None  # run finished — don't let a later cancel touch a stale conn
         self._msg_queue.put(('done', len(results), cancelled))
 
     def _poll_queue(self):
@@ -4099,6 +4362,9 @@ class App(tk.Tk):
                         row_status = 'ok' if result.exif_ok else 'warning'
                     else:
                         row_status = 'error'
+                        # Flush this failure to disk immediately — a mid-run crash
+                        # still leaves a complete list.
+                        self._append_failure(result.entry.file, result.message)
                     if row:
                         row.set_status(row_status, result.message)
 
@@ -4119,10 +4385,17 @@ class App(tk.Tk):
                     processed = msg[1]
                     cancelled = msg[2] if len(msg) > 2 else False
                     self._set_posting(False)
+                    # Failures were already written live as they happened (see
+                    # _append_failure); here we just size them for the summary.
+                    failed = self._entry_list.get_failed_files()
                     if cancelled:
                         self._set_status(
                             f"Cancelled — {processed} posted before stop. "
                             "The rest stay in the queue.", FG_WARN)
+                    elif failed:
+                        self._set_status(
+                            f"Batch done — {processed} processed, {len(failed)} FAILED "
+                            "(red in the tray; list saved to failed_uploads_*.txt).", FG_ERR)
                     else:
                         self._set_status(f"Batch complete — {processed} processed.", FG_OK)
                         # Whole batch posted → recovery file no longer needed.
@@ -4151,6 +4424,12 @@ class App(tk.Tk):
                     self._conn_dot.configure(fg=LED_ERR)
         except queue.Empty:
             pass
+        except Exception as _e:
+            # Belt-and-suspenders: a malformed queue message must NEVER kill the
+            # poll loop. Previously an unexpected result shape escaped here, the
+            # reschedule below was skipped, and the POST tab froze permanently.
+            # Drop the offending message, keep polling; survivors drain next tick.
+            print(f"[poll_queue] dropped bad message: {_e}")
         self.after(100, self._poll_queue)
 
     # ------------------------------------------------------------------
@@ -4323,7 +4602,7 @@ class App(tk.Tk):
             return
         if store.exists():
             store.load()
-            have = store.enriched_count()
+            have = store.enriched_count_for(entries)
             if have and messagebox.askyesno(
                 "Resume enrichment",
                 f"Saved enrichment was found for this folder:\n\n"
@@ -4359,10 +4638,26 @@ class App(tk.Tk):
         if not self._posting:
             return
         self._cancel_evt.set()
+        # Don't wait out the per-request timeout (up to 120s). The gram
+        # connection is disposable — a fresh one is built on the next run — so
+        # closing its session tears down the open socket, the in-flight upload
+        # raises, sync_gram returns, and the loop breaks at once. Done off the
+        # UI thread because close() can block briefly.
+        conn = getattr(self, "_active_conn", None)
+        if conn is not None:
+            threading.Thread(
+                target=lambda c=conn: self._abort_conn(c), daemon=True).start()
         self._post_canvas.itemconfig(self._post_text, text="CANCELLING…")
         self._post_canvas.unbind("<Button-1>")
         self._post_canvas.configure(cursor="")
-        self._set_status("Cancelling after the current image finishes…", FG_WARN)
+        self._set_status("Cancelling…", FG_WARN)
+
+    @staticmethod
+    def _abort_conn(conn):
+        try:
+            conn.session.close()
+        except Exception:
+            pass
 
     def _post_hover(self, on: bool):
         """Hover lighten for the POST button — suppressed while posting so the

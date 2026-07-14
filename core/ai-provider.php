@@ -12,6 +12,8 @@
  * else echo $result['error'];
  */
 
+require_once __DIR__ . '/secret-store.php';
+
 /**
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -59,7 +61,7 @@ function snap_ai_api_key(): string {
     $setting = $key_map[$provider] ?? null;
     if (!$setting) return '';
     $row = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = " . $pdo->quote($setting) . " LIMIT 1")->fetch();
-    return $row ? trim($row['setting_val']) : '';
+    return $row ? secret_decrypt(trim($row['setting_val'])) : '';
 }
 
 function snap_ai_gemini_model(): string {

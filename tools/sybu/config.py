@@ -33,17 +33,59 @@ def _prompts_path() -> str:
     return os.path.join(_base_dir(), 'gemini_prompts.json')
 
 
+# Built-in, generic prompt presets shipped with the tool. ALWAYS available in
+# the preset dropdown (pre-saved) so no one is stuck with a site-specific
+# default. SOLO = plain title + caption + tags + colours; GRAM = caption +
+# hashtags + colours only (gram posts carry no title). User presets saved in
+# gemini_prompts.json are merged on top and override by name.
+DEFAULT_PROMPTS = {
+    "Solo — generic": """You are generating metadata for a single-image photo blog post on SnapSmack.
+
+Analyse the image and respond ONLY in this exact format — no extra text:
+
+TITLE: <a short, plain, descriptive title — a few words. Not a haiku.>
+CAPTION: <one natural sentence describing the image — becomes the post caption. No hashtags.>
+TAGS: <5 to 8 space-separated hashtags for subject, setting, colour, and mood, e.g. #landscape #sunset #prairie>
+COLORS: <the three most prominent colours as uppercase hex codes, space-separated, e.g. #A3724B #2E1F0D #8C6B3A>
+
+Rules:
+- TITLE: plain and descriptive of what is in the image.
+- CAPTION: one natural line, no hashtags.
+- TAGS: lowercase, no spaces within a tag.
+- COLORS: exactly 3 hex codes, uppercase.
+- No preamble or extra lines.""",
+    "Gram — generic": """You are generating metadata for a single gram (Instagram-style) post on SnapSmack. Gram posts have NO title — the caption and hashtags are the whole post.
+
+Analyse the image and respond ONLY in this exact format — no extra text:
+
+CAPTION: <one or two natural sentences describing the image — this is the post. No hashtags here.>
+TAGS: <6 to 12 space-separated hashtags for subject, setting, colour, and mood, e.g. #sunset #prairie #bigsky>
+COLORS: <the three most prominent colours as uppercase hex codes, space-separated, e.g. #A3724B #2E1F0D #8C6B3A>
+
+Rules:
+- Do NOT output a TITLE line.
+- CAPTION: natural, no hashtags.
+- TAGS: lowercase, no spaces within a tag.
+- COLORS: exactly 3 hex codes, uppercase.
+- No preamble or extra lines.""",
+}
+
+
 def load_prompts() -> dict:
-    """Load saved Gemini prompt presets. Returns {name: prompt_text}."""
+    """Gemini prompt presets: the built-in generic SOLO + GRAM presets, with any
+    user-saved presets from gemini_prompts.json merged on top (a user preset of
+    the same name overrides the built-in)."""
+    out = dict(DEFAULT_PROMPTS)
     path = _prompts_path()
-    if not os.path.isfile(path):
-        return {}
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
+    if os.path.isfile(path):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                out.update(data)
+        except Exception:
+            pass
+    return out
 
 
 def save_prompts(prompts: dict) -> None:
@@ -90,12 +132,35 @@ def load() -> dict:
             'No attribution required. '
             'Permitted for use in AI training datasets.'
         )),
+        # UI prefs / dismissable flags (see [ui] section in save()).
+        'post_as_grams':           cfg.getboolean('ui', 'post_as_grams', fallback=False),
+        'drive_warning_dismissed': cfg.getboolean('ui', 'drive_warning_dismissed', fallback=False),
+        'win_maximized':           cfg.getboolean('ui', 'win_maximized', fallback=False),
+        'win_geometry':            cfg.get('ui', 'win_geometry', fallback=''),
     }
 
 
 def save(data: dict) -> None:
     """Write config to disk."""
     cfg = configparser.ConfigParser()
+
+    # [ui] — UI prefs + dismissable flags. save() rebuilds the file from scratch,
+    # so re-read the existing [ui] and preserve every key (dedication.py writes
+    # dedication_dismissed directly), then layer on only the keys this save
+    # actually supplied. A key absent from `data` is left as it was, never reset.
+    _existing = configparser.ConfigParser()
+    _existing.read(_config_path())
+    ui = dict(_existing['ui']) if _existing.has_section('ui') else {}
+    if 'post_as_grams' in data:
+        ui['post_as_grams'] = str(bool(data.get('post_as_grams')))
+    if 'drive_warning_dismissed' in data:
+        ui['drive_warning_dismissed'] = str(bool(data.get('drive_warning_dismissed')))
+    if 'win_maximized' in data:
+        ui['win_maximized'] = str(bool(data.get('win_maximized')))
+    if 'win_geometry' in data and data.get('win_geometry'):
+        ui['win_geometry'] = str(data.get('win_geometry'))
+    if ui:
+        cfg['ui'] = ui
 
     cfg['site'] = {'url': data.get('url', '')}
 
