@@ -125,7 +125,8 @@ function add_ban(PDO $pdo, string $ban_type, string $ban_value, string $reason =
         try {
             $ste_enabled = ($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='ste_enabled' LIMIT 1")->fetchColumn() ?? '0') === '1';
             if ($ste_enabled) {
-                $ste_key = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='ste_api_key' LIMIT 1")->fetchColumn() ?: '';
+                require_once __DIR__ . '/secret-store.php';
+                $ste_key = secret_decrypt((string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='ste_api_key' LIMIT 1")->fetchColumn() ?: ''));
                 if ($ste_key !== '') {
                     // Translate local ban_type to STE ban_type
                     $ste_type = ($ban_type === 'email_hash') ? 'email' : $ban_type;

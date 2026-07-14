@@ -257,7 +257,7 @@ try {
     // an "album view" — bump snap_albums.view_count for the Slickr albums grid.
     // Best-effort + defensive; never blocks the page.
     if (count($filter_albums) === 1 && empty($filter_cats) && empty($filter_collections)
-        && trim($_GET['q'] ?? '') === '' && (int)($_GET['page'] ?? 1) <= 1) {
+        && trim($_GET['q'] ?? $_GET['search'] ?? '') === '' && (int)($_GET['page'] ?? 1) <= 1) {
         try {
             $pdo->exec("ALTER TABLE snap_albums ADD COLUMN IF NOT EXISTS `view_count` int NOT NULL DEFAULT 0");
             $pdo->prepare("UPDATE snap_albums SET view_count = view_count + 1 WHERE id = ?")
@@ -265,7 +265,10 @@ try {
         } catch (Exception $e) { /* non-fatal */ }
     }
 
-    $search_query  = trim($_GET['q'] ?? '');
+    // Accept both ?q= (archive form) and ?search= (skin search boxes + stats
+    // logger) as the query param — they had drifted apart, leaving ?search=
+    // unfiltered. Canonicalise here so every entry point actually filters.
+    $search_query  = trim($_GET['q'] ?? $_GET['search'] ?? '');
     // Calendar date-range filter: ?from=YYYY-MM-DD&to=YYYY-MM-DD
     $from_filter   = (isset($_GET['from']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['from']))
                      ? $_GET['from'] : null;
@@ -306,11 +309,18 @@ try {
         $like         = '%' . $search_query . '%';
         $tag_like     = '%' . strtolower($search_query) . '%';
         $family_exact = strtolower(trim($search_query));
-        $where_clauses[] = "(i.img_title LIKE ? OR i.img_description LIKE ? OR st.slug LIKE ? OR st.color_family = ?)";
-        $params[] = $like;
-        $params[] = $like;
-        $params[] = $tag_like;
-        $params[] = $family_exact;
+        // Match image text/tags/colour, AND membership of an album or category
+        // whose NAME matches the query (so "helios" finds the Helios album's shots
+        // even when the images themselves carry no helios title/tag).
+        $where_clauses[] = "(i.img_title LIKE ? OR i.img_description LIKE ? OR st.slug LIKE ? OR st.color_family = ?"
+            . " OR EXISTS (SELECT 1 FROM snap_image_album_map _sam JOIN snap_albums _sa ON _sa.id = _sam.album_id WHERE _sam.image_id = i.id AND _sa.album_name LIKE ?)"
+            . " OR EXISTS (SELECT 1 FROM snap_image_cat_map _scm JOIN snap_categories _sca ON _sca.id = _scm.cat_id WHERE _scm.image_id = i.id AND _sca.cat_name LIKE ?))";
+        $params[] = $like;         // img_title
+        $params[] = $like;         // img_description
+        $params[] = $tag_like;     // tag slug
+        $params[] = $family_exact; // colour family
+        $params[] = $like;         // album name
+        $params[] = $like;         // category name
     } elseif ($from_filter && $to_filter) {
         // Calendar date-range browse.
         $where_clauses[] = "DATE(i.img_date) >= ? AND DATE(i.img_date) <= ?";
@@ -405,7 +415,7 @@ $skin_path  = 'skins/' . $active_skin;
 snapsmack_log_hit($pdo, $settings, [
     'page_type'   => 'archive',
     'page_slug'   => null,
-    'search_term' => $_GET['search'] ?? null,
+    'search_term' => ($search_query !== '' ? $search_query : null),
 ]);
 snapsmack_maybe_rollup($pdo);
 

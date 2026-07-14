@@ -2062,6 +2062,16 @@ require_once __DIR__ . '/includes/header.php';
                 <h3>GET YOUR SHIT SORTED</h3>
                 <p>The offline companion to the Light Table. GET YOUR SHIT SORTED pulls down your archive's thumbnails and the data needed to organise it, then turns your own machine into the sorting workbench — no live connection, no server load, no waiting on page loads for a ten-thousand-image back catalog. Do the work on a plane, in a basement, wherever you like. When you're done, it resyncs every change back to your site in one pass.</p>
             </div>
+            <div class="coming-item">
+                <span class="tag">Network</span>
+                <h3>PHOTOFRI.DAY</h3>
+                <p>A weekly photo challenge for the whole Fediverse. One theme every Friday; shoot it and post it from your own blog or instance, and photofri.day points the world back to your work — your photo never leaves your site. Launching September 2026.</p>
+            </div>
+            <div class="coming-item">
+                <span class="tag">Network</span>
+                <h3>PHOTOBLOGS.FYI</h3>
+                <p>The discovery hub for the SnapSmack network. Your blog already federates on its own; photoblogs.fyi (fyi = Federate Your Instance) is the shared front door that helps readers and fellow photographers actually find it — on the Fediverse and off. Additive by design: your blog stands alone with or without it.</p>
+            </div>
         </div>
     </div>
 </section>

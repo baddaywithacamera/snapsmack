@@ -168,3 +168,8 @@ skins/chaplin/reference work from Claude Design - gitignore/
 dropagram/
 tools/flkr-fckr/_pycheck.out
 tools/smack-up-your-backup/_suyb_check.out
+
+_gitlock_trash/
+_gittrash2/
+
+tools/gyss/src-tauri/target/

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GET YOUR SHIT SORTED</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Resolve bare @tauri-apps/api specifiers in the bundler-less webview -->
+    <script type="importmap">
+    {
+        "imports": {
+            "@tauri-apps/api/core": "./scripts/tauri-core.js",
+            "@tauri-apps/api/path": "./scripts/tauri-path.js"
+        }
+    }
+    </script>
+</head>
+<body>
+<div id="app">
+
+    <!-- ── Tab Strip ───────────────────────────────────────────────────── -->
+    <div id="tab-strip">
+        <button class="tab-btn active" data-tab="connect">CONNECT</button>
+        <button class="tab-btn"        data-tab="filter">FILTER</button>
+        <button class="tab-btn"        data-tab="sort">SORT</button>
+    </div>
+
+    <!-- ── Tab Panes ───────────────────────────────────────────────────── -->
+    <div id="tab-area">
+
+        <!-- CONNECT ──────────────────────────────────────────────────── -->
+        <div id="tab-connect" class="tab-pane active">
+            <div id="connect-left">
+                <h3>Saved Sites</h3>
+                <div id="profile-list">
+                    <p class="empty-hint">No profiles yet.</p>
+                </div>
+            </div>
+            <div id="connect-right">
+                <h3>Add / Edit Site</h3>
+                <div class="connect-form">
+                    <div class="form-group">
+                        <label class="form-label" for="input-profile-name">Profile Name</label>
+                        <input type="text" id="input-profile-name" class="form-input"
+                               placeholder="e.g. acolourlesslife.ca">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="input-site-url">Site URL</label>
+                        <input type="url" id="input-site-url" class="form-input"
+                               placeholder="https://yourblog.ca">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="input-api-key">API Key</label>
+                        <div class="input-with-toggle">
+                            <input type="password" id="input-api-key" class="form-input"
+                                   placeholder="Paste GYSS API key from your blog">
+                            <button id="btn-toggle-key" type="button">SHOW</button>
+                        </div>
+                        <p style="font-size:11px;color:var(--text-dim);margin-top:4px;">
+                            Generate a key at Admin → API Keys → GET YOUR SHIT SORTED.
+                        </p>
+                    </div>
+                    <div id="connect-status" class="status-line status-info" hidden></div>
+                    <div class="connect-btns">
+                        <button id="btn-test-connection" class="btn-secondary">TEST CONNECTION</button>
+                        <button id="btn-save-profile" class="btn-primary">SAVE &amp; CONNECT</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FILTER ───────────────────────────────────────────────────── -->
+        <div id="tab-filter" class="tab-pane">
+            <div id="filter-left">
+                <h3>Filter Options</h3>
+                <div class="filter-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="filter-date-from">From</label>
+                            <input type="date" id="filter-date-from" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="filter-date-to">To</label>
+                            <input type="date" id="filter-date-to" class="form-input">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="filter-category">Category</label>
+                        <select id="filter-category" class="form-input">
+                            <option value="">All categories</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="filter-album">Album</label>
+                        <select id="filter-album" class="form-input">
+                            <option value="">All albums</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="filter-limit">Limit</label>
+                        <input type="number" id="filter-limit" class="form-input" value="200" min="1" max="500">
+                    </div>
+                    <div id="filter-status" class="status-line status-info" hidden></div>
+                    <button id="btn-pull" class="btn-primary">PULL PHOTOS</button>
+                </div>
+            </div>
+            <div id="filter-right">
+                <h3>Saved Sessions</h3>
+                <div id="session-list">
+                    <p class="empty-hint">No saved sessions.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SORT ─────────────────────────────────────────────────────── -->
+        <div id="tab-sort" class="tab-pane">
+            <!-- Top bar -->
+            <div id="sort-topbar">
+                <div id="sort-profile-label" style="color:var(--text-mid)">No session loaded</div>
+                <div id="sort-filter-label"></div>
+                <div class="topbar-actions">
+                    <div id="sort-status" hidden></div>
+                    <button id="btn-new-session"  class="btn-ghost btn-sm">NEW SESSION</button>
+                    <button id="btn-save-session" class="btn-secondary btn-sm">SAVE</button>
+                    <button id="btn-push" class="btn-primary btn-sm" disabled>PUSH CHANGES</button>
+                </div>
+            </div>
+
+            <!-- Conflict banner -->
+            <div id="conflict-banner" hidden></div>
+
+            <!-- Grid + edit panel -->
+            <div id="sort-body">
+                <div id="sort-grid-wrap">
+                    <div id="sort-grid">
+                        <p class="empty-hint" style="padding:20px">Pull photos from the FILTER tab to begin.</p>
+                    </div>
+                </div>
+
+                <!-- Edit panel (right rail) -->
+                <div id="edit-panel">
+                    <div id="edit-panel-header">
+                        <h4>Edit Photo</h4>
+                        <button id="btn-ep-close" class="btn-ghost btn-sm">✕</button>
+                    </div>
+                    <img id="ep-thumb" src="" alt="">
+                    <div id="edit-panel-fields">
+                        <div class="form-group">
+                            <label class="form-label" for="ep-title">Title</label>
+                            <input type="text" id="ep-title" class="form-input">
+                            <button id="btn-ep-filename-title" class="btn-ghost btn-sm" type="button"
+                                    title="Fill the title from the image filename (extension stripped)">USE FILENAME AS TITLE</button>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="ep-description">Description</label>
+                            <textarea id="ep-description" class="form-input" rows="4"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="ep-category">Category</label>
+                            <select id="ep-category" class="form-input">
+                                <option value="">— no category —</option>
+                            </select>
+                        </div>
+                        <div id="ep-sort-orig" style="font-size:11px;color:var(--text-dim)"></div>
+                    </div>
+                    <div id="edit-panel-actions">
+                        <button id="btn-ep-revert" class="btn-secondary btn-sm">REVERT</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- #tab-area -->
+
+</div><!-- #app -->
+
+<!-- ── Conflict Resolution Modal ─────────────────────────────────────────── -->
+<div id="conflict-modal">
+    <div id="conflict-inner">
+        <div id="conflict-header">
+            <h3>⚠ Conflicts Detected</h3>
+            <button id="btn-close-conflict-modal" class="btn-ghost btn-sm">CLOSE</button>
+        </div>
+        <div id="conflict-list"></div>
+    </div>
+</div>
+
+<!-- ── Toast container ───────────────────────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<script type="module" src="scripts/main.js"></script>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->

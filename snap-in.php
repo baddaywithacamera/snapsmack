@@ -95,13 +95,14 @@ $_snap_uri = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
 if (preg_match('#/snap-in\.php$#i', $_snap_uri)) {
     $provided = trim($_GET['key'] ?? '');
     if ($provided !== '') {
+        require_once __DIR__ . '/core/secret-store.php';
         $recovery_key = $pdo->query(
             "SELECT setting_val FROM snap_settings WHERE setting_key = 'login_recovery_key' LIMIT 1"
         )->fetchColumn();
         $login_slug = $pdo->query(
             "SELECT setting_val FROM snap_settings WHERE setting_key = 'login_slug' LIMIT 1"
         )->fetchColumn() ?: 'snap-in';
-        if ($recovery_key && hash_equals((string)$recovery_key, $provided)) {
+        if ($recovery_key && hash_equals(secret_decrypt((string)$recovery_key), $provided)) {
             header('Location: /' . ltrim($login_slug, '/'));
             exit;
         }

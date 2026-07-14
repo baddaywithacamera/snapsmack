@@ -15,10 +15,12 @@
  */
 
 
+require_once __DIR__ . '/secret-store.php';
+
 function is_spam($author, $email, $body, $pdo) {
     // --- API KEY LOOKUP ---
     $stmt        = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'akismet_key'");
-    $akismet_key = $stmt->fetchColumn();
+    $akismet_key = secret_decrypt((string)$stmt->fetchColumn());
 
     // If no key is set, fail open and allow the comment through.
     if (!$akismet_key) return false;

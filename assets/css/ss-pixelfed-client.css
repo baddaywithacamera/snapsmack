@@ -144,7 +144,10 @@
 .sspf-card-userlink { cursor: pointer; }
 .sspf-card-userlink:hover .sspf-card-user { text-decoration: underline; }
 .sspf-card-sub { color: var(--pf-muted); font-size: .78rem; }
-.sspf-card-media { width: 100%; display: block; background: #000; aspect-ratio: 1 / 1; object-fit: cover; cursor: pointer; }
+/* 0.7.403: TRUE aspect ratio in the feed — no forced square crop. A photoblog's
+   non-square work renders at its real proportions; this is the one deliberate
+   departure from stock Pixelfed's square feed. */
+.sspf-card-media { width: 100%; height: auto; display: block; background: #0c0c0e; cursor: pointer; }
 .sspf-card-multi { padding: 8px 14px 0; }
 .sspf-card-actions { display: flex; gap: 18px; padding: 12px 14px; font-size: 1.15rem; }
 .sspf-card-actions button { background: none; border: none; color: var(--pf-text); cursor: pointer; font-size: inherit; padding: 0; }
@@ -158,9 +161,13 @@
 .sspf-profile-handle { color: var(--pf-muted); font-size: .9rem; margin-bottom: 8px; }
 .sspf-profile-stats { display: flex; gap: 22px; font-size: .88rem; }
 .sspf-profile-stats b { display: block; font-size: 1rem; }
-.sspf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.sspf-grid a { display: block; aspect-ratio: 1 / 1; background: var(--pf-surface-2); border-radius: 4px; overflow: hidden; }
-.sspf-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 0.7.403: masonry, TRUE aspect — the profile grid no longer crops non-square
+   work into squares. Cells flow into columns and keep their real proportions,
+   the profile-level counterpart to the natural-aspect feed above. */
+.sspf-grid { columns: 3; column-gap: 6px; }
+.sspf-grid a { display: block; break-inside: avoid; margin: 0 0 6px; background: var(--pf-surface-2); border-radius: 4px; overflow: hidden; }
+.sspf-grid img { width: 100%; height: auto; object-fit: contain; display: block; }
+@media (max-width: 720px) { .sspf-grid { columns: 2; } }
 
 /* ── Buttons ── */
 .sspf-btn {
@@ -317,5 +324,26 @@
 .sspf-acct-who { flex: 1 1 auto; min-width: 0; }
 .sspf-acct-who .sspf-card-user, .sspf-acct-who .sspf-card-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sspf-results-feed { margin-top: 4px; }
+
+/* ── Direct messages (native DM inbox, 0.7.404) ── */
+.sspf-dm-composer { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; margin-bottom: 18px; }
+.sspf-dm-to { flex: 1 1 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--pf-border); background: var(--pf-surface-2); color: var(--pf-text); font: inherit; font-size: .9rem; outline: none; }
+.sspf-dm-input { flex: 1 1 auto; min-height: 44px; resize: vertical; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--pf-border); background: var(--pf-surface-2); color: var(--pf-text); font: inherit; font-size: .9rem; outline: none; }
+.sspf-dm-to:focus, .sspf-dm-input:focus { border-color: var(--pf-accent); }
+.sspf-dm-composer .sspf-btn { flex: 0 0 auto; }
+.sspf-dm-threads { display: flex; flex-direction: column; gap: 2px; }
+.sspf-dm-thread { padding: 12px 14px; border: 1px solid var(--pf-border); border-radius: var(--pf-radius); margin-bottom: 8px; background: var(--pf-surface); cursor: pointer; }
+.sspf-dm-thread:hover { background: var(--pf-surface-2); border-color: var(--pf-accent); }
+.sspf-dm-thread-top { display: flex; align-items: center; gap: 8px; }
+.sspf-dm-who { font-weight: 600; font-size: .9rem; color: var(--pf-text); }
+.sspf-dm-request { font-size: .66rem; letter-spacing: .06em; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--pf-border); color: var(--pf-muted); }
+.sspf-dm-preview { margin-top: 4px; font-size: .85rem; color: var(--pf-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sspf-dm-time { margin-top: 4px; font-size: .72rem; color: var(--pf-muted); }
+.sspf-dm-convo { display: flex; flex-direction: column; gap: 8px; max-height: 52vh; overflow-y: auto; padding: 10px 2px; margin: 12px 0; }
+.sspf-dm-bubble { max-width: 78%; align-self: flex-start; padding: 9px 12px; border-radius: 14px; background: var(--pf-surface-2); border: 1px solid var(--pf-border); }
+.sspf-dm-mine { align-self: flex-end; background: var(--pf-accent); border-color: var(--pf-accent); color: #fff; }
+.sspf-dm-text { font-size: .9rem; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+.sspf-dm-media { display: inline-block; margin-top: 4px; font-size: .82rem; }
+.sspf-dm-bubble .sspf-dm-time { font-size: .68rem; opacity: .7; margin-top: 3px; }
 
 /* ===== SNAPSMACK EOF ===== */

@@ -27,10 +27,13 @@ $sv_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                    ->fetchAll(PDO::FETCH_KEY_PAIR);
 sv_ensure_tables($pdo);
 $sv_on = sv_enabled($sv_settings);
-// GRAMOFSMACK-first: the two-way client is gated to carousel mode while we
-// prove it out, then widens to the other install modes. (core/header.php:41)
+// 0.7.403: the two-way client now runs in EVERY install mode (photoblog /
+// SMACKONEOUT included), not just carousel/GRAMOFSMACK. The interactions are
+// protocol-level and mode-agnostic; a photoblog federates standalone images the
+// same way a GRAM federates carousels. $sv_mode is still read for any
+// mode-specific rendering, but the client is no longer gated on it.
 $sv_mode = (string)($sv_settings['site_mode'] ?? 'photoblog');
-$sv_gram = ($sv_mode === 'carousel');
+$sv_gram = true;
 
 // ── POST interactions (JSON) — follow / unfollow / like / reply ─────────────
 // CSRF is already enforced globally in core/auth-smack.php before we get here.
@@ -86,6 +89,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sspf_action'])) {
             sv_mark_notifications_read($pdo);
             $ok = true; $msg = ''; $extra = ['unread' => 0];
             break;
+
+        case 'dm_send':   // native Direct: send / reply as the blog (0.7.404)
+            list($ok, $msg) = sv_send_dm($pdo, $sv_settings,
+                (string)($_POST['target'] ?? ''), (string)($_POST['body'] ?? ''),
+                trim((string)($_POST['media'] ?? '')) ?: null);
+            break;
     }
     echo json_encode(array_merge(['ok' => $ok, 'msg' => $msg], $extra), JSON_UNESCAPED_SLASHES);
     exit;
@@ -119,6 +128,41 @@ if (isset($_GET['ajax'])) {
             'items'  => sv_notifications($pdo, 60),
             'unread' => sv_unread_count($pdo),
         ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    if ($panel === 'direct') {
+        // DM inbox — thread list, or one thread's messages (?actor=<url>). Native
+        // Pixelfed Direct folded into the client so DMs live here, not a separate
+        // admin page. Reuses snap_ap_dms + sv_send_dm. (0.7.404)
+        if (!$sv_on) { echo json_encode(['ok' => true, 'threads' => []]); exit; }
+        $tactor = trim((string)($_GET['actor'] ?? ''));
+        if ($tactor !== '') {
+            try { $pdo->prepare("UPDATE snap_ap_dms SET is_read = 1 WHERE remote_actor_url = ? AND direction = 'in'")->execute([$tactor]); } catch (Exception $e) { /* lag */ }
+            $ms = $pdo->prepare(
+                "SELECT id, remote_handle, direction, body, media_url, is_deleted, created_at
+                 FROM snap_ap_dms WHERE remote_actor_url = ? ORDER BY created_at ASC, id ASC LIMIT 500"
+            );
+            $ms->execute([$tactor]);
+            echo json_encode(['ok' => true, 'messages' => $ms->fetchAll(PDO::FETCH_ASSOC)], JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+        $threads = [];
+        try {
+            $threads = $pdo->query(
+                "SELECT remote_actor_url,
+                        MAX(remote_handle) AS handle,
+                        MAX(created_at)    AS last_at,
+                        SUM(direction = 'in' AND is_read = 0 AND is_deleted = 0) AS unread,
+                        MAX(is_request)    AS is_request,
+                        SUBSTRING_INDEX(MAX(CONCAT(created_at, '\\n', COALESCE(body,''))), '\\n', -1) AS last_body
+                 FROM snap_ap_dms
+                 GROUP BY remote_actor_url
+                 ORDER BY last_at DESC
+                 LIMIT 200"
+            )->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) { $threads = []; }
+        echo json_encode(['ok' => true, 'threads' => $threads], JSON_UNESCAPED_SLASHES);
         exit;
     }
 
@@ -355,6 +399,7 @@ include 'core/sidebar.php';
                 <a data-panel="local"><span class="sspf-ico">&#9711;</span> Local</a>
                 <a data-panel="global"><span class="sspf-ico">&#9673;</span> Global</a>
                 <a data-panel="notifications"><span class="sspf-ico">&#9829;</span> Notifications<?php if ($sv_unread > 0): ?> <span class="sspf-badge"><?php echo (int)$sv_unread; ?></span><?php endif; ?></a>
+                <a data-panel="direct"><span class="sspf-ico">&#9993;</span> Direct</a>
                 <a data-panel="profile"><span class="sspf-ico">&#9673;</span> Profile</a>
             </nav>
 
@@ -384,6 +429,13 @@ include 'core/sidebar.php';
                     <h3 class="sspf-panel-title">Notifications</h3>
                     <div class="sspf-panel-body">
                         <div class="sspf-note">Follows, likes and replies aimed at you land here once notifications ingest is wired.</div>
+                    </div>
+                </section>
+
+                <section class="sspf-panel" data-panel="direct">
+                    <h3 class="sspf-panel-title">Direct</h3>
+                    <div class="sspf-panel-body">
+                        <div class="sspf-note">Loading your messages…</div>
                     </div>
                 </section>
 

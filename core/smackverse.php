@@ -253,6 +253,7 @@ function sv_ensure_tables(PDO $pdo): void {
         "blurhash varchar(50) DEFAULT NULL",
         "is_sensitive tinyint(1) NOT NULL DEFAULT 0",
         "content_warning varchar(255) DEFAULT NULL",
+        "fedi_published_at datetime DEFAULT NULL",
     ] as $_col) {
         try { $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS {$_col}"); }
         catch (Exception $e) { /* older MySQL without IF NOT EXISTS — ignore dup */ }
@@ -1639,6 +1640,36 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         return 202;
     }
 
+    if ($type === 'Update') {
+        $obj   = $activity['object'] ?? [];
+        $otype = is_array($obj) ? (string)($obj['type'] ?? '') : '';
+        // Remote edited their PROFILE → refresh our cached actor so their name,
+        // avatar and handle update everywhere we render them. (0.7.404)
+        if ($otype === 'Person' && (string)($obj['id'] ?? '') === $actor_id) {
+            sv_cache_actor($pdo, $obj);
+            return 202;
+        }
+        // Remote edited a Note/Image they sent → update the copy in place: the
+        // moderation comment it produced, and the reader-timeline row if we follow
+        // them (ON DUPLICATE KEY UPDATE rewrites content + media).
+        if (($otype === 'Note' || $otype === 'Image') && $obj) {
+            $oid = (string)($obj['id'] ?? '');
+            if ($oid !== '') {
+                $text = trim(html_entity_decode(strip_tags((string)($obj['content'] ?? '')), ENT_QUOTES, 'UTF-8'));
+                if (mb_strlen($text) > 5000) $text = mb_substr($text, 0, 5000);
+                try {
+                    $pdo->prepare("UPDATE snap_comments SET comment_text = ? WHERE ap_object_id = ? AND ap_source = 'fediverse'")
+                        ->execute([$text, $oid]);
+                } catch (Exception $e) { /* column lag */ }
+                if (sv_is_following($pdo, $actor_id)) {
+                    $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
+                    sv_ingest_timeline($pdo, $obj, $actor_id, $handle);
+                }
+            }
+        }
+        return 202;
+    }
+
     if ($type === 'Delete') {
         // Remote actor deleting itself → drop from followers; deleting a Note →
         // remove the federated comment it produced.
@@ -1655,6 +1686,11 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             // Remote unsend of a DM they sent us → mark the thread row deleted.
             try {
                 $pdo->prepare("UPDATE snap_ap_dms SET is_deleted = 1 WHERE note_id = ? AND remote_actor_url = ?")
+                    ->execute([$obj, $actor_id]);
+            } catch (Exception $e) { /* table may lag */ }
+            // Deleted remote post → drop it from the reader timeline too. (0.7.404)
+            try {
+                $pdo->prepare("DELETE FROM snap_ap_timeline WHERE object_id = ? AND actor_url = ?")
                     ->execute([$obj, $actor_id]);
             } catch (Exception $e) { /* table may lag */ }
         }
@@ -1682,6 +1718,30 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                         : (string)($boosted['attributedTo'] ?? '');
                     sv_ingest_timeline($pdo, $boosted, $battr !== '' ? $battr : $actor_id, '', true, $actor_id);
                 }
+            }
+        }
+        return 202;
+    }
+
+    if ($type === 'Move') {
+        // An account we follow migrated instances. Mastodon/Pixelfed send Move with
+        // target = the new actor; re-follow the target and retire the old row, but
+        // only if the target claims the old actor via alsoKnownAs (anti-hijack). (0.7.404)
+        $target = is_array($activity['target'] ?? null)
+            ? (string)($activity['target']['id'] ?? '') : (string)($activity['target'] ?? '');
+        if ($target !== '' && stripos($target, 'https://') === 0 && sv_is_following($pdo, $actor_id)) {
+            $tdoc = sv_fetch_ap($target);
+            $aka  = [];
+            if (is_array($tdoc)) {
+                $raw = $tdoc['alsoKnownAs'] ?? [];
+                $aka = is_array($raw) ? $raw : [(string)$raw];
+            }
+            if (in_array($actor_id, $aka, true)) {
+                sv_follow_actor($pdo, $settings, $target);
+                try {
+                    $pdo->prepare("UPDATE snap_ap_following SET state = 'moved' WHERE actor_url = ?")
+                        ->execute([$actor_id]);
+                } catch (Exception $e) { /* column lag */ }
             }
         }
         return 202;
@@ -1818,11 +1878,25 @@ function sv_actor_doc(PDO $pdo, array &$settings): array {
         '@context' => [
             'https://www.w3.org/ns/activitystreams',
             'https://w3id.org/security/v1',
+            [
+                // 0.7.403: declare the extension terms the actor emits so a
+                // JSON-LD-normalising remote doesn't silently drop them —
+                // including attachment PropertyValue + pronouns and the toot: set.
+                'toot'                      => 'http://joinmastodon.org/ns#',
+                'schema'                    => 'http://schema.org#',
+                'PropertyValue'             => 'schema:PropertyValue',
+                'value'                     => 'schema:value',
+                'manuallyApprovesFollowers' => 'as:manuallyApprovesFollowers',
+                'discoverable'              => 'toot:discoverable',
+                'indexable'                 => 'toot:indexable',
+                'featured'                  => ['@id' => 'toot:featured',     '@type' => '@id'],
+                'featuredTags'              => ['@id' => 'toot:featuredTags', '@type' => '@id'],
+            ],
         ],
         'id'                => $actor,
         'type'              => 'Person',
         'preferredUsername' => sv_handle($settings),
-        'name'              => html_entity_decode((string)($settings['site_name'] ?? 'SnapSmack'), ENT_QUOTES | ENT_HTML5),
+        'name'              => html_entity_decode((string)((trim((string)($settings['smackverse_display_name'] ?? '')) !== '') ? $settings['smackverse_display_name'] : ($settings['site_name'] ?? 'SnapSmack')), ENT_QUOTES | ENT_HTML5),
         'summary'           => sv_actor_summary($settings),
         'url'               => sv_profile_url($settings),
         'inbox'             => sv_inbox_url($settings),
@@ -1834,6 +1908,7 @@ function sv_actor_doc(PDO $pdo, array &$settings): array {
         'endpoints'         => ['sharedInbox' => sv_inbox_url($settings)],
         'manuallyApprovesFollowers' => false,
         'discoverable'      => true,
+        'indexable'         => true,
     ];
 
     $icon = sv_avatar($settings);
@@ -1847,6 +1922,35 @@ function sv_actor_doc(PDO $pdo, array &$settings): array {
             'publicKeyPem' => $pub,
         ];
     }
+
+    // 0.7.403: profile metadata rows (Mastodon/Pixelfed PropertyValue). A website
+    // link (HTML <a> so it's clickable + rel=me verifiable) and free-text pronouns.
+    // The @context above declares schema:PropertyValue/value so these survive
+    // JSON-LD normalisation on the remote. Website defaults to site_url; pronouns
+    // only appear once set (smack-smackverse.php field).
+    $attach = [];
+    $site = trim((string)($settings['smackverse_website'] ?? $settings['site_url'] ?? ''));
+    if ($site !== '') {
+        if (!preg_match('~^https?://~i', $site)) $site = 'https://' . ltrim($site, '/');
+        $host = parse_url($site, PHP_URL_HOST) ?: $site;
+        $attach[] = [
+            'type'  => 'PropertyValue',
+            'name'  => 'Website',
+            'value' => '<a href="' . htmlspecialchars($site, ENT_QUOTES)
+                     . '" rel="me nofollow noopener noreferrer" target="_blank">'
+                     . htmlspecialchars($host, ENT_QUOTES) . '</a>',
+        ];
+    }
+    $pronouns = trim((string)($settings['smackverse_pronouns'] ?? ''));
+    if ($pronouns !== '') {
+        $attach[] = [
+            'type'  => 'PropertyValue',
+            'name'  => 'Pronouns',
+            'value' => htmlspecialchars($pronouns, ENT_QUOTES),
+        ];
+    }
+    if ($attach) $doc['attachment'] = $attach;
+
     return $doc;
 }
 
@@ -3228,14 +3332,11 @@ function sv_note_for_image(PDO $pdo, array $img, array $settings): array {
 
     $title = trim($img['img_title'] ?? '');
     $desc  = trim($img['img_description'] ?? '');
-    // No title → no caption line. Never federate the literal word "Untitled"
-    // (Pixelfed posts have no titles anyway — an untitled post reads as a clean
-    // image + whatever caption/tags exist).
+    // SMACKONEOUT: do NOT prepend the post title into the federated caption —
+    // Pixelfed posts have no titles, and it read as a redundant caption line on
+    // the remote. Caption = description + hashtags only. ($title is still used
+    // below as the media alt text.) (0.7.403)
     $content = '';
-    if ($title !== '') {
-        $content .= '<p><a href="' . htmlspecialchars($permalink) . '">'
-                  . htmlspecialchars($title) . '</a></p>';
-    }
     if ($desc !== '') {
         $content .= '<p>' . nl2br(htmlspecialchars($desc)) . '</p>';
     }
@@ -3269,7 +3370,11 @@ function sv_note_for_image(PDO $pdo, array $img, array $settings): array {
         'attributedTo' => sv_actor_url($settings),
         'to'           => ['https://www.w3.org/ns/activitystreams#Public'],
         'cc'           => [sv_followers_url($settings)],
-        'published'    => gmdate('Y-m-d\TH:i:s\Z', strtotime($img['img_date'])),
+        // Fediverse date LABEL: fedi_published_at override (stamped by IMPRINT
+        // ORDER FOR FEDIVERSE, at parity with GRAM posts), else the image date.
+        'published'    => gmdate('Y-m-d\TH:i:s\Z', strtotime(
+                              !empty($img['fedi_published_at']) ? $img['fedi_published_at'] : $img['img_date']
+                          )),
         'url'          => $permalink,
         'summary'      => (!empty($img['content_warning']) ? trim($img['content_warning']) : null),
         'sensitive'    => (!empty($img['is_sensitive']) || !empty($img['content_warning'])),
@@ -4013,7 +4118,7 @@ function sv_outbox_doc(PDO $pdo, array $settings, int $page = 0): array {
     try {
         $stmt = $pdo->prepare(
             "SELECT id, d, kind FROM (
-                SELECT id, img_date AS d, 'image' AS kind FROM snap_images
+                SELECT id, COALESCE(fedi_published_at, img_date) AS d, 'image' AS kind FROM snap_images
                   WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL
                 UNION ALL
                 SELECT id, COALESCE(fedi_published_at, created_at) AS d, 'post' AS kind FROM snap_posts
@@ -4451,14 +4556,22 @@ function sv_sync_fedi_dates(PDO $pdo, array $settings): int {
     // Grid display order (top first) = the delivery enumerator, un-reversed.
     $units = array_reverse(sv_ordered_units($pdo, $settings, 100000));
     if (!$units) return 0;
-    $upd  = $pdo->prepare("UPDATE snap_posts SET fedi_published_at = ? WHERE id = ?");
+    // 0.7.403: stamp BOTH GRAM posts (snap_posts) AND SMACKONEOUT standalone
+    // images (snap_images), so the remote's date-sort reproduces the grid for a
+    // photoblog too — not just carousel posts. Source date is per-kind from the
+    // unit's own row (created_at / img_date), robust across the trigram realign.
+    $updPost = $pdo->prepare("UPDATE snap_posts  SET fedi_published_at = ? WHERE id = ?");
+    $updImg  = $pdo->prepare("UPDATE snap_images SET fedi_published_at = ? WHERE id = ?");
     $prev = null; $n = 0;
     foreach ($units as $u) {
-        if (($u['kind'] ?? '') !== 'post') continue;   // fedi_published_at is per-post
-        $created = strtotime((string)($u['row']['created_at'] ?? 'now')) ?: time();
+        $kind = $u['kind'] ?? '';
+        if ($kind !== 'post' && $kind !== 'image') continue;
+        $src = ($kind === 'post') ? ($u['row']['created_at'] ?? null) : ($u['row']['img_date'] ?? null);
+        $created = strtotime((string)($src ?? 'now')) ?: time();
         $fp = ($prev === null) ? $created : min($created, $prev - 1);
         $prev = $fp;
-        $upd->execute([date('Y-m-d H:i:s', $fp), (int)($u['row']['id'] ?? 0)]);
+        $stmt = ($kind === 'post') ? $updPost : $updImg;
+        $stmt->execute([date('Y-m-d H:i:s', $fp), (int)($u['row']['id'] ?? 0)]);
         $n++;
     }
     return $n;

@@ -39,7 +39,7 @@ import time
 
 # Fields persisted per item. Mirrors manifest_parser.ManifestEntry (minus file,
 # which is stored separately, and line_num, which is source-only).
-FIELDS = ('title', 'tags', 'category', 'album', 'orientation', 'colors')
+FIELDS = ('title', 'caption', 'tags', 'category', 'album', 'orientation', 'colors')
 
 
 def _base_dir() -> str:
@@ -151,6 +151,21 @@ class RecoveryStore:
     def enriched_count(self) -> int:
         return sum(1 for r in self.data['items'].values()
                    if r.get('status') in ('enriched', 'ok') and (r.get('title') or r.get('tags')))
+
+    def enriched_count_for(self, entries) -> int:
+        """How many of the CURRENT entries have a matching saved enrichment.
+
+        Counts against the live folder via the same key lookup that restore_into
+        uses — NOT the raw store. Stale records for files that were deleted,
+        renamed, or re-exported since the last run no longer inflate the number
+        (the "8 of 7" bug) and we never promise more is restorable than the
+        entries that will actually match and restore."""
+        n = 0
+        for entry in entries:
+            rec = self.lookup(entry)
+            if rec and rec.get('status') in ('enriched', 'ok') and (rec.get('title') or rec.get('tags')):
+                n += 1
+        return n
 
     def restore_into(self, entries) -> int:
         """Copy stored enrichment into matching entries in place. Returns count."""

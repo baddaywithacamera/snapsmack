@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Core permissions for the GET YOUR SHIT SORTED main window (path resolution for appDataDir/join; the app's own read_file/write_file/list_dir commands need no capability).",
+  "windows": ["main"],
+  "permissions": [
+    "core:default"
+  ]
+}
