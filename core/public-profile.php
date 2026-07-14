@@ -126,20 +126,30 @@ header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: private, no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 ?><!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?php echo pp_e($pp_name); ?> (<?php echo pp_e($pp_full_handle); ?>)</title>
 <link rel="alternate" type="application/activity+json" href="<?php echo pp_e(sv_actor_url($settings)); ?>">
+<script>try{var _t=localStorage.getItem('pp-theme');if(_t)document.documentElement.setAttribute('data-theme',_t);}catch(e){}</script>
 <style>
+  /* WHITE (light) is the base palette; BLACK (dark) overrides via [data-theme].
+     Toggle in the top bar; choice persists per-visitor. Accent stays Pixelfed
+     blue in both so it reads as Pixelfed, not a reskin. */
   :root{ --bg:#fff; --panel:#fafafa; --line:#dbdbdb; --fg:#161616; --muted:#8e8e8e; --accent:#3897f0; }
+  html[data-theme="dark"]{ --bg:#000; --panel:#151515; --line:#262626; --fg:#f5f5f5; --muted:#9a9a9a; --accent:#3897f0; }
+  html,body{ background:var(--bg); }
   *{ box-sizing:border-box; }
   body{ margin:0; background:var(--bg); color:var(--fg);
         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
   a{ color:inherit; text-decoration:none; }
-  .pp-topbar{ position:sticky; top:0; z-index:10; background:#fff; border-bottom:1px solid var(--line); }
+  .pp-topbar{ position:sticky; top:0; z-index:10; background:var(--bg); border-bottom:1px solid var(--line); }
   .pp-topbar-in{ max-width:1040px; margin:0 auto; padding:12px 18px; display:flex; align-items:center; }
+  .pp-theme{ margin-left:14px; width:30px; height:30px; flex:0 0 auto; border:1px solid var(--line);
+             border-radius:50%; background:var(--panel); color:var(--fg); font-size:1rem; line-height:1;
+             cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; }
+  .pp-theme:hover{ border-color:var(--accent); color:var(--accent); }
   .pp-logo{ font-size:1.05rem; color:var(--fg); text-decoration:none; }
   .pp-logo-title{ font-weight:800; letter-spacing:.2px; }
   .pp-logo-tag{ color:var(--muted); font-weight:400; }
@@ -204,6 +214,7 @@ header('Pragma: no-cache');
   <header class="pp-topbar"><div class="pp-topbar-in">
     <a class="pp-logo" href="<?php echo pp_e($pp_base); ?>"><b class="pp-logo-title"><?php echo pp_e($pp_name); ?></b><?php if ($pp_tagline !== ''): ?><span class="pp-logo-tag"> / <?php echo pp_e($pp_tagline); ?></span><?php endif; ?></a>
     <span class="pp-topbar-handle"><?php echo pp_e($pp_full_handle); ?></span>
+    <button id="pp-theme" class="pp-theme" type="button" title="White / black background" aria-label="Switch between white and black background">&#9680;</button>
   </div></header>
 
   <div class="pp-shell">
@@ -279,6 +290,17 @@ header('Pragma: no-cache');
       <?php endif; ?>
     </main>
   </div>
+  <script>
+  (function(){
+    var K='pp-theme', root=document.documentElement, btn=document.getElementById('pp-theme');
+    if(!root.getAttribute('data-theme')) root.setAttribute('data-theme','dark');
+    if(btn) btn.addEventListener('click',function(){
+      var next = root.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try{ localStorage.setItem(K, next); }catch(e){}
+    });
+  })();
+  </script>
 </body>
 </html>
 <?php // ===== SNAPSMACK EOF =====

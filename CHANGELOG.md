@@ -12,6 +12,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.405 — "The Best Night Ever" (2026-07-14)
+
+The standalone Pixelfed client grows up — it matches pixelfed.ca across every view, gains an account menu and deep links, and the old in-admin client steps aside. The SMACKVERSE Federation page splits into three focused pages, and a pinned footer stops slicing full-page screenshots.
+
+- **Pixelfed client — full fidelity pass** — `pixel.php` now matches the live pixelfed.ca UI across the board: the home feed shows images at their **natural aspect** (no more square-cropping) in flush, borderless cards; notifications render as rounded cards; the profile is a wide card-left + grid-right takeover with the nav replaced by the profile card and a back arrow, and the actor **bio renders as HTML** (sanitized) instead of printing raw `<br>`/`<a>` tags; DMs gain a Compose button; and the right-hand notifications rail only appears on the feed views now, matching Pixelfed. (`assets/css/ss-pixel.css`, `assets/js/ss-pixel.js`, `pixel.php`.)
+- **Account menu + deep links** — the top-right avatar is an account menu (Signed in / @handle / My Profile / Back to blog / Log out); `pixel.php` accepts `?panel=` so links open a specific view. The CMS **Pixelfed** nav opens the standalone client, a new **Notifications** nav deep-links to it, and "Create New Post" opens the blog's real composer (`smack-post-solo.php`) — posting stays 100% the CMS, one interface, one set of rows.
+- **Old in-admin client retired** — `smack-pixelfed.php` (the order-scrambled UI) now forwards to `pixel.php`; its `?ajax`/`sspf_action` endpoints are kept.
+- **SMACKVERSE Federation split into three pages** — the 694-line control room is now Federation (`smack-smackverse.php`), Followers & Delivery (`smack-sv-followers.php`), and Push & Tools (`smack-sv-tools.php`), all sharing one controller (`core/smackverse-admin-shared.php`) holding the settings load, every POST handler, and render state. Forms post to self; each handler redirects back to its page.
+- **Footer un-pinned** — `#admin-universal-footer` is no longer `position:fixed`, so full-page screen-caps of long admin lists (Multisite) aren't sliced.
+
 ## 0.7.404 — "Party of One" (2026-07-14)
 
 The SMACKVERSE client leaves the admin and becomes its own Pixelfed. A standalone page runs your blog as a fediverse actor — follow, like, comment, boost, search, DMs, timelines and notifications — in a UI matched to Pixelfed itself.

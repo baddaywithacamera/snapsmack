@@ -250,7 +250,7 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
      data-avatar="<?php echo px_e($sv_avatar); ?>"
      data-enabled="<?php echo $sv_on ? '1' : '0'; ?>"
      data-unread="<?php echo (int)$sv_unread; ?>"
-     data-default-panel="home">
+     data-default-panel="<?php echo px_e(in_array($_GET['panel'] ?? '', ['home','local','global','notifications','direct','profile','discover'], true) ? (string)$_GET['panel'] : 'home'); ?>">
 
   <!-- LEFT -->
   <aside class="sx-col-left">
@@ -262,7 +262,7 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
       </div>
     </div>
 
-    <a class="sx-create" href="index.php" title="Posting happens in the blog">&#8593; Create New Post</a>
+    <a class="sx-create" href="smack-post-solo.php" title="Posting happens in the blog composer (same fields, same posts)">&#8593; Create New Post</a>
 
     <nav class="sx-nav">
       <div class="sx-nav-top">
