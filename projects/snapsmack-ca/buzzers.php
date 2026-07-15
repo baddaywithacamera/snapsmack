@@ -162,6 +162,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Jul 15</span><a href="#a033">SMACKVERSE Federation Client — Attack Surface</a></li>
                 <li><span class="idx-date">Jul 4</span><a href="#a032">SMACKVERSE Piggyback Search — Token Isolation</a></li>
                 <li><span class="idx-date">Jun 27</span><a href="#csrf">Cross-Site Request Forgery — Closed Site-Wide</a></li>
                 <li><span class="idx-date">Jun 25</span><a href="#asob">Son of a Batch — Batch Poster Review</a></li>
@@ -194,6 +195,14 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a033">
+                <div class="post-meta"><span class="post-date">July 15, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>SMACKVERSE Federation Client — Attack Surface</h2>
+                <p>SMACKVERSE is SnapSmack's fully integrated, Pixelfed-compatible single-user server &mdash; your blog's own instance on the Fediverse, speaking the ActivityPub protocol so it can follow, like, comment on, boost, and message people right across the network, and be followed back. Because it is fully interactive, it shows content written by people on other servers, so this audit walked that entire trust boundary. The engine room held up well: requests arriving from other servers are cryptographically verified before they are allowed to change anything, nobody can pose as someone they aren't, and the software is fenced off from reaching back into your own network.</p>
+                <p>Two medium findings were in the browser display code, where a hostile profile or post could have slipped a booby-trapped link into a page you were viewing. Both are closed &mdash; links coming from other servers are now checked to be ordinary web links before they are shown, and the profile-bio display was rebuilt to permit only safe formatting. A low-risk hardening item on an internal search request was tightened for good measure, and two informational notes were reviewed and accepted. Closed in 0.7.405.</p>
+                <a class="report-link" href="secaudits/2026-07-15-033-smackverse-federation-client-attack-surface.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a032">
                 <div class="post-meta"><span class="post-date">July 4, 2026</span><span class="post-tag">Closed</span></div>

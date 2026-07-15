@@ -12,6 +12,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.406 — "Suited for Success" (2026-07-15)
+
+Two gallery skins tailored to fit, the fediverse client's last XSS gaps closed, the blog title stops mangling apostrophes, and the follower-backfill default stops under-selling your work.
+
+- **SMACKVERSE client — XSS hardening (secaudit 033)** — the standalone Pixelfed client dropped remote-controlled URLs straight into anchor `href`s (a hostile instance's status permalink or profile-website link could carry a `javascript:` payload that ran in your authenticated session on click), and the bio sanitizer was a denylist with `xlink:href` / `data:` gaps. Added a `safeUrl()` http(s)-only allowlist across every remote href, rebuilt `bioHTML` as an inert-`DOMParser` tag allowlist, and SSRF-guarded the last unguarded outbound fetch (`sv_hub_search`). No critical/RCE found; full report in `secaudits/2026-07-15-033-smackverse-federation-client-attack-surface`. (`assets/js/ss-pixel.js`, `core/smackverse.php`.)
+- **Single-layout skins + forced thumb aspect** — `archive.php` now honours `masonry_supported => false` (thumbs-only) and a new symmetric `thumbs_supported => false` (masonry-only), building the T/M toggle from the layouts a skin actually offers so single-layout skins show no dead buttons; plus a new `features.archive_thumb_style` manifest key that forces square/cropped over the per-site setting. **GALLERIA** (1.3.2) is now masonry-only + Calendar; **HIP TO BE SQUARE** (1.3.1) is square-only with square forced (never re-select it) + Calendar.
+- **Photogram blog-title double-encode fixed** — an apostrophe or `&` in your blog name rendered as `&#39;` / `&amp;` in the profile header, author name and caption, because Photogram `htmlspecialchars()`'d an already-encoded value. Now decode-then-escape (the pattern the captions already used), so `Sean's` shows as `Sean's`. (**PHOTOGRAM** 2.0.13: `feed.php`, `layout.php`, `landing.php`.)
+- **Follower-backfill default un-stingied** — the Push & Tools "Posts to push" field defaulted to 10 while the engine already defaulted to 200, so the tool under-reported what a real follow sends. Reconciled to 200 — a defederation-safe window; deep archives stay on the blog and the crawlable outbox. (`smack-sv-tools.php`.)
+
 ## 0.7.405 — "The Best Night Ever" (2026-07-14)
 
 The standalone Pixelfed client grows up — it matches pixelfed.ca across every view, gains an account menu and deep links, and the old in-admin client steps aside. The SMACKVERSE Federation page splits into three focused pages, and a pinned footer stops slicing full-page screenshots.

@@ -1,0 +1,15 @@
+# blink-suyb — runtime deps
+#
+# The blink-suyb server/UI layer itself needs NOTHING beyond the Python 3
+# standard library. The deps below are inherited from the SUYB engines it
+# reuses (FTP/SFTP/cloud transports). Install them so every engine is wired.
+#
+# ===== SNAPSMACK EOF ===== (see note) — this is a .txt with # comments; marker kept for tooling
+requests>=2.31.0
+paramiko>=3.0.0              # SFTP/SSH transport
+google-api-python-client>=2.100.0
+google-auth-httplib2>=0.1.0
+google-auth-oauthlib>=1.0.0
+msal>=1.28.0                # OneDrive / Microsoft Graph
+Pillow>=10.0.0
+# ftplib, http.server, configparser, json -> stdlib, no install needed

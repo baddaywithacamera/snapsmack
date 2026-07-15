@@ -722,11 +722,19 @@ function sv_hub_search(PDO $pdo, array $settings, string $kind, string $term, in
 
     $url  = rtrim((string)$hub['site_url'], '/') . '/api.php?route=multisite/search';
     $body = json_encode(['kind' => $kind, 'term' => $term, 'limit' => max(1, min(80, $limit))]);
+    // SSRF guard + DNS-rebinding pin, for parity with every other outbound fetch.
+    // The hub URL is admin-set, but a compromised/mis-entered row would otherwise
+    // become a credentialed SSRF pivot (this POST carries the hub Bearer token).
+    // secaudit 033 §3.3.
+    $res = sv_resolve_public($url);
+    if ($res === null) return null;
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $body,
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_RESOLVE        => $res['pin'],
         CURLOPT_TIMEOUT        => 12,
         CURLOPT_CONNECTTIMEOUT => 5,
         CURLOPT_HTTPHEADER     => [

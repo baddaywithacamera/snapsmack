@@ -335,6 +335,8 @@ $page_css = <<<'CSS'
 #lb-overlay img {
     max-width: 90vw;
     max-height: 90vh;
+    min-width: 0;
+    min-height: 0;
     object-fit: contain;
     box-shadow: 0 4px 60px rgba(0,0,0,0.6);
     cursor: default;
@@ -445,6 +447,114 @@ $page_css = <<<'CSS'
 }
 
 /* ─── WHO IS THIS FOR ───────────────────────────────────────────────────── */
+/* ─── SMACKVERSE / FEDERATE MARQUEE ─── */
+#federate {
+    background: #1e1e1e;
+    color: var(--white);
+    border-top: 4px solid var(--red);
+}
+#federate .fed-eyebrow {
+    font-family: 'Arial Black', Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.82rem;
+    color: var(--red);
+    margin-bottom: 14px;
+}
+#federate .fed-head {
+    font-family: 'Arial Black', Arial, sans-serif;
+    color: var(--white);
+    font-size: clamp(2rem, 4.6vw, 3.2rem);
+    line-height: 1.05;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    margin-bottom: 22px;
+    max-width: 16ch;
+}
+#federate .fed-lede {
+    font-size: 1.3rem;
+    line-height: 1.5;
+    max-width: 60ch;
+    margin-bottom: 18px;
+    color: rgba(255,255,255,0.9);
+}
+#federate .fed-lede em { color: var(--red); font-style: normal; }
+#federate .fed-body {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    max-width: 68ch;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 40px;
+}
+#federate .fed-body strong { color: var(--white); }
+#federate .fed-shots {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 8px 0 48px;
+}
+#federate .fed-shots figure { margin: 0; cursor: pointer; }
+#federate .fed-shots img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 6px;
+    background: #111;
+}
+#federate .fed-shots figcaption {
+    font-family: 'Arial Black', Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.55);
+    margin-top: 10px;
+    text-align: center;
+}
+#federate .fed-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 44px;
+}
+#federate .fed-col {
+    border-left: 3px solid var(--red);
+    padding: 4px 0 4px 22px;
+}
+#federate .fed-col h3 {
+    font-family: 'Arial Black', Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 1.15rem;
+    color: var(--white);
+    margin-bottom: 10px;
+}
+#federate .fed-col p {
+    color: rgba(255,255,255,0.72);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+#federate .fed-band {
+    background: var(--red);
+    color: var(--white);
+    padding: 32px 36px;
+    border-radius: 6px;
+    font-size: 1.15rem;
+    line-height: 1.55;
+}
+#federate .fed-band .fed-band-kicker {
+    display: block;
+    margin-top: 14px;
+    font-family: 'Arial Black', Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 1rem;
+}
+@media (max-width: 760px) {
+    #federate .fed-shots { grid-template-columns: 1fr; }
+    #federate .fed-split { grid-template-columns: 1fr; gap: 20px; }
+}
+
 #for {
     background: var(--black);
     color: var(--white);
@@ -1388,6 +1498,38 @@ require_once __DIR__ . '/includes/header.php';
 </section>
 
 <!-- ── WORKING NOW ─────────────────────────────────────────────────────────── -->
+<!-- ── SMACKVERSE / FEDERATE MARQUEE ── -->
+<section id="federate">
+    <div class="wrap">
+        <p class="fed-eyebrow">SMACKVERSE — federation, built into the bone</p>
+        <h2 class="fed-head">The ship has sailed on the lonely blog.</h2>
+        <p class="fed-lede">Discoverability isn't optional anymore. You need social. But you need the <em>right</em> social — the kind where you own your art and you set the terms.</p>
+        <p class="fed-body">Jump in the pool or just dip a toe — your call, every time. That's why ActivityPub is baked into the <strong>core</strong> of SnapSmack, not bolted on as some clumsy plugin. It's an integrated function of the software: full, two-way interactivity with the whole Fediverse if you want it — and completely ignorable if you don't.</p>
+
+        <div class="fed-shots">
+            <figure data-lb="img/smackverse-blog-view.png"><img src="img/smackverse-blog-view.png" alt="A photoblog profile rendered as its own SnapSmack blog" loading="lazy"><figcaption>Your blog</figcaption></figure>
+            <figure data-lb="img/smackverse-home-view.png"><img src="img/smackverse-home-view.png" alt="The same profile inside the SMACKVERSE client" loading="lazy"><figcaption>In SMACKVERSE</figcaption></figure>
+            <figure data-lb="img/smackverse-pixelfed-ca-view.png"><img src="img/smackverse-pixelfed-ca-view.png" alt="The same profile seen from Pixelfed" loading="lazy"><figcaption>Seen from Pixelfed</figcaption></figure>
+        </div>
+
+        <div class="fed-split">
+            <div class="fed-col">
+                <h3>Dip a Toe</h3>
+                <p>Flip federation on. Your blog stays your blog; now people across Mastodon, Pixelfed and the rest can discover you, follow you, and boost your work home.</p>
+            </div>
+            <div class="fed-col">
+                <h3>Dive In</h3>
+                <p>Browse, like, boost, reply and follow from your own admin. Full two-way Fediverse — your grid, your order, your rules.</p>
+            </div>
+        </div>
+
+        <div class="fed-band">
+            Federating is the +1 that makes your blog work in the age of social — and carries the best of what blogging always was into today, and tomorrow.
+            <span class="fed-band-kicker">Your art never leaves your server. Ever.</span>
+        </div>
+    </div>
+</section>
+
 <section id="working">
     <div class="wrap">
         <h2>Working Right Now</h2>
@@ -1418,6 +1560,10 @@ require_once __DIR__ . '/includes/header.php';
             <div class="status-card">
                 <h3>Community</h3>
                 <p>Client/server community built into the software. Reactions, comments, following — limited to blog owners. No public signups, no spammers, no trolls.</p>
+            </div>
+            <div class="status-card">
+                <h3>Support Forum</h3>
+                <p>Built into the admin, invisible to the public — the forum only exists <em>inside</em> the application, for people actually running SnapSmack. That's on purpose: the last developer standing on Pixelpost — the software SnapSmack is a re-imagining of — quit because he spent more time deleting spam than writing software. No public URL means no spammers, no bots, no drive-by bad actors — and support traffic stays between people who actually use the thing. We'd rather write code than mop up spam.</p>
             </div>
             <div class="status-card">
                 <h3>SMACKVERSE</h3>
@@ -1975,7 +2121,7 @@ require_once __DIR__ . '/includes/header.php';
                 <h2>THE UNZUCKER</h2>
                 <p>Your years of careful Instagram curation aren't gone. They're just hostage. UNZUCKER takes your Instagram data export and migrates it to SnapSmack — images, captions, hashtags, and original post dates all intact. Every carousel, every single shot, every carefully sequenced grid row. Posted at whatever rate your server can handle, spread across as many days as you need. Your archive, back in your hands, on your server.</p>
                 <p>Point it at your Instagram export folder, connect to your site, and sort your posts into the order you want them to land. UNZUCKER's grid view shows your entire archive the way it looked on Instagram — three columns, your photos, your sequence. Lock trigram groups to stitch panoramas and multi-part compositions across the grid exactly as intended. Hit Transfer &amp; Post and walk away. Throttle controls keep shared-host admins from having an aneurysm. Off-peak mode holds fire during business hours and picks back up automatically overnight.</p>
-                <p>Phase 1 is shipping now. We eat our own dog food first — unzucked.ca is running it in production.</p>
+                <p>Phase 1 is shipping now. We eat our own dog food first — <a href="https://unzucked.ca" target="_blank" rel="noopener">unzucked.ca</a> is running it in production.</p>
                 <p class="dl-note">[ Windows 10/11 · Linux 64-bit · Free download from the admin tools page after install ]</p>
             </div>
         </div>

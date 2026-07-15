@@ -37,6 +37,14 @@
   function node(html) { var t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; }
   function avatar(url) { return esc(url || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"); }
 
+  /* Scheme allowlist for any href/src built from REMOTE data: only http(s)
+     survives; javascript:, data:, vbscript:, relative junk collapse to "#".
+     Reused by bioHTML and every remote-URL anchor. (secaudit 033 §3.1/§3.2) */
+  function safeUrl(u) {
+    u = String(u == null ? "" : u).trim();
+    return /^https?:\/\//i.test(u) ? u : "#";
+  }
+
   function timeago(iso) {
     if (!iso) return "";
     var t = Date.parse(iso.replace(" ", "T"));
@@ -68,22 +76,32 @@
     return out.replace(/\n/g, "<br>");
   }
 
-  /* Render a fediverse bio: it arrives as HTML (<br>, <a>, <p>). Render it,
-     but strip scripts / event handlers / javascript: URLs first. */
+  /* Render a fediverse bio (remote HTML: <br>, <a>, <p>, light inline tags).
+     Allowlist rebuild via an INERT DOMParser document — untrusted markup never
+     touches a live node, so no resource load or event handler can fire — keeping
+     only safe formatting tags and http(s) hrefs. (secaudit 033 §3.2) */
   function bioHTML(str) {
     if (!str) return "";
-    var d = document.createElement("div");
-    d.innerHTML = String(str);
-    $all("script,style,iframe,object,embed,link,meta", d).forEach(function (n) { n.remove(); });
-    $all("*", d).forEach(function (n) {
-      Array.prototype.slice.call(n.attributes).forEach(function (at) {
-        var nm = at.name.toLowerCase();
-        if (nm.indexOf("on") === 0) n.removeAttribute(at.name);
-        if ((nm === "href" || nm === "src") && /^\s*javascript:/i.test(at.value)) n.removeAttribute(at.name);
+    var ALLOW = { A: 1, P: 1, BR: 1, SPAN: 1, STRONG: 1, EM: 1, B: 1, I: 1 };
+    var doc = new DOMParser().parseFromString(String(str), "text/html");
+    var out = document.createElement("div");
+    (function walk(src, dst) {
+      Array.prototype.slice.call(src.childNodes).forEach(function (n) {
+        if (n.nodeType === 3) { dst.appendChild(document.createTextNode(n.nodeValue)); return; }
+        if (n.nodeType !== 1) return;
+        var tag = n.tagName;
+        if (!ALLOW[tag]) { walk(n, dst); return; }   // drop the tag, keep its text
+        var el = document.createElement(tag.toLowerCase());
+        if (tag === "A") {
+          el.setAttribute("href", safeUrl(n.getAttribute("href")));
+          el.setAttribute("target", "_blank");
+          el.setAttribute("rel", "noopener nofollow");
+        }
+        walk(n, el);
+        dst.appendChild(el);
       });
-      if (n.tagName === "A") { n.setAttribute("target", "_blank"); n.setAttribute("rel", "noopener nofollow"); }
-    });
-    return d.innerHTML;
+    })(doc.body, out);
+    return out.innerHTML;
   }
 
   // Inline line-icons (generic UI glyphs, stroke = currentColor) for the clean
@@ -148,7 +166,7 @@
           '<div class="sx-ch-h"><a href="#" data-search="' + esc(a.handle || a.id) + '">' + esc(a.handle || a.name) + "</a></div>" +
           '<div class="sx-ch-sub">' + esc(fullDate(p.published)) + " &middot; <span>" + GLOBE + "</span></div>" +
         "</div>" +
-        '<a class="sx-ch-menu" href="' + esc(p.url || "#") + '" target="_blank" rel="noopener">' + DOTS + "</a>" +
+        '<a class="sx-ch-menu" href="' + esc(safeUrl(p.url)) + '" target="_blank" rel="noopener">' + DOTS + "</a>" +
       "</div>" +
       (p.is_boost ? '<div class="sx-boostline">' + BOOST + " Boosted</div>" : "") +
       '<div class="sx-media' + (multi ? " sx-multi" : "") + '"><img src="' + esc(img0) + '" alt="" loading="lazy"></div>' +
@@ -275,7 +293,7 @@
         "<div><b>" + (a.following != null ? a.following : "–") + "</b><span>Following</span></div>" +
       "</div>" + followBtn +
       (a.summary ? '<div class="sx-prof-bio">' + bioHTML(a.summary) + "</div>" : "") +
-      (a.url ? '<div class="sx-prof-meta">&#128279; <a href="' + esc(a.url) + '" target="_blank" rel="noopener">' + esc((a.url || "").replace(/^https?:\/\//, "")) + "</a></div>" : "") +
+      (a.url ? '<div class="sx-prof-meta">&#128279; <a href="' + esc(safeUrl(a.url)) + '" target="_blank" rel="noopener">' + esc((a.url || "").replace(/^https?:\/\//, "")) + "</a></div>" : "") +
       "</div>");
     var main = node('<div class="sx-prof-main">' +
       '<div class="sx-prof-tabbar"><span class="sx-prof-tab active">Posts</span>' +
