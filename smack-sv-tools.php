@@ -91,7 +91,7 @@ include 'core/sidebar.php';
             <label class="dim" style="display:block; margin-bottom:12px;">
                 Posts to push:
                 <input type="number" name="resync_count" min="1" max="500"
-                       value="<?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 10); ?>"
+                       value="<?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 200); ?>"
                        style="width:90px; margin-left:6px;">
             </label>
             <label class="dim" style="display:block; margin-bottom:12px;">
@@ -123,7 +123,7 @@ include 'core/sidebar.php';
             <label class="dim" style="display:block; margin-bottom:12px;">
                 Posts to re-imprint:
                 <input type="number" name="reimprint_count" min="1" max="1000"
-                       value="<?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 10); ?>"
+                       value="<?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 200); ?>"
                        style="width:90px; margin-left:6px;">
             </label>
             <button type="submit" class="btn-smack" <?php echo $sv_on ? '' : 'disabled'; ?>>RE-IMPRINT ORDER</button>

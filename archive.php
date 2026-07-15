@@ -85,6 +85,9 @@ try {
     // Skin manifest may declare a preferred default via features.archive_layout_default.
     $skin_layout_fallback = 'square';
     $skin_has_calendar = false;
+    $skin_masonry_locked = false;
+    $skin_thumbs_locked  = false;
+    $skin_force_thumb_style = null;
     $_manifest_path = __DIR__ . '/skins/' . $active_skin . '/manifest.php';
     $skin_show_archive_filter = true;
     if (file_exists($_manifest_path)) {
@@ -107,6 +110,17 @@ try {
         // Locked skins (e.g. Photogram, The Grid) set masonry_supported => false to
         // prevent the CMS from offering or rendering masonry for that skin.
         $skin_masonry_locked = (isset($_m['features']['masonry_supported']) && $_m['features']['masonry_supported'] === false);
+        // Symmetric to masonry_supported: a skin can declare it renders ONLY the
+        // justified/masonry grid (no square/cropped thumbs), collapsing the toggle
+        // to masonry-only (e.g. GALLERIA). (0.7.405)
+        $skin_thumbs_locked = (isset($_m['features']['thumbs_supported']) && $_m['features']['thumbs_supported'] === false);
+        // A skin may FORCE the thumb aspect (square|cropped) regardless of the
+        // per-site archive_thumb_style setting — set-and-forget for square-identity
+        // skins so the owner never has to re-select it (e.g. HIP TO BE SQUARE). (0.7.405)
+        if (!empty($_m['features']['archive_thumb_style'])
+            && in_array($_m['features']['archive_thumb_style'], ['square', 'cropped'], true)) {
+            $skin_force_thumb_style = $_m['features']['archive_thumb_style'];
+        }
         unset($_m, $_manifest_path);
     }
     $archive_layout_default = $settings['archive_layout'] ?? $skin_layout_fallback;
@@ -134,6 +148,11 @@ try {
     if (!in_array($archive_thumb_style, ['square', 'cropped'], true)) {
         $archive_thumb_style = 'cropped';
     }
+    // Skin-forced thumb aspect wins over the per-site setting (locked square-
+    // identity skins never drift back to cropped). (0.7.405)
+    if ($skin_force_thumb_style !== null) {
+        $archive_thumb_style = $skin_force_thumb_style;
+    }
 
     // Normalise default layout to thumbs|masonry.
     if (in_array($archive_layout_default, ['square', 'cropped', 'croppedwithcalendar'], true)) {
@@ -143,9 +162,18 @@ try {
         $archive_layout_default = 'thumbs';
     }
 
-    // Available layouts (just thumbs+masonry now). Toggle visibility comes
-    // from the show_layout_toggle setting, not the count.
-    $available_modes = ['thumbs', 'masonry'];
+    // Available layouts. A skin may lock itself to a single grid via
+    // masonry_supported=>false (thumbs-only) or thumbs_supported=>false
+    // (masonry-only); a single-mode skin then shows no T/M toggle. (0.7.405)
+    $available_modes = [];
+    if (!$skin_thumbs_locked)  $available_modes[] = 'thumbs';
+    if (!$skin_masonry_locked) $available_modes[] = 'masonry';
+    if (empty($available_modes)) $available_modes = ['thumbs']; // never zero
+    // Snap the default into what this skin actually offers (a masonry-only skin
+    // defaults to masonry rather than an unavailable 'thumbs'). (0.7.405)
+    if (!in_array($archive_layout_default, $available_modes, true)) {
+        $archive_layout_default = $available_modes[0];
+    }
 
     // Resolve current layout from URL → cookie → default.
     // Backwards-compat: old ?layout=square / cropped → thumbs.
@@ -188,7 +216,9 @@ try {
     // button when the admin enables them. Skins with their own archive-layout.php
     // render the photo grids only — they no longer render their own toggle UI.
     // (Eliminates the duplicate-toggle problem visible in 0.7.79's first cut.)
-    $offer_toggle = $archive_show_layout_toggle;
+    // Only offer the T/M toggle when the skin actually has two layouts to switch
+    // between; single-layout skins (square-only / masonry-only) show none. (0.7.405)
+    $offer_toggle = $archive_show_layout_toggle && count($available_modes) > 1;
 
     // --- THUMBNAIL SIZE RESOLUTION ---
     // Maps abstract 5-step scale (xs, s, m, l, xl) to pixel values.
@@ -523,7 +553,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                     <?php
                     $tm_labels = ['thumbs' => 'T', 'masonry' => 'M'];
                     $tm_titles = ['thumbs' => 'Thumbs Layout', 'masonry' => 'Masonry / Justified Layout'];
-                    foreach (['thumbs', 'masonry'] as $mode):
+                    foreach ($available_modes as $mode):
                         $is_active = ($mode === $archive_layout);
                         $qp = $_GET;
                         $qp['layout'] = $mode;

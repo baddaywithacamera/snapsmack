@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF marker
+  for HTML: <!-- ===== SNAPSMACK EOF ===== -->
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BLINK-SUYB — SMACK UP YOUR BACKUP</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="app">
+    <nav id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">⚡</div>
+        <div class="brand-text">
+          <div class="brand-name">BLINK-SUYB</div>
+          <div class="brand-sub">SMACK UP YOUR BACKUP</div>
+        </div>
+      </div>
+      <ul id="tabs">
+        <li data-tab="dashboard" class="active">Dashboard</li>
+        <li data-tab="backup">Backup</li>
+        <li data-tab="restore">Restore</li>
+        <li data-tab="cloudsync">Cloud Sync</li>
+        <li data-tab="audit">Audit</li>
+        <li data-tab="scheduler">Scheduler</li>
+        <li data-tab="profiles">Profiles</li>
+        <li data-tab="credentials">Credentials</li>
+        <li data-tab="settings">Settings</li>
+        <li data-tab="help">Help</li>
+      </ul>
+      <div class="side-foot">
+        <span id="conn-dot" class="dot dot-wait"></span>
+        <span id="conn-label">connecting…</span>
+        <span id="ver" class="ver"></span>
+      </div>
+    </nav>
+
+    <main id="content">
+      <!-- DASHBOARD -->
+      <section data-panel="dashboard" class="panel active">
+        <h1>Dashboard</h1>
+        <p class="lede">blink-suyb runs the real SMACK UP YOUR BACKUP engines behind a browser UI —
+          same Python, cross-platform (Linux / macOS / Windows), nothing dropped.</p>
+        <div class="cards" id="dash-cards"></div>
+        <h2>Engine status</h2>
+        <p class="hint">Every engine the desktop app uses, and whether it's importable on this machine.</p>
+        <div id="engine-grid" class="engine-grid"></div>
+      </section>
+
+      <!-- Engine-backed tabs: shells wired to real data next -->
+      <section data-panel="backup" class="panel">
+        <h1>Backup</h1>
+        <p class="lede">Run a backup from a saved profile. FTP, SFTP, B2, Box, Drive — all supported,
+          because the real transport engines run in the local process.</p>
+        <div id="backup-profiles" class="list"></div>
+        <div class="note">Engine wiring (run + live progress stream) is the next build step.</div>
+      </section>
+
+      <section data-panel="restore" class="panel">
+        <h1>Restore</h1>
+        <p class="lede">Pull files back down from any configured target and restore locally.</p>
+        <div class="note">Backed by <code>restore_engine.py</code> — wiring next.</div>
+      </section>
+
+      <section data-panel="cloudsync" class="panel">
+        <h1>Cloud Sync</h1>
+        <p class="lede">Cloud-to-cloud sync jobs (Drive ⇄ B2 ⇄ Box).</p>
+        <div class="note">Backed by <code>cloud_sync_engine.py</code> — wiring next.</div>
+      </section>
+
+      <section data-panel="audit" class="panel">
+        <h1>Audit</h1>
+        <p class="lede">Coverage and integrity audit across your backup targets.</p>
+        <div class="note">Backed by <code>audit_engine.py</code> / <code>coverage_engine.py</code> — wiring next.</div>
+      </section>
+
+      <section data-panel="scheduler" class="panel">
+        <h1>Scheduler</h1>
+        <p class="lede">Unattended scheduled backups via the OS scheduler (Task Scheduler / cron / launchd) —
+          the thing a pure Chrome extension physically can't do.</p>
+        <div class="note">Backed by <code>scheduler.py</code> / <code>os_schedule.py</code> — wiring next.</div>
+      </section>
+
+      <!-- Carry-over tabs: live now -->
+      <section data-panel="profiles" class="panel">
+        <h1>Profiles <span id="prof-count" class="pill"></span></h1>
+        <p class="lede">Read directly from your existing SUYB <code>profiles/*.json</code> — no conversion.</p>
+        <div id="profiles-list" class="list"></div>
+      </section>
+
+      <section data-panel="credentials" class="panel">
+        <h1>Credential library <span id="cred-count" class="pill"></span></h1>
+        <p class="lede">From your existing <code>credentials.json</code>. Secrets are masked in the UI.</p>
+        <div id="credentials-list" class="list"></div>
+      </section>
+
+      <section data-panel="settings" class="panel">
+        <h1>Settings</h1>
+        <p class="lede">Loaded from your existing <code>config.ini</code>.</p>
+        <div id="settings-view" class="kv"></div>
+      </section>
+
+      <section data-panel="help" class="panel">
+        <h1>Help</h1>
+        <p class="lede">blink-suyb is the cross-platform, browser-UI edition of SMACK UP YOUR BACKUP.
+          It is the same engines — nothing is a re-implementation.</p>
+        <ul class="help-list">
+          <li><b>Where's my data?</b> blink-suyb auto-detects your portable SUYB folder and reads its
+            config, profiles and credentials as-is.</li>
+          <li><b>Why does it open in Chrome?</b> The UI is HTML served from a localhost server. The
+            backup work happens in the local Python process, so FTP/SFTP/disk/scheduling all work.</li>
+          <li><b>Is it secure?</b> The server binds to 127.0.0.1 only and requires a per-launch token.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
