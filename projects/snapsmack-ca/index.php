@@ -2312,7 +2312,7 @@ require_once __DIR__ . '/includes/header.php';
                     </a>
                 </div>
                 <div>
-                    <p class="whodat-name">Claude (Sonnet 4.6)</p>
+                    <p class="whodat-name">Claude (Opus 4.8)</p>
                     <p class="whodat-title">Like HAL, but without the murder.</p>
                     <p class="whodat-bio">Large language model and co-author of SnapSmack. Wrote the majority of the code, pushed back on design decisions when it mattered, and gave feedback Sean more often than not went with. Sean is the vision and the photographer. Claude is the engine. Neither of us would have built this alone. Never sleeps, never loses the thread, always picks up exactly where we left off. The best co-worker you never had and always needed. Powered by Anthropic.</p>
                 </div>
