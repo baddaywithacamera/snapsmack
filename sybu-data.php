@@ -26,7 +26,7 @@
 // X-Snap-Key + admin session still work (additive).
 $GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu'];
 // Read-only metadata (cats/albums/tags/titles) — valid on photo modes alike.
-// Allow gram (carousel) as well as photoblog so SUMNABATCH can connect to The
+// Allow gram (carousel) as well as photoblog so SMACK YOUR BATCH UP can connect to The
 // Grid sites, not just solo photoblogs.
 $GLOBALS['SNAP_API_REQUIRE_MODE'] = ['photoblog', 'carousel'];
 require_once 'core/api-auth.php';

@@ -376,7 +376,7 @@ $page_css = <<<'CSS'
 
 /* ─── WHO DAT ────────────────────────────────────────────────────────────── */
 #whodat {
-    background: var(--light-grey);
+    background: #ffffff;
     border-top: 1px solid var(--border);
     padding-bottom: 72px;
 }
@@ -395,7 +395,6 @@ $page_css = <<<'CSS'
 .whodat-portrait {
     width: 110px;
     flex-shrink: 0;
-    border: 1px solid var(--border);
     overflow: hidden;
 }
 .whodat-portrait img {
@@ -449,7 +448,7 @@ $page_css = <<<'CSS'
 /* ─── WHO IS THIS FOR ───────────────────────────────────────────────────── */
 /* ─── SMACKVERSE / FEDERATE MARQUEE ─── */
 #federate {
-    background: #1e1e1e;
+    background: #666666;
     color: var(--white);
     border-top: 4px solid var(--red);
 }
@@ -1503,7 +1502,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="wrap">
         <p class="fed-eyebrow">SMACKVERSE — federation, built into the bone</p>
         <h2 class="fed-head">The ship has sailed on the lonely blog.</h2>
-        <p class="fed-lede">Discoverability isn't optional anymore. You need social. But you need the <em>right</em> social — the kind where you own your art and you set the terms.</p>
+        <p class="fed-lede">Discoverability isn't optional anymore. You need social. But you need the <em>right</em> social — the kind where you own your art and you set the terms. Welcome to the Fediverse.</p>
         <p class="fed-body">Jump in the pool or just dip a toe — your call, every time. That's why ActivityPub is baked into the <strong>core</strong> of SnapSmack, not bolted on as some clumsy plugin. It's an integrated function of the software: full, two-way interactivity with the whole Fediverse if you want it — and completely ignorable if you don't.</p>
 
         <div class="fed-shots">

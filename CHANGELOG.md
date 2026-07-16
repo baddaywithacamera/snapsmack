@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.407 — "Griffon the Brush Off" (2026-07-16)
+
+A SMACKVERSE admin page stops crying wolf: the Followers page reported WebFinger as broken on every install when it never was.
+
+- **SMACKVERSE Followers page — bogus "WebFinger missing" warning fixed** — the Followers & Delivery page (`core/smackverse-admin-shared.php`) checked `core/.htaccess`, a file that does not exist, instead of the web-root `.htaccess`, so it reported the WebFinger and AP-path rewrites as missing on every install even while they were present and federation was delivering normally (followers and the delivery cron proved it; System Maintenance, which reads the correct file, always said all-clear). Both the presence check and the auto-self-heal now resolve the site root via `dirname(__DIR__)`, so the check tells the truth and the self-heal finally operates on the real `.htaccess` instead of a path that never existed. Reporting-only fix — no federation behaviour changed.
+
 ## 0.7.406 — "Suited for Success" (2026-07-15)
 
 Two gallery skins tailored to fit, the fediverse client's last XSS gaps closed, the blog title stops mangling apostrophes, and the follower-backfill default stops under-selling your work.

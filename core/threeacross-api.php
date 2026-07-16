@@ -1,10 +1,10 @@
 <?php
 /**
- * SNAPSMACK - Shared Carousel-Write API (Unzucker + SUMNABATCH)
+ * SNAPSMACK - Shared Carousel-Write API (Unzucker + SMACK YOUR BATCH UP)
  *
  * Authenticated JSON API for the two GRAMOFSMACK desktop tools that write
  * carousel/trigram content: the Unzucker Instagram→SnapSmack importer and the
- * SUMNABATCH offline poster (BATCH, PLEASE). ONE interface, not two — same
+ * SMACK YOUR BATCH UP offline poster (BATCH, PLEASE). ONE interface, not two — same
  * auth, carousel mode-lock, thumb-saving and snap_posts/snap_post_images
  * writes — deliberately shared to keep the file count and attack surface down.
  *
@@ -12,7 +12,7 @@
  * scoped to its own route family in the auth gate below, so a leaked key from
  * one tool cannot drive the other's routes:
  *   'unzucker' key → IG bulk-import routes (upload/posts) + shared reads/trigram
- *   'sybu'     key → SUMNABATCH authoring routes (gram/*)   + shared reads/trigram
+ *   'sybu'     key → SMACK YOUR BATCH UP authoring routes (gram/*)   + shared reads/trigram
  *
  * NOTE: routes are 'threeacross/*'. The legacy 'unzucker/*' prefix still works
  * as a backward-compat alias (api.php dispatches both here) so already-deployed
@@ -24,9 +24,9 @@
  *   POST   threeacross/upload      — IG import: upload one image   (unzucker)
  *   POST   threeacross/posts       — IG import: create post(s)     (unzucker)
  *   POST   threeacross/trigram     — link 3 posts into a trigram   (either key)
- *   POST   threeacross/gram/upload — SUMNABATCH: image + thumbs    (sybu)
- *   POST   threeacross/gram/post   — SUMNABATCH: create gram post  (sybu)
- *   GET    threeacross/gram/verify — SUMNABATCH: confirm a post    (sybu)
+ *   POST   threeacross/gram/upload — SMACK YOUR BATCH UP: image + thumbs    (sybu)
+ *   POST   threeacross/gram/post   — SMACK YOUR BATCH UP: create gram post  (sybu)
+ *   GET    threeacross/gram/verify — SMACK YOUR BATCH UP: confirm a post    (sybu)
  *
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====
@@ -82,7 +82,7 @@ function unzucker_auth(PDO $pdo, array $allowed_types = ['unzucker']): bool {
         return false;
     }
     // One lock, per-tool keys: this shared carousel-write API is reached by the
-    // Unzucker IG importer ('unzucker' key) AND the SUMNABATCH offline poster
+    // Unzucker IG importer ('unzucker' key) AND the SMACK YOUR BATCH UP offline poster
     // ('sybu' key). The caller passes the key_type(s) valid for the requested
     // route family, so each tool's key is scoped to its own doors.
     $allowed_types = array_values(array_filter($allowed_types, 'strlen')) ?: ['unzucker'];
@@ -211,14 +211,14 @@ $method = $_SERVER['REQUEST_METHOD'];
 // Gate auth — one lock, per-tool keys (see unzucker_auth)
 //
 // Shared reads (ping/site) and the trigram linking step both tools use accept
-// either key. The SUMNABATCH offline poster (BATCH, PLEASE) drives the SON OF
+// either key. The SMACK YOUR BATCH UP offline poster (BATCH, PLEASE) drives the SON OF
 // A BATCH authoring routes (gram/*) with its 'sybu' key. The Unzucker IG
 // bulk-import "data bazooka" (upload/posts) stays 'unzucker'-only. Anything
 // else defaults to 'unzucker'.
 // ---------------------------------------------------------------------------
 
 $uz_shared_subs = ['ping', 'site', 'trigram'];          // either tool's key
-$uz_sob_subs    = ['gram/upload', 'gram/post', 'gram/verify']; // SUMNABATCH only
+$uz_sob_subs    = ['gram/upload', 'gram/post', 'gram/verify']; // SMACK YOUR BATCH UP only
 
 if (in_array($sub, $uz_shared_subs, true)) {
     $uz_allowed_key_types = ['unzucker', 'sybu'];
@@ -1002,7 +1002,7 @@ if ($sub === 'gram/post' && $method === 'POST') {
             // Newest posts go to the TOP of the feed (Instagram-style). Seat this
             // post at sort_order=1 and shift the rest of the published feed down,
             // instead of leaving it at the default 0 — which the gram feed query
-            // demotes to the BOTTOM. Without this every SUMNABATCH batch landed at
+            // demotes to the BOTTOM. Without this every SMACK YOUR BATCH UP batch landed at
             // the end of the feed.
             $pdo->prepare("UPDATE snap_posts SET sort_order = sort_order + 1 WHERE sort_order > 0")->execute();
             $pdo->prepare("UPDATE snap_posts SET sort_order = 1 WHERE id = ?")->execute([$pid]);

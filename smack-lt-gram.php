@@ -210,7 +210,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'bulk_publish') {
 // ── AJAX: CREATE TRIGRAM (lock 3 selected posts into an L/M/R or T/M/B set) ──
 // Selection order IS slot order: ids[0]=slot1 (L/T), ids[1]=slot2 (M), ids[2]=
 // slot3 (R/B). Mirrors core/threeacross-api.php's threeacross/trigram route so
-// the lighttable and the Unzucker/SUMNABATCH import build identical groups.
+// the lighttable and the Unzucker/SMACK YOUR BATCH UP import build identical groups.
 if (isset($_POST['action']) && $_POST['action'] === 'create_trigram') {
     header('Content-Type: application/json');
     $ids = array_values(array_filter(array_map('intval', $_POST['ids'] ?? [])));

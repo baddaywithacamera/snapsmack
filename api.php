@@ -66,7 +66,7 @@ if (strpos($route, 'gyss') === 0) {
 
 // --- THREE-ACROSS ROUTES (GRAMOFSMACK carousel write API) ---
 // Shared carousel/trigram write API used by BOTH the Unzucker IG importer and
-// the SUMNABATCH offline poster. The legacy 'unzucker/*' prefix is kept as a
+// the SMACK YOUR BATCH UP offline poster. The legacy 'unzucker/*' prefix is kept as a
 // backward-compat alias so already-deployed Unzucker builds keep working until
 // they're rebuilt onto 'threeacross/*'; both dispatch to the same handler.
 if (strpos($route, 'threeacross') === 0 || strpos($route, 'unzucker') === 0) {
