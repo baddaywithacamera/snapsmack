@@ -8,6 +8,8 @@
 
 **Home:** [snapsmack.ca](https://snapsmack.ca) · **Live in the wild:** [foreverphotograph.ing](https://foreverphotograph.ing)
 
+**Built by [Sean McCormick](https://github.com/baddaywithacamera) and [Claude](https://www.anthropic.com/claude) — a photographer and an AI, in genuine partnership.** This isn't autocomplete bolted onto a side project; it's real co-authorship, and a large share of the engine is Claude's own work. The [SMACK PUBLIC LICENSE](#license--the-smack-public-license-spl-20) exists in part to keep that credit permanent, not decorative.
+
 ---
 
 ## What is SNAPSMACK?
