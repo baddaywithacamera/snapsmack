@@ -14,9 +14,10 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ## 0.7.407 — "Griffon the Brush Off" (2026-07-16)
 
-A SMACKVERSE admin page stops crying wolf: the Followers page reported WebFinger as broken on every install when it never was.
+A SMACKVERSE admin page stops crying wolf, and SNAPSMACK starts telling security researchers where to knock: the Followers page reported WebFinger as broken on every install when it never was, and a new `security.txt` joins the auto-generated crawler files.
 
 - **SMACKVERSE Followers page — bogus "WebFinger missing" warning fixed** — the Followers & Delivery page (`core/smackverse-admin-shared.php`) checked `core/.htaccess`, a file that does not exist, instead of the web-root `.htaccess`, so it reported the WebFinger and AP-path rewrites as missing on every install even while they were present and federation was delivering normally (followers and the delivery cron proved it; System Maintenance, which reads the correct file, always said all-clear). Both the presence check and the auto-self-heal now resolve the site root via `dirname(__DIR__)`, so the check tells the truth and the self-heal finally operates on the real `.htaccess` instead of a path that never existed. Reporting-only fix — no federation behaviour changed.
+- **New crawler file: `security.txt` (RFC 9116)** — SNAPSMACK now generates `/.well-known/security.txt` (plus a legacy `/security.txt` root copy) from your **SITE EMAIL**, alongside the existing `robots.txt` and `llms.txt`, so a researcher who finds a hole knows where to report it instead of guessing or going public. `Contact:` is your site email; `Expires:` is stamped a year out and refreshed on every write, so a Global Configuration save or Maintenance → **REBUILD ROBOTS.TXT** keeps it current; with no SITE EMAIL set it writes nothing and clears any stale copy (a `Contact:`-less file is invalid per the RFC). Folded into the one shared generator so config-save, a spoke applying a pushed policy, and the Maintenance rebuild all emit identical output. The `llms.txt` self-description now also reads "an open, self-hosted photoblogging CMS." (`core/site-files.php`, `smack-maintenance.php`.)
 
 ## 0.7.406 — "Suited for Success" (2026-07-15)
 
