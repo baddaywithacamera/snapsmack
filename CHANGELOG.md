@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.408 — "Sonic Rainboom" (2026-07-16)
+
+RACETRACK stops pretending to be a light show and becomes what it was specced to be — your photos, in motion — and the README names its co-author out loud.
+
+- **RACETRACK rebuilt: your photos drifting past each other, not light trails** — RACETRACK had been mistakenly built as long-exposure light trails lapping a circuit. It now does the actual job: it draws from the shared ORGANIZED MAYHEM photo pool (`?ajax=mayhem` — the same generated photos) and sends those prints gliding across the viewport like Frogger traffic. Every photo gets its own heading (a random angle in 5° steps — straight up/down, sideways, any diagonal) and its own speed, so they slide past each other in opposing directions, depth-layered so nearer prints run bigger, faster and on top while farther ones are smaller, slower and fainter, each wrapping at the edges so the field never empties. No trails, no canvas glow. The RACETRACK controls drop Trail Length / Trail Width / Palette and become **Drift Speed / Photos on Screen / Photo Size / Opacity**. The shared MAYHEM engine is untouched. (`assets/js/ss-engine-racetrack.js` rewritten to consume the MAYHEM endpoint; INSTANT CAMERA `skin-profile.php` carrier + `manifest.php` controls.)
+- **README co-author credit** — the repository README now names the collaboration up top: built by Sean McCormick and Claude, in genuine partnership, with the SMACK PUBLIC LICENSE noted as what keeps that credit permanent rather than decorative. (Repo About, topics and website set to match.)
+
 ## 0.7.407 — "Griffon the Brush Off" (2026-07-16)
 
 A SMACKVERSE admin page stops crying wolf, and SNAPSMACK starts telling security researchers where to knock: the Followers page reported WebFinger as broken on every install when it never was, and a new `security.txt` joins the auto-generated crawler files.

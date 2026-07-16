@@ -255,18 +255,9 @@ if ($_ic_bgmode === 'mayhem') {
     require_once dirname(__DIR__, 2) . '/core/mayhem-data.php';
 }
 
-// ── RACETRACK palette resolution (choice → hex array for data-rt-palette) ───
-$_ic_rt_palettes = [
-    'neon' => ['#ff2d95', '#00e5ff', '#ffe600', '#7cff00', '#ff6a00', '#b967ff'],
-    'warm' => ['#ff6a00', '#ffb300', '#ff2d55', '#ff8c69', '#ffd166'],
-    'cool' => ['#00e5ff', '#4d7cff', '#7cf7d4', '#9bb8ff', '#5ce1e6'],
-];
-$_ic_rt_pal_key = $settings['ic_rt_palette'] ?? 'neon';
-if ($_ic_rt_pal_key === 'mono') {
-    $_ic_rt_pal = [trim($settings['ic_rt_color'] ?? '#ff2d95')];
-} else {
-    $_ic_rt_pal = $_ic_rt_palettes[$_ic_rt_pal_key] ?? $_ic_rt_palettes['neon'];
-}
+// RACETRACK reuses the shared MAYHEM photo endpoint (BASE_URL?ajax=mayhem,
+// routed globally in index.php) — same generated photos, Frogger drift. No
+// palette/trail resolution needed; the prints carry their own colour.
 ?>
 
 <!-- INSTANT CAMERA vars: tile aspect (match the print), scrim opacity, sharp corners. -->
@@ -297,14 +288,13 @@ $_show_static    = (($_ic_bgmode === 'static'   || $_ic_cycle) && $_tg_treat_img
      data-loading-label="Developing"></div>
 <?php endif; ?>
 <?php if ($_show_racetrack): ?>
-<!-- Background: RACETRACK — long-exposure light trails lapping a circuit. -->
+<!-- Background: RACETRACK — MAYHEM's photos gliding past each other (Frogger drift). -->
 <div class="ic-bg ic-bg-racetrack<?php echo $_cl; ?>" aria-hidden="true" data-racetrack
+     data-api-url="<?php echo BASE_URL; ?>?ajax=mayhem"
      data-rt-speed="<?php echo max(1, min(100, (int)($settings['ic_rt_speed'] ?? 40))); ?>"
-     data-rt-count="<?php echo max(1, min(24, (int)($settings['ic_rt_count'] ?? 8))); ?>"
-     data-rt-trail="<?php echo max(5, min(100, (int)($settings['ic_rt_trail'] ?? 55))); ?>"
-     data-rt-width="<?php echo max(1, min(12, (int)($settings['ic_rt_width'] ?? 3))); ?>"
-     data-rt-opacity="<?php echo max(5, min(100, (int)($settings['ic_rt_opacity'] ?? 70))); ?>"
-     data-rt-palette='<?php echo json_encode($_ic_rt_pal); ?>'></div>
+     data-rt-count="<?php echo max(3, min(40, (int)($settings['ic_rt_count'] ?? 14))); ?>"
+     data-rt-size="<?php echo max(60, min(400, (int)($settings['ic_rt_size'] ?? 180))); ?>"
+     data-rt-opacity="<?php echo max(5, min(100, (int)($settings['ic_rt_opacity'] ?? 70))); ?>"></div>
 <?php endif; ?>
 <?php if ($_show_rainfall): ?>
 <!-- Background: RAINFALL — rain streaks down the window behind the scrim. -->

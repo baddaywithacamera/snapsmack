@@ -110,12 +110,12 @@ return [
             'default' => 'mayhem',
             'options' => [
                 'mayhem'    => 'Organized Mayhem (drifting tabletop)',
-                'racetrack' => 'RACETRACK (long-exposure light trails)',
+                'racetrack' => 'RACETRACK (photos drifting past each other)',
                 'rainfall'  => 'RAINFALL (rain on the window)',
                 'static'    => 'Static image (set under Treatment)',
                 'cycle'     => 'Cycle all (timed crossfade)',
             ],
-            'hint'    => 'Organized Mayhem scatters your photos on a slow-drifting table behind the grid. RACETRACK laps light trails around a circuit; RAINFALL streaks rain down the glass. Static uses the Treatment background image below. Cycle all rotates through every background on a timer with a 2-second crossfade. Single modes are mutually exclusive — only the chosen engine loads.',
+            'hint'    => 'Organized Mayhem scatters your photos on a slow-drifting table behind the grid. RACETRACK sends those same photos gliding past each other in every direction, depth-layered like Frogger traffic; RAINFALL streaks rain down the glass. Static uses the Treatment background image below. Cycle all rotates through every background on a timer with a 2-second crossfade. Single modes are mutually exclusive — only the chosen engine loads.',
             // PHP-handled: skin-profile.php emits the matching carrier(s); skin-footer.php loads the chosen engine(s).
         ],
         'ic_cycle_secs' => [
@@ -128,11 +128,11 @@ return [
             'hint'      => 'Cycle mode only. How long each background holds before the 2-second crossfade to the next. The Static image is included as a stop when you have set a Treatment image below.',
         ],
 
-        // ---- RACETRACK (background engine — long-exposure light trails) -----
+        // ---- RACETRACK (background engine — MAYHEM photos, Frogger drift) ---
         'ic_rt_speed' => [
             'section'   => 'RACETRACK',
             'type'      => 'range_numeric',
-            'label'     => 'Lap Speed',
+            'label'     => 'Drift Speed',
             'default'   => '40', 'min' => '1', 'max' => '100', 'step' => '1',
             'unit'      => '',
             'show_when' => ['ic_bg_mode' => 'racetrack'],
@@ -141,59 +141,29 @@ return [
         'ic_rt_count' => [
             'section'   => 'RACETRACK',
             'type'      => 'range_numeric',
-            'label'     => 'Cars on Track',
-            'default'   => '8', 'min' => '1', 'max' => '24', 'step' => '1',
+            'label'     => 'Photos on Screen',
+            'default'   => '14', 'min' => '3', 'max' => '40', 'step' => '1',
             'unit'      => '',
             'show_when' => ['ic_bg_mode' => 'racetrack'],
-            'hint'      => 'How many light trails lap the circuit at once.',
+            'hint'      => 'How many of your photos drift past each other at once.',
         ],
-        'ic_rt_trail' => [
+        'ic_rt_size' => [
             'section'   => 'RACETRACK',
             'type'      => 'range_numeric',
-            'label'     => 'Trail Length',
-            'default'   => '55', 'min' => '5', 'max' => '100', 'step' => '1',
-            'unit'      => '',
-            'show_when' => ['ic_bg_mode' => 'racetrack'],
-            'hint'      => 'How long the light trails hang before fading — the shutter speed of the long exposure.',
-        ],
-        'ic_rt_width' => [
-            'section'   => 'RACETRACK',
-            'type'      => 'range_numeric',
-            'label'     => 'Trail Width',
-            'default'   => '3', 'min' => '1', 'max' => '12', 'step' => '1',
+            'label'     => 'Photo Size',
+            'default'   => '180', 'min' => '60', 'max' => '400', 'step' => '10',
             'unit'      => 'px',
             'show_when' => ['ic_bg_mode' => 'racetrack'],
+            'hint'      => 'Base print width. Nearer photos scale up from here, farther ones down — the depth layering.',
         ],
         'ic_rt_opacity' => [
             'section'   => 'RACETRACK',
             'type'      => 'range_numeric',
-            'label'     => 'Trail Opacity',
+            'label'     => 'Opacity',
             'default'   => '70', 'min' => '5', 'max' => '100', 'step' => '5',
             'unit'      => '%',
             'show_when' => ['ic_bg_mode' => 'racetrack'],
             'hint'      => 'The white scrim above still applies — dial both for taste.',
-        ],
-        'ic_rt_palette' => [
-            'section'   => 'RACETRACK',
-            'type'      => 'select',
-            'label'     => 'Trail Palette',
-            'default'   => 'neon',
-            'options'   => [
-                'neon' => 'Neon night (multi-colour)',
-                'warm' => 'Warm — tail lights',
-                'cool' => 'Cool — city glass',
-                'mono' => 'Single colour (set below)',
-            ],
-            'show_when' => ['ic_bg_mode' => 'racetrack'],
-            // PHP-handled: skin-profile.php resolves the palette → data-rt-palette JSON.
-        ],
-        'ic_rt_color' => [
-            'section'   => 'RACETRACK',
-            'type'      => 'color',
-            'label'     => 'Single Trail Colour',
-            'default'   => '#ff2d95',
-            'show_when' => ['ic_bg_mode' => 'racetrack'],
-            'hint'      => 'Used only when Trail Palette = Single colour.',
         ],
 
         // ---- RAINFALL (background engine — rain on the window) --------------
