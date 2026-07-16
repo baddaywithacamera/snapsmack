@@ -120,16 +120,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $log[] = "SUCCESS: Database tables optimized and defragmented.";
     }
 
-    // REBUILD CRAWLER FILES — robots.txt + llms.txt regenerated from the current
-    // AI-training policy WITHOUT re-saving Global Configuration. One source of
-    // truth: core/site-files.php (same output as the settings save).
+    // REBUILD CRAWLER FILES — robots.txt + llms.txt + security.txt regenerated
+    // from the current settings WITHOUT re-saving Global Configuration. One
+    // source of truth: core/site-files.php (same output as the settings save).
     if ($action === 'rebuild_robots') {
         require_once __DIR__ . '/core/site-files.php';
         $s = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
         $res = snapsmack_write_site_files($s);
-        $log[] = $res['robots']
-            ? "SUCCESS: robots.txt and llms.txt regenerated from the current AI-training policy."
-            : "ERROR: Could not write robots.txt — check write permissions on the site root.";
+        if ($res['robots']) {
+            $secnote = trim($s['site_email'] ?? '') !== ''
+                ? " security.txt refreshed (Contact: {$s['site_email']}, Expires +1yr)."
+                : " security.txt skipped — no SITE EMAIL set in Global Configuration.";
+            $log[] = "SUCCESS: robots.txt and llms.txt regenerated from the current AI-training policy." . $secnote;
+        } else {
+            $log[] = "ERROR: Could not write robots.txt — check write permissions on the site root.";
+        }
     }
 
     // REBUILD SITEMAP — drop the cached pages and warm it with a loopback hit so
@@ -965,7 +970,7 @@ include 'core/sidebar.php';
 
         <div class="box box-flex">
             <h3>REBUILD ROBOTS.TXT</h3>
-            <p class="skin-desc-text">Regenerates robots.txt and llms.txt from your current AI-training policy &mdash; no need to re-save Global Configuration. Use it to refresh a stale file, e.g. after changing the policy or clearing a CDN cache.</p>
+            <p class="skin-desc-text">Regenerates robots.txt, llms.txt, and security.txt (RFC 9116, built from your SITE EMAIL) from your current settings &mdash; no need to re-save Global Configuration. Use it to refresh a stale file or push a fresh security.txt expiry, e.g. after changing the AI-training policy or clearing a CDN cache.</p>
             <form method="POST">
                 <input type="hidden" name="action" value="rebuild_robots">
                 <button type="submit" class="btn-smack btn-block">REBUILD ROBOTS.TXT</button>

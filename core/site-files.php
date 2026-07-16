@@ -93,7 +93,7 @@ function snapsmack_generate_llms(array $s): string {
     if ($ll_desc !== '') $llms .= "> {$ll_desc}\n\n";
     $llms .= "A photo blog published with SnapSmack" . ($ll_ver !== '' ? " {$ll_ver}" : '')
            . ", an open, self-hosted photoblogging CMS. The photographs on this site belong to their photographer.\n\n";
-    $llms .= "## About the software\n- SnapSmack — open photoblogging CMS (learn more): https://snapsmack.ca\n\n";
+    $llms .= "## About the software\n- SnapSmack — an open, self-hosted photoblogging CMS (learn more): https://snapsmack.ca\n\n";
     $llms .= "## Key pages\n- Home: {$ll_url}\n- Archive: {$ll_url}archive.php\n\n";
     $llms .= "## AI use\n";
     if ($ai_policy === 'disallow') {
@@ -106,12 +106,57 @@ function snapsmack_generate_llms(array $s): string {
     return $llms;
 }
 
-/** Write robots.txt + llms.txt to the site root. Returns [robots=>bool, llms=>bool]. */
+/**
+ * Build security.txt (RFC 9116) from the SITE EMAIL setting.
+ *
+ * Returns '' when no site_email is set — a security.txt with no Contact line is
+ * invalid per the RFC, so we publish nothing rather than a broken file. The
+ * Expires field is recomputed one year out on every write, so a regular save or
+ * Maintenance rebuild keeps it from going stale.
+ */
+function snapsmack_generate_security(array $s): string {
+    $email = trim($s['site_email'] ?? '');
+    if ($email === '') return '';
+    $site_url = rtrim($s['site_url'] ?? 'https://example.com', '/') . '/';
+    $expires  = gmdate('Y-m-d\TH:i:s\Z', time() + 31536000);   // now + 1 year, UTC
+
+    $sec  = "# SNAPSMACK — auto-generated security.txt (RFC 9116)\n";
+    $sec .= "# Regenerated on Global Configuration save and via Maintenance → Rebuild.\n\n";
+    $sec .= "Contact: mailto:{$email}\n";
+    $sec .= "Expires: {$expires}\n";
+    $sec .= "Preferred-Languages: en\n";
+    $sec .= "Canonical: {$site_url}.well-known/security.txt\n";
+    return $sec;
+}
+
+/**
+ * Write robots.txt + llms.txt + security.txt to the site root.
+ * Returns [robots=>bool, llms=>bool, security=>bool].
+ *
+ * security.txt goes to BOTH the canonical /.well-known/security.txt and the
+ * legacy /security.txt root fallback (so it stays reachable even if a host
+ * blocks dot-directories). When no site_email is set, any previously written
+ * copies are removed and 'security' still reports success (nothing to write).
+ */
 function snapsmack_write_site_files(array $s): array {
     $root = snapsmack_site_root();
     $r = @file_put_contents($root . '/robots.txt', snapsmack_generate_robots($s));
     $l = @file_put_contents($root . '/llms.txt',   snapsmack_generate_llms($s));
-    return ['robots' => $r !== false, 'llms' => $l !== false];
+
+    $sec = snapsmack_generate_security($s);
+    $wk  = $root . '/.well-known';
+    if ($sec !== '') {
+        if (!is_dir($wk)) @mkdir($wk, 0755, true);
+        $s1 = @file_put_contents($wk . '/security.txt',   $sec);
+        $s2 = @file_put_contents($root . '/security.txt', $sec);
+        $secok = ($s1 !== false || $s2 !== false);
+    } else {
+        @unlink($wk . '/security.txt');
+        @unlink($root . '/security.txt');
+        $secok = true;   // no address set: nothing to publish is not a failure
+    }
+
+    return ['robots' => $r !== false, 'llms' => $l !== false, 'security' => $secok];
 }
 
 /**
