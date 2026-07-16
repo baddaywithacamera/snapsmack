@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.409 — "Fall Weather Friends" (2026-07-16)
+
+RACETRACK becomes what it should have been all along: a full, moving wall of your photos — opposing traffic over a gapless floor.
+
+- **RACETRACK — full-coverage two-layer rebuild** — the background engine (`assets/js/ss-engine-racetrack.js`) is rebuilt around two layers so there are never blank spots. A STATIC floor tiles the whole viewport with overlapping prints (no gaps, never moves); a DRIFTING layer rides on top, all prints travelling along ONE random axis chosen per page load (in 5° steps — horizontal, vertical, or any diagonal) in the TWO opposing directions (θ / θ+180°) at varied speeds, so they slide past each other like traffic and wrap around the field. Prints are opaque, natural-aspect, un-rotated and axis-aligned — except a reverse-lane print rides upside-down so the two streams read distinct — with varied sizes for depth. No trails, no white frame, no random tilt (deliberately unlike ORGANIZED MAYHEM's rotated tabletop, though it reuses the same `?ajax=mayhem` photo pool). Controls are **Drift Speed / Drifting Photos / Photo Size / Opacity**. Ships in INSTANT CAMERA 1.0.24. (`assets/js/ss-engine-racetrack.js`, `skins/instant-camera/skin-profile.php`, `skins/instant-camera/manifest.php`.)
+
 ## 0.7.408 — "Sonic Rainboom" (2026-07-16)
 
 RACETRACK stops pretending to be a light show and becomes what it was specced to be — your photos, in motion — and the README names its co-author out loud.

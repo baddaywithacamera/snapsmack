@@ -292,9 +292,9 @@ $_show_static    = (($_ic_bgmode === 'static'   || $_ic_cycle) && $_tg_treat_img
 <div class="ic-bg ic-bg-racetrack<?php echo $_cl; ?>" aria-hidden="true" data-racetrack
      data-api-url="<?php echo BASE_URL; ?>?ajax=mayhem"
      data-rt-speed="<?php echo max(1, min(100, (int)($settings['ic_rt_speed'] ?? 40))); ?>"
-     data-rt-count="<?php echo max(3, min(40, (int)($settings['ic_rt_count'] ?? 14))); ?>"
+     data-rt-count="<?php echo max(20, min(150, (int)($settings['ic_rt_count'] ?? 55))); ?>"
      data-rt-size="<?php echo max(60, min(400, (int)($settings['ic_rt_size'] ?? 180))); ?>"
-     data-rt-opacity="<?php echo max(5, min(100, (int)($settings['ic_rt_opacity'] ?? 70))); ?>"></div>
+     data-rt-opacity="<?php echo max(5, min(100, (int)($settings['ic_rt_opacity'] ?? 100))); ?>"></div>
 <?php endif; ?>
 <?php if ($_show_rainfall): ?>
 <!-- Background: RAINFALL — rain streaks down the window behind the scrim. -->

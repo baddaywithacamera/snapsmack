@@ -30,7 +30,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'INSTANT CAMERA',
-    'version'     => '1.0.23',
+    'version'     => '1.0.24',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'For instant-film photographers. A GRAMOFSMACK 3-across grid whose tile aspect you set to match your format (Polaroid, Instax Mini/Wide/Square, or custom) so prints show UNCROPPED — the scanned border is the frame, the skin just adds a drop shadow. Drifting Organized Mayhem tabletop behind a white scrim. Prints on a table, which is exactly what instant photography is.',
@@ -141,11 +141,11 @@ return [
         'ic_rt_count' => [
             'section'   => 'RACETRACK',
             'type'      => 'range_numeric',
-            'label'     => 'Photos on Screen',
-            'default'   => '14', 'min' => '3', 'max' => '40', 'step' => '1',
+            'label'     => 'Drifting Photos',
+            'default'   => '55', 'min' => '20', 'max' => '150', 'step' => '5',
             'unit'      => '',
             'show_when' => ['ic_bg_mode' => 'racetrack'],
-            'hint'      => 'How many of your photos drift past each other at once.',
+            'hint'      => 'How many photos drift across, over the static coverage floor. More = busier traffic; the floor keeps the field gapless either way.',
         ],
         'ic_rt_size' => [
             'section'   => 'RACETRACK',
@@ -160,7 +160,7 @@ return [
             'section'   => 'RACETRACK',
             'type'      => 'range_numeric',
             'label'     => 'Opacity',
-            'default'   => '70', 'min' => '5', 'max' => '100', 'step' => '5',
+            'default'   => '100', 'min' => '5', 'max' => '100', 'step' => '5',
             'unit'      => '%',
             'show_when' => ['ic_bg_mode' => 'racetrack'],
             'hint'      => 'The white scrim above still applies — dial both for taste.',
