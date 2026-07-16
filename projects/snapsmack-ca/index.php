@@ -1422,7 +1422,7 @@ require_once __DIR__ . '/includes/header.php';
             <a href="#what" class="btn btn-secondary">See What It Does</a>
             <a href="#beta" class="btn btn-primary">Apply for Beta Access</a>
         </div>
-        <p class="hero-tags">#fightthealgorithm &nbsp; #takebackyourart &nbsp; #fuckzuck &nbsp; #elonbegone</p>
+        <p class="hero-tags">#fightthealgorithm &nbsp; #takebackyourart &nbsp; #fuckzuck &nbsp; #elonbegone &nbsp; #deplatformyourself</p>
     </div>
 </section>
 
