@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'enabl
 
         // Self-heal the .htaccess WebFinger rewrite so discovery works without
         // the user hand-editing Apache config. Falls back to the REPAIR tool.
-        list($hok, ) = cron_ensure_webfinger_htaccess(__DIR__ . '/.htaccess');
+        list($hok, ) = cron_ensure_webfinger_htaccess(dirname(__DIR__) . '/.htaccess');
         $sv_wf_note = $hok ? '' : ' NOTE: could not auto-add the WebFinger rule — run System Maintenance → REPAIR .htaccess.';
 
         // Auto-register the delivery cron so the user never touches a terminal.
@@ -285,7 +285,7 @@ $sv_has_key  = trim($sv_settings['smackverse_public_key'] ?? '') !== '';
 $sv_key_fp   = $sv_has_key ? substr(hash('sha256', $sv_settings['smackverse_public_key']), 0, 16) : '';
 
 // Webfinger + path-style AP rewrites present in .htaccess?
-$sv_htaccess    = @file_get_contents(__DIR__ . '/.htaccess') ?: '';
+$sv_htaccess    = @file_get_contents(dirname(__DIR__) . '/.htaccess') ?: '';
 $sv_rewrite_ok  = strpos($sv_htaccess, 'smackverse.php?ap=webfinger') !== false;
 $sv_aproute_ok  = strpos($sv_htaccess, 'smackverse.php?appath=') !== false;
 
