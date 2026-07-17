@@ -590,8 +590,10 @@ class BackupEngine:
                 result["sql_full_path"] = sql_full_path
                 self._log(f"Full SQL dump saved: {sql_full_path}")
             except Exception as e:
-                self._log(f"Full SQL dump failed (non-fatal): {e}")
-                result["errors"].append(f"SQL dump (full) failed: {e}")
+                # A backup without its database dump is NOT restorable — FATAL.
+                self._log(f"✗ FATAL: full SQL dump failed — this backup has NO database data: {e}")
+                result["errors"].append(f"✗ SQL dump (full) failed — FATAL (no DB data in backup): {e}")
+                result["sql_full_failed"] = True
 
             try:
                 http.download_sql_dump(
@@ -1017,20 +1019,27 @@ class BackupEngine:
         # ── Write session log file ────────────────────────────────────
         self._write_log_file(backup_dir, file_token, timestamp, result)
 
-        if verify_ok:
+        # A full SQL dump failure is FATAL: the backup cannot restore the database.
+        sql_ok = not result.get("sql_full_failed")
+        if verify_ok and sql_ok:
             result["success"] = True
             self._progress("done", f"Backup complete — {result['files_downloaded']} downloaded, {result['files_skipped']} skipped.", 1.0)
             self._log("Backup successful.")
             cp.delete()
             self._log("Checkpoint cleared.")
+        elif not sql_ok:
+            result["success"] = False
+            self._progress("done", "Backup FAILED — full SQL dump failed; the database is NOT in this backup.", 1.0)
+            self._log("✗ Backup FAILED: the full SQL dump did not complete, so this backup has NO database data and is NOT restorable. Server-side cause: suyb-export.php?type=full builds the entire dump in memory and 500s (OOM) on large sites — stream it instead. Checkpoint kept so a re-run can resume.")
         else:
+            result["success"] = False
             self._progress("done", "Backup completed with errors — check the log file.", 1.0)
             self._log(f"✗ Backup completed with {len(result['errors'])} error(s). See log file in {backup_dir}")
 
         # ── Report completion to the site (Multisite dashboard freshness) ─────
         # Best-effort: never let a reporting hiccup fail an otherwise-good backup.
         try:
-            status_str = "clean" if verify_ok else "partial"
+            status_str = "clean" if (verify_ok and sql_ok) else ("failed" if not sql_ok else "partial")
             size_b = os.path.getsize(zip_path) if (zip_path and os.path.exists(zip_path)) else 0
             dest = (self.profile.get("cloud_provider", "") or "cloud") if (cloud and cloud_id) else "local"
             # Reuse the session that already authenticated for the whole backup
