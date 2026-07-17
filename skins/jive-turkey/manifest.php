@@ -148,24 +148,52 @@ return [
             // PHP-handled -> data-jt-cycle.
         ],
 
-        // ---- TILE BORDERS (Layer 2 — shrink/expand colour wave) -----------
-        'jt_border_width' => [
-            'section'  => 'TILE BORDERS',
-            'type'     => 'range_numeric',
-            'label'    => 'Border Width',
-            'default'  => '12',
-            'min'      => '5', 'max' => '15', 'step' => '1',
-            'unit'     => 'px',
-            // PHP-handled -> data-jt-border-width.
+        // ---- TILE BORDERS (Layer 2 — OUTWARD colour pulse) ----------------
+        'jt_border_on' => [
+            'section' => 'TILE BORDERS',
+            'type'    => 'select',
+            'label'   => 'Tile Borders',
+            'default' => '1',
+            'options' => [ '1' => 'On — outward colour pulse', '0' => 'Off' ],
+            'hint'    => 'A coloured ring that pulses OUTWARD from each photo edge, cycling the colourway.',
+            // PHP-handled -> data-jt-border-enabled.
         ],
         'jt_border_speed' => [
             'section'  => 'TILE BORDERS',
             'type'     => 'range_numeric',
-            'label'    => 'Colour-Change Speed',
-            'default'  => '60',
+            'label'    => 'Pulse Speed',
+            'default'  => '55',
             'min'      => '0', 'max' => '100', 'step' => '5',
-            'hint'     => 'How fast each border shrinks and returns as the next colour. Higher = faster.',
+            'hint'     => 'How fast the rings pulse out. Higher = faster.',
             // PHP-handled -> data-jt-border-speed.
+        ],
+        'jt_border_reach' => [
+            'section'  => 'TILE BORDERS',
+            'type'     => 'range_numeric',
+            'label'    => 'Pulse Reach',
+            'default'  => '22',
+            'min'      => '6', 'max' => '40', 'step' => '1',
+            'unit'     => 'px',
+            'hint'     => 'How far each ring travels outward before it fades.',
+            // PHP-handled -> data-jt-border-reach.
+        ],
+        'jt_border_thick' => [
+            'section'  => 'TILE BORDERS',
+            'type'     => 'range_numeric',
+            'label'    => 'Ring Thickness',
+            'default'  => '7',
+            'min'      => '2', 'max' => '14', 'step' => '1',
+            'unit'     => 'px',
+            // PHP-handled -> data-jt-border-thick.
+        ],
+        'jt_border_rings' => [
+            'section'  => 'TILE BORDERS',
+            'type'     => 'range_numeric',
+            'label'    => 'Ripples',
+            'default'  => '2',
+            'min'      => '1', 'max' => '3', 'step' => '1',
+            'hint'     => 'How many rings ripple outward at once.',
+            // PHP-handled -> data-jt-border-rings.
         ],
         'jt_border_wave' => [
             'section'  => 'TILE BORDERS',
