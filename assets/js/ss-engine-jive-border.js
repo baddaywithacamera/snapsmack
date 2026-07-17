@@ -130,7 +130,7 @@
         // enough to hold it. Gap tracks the border width → "set the border, the gap adjusts".
         // 1fr columns keep the grid locked to --grid-max-width (935px): images just scale
         // down a hair to make room; the grid never exceeds the container.
-        (function(){ var grid = tiles[0] && (tiles[0].closest ? tiles[0].closest('.jt-grid') : null) || (tiles[0] && tiles[0].parentNode); if (grid) grid.style.gap = Math.max(2, W) + 'px'; })();
+        (function(){ var grid = tiles[0] && (tiles[0].closest ? tiles[0].closest('.jt-grid') : null) || (tiles[0] && tiles[0].parentNode); if (grid) { var ug = parseFloat(getComputedStyle(grid).columnGap) || 2; grid.style.gap = Math.max(ug, W) + 'px'; } })();
         measure();
         var rt = null;
         window.addEventListener('resize', function () { if (rt) clearTimeout(rt); rt = setTimeout(measure, 150); });
