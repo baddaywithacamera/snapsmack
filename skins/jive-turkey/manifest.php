@@ -84,7 +84,7 @@ return [
 
     'options' => [
 
-        // ---- BACKGROUND (Layer 1 — 70s animated background) -------------------
+        // ---- BACKGROUND (Layer 1 — 70s animated background) --------------
         'jt_palette' => [
             'section' => 'BACKGROUND',
             'type'    => 'select',
@@ -128,11 +128,11 @@ return [
         'jt_speed' => [
             'section'  => 'BACKGROUND',
             'type'     => 'range_numeric',
-            'label'    => 'Motion Speed',
+            'label'    => 'Background Speed',
             'default'  => '45',
             'min'      => '1', 'max' => '100', 'step' => '1',
             'unit'     => '%',
-            'hint'     => 'Animation speed for SCOPE / BLOOM / FLOW.',
+            'hint'     => 'Background animation speed — affects ALL modes: SCOPE, BLOOM, FLOW, DAISY, REELS.',
         ],
         'jt_cycle_time' => [
             'section'  => 'BACKGROUND',
@@ -144,7 +144,7 @@ return [
             'hint'     => 'Seconds each mode holds before CYCLE moves on.',
         ],
 
-        // ---- TILE BORDER (Layer 2 — inside colour border, shrink/expand) --
+        // ---- TILE BORDER (Layer 2 — colour wave across the tiles) --------
         'jt_border_on' => [
             'section' => 'TILE BORDER',
             'type'    => 'select',
@@ -195,122 +195,7 @@ return [
             ],
         ],
 
-        // ---- GRID APPEARANCE -----------------------------------------------
-        'jt_gap' => [
-            'section'  => 'GRID',
-            'type'     => 'range_numeric',
-            'label'    => 'Image Gap',
-            'default'  => '2',
-            'min'      => '0',
-            'max'      => '20',
-            'step'     => '1',
-            'unit'     => 'px',
-            'selector' => ':root',
-            'property' => '--grid-gap',
-        ],
-        'jt_nav_tile_gap' => [
-            'section'  => 'GRID',
-            'type'     => 'range_numeric',
-            'label'    => 'Nav → Tiles Gap',
-            'default'  => '2',
-            'min'      => '0',
-            'max'      => '60',
-            'step'     => '1',
-            'unit'     => 'px',
-            'selector' => ':root',
-            'property' => '--nav-tile-gap',
-            'hint'     => 'Vertical space between the sticky nav bar and the first row of tiles.',
-        ],
-        'jt_post_count_color' => [
-            'section'  => 'GRID',
-            'type'     => 'color',
-            'label'    => 'Post Count Colour',
-            'default'  => '#eaeaea',
-            'selector' => ':root',
-            'property' => '--post-count-color',
-            'hint'     => 'Colour of the post count number and "posts" label.',
-        ],
-
-        // ---- NAVBAR (bar background over the jive-turkey) ───────────────────────
-        'jt_navbar_color' => [
-            'section' => 'NAVBAR', 'type' => 'color', 'label' => 'Navbar Colour',
-            'default' => '#0a0e1a',
-            'hint'    => 'Background colour of the sticky nav bar. PHP-handled → --jt-navbar-bg.',
-        ],
-        'jt_navbar_opacity' => [
-            'section' => 'NAVBAR', 'type' => 'range_numeric', 'label' => 'Navbar Opacity — Landing',
-            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'    => 'Landing page only. 0 = transparent. Raise for a solid bar over the jive-turkey.',
-        ],
-        'jt_navbar_opacity_inner' => [
-            'section' => 'NAVBAR', 'type' => 'range_numeric', 'label' => 'Navbar Opacity — Other Pages',
-            'default' => '', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'    => 'Archive / post / static pages. Leave blank to match the Landing value.',
-        ],
-        // ---- "POSTS" LABEL glow (colour is the Post Count Colour above) ────
-        'jt_posts_glow_color' => [
-            'section' => 'POSTS LABEL', 'type' => 'color', 'label' => 'Posts Glow Colour',
-            'default' => '#000000',
-        ],
-        'jt_posts_glow_size' => [
-            'section' => 'POSTS LABEL', 'type' => 'range_numeric', 'label' => 'Posts Glow Size',
-            'default' => '0', 'min' => '0', 'max' => '40', 'step' => '2', 'unit' => 'px',
-            'hint'    => '0 = no glow (falls back to the profile text glow).',
-        ],
-        'jt_posts_glow_opacity' => [
-            'section' => 'POSTS LABEL', 'type' => 'range_numeric', 'label' => 'Posts Glow Opacity',
-            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-        ],
-        // ---- NAV LINE drop shadow (line colour is the wave control above) ──
-        'jt_navline_shadow_color' => [
-            'section' => 'NAV LINES', 'type' => 'color', 'label' => 'Nav Line Shadow Colour',
-            'default' => '#000000',
-        ],
-        'jt_navline_shadow_size' => [
-            'section' => 'NAV LINES', 'type' => 'range_numeric', 'label' => 'Nav Line Shadow Size',
-            'default' => '0', 'min' => '0', 'max' => '3', 'step' => '1', 'unit' => 'px',
-            'hint'    => '0 = no shadow. Capped 3px, always down-and-right.',
-        ],
-        'jt_navline_shadow_opacity' => [
-            'section' => 'NAV LINES', 'type' => 'range_numeric', 'label' => 'Nav Line Shadow Opacity',
-            'default' => '40', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-        ],
-        // ---- PANEL (readability backing on EVERY page) ─────────────────────
-        // ONE centred translucent column behind the content on every page —
-        // landing, About/static, archive, hashtag, blogroll. Fixed + full
-        // viewport height (reaches the top, runs behind the footer); width =
-        // content column + Extend each side. Ported from INSTANT CAMERA — one
-        // control set replaces the old separate Landing Panel / Page Panel.
-        'jt_panel_color' => [
-            'section' => 'PANEL', 'type' => 'color', 'label' => 'Panel Colour',
-            'default' => '#0a0e1a',
-            'hint'    => 'Backing colour behind the content column on every page so it reads over the jive-turkey. PHP-handled → --panel-bg.',
-        ],
-        'jt_panel_opacity' => [
-            'section' => 'PANEL', 'type' => 'range_numeric', 'label' => 'Panel Opacity',
-            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'    => '0 = transparent (the jive-turkey shows through). Raise until text is comfortable to read.',
-        ],
-        'jt_panel_extend' => [
-            'section' => 'PANEL', 'type' => 'range_numeric', 'label' => 'Panel Extend (gutters)',
-            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => 'px',
-            'hint'    => 'How far the panel bleeds out past the content each side. 0 = flush, 100 = 100px gutters.',
-        ],
-        // NOTE: no "grid background / gap colour" option — unlike The Grid, JIVE TURKEY
-        // shows the live jive-turkey through the gaps between tiles (the grid container
-        // is transparent), so a gap colour would just paint over the effect.
-        'jt_tile_corners' => [
-            'section'  => 'GRID',
-            'type'     => 'select',
-            'label'    => 'Tile Corners',
-            'default'  => 'auto',
-            'options'  => [
-                'auto'    => 'Round with border thickness',
-                'square'  => 'Square',
-                'rounded' => 'Rounded',
-            ],
-            // PHP-handled → --tile-radius (skin-profile.php derives it from corners + width).
-        ],
+        // ---- GRID --------------------------------------------------------
         'jt_carousel_indicator' => [
             'section'  => 'GRID',
             'type'     => 'select',
@@ -335,7 +220,142 @@ return [
             ],
         ],
 
-        // ---- PROFILE HEADER ------------------------------------------------
+        // ---- NAV — sticky nav bar, links, divider lines + glow (all nav settings in one place) ---
+        'jt_navbar_color' => [
+            'section' => 'NAV', 'type' => 'color', 'label' => 'Navbar Colour',
+            'default' => '#0a0e1a',
+            'hint'    => 'Background colour of the sticky nav bar. PHP-handled → --jt-navbar-bg.',
+        ],
+        'jt_navbar_opacity' => [
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Navbar Opacity — Landing',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'    => 'Landing page only. 0 = transparent. Raise for a solid bar over the jive-turkey.',
+        ],
+        'jt_navbar_opacity_inner' => [
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Navbar Opacity — Other Pages',
+            'default' => '', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'    => 'Archive / post / static pages. Leave blank to match the Landing value.',
+        ],
+        'jt_nav_line_color' => [
+            'section' => 'NAV',
+            'type'    => 'color',
+            'label'   => 'Nav Line Colour',
+            'default' => '#6ff0a0',
+            'hint'    => 'Colour of the divider lines above and below the sticky nav. Ignored when Nav Line Mode follows the wave.',
+        ],
+        'jt_nav_line_mode' => [
+            'section'  => 'NAV',
+            'type'     => 'select',
+            'label'    => 'Nav Border Lines',
+            'default'  => 'static',
+            'options'  => [
+                'static' => 'Static (uses Border / Divider colour)',
+                'jive-turkey' => 'Jive Turkey wave (shifts with the tile borders)',
+            ],
+            'hint'     => 'Jive Turkey mode tracks the live border wave colour.',
+            // PHP-handled — skin-profile.php sets --nav-line-color.
+        ],
+        'jt_nav_line_opacity' => [
+            'section'  => 'NAV',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav Line Opacity',
+            'default'  => '100',
+            'min'      => '0',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+            'hint'     => 'Opacity of the nav divider lines (both the bright rule and its companion).',
+            // PHP-handled → --nav-line-opacity (skin-profile.php).
+        ],
+        'jt_nav_underline' => [
+            'section' => 'NAV',
+            'type'    => 'select',
+            'label'   => 'Nav Line Under-line',
+            'default' => '0',
+            'options' => [
+                '0' => 'Off',
+                '1' => 'On — dark indigo line tucked under each nav line',
+            ],
+            'hint'    => 'The decorative second line under each nav divider. Off by default.',
+        ],
+        'jt_navline_shadow_color' => [
+            'section' => 'NAV', 'type' => 'color', 'label' => 'Nav Line Shadow Colour',
+            'default' => '#000000',
+        ],
+        'jt_navline_shadow_size' => [
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Line Shadow Size',
+            'default' => '0', 'min' => '0', 'max' => '3', 'step' => '1', 'unit' => 'px',
+            'hint'    => '0 = no shadow. Capped 3px, always down-and-right.',
+        ],
+        'jt_navline_shadow_opacity' => [
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Line Shadow Opacity',
+            'default' => '40', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+        ],
+        'jt_nav_glow_color' => [
+            'section' => 'NAV',
+            'type'    => 'color',
+            'label'   => 'Nav Glow Colour',
+            'default' => '#61e96e',
+            'hint'    => 'Outer glow behind the menu links (home / blogroll / pages).',
+            // PHP-handled → --nav-text-glow (skin-profile.php).
+        ],
+        'jt_nav_glow_size' => [
+            'section'  => 'NAV',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav Glow Size',
+            'default'  => '8',
+            'min'      => '0',
+            'max'      => '40',
+            'step'     => '2',
+            'unit'     => 'px',
+            'hint'     => '0 = no glow.',
+            // PHP-handled → --nav-text-glow.
+        ],
+        'jt_nav_glow_opacity' => [
+            'section'  => 'NAV',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav Glow Opacity',
+            'default'  => '45',
+            'min'      => '0',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+            // PHP-handled → --nav-text-glow.
+        ],
+
+        // ---- POSTS LABEL -------------------------------------------------
+        'jt_posts_glow_color' => [
+            'section' => 'POSTS LABEL', 'type' => 'color', 'label' => 'Posts Glow Colour',
+            'default' => '#000000',
+        ],
+        'jt_posts_glow_size' => [
+            'section' => 'POSTS LABEL', 'type' => 'range_numeric', 'label' => 'Posts Glow Size',
+            'default' => '0', 'min' => '0', 'max' => '40', 'step' => '2', 'unit' => 'px',
+            'hint'    => '0 = no glow (falls back to the profile text glow).',
+        ],
+        'jt_posts_glow_opacity' => [
+            'section' => 'POSTS LABEL', 'type' => 'range_numeric', 'label' => 'Posts Glow Opacity',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+        ],
+
+        // ---- PANEL (readability panel behind text) -----------------------
+        'jt_panel_color' => [
+            'section' => 'PANEL', 'type' => 'color', 'label' => 'Panel Colour',
+            'default' => '#0a0e1a',
+            'hint'    => 'Backing colour behind the content column on every page so it reads over the jive-turkey. PHP-handled → --panel-bg.',
+        ],
+        'jt_panel_opacity' => [
+            'section' => 'PANEL', 'type' => 'range_numeric', 'label' => 'Panel Opacity',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'    => '0 = transparent (the jive-turkey shows through). Raise until text is comfortable to read.',
+        ],
+        'jt_panel_extend' => [
+            'section' => 'PANEL', 'type' => 'range_numeric', 'label' => 'Panel Extend (gutters)',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => 'px',
+            'hint'    => 'How far the panel bleeds out past the content each side. 0 = flush, 100 = 100px gutters.',
+        ],
+
+        // ---- PROFILE HEADER ----------------------------------------------
         'jt_profile_header' => [
             'section'  => 'PROFILE HEADER',
             'type'     => 'select',
@@ -351,118 +371,15 @@ return [
             'accept'  => 'image/jpeg,image/png,image/webp,image/gif',
             'hint'    => 'Square image recommended. Displayed as a circle, ~77px.',
         ],
-        'jt_blog_title_font' => [
-            'section'        => 'TITLE & TAGLINE',
-            'type'           => 'select',
-            'label'          => 'Blog Title Font',
-            'default'        => 'inherit',
-            'options'        => array_merge(['inherit' => 'Same as Body Font'], $fonts),
-            'selector'       => ':root',
-            'property'       => '--blog-title-font',
-            'is_font'        => true,
-            'no_size_slider' => true,
-        ],
-        'jt_blog_title_size' => [
-            'section'  => 'TITLE & TAGLINE',
-            'type'     => 'range_numeric',
-            'label'    => 'Blog Title Size',
-            'default'  => '20',
-            'min'      => '12',
-            'max'      => '48',
-            'step'     => '1',
-            'unit'     => 'px',
-            'selector' => ':root',
-            'property' => '--blog-title-size',
-        ],
-        'jt_blog_title_weight' => [
-            'section'  => 'TITLE & TAGLINE',
-            'type'     => 'select',
-            'label'    => 'Blog Title Weight',
-            'default'  => '300',
-            'options'  => [
-                '300' => 'Light',
-                '400' => 'Regular',
-                '500' => 'Medium',
-                '600' => 'Semibold',
-                '700' => 'Bold',
-            ],
-            'selector' => ':root',
-            'property' => '--blog-title-weight',
-        ],
-        'jt_blog_title_color' => [
-            'section'  => 'TITLE & TAGLINE',
-            'type'     => 'color',
-            'label'    => 'Blog Title Colour',
-            'default'  => '#eaeaea',
-            'selector' => ':root',
-            'property' => '--blog-title-color',
-        ],
         'jt_show_tagline' => [
-            'section'  => 'TITLE & TAGLINE',
+            'section'  => 'PROFILE HEADER',
             'type'     => 'select',
             'label'    => 'Show Tagline (Site Description)',
             'default'  => '1',
             'options'  => ['1' => 'Show', '0' => 'Hide'],
         ],
-        'jt_tagline_font' => [
-            'section'        => 'TITLE & TAGLINE',
-            'type'           => 'select',
-            'label'          => 'Tagline Font',
-            'default'        => 'inherit',
-            'options'        => array_merge(['inherit' => 'Same as Body Font'], $fonts),
-            'selector'       => ':root',
-            'property'       => '--tagline-font',
-            'is_font'        => true,
-            'no_size_slider' => true,
-        ],
-        'jt_tagline_size' => [
-            'section'  => 'TITLE & TAGLINE',
-            'type'     => 'range_numeric',
-            'label'    => 'Tagline Size',
-            'default'  => '16',
-            'min'      => '10',
-            'max'      => '36',
-            'step'     => '1',
-            'unit'     => 'px',
-            'selector' => ':root',
-            'property' => '--tagline-size',
-        ],
-        'jt_tagline_weight' => [
-            'section'  => 'TITLE & TAGLINE',
-            'type'     => 'select',
-            'label'    => 'Tagline Weight',
-            'default'  => '300',
-            'options'  => [
-                '300' => 'Light',
-                '400' => 'Regular',
-                '500' => 'Medium',
-                '600' => 'Semibold',
-                '700' => 'Bold',
-            ],
-            'selector' => ':root',
-            'property' => '--tagline-weight',
-        ],
-        'jt_tagline_color' => [
-            'section'  => 'TITLE & TAGLINE',
-            'type'     => 'color',
-            'label'    => 'Tagline Colour',
-            'default'  => '#8a8a8a',
-            'selector' => ':root',
-            'property' => '--tagline-color',
-        ],
-        'jt_bio_size' => [
-            'section'  => 'TITLE & TAGLINE',
-            'type'     => 'range_numeric',
-            'label'    => 'Description / Bio Size',
-            'default'  => '14',
-            'min'      => '10',
-            'max'      => '28',
-            'step'     => '1',
-            'unit'     => 'px',
-            'selector' => ':root',
-            'property' => '--bio-size',
-        ],
-        // ---- TEXT GLOW (readability over shifting jive-turkey background) ----------
+
+        // ---- TEXT GLOW ---------------------------------------------------
         'jt_glow_color' => [
             'section' => 'TEXT GLOW',
             'type'    => 'color',
@@ -495,173 +412,7 @@ return [
             // PHP-handled → --profile-text-glow.
         ],
 
-        // (Page readability panel consolidated into the single PANEL control
-        //  above — ported from INSTANT CAMERA, covers every page incl. blogroll.)
-
-        // ---- NAV -----------------------------------------------------------
-        'jt_nav_case' => [
-            'section'  => 'MENU / NAV',
-            'type'     => 'select',
-            'label'    => 'Nav Link Case',
-            'default'  => 'none',
-            'options'  => [
-                'none'       => 'As typed',
-                'uppercase'  => 'ALL CAPS',
-                'capitalize' => 'First Letter',
-                'lowercase'  => 'all lowercase',
-            ],
-            'selector' => ':root',
-            'property' => '--nav-text-transform',
-        ],
-        'jt_nav_font' => [
-            'section'        => 'MENU / NAV',
-            'type'           => 'select',
-            'label'          => 'Nav Font',
-            'default'        => 'inherit',
-            'options'        => array_merge(['inherit' => 'Same as Body Font'], $fonts),
-            'selector'       => ':root',
-            'property'       => '--nav-font',
-            'is_font'        => true,
-            'no_size_slider' => true,
-        ],
-        'jt_nav_color' => [
-            'section'  => 'MENU / NAV',
-            'type'     => 'color',
-            'label'    => 'Nav Link Colour',
-            'default'  => '#8a8a8a',
-            'selector' => ':root',
-            'property' => '--nav-color',
-        ],
-        'jt_nav_line_mode' => [
-            'section'  => 'MENU / NAV',
-            'type'     => 'select',
-            'label'    => 'Nav Border Lines',
-            'default'  => 'static',
-            'options'  => [
-                'static' => 'Static (uses Border / Divider colour)',
-                'jive-turkey' => 'Jive Turkey wave (shifts with the tile borders)',
-            ],
-            'hint'     => 'Jive Turkey mode tracks the live border wave colour.',
-            // PHP-handled — skin-profile.php sets --nav-line-color.
-        ],
-        'jt_nav_line_opacity' => [
-            'section'  => 'MENU / NAV',
-            'type'     => 'range_numeric',
-            'label'    => 'Nav Line Opacity',
-            'default'  => '100',
-            'min'      => '0',
-            'max'      => '100',
-            'step'     => '5',
-            'unit'     => '%',
-            'hint'     => 'Opacity of the nav divider lines (both the bright rule and its companion).',
-            // PHP-handled → --nav-line-opacity (skin-profile.php).
-        ],
-        'jt_nav_glow_color' => [
-            'section' => 'MENU / NAV',
-            'type'    => 'color',
-            'label'   => 'Nav Glow Colour',
-            'default' => '#61e96e',
-            'hint'    => 'Outer glow behind the menu links (home / blogroll / pages).',
-            // PHP-handled → --nav-text-glow (skin-profile.php).
-        ],
-        'jt_nav_glow_size' => [
-            'section'  => 'MENU / NAV',
-            'type'     => 'range_numeric',
-            'label'    => 'Nav Glow Size',
-            'default'  => '8',
-            'min'      => '0',
-            'max'      => '40',
-            'step'     => '2',
-            'unit'     => 'px',
-            'hint'     => '0 = no glow.',
-            // PHP-handled → --nav-text-glow.
-        ],
-        'jt_nav_glow_opacity' => [
-            'section'  => 'MENU / NAV',
-            'type'     => 'range_numeric',
-            'label'    => 'Nav Glow Opacity',
-            'default'  => '45',
-            'min'      => '0',
-            'max'      => '100',
-            'step'     => '5',
-            'unit'     => '%',
-            // PHP-handled → --nav-text-glow.
-        ],
-
-        // ---- COLOURS -------------------------------------------------------
-        'jt_post_bg_color' => [
-            'section'  => 'COLOURS',
-            'type'     => 'color',
-            'label'    => 'Image Page Background',
-            'default'  => '#000000',
-            'selector' => ':root',
-            'property' => '--post-bg',
-        ],
-        'jt_bg_primary' => [
-            'section'  => 'COLOURS',
-            'type'     => 'color',
-            'label'    => 'Page Background',
-            'default'  => '#000000',
-            'selector' => ':root',
-            'property' => '--bg-primary',
-        ],
-        'jt_text_primary' => [
-            'section'  => 'COLOURS',
-            'type'     => 'color',
-            'label'    => 'Primary Text',
-            'default'  => '#eaeaea',
-            'selector' => ':root',
-            'property' => '--text-primary',
-        ],
-        'jt_text_secondary' => [
-            'section'  => 'COLOURS',
-            'type'     => 'color',
-            'label'    => 'Secondary Text',
-            'default'  => '#8a8a8a',
-            'selector' => ':root',
-            'property' => '--text-secondary',
-        ],
-        'jt_accent' => [
-            'section'  => 'COLOURS',
-            'type'     => 'color',
-            'label'    => 'Accent / Link Colour',
-            'default'  => '#61e96e',
-            'selector' => ':root',
-            'property' => '--accent-color',
-        ],
-        'jt_border_color' => [
-            'section'  => 'COLOURS',
-            'type'     => 'color',
-            'label'    => 'Border / Divider Colour',
-            'default'  => '#242424',
-            'selector' => ':root',
-            'property' => '--border-color',
-        ],
-        'jt_bio_color' => [
-            'section'  => 'COLOURS',
-            'type'     => 'color',
-            'label'    => 'Description / Bio Text',
-            'default'  => '#8a8a8a',
-            'selector' => ':root',
-            'property' => '--bio-color',
-            'hint'     => 'Colour of the bio paragraph under the profile. Independent of Secondary Text.',
-        ],
-
-        // ---- TYPOGRAPHY ----------------------------------------------------
-        'jt_font_body' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'select',
-            'label'    => 'Body / UI Font',
-            'default'  => '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            'options'  => array_merge(
-                ['"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' => 'System Default (Segoe UI / Roboto)'],
-                $fonts
-            ),
-            'selector' => ':root',
-            'property' => '--font-body',
-        ],
-
-        // ---- IMAGE FRAME ---------------------------------------------------
+        // ---- IMAGE FRAME -------------------------------------------------
         'jt_customize_level' => [
             'section' => 'IMAGE FRAME',
             'type'    => 'select',
@@ -729,33 +480,7 @@ return [
             ],
         ],
 
-        // ---- LAYOUT --------------------------------------------------------
-        'jt_max_width' => [
-            'section'  => 'LAYOUT',
-            'type'     => 'range_numeric',
-            'label'    => 'Grid Max Width',
-            'default'  => '935',
-            'min'      => '600',
-            'max'      => '1600',
-            'step'     => '5',
-            'unit'     => 'px',
-            'selector' => ':root',
-            'property' => '--grid-max-width',
-        ],
-        'jt_gutter' => [
-            'section'  => 'TREATMENT',
-            'type'     => 'range_numeric',
-            'label'    => 'Side Gutter (margin over background)',
-            'default'  => '0',
-            'min'      => '0',
-            'max'      => '400',
-            'step'     => '4',
-            'unit'     => 'px',
-            'selector' => ':root',
-            'property' => '--grid-gutter',
-        ],
-
-        // ---- TREATMENT (full-page background behind a centred content card) -
+        // ---- TREATMENT (post-page background treatment) ------------------
         'jt_treatment_mode' => [
             'section' => 'TREATMENT',
             'type'    => 'select',
@@ -806,52 +531,6 @@ return [
             'step'     => '5',
             'unit'     => '%',
             'hint'     => 'Centre = none. Drag left to darken the background, right to lighten it.',
-        ],
-
-        // ---- SEARCH DOCK (bottom-left magnifier) ---------------------------
-        // Shared keys read by core/gram-search-dock.php. DISC = the round pill
-        // behind the magnifier; GLASS = the magnifier icon. Colour + opacity so
-        // the dock can be matched to the background. JIVE TURKEY runs dark, so the
-        // defaults mirror its --bg-primary (#000000) / --text-primary (#eaeaea).
-        'gsd_disc_color' => [
-            'section' => 'SEARCH DOCK',
-            'type'    => 'color',
-            'label'   => 'Dock Circle Colour',
-            'default' => '#000000',
-            'hint'    => 'Colour of the round dock behind the magnifier. PHP-handled → --gsd-disc-bg.',
-        ],
-        'gsd_disc_opacity' => [
-            'section'  => 'SEARCH DOCK',
-            'type'     => 'range_numeric',
-            'label'    => 'Dock Circle Opacity',
-            'default'  => '100', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'     => 'Transparency of the dock circle so it can blend into the background.',
-        ],
-        'gsd_glass_color' => [
-            'section' => 'SEARCH DOCK',
-            'type'    => 'color',
-            'label'   => 'Dock Magnifier Colour',
-            'default' => '#eaeaea',
-            'hint'    => 'Colour of the magnifying-glass icon. PHP-handled → --gsd-glass-color.',
-        ],
-
-        // ---- FOOTER (bar background — colour + user opacity slider) ---------
-        // Shared keys read by core/footer.php → --footer-bg. Lets the footer bar
-        // be dialled independently of Panel Opacity. Defaults reproduce the
-        // current footer look; the opacity slider is the user control.
-        'footer_bg_color' => [
-            'section' => 'FOOTER',
-            'type'    => 'color',
-            'label'   => 'Footer Bar Colour',
-            'default' => '#0a0e1a',
-            'hint'    => 'Background colour of the footer bar. PHP-handled → --footer-bg.',
-        ],
-        'footer_bg_opacity' => [
-            'section'  => 'FOOTER',
-            'type'     => 'range_numeric',
-            'label'    => 'Footer Bar Opacity',
-            'default'  => '45', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'     => 'Transparency of the footer bar so it can be matched to the background — independent of Panel Opacity.',
         ],
 
     ],

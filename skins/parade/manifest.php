@@ -89,7 +89,7 @@ return [
 
     'options' => [
 
-        // ---- PARADE (Layer 1 — fireworks atmosphere) -----------------------
+        // ---- PARADE ------------------------------------------------
         'pa_palette' => [
             'section' => 'PARADE',
             'type'    => 'select',
@@ -214,51 +214,7 @@ return [
             // PHP-handled → data-pa-soft.
         ],
 
-        // ---- FIREWORKS — FINE TUNING --------------------------------------
-        'pa_spread' => [
-            'section'  => 'FIREWORKS DETAIL',
-            'type'     => 'range_numeric',
-            'label'    => 'Burst size (spread)',
-            // Prototype unit: slider 10–120, ÷1000 = burst radius. Default 45 = 0.045.
-            'default'  => '45',
-            'min'      => '10',
-            'max'      => '120',
-            'step'     => '1',
-            'unit'      => '',
-            'show_when' => ['pa_bg_mode' => 'fireworks'],
-            'hint'     => 'How wide each burst opens.',
-            // PHP-handled → data-pa-spread.
-        ],
-        'pa_launch' => [
-            'section'  => 'FIREWORKS DETAIL',
-            'type'     => 'range_numeric',
-            'label'    => 'Launch speed',
-            // Prototype unit: slider 5–150, ÷100 = rocket-rise speed. Default 32 = 0.32×.
-            'default'  => '32',
-            'min'      => '5',
-            'max'      => '150',
-            'step'     => '1',
-            'unit'      => '',
-            'show_when' => ['pa_bg_mode' => 'fireworks'],
-            'hint'     => 'How fast rockets rise before they burst.',
-            // PHP-handled → data-pa-launch.
-        ],
-        'pa_streamer' => [
-            'section'  => 'FIREWORKS DETAIL',
-            'type'     => 'range_numeric',
-            'label'    => 'Streamer width',
-            // Prototype unit: slider 2–40, ÷10 = streamer width ×. Default 4 = 0.4×.
-            'default'  => '4',
-            'min'      => '2',
-            'max'      => '40',
-            'step'     => '1',
-            'unit'      => '',
-            'show_when' => ['pa_bg_mode' => 'fireworks'],
-            'hint'     => 'Thickness of the particle trails.',
-            // PHP-handled → data-pa-streamer.
-        ],
-
-        // ---- BORDER WAVE (Layer 2 — the waving flag on tile borders) -------
+        // ---- BORDER WAVE -------------------------------------------
         'pa_border_style' => [
             'section' => 'BORDER WAVE',
             'type'    => 'select',
@@ -338,7 +294,67 @@ return [
             ],
         ],
 
-        // ---- NAV (dual 1px divider lines) ----------------------------------
+        // ---- FIREWORKS DETAIL --------------------------------------
+        'pa_spread' => [
+            'section'  => 'FIREWORKS DETAIL',
+            'type'     => 'range_numeric',
+            'label'    => 'Burst size (spread)',
+            // Prototype unit: slider 10–120, ÷1000 = burst radius. Default 45 = 0.045.
+            'default'  => '45',
+            'min'      => '10',
+            'max'      => '120',
+            'step'     => '1',
+            'unit'      => '',
+            'show_when' => ['pa_bg_mode' => 'fireworks'],
+            'hint'     => 'How wide each burst opens.',
+            // PHP-handled → data-pa-spread.
+        ],
+        'pa_launch' => [
+            'section'  => 'FIREWORKS DETAIL',
+            'type'     => 'range_numeric',
+            'label'    => 'Launch speed',
+            // Prototype unit: slider 5–150, ÷100 = rocket-rise speed. Default 32 = 0.32×.
+            'default'  => '32',
+            'min'      => '5',
+            'max'      => '150',
+            'step'     => '1',
+            'unit'      => '',
+            'show_when' => ['pa_bg_mode' => 'fireworks'],
+            'hint'     => 'How fast rockets rise before they burst.',
+            // PHP-handled → data-pa-launch.
+        ],
+        'pa_streamer' => [
+            'section'  => 'FIREWORKS DETAIL',
+            'type'     => 'range_numeric',
+            'label'    => 'Streamer width',
+            // Prototype unit: slider 2–40, ÷10 = streamer width ×. Default 4 = 0.4×.
+            'default'  => '4',
+            'min'      => '2',
+            'max'      => '40',
+            'step'     => '1',
+            'unit'      => '',
+            'show_when' => ['pa_bg_mode' => 'fireworks'],
+            'hint'     => 'Thickness of the particle trails.',
+            // PHP-handled → data-pa-streamer.
+        ],
+
+        // ---- GRID --------------------------------------------------
+        'pa_carousel_indicator' => [
+            'section'  => 'GRID',
+            'type'     => 'select',
+            'label'    => 'Carousel Indicator Style',
+            'default'  => 'icon',
+            'options'  => ['icon' => 'Layered squares icon', 'count' => 'Image count badge', 'none' => 'No indicator'],
+        ],
+        'pa_hover_overlay' => [
+            'section'  => 'GRID',
+            'type'     => 'select',
+            'label'    => 'Hover Overlay',
+            'default'  => 'dark',
+            'options'  => ['dark' => 'Darken only', 'title' => 'Show post title', 'count' => 'Show image count', 'none' => 'No overlay'],
+        ],
+
+        // ---- NAV ---------------------------------------------------
         'pa_nav_line_mode' => [
             'section' => 'NAV',
             'type'    => 'select',
@@ -358,16 +374,92 @@ return [
             // PHP-handled → --pa-nav-line when mode = fixed.
         ],
         'pa_nav_line_opacity' => [
-            'section'  => 'NAV',
-            'type'     => 'range_numeric',
-            'label'    => 'Nav Line Opacity',
-            'default'  => '100',
-            'min'      => '0', 'max' => '100', 'step' => '1', 'unit' => '%',
-            'selector' => ':root', 'property' => '--pa-nav-line-op',
-            'hint'     => 'Opacity of the nav divider lines.',
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Line Opacity',
+            'default' => '100', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            // PHP-handled → --nav-line-opacity (skin-profile.php).
+        ],
+        'pa_navbar_color' => [
+            'section' => 'NAV', 'type' => 'color', 'label' => 'Navbar Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Background colour of the sticky nav bar. PHP-handled → --pa-navbar-bg.',
+        ],
+        'pa_navbar_opacity' => [
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Navbar Opacity — Landing',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'    => 'Landing page only. 0 = transparent. Raise for a solid bar.',
+        ],
+        'pa_navbar_opacity_inner' => [
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Navbar Opacity — Other Pages',
+            'default' => '', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'    => 'Archive / post / static pages. Leave blank to match the Landing value.',
+        ],
+        'pa_navline_shadow_color' => [
+            'section' => 'NAV', 'type' => 'color', 'label' => 'Nav Line Shadow Colour',
+            'default' => '#000000',
+        ],
+        'pa_navline_shadow_size' => [
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Line Shadow Size',
+            'default' => '0', 'min' => '0', 'max' => '3', 'step' => '1', 'unit' => 'px',
+            'hint'    => '0 = no shadow. Capped 3px, always down-and-right.',
+        ],
+        'pa_navline_shadow_opacity' => [
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Line Shadow Opacity',
+            'default' => '40', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+        ],
+        'pa_nav_line_opacity' => [
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Line Opacity',
+            'default' => '100', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            // PHP-handled → --nav-line-opacity (skin-profile.php).
+        ],
+        'pa_nav_glow_color' => [
+            'section' => 'NAV', 'type' => 'color', 'label' => 'Nav Glow Colour',
+            'default' => '#750787',
+            'hint'    => 'Outer glow behind the menu links.',
+            // PHP-handled → --nav-text-glow (skin-profile.php).
+        ],
+        'pa_nav_glow_size' => [
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Glow Size',
+            'default' => '0', 'min' => '0', 'max' => '40', 'step' => '2', 'unit' => 'px',
+            'hint'    => '0 = no glow.',
+        ],
+        'pa_nav_glow_opacity' => [
+            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Glow Opacity',
+            'default' => '45', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
         ],
 
-        // ---- PROFILE HEADER ------------------------------------------------
+        // ---- POSTS LABEL -------------------------------------------
+        'pa_posts_glow_color' => [
+            'section' => 'POSTS LABEL', 'type' => 'color', 'label' => 'Posts Glow Colour',
+            'default' => '#000000',
+        ],
+        'pa_posts_glow_size' => [
+            'section' => 'POSTS LABEL', 'type' => 'range_numeric', 'label' => 'Posts Glow Size',
+            'default' => '0', 'min' => '0', 'max' => '40', 'step' => '2', 'unit' => 'px',
+            'hint'    => '0 = no glow.',
+        ],
+        'pa_posts_glow_opacity' => [
+            'section' => 'POSTS LABEL', 'type' => 'range_numeric', 'label' => 'Posts Glow Opacity',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+        ],
+
+        // ---- PANEL -------------------------------------------------
+        'pa_panel_color' => [
+            'section' => 'PANEL', 'type' => 'color', 'label' => 'Panel Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Backing colour behind the content column on every page so it reads over the fireworks/flag. PHP-handled → --panel-bg.',
+        ],
+        'pa_panel_opacity' => [
+            'section' => 'PANEL', 'type' => 'range_numeric', 'label' => 'Panel Opacity',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'    => '0 = transparent (the background shows through). Raise until text is comfortable to read.',
+        ],
+        'pa_panel_extend' => [
+            'section' => 'PANEL', 'type' => 'range_numeric', 'label' => 'Panel Extend (gutters)',
+            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => 'px',
+            'hint'    => 'How far the panel bleeds out past the content each side. 0 = flush, 100 = 100px gutters.',
+        ],
+
+        // ---- PROFILE HEADER ----------------------------------------
         'pa_profile_header' => [
             'section'  => 'PROFILE HEADER',
             'type'     => 'select',
@@ -391,7 +483,7 @@ return [
             'options'  => ['1' => 'Show', '0' => 'Hide'],
         ],
 
-        // ---- TEXT (legibility over the bright field — default DARK) --------
+        // ---- TEXT --------------------------------------------------
         'pa_text_color' => [
             'section'  => 'TEXT',
             'type'     => 'color',
@@ -414,116 +506,24 @@ return [
             // PHP-handled → --pa-accent (skin-profile.php).
         ],
 
-        // ════════════════════════════════════════════════════════════════════
-        //  RESTORED FROM AURORA — PARADE is AURORA minus the background engine
-        //  and the flag palette, so it carries the same content/layout/type
-        //  controls. High-key defaults where AURORA ran dark. (Re-added after a
-        //  prior fork stripped them from the manifest UI.)
-        // ════════════════════════════════════════════════════════════════════
-
-        // ---- GRID ----------------------------------------------------------
-        'pa_gap' => [
-            'section'  => 'GRID',
-            'type'     => 'range_numeric',
-            'label'    => 'Image Gap',
-            'default'  => '2', 'min' => '0', 'max' => '20', 'step' => '1', 'unit' => 'px',
-            'selector' => ':root', 'property' => '--grid-gap',
+        // ---- TEXT GLOW ---------------------------------------------
+        'pa_glow_color' => [
+            'section' => 'TEXT GLOW', 'type' => 'color', 'label' => 'Text Glow Colour',
+            'default' => '#750787',
+            'hint'    => 'Halo behind title/tagline/bio. Pick a colour that CONTRASTS with the bright field — a white glow is invisible on PARADE\'s high-key background.',
+            // PHP-handled → --profile-text-glow (skin-profile.php).
         ],
-        'pa_nav_tile_gap' => [
-            'section'  => 'GRID',
-            'type'     => 'range_numeric',
-            'label'    => 'Nav → Tiles Gap',
-            'default'  => '2', 'min' => '0', 'max' => '60', 'step' => '1', 'unit' => 'px',
-            'selector' => ':root', 'property' => '--nav-tile-gap',
-            'hint'     => 'Vertical space between the sticky nav bar and the first row of tiles.',
-        ],
-        'pa_post_count_color' => [
-            'section'  => 'GRID',
-            'type'     => 'color',
-            'label'    => 'Post Count Colour',
-            'default'  => '#1a1a1a',
-            'selector' => ':root', 'property' => '--post-count-color',
-            'hint'     => 'Colour of the post count number and label.',
-        ],
-
-        // ---- NAVBAR / POSTS GLOW / NAV-LINE SHADOW / LANDING PANEL ─────────
-        'pa_navbar_color' => [
-            'section' => 'NAVBAR', 'type' => 'color', 'label' => 'Navbar Colour',
-            'default' => '#ffffff',
-            'hint'    => 'Background colour of the sticky nav bar. PHP-handled → --pa-navbar-bg.',
-        ],
-        'pa_navbar_opacity' => [
-            'section' => 'NAVBAR', 'type' => 'range_numeric', 'label' => 'Navbar Opacity — Landing',
-            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'    => 'Landing page only. 0 = transparent. Raise for a solid bar.',
-        ],
-        'pa_navbar_opacity_inner' => [
-            'section' => 'NAVBAR', 'type' => 'range_numeric', 'label' => 'Navbar Opacity — Other Pages',
-            'default' => '', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'    => 'Archive / post / static pages. Leave blank to match the Landing value.',
-        ],
-        'pa_posts_glow_color' => [
-            'section' => 'POSTS LABEL', 'type' => 'color', 'label' => 'Posts Glow Colour',
-            'default' => '#000000',
-        ],
-        'pa_posts_glow_size' => [
-            'section' => 'POSTS LABEL', 'type' => 'range_numeric', 'label' => 'Posts Glow Size',
+        'pa_glow_size' => [
+            'section' => 'TEXT GLOW', 'type' => 'range_numeric', 'label' => 'Text Glow Size',
             'default' => '0', 'min' => '0', 'max' => '40', 'step' => '2', 'unit' => 'px',
             'hint'    => '0 = no glow.',
         ],
-        'pa_posts_glow_opacity' => [
-            'section' => 'POSTS LABEL', 'type' => 'range_numeric', 'label' => 'Posts Glow Opacity',
+        'pa_glow_opacity' => [
+            'section' => 'TEXT GLOW', 'type' => 'range_numeric', 'label' => 'Text Glow Opacity',
             'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-        ],
-        'pa_navline_shadow_color' => [
-            'section' => 'NAV LINES', 'type' => 'color', 'label' => 'Nav Line Shadow Colour',
-            'default' => '#000000',
-        ],
-        'pa_navline_shadow_size' => [
-            'section' => 'NAV LINES', 'type' => 'range_numeric', 'label' => 'Nav Line Shadow Size',
-            'default' => '0', 'min' => '0', 'max' => '3', 'step' => '1', 'unit' => 'px',
-            'hint'    => '0 = no shadow. Capped 3px, always down-and-right.',
-        ],
-        'pa_navline_shadow_opacity' => [
-            'section' => 'NAV LINES', 'type' => 'range_numeric', 'label' => 'Nav Line Shadow Opacity',
-            'default' => '40', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-        ],
-        // ---- PANEL (readability backing on EVERY page) ─────────────────────
-        // ONE centred translucent column behind the content on every page —
-        // landing, About/static, archive, hashtag, blogroll. Fixed + full
-        // viewport height; width = content column + Extend each side. Ported
-        // from INSTANT CAMERA — one control set replaces the old Landing/Page.
-        'pa_panel_color' => [
-            'section' => 'PANEL', 'type' => 'color', 'label' => 'Panel Colour',
-            'default' => '#ffffff',
-            'hint'    => 'Backing colour behind the content column on every page so it reads over the fireworks/flag. PHP-handled → --panel-bg.',
-        ],
-        'pa_panel_opacity' => [
-            'section' => 'PANEL', 'type' => 'range_numeric', 'label' => 'Panel Opacity',
-            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'    => '0 = transparent (the background shows through). Raise until text is comfortable to read.',
-        ],
-        'pa_panel_extend' => [
-            'section' => 'PANEL', 'type' => 'range_numeric', 'label' => 'Panel Extend (gutters)',
-            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => 'px',
-            'hint'    => 'How far the panel bleeds out past the content each side. 0 = flush, 100 = 100px gutters.',
-        ],
-        'pa_carousel_indicator' => [
-            'section'  => 'GRID',
-            'type'     => 'select',
-            'label'    => 'Carousel Indicator Style',
-            'default'  => 'icon',
-            'options'  => ['icon' => 'Layered squares icon', 'count' => 'Image count badge', 'none' => 'No indicator'],
-        ],
-        'pa_hover_overlay' => [
-            'section'  => 'GRID',
-            'type'     => 'select',
-            'label'    => 'Hover Overlay',
-            'default'  => 'dark',
-            'options'  => ['dark' => 'Darken only', 'title' => 'Show post title', 'count' => 'Show image count', 'none' => 'No overlay'],
         ],
 
-        // ---- IMAGE FRAME ---------------------------------------------------
+        // ---- IMAGE FRAME -------------------------------------------
         'pa_customize_level' => [
             'section' => 'IMAGE FRAME',
             'type'    => 'select',
@@ -565,118 +565,7 @@ return [
             'options' => ['0' => 'None', '1' => 'Soft', '2' => 'Medium', '3' => 'Heavy'],
         ],
 
-        // ---- LAYOUT --------------------------------------------------------
-        'pa_max_width' => [
-            'section'  => 'LAYOUT',
-            'type'     => 'range_numeric',
-            'label'    => 'Grid Max Width',
-            'default'  => '935', 'min' => '600', 'max' => '1600', 'step' => '5', 'unit' => 'px',
-            'selector' => ':root', 'property' => '--grid-max-width',
-        ],
-
-        // ---- TITLE & TAGLINE -----------------------------------------------
-        'pa_blog_title_font' => [
-            'section' => 'TITLE & TAGLINE', 'type' => 'select', 'label' => 'Blog Title Font',
-            'default' => 'inherit', 'options' => array_merge(['inherit' => 'Same as Body Font'], $fonts),
-            'selector' => ':root', 'property' => '--blog-title-font', 'is_font' => true, 'no_size_slider' => true,
-        ],
-        'pa_blog_title_size' => [
-            'section' => 'TITLE & TAGLINE', 'type' => 'range_numeric', 'label' => 'Blog Title Size',
-            'default' => '20', 'min' => '12', 'max' => '48', 'step' => '1', 'unit' => 'px',
-            'selector' => ':root', 'property' => '--blog-title-size',
-        ],
-        'pa_blog_title_weight' => [
-            'section' => 'TITLE & TAGLINE', 'type' => 'select', 'label' => 'Blog Title Weight',
-            'default' => '600', 'options' => ['300' => 'Light', '400' => 'Regular', '500' => 'Medium', '600' => 'Semibold', '700' => 'Bold'],
-            'selector' => ':root', 'property' => '--blog-title-weight',
-        ],
-        'pa_blog_title_color' => [
-            'section' => 'TITLE & TAGLINE', 'type' => 'color', 'label' => 'Blog Title Colour',
-            'default' => '#1a1a1a', 'selector' => ':root', 'property' => '--blog-title-color',
-        ],
-        'pa_tagline_font' => [
-            'section' => 'TITLE & TAGLINE', 'type' => 'select', 'label' => 'Tagline Font',
-            'default' => 'inherit', 'options' => array_merge(['inherit' => 'Same as Body Font'], $fonts),
-            'selector' => ':root', 'property' => '--tagline-font', 'is_font' => true, 'no_size_slider' => true,
-        ],
-        'pa_tagline_size' => [
-            'section' => 'TITLE & TAGLINE', 'type' => 'range_numeric', 'label' => 'Tagline Size',
-            'default' => '16', 'min' => '10', 'max' => '36', 'step' => '1', 'unit' => 'px',
-            'selector' => ':root', 'property' => '--tagline-size',
-        ],
-        'pa_tagline_weight' => [
-            'section' => 'TITLE & TAGLINE', 'type' => 'select', 'label' => 'Tagline Weight',
-            'default' => '400', 'options' => ['300' => 'Light', '400' => 'Regular', '500' => 'Medium', '600' => 'Semibold', '700' => 'Bold'],
-            'selector' => ':root', 'property' => '--tagline-weight',
-        ],
-        'pa_tagline_color' => [
-            'section' => 'TITLE & TAGLINE', 'type' => 'color', 'label' => 'Tagline Colour',
-            'default' => '#5b5b66', 'selector' => ':root', 'property' => '--tagline-color',
-        ],
-        'pa_bio_size' => [
-            'section' => 'TITLE & TAGLINE', 'type' => 'range_numeric', 'label' => 'Description / Bio Size',
-            'default' => '14', 'min' => '10', 'max' => '28', 'step' => '1', 'unit' => 'px',
-            'selector' => ':root', 'property' => '--bio-size',
-        ],
-
-        // ---- TEXT GLOW (legibility over the bright field) ------------------
-        'pa_glow_color' => [
-            'section' => 'TEXT GLOW', 'type' => 'color', 'label' => 'Text Glow Colour',
-            'default' => '#750787',
-            'hint'    => 'Halo behind title/tagline/bio. Pick a colour that CONTRASTS with the bright field — a white glow is invisible on PARADE\'s high-key background.',
-            // PHP-handled → --profile-text-glow (skin-profile.php).
-        ],
-        'pa_glow_size' => [
-            'section' => 'TEXT GLOW', 'type' => 'range_numeric', 'label' => 'Text Glow Size',
-            'default' => '0', 'min' => '0', 'max' => '40', 'step' => '2', 'unit' => 'px',
-            'hint'    => '0 = no glow.',
-        ],
-        'pa_glow_opacity' => [
-            'section' => 'TEXT GLOW', 'type' => 'range_numeric', 'label' => 'Text Glow Opacity',
-            'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-        ],
-
-        // (Page readability panel consolidated into the single PANEL control
-        //  above — ported from INSTANT CAMERA, covers every page incl. blogroll.)
-
-        // ---- MENU / NAV (font, case, link colour, glow) -------------------
-        'pa_nav_case' => [
-            'section' => 'NAV', 'type' => 'select', 'label' => 'Nav Link Case',
-            'default' => 'none',
-            'options' => ['none' => 'As typed', 'uppercase' => 'ALL CAPS', 'capitalize' => 'First Letter', 'lowercase' => 'all lowercase'],
-            'selector' => ':root', 'property' => '--nav-text-transform',
-        ],
-        'pa_nav_font' => [
-            'section' => 'NAV', 'type' => 'select', 'label' => 'Nav Font',
-            'default' => 'inherit', 'options' => array_merge(['inherit' => 'Same as Body Font'], $fonts),
-            'selector' => ':root', 'property' => '--nav-font', 'is_font' => true, 'no_size_slider' => true,
-        ],
-        'pa_nav_color' => [
-            'section' => 'NAV', 'type' => 'color', 'label' => 'Nav Link Colour',
-            'default' => '#5b5b66', 'selector' => ':root', 'property' => '--nav-color',
-        ],
-        'pa_nav_line_opacity' => [
-            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Line Opacity',
-            'default' => '100', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            // PHP-handled → --nav-line-opacity (skin-profile.php).
-        ],
-        'pa_nav_glow_color' => [
-            'section' => 'NAV', 'type' => 'color', 'label' => 'Nav Glow Colour',
-            'default' => '#750787',
-            'hint'    => 'Outer glow behind the menu links.',
-            // PHP-handled → --nav-text-glow (skin-profile.php).
-        ],
-        'pa_nav_glow_size' => [
-            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Glow Size',
-            'default' => '0', 'min' => '0', 'max' => '40', 'step' => '2', 'unit' => 'px',
-            'hint'    => '0 = no glow.',
-        ],
-        'pa_nav_glow_opacity' => [
-            'section' => 'NAV', 'type' => 'range_numeric', 'label' => 'Nav Glow Opacity',
-            'default' => '45', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-        ],
-
-        // ---- FOOTER (text glow) -------------------------------------------
+        // ---- FOOTER ------------------------------------------------
         'pa_footer_glow_color' => [
             'section' => 'FOOTER', 'type' => 'color', 'label' => 'Footer Glow Colour',
             'default' => '#750787',
@@ -693,106 +582,6 @@ return [
             'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
         ],
 
-        // ---- COLOURS -------------------------------------------------------
-        'pa_post_bg_color' => [
-            'section' => 'COLOURS', 'type' => 'color', 'label' => 'Image Page Background',
-            'default' => '#ffffff', 'selector' => ':root', 'property' => '--post-bg',
-        ],
-        'pa_border_color' => [
-            'section' => 'COLOURS', 'type' => 'color', 'label' => 'Border / Divider Colour',
-            'default' => '#e2e2e2', 'selector' => ':root', 'property' => '--border-color',
-        ],
-        'pa_bio_color' => [
-            'section' => 'COLOURS', 'type' => 'color', 'label' => 'Description / Bio Text',
-            'default' => '#5b5b66', 'selector' => ':root', 'property' => '--bio-color',
-        ],
-
-        // ---- TYPOGRAPHY ----------------------------------------------------
-        'pa_font_body' => [
-            'section' => 'TYPOGRAPHY', 'type' => 'select', 'label' => 'Body / UI Font',
-            'default' => '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            'options' => array_merge(['"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' => 'System Default (Segoe UI / Roboto)'], $fonts),
-            'selector' => ':root', 'property' => '--font-body',
-        ],
-
-        // ---- TREATMENT (full-page background behind a centred content card) -
-        'pa_gutter' => [
-            'section' => 'TREATMENT', 'type' => 'range_numeric', 'label' => 'Side Gutter (margin over background)',
-            'default' => '0', 'min' => '0', 'max' => '400', 'step' => '4', 'unit' => 'px',
-            'selector' => ':root', 'property' => '--grid-gutter',
-        ],
-        'pa_treatment_mode' => [
-            'section' => 'TREATMENT', 'type' => 'select', 'label' => 'Background Treatment',
-            'default' => 'none',
-            'options' => ['none' => 'None (fireworks field shows through)', 'image' => 'Background image', 'color' => 'Solid colour'],
-            'hint'    => 'Optional. Sits in front of the fireworks layer — leave on None to let the flag fireworks show.',
-        ],
-        'pa_treatment_image' => [
-            'section' => 'TREATMENT', 'type' => 'image', 'label' => 'Treatment Image',
-            'default' => '', 'accept' => 'image/jpeg,image/png,image/webp',
-            'min_width' => 1920, 'min_height' => 1080,
-            'hint'    => 'Used when Treatment = Background image. Minimum 1920×1080px.',
-        ],
-        'pa_treatment_position' => [
-            'section' => 'TREATMENT', 'type' => 'select', 'label' => 'Image Anchor (when it overshoots)',
-            'default' => 'center',
-            'options' => ['center' => 'Centre', 'top' => 'Snap to top', 'bottom' => 'Snap to bottom'],
-        ],
-        'pa_treatment_color' => [
-            'section' => 'TREATMENT', 'type' => 'color', 'label' => 'Treatment Colour',
-            'default' => '#ffffff', 'hint' => 'Used when Treatment = Solid colour.',
-        ],
-        'pa_treatment_overlay' => [
-            'section' => 'TREATMENT', 'type' => 'range_numeric', 'label' => 'Overlay  (left darkens · right lightens)',
-            'default' => '0', 'min' => '-100', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'    => 'Centre = none.',
-        ],
-
-        // ---- SEARCH DOCK (bottom-left magnifier) ---------------------------
-        // Shared keys read by core/gram-search-dock.php. DISC = the round pill
-        // behind the magnifier; GLASS = the magnifier icon. Colour + opacity so
-        // the dock can be matched to the background. High-key defaults mirror
-        // PARADE's --bg-primary (#ffffff) / --text-primary (#1a1a1a).
-        'gsd_disc_color' => [
-            'section' => 'SEARCH DOCK',
-            'type'    => 'color',
-            'label'   => 'Dock Circle Colour',
-            'default' => '#ffffff',
-            'hint'    => 'Colour of the round dock behind the magnifier. PHP-handled → --gsd-disc-bg.',
-        ],
-        'gsd_disc_opacity' => [
-            'section'  => 'SEARCH DOCK',
-            'type'     => 'range_numeric',
-            'label'    => 'Dock Circle Opacity',
-            'default'  => '100', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'     => 'Transparency of the dock circle so it can blend into the background.',
-        ],
-        'gsd_glass_color' => [
-            'section' => 'SEARCH DOCK',
-            'type'    => 'color',
-            'label'   => 'Dock Magnifier Colour',
-            'default' => '#1a1a1a',
-            'hint'    => 'Colour of the magnifying-glass icon. PHP-handled → --gsd-glass-color.',
-        ],
-
-        // ---- FOOTER (bar background — colour + user opacity slider) ---------
-        // Shared keys read by core/footer.php → --footer-bg. Lets the footer bar
-        // be dialled independently of Panel Opacity. Defaults reproduce the
-        // current footer look; the opacity slider is the user control.
-        'footer_bg_color' => [
-            'section' => 'FOOTER',
-            'type'    => 'color',
-            'label'   => 'Footer Bar Colour',
-            'default' => '#ffffff',
-            'hint'    => 'Background colour of the footer bar. PHP-handled → --footer-bg.',
-        ],
-        'footer_bg_opacity' => [
-            'section'  => 'FOOTER',
-            'type'     => 'range_numeric',
-            'label'    => 'Footer Bar Opacity',
-            'default'  => '30', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'     => 'Transparency of the footer bar so it can be matched to the background — independent of Panel Opacity.',
-        ],
     ],
 ];
 // ===== SNAPSMACK EOF =====

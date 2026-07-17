@@ -128,10 +128,14 @@ $_jt_bo      = number_format(max(10, min(100, (int)($settings['jt_border_opacity
 
 // ── Nav line colour mode ───────────────────────────────────────────────────
 // 'jive-turkey' → lines track the live wave colour; 'static' → use --border-color.
-$_jt_nav_line_mode = $settings['jt_nav_line_mode'] ?? 'static';
-$_jt_nav_line_css  = ($_jt_nav_line_mode === 'jive-turkey')
-    ? '--nav-line-color:var(--jt-wave-color,var(--border-color));'
-    : '';
+$_jt_nav_line_mode  = $settings['jt_nav_line_mode'] ?? 'static';
+// Nav line colour: follow the live wave in 'jive-turkey' mode, else the picked colour.
+// FIX: the CSS reads --nav-line-green (was never set → line stuck on default green).
+$_jt_nav_line_green = ($_jt_nav_line_mode === 'jive-turkey')
+    ? 'var(--jt-wave-color,var(--border-color))'
+    : htmlspecialchars(trim($settings['jt_nav_line_color'] ?? '#6ff0a0'));
+// Decorative dark under-line: OFF unless explicitly enabled.
+$_jt_nav_underline  = (($settings['jt_nav_underline'] ?? '0') === '1') ? 'block' : 'none';
 // Opacity of the dark companion divider lines (0–100% → 0–1).
 $_jt_nav_line_op   = number_format(max(0, min(100, (int)($settings['jt_nav_line_opacity'] ?? 100))) / 100, 2);
 
@@ -240,7 +244,7 @@ if ($_jt_nls_sz > 0 && $_jt_nls_op > 0) {
 ?>
 
 <!-- JIVE TURKEY tile vars: border width / corner radius / ring opacity / sky base -->
-<style id="jt-vars">:root{--tile-bw:<?php echo $_jt_bw; ?>px;--tile-radius:<?php echo $_jt_radius; ?>px;--ring-op:<?php echo $_jt_bo; ?>;--jt-sky:<?php echo htmlspecialchars($_jt_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_jt_glow_css); ?>;--nav-line-opacity:<?php echo $_jt_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_jt_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_jt_navglow_strong); ?>;--panel-bg:<?php echo htmlspecialchars($_jt_panel_bg); ?>;--panel-extend:<?php echo (int)$_jt_panel_extend; ?>px;--jt-navbar-bg:<?php echo htmlspecialchars($_jt_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_jt_posts_glow); ?>;--jt-navline-shadow:<?php echo htmlspecialchars($_jt_navline_shadow); ?>;<?php echo $_jt_nav_line_css; ?>}</style>
+<style id="jt-vars">:root{--tile-bw:<?php echo $_jt_bw; ?>px;--tile-radius:<?php echo $_jt_radius; ?>px;--ring-op:<?php echo $_jt_bo; ?>;--jt-sky:<?php echo htmlspecialchars($_jt_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_jt_glow_css); ?>;--nav-line-opacity:<?php echo $_jt_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_jt_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_jt_navglow_strong); ?>;--panel-bg:<?php echo htmlspecialchars($_jt_panel_bg); ?>;--panel-extend:<?php echo (int)$_jt_panel_extend; ?>px;--jt-navbar-bg:<?php echo htmlspecialchars($_jt_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_jt_posts_glow); ?>;--jt-navline-shadow:<?php echo htmlspecialchars($_jt_navline_shadow); ?>;--nav-line-green:<?php echo $_jt_nav_line_green; ?>;--nav-line-underline-display:<?php echo $_jt_nav_underline; ?>;}</style>
 
 <!-- JIVE TURKEY config carrier — read by ss-engine-jive-turkey.js (Layer 1
      background, all modes + SURPRISE) and ss-engine-jive-border.js (Layer 2 tile

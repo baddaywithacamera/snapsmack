@@ -114,10 +114,13 @@ $_au_radius  = ($_au_corner === 'square') ? 0
 
 // ── Nav line colour mode ───────────────────────────────────────────────────
 // 'aurora' → lines track the live wave colour; 'static' → use --border-color.
-$_au_nav_line_mode = $settings['au_nav_line_mode'] ?? 'static';
-$_au_nav_line_css  = ($_au_nav_line_mode === 'aurora')
-    ? '--nav-line-color:var(--au-wave-color,var(--border-color));'
-    : '';
+$_au_nav_line_mode  = $settings['au_nav_line_mode'] ?? 'static';
+// Nav line colour: follow the live aurora wave in 'aurora' mode, else the picked colour.
+// FIX: CSS reads --nav-line-green (was never set → line stuck on default green).
+$_au_nav_line_green = ($_au_nav_line_mode === 'aurora')
+    ? 'var(--au-wave-color,var(--border-color))'
+    : htmlspecialchars(trim($settings['au_nav_line_color'] ?? '#6ff0a0'));
+$_au_nav_underline  = (($settings['au_nav_underline'] ?? '1') === '1') ? 'block' : 'none';
 // Opacity of the dark companion divider lines (0–100% → 0–1).
 $_au_nav_line_op   = number_format(max(0, min(100, (int)($settings['au_nav_line_opacity'] ?? 100))) / 100, 2);
 
@@ -226,7 +229,7 @@ if ($_au_nls_sz > 0 && $_au_nls_op > 0) {
 ?>
 
 <!-- AURORA tile vars: border width / corner radius / ring opacity / sky base -->
-<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_au_glow_css); ?>;--nav-line-opacity:<?php echo $_au_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_au_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_au_navglow_strong); ?>;--panel-bg:<?php echo htmlspecialchars($_au_panel_bg); ?>;--panel-extend:<?php echo (int)$_au_panel_extend; ?>px;--au-navbar-bg:<?php echo htmlspecialchars($_au_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_au_posts_glow); ?>;--au-navline-shadow:<?php echo htmlspecialchars($_au_navline_shadow); ?>;<?php echo $_au_nav_line_css; ?>}</style>
+<style id="au-vars">:root{--tile-bw:<?php echo $_au_bw; ?>px;--tile-radius:<?php echo $_au_radius; ?>px;--ring-op:<?php echo $_au_bo; ?>;--au-sky:<?php echo htmlspecialchars($_au_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_au_glow_css); ?>;--nav-line-opacity:<?php echo $_au_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_au_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_au_navglow_strong); ?>;--panel-bg:<?php echo htmlspecialchars($_au_panel_bg); ?>;--panel-extend:<?php echo (int)$_au_panel_extend; ?>px;--au-navbar-bg:<?php echo htmlspecialchars($_au_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_au_posts_glow); ?>;--au-navline-shadow:<?php echo htmlspecialchars($_au_navline_shadow); ?>;--nav-line-green:<?php echo $_au_nav_line_green; ?>;--nav-line-underline-display:<?php echo $_au_nav_underline; ?>;}</style>
 
 <!-- AURORA config carrier — read by aurora-bg.js (Layer 1 curtains) and
      aurora-wave.js (Layer 2 ring wave). -->
