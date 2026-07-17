@@ -153,6 +153,25 @@
   lb.addEventListener("click", function (e) { if (e.target === lb || e.target.classList.contains("sx-lb-x")) lb.classList.remove("open"); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") lb.classList.remove("open"); });
 
+  /* ---- post detail overlay ------------------------------------------------ *
+   * A grid/search tile opens the full POST (not straight to the image), like
+   * Pixelfed: result → post (Like/Comment/Boost + author @handle → profile →
+   * Follow) → and only the image when you click the photo inside. Reuses the
+   * exact feedCard renderer, so nothing about interactions is duplicated. */
+  var postLb = document.body.appendChild(node('<div class="sx-postlb"><div class="sx-postlb-inner"><button class="sx-postlb-x" aria-label="Close">&times;</button><div class="sx-postlb-body"></div></div></div>'));
+  function openPost(p) {
+    var body = $(".sx-postlb-body", postLb);
+    body.innerHTML = ""; body.appendChild(feedCard(p));
+    postLb.classList.add("open");
+  }
+  function closePost() { postLb.classList.remove("open"); }
+  postLb.addEventListener("click", function (e) {
+    if (e.target === postLb || e.target.classList.contains("sx-postlb-inner") || e.target.classList.contains("sx-postlb-x")) closePost();
+    // tapping the author @handle inside the post navigates to their profile — close the post so it shows
+    else if (e.target.closest("[data-search]")) closePost();
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !lb.classList.contains("open")) closePost(); });
+
   /* ---- feed card --------------------------------------------------------- */
   function feedCard(p) {
     var a = p.author || {};
@@ -270,7 +289,7 @@
     var t = node('<a class="sx-tile" href="#"><img src="' + esc(img0) + '" alt="" loading="lazy">' +
       ((p.count || 1) > 1 ? '<span class="sx-tile-multi">&#9636;</span>' : "") +
       '<span class="sx-tile-time">' + esc(timeago(p.published)) + "</span></a>");
-    t.addEventListener("click", function (e) { e.preventDefault(); openLightbox(img0); });
+    t.addEventListener("click", function (e) { e.preventDefault(); openPost(p); });   // → post view (not straight to the image)
     return t;
   }
   function renderProfile(container, res) {

@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.410 — "Wonderbolts Academy" (2026-07-17)
+
+The standalone Pixelfed client stops dead-ending on the image — a search or grid tile now opens the post, where you can actually read it, interact, and follow the author.
+
+- **Pixelfed client: tiles open the POST, not just the photo** — in `pixel.php`, every photo tile (search results, profile grids, hashtag feeds) was wired straight to the image lightbox, so a search result was a dead end: no caption, no Like/Comment/Boost, and no route to the author to Follow them. Tiles now open a post-detail overlay that reuses the existing `feedCard` renderer (Like/Comment/Boost, and the author `@handle` links to their profile → Follow), and the image lightbox opens only when you click the photo inside the post — matching Pixelfed's result → post → image flow. New overlay only; the interaction engine is unchanged. (`assets/js/ss-pixel.js`, `assets/css/ss-pixel.css`.)
+
 ## 0.7.409 — "Fall Weather Friends" (2026-07-16)
 
 RACETRACK becomes what it should have been all along: a full, moving wall of your photos — opposing traffic over a gapless floor.
