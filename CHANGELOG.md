@@ -12,6 +12,17 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.414 — "Winter Wrap Up" (2026-07-17)
+
+A cleanup pass: the GRAMOFSMACK skins shed the dead controls cluttering their settings pages, JIVE TURKEY's border stops shoving the photos around, backups can no longer lie about succeeding, and the full SQL export stops choking on large sites.
+
+- **JIVE TURKEY — the tile border moves OUTSIDE the photo** — the colour border's shrink/expand pulse was an inside frame, so as it grew it covered the photo edge and the image looked squeezed. It is now an outward box-shadow that grows into the gutter (the grid gap tracks the border width), so the photo never resizes — the pulse lives between the tiles. The per-tile flip is also decoupled from the wave speed: each shrink/expand is a fixed ≤ 0.5s snap while the colour wave crawls across the grid at whatever speed you set. (`assets/js/ss-engine-jive-border.js`.)
+- **JIVE TURKEY — Background Speed drives every mode** — the speed slider only affected SCOPE / BLOOM / FLOW; DAISY and REELS ignored it. It now scales all five modes, so one knob controls the whole background no matter which mode SURPRISE rolls. (`assets/js/ss-engine-jive-turkey.js`.)
+- **GRAMOFSMACK skins — settings decluttered and made consistent** — every carousel skin (JIVE TURKEY, AURORA, INSTANT CAMERA, PARADE, SUDDEN IMPACT, THE GRID) carried 25–31 dead controls copied from a base manifest and wired to nothing. All removed. Nav controls, previously scattered across three sections (NAVBAR / NAV LINES / MENU-NAV), are merged into one NAV section, and every skin now follows the same section order. (`skins/*/manifest.php`.)
+- **AURORA & JIVE TURKEY — nav-line colour works + under-line toggle** — the CSS read `--nav-line-green` but the code only ever set `--nav-line-color`, so the divider colour was stuck on the default green with no way to change it. Wired correctly, with a real colour picker; the hardcoded indigo under-line now has an on/off switch. (`skins/aurora/`, `skins/jive-turkey/`.)
+- **SUYB export — the full SQL dump streams instead of OOMing** — `suyb-export.php?type=full` built the entire dump in a memory string and 500'd (memory exhausted) on larger sites (foundtextures at 1,600 images, foreverphotograph.ing at ~30,000). It now streams unbuffered, row by row, flushed as it goes, so the server never holds the whole dump in memory. Output is byte-identical, so restores are unaffected. (`core/export-engine.php`, `suyb-export.php`.)
+- **constants.php — NUL padding stripped** — `core/constants.php` had picked up seven trailing NUL bytes after its EOF marker, which made PHP refuse to parse it. Cleaned. (`core/constants.php`.)
+
 ## 0.7.413 — "Filli Vanilli" (2026-07-17)
 
 JIVE TURKEY's tile border stops fighting the photos, and the DAISY flower swings wide enough to clear the reading panel.

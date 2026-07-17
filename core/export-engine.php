@@ -693,9 +693,10 @@ class SnapSmackExport {
         return $row;
     }
 
-    public function generateSqlDump(string $type = 'full'): string {
-        // Origin stamp — binds the dump to the site (and MODE) it came from, so a
-        // cross-mode restore is a visible, deliberate act rather than a silent foul.
+    // Core dump generator. Streams output through $emit($chunk) so a huge DB never has
+    // to sit in memory at once — the old fetchAll()+string build 500'd (OOM) on big sites.
+    private function emitSqlDump(string $type, callable $emit): void {
+        // Origin stamp — binds the dump to the site (and MODE) it came from.
         $site_mode = $this->settings['site_mode'] ?? 'photoblog';
         $site_url  = $this->settings['site_url'] ?? ($this->settings['site_address'] ?? '');
         $site_uuid = (string)($this->settings['site_uuid'] ?? '');
@@ -706,7 +707,6 @@ class SnapSmackExport {
                 $site_uuid = '';
             }
             if ($site_uuid === '') {
-                // Generate once, then it's stable for this install.
                 $site_uuid = bin2hex(random_bytes(16));
                 try {
                     $this->pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('site_uuid', ?)
@@ -715,28 +715,28 @@ class SnapSmackExport {
             }
         }
 
-        $output  = "-- SnapSmack Backup Service\n";
-        $output .= "-- Type: " . strtoupper($type) . "\n";
-        $output .= "-- Version: " . (defined('SNAPSMACK_VERSION') ? SNAPSMACK_VERSION : 'unknown') . "\n";
-        $output .= "-- Date: " . date('Y-m-d H:i:s') . "\n";
-        $output .= "-- Site: " . ($this->settings['site_name'] ?? '') . "\n";
-        $output .= "-- Site URL: " . $site_url . "\n";
-        $output .= "-- Site UUID: " . $site_uuid . "\n";
-        $output .= "-- Site mode: " . $site_mode . "\n";
-        $output .= "-- ============================================================\n";
-        $output .= "-- WARNING: this is a SnapSmack '" . $site_mode . "'-mode database.\n";
-        $output .= "-- Restoring it onto a site running a DIFFERENT mode (photoblog /\n";
-        $output .= "-- carousel / smacktalk) WILL break that site: it overwrites\n";
-        $output .= "-- site_mode, the default skin, and imports wrong-shaped content.\n";
-        $output .= "-- Restore only onto the SAME site, or a deliberate same-mode migration.\n";
-        $output .= "-- ============================================================\n\n";
-        $output .= "SET NAMES utf8mb4;\n";
-        $output .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
+        $header  = "-- SnapSmack Backup Service\n";
+        $header .= "-- Type: " . strtoupper($type) . "\n";
+        $header .= "-- Version: " . (defined('SNAPSMACK_VERSION') ? SNAPSMACK_VERSION : 'unknown') . "\n";
+        $header .= "-- Date: " . date('Y-m-d H:i:s') . "\n";
+        $header .= "-- Site: " . ($this->settings['site_name'] ?? '') . "\n";
+        $header .= "-- Site URL: " . $site_url . "\n";
+        $header .= "-- Site UUID: " . $site_uuid . "\n";
+        $header .= "-- Site mode: " . $site_mode . "\n";
+        $header .= "-- ============================================================\n";
+        $header .= "-- WARNING: this is a SnapSmack '" . $site_mode . "'-mode database.\n";
+        $header .= "-- Restoring it onto a site running a DIFFERENT mode (photoblog /\n";
+        $header .= "-- carousel / smacktalk) WILL break that site: it overwrites\n";
+        $header .= "-- site_mode, the default skin, and imports wrong-shaped content.\n";
+        $header .= "-- Restore only onto the SAME site, or a deliberate same-mode migration.\n";
+        $header .= "-- ============================================================\n\n";
+        $header .= "SET NAMES utf8mb4;\n";
+        $header .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
+        $emit($header);
 
         if ($type === 'keys') {
             $tables = ['snap_users'];
         } else {
-            // Discover all snap_* tables dynamically — never falls behind the schema
             $tables = [];
             $res = $this->pdo->query("SHOW TABLES");
             while ($row = $res->fetch(PDO::FETCH_NUM)) {
@@ -744,40 +744,64 @@ class SnapSmackExport {
                     $tables[] = $row[0];
                 }
             }
+            $res->closeCursor();
             sort($tables);
         }
 
-        foreach ($tables as $table) {
-            try {
-                $ddl = $this->pdo->query("SHOW CREATE TABLE `{$table}`")->fetch(PDO::FETCH_ASSOC);
-            } catch (PDOException $e) {
-                continue;
-            }
+        // Unbuffered rows: never load a whole table into PHP/driver memory at once.
+        $prevBuffered = null;
+        try { $prevBuffered = $this->pdo->getAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY); } catch (\Throwable $e) {}
+        try { $this->pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false); } catch (\Throwable $e) {}
+        try {
+            foreach ($tables as $table) {
+                try {
+                    $st  = $this->pdo->query("SHOW CREATE TABLE `{$table}`");
+                    $ddl = $st->fetch(PDO::FETCH_ASSOC);
+                    $st->closeCursor();
+                } catch (PDOException $e) {
+                    continue;
+                }
 
-            $output .= "-- ── {$table} ──\n";
-            $output .= "DROP TABLE IF EXISTS `{$table}`;\n";
-            $output .= $ddl['Create Table'] . ";\n\n";
+                $emit("-- \xe2\x94\x80\xe2\x94\x80 {$table} \xe2\x94\x80\xe2\x94\x80\n"
+                    . "DROP TABLE IF EXISTS `{$table}`;\n"
+                    . $ddl['Create Table'] . ";\n\n");
 
-            if ($type !== 'schema') {
-                $rows = $this->pdo->query("SELECT * FROM `{$table}`")->fetchAll(PDO::FETCH_ASSOC);
-                if ($rows) {
-                    foreach ($rows as $row) {
-                        $row = $this->redactSecrets($table, $row);
+                if ($type !== 'schema') {
+                    $rs  = $this->pdo->query("SELECT * FROM `{$table}`");
+                    $buf = ''; $n = 0;
+                    while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
+                        $row  = $this->redactSecrets($table, $row);
                         $keys = array_map(fn($k) => "`{$k}`", array_keys($row));
                         $vals = array_map(
                             fn($v) => $v === null ? "NULL" : $this->pdo->quote($v),
                             array_values($row)
                         );
-                        $output .= "INSERT INTO `{$table}` (" . implode(', ', $keys)
-                                 . ") VALUES (" . implode(', ', $vals) . ");\n";
+                        $buf .= "INSERT INTO `{$table}` (" . implode(', ', $keys)
+                              . ") VALUES (" . implode(', ', $vals) . ");\n";
+                        if (++$n % 200 === 0) { $emit($buf); $buf = ''; }
                     }
-                    $output .= "\n";
+                    $rs->closeCursor();
+                    if ($buf !== '') $emit($buf);
+                    if ($n > 0) $emit("\n");
                 }
             }
+        } finally {
+            try { $this->pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, $prevBuffered === null ? true : $prevBuffered); } catch (\Throwable $e) {}
         }
 
-        $output .= "SET FOREIGN_KEY_CHECKS = 1;\n";
-        return $output;
+        $emit("SET FOREIGN_KEY_CHECKS = 1;\n");
+    }
+
+    /** Buffer the dump into a string (kept for callers that need the whole thing). */
+    public function generateSqlDump(string $type = 'full'): string {
+        $out = '';
+        $this->emitSqlDump($type, function ($chunk) use (&$out) { $out .= $chunk; });
+        return $out;
+    }
+
+    /** Stream the dump straight to the client — constant memory, no 500 on big DBs. */
+    public function streamSqlDump(string $type = 'full'): void {
+        $this->emitSqlDump($type, function ($chunk) { echo $chunk; flush(); });
     }
 
     // =================================================================

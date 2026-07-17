@@ -99,13 +99,13 @@ if ($type === 'kit') {
     exit;
 }
 
-// SQL dump — schema, full, or keys
-$sql = $exporter->generateSqlDump($type);
-
+// SQL dump — schema, full, or keys. STREAMED so a large DB never has to fit in
+// memory at once (building the whole dump into a string 500'd/OOM'd on big sites).
 $filename = "{$siteSlug}_{$type}_{$timestamp}.sql";
 header('Content-Type: application/sql; charset=utf-8');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
-header('Content-Length: ' . strlen($sql));
-echo $sql;
+@set_time_limit(0);
+while (ob_get_level() > 0) { ob_end_flush(); }
+$exporter->streamSqlDump($type);
 exit;
 // ===== SNAPSMACK EOF =====
