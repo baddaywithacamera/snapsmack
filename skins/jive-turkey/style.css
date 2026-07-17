@@ -143,6 +143,7 @@ img { display: block; max-width: 100%; }
     left: 2px;
     right: -2px;
     height: 2px;
+    display: var(--nav-line-underline-display, none);   /* OFF by default; Nav Line Under-line setting turns it on */
     background: var(--nav-line-indigo, #14143d);
     opacity: var(--nav-line-opacity, 1);
     pointer-events: none;

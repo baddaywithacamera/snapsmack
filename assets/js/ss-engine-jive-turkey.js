@@ -128,6 +128,9 @@
 
         var mode0 = (host.getAttribute('data-jt-mode') || 'flow').toLowerCase();
         var gSpeed = Math.max(1, Math.min(100, parseFloat(host.getAttribute('data-jt-speed')) || 40));
+        // Global Background Speed (jt_speed) now scales ALL modes. Neutral (=1) at the
+        // default 45 so untouched looks are unchanged; DAISY & REELS previously ignored it.
+        var gFactor = spOf(gSpeed) / spOf(45);
         var cycleSecs = Math.max(6, parseFloat(host.getAttribute('data-jt-cycle')) || 18);
         var randomColour = host.getAttribute('data-jt-random-colour') === '1';
 
@@ -300,7 +303,7 @@
         function drawDaisy(T, cw, P) {
             var w = cv.width, h = cv.height;
             ctx.fillStyle = cw.cream; ctx.fillRect(0, 0, w, h);
-            var rs = (P.ray/100)*0.7, fs = (P.flo/100)*0.5;
+            var rs = (P.ray/100)*0.7 * gFactor, fs = (P.flo/100)*0.5 * gFactor;
             var N = P.rays|0; if (N < 6) N = 6;
             var seg = Math.PI*2/N, curl = (P.sw/100) * 2.4;
             var fx = w*0.5 + Math.sin(T*fs)*w*0.40;      // wide enough that the daisy swings out past the centre readability panel into the side margins, fully visible
@@ -360,7 +363,7 @@
             var D = P.cell|0; if (D < 40) D = 40;
             var cols = Math.ceil(w/D), rows = Math.ceil(h/D);
             var ox = (w - cols*D)/2, oy = (h - rows*D)/2;
-            var spd = 0.15 + (P.spd/100)*0.9;
+            var spd = (0.15 + (P.spd/100)*0.9) * gFactor;
             var spinAmt = (P.spin/100) * Math.PI;
             var busyF = Math.max(0.2, P.busy/30);
             for (var gy = 0; gy < rows; gy++) {

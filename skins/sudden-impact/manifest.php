@@ -72,63 +72,7 @@ return [
 
     'options' => [
 
-        // ---- GRID APPEARANCE -----------------------------------------------
-        'tg_gap' => [
-            'section'  => 'GRID',
-            'type'     => 'range_numeric',
-            'label'    => 'Image Gap',
-            'default'  => '2',
-            'min'      => '0',
-            'max'      => '20',
-            'step'     => '1',
-            'unit'     => 'px',
-            'selector' => ':root',
-            'property' => '--grid-gap',
-        ],
-        'tg_nav_tile_gap' => [
-            'section'  => 'GRID',
-            'type'     => 'range_numeric',
-            'label'    => 'Nav → Tiles Gap',
-            'default'  => '2',
-            'min'      => '0',
-            'max'      => '60',
-            'step'     => '1',
-            'unit'     => 'px',
-            'selector' => ':root',
-            'property' => '--nav-tile-gap',
-            'hint'     => 'Vertical space between the sticky nav bar and the first row of tiles.',
-        ],
-        'tg_post_count_color' => [
-            'section'  => 'GRID',
-            'type'     => 'color',
-            'label'    => 'Post Count Colour',
-            'default'  => '#262626',
-            'selector' => ':root',
-            'property' => '--post-count-color',
-            'hint'     => 'Colour of the post count number and label.',
-        ],
-        'tg_bg_color' => [
-            'section'  => 'GRID',
-            'type'     => 'color',
-            'label'    => 'Grid Background / Gap Colour',
-            'default'  => '#ffffff',
-            'selector' => ':root',
-            'property' => '--grid-bg',
-        ],
-        'tg_border_radius' => [
-            'section'  => 'GRID',
-            'type'     => 'select',
-            'label'    => 'Tile Border Radius',
-            'default'  => '0',
-            'options'  => [
-                '0'  => '0px (sharp)',
-                '2'  => '2px',
-                '4'  => '4px',
-                '8'  => '8px (rounded)',
-            ],
-            'selector' => ':root',
-            'property' => '--tile-radius',
-        ],
+        // ---- GRID --------------------------------------------------
         'tg_carousel_indicator' => [
             'section'  => 'GRID',
             'type'     => 'select',
@@ -154,7 +98,7 @@ return [
             ],
         ],
 
-        // ---- PROFILE HEADER ------------------------------------------------
+        // ---- PROFILE HEADER ----------------------------------------
         'tg_profile_header' => [
             'section'  => 'PROFILE HEADER',
             'type'     => 'select',
@@ -170,44 +114,6 @@ return [
             'accept'  => 'image/jpeg,image/png,image/webp,image/gif',
             'hint'    => 'Square image recommended. Displayed as a circle, ~77px.',
         ],
-        'tg_blog_title_font' => [
-            'section'       => 'PROFILE HEADER',
-            'type'          => 'select',
-            'label'         => 'Blog Title Font',
-            'default'       => 'inherit',
-            'options'       => array_merge(['inherit' => 'Same as Body Font'], $fonts),
-            'selector'      => ':root',
-            'property'      => '--blog-title-font',
-            'is_font'       => true,   // enables preview block + per-option font-family style
-            'no_size_slider'=> true,   // suppress built-in size slider; tg_blog_title_size handles it
-        ],
-        'tg_blog_title_size' => [
-            'section'  => 'PROFILE HEADER',
-            'type'     => 'range_numeric',
-            'label'    => 'Blog Title Size',
-            'default'  => '20',
-            'min'      => '12',
-            'max'      => '48',
-            'step'     => '1',
-            'unit'     => 'px',
-            'selector' => ':root',
-            'property' => '--blog-title-size',
-        ],
-        'tg_blog_title_weight' => [
-            'section'  => 'PROFILE HEADER',
-            'type'     => 'select',
-            'label'    => 'Blog Title Weight',
-            'default'  => '300',
-            'options'  => [
-                '300' => 'Light',
-                '400' => 'Regular',
-                '500' => 'Medium',
-                '600' => 'Semibold',
-                '700' => 'Bold',
-            ],
-            'selector' => ':root',
-            'property' => '--blog-title-weight',
-        ],
         'tg_show_tagline' => [
             'section'  => 'PROFILE HEADER',
             'type'     => 'select',
@@ -215,136 +121,8 @@ return [
             'default'  => '1',
             'options'  => ['1' => 'Show', '0' => 'Hide'],
         ],
-        'tg_tagline_font' => [
-            'section'       => 'PROFILE HEADER',
-            'type'          => 'select',
-            'label'         => 'Tagline Font',
-            'default'       => 'inherit',
-            'options'       => array_merge(['inherit' => 'Same as Body Font'], $fonts),
-            'selector'      => ':root',
-            'property'      => '--tagline-font',
-            'is_font'       => true,
-            'no_size_slider'=> true,
-        ],
-        'tg_tagline_size' => [
-            'section'  => 'PROFILE HEADER',
-            'type'     => 'range_numeric',
-            'label'    => 'Tagline Size',
-            'default'  => '16',
-            'min'      => '10',
-            'max'      => '36',
-            'step'     => '1',
-            'unit'     => 'px',
-            'selector' => ':root',
-            'property' => '--tagline-size',
-        ],
-        'tg_tagline_weight' => [
-            'section'  => 'PROFILE HEADER',
-            'type'     => 'select',
-            'label'    => 'Tagline Weight',
-            'default'  => '300',
-            'options'  => [
-                '300' => 'Light',
-                '400' => 'Regular',
-                '500' => 'Medium',
-                '600' => 'Semibold',
-                '700' => 'Bold',
-            ],
-            'selector' => ':root',
-            'property' => '--tagline-weight',
-        ],
-        'tg_tagline_color' => [
-            'section'  => 'PROFILE HEADER',
-            'type'     => 'color',
-            'label'    => 'Tagline Colour',
-            'default'  => '#8e8e8e',
-            'selector' => ':root',
-            'property' => '--tagline-color',
-        ],
-        'tg_nav_case' => [
-            'section'  => 'PROFILE HEADER',
-            'type'     => 'select',
-            'label'    => 'Nav Link Case',
-            'default'  => 'none',
-            'options'  => [
-                'none'       => 'As typed',
-                'uppercase'  => 'ALL CAPS',
-                'capitalize' => 'First Letter',
-                'lowercase'  => 'all lowercase',
-            ],
-            'selector' => ':root',
-            'property' => '--nav-text-transform',
-        ],
 
-        // ---- COLOURS -------------------------------------------------------
-        'tg_post_bg_color' => [
-            'section'  => 'COLOURS',
-            'type'     => 'color',
-            'label'    => 'Image Page Background',
-            'default'  => '#000000',
-            'selector' => ':root',
-            'property' => '--post-bg',
-        ],
-        'tg_bg_primary' => [
-            'section'  => 'COLOURS',
-            'type'     => 'color',
-            'label'    => 'Page Background',
-            'default'  => '#ffffff',
-            'selector' => ':root',
-            'property' => '--bg-primary',
-        ],
-        'tg_text_primary' => [
-            'section'  => 'COLOURS',
-            'type'     => 'color',
-            'label'    => 'Primary Text',
-            'default'  => '#262626',
-            'selector' => ':root',
-            'property' => '--text-primary',
-        ],
-        'tg_text_secondary' => [
-            'section'  => 'COLOURS',
-            'type'     => 'color',
-            'label'    => 'Secondary Text',
-            'default'  => '#8e8e8e',
-            'selector' => ':root',
-            'property' => '--text-secondary',
-        ],
-        'tg_accent' => [
-            'section'  => 'COLOURS',
-            'type'     => 'color',
-            'label'    => 'Accent / Link Colour',
-            'default'  => '#0095f6',
-            'selector' => ':root',
-            'property' => '--accent-color',
-        ],
-        'tg_border_color' => [
-            'section'  => 'COLOURS',
-            'type'     => 'color',
-            'label'    => 'Border / Divider Colour',
-            'default'  => '#dbdbdb',
-            'selector' => ':root',
-            'property' => '--border-color',
-        ],
-
-        // ---- TYPOGRAPHY ----------------------------------------------------
-        'tg_font_body' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'select',
-            'label'    => 'Body / UI Font',
-            'default'  => '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            'options'  => array_merge(
-                ['"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' => 'System Default (Segoe UI / Roboto)'],
-                $fonts
-            ),
-            'selector' => ':root',
-            'property' => '--font-body',
-        ],
-
-        // ---- IMAGE FRAME ---------------------------------------------------
-        // tg_customize_level controls which style resolution path is active.
-        //   per_grid     — one style for all images, set here in Skin Admin.
-        //   per_carousel — each post defines its own style (stored on snap_posts).
-        //   per_image    — each photo has its own style (stored on snap_post_images).
+        // ---- IMAGE FRAME -------------------------------------------
         'tg_customize_level' => [
             'section' => 'IMAGE FRAME',
             'type'    => 'select',
@@ -413,33 +191,7 @@ return [
             ],
         ],
 
-        // ---- LAYOUT --------------------------------------------------------
-        'tg_max_width' => [
-            'section'  => 'LAYOUT',
-            'type'     => 'range_numeric',
-            'label'    => 'Grid Max Width',
-            'default'  => '935',
-            'min'      => '600',
-            'max'      => '1600',
-            'step'     => '5',
-            'unit'     => 'px',
-            'selector' => ':root',
-            'property' => '--grid-max-width',
-        ],
-        'tg_gutter' => [
-            'section'  => 'TREATMENT',
-            'type'     => 'range_numeric',
-            'label'    => 'Side Gutter (white margin over background)',
-            'default'  => '0',
-            'min'      => '0',
-            'max'      => '400',
-            'step'     => '4',
-            'unit'     => 'px',
-            'selector' => ':root',
-            'property' => '--grid-gutter',
-        ],
-
-        // ---- TREATMENT (full-page background behind a centred content card) -
+        // ---- TREATMENT ---------------------------------------------
         'tg_treatment_mode' => [
             'section' => 'TREATMENT',
             'type'    => 'select',
@@ -492,51 +244,6 @@ return [
             'unit'     => '%',
             'hint'     => 'Centre = none. Drag left to darken the background, right to lighten it.',
             // No selector/property — handled in skin-profile.php (sign decides dark vs light).
-        ],
-
-        // ---- SEARCH DOCK (bottom-left magnifier) ---------------------------
-        // Shared keys read by core/gram-search-dock.php. DISC = the round pill
-        // behind the magnifier; GLASS = the magnifier icon. Colour + opacity so
-        // the dock can be matched to the background.
-        'gsd_disc_color' => [
-            'section' => 'SEARCH DOCK',
-            'type'    => 'color',
-            'label'   => 'Dock Circle Colour',
-            'default' => '#ffffff',
-            'hint'    => 'Colour of the round dock behind the magnifier. PHP-handled → --gsd-disc-bg.',
-        ],
-        'gsd_disc_opacity' => [
-            'section'  => 'SEARCH DOCK',
-            'type'     => 'range_numeric',
-            'label'    => 'Dock Circle Opacity',
-            'default'  => '100', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'     => 'Transparency of the dock circle so it can blend into the background.',
-        ],
-        'gsd_glass_color' => [
-            'section' => 'SEARCH DOCK',
-            'type'    => 'color',
-            'label'   => 'Dock Magnifier Colour',
-            'default' => '#262626',
-            'hint'    => 'Colour of the magnifying-glass icon. PHP-handled → --gsd-glass-color.',
-        ],
-
-        // ---- FOOTER (bar background — colour + user opacity slider) ---------
-        // Shared keys read by core/footer.php → --footer-bg. Lets the footer bar
-        // be dialled independently of the page background. THE GRID default is
-        // an opaque white bar (its current look); the slider is the user control.
-        'footer_bg_color' => [
-            'section' => 'FOOTER',
-            'type'    => 'color',
-            'label'   => 'Footer Bar Colour',
-            'default' => '#ffffff',
-            'hint'    => 'Background colour of the footer bar. PHP-handled → --footer-bg.',
-        ],
-        'footer_bg_opacity' => [
-            'section'  => 'FOOTER',
-            'type'     => 'range_numeric',
-            'label'    => 'Footer Bar Opacity',
-            'default'  => '100', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
-            'hint'     => 'Transparency of the footer bar.',
         ],
 
     ],
