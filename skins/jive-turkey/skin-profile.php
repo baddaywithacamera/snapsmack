@@ -114,9 +114,13 @@ $_jt_random  = (($settings['jt_random_colour'] ?? '1') === '0') ? '0' : '1';
 $_jt_speed   = max(1, min(100, (int)($settings['jt_speed'] ?? 45)));
 $_jt_cycle   = max(6, min(60, (int)($settings['jt_cycle_time'] ?? 14)));           // seconds per mode in CYCLE
 $_jt_bdir    = $settings['jt_wave_direction'] ?? 'dtlbr';
-$_jt_bw      = max(5, min(15, (int)($settings['jt_border_width'] ?? 12)));         // border width (px)
-$_jt_bspeed  = max(0, min(100, (int)($settings['jt_border_speed'] ?? 60)));        // border colour-change speed
-$_jt_bwave   = max(0, min(100, (int)($settings['jt_border_wave']  ?? 45)));        // border wave stagger
+$_jt_bon     = (($settings['jt_border_on'] ?? '1') === '0') ? '0' : '1';           // outward pulse on/off
+$_jt_bspeed  = max(0, min(100, (int)($settings['jt_border_speed'] ?? 55)));        // pulse speed
+$_jt_reach   = max(6, min(40, (int)($settings['jt_border_reach'] ?? 22)));         // pulse reach (px)
+$_jt_thick   = max(2, min(14, (int)($settings['jt_border_thick'] ?? 7)));          // ring thickness (px)
+$_jt_rings   = max(1, min(3,  (int)($settings['jt_border_rings'] ?? 2)));          // concurrent ripples
+$_jt_bwave   = max(0, min(100, (int)($settings['jt_border_wave']  ?? 45)));        // wave stagger
+$_jt_bw      = 12;                                                                  // legacy --tile-bw default
 $_jt_colors  = array_values($_jt_active['colors'] ?? []);                          // active colourway (back-compat)
 $_jt_field   = $_jt_active['cream'] ?? '#f2e2c0';
 $_jt_radius  = (int)round($_jt_bw * 1.4);
@@ -253,8 +257,11 @@ if ($_jt_nls_sz > 0 && $_jt_nls_op > 0) {
      data-jt-speed="<?php echo $_jt_speed; ?>"
      data-jt-cycle="<?php echo $_jt_cycle; ?>"
      data-jt-random-colour="<?php echo $_jt_random; ?>"
-     data-jt-border-width="<?php echo $_jt_bw; ?>"
+     data-jt-border-enabled="<?php echo $_jt_bon; ?>"
      data-jt-border-speed="<?php echo $_jt_bspeed; ?>"
+     data-jt-border-reach="<?php echo $_jt_reach; ?>"
+     data-jt-border-thick="<?php echo $_jt_thick; ?>"
+     data-jt-border-rings="<?php echo $_jt_rings; ?>"
      data-jt-border-wave="<?php echo $_jt_bwave; ?>"
      data-jt-border-dir="<?php echo htmlspecialchars($_jt_bdir); ?>"></div>
 
