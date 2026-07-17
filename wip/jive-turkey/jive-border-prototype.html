@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JIVE TURKEY — tile borders (prototype)</title>
+<style>
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; overflow:hidden; font-family:system-ui,sans-serif; }
+  #stage { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #grid { display:grid; grid-template-columns:repeat(5,1fr); gap:18px; width:min(860px,86vw); }
+  .tile { aspect-ratio:1; border-style:solid; border-width:10px; border-color:#000;
+          background:linear-gradient(135deg,#b9b3a6,#8f887b); box-shadow:0 4px 14px rgba(0,0,0,.18); }
+  .tile.round { border-radius:14px; }
+  #panel { position:fixed; left:14px; top:14px; z-index:10; background:rgba(20,20,20,.86); color:#eee; padding:14px 16px; border-radius:12px; font-size:13px; width:230px; backdrop-filter:blur(6px); box-shadow:0 8px 30px rgba(0,0,0,.5); }
+  #panel h1 { font-size:14px; margin:0 0 10px; letter-spacing:.1em; color:#f4d03f; }
+  #panel .row { margin:9px 0; }
+  #panel label { display:block; margin-bottom:4px; opacity:.8; letter-spacing:.04em; text-transform:uppercase; font-size:10px; }
+  #panel input[type=range] { width:100%; }
+  .cw { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .cw button { padding:7px 4px; border:1px solid #444; background:#222; color:#ddd; border-radius:7px; cursor:pointer; font-size:11px; }
+  .cw button.active { outline:2px solid #f4d03f; color:#fff; }
+  .val { float:right; opacity:.6; }
+  .tog { display:flex; gap:6px; align-items:center; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="grid"></div></div>
+<div id="panel">
+  <h1>JIVE TURKEY · TILE BORDERS</h1>
+  <div class="row"><label>Colourway</label><div class="cw" id="cw">
+    <button data-k="BARF">BARF</button><button data-k="BLECH">BLECH</button>
+    <button data-k="GROOVY">GROOVY</button><button data-k="HARVEST">HARVEST</button>
+  </div></div>
+  <div class="row"><label>Border width (px) <span class="val" id="vW"></span></label><input id="w" type="range" min="5" max="15" value="10"></div>
+  <div class="row"><label>Colour hold speed <span class="val" id="vSpd"></span></label><input id="spd" type="range" min="0" max="100" value="60"></div>
+  <div class="row"><label>Wave stagger <span class="val" id="vWave"></span></label><input id="wave" type="range" min="0" max="100" value="40"></div>
+  <div class="row"><label>Wave direction</label><select id="bdir" style="width:100%;padding:5px;background:#222;color:#ddd;border:1px solid #444;border-radius:6px;font-size:12px;">
+    <option value="ltr" selected>Left → right</option><option value="rtl">Right → left</option>
+    <option value="ttb">Top → bottom</option><option value="btt">Bottom → top</option>
+    <option value="dtlbr">Diagonal ↘</option><option value="dbrtl">Diagonal ↖</option>
+  </select></div>
+  <div class="row tog"><input type="checkbox" id="round"><label style="margin:0;text-transform:none;font-size:12px;">Rounded tiles</label></div>
+</div>
+<script>
+const COLOURWAYS = {
+  BARF:    { cream:'#efe7cf', colors:['#c9b23a','#6e7f39','#6b4a2a'] },
+  BLECH:   { cream:'#efe3cd', colors:['#6a3b86','#dd7328','#c39a3f'] },
+  GROOVY:  { cream:'#f2e7d6', colors:['#7b3f9e','#e368a4','#3f7cc4'] },
+  HARVEST: { cream:'#f2e2c0', colors:['#d99a2b','#bd4e1f','#6b3f24'] }
+};
+const S = { key:'GROOVY', w:10, spd:60, wave:40, round:false, dir:'ltr' };
+// AURORA/PARADE wave directions → per-tile order value
+function orderVal(dir, r, c, rows, cols){
+  switch(dir){
+    case 'ltr': return c;
+    case 'rtl': return (cols-1-c);
+    case 'ttb': return r;
+    case 'btt': return (rows-1-r);
+    case 'dbrtl': return (rows-1-r)+(cols-1-c);
+    default: return r+c; // dtlbr ↘
+  }
+}
+const COLS=5, ROWS=3;
+const grid = document.getElementById('grid');
+const tiles = [];
+for(let gy=0; gy<ROWS; gy++) for(let gx=0; gx<COLS; gx++){
+  const d=document.createElement('div'); d.className='tile'; grid.appendChild(d);
+  tiles.push({el:d, gx, gy});
+}
+function applyBg(){ document.body.style.background = COLOURWAYS[S.key].cream; }
+
+function rgba(hex,a){ hex=hex.replace('#',''); if(hex.length===3)hex=hex.split('').map(x=>x+x).join('');
+  const r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16);
+  return 'rgba('+r+','+g+','+b+','+a.toFixed(3)+')'; }
+
+function frame(now){
+  const t=now/1000, cw=COLOURWAYS[S.key], cols=cw.colors;   // border is light — run every frame for a smooth shrink
+  const W=S.w;
+  const D = 0.8 + Math.pow((100-S.spd)/100, 2) * 18; // seconds per colour; fast top kept, much slower low end
+  const waveAmt = (S.wave/100)*0.9;
+  for(const tile of tiles){
+    const off = orderVal(S.dir, tile.gy, tile.gx, ROWS, COLS) * waveAmt;
+    const local = t/D + off;
+    const step = Math.floor(local), frac = local - step;
+    let w, ci;
+    if(frac < 0.55){ w=W; ci=step; }                                                // hold at full width, current colour
+    else if(frac < 0.775){ const p=(frac-0.55)/0.225; w=W*(1-p)*(1-p); ci=step; }    // shrink to 0 (accelerates through the thin widths)
+    else { const p=(frac-0.775)/0.225; w=W*(2*p - p*p); ci=step+1; }                 // expand back in as the NEXT colour
+    const col = cols[((ci%cols.length)+cols.length)%cols.length];
+    tile.el.style.borderWidth = Math.max(0,w).toFixed(2)+'px';                       // sub-pixel + full framerate = smooth
+    tile.el.style.borderColor = col;
+    tile.el.classList.toggle('round', S.round);
+  }
+  requestAnimationFrame(frame);
+}
+
+function labels(){ vW.textContent=S.w; vSpd.textContent=S.spd; vWave.textContent=S.wave; }
+document.querySelectorAll('#cw button').forEach(b=>{ b.onclick=()=>{S.key=b.dataset.k; applyBg(); document.querySelectorAll('#cw button').forEach(x=>x.classList.toggle('active',x===b));}; if(b.dataset.k===S.key)b.classList.add('active'); });
+const bind=(id,p)=>{ const el=document.getElementById(id); el.value=S[p]; el.oninput=()=>{S[p]=+el.value; labels();}; };
+bind('w','w'); bind('spd','spd'); bind('wave','wave');
+document.getElementById('bdir').onchange=e=>{S.dir=e.target.value;};
+document.getElementById('round').onchange=e=>{S.round=e.target.checked;};
+applyBg(); labels(); requestAnimationFrame(frame);
+window.__set = k => { S.key=k; applyBg(); document.querySelectorAll('#cw button').forEach(x=>x.classList.toggle('active',x.dataset.k===k)); };
+</script>
+</body>
+</html>

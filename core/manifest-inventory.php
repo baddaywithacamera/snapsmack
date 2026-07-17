@@ -842,6 +842,16 @@ return [
             'path'         => 'assets/js/ss-engine-aurora-wave.js',
             'has_settings' => false,
         ],
+        'smack-jive-turkey-bg' => [
+            'label'        => 'JIVE TURKEY Layer 1 background (canvas; SCOPE/BLOOM/FLOW/DAISY/REELS + CYCLE + SURPRISE)',
+            'path'         => 'assets/js/ss-engine-jive-turkey.js',
+            'has_settings' => false,
+        ],
+        'smack-jive-border' => [
+            'label'        => 'JIVE TURKEY Layer 2 tile border shrink/expand colour wave',
+            'path'         => 'assets/js/ss-engine-jive-border.js',
+            'has_settings' => false,
+        ],
         'smack-progressive-reveal' => [
             'label'        => 'Progressive reveal — grid tiles + justified rows (grow-as-you-scroll)',
             'path'         => 'assets/js/ss-engine-progressive-reveal.js',

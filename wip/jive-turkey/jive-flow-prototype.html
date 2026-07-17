@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JIVE TURKEY — FLOW (prototype)</title>
+<style>
+  :root { --panel:#1a1a1a; }
+  * { box-sizing: border-box; }
+  html,body { margin:0; height:100%; font-family: system-ui, sans-serif; background:#111; overflow:hidden; }
+  #stage { position:fixed; inset:0; }
+  canvas { display:block; width:100%; height:100%; }
+  /* Optional mock GRAMOFSMACK grid to preview FLOW behind photos */
+  #grid { position:fixed; inset:0; display:none; align-items:flex-start; justify-content:center; pointer-events:none; }
+  #grid .wrap { width:min(720px,80vw); margin-top:6vh; display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  #grid .tile { aspect-ratio:1; background:#ccc center/cover; box-shadow:0 6px 18px rgba(0,0,0,.3); border:6px solid #fff; }
+  #panel {
+    position:fixed; left:14px; top:14px; z-index:10; background:rgba(20,20,20,.86); color:#eee;
+    padding:14px 16px; border-radius:12px; font-size:13px; width:230px; backdrop-filter:blur(6px);
+    box-shadow:0 8px 30px rgba(0,0,0,.5);
+  }
+  #panel h1 { font-size:14px; margin:0 0 10px; letter-spacing:.12em; color:#f4d03f; }
+  #panel .row { margin:9px 0; }
+  #panel label { display:block; margin-bottom:4px; opacity:.8; letter-spacing:.04em; text-transform:uppercase; font-size:10px; }
+  #panel input[type=range] { width:100%; }
+  .cw { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .cw button { padding:7px 4px; border:1px solid #444; background:#222; color:#ddd; border-radius:7px; cursor:pointer; font-size:11px; letter-spacing:.05em; }
+  .cw button.active { outline:2px solid #f4d03f; color:#fff; }
+  .tog { display:flex; gap:6px; align-items:center; }
+  .tog input { accent-color:#f4d03f; }
+  .val { float:right; opacity:.6; }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+<div id="grid"><div class="wrap" id="gwrap"></div></div>
+
+<div id="panel">
+  <h1>JIVE TURKEY · FLOW</h1>
+  <div class="row">
+    <label>Colourway</label>
+    <div class="cw" id="cw">
+      <button data-k="BARF">BARF</button>
+      <button data-k="BLECH">BLECH</button>
+      <button data-k="GROOVY">GROOVY</button>
+      <button data-k="HARVEST">HARVEST</button>
+    </div>
+  </div>
+  <div class="row"><label>Flow speed <span class="val" id="vSpeed"></span></label><input id="speed" type="range" min="0" max="100" value="42"></div>
+  <div class="row"><label>Curve / sway <span class="val" id="vCurve"></span></label><input id="curve" type="range" min="0" max="100" value="55"></div>
+  <div class="row"><label>Ribbons <span class="val" id="vBands"></span></label><input id="bands" type="range" min="5" max="22" value="13"></div>
+  <div class="row"><label>Angle <span class="val" id="vAngle"></span></label><input id="angle" type="range" min="0" max="90" value="18"></div>
+  <div class="row"><label>Swirl <span class="val" id="vSwirl"></span></label><input id="swirl" type="range" min="0" max="100" value="22"></div>
+  <div class="row"><label>Cream stripes <span class="val" id="vCream"></span></label><input id="cream" type="range" min="0" max="100" value="45"></div>
+  <div class="row tog"><input type="checkbox" id="showgrid"><label style="margin:0;text-transform:none;font-size:12px;">Preview behind photo grid</label></div>
+</div>
+
+<script>
+const COLOURWAYS = {
+  BARF:    { cream:'#efe7cf', colors:['#c9b23a', '#6e7f39', '#6b4a2a'] },   // piss yellow, appliance green, earth brown
+  BLECH:   { cream:'#efe3cd', colors:['#6a3b86', '#dd7328', '#c39a3f'] },   // purple, orange, shag gold
+  GROOVY:  { cream:'#f2e7d6', colors:['#7b3f9e', '#e368a4', '#3f7cc4'] },   // purple, pink, blue
+  HARVEST: { cream:'#f2e2c0', colors:['#d99a2b', '#bd4e1f', '#6b3f24'] }    // harvest gold, burnt orange, brown
+};
+
+const state = { key:'HARVEST', speed:42, curve:55, bands:13, angle:18, swirl:22, cream:45 };
+
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+let W=0, H=0, DPR=Math.min(window.devicePixelRatio||1, 2);
+function resize(){
+  W = cv.clientWidth; H = cv.clientHeight;
+  cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', resize);
+
+// Build the per-band colour list: colourway colours with cream stripes woven in
+// (how many cream stripes is the "Cream stripes" control). No hardcoded hex here
+// beyond the colourway tokens themselves.
+function bandColours(N){
+  const cw = COLOURWAYS[state.key];
+  const creamEvery = state.cream <= 2 ? 0 : Math.max(2, Math.round(6 - (state.cream/100)*4)); // 0=none .. ~2=lots
+  const out = [];
+  let ci = 0;
+  for(let i=0;i<N;i++){
+    if(creamEvery && (i % creamEvery === creamEvery-1)) out.push(cw.cream);
+    else { out.push(cw.colors[ci % cw.colors.length]); ci++; }
+  }
+  return out;
+}
+
+function draw(now){
+  const t = now/1000;
+  const cw = COLOURWAYS[state.key];
+  ctx.fillStyle = cw.cream;
+  ctx.fillRect(0,0,W,H);
+
+  const N = state.bands|0;
+  const cols = bandColours(N);
+  const speed = 0.15 + (state.speed/100)*1.6;
+  const amp = (state.curve/100) * 130;
+  const swirl = (state.swirl/100);
+  const D = Math.hypot(W,H) * 1.25;
+  const step = D / N;
+  const k = (2*Math.PI) / (D * 0.55);            // wavelength along the ribbon
+  const uSteps = 48;
+
+  ctx.save();
+  ctx.translate(W/2, H/2);
+  // Slow swirl: the whole field rotates gently back and forth for a spiralling drift.
+  ctx.rotate((state.angle*Math.PI/180) + Math.sin(t*0.12*speed) * swirl * 0.5);
+
+  for(let i=0;i<N;i++){
+    ctx.fillStyle = cols[i];
+    ctx.beginPath();
+    for(let s=0;s<=uSteps;s++){
+      const u = -D/2 + (s/uSteps)*D;
+      const w = -D/2 + i*step
+              + amp*Math.sin(k*u + t*speed + i*0.55)
+              + amp*0.35*swirl*Math.sin(k*1.9*u - t*speed*0.7 + i*0.9);
+      if(s===0) ctx.moveTo(u,w); else ctx.lineTo(u,w);
+    }
+    for(let s=uSteps;s>=0;s--){
+      const u = -D/2 + (s/uSteps)*D;
+      const w = -D/2 + (i+1)*step
+              + amp*Math.sin(k*u + t*speed + (i+1)*0.55)
+              + amp*0.35*swirl*Math.sin(k*1.9*u - t*speed*0.7 + (i+1)*0.9);
+      ctx.lineTo(u,w);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  requestAnimationFrame(draw);
+}
+
+// ── UI ──────────────────────────────────────────────────────────────
+function refreshLabels(){
+  vSpeed.textContent = state.speed; vCurve.textContent = state.curve;
+  vBands.textContent = state.bands; vAngle.textContent = state.angle+'°';
+  vSwirl.textContent = state.swirl; vCream.textContent = state.cream;
+}
+document.querySelectorAll('#cw button').forEach(b=>{
+  b.onclick = ()=>{ state.key=b.dataset.k; document.querySelectorAll('#cw button').forEach(x=>x.classList.toggle('active', x===b)); };
+  if(b.dataset.k===state.key) b.classList.add('active');
+});
+const bind=(id,prop)=>{ const el=document.getElementById(id); el.value=state[prop]; el.oninput=()=>{ state[prop]=+el.value; refreshLabels(); }; };
+bind('speed','speed'); bind('curve','curve'); bind('bands','bands'); bind('angle','angle'); bind('swirl','swirl'); bind('cream','cream');
+document.getElementById('showgrid').onchange = e=>{
+  document.getElementById('grid').style.display = e.target.checked ? 'flex' : 'none';
+};
+// mock grid tiles
+const gwrap=document.getElementById('gwrap');
+for(let i=0;i<9;i++){ const d=document.createElement('div'); d.className='tile'; d.style.background='hsl('+(i*40)+',30%,'+(55+ (i%3)*8)+'%)'; gwrap.appendChild(d); }
+
+refreshLabels();
+resize();
+requestAnimationFrame(draw);
+window.__setColourway = k => { state.key=k; document.querySelectorAll('#cw button').forEach(x=>x.classList.toggle('active', x.dataset.k===k)); };
+</script>
+</body>
+</html>
