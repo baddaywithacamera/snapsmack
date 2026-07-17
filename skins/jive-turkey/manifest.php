@@ -148,64 +148,73 @@ return [
             // PHP-handled -> data-jt-cycle.
         ],
 
-        // ---- TILE BORDERS (Layer 2 — OUTWARD colour pulse) ----------------
-        'jt_border_on' => [
-            'section' => 'TILE BORDERS',
+        // ---- TILE GLOW (Layer 2 — NEON UNDER-GLOW, blooms on colour shift) --
+        'jt_glow_on' => [
+            'section' => 'TILE GLOW',
             'type'    => 'select',
-            'label'   => 'Tile Borders',
+            'label'   => 'Tile Glow',
             'default' => '1',
-            'options' => [ '1' => 'On — outward colour pulse', '0' => 'Off' ],
-            'hint'    => 'A coloured ring that pulses OUTWARD from each photo edge, cycling the colourway.',
-            // PHP-handled -> data-jt-border-enabled.
+            'options' => [ '1' => 'On — neon under-glow', '0' => 'Off' ],
+            'hint'    => 'A soft neon halo behind each photo that blooms outward every time the colour shifts.',
+            // PHP-handled -> data-jt-glow-enabled.
         ],
-        'jt_border_speed' => [
-            'section'  => 'TILE BORDERS',
+        'jt_glow_speed' => [
+            'section'  => 'TILE GLOW',
             'type'     => 'range_numeric',
-            'label'    => 'Pulse Speed',
-            'default'  => '55',
-            'min'      => '0', 'max' => '100', 'step' => '5',
-            'hint'     => 'How fast the rings pulse out. Higher = faster.',
-            // PHP-handled -> data-jt-border-speed.
-        ],
-        'jt_border_reach' => [
-            'section'  => 'TILE BORDERS',
-            'type'     => 'range_numeric',
-            'label'    => 'Pulse Reach',
-            'default'  => '22',
-            'min'      => '6', 'max' => '40', 'step' => '1',
-            'unit'     => 'px',
-            'hint'     => 'How far each ring travels outward before it fades.',
-            // PHP-handled -> data-jt-border-reach.
-        ],
-        'jt_border_thick' => [
-            'section'  => 'TILE BORDERS',
-            'type'     => 'range_numeric',
-            'label'    => 'Ring Thickness',
-            'default'  => '7',
-            'min'      => '2', 'max' => '14', 'step' => '1',
-            'unit'     => 'px',
-            // PHP-handled -> data-jt-border-thick.
-        ],
-        'jt_border_rings' => [
-            'section'  => 'TILE BORDERS',
-            'type'     => 'range_numeric',
-            'label'    => 'Ripples',
-            'default'  => '2',
-            'min'      => '1', 'max' => '3', 'step' => '1',
-            'hint'     => 'How many rings ripple outward at once.',
-            // PHP-handled -> data-jt-border-rings.
-        ],
-        'jt_border_wave' => [
-            'section'  => 'TILE BORDERS',
-            'type'     => 'range_numeric',
-            'label'    => 'Wave Stagger',
+            'label'    => 'Shift Speed',
             'default'  => '45',
             'min'      => '0', 'max' => '100', 'step' => '5',
-            'hint'     => 'How much the pulse staggers across the grid as a travelling wave.',
-            // PHP-handled -> data-jt-border-wave.
+            'hint'     => 'How often the glow shifts colour and blooms. Higher = faster.',
+            // PHP-handled -> data-jt-glow-speed.
         ],
-        'jt_wave_direction' => [
-            'section' => 'TILE BORDERS',
+        'jt_glow_size' => [
+            'section'  => 'TILE GLOW',
+            'type'     => 'range_numeric',
+            'label'    => 'Glow Size',
+            'default'  => '8',
+            'min'      => '4', 'max' => '12', 'step' => '1',
+            'unit'     => 'px',
+            'hint'     => 'Base radius of the resting glow (it blooms bigger on each shift).',
+            // PHP-handled -> data-jt-glow-size.
+        ],
+        'jt_glow_punch' => [
+            'section'  => 'TILE GLOW',
+            'type'     => 'range_numeric',
+            'label'    => 'Pulse Punch',
+            'default'  => '70',
+            'min'      => '0', 'max' => '100', 'step' => '5',
+            'hint'     => 'How hard the glow blooms outward and brightens at the colour shift.',
+            // PHP-handled -> data-jt-glow-punch.
+        ],
+        'jt_glow_steady' => [
+            'section'  => 'TILE GLOW',
+            'type'     => 'range_numeric',
+            'label'    => 'Steady Glow',
+            'default'  => '35',
+            'min'      => '0', 'max' => '100', 'step' => '5',
+            'hint'     => 'Resting ember brightness between shifts. 0 = only glows on the shift.',
+            // PHP-handled -> data-jt-glow-steady.
+        ],
+        'jt_glow_layers' => [
+            'section'  => 'TILE GLOW',
+            'type'     => 'range_numeric',
+            'label'    => 'Neon Layers',
+            'default'  => '2',
+            'min'      => '1', 'max' => '3', 'step' => '1',
+            'hint'     => 'Stacked halos for neon depth.',
+            // PHP-handled -> data-jt-glow-layers.
+        ],
+        'jt_glow_wave' => [
+            'section'  => 'TILE GLOW',
+            'type'     => 'range_numeric',
+            'label'    => 'Wave Stagger',
+            'default'  => '50',
+            'min'      => '0', 'max' => '100', 'step' => '5',
+            'hint'     => 'How much the colour shift staggers across the grid as a travelling wave.',
+            // PHP-handled -> data-jt-glow-wave.
+        ],
+        'jt_glow_dir' => [
+            'section' => 'TILE GLOW',
             'type'    => 'select',
             'label'   => 'Wave Direction',
             'default' => 'dtlbr',
@@ -217,7 +226,7 @@ return [
                 'dtlbr' => 'Diagonal (top-left to bottom-right)',
                 'dbrtl' => 'Diagonal (bottom-right to top-left)',
             ],
-            // PHP-handled -> data-jt-border-dir.
+            // PHP-handled -> data-jt-glow-dir.
         ],
 
         // ---- GRID APPEARANCE -----------------------------------------------
