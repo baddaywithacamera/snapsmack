@@ -1,4 +1,3 @@
-/* SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */
 /* ============================================================================
  * SNAPSMACK — SMACKVERSE : Standalone Pixelfed-compatible client  (ss-pixel.css)
  *
@@ -302,15 +301,4 @@ button{ font-family:inherit; cursor:pointer; }
 .sx-postlb-body .sx-card{ margin:0; }
 
 /* toasts */
-.sx-toast-wrap{ position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:90; display:flex; flex-direction:column; gap:8px; }
-.sx-toast{ background:var(--fg); color:var(--bg); padding:10px 16px; border-radius:10px; font-size:.9rem; box-shadow:0 8px 24px rgba(0,0,0,.3); }
-
-/* ---- responsive ----------------------------------------------------------- */
-@media (max-width:1000px){
-  .sx-top-in,.sx-app{ grid-template-columns:1fr; }
-  .sx-col-right{ display:none; }
-  .sx-col-left{ position:static; }
-  .sx-prof-wrap{ grid-template-columns:1fr; }
-  .sx-dm-wrap{ grid-template-columns:1fr; }
-}
-/* ===== SNAPSMACK EOF ===== */
+.sx-toast-wrap{ position:fixed; left:50%; bottom:26px; transf

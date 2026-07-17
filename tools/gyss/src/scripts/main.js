@@ -1,3 +1,4 @@
+// SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 // GET YOUR SHIT SORTED — Application controller
 // Manages tab state, CONNECT/FILTER/SORT screens, and the Conflict Resolution Modal.
 

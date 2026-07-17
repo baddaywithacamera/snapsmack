@@ -1,3 +1,4 @@
+-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 -- SNAPSMACK MIGRATION: add URL fields to both comment tables
 -- comment_url on snap_comments (legacy system, used for counts)
 -- guest_url on snap_community_comments (displayed in the overlay)

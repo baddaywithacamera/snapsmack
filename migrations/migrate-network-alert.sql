@@ -1,3 +1,4 @@
+-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 -- SNAPSMACK — Network Alert (Layer 2) settings
 -- Adds opt-in settings for participation in the SC global network alert system.
 -- Layer 2 only — entirely separate from Layer 1 (hub/spoke RED, smackback.php).

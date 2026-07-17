@@ -1,3 +1,4 @@
+-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 -- SnapSmack migration: skin preset storage for Chaplin border system
 -- migrate-chaplin-presets.sql
 

@@ -1,4 +1,5 @@
 <?php
+/* SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */
 /**
  * SNAPSMACK - Slickr Skin Meta Templates
  * Spec v0.1 — Flickr visual idiom clone for archive migrations.

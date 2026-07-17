@@ -1,3 +1,4 @@
+# SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 """
 SmackPress — ai_client.py
 Pluggable AI enhancement.  Supports Gemini, OpenAI, and Anthropic.

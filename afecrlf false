@@ -1,0 +1,65 @@
+warning: in the working copy of 'projects/snapsmack-ca/bugger.php', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'projects/snapsmack-ca/includes/footer.php', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'skins/slickr/skin-meta.php', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'tools/fix.php', CRLF will be replaced by LF the next time Git touches it
+[1mdiff --git a/projects/snapsmack-ca/bugger.php b/projects/snapsmack-ca/bugger.php[m
+[1mindex 255b6854..bef43b05 100644[m
+[1m--- a/projects/snapsmack-ca/bugger.php[m
+[1m+++ b/projects/snapsmack-ca/bugger.php[m
+[36m@@ -121,3 +121,4 @@[m [minclude __DIR__ . '/includes/header.php';[m
+ [m
+ <?php include __DIR__ . '/includes/footer.php'; ?>[m
+ <!-- ===== SNAPSMACK EOF ===== -->[m
+[32m+[m[32m<?php // ===== SNAPSMACK EOF ===== ?>[m
+[1mdiff --git a/projects/snapsmack-ca/includes/footer.php b/projects/snapsmack-ca/includes/footer.php[m
+[1mindex b43ccf44..c78ff2ac 100644[m
+[1m--- a/projects/snapsmack-ca/includes/footer.php[m
+[1m+++ b/projects/snapsmack-ca/includes/footer.php[m
+[36m@@ -35,3 +35,4 @@[m [mnew IntersectionObserver([m
+ </body>[m
+ </html>[m
+ <!-- ===== SNAPSMACK EOF ===== -->[m
+[32m+[m[32m<?php // ===== SNAPSMACK EOF ===== ?>[m
+[1mdiff --git a/skins/aurora/layout.php b/skins/aurora/layout.php[m
+[1mindex cb55c9af..c683c607 100644[m
+[1m--- a/skins/aurora/layout.php[m
+[1m+++ b/skins/aurora/layout.php[m
+[36m@@ -318,3 +318,4 @@[m [m$_avatar_initial = strtoupper(substr($_site_name, 0, 1));[m
+ [m
+ </div><!-- .au-post-ig -->[m
+ <?php // ===== SNAPSMACK EOF ====[m
+[32m+[m[32m// ===== SNAPSMACK EOF =====[m
+[1mdiff --git a/skins/jive-turkey/layout.php b/skins/jive-turkey/layout.php[m
+[1mindex a9e1a211..09d18a6c 100644[m
+[1m--- a/skins/jive-turkey/layout.php[m
+[1m+++ b/skins/jive-turkey/layout.php[m
+[36m@@ -318,3 +318,4 @@[m [m$_avatar_initial = strtoupper(substr($_site_name, 0, 1));[m
+ [m
+ </div><!-- .jt-post-ig -->[m
+ <?php // ===== SNAPSMACK EOF ====[m
+[32m+[m[32m// ===== SNAPSMACK EOF =====[m
+[1mdiff --git a/skins/slickr/skin-meta.php b/skins/slickr/skin-meta.php[m
+[1mindex a857ebd6..d0310799 100644[m
+[1m--- a/skins/slickr/skin-meta.php[m
+[1m+++ b/skins/slickr/skin-meta.php[m
+[36m@@ -1,4 +1,5 @@[m
+ <?php[m
+[32m+[m[32m/* SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */[m
+ /**[m
+  * SNAPSMACK - Slickr Skin Meta Templates[m
+  * Spec v0.1 — Flickr visual idiom clone for archive migrations.[m
+[1mdiff --git a/tools/fix.php b/tools/fix.php[m
+[1mindex ead24c96..a02e119f 100644[m
+[1m--- a/tools/fix.php[m
+[1m+++ b/tools/fix.php[m
+[36m@@ -1,4 +1,5 @@[m
+ <?php[m
+[32m+[m[32m/* SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */[m
+ /**[m
+  * SNAPSMACK - One-time site_mode seeder[m
+  *[m
+[36m@@ -51,3 +52,4 @@[m [mif ($current !== false) {[m
+ }[m
+ [m
+ echo "Done. site_mode = '{$mode}'. DELETE THIS FILE.\n";[m
+[32m+[m[32m// ===== SNAPSMACK EOF =====[m

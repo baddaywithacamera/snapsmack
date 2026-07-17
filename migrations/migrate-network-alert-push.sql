@@ -1,3 +1,4 @@
+-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 -- migrate-network-alert-push.sql
 -- Adds snap_settings keys for opted-in push notification subscriptions.
 -- Safe to run multiple times (INSERT IGNORE).

@@ -1,4 +1,3 @@
-<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
 # JIVE TURKEY — work-in-progress state (SnapSmack GRAMOFSMACK theme)
 
 Updated 2026-07-17. Engine integration done + verified headless. Still standalone
@@ -42,17 +41,4 @@ Colourways (colour tokens are the ONLY place colour lives):
 - HARVEST cream #f2e2c0 · #d99a2b #bd4e1f #6b3f24 · centre #d99a2b · dark #38220f
 
 ## Remaining integration work (next session)
-1. Build `skins/jive-turkey/` — clone AURORA, rename au- → jt-, launch install craptasti.ca.
-2. Register both engines in `core/manifest-inventory.php` (require_scripts).
-3. Wire the carrier + admin controls in skin-profile.php/manifest.php: per-mode settings,
-   colourway picker, SURPRISE / "both barrels" toggle, border controls.
-4. Add `.jt-tile` class to the skin's grid tiles so the border engine targets them.
-5. Skin `version` + CMS `SNAPSMACK_VERSION` bump to redeploy (Packager).
-6. Optional polish: true crossfade between modes in CYCLE (currently a hard switch).
-
-## Files in this bundle
-- ss-engine-jive-turkey.js  — background engine, all 5 modes + CYCLE + SURPRISE
-- ss-engine-jive-border.js   — tile border engine
-- harness.html / render.py    — headless verification harness (dev only, not shipped)
-- jive-*-prototype.html        — original approved prototypes (reference)
-<!-- ===== SNAPSMACK EOF ===== -->
+1. Build 

@@ -1,3 +1,4 @@
+-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 -- SnapSmack: TOTP trusted-device tokens
 -- Creates snap_totp_devices to store long-lived trust tokens that let users
 -- skip the TOTP interstitial on devices they have explicitly trusted.

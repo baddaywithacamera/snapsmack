@@ -1,3 +1,4 @@
+-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 -- SnapSmack migration: create all tables missing from installs that predate
 -- the canonical schema system working correctly.
 -- All statements use IF NOT EXISTS — safe to run on any install regardless of state.

@@ -1,3 +1,4 @@
+-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 -- SnapSmack migration: add key_type to snap_ohsnap_keys
 -- Allows the key table to serve both Oh Snap! and SmackPress keys.
 -- Safe to run multiple times (IF NOT EXISTS pattern via ALTER IGNORE / check).

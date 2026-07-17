@@ -1,3 +1,4 @@
+// SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 // GET YOUR SHIT SORTED — Profile manager
 // One JSON file per site in %APPDATA%\GetYourShitSorted\profiles\
 // API key is base64-obfuscated (not encrypted — just keeps it off plaintext).

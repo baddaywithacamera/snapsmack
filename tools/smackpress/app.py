@@ -1,3 +1,4 @@
+# SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 """
 SmackPress — app.py
 Three-pane customtkinter workbench for one-post-at-a-time WP → SnapSmack migration.

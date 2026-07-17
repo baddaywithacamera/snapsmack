@@ -1,3 +1,4 @@
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
 # SmackPress
 
 One-post-at-a-time WordPress to SMACKTALK migration workbench.

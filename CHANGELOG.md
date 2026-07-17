@@ -5260,3 +5260,4 @@ _Internal bump. See 0.7.5b for the full feature set._
 - `ss-engine-photogram.js`: Photogram engine — bottom sheet with touch drag-to-dismiss, double-tap image to like with heart burst animation, like button optimistic UI, nav tab state.
 - Photogram design document (`photogram-design-document.docx`): full Phase 1/2 spec including screen inventory, CSS architecture, JS requirements, phase build plan, and open questions.
 - Carousel posting infrastructure (dormant until a skin declares `post_page` in its manifest
+<!-- ===== SNAPSMACK EOF ===== -->

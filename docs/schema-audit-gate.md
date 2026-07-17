@@ -1,3 +1,4 @@
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
 <!-- ===== SNAPSMACK EOF ===== -->
 # SnapSmack — Schema Completeness Audit Gate
 

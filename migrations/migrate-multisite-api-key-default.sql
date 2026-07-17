@@ -1,3 +1,4 @@
+-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 -- SNAPSMACK migration: give api_key_remote a DEFAULT '' so INSERTs that
 -- don't supply the column (roster sync, peer discovery) don't blow up on
 -- MySQL strict mode installs.

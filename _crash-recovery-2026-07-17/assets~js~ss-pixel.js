@@ -1,4 +1,3 @@
-// SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 /* ============================================================================
  * SNAPSMACK — SMACKVERSE : Standalone Pixelfed-compatible client  (ss-pixel.js)
  *
@@ -514,35 +513,4 @@
   var railBtn = $(".sx-railcard-h button");
   if (railBtn) railBtn.addEventListener("click", function () { $(".sx-rail-body").innerHTML = '<div class="sx-spin"></div>'; loadRail(); });
 
-  // Opening Notifications clears the unread badge (and marks read server-side).
-  $all('.sx-nav a[data-panel="notifications"]').forEach(function (a) {
-    a.addEventListener("click", function () {
-      var b = $(".sx-badge", a); if (b) b.remove();
-      act("mark_read", {});
-    });
-  });
-
-  // theme toggle
-  var themeBtn = $(".sx-theme");
-  if (themeBtn) themeBtn.addEventListener("click", function () {
-    var root = document.documentElement;
-    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
-    root.setAttribute("data-theme", next);
-    try { localStorage.setItem("pixel-theme", next); } catch (e) {}
-    themeBtn.innerHTML = next === "dark" ? "&#9790;" : "&#9728;";
-  });
-
-  // account menu — login indicator + logout
-  var accBtn = $(".sx-me-btn"), accMenu = $(".sx-account-menu");
-  if (accBtn && accMenu) {
-    accBtn.addEventListener("click", function (e) { e.stopPropagation(); accMenu.hidden = !accMenu.hidden; });
-    accMenu.addEventListener("click", function (e) { e.stopPropagation(); });
-    document.addEventListener("click", function () { accMenu.hidden = true; });
-    var accProf = accMenu.querySelector('[data-panel="profile"]');
-    if (accProf) accProf.addEventListener("click", function (e) { e.preventDefault(); accMenu.hidden = true; loadPanel("profile"); });
-  }
-
-  loadPanel(app.getAttribute("data-default-panel") || "home");
-  loadRail();
-})();
-// ===== SNAPSMACK EOF =====
+  // Opening Notifications clears the u
