@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.412 — "Rainbow Falls" (2026-07-17)
+
+JIVE TURKEY settles its look: the loud graphic skin drops the fake-print cosplay (INSTANT CAMERA and the fauxlaroid skin already own that) and returns to a crisp colour border cycling on the tile edge — plus the background stops being blurry and the settings stop measuring percentages in pixels.
+
+- **JIVE TURKEY — back to the inside colour border** — after trying an outward pulse and a neon under-glow (both kept in git), the tile treatment returns to a solid colour border on each tile's inside edge that holds at full width, shrinks to nothing, and expands back in as the NEXT colourway colour, staggered across the grid as a wave. It reads cleanly on the light modes AND the dark REELS field, and keeps JIVE TURKEY distinct from the print-framed skins. Drawn with box-sizing:border-box so it never pushes the grid around. Skin v0.1.3. (`assets/js/ss-engine-jive-border.js`, `skins/jive-turkey/skin-profile.php`, `skins/jive-turkey/manifest.php`.)
+- **JIVE TURKEY — background is crisp again** — the animated background inherited AURORA's soft `filter: blur(5px)` on its canvas, which smeared JIVE TURKEY's flat 70s graphics into mush. Removed, so SCOPE / BLOOM / FLOW / DAISY / REELS render sharp. (`skins/jive-turkey/style.css`.)
+- **Skin settings — honest units + clearer groups** — skin range controls with no explicit unit were defaulting to "px", so a 0-100 value like Motion Speed read as "45px". Every slider now carries its real unit (% for speeds/intensities, px for sizes, s for time), and the JIVE-TURKEY controls are grouped under BACKGROUND and TILE BORDER. (`skins/jive-turkey/manifest.php`.)
+
 ## 0.7.411 — "Pinkie Pride" (2026-07-17)
 
 SNAPSMACK grows a 70s streak: JIVE TURKEY lands — a deliberately loud GRAMOFSMACK skin whose animated background never sits still, whose photos never lose their colour twice, and whose prints glow.
@@ -5225,11 +5233,4 @@ _Internal bump. See 0.7.5b for the full feature set._
 - Photogram skin (`skins/photogram/`): phone-native photo feed skin reproducing the Pixelfed/classic Instagram app experience. 3-column square archive grid, full-aspect post view, inline likes, comments bottom sheet, fixed bottom nav bar. Mobile-first; renders as a centred 480px phone column on desktop.
 - `ss-engine-photogram.js`: Photogram engine — bottom sheet with touch drag-to-dismiss, double-tap image to like with heart burst animation, like button optimistic UI, nav tab state.
 - Photogram design document (`photogram-design-document.docx`): full Phase 1/2 spec including screen inventory, CSS architecture, JS requirements, phase build plan, and open questions.
-- Carousel posting infrastructure (dormant until a skin declares `post_page` in its manifest): `smack-post-carousel.php` multi-image composer (1–20 files, full EXIF/resize/thumbnail/checksum/palette pipeline, XHR upload with progress); `ss-engine-carousel-post.js` drag-drop strip engine with per-image EXIF panels, drag-to-reorder, post-type selector, and client-side validation; `migrations/migrate-posts.sql` post schema. `smack-post.php` now checks the active skin manifest for a `post_page` key and delegates to `smack-post-{value}.php` if present, falling through to the standard single-image form otherwise.
-- `smack-edit-carousel.php` + `ss-engine-carousel-edit.js`: carousel post editor — reorder images, swap cover, remove individual images, update per-image EXIF metadata, and add more photos to an existing post without re-uploading. Supports per-image frame style editing when the active skin sets `tg_customize_level` to `per_image`.
-- `ss-engine-slider.js` Phase 4: keyboard arrow navigation, touch/swipe support, per-slide EXIF auto-update, slide counter badge, and smooth transition engine.
-- The Grid skin (`skins/the-grid/`): Instagram-style 3-column square tile feed with full carousel post support. Configurable tile gap, corner radius, hover overlay style, optional profile header (avatar initials or image, post count, bio), and grid max-width (735/935/1080 px). Carousel view has swipe/arrow navigation, EXIF panel updating per-slide, and slide counter. Status: `stable`.
-- Image frame customisation for The Grid: a three-level style cascade giving photographers per-image control over image presentation. The skin admin `IMAGE FRAME` section sets the mode (`per_grid` / `per_carousel` / `per_image`) and style defaults. Controllable per image: size within the square (75–100% in 5% steps), border width (0–20 px), border colour, background colour, and drop shadow intensity (none / soft / medium / heavy). Framed tiles switch from `object-fit: cover` to flex-centred `contain` with a configurable background colour — the compositing work photographers previously did in Photoshop actions or phone apps. Schema: `migrate-image-style.sql` (see Migrations).
-- Hashtag system (`core/snap-tags.php`, `migrations/migrate-tags.sql`): `#hashtags` parsed from image descriptions at save time. `snap_extract_tags()` extracts slugs; `snap_sync_tags()` upserts to `snap_tags` and maintains `snap_image_tags` junction with rolling `use_count`. `snap_render_caption()` renders captions with `#tags` as tappable archive links. Hooks added to `sm
-
-<!-- ===== SNAPSMACK EOF ===== -->
+- Carousel posting infrastructure (dormant until a skin declares `post_page` in its manifest
