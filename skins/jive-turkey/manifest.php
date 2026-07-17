@@ -31,10 +31,10 @@ unset($_mf_inv);
 
 return [
     'name'        => 'JIVE TURKEY',
-    'version'     => '0.1.0',
+    'version'     => '0.2.1', // 0.2.1: back to inside colour border (dropped glow/instamatic); crisp bg, % units, regrouped BACKGROUND/TILE BORDER
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
-    'description' => 'Northern-lights desktop skin. A classic 3-across square grid under a slow jive-turkey that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.',
+    'description' => 'Deliberately loud 70s GRAMOFSMACK skin. A 3-across square grid over an animated flat-graphic background — kaleidoscope, flower field, racing-stripe ribbons, sunburst daisy, Bauhaus shuffle — that never sits still, with SURPRISE rolling a fresh look every visit and a colour border cycling across the tiles. Maximalist on purpose; the photos still win.',
     'status'      => 'beta',
     'modes'       => ['carousel'],
 
@@ -84,9 +84,9 @@ return [
 
     'options' => [
 
-        // ---- JIVE TURKEY (Layer 1 — 70s animated background) -------------------
+        // ---- BACKGROUND (Layer 1 — 70s animated background) -------------------
         'jt_palette' => [
-            'section' => 'JIVE TURKEY',
+            'section' => 'BACKGROUND',
             'type'    => 'select',
             'label'   => 'Colourway',
             'default' => 'HARVEST',
@@ -96,11 +96,10 @@ return [
                 'GROOVY'  => 'GROOVY — purple / hot pink / blue',
                 'HARVEST' => 'HARVEST — harvest gold / burnt orange / brown',
             ],
-            'hint'    => 'The 70s colourway. Drives the background AND the tile borders. Colourways live in jive-turkey-config.php. Ignored when Both Barrels is on.',
-            // PHP-handled -> data-jt-colourway / data-jt-colourways on .jt-jive-turkey-bg.
+            'hint'    => 'The 70s colourway. Drives the background AND the tile borders. Ignored when Both Barrels is on. Colourways live in jive-turkey-config.php.',
         ],
         'jt_mode' => [
-            'section' => 'JIVE TURKEY',
+            'section' => 'BACKGROUND',
             'type'    => 'select',
             'label'   => 'Background Mode',
             'default' => 'surprise',
@@ -114,10 +113,9 @@ return [
                 'reels'    => 'REELS — Bauhaus shuffle grid',
             ],
             'hint'    => 'Pick one look, or let SURPRISE / CYCLE rotate them.',
-            // PHP-handled -> data-jt-mode.
         ],
         'jt_random_colour' => [
-            'section' => 'JIVE TURKEY',
+            'section' => 'BACKGROUND',
             'type'    => 'select',
             'label'   => 'Both Barrels',
             'default' => '1',
@@ -125,96 +123,65 @@ return [
                 '1' => 'On — random colourway each visit too',
                 '0' => 'Off — use the chosen colourway',
             ],
-            'hint'    => 'With SURPRISE / CYCLE, also randomise which colourway shows each visit. Borders follow automatically.',
-            // PHP-handled -> data-jt-random-colour.
+            'hint'    => 'With SURPRISE / CYCLE, also randomise the colourway each visit. The tile borders follow automatically.',
         ],
         'jt_speed' => [
-            'section'  => 'JIVE TURKEY',
+            'section'  => 'BACKGROUND',
             'type'     => 'range_numeric',
             'label'    => 'Motion Speed',
             'default'  => '45',
             'min'      => '1', 'max' => '100', 'step' => '1',
-            'hint'     => 'Overall animation speed for SCOPE / BLOOM / FLOW.',
-            // PHP-handled -> data-jt-speed.
+            'unit'     => '%',
+            'hint'     => 'Animation speed for SCOPE / BLOOM / FLOW.',
         ],
         'jt_cycle_time' => [
-            'section'  => 'JIVE TURKEY',
+            'section'  => 'BACKGROUND',
             'type'     => 'range_numeric',
             'label'    => 'Cycle Dwell',
             'default'  => '14',
             'min'      => '6', 'max' => '60', 'step' => '1',
             'unit'     => 's',
             'hint'     => 'Seconds each mode holds before CYCLE moves on.',
-            // PHP-handled -> data-jt-cycle.
         ],
 
-        // ---- TILE GLOW (Layer 2 — NEON UNDER-GLOW, blooms on colour shift) --
-        'jt_glow_on' => [
-            'section' => 'TILE GLOW',
+        // ---- TILE BORDER (Layer 2 — inside colour border, shrink/expand) --
+        'jt_border_on' => [
+            'section' => 'TILE BORDER',
             'type'    => 'select',
-            'label'   => 'Tile Glow',
+            'label'   => 'Tile Borders',
             'default' => '1',
-            'options' => [ '1' => 'On — neon under-glow', '0' => 'Off' ],
-            'hint'    => 'A soft neon halo behind each photo that blooms outward every time the colour shifts.',
-            // PHP-handled -> data-jt-glow-enabled.
+            'options' => [ '1' => 'On — inside colour border', '0' => 'Off' ],
+            'hint'    => 'A solid colour border on each tile that shrinks to nothing and expands back in as the next colourway colour, staggered across the grid.',
         ],
-        'jt_glow_speed' => [
-            'section'  => 'TILE GLOW',
+        'jt_border_width' => [
+            'section'  => 'TILE BORDER',
             'type'     => 'range_numeric',
-            'label'    => 'Shift Speed',
-            'default'  => '45',
-            'min'      => '0', 'max' => '100', 'step' => '5',
-            'hint'     => 'How often the glow shifts colour and blooms. Higher = faster.',
-            // PHP-handled -> data-jt-glow-speed.
-        ],
-        'jt_glow_size' => [
-            'section'  => 'TILE GLOW',
-            'type'     => 'range_numeric',
-            'label'    => 'Glow Size',
-            'default'  => '8',
-            'min'      => '4', 'max' => '12', 'step' => '1',
+            'label'    => 'Border Width',
+            'default'  => '12',
+            'min'      => '5', 'max' => '15', 'step' => '1',
             'unit'     => 'px',
-            'hint'     => 'Base radius of the resting glow (it blooms bigger on each shift).',
-            // PHP-handled -> data-jt-glow-size.
+            'hint'     => 'Full width of the border (it shrinks to 0 and back on each colour change).',
         ],
-        'jt_glow_punch' => [
-            'section'  => 'TILE GLOW',
+        'jt_border_speed' => [
+            'section'  => 'TILE BORDER',
             'type'     => 'range_numeric',
-            'label'    => 'Pulse Punch',
-            'default'  => '70',
+            'label'    => 'Colour-Change Speed',
+            'default'  => '60',
             'min'      => '0', 'max' => '100', 'step' => '5',
-            'hint'     => 'How hard the glow blooms outward and brightens at the colour shift.',
-            // PHP-handled -> data-jt-glow-punch.
+            'unit'     => '%',
+            'hint'     => 'How fast the border cycles colour. Higher = faster.',
         ],
-        'jt_glow_steady' => [
-            'section'  => 'TILE GLOW',
-            'type'     => 'range_numeric',
-            'label'    => 'Steady Glow',
-            'default'  => '35',
-            'min'      => '0', 'max' => '100', 'step' => '5',
-            'hint'     => 'Resting ember brightness between shifts. 0 = only glows on the shift.',
-            // PHP-handled -> data-jt-glow-steady.
-        ],
-        'jt_glow_layers' => [
-            'section'  => 'TILE GLOW',
-            'type'     => 'range_numeric',
-            'label'    => 'Neon Layers',
-            'default'  => '2',
-            'min'      => '1', 'max' => '3', 'step' => '1',
-            'hint'     => 'Stacked halos for neon depth.',
-            // PHP-handled -> data-jt-glow-layers.
-        ],
-        'jt_glow_wave' => [
-            'section'  => 'TILE GLOW',
+        'jt_border_wave' => [
+            'section'  => 'TILE BORDER',
             'type'     => 'range_numeric',
             'label'    => 'Wave Stagger',
-            'default'  => '50',
+            'default'  => '45',
             'min'      => '0', 'max' => '100', 'step' => '5',
-            'hint'     => 'How much the colour shift staggers across the grid as a travelling wave.',
-            // PHP-handled -> data-jt-glow-wave.
+            'unit'     => '%',
+            'hint'     => 'How much the colour change staggers across the grid as a travelling wave.',
         ],
-        'jt_glow_dir' => [
-            'section' => 'TILE GLOW',
+        'jt_border_dir' => [
+            'section' => 'TILE BORDER',
             'type'    => 'select',
             'label'   => 'Wave Direction',
             'default' => 'dtlbr',
@@ -226,7 +193,6 @@ return [
                 'dtlbr' => 'Diagonal (top-left to bottom-right)',
                 'dbrtl' => 'Diagonal (bottom-right to top-left)',
             ],
-            // PHP-handled -> data-jt-glow-dir.
         ],
 
         // ---- GRID APPEARANCE -----------------------------------------------

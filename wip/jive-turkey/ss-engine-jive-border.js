@@ -1,32 +1,26 @@
 /**
- * SNAPSMACK — JIVE TURKEY tile-glow engine (Layer 2): NEON UNDER-GLOW
+ * SNAPSMACK — JIVE TURKEY tile-border engine (Layer 2): INSIDE COLOUR BORDER
  *
- * The 70s companion to the JIVE TURKEY background. Each tile carries a soft
- * neon halo GLOWING out from behind the print (pure box-shadow blur, so it sits
- * entirely outside the image with no layout shift and no hard edge to fight a
- * ragged Instamatic frame). The glow holds a steady low ember, then BLOOMS
- * outward and brightens each time the colour SHIFTS to the next colourway
- * colour, with the shift staggering across the grid as a wave (6 directions).
- *
- * Built as a generic pulse driver — a target, a colour, a clock — so a later
- * BEATBOX feature can bloom the glow from a beat signal instead of a timer.
+ * The 70s companion to the JIVE TURKEY background. Each tile carries a solid
+ * colour border on its inside edge that HOLDS at full width, SHRINKS to nothing,
+ * then EXPANDS back in as the NEXT colourway colour (purple → shrink → blue → …),
+ * with the change staggering across the grid as a wave (6 directions). Crisp and
+ * graphic — no soft glow, no Instamatic frame.
  *
  * Colour-agnostic: reads the active colourway's colours and re-tints the instant
  * the background engine broadcasts a change (`jt:colourway` event /
- * window.__JT_COLOURWAY handshake), so SURPRISE / CYCLE keep the glow matched.
+ * window.__JT_COLOURWAY handshake), so SURPRISE / CYCLE keep the border matched
+ * to the background — on the light field AND the dark REELS field.
  *
  * Targets every `.jt-tile`; grid row/col inferred from layout (any responsive
- * column count). Each tile's base box-shadow (the print drop-shadow) is captured
- * once and always kept underneath the glow. Config from the `.jt-jive-turkey-bg`
- * carrier's dataset (or defaults):
- *   data-jt-glow-enabled  1|0   master on/off
- *   data-jt-glow-speed    0..100 colour-shift speed (higher = faster)
- *   data-jt-glow-size     px    base glow radius
- *   data-jt-glow-punch    0..100 how hard it blooms outward on the shift
- *   data-jt-glow-steady   0..100 resting ember brightness between shifts
- *   data-jt-glow-layers   1..3  stacked halos (neon depth)
- *   data-jt-glow-wave     0..100 stagger across the grid
- *   data-jt-glow-dir      ltr|rtl|ttb|btt|dtlbr|dbrtl
+ * column count). The border is drawn with box-sizing:border-box so it eats inward
+ * and never pulses the grid. Config from the `.jt-jive-turkey-bg` carrier dataset
+ * (or defaults):
+ *   data-jt-border-enabled  1|0    master on/off
+ *   data-jt-border-width    px     full border width (5–15)
+ *   data-jt-border-speed    0..100 colour-change speed (higher = faster)
+ *   data-jt-border-wave     0..100 stagger across the grid
+ *   data-jt-border-dir      ltr|rtl|ttb|btt|dtlbr|dbrtl
  *   data-jt-colourway / data-jt-colourways   starting colours
  *
  * SNAPSMACK_EOF_HEADER
@@ -53,13 +47,6 @@
             default:      return r + c;
         }
     }
-    function rgbOf(hex) {
-        hex = String(hex).replace('#', '');
-        if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
-        return [parseInt(hex.slice(0,2),16), parseInt(hex.slice(2,4),16), parseInt(hex.slice(4,6),16)];
-    }
-    function rgba(c, a) { return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a.toFixed(3) + ')'; }
-    function mix(a, b, t) { return [Math.round(a[0]+(b[0]-a[0])*t), Math.round(a[1]+(b[1]-a[1])*t), Math.round(a[2]+(b[2]-a[2])*t)]; }
 
     function init() {
         var tiles = Array.prototype.slice.call(document.querySelectorAll('.jt-tile'));
@@ -68,16 +55,12 @@
         var host = document.querySelector('.jt-jive-turkey-bg') || document.documentElement;
         function attr(n, d) { var v = host.getAttribute ? host.getAttribute(n) : null; return v == null ? d : v; }
 
-        if (attr('data-jt-glow-enabled', '1') === '0') return;   // glow off
+        if (attr('data-jt-border-enabled', '1') === '0') return;   // borders off
 
-        var SPD    = Math.max(0, Math.min(100, parseFloat(attr('data-jt-glow-speed', 45))));
-        var SIZE   = Math.max(2, parseFloat(attr('data-jt-glow-size', 8)) || 8);
-        var PUNCH  = Math.max(0, Math.min(100, parseFloat(attr('data-jt-glow-punch', 70)))) / 100;
-        var STEADY = Math.max(0, Math.min(100, parseFloat(attr('data-jt-glow-steady', 35)))) / 100;
-        var LAYERS = Math.max(1, Math.min(3, parseInt(attr('data-jt-glow-layers', 2), 10) || 2));
-        var WAVE   = Math.max(0, Math.min(100, parseFloat(attr('data-jt-glow-wave', 50))));
-        var DIR    = attr('data-jt-glow-dir', 'dtlbr');
-        var WHITE  = [255, 255, 255];
+        var W    = Math.max(1, Math.min(30, parseFloat(attr('data-jt-border-width', 12)) || 12));
+        var SPD  = Math.max(0, Math.min(100, parseFloat(attr('data-jt-border-speed', 60))));
+        var WAVE = Math.max(0, Math.min(100, parseFloat(attr('data-jt-border-wave', 45))));
+        var DIR  = attr('data-jt-border-dir', 'dtlbr');
 
         var COLOURWAYS = COLOURWAYS_DEFAULT;
         try {
@@ -85,22 +68,18 @@
             if (raw && typeof raw === 'object' && Object.keys(raw).length) COLOURWAYS = raw;
         } catch (e) {}
         var curName = (attr('data-jt-colourway', '') || '').toUpperCase();
-        var hexes = (COLOURWAYS[curName] && COLOURWAYS[curName].colors)
+        var COLS = (COLOURWAYS[curName] && COLOURWAYS[curName].colors)
             ? COLOURWAYS[curName].colors.slice()
             : (COLOURWAYS.HARVEST ? COLOURWAYS.HARVEST.colors.slice() : ['#d99a2b','#bd4e1f','#6b3f24']);
         if (window.__JT_COLOURWAY && window.__JT_COLOURWAY.colors && window.__JT_COLOURWAY.colors.length) {
-            hexes = window.__JT_COLOURWAY.colors.slice();
+            COLS = window.__JT_COLOURWAY.colors.slice();
         }
-        var COLS = hexes.map(rgbOf);
         window.addEventListener('jt:colourway', function (ev) {
-            if (ev && ev.detail && ev.detail.colors && ev.detail.colors.length) COLS = ev.detail.colors.map(rgbOf);
+            if (ev && ev.detail && ev.detail.colors && ev.detail.colors.length) COLS = ev.detail.colors.slice();
         });
 
-        // Capture each tile's base shadow ONCE so the print drop-shadow survives.
-        for (var i = 0; i < tiles.length; i++) {
-            var bs = window.getComputedStyle(tiles[i]).boxShadow;
-            tiles[i].__jtBase = (bs && bs !== 'none') ? bs : '';
-        }
+        // border-box so the inside border never pushes the grid around.
+        for (var i = 0; i < tiles.length; i++) { tiles[i].style.boxSizing = 'border-box'; tiles[i].style.borderStyle = 'solid'; }
 
         // Infer grid geometry (robust to responsive column counts).
         var geo = [];
@@ -126,44 +105,33 @@
         var rt = null;
         window.addEventListener('resize', function () { if (rt) clearTimeout(rt); rt = setTimeout(measure, 150); });
 
-        function applyShadow(tile, glow) {
-            var base = tile.__jtBase;
-            tile.style.boxShadow = glow + (base ? (glow ? ', ' : '') + base : '');
-        }
-        function glowFor(local) {
-            var ci = Math.floor(local), frac = local - ci;
-            var col = COLS[((ci % COLS.length) + COLS.length) % COLS.length];
-            var pw = 0.4, p = frac < pw ? (1 - frac / pw) : 0; p = p * p;    // bloom at the shift, then ease
-            var parts = '';
-            for (var L = 0; L < LAYERS; L++) {
-                var scale  = 0.6 + 0.7 * L;
-                var spread = (SIZE * scale) * (0.55 + 0.9 * PUNCH * p);
-                var blur   = spread * 1.6 + 6;
-                var aBase  = (0.30 - 0.07 * L) * STEADY;
-                var aPulse = (0.85 - 0.20 * L) * p * (0.4 + 0.9 * PUNCH);
-                var a = Math.min(0.95, aBase + aPulse);
-                var c = (L === 0) ? mix(col, WHITE, 0.25 * p) : col;          // hot near-white core at the peak
-                parts += (parts ? ',' : '') + '0 0 ' + blur.toFixed(1) + 'px ' + spread.toFixed(1) + 'px ' + rgba(c, a);
-            }
-            return parts;
+        function paint(tile, w, col) {
+            tile.style.borderWidth = Math.max(0, w).toFixed(2) + 'px';
+            tile.style.borderColor = col;
         }
 
         var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (reduced) {
-            for (var i2 = 0; i2 < tiles.length; i2++) applyShadow(tiles[i2], glowFor(0.5));   // static ember
+            for (var i2 = 0; i2 < tiles.length; i2++) paint(tiles[i2], W, COLS[0]);   // static full border
             return;
         }
 
         var rafId = null;
         function frame(now) {
             var t = now / 1000;
-            var period = 0.7 + Math.pow((100 - SPD) / 100, 2) * 3.6;   // seconds per colour hold
+            var D = 0.8 + Math.pow((100 - SPD) / 100, 2) * 18;   // seconds per colour
             var waveAmt = (WAVE / 100) * 0.9;
             var rows = geo._rows || 1, cols = geo._cols || 1;
             for (var i = 0; i < tiles.length; i++) {
                 var g = geo[i] || { row: 0, col: 0 };
                 var off = orderVal(DIR, g.row, g.col, rows, cols) * waveAmt;
-                applyShadow(tiles[i], glowFor(t / period + off));
+                var local = t / D + off;
+                var step = Math.floor(local), frac = local - step;
+                var w, ci;
+                if (frac < 0.55) { w = W; ci = step; }                                       // hold full, current colour
+                else if (frac < 0.775) { var p = (frac - 0.55) / 0.225; w = W * (1 - p) * (1 - p); ci = step; }  // shrink to 0
+                else { var p2 = (frac - 0.775) / 0.225; w = W * (2 * p2 - p2 * p2); ci = step + 1; }             // expand as next colour
+                paint(tiles[i], w, COLS[((ci % COLS.length) + COLS.length) % COLS.length]);
             }
             rafId = window.requestAnimationFrame(frame);
         }
