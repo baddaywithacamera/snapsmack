@@ -181,7 +181,8 @@
             var w = cv.width, h = cv.height, cx = w/2, cy = h/2;
             var R = Math.hypot(w, h) / 2 * 1.08;
             ctx.fillStyle = FIELD; ctx.fillRect(0, 0, w, h);
-            var N = 14, seg = Math.PI * 2 / N;
+            var N = 20, seg = Math.PI * 2 / N;
+            function scopeFlower(fx, fy, fr, dark){ ctx.save(); ctx.translate(fx, fy); ctx.rotate(T*0.25); var FP = 8; ctx.strokeStyle = INK; ctx.lineWidth = Math.max(1.2, fr*0.06); ctx.lineJoin = 'round'; for (var fi = 0; fi < FP; fi++){ ctx.save(); ctx.rotate((fi/FP)*Math.PI*2); ctx.beginPath(); ctx.ellipse(0, -fr*0.60, fr*0.30, fr*0.46, 0, 0, Math.PI*2); var fcol = (fi % 2 === 0) ? PAL[0] : PAL[1]; ctx.fillStyle = dark ? shade(fcol, 0.62) : fcol; ctx.fill(); ctx.stroke(); ctx.restore(); } ctx.beginPath(); ctx.arc(0,0,fr*0.40,0,Math.PI*2); ctx.fillStyle = dark ? shade(cw.centre, 0.62) : cw.centre; ctx.fill(); ctx.stroke(); ctx.restore(); }
             var shapes = [
                 { r: 0.34, a: 0.30, sz: 0.20, ci: 0, sp: 0.5 },
                 { r: 0.62, a: 0.62, sz: 0.15, ci: 1, sp: -0.35 },
@@ -206,6 +207,7 @@
                     ctx.fillStyle = dark ? shade(col, 0.6) : col;
                     ctx.beginPath(); ctx.arc(x, y, sh.sz * R, 0, Math.PI * 2); ctx.fill();
                 }
+                scopeFlower(Math.cos(seg*0.5)*R*0.52, Math.sin(seg*0.5)*R*0.52, R*0.14, dark);
                 ctx.restore();
             }
         }
