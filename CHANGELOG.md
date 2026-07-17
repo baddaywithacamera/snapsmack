@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.415 — "Sisterhooves Social" (2026-07-17)
+
+JIVE TURKEY polish from a live look: the nav dividers match, the spacing controls come back wired for real, SURPRISE stops repeating on reload, and the outward border respects your tile spacing.
+
+- **JIVE TURKEY — matching nav dividers** — the top nav line read dark and the bottom green because the bio `.jt-profile` border-bottom (`#242424`) stacked on the nav's green top border. The profile divider now uses the same nav-line green, so both match. (`skins/jive-turkey/style.css`.)
+- **JIVE TURKEY — Tile Spacing + Nav-to-Tiles Gap controls, wired** — both GRID spacing controls existed but never emitted their CSS vars, so they did nothing (and got cut in the declutter). Restored and actually wired to `--grid-gap` / `--nav-tile-gap`. With the outward border on, it fills the gutter, so the engine uses `max(Tile Spacing, border width)`. Skin v0.1.6. (`skins/jive-turkey/manifest.php`, `skin-profile.php`, `assets/js/ss-engine-jive-border.js`.)
+- **JIVE TURKEY — SURPRISE stops repeating** — it now remembers the last six mode/colourway combos in sessionStorage and steers around them, so a reload brings something you haven't just seen. (`assets/js/ss-engine-jive-turkey.js`.)
+
 ## 0.7.414 — "Winter Wrap Up" (2026-07-17)
 
 A cleanup pass: the GRAMOFSMACK skins shed the dead controls cluttering their settings pages, JIVE TURKEY's border stops shoving the photos around, backups can no longer lie about succeeding, and the full SQL export stops choking on large sites.

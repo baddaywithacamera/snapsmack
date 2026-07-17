@@ -398,10 +398,21 @@
         // SURPRISE decides ONCE per load and holds for the whole visit.
         var surprisePick = null;
         if (mode0 === 'surprise') {
-            surprisePick = {
-                mode: pickRandom(pool),
-                cw: (randomColour && cwNames.length) ? pickRandom(cwNames) : activeName
-            };
+            // Avoid repeating recent picks so a reload brings something fresh: remember
+            // the last few mode|colourway combos in sessionStorage and steer around them.
+            var _recent = [];
+            try { _recent = JSON.parse(sessionStorage.getItem('jtSurpriseRecent') || '[]') || []; } catch (e) { _recent = []; }
+            var _m, _c, _key, _tries = 0;
+            do {
+                _m = pickRandom(pool);
+                _c = (randomColour && cwNames.length) ? pickRandom(cwNames) : activeName;
+                _key = _m + '|' + _c;
+                _tries++;
+            } while (_recent.indexOf(_key) !== -1 && _tries < 16);
+            surprisePick = { mode: _m, cw: _c };
+            _recent.push(_key);
+            while (_recent.length > 6) _recent.shift();
+            try { sessionStorage.setItem('jtSurpriseRecent', JSON.stringify(_recent)); } catch (e) {}
         }
 
         // CYCLE state

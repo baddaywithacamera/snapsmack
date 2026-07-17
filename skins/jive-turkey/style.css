@@ -270,7 +270,8 @@ img { display: block; max-width: 100%; }
     align-items: center;
     justify-content: center;
     gap: 32px;
-    border-bottom: 1px solid var(--border-color);
+    /* match the nav divider green so the top line isn't a dark #242424 mismatch */
+    border-bottom: 1px solid color-mix(in srgb, var(--nav-line-green, #6ff0a0) calc(var(--nav-line-opacity, 1) * 100%), transparent);
 }
 
 .jt-profile-avatar {
