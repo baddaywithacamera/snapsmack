@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JIVE TURKEY — TUBES (prototype)</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:system-ui,sans-serif;}
+  #c{position:fixed;inset:0;width:100%;height:100%;display:block;}
+  #panel{position:fixed;left:14px;top:14px;z-index:10;background:rgba(20,20,20,.86);color:#eee;padding:14px 16px;border-radius:12px;font-size:13px;width:236px;backdrop-filter:blur(6px);box-shadow:0 8px 30px rgba(0,0,0,.5);}
+  #panel h1{font-size:14px;margin:0 0 10px;letter-spacing:.1em;color:#f4d03f;}
+  #panel .row{margin:9px 0;}
+  #panel label{display:block;margin-bottom:4px;opacity:.8;letter-spacing:.04em;text-transform:uppercase;font-size:10px;}
+  #panel input[type=range]{width:100%;}
+  .cw{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .cw button{padding:7px 4px;border:1px solid #444;background:#222;color:#ddd;border-radius:7px;cursor:pointer;font-size:11px;}
+  .cw button.active{outline:2px solid #f4d03f;color:#fff;}
+  .val{float:right;opacity:.6;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="panel">
+  <h1>JIVE TURKEY · TUBES</h1>
+  <div class="row"><label>Colourway</label><div class="cw" id="cw">
+    <button data-k="BARF">BARF</button><button data-k="BLECH">BLECH</button>
+    <button data-k="GROOVY">GROOVY</button><button data-k="HARVEST">HARVEST</button>
+  </div></div>
+  <div class="row"><label>Loop travel speed <span class="val" id="vTrav"></span></label><input id="trav" type="range" min="0" max="100" value="30"></div>
+  <div class="row"><label>U-bend shift speed <span class="val" id="vShift"></span></label><input id="shift" type="range" min="0" max="100" value="22"></div>
+  <div class="row"><label>Lines <span class="val" id="vLines"></span></label><input id="lines" type="range" min="2" max="5" value="3"></div>
+  <div class="row"><label>Loops per line <span class="val" id="vLoop"></span></label><input id="loop" type="range" min="0" max="3" value="2"></div>
+  <div class="row"><label>Tube thickness <span class="val" id="vThick"></span></label><input id="thick" type="range" min="6" max="16" value="10"></div>
+</div>
+<script>
+const COLOURWAYS = {
+  BARF:    { cream:'#efe7cf', colors:['#c9b23a','#6e7f39','#6b4a2a'], bg:'#8a8f5a' },
+  BLECH:   { cream:'#efe3cd', colors:['#6a3b86','#dd7328','#c39a3f'], bg:'#7d5a92' },
+  GROOVY:  { cream:'#f2e7d6', colors:['#7b3f9e','#e368a4','#3f7cc4'], bg:'#5aa0b6' },
+  HARVEST: { cream:'#f2e2c0', colors:['#d99a2b','#bd4e1f','#6b3f24'], bg:'#6fa6a0' }
+};
+const S = { key:'GROOVY', trav:30, shift:22, lines:3, loop:2, thick:10 };
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+function resize(){cv.width=window.innerWidth;cv.height=window.innerHeight;}
+window.addEventListener('resize',resize);resize();
+
+function stripeCols(cw){ return [cw.colors[0], cw.cream, cw.colors[1], cw.colors[2], cw.cream]; }
+function halftone(cw,w,h){ const step=18; ctx.fillStyle=cw.cream;
+  for(let y=0;y<h;y+=step) for(let x=0;x<w;x+=step){ const d=(x/w)*0.55+(1-y/h)*0.6; if(d<0.4)continue; ctx.globalAlpha=0.10*d; ctx.beginPath(); ctx.arc(x,y,step*0.42*d,0,7); ctx.fill(); } ctx.globalAlpha=1; }
+
+function stripedWire(pts, cols, sw){
+  const NS=cols.length, mid=(NS-1)/2; ctx.lineCap='round'; ctx.lineJoin='round';
+  for(let si=0; si<NS; si++){
+    ctx.strokeStyle=cols[si]; ctx.lineWidth=sw; ctx.beginPath(); const off=(si-mid)*sw;
+    for(let i=0;i<pts.length;i++){ const p=pts[i], nx=-Math.sin(p.theta), ny=Math.cos(p.theta);
+      const px=p.x+nx*off, py=p.y+ny*off; (i===0)?ctx.moveTo(px,py):ctx.lineTo(px,py); }
+    ctx.stroke();
+  }
+}
+
+let last=0;
+function draw(now){
+  if(now-last<32){ requestAnimationFrame(draw); return; } last=now;
+  const t=now/1000, cw=COLOURWAYS[S.key], w=cv.width, h=cv.height;
+  ctx.fillStyle=cw.bg; ctx.fillRect(0,0,w,h); halftone(cw,w,h);
+
+  const cols=stripeCols(cw), sw=S.thick, band=cols.length*sw;
+  const LINES=S.lines|0, LPW=S.loop|0;
+  const R = Math.max(band*0.55+16, 40);                          // loop radius
+  const Ru = Math.max(band*0.7, Math.min(130, (h*0.60)/(2*Math.max(1,LINES-1)))); // U radius / half line-spacing
+  const totalH=(LINES-1)*2*Ru, Y0=(h-totalH)/2;
+  const travS=0.1+(S.trav/100)*0.9, shiftS=0.05+(S.shift/100)*0.55;
+
+  // exact pieces → no drift. arc() appends an exact circular arc; line() an exact horizontal run + loops.
+  const pts=[];
+  function arc(px,py,th0,turn){
+    const sign=turn>=0?1:-1, aturn=Math.abs(turn);
+    const cx=px - Math.sin(th0)*R_now*sign, cy=py + Math.cos(th0)*R_now*sign;
+    const phi0=Math.atan2(py-cy, px-cx), steps=Math.max(12, Math.round(aturn*R_now/3));
+    for(let k=1;k<=steps;k++){ const a=phi0 + sign*aturn*(k/steps);
+      pts.push({x:cx+R_now*Math.cos(a), y:cy+R_now*Math.sin(a), theta:th0 + sign*aturn*(k/steps)}); }
+  }
+  let R_now=R;
+  function line(x0,x1,y,loopXs){
+    const rightw=x1>=x0, th=rightw?0:Math.PI, dx=rightw?3:-3;
+    const ls=(loopXs||[]).slice().sort((a,b)=> rightw? a-b : b-a);
+    let li=0, x=x0;
+    pts.push({x,y,theta:th});
+    while(rightw? x<x1 : x>x1){
+      x+=dx; if(rightw&&x>x1)x=x1; if(!rightw&&x<x1)x=x1;
+      pts.push({x,y,theta:th});
+      if(li<ls.length && (rightw? x>=ls[li] : x<=ls[li])){ R_now=R; arc(x,y,th,2*Math.PI); li++; }
+    }
+  }
+
+  const rTurn = w-100 + Math.sin(t*shiftS)*46;
+  const lTurn = 100 + Math.sin(t*shiftS + 1.7)*46;
+  function loopsFor(i, xA, xB){
+    const arr=[]; const lo=Math.min(xA,xB), hi=Math.max(xA,xB);
+    for(let li=0; li<LPW; li++){ let f=(li+0.7)/(LPW+0.4) + Math.sin(t*travS + li*2.1 + i*0.8)*0.24;
+      f=Math.max(0.1,Math.min(0.9,f)); arr.push(lo + f*(hi-lo)); }
+    return arr;
+  }
+
+  for(let i=0;i<LINES;i++){
+    const y=Y0 + i*2*Ru, rightward=(i%2===0), lastL=(i===LINES-1);
+    let xA, xB;
+    // start x = end of previous run's turn (or off-screen for the first run)
+    if(i===0){ xA = -70; } else { xA = (i%2===0)? lTurn : rTurn; }
+    if(rightward){ xB = lastL? (w+70) : rTurn; } else { xB = lastL? (-70) : lTurn; }
+    R_now=R;
+    line(xA, xB, y, loopsFor(i, xA, xB));
+    if(!lastL){ R_now=Ru; arc(xB, y, rightward?0:Math.PI, rightward? Math.PI : -Math.PI); }
+  }
+  stripedWire(pts, cols, sw);
+  requestAnimationFrame(draw);
+}
+function labels(){vTrav.textContent=S.trav;vShift.textContent=S.shift;vLines.textContent=S.lines;vLoop.textContent=S.loop;vThick.textContent=S.thick;}
+document.querySelectorAll('#cw button').forEach(b=>{b.onclick=()=>{S.key=b.dataset.k;document.querySelectorAll('#cw button').forEach(x=>x.classList.toggle('active',x===b));};if(b.dataset.k===S.key)b.classList.add('active');});
+const bind=(id,p)=>{const el=document.getElementById(id);el.value=S[p];el.oninput=()=>{S[p]=+el.value;labels();};};
+bind('trav','trav');bind('shift','shift');bind('lines','lines');bind('loop','loop');bind('thick','thick');
+labels();requestAnimationFrame(draw);
+window.__set=k=>{S.key=k;document.querySelectorAll('#cw button').forEach(x=>x.classList.toggle('active',x.dataset.k===k));};
+</script>
+</body>
+</html>

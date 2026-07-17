@@ -1,0 +1,1501 @@
+/**
+ * SNAPSMACK - JIVE TURKEY Skin Styles
+ * Alpha v0.7.5
+ *
+ * Clean, minimal Instagram-inspired grid skin.
+ * All configurable values are CSS custom properties on :root.
+ * The compiled CSS blob from smack-skin.php loads after this file
+ * and overrides defaults via the same :root variables.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
+/* ==========================================================================
+   CUSTOM PROPERTY DEFAULTS
+   Override these via the skin settings panel (compiled CSS blob).
+   ========================================================================== */
+
+:root {
+    /* JIVE TURKEY ships dark by default — northern-lights aesthetic. The photography
+       is the content; the dark canvas lets the jive-turkey breathe behind it.
+       Every value here is also a manifest option default (Skin Admin overrides
+       win via the compiled dynamic CSS). Keep the two in sync. */
+    --bg-primary:        #000000;
+    --text-primary:      #eaeaea;
+    --text-secondary:    #8a8a8a;
+    --accent-color:      #61e96e;   /* jive-turkey green */
+    --border-color:      #242424;
+    --font-body:         'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+    --grid-gap:          2px;
+    --grid-bg:           #000000;
+    --tile-radius:       0px;
+    --grid-gutter:       0px;
+    --grid-max-width:    935px;
+
+    /* Carousel dot colours — inherit site accent */
+    --carousel-dot-color:        rgba(234, 234, 234, 0.25);
+    --carousel-dot-active-color: var(--accent-color);
+
+    /* ── JIVE TURKEY variables ─────────────────────────────────────────────────
+       Layer 1 (canvas curtains, jive-turkey-bg.js) reads its palette/cycle/opacity
+       from .jt-jive-turkey-bg data attributes — no CSS colour stops. The sky base
+       and the tile-ring vars below are set on :root by skin-profile.php's
+       <style id="jt-vars"> block; these are just before-save fallbacks. */
+    --jt-sky:       #000000;
+    --tile-bw:      2px;   /* border ring thickness */
+    --tile-radius:  4px;   /* tile corner radius    */
+    --ring-op:      1;     /* border ring opacity   */
+}
+
+/* ==========================================================================
+   RESET & BASE
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    color: var(--text-primary);
+    text-decoration: none;
+}
+a:hover { opacity: 0.7; }
+
+img { display: block; max-width: 100%; }
+
+/* ==========================================================================
+   LAYOUT SHELL
+   ========================================================================== */
+
+/* Max-width content column — wraps profile, sticky nav, and grid on landing page */
+.jt-content-wrap {
+    box-sizing: border-box;
+    /* Card = grid width + a white gutter on each side. With box-sizing:border-box
+       the inner content stays at --grid-max-width while the card itself grows by
+       the gutter, so the white extends outward over the background treatment. */
+    max-width: calc(var(--grid-max-width, 935px) + (2 * var(--grid-gutter, 0px)));
+    margin: 0 auto;
+    padding-left: var(--grid-gutter, 0px);
+    padding-right: var(--grid-gutter, 0px);
+}
+
+/* General constrained wrapper — profile header, topbar, post view, archive */
+.jt-wrap {
+    padding: 0 var(--grid-gutter);
+}
+
+/* ==========================================================================
+   STICKY NAV
+   Sits between profile header and grid. Sticks to top when profile scrolls off.
+   JS (jt-nav.js) adds .profile-hidden class to reveal the mini avatar.
+   ========================================================================== */
+
+.jt-sticky-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: transparent;
+    /* Optional admin drop shadow on the nav line (capped 3px, hard, down-right). */
+    box-shadow: var(--jt-navline-shadow, none);
+    /* When stuck to the top (.profile-hidden) fast-fade in a backdrop. */
+    transition: background 0.18s ease-in;
+    /* Two-part divider line (static, no colour shifting):
+       (1) a 1px bright-green line — this border, and
+       (2) a 2px solid dark-indigo line tucked directly beneath it, shifted 2px
+           to the right (the ::before/::after below).
+       Applied to BOTH the top and bottom dividers. */
+    border-top:    1px solid color-mix(in srgb, var(--nav-line-green, #6ff0a0) calc(var(--nav-line-opacity, 1) * 100%), transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--nav-line-green, #6ff0a0) calc(var(--nav-line-opacity, 1) * 100%), transparent);
+}
+
+/* Stuck to top: fade in 40% of the sky colour behind the nav. .profile-hidden is
+   added by the shared nav engine when the profile scrolls out of view. */
+.jt-sticky-nav.profile-hidden {
+    /* Admin Navbar Colour+Opacity overrides the default 40% sky backdrop. */
+    background: var(--jt-navbar-bg, color-mix(in srgb, var(--jt-sky, #0d0d2b) 40%, transparent));
+}
+
+/* Lower half of each divider: 2px solid dark indigo, offset 2px to the right. */
+.jt-sticky-nav::before,
+.jt-sticky-nav::after {
+    content: "";
+    position: absolute;
+    left: 2px;
+    right: -2px;
+    height: 2px;
+    background: var(--nav-line-indigo, #14143d);
+    opacity: var(--nav-line-opacity, 1);
+    pointer-events: none;
+}
+.jt-sticky-nav::before { top: 1px; }     /* 1px below the top green line               */
+.jt-sticky-nav::after  { bottom: -4px; } /* 1px below the bottom green line (clears it) */
+
+.jt-sticky-nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 0 var(--grid-gutter, 0px);
+    height: 40px;
+    overflow: hidden;
+}
+
+/* Mini avatar — absolutely positioned left, hidden until profile scrolls off screen */
+.jt-sticky-avatar {
+    position: absolute;
+    left: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+}
+
+.jt-sticky-avatar-initials {
+    position: absolute;
+    left: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+}
+
+.jt-sticky-nav.profile-hidden .jt-sticky-avatar,
+.jt-sticky-nav.profile-hidden .jt-sticky-avatar-initials {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+/* Nav links */
+.jt-sticky-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.jt-sticky-nav-links a {
+    font-size:      var(--nav-font-size, 13px);
+    font-weight:    var(--nav-font-weight, 500);
+    font-family:    var(--nav-font, inherit);
+    color:          var(--nav-color, var(--text-secondary));
+    text-decoration: none;
+    letter-spacing: 0.2px;
+    text-transform: var(--nav-text-transform, none);
+    /* Outer glow — keeps the nav legible over the dark, animated jive-turkey bg.
+       Admin-tunable via the Menu / Nav glow controls (--nav-text-glow). */
+    text-shadow: var(--nav-text-glow, 0 0 4px rgba(97,233,110,0.45), 0 0 10px rgba(97,233,110,0.30));
+    transition: color 0.15s, text-shadow 0.15s;
+}
+
+.jt-sticky-nav-links a:hover,
+.jt-sticky-nav-links a.active {
+    color: var(--text-primary);
+    opacity: 1;
+    /* Brighter halo on hover / current page. */
+    text-shadow: var(--nav-text-glow-strong, 0 0 6px rgba(97,233,110,0.70), 0 0 16px rgba(97,233,110,0.45));
+}
+
+/* Top nav bar (existing) */
+.jt-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.jt-topbar-inner {
+    padding: 0 var(--grid-gutter);
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.jt-site-name {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   PROFILE HEADER
+   Shown above the grid on the landing page.
+   ========================================================================== */
+
+.jt-profile {
+    padding: 30px 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.jt-profile-avatar {
+    width: 77px;
+    height: 77px;
+    border-radius: 50%;
+    background: var(--border-color);
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.jt-profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.jt-profile-avatar-initials {
+    font-size: 28px;
+    font-weight: 300;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.jt-profile-info { flex: 0 1 auto; min-width: 0; }
+
+.jt-profile-nameline {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 10px;
+}
+
+.jt-profile-username {
+    font-size:   var(--blog-title-size, 20px);
+    font-weight: var(--blog-title-weight, 300);
+    font-family: var(--blog-title-font, inherit);
+    margin: 0;
+    color:       var(--blog-title-color, var(--text-primary));
+    text-shadow: var(--profile-text-glow, none);
+}
+
+.jt-profile-tagline-sep {
+    font-size:   var(--blog-title-size, 20px);
+    font-weight: 300;
+    color:       var(--text-secondary);
+    line-height: 1;
+    text-shadow: var(--profile-text-glow, none);
+}
+
+.jt-profile-tagline {
+    font-size:   var(--tagline-size, 16px);
+    font-weight: var(--tagline-weight, 300);
+    font-family: var(--tagline-font, inherit);
+    color:       var(--tagline-color, var(--text-secondary));
+    margin: 0;
+    text-shadow: var(--profile-text-glow, none);
+}
+
+.jt-profile-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 10px;
+}
+
+.jt-profile-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.jt-profile-stat-num {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--post-count-color, var(--text-primary));
+    text-shadow: var(--profile-text-glow, none);
+}
+
+.jt-profile-stat-label {
+    font-size: 14px;
+    color: var(--post-count-color, var(--text-secondary));
+    text-shadow: var(--posts-glow, var(--profile-text-glow, none));
+}
+
+.jt-profile-bio {
+    margin:      8px 0 0;
+    font-size:   var(--bio-size, 14px);
+    line-height: 1.5;
+    color:       var(--bio-color, var(--text-secondary));
+    max-width:   480px;
+    text-shadow: var(--profile-text-glow, none);
+}
+
+
+/* ==========================================================================
+   3-COLUMN GRID
+   ========================================================================== */
+
+/* 3-column grid — constrained by .jt-content-wrap max-width.
+   Width is 100% of the content column (not full viewport). */
+.jt-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--grid-gap);
+    /* Transparent on purpose — the fixed jive-turkey layer shows through the gaps
+       between tiles. JIVE TURKEY never paints a gap/background colour (unlike The
+       Grid); the jive-turkey IS the background. */
+    background: transparent;
+    margin-top: var(--nav-tile-gap, var(--grid-gap));
+    width: 100%;
+}
+
+/* Individual grid tile */
+.jt-tile {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: var(--border-color);
+    border-radius: var(--tile-radius);
+    /* Off-screen tiles skip layout/paint entirely — the mask-composite ring is
+       costly, so on a 1400-image grid this keeps render work to what's visible.
+       aspect-ratio already fixes the square height; contain-intrinsic-size is the
+       placeholder used while a tile is skipped. Pair with jive-turkey-wave.js's
+       viewport-scoped animation. If layout ever looks off, this is the line to pull. */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 300px;
+}
+
+/* Progressive reveal: tiles past the first batch are folded out of layout by
+   jt-grid-reveal.js so the page starts short and GROWS as you scroll, instead
+   of dumping all posts to full height at once. */
+.jt-grid .jt-tile.jt-fold { display: none; }
+
+/* Jive Turkey border-wave ring overlay (Layer 2).
+   JS (jive-turkey-wave.js) drives .style.background on this element with a
+   conic-gradient. The mask punches out the centre, leaving only the
+   padding-width ring visible. --tile-bw and --ring-op are set by
+   skin-profile.php from the jt_border_width / jt_border_opacity settings. */
+.jt-ring {
+    position:      absolute;
+    inset:         0;
+    border-radius: var(--tile-radius);
+    padding:       var(--tile-bw, 2px);
+    pointer-events: none;
+    z-index:       2;
+    opacity:       var(--ring-op, 1);
+    -webkit-mask:  linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:          linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+}
+
+.jt-tile a {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+}
+
+.jt-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: opacity 0.2s;
+}
+
+.jt-tile:hover img { opacity: 0.85; }
+
+/* Carousel indicator badge (top-right corner) */
+.jt-tile-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    pointer-events: none;
+    line-height: 1;
+}
+
+.jt-tile-indicator--icon {
+    color: #fff;
+    font-size: 16px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    /* Unicode: layered squares ⧉ */
+}
+
+.jt-tile-indicator--count {
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    letter-spacing: 0.3px;
+}
+
+/* Hover overlay: title or count shown on hover */
+.jt-tile-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 1;
+    pointer-events: none;
+    padding: 12px;
+}
+
+.jt-tile:hover .jt-tile-overlay { opacity: 1; }
+
+/* Dark-only hover: no pointer events, no padding needed */
+.jt-tile-overlay--dark { padding: 0; }
+
+.jt-tile-overlay-text {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.3;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+/* ── Framed tile mode ──────────────────────────────────────────────────────
+   Applied when per-image/carousel/grid style brings size below 100%,
+   adds a border, or adds a shadow. PHP emits class .jt-tile--framed and
+   CSS custom properties on the .jt-tile element itself.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.jt-tile--framed {
+    background: var(--tile-bg, #ffffff);
+}
+
+.jt-tile--framed a {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--tile-bg, #ffffff);
+}
+
+.jt-tile--framed img {
+    /* Border/shadow hug the IMAGE itself (natural aspect), not a square box.
+       Landscape: size% of WIDTH, height follows. Portrait override below. */
+    width:        var(--tile-img-size, 100%);
+    height:       auto;
+    max-width:    var(--tile-img-size, 100%);
+    max-height:   100%;
+    margin:       auto;   /* bulletproof flex centring — splits matte evenly */
+    object-fit:   contain;
+    border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
+    /* Fill the sub-pixel object-fit:contain letterbox with the border colour
+       instead of letting the tile bg show through as a thin sliver between
+       the image and its border (the "white line" bug). Falls back to
+       transparent when there's no border, preserving the matte. */
+    background-color: var(--tile-border-c, transparent);
+    box-shadow:   var(--tile-shadow, none);
+    box-sizing:   border-box;
+    transition:   opacity 0.2s;
+}
+.jt-tile--framed.jt-tile--portrait img {
+    /* Portrait: size% of HEIGHT so it can't overflow the square tile. */
+    width:        auto;
+    height:       var(--tile-img-size, 100%);
+    max-width:    100%;
+    max-height:   var(--tile-img-size, 100%);
+}
+
+/* ── Trigram row ──────────────────────────────────────────────────────────
+   Trigram tiles are plain square tiles. No special CSS needed — L, M, R
+   all inherit .jt-tile's aspect-ratio: 1/1 and sit in the grid normally.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* Phantom tile: invisible placeholder to complete a partial row before a
+   trigram set, so the L tile always starts at column 0. */
+.jt-tile--phantom {
+    visibility:     hidden;
+    pointer-events: none;
+}
+
+/* Panorama tiles: the first tile forces a new row via grid-column: 1 */
+.jt-tile--pano-first  { grid-column: 1; }
+.jt-tile--pano-middle { /* naturally placed in column 2 */ }
+.jt-tile--pano-last   { /* naturally placed in column 3 */ }
+
+/* ==========================================================================
+   SINGLE POST VIEW (layout.php) — Instagram two-panel layout
+   ========================================================================== */
+
+/* ── Outer two-panel container ─────────────────────────────────────────── */
+.jt-post-ig {
+    display:         flex;
+    justify-content: center;
+    height:          100dvh;
+    overflow:        hidden;
+    background:      var(--post-bg, #000);
+}
+
+/* ── Left: image panel (fixed, never scrolls) ──────────────────────────── */
+.jt-post-ig-image {
+    /* JIVE TURKEY is classic-IG: the image panel is ALWAYS 1:1 square.
+       Sized by container height; width derives from aspect-ratio. */
+    flex:            0 0 auto;
+    height:          100%;
+    aspect-ratio:    1 / 1;
+    min-width:       0;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    overflow:        hidden;
+    background:      var(--post-bg, #000);
+    position:        relative;
+    padding:         0;
+}
+
+.jt-post-ig-image .jt-single-img {
+    width:      100%;
+    height:     100%;
+    object-fit: contain;
+    display:    block;
+}
+
+/* Carousel fills the image panel */
+.jt-post-ig-image .jt-carousel-wrap {
+    width:    100%;
+    height:   100%;
+    position: relative;
+}
+
+.jt-post-ig-image .ss-slider,
+.jt-post-ig-image .slider-track {
+    height: 100%;
+}
+
+.jt-post-ig-image .slider-slide {
+    height:          100%;
+    display:         flex !important;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--post-bg, #000);
+}
+
+.jt-post-ig-image .slider-slide img {
+    max-width:   100% !important;
+    max-height:  100% !important;
+    width:       auto !important;
+    height:      auto !important;
+    object-fit:  contain !important;
+}
+
+/* Framed slides inside the image panel */
+.jt-post-ig-image .jt-slide--framed img {
+    max-height: 100% !important;
+}
+
+/* ── Right: info panel (scrollable) ────────────────────────────────────── */
+.jt-post-ig-info {
+    flex:           0 0 335px;
+    width:          335px;
+    border-left:    1px solid var(--border-color);
+    background:     var(--bg-primary, #fff);
+    display:        flex;
+    flex-direction: column;
+    overflow:       hidden;
+}
+
+/* Fixed header: back + avatar + site name */
+.jt-post-ig-header {
+    display:       flex;
+    align-items:   center;
+    gap:           10px;
+    padding:       14px 16px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink:   0;
+}
+
+.jt-back-btn {
+    background:  none;
+    border:      none;
+    cursor:      pointer;
+    color:       var(--text-primary);
+    font-size:   20px;
+    padding:     4px 8px 4px 0;
+    display:     flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.jt-back-btn:hover { opacity: 0.6; }
+
+.jt-post-ig-avatar {
+    width:         32px;
+    height:        32px;
+    border-radius: 50%;
+    object-fit:    cover;
+    flex-shrink:   0;
+}
+
+.jt-post-ig-avatar--initials {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--text-secondary, #8e8e8e);
+    color:           #fff;
+    font-size:       14px;
+    font-weight:     600;
+}
+
+.jt-post-ig-sitename {
+    font-size:     14px;
+    font-weight:   600;
+    color:         var(--text-primary);
+    flex:          1;
+    overflow:      hidden;
+    white-space:   nowrap;
+    text-overflow: ellipsis;
+}
+
+/* Scrollable body */
+.jt-post-ig-body {
+    flex:       1 1 0;
+    overflow-y: auto;
+    padding:    20px 22px;
+}
+
+/* IG-style caption block: bold username inline then caption text */
+.jt-post-caption-block {
+    margin-bottom: 12px;
+}
+
+.jt-post-ig-caption {
+    font-size:   14px;
+    color:       var(--text-primary);
+    line-height: 1.6;
+    margin:      0;
+}
+
+.jt-post-ig-caption-user {
+    font-weight:  600;
+    margin-right: 4px;
+}
+
+.description a,
+.static-content a:not(.nav-menu a) {
+    color:                  var(--accent-color);
+    text-decoration:        underline;
+    text-underline-offset:  2px;
+}
+
+.description a:hover,
+.static-content a:not(.nav-menu a):hover { color: var(--text-primary); }
+
+.description a:has(img),
+.static-content a:has(img) {
+    text-decoration: none !important;
+    border-bottom:   none !important;
+}
+
+/* EXIF panel */
+.jt-exif-panel {
+    display:       flex;
+    flex-wrap:     wrap;
+    gap:           6px 16px;
+    padding:       10px 0;
+    border-top:    1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 12px;
+}
+/* No EXIF to show (e.g. phone/IG imports, GramOfSmack mode) → don't paint the
+   bordered strip as empty stray lines. PHP also skips emitting the panel when no
+   image has EXIF; this covers the carousel edge where only a later slide does. */
+.jt-exif-panel:empty { display: none; }
+
+.jt-exif-item {
+    display:        flex;
+    flex-direction: column;
+}
+
+.jt-exif-label {
+    font-size:      10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color:          var(--text-secondary);
+}
+
+.jt-exif-value {
+    font-size: 13px;
+    color:     var(--text-primary);
+}
+
+/* Engagement bar — pinned between body and footer */
+.jt-post-ig-actions {
+    flex-shrink:  0;
+    border-top:   1px solid var(--border-color);
+    padding:      10px 16px 8px;
+    background:   var(--bg-primary, #fff);
+}
+
+.jt-post-ig-action-icons {
+    display:       flex;
+    gap:           16px;
+    margin-bottom: 6px;
+}
+
+.jt-action-btn {
+    background:  none;
+    border:      none;
+    padding:     0;
+    cursor:      pointer;
+    color:       var(--text-primary);
+    line-height: 1;
+    display:     flex;
+    align-items: center;
+}
+
+.jt-action-btn:hover { opacity: 0.6; }
+
+.jt-action-bookmark { margin-left: auto; }
+
+.jt-post-ig-date {
+    font-size:      10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color:          var(--text-secondary);
+    margin:         0;
+}
+
+/* Community component — flush to body edges */
+.jt-community-wrap {
+    border-top: 1px solid var(--border-color);
+    margin:     16px -16px 0;
+    padding:    0 16px;
+}
+
+/* ── Framed carousel slide (shared with grid tiles) ────────────────────── */
+.jt-slide--framed {
+    background:      var(--slide-bg, #000) !important;
+    display:         flex !important;
+    align-items:     center;
+    justify-content: center;
+    min-height:      280px;
+}
+
+.jt-slide--framed img {
+    width:      var(--slide-img-size, 100%) !important;
+    height:     auto !important;
+    max-height: 80vh !important;
+    object-fit: contain !important;
+    border:     var(--slide-border-w, 0px) solid var(--slide-border-c, transparent) !important;
+    box-shadow: var(--slide-shadow, none) !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+}
+
+/* Fallback carousel/single-img classes (used outside post view) */
+.jt-carousel-wrap {
+    position:   relative;
+    background: var(--post-bg, #000);
+    width:      100%;
+}
+
+.jt-single-img {
+    width:      100%;
+    max-height: 80vh;
+    object-fit: contain;
+    display:    block;
+}
+
+/* ── Footer pinned to bottom of right panel ────────────────────────────── */
+.jt-post-ig-info > #system-footer {
+    flex-shrink:   0;
+    border-top:    1px solid var(--border-color);
+    background:    var(--bg-primary, #fff);
+    padding:       8px 16px;
+    margin:        0;
+}
+
+.jt-post-ig-info > #system-footer .footer-metadata-bar p {
+    font-size:      10px;
+    letter-spacing: 0.3px;
+    color:          var(--text-secondary);
+    margin:         0;
+}
+
+/* ── Mobile: stack vertically ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .jt-post-ig {
+        flex-direction: column;
+        height:         auto;
+        overflow:       visible;
+    }
+
+    .jt-post-ig-image {
+        /* Square here too — full width, 1:1. */
+        flex:         0 0 auto;
+        width:        100%;
+        aspect-ratio: 1 / 1;
+        height:       auto;
+    }
+
+    .jt-post-ig-info {
+        width:    100%;
+        flex:     0 0 auto;
+        height:   auto;
+        overflow: visible;
+    }
+
+    .jt-post-ig-body {
+        overflow: visible;
+    }
+}
+
+/* ==========================================================================
+   POST MODAL OVERLAY
+   IG-style popover: grid stays visible, dimmed behind 80% opaque backdrop.
+   jt-modal.js populates #jt-modal-frame by fetching ?modal=1 fragments.
+   ========================================================================== */
+
+.jt-modal-overlay {
+    position:        fixed;
+    inset:           0;
+    z-index:         900;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+}
+
+.jt-modal-overlay[hidden] { display: none; }
+
+/* Prevent grid scroll while modal is open */
+body.jt-modal-open { overflow: hidden; }
+
+.jt-modal-backdrop {
+    position:   absolute;
+    inset:      0;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.jt-modal-frame {
+    position:      relative;
+    z-index:       1;
+    width:         auto;
+    max-width:     92vw;
+    height:        min(92vh, 900px);
+    border-radius: 4px;
+    overflow:      hidden;
+    box-shadow:    0 8px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* Force the post layout to fill the frame (overrides 100dvh default) */
+.jt-modal-frame .jt-post-ig {
+    height: 100%;
+}
+
+/* ==========================================================================
+   ARCHIVE VIEW (categories, albums)
+   Same grid as landing — just no profile header.
+   ========================================================================== */
+
+.jt-archive-header {
+    padding: 20px 0 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.jt-archive-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 4px;
+}
+
+.jt-archive-meta {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ── Hashtag / Tag Page ──────────────────────────────────────────────────── */
+
+.jt-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    opacity: .7;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.jt-archive-header h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px;
+}
+
+.jt-archive-header p {
+    font-size: 13px;
+    opacity: .6;
+    margin: 0;
+}
+
+.jt-grid-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    opacity: .5;
+}
+
+/* ==========================================================================
+   PAGINATION
+   ========================================================================== */
+
+.jt-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 20px 16px;
+}
+
+.jt-page-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.15s;
+}
+
+.jt-page-btn:hover,
+.jt-page-btn.is-current {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border-color: var(--text-primary);
+}
+
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
+
+.jt-footer {
+    border-top: 1px solid var(--border-color);
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.jt-footer a {
+    color: var(--text-secondary);
+}
+
+.jt-footer a:hover {
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 600px) {
+    .jt-profile {
+        gap: 20px;
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+    .jt-profile-avatar {
+        width: 56px;
+        height: 56px;
+    }
+    .jt-profile-username { font-size: 16px; }
+    .jt-profile-tagline-sep { font-size: 16px; }
+    .jt-profile-tagline { font-size: 14px; }
+    .jt-profile-stats { gap: 16px; }
+}
+
+/* ── Hashtag links in captions ────────────────────────────────────────────── */
+.jt-hashtag {
+    color: var(--accent-color, #0095f6);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.jt-hashtag:hover {
+    text-decoration: underline;
+}
+/* ==========================================================================
+   SYSTEM FOOTER OVERRIDES (core/footer.php → #system-footer)
+   ========================================================================== */
+
+#system-footer {
+    /* Footer tracks the readability PANEL: spans the full panel width
+       (content column + Panel Extend), centred, and never beyond it — the same
+       content-aligned footer geometry as THE GRID, with this skin's own colours.
+       Previously #system-footer was uncapped, so the bar/border/background
+       spilled the full viewport width across the animated background ("escapes
+       the content box"). SnapSmack footer rule: footer == panel width on every
+       carousel skin, no exceptions. .inside below keeps the text in the content
+       column so the bar spans the panel while the text stays centred on content. */
+    /* Lift the footer ABOVE the .jt-content-wrap z-index:1 stacking context,
+       which contains the fixed full-viewport jive-turkey canvas. That canvas is
+       pointer-events:none, so it painted OVER the footer while hit-tests still
+       found the footer underneath — the footer was in the DOM but invisible on
+       landing + static ("missing footer"). z-index:2 > content-wrap's 1. Verified
+       live on PARADE 2026-07-01 (identical architecture). */
+    position:   relative;
+    z-index:    2;
+    border-top: 1px solid var(--border-color);
+    background:  var(--footer-bg, var(--panel-bg, transparent));
+    max-width:   calc(var(--grid-max-width, 935px) + 2 * var(--panel-extend, 0px));
+    margin:      0 auto;
+}
+
+#system-footer .inside {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+    padding: 20px var(--grid-gutter, 0px);
+}
+
+#system-footer .footer-metadata-bar {
+    text-align: center;
+}
+
+#system-footer .footer-metadata-bar p {
+    margin: 0;
+    font-size: 11px;
+    color: var(--text-secondary);
+    letter-spacing: 0.4px;
+    line-height: 2;
+}
+
+#system-footer .footer-metadata-bar .sep {
+    margin: 0 8px;
+    opacity: 0.4;
+}
+
+#system-footer .footer-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+#system-footer .footer-link:hover {
+    color: var(--text-primary);
+    opacity: 1;
+}
+
+/* ==========================================================================
+   STATIC PAGE (About, etc.)
+   ========================================================================== */
+
+.jt-static-page .jt-sticky-nav {
+    position: sticky;
+    top: 0;
+}
+
+.jt-static-content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 40px 28px 60px;
+    /* Readability backing is now the shared full-height .jt-panel (ported from
+       INSTANT CAMERA, covers every page) — this column just sets reading width. */
+}
+
+.jt-static-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 24px;
+}
+
+.jt-static-body {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.jt-static-body p {
+    margin: 0 0 16px;
+}
+
+.jt-static-body a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.jt-static-body a:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   BACKGROUND TREATMENT  (skin admin → Treatment)
+   Full-viewport image/colour layer behind the centred content card.
+   The .jt-treatment-* layers are emitted by skin-profile.php ONLY when a
+   treatment is active, so with no treatment these rules never match and the
+   default flat layout is completely untouched.
+   ========================================================================== */
+
+.jt-treatment-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+.jt-treatment-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* When a treatment is present, the content column reads as a card floating
+   over the background. */
+body:has(.jt-treatment-bg) .jt-content-wrap,
+body:has(.jt-treatment-bg).is-blogroll #scroll-stage {
+    background: var(--bg-primary, #ffffff);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.28);
+    min-height: 100vh;
+}
+
+body:has(.jt-treatment-bg).is-blogroll #scroll-stage {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+}
+
+/* Constrain the blogroll's scroll-stage to the content width so its sticky nav
+   matches every other page (it otherwise spans the full window). Ported from
+   INSTANT CAMERA — applies on the normal animated-background blogroll, not just
+   when an optional treatment image is set. */
+body.is-blogroll #scroll-stage {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+}
+
+/* ==========================================================================
+   AVATAR LIGHTBOX
+   ========================================================================== */
+
+.jt-profile-avatar--zoom { cursor: zoom-in; }
+
+.jt-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5vmin;
+    background: rgba(0, 0, 0, 0.85);
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+.jt-lightbox[hidden] { display: none; }
+.jt-lightbox.is-open { opacity: 1; }
+
+.jt-lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 4px;
+    box-shadow: 0 10px 60px rgba(0, 0, 0, 0.6);
+    cursor: zoom-out;
+}
+
+.jt-lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 34px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.8;
+}
+.jt-lightbox-close:hover { opacity: 1; }
+
+/* ==========================================================================
+   BLOGROLL  (core blogroll.php rendered inside the Grid shell)
+   Scoped to body.is-blogroll so it only affects the blogroll page, and only
+   on JIVE TURKEY (this stylesheet is loaded only when JIVE TURKEY is active).
+   ========================================================================== */
+
+body.is-blogroll .blogroll-canvas {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 32px 20px 60px;
+}
+
+body.is-blogroll .static-page-title {
+    font-size: var(--blog-title-size, 24px);
+    font-weight: 300;
+    color: var(--text-primary);
+    margin: 0 0 24px;
+}
+
+body.is-blogroll .blogroll-category-heading {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 6px;
+    margin: 32px 0 16px;
+}
+
+body.is-blogroll .blogroll-peer { margin: 0 0 20px; }
+
+body.is-blogroll .blogroll-peer-name a {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+body.is-blogroll .blogroll-peer-name a:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
+
+body.is-blogroll .blogroll-peer-desc {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin: 3px 0 0;
+}
+
+/* Drop the raw URL line — the peer name is the link. */
+body.is-blogroll .blogroll-peer-url { display: none; }
+
+/* ==========================================================================
+   COMMUNITY COMMENT FORM  (inside the Grid post modal)
+   The core community component ships raw browser inputs; theme them to match
+   the Grid modal. Scoped to .jt-post-ig so only the modal is affected, and
+   higher specificity than ss-community.css so these win regardless of order.
+   ========================================================================== */
+
+.jt-post-ig .ss-comment-guest-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.jt-post-ig .ss-guest-name,
+.jt-post-ig .ss-guest-email,
+.jt-post-ig .ss-comment-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--border-color, #dbdbdb);
+    border-radius: 8px;
+    background: transparent;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-primary);
+    transition: border-color 0.15s ease;
+}
+
+.jt-post-ig .ss-guest-name::placeholder,
+.jt-post-ig .ss-guest-email::placeholder,
+.jt-post-ig .ss-comment-textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+.jt-post-ig .ss-guest-name:focus,
+.jt-post-ig .ss-guest-email:focus,
+.jt-post-ig .ss-comment-textarea:focus {
+    outline: none;
+    border-color: var(--accent-color, #0095f6);
+}
+
+.jt-post-ig .ss-comment-input-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.jt-post-ig .ss-comment-textarea {
+    resize: none;
+    line-height: 1.4;
+    min-height: 38px;
+}
+
+.jt-post-ig .ss-comment-input-row .ss-avatar-placeholder {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--border-color, #dbdbdb);
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.jt-post-ig .ss-comment-btns {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+.jt-post-ig .ss-comment-cancel,
+.jt-post-ig .ss-comment-submit {
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+}
+
+.jt-post-ig .ss-comment-cancel { color: var(--text-secondary); }
+.jt-post-ig .ss-comment-submit { color: var(--accent-color, #0095f6); }
+.jt-post-ig .ss-comment-submit:hover { background: rgba(0, 149, 246, 0.08); }
+
+.jt-post-ig .ss-comment-author {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   JIVE TURKEY — LAYER 1: BACKGROUND CURTAINS (canvas)
+   --------------------------------------------------------------------------
+   A fixed, full-viewport layer behind the photography. jive-turkey-bg.js renders
+   northern-lights curtains into a half-res <canvas> (CSS-blurred for softness),
+   advancing through the active palette over the admin cycle time. The sky base
+   colour sits behind the canvas; the canvas alpha carries the "background
+   opacity". No CSS animation — the canvas owns the motion and pauses itself
+   when the tab is hidden or reduced-motion is on. See _spec/jive-turkey-prototype.html.
+   ========================================================================== */
+.jt-jive-turkey-bg {
+    position: fixed;
+    inset: 0;
+    /* MUST be negative: this is an opaque fixed layer. At z-index:0 it is a
+       positioned element that paints ABOVE static content (.jt-content-wrap,
+       .jt-profile have no z-index), hiding the profile header. Match the
+       treatment-bg pattern (-2/-1) and sit behind the content. The readability
+       panel (.jt-panel) sits at -1, just above this. */
+    z-index: -2;
+    pointer-events: none;
+    background-color: var(--jt-sky, #000000);
+}
+.jt-jive-turkey-bg canvas.jt-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    filter: blur(5px);
+}
+
+/* Content sits above the fixed jive-turkey layer. */
+#page-wrapper,
+.jt-content-wrap { position: relative; z-index: 1; }
+/* Readability panel (ALL pages) — ONE centred translucent column behind the
+   content, fixed + full viewport height so it reaches the top and runs behind
+   the footer, on every page incl. blogroll. Width = content column + Panel
+   Extend each side. Sits at -1: above the jive-turkey background (-2), below the
+   content (+1). Ported from INSTANT CAMERA (.ic-panel). */
+.jt-panel {
+    position: fixed;
+    top: 0; bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(var(--grid-max-width, 935px) + 2 * var(--panel-extend, 0px));
+    background: var(--panel-bg, transparent);
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   JIVE TURKEY — LAYER 2: TILE BORDER WAVE (conic ring)
+   --------------------------------------------------------------------------
+   Each tile carries a .jt-ring overlay — a hollow border ring built with the
+   two-layer mask trick. jive-turkey-wave.js drives its background: a conic gradient
+   for the "circle" / "sweep" styles, or a solid palette colour for "across" /
+   "pulse", so colour travels around or across the tiles. Border thickness
+   (--tile-bw), corner radius (--tile-radius) and ring opacity (--ring-op) are
+   set by skin-profile.php from the admin config. If the JS never runs the ring
+   stays empty and the grid degrades to a clean dark 3-across.
+   ========================================================================== */
+.jt-grid .jt-tile {
+    position: relative;
+    border-radius: var(--tile-radius, 4px);
+}
+.jt-grid .jt-tile a,
+.jt-grid .jt-tile img { border-radius: inherit; }
+.jt-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--tile-radius, 4px);
+    padding: var(--tile-bw, 2px);
+    pointer-events: none;
+    opacity: var(--ring-op, 1);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+}
+/* Phantom alignment tiles never get a ring. */
+.jt-grid .jt-tile--phantom .jt-ring { display: none; }
+
+/* ===== SNAPSMACK EOF ===== */
+
+/* JIVE TURKEY: the Layer-2 border engine (ss-engine-jive-border.js) drives the
+   tile border directly on .jt-tile; hide the inherited AURORA inner ring. */
+.jt-ring{display:none !important;}
