@@ -102,7 +102,7 @@
                 if (getComputedStyle(tiles[i]).position === 'static') tiles[i].style.position = 'relative';
                 tiles[i].appendChild(ring);
             }
-            ring.style.display = 'block';   // undo any earlier hide
+            ring.style.display = 'none';   // OUTSIDE border: kill the inside frame; band is painted on the tile
             rings.push(ring);
         }
 
@@ -126,37 +126,55 @@
             }
             geo._rows = rowsMap.length; geo._cols = cols;
         }
+        // OUTSIDE border: the band grows into the gutter, so the gutter must be wide
+        // enough to hold it. Gap tracks the border width → "set the border, the gap adjusts".
+        // 1fr columns keep the grid locked to --grid-max-width (935px): images just scale
+        // down a hair to make room; the grid never exceeds the container.
+        (function(){ var grid = tiles[0] && (tiles[0].closest ? tiles[0].closest('.jt-grid') : null) || (tiles[0] && tiles[0].parentNode); if (grid) grid.style.gap = Math.max(2, W) + 'px'; })();
         measure();
         var rt = null;
         window.addEventListener('resize', function () { if (rt) clearTimeout(rt); rt = setTimeout(measure, 150); });
 
-        function paint(ring, w, col) {
-            ring.style.padding = Math.max(0, w).toFixed(2) + 'px';   // frame thickness (mask hollows the centre)
-            ring.style.background = col;                             // frame colour
+        // Paint an OUTWARD band via box-shadow: the frame grows into the gutter, never
+        // over the photo, so the image never resizes. (AURORA keeps a constant-width ring
+        // and only waves colour; we keep the shrink/expand pulse but move it outside.)
+        function paint(tile, w, col) {
+            tile.style.boxShadow = w > 0.05 ? ('0 0 0 ' + w.toFixed(2) + 'px ' + col) : 'none';
         }
 
         var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (reduced) {
-            for (var i2 = 0; i2 < rings.length; i2++) paint(rings[i2], W, COLS[0]);   // static full frame
+            for (var i2 = 0; i2 < tiles.length; i2++) paint(tiles[i2], W, COLS[0]);   // static full frame
             return;
         }
 
+        // The shrink-out/expand-in of ONE tile is a fixed, snappy event — never janky,
+        // no matter how slow the wave is. TRANS is the whole transition; capped ≤0.5s.
         var rafId = null;
+        var TRANS = 0.45;                  // seconds: 0.225 shrink-out + 0.225 expand-in
         function frame(now) {
             var t = now / 1000;
-            var D = 0.8 + Math.pow((100 - SPD) / 100, 2) * 18;   // seconds per colour
+            // D = seconds a tile HOLDS a colour before the wave flips it. This is the slow,
+            // adjustable part (Colour-Change Speed): low speed = long hold = slow-moving wave.
+            var D = 0.8 + Math.pow((100 - SPD) / 100, 2) * 18;
+            var half = Math.min(TRANS / 2, D * 0.45);   // guard: never exceed the hold window
             var waveAmt = (WAVE / 100) * 0.9;
             var rows = geo._rows || 1, cols = geo._cols || 1;
             for (var i = 0; i < tiles.length; i++) {
                 var g = geo[i] || { row: 0, col: 0 };
                 var off = orderVal(DIR, g.row, g.col, rows, cols) * waveAmt;
                 var local = t / D + off;
-                var step = Math.floor(local), frac = local - step;
-                var w, ci;
-                if (frac < 0.55) { w = W; ci = step; }                                       // hold full, current colour
-                else if (frac < 0.775) { var p = (frac - 0.55) / 0.225; w = W * (1 - p) * (1 - p); ci = step; }  // shrink to 0
-                else { var p2 = (frac - 0.775) / 0.225; w = W * (2 * p2 - p2 * p2); ci = step + 1; }             // expand as next colour
-                paint(rings[i], w, COLS[((ci % COLS.length) + COLS.length) % COLS.length]);
+                var step = Math.floor(local);
+                var secIn = (local - step) * D;          // seconds since this tile took colour `step`
+                var w, ci = step;
+                if (secIn < half) {                      // just flipped: expand the NEW colour in (fast)
+                    var pe = secIn / half; w = W * (2 * pe - pe * pe);
+                } else if (secIn > D - half) {           // wave about to flip it: shrink current OUT (fast)
+                    var ps = (secIn - (D - half)) / half; w = W * (1 - ps) * (1 - ps);
+                } else {
+                    w = W;                               // hold full — the long, slow part
+                }
+                paint(tiles[i], w, COLS[((ci % COLS.length) + COLS.length) % COLS.length]);
             }
             rafId = window.requestAnimationFrame(frame);
         }
