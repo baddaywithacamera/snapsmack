@@ -1495,6 +1495,3 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 
 /* ===== SNAPSMACK EOF ===== */
 
-/* JIVE TURKEY: the Layer-2 border engine (ss-engine-jive-border.js) drives the
-   tile border directly on .jt-tile; hide the inherited AURORA inner ring. */
-.jt-ring{display:none !important;}
