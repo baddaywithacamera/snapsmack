@@ -293,6 +293,13 @@ button{ font-family:inherit; cursor:pointer; }
 .sx-lb img{ max-width:94vw; max-height:94vh; object-fit:contain; }
 .sx-lb-x{ position:absolute; top:16px; right:22px; color:#fff; font-size:1.8rem; background:transparent; border:none; }
 
+/* Post-detail overlay (tile → full post; image lightbox z:80 still opens on top) */
+.sx-postlb{ position:fixed; inset:0; z-index:70; background:rgba(0,0,0,.72); display:none; align-items:flex-start; justify-content:center; overflow:auto; padding:40px 16px; }
+.sx-postlb.open{ display:flex; }
+.sx-postlb-inner{ position:relative; width:min(600px,100%); }
+.sx-postlb-x{ position:absolute; top:-36px; right:0; color:#fff; font-size:1.9rem; background:transparent; border:none; cursor:pointer; line-height:1; }
+.sx-postlb-body .sx-card{ margin:0; }
+
 /* toasts */
 .sx-toast-wrap{ position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:90; display:flex; flex-direction:column; gap:8px; }
 .sx-toast{ background:var(--fg); color:var(--bg); padding:10px 16px; border-radius:10px; font-size:.9rem; box-shadow:0 8px 24px rgba(0,0,0,.3); }
