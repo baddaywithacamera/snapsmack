@@ -24,7 +24,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'THE GRID',
-    'version'     => '1.3.36',
+    'version'     => '1.3.37',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Classic Instagram-style 3-column square-thumbnail photo grid. Carousel and panorama post support. Clean, minimal UI keeps the focus on the photographs.',
