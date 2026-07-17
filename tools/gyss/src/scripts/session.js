@@ -1,3 +1,4 @@
+// SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 // GET YOUR SHIT SORTED — Session manager
 // A session is a snapshot of a filtered photo batch.
 // Persisted to %APPDATA%\GetYourShitSorted\sessions\ as JSON.

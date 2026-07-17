@@ -1500,7 +1500,7 @@ require_once __DIR__ . '/includes/header.php';
 <!-- ── SMACKVERSE / FEDERATE MARQUEE ── -->
 <section id="federate">
     <div class="wrap">
-        <p class="fed-eyebrow">SMACKVERSE — federation, built into the bone</p>
+        <p class="fed-eyebrow">SMACKVERSE — the Blogoverse meets the Fediverse</p>
         <h2 class="fed-head">The ship has sailed on the lonely blog.</h2>
         <p class="fed-lede">Discoverability isn't optional anymore. You need social. But you need the <em>right</em> social — the kind where you own your art and you set the terms. Welcome to the Fediverse.</p>
         <p class="fed-body">Jump in the pool or just dip a toe — your call, every time. That's why ActivityPub is baked into the <strong>core</strong> of SnapSmack, not bolted on as some clumsy plugin. It's an integrated function of the software: full, two-way interactivity with the whole Fediverse if you want it — and completely ignorable if you don't.</p>
@@ -1558,7 +1558,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="status-card">
                 <h3>Community</h3>
-                <p>Client/server community built into the software. Reactions, comments, following — limited to blog owners. No public signups, no spammers, no trolls.</p>
+                <p>Two layers of community, both built into the software. <strong>Local:</strong> reactions, comments, and following between accounts — ban lists plus spam, keyword, and semantic filters keep the junk out. <strong>Federated:</strong> replies from the wider fediverse flow straight through, so you never throttle a real conversation — and you can remove anything that doesn't belong, whenever you like. Your house, your rules, on both sides of the fence.</p>
             </div>
             <div class="status-card">
                 <h3>Support Forum</h3>
@@ -1578,7 +1578,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="status-card">
                 <h3>One-Click Installer</h3>
-                <p>Guided web installer for new installs. Database setup, config generation, initial admin account — done in minutes.</p>
+                <p>Guided web installer for new installs. Database setup, config generation, initial admin account — done in minutes. It also surfaces the opt-in choices up front — breach detection (SmackBack), network &amp; federation, and AI features — so you decide what runs before you go live, with a clear opt-out for each.</p>
             </div>
             <div class="status-card">
                 <h3>AI Writing Assistant</h3>
@@ -1602,7 +1602,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="status-card">
                 <h3>Built-In Help</h3>
-                <p>Comprehensive help system accessible from every admin page. Each skin injects its own section describing how its unique features work, so the documentation always matches what you have installed.</p>
+                <p>Comprehensive help system accessible from every admin page. Each skin injects its own section describing how its unique features work, so the documentation always matches what you have installed. The companion desktop apps carry their own built-in help, too.</p>
             </div>
             <div class="status-card">
                 <h3>Photo Editor</h3>
@@ -2096,7 +2096,7 @@ require_once __DIR__ . '/includes/header.php';
                 <h2>Smack Up Your<br>Backup</h2>
                 <p>Your archive is only as safe as your last backup. Smack Up Your Backup runs on your desktop and handles multi-gigabyte backup and restore operations that would flatten a shared host or time out if run server-side — completing cleanly in the background, however long it takes.</p>
                 <p>Per-site profiles store your connection settings once. Choose your backup method: differential FTP sync for incremental server backups, cloud push to Google Drive or OneDrive for redundant cloud storage, or local backups only. One-click backups or scheduled runs on any cadence you set. Crash recovery checkpoints mean a restart picks up where it left off — not from zero.</p>
-                <p>The three-way file audit runs simultaneously across your local backup, the server, and cloud storage — revealing exactly what's missing, what's stale, and what's in sync across all three locations. Cold-start recovery lets you restore from a backup ZIP even if your install is completely gone. Session logs track every operation so you know what happened and when. Completely free. No paid tier. No hidden limits. No locking your data into our system. No bullshit.</p>
+                <p>The three-way file audit runs simultaneously across your local backup, the server, and cloud storage — revealing exactly what's missing, what's stale, and what's in sync across all three locations. Guided restore walks you through recovering from a local backup ZIP, a cloud package you browse and pick, or a recovery kit plus media folder — even if your install is completely gone. Session logs track every operation so you know what happened and when. Completely free. No paid tier. No hidden limits. No locking your data into our system. No bullshit.</p>
                 <p>If your high-res originals live on Google Drive or another cloud service, SUYB backs those up too — cloud to cloud, directly between providers, without pulling the files down to your desktop first. For photographers running large archives on Drive, that's the one that matters.</p>
                 <p class="dl-note">[ Windows 10/11 · Linux 64-bit · Free download from the admin tools page after install ]</p>
             </div>

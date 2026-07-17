@@ -1,3 +1,4 @@
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
 # SNAPSMACK
 
 ### A photo blog platform that doesn't treat you like a product.
@@ -71,3 +72,4 @@ Full terms: [`licenses/SNAPSMACK-LICENSE.txt`](licenses/SNAPSMACK-LICENSE.txt) a
 ## Credits
 
 Conceived, directed, and owned by **Sean McCormick**, built in genuine collaboration with AI co-authors — **Claude** (Anthropic) and **Google Gemini**. That partnership isn't incidental to SNAPSMACK. It's the point.
+<!-- ===== SNAPSMACK EOF ===== -->

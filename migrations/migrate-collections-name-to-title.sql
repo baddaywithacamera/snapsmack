@@ -1,3 +1,4 @@
+-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 -- ===== SNAPSMACK MIGRATION: collections name → title =====
 -- Renames snap_collections.name to title to match the canonical schema.
 -- Idempotent: ALTER COLUMN IF EXISTS is not standard MySQL, so this uses

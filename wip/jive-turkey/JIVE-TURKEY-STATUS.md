@@ -1,3 +1,4 @@
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
 # JIVE TURKEY — work-in-progress state (SnapSmack GRAMOFSMACK theme)
 
 Updated 2026-07-17. Engine integration done + verified headless. Still standalone
@@ -54,3 +55,4 @@ Colourways (colour tokens are the ONLY place colour lives):
 - ss-engine-jive-border.js   — tile border engine
 - harness.html / render.py    — headless verification harness (dev only, not shipped)
 - jive-*-prototype.html        — original approved prototypes (reference)
+<!-- ===== SNAPSMACK EOF ===== -->

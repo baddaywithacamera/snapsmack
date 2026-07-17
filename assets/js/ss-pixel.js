@@ -1,3 +1,4 @@
+// SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 /* ============================================================================
  * SNAPSMACK — SMACKVERSE : Standalone Pixelfed-compatible client  (ss-pixel.js)
  *
@@ -544,3 +545,4 @@
   loadPanel(app.getAttribute("data-default-panel") || "home");
   loadRail();
 })();
+// ===== SNAPSMACK EOF =====

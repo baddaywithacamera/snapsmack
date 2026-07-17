@@ -35,3 +35,4 @@ new IntersectionObserver(
 </body>
 </html>
 <!-- ===== SNAPSMACK EOF ===== -->
+<?php // ===== SNAPSMACK EOF ===== ?>

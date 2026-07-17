@@ -318,3 +318,4 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
 
 </div><!-- .jt-post-ig -->
 <?php // ===== SNAPSMACK EOF ====
+// ===== SNAPSMACK EOF =====

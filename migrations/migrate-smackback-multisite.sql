@@ -1,3 +1,4 @@
+-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 -- SnapSmack migration: SMACKBACK Phase 2 — hub/spoke breach correlation
 -- Adds smackback columns to snap_multisite_nodes so the hub can cache
 -- each spoke's SMACKBACK status from heartbeat and push reports.

@@ -1,3 +1,4 @@
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
 # SECAUDIT 030 — Skin Manifest Arbitrary Code Execution (RCE)
 
 | Field | Value |

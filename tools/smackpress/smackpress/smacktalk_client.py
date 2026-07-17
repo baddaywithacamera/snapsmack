@@ -1,3 +1,4 @@
+# SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 """
 SmackPress — smacktalk_client.py
 SnapSmack REST API client.  Creates/updates SMACKTALK posts, uploads media,

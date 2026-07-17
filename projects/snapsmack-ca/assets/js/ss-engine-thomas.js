@@ -1,3 +1,4 @@
+// SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 /**
  * SNAPSMACK.CA — Thomas the Bear Engine
  *
@@ -150,3 +151,4 @@
     });
 
 })();
+// ===== SNAPSMACK EOF =====

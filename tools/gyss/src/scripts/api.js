@@ -1,3 +1,4 @@
+// SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 // GET YOUR SHIT SORTED — SnapSmack API client
 // Adapted from tools/oh-snap/src/scripts/api.js
 // Adds GYSS-specific methods: ping, photos, meta, batchUpdate.

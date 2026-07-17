@@ -1,3 +1,4 @@
+# SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 """
 fix_mojibake.py — run once from Windows Python to fix 3 garbage-char sequences in main.py.
 Usage: python fix_mojibake.py
@@ -31,3 +32,4 @@ else:
     with open(TARGET, "wb") as f:
         f.write(data)
     print(f"Done. {TARGET} patched in place.")
+# ===== SNAPSMACK EOF =====

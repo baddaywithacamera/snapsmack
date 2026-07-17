@@ -1,3 +1,4 @@
+# SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 """
 SmackPress — wp_client.py
 WordPress REST API client (reads posts, resolves images, hides migrated posts).

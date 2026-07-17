@@ -1,3 +1,4 @@
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
 # AI Co-Authorship Worked Example — DRAFT for Sean's approval
 
 **Status:** draft only. Nothing committed, no version bumped. Per the spec

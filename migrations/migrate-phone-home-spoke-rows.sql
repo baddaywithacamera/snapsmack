@@ -1,3 +1,4 @@
+-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 -- SnapSmack migration: add role + hub_uid to sc_phone_home
 -- Allows spokes to send a slim ping without inflating the fleet count.
 -- role:    'hub' (default) for hub/standalone installs, 'spoke' for spokes

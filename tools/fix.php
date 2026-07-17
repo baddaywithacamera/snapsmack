@@ -1,4 +1,5 @@
 <?php
+/* SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */
 /**
  * SNAPSMACK - One-time site_mode seeder
  *
@@ -51,3 +52,4 @@ if ($current !== false) {
 }
 
 echo "Done. site_mode = '{$mode}'. DELETE THIS FILE.\n";
+// ===== SNAPSMACK EOF =====
