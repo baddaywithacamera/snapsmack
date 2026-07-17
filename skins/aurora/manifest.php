@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'AURORA',
-    'version'     => '1.0.33',
+    'version'     => '1.0.34',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Northern-lights desktop skin. A classic 3-across square grid under a slow aurora that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.',

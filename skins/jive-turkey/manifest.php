@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'JIVE TURKEY',
-    'version'     => '0.1.4', // 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
+    'version'     => '0.1.5', // 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Deliberately loud 70s GRAMOFSMACK skin. A 3-across square grid over an animated flat-graphic background — kaleidoscope, flower field, racing-stripe ribbons, sunburst daisy, Bauhaus shuffle — that never sits still, with SURPRISE rolling a fresh look every visit and a colour border cycling across the tiles. Maximalist on purpose; the photos still win.',
