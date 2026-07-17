@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.413 — "Filli Vanilli" (2026-07-17)
+
+JIVE TURKEY's tile border stops fighting the photos, and the DAISY flower swings wide enough to clear the reading panel.
+
+- **JIVE TURKEY — the tile border rides the .jt-ring overlay** — the inside colour border had been drawn as a real CSS border on the tile itself, which squeezed the photo as the border grew and shrank, and left dark corners where the tile's radius didn't match the image's. It now drives the tile's existing `.jt-ring` overlay (a masked hollow frame that shares the tile's corner radius), so the photo never resizes and the corners always line up. (`assets/js/ss-engine-jive-border.js`, `skins/jive-turkey/style.css`.)
+- **JIVE TURKEY — the DAISY flower clears the reading panel** — the floating smiley daisy's travel was too narrow, keeping it stuck behind the centre reading panel; its float now swings out into the side margins so the whole flower is visible. (`assets/js/ss-engine-jive-turkey.js`.)
+
 ## 0.7.412 — "Rainbow Falls" (2026-07-17)
 
 JIVE TURKEY settles its look: the loud graphic skin drops the fake-print cosplay (INSTANT CAMERA and the fauxlaroid skin already own that) and returns to a crisp colour border cycling on the tile edge — plus the background stops being blurry and the settings stop measuring percentages in pixels.

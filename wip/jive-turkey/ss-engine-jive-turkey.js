@@ -303,8 +303,8 @@
             var rs = (P.ray/100)*0.7, fs = (P.flo/100)*0.5;
             var N = P.rays|0; if (N < 6) N = 6;
             var seg = Math.PI*2/N, curl = (P.sw/100) * 2.4;
-            var fx = w*0.5 + Math.sin(T*fs)*w*0.24;
-            var fy = h*0.5 + Math.sin(T*fs*1.3 + 1.0)*h*0.26;
+            var fx = w*0.5 + Math.sin(T*fs)*w*0.40;      // wide enough that the daisy swings out past the centre readability panel into the side margins, fully visible
+            var fy = h*0.5 + Math.sin(T*fs*1.3 + 1.0)*h*0.30;
             var R = Math.hypot(w, h)*1.05;
             var cols = rayCols(cw, N), rot = T*rs, steps = 26;
             ctx.save(); ctx.translate(fx, fy);

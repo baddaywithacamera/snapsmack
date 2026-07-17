@@ -1,23 +1,28 @@
 /**
  * SNAPSMACK — JIVE TURKEY tile-border engine (Layer 2): INSIDE COLOUR BORDER
  *
- * The 70s companion to the JIVE TURKEY background. Each tile carries a solid
- * colour border on its inside edge that HOLDS at full width, SHRINKS to nothing,
- * then EXPANDS back in as the NEXT colourway colour (purple → shrink → blue → …),
+ * The 70s companion to the JIVE TURKEY background. Each tile carries a colour
+ * frame on its inside edge that HOLDS at full width, SHRINKS to nothing, then
+ * EXPANDS back in as the NEXT colourway colour (purple → shrink → blue → …),
  * with the change staggering across the grid as a wave (6 directions). Crisp and
  * graphic — no soft glow, no Instamatic frame.
+ *
+ * IMPORTANT: this drives each tile's existing `.jt-ring` overlay — an absolutely
+ * positioned hollow frame (built with the padding + mask trick in style.css) that
+ * matches the tile's corner radius and sits OVER the photo edge. We set only the
+ * ring's colour (background) and thickness (padding). That means the photo never
+ * resizes (the border is not on the image's box) and the corners never mismatch
+ * (ring, tile and photo all share --tile-radius). Do NOT put a CSS border on
+ * `.jt-tile` — that squeezes the image and shows dark corners.
  *
  * Colour-agnostic: reads the active colourway's colours and re-tints the instant
  * the background engine broadcasts a change (`jt:colourway` event /
  * window.__JT_COLOURWAY handshake), so SURPRISE / CYCLE keep the border matched
- * to the background — on the light field AND the dark REELS field.
+ * on the light field AND the dark REELS field.
  *
- * Targets every `.jt-tile`; grid row/col inferred from layout (any responsive
- * column count). The border is drawn with box-sizing:border-box so it eats inward
- * and never pulses the grid. Config from the `.jt-jive-turkey-bg` carrier dataset
- * (or defaults):
+ * Config from the `.jt-jive-turkey-bg` carrier dataset (or defaults):
  *   data-jt-border-enabled  1|0    master on/off
- *   data-jt-border-width    px     full border width (5–15)
+ *   data-jt-border-width    px     full frame thickness (5–15)
  *   data-jt-border-speed    0..100 colour-change speed (higher = faster)
  *   data-jt-border-wave     0..100 stagger across the grid
  *   data-jt-border-dir      ltr|rtl|ttb|btt|dtlbr|dbrtl
@@ -78,8 +83,28 @@
             if (ev && ev.detail && ev.detail.colors && ev.detail.colors.length) COLS = ev.detail.colors.slice();
         });
 
-        // border-box so the inside border never pushes the grid around.
-        for (var i = 0; i < tiles.length; i++) { tiles[i].style.boxSizing = 'border-box'; tiles[i].style.borderStyle = 'solid'; }
+        // Resolve each tile's .jt-ring overlay (the hollow frame). Create a minimal
+        // one only if the skin didn't provide it (keeps the engine self-sufficient).
+        var rings = [];
+        for (var i = 0; i < tiles.length; i++) {
+            var ring = tiles[i].querySelector('.jt-ring');
+            if (!ring) {
+                ring = document.createElement('div');
+                ring.className = 'jt-ring';
+                ring.style.position = 'absolute';
+                ring.style.inset = '0';
+                ring.style.pointerEvents = 'none';
+                ring.style.borderRadius = 'inherit';
+                ring.style.webkitMask = 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)';
+                ring.style.webkitMaskComposite = 'xor';
+                ring.style.mask = 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)';
+                ring.style.maskComposite = 'exclude';
+                if (getComputedStyle(tiles[i]).position === 'static') tiles[i].style.position = 'relative';
+                tiles[i].appendChild(ring);
+            }
+            ring.style.display = 'block';   // undo any earlier hide
+            rings.push(ring);
+        }
 
         // Infer grid geometry (robust to responsive column counts).
         var geo = [];
@@ -105,14 +130,14 @@
         var rt = null;
         window.addEventListener('resize', function () { if (rt) clearTimeout(rt); rt = setTimeout(measure, 150); });
 
-        function paint(tile, w, col) {
-            tile.style.borderWidth = Math.max(0, w).toFixed(2) + 'px';
-            tile.style.borderColor = col;
+        function paint(ring, w, col) {
+            ring.style.padding = Math.max(0, w).toFixed(2) + 'px';   // frame thickness (mask hollows the centre)
+            ring.style.background = col;                             // frame colour
         }
 
         var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (reduced) {
-            for (var i2 = 0; i2 < tiles.length; i2++) paint(tiles[i2], W, COLS[0]);   // static full border
+            for (var i2 = 0; i2 < rings.length; i2++) paint(rings[i2], W, COLS[0]);   // static full frame
             return;
         }
 
@@ -131,7 +156,7 @@
                 if (frac < 0.55) { w = W; ci = step; }                                       // hold full, current colour
                 else if (frac < 0.775) { var p = (frac - 0.55) / 0.225; w = W * (1 - p) * (1 - p); ci = step; }  // shrink to 0
                 else { var p2 = (frac - 0.775) / 0.225; w = W * (2 * p2 - p2 * p2); ci = step + 1; }             // expand as next colour
-                paint(tiles[i], w, COLS[((ci % COLS.length) + COLS.length) % COLS.length]);
+                paint(rings[i], w, COLS[((ci % COLS.length) + COLS.length) % COLS.length]);
             }
             rafId = window.requestAnimationFrame(frame);
         }
