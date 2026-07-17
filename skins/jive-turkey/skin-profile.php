@@ -113,13 +113,14 @@ $_jt_mode    = $settings['jt_mode'] ?? 'surprise';
 $_jt_random  = (($settings['jt_random_colour'] ?? '1') === '0') ? '0' : '1';
 $_jt_speed   = max(1, min(100, (int)($settings['jt_speed'] ?? 45)));
 $_jt_cycle   = max(6, min(60, (int)($settings['jt_cycle_time'] ?? 14)));           // seconds per mode in CYCLE
-$_jt_bdir    = $settings['jt_wave_direction'] ?? 'dtlbr';
-$_jt_bon     = (($settings['jt_border_on'] ?? '1') === '0') ? '0' : '1';           // outward pulse on/off
-$_jt_bspeed  = max(0, min(100, (int)($settings['jt_border_speed'] ?? 55)));        // pulse speed
-$_jt_reach   = max(6, min(40, (int)($settings['jt_border_reach'] ?? 22)));         // pulse reach (px)
-$_jt_thick   = max(2, min(14, (int)($settings['jt_border_thick'] ?? 7)));          // ring thickness (px)
-$_jt_rings   = max(1, min(3,  (int)($settings['jt_border_rings'] ?? 2)));          // concurrent ripples
-$_jt_bwave   = max(0, min(100, (int)($settings['jt_border_wave']  ?? 45)));        // wave stagger
+$_jt_gon     = (($settings['jt_glow_on'] ?? '1') === '0') ? '0' : '1';             // neon glow on/off
+$_jt_gspeed  = max(0, min(100, (int)($settings['jt_glow_speed'] ?? 45)));          // colour-shift speed
+$_jt_gsize   = max(4, min(12, (int)($settings['jt_glow_size'] ?? 8)));             // glow size (px)
+$_jt_gpunch  = max(0, min(100, (int)($settings['jt_glow_punch'] ?? 70)));          // bloom punch
+$_jt_gsteady = max(0, min(100, (int)($settings['jt_glow_steady'] ?? 35)));         // resting ember
+$_jt_glayers = max(1, min(3,  (int)($settings['jt_glow_layers'] ?? 2)));           // neon layers
+$_jt_gwave   = max(0, min(100, (int)($settings['jt_glow_wave']  ?? 50)));          // wave stagger
+$_jt_gdir    = $settings['jt_glow_dir'] ?? 'dtlbr';                                // wave direction
 $_jt_bw      = 12;                                                                  // legacy --tile-bw default
 $_jt_colors  = array_values($_jt_active['colors'] ?? []);                          // active colourway (back-compat)
 $_jt_field   = $_jt_active['cream'] ?? '#f2e2c0';
@@ -257,13 +258,14 @@ if ($_jt_nls_sz > 0 && $_jt_nls_op > 0) {
      data-jt-speed="<?php echo $_jt_speed; ?>"
      data-jt-cycle="<?php echo $_jt_cycle; ?>"
      data-jt-random-colour="<?php echo $_jt_random; ?>"
-     data-jt-border-enabled="<?php echo $_jt_bon; ?>"
-     data-jt-border-speed="<?php echo $_jt_bspeed; ?>"
-     data-jt-border-reach="<?php echo $_jt_reach; ?>"
-     data-jt-border-thick="<?php echo $_jt_thick; ?>"
-     data-jt-border-rings="<?php echo $_jt_rings; ?>"
-     data-jt-border-wave="<?php echo $_jt_bwave; ?>"
-     data-jt-border-dir="<?php echo htmlspecialchars($_jt_bdir); ?>"></div>
+     data-jt-glow-enabled="<?php echo $_jt_gon; ?>"
+     data-jt-glow-speed="<?php echo $_jt_gspeed; ?>"
+     data-jt-glow-size="<?php echo $_jt_gsize; ?>"
+     data-jt-glow-punch="<?php echo $_jt_gpunch; ?>"
+     data-jt-glow-steady="<?php echo $_jt_gsteady; ?>"
+     data-jt-glow-layers="<?php echo $_jt_glayers; ?>"
+     data-jt-glow-wave="<?php echo $_jt_gwave; ?>"
+     data-jt-glow-dir="<?php echo htmlspecialchars($_jt_gdir); ?>"></div>
 
 <!-- Readability panel: centred translucent column behind the content, full
      viewport height (reaches the top, runs behind the footer) on every page

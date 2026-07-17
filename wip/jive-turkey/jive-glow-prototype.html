@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JIVE TURKEY — NEON UNDER-GLOW pulse (prototype)</title>
+<style>
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; overflow:hidden; font-family:system-ui,sans-serif; }
+  #stage { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #grid { display:grid; grid-template-columns:repeat(3,1fr); gap:60px; width:min(720px,64vw); }
+  /* faux torn-polaroid frame: soft off-white deckle, heavier bottom lip */
+  .jt-tile { position:relative; aspect-ratio:1; background:#f4efe4; padding:12px 12px 34px;
+             border-radius:3px; }
+  .jt-tile::before { /* ragged inner mat edge */
+    content:''; position:absolute; inset:6px; border:2px solid #e8e0cf; opacity:.5; pointer-events:none; }
+  .jt-tile .photo { width:100%; height:100%; background:linear-gradient(135deg,#b7a98f,#7d7358); }
+  #panel { position:fixed; left:14px; top:14px; z-index:10; background:rgba(20,20,20,.86); color:#eee; padding:14px 16px; border-radius:12px; font-size:13px; width:236px; backdrop-filter:blur(6px); box-shadow:0 8px 30px rgba(0,0,0,.5); }
+  #panel h1 { font-size:13px; margin:0 0 10px; letter-spacing:.09em; color:#f4d03f; }
+  #panel .row { margin:9px 0; }
+  #panel label { display:block; margin-bottom:4px; opacity:.8; letter-spacing:.04em; text-transform:uppercase; font-size:10px; }
+  #panel input[type=range] { width:100%; }
+  .cw { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .cw button { padding:7px 4px; border:1px solid #444; background:#222; color:#ddd; border-radius:7px; cursor:pointer; font-size:11px; }
+  .cw button.active { outline:2px solid #f4d03f; color:#fff; }
+  .val { float:right; opacity:.6; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="grid"></div></div>
+<div id="panel">
+  <h1>JIVE TURKEY · NEON UNDER-GLOW</h1>
+  <div class="row"><label>Colourway</label><div class="cw" id="cw">
+    <button data-k="BARF">BARF</button><button data-k="BLECH">BLECH</button>
+    <button data-k="GROOVY">GROOVY</button><button data-k="HARVEST">HARVEST</button>
+  </div></div>
+  <div class="row"><label>Shift speed <span class="val" id="vSpd"></span></label><input id="spd" type="range" min="0" max="100" value="45"></div>
+  <div class="row"><label>Glow size <span class="val" id="vSize"></span></label><input id="size" type="range" min="8" max="60" value="30"></div>
+  <div class="row"><label>Pulse punch <span class="val" id="vPunch"></span></label><input id="punch" type="range" min="0" max="100" value="70"></div>
+  <div class="row"><label>Steady glow <span class="val" id="vSteady"></span></label><input id="steady" type="range" min="0" max="100" value="35"></div>
+  <div class="row"><label>Neon layers <span class="val" id="vLay"></span></label><input id="lay" type="range" min="1" max="3" value="2"></div>
+  <div class="row"><label>Wave stagger <span class="val" id="vWave"></span></label><input id="wave" type="range" min="0" max="100" value="50"></div>
+  <div class="row"><label>Direction</label><select id="dir" style="width:100%;padding:5px;background:#222;color:#ddd;border:1px solid #444;border-radius:6px;font-size:12px;">
+    <option value="ltr">Left → right</option><option value="rtl">Right → left</option>
+    <option value="ttb">Top → bottom</option><option value="btt">Bottom → top</option>
+    <option value="dtlbr" selected>Diagonal ↘</option><option value="dbrtl">Diagonal ↖</option>
+  </select></div>
+</div>
+<script>
+const COLOURWAYS = {
+  BARF:    { cream:'#efe7cf', colors:['#c9b23a','#6e7f39','#6b4a2a'] },
+  BLECH:   { cream:'#efe3cd', colors:['#6a3b86','#dd7328','#c39a3f'] },
+  GROOVY:  { cream:'#f2e7d6', colors:['#7b3f9e','#e368a4','#3f7cc4'] },
+  HARVEST: { cream:'#f2e2c0', colors:['#d99a2b','#bd4e1f','#6b3f24'] }
+};
+const S = { key:'GROOVY', spd:45, size:30, punch:70, steady:35, lay:2, wave:50, dir:'dtlbr' };
+const COLS=3, ROWS=3;
+function orderVal(dir,r,c,rows,cols){switch(dir){case 'ltr':return c;case 'rtl':return cols-1-c;case 'ttb':return r;case 'btt':return rows-1-r;case 'dbrtl':return (rows-1-r)+(cols-1-c);default:return r+c;}}
+function rgb(hex){hex=hex.replace('#','');if(hex.length===3)hex=hex.split('').map(x=>x+x).join('');return [parseInt(hex.slice(0,2),16),parseInt(hex.slice(2,4),16),parseInt(hex.slice(4,6),16)];}
+function mix(a,b,t){return [Math.round(a[0]+(b[0]-a[0])*t),Math.round(a[1]+(b[1]-a[1])*t),Math.round(a[2]+(b[2]-a[2])*t)];}
+function rgba(c,a){return `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;}
+
+const grid=document.getElementById('grid'); const tiles=[];
+for(let gy=0;gy<ROWS;gy++)for(let gx=0;gx<COLS;gx++){const d=document.createElement('div');d.className='jt-tile';d.innerHTML='<div class="photo"></div>';grid.appendChild(d);tiles.push({el:d,gx,gy});}
+function applyBg(){document.body.style.background=COLOURWAYS[S.key].cream;}
+
+function frame(now){
+  const t=now/1000, cw=COLOURWAYS[S.key], cols=cw.colors.map(rgb);
+  const period = 0.7 + Math.pow((100-S.spd)/100,2)*3.6;   // seconds per colour hold
+  const punch=S.punch/100, steady=S.steady/100, size=S.size, layers=S.lay|0, waveAmt=(S.wave/100)*0.9;
+  const white=[255,255,255];
+  for(const tile of tiles){
+    const off=orderVal(S.dir,tile.gy,tile.gx,ROWS,COLS)*waveAmt;
+    const local=t/period+off;
+    const ci=Math.floor(local), frac=local-ci;
+    const col=cols[((ci%cols.length)+cols.length)%cols.length];
+    // bloom envelope: spikes at the colour shift (frac→0) then eases to steady
+    const pw=0.4; let p = frac<pw ? (1-frac/pw) : 0; p=p*p;
+    const parts=[];
+    for(let L=0;L<layers;L++){
+      const scale = 0.6 + 0.7*L;                          // outer layers wider & softer
+      const spread = (size*scale) * (0.55 + 0.9*punch*p); // base glow + outward bloom on shift
+      const blur   = spread*1.6 + 6;
+      const aBase  = (0.30 - 0.07*L) * steady;
+      const aPulse = (0.85 - 0.20*L) * p * (0.4+0.9*punch);
+      const a = Math.min(0.95, aBase + aPulse);
+      // brighten toward white at the very peak for a neon hot-core feel
+      const c = L===0 ? mix(col, white, 0.25*p) : col;
+      parts.push(`0 0 ${blur.toFixed(1)}px ${spread.toFixed(1)}px ${rgba(c,a)}`);
+    }
+    parts.push('0 8px 18px rgba(0,0,0,.20)');             // keep the print drop-shadow
+    tile.el.style.boxShadow=parts.join(',');
+  }
+  requestAnimationFrame(frame);
+}
+function labels(){vSpd.textContent=S.spd;vSize.textContent=S.size;vPunch.textContent=S.punch;vSteady.textContent=S.steady;vLay.textContent=S.lay;vWave.textContent=S.wave;}
+document.querySelectorAll('#cw button').forEach(b=>{b.onclick=()=>{S.key=b.dataset.k;applyBg();document.querySelectorAll('#cw button').forEach(x=>x.classList.toggle('active',x===b));};if(b.dataset.k===S.key)b.classList.add('active');});
+const bind=(id,p)=>{const el=document.getElementById(id);el.value=S[p];el.oninput=()=>{S[p]=+el.value;labels();};};
+bind('spd','spd');bind('size','size');bind('punch','punch');bind('steady','steady');bind('lay','lay');bind('wave','wave');
+document.getElementById('dir').onchange=e=>{S.dir=e.target.value;};
+applyBg();labels();requestAnimationFrame(frame);
+window.__set=k=>{S.key=k;applyBg();document.querySelectorAll('#cw button').forEach(x=>x.classList.toggle('active',x.dataset.k===k));};
+</script>
+</body>
+</html>

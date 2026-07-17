@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.411 — "Pinkie Pride" (2026-07-17)
+
+SNAPSMACK grows a 70s streak: JIVE TURKEY lands — a deliberately loud GRAMOFSMACK skin whose animated background never sits still, whose photos never lose their colour twice, and whose prints glow.
+
+- **JIVE TURKEY skin debut (GRAMOFSMACK)** — a new desktop skin, launch install craptasti.ca, built as "AURORA with the background engine swapped." One flat-graphic 70s background engine drives five modes — **SCOPE** (a reflection kaleidoscope of tumbling circles), **BLOOM** (a floating quatrefoil flower field), **FLOW** (racing-stripe ribbons that swirl), **DAISY** (sunburst rays spinning around a floating smiley daisy), and **REELS** (a Bauhaus shuffle grid of blinking, spinning shapes) — plus **CYCLE** (rotate through the modes, each with its own saved settings) and **SURPRISE** (a random mode, and with Both Barrels on a random colourway, chosen every page load, so repeat visitors never see the same thing twice). Four colourways — **BARF**, **BLECH**, **GROOVY**, **HARVEST** — are the only place colour lives; every mode reads them, and the chosen colourway is broadcast so the tile treatment matches automatically. (`skins/jive-turkey/`, `assets/js/ss-engine-jive-turkey.js`.)
+- **NEON UNDER-GLOW tile treatment** — instead of a hard border fighting the Instamatic deckle, each print carries a soft neon halo that rests as a low ember and BLOOMS outward every time the colour shifts, the shift travelling across the grid as a staggered wave. It is pure box-shadow, so it sits entirely outside the photo with no layout shift, and each tile's own print drop-shadow is preserved underneath. Built as a generic pulse driver — a target, a colour, a clock — so a future **BEATBOX** can bloom it from a beat instead of a timer. Owner controls: Tile Glow on/off, Shift Speed, Glow Size (4–12px), Pulse Punch, Steady Glow, Neon Layers, Wave Stagger, and Direction. (`assets/js/ss-engine-jive-border.js`, `skins/jive-turkey/skin-profile.php`, `skins/jive-turkey/manifest.php`.)
+- **Skin engines ride the CORE release, not the skin package** — the two JIVE TURKEY engines live in core `assets/js/` (like AURORA's) and register as handles in `core/manifest-inventory.php`, so they reach installs through the CMS update. The SKIN PACKAGER only zips the `skins/<slug>/` folder, so a core-engine skin needs the core release to actually run on an install — packaging the skin alone leaves the background dark. (`core/manifest-inventory.php`.)
+
 ## 0.7.410 — "Wonderbolts Academy" (2026-07-17)
 
 The standalone Pixelfed client stops dead-ending on the image — a search or grid tile now opens the post, where you can actually read it, interact, and follow the author.
