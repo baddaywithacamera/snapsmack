@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 # fix-jt-typography.py — set JIVE TURKEY's title weight + tagline size to the
 # classic-Insta defaults (title 700 Bold, tagline 20px). Colours untouched.
 # Bumps the skin manifest version. Run natively from repo root:
@@ -56,3 +57,4 @@ print("  git add skins/jive-turkey/manifest.php")
 print(f'  git commit -m "JIVE TURKEY: typography defaults match classic Insta (title 700, tagline 20px); skin v{newver}"')
 print("  git push Github master")
 print("  -> SKIN PACKAGER: republish JIVE TURKEY  ->  craptasti skin -> " + str(newver) + ", hard reload.")
+# ===== SNAPSMACK EOF =====
