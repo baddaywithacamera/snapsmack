@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 # add-changelog-416.py — splice the 0.7.416 entry into CHANGELOG.md, natively.
 # Idempotent, preserves the entire file (including the tail EOF marker), matches
 # the file's existing newline style. Run from repo root:
@@ -55,3 +56,4 @@ print(f"EOF marker intact:      {eof_ok}  ->  {last}")
 print("Now run: python tools\\check-eof.py   (expect All clear), then commit.")
 if not (has_416 and eof_ok):
     sys.exit(1)
+# ===== SNAPSMACK EOF =====
