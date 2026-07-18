@@ -900,8 +900,37 @@ img { display: block; max-width: 100%; }
 }
 
 /* ==========================================================================
+   SOLO IMAGE owner controls (spec: solo-image-presentation-spec-v0_1)
+   Appended after the base rules so they win by cascade order (same specificity).
+   Every var carries a fallback to the previous source, so an untouched install
+   is pixel-identical until an owner sets a control.
+   ========================================================================== */
+.jt-post-ig,
+.jt-post-ig-image,
+.jt-post-ig-image .slider-slide,
+.jt-post-ig-info,
+.jt-post-ig-actions {
+    background: var(--jt-solo-card-bg, var(--post-bg, #000));
+}
+/* Image padding — insets the photo inside the square; the caption panel reflows. */
+.jt-post-ig-image { padding: var(--jt-solo-pad, 0px); }
+/* Primary card text: caption, username, EXIF values, action + back buttons. */
+.jt-post-ig-caption,
+.jt-post-ig-sitename,
+.jt-exif-value,
+.jt-back-btn,
+.jt-action-btn {
+    color: var(--jt-solo-text, var(--text-primary));
+}
+/* Secondary card text: EXIF labels, date, meta. */
+.jt-exif-label,
+.jt-post-ig-date {
+    color: var(--jt-solo-text-2, var(--text-secondary));
+}
+
+/* ==========================================================================
    POST MODAL OVERLAY
-   IG-style popover: grid stays visible, dimmed behind 80% opaque backdrop.
+   IG-style popover: grid stays visible, dimmed behind the scrim backdrop.
    jt-modal.js populates #jt-modal-frame by fetching ?modal=1 fragments.
    ========================================================================== */
 
@@ -919,10 +948,23 @@ img { display: block; max-width: 100%; }
 /* Prevent grid scroll while modal is open */
 body.jt-modal-open { overflow: hidden; }
 
+/* SOLO IMAGE backdrop-image layer — sits UNDER the scrim; visible only when
+   Backdrop Source = Image (else --jt-solo-bgimg is 'none' and the skin bg shows
+   through the transparent overlay). */
+.jt-modal-bgimg {
+    position:            absolute;
+    inset:               0;
+    background-image:    var(--jt-solo-bgimg, none);
+    background-size:     cover;
+    background-position: var(--jt-solo-bgpos, center center);
+    background-repeat:   no-repeat;
+}
+/* SOLO IMAGE scrim — colour @ opacity over the backdrop (admin: SOLO IMAGE).
+   Default rgba(0,0,0,0.8) reproduces the old hardcoded backdrop exactly. */
 .jt-modal-backdrop {
     position:   absolute;
     inset:      0;
-    background: rgba(0, 0, 0, 0.8);
+    background: var(--jt-solo-scrim, rgba(0, 0, 0, 0.8));
 }
 
 .jt-modal-frame {

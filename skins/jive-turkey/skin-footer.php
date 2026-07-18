@@ -25,6 +25,7 @@
      guard), so there is never a duplicate inside the fetched fragment. -->
 <div id="jt-modal-overlay" class="jt-modal-overlay" hidden
      data-grid-url="<?php echo htmlspecialchars(BASE_URL); ?>"<?php echo !empty($jt_autoopen) ? ' data-autoopen="1"' : ''; ?>>
+    <div class="jt-modal-bgimg" aria-hidden="true"></div>
     <div class="jt-modal-backdrop"></div>
     <div id="jt-modal-frame" class="jt-modal-frame"></div>
 </div>
