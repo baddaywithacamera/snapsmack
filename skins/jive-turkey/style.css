@@ -382,10 +382,6 @@ img { display: block; max-width: 100%; }
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--grid-gap);
-    /* Reserve the colour band as padding so the outward box-shadow band never
-       pushes the grid past the 935px Instagram column: images shrink to fit
-       instead of the grid bulging. Zero when the border is off. */
-    padding: var(--jt-band-reserve, 0px);
     /* Transparent on purpose — the fixed jive-turkey layer shows through the gaps
        between tiles. JIVE TURKEY never paints a gap/background colour (unlike The
        Grid); the jive-turkey IS the background. */
@@ -399,7 +395,7 @@ img { display: block; max-width: 100%; }
     position: relative;
     aspect-ratio: 1 / 1;
     overflow: hidden;
-    background: var(--border-color);
+    background: transparent;
     border-radius: var(--tile-radius);
     /* Off-screen tiles skip layout/paint entirely — the mask-composite ring is
        costly, so on a 1400-image grid this keeps render work to what's visible.
@@ -439,7 +435,11 @@ img { display: block; max-width: 100%; }
     width: 100%;
     height: 100%;
     position: absolute;
-    inset: 0;
+    /* Inset by the reserved band so the photo shrinks to make room for the colour
+       border; static, so the pulsing band never reflows the image. */
+    inset: var(--jt-band-reserve, 0px);
+    border-radius: calc(var(--tile-radius) - var(--jt-band-reserve, 0px));
+    overflow: hidden;
 }
 
 .jt-tile img {
