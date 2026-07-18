@@ -115,30 +115,22 @@ if (!empty($settings['privacy_policy_enabled']) && $settings['privacy_policy_ena
 $rss_url = (defined('BASE_URL') ? BASE_URL : '/') . 'feed';
 $slots[] = '<a href="' . $rss_url . '" class="footer-link rss-tag" title="RSS Feed">RSS</a>';
 
-// --- FOOTER BAR BACKGROUND (optional, per-skin colour + opacity) ---
-// footer_bg_color + footer_bg_opacity → an rgba emitted as the inline
-// --footer-bg custom property. Each skin's CSS reads it with a fallback, so
-// leaving it unset keeps that skin's own default (panel/bg). This lets the
-// footer bar be dialled independently of Panel Opacity (screenshot-friendly).
-$_footer_bg_var = '';
-$_fb_color = trim((string)($settings['footer_bg_color'] ?? ''));
-if (preg_match('/^#?[0-9a-fA-F]{6}$/', $_fb_color)) {
-    $_fb_hex = ltrim($_fb_color, '#');
-    $_fb_op  = $settings['footer_bg_opacity'] ?? '';
-    $_fb_op  = ($_fb_op === '') ? 100 : max(0, min(100, (int)$_fb_op));
-    $_footer_bg_var = '--footer-bg:rgba('
-        . hexdec(substr($_fb_hex, 0, 2)) . ',' . hexdec(substr($_fb_hex, 2, 2)) . ',' . hexdec(substr($_fb_hex, 4, 2))
-        . ',' . round($_fb_op / 100, 3) . ')';
-}
-$_footer_styles = [];
-if (($settings['footer_lowercase'] ?? '0') === '1') $_footer_styles[] = 'text-transform:lowercase';
-if ($_footer_bg_var !== '') $_footer_styles[] = $_footer_bg_var;
+// --- FOOTER STYLING: OWNED ENTIRELY BY THE ACTIVE SKIN'S STYLESHEET ---
+// All skin styling comes from the skin stylesheet, period. Core emits NO styles
+// for the footer here — no inline style attribute, no <style> block, not even a
+// CSS custom-property value. Any of those plants a landmine: someone forking a
+// skin reads their own style.css, sees the footer styled there, and can neither
+// see nor override a declaration core injected behind their back.
+//
+// Core's ONLY job is markup + a state-hook CLASS the skin stylesheet targets
+// (.footer-lowercase). The footer background colour is a per-skin control (e.g.
+// JIVE TURKEY's Footer Background Colour), delivered through the skin's own
+// :root var block and consumed by a rule that lives in the skin stylesheet.
 $_footer_class = (($settings['footer_lowercase'] ?? '0') === '1') ? ' class="footer-lowercase"' : '';
-$_footer_style = $_footer_styles ? ' style="' . implode(';', $_footer_styles) . '"' : '';
 
 // --- RENDERING ---
 ?>
-<footer id="system-footer"<?php echo $_footer_class . $_footer_style; ?>>
+<footer id="system-footer"<?php echo $_footer_class; ?>>
     <div class="inside">
 
         <?php

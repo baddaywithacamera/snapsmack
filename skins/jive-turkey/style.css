@@ -1094,10 +1094,16 @@ body.jt-modal-open { overflow: hidden; }
     position:   relative;
     z-index:    2;
     border-top: 1px solid var(--border-color);
-    background:  var(--footer-bg, var(--panel-bg, transparent));
+    /* Footer colour is 100% skin-owned: skin-profile emits --jt-footer-bg
+       and this rule consumes it. Core injects nothing. Falls back to panel. */
+    background:  var(--jt-footer-bg, var(--panel-bg, transparent));
     max-width:   calc(var(--grid-max-width, 935px) + 2 * var(--panel-extend, 0px));
     margin:      var(--footer-gap, 40px) auto 0;   /* gap above footer -- Smooth Your Skin > Space Above Footer */
 }
+
+/* Footer lowercase: core sets the .footer-lowercase hook class; the RULE lives
+   here in the skin stylesheet. */
+#system-footer.footer-lowercase { text-transform: lowercase; }
 
 #system-footer .inside {
     max-width: var(--grid-max-width, 935px);
@@ -1437,6 +1443,12 @@ body.is-blogroll .blogroll-peer-url { display: none; }
     z-index: -2;
     pointer-events: none;
     background-color: var(--jt-sky, #000000);
+}
+.jt-jive-turkey-bg.jt-bg-solid {
+    /* SOLID Background Mode (jt_mode=solid): engine skips the canvas and adds
+       this class so the carrier shows the Page Background colour (--bg-primary).
+       Set Page Background to #ffffff for white. */
+    background-color: var(--bg-primary, #ffffff);
 }
 .jt-jive-turkey-bg canvas.jt-canvas {
     position: absolute;

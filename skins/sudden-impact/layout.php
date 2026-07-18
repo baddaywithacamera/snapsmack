@@ -202,6 +202,7 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
                          <?php if ($slide_vars): ?>style="<?php echo $slide_vars; ?>"<?php endif; ?>>
                         <img src="<?php echo htmlspecialchars($pimg['img_file']); ?>"
                              alt="<?php echo htmlspecialchars($pimg['img_title']); ?>"
+                             data-lightbox-src="<?php echo htmlspecialchars($pimg['img_file']); ?>"
                              <?php if ($img_style): ?>style="<?php echo $img_style; ?>"<?php endif; ?>
                              loading="lazy">
                     </div>
@@ -226,6 +227,7 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
         <!-- Single image -->
         <img src="<?php echo htmlspecialchars($cover_img['img_file']); ?>"
              alt="<?php echo htmlspecialchars($cover_img['img_title']); ?>"
+             data-lightbox-src="<?php echo htmlspecialchars($cover_img['img_file']); ?>"
              class="tg-single-img<?php echo $frame['is_fill'] ? ' tg-crop--fill' : ''; ?>"
              <?php if ($single_img_style): ?>style="<?php echo $single_img_style; ?>"<?php endif; ?>>
         <?php endif; ?>

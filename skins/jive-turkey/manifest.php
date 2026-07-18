@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'JIVE TURKEY',
-    'version'     => '0.1.9', // 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
+    'version'     => '0.1.10', // 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Deliberately loud 70s GRAMOFSMACK skin. A 3-across square grid over an animated flat-graphic background — kaleidoscope, flower field, racing-stripe ribbons, sunburst daisy, Bauhaus shuffle — that never sits still, with SURPRISE rolling a fresh look every visit and a colour border cycling across the tiles. Maximalist on purpose; the photos still win.',
@@ -111,6 +111,7 @@ return [
                 'flow'     => 'FLOW — racing-stripe ribbons',
                 'daisy'    => 'DAISY — sunburst + smiley daisy',
                 'reels'    => 'REELS — Bauhaus shuffle grid',
+                'solid'    => 'SOLID — plain background colour, no animation',
             ],
             'hint'    => 'Pick one look, or let SURPRISE / CYCLE rotate them.',
         ],
@@ -369,6 +370,11 @@ return [
         ],
 
         // ---- POSTS LABEL -------------------------------------------------
+        'jt_posts_color' => [
+            'section' => 'POSTS LABEL', 'type' => 'color', 'label' => 'Posts Colour',
+            'default' => '#8a8a8a',
+            'hint'    => 'Colour of the post-count number and the "posts" label. PHP-handled -> --post-count-color.',
+        ],
         'jt_posts_glow_color' => [
             'section' => 'POSTS LABEL', 'type' => 'color', 'label' => 'Posts Glow Colour',
             'default' => '#000000',

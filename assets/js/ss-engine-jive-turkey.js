@@ -127,6 +127,15 @@
         });
 
         var mode0 = (host.getAttribute('data-jt-mode') || 'flow').toLowerCase();
+        // SOLID / OFF: no animated canvas. Remove any existing canvas and let the
+        // page's own background colour (--bg-primary, the "Page Background" control)
+        // show through the transparent carrier. Set Page Background to #ffffff for white.
+        if (mode0 === 'solid' || mode0 === 'off' || mode0 === 'none') {
+            var _cvOld = host.querySelector('canvas.jt-canvas');
+            if (_cvOld) _cvOld.parentNode.removeChild(_cvOld);
+            host.classList.add('jt-bg-solid');
+            return;
+        }
         var gSpeed = Math.max(1, Math.min(100, parseFloat(host.getAttribute('data-jt-speed')) || 40));
         // Global Background Speed (jt_speed) now scales ALL modes. Neutral (=1) at the
         // default 45 so untouched looks are unchanged; DAISY & REELS previously ignored it.
