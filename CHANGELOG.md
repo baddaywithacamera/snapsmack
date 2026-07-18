@@ -12,6 +12,19 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.417 — "The Best Night Ever" (2026-07-18)
+
+The JIVE TURKEY inside colour-border engine is rebuilt so the ring wave paints on every load and can never silently render nothing.
+
+- **JIVE TURKEY — tile-border engine repaired and made self-healing** — `assets/js/ss-engine-jive-border.js` now drives the ring wave with `requestAnimationFrame` while the tab is visible AND a `setInterval` fallback while it is hidden (rAF is paused in background tabs), so the border is always painted. It re-scans when the tile count changes (lazy-load / infinite-scroll safe), re-reads the live colourway each frame, keeps the reduced-motion static ring, and is guarded against a double-include. The ring sits on the tile edge with the gutter equal to the grid gap, so no image area is lost. (`assets/js/ss-engine-jive-border.js`.)
+
+## 0.7.416 — "The Best Night Ever" (2026-07-17)
+
+JIVE TURKEY's SCOPE kaleidoscope gets denser and grows a flower at its heart, and the font, weight, and colour controls the family declutter had cut come home.
+
+- **JIVE TURKEY — SCOPE kaleidoscope: 20 rays + a flower mandala** — the reflection kaleidoscope steps up from 14 to 20 mirrored rays for a tighter tumble, and a flower mandala now floats at its centre: eight petals alternating the colourway's first two colours around a contrasting hub, turning on their own slow clock. All colour still comes from the active colourway, so it shifts with BARF / BLECH / GROOVY / HARVEST. (`assets/js/ss-engine-jive-turkey.js`.)
+- **JIVE TURKEY — TITLE & TAGLINE, TYPOGRAPHY and COLOURS controls restored (17)** — the 0.7.414 declutter cut these working controls along with the genuinely dead ones, so the settings page had lost its font, weight, and colour pickers. All 17 are back and wired, emitting their CSS vars from `skin-profile.php`. Skin v0.1.7. (`skins/jive-turkey/manifest.php`, `skins/jive-turkey/skin-profile.php`.)
+
 ## 0.7.415 — "Sisterhooves Social" (2026-07-17)
 
 JIVE TURKEY polish from a live look: the nav dividers match, the spacing controls come back wired for real, SURPRISE stops repeating on reload, and the outward border respects your tile spacing.

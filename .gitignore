@@ -173,3 +173,10 @@ _gitlock_trash/
 _gittrash2/
 
 tools/gyss/src-tauri/target/
+
+
+# Crash-recovery snapshots and quarantined files — dev scratch, never source
+# (auto-dumped by SMACKBACK; corrupt files staged for deletion). Untracked so
+# they stop deploying to prod and tripping the integrity scan.
+_crash-recovery-*/
+_to_delete/
