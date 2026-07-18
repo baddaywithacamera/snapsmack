@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.2.22',
+    'version'     => '1.2.23',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
@@ -428,6 +428,11 @@ return [
         ],
 
         // ---- POSTS LABEL -------------------------------------------
+        'pa_posts_color' => [
+            'section' => 'POSTS LABEL', 'type' => 'color', 'label' => 'Posts Colour',
+            'default' => '#8a8a8a',
+            'hint'    => 'Colour of the post-count number and the "posts" label in the profile header. PHP-handled -> --post-count-color.',
+        ],
         'pa_posts_glow_color' => [
             'section' => 'POSTS LABEL', 'type' => 'color', 'label' => 'Posts Glow Colour',
             'default' => '#000000',

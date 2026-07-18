@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'AURORA',
-    'version'     => '1.0.34',
+    'version'     => '1.0.35',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Northern-lights desktop skin. A classic 3-across square grid under a slow aurora that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.',
@@ -351,6 +351,11 @@ return [
         ],
 
         // ---- POSTS LABEL -------------------------------------------
+        'au_posts_color' => [
+            'section' => 'POSTS LABEL', 'type' => 'color', 'label' => 'Posts Colour',
+            'default' => '#8a8a8a',
+            'hint'    => 'Colour of the post-count number and the "posts" label in the profile header. PHP-handled -> --post-count-color.',
+        ],
         'au_posts_glow_color' => [
             'section' => 'POSTS LABEL', 'type' => 'color', 'label' => 'Posts Glow Colour',
             'default' => '#000000',
