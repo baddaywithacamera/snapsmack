@@ -270,8 +270,10 @@ img { display: block; max-width: 100%; }
     align-items: center;
     justify-content: center;
     gap: 32px;
-    /* match the nav divider green so the top line isn't a dark #242424 mismatch */
-    border-bottom: 1px solid color-mix(in srgb, var(--nav-line-green, #6ff0a0) calc(var(--nav-line-opacity, 1) * 100%), transparent);
+    /* No border here: the sticky nav owns the top divider via its own border-top.
+       A border-bottom here too doubled the green line, so the top divider rendered
+       2px against the 1px bottom. Removed for symmetry. */
+    border-bottom: 0;
 }
 
 .jt-profile-avatar {
@@ -1094,7 +1096,7 @@ body.jt-modal-open { overflow: hidden; }
     border-top: 1px solid var(--border-color);
     background:  var(--footer-bg, var(--panel-bg, transparent));
     max-width:   calc(var(--grid-max-width, 935px) + 2 * var(--panel-extend, 0px));
-    margin:      0 auto;
+    margin:      var(--footer-gap, 40px) auto 0;   /* gap above footer -- Smooth Your Skin > Space Above Footer */
 }
 
 #system-footer .inside {
