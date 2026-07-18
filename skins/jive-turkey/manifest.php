@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'JIVE TURKEY',
-    'version'     => '0.1.8', // 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
+    'version'     => '0.1.9', // 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Deliberately loud 70s GRAMOFSMACK skin. A 3-across square grid over an animated flat-graphic background — kaleidoscope, flower field, racing-stripe ribbons, sunburst daisy, Bauhaus shuffle — that never sits still, with SURPRISE rolling a fresh look every visit and a colour border cycling across the tiles. Maximalist on purpose; the photos still win.',
@@ -236,6 +236,33 @@ return [
                 'count' => 'Show image count',
                 'none'  => 'No overlay',
             ],
+        ],
+
+        // ---- FOOTER ------------------------------------------------------
+        'jt_footer_gap' => [
+            'section'  => 'FOOTER',
+            'type'     => 'range_numeric',
+            'label'    => 'Space Above Footer',
+            'default'  => '40',
+            'min'      => '0', 'max' => '120', 'step' => '2',
+            'unit'     => 'px',
+            'hint'     => 'Vertical gap between the bottom row of tiles and the footer.',
+        ],
+        'jt_footer_color' => [
+            'section'  => 'FOOTER',
+            'type'     => 'color',
+            'label'    => 'Footer Background Colour',
+            'default'  => '#0a0e1a',
+            'hint'     => 'Footer bar background. Shows only when Footer Opacity is above 0; otherwise the footer follows the panel / background.',
+        ],
+        'jt_footer_opacity' => [
+            'section'  => 'FOOTER',
+            'type'     => 'range_numeric',
+            'label'    => 'Footer Opacity',
+            'default'  => '0',
+            'min'      => '0', 'max' => '100', 'step' => '5',
+            'unit'     => '%',
+            'hint'     => '0 = follow the panel / background (default). Raise for a solid footer bar.',
         ],
 
         // ---- NAV — sticky nav bar, links, divider lines + glow (all nav settings in one place) ---
