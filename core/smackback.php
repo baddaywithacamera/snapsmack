@@ -466,6 +466,14 @@ function smackback_should_monitor(string $abs_path): bool {
         // smackback_scan_skins_for_js(); skin PHP/CSS integrity is intentionally
         // out of SMACKBACK's core scope (see project_smackback_false_breach_lockout).
         'skins/',
+        // Dev scratch & recovery dumps — never part of a release and must never
+        // trip the monitor. wip/ is developer scratch; _crash-recovery-<date>/ is
+        // SMACKBACK's own pre-change snapshot; _to_delete/ is quarantine. These
+        // leaking into the scan flagged 'unexpected' and LOCKED every spoke after a
+        // core update (2026-07-18, 0.7.418). Prefix match catches the dated folder.
+        'wip/',
+        '_crash-recovery-',
+        '_to_delete/',
     ];
     // smack-central/ is release-packaging staging that exists ONLY on the Smack
     // Central host (identified by its private signing config, sc-config.php). On
