@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.418 — "The Best Night Ever" (hotfix: SMACKBACK ignores dev scratch) (2026-07-18)
+
+Emergency fix: a core update flagged the dev-scratch directories as unauthorised on every spoke, tripping SMACKBACK into lockdown.
+
+- **SMACKBACK no longer monitors dev-scratch / recovery directories** — `wip/`, `_crash-recovery-<date>/` and `_to_delete/` are now in the integrity monitor's `$excluded_dirs`, alongside `uploads/`, `logs/`, `skins/` etc. They are developer scratch, SMACKBACK's own pre-change snapshot dumps, and quarantine respectively — never part of a release — but were being scanned, so after the 0.7.417 core update every spoke flagged them as `unexpected` and locked out. (`core/smackback.php`.)
+
 ## 0.7.417 — "The Best Night Ever" (2026-07-18)
 
 The JIVE TURKEY inside colour-border engine is rebuilt so the ring wave paints on every load and can never silently render nothing.
