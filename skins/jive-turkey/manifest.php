@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'JIVE TURKEY',
-    'version'     => '0.1.11', // 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
+    'version'     => '0.1.12', // 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Deliberately loud 70s GRAMOFSMACK skin. A 3-across square grid over an animated flat-graphic background — kaleidoscope, flower field, racing-stripe ribbons, sunburst daisy, Bauhaus shuffle — that never sits still, with SURPRISE rolling a fresh look every visit and a colour border cycling across the tiles. Maximalist on purpose; the photos still win.',
@@ -151,8 +151,8 @@ return [
             'type'    => 'select',
             'label'   => 'Tile Borders',
             'default' => '1',
-            'options' => [ '1' => 'On — inside colour border', '0' => 'Off' ],
-            'hint'    => 'A solid colour border on each tile that shrinks to nothing and expands back in as the next colourway colour, staggered across the grid.',
+            'options' => [ '1' => 'On — colour border', '0' => 'Off' ],
+            'hint'    => 'A colour band that grows inward from the tile gap (never over the photo), shrinking to nothing and expanding back as the next colourway colour, staggered across the grid as a wave.',
         ],
         'jt_border_width' => [
             'section'  => 'TILE BORDER',
@@ -161,7 +161,7 @@ return [
             'default'  => '12',
             'min'      => '5', 'max' => '15', 'step' => '1',
             'unit'     => 'px',
-            'hint'     => 'Full width of the border (it shrinks to 0 and back on each colour change).',
+            'hint'     => 'Full width of the colour band (it shrinks to 0 and back on each colour change). The band is reserved inside the tile gap, so images shrink a little to keep the grid within the standard Instagram column width.',
         ],
         'jt_border_speed' => [
             'section'  => 'TILE BORDER',
@@ -204,7 +204,7 @@ return [
             'default'  => '2',
             'min'      => '0', 'max' => '20', 'step' => '1',
             'unit'     => 'px',
-            'hint'     => 'Gap between the grid tiles. With the tile border on, the colour band fills this gutter — wider spacing = a fatter border.',
+            'hint'     => 'Spacing between image tiles, edge to edge, INCLUDING the colour border. The border grows inward from each side, so a 10px border with 20px spacing leaves the tiles touching (0px background), while a 5px border with 20px spacing leaves 10px of background. Images shrink to keep the grid within the standard Instagram column width.',
         ],
         'jt_nav_tile_gap' => [
             'section'  => 'GRID',
