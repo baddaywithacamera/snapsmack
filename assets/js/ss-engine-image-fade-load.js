@@ -10,6 +10,14 @@
  *   - .pg-post-image (photo gallery pages)
  *   - .tg-image (true-grit skin specific)
  *   - .inline-asset (parsed shortcode images in descriptions)
+ *   - img[data-lightbox-src] (CSS starts these at opacity:0 — MUST be revealed)
+ *
+ * 2026-07-18: re-scan on modal open. GRAM-family solo posts open as an AJAX
+ * modal (ss-engine-grid-modal.js injects the post AFTER load, then fires
+ * 'snapsmack:modal:opened'). This engine only ran on DOMContentLoaded, so a
+ * modal image carrying data-lightbox-src (which CSS sets to opacity:0) was never
+ * faded in → it stayed invisible (black panel). Now we re-run the reveal on the
+ * modal's injected content too.
  *
  * Prevents layout shift by keeping space reserved for images during load.
  */
@@ -21,59 +29,56 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-
-
-
 if (!window._ssImageFadeLoaded) {
 window._ssImageFadeLoaded = true;
 
-function _ssImageFadeInit() {
-    const imageSelectorList = [
-        '.post-image',
-        '.pg-post-image',
-        '.tg-image',
-        '.inline-asset',
-        'img[data-lightbox-src]'
-    ];
+var _ssImageFadeSelectors = [
+    '.post-image',
+    '.pg-post-image',
+    '.tg-image',
+    '.inline-asset',
+    'img[data-lightbox-src]'
+];
 
-    // Select all images matching any of the selectors
-    const images = document.querySelectorAll(imageSelectorList.join(','));
+function _ssImageFadeInit(root) {
+    root = root || document;
+    var images = root.querySelectorAll(_ssImageFadeSelectors.join(','));
 
-    images.forEach(img => {
-        // Skip if image is already fully loaded (cached images may have loaded before script ran)
+    images.forEach(function (img) {
+        // Skip if already handled (idempotent across the initial scan + modal re-scans).
+        if (img.dataset._ssFadeDone) { img.style.opacity = '1'; return; }
+
+        // Skip if image is already fully loaded (cached images may have loaded before script ran).
         if (img.complete && img.naturalHeight !== 0) {
             img.style.opacity = '1';
+            img.dataset._ssFadeDone = '1';
             return;
         }
 
-        // Set initial state: invisible, but space reserved
+        // Set initial state: invisible, but space reserved.
         img.style.opacity = '0';
         img.style.transition = 'opacity 0.4s ease-in-out';
 
-        // Fade in once image has loaded
-        const fadeIn = () => {
-            img.style.opacity = '1';
-        };
-
-        // Handle successful load
+        var fadeIn = function () { img.style.opacity = '1'; img.dataset._ssFadeDone = '1'; };
         img.addEventListener('load', fadeIn, { once: true });
-
-        // If image fails to load, still make it visible (shows broken image icon)
         img.addEventListener('error', fadeIn, { once: true });
 
-        // Safari/Firefox workaround: images may fire load synchronously after addEventListener
-        // Check again in case it already loaded
-        if (img.complete && img.naturalHeight !== 0) {
-            fadeIn();
-        }
+        // Safari/Firefox: image may have loaded synchronously after addEventListener.
+        if (img.complete && img.naturalHeight !== 0) { fadeIn(); }
     });
 }
 
+// Re-reveal images inside a GRAM modal once its content is injected.
+document.addEventListener('snapsmack:modal:opened', function (e) {
+    var root = (e && e.target && e.target.querySelectorAll) ? e.target : document;
+    _ssImageFadeInit(root);
+});
+
 // Scripts load at end of <body> — DOMContentLoaded may have already fired.
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _ssImageFadeInit);
+    document.addEventListener('DOMContentLoaded', function () { _ssImageFadeInit(document); });
 } else {
-    _ssImageFadeInit();
+    _ssImageFadeInit(document);
 }
 
 } // end double-load guard
