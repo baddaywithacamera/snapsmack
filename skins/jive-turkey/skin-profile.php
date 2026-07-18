@@ -250,11 +250,40 @@ if ($_jt_footer_op > 0) {
     $_c = ltrim(trim($settings['jt_footer_color'] ?? '#0a0e1a'), '#'); if (strlen($_c)===3) $_c=$_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
     $_jt_footer_bg = sprintf('rgba(%d,%d,%d,%s)', hexdec(substr($_c,0,2)),hexdec(substr($_c,2,2)),hexdec(substr($_c,4,2)), number_format($_jt_footer_op/100,2));
 }
+
+// ── SOLO IMAGE presentation (single-post view) ─────────────────────────────
+// Three layers (spec: solo-image-presentation-spec-v0_1): backdrop (skin|image)
+// → scrim (colour @ opacity) → card (colour, image padding, primary/secondary
+// text). Blank card/text = inherit the prior source, so nothing shifts until an
+// owner sets them; scrim default #000 @ 80% reproduces the old rgba(0,0,0,0.8).
+$_jt_scrim_hex = trim($settings['jt_solo_scrim_color'] ?? '#000000');
+$_jt_scrim_op  = max(0, min(100, (int)($settings['jt_solo_scrim_opacity'] ?? 80)));
+$_sc = ltrim($_jt_scrim_hex, '#'); if (strlen($_sc) === 3) $_sc = $_sc[0].$_sc[0].$_sc[1].$_sc[1].$_sc[2].$_sc[2];
+$_jt_solo_scrim = sprintf('rgba(%d,%d,%d,%s)',
+    hexdec(substr($_sc, 0, 2)), hexdec(substr($_sc, 2, 2)), hexdec(substr($_sc, 4, 2)),
+    number_format($_jt_scrim_op / 100, 2));
+
+$_jt_solo_card  = trim($settings['jt_solo_card_color'] ?? '')           ?: trim($settings['jt_post_bg_color'] ?? '#000000');
+$_jt_solo_text  = trim($settings['jt_solo_text_color'] ?? '')           ?: trim($settings['jt_text_primary'] ?? '#eaeaea');
+$_jt_solo_text2 = trim($settings['jt_solo_text_secondary_color'] ?? '') ?: trim($settings['jt_text_secondary'] ?? '#8a8a8a');
+$_jt_solo_pad   = max(0, min(120, (int)($settings['jt_solo_pad'] ?? 0)));
+
+// Backdrop image — only when Backdrop Source = image and a file is set.
+$_jt_solo_bgsrc = (($settings['jt_solo_backdrop_source'] ?? 'skin') === 'image') ? 'image' : 'skin';
+$_jt_solo_bgfile = trim($settings['jt_solo_backdrop_image'] ?? '');
+$_jt_solo_bgimg = 'none';
+if ($_jt_solo_bgsrc === 'image' && $_jt_solo_bgfile !== '') {
+    $_safe = preg_replace('#[^A-Za-z0-9._/\-]#', '', $_jt_solo_bgfile);
+    $_jt_solo_bgimg = 'url(' . BASE_URL . $_safe . ')';
+}
+$_jt_solo_bgpos_key = $settings['jt_solo_backdrop_image_pos'] ?? 'center';
+$_jt_solo_bgpos = ($_jt_solo_bgpos_key === 'top') ? 'center top'
+               : (($_jt_solo_bgpos_key === 'bottom') ? 'center bottom' : 'center center');
 ?>
 
 <!-- JIVE TURKEY tile vars: border width / corner radius / ring opacity / sky base -->
 <?php $_cx = function($v){ return str_replace([';','{','}','<','>','"'], '', (string)$v); }; ?>
-<style id="jt-vars">:root{--tile-bw:<?php echo $_jt_bw; ?>px;--tile-radius:<?php echo $_jt_radius; ?>px;--ring-op:<?php echo $_jt_bo; ?>;--jt-sky:<?php echo htmlspecialchars($_jt_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_jt_glow_css); ?>;--nav-line-opacity:<?php echo $_jt_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_jt_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_jt_navglow_strong); ?>;--panel-bg:<?php echo htmlspecialchars($_jt_panel_bg); ?>;--panel-extend:<?php echo (int)$_jt_panel_extend; ?>px;--jt-navbar-bg:<?php echo htmlspecialchars($_jt_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_jt_posts_glow); ?>;--post-count-color:<?php echo $_cx($settings['jt_posts_color'] ?? '#8a8a8a'); ?>;--jt-navline-shadow:<?php echo htmlspecialchars($_jt_navline_shadow); ?>;--nav-line-green:<?php echo $_jt_nav_line_green; ?>;--nav-line-underline-display:<?php echo $_jt_nav_underline; ?>;--grid-gap:<?php echo max(0,min(20,(int)($settings['jt_gap']??2))); ?>px;--jt-band-reserve:<?php echo ($_jt_bon==='1') ? (int)$_jt_bwidth : 0; ?>px;--nav-tile-gap:<?php echo max(0,min(40,(int)($settings['jt_nav_tile_gap']??2))); ?>px;--blog-title-color:<?php echo $_cx($settings['jt_blog_title_color'] ?? '#eaeaea'); ?>;--blog-title-size:<?php echo (int)($settings['jt_blog_title_size'] ?? 20); ?>px;--blog-title-weight:<?php echo $_cx($settings['jt_blog_title_weight'] ?? '300'); ?>;--blog-title-font:<?php echo $_cx($settings['jt_blog_title_font'] ?? 'inherit'); ?>;--tagline-color:<?php echo $_cx($settings['jt_tagline_color'] ?? '#8a8a8a'); ?>;--tagline-size:<?php echo (int)($settings['jt_tagline_size'] ?? 16); ?>px;--tagline-weight:<?php echo $_cx($settings['jt_tagline_weight'] ?? '300'); ?>;--tagline-font:<?php echo $_cx($settings['jt_tagline_font'] ?? 'inherit'); ?>;--bio-size:<?php echo (int)($settings['jt_bio_size'] ?? 14); ?>px;--bio-color:<?php echo $_cx($settings['jt_bio_color'] ?? '#8a8a8a'); ?>;--font-body:<?php echo $_cx($settings['jt_font_body'] ?? "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"); ?>;--bg-primary:<?php echo $_cx($settings['jt_bg_primary'] ?? '#000000'); ?>;--text-primary:<?php echo $_cx($settings['jt_text_primary'] ?? '#eaeaea'); ?>;--text-secondary:<?php echo $_cx($settings['jt_text_secondary'] ?? '#8a8a8a'); ?>;--accent-color:<?php echo $_cx($settings['jt_accent'] ?? '#61e96e'); ?>;--border-color:<?php echo $_cx($settings['jt_border_color'] ?? '#242424'); ?>;--post-bg:<?php echo $_cx($settings['jt_post_bg_color'] ?? '#000000'); ?>;--jt-footer-bg:<?php echo $_jt_footer_bg; ?>;--footer-gap:<?php echo (int)$_jt_footer_gap; ?>px;}</style>
+<style id="jt-vars">:root{--tile-bw:<?php echo $_jt_bw; ?>px;--tile-radius:<?php echo $_jt_radius; ?>px;--ring-op:<?php echo $_jt_bo; ?>;--jt-sky:<?php echo htmlspecialchars($_jt_sky); ?>;--profile-text-glow:<?php echo htmlspecialchars($_jt_glow_css); ?>;--nav-line-opacity:<?php echo $_jt_nav_line_op; ?>;--nav-text-glow:<?php echo htmlspecialchars($_jt_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_jt_navglow_strong); ?>;--panel-bg:<?php echo htmlspecialchars($_jt_panel_bg); ?>;--panel-extend:<?php echo (int)$_jt_panel_extend; ?>px;--jt-navbar-bg:<?php echo htmlspecialchars($_jt_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_jt_posts_glow); ?>;--post-count-color:<?php echo $_cx($settings['jt_posts_color'] ?? '#8a8a8a'); ?>;--jt-navline-shadow:<?php echo htmlspecialchars($_jt_navline_shadow); ?>;--nav-line-green:<?php echo $_jt_nav_line_green; ?>;--nav-line-underline-display:<?php echo $_jt_nav_underline; ?>;--grid-gap:<?php echo max(0,min(20,(int)($settings['jt_gap']??2))); ?>px;--jt-band-reserve:<?php echo ($_jt_bon==='1') ? (int)$_jt_bwidth : 0; ?>px;--nav-tile-gap:<?php echo max(0,min(40,(int)($settings['jt_nav_tile_gap']??2))); ?>px;--blog-title-color:<?php echo $_cx($settings['jt_blog_title_color'] ?? '#eaeaea'); ?>;--blog-title-size:<?php echo (int)($settings['jt_blog_title_size'] ?? 20); ?>px;--blog-title-weight:<?php echo $_cx($settings['jt_blog_title_weight'] ?? '300'); ?>;--blog-title-font:<?php echo $_cx($settings['jt_blog_title_font'] ?? 'inherit'); ?>;--tagline-color:<?php echo $_cx($settings['jt_tagline_color'] ?? '#8a8a8a'); ?>;--tagline-size:<?php echo (int)($settings['jt_tagline_size'] ?? 16); ?>px;--tagline-weight:<?php echo $_cx($settings['jt_tagline_weight'] ?? '300'); ?>;--tagline-font:<?php echo $_cx($settings['jt_tagline_font'] ?? 'inherit'); ?>;--bio-size:<?php echo (int)($settings['jt_bio_size'] ?? 14); ?>px;--bio-color:<?php echo $_cx($settings['jt_bio_color'] ?? '#8a8a8a'); ?>;--font-body:<?php echo $_cx($settings['jt_font_body'] ?? "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"); ?>;--bg-primary:<?php echo $_cx($settings['jt_bg_primary'] ?? '#000000'); ?>;--text-primary:<?php echo $_cx($settings['jt_text_primary'] ?? '#eaeaea'); ?>;--text-secondary:<?php echo $_cx($settings['jt_text_secondary'] ?? '#8a8a8a'); ?>;--accent-color:<?php echo $_cx($settings['jt_accent'] ?? '#61e96e'); ?>;--border-color:<?php echo $_cx($settings['jt_border_color'] ?? '#242424'); ?>;--post-bg:<?php echo $_cx($settings['jt_post_bg_color'] ?? '#000000'); ?>;--jt-footer-bg:<?php echo $_jt_footer_bg; ?>;--footer-gap:<?php echo (int)$_jt_footer_gap; ?>px;--jt-solo-scrim:<?php echo $_jt_solo_scrim; ?>;--jt-solo-card-bg:<?php echo $_cx($_jt_solo_card); ?>;--jt-solo-pad:<?php echo (int)$_jt_solo_pad; ?>px;--jt-solo-text:<?php echo $_cx($_jt_solo_text); ?>;--jt-solo-text-2:<?php echo $_cx($_jt_solo_text2); ?>;--jt-solo-bgimg:<?php echo $_jt_solo_bgimg; ?>;--jt-solo-bgpos:<?php echo $_cx($_jt_solo_bgpos); ?>;}</style>
 
 <!-- JIVE TURKEY config carrier — read by ss-engine-jive-turkey.js (Layer 1
      background, all modes + SURPRISE) and ss-engine-jive-border.js (Layer 2 tile

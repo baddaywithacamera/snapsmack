@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'JIVE TURKEY',
-    'version'     => '0.1.13', // 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
+    'version'     => '0.1.15', // 0.1.15: SOLO IMAGE presentation — backdrop (skin|image) + scrim (colour@opacity) + card (colour/padding/text primary+secondary); supersedes 0.1.14 scrim-only; 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Deliberately loud 70s GRAMOFSMACK skin. A 3-across square grid over an animated flat-graphic background — kaleidoscope, flower field, racing-stripe ribbons, sunburst daisy, Bauhaus shuffle — that never sits still, with SURPRISE rolling a fresh look every visit and a colour border cycling across the tiles. Maximalist on purpose; the photos still win.',
@@ -607,6 +607,94 @@ return [
             'default'  => '#000000',
             'selector' => ':root',
             'property' => '--post-bg',
+        ],
+
+        // ---- SOLO IMAGE (single-post view presentation) -----------------
+        // Three stacked layers, owner-tunable (spec: solo-image-presentation-v0.1):
+        //   1 BACKDROP  — skin background OR an owner image
+        //   2 SCRIM     — a colour layer at variable opacity over the backdrop
+        //                 (100% = solid colour; 0% = backdrop fully shows through)
+        //   3 CARD      — the modal the photo sits in: colour, image padding
+        //                 (caption panel reflows), + primary/secondary text.
+        // All PHP-handled → --jt-solo-* vars (skin-profile.php). Defaults
+        // reproduce the previous look exactly (backdrop=skin, scrim #000 @ 80%).
+        'jt_solo_backdrop_source' => [
+            'section' => 'SOLO IMAGE',
+            'type'    => 'select',
+            'label'   => 'Backdrop Source',
+            'default' => 'skin',
+            'options' => [
+                'skin'  => 'Skin — the animated background shows through',
+                'image' => 'Image — your own background image',
+            ],
+            'hint'    => 'What sits behind the open post. The Scrim (below) tints or covers it.',
+        ],
+        'jt_solo_backdrop_image' => [
+            'section'    => 'SOLO IMAGE',
+            'type'       => 'image',
+            'label'      => 'Backdrop Image',
+            'default'    => '',
+            'accept'     => 'image/jpeg,image/png,image/webp',
+            'min_width'  => 1920,
+            'min_height' => 1080,
+            'hint'       => 'Used when Backdrop Source = Image. Minimum 1920×1080px.',
+        ],
+        'jt_solo_backdrop_image_pos' => [
+            'section' => 'SOLO IMAGE',
+            'type'    => 'select',
+            'label'   => 'Backdrop Image Anchor',
+            'default' => 'center',
+            'options' => [
+                'center' => 'Centre',
+                'top'    => 'Snap to top',
+                'bottom' => 'Snap to bottom',
+            ],
+        ],
+        'jt_solo_scrim_color' => [
+            'section' => 'SOLO IMAGE',
+            'type'    => 'color',
+            'label'   => 'Scrim Colour',
+            'default' => '#000000',
+            'hint'    => 'The colour layer over the backdrop. Pair with Scrim Opacity.',
+        ],
+        'jt_solo_scrim_opacity' => [
+            'section'  => 'SOLO IMAGE',
+            'type'     => 'range_numeric',
+            'label'    => 'Scrim Opacity',
+            'default'  => '80',
+            'min'      => '0', 'max' => '100', 'step' => '5',
+            'unit'     => '%',
+            'hint'     => '0 = backdrop fully visible; 100 = solid Scrim Colour behind the photo. Default 80%.',
+        ],
+        'jt_solo_card_color' => [
+            'section' => 'SOLO IMAGE',
+            'type'    => 'color',
+            'label'   => 'Card Colour',
+            'default' => '',
+            'hint'    => 'The modal colour around the image and behind the caption panel. Blank = follow Image Page Background.',
+        ],
+        'jt_solo_pad' => [
+            'section'  => 'SOLO IMAGE',
+            'type'     => 'range_numeric',
+            'label'    => 'Image Padding',
+            'default'  => '0',
+            'min'      => '0', 'max' => '120', 'step' => '4',
+            'unit'     => 'px',
+            'hint'     => 'Space around the image inside the card. The caption panel reflows to fit.',
+        ],
+        'jt_solo_text_color' => [
+            'section' => 'SOLO IMAGE',
+            'type'    => 'color',
+            'label'   => 'Card Text — Primary',
+            'default' => '',
+            'hint'    => 'Caption, username, EXIF values. Blank = follow Primary Text.',
+        ],
+        'jt_solo_text_secondary_color' => [
+            'section' => 'SOLO IMAGE',
+            'type'    => 'color',
+            'label'   => 'Card Text — Secondary',
+            'default' => '',
+            'hint'    => 'EXIF labels, date, meta. Blank = follow Secondary Text.',
         ],
 
                 // ---- TEXT GLOW ---------------------------------------------------
