@@ -43,10 +43,9 @@
     var CW={}; try{CW=JSON.parse(A(h,'data-jt-colourways','{}'))||{};}catch(e){}
     var COLS=(CW[curName]&&CW[curName].colors)?CW[curName].colors.slice():['#d99a2b','#bd4e1f','#6b3f24'];
     COLS=liveCols(COLS);
-    var grid=(tiles[0].closest&&tiles[0].closest('.jt-grid'))||tiles[0].parentNode;
-    // OUTWARD band grows into the gutter, so the gap TRACKS the border width (per 8493148f):
-    // adjacent tiles' bands fill the gutter — no background shows between tiles.
-    if(grid) grid.style.gap=Math.max(2,W)+'px';
+    // GUTTER = TILE SPACING (--grid-gap) in CSS; the band width is reserved as grid
+    // padding (--jt-band-reserve), so the grid never exceeds the 935px Instagram column.
+    // This engine NEVER writes grid.style.gap or any layout property.
     // OUTWARD border: hide any inside ring; the band is the tile's own box-shadow.
     for(var ti=0; ti<tiles.length; ti++){
       var r=tiles[ti].querySelector('.jt-ring'); if(r) r.style.display='none';

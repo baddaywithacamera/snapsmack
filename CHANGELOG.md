@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.421 — "Hurricane Fluttershy" (JIVE TURKEY: tile gutter is CSS-driven, no reflow jump) (2026-07-18)
+
+Fixes the JIVE TURKEY grid "jump apart, land back together" flash on load and removes the last inline-style injection from the tile-border engine.
+
+- **Grid gutter now comes entirely from CSS.** The border engine no longer writes `grid.style.gap` after paint — that caused a visible reflow on every load and violated the no-inline-styles rule. `skin-profile.php` emits a new `--jt-tile-gap` custom property (equal to the border width when the tile border is on, else the TILE SPACING setting); `style.css` reads it on `.jt-grid`, so the gutter is correct on the very first paint and the engine only animates the colour bands. (`assets/js/ss-engine-jive-border.js`, `skins/jive-turkey/skin-profile.php`, `skins/jive-turkey/style.css`.)
+
 ## 0.7.418 — "The Best Night Ever" (hotfix: SMACKBACK ignores dev scratch) (2026-07-18)
 
 Emergency fix: a core update flagged the dev-scratch directories as unauthorised on every spoke, tripping SMACKBACK into lockdown.

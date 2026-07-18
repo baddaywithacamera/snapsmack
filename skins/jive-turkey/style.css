@@ -382,6 +382,10 @@ img { display: block; max-width: 100%; }
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--grid-gap);
+    /* Reserve the colour band as padding so the outward box-shadow band never
+       pushes the grid past the 935px Instagram column: images shrink to fit
+       instead of the grid bulging. Zero when the border is off. */
+    padding: var(--jt-band-reserve, 0px);
     /* Transparent on purpose — the fixed jive-turkey layer shows through the gaps
        between tiles. JIVE TURKEY never paints a gap/background colour (unlike The
        Grid); the jive-turkey IS the background. */
