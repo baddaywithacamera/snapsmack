@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.422 — "Games Ponies Play" (JIVE TURKEY: colour border moves INSIDE the tile; spacing stays a pure gap) (2026-07-18)
+
+Rebuilds the JIVE TURKEY tile border so TILE SPACING is the gap between tiles and the border stops eating it. (Supersedes 0.7.421, which drew the band outward into the gutter.)
+
+- **The colour border is now drawn INSIDE each tile, not outward into the gutter.** The photo is inset by the border width (`--jt-band-reserve`); the band is painted on the tile's `.jt-ring` overlay within that reserved inset (never over the photo, never reflowing it); and the grid gap stays pure background — border-edge to border-edge equals the TILE SPACING you set, whatever the border width. Images shrink so the grid stays inside the 935px Instagram column, and the engine writes no layout property. Control labels/hints updated to match. (`assets/js/ss-engine-jive-border.js`, `skins/jive-turkey/style.css`, `skins/jive-turkey/manifest.php`.)
+
 ## 0.7.421 — "Hurricane Fluttershy" (JIVE TURKEY: tile gutter is CSS-driven, no reflow jump) (2026-07-18)
 
 Fixes the JIVE TURKEY grid "jump apart, land back together" flash on load and removes the last inline-style injection from the tile-border engine.
