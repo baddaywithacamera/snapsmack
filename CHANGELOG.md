@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.427 — "Maud Pie" (JIVE TURKEY SCROLLS: all 8 travel directions) (2026-07-19)
+
+- **SCROLLS now travels in any of 8 directions.** The scrolling-ribbon background could only go vertical, horizontal, or the two down-diagonals (4). It now does the full eight — up, down, left, right, and all four diagonals — selectable per the Scrolls Direction picker, plus RANDOM across all eight. Each direction is the ribbon tiling rotated in 45° steps, so the ribbons reorient and travel the chosen way. Old `v/h/diag/diag2` values still resolve as back-compat aliases. (`assets/js/ss-engine-jive-turkey.js`, `skins/jive-turkey/manifest.php`, `skins/jive-turkey/skin-profile.php`.)
+- Skin JIVE TURKEY 0.1.18.
+
 ## 0.7.426 — "Pinkie Apple Pie" (JIVE TURKEY goes production; /wip auto-removed on update; caption cleanup) (2026-07-19)
 
 Promotes JIVE TURKEY to production and clears two long-standing annoyances.

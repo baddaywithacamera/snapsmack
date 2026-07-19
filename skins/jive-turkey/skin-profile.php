@@ -110,7 +110,7 @@ foreach ($_jt_cws as $_k => $_c) {
 }
 
 $_jt_mode    = $settings['jt_mode'] ?? 'surprise';
-$_jt_saxis   = in_array($settings['jt_scrolls_axis'] ?? 'v', ['v','h','diag','diag2','random'], true) ? ($settings['jt_scrolls_axis'] ?? 'v') : 'v';   // SCROLLS ribbon direction
+$_jt_saxis   = in_array($settings['jt_scrolls_axis'] ?? 'down', ['down','up','left','right','dr','dl','ur','ul','v','h','diag','diag2','random'], true) ? ($settings['jt_scrolls_axis'] ?? 'down') : 'down';   // SCROLLS travel direction (8-way; v/h/diag/diag2 back-compat aliases)
 $_jt_sfade   = in_array($settings['jt_scrolls_colour'] ?? 'fade', ['fade','blink','off'], true) ? ($settings['jt_scrolls_colour'] ?? 'fade') : 'fade';  // SCROLLS colour drift
 $_jt_random  = (($settings['jt_random_colour'] ?? '1') === '0') ? '0' : '1';
 $_jt_speed   = max(1, min(100, (int)($settings['jt_speed'] ?? 45)));
