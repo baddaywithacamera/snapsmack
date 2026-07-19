@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'JIVE TURKEY',
-    'version'     => '0.1.17', // 0.1.17: JIVE TURKEY border restored to OUTWARD box-shadow band (outside the photo, image never resizes) with the tile spacing that worked; image corner now matches the band corner (no corner gap); new Transition Length control. // 0.1.16: SCROLLS background mode (recoloured 70s ribbon-scroll tile; direction v/h/diag/random; colour drift fade/blink/off) + tile corner radius nests inside the ring. 0.1.15: SOLO IMAGE presentation — backdrop (skin|image) + scrim (colour@opacity) + card (colour/padding/text primary+secondary); supersedes 0.1.14 scrim-only; 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
+    'version'     => '0.1.18', // 0.1.18: SCROLLS travels in all 8 directions (up/down/left/right + 4 diagonals, or random over 8). // 0.1.17: JIVE TURKEY border restored to OUTWARD box-shadow band (outside the photo, image never resizes) with the tile spacing that worked; image corner now matches the band corner (no corner gap); new Transition Length control. // 0.1.16: SCROLLS background mode (recoloured 70s ribbon-scroll tile; direction v/h/diag/random; colour drift fade/blink/off) + tile corner radius nests inside the ring. 0.1.15: SOLO IMAGE presentation — backdrop (skin|image) + scrim (colour@opacity) + card (colour/padding/text primary+secondary); supersedes 0.1.14 scrim-only; 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Deliberately loud 70s GRAMOFSMACK skin. A 3-across square grid over an animated flat-graphic background — kaleidoscope, flower field, racing-stripe ribbons, sunburst daisy, Bauhaus shuffle — that never sits still, with SURPRISE rolling a fresh look every visit and a colour border cycling across the tiles. Maximalist on purpose; the photos still win.',
@@ -120,15 +120,19 @@ return [
             'section' => 'BACKGROUND',
             'type'    => 'select',
             'label'   => 'Scrolls Direction',
-            'default' => 'v',
+            'default' => 'down',
             'options' => [
-                'v'      => 'Vertical — ribbons run top to bottom',
-                'h'      => 'Horizontal — ribbons run side to side',
-                'diag'   => 'Diagonal — ribbons run corner to corner ↘',
-                'diag2'  => 'Diagonal — the other way ↙',
-                'random' => 'Random — a different direction each visit',
+                'down'   => 'Down ↓',
+                'up'     => 'Up ↑',
+                'left'   => 'Left ←',
+                'right'  => 'Right →',
+                'dr'     => 'Down-right ↘',
+                'dl'     => 'Down-left ↙',
+                'ur'     => 'Up-right ↗',
+                'ul'     => 'Up-left ↖',
+                'random' => 'Random — a different one of the 8 each visit',
             ],
-            'hint'    => 'Only affects SCROLLS: run the striped ribbons vertically, horizontally, on a diagonal, or let RANDOM pick a direction each visit. The scrolls slide off one edge and reappear on the other.',
+            'hint'    => 'Only affects SCROLLS: which way the striped ribbons travel — any of 8 directions (up/down/left/right and the four diagonals), or let RANDOM pick one each visit. The scrolls slide off one edge and reappear on the other.',
         ],
         'jt_scrolls_colour' => [
             'section' => 'BACKGROUND',

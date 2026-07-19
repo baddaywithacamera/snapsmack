@@ -147,12 +147,24 @@
         var gFactor = spOf(gSpeed) / spOf(45);
         var cycleSecs = Math.max(6, parseFloat(host.getAttribute('data-jt-cycle')) || 18);
         var randomColour = host.getAttribute('data-jt-random-colour') === '1';
-        var scrollsAxis = (host.getAttribute('data-jt-scrolls-axis') || 'v').toLowerCase();
+        var scrollsAxis = (host.getAttribute('data-jt-scrolls-axis') || 'down').toLowerCase();
         var scrollsAngle = 0;
         (function () {
+            // 8 travel directions = the "scrolls down" tiling rotated in 45° steps.
+            // ctx.rotate is clockwise (y is down), so local +y ("down") maps to screen
+            // (-sin a, cos a): 0=down, PI=up, PI/2=left, -PI/2=right, and the diagonals
+            // as below. v/h/diag/diag2 kept as back-compat aliases for saved settings.
+            var ANG = {
+                down: 0,           up: Math.PI,
+                left: Math.PI/2,   right: -Math.PI/2,
+                dr: -Math.PI/4,    dl: Math.PI/4,          // down-right / down-left
+                ur: -3*Math.PI/4,  ul: 3*Math.PI/4,        // up-right   / up-left
+                v: 0, h: Math.PI/2, diag: Math.PI/4, diag2: -Math.PI/4
+            };
+            var EIGHT = ['down','up','left','right','dr','dl','ur','ul'];
             var pick = scrollsAxis;
-            if (pick === 'random') { var opts = ['v','h','diag','diag2']; pick = opts[Math.floor(Math.random()*opts.length)]; }
-            scrollsAngle = pick === 'h' ? Math.PI/2 : pick === 'diag' ? Math.PI/4 : pick === 'diag2' ? -Math.PI/4 : 0;
+            if (pick === 'random') { pick = EIGHT[Math.floor(Math.random()*EIGHT.length)]; }
+            scrollsAngle = (ANG[pick] != null) ? ANG[pick] : 0;
         })();
         var scrollsFade = (host.getAttribute('data-jt-scrolls-fade') || 'fade').toLowerCase();
         if (['fade','blink','off'].indexOf(scrollsFade) < 0) scrollsFade = 'fade';
