@@ -236,10 +236,11 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
         <!-- Scrollable body -->
         <div class="jt-post-ig-body">
 
-            <!-- Caption IG-style: bold sitename inline + caption text -->
+            <!-- Caption: caption text only. NO sitename prefix — the account name is
+                 already shown in the header row above the photo, so repeating it here
+                 is redundant. (Sean has asked for this removed repeatedly; do not re-add.) -->
             <div class="jt-post-caption-block">
                 <p class="jt-post-ig-caption">
-                    <span class="jt-post-ig-caption-user"><?php echo htmlspecialchars($_site_name); ?></span>
                     <?php
                     $caption_parts = [];
                     if (!empty($post['title'])) {
