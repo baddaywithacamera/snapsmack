@@ -222,6 +222,21 @@ const UPDATER_DEPRECATED_FILES = [
     'core/flkrdckr-api.php'   => '0.7.184', // renamed → core/flkrfckr-api.php (FLKR DCKR → FLKR FCKR)
 ];
 
+/**
+ * Directories that must NOT persist on an install, keyed by path (relative to the
+ * install root) with the version in which the updater began removing them.
+ *
+ * Same trust model and scoping as UPDATER_DEPRECATED_FILES: a hardcoded, in-core
+ * curated list, acted on ONLY after the release ZIP is Ed25519-verified, NEVER a
+ * tree scan and NEVER a user/content directory. Each named directory is removed
+ * WHOLE (recursively). Use only for dev-only scratch that is unambiguously not
+ * user content — e.g. /wip, the work-in-progress skin scratch that should never
+ * ship to or linger on a production spoke.
+ */
+const UPDATER_DEPRECATED_DIRS = [
+    'wip' => '0.7.425',  // dev work-in-progress scratch; never belongs on an install
+];
+
 // ─── VERSION CHECK ──────────────────────────────────────────────────────────
 
 /**
@@ -1960,6 +1975,28 @@ function updater_detect_orphan_files(string $installing_version): array {
 }
 
 /**
+ * Recursively delete a directory and everything under it. Returns true only on
+ * FULL success. Symlinks are unlinked (never followed), so it cannot escape the
+ * directory it is given. Used ONLY by updater_remove_known_orphans() against the
+ * curated UPDATER_DEPRECATED_DIRS whitelist — never call it on user content.
+ */
+function updater_rrmdir(string $dir): bool {
+    if (!is_dir($dir)) return true;
+    $ok = true;
+    $it = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ($it as $f) {
+        $path = $f->getPathname();
+        if ($f->isLink())      { $ok = @unlink($path) && $ok; }
+        elseif ($f->isDir())   { $ok = @rmdir($path)  && $ok; }
+        else                   { $ok = @unlink($path) && $ok; }
+    }
+    return @rmdir($dir) && $ok;
+}
+
+/**
  * Auto-remove known orphaned core files — the updater picking up after itself.
  *
  * Scoped STRICTLY to the curated UPDATER_DEPRECATED_FILES whitelist: files this
@@ -1992,6 +2029,37 @@ function updater_remove_known_orphans(string $installing_version): array {
             $removed[] = $rel_path;
         } else {
             $failed[] = $rel_path;
+        }
+    }
+
+    // Curated deprecated DIRECTORIES — removed whole (recursively). Same strict
+    // scoping as the file list above: exact named paths only, never a tree scan,
+    // and only after Ed25519 verification. For dev-only scratch (e.g. /wip) that
+    // must not persist on a production install.
+    foreach (UPDATER_DEPRECATED_DIRS as $rel_path => $removed_in) {
+        if (version_compare($removed_in, $installing_version, '>')) {
+            continue;
+        }
+        if (str_contains($rel_path, '..') || str_starts_with($rel_path, '/')) {
+            continue;
+        }
+        $full = $root . '/' . ltrim($rel_path, '/');
+        if (!is_dir($full)) {
+            continue;
+        }
+        // Symlink defence: refuse anything that resolves outside the install root.
+        $real_root = realpath($root);
+        $real_full = realpath($full);
+        if ($real_root === false || $real_full === false
+            || $real_full === $real_root
+            || strpos($real_full . DIRECTORY_SEPARATOR, $real_root . DIRECTORY_SEPARATOR) !== 0) {
+            $failed[] = $rel_path . '/';
+            continue;
+        }
+        if (updater_rrmdir($real_full)) {
+            $removed[] = $rel_path . '/';
+        } else {
+            $failed[] = $rel_path . '/';
         }
     }
 
