@@ -1538,7 +1538,14 @@ body.is-blogroll .blogroll-peer-url { display: none; }
     position: relative;
     border-radius: var(--tile-radius, 4px);
 }
-.jt-grid .jt-tile a,
+/* The photo is inset by --jt-band-reserve to sit inside the colour ring, so its
+   corner radius must shrink by the SAME amount to stay concentric with the ring.
+   Inheriting the full --tile-radius here made the inset photo over-round its
+   corners, pulling them off the frame and letting the tile background show as a
+   cream sliver at each corner. */
+.jt-grid .jt-tile a {
+    border-radius: calc(var(--tile-radius, 4px) - var(--jt-band-reserve, 0px));
+}
 .jt-grid .jt-tile img { border-radius: inherit; }
 .jt-ring {
     position: absolute;

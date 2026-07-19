@@ -198,13 +198,15 @@ const UPDATER_KNOWN_MIGRATIONS = [
  * Files removed/renamed in the SnapSmack distribution, keyed by filename
  * (relative to install root) with the version string in which they were removed.
  *
- * REFERENCE / DETECTION ONLY — the CMS does NOT delete a user's files. An
- * automatic file-removal path is a deletion primitive: a fleet-wide `rm` to
- * anyone who compromises the hub or slips something into a package, and it is
- * not our right to silently alter a user's filesystem (secaudit 029).
- * updater_detect_orphan_files() reads this list and REPORTS which listed orphans
- * are still present, so the admin can remove them by hand and the SMACKBACK
- * review can annotate them "known orphan — safe to remove".
+ * AUTO-CLEANUP whitelist. updater_remove_known_orphans() deletes the files on
+ * this list that are still present after an update — the updater picking up
+ * after itself. Deliberately scoped: it acts ONLY on this hardcoded, in-core
+ * list (never a tree scan, never user or per-install files) and runs only after
+ * the release ZIP is Ed25519-verified, so a removal here carries the same trust
+ * as any other signed core code — anyone who could poison this list already has
+ * code execution, which bounds the "deletion primitive" concern from secaudit
+ * 029 (that is why report-only was relaxed to scoped auto-removal).
+ * updater_detect_orphan_files() remains as a report-only, no-unlink view.
  *
  * Add an entry whenever a file is removed/renamed in the repo. Never delete
  * entries — older installs still need them flagged.
@@ -1955,6 +1957,45 @@ function updater_detect_orphan_files(string $installing_version): array {
     }
 
     return ['present' => $present];
+}
+
+/**
+ * Auto-remove known orphaned core files — the updater picking up after itself.
+ *
+ * Scoped STRICTLY to the curated UPDATER_DEPRECATED_FILES whitelist: files this
+ * project itself shipped and later renamed/removed. It NEVER scans the tree and
+ * NEVER touches user or per-install files, and it runs only after the release is
+ * Ed25519-verified, so it keeps the intent of secaudit 029 (no fleet-wide rm of
+ * arbitrary or user files) while actually cleaning the renames instead of nagging
+ * the admin. Anything it can't unlink (e.g. read-only) comes back in 'failed'.
+ */
+function updater_remove_known_orphans(string $installing_version): array {
+    $root    = dirname(__DIR__);
+    $removed = [];
+    $failed  = [];
+
+    foreach (UPDATER_DEPRECATED_FILES as $rel_path => $removed_in) {
+        // Only act on orphans whose removal version is <= the version installed.
+        if (version_compare($removed_in, $installing_version, '>')) {
+            continue;
+        }
+        // Defensive: never follow traversal or absolute paths out of the whitelist.
+        if (str_contains($rel_path, '..') || str_starts_with($rel_path, '/')) {
+            continue;
+        }
+        $full = $root . '/' . ltrim($rel_path, '/');
+        if (!file_exists($full)) {
+            continue;
+        }
+        // Only unlink plain files on the whitelist — never directories.
+        if (is_file($full) && @unlink($full)) {
+            $removed[] = $rel_path;
+        } else {
+            $failed[] = $rel_path;
+        }
+    }
+
+    return ['removed' => $removed, 'failed' => $failed];
 }
 
 /**

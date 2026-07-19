@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'JIVE TURKEY',
-    'version'     => '0.1.15', // 0.1.15: SOLO IMAGE presentation — backdrop (skin|image) + scrim (colour@opacity) + card (colour/padding/text primary+secondary); supersedes 0.1.14 scrim-only; 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
+    'version'     => '0.1.16', // 0.1.16: SCROLLS background mode (recoloured 70s ribbon-scroll tile; direction v/h/diag/random; colour drift fade/blink/off) + tile corner radius nests inside the ring. 0.1.15: SOLO IMAGE presentation — backdrop (skin|image) + scrim (colour@opacity) + card (colour/padding/text primary+secondary); supersedes 0.1.14 scrim-only; 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Deliberately loud 70s GRAMOFSMACK skin. A 3-across square grid over an animated flat-graphic background — kaleidoscope, flower field, racing-stripe ribbons, sunburst daisy, Bauhaus shuffle — that never sits still, with SURPRISE rolling a fresh look every visit and a colour border cycling across the tiles. Maximalist on purpose; the photos still win.',
@@ -111,9 +111,36 @@ return [
                 'flow'     => 'FLOW — racing-stripe ribbons',
                 'daisy'    => 'DAISY — sunburst + smiley daisy',
                 'reels'    => 'REELS — Bauhaus shuffle grid',
+                'scrolls'  => 'SCROLLS — striped ribbons + spiral scrolls',
                 'solid'    => 'SOLID — plain background colour, no animation',
             ],
             'hint'    => 'Pick one look, or let SURPRISE / CYCLE rotate them.',
+        ],
+        'jt_scrolls_axis' => [
+            'section' => 'BACKGROUND',
+            'type'    => 'select',
+            'label'   => 'Scrolls Direction',
+            'default' => 'v',
+            'options' => [
+                'v'      => 'Vertical — ribbons run top to bottom',
+                'h'      => 'Horizontal — ribbons run side to side',
+                'diag'   => 'Diagonal — ribbons run corner to corner ↘',
+                'diag2'  => 'Diagonal — the other way ↙',
+                'random' => 'Random — a different direction each visit',
+            ],
+            'hint'    => 'Only affects SCROLLS: run the striped ribbons vertically, horizontally, on a diagonal, or let RANDOM pick a direction each visit. The scrolls slide off one edge and reappear on the other.',
+        ],
+        'jt_scrolls_colour' => [
+            'section' => 'BACKGROUND',
+            'type'    => 'select',
+            'label'   => 'Scrolls Colour Drift',
+            'default' => 'fade',
+            'options' => [
+                'fade'  => 'Fade — colours drift slowly through the palette',
+                'blink' => 'Blink — colours switch on a beat',
+                'off'   => 'Off — hold one colourway',
+            ],
+            'hint'    => 'Only affects SCROLLS: let the ribbon colours cycle through the colourway. Fade crossfades gracefully; Blink switches on a beat; Off holds still. The field and the pale centre-line stay put either way.',
         ],
         'jt_random_colour' => [
             'section' => 'BACKGROUND',
