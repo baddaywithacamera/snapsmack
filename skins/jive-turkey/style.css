@@ -1545,8 +1545,19 @@ body.is-blogroll .blogroll-peer-url { display: none; }
    Inheriting the full --tile-radius here made the inset photo over-round its
    corners, pulling them off the frame and letting the tile background show as a
    cream sliver at each corner. */
+.jt-grid .jt-tile a {
+    /* Photo lives INSIDE the ring: inset by the ring thickness so the
+       colour border frames the image in its own band and never paints
+       over the photo. width/height:auto lets the inset size the box (the
+       base .jt-tile a rule pins them to 100%). Moves the photo inward
+       ONLY -- never touches --grid-gap, so tile spacing cannot regress.
+       Fits the 935px column: photo width = tile - 2x ring. [JT grid-inset fix 2026-07-19] */
+    inset: var(--tile-bw, 8px);
+    width: auto;
+    height: auto;
+}
 .jt-grid .jt-tile a,
-.jt-grid .jt-tile img { border-radius: 0; }
+.jt-grid .jt-tile img { border-radius: calc(var(--tile-radius, 4px) - var(--tile-bw, 8px)); }
 .jt-ring {
     position: absolute;
     inset: 0;
