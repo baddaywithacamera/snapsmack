@@ -10,6 +10,10 @@
 
 # SnapSmack Changelog
 
+## 0.7.429 "TESTING TESTING 4-5-6" — 2026-07-19
+- JIVE TURKEY border: restored the SHRINK/EXPAND width-pulse. 0.7.428 had left a constant-width band that only recoloured; the pulse is now the .jt-ring padding, breathing INWARD within --tile-bw, so the 20px Tile Spacing and the image are never touched (no return of the gutter-eating outward shadow). Re-added the Transition Length control (data-jt-border-trans).
+- JIVE TURKEY grid: dropped the vestigial left/right --jt-band-reserve padding so the outer tiles line up with the nav; top/bottom breathing kept.
+
 All notable changes to SnapSmack are documented here. Newest release first.
 
 ## 0.7.428 — "Testing Testing 1-2-3" (JIVE TURKEY border back INSIDE the ring; tile spacing restored; AURORA/PARADE/INSTANT CAMERA controls restored) (2026-07-19)
