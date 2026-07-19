@@ -2044,6 +2044,27 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
             </div>
 
+            <div class="theme-card" data-stats="<?php echo ss_card_stats('craptasti.ca', $_demo_stats); ?>">
+                <div class="theme-main-shot">
+                    <a href="img/jturk-landing.png" data-lb="img/jturk-landing.png">
+                        <img src="img/jturk-landing.png" alt="Jive Turkey — landing">
+                    </a>
+                </div>
+                <div class="theme-thumbs">
+                    <a href="img/jturk-archive.png" data-lb="img/jturk-archive.png">
+                        <img src="img/jturk-archive.png" alt="Jive Turkey — archive">
+                    </a>
+                    <a href="img/jturk-page.png" data-lb="img/jturk-page.png">
+                        <img src="img/jturk-page.png" alt="Jive Turkey — post view">
+                    </a>
+                </div>
+                <div class="theme-info">
+                    <h3>Jive Turkey</h3>
+                    <p>Unapologetic 70s. An animated flat-graphic background — kaleidoscope, flower field, racing-stripe ribbons, sunburst daisy, Bauhaus shuffle — churns behind a 3-across square grid, with a colour border cycling across the tiles and SURPRISE rolling a fresh look every visit. Maximalist on purpose; the photos still win.</p>
+                    <a href="https://craptasti.ca" target="_blank" class="theme-link"><span class="theme-link-label">View live site</span>craptasti.ca →</a>
+                </div>
+            </div>
+
         </div>
     </div>
 </section>

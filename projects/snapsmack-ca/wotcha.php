@@ -137,6 +137,10 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Jul 19</span>
+                    <a href="#jive-turkey">Dust Off Your Bell Bottoms</a>
+                </li>
+                <li>
                     <span class="idx-date">Jul 5</span>
                     <a href="#posse">POSSE Is Not for Pussies</a>
                 </li>
@@ -272,6 +276,18 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
 
             <!-- POST: POSSE -->
+            <article class="post" id="jive-turkey">
+                <div class="post-meta">
+                    <span class="post-date">July 19, 2026</span>
+                    <span class="post-tag">Skins</span>
+                </div>
+                <h2><a href="#jive-turkey">Dust Off Your Bell Bottoms</a></h2>
+                <p>JIVE TURKEY is live, and it does not whisper. Men, grow the porn stache. Ladies, bust out that macram&eacute; plant hanger. Everyone, dust off the bell bottoms &mdash; the 70s are back, and we&rsquo;ve got some fresh Gen Z catnip right here.</p>
+                <p>It&rsquo;s the loud one in the GRAMOFSMACK family: a 3-across square grid riding an animated flat-graphic background that never sits still. Pick your poison &mdash; a spinning kaleidoscope, a scrolling field of flowers, racing-stripe ribbons that slide off one edge and reappear on the next, a sunburst daisy, or a Bauhaus shuffle of hard-edged shapes. A colour border pulses across the tiles in a wave, and SURPRISE rolls a fresh look every single visit, so no two loads of your blog land the same.</p>
+                <p>Maximalist on purpose &mdash; but the photographs still win. Every bit of the racket is tuned to frame the work, not bury it: palette, motion speed, border, spacing all dial up or down in the skin settings, so you can run it full acid-trip or pull it back to a warm retro hum. Loud when you want loud, restrained when the pictures ask for it.</p>
+                <p>The 70s revival is doing real numbers with a generation that wasn&rsquo;t there the first time, and this is the skin that meets the moment: nostalgia they never lived, rendered in pure CSS and canvas, wrapped around your own photos on your own site. JIVE TURKEY is production-ready and available now through the SnapSmack Skin Packager. Free, like everything here. Go make your blog groovy.</p>
+            </article>
+
             <article class="post" id="posse">
                 <div class="post-meta">
                     <span class="post-date">July 5, 2026</span>

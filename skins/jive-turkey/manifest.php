@@ -35,7 +35,7 @@ return [
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Deliberately loud 70s GRAMOFSMACK skin. A 3-across square grid over an animated flat-graphic background — kaleidoscope, flower field, racing-stripe ribbons, sunburst daisy, Bauhaus shuffle — that never sits still, with SURPRISE rolling a fresh look every visit and a colour border cycling across the tiles. Maximalist on purpose; the photos still win.',
-    'status'      => 'beta',
+    'status'      => 'stable',
     'modes'       => ['carousel'],
 
     // Desktop-only — never offered on mobile-primary installs. Propagated to the
