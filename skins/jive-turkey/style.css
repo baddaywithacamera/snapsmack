@@ -382,6 +382,10 @@ img { display: block; max-width: 100%; }
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--grid-gap);
+    /* Reserve the colour band as padding so the outward box-shadow band never
+       pushes the grid past the 935px Instagram column: images shrink to fit
+       instead of the grid bulging. Zero when the border is off. */
+    padding: var(--jt-band-reserve, 0px);
     /* Transparent on purpose — the fixed jive-turkey layer shows through the gaps
        between tiles. JIVE TURKEY never paints a gap/background colour (unlike The
        Grid); the jive-turkey IS the background. */
@@ -395,7 +399,7 @@ img { display: block; max-width: 100%; }
     position: relative;
     aspect-ratio: 1 / 1;
     overflow: hidden;
-    background: transparent;
+    background: var(--border-color);
     border-radius: var(--tile-radius);
     /* Off-screen tiles skip layout/paint entirely — the mask-composite ring is
        costly, so on a 1400-image grid this keeps render work to what's visible.
@@ -435,11 +439,9 @@ img { display: block; max-width: 100%; }
     width: 100%;
     height: 100%;
     position: absolute;
-    /* Inset by the reserved band so the photo shrinks to make room for the colour
-       border; static, so the pulsing band never reflows the image. */
-    inset: var(--jt-band-reserve, 0px);
-    border-radius: calc(var(--tile-radius) - var(--jt-band-reserve, 0px));
-    overflow: hidden;
+    /* Photo fills the whole tile; the tile's overflow:hidden clips it to the tile
+       radius, so the image corner matches the box-shadow band corner (no gap). */
+    inset: 0;
 }
 
 .jt-tile img {
@@ -1543,10 +1545,8 @@ body.is-blogroll .blogroll-peer-url { display: none; }
    Inheriting the full --tile-radius here made the inset photo over-round its
    corners, pulling them off the frame and letting the tile background show as a
    cream sliver at each corner. */
-.jt-grid .jt-tile a {
-    border-radius: calc(var(--tile-radius, 4px) - var(--jt-band-reserve, 0px));
-}
-.jt-grid .jt-tile img { border-radius: inherit; }
+.jt-grid .jt-tile a,
+.jt-grid .jt-tile img { border-radius: 0; }
 .jt-ring {
     position: absolute;
     inset: 0;

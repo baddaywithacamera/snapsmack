@@ -86,7 +86,7 @@ $current_gutter = (int)($settings['static_content_gutter'] ?? 40);
 
         <!-- ── SAVE ───────────────────────────────────────────────────── -->
         <div style="margin-top:4px;">
-            <button type="submit" name="save_static_appearance" class="btn btn-primary">SAVE STATIC PAGE APPEARANCE</button>
+            <button type="submit" name="save_static_appearance" class="master-update-btn">SAVE STATIC PAGE APPEARANCE</button>
         </div>
 
     </div>

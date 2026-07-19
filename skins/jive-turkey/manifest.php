@@ -31,7 +31,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'JIVE TURKEY',
-    'version'     => '0.1.16', // 0.1.16: SCROLLS background mode (recoloured 70s ribbon-scroll tile; direction v/h/diag/random; colour drift fade/blink/off) + tile corner radius nests inside the ring. 0.1.15: SOLO IMAGE presentation — backdrop (skin|image) + scrim (colour@opacity) + card (colour/padding/text primary+secondary); supersedes 0.1.14 scrim-only; 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
+    'version'     => '0.1.17', // 0.1.17: JIVE TURKEY border restored to OUTWARD box-shadow band (outside the photo, image never resizes) with the tile spacing that worked; image corner now matches the band corner (no corner gap); new Transition Length control. // 0.1.16: SCROLLS background mode (recoloured 70s ribbon-scroll tile; direction v/h/diag/random; colour drift fade/blink/off) + tile corner radius nests inside the ring. 0.1.15: SOLO IMAGE presentation — backdrop (skin|image) + scrim (colour@opacity) + card (colour/padding/text primary+secondary); supersedes 0.1.14 scrim-only; 0.1.4: border rides .jt-ring (no photo resize / dark corners); DAISY clears panel; crisp bg, % units, regrouped settings
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Deliberately loud 70s GRAMOFSMACK skin. A 3-across square grid over an animated flat-graphic background — kaleidoscope, flower field, racing-stripe ribbons, sunburst daisy, Bauhaus shuffle — that never sits still, with SURPRISE rolling a fresh look every visit and a colour border cycling across the tiles. Maximalist on purpose; the photos still win.',
@@ -179,7 +179,7 @@ return [
             'label'   => 'Tile Borders',
             'default' => '1',
             'options' => [ '1' => 'On — colour border', '0' => 'Off' ],
-            'hint'    => 'A colour band drawn INSIDE each tile edge (the photo shrinks to make room, never covered), shrinking to nothing and expanding back as the next colourway colour, staggered across the grid as a wave.',
+            'hint'    => 'A colour band OUTSIDE each tile, in the gutter (never over the photo, image never resizes). It shrinks in to nothing, flips to the next colourway colour, then pops back out — staggered across the grid as a wave.',
         ],
         'jt_border_width' => [
             'section'  => 'TILE BORDER',
@@ -188,7 +188,7 @@ return [
             'default'  => '12',
             'min'      => '5', 'max' => '15', 'step' => '1',
             'unit'     => 'px',
-            'hint'     => 'Full width of the colour band inside each tile. The photo shrinks by this much to make room, so your tile spacing stays pure background and the grid stays within the standard Instagram column width. The band shrinks to 0 and back on each colour change.',
+            'hint'     => 'Full width of the colour band (it grows outward into the tile gutter, never over the photo). Reserved as grid padding so the grid stays within the standard Instagram column width. The band shrinks to 0 and back on each colour change.',
         ],
         'jt_border_speed' => [
             'section'  => 'TILE BORDER',
@@ -207,6 +207,15 @@ return [
             'min'      => '0', 'max' => '100', 'step' => '5',
             'unit'     => '%',
             'hint'     => 'How much the colour change staggers across the grid as a travelling wave.',
+        ],
+        'jt_border_trans' => [
+            'section'  => 'TILE BORDER',
+            'type'     => 'range_numeric',
+            'label'    => 'Transition Length',
+            'default'  => '35',
+            'min'      => '0', 'max' => '100', 'step' => '5',
+            'unit'     => '%',
+            'hint'     => 'How long the shrink-in / pop-out takes on each colour change. Higher = slower and easier to see; the band always rests at full width between changes.',
         ],
         'jt_border_dir' => [
             'section' => 'TILE BORDER',

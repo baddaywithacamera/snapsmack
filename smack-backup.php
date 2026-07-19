@@ -30,7 +30,17 @@ if (isset($_POST['action']) && $_POST['action'] === 'export') {
         header('Content-Type: application/octet-stream');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
 
-        $output = "-- SnapSmack Backup Service\n-- Type: " . strtoupper($type) . "\n-- Version: " . SNAPSMACK_VERSION . "\n-- Date: " . date('Y-m-d H:i:s') . "\n\n";
+        // STREAM the dump — do NOT build it all in memory. Previously the whole SQL
+        // was concatenated into $output and every table was fetchAll()'d into RAM,
+        // then echoed at once: a large database blew the PHP memory_limit and the
+        // download failed. Now we kill output buffering, echo straight to the client,
+        // and read rows UNBUFFERED so only one row is in memory at a time — memory
+        // stays flat no matter how big the database is.
+        @set_time_limit(0);
+        while (ob_get_level() > 0) { ob_end_clean(); }
+
+        echo "-- SnapSmack Backup Service\n-- Type: " . strtoupper($type) . "\n-- Version: " . SNAPSMACK_VERSION . "\n-- Date: " . date('Y-m-d H:i:s') . "\n\n";
+        flush();
 
         // Discover all tables dynamically — no hardcoded list that goes stale.
         $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
@@ -40,26 +50,34 @@ if (isset($_POST['action']) && $_POST['action'] === 'export') {
             try {
                 $res = $pdo->query("SHOW CREATE TABLE `{$table}`")->fetch(PDO::FETCH_ASSOC);
                 if (!$res) {
-                    $output .= "-- SKIPPED `{$table}`: SHOW CREATE TABLE returned no result\n\n";
+                    echo "-- SKIPPED `{$table}`: SHOW CREATE TABLE returned no result\n\n";
                     continue;
                 }
             } catch (PDOException $e) {
-                $output .= "-- SKIPPED `{$table}`: " . $e->getMessage() . "\n\n";
+                echo "-- SKIPPED `{$table}`: " . $e->getMessage() . "\n\n";
                 continue;
             }
-            $output .= "DROP TABLE IF EXISTS `{$table}`;\n" . $res['Create Table'] . ";\n\n";
+            echo "DROP TABLE IF EXISTS `{$table}`;\n" . $res['Create Table'] . ";\n\n";
 
             if ($type !== 'schema') {
-                $rows = $pdo->query("SELECT * FROM `{$table}`")->fetchAll(PDO::FETCH_ASSOC);
-                foreach ($rows as $row) {
+                // Unbuffered result set: rows are pulled one at a time from the server
+                // rather than fetchAll()'d into a PHP array. Must be fully consumed
+                // before the next query on this connection, which the loop does.
+                $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
+                $stmt = $pdo->query("SELECT * FROM `{$table}`");
+                $n = 0;
+                foreach ($stmt as $row) {
                     $keys = array_map(fn($k) => "`{$k}`", array_keys($row));
                     $vals = array_map(fn($v) => $v === null ? "NULL" : $pdo->quote($v), array_values($row));
-                    $output .= "INSERT INTO `{$table}` (" . implode(', ', $keys) . ") VALUES (" . implode(', ', $vals) . ");\n";
+                    echo "INSERT INTO `{$table}` (" . implode(', ', $keys) . ") VALUES (" . implode(', ', $vals) . ");\n";
+                    if ((++$n % 1000) === 0) { flush(); }   // push to client, keep the output buffer from growing
                 }
-                $output .= "\n";
+                $stmt->closeCursor();
+                $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
+                echo "\n";
+                flush();
             }
         }
-        echo $output;
         exit;
     }
 

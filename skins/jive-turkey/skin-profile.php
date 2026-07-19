@@ -120,6 +120,7 @@ $_jt_bwidth  = max(5, min(15, (int)($settings['jt_border_width'] ?? 12)));      
 $_jt_bspeed  = max(0, min(100, (int)($settings['jt_border_speed'] ?? 60)));        // colour-change speed
 $_jt_bwave   = max(0, min(100, (int)($settings['jt_border_wave']  ?? 45)));        // wave stagger
 $_jt_bdir    = $settings['jt_border_dir'] ?? 'dtlbr';                              // wave direction
+$_jt_btrans  = max(0, min(100, (int)($settings['jt_border_trans'] ?? 35)));        // shrink-in / pop-out transition length
 $_jt_bw      = $_jt_bwidth;                                                         // --tile-bw follows the border width
 $_jt_colors  = array_values($_jt_active['colors'] ?? []);                          // active colourway (back-compat)
 $_jt_field   = $_jt_active['cream'] ?? '#f2e2c0';
@@ -306,6 +307,7 @@ $_jt_solo_bgpos = ($_jt_solo_bgpos_key === 'top') ? 'center top'
      data-jt-border-width="<?php echo $_jt_bwidth; ?>"
      data-jt-border-speed="<?php echo $_jt_bspeed; ?>"
      data-jt-border-wave="<?php echo $_jt_bwave; ?>"
+     data-jt-border-trans="<?php echo $_jt_btrans; ?>"
      data-jt-border-dir="<?php echo htmlspecialchars($_jt_bdir); ?>"></div>
 
 <!-- Readability panel: centred translucent column behind the content, full
