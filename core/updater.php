@@ -234,7 +234,7 @@ const UPDATER_DEPRECATED_FILES = [
  * ship to or linger on a production spoke.
  */
 const UPDATER_DEPRECATED_DIRS = [
-    'wip' => '0.7.425',  // dev work-in-progress scratch; never belongs on an install
+    'wip' => '0.7.426',  // dev work-in-progress scratch; never belongs on an install
 ];
 
 // ─── VERSION CHECK ──────────────────────────────────────────────────────────
