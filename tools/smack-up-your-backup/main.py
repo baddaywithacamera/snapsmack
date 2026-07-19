@@ -1889,7 +1889,9 @@ class CloudBrowserDialog(tk.Toplevel):
         super().__init__(parent)
         self.title("Cloud Backups")
         self.configure(bg=BG_MID)
-        self.resizable(True, False)
+        self.resizable(True, True)          # was (True, False): height was locked so long names couldn't be read
+        self.geometry("760x480")            # open wide enough that filenames aren't clipped on first show
+        self.minsize(520, 320)
         self.grab_set()
         self._callback = callback
         self._backups  = backups
@@ -1906,11 +1908,14 @@ class CloudBrowserDialog(tk.Toplevel):
         lb_frame.pack(fill="both", expand=True, padx=16, pady=4)
         sb = ttk.Scrollbar(lb_frame)
         sb.pack(side="right", fill="y")
+        sbx = ttk.Scrollbar(lb_frame, orient="horizontal")   # NEW: reach long filenames without widening the window
+        sbx.pack(side="bottom", fill="x")
         self._lb = tk.Listbox(lb_frame, bg=BG_INPUT, fg=FG_MAIN,
                               selectbackground=BG_CARD, selectforeground=ACCENT,
                               font=FONT_MONO, relief="flat",
-                              yscrollcommand=sb.set, height=12)
+                              yscrollcommand=sb.set, xscrollcommand=sbx.set, height=12)
         sb.configure(command=self._lb.yview)
+        sbx.configure(command=self._lb.xview)
         self._lb.pack(side="left", fill="both", expand=True)
 
         for b in self._backups:

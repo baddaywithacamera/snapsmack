@@ -12,12 +12,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.425 — "Magical Mystery Cure" (JIVE TURKEY: tile border restored to the OUTWARD band, corner gap fixed, Transition Length control) (2026-07-19)
+
+Puts the tile border back the way it worked and fixes the one real flaw it had.
+
+- **Tile border restored to the OUTWARD band.** The colour band is once again a box-shadow that grows into the tile gutter, OUTSIDE the photo — the image never resizes and is never covered. It shrinks in to nothing, flips to the next colourway colour, then pops back out, staggered across the grid as a wave, with the tile spacing that worked. This reverts the 0.7.422 "inside band" relocation, which had been made to tidy tile spacing but as a side effect flipped the pulse direction and left a strip of background showing around each photo. (`assets/js/ss-engine-jive-border.js`, `skins/jive-turkey/style.css`.)
+- **Corner gap fixed.** The photo is clipped to the full tile radius so its corner matches the box-shadow band corner — no sliver of background between the image and the border. (Removes the inside-band corner-radius override that no longer applies to an outward band.)
+- **New "Transition Length" control** (`jt_border_trans`). Sets how long the shrink-in / pop-out takes on each colour change, so the animation is actually visible rather than a blink; clamped so the band always rests at full width between changes. (`skins/jive-turkey/manifest.php`, `skins/jive-turkey/skin-profile.php`, engine.)
+- Skin JIVE TURKEY 0.1.17.
+- Also lands three fixes staged earlier this cycle: the SQL backup download now STREAMS instead of buffering the whole dump in memory (`smack-backup.php`); the Static Page Appearance save button uses the correct master-update styling (`smack-appearance-static.php`); and the SUYB restore picker window is resizable with non-truncated filenames (`tools/smack-up-your-backup/main.py`, needs a SUYB rebuild — not a CMS asset).
+
 ## 0.7.424 — "Rarity Takes Manehattan" (JIVE TURKEY: SCROLLS mode — recoloured 70s ribbon-scroll wallpaper) (2026-07-19)
 
 A new animated background for JIVE TURKEY, plus a tile-corner cleanup.
 
 - **New SCROLLS background mode.** A seamless 70s striped-ribbon-with-spiral-scroll tile (rebuilt from the original reference art) recolours onto any colourway by brightness — crucially the FIELD and the pale line that loops into each scroll stay DISTINCT (the vector trace had merged them and it went flat), so the pattern keeps its separation. It tiles and scrolls seamlessly, sliding off one edge and reappearing on the other, in whatever direction you pick — vertical, horizontal, either diagonal, or a random direction each visit. The ribbon colours can drift slowly through the palette (Fade), switch on a beat (Blink) or hold still (Off), with the field and centre-line held steady. New controls: Background Mode → SCROLLS, Scrolls Direction, Scrolls Colour Drift. (`assets/js/ss-engine-jive-turkey.js`, `skins/jive-turkey/manifest.php`, `skins/jive-turkey/skin-profile.php`.)
 - **Tile corner cream sliver fixed.** The inset photo kept the full tile corner radius, so its corners over-rounded and let the tile background show as a cream sliver at each corner; the photo radius now shrinks by the reserved border band so it nests concentrically inside the colour ring. (`skins/jive-turkey/style.css`.)
+- **SQL backup download no longer runs the server out of memory.** The database export used to concatenate the whole dump into one PHP string and `fetchAll()` every table into RAM before echoing it all at once, so a large database blew the memory limit and the download failed. It now STREAMS: output buffering is dropped, rows are read UNBUFFERED (one at a time from the server) and echoed straight to the client with periodic flushes, so memory stays flat no matter how big the database is. (`smack-backup.php`.)
 
 ## 0.7.423 — "Just for Sidekicks" (updater auto-removes known orphaned files) (2026-07-18)
 
