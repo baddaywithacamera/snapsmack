@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.428 — "[name me]" (JIVE TURKEY: photo back INSIDE the border ring; 935 column honoured) (2026-07-19)
+
+Reverses the 0.7.425 "outward band" change. The colour border again sits INSIDE each tile and the photo shrinks to make room, so the border frames the image in its own band instead of painting over the outer edge of the photo. The Tile Spacing value is pure background measured border-edge to border-edge, and images shrink so the borders plus gaps always fit the classic 935px Instagram column. Only the photo inset changed — `--grid-gap` is untouched, so tile spacing cannot regress. [JT grid-inset fix 2026-07-19]
+
+- Skin JIVE TURKEY 0.1.19. (`skins/jive-turkey/style.css`, `skins/jive-turkey/manifest.php`.)
+
 ## 0.7.427 — "Maud Pie" (JIVE TURKEY SCROLLS: all 8 travel directions) (2026-07-19)
 
 - **SCROLLS now travels in any of 8 directions.** The scrolling-ribbon background could only go vertical, horizontal, or the two down-diagonals (4). It now does the full eight — up, down, left, right, and all four diagonals — selectable per the Scrolls Direction picker, plus RANDOM across all eight. Each direction is the ribbon tiling rotated in 45° steps, so the ribbons reorient and travel the chosen way. Old `v/h/diag/diag2` values still resolve as back-compat aliases. (`assets/js/ss-engine-jive-turkey.js`, `skins/jive-turkey/manifest.php`, `skins/jive-turkey/skin-profile.php`.)

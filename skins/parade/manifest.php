@@ -35,7 +35,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'PARADE',
-    'version'     => '1.2.23',
+    'version'     => '1.2.24',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'High-key desktop skin — AURORA\'s daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.',
@@ -587,6 +587,131 @@ return [
             'default' => '0', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
         ],
 
-    ],
+    
+        'pa_gap' => [
+            'section'  => 'GRID',
+            'type'     => 'range_numeric',
+            'label'    => 'Image Gap',
+            'default'  => '2', 'min' => '0', 'max' => '20', 'step' => '1', 'unit' => 'px',
+            'selector' => ':root', 'property' => '--grid-gap',
+        ],
+        'pa_nav_tile_gap' => [
+            'section'  => 'GRID',
+            'type'     => 'range_numeric',
+            'label'    => 'Nav → Tiles Gap',
+            'default'  => '2', 'min' => '0', 'max' => '60', 'step' => '1', 'unit' => 'px',
+            'selector' => ':root', 'property' => '--nav-tile-gap',
+            'hint'     => 'Vertical space between the sticky nav bar and the first row of tiles.',
+        ],
+        'pa_max_width' => [
+            'section'  => 'LAYOUT',
+            'type'     => 'range_numeric',
+            'label'    => 'Grid Max Width',
+            'default'  => '935', 'min' => '600', 'max' => '1600', 'step' => '5', 'unit' => 'px',
+            'selector' => ':root', 'property' => '--grid-max-width',
+        ],
+        'pa_blog_title_font' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'select', 'label' => 'Blog Title Font',
+            'default' => 'inherit', 'options' => array_merge(['inherit' => 'Same as Body Font'], $fonts),
+            'selector' => ':root', 'property' => '--blog-title-font', 'is_font' => true, 'no_size_slider' => true,
+        ],
+        'pa_blog_title_size' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'range_numeric', 'label' => 'Blog Title Size',
+            'default' => '20', 'min' => '12', 'max' => '48', 'step' => '1', 'unit' => 'px',
+            'selector' => ':root', 'property' => '--blog-title-size',
+        ],
+        'pa_blog_title_weight' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'select', 'label' => 'Blog Title Weight',
+            'default' => '600', 'options' => ['300' => 'Light', '400' => 'Regular', '500' => 'Medium', '600' => 'Semibold', '700' => 'Bold'],
+            'selector' => ':root', 'property' => '--blog-title-weight',
+        ],
+        'pa_blog_title_color' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'color', 'label' => 'Blog Title Colour',
+            'default' => '#1a1a1a', 'selector' => ':root', 'property' => '--blog-title-color',
+        ],
+        'pa_tagline_font' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'select', 'label' => 'Tagline Font',
+            'default' => 'inherit', 'options' => array_merge(['inherit' => 'Same as Body Font'], $fonts),
+            'selector' => ':root', 'property' => '--tagline-font', 'is_font' => true, 'no_size_slider' => true,
+        ],
+        'pa_tagline_size' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'range_numeric', 'label' => 'Tagline Size',
+            'default' => '16', 'min' => '10', 'max' => '36', 'step' => '1', 'unit' => 'px',
+            'selector' => ':root', 'property' => '--tagline-size',
+        ],
+        'pa_tagline_weight' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'select', 'label' => 'Tagline Weight',
+            'default' => '400', 'options' => ['300' => 'Light', '400' => 'Regular', '500' => 'Medium', '600' => 'Semibold', '700' => 'Bold'],
+            'selector' => ':root', 'property' => '--tagline-weight',
+        ],
+        'pa_tagline_color' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'color', 'label' => 'Tagline Colour',
+            'default' => '#5b5b66', 'selector' => ':root', 'property' => '--tagline-color',
+        ],
+        'pa_bio_size' => [
+            'section' => 'TITLE & TAGLINE', 'type' => 'range_numeric', 'label' => 'Description / Bio Size',
+            'default' => '14', 'min' => '10', 'max' => '28', 'step' => '1', 'unit' => 'px',
+            'selector' => ':root', 'property' => '--bio-size',
+        ],
+        'pa_nav_case' => [
+            'section' => 'NAV', 'type' => 'select', 'label' => 'Nav Link Case',
+            'default' => 'none',
+            'options' => ['none' => 'As typed', 'uppercase' => 'ALL CAPS', 'capitalize' => 'First Letter', 'lowercase' => 'all lowercase'],
+            'selector' => ':root', 'property' => '--nav-text-transform',
+        ],
+        'pa_nav_font' => [
+            'section' => 'NAV', 'type' => 'select', 'label' => 'Nav Font',
+            'default' => 'inherit', 'options' => array_merge(['inherit' => 'Same as Body Font'], $fonts),
+            'selector' => ':root', 'property' => '--nav-font', 'is_font' => true, 'no_size_slider' => true,
+        ],
+        'pa_nav_color' => [
+            'section' => 'NAV', 'type' => 'color', 'label' => 'Nav Link Colour',
+            'default' => '#5b5b66', 'selector' => ':root', 'property' => '--nav-color',
+        ],
+        'pa_post_bg_color' => [
+            'section' => 'COLOURS', 'type' => 'color', 'label' => 'Image Page Background',
+            'default' => '#ffffff', 'selector' => ':root', 'property' => '--post-bg',
+        ],
+        'pa_border_color' => [
+            'section' => 'COLOURS', 'type' => 'color', 'label' => 'Border / Divider Colour',
+            'default' => '#e2e2e2', 'selector' => ':root', 'property' => '--border-color',
+        ],
+        'pa_bio_color' => [
+            'section' => 'COLOURS', 'type' => 'color', 'label' => 'Description / Bio Text',
+            'default' => '#5b5b66', 'selector' => ':root', 'property' => '--bio-color',
+        ],
+        'pa_font_body' => [
+            'section' => 'TYPOGRAPHY', 'type' => 'select', 'label' => 'Body / UI Font',
+            'default' => '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            'options' => array_merge(['"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' => 'System Default (Segoe UI / Roboto)'], $fonts),
+            'selector' => ':root', 'property' => '--font-body',
+        ],
+        'pa_gutter' => [
+            'section' => 'TREATMENT', 'type' => 'range_numeric', 'label' => 'Side Gutter (margin over background)',
+            'default' => '0', 'min' => '0', 'max' => '400', 'step' => '4', 'unit' => 'px',
+            'selector' => ':root', 'property' => '--grid-gutter',
+        ],
+        'gsd_disc_color' => [
+            'section' => 'SEARCH DOCK',
+            'type'    => 'color',
+            'label'   => 'Dock Circle Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Colour of the round dock behind the magnifier. PHP-handled → --gsd-disc-bg.',
+        ],
+        'gsd_disc_opacity' => [
+            'section'  => 'SEARCH DOCK',
+            'type'     => 'range_numeric',
+            'label'    => 'Dock Circle Opacity',
+            'default'  => '100', 'min' => '0', 'max' => '100', 'step' => '5', 'unit' => '%',
+            'hint'     => 'Transparency of the dock circle so it can blend into the background.',
+        ],
+        'gsd_glass_color' => [
+            'section' => 'SEARCH DOCK',
+            'type'    => 'color',
+            'label'   => 'Dock Magnifier Colour',
+            'default' => '#1a1a1a',
+            'hint'    => 'Colour of the magnifying-glass icon. PHP-handled → --gsd-glass-color.',
+        ],
+],
 ];
 // ===== SNAPSMACK EOF =====
