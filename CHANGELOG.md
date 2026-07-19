@@ -12,11 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.428 — "[name me]" (JIVE TURKEY: photo back INSIDE the border ring; 935 column honoured) (2026-07-19)
+## 0.7.428 — "Testing Testing 1-2-3" (JIVE TURKEY border back INSIDE the ring; tile spacing restored; AURORA/PARADE/INSTANT CAMERA controls restored) (2026-07-19)
 
-Reverses the 0.7.425 "outward band" change. The colour border again sits INSIDE each tile and the photo shrinks to make room, so the border frames the image in its own band instead of painting over the outer edge of the photo. The Tile Spacing value is pure background measured border-edge to border-edge, and images shrink so the borders plus gaps always fit the classic 935px Instagram column. Only the photo inset changed — `--grid-gap` is untouched, so tile spacing cannot regress. [JT grid-inset fix 2026-07-19]
+Fine-sanding pass on the carousel skins.
 
-- Skin JIVE TURKEY 0.1.19. (`skins/jive-turkey/style.css`, `skins/jive-turkey/manifest.php`.)
+- **JIVE TURKEY tile border is INSIDE the ring again.** The border engine now paints the colour band on the INSIDE edge of each tile (the masked `.jt-ring`, constant `--tile-bw` width, colour walking across the grid) instead of an OUTWARD `box-shadow`. The photo shrinks to sit inside the ring so the border frames it without ever covering it, and because the band no longer grows into the gutter the full Tile Spacing returns as pure background between tiles. Also drops the tile background behind the inset photo, which had started showing as a faint second line once the border colour went light. Reverses the 0.7.425 outward band. (`assets/js/ss-engine-jive-border.js`, `skins/jive-turkey/style.css`.)
+- **Restored control families `af1d58c5` wrongly cut from AURORA, PARADE, INSTANT CAMERA.** COLOURS, TYPOGRAPHY, TITLE & TAGLINE, NAV, GRID, LAYOUT (plus SEARCH DOCK disc/glass) were live-consumed with nothing emitting them, degrading those skins. All restored controls are declarative (core auto-emits the var). PARADE TREATMENT controls and per-skin footer colour were NOT restored (no consumer in HEAD, would be dead) and are tracked as follow-ups. Skins AURORA 1.0.36, PARADE 1.2.24, INSTANT CAMERA 1.0.27. (`skins/aurora/manifest.php`, `skins/parade/manifest.php`, `skins/instant-camera/manifest.php`.)
+- Skin JIVE TURKEY 0.1.19.
 
 ## 0.7.427 — "Maud Pie" (JIVE TURKEY SCROLLS: all 8 travel directions) (2026-07-19)
 
