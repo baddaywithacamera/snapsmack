@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.426 — "Pinkie Apple Pie" (JIVE TURKEY goes production; /wip auto-removed on update; caption cleanup) (2026-07-19)
+
+Promotes JIVE TURKEY to production and clears two long-standing annoyances.
+
+- **JIVE TURKEY promoted to production-ready.** Marked `status: stable`, added to the Production Ready Skins showcase on snapsmack.ca (with its screenshots), and announced in a WOTCHA release post. (`skins/jive-turkey/manifest.php`, `projects/snapsmack-ca/index.php`, `projects/snapsmack-ca/wotcha.php`, `projects/snapsmack-ca/img/jturk-*.png`.)
+- **Redundant site name removed from the solo-image caption.** The account name is already shown in the header row above the photo; the JIVE TURKEY caption no longer repeats it as a bold prefix. (Every prior removal had only ever been an uncommitted working change, so a clean checkout kept bringing it back — now committed.) (`skins/jive-turkey/layout.php`.)
+- **`/wip` is now auto-removed from every install on update.** The work-in-progress skin scratch directory should never live on a production spoke, but it kept getting left behind (and can't always be deleted by hand over SFTP). The updater now removes it — and any future curated dev-only directory — via a new `UPDATER_DEPRECATED_DIRS` whitelist, with the same strict scoping as the deprecated-files cleanup: exact named paths only, never a tree scan, symlinks unlinked (never followed), and only after the release ZIP is Ed25519-verified. (`core/updater.php`.)
+
 ## 0.7.425 — "Magical Mystery Cure" (JIVE TURKEY: tile border restored to the OUTWARD band, corner gap fixed, Transition Length control) (2026-07-19)
 
 Puts the tile border back the way it worked and fixes the one real flaw it had.
@@ -19,9 +27,6 @@ Puts the tile border back the way it worked and fixes the one real flaw it had.
 - **Tile border restored to the OUTWARD band.** The colour band is once again a box-shadow that grows into the tile gutter, OUTSIDE the photo — the image never resizes and is never covered. It shrinks in to nothing, flips to the next colourway colour, then pops back out, staggered across the grid as a wave, with the tile spacing that worked. This reverts the 0.7.422 "inside band" relocation, which had been made to tidy tile spacing but as a side effect flipped the pulse direction and left a strip of background showing around each photo. (`assets/js/ss-engine-jive-border.js`, `skins/jive-turkey/style.css`.)
 - **Corner gap fixed.** The photo is clipped to the full tile radius so its corner matches the box-shadow band corner — no sliver of background between the image and the border. (Removes the inside-band corner-radius override that no longer applies to an outward band.)
 - **New "Transition Length" control** (`jt_border_trans`). Sets how long the shrink-in / pop-out takes on each colour change, so the animation is actually visible rather than a blink; clamped so the band always rests at full width between changes. (`skins/jive-turkey/manifest.php`, `skins/jive-turkey/skin-profile.php`, engine.)
-- **Redundant site name removed from the solo-image caption.** The account name is already shown in the header row above the photo; the JIVE TURKEY caption no longer repeats it as a bold prefix. (Every prior removal had only ever been an uncommitted working change, so a clean checkout kept bringing it back — now committed.) (`skins/jive-turkey/layout.php`.)
-- **`/wip` is now auto-removed from every install on update.** The work-in-progress skin scratch directory should never live on a production spoke, but it kept getting left behind (and can't always be deleted by hand over SFTP). The updater now removes it — and any future curated dev-only directory — via a new `UPDATER_DEPRECATED_DIRS` whitelist, with the same strict scoping as the deprecated-files cleanup: exact named paths only, never a tree scan, symlinks unlinked (never followed), and only after the release ZIP is Ed25519-verified. (`core/updater.php`.)
-- **JIVE TURKEY promoted to production-ready.** Marked `status: stable`, added to the Production Ready Skins showcase on snapsmack.ca (with its screenshots), and announced in a WOTCHA release post. (`skins/jive-turkey/manifest.php`, `projects/snapsmack-ca/index.php`, `projects/snapsmack-ca/wotcha.php`, `projects/snapsmack-ca/img/jturk-*.png`.)
 - Skin JIVE TURKEY 0.1.17.
 - Also lands three fixes staged earlier this cycle: the SQL backup download now STREAMS instead of buffering the whole dump in memory (`smack-backup.php`); the Static Page Appearance save button uses the correct master-update styling (`smack-appearance-static.php`); and the SUYB restore picker window is resizable with non-truncated filenames (`tools/smack-up-your-backup/main.py`, needs a SUYB rebuild — not a CMS asset).
 
