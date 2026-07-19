@@ -1558,6 +1558,13 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 }
 .jt-grid .jt-tile a,
 .jt-grid .jt-tile img { border-radius: calc(var(--tile-radius, 4px) - var(--tile-bw, 8px)); }
+
+/* INSIDE-ring border engine (ss-engine-jive-border.js) drives .jt-ring colour.
+   Drop the tile's own background so no second line shows behind the inset photo,
+   and smooth the colour flips. Phantom rule below keeps alignment tiles ringless.
+   [JT inside-ring 2026-07-19] */
+.jt-grid .jt-tile { background: transparent; }
+.jt-grid .jt-tile .jt-ring { transition: background-color 0.5s ease; }
 .jt-ring {
     position: absolute;
     inset: 0;
