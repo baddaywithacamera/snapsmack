@@ -21,6 +21,9 @@
  *   REELS   — a Bauhaus grid of circles / split / striped / half-circles on the
  *             colourway's dark field; shapes blink out, spin, and a new shape
  *             appears — staggered across a direction like 70s film credits.
+ *   SCROLLS — parallel 70s striped ribbons (brown/red/orange/cream) with spiral
+ *             scroll-heads that all curl the same way and travel together along
+ *             the ribbons; vertical or horizontal (data-jt-scrolls-axis).
  *
  *   CYCLE   — rotates through the enabled modes on a timer, EACH using its OWN
  *             saved settings.
@@ -32,7 +35,8 @@
  *
  * Self-contained. Reads config from the `.jt-jive-turkey-bg` element's dataset
  * (set by skin-profile.php):
- *   data-jt-mode        scope|bloom|flow|daisy|reels|cycle|surprise
+ *   data-jt-mode        scope|bloom|flow|daisy|reels|scrolls|cycle|surprise
+ *   data-jt-scrolls-axis  v|h — SCROLLS ribbon direction (vertical/horizontal)
  *   data-jt-colourway   active colourway NAME (e.g. HARVEST)
  *   data-jt-palette     JSON hex array — active colourway colours (back-compat)
  *   data-jt-field       hex — active colourway cream/base (back-compat)
@@ -63,13 +67,14 @@
         HARVEST: { cream:'#f2e2c0', colors:['#d99a2b','#bd4e1f','#6b3f24'], centre:'#d99a2b', dark:'#38220f' }
     };
     var INK = '#3a2a1a';
-    var ALL_MODES = ['scope', 'bloom', 'flow', 'daisy', 'reels'];
+    var ALL_MODES = ['scope', 'bloom', 'flow', 'daisy', 'reels', 'scrolls'];
     var MODE_DEFAULTS = {
         scope: { speed: 40 },
         bloom: { speed: 40 },
         flow:  { speed: 40 },
         daisy: { ray: 34, flo: 28, rays: 24, sw: 45, sz: 17, face: true },
-        reels: { spd: 40, cell: 110, spin: 55, busy: 26, dir: 'dtlbr' }
+        reels: { spd: 40, cell: 110, spin: 55, busy: 26, dir: 'dtlbr' },
+        scrolls: { speed: 40, axis: 'v' }
     };
 
     // ── colour helpers ──────────────────────────────────────────────────────
@@ -142,6 +147,15 @@
         var gFactor = spOf(gSpeed) / spOf(45);
         var cycleSecs = Math.max(6, parseFloat(host.getAttribute('data-jt-cycle')) || 18);
         var randomColour = host.getAttribute('data-jt-random-colour') === '1';
+        var scrollsAxis = (host.getAttribute('data-jt-scrolls-axis') || 'v').toLowerCase();
+        var scrollsAngle = 0;
+        (function () {
+            var pick = scrollsAxis;
+            if (pick === 'random') { var opts = ['v','h','diag','diag2']; pick = opts[Math.floor(Math.random()*opts.length)]; }
+            scrollsAngle = pick === 'h' ? Math.PI/2 : pick === 'diag' ? Math.PI/4 : pick === 'diag2' ? -Math.PI/4 : 0;
+        })();
+        var scrollsFade = (host.getAttribute('data-jt-scrolls-fade') || 'fade').toLowerCase();
+        if (['fade','blink','off'].indexOf(scrollsFade) < 0) scrollsFade = 'fade';
 
         var savedModes = {};
         try { savedModes = JSON.parse(host.getAttribute('data-jt-modes') || '{}') || {}; } catch (e) {}
@@ -151,6 +165,7 @@
             var s = savedModes[m] || {};
             for (var k2 in s) out[k2] = s[k2];
             if ((m === 'scope' || m === 'bloom' || m === 'flow') && out.speed == null) out.speed = gSpeed;
+            if (m === 'scrolls') { out.axis = scrollsAxis; out.angle = scrollsAngle; out.fade = scrollsFade; }
             return out;
         }
 
@@ -396,7 +411,79 @@
             }
         }
 
-        var DRAW = { scope: drawScope, bloom: drawBloom, flow: drawFlow, daisy: drawDaisy, reels: drawReels };
+        // ── SCROLLS — the 70s ribbon-scroll tile, recoloured onto the palette ──
+        // Recolours the ORIGINAL 5-tone tile (field, pale centre-line, orange, red,
+        // brown all DISTINCT — the vector trace had merged field+centre-line and it
+        // went flat). Two lightest tones map to SHADED cream (field) and FULL cream
+        // (centre-line) so the loop-line lifts off the field. Per colourway + colour-
+        // rotation STATE an offscreen tile is cached, then tiled + scrolled seamlessly.
+        // Direction v|h|diag|diag2|random. Colour drift fade|blink|off: the 3 palette
+        // colours rotate slowly through the 3 chromatic bands (field + centre-line
+        // hold), fade = graceful crossfade, blink = hard switch.
+        var JT_SC_SRC = [[77,37,5],[254,51,1],[247,151,19],[224,194,167],[247,236,180]];
+        var JT_SC_URI = "data:image/png;base64,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";
+        var _sc_srcData = null, _sc_ready = false, _sc_tileCache = {};
+        (function () {
+            var im = new Image();
+            im.onload = function () {
+                var oc = document.createElement('canvas'); oc.width = 740; oc.height = 740;
+                var octx = oc.getContext('2d'); octx.drawImage(im, 0, 0, 740, 740);
+                try { _sc_srcData = octx.getImageData(0, 0, 740, 740); _sc_ready = true; _sc_tileCache = {}; } catch (e) {}
+            };
+            im.src = JT_SC_URI;
+        })();
+        function scLum(c) { return 0.299*c[0] + 0.587*c[1] + 0.114*c[2]; }
+        function scShadeArr(hex, f) { var c = hex2rgb(hex); return [Math.round(c[0]*f), Math.round(c[1]*f), Math.round(c[2]*f)]; }
+        function scKey(cw) { return cw.cream + '|' + cw.colors.join(','); }
+        function scTile(cw, state) {
+            var k = scKey(cw) + '|' + state; if (_sc_tileCache[k]) return _sc_tileCache[k];
+            if (!_sc_ready) return null;
+            var cr = hex2rgb(cw.cream), a = hex2rgb(cw.colors[0]), b = hex2rgb(cw.colors[1]), c = hex2rgb(cw.colors[2]);
+            var field = scShadeArr(cw.cream, 0.82);
+            var sByLum = [0,1,2,3,4].sort(function (i, j) { return scLum(JT_SC_SRC[i]) - scLum(JT_SC_SRC[j]); }); // dark->light: brown,red,orange,field,centre
+            var base = [c, b, a];                                              // dark->light chromatic palette
+            var map = {}, i;
+            for (i = 0; i < 3; i++) { var s = JT_SC_SRC[sByLum[i]]; var t = base[(i + state) % 3]; map[s[0]+','+s[1]+','+s[2]] = t; }
+            var sf = JT_SC_SRC[sByLum[3]]; map[sf[0]+','+sf[1]+','+sf[2]] = field;    // field holds
+            var s5 = JT_SC_SRC[sByLum[4]]; map[s5[0]+','+s5[1]+','+s5[2]] = cr;       // centre-line holds
+            var oc = document.createElement('canvas'); oc.width = 740; oc.height = 740;
+            var octx = oc.getContext('2d');
+            var id = octx.createImageData(740, 740), sd = _sc_srcData.data, dd = id.data, p, q;
+            for (p = 0; p < sd.length; p += 4) {
+                var key = sd[p] + ',' + sd[p+1] + ',' + sd[p+2], t2 = map[key];
+                if (!t2) {
+                    var best = null, bd = 1e12;
+                    for (q = 0; q < 5; q++) { var s2 = JT_SC_SRC[q]; var dq = (sd[p]-s2[0])*(sd[p]-s2[0]) + (sd[p+1]-s2[1])*(sd[p+1]-s2[1]) + (sd[p+2]-s2[2])*(sd[p+2]-s2[2]); if (dq < bd) { bd = dq; best = s2; } }
+                    t2 = map[best[0]+','+best[1]+','+best[2]];
+                }
+                dd[p] = t2[0]; dd[p+1] = t2[1]; dd[p+2] = t2[2]; dd[p+3] = 255;
+            }
+            octx.putImageData(id, 0, 0);
+            _sc_tileCache[k] = oc; return oc;
+        }
+        function drawScrolls(T, cw, P) {
+            var w = cv.width, h = cv.height;
+            var field = scShadeArr(cw.cream, 0.82);
+            ctx.fillStyle = 'rgb(' + field[0] + ',' + field[1] + ',' + field[2] + ')'; ctx.fillRect(0, 0, w, h);
+            if (!_sc_ready) return;
+            var ang = (P.angle != null) ? P.angle : 0;
+            var sp = spOf(P.speed) * gFactor, SC = 0.62, STEP = 740 * SC;
+            var travel = ((T * sp * 30) % STEP + STEP) % STEP;                 // wraps seamlessly
+            var D = Math.hypot(w, h), half = Math.ceil((D / 2) / STEP) + 1, gx, gy;
+            var fade = P.fade || 'fade', PERIOD = 8, ph = T / PERIOD, st = Math.floor(ph) % 3, fr = ph - Math.floor(ph);
+            var tileA, tileB = null, alpha = 0;
+            if (fade === 'off') { tileA = scTile(cw, 0); }
+            else if (fade === 'blink') { tileA = scTile(cw, st); }
+            else { tileA = scTile(cw, st); if (fr >= 0.6) { tileB = scTile(cw, (st + 1) % 3); alpha = (fr - 0.6) / 0.4; } }
+            if (!tileA) return;
+            ctx.save(); ctx.translate(w/2, h/2); ctx.rotate(ang);
+            function paint(tile) { for (gy = -half; gy <= half; gy++) for (gx = -half; gx <= half; gx++) { ctx.drawImage(tile, gx*STEP, gy*STEP + travel, STEP, STEP); } }
+            paint(tileA);
+            if (tileB) { ctx.globalAlpha = alpha; paint(tileB); ctx.globalAlpha = 1; }
+            ctx.restore();
+        }
+
+        var DRAW = { scope: drawScope, bloom: drawBloom, flow: drawFlow, daisy: drawDaisy, reels: drawReels, scrolls: drawScrolls };
         function drawMode(m, T, cwName) {
             if (!DRAW[m]) m = 'flow';
             var cw = COLOURWAYS[cwName] || COLOURWAYS[activeName];

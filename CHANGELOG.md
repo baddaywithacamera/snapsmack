@@ -12,6 +12,19 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.424 — "Rarity Takes Manehattan" (JIVE TURKEY: SCROLLS mode — recoloured 70s ribbon-scroll wallpaper) (2026-07-19)
+
+A new animated background for JIVE TURKEY, plus a tile-corner cleanup.
+
+- **New SCROLLS background mode.** A seamless 70s striped-ribbon-with-spiral-scroll tile (rebuilt from the original reference art) recolours onto any colourway by brightness — crucially the FIELD and the pale line that loops into each scroll stay DISTINCT (the vector trace had merged them and it went flat), so the pattern keeps its separation. It tiles and scrolls seamlessly, sliding off one edge and reappearing on the other, in whatever direction you pick — vertical, horizontal, either diagonal, or a random direction each visit. The ribbon colours can drift slowly through the palette (Fade), switch on a beat (Blink) or hold still (Off), with the field and centre-line held steady. New controls: Background Mode → SCROLLS, Scrolls Direction, Scrolls Colour Drift. (`assets/js/ss-engine-jive-turkey.js`, `skins/jive-turkey/manifest.php`, `skins/jive-turkey/skin-profile.php`.)
+- **Tile corner cream sliver fixed.** The inset photo kept the full tile corner radius, so its corners over-rounded and let the tile background show as a cream sliver at each corner; the photo radius now shrinks by the reserved border band so it nests concentrically inside the colour ring. (`skins/jive-turkey/style.css`.)
+
+## 0.7.423 — "Just for Sidekicks" (updater auto-removes known orphaned files) (2026-07-18)
+
+The update system now cleans up after itself instead of nagging.
+
+- **Known orphaned core files are removed automatically on update.** When a file is renamed/removed in a release, its old copy left on a spoke used to be flagged "remove manually" forever. `updater_remove_known_orphans()` now deletes them during the update and logs what it cleaned. It is scoped strictly to the curated `UPDATER_DEPRECATED_FILES` whitelist (never a tree scan, never user or per-install files) and runs only after the release ZIP is Ed25519-verified, so it stays within the intent of secaudit 029 — no fleet-wide `rm` of arbitrary files, only the renames the release itself declares. Anything it can't unlink (permissions) still falls back to a manual-removal notice. (`core/updater.php`, `smack-update.php`.)
+
 ## 0.7.422 — "Games Ponies Play" (JIVE TURKEY: colour border moves INSIDE the tile; spacing stays a pure gap) (2026-07-18)
 
 Rebuilds the JIVE TURKEY tile border so TILE SPACING is the gap between tiles and the border stops eating it. (Supersedes 0.7.421, which drew the band outward into the gutter.)

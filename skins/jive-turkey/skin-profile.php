@@ -110,6 +110,8 @@ foreach ($_jt_cws as $_k => $_c) {
 }
 
 $_jt_mode    = $settings['jt_mode'] ?? 'surprise';
+$_jt_saxis   = in_array($settings['jt_scrolls_axis'] ?? 'v', ['v','h','diag','diag2','random'], true) ? ($settings['jt_scrolls_axis'] ?? 'v') : 'v';   // SCROLLS ribbon direction
+$_jt_sfade   = in_array($settings['jt_scrolls_colour'] ?? 'fade', ['fade','blink','off'], true) ? ($settings['jt_scrolls_colour'] ?? 'fade') : 'fade';  // SCROLLS colour drift
 $_jt_random  = (($settings['jt_random_colour'] ?? '1') === '0') ? '0' : '1';
 $_jt_speed   = max(1, min(100, (int)($settings['jt_speed'] ?? 45)));
 $_jt_cycle   = max(6, min(60, (int)($settings['jt_cycle_time'] ?? 14)));           // seconds per mode in CYCLE
@@ -291,6 +293,8 @@ $_jt_solo_bgpos = ($_jt_solo_bgpos_key === 'top') ? 'center top'
      borders always match the background, including under SURPRISE / CYCLE. -->
 <div class="jt-jive-turkey-bg" aria-hidden="true"
      data-jt-mode="<?php echo htmlspecialchars($_jt_mode); ?>"
+     data-jt-scrolls-axis="<?php echo htmlspecialchars($_jt_saxis); ?>"
+     data-jt-scrolls-fade="<?php echo htmlspecialchars($_jt_sfade); ?>"
      data-jt-colourway="<?php echo htmlspecialchars($_jt_key); ?>"
      data-jt-colourways='<?php echo htmlspecialchars(json_encode($_jt_cw_js), ENT_QUOTES); ?>'
      data-jt-palette='<?php echo htmlspecialchars(json_encode($_jt_colors), ENT_QUOTES); ?>'
