@@ -76,7 +76,9 @@
   // Never an outward shadow, so the gutter/tile-spacing is never touched.
   function paint(tile,w,col){
     var r=ringOf(tile); if(!r) return;
+    var bw=(S&&S.W)?S.W:8;
     r.style.padding = (w>0.05) ? (w.toFixed(2)+'px') : '0px';
+    r.style.inset   = (Math.max(0,bw-w)).toFixed(2)+'px'; // anchor band at the PHOTO edge: it collapses toward the photo, not the tile edge
     r.style.background = col||'transparent';
   }
   var reduced=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -85,7 +87,7 @@
     if(n!==lastCount && now-lastScan>300){ lastScan=now; scan(); }
     if(!S) return;
     S.COLS=liveCols(S.COLS);
-    if(!S.enabled){ for(var j=0;j<S.tiles.length;j++){ var rj=ringOf(S.tiles[j]); if(rj){ rj.style.padding='0px'; rj.style.background='transparent'; } } return; }
+    if(!S.enabled){ for(var j=0;j<S.tiles.length;j++){ var rj=ringOf(S.tiles[j]); if(rj){ rj.style.padding='0px'; rj.style.inset='0px'; rj.style.background='transparent'; } } return; }
     if(reduced){ for(var k=0;k<S.tiles.length;k++) paint(S.tiles[k],S.W,S.COLS[0]); return; }
     // Transition duration (seconds, one side): 0-100 slider -> 0.15s .. 2.0s.
     // Clamped to 45% of the cycle so a hold ALWAYS remains between colour changes.
