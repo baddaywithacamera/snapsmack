@@ -10,6 +10,9 @@
 
 # SnapSmack Changelog
 
+## 0.7.432 "TESTING TESTING 13-14-15" — 2026-07-20
+- JIVE TURKEY border: colour band is now a TRUE concentric frame. Tile+ring outer radius = --tile-radius + --tile-bw so band width is uniform on edges AND corners (0.7.431 left it bulging at corners - tile clipped the outer corner tighter than the inner). Photo stays rounded at --tile-radius; verified band 8/4/1px, zero background peek. Skin 0.1.22.
+
 ## 0.7.431 "TESTING TESTING 10-11-12" — 2026-07-19
 - JIVE TURKEY border: fixed square corners exposed when the pulse shrinks. Photo fills the tile again and is clipped to the full --tile-radius (rounded), undoing the 0.1.19 inset+near-square calc radius. Band rides the outer edge; engine reverted to the 429 padding-pulse (dropped the 430 inset shift). Skin 0.1.21.
 
