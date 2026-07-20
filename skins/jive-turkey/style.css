@@ -1540,11 +1540,11 @@ body.is-blogroll .blogroll-peer-url { display: none; }
     position: relative;
     border-radius: var(--tile-radius, 4px);
 }
-/* The photo is inset by --jt-band-reserve to sit inside the colour ring, so its
-   corner radius must shrink by the SAME amount to stay concentric with the ring.
-   Inheriting the full --tile-radius here made the inset photo over-round its
-   corners, pulling them off the frame and letting the tile background show as a
-   cream sliver at each corner. */
+/* Photo fills the tile and is clipped to the full --tile-radius by the tile's
+   overflow:hidden, so its corners stay ROUNDED through the whole border pulse.
+   (0.1.19 inset the photo and shrank its radius to calc(--tile-radius - --tile-bw)
+   ~ near-square; the band pulsing away then exposed those corners. Reverted
+   0.7.431 / skin 0.1.21.) The colour band rides the outer edge over the photo. */
 .jt-grid .jt-tile a {
     /* Photo lives INSIDE the ring: inset by the ring thickness so the
        colour border frames the image in its own band and never paints
@@ -1552,12 +1552,12 @@ body.is-blogroll .blogroll-peer-url { display: none; }
        base .jt-tile a rule pins them to 100%). Moves the photo inward
        ONLY -- never touches --grid-gap, so tile spacing cannot regress.
        Fits the 935px column: photo width = tile - 2x ring. [JT grid-inset fix 2026-07-19] */
-    inset: var(--tile-bw, 8px);
+    inset: 0; /* fill the tile; clipped to full --tile-radius => round corners through the pulse [0.7.431] */
     width: auto;
     height: auto;
 }
 .jt-grid .jt-tile a,
-.jt-grid .jt-tile img { border-radius: calc(var(--tile-radius, 4px) - var(--tile-bw, 8px)); }
+.jt-grid .jt-tile img { border-radius: var(--tile-radius, 4px); }
 
 /* INSIDE-ring border engine (ss-engine-jive-border.js) drives .jt-ring colour.
    Drop the tile's own background so no second line shows behind the inset photo,

@@ -10,6 +10,9 @@
 
 # SnapSmack Changelog
 
+## 0.7.431 "TESTING TESTING 10-11-12" — 2026-07-19
+- JIVE TURKEY border: fixed square corners exposed when the pulse shrinks. Photo fills the tile again and is clipped to the full --tile-radius (rounded), undoing the 0.1.19 inset+near-square calc radius. Band rides the outer edge; engine reverted to the 429 padding-pulse (dropped the 430 inset shift). Skin 0.1.21.
+
 ## 0.7.430 "TESTING TESTING 7-8-9" — 2026-07-19
 - JIVE TURKEY border pulse DIRECTION fix: the shrink/expand band now stays anchored at the PHOTO edge and collapses toward the photo (0.7.429 anchored it at the tile edge = backwards). One-line: engine animates .jt-ring `inset` (bw - w) alongside padding; verified on the live site before shipping. Still inside the ring, gutter/Tile Spacing untouched.
 
