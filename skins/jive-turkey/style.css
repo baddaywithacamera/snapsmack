@@ -1538,7 +1538,11 @@ body.is-blogroll .blogroll-peer-url { display: none; }
    ========================================================================== */
 .jt-grid .jt-tile {
     position: relative;
-    border-radius: var(--tile-radius, 4px);
+    /* Outer corner = photo radius (--tile-radius) + band width (--tile-bw) so the colour
+       band is a TRUE CONCENTRIC frame: uniform width on the edges AND at the corners, at
+       every pulse width. Plain --tile-radius clipped the band's outer corner tighter than
+       its inner -> band bulged at corners. Verified band 8/4/1px, no bg peek. [0.7.432] */
+    border-radius: calc(var(--tile-radius, 4px) + var(--tile-bw, 8px));
 }
 /* Photo fills the tile and is clipped to the full --tile-radius by the tile's
    overflow:hidden, so its corners stay ROUNDED through the whole border pulse.
