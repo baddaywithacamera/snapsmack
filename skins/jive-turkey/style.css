@@ -1544,11 +1544,14 @@ body.is-blogroll .blogroll-peer-url { display: none; }
        its inner -> band bulged at corners. Verified band 8/4/1px, no bg peek. [0.7.432] */
     border-radius: calc(var(--tile-radius, 4px) + var(--tile-bw, 8px));
 }
-/* Photo fills the tile and is clipped to the full --tile-radius by the tile's
-   overflow:hidden, so its corners stay ROUNDED through the whole border pulse.
-   (0.1.19 inset the photo and shrank its radius to calc(--tile-radius - --tile-bw)
-   ~ near-square; the band pulsing away then exposed those corners. Reverted
-   0.7.431 / skin 0.1.21.) The colour band rides the outer edge over the photo. */
+/* FINAL border geometry [0.7.433 / skin 0.1.23] — three concentric rounded rects:
+   photo r = --tile-radius at inset --tile-bw; tile + ring outer r = --tile-radius
+   + --tile-bw. The engine pins the band's inner edge to the photo (inset+padding
+   = --tile-bw) and moves the OUTER edge, radius tracking width — so the band
+   seams exactly onto the photo, stays uniform at corners, and the background
+   floods the outer strip as it collapses. 0.1.19's fault was never the inset —
+   it was the photo's near-square calc(r - bw) radius; 0.1.21/22's full-bleed
+   photo made the retreating band expose photo instead of background. */
 .jt-grid .jt-tile a {
     /* Photo lives INSIDE the ring: inset by the ring thickness so the
        colour border frames the image in its own band and never paints
@@ -1556,7 +1559,7 @@ body.is-blogroll .blogroll-peer-url { display: none; }
        base .jt-tile a rule pins them to 100%). Moves the photo inward
        ONLY -- never touches --grid-gap, so tile spacing cannot regress.
        Fits the 935px column: photo width = tile - 2x ring. [JT grid-inset fix 2026-07-19] */
-    inset: 0; /* fill the tile; clipped to full --tile-radius => round corners through the pulse [0.7.431] */
+    inset: var(--tile-bw, 8px);
     width: auto;
     height: auto;
 }
