@@ -10,6 +10,9 @@
 
 # SnapSmack Changelog
 
+## 0.7.430 "TESTING TESTING 7-8-9" — 2026-07-19
+- JIVE TURKEY border pulse DIRECTION fix: the shrink/expand band now stays anchored at the PHOTO edge and collapses toward the photo (0.7.429 anchored it at the tile edge = backwards). One-line: engine animates .jt-ring `inset` (bw - w) alongside padding; verified on the live site before shipping. Still inside the ring, gutter/Tile Spacing untouched.
+
 ## 0.7.429 "TESTING TESTING 4-5-6" — 2026-07-19
 - JIVE TURKEY border: restored the SHRINK/EXPAND width-pulse. 0.7.428 had left a constant-width band that only recoloured; the pulse is now the .jt-ring padding, breathing INWARD within --tile-bw, so the 20px Tile Spacing and the image are never touched (no return of the gutter-eating outward shadow). Re-added the Transition Length control (data-jt-border-trans).
 - JIVE TURKEY grid: dropped the vestigial left/right --jt-band-reserve padding so the outer tiles line up with the nav; top/bottom breathing kept.
