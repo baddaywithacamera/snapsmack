@@ -10,6 +10,9 @@
 
 # SnapSmack Changelog
 
+## 0.7.433 "TESTING TESTING 16-17-18" — 2026-07-20
+- JIVE TURKEY border: pulse direction restored to the classic SHRINK-IN / POP-OUT. The band is anchored at the PHOTO edge (engine keeps inset+padding = band width): shrinking collapses INTO the photo with the background flooding the strip behind it, growth erupts back out. 0.7.431/432 had the band pinned to the tile edge (backwards) after the corner fixes reverted the 0.7.430 direction. Photo sits INSIDE the ring again (inset --tile-bw) at r=--tile-radius — concentric with the 432 outer radius, so the seam is exact and corners stay uniform at every width (verified live: pinned-edge samples + 8/4/1/0px flood harness + frozen mid-pulse on craptasti). Engine + skin 0.1.23 must deploy TOGETHER.
+
 ## 0.7.432 "TESTING TESTING 13-14-15" — 2026-07-20
 - JIVE TURKEY border: colour band is now a TRUE concentric frame. Tile+ring outer radius = --tile-radius + --tile-bw so band width is uniform on edges AND corners (0.7.431 left it bulging at corners - tile clipped the outer corner tighter than the inner). Photo stays rounded at --tile-radius; verified band 8/4/1px, zero background peek. Skin 0.1.22.
 

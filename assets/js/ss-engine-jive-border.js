@@ -71,12 +71,21 @@
     lastCount=tiles.length;
   }
   function ord(d,r,c,rows,cols){switch(d){case 'ltr':return c;case 'rtl':return cols-1-c;case 'ttb':return r;case 'btt':return rows-1-r;case 'dbrtl':return (rows-1-r)+(cols-1-c);default:return r+c;}}
-  // INSIDE ring width-pulse: set the ring's PADDING (visible band width) and its
-  // colour. Padding 0 => band invisible (photo's flower bg shows), W => full band.
-  // Never an outward shadow, so the gutter/tile-spacing is never touched.
+  // INSIDE ring width-pulse, ANCHORED AT THE PHOTO EDGE. The engine keeps
+  // inset + padding = FULL band width (--tile-bw), so the band's inner edge is
+  // pinned to the photo and the OUTER edge does the moving: shrink collapses
+  // INTO the photo edge (the background floods the strip beyond the band),
+  // growth erupts back out to the tile edge. This is the 0.7.425 shrink-in /
+  // pop-out motion kept inside the tile. border-radius tracks width
+  // (--tile-radius + w) so ring, photo (r=--tile-radius at inset --tile-bw) and
+  // tile (r=--tile-radius + --tile-bw) stay CONCENTRIC: uniform band, exact
+  // photo seam, zero background peek at every width. Never touches the gutter.
   function paint(tile,w,col){
     var r=ringOf(tile); if(!r) return;
-    r.style.padding = (w>0.05) ? (w.toFixed(2)+'px') : '0px';
+    var bw=(S&&S.W)?S.W:8, ww=(w>0.05)?w:0;
+    r.style.inset = (bw-ww).toFixed(2)+'px';
+    r.style.padding = ww.toFixed(2)+'px';
+    r.style.borderRadius = 'calc(var(--tile-radius, 4px) + '+ww.toFixed(2)+'px)';
     r.style.background = col||'transparent';
   }
   var reduced=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -85,7 +94,7 @@
     if(n!==lastCount && now-lastScan>300){ lastScan=now; scan(); }
     if(!S) return;
     S.COLS=liveCols(S.COLS);
-    if(!S.enabled){ for(var j=0;j<S.tiles.length;j++){ var rj=ringOf(S.tiles[j]); if(rj){ rj.style.padding='0px'; rj.style.background='transparent'; } } return; }
+    if(!S.enabled){ for(var j=0;j<S.tiles.length;j++){ var rj=ringOf(S.tiles[j]); if(rj){ rj.style.padding='0px'; rj.style.inset='0px'; rj.style.borderRadius=''; rj.style.background='transparent'; } } return; }
     if(reduced){ for(var k=0;k<S.tiles.length;k++) paint(S.tiles[k],S.W,S.COLS[0]); return; }
     // Transition duration (seconds, one side): 0-100 slider -> 0.15s .. 2.0s.
     // Clamped to 45% of the cycle so a hold ALWAYS remains between colour changes.
