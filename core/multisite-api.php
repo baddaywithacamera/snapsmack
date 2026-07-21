@@ -510,7 +510,8 @@ if ($resource === 'posts' && $sub_action === 'recent' && $method === 'GET') {
         FROM snap_posts p
         LEFT JOIN snap_images i ON i.post_id = p.id
         WHERE p.status = 'published'
-        ORDER BY p.created_at DESC
+        ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
+                 p.sort_order ASC, p.id DESC
         LIMIT ?
     ");
     $stmt->execute([$limit]);

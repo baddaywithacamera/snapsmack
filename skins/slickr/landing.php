@@ -76,7 +76,7 @@ if ($cover_url === '') {
     $cs = $pdo->prepare(
         "SELECT img_file FROM snap_images
          WHERE img_status = 'published' AND img_width > img_height AND img_date <= ?
-         ORDER BY img_date DESC LIMIT 1"
+         ORDER BY sort_order ASC, id DESC LIMIT 1"
     );
     $cs->execute([$now_local]);
     $cf = $cs->fetchColumn();
@@ -88,7 +88,7 @@ $grid_stmt = $pdo->prepare(
     "SELECT id, img_title, img_slug, img_file, img_thumb_aspect, img_width, img_height
      FROM snap_images
      WHERE img_status = 'published' AND img_date <= ?
-     ORDER BY img_date DESC, id DESC"
+     ORDER BY sort_order ASC, id DESC"
 );
 $grid_stmt->execute([$now_local]);
 $images = $grid_stmt->fetchAll();

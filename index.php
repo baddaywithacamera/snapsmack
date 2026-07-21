@@ -354,7 +354,7 @@ try {
         $stmt = $pdo->prepare("SELECT * FROM snap_images WHERE img_slug = ? AND img_status = 'published' LIMIT 1");
         $stmt->execute([$requested_slug]);
     } else {
-        $stmt = $pdo->query("SELECT * FROM snap_images WHERE img_status = 'published' ORDER BY img_date DESC LIMIT 1");
+        $stmt = $pdo->query("SELECT * FROM snap_images WHERE img_status = 'published' ORDER BY sort_order ASC, id DESC LIMIT 1");
     }
     $img = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -438,32 +438,32 @@ try {
     }
 
     // --- NAVIGATION LINKS ---
-    // Fetches first, last, previous, and next image slugs based on publication date.
+    // Walks the canonical site order (sort_order grouping, then posted order
+    // = id DESC). img_date is display-only and never drives navigation; the
+    // img_date <= now check is the scheduling gate, not a sort.
     // Timezone is configured globally in core/db.php.
     $now_local = date('Y-m-d H:i:s');
     $where_live = "WHERE img_status = 'published' AND img_date <= '$now_local'";
 
-    // First/Last slug queries
-    $f_res = $pdo->query("SELECT img_slug FROM snap_images $where_live ORDER BY img_date ASC LIMIT 1")->fetchColumn();
-    if ($f_res) $first_slug = BASE_URL . $f_res;
+    // One ordered id => slug map, newest-position first (canonical order).
+    $nav_map = $pdo->query("SELECT id, img_slug FROM snap_images $where_live ORDER BY sort_order ASC, id DESC")
+                   ->fetchAll(PDO::FETCH_KEY_PAIR);
+    $nav_ids = array_keys($nav_map);
+    $nav_n   = count($nav_ids);
 
-    $l_res = $pdo->query("SELECT img_slug FROM snap_images $where_live ORDER BY img_date DESC LIMIT 1")->fetchColumn();
-    if ($l_res) $last_slug = BASE_URL . $l_res;
+    if ($nav_n) {
+        $last_slug  = BASE_URL . $nav_map[$nav_ids[0]];            // top of the feed
+        $first_slug = BASE_URL . $nav_map[$nav_ids[$nav_n - 1]];   // bottom of the feed
+    }
 
     if ($img) {
-        $current_date = $img['img_date'];
-
-        // Previous image link
-        $p_stmt = $pdo->prepare("SELECT img_slug FROM snap_images WHERE img_date < ? AND img_status = 'published' ORDER BY img_date DESC LIMIT 1");
-        $p_stmt->execute([$current_date]);
-        $p_res = $p_stmt->fetchColumn();
-        if ($p_res) $prev_slug = BASE_URL . $p_res;
-
-        // Next image link
-        $n_stmt = $pdo->prepare("SELECT img_slug FROM snap_images WHERE img_date > ? AND img_status = 'published' ORDER BY img_date ASC LIMIT 1");
-        $n_stmt->execute([$current_date]);
-        $n_res = $n_stmt->fetchColumn();
-        if ($n_res) $next_slug = BASE_URL . $n_res;
+        $pos = array_search((int)$img['id'], $nav_ids, true);
+        if ($pos !== false) {
+            // Previous = one step down the feed (older position).
+            if ($pos + 1 < $nav_n) $prev_slug = BASE_URL . $nav_map[$nav_ids[$pos + 1]];
+            // Next = one step up the feed (newer position).
+            if ($pos > 0)          $next_slug = BASE_URL . $nav_map[$nav_ids[$pos - 1]];
+        }
 
         // Count approved comments for display
         $c_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_comments WHERE img_id = ? AND is_approved = 1");

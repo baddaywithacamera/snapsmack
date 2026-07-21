@@ -140,7 +140,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'reorder') {
     }
 
     // Fetch the full current order from the DB.
-    $all_ids = $pdo->query("SELECT id FROM snap_images ORDER BY sort_order ASC, img_date DESC")
+    $all_ids = $pdo->query("SELECT id FROM snap_images ORDER BY sort_order ASC, id DESC")
                    ->fetchAll(PDO::FETCH_COLUMN);
 
     // Find where the current-page IDs sit in the global list and replace that slice.
@@ -254,7 +254,7 @@ $sql = "SELECT i.*,
         (SELECT COUNT(*) FROM snap_likes WHERE post_id = i.id) as like_count
         FROM snap_images i
         $where_sql
-        ORDER BY i.id DESC
+        ORDER BY i.sort_order ASC, i.id DESC
         LIMIT $per_page OFFSET $offset";
 
 $posts = $pdo->prepare($sql);

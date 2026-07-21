@@ -44,7 +44,7 @@ if ($tag_row) {
         WHERE it.tag_id = ?
           AND i.img_status = 'published'
           AND i.img_date   <= ?
-        ORDER BY i.sort_order ASC, i.img_date DESC
+        ORDER BY i.sort_order ASC, i.id DESC
         LIMIT ? OFFSET ?
     ");
     $grid_stmt->execute([$tag_row['id'], date('Y-m-d H:i:s'), $per_page, $offset]);

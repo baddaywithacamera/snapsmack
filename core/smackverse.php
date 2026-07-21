@@ -4238,7 +4238,7 @@ function sv_ordered_units(PDO $pdo, array $settings, int $limit): array {
                    AND p.post_type IN ('single','carousel','panorama')
                    AND p.fedi_enabled = 1
                  ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
-                          p.sort_order ASC, p.created_at DESC, p.id DESC
+                          p.sort_order ASC, p.id DESC
                  LIMIT " . (int)$limit
             )->fetchAll(PDO::FETCH_ASSOC);
             // Emitted TOP-OF-GRID-FIRST (raw sort_order; realigned below).

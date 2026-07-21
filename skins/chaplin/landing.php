@@ -16,7 +16,7 @@ $stmt = $pdo->prepare("
     SELECT id, img_title, img_slug, img_file, img_date
     FROM snap_images
     WHERE img_status = 'published' AND img_date <= ?
-    ORDER BY sort_order ASC, img_date DESC
+    ORDER BY sort_order ASC, id DESC
     LIMIT 1
 ");
 $stmt->execute([$now_local]);

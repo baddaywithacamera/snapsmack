@@ -122,7 +122,7 @@ if ($bevel) $frame_style .= "--bevel-style:{$bevel};";
             SELECT id, img_slug, img_file, img_thumb_square, img_title
             FROM snap_images
             WHERE img_status = 'published' AND img_date <= ?
-            ORDER BY sort_order ASC, img_date DESC
+            ORDER BY sort_order ASC, id DESC
             LIMIT 50
         ");
         $film_stmt->execute([$now_local]);

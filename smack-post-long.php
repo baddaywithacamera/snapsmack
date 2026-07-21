@@ -133,7 +133,7 @@ if (!empty($_GET['ajax']) && $_GET['ajax'] === 'posts') {
          LEFT JOIN snap_images i ON i.post_id = p.id
          WHERE p.status = 'published' AND p.title LIKE ?
          GROUP BY p.id
-         ORDER BY p.created_at DESC
+         ORDER BY p.id DESC
          LIMIT 80"
     );
     $posts->execute([$q]);
@@ -292,7 +292,7 @@ $all_posts  = $pdo->query(
     "SELECT p.id, p.title, p.status, p.created_at, p.slug
      FROM snap_posts p
      WHERE p.post_type = 'longform'
-     ORDER BY p.created_at DESC
+     ORDER BY p.id DESC
      LIMIT 200"
 )->fetchAll();
 

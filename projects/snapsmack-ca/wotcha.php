@@ -137,6 +137,10 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Jul 21</span>
+                    <a href="#closed-beta">First Twenty Through the Door</a>
+                </li>
+                <li>
                     <span class="idx-date">Jul 19</span>
                     <a href="#jive-turkey">Dust Off Your Bell Bottoms</a>
                 </li>
@@ -276,6 +280,20 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
 
             <!-- POST: POSSE -->
+            <article class="post" id="closed-beta">
+                <div class="post-meta">
+                    <span class="post-date">July 21, 2026</span>
+                    <span class="post-tag">Beta</span>
+                </div>
+                <h2><a href="#closed-beta">First Twenty Through the Door</a></h2>
+                <p>Here it is: SnapSmack's first closed beta opens <strong>September 4, 2026</strong>, and applications are open right now. We're letting in <strong>twenty photographers</strong> for the first wave &mdash; no more, not yet.</p>
+                <p>Why twenty, and why closed? Because we'd rather break this thing quietly, in front of twenty people who'll tell us the truth, than loudly in front of everyone. A small first crew means we can harden SnapSmack against real archives &mdash; real volume, real mess, real edge cases &mdash; before we throw the doors open. You're not a tester filling out a form. You're the reason the software gets good.</p>
+                <p>So it's built for people with a real back-catalogue. You'll want <strong>at least 500 images</strong> ready to post &mdash; this isn't a toy for three snaps and a coffee cup, it's the tool for the archive you've been dragging from platform to platform for a decade, watching each one enshittify around your work.</p>
+                <p>And if you're one of the people getting out &mdash; pulling a whole collection off Flickr before it's paywalled into a coma, or off Instagram before the algorithm decides your photographs aren't &ldquo;engaging&rdquo; enough to show the people who <em>asked</em> to see them &mdash; then you are exactly who we're building this wave for. Migrating a real archive off a dying platform is the story we most want to tell, and the workflow we most want to get bulletproof. Bring the whole mess. We want it.</p>
+                <p>No ads. No feed deciding your fate. No posting your art between commercials for hemorrhoid cream. Just your photographs, on your own site, in the order <em>you</em> choose, seen by the people who came to see <em>you</em>. Own your archive. Own your audience. Roll your own.</p>
+                <p>Applications are open now &mdash; drop your email on the <a href="index.php#beta">homepage</a> and we'll reach out to the first twenty. The doors open September 4. Bring your whole archive.</p>
+            </article>
+
             <article class="post" id="jive-turkey">
                 <div class="post-meta">
                     <span class="post-date">July 19, 2026</span>

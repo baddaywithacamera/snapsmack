@@ -38,7 +38,7 @@ if (($_GET['view'] ?? '') === 'archive') {
         $_wwi_stmt = $pdo->query(
             "SELECT id, img_title, img_file, img_thumb_square, img_thumb_aspect
              FROM snap_images WHERE img_status = 'published'
-             ORDER BY img_date DESC, id DESC"
+             ORDER BY sort_order ASC, id DESC"
         );
         $_wwi_images = $_wwi_stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
@@ -165,11 +165,11 @@ if ($_wwi_post_slug || $_wwi_post_id) {
 
     // Prev / Next
     try {
-        $ns = $pdo->prepare("SELECT slug, title FROM snap_posts WHERE post_type='longform' AND status='published' AND created_at < ? ORDER BY created_at DESC LIMIT 1");
-        $ns->execute([$_wwi_post['created_at']]);
+        $ns = $pdo->prepare("SELECT slug, title FROM snap_posts WHERE post_type='longform' AND status='published' AND id < ? ORDER BY id DESC LIMIT 1");
+        $ns->execute([$_wwi_post['id']]);
         $_wwi_prev = $ns->fetch(PDO::FETCH_ASSOC);
-        $ns = $pdo->prepare("SELECT slug, title FROM snap_posts WHERE post_type='longform' AND status='published' AND created_at > ? ORDER BY created_at ASC LIMIT 1");
-        $ns->execute([$_wwi_post['created_at']]);
+        $ns = $pdo->prepare("SELECT slug, title FROM snap_posts WHERE post_type='longform' AND status='published' AND id > ? ORDER BY id ASC LIMIT 1");
+        $ns->execute([$_wwi_post['id']]);
         $_wwi_next = $ns->fetch(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         $_wwi_prev = $_wwi_next = null;
@@ -263,7 +263,7 @@ try {
                 COALESCE(i.img_thumb_square, i.img_file) AS featured_image_path
          FROM snap_posts p LEFT JOIN snap_images i ON i.id = p.featured_image_id
          WHERE p.post_type = 'longform' AND p.status = 'published'
-         ORDER BY p.created_at DESC LIMIT ? OFFSET ?"
+         ORDER BY p.id DESC LIMIT ? OFFSET ?"
     );
     $fs->execute([$_wwi_per_page, $_wwi_offset]);
     $_wwi_posts = $fs->fetchAll(PDO::FETCH_ASSOC);

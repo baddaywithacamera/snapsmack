@@ -57,7 +57,7 @@ if (($_GET['view'] ?? '') === 'archive') {
             "SELECT id, img_title, img_file, img_thumb_square, img_thumb_aspect
              FROM snap_images
              WHERE img_status = 'published'
-             ORDER BY img_date DESC, id DESC"
+             ORDER BY sort_order ASC, id DESC"
         );
         $_alfred_images = $_alfred_arch_stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
@@ -224,18 +224,18 @@ if ($_alfred_post_slug || $_alfred_post_id) {
     try {
         $nav_stmt = $pdo->prepare(
             "SELECT slug, title FROM snap_posts
-             WHERE post_type = 'longform' AND status = 'published' AND created_at < ?
-             ORDER BY created_at DESC LIMIT 1"
+             WHERE post_type = 'longform' AND status = 'published' AND id < ?
+             ORDER BY id DESC LIMIT 1"
         );
-        $nav_stmt->execute([$_alfred_post['created_at']]);
+        $nav_stmt->execute([$_alfred_post['id']]);
         $_alfred_prev = $nav_stmt->fetch(PDO::FETCH_ASSOC);
 
         $nav_stmt = $pdo->prepare(
             "SELECT slug, title FROM snap_posts
-             WHERE post_type = 'longform' AND status = 'published' AND created_at > ?
-             ORDER BY created_at ASC LIMIT 1"
+             WHERE post_type = 'longform' AND status = 'published' AND id > ?
+             ORDER BY id ASC LIMIT 1"
         );
-        $nav_stmt->execute([$_alfred_post['created_at']]);
+        $nav_stmt->execute([$_alfred_post['id']]);
         $_alfred_next = $nav_stmt->fetch(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         $_alfred_prev = $_alfred_next = null;
@@ -365,7 +365,7 @@ try {
          FROM snap_posts p
          LEFT JOIN snap_images i ON i.id = p.featured_image_id
          WHERE p.post_type = 'longform' AND p.status = 'published'
-         ORDER BY p.created_at DESC
+         ORDER BY p.id DESC
          LIMIT ? OFFSET ?"
     );
     $feed_stmt->execute([$_alfred_per_page, $_alfred_offset]);

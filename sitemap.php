@@ -102,7 +102,7 @@ function ss_sitemap_urls(PDO $pdo, string $site_url, bool $is_carousel, int $cap
                            $img, mb_substr($title, 0, 200), ''];
             }
         } else {
-            $st = $pdo->prepare("SELECT img_slug, img_date, img_file, img_title, img_description FROM snap_images WHERE img_status='published' AND img_date <= ? ORDER BY img_date DESC{$lim}");
+            $st = $pdo->prepare("SELECT img_slug, img_date, img_file, img_title, img_description FROM snap_images WHERE img_status='published' AND img_date <= ? ORDER BY sort_order ASC, id DESC{$lim}");
             $st->execute([$now]);
             foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
                 if (($r['img_slug'] ?? '') === '') continue;

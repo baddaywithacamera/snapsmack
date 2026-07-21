@@ -133,7 +133,7 @@ try {
         FROM snap_images
         WHERE img_status = 'published'
           AND img_date <= ?
-        ORDER BY img_date DESC, id DESC
+        ORDER BY sort_order ASC, id DESC
         LIMIT ?
     ");
     $stmt->bindValue(1, $now_local, PDO::PARAM_STR);

@@ -54,7 +54,7 @@ if ($is_ajax && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action']
                     COALESCE(NULLIF(img_thumb_aspect, ''), img_file) AS asset_path
              FROM snap_images
              WHERE img_status = 'published'
-             ORDER BY img_date DESC LIMIT 500"
+             ORDER BY id DESC LIMIT 500"
         )->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode($assets);
         exit;

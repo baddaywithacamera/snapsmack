@@ -783,7 +783,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 )->fetchColumn() > 0;
                 if ($all_zero && $has_rows) {
                     $pdo->exec("SET @r := 0");
-                    $pdo->exec("UPDATE snap_images SET sort_order = (@r := @r + 1) ORDER BY img_date DESC");
+                    $pdo->exec("UPDATE snap_images SET sort_order = (@r := @r + 1) ORDER BY id DESC");
                     $fix_ok[] = "Seeded <code>snap_images.sort_order</code> from existing date order";
                 }
 

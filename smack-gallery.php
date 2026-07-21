@@ -161,7 +161,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                    i.img_display_options, i.post_id
             FROM snap_images i
             $where_sql
-            ORDER BY i.img_date DESC
+            ORDER BY i.id DESC
             LIMIT $per_page OFFSET $offset";
 
     $stmt = $pdo->prepare($sql);

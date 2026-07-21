@@ -167,7 +167,7 @@ function threeacross_settle(PDO $pdo): array
         "SELECT id FROM snap_posts
           WHERE trigram_id IS NULL AND status IN ('published','queued')
           ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
-                   sort_order ASC, created_at DESC"
+                   sort_order ASC, id DESC"
     )->fetchAll(PDO::FETCH_COLUMN);
 
     $n    = count($rows);
@@ -198,8 +198,9 @@ function threeacross_settle(PDO $pdo): array
  */
 function feed_relayout(PDO $pdo, string $mode): int
 {
+    // Posted order = insertion order = id. img_date/created_at never sort.
     $pub = $pdo->query("
-        SELECT p.id, p.trigram_id, p.created_at,
+        SELECT p.id, p.trigram_id,
                CASE WHEN tg.post_id_1 = p.id THEN 1
                     WHEN tg.post_id_2 = p.id THEN 2
                     WHEN tg.post_id_3 = p.id THEN 3
@@ -207,10 +208,10 @@ function feed_relayout(PDO $pdo, string $mode): int
         FROM snap_posts p
         LEFT JOIN snap_trigrams tg ON tg.id = p.trigram_id
         WHERE p.status = 'published'
-        ORDER BY p.created_at DESC, p.id DESC
+        ORDER BY p.id DESC
     ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // Build row-units: ['date'=>newest member date, 'ids'=>[post ids in order]].
+    // Build row-units: ['ord'=>newest member id, 'ids'=>[post ids in order]].
     $units = []; $singles = []; $seen = [];
     foreach ($pub as $r) {
         $tg = (int)$r['trigram_id'];
@@ -220,8 +221,8 @@ function feed_relayout(PDO $pdo, string $mode): int
             $mem = array_values(array_filter($pub, fn($x) => (int)$x['trigram_id'] === $tg));
             usort($mem, fn($a, $b) => (int)$a['slot'] <=> (int)$b['slot']);
             $units[] = [
-                'date' => max(array_map(fn($m) => (string)$m['created_at'], $mem)),
-                'ids'  => array_map(fn($m) => (int)$m['id'], $mem),
+                'ord' => max(array_map(fn($m) => (int)$m['id'], $mem)),
+                'ids' => array_map(fn($m) => (int)$m['id'], $mem),
             ];
         } else {
             $singles[] = $r;
@@ -230,15 +231,15 @@ function feed_relayout(PDO $pdo, string $mode): int
     // Singles are already newest-first; chunk into rows of three.
     foreach (array_chunk($singles, 3) as $chunk) {
         $units[] = [
-            'date' => (string)$chunk[0]['created_at'],
-            'ids'  => array_map(fn($m) => (int)$m['id'], $chunk),
+            'ord' => (int)$chunk[0]['id'],
+            'ids' => array_map(fn($m) => (int)$m['id'], $chunk),
         ];
     }
 
     if ($mode === 'shuffle') {
         shuffle($units);
-    } else { // 'chrono' — newest row first
-        usort($units, fn($a, $b) => strcmp($b['date'], $a['date']));
+    } else { // 'chrono' — newest (highest posted id) row first
+        usort($units, fn($a, $b) => $b['ord'] <=> $a['ord']);
     }
 
     $pdo->beginTransaction();
@@ -252,7 +253,7 @@ function feed_relayout(PDO $pdo, string $mode): int
         $rest = $pdo->query("
             SELECT id FROM snap_posts WHERE status <> 'published'
             ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
-                     sort_order ASC, created_at DESC
+                     sort_order ASC, id DESC
         ")->fetchAll(PDO::FETCH_COLUMN);
         foreach ($rest as $id) $upd->execute([$pos++, $id]);
         $pdo->commit();

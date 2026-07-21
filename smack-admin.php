@@ -190,7 +190,7 @@ $pending_count = $pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approv
 $live_count    = $pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 1")->fetchColumn();
 
 // Fetches the most recent post for the dashboard preview.
-$latest_img = $pdo->query("SELECT * FROM snap_images ORDER BY img_date DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$latest_img = $pdo->query("SELECT * FROM snap_images ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 
 // --- SYSTEM ENVIRONMENT ---
 // Collects server metrics: PHP version, memory limits, CPU load, and disk usage.
