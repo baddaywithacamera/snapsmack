@@ -449,6 +449,24 @@
         var SC_R0 = 26.5;                     // centre-disc radius
         var SC_BX = 63,    SC_BY = 85;        // left loop centre ("b")
         var SC_QX = 178.5, SC_QY = 215;       // right loop centre ("q" = the b rotated 180)
+        // ── SCROLLS colour: fixed per load, no live drift ──────────────────────
+        // The old live crossfade double-painted the whole pattern at partial
+        // alpha; the anti-aliased edges of that second pass flashed faint lines
+        // through every colour transition. So we drift NO MORE while running:
+        // pick one colour rotation per page load (randomised, and different from
+        // the previous load via sessionStorage — the SURPRISE shuffle habit),
+        // hold it steady, never double-paint. Ribbons still scroll as before.
+        var _sc_state = null;
+        function scScrollsState() {
+            if (_sc_state !== null) return _sc_state;
+            var prev = -1;
+            try { var v = parseInt(sessionStorage.getItem('jtScrollsState'), 10); if (!isNaN(v)) prev = v; } catch (e) {}
+            var st = Math.floor(Math.random() * 3);
+            if (st === prev) st = (st + 1 + Math.floor(Math.random() * 2)) % 3;   // guarantee a fresh colourway vs last load
+            try { sessionStorage.setItem('jtScrollsState', String(st)); } catch (e) {}
+            _sc_state = st;
+            return st;
+        }
         function drawScrolls(T, cw, P) {
             var w = cv.width, h = cv.height;
             ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
@@ -458,7 +476,6 @@
             var travel = ((T * sp * 30) % TH + TH) % TH;
             var D = Math.hypot(w, h), halfX = Math.ceil((D / 2) / TW) + 1, halfY = Math.ceil((D / 2) / TH) + 1;
             var H2 = D / 2 + TH, gx, gy, i, k;
-            var fade = P.fade || 'fade', PERIOD = 8, ph = T / PERIOD, st = Math.floor(ph) % 3, fr = ph - Math.floor(ph);
             function palFor(state) {          // fills for the bands [K,R,O,C]
                 var base = [cw.colors[2], cw.colors[1], cw.colors[0]];   // dark->light chromatic palette
                 return [base[state % 3], base[(1 + state) % 3], base[(2 + state) % 3], cw.cream];
@@ -504,12 +521,7 @@
                 ctx.restore();
             }
             ctx.save(); ctx.translate(w / 2, h / 2); ctx.rotate(ang);
-            if (fade === 'off') { paint(palFor(0)); }
-            else if (fade === 'blink') { paint(palFor(st)); }
-            else {
-                paint(palFor(st));
-                if (fr >= 0.6) { ctx.globalAlpha = (fr - 0.6) / 0.4; paint(palFor((st + 1) % 3)); ctx.globalAlpha = 1; }
-            }
+            paint(palFor(scScrollsState()));   // ONE clean paint — colour fixed per load, no crossfade double-paint (kills the transient edge lines)
             ctx.restore();
         }
 

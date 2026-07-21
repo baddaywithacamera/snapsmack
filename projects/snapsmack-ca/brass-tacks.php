@@ -113,6 +113,7 @@ require_once __DIR__ . '/includes/header.php';
                     <li><a href="#q-rude-profane">Why so rude and profane?</a></li>
                     <li><a href="#q-ai">AI? AIIIIIIEEEEE!!!</a></li>
                     <li><a href="#q-catch">What's the catch?</a></li>
+                    <li><a href="#q-monetization">Where are the monetization options?</a></li>
                     <li><a href="#q-reimagining">A re-imagining of Pixelpost?</a></li>
                     <li><a href="#q-how-techie">How techie do I have to be to run this?</a></li>
                     <li><a href="#q-resources">Resources needed?</a></li>
@@ -222,6 +223,11 @@ require_once __DIR__ . '/includes/header.php';
                 <p>This software is a gift from one photographer to others. I know you're all sick of paying the photography tax like I am. SnapSmack is free now, and forever. I have no plans to turn it into a paid product. Further to that, it's open source and under a copyleft license so I can't. Neither can anyone else. They can fork it, build off it, but not charge for it. It's free and staying that way.</p>
                 <p>If you want to support me, hit my tip jar, buy gear from my affiliate links, watch a few of my videos which I have monetized — hey, lenses ain't free bro. You can support me, but you don't have to in order to use the product. That's the point.</p>
                 <p>The only catch is there is no catch. Word to your mother.</p>
+            </div>
+
+            <div class="qa" id="q-monetization">
+                <h3>Where are the monetization options? Your demos don't show you running AdSense.</h3>
+                <p>There aren't any and there never will be. SNAPSMACK was created by one hobbyist photographer for other hobbyist photographers. If you run your blog as a business and monetize it, you're not a hobbyist and this software is not for you. Go swim in the Wordpress cesspool with the rest of your ilk.</p>
             </div>
 
             <div class="qa" id="q-reimagining">
