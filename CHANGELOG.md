@@ -10,6 +10,10 @@
 
 # SnapSmack Changelog
 
+## 0.7.436 "Draw the Line" — 2026-07-21
+- **JIVE TURKEY SCROLLS — now pure vector, no raster tile at all.** The 70s ribbon pattern is drawn as actual geometry at render resolution every frame: continuous full-height stripe fills (there is no tile joint left to gap or crawl, in any direction, at any angle) and the loops as mathematically exact concentric annuli, so the curves are anti-aliased by the canvas rasteriser at final scale — smooth at any size, exactly as Sean said: it's math. Ribbon-entry layering (stem over coil on the entry half) reproduces the source art's interlock precisely; colour drift (fade/blink/off), speed, angle and all four colourways unchanged. The embedded ribbon-tile PNG is gone entirely, so the engine is 4.7KB lighter. Supersedes the interim raster half-size/anti-alias tuning that never shipped. Verified against a recolour of the original vector trace, plus rotated and crossfade renders. (`assets/js/ss-engine-jive-turkey.js`.)
+- **GRAM light table — CONFIRM ORDER is now always clickable.** The button no longer greys out. It was gated on an internal "dirty" flag, and locking a trigram reloads the page — which reset that flag and left CONFIRM ORDER dead, so you couldn't commit the order you'd just arranged. It now writes the current on-screen order to `sort_order` for the whole blog on demand, every time you click it (whole-blog: the lighttable query has no LIMIT). (`smack-lt-gram.php`.)
+
 ## 0.7.435 "Simple Ways" — 2026-07-21
 - **JIVE TURKEY SCROLLS backdrop rebuilt from the source vector.** The 70s ribbon pattern now uses the CORRECT spaced tile, traced straight from Sean's own vector art: clean ribbon columns with white field breathing between them, seamless, tiled aspect-correct (~285px columns), recoloured per colourway across all four sets (HARVEST / GROOVY / BLECH / BARF). Replaces the overlapping "solid interlock" tile that had crushed the spacing out and stacked the ribbons on top of each other. (`assets/js/ss-engine-jive-turkey.js`.)
 

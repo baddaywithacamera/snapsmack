@@ -395,7 +395,7 @@ include 'core/sidebar.php';
         </h2>
         <div class="ltg-toolbar">
             <span class="ltg-save-status" id="ltgSaveStatus"></span>
-            <button class="btn btn--sm" id="ltgConfirmOrder" disabled title="Write this exact order everywhere — feed AND fediverse. Locked trigrams stay put; nothing saves until you click this.">&#10003; CONFIRM ORDER</button>
+            <button class="btn btn--sm" id="ltgConfirmOrder" title="Write this exact order everywhere — feed AND fediverse. Locked trigrams stay put; nothing saves until you click this.">&#10003; CONFIRM ORDER</button>
             <span class="ltg-trigram-lock" id="ltgTrigramLock" style="display:none;align-items:center;gap:6px;">
                 <select id="ltgTrigramOrient" class="btn btn--sm" title="Trigram orientation" style="padding:3px 6px;">
                     <option value="h">Horizontal · L / M / R</option>
@@ -684,7 +684,9 @@ include 'core/sidebar.php';
     function clearDirty() {
         ltgDirty = false;
         if (confirmBtn) {
-            confirmBtn.disabled = true;
+            // CONFIRM ORDER stays ALWAYS active — you can commit the current
+            // order any time, even when nothing tracked as "dirty" (e.g. right
+            // after locking a trigram). We only drop the unsaved highlight here.
             confirmBtn.style.background = '';
             confirmBtn.style.color = '';
             confirmBtn.style.fontWeight = '';
@@ -706,7 +708,7 @@ include 'core/sidebar.php';
         .then(d => { setStatus(d.ok ? 'saved' : 'error'); if (d.ok) clearDirty(); })
         .catch(() => setStatus('error'));
     }
-    function confirmOrder() { if (ltgDirty) saveOrder(); }
+    function confirmOrder() { saveOrder(); }   // always active — writes the current order on demand
     if (confirmBtn) confirmBtn.addEventListener('click', confirmOrder);
     window.addEventListener('beforeunload', function (e) {
         if (ltgDirty) { e.preventDefault(); e.returnValue = ''; }
