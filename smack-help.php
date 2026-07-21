@@ -3454,6 +3454,57 @@ interacts exactly the way a carousel blog does.</p>
 HTML
 ];
 
+$help_topics['smackverse-rollcall'] = [
+    'section'  => 'SMACKVERSE',
+    'title'    => 'Roll Call — fediverse.info listing',
+    'icon'     => '&#x1F4E3;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>ROLL CALL &mdash; Get listed on fediverse.info</h3>
+<p>The hardest part of any new network is an empty feed &mdash; and being <em>in</em> someone
+else's feed starts with being findable. <a href="https://fediverse.info/people" target="_blank"
+rel="noopener nofollow">fediverse.info</a> runs a consent-first people directory: people browse
+by topic (photography, nature, film&hellip;) and follow who they find. You appear there only if
+your fediverse bio carries the <code>#fedi22</code> tag <em>and</em> you submitted your handle;
+removing the tag delists you.</p>
+
+<h4>Turning it on</h4>
+<ol>
+    <li>SMACKVERSE &rarr; Federation must be ON (ROLL CALL rides your fediverse profile).</li>
+    <li>In <strong>ROLL CALL</strong> on the Federation page, tick the checkbox and set your
+    topics (comma-separated; <code>photography</code> is the default and is always sensible to
+    keep). SnapSmack sanitises them into valid hashtags.</li>
+    <li>SAVE ROLL CALL. SnapSmack appends <code>#fedi22</code> plus your topic tags to the
+    blog's fediverse bio, immediately pushes a signed <em>Update(Actor)</em> so remotes'
+    cached copies of your profile refresh, and <strong>submits your handle to the directory
+    for you</strong>. Their server fetches your profile fresh, verifies the tag, and files you
+    under your topics &mdash; consent still lives in your bio, the submit just saves you the
+    paperwork. The result (accepted, or their error message verbatim) shows in the save
+    confirmation.</li>
+    <li>If the auto-submit fails &mdash; it rides an unpublished endpoint of theirs, so it can
+    break without notice &mdash; nothing is lost: your bio already carries the tags, and pasting
+    your handle (shown in the panel) into the <strong>ADD ME</strong> box at
+    fediverse.info/people does exactly the same thing.</li>
+</ol>
+
+<h4>Turning it off</h4>
+<p>Untick, SAVE ROLL CALL &mdash; the tags leave your bio, another <em>Update(Actor)</em>
+goes out, and SnapSmack sends the directory's <em>remove</em> request for you. Belt and
+suspenders: their crawler also delists anyone whose bio no longer carries
+<code>#fedi22</code>, and the manual <em>remove me</em> link on their page always works.</p>
+
+<h4>Notes</h4>
+<ul>
+    <li>The tags render as the last line of your bio on Mastodon/Pixelfed profiles. That is
+    how the directory reads consent &mdash; it is visible by design.</li>
+    <li>Topics only affect where the directory files you; they don't change how your posts
+    federate or tag.</li>
+    <li>ROLL CALL never sends anything to fediverse.info on its own &mdash; it only edits
+    your own bio. Listing and delisting are always your explicit act on their page.</li>
+</ul>
+HTML
+];
+
 
 // =========================================================================
 //  SKIN HELP HOOK

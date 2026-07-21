@@ -138,6 +138,53 @@ include 'core/sidebar.php';
         </form>
     </div>
 
+    <!-- ROLL CALL — fediverse.info people directory -->
+    <div class="box mb-20">
+        <h3>ROLL CALL &mdash; GET LISTED ON FEDIVERSE.INFO</h3>
+        <?php
+            $rc_on     = ($sv_settings['smackverse_rollcall'] ?? '0') === '1';
+            $rc_topics = (string)($sv_settings['smackverse_rollcall_topics'] ?? 'photography');
+        ?>
+        <p class="dim mb-20">
+            <a href="https://fediverse.info/people?topics=photography" target="_blank" rel="noopener nofollow">fediverse.info</a>
+            runs a consent-first people directory &mdash; the cure for the empty-feed problem. You appear
+            there <strong>only</strong> because your bio carries the <code>#fedi22</code> tag and you asked to be
+            listed; drop the tag and you're gone. Flip this ON and SnapSmack adds <code>#fedi22</code> plus
+            your topic tags to this blog's fediverse bio, refreshes it on the remotes, and submits your
+            handle to the directory for you &mdash; they verify the tag straight off your profile. A switch
+            you flip, never a default we flip.
+        </p>
+        <?php if (!$sv_on): ?>
+            <p class="dim">Enable SMACKVERSE above first.</p>
+        <?php else: ?>
+            <form method="post" action="">
+                <input type="hidden" name="action" value="rollcall_save">
+                <label class="dim mb-20" style="display:flex; gap:10px; align-items:flex-start; cursor:pointer;">
+                    <input type="checkbox" name="rollcall_enabled" value="1" <?php echo $rc_on ? 'checked' : ''; ?> style="margin-top:3px; flex:0 0 auto;">
+                    <span>CARRY THE DIRECTORY TAGS IN MY BIO (<code>#fedi22</code> + topics below)</span>
+                </label>
+                <div class="lens-input-wrapper">
+                    <label>TOPICS (COMMA-SEPARATED &mdash; THE DIRECTORY FILES YOU UNDER THESE)</label>
+                    <input type="text" name="rollcall_topics" maxlength="200"
+                           value="<?php echo htmlspecialchars($rc_topics); ?>"
+                           placeholder="photography, nature, landscape" autocomplete="off">
+                </div>
+                <button type="submit" class="btn-smack">SAVE ROLL CALL</button>
+            </form>
+            <?php if ($rc_on): ?>
+            <p class="dim" style="margin-top:14px;">
+                Your bio carries the tags and your handle
+                (<code><?php echo htmlspecialchars($sv_address); ?></code>) was submitted when you saved.
+                Check yourself on the roll at
+                <a href="https://fediverse.info/people?topics=photography" target="_blank" rel="noopener nofollow">fediverse.info/people</a>.
+                If the auto-submit ever fails (it's their private endpoint &mdash; it can change), pasting your
+                handle into their <strong>ADD ME</strong> box does the same thing. Flip this OFF to delist:
+                SnapSmack pulls the tags, refreshes your profile, and sends the remove request too.
+            </p>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
+
     <!-- NETWORK RELAY -->
     <div class="box mb-20">
         <h3>SMACKVERSE NETWORK</h3>

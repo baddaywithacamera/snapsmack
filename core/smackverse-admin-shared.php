@@ -138,6 +138,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'push_
     exit;
 }
 
+// ROLL CALL (0.7.439): fediverse.info people-directory opt-in. Saving writes the
+// toggle + topics, and — because the directory reads the actor BIO — immediately
+// pushes a signed Update(Actor) so the #fedi22 + topic tags land on (or leave)
+// the remotes' cached profile. The listing itself is completed (or removed) by
+// the admin on fediverse.info; we only ever change our own bio.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'rollcall_save') {
+    $rc_on = (($_POST['rollcall_enabled'] ?? '') === '1') ? '1' : '0';
+    sv_set_setting($pdo, $sv_settings, 'smackverse_rollcall', $rc_on);
+    sv_set_setting($pdo, $sv_settings, 'smackverse_rollcall_topics',
+        substr(trim((string)($_POST['rollcall_topics'] ?? 'photography')), 0, 200));
+    $rc_n = sv_push_actor_update($pdo, $sv_settings);
+    // Keep the fingerprint in step so the cron doesn't immediately re-push.
+    sv_set_setting($pdo, $sv_settings, 'smackverse_actor_fp', sv_actor_profile_fingerprint($pdo, $sv_settings));
+    // The bio is live on OUR server the moment the settings are saved (the
+    // directory fetches the actor doc fresh), so we can submit immediately.
+    if ($rc_on === '1') {
+        $rc_tags = '#' . implode(' #', sv_rollcall_tags($sv_settings));
+        list($rc_ok, $rc_note) = sv_rollcall_submit($sv_settings, 'validate');
+        $rc_msg = "ROLL CALL is ON — your fediverse bio now carries {$rc_tags}"
+                . ($rc_n > 0 ? " (profile update queued to {$rc_n} follower inbox(es))" : '') . '. '
+                . ($rc_ok
+                    ? "Handle submitted to the directory — {$rc_note}. You're on the roll."
+                    : "Auto-submit didn't take ({$rc_note}) — no harm done: paste your handle into the ADD ME box at fediverse.info/people (link below).");
+    } else {
+        list($rc_ok, $rc_note) = sv_rollcall_submit($sv_settings, 'remove');
+        $rc_msg = 'ROLL CALL is OFF — the directory tags are out of your bio'
+                . ($rc_n > 0 ? " (profile update queued to {$rc_n} follower inbox(es))" : '') . '. '
+                . ($rc_ok
+                    ? 'Delist request sent to the directory too.'
+                    : "Delist auto-request didn't take ({$rc_note}) — their crawler drops tag-less bios on its own, or use the remove-me link at fediverse.info/people.");
+    }
+    header('Location: ' . $sv_self . '?msg=' . urlencode($rc_msg));
+    exit;
+}
+
 // PIGGYBACK SEARCH ACCOUNT (0.7.373): store a read-only OAuth token on a trusted
 // instance so the client can proxy that instance's authenticated /api/v2/search
 // (account + full-text discovery). Storing a credential is step-up gated

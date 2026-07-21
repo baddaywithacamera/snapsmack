@@ -1789,15 +1789,87 @@ function sv_actor_summary(array $settings): string {
     $bio  = sv_bio_html($settings['site_description'] ?? '');
     $base = rtrim(sv_base($settings), '/');
     $host = parse_url($base, PHP_URL_HOST) ?: $base;
-    if ($base === '' || $host === '') return $bio;
 
-    // Don't duplicate if the admin already linked the site in the bio.
-    if (stripos($bio, $host) !== false) return $bio;
+    if ($base !== '' && $host !== '' && stripos($bio, $host) === false) {
+        // Point home unless the admin already linked the site in the bio.
+        $link = 'See <a href="' . htmlspecialchars($base, ENT_QUOTES)
+              . '" rel="nofollow noopener me">' . htmlspecialchars($host, ENT_QUOTES)
+              . '</a> for more.';
+        $bio = $bio === '' ? $link : $bio . '<br><br>' . $link;
+    }
 
-    $link = 'See <a href="' . htmlspecialchars($base, ENT_QUOTES)
-          . '" rel="nofollow noopener me">' . htmlspecialchars($host, ENT_QUOTES)
-          . '</a> for more.';
-    return $bio === '' ? $link : $bio . '<br><br>' . $link;
+    // ROLL CALL: append the fediverse.info directory hashtags (#fedi22 + the
+    // admin's topics) so directory crawlers reading the bio can list the blog.
+    $rc = sv_rollcall_tags($settings);
+    if ($rc) {
+        $line = htmlspecialchars('#' . implode(' #', $rc), ENT_QUOTES);
+        $bio  = $bio === '' ? $line : $bio . '<br><br>' . $line;
+    }
+
+    return $bio;
+}
+
+/**
+ * ROLL CALL — fediverse.info people-directory opt-in (0.7.439).
+ *
+ * Returns the hashtag names (no '#') the actor bio carries when the admin has
+ * flipped ROLL CALL on: always 'fedi22' (the directory's consent tag) plus
+ * the admin's topic tags (default 'photography'). Empty array = OFF —
+ * listing is a switch you flip, never a default we flip.
+ */
+function sv_rollcall_tags(array $settings): array {
+    if (($settings['smackverse_rollcall'] ?? '0') !== '1') return [];
+    $raw  = (string)($settings['smackverse_rollcall_topics'] ?? 'photography');
+    $tags = ['fedi22'];
+    foreach (preg_split('/[\s,]+/', $raw, -1, PREG_SPLIT_NO_EMPTY) as $t) {
+        $t = preg_replace('/[^A-Za-z0-9_]/', '', ltrim($t, '#'));
+        if ($t !== '' && strcasecmp($t, 'fedi22') !== 0 && !in_array($t, $tags, true)) $tags[] = $t;
+    }
+    if (count($tags) === 1) $tags[] = 'photography';   // never list bare, topicless
+    return $tags;
+}
+
+/**
+ * ROLL CALL — submit (or withdraw) the blog's handle to the fediverse.info
+ * people directory on the admin's behalf. One deliberate call per admin save —
+ * never bulk, never automatic. The directory fetches our actor profile live and
+ * verifies #fedi22 itself, so consent still lives in OUR bio, not this call.
+ *
+ * ⚠ Undocumented endpoint (their web form uses it; no published API). FAIL
+ * SOFT: any error degrades to the manual ADD ME flow — it must never block
+ * the settings save. Returns [bool ok, string message-for-the-admin].
+ *
+ * @param string $mode 'validate' = enroll, 'remove' = delist.
+ */
+function sv_rollcall_submit(array $settings, string $mode): array {
+    $acct = '@' . sv_handle($settings) . '@' . sv_domain($settings);
+    $url  = 'https://fediverse.info/api/_meta-api/explore/people/'
+          . ($mode === 'remove' ? 'remove' : 'validate');
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode(['acct' => $acct]),
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json',
+                                   'Accept: application/json'],
+        CURLOPT_USERAGENT      => 'SnapSmack/' . SNAPSMACK_VERSION_SHORT . ' (+https://snapsmack.ca)',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_CONNECTTIMEOUT => 5,
+    ]);
+    $body = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $err  = curl_error($ch);
+    curl_close($ch);
+
+    if ($body === false || $code === 0) {
+        return [false, "couldn't reach fediverse.info (" . ($err ?: 'network error') . ')'];
+    }
+    $json = json_decode((string)$body, true);
+    $them = is_array($json) && !empty($json['message']) ? (string)$json['message'] : '';
+    if ($code >= 200 && $code < 300) {
+        return [true, $them !== '' ? $them : 'accepted'];
+    }
+    return [false, $them !== '' ? "they said: \"{$them}\"" : "HTTP {$code}"];
 }
 
 /**
