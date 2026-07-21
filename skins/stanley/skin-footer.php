@@ -18,7 +18,7 @@ $stanley_show_sidebar = ($settings['show_sidebar'] ?? '1') === '1';
         </div><!-- /#stanley-content -->
 <?php if ($stanley_show_sidebar):
     try {
-        $stanley_recent = $pdo->query("SELECT title, slug FROM snap_posts WHERE post_type = 'longform' AND status = 'published' ORDER BY created_at DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
+        $stanley_recent = $pdo->query("SELECT title, slug FROM snap_posts WHERE post_type = 'longform' AND status = 'published' ORDER BY id DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) { $stanley_recent = []; }
     try {
         $stanley_side_pages = $pdo->query("SELECT title, slug FROM snap_pages WHERE is_active = 1 ORDER BY menu_order ASC")->fetchAll(PDO::FETCH_ASSOC);

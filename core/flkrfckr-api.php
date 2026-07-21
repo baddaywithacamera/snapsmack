@@ -565,7 +565,7 @@ if ($sub === 'albums/cover' && $method === 'POST') {
             LEFT JOIN snap_stats s ON s.image_id = m.image_id AND s.is_bot = 0
             WHERE m.album_id = ?
             GROUP BY m.image_id
-            ORDER BY COUNT(s.id) DESC, MAX(i.img_view_seed) DESC, MAX(i.img_date) DESC, MAX(i.id) DESC
+            ORDER BY COUNT(s.id) DESC, MAX(i.img_view_seed) DESC, MAX(i.id) DESC
             LIMIT 1
         ");
         $fb->execute([$album_id]);

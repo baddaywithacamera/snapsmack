@@ -112,7 +112,7 @@ try {
             INNER JOIN snap_images i ON m.image_id = i.id
                 AND i.img_status = 'published'
                 AND i.img_date <= ?
-            ORDER BY m.album_id ASC, i.img_date DESC, i.id DESC
+            ORDER BY m.album_id ASC, i.id DESC
         ");
         $latest->execute([$now_local]);
         $cover_by_album = [];

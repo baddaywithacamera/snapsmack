@@ -267,7 +267,7 @@ $pick_posts = $pdo->query("
     LEFT JOIN snap_post_images pi ON pi.post_id = p.id AND pi.is_cover = 1
     LEFT JOIN snap_images i       ON i.id = pi.image_id
     WHERE p.post_type IN ('single', 'carousel')
-    ORDER BY p.created_at DESC
+    ORDER BY p.id DESC
     LIMIT 300
 ")->fetchAll();
 

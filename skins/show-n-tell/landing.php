@@ -75,7 +75,7 @@ $grid_stmt = $pdo->prepare("
     SELECT id, img_title, img_slug, img_file, img_thumb_aspect, img_width, img_height
     FROM snap_images
     WHERE img_status = 'published' AND img_date <= ?
-    ORDER BY sort_order ASC, img_date DESC
+    ORDER BY sort_order ASC, id DESC
     LIMIT ? OFFSET ?
 ");
 $grid_stmt->execute([$now_local, $grid_per_page, $grid_offset]);

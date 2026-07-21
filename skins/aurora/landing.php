@@ -131,7 +131,7 @@ $grid_stmt = $pdo->prepare("
       AND p.created_at <= ?
     ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
              p.sort_order ASC,
-             p.created_at DESC
+             p.id DESC
 ");
 $grid_stmt->execute([$now_local]);
 $grid_posts = $grid_stmt->fetchAll();

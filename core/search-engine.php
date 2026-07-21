@@ -116,7 +116,7 @@ function snapsmack_search($pdo, $q, $limit = 60) {
                        OR t.slug LIKE ? OR t.color_family = ?
                        OR EXISTS (SELECT 1 FROM snap_image_album_map _sam JOIN snap_albums _sa ON _sa.id = _sam.album_id WHERE _sam.image_id = i.id AND _sa.album_name LIKE ?)
                        OR EXISTS (SELECT 1 FROM snap_image_cat_map _scm JOIN snap_categories _sca ON _sca.id = _scm.cat_id WHERE _scm.image_id = i.id AND _sca.cat_name LIKE ?))
-                ORDER BY i.sort_order ASC, i.img_date DESC
+                ORDER BY i.sort_order ASC, i.id DESC
                 LIMIT " . $limit . "
             ");
             $img_stmt->execute([$now, $search_term, $search_term, $tag_term, $color_family, $search_term, $search_term]);
@@ -132,7 +132,7 @@ function snapsmack_search($pdo, $q, $limit = 60) {
                   AND (i.img_title LIKE ? OR i.img_description LIKE ? OR t.slug LIKE ?
                        OR EXISTS (SELECT 1 FROM snap_image_album_map _sam JOIN snap_albums _sa ON _sa.id = _sam.album_id WHERE _sam.image_id = i.id AND _sa.album_name LIKE ?)
                        OR EXISTS (SELECT 1 FROM snap_image_cat_map _scm JOIN snap_categories _sca ON _sca.id = _scm.cat_id WHERE _scm.image_id = i.id AND _sca.cat_name LIKE ?))
-                ORDER BY i.sort_order ASC, i.img_date DESC
+                ORDER BY i.sort_order ASC, i.id DESC
                 LIMIT " . $limit . "
             ");
             $img_stmt->execute([$now, $search_term, $search_term, $tag_term, $search_term, $search_term]);

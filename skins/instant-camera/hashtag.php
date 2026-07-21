@@ -47,7 +47,7 @@ if ($tag_row) {
         WHERE it.tag_id    = ?
           AND i.img_status = 'published'
           AND i.img_date  <= ?
-        ORDER BY i.sort_order ASC, i.img_date DESC
+        ORDER BY i.sort_order ASC, i.id DESC
         LIMIT ? OFFSET ?
     ");
     $img_stmt->execute([$tag_row['id'], $now_local, $per_page, $offset]);

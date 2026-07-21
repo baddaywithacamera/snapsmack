@@ -312,7 +312,7 @@ class SnapSmackExport {
         $now      = date('D, d M Y H:i:s +0000');
 
         // Fetch all data
-        $images     = $this->pdo->query("SELECT * FROM snap_images ORDER BY img_date DESC")->fetchAll(PDO::FETCH_ASSOC);
+        $images     = $this->pdo->query("SELECT * FROM snap_images ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
         $categories = $this->pdo->query("SELECT * FROM snap_categories ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
         $comments   = $this->pdo->query("SELECT * FROM snap_comments ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
         $pages      = $this->pdo->query("SELECT * FROM snap_pages ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
@@ -525,7 +525,7 @@ class SnapSmackExport {
         $siteUrl = rtrim($this->settings['site_url'] ?? '', '/');
 
         // Fetch all data
-        $images     = $this->pdo->query("SELECT * FROM snap_images ORDER BY img_date DESC")->fetchAll(PDO::FETCH_ASSOC);
+        $images     = $this->pdo->query("SELECT * FROM snap_images ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
         $categories = $this->pdo->query("SELECT * FROM snap_categories ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
         $pages      = $this->pdo->query("SELECT * FROM snap_pages ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
         $comments   = $this->pdo->query("SELECT * FROM snap_comments ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);

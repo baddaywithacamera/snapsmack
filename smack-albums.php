@@ -63,7 +63,7 @@ if (!empty($_GET['ajax']) && $_GET['ajax'] === 'posts') {
                 i.img_thumb_square, i.img_thumb_aspect, i.img_file
          FROM snap_images i" . $joins . "
          WHERE i.img_status = 'published' AND i.img_title LIKE ?
-         ORDER BY i.img_date DESC
+         ORDER BY i.id DESC
          LIMIT ? OFFSET ?"
     );
     $pos = 1;

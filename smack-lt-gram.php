@@ -43,7 +43,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'reorder') {
     $all_ids = array_map('intval', $pdo->query(
         "SELECT id FROM snap_posts
           ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
-                   sort_order ASC, created_at DESC"
+                   sort_order ASC, id DESC"
     )->fetchAll(PDO::FETCH_COLUMN));
 
     $page_set  = array_flip($new_order);
@@ -269,7 +269,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_trigram') {
         $seq = array_map('intval', $pdo->query(
             "SELECT id FROM snap_posts
               ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
-                       sort_order ASC, created_at DESC"
+                       sort_order ASC, id DESC"
         )->fetchAll(PDO::FETCH_COLUMN));
 
         $first_idx = null;
@@ -365,7 +365,7 @@ $posts = $pdo->query("
     LEFT JOIN snap_images i       ON i.id = pi.image_id
     LEFT JOIN snap_trigrams tg    ON tg.id = p.trigram_id
     ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
-             p.sort_order ASC, p.created_at DESC
+             p.sort_order ASC, p.id DESC
 ")->fetchAll();
 
 // Same gapless realign as the public feed, so the lighttable preview matches

@@ -141,7 +141,7 @@ if (!empty($_POST['action']) || !empty($_GET['action'])) {
                     (SELECT COUNT(*) FROM snap_collection_items WHERE image_id = i.id) AS col_cnt
                FROM snap_images i
               WHERE $where_sql
-              ORDER BY i.img_date DESC, i.id DESC
+              ORDER BY i.sort_order ASC, i.id DESC
               LIMIT ? OFFSET ?"
         );
         $stmt->execute($params_page);

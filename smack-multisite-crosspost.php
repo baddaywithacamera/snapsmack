@@ -157,7 +157,7 @@ $img_stmt = $pdo->prepare("
            img_thumb_square, img_thumb_aspect, img_date
     FROM snap_images
     WHERE img_status = 'published'" . $search_clause . "
-    ORDER BY img_date DESC, id DESC
+    ORDER BY id DESC
     LIMIT $per_pg OFFSET $offset
 ");
 $img_stmt->execute($search_params);

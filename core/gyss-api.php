@@ -207,7 +207,7 @@ if ($resource === 'photos' && $method === 'GET') {
                 (SELECT a2.album_name FROM snap_image_album_map am2 JOIN snap_albums a2 ON a2.id = am2.album_id WHERE am2.image_id = i.id LIMIT 1) AS album_name
             FROM snap_images i
             WHERE $where_sql
-            ORDER BY i.sort_order ASC, i.img_date DESC
+            ORDER BY i.sort_order ASC, i.id DESC
             LIMIT ? OFFSET ?
         ");
         $stmt->execute($params_page);

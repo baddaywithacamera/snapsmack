@@ -115,7 +115,7 @@ if ($sl_cover === '') {
     $q = $pdo->prepare(
         "SELECT img_file FROM snap_images
          WHERE img_status = 'published' AND img_width > img_height AND img_date <= ?
-         ORDER BY img_date DESC LIMIT 1"
+         ORDER BY sort_order ASC, id DESC LIMIT 1"
     );
     $q->execute([$sl_now]);
     $f = $q->fetchColumn();

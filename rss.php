@@ -44,7 +44,7 @@ echo '<?xml version="1.0" encoding="UTF-8" ?>';
     // Fetches the 20 most recent published images. Uses PHP timestamp (timezone in core/db.php)
     // to ensure consistent filtering across all requests.
     $now_local = date('Y-m-d H:i:s');
-    $stmt = $pdo->prepare("SELECT * FROM snap_images WHERE img_status = 'published' AND img_date <= ? ORDER BY img_date DESC LIMIT 20");
+    $stmt = $pdo->prepare("SELECT * FROM snap_images WHERE img_status = 'published' AND img_date <= ? ORDER BY sort_order ASC, id DESC LIMIT 20");
     $stmt->execute([$now_local]);
 
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {

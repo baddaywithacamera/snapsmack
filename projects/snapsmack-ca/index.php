@@ -1418,10 +1418,42 @@ form.ml-block-form {
     .theme-grid { grid-template-columns: 1fr; }
 }
 
+/* ─── CLOSED BETA BANNER ──────────────────────────────────────────────────── */
+.beta-banner {
+    display: flex; align-items: center; justify-content: center;
+    flex-wrap: wrap; gap: 8px 16px;
+    background: var(--red); color: var(--white);
+    padding: 12px 24px; text-decoration: none;
+    font-size: 1rem; line-height: 1.4; text-align: center;
+    border-bottom: 3px solid var(--black);
+    transition: background 0.15s ease;
+}
+.beta-banner:hover { background: #b00000; }
+.beta-banner-flag {
+    background: var(--black); color: var(--white);
+    font-weight: 800; letter-spacing: 0.09em; font-size: 0.8rem;
+    padding: 4px 10px; border-radius: 2px; white-space: nowrap;
+}
+.beta-banner-text, .beta-banner-text strong { color: var(--white); }
+.beta-banner-cta {
+    font-weight: 800; letter-spacing: 0.04em; white-space: nowrap;
+    border-bottom: 2px solid var(--white); padding-bottom: 1px;
+}
+@media (max-width: 640px) {
+    .beta-banner { font-size: 0.9rem; padding: 10px 16px; }
+}
+
 CSS;
 
 require_once __DIR__ . '/includes/header.php';
 ?>
+
+<!-- ── CLOSED BETA BANNER ──────────────────────────── -->
+<a href="#beta" class="beta-banner">
+    <span class="beta-banner-flag">CLOSED BETA</span>
+    <span class="beta-banner-text"><strong>Applications are open now.</strong> First wave opens September 4 &mdash; 20 photographers, 500+ images ready. Flickr &amp; Instagram refugees to the front.</span>
+    <span class="beta-banner-cta">Apply &rarr;</span>
+</a>
 
 <!-- ── HERO ───────────────────────────────────────────────────────────────── -->
 <section id="hero">
@@ -1450,7 +1482,7 @@ require_once __DIR__ . '/includes/header.php';
         <p class="hero-sub">Self-hosted, free and open-source, built for photographers who got tired of Instagram, Facebook, and every other platform deciding what happens to their work. Own your archive. Own your audience. No middleman.</p>
         <div class="hero-actions">
             <a href="#what" class="btn btn-secondary">See What It Does</a>
-            <a href="#beta" class="btn btn-primary">Apply for Beta Access</a>
+            <a href="#beta" class="btn btn-primary">Apply for the Closed Beta</a>
         </div>
         <p class="hero-tags">#fightthealgorithm &nbsp; #takebackyourart &nbsp; #fuckzuck &nbsp; #elonbegone &nbsp; #deplatformyourself</p>
     </div>
@@ -2321,8 +2353,10 @@ require_once __DIR__ . '/includes/header.php';
 <!-- ── BETA SIGNUP ─────────────────────────────────────────────────────────── -->
 <section id="beta">
     <div class="wrap">
-        <h2>Get In Early</h2>
-        <p class="lede">SnapSmack is in Alpha. It's real, it runs, and it's already hosting live sites — but it's not open to the public yet. Sign up and we'll let you know when Beta opens.</p>
+        <h2>Apply for the Closed Beta</h2>
+        <p class="lede">SnapSmack's first closed beta opens <strong>September 4, 2026</strong>, and applications are open right now. We're taking <strong>twenty photographers</strong> for the first wave &mdash; a small crew to harden the software against real archives before we widen the doors.</p>
+        <p class="lede">It's built for people with a real back-catalogue, so you'll want <strong>at least 500 images</strong> ready to post. And if you're hauling a collection off Flickr or Instagram before the algorithm buries it for good, you're exactly who we want to hear from &mdash; that's the story we most want to tell, and the workflow we most want to break in.</p>
+        <p class="lede">Drop your email below to apply. We'll reach out to the first twenty.</p>
         <div class="ml-embedded" data-form="Z4oY86"></div>
     </div>
 </section>

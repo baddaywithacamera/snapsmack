@@ -133,7 +133,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
     } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
 
     $raw_date  = $_POST['img_date'] ?? '';
+    // $post_date = the image's DATE TAKEN (display-only — never drives order).
     $post_date = !empty($raw_date) ? str_replace('T', ' ', $raw_date) : date('Y-m-d H:i:s');
+    // $posted_at = when the post entered the site. THIS stamps snap_posts.created_at;
+    // it is never derived from img_date (that contamination broke feed ordering).
+    $posted_at = date('Y-m-d H:i:s');
 
     // Image settings from site config
     $max_w  = (int)($settings['max_width_landscape']  ?? 2500);
@@ -333,7 +337,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         // Shared creator: one snap_posts row + its pivot rows from a list of
         // processed images (in order). Returns the new post id.
         $make_post = function (array $images, string $ptype, int $rows) use (
-            $pdo, $desc, $status, $post_date, $allow_cmt, $allow_dl, $dl_url, $manual_tags, $fedi_enabled
+            $pdo, $desc, $status, $posted_at, $allow_cmt, $allow_dl, $dl_url, $manual_tags, $fedi_enabled
         ) {
             $imgs = array_values($images);
             $slug = 'ig-' . date('Ymd-His') . '-' . substr(bin2hex(random_bytes(4)), 0, 8);
@@ -344,7 +348,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
                      post_img_size_pct, post_border_px, post_border_color,
                      post_bg_color, post_shadow, fedi_enabled)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 100, 0, '#000000', '#ffffff', 0, ?)
-            ")->execute(['', $slug, $desc, $ptype, $status, $post_date,
+            ")->execute(['', $slug, $desc, $ptype, $status, $posted_at,
                          $allow_cmt, $allow_dl, $dl_url, $rows, $fedi_enabled]);
             $pid = (int)$pdo->lastInsertId();
 

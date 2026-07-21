@@ -105,7 +105,7 @@ try {
     $stmt = $pdo->prepare("SELECT id, img_title, img_file, img_thumb_aspect FROM snap_images
                            WHERE img_status = 'published'
                            AND img_date <= :now_local
-                           ORDER BY sort_order ASC, img_date DESC LIMIT :limit");
+                           ORDER BY sort_order ASC, id DESC LIMIT :limit");
     $stmt->bindValue(':now_local', $now_local, PDO::PARAM_STR);
     $stmt->bindValue(':limit', (int)$wall_limit, PDO::PARAM_INT);
     $stmt->execute();

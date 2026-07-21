@@ -534,7 +534,7 @@ class SnapSmack {
         // --- [latest_image] ---
         $content = preg_replace_callback('/\[latest_image\]/i', function () use ($base) {
             try {
-                $stmt = $this->pdo->query("SELECT id, img_file, img_title, img_thumb_aspect FROM snap_images WHERE img_status = 'published' ORDER BY img_date DESC LIMIT 1");
+                $stmt = $this->pdo->query("SELECT id, img_file, img_title, img_thumb_aspect FROM snap_images WHERE img_status = 'published' ORDER BY id DESC LIMIT 1");
                 $img = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$img) return '';
                 $src = !empty($img['img_thumb_aspect']) ? $img['img_thumb_aspect'] : $img['img_file'];
