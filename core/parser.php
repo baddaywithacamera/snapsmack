@@ -21,6 +21,7 @@
  *   [newest_post]                    — date of most recent post
  *   [oldest_post]                    — date of first post
  *   [embed:key]                      — named HTML embed from Smack Your Scripts Up!
+ *   [fedi_handle]                    — blog's own fediverse @handle as a follow link (blank if federation off)
  *
  * SMACKONEOUT + SMACKTALK only (not carousel/GRAMOFSMACK):
  *   [lede]text[/lede]                — large grey introductory paragraph
@@ -562,6 +563,24 @@ class SnapSmack {
             }
 
             return $embeds[$key] ?? '';
+        }, $content);
+
+        // --- [fedi_handle] ---
+        // The blog's own fediverse handle (@user@domain) rendered as a follow
+        // link. Blank when SMACKVERSE federation is off, so it can live in a
+        // page or template unconditionally. Reuses the canonical sv_* helpers.
+        $content = preg_replace_callback('/\[fedi_handle\]/i', function () {
+            if (!function_exists('sv_enabled')) {
+                $lib = __DIR__ . '/smackverse.php';
+                if (is_file($lib)) require_once $lib;
+            }
+            if (!function_exists('sv_enabled') || !sv_enabled($this->config)) return '';
+            $handle = sv_handle($this->config);
+            $domain = sv_domain($this->config);
+            if ($handle === '' || $domain === '') return '';
+            $at = '@' . $handle . '@' . $domain;
+            return '<a class="snap-fedi-handle" href="' . htmlspecialchars(sv_actor_url($this->config))
+                 . '" rel="me">' . htmlspecialchars($at) . '</a>';
         }, $content);
 
         return $content;

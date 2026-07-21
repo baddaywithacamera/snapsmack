@@ -191,10 +191,64 @@ nav a.active::after { width: 100%; }
 .header-badge--boring .header-badge-track  { background: #555; }
 .header-badge--bitchin .header-badge-track { background: var(--red); }
 
-@media (max-width: 700px) {
-    nav { column-gap: 16px; }
-    nav a { font-size: 0.7rem; }
+/* ─── HAMBURGER MENU (mobile) — CSS-only checkbox toggle, no JS ──────────── */
+.nav-toggle { position: absolute; opacity: 0; width: 1px; height: 1px; margin: -1px; overflow: hidden; }
+.nav-burger { display: none; }
+
+@media (max-width: 800px) {
+    /* The header stays one row — logo left, ☰ right — and the 8-item nav drops
+       down when the burger is toggled. Replaces the old wide 4-col nav that
+       forced horizontal overflow. Applies to every page via the shared header. */
+    .header-inner { position: relative; gap: 14px; padding-left: 16px; padding-right: 16px; }
+    .logo-lockup { gap: 12px; }
+    .header-right { margin-left: auto; }
     .header-build-badges { display: none; }
+
+    .nav-burger {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 44px; height: 44px; cursor: pointer;
+        font-size: 1.9rem; line-height: 1; color: var(--black);
+        -webkit-user-select: none; user-select: none;
+    }
+    .nav-burger::before { content: "\2630"; }                       /* ☰ */
+    .nav-toggle:checked ~ .nav-burger::before { content: "\2715"; } /* ✕ */
+
+    /* Main-header dropdown */
+    #site-header nav {
+        display: none;
+        position: absolute; top: 100%; left: 0; right: 0;
+        grid-template-columns: none;
+        flex-direction: column; align-items: center; gap: 0;
+        margin: 0; padding: 4px 0 14px;
+        background: var(--white);
+        border-bottom: 3px solid var(--red);
+        z-index: 1200;
+    }
+    #site-header .nav-toggle:checked ~ nav { display: flex; }
+    #site-header nav a { font-size: 0.95rem; padding: 12px 0; }
+
+    /* Sticky mini-header dropdown */
+    #mini-header .mini-inner { position: relative; }
+    #mini-header nav {
+        display: none;
+        position: absolute; top: 100%; left: 0; right: 0;
+        grid-template-columns: none;
+        flex-direction: column; align-items: center; gap: 0;
+        margin: 0; padding: 4px 0 12px;
+        background: rgba(255,255,255,0.97);
+        -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+        border-bottom: 2px solid rgba(212,0,0,0.5);
+        z-index: 1200;
+    }
+    #mini-header .nav-toggle:checked ~ nav { display: flex; }
+    #mini-header nav a { font-size: 0.9rem; padding: 10px 0; }
+}
+
+@media (max-width: 480px) {
+    /* Trim the logo lockup so the wordmark + ☰ share a phone row cleanly. */
+    .logo-lockup img { width: 46px; }
+    .logo-text .snap { font-size: 1.4rem; }
+    .logo-text .tagline { font-size: 0.58rem; }
 }
 
 /* ===== SNAPSMACK EOF ===== */

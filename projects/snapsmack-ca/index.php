@@ -30,6 +30,7 @@ $_demo_sites = [
     'theschoolofhardnocks.ca' => 'https://theschoolofhardnocks.ca',
     'fauxlaroid.fyi'          => 'https://fauxlaroid.fyi',
     'lightafterdark.ca'       => 'https://lightafterdark.ca',
+    'craptasti.ca'            => 'https://craptasti.ca',
 ];
 
 $_demo_stats      = [];
@@ -1343,8 +1344,7 @@ form.ml-block-form {
     .tool-block { grid-template-columns: 1fr; gap: 32px; }
     .tool-screenshot-duo { grid-template-columns: 1fr; }
     .admin-shots { grid-template-columns: 1fr; gap: 4px; }
-    .header-inner { flex-direction: column; align-items: flex-start; gap: 12px; }
-    .logo-lockup img { width: 80px; }
+    /* header layout now handled by the hamburger rules in snapsmack-ca.css */
     .footer-inner { flex-direction: column; align-items: flex-start; }
     .whodat-grid { grid-template-columns: 1fr; gap: 40px; }
     .whodat-card { flex-direction: column; }
@@ -1386,6 +1386,36 @@ form.ml-block-form {
     font-style: italic;
     font-size: 0.85rem;
     color: var(--mid-grey);
+}
+
+/* ─── MOBILE FIXES (2026-07-20) — collapse remaining multi-col grids + un-overlap hero badges ─── */
+@media (max-width: 800px) {
+    /* "Coming Next" was a fixed 3-col grid with no mobile collapse — the source of
+       the whole-page horizontal overflow (1fr tracks can't shrink below their
+       longest word). Match the .modes-grid pattern and stack it. */
+    .coming-grid { grid-template-columns: 1fr; }
+    /* Status cards were a 4-up grid until 760px, overflowing the 761–800 band. */
+    .status-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 800px) {
+    /* Version pills were position:absolute in the hero and landed on top of the
+       headline at narrow widths. Drop them back into normal flow above the H1. */
+    .build-badges {
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 24px;
+    }
+}
+@media (max-width: 560px) {
+    /* Status cards were still 2-up on phones (~204px each) and overflowed. */
+    .status-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+    /* Skin-demo grid used minmax(300px,…) tracks — the 300px floor is wider than a
+       phone's content column, so it overflowed. Single column below 480px. */
+    .theme-grid { grid-template-columns: 1fr; }
 }
 
 CSS;
