@@ -10,6 +10,12 @@
 
 # SnapSmack Changelog
 
+## 0.7.434 "Make New Friends but Keep Discord" — 2026-07-21
+- **New `[fedi_handle]` shortcode.** Drops the blog's own fediverse handle (`@you@yourdomain`) into any post or page as a ready-made follow link, and renders nothing at all when SMACKVERSE federation is switched off — so it is safe to leave in a template permanently. Reuses the canonical `sv_handle()` / `sv_domain()` / `sv_actor_url()` helpers (no duplicated identity logic) and emits a `.snap-fedi-handle` hook class with no inline styling. (`core/parser.php`.)
+- **All-time view counts now include the Flickr view seed.** `stats.php` folds `SUM(img_view_seed)` into the all-time views total (Slickr already stores and pulls the seed), and `active_since` honours a `snap_settings['active_since']` override before falling back to the oldest post date. (`stats.php`.)
+- **JIVE TURKEY background engine:** DAISY loads at the lower-right spread (phase offset only — motion, direction and border untouched); SCROLLS renders SOLID with no gaps (ribbon interlock). Both verified via engine render. (`assets/js/ss-engine-jive-turkey.js`.)
+- **JIVE TURKEY SURPRISE — real variety, no more clumping.** SURPRISE mode now deals a shuffle bag instead of rolling dice: every enabled background combo appears once before any repeat, no two consecutive page loads share the same mode, and a reshuffle never opens on the mode you just saw. Fixes the old avoid-recent logic that silently collapsed to pure random (and could repeat back-to-back) whenever random-colour was off and only a few modes were enabled. Still session-scoped in `sessionStorage`, no cookies. (`assets/js/ss-engine-jive-turkey.js`.)
+
 ## 0.7.433 "TESTING TESTING 16-17-18" — 2026-07-20
 - JIVE TURKEY border: pulse direction restored to the classic SHRINK-IN / POP-OUT. The band is anchored at the PHOTO edge (engine keeps inset+padding = band width): shrinking collapses INTO the photo with the background flooding the strip behind it, growth erupts back out. 0.7.431/432 had the band pinned to the tile edge (backwards) after the corner fixes reverted the 0.7.430 direction. Photo sits INSIDE the ring again (inset --tile-bw) at r=--tile-radius — concentric with the 432 outer radius, so the seam is exact and corners stay uniform at every width (verified live: pinned-edge samples + 8/4/1/0px flood harness + frozen mid-pulse on craptasti). Engine + skin 0.1.23 must deploy TOGETHER.
 

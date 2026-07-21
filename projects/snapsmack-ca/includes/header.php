@@ -85,6 +85,8 @@ $_page_css_block = isset($page_css) && $page_css !== '' ? "\n" . $page_css . "\n
 <div id="mini-header">
     <div class="mini-inner">
         <a href="index.php" class="mini-logo"><img src="img/logo.png" alt="SnapSmack"></a>
+        <input type="checkbox" id="ss-nav-mini" class="nav-toggle" aria-hidden="true">
+        <label for="ss-nav-mini" class="nav-burger" role="button" aria-label="Toggle menu"></label>
         <nav>
 <?php echo $_nav($nav_active); ?>
         </nav>
@@ -102,6 +104,8 @@ $_page_css_block = isset($page_css) && $page_css !== '' ? "\n" . $page_css . "\n
             </div>
         </a>
         <div class="header-right">
+            <input type="checkbox" id="ss-nav-main" class="nav-toggle" aria-hidden="true">
+            <label for="ss-nav-main" class="nav-burger" role="button" aria-label="Toggle menu"></label>
             <nav>
 <?php echo $_nav($nav_active); ?>
             </nav>

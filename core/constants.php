@@ -63,9 +63,9 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.433');
-define('SNAPSMACK_VERSION_SHORT', '0.7.433');
-define('SNAPSMACK_VERSION_CODENAME', 'Testing Testing 16-17-18');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.434');
+define('SNAPSMACK_VERSION_SHORT', '0.7.434');
+define('SNAPSMACK_VERSION_CODENAME', 'Make New Friends but Keep Discord');
 
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.

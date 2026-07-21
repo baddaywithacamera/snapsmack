@@ -52,24 +52,36 @@ try {
         WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
     ")->fetch();
 
-    // Stats — all time
+    // Stats — all time (live)
     $stats_all = $pdo->query("
         SELECT COALESCE(SUM(total_views), 0)     AS views_all,
                COALESCE(SUM(unique_visitors), 0) AS unique_all
         FROM snap_stats_daily
     ")->fetch();
 
-    // Active since — date of first published post
-    $since = $pdo->query("
-        SELECT DATE(MIN(img_date)) FROM snap_images WHERE img_status = 'published'
+    // Imported view history (e.g. Flickr count_views, stored per image as img_view_seed).
+    // Adds to ALL-TIME views only — never the 30-day window, and never uniques (imports
+    // carry real view tallies but no unique-visitor data; see FLKR FCKR history spec).
+    $seed_views = (int)$pdo->query("
+        SELECT COALESCE(SUM(img_view_seed), 0) FROM snap_images WHERE img_status = 'published'
     ")->fetchColumn();
+
+    // Active since — an explicit 'active_since' setting wins (e.g. a Flickr membership that
+    // predates the imported data, or a placeholder date sitting on imported rows); else
+    // fall back to the earliest published post date.
+    $since = (string)($settings['active_since'] ?? '');
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}/', $since)) {
+        $since = (string)$pdo->query("
+            SELECT DATE(MIN(img_date)) FROM snap_images WHERE img_status = 'published'
+        ")->fetchColumn();
+    }
 
     echo json_encode([
         'site_name'    => $settings['site_name']    ?? 'SnapSmack Site',
         'posts'        => $posts,
         'views_30d'    => (int)($stats['views_30d']       ?? 0),
         'unique_30d'   => (int)($stats['unique_30d']      ?? 0),
-        'views_all'    => (int)($stats_all['views_all']   ?? 0),
+        'views_all'    => (int)($stats_all['views_all']   ?? 0) + $seed_views,
         'unique_all'   => (int)($stats_all['unique_all']  ?? 0),
         'active_since' => $since ?: null,
         'version'      => SNAPSMACK_VERSION_SHORT,

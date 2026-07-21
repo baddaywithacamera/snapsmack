@@ -129,6 +129,7 @@ require_once __DIR__ . '/includes/header.php';
                     <li><a href="#q-content-locked">I've got content locked in elsewhere — do I have to abandon it?</a></li>
                     <li><a href="#q-skins">How do skins work?</a></li>
                     <li><a href="#q-business">Can I use SnapSmack to run my business website?</a></li>
+                    <li><a href="#q-business-photoblog">I'm a business owner — can I use SnapSmack as a photoblog for my work?</a></li>
                     <li><a href="#q-artist">I'm an artist, not a photographer — can I use SnapSmack?</a></li>
                 </ol>
             </div>
@@ -345,6 +346,12 @@ require_once __DIR__ . '/includes/header.php';
             <div class="qa" id="q-business">
                 <h3>Can I use SnapSmack to run my business website?</h3>
                 <p>Probably, but you're not our target audience and you'll hear crickets in the support forum if you ask for help. This is free software from an unpaid volunteer who is not your support department. Neither are the other photographers using SnapSmack.</p>
+            </div>
+
+            <div class="qa" id="q-business-photoblog">
+                <h3>I'm a business owner, but I want to have a real photoblog to show my work to my customers. Is that okay?</h3>
+                <p>Hells, yes. You're sharing images that tell a story you're proud of. If you're a hair stylist with pics of hair styles. If you're a tattoo artist with photos of amazeballs work you're doing. If you're showing off custom rods you've built, dishes from your restaurant, pets you've groomed, yards you've cleaned, pottery you have made, etc. There are people who want to see it and they want to see it in style. SNAPSMACK helps you with that.</p>
+                <p>Just please remember, we are not a commercial product and there is no commercial support. We'll try to have your back, but it happens when it happens. Keep that in mind before basing a business critical function on this software, please. Other than that, go for it.</p>
             </div>
 
             <div class="qa" id="q-artist">
