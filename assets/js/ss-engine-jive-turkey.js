@@ -427,76 +427,89 @@
             }
         }
 
-        // ── SCROLLS — the 70s ribbon-scroll tile, recoloured onto the palette ──
-        // Recolours the ORIGINAL 5-tone tile (field, pale centre-line, orange, red,
-        // brown all DISTINCT — the vector trace had merged field+centre-line and it
-        // went flat). Two lightest tones map to SHADED cream (field) and FULL cream
-        // (centre-line) so the loop-line lifts off the field. Per colourway + colour-
-        // rotation STATE an offscreen tile is cached, then tiled + scrolled seamlessly.
-        // Direction v|h|diag|diag2|random. Colour drift fade|blink|off: the 3 palette
-        // colours rotate slowly through the 3 chromatic bands (field + centre-line
-        // hold), fade = graceful crossfade, blink = hard switch.
-        var JT_SC_SRC = [[77,37,5],[254,51,1],[247,151,19],[224,194,167],[247,236,180]];
-        var SC_TW = 254, SC_TH = 300;
-        var JT_SC_URI = "data:image/png;base64,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";
-        var _sc_srcData = null, _sc_ready = false, _sc_tileCache = {};
-        (function () {
-            var im = new Image();
-            im.onload = function () {
-                var oc = document.createElement('canvas'); oc.width = SC_TW; oc.height = SC_TH;
-                var octx = oc.getContext('2d'); octx.drawImage(im, 0, 0, SC_TW, SC_TH);
-                try { _sc_srcData = octx.getImageData(0, 0, SC_TW, SC_TH); _sc_ready = true; _sc_tileCache = {}; } catch (e) {}
-            };
-            im.src = JT_SC_URI;
-        })();
-        function scLum(c) { return 0.299*c[0] + 0.587*c[1] + 0.114*c[2]; }
-        function scShadeArr(hex, f) { var c = hex2rgb(hex); return [Math.round(c[0]*f), Math.round(c[1]*f), Math.round(c[2]*f)]; }
-        function scKey(cw) { return cw.cream + '|' + cw.colors.join(','); }
-        function scTile(cw, state) {
-            var k = scKey(cw) + '|' + state; if (_sc_tileCache[k]) return _sc_tileCache[k];
-            if (!_sc_ready) return null;
-            var cr = hex2rgb(cw.cream), a = hex2rgb(cw.colors[0]), b = hex2rgb(cw.colors[1]), c = hex2rgb(cw.colors[2]);
-            var field = [255, 255, 255];
-            var sByLum = [0,1,2,3,4].sort(function (i, j) { return scLum(JT_SC_SRC[i]) - scLum(JT_SC_SRC[j]); }); // dark->light: brown,red,orange,field,centre
-            var base = [c, b, a];                                              // dark->light chromatic palette
-            var map = {}, i;
-            for (i = 0; i < 3; i++) { var s = JT_SC_SRC[sByLum[i]]; var t = base[(i + state) % 3]; map[s[0]+','+s[1]+','+s[2]] = t; }
-            var sf = JT_SC_SRC[sByLum[3]]; map[sf[0]+','+sf[1]+','+sf[2]] = field;    // field holds
-            var s5 = JT_SC_SRC[sByLum[4]]; map[s5[0]+','+s5[1]+','+s5[2]] = cr;       // centre-line holds
-            var oc = document.createElement('canvas'); oc.width = SC_TW; oc.height = SC_TH;
-            var octx = oc.getContext('2d');
-            var id = octx.createImageData(SC_TW, SC_TH), sd = _sc_srcData.data, dd = id.data, p, q;
-            for (p = 0; p < sd.length; p += 4) {
-                var key = sd[p] + ',' + sd[p+1] + ',' + sd[p+2], t2 = map[key];
-                if (!t2) {
-                    var best = null, bd = 1e12;
-                    for (q = 0; q < 5; q++) { var s2 = JT_SC_SRC[q]; var dq = (sd[p]-s2[0])*(sd[p]-s2[0]) + (sd[p+1]-s2[1])*(sd[p+1]-s2[1]) + (sd[p+2]-s2[2])*(sd[p+2]-s2[2]); if (dq < bd) { bd = dq; best = s2; } }
-                    t2 = map[best[0]+','+best[1]+','+best[2]];
-                }
-                dd[p] = t2[0]; dd[p+1] = t2[1]; dd[p+2] = t2[2]; dd[p+3] = 255;
-            }
-            octx.putImageData(id, 0, 0);
-            _sc_tileCache[k] = oc; return oc;
-        }
+        // ── SCROLLS — the 70s ribbon-scroll, drawn as PURE VECTOR geometry ──
+        // No raster tile any more: the pattern IS math. Two mirrored striped
+        // ribbons (brown/red/orange/cream on a white field) run the full
+        // canvas height, sharing a brown stripe at each column seam; each
+        // ribbon curls into a loop drawn as four concentric discs (K,R,O,C
+        // big->small, ring widths = stripe width) tangent to the stem, then
+        // the stem is REDRAWN over the loop's entry half (above centre for
+        // the "b", below for the 180-rotated "q") so the band reads as a
+        // ribbon sliding into its own coil, exactly like the source art.
+        // Drawn at render resolution every frame: curves are anti-aliased
+        // by the canvas rasteriser at final scale (smooth at any size) and
+        // stripes are continuous full-height fills (no tile joints, nothing
+        // to crawl). Layered fills (wide under narrow) keep every internal
+        // boundary paint-over-paint - no AA hairline cracks. Colour drift
+        // fade|blink|off unchanged: 3 chromatic bands rotate through the
+        // palette (dark->light = colors[2],[1],[0]), field + cream hold.
+        // Geometry traced from Sean's vector art, in tile units (254x300):
+        var SC_TW = 254, SC_TH = 300;         // pattern period
+        var SC_SW = 17;                       // stripe / ring width
+        var SC_R0 = 26.5;                     // centre-disc radius
+        var SC_BX = 63,    SC_BY = 85;        // left loop centre ("b")
+        var SC_QX = 178.5, SC_QY = 215;       // right loop centre ("q" = the b rotated 180)
         function drawScrolls(T, cw, P) {
             var w = cv.width, h = cv.height;
             ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
-            if (!_sc_ready) return;
             var ang = (P.angle != null) ? P.angle : 0;
             var sp = spOf(P.speed) * gFactor;
-            var STEP_W = 285, STEP_H = STEP_W * (SC_TH / SC_TW);
-            var travel = ((T * sp * 30) % STEP_H + STEP_H) % STEP_H;           // wraps seamlessly
-            var D = Math.hypot(w, h), halfX = Math.ceil((D / 2) / STEP_W) + 1, halfY = Math.ceil((D / 2) / STEP_H) + 1, gx, gy;
+            var s = 145 / SC_TW, TW = SC_TW * s, TH = SC_TH * s, SW = SC_SW * s, R0 = SC_R0 * s;
+            var travel = ((T * sp * 30) % TH + TH) % TH;
+            var D = Math.hypot(w, h), halfX = Math.ceil((D / 2) / TW) + 1, halfY = Math.ceil((D / 2) / TH) + 1;
+            var H2 = D / 2 + TH, gx, gy, i, k;
             var fade = P.fade || 'fade', PERIOD = 8, ph = T / PERIOD, st = Math.floor(ph) % 3, fr = ph - Math.floor(ph);
-            var tileA, tileB = null, alpha = 0;
-            if (fade === 'off') { tileA = scTile(cw, 0); }
-            else if (fade === 'blink') { tileA = scTile(cw, st); }
-            else { tileA = scTile(cw, st); if (fr >= 0.6) { tileB = scTile(cw, (st + 1) % 3); alpha = (fr - 0.6) / 0.4; } }
-            if (!tileA) return;
-            ctx.save(); ctx.translate(w/2, h/2); ctx.rotate(ang);
-            function paint(tile) { for (gy = -halfY; gy <= halfY; gy++) for (gx = -halfX; gx <= halfX; gx++) { ctx.drawImage(tile, gx*STEP_W, gy*STEP_H + travel, STEP_W, STEP_H); } }
-            paint(tileA);
-            if (tileB) { ctx.globalAlpha = alpha; paint(tileB); ctx.globalAlpha = 1; }
+            function palFor(state) {          // fills for the bands [K,R,O,C]
+                var base = [cw.colors[2], cw.colors[1], cw.colors[0]];   // dark->light chromatic palette
+                return [base[state % 3], base[(1 + state) % 3], base[(2 + state) % 3], cw.cream];
+            }
+            // geometry batched once, reused by both fade passes
+            var stems = [[], [], [], []];     // per band: [xLeft, width] rects, wide under narrow
+            var cxs = [], cys = [];           // loop centres
+            var bL = (SC_BX - SC_R0 - 3 * SC_SW) * s;   // left stem outer (K) edge
+            var qL = (SC_QX + SC_R0 - SC_SW) * s;       // right stem inner (C) edge
+            for (gx = -halfX; gx <= halfX; gx++) {
+                var cx0 = gx * TW;
+                for (i = 0; i < 4; i++) {
+                    stems[i].push([cx0 + bL + i * SW, (4 - i) * SW]);   // left stem: K,R,O,C left->right
+                    stems[i].push([cx0 + qL, (4 - i) * SW]);           // right stem: C,O,R,K (mirror)
+                }
+                for (gy = -halfY; gy <= halfY; gy++) {
+                    var cy0 = gy * TH + travel;
+                    cxs.push(cx0 + SC_BX * s); cys.push(cy0 + SC_BY * s);
+                    cxs.push(cx0 + SC_QX * s); cys.push(cy0 + SC_QY * s);
+                }
+            }
+            var RADII = [R0 + 3 * SW, R0 + 2 * SW, R0 + SW, R0];       // disc per band, big->small
+            var ROUT = RADII[0];
+            function paint(fills) {
+                for (i = 0; i < 4; i++) {                              // stems: continuous full-height fills
+                    ctx.fillStyle = fills[i];
+                    for (k = 0; k < stems[i].length; k++) ctx.fillRect(stems[i][k][0], -H2, stems[i][k][1], 2 * H2);
+                }
+                ctx.save(); ctx.beginPath();                           // loops: clip out each ribbon's entry half
+                ctx.rect(-H2, -H2, 2 * H2, 2 * H2);                    // (above centre for "b", below for "q") so the
+                for (k = 0; k < cxs.length; k += 2) ctx.rect(cxs[k] - SC_BX * s + bL, cys[k] - ROUT, 4 * SW, ROUT);
+                for (k = 1; k < cxs.length; k += 2) ctx.rect(cxs[k] - SC_QX * s + qL, cys[k], 4 * SW, ROUT);
+                ctx.clip('evenodd');                                   // stem stays on top there - every pixel painted once
+                for (i = 0; i < 4; i++) {                              // the rings: true annuli (evenodd), eye = solid disc
+                    ctx.fillStyle = fills[i]; ctx.beginPath();
+                    var r = RADII[i], ri = (i < 3) ? RADII[i + 1] : 0;
+                    for (k = 0; k < cxs.length; k++) {
+                        ctx.moveTo(cxs[k] + r, cys[k]); ctx.arc(cxs[k], cys[k], r, 0, 6.2831853072);
+                        if (ri) { ctx.moveTo(cxs[k] + ri, cys[k]); ctx.arc(cxs[k], cys[k], ri, 0, 6.2831853072); }
+                    }
+                    ctx.fill('evenodd');
+                }
+                ctx.restore();
+            }
+            ctx.save(); ctx.translate(w / 2, h / 2); ctx.rotate(ang);
+            if (fade === 'off') { paint(palFor(0)); }
+            else if (fade === 'blink') { paint(palFor(st)); }
+            else {
+                paint(palFor(st));
+                if (fr >= 0.6) { ctx.globalAlpha = (fr - 0.6) / 0.4; paint(palFor((st + 1) % 3)); ctx.globalAlpha = 1; }
+            }
             ctx.restore();
         }
 
