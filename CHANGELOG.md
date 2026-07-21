@@ -10,10 +10,13 @@
 
 # SnapSmack Changelog
 
+## 0.7.435 "Simple Ways" — 2026-07-21
+- **JIVE TURKEY SCROLLS backdrop rebuilt from the source vector.** The 70s ribbon pattern now uses the CORRECT spaced tile, traced straight from Sean's own vector art: clean ribbon columns with white field breathing between them, seamless, tiled aspect-correct (~285px columns), recoloured per colourway across all four sets (HARVEST / GROOVY / BLECH / BARF). Replaces the overlapping "solid interlock" tile that had crushed the spacing out and stacked the ribbons on top of each other. (`assets/js/ss-engine-jive-turkey.js`.)
+
 ## 0.7.434 "Make New Friends but Keep Discord" — 2026-07-21
 - **New `[fedi_handle]` shortcode.** Drops the blog's own fediverse handle (`@you@yourdomain`) into any post or page as a ready-made follow link, and renders nothing at all when SMACKVERSE federation is switched off — so it is safe to leave in a template permanently. Reuses the canonical `sv_handle()` / `sv_domain()` / `sv_actor_url()` helpers (no duplicated identity logic) and emits a `.snap-fedi-handle` hook class with no inline styling. (`core/parser.php`.)
 - **All-time view counts now include the Flickr view seed.** `stats.php` folds `SUM(img_view_seed)` into the all-time views total (Slickr already stores and pulls the seed), and `active_since` honours a `snap_settings['active_since']` override before falling back to the oldest post date. (`stats.php`.)
-- **JIVE TURKEY background engine:** DAISY loads at the lower-right spread (phase offset only — motion, direction and border untouched); SCROLLS renders SOLID with no gaps (ribbon interlock). Both verified via engine render. (`assets/js/ss-engine-jive-turkey.js`.)
+- **JIVE TURKEY DAISY** now loads at the lower-right spread (phase offset only — motion, direction and border untouched). (`assets/js/ss-engine-jive-turkey.js`.)
 - **JIVE TURKEY SURPRISE — real variety, no more clumping.** SURPRISE mode now deals a shuffle bag instead of rolling dice: every enabled background combo appears once before any repeat, no two consecutive page loads share the same mode, and a reshuffle never opens on the mode you just saw. Fixes the old avoid-recent logic that silently collapsed to pure random (and could repeat back-to-back) whenever random-colour was off and only a few modes were enabled. Still session-scoped in `sessionStorage`, no cookies. (`assets/js/ss-engine-jive-turkey.js`.)
 
 ## 0.7.433 "TESTING TESTING 16-17-18" — 2026-07-20
