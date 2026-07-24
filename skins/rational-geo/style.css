@@ -96,6 +96,19 @@ html {
   z-index: 1;
 }
 
+/* The solo viewer is exactly one viewport tall. Open drawers scroll inside
+   .rg-single; archive/static pages retain their document-scrolling overrides. */
+html:has(body .rg-single),
+body:has(.rg-single) {
+  height: 100%;
+  overflow: hidden;
+}
+
+body:has(.rg-single) #page-wrapper {
+  height: 100dvh;
+  min-height: 0;
+}
+
 body {
   font-family: 'Source Serif 4', Georgia, serif;
   font-size: var(--font-scale-base);
@@ -313,7 +326,8 @@ small,
   flex-direction: column;
   min-height: 0;
   flex: 1;
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: auto;
   scroll-behavior: smooth;
   align-items: stretch;
   position: relative;

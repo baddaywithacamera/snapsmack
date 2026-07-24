@@ -62,6 +62,18 @@ if (!sv_enabled($settings)) {
     exit(0);
 }
 
+// Cron and event kicks can arrive together. A database advisory lock works
+// across the root cron user and the web/PHP user without filesystem ownership
+// problems. It is released automatically when this connection closes.
+$delivery_lock_name = 'snapsmack_sv_' . substr(hash('sha256', realpath($root) ?: $root), 0, 40);
+$delivery_lock_stmt = $pdo->prepare("SELECT GET_LOCK(?, 0)");
+$delivery_lock_stmt->execute([$delivery_lock_name]);
+$delivery_lock = (int)$delivery_lock_stmt->fetchColumn();
+if ($delivery_lock !== 1) {
+    echo "SMACKVERSE delivery worker already running — nothing to do.\n";
+    exit(0);
+}
+
 sv_ensure_tables($pdo);
 sv_ensure_keys($pdo, $settings);
 
