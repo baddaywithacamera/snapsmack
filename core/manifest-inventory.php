@@ -4,7 +4,7 @@
  *
  * Single source of truth for all available system resources: local fonts,
  * Google Fonts, and JavaScript engines. Skins request assets from this list
- * via their individual manifest.php.
+ * via their individual manifest.json.
  *
  * LOCAL FONTS: Hosted in assets/fonts/ on the server. Output automatically
  *              as @font-face blocks. Skin manifests may declare allowed_fonts[]

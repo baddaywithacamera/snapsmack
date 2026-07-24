@@ -30,7 +30,7 @@ if (php_sapi_name() !== 'cli') {
 
 // ─── PATHS ──────────────────────────────────────────────────────────────────
 
-$project_root = dirname(__DIR__);
+$project_root = dirname(__DIR__, 2);
 $skins_dir    = $project_root . '/skins';
 
 // ─── ARGUMENT PARSING ───────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ echo "────────────────────────�
 
 if ($build_all) {
     $skins = [];
-    foreach (glob($skins_dir . '/*/manifest.php') as $manifest) {
+    foreach (glob($skins_dir . '/*/manifest.json') as $manifest) {
         $skins[] = basename(dirname($manifest));
     }
     sort($skins);
@@ -91,7 +91,7 @@ foreach ($skins as $skin) {
     $skin_path = $skins_dir . '/' . $skin;
 
     // Read skin metadata from manifest
-    $manifest_path = $skin_path . '/manifest.php';
+    $manifest_path = $skin_path . '/manifest.json';
     $meta = extract_skin_meta($manifest_path);
 
     $zip_name = "snapsmack-skin-{$skin}.zip";
@@ -234,14 +234,10 @@ function extract_skin_meta(string $manifest_path): array {
 
     if (!file_exists($manifest_path)) return $meta;
 
-    $content = file_get_contents($manifest_path);
-
-    if (preg_match("/'label'\s*=>\s*'([^']+)'/", $content, $m)) {
-        $meta['label'] = $m[1];
-    }
-    if (preg_match("/'status'\s*=>\s*'([^']+)'/", $content, $m)) {
-        $meta['status'] = $m[1];
-    }
+    $manifest = json_decode((string)file_get_contents($manifest_path), true);
+    if (!is_array($manifest)) return $meta;
+    $meta['label'] = (string)($manifest['name'] ?? $manifest['label'] ?? '');
+    $meta['status'] = (string)($manifest['status'] ?? 'unknown');
 
     return $meta;
 }

@@ -7,7 +7,7 @@
 | **Date** | 2026-06-28 |
 | **Severity** | **CRITICAL** — unauthenticated/low-trust → arbitrary PHP execution |
 | **Component** | Skin manifest loading; skin installer |
-| **Status** | OPEN — remediation specced (`_spec/skin-manifest-declarative-spec-v0.1.md`) |
+| **Status** | **REMEDIATED in 0.7.440** — deployment gated on rebuilding every hosted skin ZIP/registry signature |
 | **Reporter** | Sean (identified the trust-boundary crossing) + Claude (traced the path) |
 | **Related** | 006 (post-release integrity), 017 (SMACKBACK file integrity), `project_launch_security_arch` |
 
@@ -120,5 +120,44 @@ can at most hide a non-essential control), which is why it is the priority.
 - Confirm `load_skin_manifest()` rejects/ignores unknown keys and code payloads.
 - Confirm essential controls cannot be hidden via `hide_controls`.
 - Confirm install rejects unsigned skins once enforcement is enabled.
+
+## 7. Closure record — 0.7.440
+
+The critical manifest-execution path is closed:
+
+- All 23 current `skins/*/manifest.php` files were converted to declarative
+  `manifest.json` and deleted.
+- `core/skin-manifest.php` is the only runtime loader. It validates the slug,
+  limits the file to 1 MiB, parses with `JSON_THROW_ON_ERROR`, accepts a fixed
+  top-level schema and fixed option-type catalogue, bounds nested data, and
+  never executes values.
+- Every public, admin, mobile, installer, registry, OH SNAP, and packaging
+  consumer was migrated. Repository scans find no `include` or `require` of a
+  skin manifest and no remaining skin `manifest.php`.
+- Before deletion, every JSON document was deep-compared against the array
+  returned by its trusted legacy PHP source. All 23 were byte-value equivalent
+  after removing the new `schema_version`; normalized loader option counts and
+  feature maps also matched.
+- PHP syntax checks passed for all changed PHP files. Package smoke tests use
+  `manifest.json` as canonical data and add a build-time-only compatibility
+  adapter inside the signed ZIP so pre-0.7.440 core can still load the package.
+  The adapter is absent from source and ignored by new core, preserving rollback
+  in both directions during the fleet transition.
+
+Package signing is mandatory in 0.7.440 for both Skin Gallery and fresh-install
+downloads. Missing Sodium, signature, or canonical release public key fails
+closed; the ZIP is verified before any write or extraction. All ZIP entry names
+are traversal-checked before extraction. Smack Central already signs every built
+skin with the release key. **Deployment gate:** rebuild every hosted official
+skin ZIP and registry entry before deploying 0.7.440, because the checked-in
+historical registry contains empty signatures and would now be correctly
+rejected.
+
+OH SNAP's authenticated skin-push route remains an explicit owner-authoring
+surface rather than a public/gallery install path. It accepts only a valid
+OH SNAP API key, now requires inert `manifest.json`, never executes metadata,
+and path-checks the ZIP before extraction. Because it deliberately deploys
+owner-authored skin PHP, compromise of an OH SNAP authoring key retains
+code-deployment impact; key scope/lifecycle belongs in the OH SNAP API audit.
 
 <!-- ===== SNAPSMACK EOF ===== -->

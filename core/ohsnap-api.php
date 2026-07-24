@@ -119,10 +119,10 @@ function os_skin_file(string $skin_slug, string $filename): ?string {
 
 /** Extract css_variables from a skin manifest, if declared. */
 function os_skin_variables(string $skin_slug): array {
-    $path = dirname(__DIR__) . '/skins/' . preg_replace('/[^a-z0-9\-]/', '', $skin_slug) . '/manifest.php';
+    $path = dirname(__DIR__) . '/skins/' . preg_replace('/[^a-z0-9\-]/', '', $skin_slug) . '/manifest.json';
     if (!file_exists($path)) return [];
     try {
-        $manifest = include $path;
+        $manifest = snapsmack_load_manifest($path);
         return $manifest['css_variables'] ?? [];
     } catch (Throwable $e) {
         return [];
@@ -152,10 +152,10 @@ if ($resource === 'config' && $method === 'GET') {
     $skin_version = '';
 
     if ($active_skin) {
-        $manifest_path = dirname(__DIR__) . '/skins/' . preg_replace('/[^a-z0-9\-]/', '', $active_skin) . '/manifest.php';
+        $manifest_path = dirname(__DIR__) . '/skins/' . preg_replace('/[^a-z0-9\-]/', '', $active_skin) . '/manifest.json';
         if (file_exists($manifest_path)) {
             try {
-                $m = include $manifest_path;
+                $m = snapsmack_load_manifest($manifest_path);
                 $skin_version = $m['version'] ?? '';
             } catch (Throwable $e) {}
         }
@@ -260,7 +260,7 @@ if ($resource === 'skin' && $method === 'GET') {
         os_err('No active skin configured', 404);
     }
 
-    $manifest_raw = os_skin_file($active_skin, 'manifest.php');
+    $manifest_raw = os_skin_file($active_skin, 'manifest.json');
     $style_css    = os_skin_file($active_skin, 'style.css');
     $variables    = os_skin_variables($active_skin);
 
@@ -271,9 +271,9 @@ if ($resource === 'skin' && $method === 'GET') {
     // Parse the manifest to a clean array for Oh Snap!
     $manifest_data = [];
     $skin_slug     = preg_replace('/[^a-z0-9\-]/', '', $active_skin);
-    $manifest_path = dirname(__DIR__) . '/skins/' . $skin_slug . '/manifest.php';
+    $manifest_path = dirname(__DIR__) . '/skins/' . $skin_slug . '/manifest.json';
     try {
-        $manifest_data = include $manifest_path;
+        $manifest_data = snapsmack_load_manifest($manifest_path);
         // Strip closures and callables — not JSON-serialisable
         array_walk_recursive($manifest_data, function (&$v) {
             if (is_callable($v)) $v = null;
@@ -323,6 +323,15 @@ if ($resource === 'skin' && $sub === 'push' && $method === 'POST') {
         if ($zip->open($upload['tmp_name']) !== true) {
             os_err('Could not open zip archive');
         }
+        for ($zi = 0; $zi < $zip->numFiles; $zi++) {
+            $entry = str_replace('\\', '/', (string)$zip->getNameIndex($zi));
+            $parts = explode('/', $entry);
+            if ($entry === '' || str_contains($entry, "\0") || str_starts_with($entry, '/')
+                || preg_match('/^[a-zA-Z]:\//', $entry) || in_array('..', $parts, true)) {
+                $zip->close();
+                os_err('Unsafe path in skin ZIP archive');
+            }
+        }
         $zip->extractTo($tmp_dir);
         $zip->close();
 
@@ -336,14 +345,14 @@ if ($resource === 'skin' && $sub === 'push' && $method === 'POST') {
             $entries = array_diff(scandir($skin_dir_candidate), ['.', '..']);
         }
 
-        // Validate: must contain manifest.php and style.css
-        if (!file_exists($skin_dir_candidate . 'manifest.php') || !file_exists($skin_dir_candidate . 'style.css')) {
-            os_err('Invalid skin package: missing manifest.php or style.css');
+        // Validate: must contain inert manifest.json and style.css
+        if (!file_exists($skin_dir_candidate . 'manifest.json') || !file_exists($skin_dir_candidate . 'style.css')) {
+            os_err('Invalid skin package: missing manifest.json or style.css');
         }
 
         // Read the skin slug from the manifest
         try {
-            $skin_manifest = include $skin_dir_candidate . 'manifest.php';
+            $skin_manifest = json_decode((string)file_get_contents($skin_dir_candidate . 'manifest.json'), true, 64, JSON_THROW_ON_ERROR);
         } catch (Throwable $e) {
             os_err('Could not parse skin manifest');
         }

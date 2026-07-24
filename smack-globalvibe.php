@@ -27,8 +27,8 @@ $skin_dirs       = array_filter(glob('skins/*'), 'is_dir');
 $available_skins = [];
 foreach ($skin_dirs as $dir) {
     $slug = basename($dir);
-    if (file_exists($dir . '/manifest.php')) {
-        $temp_manifest = include $dir . '/manifest.php';
+    if (file_exists($dir . '/manifest.json')) {
+        $temp_manifest = snapsmack_load_manifest($dir . '/manifest.json');
         if (is_array($temp_manifest)) {
             $available_skins[$slug] = $temp_manifest['name'] ?? ucfirst($slug);
         }
@@ -37,8 +37,8 @@ foreach ($skin_dirs as $dir) {
 
 $current_db_active = $active_skin_db ?: array_key_first($available_skins);
 $manifest = [];
-if ($current_db_active && file_exists("skins/{$current_db_active}/manifest.php")) {
-    $manifest = include "skins/{$current_db_active}/manifest.php";
+if ($current_db_active && skin_manifest_exists($current_db_active)) {
+    $manifest = load_skin_manifest($current_db_active);
 }
 
 // --- PIMPOTRON ENGINE DETECTION ---

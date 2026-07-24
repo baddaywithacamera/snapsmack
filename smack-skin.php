@@ -64,7 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
         if ($action === 'install' || $action === 'update') {
             $download_url = $_POST['download_url'] ?? '';
             $signature    = $_POST['signature'] ?? '';
-            $public_key   = $settings['update_public_key'] ?? '';
+            require_once __DIR__ . '/core/release-pubkey.php';
+            $public_key   = defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : '';
 
             if (empty($download_url)) {
                 $gallery_err = 'No download URL provided for this skin.';
@@ -94,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
             // Activate an already-installed skin straight from the gallery.
             $slug     = preg_replace('/[^a-z0-9_\-]/', '', $slug);
             $skin_dir = __DIR__ . '/skins/' . $slug;
-            if ($slug === '' || !is_dir($skin_dir) || !is_file($skin_dir . '/manifest.php')) {
+            if ($slug === '' || !is_dir($skin_dir) || !is_file($skin_dir . '/manifest.json')) {
                 $gallery_err = 'That skin is not installed.';
             } else {
                 $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
@@ -104,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
                 // Keep site_mode in lockstep with the activated skin — same rule
                 // as the Customize-tab activation: a single-mode skin whose mode
                 // differs from the current site_mode switches the site to it.
-                $_man   = include $skin_dir . '/manifest.php';
+                $_man   = load_skin_manifest($slug);
                 $_modes = (is_array($_man) && isset($_man['modes']) && is_array($_man['modes']))
                           ? array_values($_man['modes']) : [];
                 if (count($_modes) === 1 && in_array($_modes[0], ['photoblog', 'carousel', 'smacktalk'], true)) {
@@ -166,8 +167,8 @@ foreach ($skin_dirs as $dir) {
     $slug = basename($dir);
     // Mobile skin is forced automatically on phones; never in the admin selector.
     if (defined('SNAPSMACK_MOBILE_SKIN') && $slug === SNAPSMACK_MOBILE_SKIN) continue;
-    if (file_exists($dir . '/manifest.php')) {
-        $temp = include $dir . '/manifest.php';
+    if (file_exists($dir . '/manifest.json')) {
+        $temp = snapsmack_load_manifest($dir . '/manifest.json');
         // Development skins are not selectable in the admin skin picker
         if (($temp['status'] ?? 'stable') === 'development') continue;
         // Mode filter
@@ -187,8 +188,8 @@ if (empty($available_skins)) {
     foreach ($skin_dirs as $dir) {
         $slug = basename($dir);
         if (defined('SNAPSMACK_MOBILE_SKIN') && $slug === SNAPSMACK_MOBILE_SKIN) continue;
-        if (file_exists($dir . '/manifest.php')) {
-            $temp = include $dir . '/manifest.php';
+        if (file_exists($dir . '/manifest.json')) {
+            $temp = snapsmack_load_manifest($dir . '/manifest.json');
             if (($temp['status'] ?? 'stable') === 'development') continue;
             $available_skins[$slug] = $temp['name'] ?? ucfirst($slug);
         }
@@ -199,7 +200,7 @@ $current_db_active = $settings['active_skin'] ?? array_key_first($available_skin
 $target_skin       = $_GET['s'] ?? $current_db_active;
 if (!isset($available_skins[$target_skin])) $target_skin = array_key_first($available_skins);
 if ($target_skin) snapsmack_apply_skin_settings($settings, $target_skin);
-$manifest = include "skins/{$target_skin}/manifest.php";
+$manifest = load_skin_manifest($target_skin);
 
 // --- 3. ENGINE RESOLUTION ---
 // Identify which engines the selected skin requires based on its manifest.
@@ -216,8 +217,8 @@ foreach ($required_engines as $engine_key) {
 if (isset($_POST['save_mobile_avatar'])) {
     $_mob_slug = preg_replace('/[^a-z0-9_\-]/', '', $_POST['mobile_skin_slug'] ?? '');
     $_is_mobile = false;
-    if ($_mob_slug && is_file(__DIR__ . '/skins/' . $_mob_slug . '/manifest.php')) {
-        $_mm = include __DIR__ . '/skins/' . $_mob_slug . '/manifest.php';
+    if ($_mob_slug && skin_manifest_exists($_mob_slug)) {
+        $_mm = load_skin_manifest($_mob_slug);
         $_is_mobile = is_array($_mm) && !empty($_mm['features']['mobile_only']);
     }
     if ($_is_mobile && !empty($_FILES['mobile_avatar']['name']) && ($_FILES['mobile_avatar']['error'] ?? 1) === UPLOAD_ERR_OK) {
@@ -349,9 +350,9 @@ if (isset($_POST['save_skin_settings'])) {
         // Pull this skin's option meta so we can honour per-field minimum
         // dimensions (e.g. The Grid treatment image requires >= 1920x1080).
         $_img_opts = [];
-        $_mf_path  = __DIR__ . '/skins/' . $save_skin . '/manifest.php';
+        $_mf_path  = __DIR__ . '/skins/' . $save_skin . '/manifest.json';
         if (is_file($_mf_path)) {
-            $_mf = include $_mf_path;
+            $_mf = snapsmack_load_manifest($_mf_path);
             $_img_opts = (is_array($_mf) && isset($_mf['options'])) ? $_mf['options'] : [];
         }
         $_img_rejects = [];
@@ -409,9 +410,9 @@ if (isset($_POST['save_skin_settings'])) {
     // (the unzucked.ca "solo poster on a Grid site" bug). Multi-mode or
     // mode-agnostic skins are left untouched. Change is surfaced via the flash.
     $_sk_slug  = preg_replace('/[^a-z0-9_\-]/', '', $active_skin);
-    $_sk_mpath = __DIR__ . '/skins/' . $_sk_slug . '/manifest.php';
+    $_sk_mpath = __DIR__ . '/skins/' . $_sk_slug . '/manifest.json';
     if (is_file($_sk_mpath)) {
-        $_sk_man   = include $_sk_mpath;
+        $_sk_man   = snapsmack_load_manifest($_sk_mpath);
         $_sk_modes = (is_array($_sk_man) && isset($_sk_man['modes']) && is_array($_sk_man['modes']))
                      ? array_values($_sk_man['modes']) : [];
         if (count($_sk_modes) === 1 && in_array($_sk_modes[0], ['photoblog', 'carousel', 'smacktalk'], true)) {
@@ -1331,8 +1332,8 @@ if (!empty($google_families)) {
     $mobile_skins = [];
     foreach (glob('skins/*', GLOB_ONLYDIR) as $_md) {
         $_ms = basename($_md);
-        if (!is_file($_md . '/manifest.php')) continue;
-        $_mm = include $_md . '/manifest.php';
+        if (!is_file($_md . '/manifest.json')) continue;
+        $_mm = snapsmack_load_manifest($_md . '/manifest.json');
         if (is_array($_mm) && !empty($_mm['features']['mobile_only'])) {
             $mobile_skins[$_ms] = $_mm['name'] ?? ucfirst($_ms);
         }
@@ -1793,7 +1794,7 @@ if (!empty($google_families)) {
             <p style="margin:0 0 14px; font-size:0.85rem; color:var(--text-muted,#888);">
                 These skins are on disk but don't fit this site's current mode (or are mobile-only / development),
                 so they're hidden from the gallery above. Remove any you don't need — an idle skin is a live
-                <code>manifest.php</code> sitting on disk.
+                <code>manifest.json</code> sitting on disk.
             </p>
             <div style="display:flex; flex-direction:column; gap:8px;">
             <?php foreach ($cleanup_skins as $slug => $skin): ?>
@@ -1882,8 +1883,8 @@ if (isset($gallery_skins)) {
 
         // Load features from local manifest if installed
         $features = $skin['features'] ?? [];
-        if ($skin['installed'] && file_exists("skins/{$slug}/manifest.php")) {
-            $m = include "skins/{$slug}/manifest.php";
+        if ($skin['installed'] && skin_manifest_exists($slug)) {
+            $m = load_skin_manifest($slug);
             $features = $m['features'] ?? $features;
         }
 

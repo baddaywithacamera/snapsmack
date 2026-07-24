@@ -1,0 +1,537 @@
+{
+    "schema_version": 1,
+    "name": "IMPACT PRINTER",
+    "version": "2.1.1",
+    "author": "Sean McCormick",
+    "support": "sean@baddaywithacamera.ca",
+    "description": "Designed for photographers who enjoy using instant printer cameras that output on thermal paper. Continuous-feed tractor-feed paper textures, ASCII character borders, dithered halftone image rendering, faded ribbon ink. Two paper stocks: green-bar ledger and plain white.",
+    "status": "stable",
+    "demo_url": "https://pixhellated.ca",
+    "features": {
+        "supports_wall": true,
+        "archive_layouts": [
+            "square",
+            "cropped",
+            "masonry"
+        ],
+        "has_landing": false,
+        "post_modes": [
+            "image"
+        ],
+        "instagram_mode": false,
+        "carousel": false,
+        "community": [
+            "likes",
+            "comments"
+        ]
+    },
+    "variants": {
+        "greenbar": "Green Bar Ledger Paper",
+        "plain": "Plain White Continuous"
+    },
+    "default_variant": "greenbar",
+    "allowed_fonts": [
+        "Tiny5",
+        "Tiny5-Matrix",
+        "DotMatrix",
+        "DotMatrix-Bold",
+        "DotMatrix-Italic",
+        "DotMatrix-BoldItalic",
+        "DotMatrix-Condensed",
+        "DotMatrix-Condensed-Bold",
+        "DotMatrix-Condensed-Italic",
+        "DotMatrix-Condensed-BoldItalic",
+        "DotMatrix-Expanded",
+        "DotMatrix-Expanded-Bold",
+        "DotMatrix-Expanded-Italic",
+        "DotMatrix-Expanded-BoldItalic",
+        "DotMatrix-Quad",
+        "DotMatrix-Quad-Bold",
+        "DotMatrix-Quad-Italic",
+        "DotMatrix-Quad-BoldItalic",
+        "DotMatrix-Var",
+        "DotMatrix-Var-Condensed",
+        "DotMatrix-Var-Expanded",
+        "DotMatrix-VarDuo",
+        "DotMatrix-VarDuo-Condensed",
+        "DotMatrix-VarDuo-Expanded",
+        "DotMatrix-VarDuo-UltraCondensed",
+        "DotMatrix-Duo",
+        "DotMatrix-Duo-Condensed",
+        "DotMatrix-Duo-Expanded",
+        "DotMatrix-Duo-UltraCondensed"
+    ],
+    "require_scripts": [
+        "smack-footer",
+        "smack-image-fade-load",
+        "smack-lightbox",
+        "smack-keyboard",
+        "smack-community"
+    ],
+    "options": {
+        "main_canvas_width": {
+            "section": "PAPER MARGINS",
+            "type": "range",
+            "label": "Paper Width (Content Area)",
+            "default": "1100",
+            "min": "700",
+            "max": "1600",
+            "selector": ".ip-header-inside, #system-footer .inside, .ip-photo-wrap, #browse-grid, #justified-grid, .blogroll-canvas, .static-content, .static-page-title, .photo-title-footer, .description, .meta, .comment-form, #pane-comments, .nav-links",
+            "property": "max-width"
+        },
+        "margin_left": {
+            "section": "PAPER MARGINS",
+            "type": "range",
+            "label": "Left Margin (clear sprocket strip)",
+            "default": "55",
+            "min": "20",
+            "max": "120",
+            "selector": "#page-wrapper",
+            "property": "padding-left"
+        },
+        "margin_right": {
+            "section": "PAPER MARGINS",
+            "type": "range",
+            "label": "Right Margin (clear sprocket strip)",
+            "default": "55",
+            "min": "20",
+            "max": "120",
+            "selector": "#page-wrapper",
+            "property": "padding-right"
+        },
+        "header_layout_flip": {
+            "section": "PAPER MARGINS",
+            "type": "select",
+            "label": "Header Orientation",
+            "default": "row",
+            "options": {
+                "row": "Title Left / Nav Right",
+                "row-reverse": "Nav Left / Title Right"
+            },
+            "selector": ".ip-header-inside",
+            "property": "flex-direction"
+        },
+        "image_frame_style": {
+            "section": "PRINT HEAD",
+            "type": "select",
+            "label": "Hero ASCII Border Style",
+            "default": "box",
+            "selector": ".ip-ascii-frame-inner",
+            "property": "custom-framing",
+            "options": {
+                "box": {
+                    "label": "ASCII Box     +----|----+",
+                    "css": "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-box.svg') 12 repeat; }"
+                },
+                "plus": {
+                    "label": "ASCII Plus    + + + + + +",
+                    "css": "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-plus.svg') 12 repeat; }"
+                },
+                "equals": {
+                    "label": "ASCII Equals  = = = = = =",
+                    "css": "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-equals.svg') 12 repeat; }"
+                },
+                "slash": {
+                    "label": "ASCII Slash   / / / / / /",
+                    "css": "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-slash.svg') 12 repeat; }"
+                },
+                "none": {
+                    "label": "No Frame (Raw Print)",
+                    "css": "{ border: none !important; }"
+                }
+            }
+        },
+        "image_frame_weight": {
+            "section": "PRINT HEAD",
+            "type": "range",
+            "label": "Border Weight (px)",
+            "default": "18",
+            "min": "8",
+            "max": "40",
+            "selector": ".ip-ascii-frame-inner",
+            "property": "border-width"
+        },
+        "image_frame_padding": {
+            "section": "PRINT HEAD",
+            "type": "range",
+            "label": "Border Padding (px)",
+            "default": "15",
+            "min": "0",
+            "max": "40",
+            "selector": ".ip-ascii-frame-inner",
+            "property": "padding"
+        },
+        "inline_frame_style": {
+            "section": "PRINT HEAD",
+            "type": "select",
+            "label": "Inline Image Frame Style",
+            "default": "box",
+            "selector": ".snap-inline-frame .ip-ascii-frame-inner",
+            "property": "custom-framing",
+            "options": {
+                "box": {
+                    "label": "ASCII Box     +----|----+",
+                    "css": "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-box.svg') 12 repeat; }"
+                },
+                "plus": {
+                    "label": "ASCII Plus    + + + + + +",
+                    "css": "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-plus.svg') 12 repeat; }"
+                },
+                "equals": {
+                    "label": "ASCII Equals  = = = = = =",
+                    "css": "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-equals.svg') 12 repeat; }"
+                },
+                "slash": {
+                    "label": "ASCII Slash   / / / / / /",
+                    "css": "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-slash.svg') 12 repeat; }"
+                },
+                "none": {
+                    "label": "No Frame",
+                    "css": "{ border: none !important; }"
+                }
+            }
+        },
+        "inline_frame_weight": {
+            "section": "PRINT HEAD",
+            "type": "range",
+            "label": "Inline Image Border Weight (px)",
+            "default": "9",
+            "min": "4",
+            "max": "24",
+            "selector": ".snap-inline-frame .ip-ascii-frame-inner",
+            "property": "border-width"
+        },
+        "inline_frame_padding": {
+            "section": "PRINT HEAD",
+            "type": "range",
+            "label": "Inline Image Border Padding (px)",
+            "default": "8",
+            "min": "0",
+            "max": "24",
+            "selector": ".snap-inline-frame .ip-ascii-frame-inner",
+            "property": "padding"
+        },
+        "browse_cols": {
+            "section": "ARCHIVE GRID",
+            "type": "range",
+            "label": "Grid Columns",
+            "default": "4",
+            "min": "2",
+            "max": "8",
+            "selector": "#browse-grid",
+            "property": "--grid-cols"
+        },
+        "header_font_family": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Header Font (Text Logo)",
+            "default": "DotMatrix-Expanded-Bold",
+            "options": {
+                "Tiny5": "Tiny5 (Bold / Dot Matrix Headers)",
+                "Tiny5-Matrix": "Tiny5 Matrix (Bold / Dot Matrix Display)",
+                "DotMatrix": "DotMatrix (Regular)",
+                "DotMatrix-Bold": "DotMatrix (Bold)",
+                "DotMatrix-Italic": "DotMatrix (Italic)",
+                "DotMatrix-BoldItalic": "DotMatrix (Bold Italic)",
+                "DotMatrix-Condensed": "DotMatrix Condensed (Regular)",
+                "DotMatrix-Condensed-Bold": "DotMatrix Condensed (Bold)",
+                "DotMatrix-Condensed-Italic": "DotMatrix Condensed (Italic)",
+                "DotMatrix-Condensed-BoldItalic": "DotMatrix Condensed (Bold Italic)",
+                "DotMatrix-Expanded": "DotMatrix Expanded (Regular)",
+                "DotMatrix-Expanded-Bold": "DotMatrix Expanded (Bold)",
+                "DotMatrix-Expanded-Italic": "DotMatrix Expanded (Italic)",
+                "DotMatrix-Expanded-BoldItalic": "DotMatrix Expanded (Bold Italic)",
+                "DotMatrix-Quad": "DotMatrix Quad (Regular)",
+                "DotMatrix-Quad-Bold": "DotMatrix Quad (Bold)",
+                "DotMatrix-Quad-Italic": "DotMatrix Quad (Italic)",
+                "DotMatrix-Quad-BoldItalic": "DotMatrix Quad (Bold Italic)",
+                "DotMatrix-Var": "DotMatrix Var (Regular)",
+                "DotMatrix-Var-Condensed": "DotMatrix Var (Condensed)",
+                "DotMatrix-Var-Expanded": "DotMatrix Var (Expanded)",
+                "DotMatrix-VarDuo": "DotMatrix VarDuo (Regular)",
+                "DotMatrix-VarDuo-Condensed": "DotMatrix VarDuo (Condensed)",
+                "DotMatrix-VarDuo-Expanded": "DotMatrix VarDuo (Expanded)",
+                "DotMatrix-VarDuo-UltraCondensed": "DotMatrix VarDuo (Ultra Condensed)",
+                "DotMatrix-Duo": "DotMatrix Duo (Regular)",
+                "DotMatrix-Duo-Condensed": "DotMatrix Duo (Condensed)",
+                "DotMatrix-Duo-Expanded": "DotMatrix Duo (Expanded)",
+                "DotMatrix-Duo-UltraCondensed": "DotMatrix Duo (Ultra Condensed)"
+            },
+            "selector": ".site-title-text, .logo-area a",
+            "property": "font-family"
+        },
+        "header_font_size": {
+            "section": "TYPOGRAPHY",
+            "type": "range",
+            "label": "Header Font Size (px)",
+            "default": "42",
+            "min": "24",
+            "max": "80",
+            "selector": ".site-title-text",
+            "property": "font-size"
+        },
+        "header_text_transform": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Site Title Case",
+            "default": "uppercase",
+            "options": {
+                "uppercase": "UPPERCASE",
+                "lowercase": "lowercase",
+                "capitalize": "Capitalize Each Word",
+                "none": "As Entered (No Transform)"
+            },
+            "selector": ".site-title-text",
+            "property": "text-transform"
+        },
+        "body_font_family": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Body / Description Font",
+            "default": "DotMatrix",
+            "options": {
+                "Tiny5": "Tiny5 (Bold / Dot Matrix Headers)",
+                "Tiny5-Matrix": "Tiny5 Matrix (Bold / Dot Matrix Display)",
+                "DotMatrix": "DotMatrix (Regular)",
+                "DotMatrix-Bold": "DotMatrix (Bold)",
+                "DotMatrix-Italic": "DotMatrix (Italic)",
+                "DotMatrix-BoldItalic": "DotMatrix (Bold Italic)",
+                "DotMatrix-Condensed": "DotMatrix Condensed (Regular)",
+                "DotMatrix-Condensed-Bold": "DotMatrix Condensed (Bold)",
+                "DotMatrix-Condensed-Italic": "DotMatrix Condensed (Italic)",
+                "DotMatrix-Condensed-BoldItalic": "DotMatrix Condensed (Bold Italic)",
+                "DotMatrix-Expanded": "DotMatrix Expanded (Regular)",
+                "DotMatrix-Expanded-Bold": "DotMatrix Expanded (Bold)",
+                "DotMatrix-Expanded-Italic": "DotMatrix Expanded (Italic)",
+                "DotMatrix-Expanded-BoldItalic": "DotMatrix Expanded (Bold Italic)",
+                "DotMatrix-Quad": "DotMatrix Quad (Regular)",
+                "DotMatrix-Quad-Bold": "DotMatrix Quad (Bold)",
+                "DotMatrix-Quad-Italic": "DotMatrix Quad (Italic)",
+                "DotMatrix-Quad-BoldItalic": "DotMatrix Quad (Bold Italic)",
+                "DotMatrix-Var": "DotMatrix Var (Regular)",
+                "DotMatrix-Var-Condensed": "DotMatrix Var (Condensed)",
+                "DotMatrix-Var-Expanded": "DotMatrix Var (Expanded)",
+                "DotMatrix-VarDuo": "DotMatrix VarDuo (Regular)",
+                "DotMatrix-VarDuo-Condensed": "DotMatrix VarDuo (Condensed)",
+                "DotMatrix-VarDuo-Expanded": "DotMatrix VarDuo (Expanded)",
+                "DotMatrix-VarDuo-UltraCondensed": "DotMatrix VarDuo (Ultra Condensed)",
+                "DotMatrix-Duo": "DotMatrix Duo (Regular)",
+                "DotMatrix-Duo-Condensed": "DotMatrix Duo (Condensed)",
+                "DotMatrix-Duo-Expanded": "DotMatrix Duo (Expanded)",
+                "DotMatrix-Duo-UltraCondensed": "DotMatrix Duo (Ultra Condensed)"
+            },
+            "selector": ".description, .static-content",
+            "property": "font-family"
+        },
+        "static_heading_font": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Page Heading Font",
+            "default": "DotMatrix-Bold",
+            "options": {
+                "Tiny5": "Tiny5 (Bold / Dot Matrix Headers)",
+                "Tiny5-Matrix": "Tiny5 Matrix (Bold / Dot Matrix Display)",
+                "DotMatrix": "DotMatrix (Regular)",
+                "DotMatrix-Bold": "DotMatrix (Bold)",
+                "DotMatrix-Italic": "DotMatrix (Italic)",
+                "DotMatrix-BoldItalic": "DotMatrix (Bold Italic)",
+                "DotMatrix-Condensed": "DotMatrix Condensed (Regular)",
+                "DotMatrix-Condensed-Bold": "DotMatrix Condensed (Bold)",
+                "DotMatrix-Condensed-Italic": "DotMatrix Condensed (Italic)",
+                "DotMatrix-Condensed-BoldItalic": "DotMatrix Condensed (Bold Italic)",
+                "DotMatrix-Expanded": "DotMatrix Expanded (Regular)",
+                "DotMatrix-Expanded-Bold": "DotMatrix Expanded (Bold)",
+                "DotMatrix-Expanded-Italic": "DotMatrix Expanded (Italic)",
+                "DotMatrix-Expanded-BoldItalic": "DotMatrix Expanded (Bold Italic)",
+                "DotMatrix-Quad": "DotMatrix Quad (Regular)",
+                "DotMatrix-Quad-Bold": "DotMatrix Quad (Bold)",
+                "DotMatrix-Quad-Italic": "DotMatrix Quad (Italic)",
+                "DotMatrix-Quad-BoldItalic": "DotMatrix Quad (Bold Italic)",
+                "DotMatrix-Var": "DotMatrix Var (Regular)",
+                "DotMatrix-Var-Condensed": "DotMatrix Var (Condensed)",
+                "DotMatrix-Var-Expanded": "DotMatrix Var (Expanded)",
+                "DotMatrix-VarDuo": "DotMatrix VarDuo (Regular)",
+                "DotMatrix-VarDuo-Condensed": "DotMatrix VarDuo (Condensed)",
+                "DotMatrix-VarDuo-Expanded": "DotMatrix VarDuo (Expanded)",
+                "DotMatrix-VarDuo-UltraCondensed": "DotMatrix VarDuo (Ultra Condensed)",
+                "DotMatrix-Duo": "DotMatrix Duo (Regular)",
+                "DotMatrix-Duo-Condensed": "DotMatrix Duo (Condensed)",
+                "DotMatrix-Duo-Expanded": "DotMatrix Duo (Expanded)",
+                "DotMatrix-Duo-UltraCondensed": "DotMatrix Duo (Ultra Condensed)"
+            },
+            "selector": ".static-page-title, .photo-title-footer",
+            "property": "font-family"
+        },
+        "footer_font_family": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Footer Font",
+            "default": "DotMatrix",
+            "options": {
+                "Tiny5": "Tiny5 (Bold / Dot Matrix Headers)",
+                "Tiny5-Matrix": "Tiny5 Matrix (Bold / Dot Matrix Display)",
+                "DotMatrix": "DotMatrix (Regular)",
+                "DotMatrix-Bold": "DotMatrix (Bold)",
+                "DotMatrix-Italic": "DotMatrix (Italic)",
+                "DotMatrix-BoldItalic": "DotMatrix (Bold Italic)",
+                "DotMatrix-Condensed": "DotMatrix Condensed (Regular)",
+                "DotMatrix-Condensed-Bold": "DotMatrix Condensed (Bold)",
+                "DotMatrix-Condensed-Italic": "DotMatrix Condensed (Italic)",
+                "DotMatrix-Condensed-BoldItalic": "DotMatrix Condensed (Bold Italic)",
+                "DotMatrix-Expanded": "DotMatrix Expanded (Regular)",
+                "DotMatrix-Expanded-Bold": "DotMatrix Expanded (Bold)",
+                "DotMatrix-Expanded-Italic": "DotMatrix Expanded (Italic)",
+                "DotMatrix-Expanded-BoldItalic": "DotMatrix Expanded (Bold Italic)",
+                "DotMatrix-Quad": "DotMatrix Quad (Regular)",
+                "DotMatrix-Quad-Bold": "DotMatrix Quad (Bold)",
+                "DotMatrix-Quad-Italic": "DotMatrix Quad (Italic)",
+                "DotMatrix-Quad-BoldItalic": "DotMatrix Quad (Bold Italic)",
+                "DotMatrix-Var": "DotMatrix Var (Regular)",
+                "DotMatrix-Var-Condensed": "DotMatrix Var (Condensed)",
+                "DotMatrix-Var-Expanded": "DotMatrix Var (Expanded)",
+                "DotMatrix-VarDuo": "DotMatrix VarDuo (Regular)",
+                "DotMatrix-VarDuo-Condensed": "DotMatrix VarDuo (Condensed)",
+                "DotMatrix-VarDuo-Expanded": "DotMatrix VarDuo (Expanded)",
+                "DotMatrix-VarDuo-UltraCondensed": "DotMatrix VarDuo (Ultra Condensed)",
+                "DotMatrix-Duo": "DotMatrix Duo (Regular)",
+                "DotMatrix-Duo-Condensed": "DotMatrix Duo (Condensed)",
+                "DotMatrix-Duo-Expanded": "DotMatrix Duo (Expanded)",
+                "DotMatrix-Duo-UltraCondensed": "DotMatrix Duo (Ultra Condensed)"
+            },
+            "selector": "#system-footer .inside, #system-footer p, #sig-text",
+            "property": "font-family"
+        },
+        "footer_font_size": {
+            "section": "TYPOGRAPHY",
+            "type": "range",
+            "label": "Footer Font Size (px)",
+            "default": "10",
+            "min": "8",
+            "max": "18",
+            "selector": "#system-footer p, #sig-text",
+            "property": "font-size"
+        },
+        "optical_lift": {
+            "section": "VERTICAL LOCKS",
+            "type": "range",
+            "label": "Optical Vertical Lift (px)",
+            "default": "40",
+            "min": "0",
+            "max": "150",
+            "selector": "#ip-photobox",
+            "property": "padding-bottom"
+        },
+        "header_height": {
+            "section": "VERTICAL LOCKS",
+            "type": "range",
+            "label": "Header Height Lock (px)",
+            "default": "90",
+            "min": "40",
+            "max": "150",
+            "selector": "#ip-header",
+            "property": "height"
+        },
+        "infobox_height": {
+            "section": "VERTICAL LOCKS",
+            "type": "range",
+            "label": "Infobox Height Lock (px)",
+            "default": "50",
+            "min": "30",
+            "max": "100",
+            "selector": "#infobox",
+            "property": "height"
+        },
+        "ink_darkness": {
+            "section": "INK QUALITY",
+            "type": "select",
+            "label": "Ribbon Darkness",
+            "default": "faded",
+            "selector": ":root",
+            "property": "--ip-ink-opacity",
+            "options": {
+                "fresh": {
+                    "label": "Fresh Ribbon (Heavy / Streaky)",
+                    "css": "{ --ip-ink-opacity: 1.0; --ip-ink-bleed: 0.8px 0 1px currentColor, -0.5px 0 1px currentColor, 1.6px 0.1px 0.5px currentColor, -1.1px -0.1px 0.5px currentColor, 0.3px 0.6px 1.2px rgba(0,0,0,0.35); --ip-ink-weight: 900; }"
+                },
+                "normal": {
+                    "label": "Normal Wear",
+                    "css": "{ --ip-ink-opacity: 0.82; --ip-ink-bleed: 0.4px 0 0.6px currentColor, -0.2px 0 0.6px currentColor; --ip-ink-weight: bold; }"
+                },
+                "faded": {
+                    "label": "Faded Ribbon",
+                    "css": "{ --ip-ink-opacity: 0.65; --ip-ink-bleed: none; --ip-ink-weight: normal; }"
+                },
+                "dying": {
+                    "label": "Nearly Dead",
+                    "css": "{ --ip-ink-opacity: 0.45; --ip-ink-bleed: none; --ip-ink-weight: normal; }"
+                }
+            }
+        },
+        "blogroll_columns": {
+            "section": "BLOGROLL",
+            "type": "select",
+            "label": "Column Layout",
+            "default": "1",
+            "selector": ".blogroll-grid",
+            "property": "custom-cols",
+            "options": {
+                "1": {
+                    "label": "1 Column",
+                    "css": "{ grid-template-columns: 1fr; }"
+                },
+                "2": {
+                    "label": "2 Columns",
+                    "css": "{ grid-template-columns: repeat(2, 1fr); }"
+                }
+            }
+        },
+        "blogroll_max_width": {
+            "section": "BLOGROLL",
+            "type": "range",
+            "label": "Content Max Width (px)",
+            "default": "900",
+            "min": "600",
+            "max": "1400",
+            "selector": ".blogroll-canvas",
+            "property": "max-width"
+        },
+        "blogroll_col_gap": {
+            "section": "BLOGROLL",
+            "type": "range",
+            "label": "Column Gutter (px)",
+            "default": "60",
+            "min": "20",
+            "max": "120",
+            "selector": ".blogroll-grid",
+            "property": "gap"
+        },
+        "blogroll_show_desc": {
+            "section": "BLOGROLL",
+            "type": "select",
+            "label": "Show Peer Description",
+            "default": "block",
+            "selector": ".blogroll-peer-desc",
+            "property": "display",
+            "options": {
+                "block": "Yes",
+                "none": "No"
+            }
+        },
+        "blogroll_show_url": {
+            "section": "BLOGROLL",
+            "type": "select",
+            "label": "Show Peer URL",
+            "default": "block",
+            "selector": ".blogroll-peer-url",
+            "property": "display",
+            "options": {
+                "block": "Yes",
+                "none": "No"
+            }
+        }
+    },
+    "admin_styling": "\r\n        .metadata-selector-row { display: flex; justify-content: space-between; align-items: center; margin-top: -15px; margin-bottom: 50px; }\r\n        .skin-switcher-form { display: flex; align-items: center; gap: 10px; }\r\n        .skin-switcher-form label { margin: 0 !important; }\r\n        .control-group-flex { display: flex; align-items: center; gap: 20px; }\r\n        .control-group-flex input { flex: 1; }\r\n        .active-val { width: 50px; text-align: right; font-family: monospace; }\r\n        .hex-display { font-family: monospace; }\r\n    ",
+    "community_comments": "1",
+    "community_likes": "1",
+    "community_reactions": "0"
+}

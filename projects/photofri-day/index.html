@@ -218,9 +218,57 @@
   }
   footer a { color: var(--link); text-decoration: none; }
   footer a:hover { text-decoration: underline; }
+
+  /* top nav */
+  .topnav {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 24px;
+    border-bottom: 1px solid #2a2a2a;
+    flex-wrap: wrap;
+  }
+  .topnav-brand {
+    font-family: 'Arial Black', Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    font-size: 0.92rem;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .topnav-brand .dot { color: var(--red); }
+  .topnav-brand:hover, .topnav-brand:focus-visible { color: var(--link); outline: none; }
+  .topnav-links { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .topnav-links a {
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.8rem;
+    color: var(--ink);
+    opacity: 0.68;
+    text-decoration: none;
+    padding-bottom: 3px;
+  }
+  .topnav-links a:hover, .topnav-links a:focus-visible { color: var(--link); opacity: 1; outline: none; }
+  .topnav-links a[aria-current="page"] { opacity: 1; border-bottom: 2px solid var(--red); }
+
 </style>
 </head>
 <body>
+
+  <nav class="topnav" aria-label="Primary">
+    <a class="topnav-brand" href="/">PHOTOFRI<span class="dot">.</span>DAY</a>
+    <div class="topnav-links">
+      <a href="/" aria-current="page">Home</a>
+      <a href="/how-it-works.html">How It Works</a>
+      <a href="/faq.html">Whut The Whut</a>
+      <a href="/join.html">Join The Party</a>
+    </div>
+  </nav>
 
   <main class="wrap">
     <img class="logo-mark" src="img/logo-pf-whiteondark-trans.png" alt="" width="850" height="850">
@@ -263,7 +311,7 @@
   </main>
 
   <footer>
-    <p>Part of the SNAPSMACK network · <a href="https://snapsmack.ca/">snapsmack.ca</a></p>
+    <p><a href="/faq.html">FAQ</a> · Part of the SNAPSMACK network · <a href="https://snapsmack.ca/">snapsmack.ca</a> · <a href="https://photoblogs.fyi/" target="_blank" rel="noopener">photoblogs.fyi</a></p>
   </footer>
 
 </body>

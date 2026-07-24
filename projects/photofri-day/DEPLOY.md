@@ -1,3 +1,5 @@
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line MUST be the EOF marker comment at the bottom. -->
+
 # PHOTOFRI.DAY — deploy (step 1: the @participate signup actor)
 
 Standalone ActivityPub service on its own Proxmox CT + TLS host `photofri.day`.

@@ -1,0 +1,108 @@
+{
+    "schema_version": 1,
+    "name": "STANLEY",
+    "version": "1.0.1",
+    "author": "Sean McCormick",
+    "author_email": "sean@baddaywithacamera.ca",
+    "description": "A SMACKTALK longform skin: a faithful re-imagining of the classic WordPress Kubrick default theme — blue sky banner, rounded page frame, right sidebar, and a clean serif reading column. Rebuilt on SnapSmack shortcodes, the menu system, and the shared footer. Named for Stanley Kubrick.",
+    "status": "stable",
+    "modes": [
+        "smacktalk"
+    ],
+    "skin_preload": "preload.php",
+    "variants": {
+        "default": "STANLEY (Classic Blue)"
+    },
+    "default_variant": "default",
+    "cover_aspect": "4/3",
+    "features": {
+        "supports_wall": false,
+        "has_landing": false,
+        "post_modes": [
+            "longform"
+        ],
+        "instagram_mode": false,
+        "carousel": false,
+        "community": [
+            "comments"
+        ]
+    },
+    "require_scripts": [
+        "smack-alfred-nav",
+        "smack-footer",
+        "smack-community"
+    ],
+    "community_comments": "1",
+    "community_likes": "0",
+    "community_reactions": "0",
+    "options": {
+        "header_image": {
+            "section": "HEADER",
+            "type": "image",
+            "label": "Header Banner Image",
+            "default": "",
+            "accept": "image/jpeg,image/png,image/webp",
+            "help": "Optional photo for the blue banner (the classic Kubrick sky-and-hills spot). Recommended 960x220px. Leave blank for the default blue gradient.",
+            "hint": "Recommended 960x220px. Leave blank for the default blue gradient."
+        },
+        "header_logo": {
+            "section": "HEADER",
+            "type": "image",
+            "label": "Custom Logo",
+            "default": "",
+            "accept": "image/jpeg,image/png,image/webp,image/svg+xml",
+            "help": "Upload a logo to replace the site title text in the banner. Transparent PNG recommended.",
+            "hint": "Transparent PNG recommended."
+        },
+        "show_tagline": {
+            "section": "HEADER",
+            "type": "select",
+            "label": "Show Tagline",
+            "default": "1",
+            "options": {
+                "1": "Show",
+                "0": "Hide"
+            },
+            "help": "Hide the tagline under the banner (useful when your logo already includes it). Still used in RSS and social/SEO meta."
+        },
+        "accent_color": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Accent / Banner Colour",
+            "default": "#2e6da4",
+            "selector": ":root",
+            "property": "--stanley-accent",
+            "help": "Banner gradient base, links, and header bars."
+        },
+        "show_sidebar": {
+            "section": "LAYOUT",
+            "type": "select",
+            "label": "Show Sidebar",
+            "default": "1",
+            "options": {
+                "1": "Yes (Kubrick two-column)",
+                "0": "No (single column)"
+            },
+            "help": "The right-hand sidebar with recent posts and pages, as in the original."
+        },
+        "post_content_width": {
+            "section": "LAYOUT",
+            "type": "range",
+            "label": "Content Width (px)",
+            "default": "640",
+            "min": "480",
+            "max": "900",
+            "selector": ".post-inner",
+            "property": "width",
+            "unit": "px"
+        },
+        "posts_per_page": {
+            "section": "LAYOUT",
+            "type": "range",
+            "label": "Posts Per Page",
+            "default": "10",
+            "min": "4",
+            "max": "40"
+        }
+    }
+}

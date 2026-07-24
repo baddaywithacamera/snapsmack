@@ -36,7 +36,7 @@
 </div>
 <?php
 // ── Load required JS engines from manifest ─────────────────────────────────
-$skin_manifest = include __DIR__ . '/manifest.php';
+$skin_manifest = load_skin_manifest(basename(__DIR__));
 $requested     = $skin_manifest['require_scripts'] ?? [];
 
 // Background engines: single modes are mutually exclusive (PARADE pattern) —

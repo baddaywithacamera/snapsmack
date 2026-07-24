@@ -199,7 +199,7 @@ include 'core/sidebar.php';
             <p>Connected to <code><?php echo htmlspecialchars($relay_host); ?></code>.</p>
             <form method="POST" onsubmit="return confirm('Leave the SMACKVERSE network relay?');">
                 <input type="hidden" name="action" value="relay_leave">
-                <button type="submit" class="btn-clear">LEAVE NETWORK</button>
+                <button type="submit" class="btn-smack btn-danger">LEAVE NETWORK</button>
             </form>
         <?php else: ?>
             <form method="POST">

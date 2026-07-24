@@ -63,9 +63,9 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.439');
-define('SNAPSMACK_VERSION_SHORT', '0.7.439');
-define('SNAPSMACK_VERSION_CODENAME', 'Fame and Misfortune');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.440');
+define('SNAPSMACK_VERSION_SHORT', '0.7.440');
+define('SNAPSMACK_VERSION_CODENAME', 'Every Picture Tells a Story');
 
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.
@@ -123,5 +123,10 @@ function snapsmack_is_mobile(): bool {
     // intentionally excluded so they receive the normal desktop skin.
     return (bool) preg_match('/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackBerry|Opera Mini|IEMobile|Windows Phone/i', $ua);
 }
+
+// Skin manifests are declarative JSON and are available everywhere constants
+// are loaded. Keeping the loader here prevents individual templates from
+// inventing unsafe manifest-loading paths.
+require_once __DIR__ . '/skin-manifest.php';
 
 // ===== SNAPSMACK EOF =====

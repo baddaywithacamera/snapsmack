@@ -253,8 +253,8 @@ try {
 // Resolve active theme name from slug or manifest.
 $active_slug = $settings['active_skin'] ?? 'new-horizon';
 $active_skin_friendly = str_replace('_', ' ', ucfirst($active_slug));
-if (file_exists("skins/{$active_slug}/manifest.php")) {
-    $manifest = include "skins/{$active_slug}/manifest.php";
+if (skin_manifest_exists($active_slug)) {
+    $manifest = load_skin_manifest($active_slug);
     if (isset($manifest['name'])) {
         $active_skin_friendly = $manifest['name'];
     }

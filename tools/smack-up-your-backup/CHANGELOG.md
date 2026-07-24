@@ -19,6 +19,14 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.17 — 2026-07-22
+
+### Added
+- **Delete button for blog profiles.** The profile toolbar (top right) had New, Edit, and Dup but no way to remove a profile from inside the app — so duplicates made with **Dup** could only be cleared by hand-deleting their JSON from the `profiles/` folder. There is now a **Del** button beside Dup: it confirms, then removes the selected profile via `profile_manager.delete_profile()`. It deletes only that profile's SUYB connection settings on this computer (site URL, FTP + admin credentials, schedule) — backups already written to disk or the cloud are never touched. After a delete, SUYB falls back to the first remaining profile, or clears the selection if that was the last one.
+
+### Note
+- **Changelog had drifted from `BUILD_VERSION`.** The version reached `0.7.16` in `main.py` while the newest written entry was `0.7.11` (0.7.12–0.7.16 shipped without notes). This entry sets both to `0.7.17` to restore the "BUILD_VERSION matches the latest entry" invariant; the undocumented gap is left as-is rather than reconstructed from memory.
+
 ## 0.7.11 — 2026-07-06
 
 ### Fixed

@@ -70,10 +70,10 @@ if ($theme_mode === 'on') {
     $skin_slug = $settings['active_skin'] ?? 'unknown';
     $skin_name = str_replace('_', ' ', ucwords($skin_slug, '_'));
     // Try to get the friendly name from the manifest
-    $skin_manifest_path = __DIR__ . '/../skins/' . $skin_slug . '/manifest.php';
+    $skin_manifest_path = __DIR__ . '/../skins/' . $skin_slug . '/manifest.json';
     if (file_exists($skin_manifest_path)) {
         try {
-            $skin_manifest_data = include $skin_manifest_path;
+            $skin_manifest_data = snapsmack_load_manifest($skin_manifest_path);
             if (is_array($skin_manifest_data) && isset($skin_manifest_data['name'])) {
                 $skin_name = $skin_manifest_data['name'];
             }

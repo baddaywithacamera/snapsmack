@@ -88,12 +88,11 @@ try {
     $skin_masonry_locked = false;
     $skin_thumbs_locked  = false;
     $skin_force_thumb_style = null;
-    $_manifest_path = __DIR__ . '/skins/' . $active_skin . '/manifest.php';
+    $_manifest_path = __DIR__ . '/skins/' . $active_skin . '/manifest.json';
     $skin_show_archive_filter = true;
     if (file_exists($_manifest_path)) {
         try {
-            $_m = include $_manifest_path;
-            if (!is_array($_m)) $_m = [];
+            $_m = snapsmack_load_manifest($_manifest_path);
         } catch (\Throwable $_e) {
             $_m = [];
             error_log("SnapSmack: failed to load manifest {$_manifest_path} — " . $_e->getMessage());

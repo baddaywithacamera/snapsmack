@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF marker for HTML:
+  an HTML comment containing five equals, space, 'SNAPSMACK EOF', space, five equals.
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How It Works — PHOTOFRI.DAY</title>
+<meta name="description" content="How PHOTOFRI.DAY works — follow, tag, get boosted. The fediverse-only weekly photo challenge.">
+<meta name="robots" content="index, follow">
+
+<meta property="og:title" content="How It Works — PHOTOFRI.DAY">
+<meta property="og:description" content="Follow, tag, get boosted. How PHOTOFRI.DAY works.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://photofri.day/how-it-works">
+<meta property="og:image" content="https://photofri.day/img/logo-pf-black.png">
+
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png">
+<link rel="icon" href="img/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+
+<style>
+  :root {
+    --red:   #D40000;
+    --link:  #F50A0A;
+    --black: #111111;
+    --ink:   #f4f4f4;
+    --muted: #9a9a9a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--black);
+    color: var(--ink);
+    font-family: Georgia, 'Times New Roman', serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(212,0,0,0.10), transparent 55%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    width: 100%;
+    max-width: 840px;
+    margin: 0 auto;
+    padding: 48px 24px 60px;
+  }
+
+  .top { text-align: center; margin-bottom: 20px; }
+
+  .kicker {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    color: var(--red);
+    margin-bottom: 18px;
+    padding-left: 0.42em;
+    text-align: center;
+  }
+
+  h1 {
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 0.92;
+    font-size: clamp(2.4rem, 9vw, 4.2rem);
+    text-transform: uppercase;
+    color: var(--ink);
+    text-align: center;
+  }
+  h1 .dot { color: var(--red); }
+
+  .lede {
+    margin-top: 16px;
+    font-size: 1.02rem;
+    line-height: 1.6;
+    color: var(--muted);
+    text-align: center;
+    max-width: 38em;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .rule { width: 64px; height: 4px; background: var(--red); margin: 28px auto 8px; }
+
+  /* top nav */
+  .topnav {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 24px;
+    border-bottom: 1px solid #2a2a2a;
+    flex-wrap: wrap;
+  }
+  .topnav-brand {
+    font-family: 'Arial Black', Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    font-size: 0.92rem;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .topnav-brand .dot { color: var(--red); }
+  .topnav-brand:hover, .topnav-brand:focus-visible { color: var(--link); outline: none; }
+  .topnav-links { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .topnav-links a {
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.8rem;
+    color: var(--ink);
+    opacity: 0.68;
+    text-decoration: none;
+    padding-bottom: 3px;
+  }
+  .topnav-links a:hover, .topnav-links a:focus-visible { color: var(--link); opacity: 1; outline: none; }
+  .topnav-links a[aria-current="page"] { opacity: 1; border-bottom: 2px solid var(--red); }
+
+  /* steps */
+  .steps { list-style: none; counter-reset: step; display: flex; flex-direction: column; gap: 26px; margin-top: 36px; }
+  .steps li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 54px;
+    font-size: 1.12rem;
+    line-height: 1.7;
+    color: var(--ink);
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--red);
+    color: var(--red);
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .steps li strong { color: var(--ink); }
+  .steps li a { color: var(--link); text-decoration: none; border-bottom: 1px solid var(--red); }
+  .steps li a:hover, .steps li a:focus-visible { color: #fff; outline: none; }
+  .steps li code {
+    font-family: 'Courier New', monospace;
+    background: rgba(212,0,0,0.14);
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-size: 0.92em;
+  }
+  .steps-note { margin-top: 24px; font-size: 0.95rem; color: var(--muted); line-height: 1.6; }
+  .steps-note a { color: var(--link); text-decoration: none; border-bottom: 1px solid var(--red); }
+  .shout {
+    color: var(--red);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  footer {
+    position: relative;
+    z-index: 1;
+    border-top: 3px solid var(--red);
+    padding: 22px 24px;
+    text-align: center;
+  }
+  footer p {
+    font-family: 'Courier New', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    color: #888;
+  }
+  footer a { color: var(--link); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+  <nav class="topnav" aria-label="Primary">
+    <a class="topnav-brand" href="/">PHOTOFRI<span class="dot">.</span>DAY</a>
+    <div class="topnav-links">
+      <a href="/">Home</a>
+      <a href="/how-it-works.html" aria-current="page">How It Works</a>
+      <a href="/faq.html">Whut The Whut</a>
+      <a href="/join.html">Join The Party</a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <div class="top">
+      <p class="kicker">The Mechanics</p>
+      <h1>HOW IT WORKS<span class="dot">.</span></h1>
+      <p class="lede">Follow. Tag and share your entries. See the entries from others. Show some love to the ones that inspire you. Watch your feed for the weekly results. All on your own feed and server.</p>
+    </div>
+
+    <div class="rule"></div>
+
+    <ol class="steps">
+      <li>You'll need to be on the <strong>Fediverse</strong> &mdash; any compatible software, with a <code>@user@instance</code> handle of your own. (Don't worry, this is free. Learn more at <a href="https://fediverse.info" target="_blank" rel="noopener nofollow">fediverse.info</a>.)</li>
+      <li><strong>Join</strong> by following <code>@participate@photofri.day</code>.</li>
+      <li><strong>Receive the prompt</strong> Friday morning, the week before it's due.</li>
+      <li>The prompt can be a word or a sentence &mdash; <strong>how you interpret it is up to you.</strong> What you submit is up to you too, with two caveats: no NSFW images, no nudity. This challenge is open to youth who don't need to be exposed to that. Please govern your submissions accordingly.</li>
+      <li><strong>Submit your photos</strong> over the course of the week using that week's hashtag.</li>
+      <li><strong>Maximum of five.</strong> Go over five and the system quietly drops your own earliest entries from vote counting &mdash; never anyone else's, just yours.</li>
+      <li>Once you submit, we <strong>boost it to our own feed</strong> &mdash; so everyone following <code>@participate</code> sees your image on <strong>their own feed</strong>. No need to visit us; that's the whole point of the Fediverse, it comes to you. They like and comment right there, and we tally the likes on those boosts; the ones with the <strong>most likes</strong> win 1st, 2nd, and 3rd for the week, and links to them are featured in the <strong>Hall of Fame</strong>.</li>
+      <li>The <strong>1st-place photographer</strong> is asked to pick three <strong>honourable mentions</strong> from the non-winning entries by the following Thursday. Those get featured the Friday after &mdash; exposure for the people who didn't win &mdash; and go into the Honourable Mentions gallery. If 1st declines, we ask 2nd.</li>
+      <li>Want to participate but don't like being judged? Add the hashtag <code>#horsconcours</code> &mdash; French for &ldquo;not in competition,&rdquo; or &ldquo;out of competition.&rdquo; People can still like and comment on your image (we can't control that), but our software <strong>won't include entries tagged this way</strong> in the counting for rankings.</li>
+      <li>To <strong>leave</strong> the challenge, unfollow us.</li>
+      <li>To <strong>withdraw your work</strong>, delete it from your server, or just pull the hashtag. Our link gardening will notice and remove it &mdash; usually the next pass, but it can take a few weeks.</li>
+      <li>Like, comment, and most of all &mdash; <span class="shout">please be kind.</span> Not everyone's at the same place in their photographic journey, and people new to the craft need and deserve encouragement. Be the one who sees the best in someone's effort and lifts them up.</li>
+      <li>By participating in PHOTOFRI.DAY, you've helped grow the photographic community inside the Fediverse, connected photography lovers on disparate servers, and showcased some of the best images we have to offer to those outside the Fediverse. <strong>Thank you for helping build this corner of the Fediverse.</strong></li>
+    </ol>
+    <p class="steps-note">More questions? <a href="/faq.html">Check the FAQ</a>.</p>
+  </main>
+
+  <footer>
+    <p>Part of the SNAPSMACK network &middot; <a href="https://snapsmack.ca/">snapsmack.ca</a> &middot; <a href="https://photoblogs.fyi/" target="_blank" rel="noopener">photoblogs.fyi</a></p>
+  </footer>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->

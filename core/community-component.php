@@ -53,7 +53,7 @@ if (!snap_community_ready()) return;
 
 // --- MANIFEST FLAGS ---
 // Skin manifest may override global settings per-skin.
-// $skin_manifest is loaded by core/manifest.php before layout.php runs.
+// $skin_manifest is loaded by the declarative core loader before layout.php runs.
 $manifest_data = $skin_manifest ?? [];
 
 $show_comments  = (string)($manifest_data['community_comments']  ?? $settings['community_comments_enabled']  ?? '1') === '1';

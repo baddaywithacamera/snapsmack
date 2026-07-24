@@ -24,9 +24,9 @@ require_once 'core/auth-smack.php';
 $active_skin = $settings['active_skin'] ?? '';
 $manifest    = [];
 if ($active_skin) {
-    $manifest_path = "skins/{$active_skin}/manifest.php";
+    $manifest_path = "skins/{$active_skin}/manifest.json";
     if (file_exists($manifest_path)) {
-        $manifest = include $manifest_path;
+        $manifest = snapsmack_load_manifest($manifest_path);
     }
 }
 // Skin manifest options flagged admin_page=>'archive' rendered here if manifest loaded.
