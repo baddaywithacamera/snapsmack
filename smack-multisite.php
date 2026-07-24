@@ -551,6 +551,101 @@ if (isset($_POST['push_maintenance']) || isset($_POST['push_maintenance_all'])) 
     }
 }
 
+// --- PUSH ALL INSTALLED SKINS TO ALL ACTIVE SPOKES ---
+// One hub request per spoke. Each spoke receives only registry packages for
+// skins it has reported as installed, then performs the signed reinstalls
+// locally and returns a per-skin result set.
+if (isset($_POST['push_all_skins_all_spokes'])) {
+    if ($multisite_role !== 'hub') {
+        $err = "Only a hub can push skin reinstalls.";
+    } else {
+        $registry_url = $settings['skin_registry_url'] ?? SKIN_REGISTRY_DEFAULT_URL;
+        $reg          = skin_registry_fetch($registry_url);
+        $bulk_registry = $reg['skins'] ?? [];
+
+        if (empty($bulk_registry)) {
+            $err = "Skin registry unavailable -- no packages were pushed.";
+        } else {
+            $stmt = $pdo->prepare("SELECT * FROM snap_multisite_nodes WHERE role = 'spoke' AND status = 'active'");
+            $stmt->execute();
+            $target_nodes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $skin_results = [];
+
+            foreach ($target_nodes as $tn) {
+                $installed_raw = $tn['installed_skins'] ?? '';
+                $installed     = ($installed_raw === '' || $installed_raw === null)
+                    ? null
+                    : json_decode($installed_raw, true);
+
+                if (!is_array($installed)) {
+                    $skin_results[] = [
+                        'name'    => $tn['site_name'] ?? $tn['site_url'],
+                        'ok'      => false,
+                        'skipped' => true,
+                        'detail'  => 'Skipped -- installed skins not reported yet; run a heartbeat first.',
+                    ];
+                    continue;
+                }
+
+                $packages = [];
+                foreach (array_keys($installed) as $slug) {
+                    $rskin = $bulk_registry[$slug] ?? null;
+                    if (!$rskin || empty($rskin['download_url'])) continue;
+                    $packages[] = [
+                        'skin_slug'    => $slug,
+                        'download_url' => $rskin['download_url'],
+                        'signature'    => $rskin['signature'] ?? '',
+                    ];
+                }
+
+                if (empty($packages)) {
+                    $skin_results[] = [
+                        'name'    => $tn['site_name'] ?? $tn['site_url'],
+                        'ok'      => true,
+                        'skipped' => true,
+                        'detail'  => 'Skipped -- no installed skins have registry packages.',
+                    ];
+                    continue;
+                }
+
+                $ch = curl_init();
+                curl_setopt_array($ch, [
+                    CURLOPT_URL            => rtrim($tn['site_url'], '/') . '/api.php?route=multisite/skins/reinstall-all',
+                    CURLOPT_POST           => true,
+                    CURLOPT_POSTFIELDS     => json_encode(['skins' => $packages]),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_TIMEOUT        => max(120, count($packages) * 120),
+                    CURLOPT_HTTPHEADER     => [
+                        'Authorization: Bearer ' . $tn['api_key_local'],
+                        'Content-Type: application/json',
+                        'Accept: application/json',
+                    ],
+                ]);
+                $raw  = curl_exec($ch);
+                $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $cerr = curl_error($ch);
+                curl_close($ch);
+
+                $result = ['name' => $tn['site_name'] ?? $tn['site_url']];
+                if ($cerr || $code !== 200) {
+                    $data             = $raw ? (json_decode($raw, true) ?? []) : [];
+                    $result['ok']     = false;
+                    $result['detail'] = $cerr ?: ('HTTP ' . $code . (isset($data['error']) ? ': ' . $data['error'] : ''));
+                } else {
+                    $data     = json_decode($raw, true) ?? [];
+                    $ok_count = (int)($data['installed'] ?? 0);
+                    $fail_count = (int)($data['failed'] ?? 0);
+                    $result['ok'] = $fail_count === 0 && $ok_count === count($packages);
+                    $result['detail'] = $ok_count . ' skin' . ($ok_count === 1 ? '' : 's') . ' installed'
+                        . ($fail_count ? '; ' . $fail_count . ' failed' : '') . '.';
+                }
+                $skin_results[] = $result;
+            }
+        }
+    }
+}
+
 // --- PUSH SKIN REINSTALL TO SPOKE(S) ---
 if (isset($_POST['push_skin']) || isset($_POST['push_skin_all'])) {
     if ($multisite_role !== 'hub') {
@@ -1325,10 +1420,37 @@ include 'core/sidebar.php';
         <!-- PUSH SKIN TO SPOKES -->
         <?php
             $active_spokes = array_filter($nodes, fn($n) => $n['role'] === 'spoke' && $n['status'] === 'active');
+            $spoke_skin_status = [];
+            $fleet_updates     = [];
+            $fleet_skin_jobs   = 0;
+            foreach ($active_spokes as $sp) {
+                $st = $skin_status_for_node($sp);
+                $spoke_skin_status[$sp['id']] = $st;
+                $fleet_skin_jobs += count($st['skins']);
+                foreach ($st['skins'] as $sk) {
+                    if ($sk['state'] !== 'update' || $sk['url'] === '') continue;
+                    if (!isset($fleet_updates[$sk['slug']])) {
+                        $fleet_updates[$sk['slug']] = [
+                            'name' => $sk['name'], 'latest' => (string)$sk['latest'],
+                            'url' => $sk['url'], 'sig' => $sk['sig'], 'count' => 0,
+                        ];
+                    }
+                    $fleet_updates[$sk['slug']]['count']++;
+                }
+            }
         ?>
         <?php if (!empty($active_spokes)): ?>
-        <div class="box">
-            <h3>PUSH SKIN TO SPOKES</h3>
+        <div class="box skin-deploy">
+            <div class="skin-deploy-head">
+                <div>
+                    <h3>SKIN DEPLOYMENT</h3>
+                    <p>Deploy signed packages without changing which skins each site has installed.</p>
+                </div>
+                <div class="skin-deploy-counts">
+                    <strong><?php echo count($active_spokes); ?></strong> active spokes
+                    <span><?php echo $fleet_skin_jobs; ?> installed-skin targets</span>
+                </div>
+            </div>
             <p style="font-size:0.9rem; color:var(--text-muted,#888); margin-bottom:16px;">
                 Push a skin update to spokes that already have it installed. Spokes without the
                 skin are skipped, not freshly installed — so a solo blog never gets a carousel
@@ -1357,7 +1479,18 @@ include 'core/sidebar.php';
             <?php endif; ?>
 
             <?php if (!empty($registry_skins)): ?>
-            <form method="POST" id="push-skin-form">
+            <div class="skin-deploy-primary">
+            <form method="POST"
+                  onsubmit="return confirm('Reinstall EVERY registry skin already present on EVERY active spoke? This may take several minutes.');">
+                <button type="submit" name="push_all_skins_all_spokes" class="master-update-btn">
+                    PUSH ALL SKINS TO ALL SPOKES
+                </button>
+            </form>
+            <p>One authenticated batch per spoke. Custom and uninstalled skins are left alone.</p>
+            </div>
+            <details class="skin-deploy-advanced">
+                <summary>Deploy one skin instead</summary>
+            <form method="POST" id="push-skin-form" class="skin-deploy-form">
                 <label>SKIN</label>
                 <select name="skin_slug" id="push-skin-select" required
                         onchange="(function(s){var o=s.options[s.selectedIndex];document.getElementById('push-skin-url').value=o.getAttribute('data-url')||'';document.getElementById('push-skin-sig').value=o.getAttribute('data-sig')||'';})(this)">
@@ -1374,14 +1507,14 @@ include 'core/sidebar.php';
                 <input type="hidden" name="download_url" id="push-skin-url">
                 <input type="hidden" name="signature"    id="push-skin-sig">
 
-                <label style="margin-top:14px;">TARGET SPOKE</label>
+                <label>TARGET SPOKE</label>
                 <select name="spoke_id">
                     <?php foreach ($active_spokes as $n): ?>
                         <option value="<?php echo $n['id']; ?>"><?php echo htmlspecialchars($n['site_name'] ?: $n['site_url']); ?></option>
                     <?php endforeach; ?>
                 </select>
 
-                <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
+                <div class="skin-deploy-buttons">
                     <button type="submit" name="push_skin" class="btn-smack"
                             style="width:auto;height:auto;margin-top:0;padding:8px 18px;">
                         PUSH TO SPOKE
@@ -1393,6 +1526,7 @@ include 'core/sidebar.php';
                     </button>
                 </div>
             </form>
+            </details>
             <?php else: ?>
                 <p style="color:var(--text-muted,#888);">Skin registry unavailable -- check your connection to snapsmack.ca.</p>
             <?php endif; ?>
@@ -1401,7 +1535,7 @@ include 'core/sidebar.php';
 
         <?php if (!empty($active_spokes)): ?>
         <div class="box">
-            <h3>FLEET SKIN STATUS</h3>
+            <h3>SKIN INVENTORY</h3>
             <p style="font-size:0.9rem; color:var(--text-muted,#888); margin-bottom:16px;">
                 Each spoke's active skin and how its installed skins compare to the registry.
                 <strong>Update ready</strong> means a newer version is published — hit UPDATE to send the
@@ -1718,6 +1852,29 @@ include 'core/sidebar.php';
 .spoke-act-wrap .action-warning   { min-width:118px; text-align:center; }
 .spoke-act-wrap .action-delete    { min-width:95px;  text-align:center; }
 .spoke-act-wrap .action-update    { min-width:72px;  text-align:center; }
+
+/* Skin deployment: fleet action first, surgical controls deliberately quiet. */
+.skin-deploy-head { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; margin-bottom:18px; }
+.skin-deploy-head h3 { margin-bottom:5px; }
+.skin-deploy-head p { margin:0; color:var(--text-muted,#888); font-size:.9rem; }
+.skin-deploy-counts { min-width:180px; text-align:right; color:var(--text-muted,#888); font-size:.78rem; line-height:1.5; }
+.skin-deploy-counts strong { display:block; color:var(--text,#eee); font-size:1.65rem; line-height:1; }
+.skin-deploy-counts span { display:block; }
+.skin-deploy-primary { display:flex; align-items:center; gap:18px; padding:18px; border:1px solid rgba(93,234,93,.32); border-radius:6px; background:rgba(93,234,93,.06); }
+.skin-deploy-primary form { margin:0; }
+.skin-deploy-primary .master-update-btn { width:auto; margin:0; white-space:nowrap; }
+.skin-deploy-primary p { margin:0; color:var(--text-muted,#888); font-size:.82rem; }
+.skin-deploy-advanced { margin-top:14px; border-top:1px solid var(--border,#333); padding-top:12px; }
+.skin-deploy-advanced summary { cursor:pointer; color:var(--text-muted,#888); font-size:.82rem; text-transform:uppercase; letter-spacing:.06em; }
+.skin-deploy-form { display:grid; grid-template-columns:minmax(220px,1fr) minmax(220px,1fr); gap:12px 18px; margin-top:14px; }
+.skin-deploy-form label { margin:0; }
+.skin-deploy-buttons { grid-column:1/-1; display:flex; gap:8px; flex-wrap:wrap; }
+.skin-deploy-buttons .btn-smack { width:auto; height:auto; margin:0; padding:8px 18px; }
+@media (max-width:700px) {
+    .skin-deploy-head, .skin-deploy-primary { flex-direction:column; }
+    .skin-deploy-counts { text-align:left; }
+    .skin-deploy-form { grid-template-columns:1fr; }
+}
 </style>
 
 <?php include 'core/admin-footer.php'; ?>
