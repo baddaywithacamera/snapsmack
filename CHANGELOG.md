@@ -10,6 +10,9 @@
 
 # SnapSmack Changelog
 
+## 0.7.444 "No Going Back" — 2026-07-24
+- **Retired the temporary executable skin-manifest bridge.** Every known installation is now on 0.7.443, so official skin footers call the canonical JSON loader directly and both skin packagers stop injecting `manifest.php` adapters into signed ZIPs. Registry validation and diagnostics now consistently name `manifest.json`. Rebuild/sign all skins in Smack Central, then use the hub's batch skin deployment once; replacement installs remove the old adapter files from every installed skin directory without individual version bumps. (`skins/*/skin-footer.php`, `smack-central/sc-skins.php`, `tools/_build/package-skin.php`, `core/skin-registry.php`.)
+
 ## 0.7.443 "Straighten Up and Fly Right" — 2026-07-23
 - **Restored manifest-declared engine CSS on upgraded sites.** Older generated site bootstraps do not load the new JSON manifest helper before the shared head asks for engine CSS. The caught undefined-function error silently became an empty manifest, so engine JavaScript still ran while its matching stylesheet vanished: GALLERIA and HIP TO BE SQUARE slider tracks stacked into giant vertical frames, and F1/comms, Thomas, community, calendar, justified layouts, and other CSS-bearing engines could render broken or unstyled. The head now bootstraps the JSON helper itself and always reads the active skin's canonical inert `manifest.json`; footer compatibility remains unchanged. (`core/meta.php`.)
 - **RATIONAL GEO solo view snaps cleanly to the browser again.** The closed photo stage is locked to exactly one viewport, matching IMPACT PRINTER; opening the in-flow info/comments tray scrolls inside that stage instead of making the whole document slightly taller. Skin `2.1.7`. (`skins/rational-geo/style.css`, `skins/rational-geo/manifest.json`.)
