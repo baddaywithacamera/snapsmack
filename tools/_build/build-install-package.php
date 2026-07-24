@@ -86,7 +86,7 @@ $exclude_dirs = [
                            // (see install.php "FETCH MODE-APPROPRIATE SKINS" +
                            // projects/snapsmack-ca/install-manifest.php). Bundling the
                            // whole skins/ tree was planting all ~19 skins on every fresh
-                           // install — each skin manifest.php is live PHP, so every unused
+                           // install — skins contain executable templates, so every unused
                            // skin is needless attack surface. Skins are gallery-on-demand.
 ];
 

@@ -217,7 +217,7 @@ function skin_registry_compare(array $registry, array $local): array {
  * Download and install a skin from the registry.
  *
  * Downloads the zip, optionally verifies the Ed25519 signature, extracts to
- * the skins directory, and validates that a manifest.php exists inside.
+ * the skins directory, and validates that a manifest.json exists inside.
  *
  * @param string $slug         Skin slug (becomes the directory name)
  * @param string $download_url URL to the skin zip
@@ -322,13 +322,13 @@ function skin_registry_install(string $slug, string $download_url, string $signa
     $source = $staging;
     if ($top_folder && is_dir($staging . '/' . $top_folder . '/manifest.json') === false
         && is_dir($staging . '/' . $top_folder)) {
-        // Check if manifest.php is inside the wrapper
+        // Check if manifest.json is inside the wrapper
         if (file_exists($staging . '/' . $top_folder . '/manifest.json')) {
             $source = $staging . '/' . $top_folder;
         }
     }
 
-    // Validate: manifest.php must exist
+    // Validate: manifest.json must exist
     if (!file_exists($source . '/manifest.json')) {
         _skin_rmdir_recursive($staging);
         return ['success' => false, 'message' => 'Invalid skin package: no manifest.json found inside the zip.'];
@@ -353,7 +353,7 @@ function skin_registry_install(string $slug, string $download_url, string $signa
 
     // Final check
     if (!file_exists($target_dir . '/manifest.json')) {
-        return ['success' => false, 'message' => 'Installation failed — manifest.php not found after extraction.'];
+        return ['success' => false, 'message' => 'Installation failed — manifest.json not found after extraction.'];
     }
 
     return ['success' => true, 'message' => 'Skin "' . $slug . '" installed successfully.'];

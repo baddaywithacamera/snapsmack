@@ -14,9 +14,7 @@
  */
 
 
-$skin_manifest = function_exists('load_skin_manifest')
-    ? load_skin_manifest(basename(__DIR__))
-    : include __DIR__ . '/manifest.php';
+$skin_manifest = load_skin_manifest(basename(__DIR__));
 $requested = $skin_manifest['require_scripts'] ?? [];
 
 if (!empty($requested)) {
