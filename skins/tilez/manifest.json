@@ -1,10 +1,10 @@
 {
     "schema_version": 1,
-    "name": "SMACKTALK",
+    "name": "TILEZ",
     "version": "0.1.1",
     "author": "Sean McCormick & Claude",
     "author_email": "sean@baddaywithacamera.ca",
-    "description": "SMACKTALK longform skin with a TILEZ-style masonry feed. Reuses ALFRED's SmackTalk plumbing (preload.php routing: masonry feed, single post, prev/next, photo archive) but the index is a dynamic varied-tile masonry instead of the square grid. Writing and images at equal billing.",
+    "description": "A TILEZ-style masonry skin for SMACKTALK sites. Reuses ALFRED's proven longform plumbing (preload.php routing: masonry feed, single post, prev/next, photo archive) but the index is a dynamic varied-tile masonry instead of the square grid. Writing and images at equal billing.",
     "status": "experimental",
     "modes": [
         "smacktalk"

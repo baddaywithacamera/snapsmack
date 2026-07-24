@@ -2150,7 +2150,7 @@ body.alfred-lb-open { overflow: hidden; }
 }
 
 /* ==========================================================================
-   SMACKTALK — TILEZ MASONRY FEED
+   TILEZ — SMACKTALK MASONRY FEED
    Overrides ALFRED's square 3-column flex feed with a dense, varied CSS-grid
    masonry. Same .posts / .post tile markup from preload.php — only the layout
    changes, so covers, overlays, titles and links all keep working.

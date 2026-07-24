@@ -28,7 +28,7 @@
 
 
 // Only intercept when Alfred is actually the active skin
-if (($settings['active_skin'] ?? '') !== 'smacktalk') return;
+if (($settings['active_skin'] ?? '') !== 'tilez') return;
 
 // ============================================================
 //  ARCHIVE VIEW  (grid of INDIVIDUAL PHOTOGRAPHS → lightbox)
