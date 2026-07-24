@@ -10,6 +10,9 @@
 
 # SnapSmack Changelog
 
+## 0.7.446 "Separate Ways" — 2026-07-24
+- **Separated phone and desktop full-page caches.** The anonymous page-cache key contained only host + URL even though phones can render the same URL through the dedicated PHOTOGRAM skin. Because cache lookup happened before mobile skin selection, a desktop INSTANT CAMERA response cached first could be served verbatim to phones, bypassing PHOTOGRAM entirely (and vice versa). Cache keys now include the mobile/desktop rendering class; old mixed entries are naturally ignored after deployment. (`core/page-cache.php`.)
+
 ## 0.7.445 "Manifestly Obvious" — 2026-07-24
 - **Restored the image editor after the JSON-manifest migration.** Admin pages now load the declarative manifest helper explicitly instead of assuming an older generated `core/db.php` loaded it indirectly through constants. This fixes the `snapsmack_load_manifest()` fatal when opening EDIT and removes the matching manifest-loader notices across admin pages. (`core/auth-smack.php`.)
 - **Removed the last credential-only database export path.** The redundant USER CREDENTIALS download had already been removed from Disaster Recovery, but the same `snap_users`-only export remained reachable through the authenticated SUYB endpoint and shared export engine. That route and engine mode are now gone. Full protected Recovery Kits and full database exports still contain the user table, so disaster recovery is unchanged while the unnecessary narrow attack surface is closed. (`suyb-export.php`, `core/export-engine.php`, `smack-disaster.php`.)
