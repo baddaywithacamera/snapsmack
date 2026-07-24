@@ -1,10 +1,10 @@
 <!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
 
-# SECAUDIT 033 - Executable skin manifests and redundant credentials export: closure verification
+# SECAUDIT 034 - Executable skin manifests and redundant credentials export: closure verification
 
 | Field | Value |
 | --- | --- |
-| **Audit ID** | 2026-07-24-033 |
+| **Audit ID** | 2026-07-24-034 |
 | **Date** | 2026-07-24 |
 | **Severity** | **CRITICAL (historical)** - skin metadata could execute arbitrary PHP; **MEDIUM (defense-in-depth)** - redundant authenticated exports exposed credential material |
 | **Component** | Skin manifests, skin package installation, Disaster Recovery, SUYB export |
