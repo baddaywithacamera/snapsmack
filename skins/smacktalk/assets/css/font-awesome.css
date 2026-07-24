@@ -1,0 +1,51 @@
+/*
+ * SNAPSMACK - Alfred skin Font Awesome 5 Free declarations
+ * SNAPSMACK_EOF_HEADER — last non-empty line must be: /* ===== SNAPSMACK EOF ===== */
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+@font-face {
+	font-family: 'Font Awesome 5';
+	font-style: normal;
+	font-weight: normal;
+	font-display: block;
+	src: url( ../fonts/font-awesome/fa-solid-900.woff2 ) format( 'woff2' ),
+		 url( ../fonts/font-awesome/fa-solid-900.woff ) format( 'woff' );
+}
+
+@font-face {
+	font-family: 'Font Awesome 5 Brands';
+	font-style: normal;
+	font-weight: normal;
+	font-display: block;
+	src: url( ../fonts/font-awesome/fa-brands-400.woff2 ) format( 'woff2' ),
+		 url( ../fonts/font-awesome/fa-brands-400.woff ) format( 'woff' );
+}
+
+/*!
+ * Font Awesome Free 5.9.0 by @fontawesome - https://fontawesome.com
+ * License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+ */
+
+.fa,
+.fas,
+.fab {
+	-moz-osx-font-smoothing: grayscale;
+	-webkit-font-smoothing: antialiased;
+	display: inline-block;
+	font-style: normal;
+	font-variant: normal;
+	text-rendering: auto;
+	line-height: 1;
+}
+
+.fa,
+.fas {
+	font-family: 'Font Awesome 5';
+	font-weight: 900;
+}
+
+.fab {
+	font-family: 'Font Awesome 5 Brands';
+}
+/* ===== SNAPSMACK EOF ===== */

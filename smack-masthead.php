@@ -25,8 +25,8 @@ $_active_skin = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)(
     $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='active_skin' LIMIT 1")->fetchColumn() ?: ''
 ));
 $_mh_manifest = [];
-if ($_active_skin !== '' && file_exists("skins/{$_active_skin}/manifest.php")) {
-    try { $_mh_manifest = include "skins/{$_active_skin}/manifest.php"; }
+if ($_active_skin !== '' && skin_manifest_exists($_active_skin)) {
+    try { $_mh_manifest = load_skin_manifest($_active_skin); }
     catch (\Throwable $_e) {
         $_mh_manifest = [];
         error_log("SnapSmack masthead: failed to load manifest for {$_active_skin} — " . $_e->getMessage());

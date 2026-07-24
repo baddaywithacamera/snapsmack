@@ -13,7 +13,7 @@ Same visual family as Smack Your Batch Up.
 
 
 
-BUILD_VERSION = "0.7.16"
+BUILD_VERSION = "0.7.17"
 
 import os
 import queue
@@ -3710,6 +3710,12 @@ To set up manually:
 6. Click Save Profile.
 
 Your profile is stored as a JSON file in the profiles/ folder next to the exe, one file per blog.
+
+Managing profiles — the buttons at the top right:
+— + New: create a new blog profile.
+— Edit: change the selected profile's settings.
+— Dup: copy the selected profile under the name "... (copy)". Handy for a second blog on the same host — it copies every connection detail so you don't re-enter FTP and admin credentials; just Edit the copy's name and URL afterwards.
+— Del: delete the selected profile. It asks you to confirm, then removes only that profile's connection settings from this computer — your saved backups (local and cloud) are left alone.
 """),
     ("Backup tab", """
 Select a blog from the dropdown at the top right, then click START BACKUP.
@@ -5361,6 +5367,9 @@ class App(tk.Tk):
         tk.Button(right, text="Dup", bg=BG_MID, fg=FG_MAIN,
                   relief="flat", font=FONT_SMALL,
                   command=self._dup_profile).pack(side="right", padx=(4, 0))
+        tk.Button(right, text="Del", bg=BG_MID, fg=FG_DIM,
+                  relief="flat", font=FONT_SMALL,
+                  command=self._del_profile).pack(side="right", padx=(4, 0))
 
         self._profile_var = tk.StringVar()
         self._profile_menu = ttk.Combobox(
@@ -5502,6 +5511,32 @@ class App(tk.Tk):
         new_name = f"{name} (copy)"
         profile_manager.duplicate_profile(name, new_name)
         self._refresh_profile_list(new_name)
+
+    def _del_profile(self) -> None:
+        if not self._current_profile:
+            messagebox.showinfo("No profile", "Select a profile first.")
+            return
+        name = self._current_profile["name"]
+        if not messagebox.askyesno(
+            "Delete profile",
+            f'Delete the profile "{name}"?\n\n'
+            "This removes only its SUYB connection settings on this computer "
+            "(site URL, FTP and admin credentials, schedule). Backups already "
+            "saved to disk or the cloud are NOT touched.",
+            icon="warning",
+        ):
+            return
+        profile_manager.delete_profile(name)
+        self._current_profile = None
+        remaining = profile_manager.list_profiles()
+        if remaining:
+            # Fall back to the first remaining profile so the tabs do not
+            # keep showing the one we just deleted.
+            self._refresh_profile_list(remaining[0])
+        else:
+            self._profile_var.set("")
+            self.title(f"Smack Up Your Backup  \u2014  v{BUILD_VERSION}")
+            self._refresh_profile_list()
 
     def _refresh_profile_list(self, select: str = "") -> None:
         self._profiles = profile_manager.list_profiles()

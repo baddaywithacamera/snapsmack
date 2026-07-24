@@ -235,7 +235,7 @@ if (in_array($_snap_page, ['page', 'blog', 'index'])): ?>
  * declarations so skins can use custom fonts.
  */
 $inventory_path = __DIR__ . '/manifest-inventory.php';
-$skin_manifest_path = dirname(__DIR__) . '/skins/' . ($active_skin ?? '50-shades-of-noah-grey') . '/manifest.php';
+$skin_manifest_path = dirname(__DIR__) . '/skins/' . ($active_skin ?? '50-shades-of-noah-grey') . '/manifest.json';
 
 if (file_exists($inventory_path)) {
     $inv = include $inventory_path;
@@ -278,12 +278,11 @@ if (file_exists($inventory_path)) {
 // Load engine CSS for all scripts required by the active skin.
 // Mirrors the script loop in skin-footer.php but outputs only CSS links.
 if (!isset($skin_manifest_path)) {
-    $skin_manifest_path = dirname(__DIR__) . '/skins/' . ($active_skin ?? '50-shades-of-noah-grey') . '/manifest.php';
+    $skin_manifest_path = dirname(__DIR__) . '/skins/' . ($active_skin ?? '50-shades-of-noah-grey') . '/manifest.json';
 }
 if (file_exists($skin_manifest_path)) {
     try {
-        $_skin_mf = include $skin_manifest_path;
-        if (!is_array($_skin_mf)) $_skin_mf = [];
+        $_skin_mf = snapsmack_load_manifest($skin_manifest_path);
     } catch (\Throwable $e) {
         $_skin_mf = [];
         error_log("SnapSmack: failed to load manifest {$skin_manifest_path} — " . $e->getMessage());

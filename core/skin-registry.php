@@ -23,6 +23,8 @@
 
 
 // --- REGISTRY FORMAT ---
+require_once __DIR__ . '/skin-manifest.php';
+
 // The remote registry JSON must follow this structure:
 //
 // {
@@ -140,14 +142,13 @@ function skin_registry_clear_cache(): void {
  * @return array  ['slug' => ['name'=>..., 'version'=>..., 'status'=>...], ...]
  */
 /**
- * Safely include a skin manifest.php without a fatal error on parse or
- * runtime failures. Returns the manifest array, or [] on any error.
- * Failures are written to the PHP error log for debugging.
+ * Legacy no-op retained temporarily for callers from pre-JSON development
+ * builds. It does not execute or parse PHP manifests.
  */
-function snapsmack_load_manifest(string $path): array {
+function snapsmack_load_legacy_manifest_disabled(string $path): array {
     if (!file_exists($path)) return [];
     try {
-        $m = include $path;
+        $m = [];
         return is_array($m) ? $m : [];
     } catch (\Throwable $e) {
         error_log("SnapSmack: failed to load manifest {$path} — " . $e->getMessage());
@@ -161,7 +162,7 @@ function skin_registry_local(): array {
 
     foreach ($dirs as $dir) {
         $slug = basename($dir);
-        $manifest_path = $dir . '/manifest.php';
+        $manifest_path = $dir . '/manifest.json';
 
         $manifest = snapsmack_load_manifest($manifest_path);
         if (!$manifest) continue;
@@ -258,19 +259,22 @@ function skin_registry_install(string $slug, string $download_url, string $signa
         return ['success' => false, 'message' => 'Download failed. Check that this server can reach the skin registry.'];
     }
 
-    // --- SIGNATURE VERIFICATION (optional) ---
-    if (!empty($signature) && !empty($public_key) && function_exists('sodium_crypto_sign_verify_detached')) {
-        try {
-            $sig_bin = sodium_hex2bin($signature);
-            $key_bin = sodium_hex2bin($public_key);
-            $valid   = sodium_crypto_sign_verify_detached($sig_bin, $zip_data, $key_bin);
-
-            if (!$valid) {
-                return ['success' => false, 'message' => 'Signature verification FAILED. The download may have been tampered with.'];
-            }
-        } catch (\Exception $e) {
-            return ['success' => false, 'message' => 'Signature check error: ' . $e->getMessage()];
+    // --- SIGNATURE VERIFICATION (mandatory: skins contain executable templates) ---
+    if (!function_exists('sodium_crypto_sign_verify_detached')) {
+        return ['success' => false, 'message' => 'Skin install refused: PHP Sodium is required for signature verification.'];
+    }
+    if (!preg_match('/^[a-f0-9]{128}$/i', $signature)
+        || !preg_match('/^[a-f0-9]{64}$/i', $public_key)) {
+        return ['success' => false, 'message' => 'Skin install refused: package signature or public key is missing.'];
+    }
+    try {
+        $sig_bin = sodium_hex2bin($signature);
+        $key_bin = sodium_hex2bin($public_key);
+        if (!sodium_crypto_sign_verify_detached($sig_bin, $zip_data, $key_bin)) {
+            return ['success' => false, 'message' => 'Signature verification FAILED. The download may have been tampered with.'];
         }
+    } catch (\Throwable $e) {
+        return ['success' => false, 'message' => 'Signature check error: ' . $e->getMessage()];
     }
 
     // --- WRITE & EXTRACT ---
@@ -280,6 +284,17 @@ function skin_registry_install(string $slug, string $download_url, string $signa
     if ($zip->open($tmp_zip) !== true) {
         @unlink($tmp_zip);
         return ['success' => false, 'message' => 'Failed to open the downloaded zip. It may be corrupted.'];
+    }
+
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $entry = str_replace('\\', '/', (string)$zip->getNameIndex($i));
+        $parts = explode('/', $entry);
+        if ($entry === '' || str_contains($entry, "\0") || str_starts_with($entry, '/')
+            || preg_match('/^[a-zA-Z]:\//', $entry) || in_array('..', $parts, true)) {
+            $zip->close();
+            @unlink($tmp_zip);
+            return ['success' => false, 'message' => 'Skin install refused: unsafe path in ZIP archive.'];
+        }
     }
 
     // Determine the top-level folder inside the zip.
@@ -305,18 +320,18 @@ function skin_registry_install(string $slug, string $download_url, string $signa
 
     // If there's a wrapper folder, the actual skin files are inside it
     $source = $staging;
-    if ($top_folder && is_dir($staging . '/' . $top_folder . '/manifest.php') === false
+    if ($top_folder && is_dir($staging . '/' . $top_folder . '/manifest.json') === false
         && is_dir($staging . '/' . $top_folder)) {
         // Check if manifest.php is inside the wrapper
-        if (file_exists($staging . '/' . $top_folder . '/manifest.php')) {
+        if (file_exists($staging . '/' . $top_folder . '/manifest.json')) {
             $source = $staging . '/' . $top_folder;
         }
     }
 
     // Validate: manifest.php must exist
-    if (!file_exists($source . '/manifest.php')) {
+    if (!file_exists($source . '/manifest.json')) {
         _skin_rmdir_recursive($staging);
-        return ['success' => false, 'message' => 'Invalid skin package: no manifest.php found inside the zip.'];
+        return ['success' => false, 'message' => 'Invalid skin package: no manifest.json found inside the zip.'];
     }
 
     // If the skin directory already exists, remove it (update scenario)
@@ -337,7 +352,7 @@ function skin_registry_install(string $slug, string $download_url, string $signa
     }
 
     // Final check
-    if (!file_exists($target_dir . '/manifest.php')) {
+    if (!file_exists($target_dir . '/manifest.json')) {
         return ['success' => false, 'message' => 'Installation failed — manifest.php not found after extraction.'];
     }
 

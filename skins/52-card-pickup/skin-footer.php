@@ -28,7 +28,7 @@ if (!empty($om_ghost_chrome)):
 endif;
 
 // Load requested engines from manifest
-$skin_manifest = include __DIR__ . '/manifest.php';
+$skin_manifest = load_skin_manifest(basename(__DIR__));
 $requested = $skin_manifest['require_scripts'] ?? [];
 
 if (!empty($requested)) {

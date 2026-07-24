@@ -31,10 +31,10 @@ $_site_is_smacktalk = ($settings['site_mode']     ?? 'photoblog') === 'smacktalk
 $_sidebar_pimpotron = false;
 if (!empty($settings['active_skin'])) {
     $_sidebar_skin_slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $settings['active_skin']);
-    $_sidebar_manifest_path = "skins/{$_sidebar_skin_slug}/manifest.php";
+    $_sidebar_manifest_path = "skins/{$_sidebar_skin_slug}/manifest.json";
     if (file_exists($_sidebar_manifest_path)) {
         try {
-            $_sidebar_manifest = include $_sidebar_manifest_path;
+            $_sidebar_manifest = snapsmack_load_manifest($_sidebar_manifest_path);
         } catch (\Throwable $_e) {
             $_sidebar_manifest = [];
             error_log("SnapSmack: failed to load manifest {$_sidebar_manifest_path} — " . $_e->getMessage());

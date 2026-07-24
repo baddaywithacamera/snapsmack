@@ -151,6 +151,9 @@ reference/
 # Claude's session-continuity notes (gitignored — for future Claude sessions)
 _continuity/
 
+# Codex's session-continuity notes (separate private working memory)
+_codex_continuity/
+
 # Private spec / planning documents directory
 tools/_specs/
 

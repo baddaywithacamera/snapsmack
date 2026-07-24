@@ -55,7 +55,7 @@ function snapsmack_search_color_family($q) {
 }
 
 /**
- * Run a search and return matched images + matched tags.
+ * Run a search and return matched images, tags, and federated (network) posts.
  *
  * @param  PDO    $pdo
  * @param  string $q      Raw query string (already trimmed by caller is fine).
@@ -65,10 +65,13 @@ function snapsmack_search_color_family($q) {
  *                                  'img_thumb_square','img_thumb_aspect'], … ],
  *                  'tags'    => [ ['id','tag','slug','use_count'], … ],
  *                  'count'   => int,
+ *                  'network' => [ ['object_id','actor_handle','content',
+ *                                  'media_json','url','source','published'], … ],
+ *                  'network_count' => int,
  *                ]
  */
 function snapsmack_search($pdo, $q, $limit = 60) {
-    $out = ['results' => [], 'tags' => [], 'count' => 0];
+    $out = ['results' => [], 'tags' => [], 'count' => 0, 'network' => [], 'network_count' => 0];
     $q   = trim($q);
     if ($q === '') return $out;
 
@@ -139,6 +142,26 @@ function snapsmack_search($pdo, $q, $limit = 60) {
         }
         $out['results'] = $img_stmt->fetchAll(PDO::FETCH_ASSOC);
         $out['count']   = count($out['results']);
+
+        // ── Network search: federated posts the relay cached locally ────────
+        //    Reads snap_ap_timeline.content (note text, hashtags inline) + actor_handle.
+        //    ADDITIVE: separate 'network' bucket, so consumers of 'results' (image
+        //    rows with img_* fields) are unaffected. Excludes replies to keep it to
+        //    posts, not comment chatter. snap_ap_timeline is populated by the relay;
+        //    on a fresh install the table may lag — the outer catch keeps search safe.
+        $net_stmt = $pdo->prepare("
+            SELECT object_id, actor_url, actor_handle, content, media_json,
+                   url, source, published
+            FROM snap_ap_timeline
+            WHERE (content LIKE ? OR actor_handle LIKE ?)
+              AND (in_reply_to IS NULL OR in_reply_to = '')
+              AND (published IS NULL OR published <= ?)
+            ORDER BY published DESC
+            LIMIT " . $limit . "
+        ");
+        $net_stmt->execute([$search_term, $search_term, $now]);
+        $out['network']       = $net_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $out['network_count'] = count($out['network']);
     } catch (PDOException $e) {
         // Search must never fatal a page — return whatever we have.
     }

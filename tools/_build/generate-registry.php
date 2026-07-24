@@ -28,7 +28,7 @@ if (php_sapi_name() !== 'cli') {
 
 // ─── PATHS ──────────────────────────────────────────────────────────────────
 
-$project_root = dirname(__DIR__);
+$project_root = dirname(__DIR__, 2);
 $skins_dir    = $project_root . '/skins';
 
 // Base URLs for hosted assets on snapsmack.ca
@@ -59,7 +59,7 @@ $output_file  = $args['output'] ?? null;
 
 // ─── SCAN MANIFESTS ─────────────────────────────────────────────────────────
 
-$manifest_files = glob($skins_dir . '/*/manifest.php');
+$manifest_files = glob($skins_dir . '/*/manifest.json');
 if (empty($manifest_files)) {
     die("ERROR: No skin manifests found in {$skins_dir}\n");
 }
@@ -72,10 +72,10 @@ $skipped = 0;
 foreach ($manifest_files as $manifest_path) {
     $slug = basename(dirname($manifest_path));
 
-    // Load manifest — it returns an array
-    $manifest = @include $manifest_path;
+    // Parse declarative manifest data without executing skin code.
+    $manifest = json_decode((string)file_get_contents($manifest_path), true);
     if (!is_array($manifest)) {
-        echo "  SKIP  {$slug} — manifest.php did not return an array\n";
+        echo "  SKIP  {$slug} — manifest.json is invalid\n";
         $skipped++;
         continue;
     }

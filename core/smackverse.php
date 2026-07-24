@@ -1850,7 +1850,12 @@ function sv_rollcall_submit(array $settings, string $mode): array {
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => json_encode(['acct' => $acct]),
         CURLOPT_HTTPHEADER     => ['Content-Type: application/json',
-                                   'Accept: application/json'],
+                                   'Accept: application/json',
+                                   // This is the exact endpoint fediverse.info's own
+                                   // /people "Add me" box posts to; send the same
+                                   // same-origin Origin/Referer the browser form does.
+                                   'Origin: https://fediverse.info',
+                                   'Referer: https://fediverse.info/people'],
         CURLOPT_USERAGENT      => 'SnapSmack/' . SNAPSMACK_VERSION_SHORT . ' (+https://snapsmack.ca)',
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 10,
@@ -1861,15 +1866,46 @@ function sv_rollcall_submit(array $settings, string $mode): array {
     $err  = curl_error($ch);
     curl_close($ch);
 
+    // Breadcrumb for post-mortem — same SMACKVERSE error_log convention used by
+    // sv fetch/sig above. Captures the exact response so a "didn't take" save can
+    // be diagnosed from the PHP error log (curl/SSL error vs HTTP code vs body).
+    error_log('SMACKVERSE rollcall: mode=' . $mode . ' acct=' . $acct
+              . ' http=' . $code . ($err !== '' ? ' curlerr=' . $err : '')
+              . ' body=' . substr(is_string($body) ? $body : var_export($body, true), 0, 300));
+
     if ($body === false || $code === 0) {
         return [false, "couldn't reach fediverse.info (" . ($err ?: 'network error') . ')'];
     }
     $json = json_decode((string)$body, true);
-    $them = is_array($json) && !empty($json['message']) ? (string)$json['message'] : '';
-    if ($code >= 200 && $code < 300) {
-        return [true, $them !== '' ? $them : 'accepted'];
+    // Response shapes (captured live from their form, 0.7.440):
+    //   success  → JSON ARRAY of the hashtags they read live from our bio,
+    //              e.g. ["#fedi22","#photography"]. Stray "#039" entries are
+    //              apostrophe HTML-entities their parser scrapes out — ignore.
+    //   error    → {"message":"..."} object.
+    $obj_msg = (is_array($json) && isset($json['message'])) ? (string)$json['message'] : '';
+    $tags = [];
+    if (is_array($json) && $obj_msg === '') {
+        foreach ($json as $t) {
+            $t = is_string($t) ? trim($t) : '';
+            if ($t !== '' && $t[0] === '#' && stripos($t, '#039') !== 0) $tags[] = $t;
+        }
     }
-    return [false, $them !== '' ? "they said: \"{$them}\"" : "HTTP {$code}"];
+    if ($code >= 200 && $code < 300) {
+        if ($mode === 'remove') {
+            return [true, $obj_msg !== '' ? $obj_msg : 'delisted'];
+        }
+        // A genuine listing echoes #fedi22 back from our live bio.
+        foreach ($tags as $t) {
+            if (strcasecmp($t, '#fedi22') === 0) {
+                return [true, 'listed under ' . implode(' ', $tags)];
+            }
+        }
+        if ($obj_msg !== '') return [true, $obj_msg];
+        // 2xx but the consent tag wasn't echoed — they couldn't see #fedi22 yet.
+        return [false, 'directory did not find #fedi22 in your live bio yet'
+                       . ($tags ? ' (it saw: ' . implode(' ', $tags) . ')' : '')];
+    }
+    return [false, $obj_msg !== '' ? "they said: \"{$obj_msg}\"" : "HTTP {$code}"];
 }
 
 /**

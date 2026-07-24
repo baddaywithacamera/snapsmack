@@ -37,9 +37,9 @@ function snapsmack_compile_mobile_css(PDO $pdo): bool
 {
     if (!defined('SNAPSMACK_MOBILE_SKIN') || SNAPSMACK_MOBILE_SKIN === '') return false;
     $slug    = SNAPSMACK_MOBILE_SKIN;
-    $mf_path = dirname(__DIR__) . '/skins/' . $slug . '/manifest.php';
+    $mf_path = dirname(__DIR__) . '/skins/' . $slug . '/manifest.json';
     if (!is_file($mf_path)) return false;
-    $manifest = include $mf_path;
+    $manifest = snapsmack_load_manifest($mf_path);
     if (!is_array($manifest) || empty($manifest['options']) || !is_array($manifest['options'])) return false;
 
     $all = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
@@ -122,9 +122,9 @@ function snapsmack_compile_mobile_css(PDO $pdo): bool
 function snapsmack_mobile_css_target_stamp(): string
 {
     if (!defined('SNAPSMACK_MOBILE_SKIN') || SNAPSMACK_MOBILE_SKIN === '') return '';
-    $mf_path = dirname(__DIR__) . '/skins/' . SNAPSMACK_MOBILE_SKIN . '/manifest.php';
+    $mf_path = dirname(__DIR__) . '/skins/' . SNAPSMACK_MOBILE_SKIN . '/manifest.json';
     if (!is_file($mf_path)) return '';
-    $manifest = include $mf_path;
+    $manifest = snapsmack_load_manifest($mf_path);
     return SNAPSMACK_MOBILE_SKIN . '@' . (string)(is_array($manifest) ? ($manifest['version'] ?? '0') : '0');
 }
 // ===== SNAPSMACK EOF =====

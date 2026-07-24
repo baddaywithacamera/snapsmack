@@ -1,0 +1,425 @@
+{
+    "schema_version": 1,
+    "name": "PHOTOGRAM",
+    "version": "2.0.14",
+    "author": "Sean McCormick",
+    "support": "sean@baddaywithacamera.ca",
+    "description": "A shadow of what a photo-sharing app used to be. Phone-native layout: 3-column archive grid, full-aspect post view, inline likes, bottom-sheet comments. Reproduces the Pixelfed / classic Instagram experience in a self-hosted blog.",
+    "status": "stable",
+    "features": {
+        "supports_wall": false,
+        "masonry_supported": false,
+        "archive_layouts": [
+            "square"
+        ],
+        "supports_slider": false,
+        "has_landing": true,
+        "post_modes": [
+            "image"
+        ],
+        "instagram_mode": true,
+        "carousel": true,
+        "community": [
+            "likes",
+            "comments"
+        ],
+        "mobile_only": true,
+        "archive_filter": false
+    },
+    "require_scripts": [
+        "smack-community",
+        "smack-photogram",
+        "smack-photogram-feed",
+        "smack-image-fade-load",
+        "smack-slider"
+    ],
+    "options": {
+        "pg_column_width": {
+            "section": "LAYOUT",
+            "type": "select",
+            "label": "Desktop Width",
+            "default": "phone",
+            "options": {
+                "phone": {
+                    "label": "Phone Column (480px)",
+                    "css": "{ --pg-column-width: 480px; }"
+                },
+                "wide": {
+                    "label": "Wide (900px)",
+                    "css": "{ --pg-column-width: 900px; }"
+                },
+                "fullwidth": {
+                    "label": "Full Width",
+                    "css": "{ --pg-column-width: 100%; }"
+                }
+            },
+            "selector": ":root",
+            "property": "custom-pg-column-width"
+        },
+        "pg_grid_gutter": {
+            "section": "LAYOUT",
+            "type": "select",
+            "label": "Side Gutter",
+            "default": "none",
+            "options": {
+                "none": {
+                    "label": "None (edge to edge)",
+                    "css": "{ --pg-grid-gutter: 0px; }"
+                },
+                "small": {
+                    "label": "Small (16px)",
+                    "css": "{ --pg-grid-gutter: 16px; }"
+                },
+                "medium": {
+                    "label": "Medium (32px)",
+                    "css": "{ --pg-grid-gutter: 32px; }"
+                },
+                "large": {
+                    "label": "Large (64px)",
+                    "css": "{ --pg-grid-gutter: 64px; }"
+                }
+            },
+            "selector": ":root",
+            "property": "custom-pg-grid-gutter"
+        },
+        "pg_grid_gap": {
+            "section": "GRID",
+            "type": "select",
+            "label": "Tile Spacing",
+            "default": "none",
+            "options": {
+                "none": {
+                    "label": "None",
+                    "css": "{ --pg-grid-gap: 0px; }"
+                },
+                "hairline": {
+                    "label": "1px",
+                    "css": "{ --pg-grid-gap: 1px; }"
+                },
+                "small": {
+                    "label": "2px",
+                    "css": "{ --pg-grid-gap: 2px; }"
+                },
+                "medium": {
+                    "label": "4px",
+                    "css": "{ --pg-grid-gap: 4px; }"
+                },
+                "large": {
+                    "label": "8px",
+                    "css": "{ --pg-grid-gap: 8px; }"
+                }
+            },
+            "selector": ":root",
+            "property": "custom-pg-grid-gap"
+        },
+        "pg_tile_aspect": {
+            "section": "GRID",
+            "type": "select",
+            "label": "Tile Aspect Ratio",
+            "default": "square",
+            "options": {
+                "square": {
+                    "label": "Square (1:1)",
+                    "css": "{ --pg-tile-aspect: 1 / 1; }"
+                },
+                "portrait45": {
+                    "label": "Portrait (4:5)",
+                    "css": "{ --pg-tile-aspect: 4 / 5; }"
+                },
+                "portrait34": {
+                    "label": "Portrait (3:4)",
+                    "css": "{ --pg-tile-aspect: 3 / 4; }"
+                },
+                "portrait23": {
+                    "label": "Portrait (2:3)",
+                    "css": "{ --pg-tile-aspect: 2 / 3; }"
+                },
+                "land43": {
+                    "label": "Landscape (4:3)",
+                    "css": "{ --pg-tile-aspect: 4 / 3; }"
+                },
+                "land32": {
+                    "label": "Landscape (3:2)",
+                    "css": "{ --pg-tile-aspect: 3 / 2; }"
+                },
+                "wide169": {
+                    "label": "Wide (16:9)",
+                    "css": "{ --pg-tile-aspect: 16 / 9; }"
+                },
+                "polaroid": {
+                    "label": "Polaroid print (823:1000)",
+                    "css": "{ --pg-tile-aspect: 823 / 1000; }"
+                },
+                "go": {
+                    "label": "Polaroid Go (47:60)",
+                    "css": "{ --pg-tile-aspect: 47 / 60; }"
+                },
+                "instax_mini": {
+                    "label": "Instax Mini (62:46)",
+                    "css": "{ --pg-tile-aspect: 62 / 46; }"
+                },
+                "instax_wide": {
+                    "label": "Instax Wide (99:62)",
+                    "css": "{ --pg-tile-aspect: 99 / 62; }"
+                }
+            },
+            "selector": ":root",
+            "property": "custom-pg-tile-aspect"
+        },
+        "pg_tile_border_width": {
+            "section": "GRID",
+            "type": "select",
+            "label": "Tile Border",
+            "default": "none",
+            "options": {
+                "none": {
+                    "label": "None",
+                    "css": "{ --pg-tile-border-width: 0px; }"
+                },
+                "thin": {
+                    "label": "1px",
+                    "css": "{ --pg-tile-border-width: 1px; }"
+                },
+                "thick": {
+                    "label": "2px",
+                    "css": "{ --pg-tile-border-width: 2px; }"
+                }
+            },
+            "selector": ":root",
+            "property": "custom-pg-tile-border-width"
+        },
+        "pg_tile_border_color": {
+            "section": "GRID",
+            "type": "color",
+            "label": "Tile Border Colour",
+            "default": "#000000",
+            "selector": ":root",
+            "property": "--pg-tile-border-color"
+        },
+        "pg_avatar_shape": {
+            "section": "PROFILE",
+            "type": "select",
+            "label": "Avatar Shape",
+            "default": "circle",
+            "options": {
+                "circle": {
+                    "label": "Circle",
+                    "css": "{ --pg-avatar-radius: 50%; }"
+                },
+                "rounded": {
+                    "label": "Rounded Square",
+                    "css": "{ --pg-avatar-radius: 12px; }"
+                }
+            },
+            "selector": ":root",
+            "property": "custom-pg-avatar-shape"
+        },
+        "pg_accent_color": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#3D6B9E",
+            "selector": ":root",
+            "property": "--pg-accent"
+        },
+        "pg_bg_color": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Column Background",
+            "default": "#FFFFFF",
+            "selector": ":root",
+            "property": "--pg-bg"
+        },
+        "pg_outer_bg_color": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Page Background",
+            "default": "#EFEFEF",
+            "selector": ":root",
+            "property": "--pg-outer-bg"
+        },
+        "pg_sheet_speed": {
+            "section": "COMMENTS",
+            "type": "select",
+            "label": "Sheet Animation Speed",
+            "default": "normal",
+            "options": {
+                "fast": {
+                    "label": "Fast (200ms)",
+                    "css": "{ --pg-sheet-speed: 200ms; }"
+                },
+                "normal": {
+                    "label": "Normal (280ms)",
+                    "css": "{ --pg-sheet-speed: 280ms; }"
+                },
+                "slow": {
+                    "label": "Slow (400ms)",
+                    "css": "{ --pg-sheet-speed: 400ms; }"
+                }
+            },
+            "selector": ":root",
+            "property": "custom-pg-sheet-speed"
+        },
+        "pg_show_discover": {
+            "section": "NAVIGATION",
+            "type": "select",
+            "label": "Show Discover Tab",
+            "default": "1",
+            "options": {
+                "1": "Yes",
+                "0": "No"
+            }
+        },
+        "pg_body_font": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Body Font",
+            "default": "Inter",
+            "options": {
+                "DM Sans": "DM Sans (Geometric / Clean UI body)",
+                "Figtree": "Figtree (Friendly Geometric — contemporary)",
+                "Outfit": "Outfit (Geometric / Professional)",
+                "Plus Jakarta Sans": "Plus Jakarta Sans (Soft Contemporary)",
+                "Nunito": "Nunito (Rounded / Approachable)",
+                "Nunito Sans": "Nunito Sans (Rounded / Slightly firmer)",
+                "Rubik": "Rubik (Friendly Rounded)",
+                "Lexend": "Lexend (Maximum Readability / Dyslexia-aware)",
+                "Work Sans": "Work Sans (Optimised for Screens)",
+                "Fira Sans": "Fira Sans (Highly Readable / Mozilla DNA)",
+                "Lato": "Lato (Warm & Professional / Summer)",
+                "Manrope": "Manrope (Refined Contemporary)",
+                "Albert Sans": "Albert Sans (Scandinavian Geometric)",
+                "Onest": "Onest (Humanist / Very Screen-Readable)",
+                "IBM Plex Sans": "IBM Plex Sans (Neutral Grotesk / IBM DNA)",
+                "Public Sans": "Public Sans (US Web Design System / Precise)",
+                "Quicksand": "Quicksand (Light / Airy / Rounded)",
+                "Poppins": "Poppins (Geometric / Friendly Headlines)",
+                "Jost": "Jost (Futura-Inspired / Very Clean)",
+                "Open Sans": "Open Sans (Humanist Workhorse / Neutral)",
+                "Raleway": "Raleway (Elegant Display / Thin-to-Heavy)",
+                "Montserrat": "Montserrat (Urban Geometric / Buenos Aires DNA)",
+                "Oswald": "Oswald (Condensed Gothic / Newspaper energy)",
+                "Bebas Neue": "Bebas Neue (Bold Industrial / All Caps only)",
+                "Archivo Black": "Archivo Black (Heavy Impact)",
+                "Anton": "Anton (Advertising Bold / Commanding presence)",
+                "Barlow": "Barlow (Grotesk / California highway DNA)",
+                "Barlow Condensed": "Barlow Condensed (Tight / High impact headlines)",
+                "Syne": "Syne (Artistic / Paris design-school vibe)",
+                "Unbounded": "Unbounded (Wide Variable / Future-facing)",
+                "Syncopate": "Syncopate (Ultra-Wide / Architectural)",
+                "Krona One": "Krona One (Scandinavian Retro / Poster type)",
+                "Big Shoulders Display": "Big Shoulders Display (Compressed / Industrial Chicago)",
+                "Exo 2": "Exo 2 (Sci-Fi / Technical sans)",
+                "Rajdhani": "Rajdhani (South Asian Geometric / Angular)",
+                "Kanit": "Kanit (Thai-Inspired Industrial)",
+                "Saira": "Saira (Condensed / Latin American origins)",
+                "Saira Condensed": "Saira Condensed (Very Tight / Extreme headline)",
+                "Space Grotesk": "Space Grotesk (Quirky Tech / Space Mono cousin)",
+                "Michroma": "Michroma (Futuristic / Hard geometric edges)",
+                "Orbitron": "Orbitron (Pure Sci-Fi / Use boldly or not at all)",
+                "Chakra Petch": "Chakra Petch (Square / Tapered corners / Thai+Latin)",
+                "Oxanium": "Oxanium (Geometric / Gaming aesthetic)",
+                "Audiowide": "Audiowide (Electronic / Smooth circuit feel)",
+                "Share Tech Mono": "Share Tech Mono (Terminal / Hacker aesthetic)",
+                "Playfair Display": "Playfair Display (High Contrast / Enlightenment elegance)",
+                "Cormorant Garamond": "Cormorant Garamond (Fine Serif / Pairs with Cinzel)",
+                "Cormorant": "Cormorant (Display version — even more dramatic)",
+                "Cinzel": "Cinzel (Roman Inscriptions / Architectural)",
+                "Cinzel Decorative": "Cinzel Decorative (With flourishes / Very formal)",
+                "Libre Baskerville": "Libre Baskerville (Classic Print / Book serif)",
+                "Lora": "Lora (Warm / Modern-Traditional blend)",
+                "Merriweather": "Merriweather (Screen-Optimised / Long reads)",
+                "Fraunces": "Fraunces (Soft / Optical optical serifs / Unique)",
+                "DM Serif Display": "DM Serif Display (High Contrast / Luxury editorial)",
+                "DM Serif Text": "DM Serif Text (Body-weight companion to DM Serif Display)",
+                "Stix Two Text": "STIX Two Text (Scientific / Mathematical typography)",
+                "EB Garamond": "EB Garamond (Classic Garamond / Timeless book type)",
+                "Newsreader": "Newsreader (Long-Form Reading / Newspaper DNA)",
+                "Spectral": "Spectral (Screen Serif / Google-commissioned)",
+                "Instrument Serif": "Instrument Serif (Elegant / Figma-era editorial)",
+                "Crimson Pro": "Crimson Pro (Book Quality / Refined long text)",
+                "Marcellus": "Marcellus (Roman Capitals / NatGeo masthead feel)",
+                "Philosopher": "Philosopher (Literary / Old-World Serif)",
+                "IM Fell DW Pica": "IM Fell DW Pica (Hand-Press / Old-Style Roughness)",
+                "Abril Fatface": "Abril Fatface (Massive / Victorian poster energy)",
+                "Ultra": "Ultra (Slab Serif / Extreme weight / Display only)",
+                "Alfa Slab One": "Alfa Slab One (Heavy Slab / Display only)",
+                "Yeseva One": "Yeseva One (Russian Constructivist DNA)",
+                "Antic Didone": "Antic Didone (High-Contrast / Silent Film Display)",
+                "Roboto Slab": "Roboto Slab (Material Design Slab / Pairs with DM Sans)",
+                "Zilla Slab": "Zilla Slab (Mozilla Firefox DNA / Editorial)",
+                "Arvo": "Arvo (Geometric Slab / Very readable)",
+                "Crete Round": "Crete Round (Rounded Slab / Warm)",
+                "Josefin Slab": "Josefin Slab (Art Deco Slab / Vintage poster)",
+                "DM Mono": "DM Mono (EXIF / Data Display / Monospace)",
+                "JetBrains Mono": "JetBrains Mono (Developer / Ligatures / Very legible)",
+                "Source Code Pro": "Source Code Pro (Adobe / Clean code)",
+                "Roboto Mono": "Roboto Mono (Material / Technical data)",
+                "Fira Mono": "Fira Mono (Mozilla / Readable code)",
+                "Inconsolata": "Inconsolata (Humanist Mono / Print-quality)",
+                "Space Mono": "Space Mono (Retro-Tech / Quirky personality)",
+                "IBM Plex Mono": "IBM Plex Mono (Corporate Terminal / Precise)",
+                "Courier Prime": "Courier Prime (Screenplay / Typewriter Heritage)",
+                "Anonymous Pro": "Anonymous Pro (Hacker Mono / Bitmap DNA)",
+                "Overpass Mono": "Overpass Mono (Highway signage DNA)",
+                "Josefin Sans": "Josefin Sans (Art Deco / 1920s Geometric)",
+                "Poiret One": "Poiret One (Decorative / Art Nouveau Geometric)",
+                "Federo": "Federo (Art Nouveau / Hand-lettered feel)",
+                "Gruppo": "Gruppo (Wide / Minimal Decorative Caps)",
+                "Teko": "Teko (Condensed / South Asian Geometric)",
+                "Stalinist One": "Stalinist One (Soviet Propaganda — use knowingly)",
+                "Special Elite": "Special Elite (Typewriter Stamp / Period Utility)",
+                "Dancing Script": "Dancing Script (Casual Script / Friendly)",
+                "Pacifico": "Pacifico (Surf / California Retro)",
+                "Sacramento": "Sacramento (Thin Calligraphic / Elegant)",
+                "Great Vibes": "Great Vibes (Formal Calligraphic / Wedding-adjacent)",
+                "Caveat": "Caveat (Handwritten / Personal / Informal)",
+                "Kalam": "Kalam (Handwritten / South Asian origins)",
+                "BlackCasper": "BlackCasper (Physical Damage)",
+                "FlottFlott": "FlottFlott (Calligraphic Script)",
+                "Tiny5": "Tiny5 (Bold / Dot Matrix Headers)",
+                "Tiny5-Matrix": "Tiny5 Matrix (Bold / Dot Matrix Display)",
+                "DotMatrix": "DotMatrix (Regular)",
+                "DotMatrix-Bold": "DotMatrix (Bold)",
+                "DotMatrix-Italic": "DotMatrix (Italic)",
+                "DotMatrix-BoldItalic": "DotMatrix (Bold Italic)",
+                "DotMatrix-Condensed": "DotMatrix Condensed (Regular)",
+                "DotMatrix-Condensed-Bold": "DotMatrix Condensed (Bold)",
+                "DotMatrix-Condensed-Italic": "DotMatrix Condensed (Italic)",
+                "DotMatrix-Condensed-BoldItalic": "DotMatrix Condensed (Bold Italic)",
+                "DotMatrix-Expanded": "DotMatrix Expanded (Regular)",
+                "DotMatrix-Expanded-Bold": "DotMatrix Expanded (Bold)",
+                "DotMatrix-Expanded-Italic": "DotMatrix Expanded (Italic)",
+                "DotMatrix-Expanded-BoldItalic": "DotMatrix Expanded (Bold Italic)",
+                "DotMatrix-Quad": "DotMatrix Quad (Regular)",
+                "DotMatrix-Quad-Bold": "DotMatrix Quad (Bold)",
+                "DotMatrix-Quad-Italic": "DotMatrix Quad (Italic)",
+                "DotMatrix-Quad-BoldItalic": "DotMatrix Quad (Bold Italic)",
+                "DotMatrix-Var": "DotMatrix Var (Regular)",
+                "DotMatrix-Var-Condensed": "DotMatrix Var (Condensed)",
+                "DotMatrix-Var-Expanded": "DotMatrix Var (Expanded)",
+                "DotMatrix-VarDuo": "DotMatrix VarDuo (Regular)",
+                "DotMatrix-VarDuo-Condensed": "DotMatrix VarDuo (Condensed)",
+                "DotMatrix-VarDuo-Expanded": "DotMatrix VarDuo (Expanded)",
+                "DotMatrix-VarDuo-UltraCondensed": "DotMatrix VarDuo (Ultra Condensed)",
+                "DotMatrix-Duo": "DotMatrix Duo (Regular)",
+                "DotMatrix-Duo-Condensed": "DotMatrix Duo (Condensed)",
+                "DotMatrix-Duo-Expanded": "DotMatrix Duo (Expanded)",
+                "DotMatrix-Duo-UltraCondensed": "DotMatrix Duo (Ultra Condensed)",
+                "SquareSanSerif7": "Square Sans Serif 7 (Blocky / Digital Clock)",
+                "KeyBinds": "KeyBinds (Keyboard Key Caps)",
+                "LinuxBiolinumKeyboard": "Linux Biolinum Keyboard (Framed Key Glyphs)",
+                "AmericanStencil": "American Stencil (Military / Cargo Crate)",
+                "ColdNightForAlligators": "Cold Night for Alligators (Horror / Scratched)",
+                "EvenBadderMofo": "Even Badder Mofo (Grunge / Distressed)",
+                "SprayME": "Spray.ME (Stencil / Spray Paint)",
+                "Victorious": "Victorious (Bold / Rough Brush)"
+            },
+            "selector": "body",
+            "property": "font-family"
+        }
+    },
+    "community_comments": "1",
+    "community_likes": "1",
+    "community_reactions": "0"
+}

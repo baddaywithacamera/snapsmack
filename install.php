@@ -1240,9 +1240,11 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
             $install_mode     = $_SESSION['site_mode'] ?? 'photoblog';
             $is_carousel      = ($install_mode === 'carousel');
             // Default skin per mode — fetched from snapsmack.ca during install.
-            // carousel → the-grid, everything else → new-horizon.
+            // carousel → the-grid, smacktalk → alfred (proven longform skin),
+            // everything else → new-horizon.
             $default_skin     = match($install_mode) {
                 'carousel'  => 'the-grid',
+                'smacktalk' => 'alfred',
                 default     => 'new-horizon',
             };
             $default_variant  = '';
@@ -1492,6 +1494,7 @@ HTACCESS;
             foreach ($skins_to_install as $skin_entry) {
                 $slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $skin_entry['slug'] ?? '');
                 $url  = $skin_entry['download_url'] ?? '';
+                $sig  = $skin_entry['signature'] ?? '';
                 if (!$slug || !$url) continue;
 
                 // Download zip
@@ -1516,6 +1519,30 @@ HTACCESS;
                     continue;
                 }
 
+                // Skins contain executable PHP templates. Never install one
+                // unless its complete ZIP verifies against the release key.
+                require_once __DIR__ . '/core/release-pubkey.php';
+                $pub = defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : '';
+                if (!function_exists('sodium_crypto_sign_verify_detached')
+                    || !preg_match('/^[a-f0-9]{128}$/i', $sig)
+                    || !preg_match('/^[a-f0-9]{64}$/i', $pub)) {
+                    $skin_fetch_results[] = ['slug' => $slug, 'ok' => false, 'msg' => 'Missing signature verification support'];
+                    continue;
+                }
+                try {
+                    $signature_ok = sodium_crypto_sign_verify_detached(
+                        sodium_hex2bin($sig),
+                        $zip_bytes,
+                        sodium_hex2bin($pub)
+                    );
+                } catch (Throwable $e) {
+                    $signature_ok = false;
+                }
+                if (!$signature_ok) {
+                    $skin_fetch_results[] = ['slug' => $slug, 'ok' => false, 'msg' => 'Signature verification failed'];
+                    continue;
+                }
+
                 // Write + extract
                 $tmp = sys_get_temp_dir() . '/snapsmack-skin-' . $slug . '-' . time() . '.zip';
                 file_put_contents($tmp, $zip_bytes);
@@ -1524,6 +1551,23 @@ HTACCESS;
                 if ($zip->open($tmp) !== true) {
                     @unlink($tmp);
                     $skin_fetch_results[] = ['slug' => $slug, 'ok' => false, 'msg' => 'Zip open failed'];
+                    continue;
+                }
+
+                $unsafe_zip = false;
+                for ($zi = 0; $zi < $zip->numFiles; $zi++) {
+                    $entry = str_replace('\\', '/', (string)$zip->getNameIndex($zi));
+                    $parts = explode('/', $entry);
+                    if ($entry === '' || str_contains($entry, "\0") || str_starts_with($entry, '/')
+                        || preg_match('/^[a-zA-Z]:\//', $entry) || in_array('..', $parts, true)) {
+                        $unsafe_zip = true;
+                        break;
+                    }
+                }
+                if ($unsafe_zip) {
+                    $zip->close();
+                    @unlink($tmp);
+                    $skin_fetch_results[] = ['slug' => $slug, 'ok' => false, 'msg' => 'Unsafe path in ZIP archive'];
                     continue;
                 }
 
@@ -1538,12 +1582,12 @@ HTACCESS;
                 $source = $staging;
                 if ($wrapper) {
                     $inner = $staging . '/' . rtrim($wrapper, '/');
-                    if (is_dir($inner) && file_exists($inner . '/manifest.php')) $source = $inner;
+                    if (is_dir($inner) && file_exists($inner . '/manifest.json')) $source = $inner;
                 }
 
-                if (!file_exists($source . '/manifest.php')) {
+                if (!file_exists($source . '/manifest.json')) {
                     _install_rmdir($staging);
-                    $skin_fetch_results[] = ['slug' => $slug, 'ok' => false, 'msg' => 'No manifest.php'];
+                    $skin_fetch_results[] = ['slug' => $slug, 'ok' => false, 'msg' => 'No manifest.json'];
                     continue;
                 }
 
@@ -1554,7 +1598,7 @@ HTACCESS;
                 }
                 _install_rmdir($staging);
 
-                $ok = file_exists($target . '/manifest.php');
+                $ok = file_exists($target . '/manifest.json');
                 $skin_fetch_results[] = ['slug' => $slug, 'ok' => $ok, 'msg' => $ok ? 'Installed' : 'Extraction failed'];
             }
         } else {

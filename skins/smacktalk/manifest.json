@@ -1,0 +1,147 @@
+{
+    "schema_version": 1,
+    "name": "SMACKTALK",
+    "version": "0.1.1",
+    "author": "Sean McCormick & Claude",
+    "author_email": "sean@baddaywithacamera.ca",
+    "description": "SMACKTALK longform skin with a TILEZ-style masonry feed. Reuses ALFRED's SmackTalk plumbing (preload.php routing: masonry feed, single post, prev/next, photo archive) but the index is a dynamic varied-tile masonry instead of the square grid. Writing and images at equal billing.",
+    "status": "experimental",
+    "modes": [
+        "smacktalk"
+    ],
+    "skin_preload": "preload.php",
+    "variants": {
+        "default": "Alfred (Dark Nav / White Content)"
+    },
+    "default_variant": "default",
+    "cover_aspect": "1/1",
+    "features": {
+        "supports_wall": false,
+        "has_landing": false,
+        "post_modes": [
+            "longform"
+        ],
+        "instagram_mode": false,
+        "carousel": false,
+        "community": [
+            "comments"
+        ]
+    },
+    "require_scripts": [
+        "smack-alfred-nav",
+        "smack-footer",
+        "smack-community"
+    ],
+    "community_comments": "1",
+    "community_likes": "0",
+    "community_reactions": "0",
+    "options": {
+        "header_image": {
+            "section": "HEADER",
+            "type": "image",
+            "label": "Header Background Image",
+            "default": "",
+            "accept": "image/jpeg,image/png,image/webp",
+            "help": "Full-width image displayed behind the site logo. Recommended: 1440×900px minimum. Leave blank for the default.",
+            "hint": "Recommended 1440×900px or larger. Leave blank for the default."
+        },
+        "header_image_height": {
+            "section": "HEADER",
+            "type": "select",
+            "label": "Header Image Height",
+            "default": "100vh",
+            "options": {
+                "100vh": "Full screen",
+                "640px": "Tall (640px)",
+                "460px": "Medium (460px)",
+                "320px": "Short (320px)"
+            },
+            "selector": ":root",
+            "property": "--alfred-header-h",
+            "help": "How tall the header background image area is."
+        },
+        "header_image_fit": {
+            "section": "HEADER",
+            "type": "select",
+            "label": "Header Image Fit",
+            "default": "cover",
+            "options": {
+                "cover": "Cover (fill the area, may crop)",
+                "contain": "Contain (show the whole image, no crop)",
+                "auto": "Actual size"
+            },
+            "selector": ":root",
+            "property": "--alfred-header-fit",
+            "help": "How the image fills the header area."
+        },
+        "header_logo": {
+            "section": "HEADER",
+            "type": "image",
+            "label": "Custom Logo",
+            "default": "",
+            "accept": "image/jpeg,image/png,image/webp,image/svg+xml",
+            "help": "Upload a logo image to replace the site title text. Transparent PNG recommended.",
+            "hint": "Transparent PNG recommended."
+        },
+        "retina_logo": {
+            "section": "HEADER",
+            "type": "select",
+            "label": "Retina Logo",
+            "default": "0",
+            "options": [
+                "No",
+                "Yes (display at half size)"
+            ],
+            "help": "If your logo is uploaded at 2x resolution, enable this to display it at half size for sharp rendering on retina screens."
+        },
+        "show_tagline": {
+            "section": "HEADER",
+            "type": "select",
+            "label": "Show Tagline",
+            "default": "1",
+            "options": {
+                "1": "Show",
+                "0": "Hide"
+            },
+            "help": "Hide the site tagline under the logo/title (useful when your logo already includes it). The tagline still appears in RSS and social/SEO meta."
+        },
+        "accent_color": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#1e73be",
+            "selector": ":root",
+            "property": "--alfred-accent",
+            "help": "Used for links, buttons, hover states, and interactive elements."
+        },
+        "show_post_titles": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Always Show Post Titles in Archive",
+            "default": "0",
+            "options": [
+                "On hover only",
+                "Always visible"
+            ]
+        },
+        "post_content_width": {
+            "section": "LAYOUT",
+            "type": "range",
+            "label": "Post Content Width (px)",
+            "default": "800",
+            "min": "480",
+            "max": "1100",
+            "selector": ".post-inner",
+            "property": "width",
+            "unit": "px"
+        },
+        "posts_per_page": {
+            "section": "LAYOUT",
+            "type": "range",
+            "label": "Posts Per Page (archive)",
+            "default": "12",
+            "min": "4",
+            "max": "40"
+        }
+    }
+}

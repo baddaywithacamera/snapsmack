@@ -22,8 +22,8 @@ require_once 'core/auth-smack.php';
 // --- MANIFEST (for skin-gated options) ---
 $active_skin = $settings['active_skin'] ?? '';
 $manifest    = [];
-if ($active_skin && file_exists("skins/{$active_skin}/manifest.php")) {
-    $manifest = include "skins/{$active_skin}/manifest.php";
+if ($active_skin && skin_manifest_exists($active_skin)) {
+    $manifest = load_skin_manifest($active_skin);
 }
 
 // Skin feature flags

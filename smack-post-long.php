@@ -545,9 +545,9 @@ include 'core/sidebar.php';
                         // rendered identically by the SMACKTALK skins. The stage is framed to
                         // the ACTIVE skin's cover shape (manifest cover_aspect).
                         $_ck_skin   = preg_replace('/[^a-z0-9_-]/', '', (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='active_skin'")->fetchColumn() ?: 'alfred'));
-                        $_ck_mf     = __DIR__ . '/skins/' . $_ck_skin . '/manifest.php';
+                        $_ck_mf     = __DIR__ . '/skins/' . $_ck_skin . '/manifest.json';
                         $cover_aspect = '1/1';
-                        if (is_file($_ck_mf)) { $_m = include $_ck_mf; if (is_array($_m) && !empty($_m['cover_aspect'])) $cover_aspect = (string)$_m['cover_aspect']; }
+                        if (is_file($_ck_mf)) { $_m = snapsmack_load_manifest($_ck_mf); if (!empty($_m['cover_aspect'])) $cover_aspect = (string)$_m['cover_aspect']; }
                         $cv_px = isset($edit_post['cover_pos_x']) ? (int)$edit_post['cover_pos_x'] : 50;
                         $cv_py = isset($edit_post['cover_pos_y']) ? (int)$edit_post['cover_pos_y'] : 50;
                         $cv_z  = isset($edit_post['cover_zoom'])  ? (int)$edit_post['cover_zoom']  : 100;

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF marker for HTML:
+  an HTML comment containing five equals, space, 'SNAPSMACK EOF', space, five equals.
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FAQ — PHOTOFRI.DAY</title>
+<meta name="description" content="Straight answers about PHOTOFRI.DAY — the fediverse-only weekly photo challenge. How to join, how to leave, who's behind it, and how it's different from photofriday.com.">
+<meta name="robots" content="index, follow">
+
+<meta property="og:title" content="FAQ — PHOTOFRI.DAY">
+<meta property="og:description" content="Straight answers about PHOTOFRI.DAY — the fediverse-only weekly photo challenge.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://photofri.day/faq">
+<meta property="og:image" content="https://photofri.day/img/logo-pf-black.png">
+
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png">
+<link rel="icon" href="img/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+
+<style>
+  :root {
+    --red:   #D40000;
+    --link:  #F50A0A;
+    --black: #111111;
+    --ink:   #f4f4f4;
+    --muted: #9a9a9a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--black);
+    color: var(--ink);
+    font-family: Georgia, 'Times New Roman', serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(212,0,0,0.10), transparent 55%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 48px 24px 60px;
+  }
+
+  .top {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-decoration: none;
+    margin-bottom: 26px;
+  }
+  .back:hover, .back:focus-visible { color: var(--link); outline: none; }
+
+  .kicker {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    color: var(--red);
+    margin-bottom: 18px;
+    padding-left: 0.42em;
+    text-align: center;
+  }
+
+  h1 {
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 0.92;
+    font-size: clamp(2.4rem, 9vw, 4.2rem);
+    text-transform: uppercase;
+    color: var(--ink);
+    text-align: center;
+  }
+  h1 .dot { color: var(--red); }
+
+  .lede {
+    margin-top: 16px;
+    font-size: 1.02rem;
+    line-height: 1.6;
+    color: var(--muted);
+    text-align: center;
+    max-width: 38em;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .rule {
+    width: 64px;
+    height: 4px;
+    background: var(--red);
+    margin: 28px auto 8px;
+  }
+
+  /* FAQ list */
+  .faq {
+    margin-top: 30px;
+  }
+
+  details.faq-item {
+    border-bottom: 1px solid #2a2a2a;
+    padding: 20px 0;
+  }
+  details.faq-item:first-child { border-top: 1px solid #2a2a2a; }
+
+  details.faq-item summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-size: clamp(1.02rem, 2.6vw, 1.18rem);
+    line-height: 1.4;
+    color: var(--ink);
+  }
+  details.faq-item summary::-webkit-details-marker { display: none; }
+  details.faq-item summary::marker { content: ""; }
+
+  details.faq-item summary .q-text { flex: 1; }
+
+  details.faq-item summary .arrow {
+    flex: none;
+    font-family: 'Courier New', monospace;
+    color: var(--red);
+    font-size: 1rem;
+    transition: transform 0.15s;
+    transform: rotate(0deg);
+  }
+  details.faq-item[open] summary .arrow { transform: rotate(45deg); }
+
+  details.faq-item summary:hover .q-text,
+  details.faq-item summary:focus-visible .q-text { color: var(--link); }
+  details.faq-item summary:focus-visible { outline: none; }
+
+  .faq-a {
+    margin-top: 14px;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--ink);
+    opacity: 0.92;
+  }
+  .faq-a p + p { margin-top: 12px; }
+
+  .faq-a a { color: var(--link); text-decoration: none; border-bottom: 1px solid var(--red); }
+  .faq-a a:hover, .faq-a a:focus-visible { color: #fff; outline: none; }
+
+  .faq-a code {
+    font-family: 'Courier New', monospace;
+    background: rgba(212,0,0,0.14);
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-size: 0.92em;
+  }
+
+  .faq-a ul { margin-top: 10px; padding-left: 1.2em; }
+  .faq-a li { margin-bottom: 6px; }
+  .faq-a li strong { color: var(--ink); }
+
+  footer {
+    position: relative;
+    z-index: 1;
+    border-top: 3px solid var(--red);
+    padding: 22px 24px;
+    text-align: center;
+  }
+  footer p {
+    font-family: 'Courier New', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    color: #888;
+  }
+  footer a { color: var(--link); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* top nav */
+  .topnav {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 24px;
+    border-bottom: 1px solid #2a2a2a;
+    flex-wrap: wrap;
+  }
+  .topnav-brand {
+    font-family: 'Arial Black', Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    font-size: 0.92rem;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .topnav-brand .dot { color: var(--red); }
+  .topnav-brand:hover, .topnav-brand:focus-visible { color: var(--link); outline: none; }
+  .topnav-links { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .topnav-links a {
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.8rem;
+    color: var(--ink);
+    opacity: 0.68;
+    text-decoration: none;
+    padding-bottom: 3px;
+  }
+  .topnav-links a:hover, .topnav-links a:focus-visible { color: var(--link); opacity: 1; outline: none; }
+  .topnav-links a[aria-current="page"] { opacity: 1; border-bottom: 2px solid var(--red); }
+</style>
+</head>
+<body>
+
+  <nav class="topnav" aria-label="Primary">
+    <a class="topnav-brand" href="/">PHOTOFRI<span class="dot">.</span>DAY</a>
+    <div class="topnav-links">
+      <a href="/">Home</a>
+      <a href="/how-it-works.html">How It Works</a>
+      <a href="/faq.html" aria-current="page">Whut The Whut</a>
+      <a href="/join.html">Join The Party</a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <div class="top">
+      <p class="kicker">Frequently Asked</p>
+      <h1>WHUT THE WHUT<span class="dot">.</span></h1>
+      <p class="lede">No one has asked anything yet so we made this crap up instead.</p>
+    </div>
+
+    <div class="rule"></div>
+
+    <div class="faq">
+
+      <details class="faq-item" open>
+        <summary><span class="q-text">Is PHOTOFRI.DAY the same thing as photofriday.com?</span><span class="arrow">+</span></summary>
+        <div class="faq-a">
+          <p>No. That one's much older &mdash; the original contest, open to everyone, off the fediverse. This one is <strong>fediverse-only</strong>. You don't put your photos on someone else's server &mdash; you do it through follows and hashtags. We're here to boost you, help people find you (in the fediverse and out on the regular net), and promote the fediverse itself. Different thing entirely. Nothing to do with the other contest.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary><span class="q-text">When does it start?</span><span class="arrow">+</span></summary>
+        <div class="faq-a">
+          <p>First prompt ships <strong>August 28, 2026</strong>. First submissions open <strong>September 4, 2026</strong>. First results &mdash; and the next prompt &mdash; land <strong>September 11, 2026</strong>.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary><span class="q-text">Is there a 24-hour submission window?</span><span class="arrow">+</span></summary>
+        <div class="faq-a">
+          <p>No. We know everyone's sick of being forced to live on North American time. Friday spans a total of <strong>50 hours</strong> worldwide &mdash; starting in the UTC+14 zone on the Line Islands of Kiribati at 10:00&nbsp;AM UTC Thursday, and finally wrapping up in the UTC&minus;12 zone at Baker Island at 12:00&nbsp;PM UTC Saturday. Our software boosts each entry during its own sliding 24-hour Friday &mdash; which, added up across every time zone, spans that full 50 hours. Fair to participants everywhere on the globe. We've got your back.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary><span class="q-text">What kind of photos are allowed?</span><span class="arrow">+</span></summary>
+        <div class="faq-a">
+          <p>AI-generated images &mdash; please don't. All entries should look like an actual photograph, not a composite, not mixed media. We get it: image editors touch up, fix noise, use a bit of generative fill &mdash; that's the reality in 2026. A little AI help, sure. AI doing your heavy lifting for you? Be ashamed. You can add hashtags letting people know what was and wasn't used in your entry.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary><span class="q-text">How do I participate?</span><span class="arrow">+</span></summary>
+        <div class="faq-a">
+          <p>Follow <code>@participate@photofri.day</code>.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary><span class="q-text">How do I participate if I'm not part of the fediverse?</span><span class="arrow">+</span></summary>
+        <div class="faq-a">
+          <p>Join the fediverse &mdash; it's free. You sound like our kind of person &mdash; come on in, get comfy. Here's more to get you started: <a href="https://fediverse.info" target="_blank" rel="noopener nofollow">fediverse.info</a>.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary><span class="q-text">What if I want my photos removed?</span><span class="arrow">+</span></summary>
+        <div class="faq-a">
+          <p>Delete the photo (or the whole post), or just pull the hashtag off it. We periodically check back on everything listed &mdash; post's gone, or the tag's gone, either way we catch it on the next pass and clear it from our board. No extra step needed on your end.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary><span class="q-text">How do I leave the challenge?</span><span class="arrow">+</span></summary>
+        <div class="faq-a">
+          <p>Unfollow. That's it.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary><span class="q-text">Who is running this?</span><span class="arrow">+</span></summary>
+        <div class="faq-a">
+          <p><a href="https://foreverphotograph.ing" target="_blank" rel="noopener">Sean McCormick</a>. Canadian, 57. I own about twenty times as many cameras as you've got fingers and toes &mdash; yes, you too, people in Alabama &mdash; and I use every one of them relentlessly. I hate closed platforms and the dickhead billionaires trying to monetize us.</p>
+          <p>Day job: insurance broker, so basically boring as hell. I pretend I'm interesting by writing spicy things online; my friends know better. <a href="https://mccormickphotography.com/" target="_blank" rel="noopener">Passable photographer</a>, unintentional gap coder. No company behind this, no ad team, nobody in a meeting arguing about engagement metrics &mdash; just one person who thinks the fediverse deserves an easier on-ramp for photographers. Something breaks, that's on me.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary><span class="q-text">What are Pixelfed, Mastodon, Vernissage, and SNAPSMACK?</span><span class="arrow">+</span></summary>
+        <div class="faq-a">
+          <p>Different doors into the same room. Pick whichever already fits how you post &mdash; any of them gets you a fediverse handle, and a handle is all you need to follow @participate.</p>
+          <ul>
+            <li><strong>Pixelfed</strong> &mdash; a throwback to what Instagram was, and a beautiful vision of what it could be &mdash; with some limitations (discoverability, namely). No ads, no algorithm, and plenty of good photography to be found. Worth supporting, and we plan to do our part. <a href="https://pixelfed.org" target="_blank" rel="noopener">pixelfed.org</a></li>
+            <li><strong>Mastodon</strong> &mdash; a decentralized, Twitter-like experience, but without Herr Douchebag calling the shots. Mostly text-forward, but some photographers live and share here. <a href="https://joinmastodon.org" target="_blank" rel="noopener">joinmastodon.org</a></li>
+            <li><strong>Vernissage</strong> &mdash; fediverse image sharing with some varnish added. A curated experience focused on high-quality image sharing with rich detail through EXIF information. Participate through the iOS app or their web instance. <a href="https://vernissage.photos" target="_blank" rel="noopener">vernissage.photos</a></li>
+            <li><strong>SNAPSMACK</strong> &mdash; blogging software built specifically for hobbyist photographers. Share the way photographers always did, before the work got co-opted by social media and paid platforms &mdash; but free. Proud participant of the fediverse. <a href="https://snapsmack.ca" target="_blank" rel="noopener">snapsmack.ca</a></li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary><span class="q-text">Can I enter my five images as a carousel from Pixelfed or SNAPSMACK?</span><span class="arrow">+</span></summary>
+        <div class="faq-a">
+          <p>No. The carousel may not render properly in some fediverse apps &mdash; single images are safer. Posts using carousels from either platform aren't boosted by our software.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary><span class="q-text">What's this about a Starter Kit?</span><span class="arrow">+</span></summary>
+        <div class="faq-a">
+          <p>Part of our mission is to help photographers and photography lovers find each other on the fediverse. We make all followers' handles available in a Starter Kit for others to use to populate their own follow lists. If you unfollow the contest, you disappear from the list &mdash; but any friends you made while participating stay your friends. We're doing this to help people find you on Friday, and on every other day.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary><span class="q-text">Does it cost anything to participate?</span><span class="arrow">+</span></summary>
+        <div class="faq-a">
+          <p>It costs nothing in terms of money to enter this photo competition. It will cost you your honour if you're a photographer and you don't. Choose wisely.</p>
+        </div>
+      </details>
+
+    </div>
+  </main>
+
+  <footer>
+    <p>Part of the SNAPSMACK network &middot; <a href="https://snapsmack.ca/">snapsmack.ca</a> &middot; <a href="https://photoblogs.fyi/" target="_blank" rel="noopener">photoblogs.fyi</a></p>
+  </footer>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF marker for HTML:
+  an HTML comment containing five equals, space, 'SNAPSMACK EOF', space, five equals.
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Join — PHOTOFRI.DAY</title>
+<meta name="description" content="Get notified when PHOTOFRI.DAY opens — the fediverse-only weekly photo challenge. Coming September 2026.">
+<meta name="robots" content="index, follow">
+
+<meta property="og:title" content="Join — PHOTOFRI.DAY">
+<meta property="og:description" content="Get notified when PHOTOFRI.DAY opens — the fediverse-only weekly photo challenge.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://photofri.day/join">
+<meta property="og:image" content="https://photofri.day/img/logo-pf-black.png">
+
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png">
+<link rel="icon" href="img/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+
+<style>
+  :root {
+    --red:   #D40000;
+    --link:  #F50A0A;
+    --black: #111111;
+    --ink:   #f4f4f4;
+    --muted: #9a9a9a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--black);
+    color: var(--ink);
+    font-family: Georgia, 'Times New Roman', serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(212,0,0,0.10), transparent 55%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 48px 24px 60px;
+  }
+
+  .top { text-align: center; margin-bottom: 20px; }
+
+  .kicker {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    color: var(--red);
+    margin-bottom: 18px;
+    padding-left: 0.42em;
+    text-align: center;
+  }
+
+  h1 {
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 0.92;
+    font-size: clamp(2.4rem, 9vw, 4.2rem);
+    text-transform: uppercase;
+    color: var(--ink);
+    text-align: center;
+  }
+  h1 .dot { color: var(--red); }
+
+  .lede {
+    margin-top: 16px;
+    font-size: 1.02rem;
+    line-height: 1.6;
+    color: var(--muted);
+    text-align: center;
+    max-width: 38em;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .lede strong { color: var(--ink); font-weight: normal; border-bottom: 1px solid var(--red); }
+  .lede code {
+    font-family: 'Courier New', monospace;
+    background: rgba(212,0,0,0.14);
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-size: 0.88em;
+  }
+
+  .rule { width: 64px; height: 4px; background: var(--red); margin: 28px auto 8px; }
+
+  /* top nav */
+  .topnav {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 24px;
+    border-bottom: 1px solid #2a2a2a;
+    flex-wrap: wrap;
+  }
+  .topnav-brand {
+    font-family: 'Arial Black', Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    font-size: 0.92rem;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .topnav-brand .dot { color: var(--red); }
+  .topnav-brand:hover, .topnav-brand:focus-visible { color: var(--link); outline: none; }
+  .topnav-links { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .topnav-links a {
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.8rem;
+    color: var(--ink);
+    opacity: 0.68;
+    text-decoration: none;
+    padding-bottom: 3px;
+  }
+  .topnav-links a:hover, .topnav-links a:focus-visible { color: var(--link); opacity: 1; outline: none; }
+  .topnav-links a[aria-current="page"] { opacity: 1; border-bottom: 2px solid var(--red); }
+
+  /* ── MailerLite overrides — borrowed from snapsmack.ca's #beta box ──────────
+     Kill ML's own centering/width constraints so the form fills the wrap.
+     Heavy selector chains beat their dynamically-loaded !important rules.
+     ─────────────────────────────────────────────────────────────────────── */
+  .signup { margin-top: 36px; }
+
+  .ml-embedded,
+  .ml-form-align-center {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    text-align: left !important;
+  }
+
+  .ml-form-embedWrapper {
+    background: transparent !important;
+    border: 1px solid #444 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 28px 32px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .ml-form-embedBody {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    width: 100% !important;
+  }
+
+  .ml-form-embedContent h4,
+  .ml-form-embedContent h3,
+  .ml-form-embedContent h2 {
+    font-family: 'Arial Black', Arial, sans-serif !important;
+    font-size: 0.98rem !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    color: #ffffff !important;
+    margin: 0 0 12px 0 !important;
+    padding: 0 !important;
+  }
+
+  .ml-form-embedContent p {
+    font-family: Georgia, 'Times New Roman', serif !important;
+    font-size: 1.08rem !important;
+    line-height: 1.7 !important;
+    color: #aaaaaa !important;
+    margin: 0 0 20px 0 !important;
+    padding: 0 !important;
+  }
+
+  form.ml-block-form {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+    margin-bottom: 0 !important;
+    flex-wrap: wrap !important;
+  }
+
+  .ml-form-fieldRow {
+    flex: 1 1 auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+  }
+
+  .ml-form-fieldRow .ml-field-group {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .ml-embedded .ml-form-embedBody .ml-form-fieldRow input[type="email"],
+  .ml-embedded .ml-form-embedBody .ml-form-fieldRow input[type="text"],
+  .ml-form-fieldRow input[type="email"],
+  .ml-form-fieldRow input[type="text"] {
+    width: 100% !important;
+    height: 54px !important;
+    background: #1a1a1a !important;
+    color: #ffffff !important;
+    border: 1px solid #444 !important;
+    border-radius: 0 !important;
+    font-family: Georgia, 'Times New Roman', serif !important;
+    font-size: 1.05rem !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+  }
+
+  .ml-embedded .ml-form-embedBody .ml-form-fieldRow input::placeholder,
+  .ml-form-fieldRow input::placeholder {
+    color: #666 !important;
+    opacity: 1 !important;
+  }
+
+  .ml-form-embedSubmit {
+    flex: 0 0 180px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .ml-embedded button,
+  .ml-embedded input[type="submit"],
+  .ml-form-embedSubmit button,
+  .ml-form-embedSubmit button.primary {
+    width: 100% !important;
+    height: 54px !important;
+    background: var(--red) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--red) !important;
+    border-radius: 0 !important;
+    font-family: 'Arial Black', Arial, sans-serif !important;
+    font-size: 0.85rem !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    transition: background 0.2s ease, border-color 0.2s ease !important;
+  }
+
+  .ml-embedded button:hover,
+  .ml-embedded input[type="submit"]:hover,
+  .ml-form-embedSubmit button:hover {
+    background: #a00000 !important;
+    border-color: #a00000 !important;
+  }
+
+  .ml-form-successBody,
+  .ml-form-successContent p {
+    color: #ffffff !important;
+    font-family: Georgia, 'Times New Roman', serif !important;
+  }
+
+  footer {
+    position: relative;
+    z-index: 1;
+    border-top: 3px solid var(--red);
+    padding: 22px 24px;
+    text-align: center;
+  }
+  footer p {
+    font-family: 'Courier New', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    color: #888;
+  }
+  footer a { color: var(--link); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+  <nav class="topnav" aria-label="Primary">
+    <a class="topnav-brand" href="/">PHOTOFRI<span class="dot">.</span>DAY</a>
+    <div class="topnav-links">
+      <a href="/">Home</a>
+      <a href="/how-it-works.html">How It Works</a>
+      <a href="/faq.html">Whut The Whut</a>
+      <a href="/join.html" aria-current="page">Join The Party</a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <div class="top">
+      <p class="kicker">Get Notified</p>
+      <h1>JOIN THE PARTY<span class="dot">.</span></h1>
+    </div>
+
+    <div class="rule"></div>
+
+    <div class="top">
+      <p class="lede">Follow-based joining will be working by <strong>mid-August</strong>. In the meantime, drop your email below and we'll send you one message the moment you can follow <code>@participate@photofri.day</code>.</p>
+      <p class="lede">No spam, we promise &mdash; your email gets deleted right after we send that one message.</p>
+    </div>
+
+    <div class="signup">
+      <div class="ml-embedded" data-form="WYX5ro"></div>
+    </div>
+  </main>
+
+  <footer>
+    <p>Part of the SNAPSMACK network &middot; <a href="https://snapsmack.ca/">snapsmack.ca</a> &middot; <a href="https://photoblogs.fyi/" target="_blank" rel="noopener">photoblogs.fyi</a></p>
+  </footer>
+
+  <!-- MailerLite Universal -->
+  <script>
+      (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
+      .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
+      n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
+      (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
+      ml('account', '2067451');
+  </script>
+  <!-- End MailerLite Universal -->
+
+  <!-- MailerLite injects its own #mlb2-XXXXX-scoped rule with !important that
+       out-specifies our class-based override (ID beats classes even with
+       !important on both sides). Force the brand color via inline style,
+       which always wins regardless of selector specificity. Poll/observe
+       since the button doesn't exist until MailerLite's async script renders it. -->
+  <script>
+  (function() {
+    function paint(btn) {
+      btn.style.setProperty('background-color', '#D40000', 'important');
+      btn.style.setProperty('border-color', '#D40000', 'important');
+      btn.style.setProperty('color', '#ffffff', 'important');
+      btn.style.setProperty('height', '54px', 'important');
+      btn.style.setProperty('font-size', '0.85rem', 'important');
+      btn.addEventListener('mouseenter', function() { btn.style.setProperty('background-color', '#a00000', 'important'); btn.style.setProperty('border-color', '#a00000', 'important'); });
+      btn.addEventListener('mouseleave', function() { btn.style.setProperty('background-color', '#D40000', 'important'); btn.style.setProperty('border-color', '#D40000', 'important'); });
+    }
+    function tryPaint() {
+      var btn = document.querySelector('.ml-embedded button[type="submit"]');
+      if (btn && !btn.dataset.pfdPainted) { btn.dataset.pfdPainted = '1'; paint(btn); return true; }
+      return false;
+    }
+    if (!tryPaint()) {
+      var observer = new MutationObserver(tryPaint);
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+  })();
+  </script>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->

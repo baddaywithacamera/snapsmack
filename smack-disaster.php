@@ -43,24 +43,11 @@ if (isset($_POST['action']) && $_POST['action'] === 'export') {
         }
     }
 
-    // USER CREDENTIALS EXPORT: snap_users table only.
-    if ($_POST['type'] === 'keys') {
-        $filename = "snapsmack_keys_" . date('Y-m-d_H-i') . ".sql";
-        header('Content-Type: application/octet-stream');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-
-        $output = "-- SnapSmack Disaster Recovery\n-- Type: USER CREDENTIALS\n-- Date: " . date('Y-m-d H:i:s') . "\n\n";
-        $res     = $pdo->query("SHOW CREATE TABLE snap_users")->fetch(PDO::FETCH_ASSOC);
-        $output .= "DROP TABLE IF EXISTS `snap_users`;\n" . $res['Create Table'] . ";\n\n";
-        $rows    = $pdo->query("SELECT * FROM snap_users")->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($rows as $row) {
-            $keys    = array_map(fn($k) => "`$k`", array_keys($row));
-            $vals    = array_map(fn($v) => $v === null ? "NULL" : $pdo->quote($v), array_values($row));
-            $output .= "INSERT INTO `snap_users` (" . implode(', ', $keys) . ") VALUES (" . implode(', ', $vals) . ");\n";
-        }
-        echo $output;
-        exit;
-    }
+    // USER CREDENTIALS EXPORT: REMOVED 0.7.440. It dumped the entire snap_users
+    // table (password hashes + any 2FA secrets, via SELECT *) as a one-click / one-
+    // POST download — an unsafe exfil path, and redundant with the full recovery-kit
+    // DB dump above (which already contains snap_users). Do NOT reinstate a bare
+    // table dump here; credential recovery belongs in the encrypted Break-Glass Card.
 }
 
 // --- RECOVERY KIT IMPORT ---
@@ -156,19 +143,6 @@ include 'core/sidebar.php';
                         onclick="return confirm('This will overwrite your database and files. Continue?');">
                     IMPORT RECOVERY KIT
                 </button>
-            </form>
-        </div>
-
-        <div class="box box-flex">
-            <h3>USER CREDENTIALS</h3>
-            <p class="skin-desc-text">
-                Exports the user table only — logins and permission hashes.
-                Essential for regaining entry to a fresh install.
-            </p>
-            <form method="POST">
-                <input type="hidden" name="action" value="export">
-                <input type="hidden" name="type"   value="keys">
-                <button type="submit" class="btn-smack btn-block">DOWNLOAD</button>
             </form>
         </div>
 
