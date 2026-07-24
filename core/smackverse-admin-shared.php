@@ -92,8 +92,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'enabl
         // Auto-register the delivery cron so the user never touches a terminal.
         // Falls back to the checklist's manual line where the host forbids it.
         list($cok, ) = cron_register_job('*/10 * * * *',
-            realpath(__DIR__ . '/cron-smackverse.php') ?: (__DIR__ . '/cron-smackverse.php'),
+            realpath(dirname(__DIR__) . '/cron-smackverse.php') ?: (dirname(__DIR__) . '/cron-smackverse.php'),
             '# snapsmack-smackverse');
+        require_once __DIR__ . '/smackverse-kick.php';
+        sv_kick_delivery();
         $sv_cron_note = $cok ? ' Delivery runs every 10 minutes.'
                              : ' NOTE: could not auto-schedule delivery on this host — see the checklist.';
         header('Location: ' . $sv_self . '?msg=' . urlencode('SMACKVERSE ENABLED — the blog now answers as @' . sv_handle($sv_settings) . '@' . sv_domain($sv_settings) . '.' . $sv_wf_note . $sv_cron_note));
@@ -289,8 +291,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reimp
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'register_cron') {
     require_once 'core/cron-register.php';
     list($cok, $cmsg) = cron_register_job('*/10 * * * *',
-        realpath(__DIR__ . '/cron-smackverse.php') ?: (__DIR__ . '/cron-smackverse.php'),
+        realpath(dirname(__DIR__) . '/cron-smackverse.php') ?: (dirname(__DIR__) . '/cron-smackverse.php'),
         '# snapsmack-smackverse');
+    require_once __DIR__ . '/smackverse-kick.php';
+    sv_kick_delivery();
     header('Location: ' . $sv_self . '?msg=' . urlencode($cmsg));
     exit;
 }

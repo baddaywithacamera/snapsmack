@@ -403,6 +403,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         // New content is live — flush the page cache so it appears immediately.
         require_once __DIR__ . '/core/page-cache.php';
         page_cache_purge_all();
+        if (($settings['smackverse_enabled'] ?? '0') === '1') {
+            require_once __DIR__ . '/core/smackverse-kick.php';
+            sv_kick_delivery();
+        }
 
         if ($is_ajax) { echo 'success'; exit; }
         header('Location: smack-manage.php?msg=TRANSMISSION_LIVE');

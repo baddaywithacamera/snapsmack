@@ -1489,6 +1489,10 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         }
         sv_cache_actor($pdo, $actor_doc);
         sv_notify($pdo, 'follow', $actor_id, $handle, null, sv_actor_url($settings), null);
+        // Start the Accept + first-follow catalogue now. The detached CLI owns
+        // pacing; this inbox request still returns immediately.
+        require_once __DIR__ . '/smackverse-kick.php';
+        sv_kick_delivery();
         return 202;
     }
 

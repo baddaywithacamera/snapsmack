@@ -1633,7 +1633,13 @@ include 'core/sidebar.php';
                     <?php elseif (empty($st['skins'])): ?>
                         <p style="margin:8px 0 0; font-size:0.85rem; color:var(--text-muted,#888);">No skins reported.</p>
                     <?php else: ?>
-                        <table style="width:100%; border-collapse:collapse; margin-top:10px; font-size:0.88rem;">
+                        <table class="skin-inventory-table">
+                            <colgroup>
+                                <col class="skin-col-name">
+                                <col class="skin-col-version">
+                                <col class="skin-col-status">
+                                <col class="skin-col-action">
+                            </colgroup>
                         <?php foreach ($st['skins'] as $sk): ?>
                             <tr style="border-top:1px solid var(--border,#2a2a2a);">
                                 <td style="padding:6px 8px 6px 0;">
@@ -1884,10 +1890,19 @@ include 'core/sidebar.php';
 .skin-deploy-form label { margin:0; }
 .skin-deploy-buttons { grid-column:1/-1; display:flex; gap:8px; flex-wrap:wrap; }
 .skin-deploy-buttons .btn-smack { width:auto; height:auto; margin:0; padding:8px 18px; }
+.skin-inventory-table { width:100%; table-layout:fixed; border-collapse:collapse; margin-top:10px; font-size:.88rem; }
+.skin-inventory-table .skin-col-name { width:42%; }
+.skin-inventory-table .skin-col-version { width:20%; }
+.skin-inventory-table .skin-col-status { width:23%; }
+.skin-inventory-table .skin-col-action { width:15%; }
 @media (max-width:700px) {
     .skin-deploy-head, .skin-deploy-primary { flex-direction:column; }
     .skin-deploy-counts { text-align:left; }
     .skin-deploy-form { grid-template-columns:1fr; }
+    .skin-inventory-table .skin-col-name { width:38%; }
+    .skin-inventory-table .skin-col-version { width:24%; }
+    .skin-inventory-table .skin-col-status { width:38%; }
+    .skin-inventory-table .skin-col-action { width:0; }
 }
 </style>
 

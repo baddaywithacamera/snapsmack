@@ -277,9 +277,16 @@ if (file_exists($inventory_path)) {
 
 // Load engine CSS for all scripts required by the active skin.
 // Mirrors the script loop in skin-footer.php but outputs only CSS links.
-if (!isset($skin_manifest_path)) {
-    $skin_manifest_path = dirname(__DIR__) . '/skins/' . ($active_skin ?? '50-shades-of-noah-grey') . '/manifest.json';
+// Existing generated site bootstraps may not yet load the JSON manifest helper.
+// Load it here before the head asks for engine CSS; otherwise the caught
+// undefined-function error silently produces an empty manifest and the matching
+// engine JavaScript runs without any of its required presentation layer.
+if (!function_exists('snapsmack_load_manifest')) {
+    require_once __DIR__ . '/skin-manifest.php';
 }
+
+// The runtime metadata source is always the canonical inert JSON manifest.
+$skin_manifest_path = dirname(__DIR__) . '/skins/' . ($active_skin ?? '50-shades-of-noah-grey') . '/manifest.json';
 if (file_exists($skin_manifest_path)) {
     try {
         $_skin_mf = snapsmack_load_manifest($skin_manifest_path);
