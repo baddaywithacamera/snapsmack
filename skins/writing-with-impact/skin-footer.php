@@ -18,7 +18,9 @@
 
 <?php
 // Manifest-required scripts
-$skin_manifest = load_skin_manifest(basename(__DIR__));
+$skin_manifest = function_exists('load_skin_manifest')
+    ? load_skin_manifest(basename(__DIR__))
+    : include __DIR__ . '/manifest.php';
 $requested     = $skin_manifest['require_scripts'] ?? [];
 if (!empty($requested)) {
     $inventory = include dirname(__DIR__, 2) . '/core/manifest-inventory.php';

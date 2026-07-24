@@ -36,7 +36,9 @@
 </div>
 <?php
 // ── Load required JS engines from manifest ─────────────────────────────────
-$skin_manifest = load_skin_manifest(basename(__DIR__));
+$skin_manifest = function_exists('load_skin_manifest')
+    ? load_skin_manifest(basename(__DIR__))
+    : include __DIR__ . '/manifest.php';
 $requested     = $skin_manifest['require_scripts'] ?? [];
 
 // Background mode is mutually exclusive (spec): in flag mode, load the Flag Wave
