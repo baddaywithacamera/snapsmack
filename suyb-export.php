@@ -12,13 +12,12 @@
  * Query parameters:
  *   type=schema   — DDL only (CREATE TABLE statements for all snap_* tables)
  *   type=full     — Full SQL dump (schema + all data)  [default]
- *   type=keys     — snap_users only (emergency credential recovery)
  *   type=kit      — Recovery kit (.tar.gz with manifest + SQL dump)
  *   type=inventory — File inventory JSON (paths + sizes, NO hashing) for SUYB
  *                    client-side manifest/kit generation (Windows/Linux path)
  *
  * Response:
- *   type=schema|full|keys → Content-Type: application/sql, streamed as download
+ *   type=schema|full      → Content-Type: application/sql, streamed as download
  *   type=kit              → Content-Type: application/x-gzip, streamed as download
  */
 
@@ -43,10 +42,10 @@ require_once 'core/export-engine.php';
 
 $type = $_GET['type'] ?? 'full';
 
-if (!in_array($type, ['schema', 'full', 'keys', 'kit', 'inventory'], true)) {
+if (!in_array($type, ['schema', 'full', 'kit', 'inventory'], true)) {
     http_response_code(400);
     header('Content-Type: application/json');
-    echo json_encode(['ok' => false, 'error' => 'Invalid type. Use: schema, full, keys, kit, or inventory']);
+    echo json_encode(['ok' => false, 'error' => 'Invalid type. Use: schema, full, kit, or inventory']);
     exit;
 }
 
@@ -99,7 +98,7 @@ if ($type === 'kit') {
     exit;
 }
 
-// SQL dump — schema, full, or keys. STREAMED so a large DB never has to fit in
+// SQL dump — schema or full. STREAMED so a large DB never has to fit in
 // memory at once (building the whole dump into a string 500'd/OOM'd on big sites).
 $filename = "{$siteSlug}_{$type}_{$timestamp}.sql";
 header('Content-Type: application/sql; charset=utf-8');

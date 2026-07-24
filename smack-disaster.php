@@ -2,9 +2,9 @@
 /**
  * SNAPSMACK - Disaster Recovery
  *
- * Serious-business recovery operations: full Recovery Kit export/import
- * and User Credentials export. Separated from routine backup tools so
- * the stakes are clear before you click anything.
+ * Serious-business recovery operations: full Recovery Kit export/import.
+ * Separated from routine backup tools so the stakes are clear before you
+ * click anything.
  */
 
 /**
