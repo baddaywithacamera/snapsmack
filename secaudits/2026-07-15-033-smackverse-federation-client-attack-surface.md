@@ -1,10 +1,10 @@
 <!-- SNAPSMACK_EOF_HEADER — last non-empty line must be the EOF marker below. -->
 
-# SECAUDIT 032 - SMACKVERSE federation client attack surface
+# SECAUDIT 033 - SMACKVERSE federation client attack surface
 
 | Field | Value |
 | --- | --- |
-| **Audit ID** | 2026-07-15-032 |
+| **Audit ID** | 2026-07-15-033 |
 | **Date** | 2026-07-15 |
 | **Severity** | **MEDIUM** — no critical/RCE; two authenticated-origin XSS vectors reachable via hostile remote actors |
 | **Component** | SMACKVERSE — Pixelfed-compatible single-user ActivityPub server (public federation router + owner-facing interaction UI) |
