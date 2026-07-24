@@ -1412,8 +1412,9 @@ if ($resource === 'skins' && $sub_action === 'reinstall' && $method === 'POST') 
     if (!ms_is_safe_remote_url($download_url))            ms_err('download_url must resolve to a public host', 403);
 
     require_once __DIR__ . '/skin-registry.php';
+    require_once __DIR__ . '/release-pubkey.php';
 
-    $public_key = $settings['update_public_key'] ?? '';
+    $public_key = defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : '';
     $result     = skin_registry_install($slug, $download_url, $signature, $public_key);
 
     if ($result['success']) ms_ok(['skin' => $slug, 'message' => $result['message']]);
@@ -1437,7 +1438,8 @@ if ($resource === 'skins' && $sub_action === 'reinstall-all' && $method === 'POS
     if (count($packages) > 100) ms_err('Too many skins in one request');
 
     require_once __DIR__ . '/skin-registry.php';
-    $public_key = $settings['update_public_key'] ?? '';
+    require_once __DIR__ . '/release-pubkey.php';
+    $public_key = defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : '';
     $results    = [];
     $installed  = 0;
     $failed     = 0;

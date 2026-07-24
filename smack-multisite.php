@@ -639,6 +639,20 @@ if (isset($_POST['push_all_skins_all_spokes'])) {
                     $result['ok'] = $fail_count === 0 && $ok_count === count($packages);
                     $result['detail'] = $ok_count . ' skin' . ($ok_count === 1 ? '' : 's') . ' installed'
                         . ($fail_count ? '; ' . $fail_count . ' failed' : '') . '.';
+                    if ($fail_count && !empty($data['results']) && is_array($data['results'])) {
+                        $first_failure = null;
+                        foreach ($data['results'] as $skin_result) {
+                            if (empty($skin_result['ok'])) {
+                                $first_failure = $skin_result;
+                                break;
+                            }
+                        }
+                        if ($first_failure) {
+                            $result['detail'] .= ' First error'
+                                . (!empty($first_failure['skin']) ? ' (' . $first_failure['skin'] . ')' : '')
+                                . ': ' . ($first_failure['message'] ?? 'unknown error');
+                        }
+                    }
                 }
                 $skin_results[] = $result;
             }
