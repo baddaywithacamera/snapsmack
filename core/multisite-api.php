@@ -1421,6 +1421,57 @@ if ($resource === 'skins' && $sub_action === 'reinstall' && $method === 'POST') 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/skins/reinstall-all
+// Hub sends one batch of signed registry packages already known to be installed
+// on this spoke. The same local consent gate and registry verifier used by the
+// single-skin endpoint apply to every item.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'skins' && $sub_action === 'reinstall-all' && $method === 'POST') {
+    if ($node['role'] !== 'hub') ms_err('Only a hub may install skins on this spoke', 403);
+    if (($settings['multisite_allow_skin'] ?? '0') !== '1')
+        ms_err('Remote skin install is disabled on this site (enable it in Multisite settings).', 403);
+
+    $body     = json_decode(file_get_contents('php://input'), true) ?? [];
+    $packages = $body['skins'] ?? null;
+    if (!is_array($packages) || empty($packages)) ms_err('skins must be a non-empty array');
+    if (count($packages) > 100) ms_err('Too many skins in one request');
+
+    require_once __DIR__ . '/skin-registry.php';
+    $public_key = $settings['update_public_key'] ?? '';
+    $results    = [];
+    $installed  = 0;
+    $failed     = 0;
+
+    foreach ($packages as $package) {
+        $slug         = trim((string)($package['skin_slug'] ?? ''));
+        $download_url = trim((string)($package['download_url'] ?? ''));
+        $signature    = trim((string)($package['signature'] ?? ''));
+
+        if (!$slug || !preg_match('/^[a-zA-Z0-9_-]+$/', $slug)) {
+            $results[] = ['skin' => $slug, 'ok' => false, 'message' => 'Invalid skin slug'];
+            $failed++;
+            continue;
+        }
+        if (!filter_var($download_url, FILTER_VALIDATE_URL) || !ms_is_safe_remote_url($download_url)) {
+            $results[] = ['skin' => $slug, 'ok' => false, 'message' => 'Invalid or unsafe download URL'];
+            $failed++;
+            continue;
+        }
+
+        $result = skin_registry_install($slug, $download_url, $signature, $public_key);
+        $ok     = !empty($result['success']);
+        $results[] = ['skin' => $slug, 'ok' => $ok, 'message' => $result['message'] ?? ''];
+        if ($ok) $installed++; else $failed++;
+    }
+
+    ms_ok([
+        'installed' => $installed,
+        'failed'    => $failed,
+        'results'   => $results,
+    ]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: POST multisite/settings/push
 // Hub pushes a set of site settings to this spoke. Only keys on the explicit
 // allowlist below are accepted — the hub cannot write arbitrary settings.
