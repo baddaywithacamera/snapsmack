@@ -10,6 +10,9 @@
 
 # SnapSmack Changelog
 
+## 0.7.442 "Signed, Sealed, Delivered" — 2026-07-23
+- **Fixed multisite skin deployment rejecting every signed package.** The new batch endpoint—and the older single-skin multisite endpoint—still read the retired mutable `update_public_key` database setting. Since 0.7.440, official skin verification uses the canonical tracked release key. Both endpoints now load that same key used by Gallery and Maintenance. Batch results also surface the first real per-skin error instead of reporting only an unhelpful failure count. (`core/multisite-api.php`, `smack-multisite.php`.)
+
 ## 0.7.441 "The Fix Is In" — 2026-07-23
 - **Restored every official skin footer on upgraded and mixed-version sites.** Existing generated site bootstraps do not necessarily load the new JSON-manifest helper, so all 23 migrated footers now use it when available and otherwise read the signed package's temporary compatibility adapter. This removes the public-page `Call to undefined function load_skin_manifest()` fatal that stopped footer rendering, background engines, and the intended grow-as-you-scroll progressive reveal. Every official skin received another patch version so Smack Central and installed sites can discover the repaired packages.
 - **Multisite can now push all installed skins to all active spokes in one click.** The hub sends one authenticated batch per spoke containing current signed registry packages only for skins that spoke has reported as installed. Spokes retain their local remote-skin consent gate, verify every package through the existing registry installer, skip custom/uninstalled skins, and return aggregate results to the hub. (`smack-multisite.php`, `core/multisite-api.php`.)
