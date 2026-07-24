@@ -64,6 +64,11 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/csrf.php';
 require_once 'db.php';
+// Admin pages read declarative skin metadata directly in several shared
+// components (sidebar, footer, editors). Older generated db.php files do not
+// necessarily load constants.php, so make the JSON manifest loader an explicit
+// authentication-bootstrap dependency instead of relying on include order.
+require_once __DIR__ . '/skin-manifest.php';
 
 // --- CSRF AUTOVALIDATE ---
 // Pages that legitimately POST without a CSRF token (login form, public

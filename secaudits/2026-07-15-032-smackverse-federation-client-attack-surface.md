@@ -1,17 +1,15 @@
 <!-- SNAPSMACK_EOF_HEADER — last non-empty line must be the EOF marker below. -->
 
-# SECAUDIT 033 — SMACKVERSE Fediverse attack surface (Pixelfed-compatible single-user ActivityPub server)
+# SECAUDIT 032 - SMACKVERSE federation client attack surface
 
 | Field | Value |
 | --- | --- |
-| **Audit ID** | 2026-07-15-033 |
+| **Audit ID** | 2026-07-15-032 |
 | **Date** | 2026-07-15 |
 | **Severity** | **MEDIUM** — no critical/RCE; two authenticated-origin XSS vectors reachable via hostile remote actors |
 | **Component** | SMACKVERSE — Pixelfed-compatible single-user ActivityPub server (public federation router + owner-facing interaction UI) |
 | **Status** | **REMEDIATED in 0.7.405 ("The Best Night Ever")** — §3.1/§3.2/§3.3 fixed; §3.4/§3.5 reviewed and accepted |
 | **Reporter** | Sean (flagged the audit was overdue) + Claude (traced the surface) |
-| **Related** | 032 (2026-07-04, SMACKVERSE piggyback search / token isolation — the `sv_hub_search` neighborhood), 023 (unzucker attack surface), 021/021A (hub-spoke), 030 (skin manifest RCE) |
-| **Scope note** | This audit targets the **federation trust boundary** on the code that landed since 031 (2026-06-29): inbound signature/actor binding, SSRF on outbound fetches, and rendering of remote-controlled content. Files read: `smackverse.php` (public router), `pixel.php` (client shell), `core/smackverse.php` (236 KB engine — grepped + spot-read on the security-relevant functions, **not** line-by-line in full), `assets/js/ss-pixel.js` (client renderer), `core/auth-smack.php` (gate). Admin surfaces (`smack-pixelfed.php`, `smack-smackverse.php`, `smack-sv-*`) were not deep-read this pass — see §8. |
 
 ---
 

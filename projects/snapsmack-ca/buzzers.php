@@ -150,7 +150,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <div class="intro-body">
                 <p>We believe a photographer should be able to see how the software guarding their life's work actually holds up — not take our word for it. So here it is: the security audits we've run on SnapSmack and its companion tools, the findings, and the releases that closed them.</p>
-                <p><strong>Transparency and accountability aren't a marketing line here, they're the deal.</strong> Claude runs ongoing security audits of the codebase; high and medium-risk findings are fixed immediately, low-risk ones on a schedule. The reports below are the closed ones — issues found, issues fixed, dated and signed. What you won't find is a report describing a live, serious hole that's still open: publishing the blueprint for an unpatched break-in would put every SnapSmack site at risk, which is the opposite of protecting you. Those stay private until they're fixed, and then they show up here. That's responsible disclosure, and it's the honest version of "we take security seriously."</p>
+                <p><strong>Transparency and accountability aren't a marketing line here, they're the deal.</strong> Claude and Codex run ongoing security audits of the codebase; high and medium-risk findings are fixed immediately, low-risk ones on a schedule. The reports below are the closed ones — issues found, issues fixed, dated and signed. What you won't find is a report describing a live, serious hole that's still open: publishing the blueprint for an unpatched break-in would put every SnapSmack site at risk, which is the opposite of protecting you. Those stay private until they're fixed, and then they show up here. That's responsible disclosure, and it's the honest version of "we take security seriously."</p>
                 <div class="slang">
                     <p><strong>"Buzzers"?</strong> Victorian thieves' cant. To <em>buzz</em> was to pick pockets, and a <em>buzzer</em> was the pickpocket — the one working the crowd for whatever wasn't nailed down. This is the page where we show our work against the buzzers.</p>
                 </div>
@@ -162,8 +162,8 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
-                <li><span class="idx-date">Jul 15</span><a href="#a033">SMACKVERSE Federation Client — Attack Surface</a></li>
-                <li><span class="idx-date">Jul 4</span><a href="#a032">SMACKVERSE Piggyback Search — Token Isolation</a></li>
+                <li><span class="idx-date">Jul 24</span><a href="#a033">Skin Manifest RCE &amp; Credentials Export — Closure</a></li>
+                <li><span class="idx-date">Jul 15</span><a href="#a032">SMACKVERSE Federation Client — Attack Surface</a></li>
                 <li><span class="idx-date">Jun 27</span><a href="#csrf">Cross-Site Request Forgery — Closed Site-Wide</a></li>
                 <li><span class="idx-date">Jun 25</span><a href="#asob">Son of a Batch — Batch Poster Review</a></li>
                 <li><span class="idx-date">Jun 20</span><a href="#a028">Dev-File Leak &amp; SMACKBACK Blind Spot</a></li>
@@ -197,19 +197,19 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
 
             <article class="post" id="a033">
+                <div class="post-meta"><span class="post-date">July 24, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Skin Manifest RCE &amp; Credentials Export — Closure</h2>
+                <p>An early design decision stored skin metadata as executable PHP. A simple question &mdash; what happens if a submitted skin puts code in its manifest? &mdash; exposed the unnecessary trust boundary: loading the metadata could execute arbitrary code with the web server's privileges. There is no evidence it was exploited. Every skin now uses strictly parsed JSON metadata, official packages require signatures, unsafe ZIP paths are rejected, and the temporary transition bridge is gone now that the whole fleet has migrated.</p>
+                <p>The same review removed a redundant USER CREDENTIALS download that exported the complete user table even though the protected Recovery Kit already contained it. A closure pass found the credential-only mode still available through the authenticated SUYB export endpoint, so that second route and the shared engine capability were removed too. Recovery remains intact; the extra attack surface does not.</p>
+                <a class="report-link" href="secaudits/2026-07-24-033-manifest-rce-and-credentials-export-closure.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a032">
                 <div class="post-meta"><span class="post-date">July 15, 2026</span><span class="post-tag">Closed</span></div>
                 <h2>SMACKVERSE Federation Client — Attack Surface</h2>
                 <p>SMACKVERSE is SnapSmack's fully integrated, Pixelfed-compatible single-user server &mdash; your blog's own instance on the Fediverse, speaking the ActivityPub protocol so it can follow, like, comment on, boost, and message people right across the network, and be followed back. Because it is fully interactive, it shows content written by people on other servers, so this audit walked that entire trust boundary. The engine room held up well: requests arriving from other servers are cryptographically verified before they are allowed to change anything, nobody can pose as someone they aren't, and the software is fenced off from reaching back into your own network.</p>
                 <p>Two medium findings were in the browser display code, where a hostile profile or post could have slipped a booby-trapped link into a page you were viewing. Both are closed &mdash; links coming from other servers are now checked to be ordinary web links before they are shown, and the profile-bio display was rebuilt to permit only safe formatting. A low-risk hardening item on an internal search request was tightened for good measure, and two informational notes were reviewed and accepted. Closed in 0.7.405.</p>
-                <a class="report-link" href="secaudits/2026-07-15-033-smackverse-federation-client-attack-surface.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
-            </article>
-
-            <article class="post" id="a032">
-                <div class="post-meta"><span class="post-date">July 4, 2026</span><span class="post-tag">Closed</span></div>
-                <h2>SMACKVERSE Piggyback Search — Token Isolation</h2>
-                <p>SMACKVERSE can borrow a login token you hold on a friendly Fediverse instance so your blog can run authenticated searches out across the network. This review checked how that token is stored and used. The one finding: the key protecting the stored token was falling back to a shared default value instead of a per-site secret. Fixed — every install now generates its own dedicated, random search key, so no two sites share protection.</p>
-                <p>A second item flagged around form security turned out to be a false alarm: every admin form on SnapSmack already carries automatic cross-site-request protection. Everything else passed — the outbound requests are guarded against server-side request forgery, results render without script injection, adding an account is gated behind password + two-factor, and the token is never exposed to the browser. Closed in 0.7.376.</p>
-                <a class="report-link" href="secaudits/2026-07-04-032-smackverse-piggyback-search-audit.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+                <a class="report-link" href="secaudits/2026-07-15-032-smackverse-federation-client-attack-surface.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
             </article>
 
             <article class="post" id="csrf">

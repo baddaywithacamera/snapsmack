@@ -653,7 +653,7 @@ class SnapSmackExport {
      * Generates a full SQL dump of all SnapSmack tables.
      * Reused by Recovery Kit and the existing backup page.
      *
-     * @param string $type  'full', 'schema', or 'keys'
+     * @param string $type  'full' or 'schema'
      * @return string SQL content
      */
     /**
@@ -661,7 +661,6 @@ class SnapSmackExport {
      *
      * @param string $type  'full' = schema + data (default)
      *                      'schema' = DDL only (CREATE TABLE statements)
-     *                      'keys' = snap_users table only (for emergency recovery)
      * @return string  SQL dump as a string
      */
     /**
@@ -734,19 +733,15 @@ class SnapSmackExport {
         $header .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
         $emit($header);
 
-        if ($type === 'keys') {
-            $tables = ['snap_users'];
-        } else {
-            $tables = [];
-            $res = $this->pdo->query("SHOW TABLES");
-            while ($row = $res->fetch(PDO::FETCH_NUM)) {
-                if (str_starts_with($row[0], 'snap_')) {
-                    $tables[] = $row[0];
-                }
+        $tables = [];
+        $res = $this->pdo->query("SHOW TABLES");
+        while ($row = $res->fetch(PDO::FETCH_NUM)) {
+            if (str_starts_with($row[0], 'snap_')) {
+                $tables[] = $row[0];
             }
-            $res->closeCursor();
-            sort($tables);
         }
+        $res->closeCursor();
+        sort($tables);
 
         // Unbuffered rows: never load a whole table into PHP/driver memory at once.
         $prevBuffered = null;
