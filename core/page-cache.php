@@ -37,7 +37,14 @@ function page_cache_file(): string {
     // Strip any query string defensively (we only cache no-query requests).
     $uri = strtok($uri, '?');
     $host = $_SERVER['HTTP_HOST'] ?? '';
-    return page_cache_dir() . '/' . sha1($host . '|' . $uri) . '.html';
+    // Phone requests can render through a completely different skin
+    // (PHOTOGRAM) than desktop requests for the same URL. They must never
+    // share a cached HTML document or whichever device arrives first will
+    // dictate the skin served to the other until the entry expires.
+    $viewport = function_exists('snapsmack_is_mobile') && snapsmack_is_mobile()
+        ? 'mobile'
+        : 'desktop';
+    return page_cache_dir() . '/' . sha1($host . '|' . $uri . '|' . $viewport) . '.html';
 }
 
 /** Is this request eligible to be served from / written to cache? */
