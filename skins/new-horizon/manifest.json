@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "NEW HORIZON",
-    "version": "1.3.1",
+    "version": "1.3.2",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "High-contrast photography skin with archival framing, tactical layout controls, and full JS library support. Light and dark variants.",

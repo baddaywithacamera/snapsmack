@@ -25,7 +25,9 @@
 //    which is why the calendar [C] button — and the justified archive engine —
 //    never loaded on slickr. meta.php only emits each engine's CSS; the matching
 //    <script> is the skin footer's job. ─────────────────────────────────────────
-$skin_manifest = load_skin_manifest(basename(__DIR__));
+$skin_manifest = function_exists('load_skin_manifest')
+    ? load_skin_manifest(basename(__DIR__))
+    : include __DIR__ . '/manifest.php';
 $requested     = $skin_manifest['require_scripts'] ?? [];
 $skin_asset_v  = SNAPSMACK_VERSION_SHORT . (!empty($skin_manifest['version']) ? '-' . $skin_manifest['version'] : '');
 if (!empty($requested)) {

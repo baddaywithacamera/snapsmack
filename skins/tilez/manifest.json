@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "TILEZ",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "author": "Sean McCormick & Claude",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "A TILEZ-style masonry skin for SMACKTALK sites. Reuses ALFRED's proven longform plumbing (preload.php routing: masonry feed, single post, prev/next, photo archive) but the index is a dynamic varied-tile masonry instead of the square grid. Writing and images at equal billing.",

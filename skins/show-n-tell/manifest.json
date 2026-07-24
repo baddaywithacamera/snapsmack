@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SHOW N TELL",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Portfolio & photoblog hybrid. Clean hero slider fed from the media library, justified grid below. Pixel frames or Galleria frames. Optional contact form shortcode. Professional face, photoblogging soul.",

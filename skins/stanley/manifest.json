@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "STANLEY",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "A SMACKTALK longform skin: a faithful re-imagining of the classic WordPress Kubrick default theme — blue sky banner, rounded page frame, right sidebar, and a clean serif reading column. Rebuilt on SnapSmack shortcodes, the menu system, and the shared footer. Named for Stanley Kubrick.",
