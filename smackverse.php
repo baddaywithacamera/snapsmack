@@ -264,20 +264,51 @@ switch ($ap) {
             $code = 500;
         }
         http_response_code($code);
-        // INSTANT response: acknowledge to the sender first, then deliver any
-        // Accept this request just queued — so a follow completes in seconds,
-        // not on the next 10-minute cron tick. fastcgi_finish_request flushes
-        // the 202 to the caller, then we drain UNPACED and briefly.
-        //
-        // NEVER pace (sleep) here: this runs in a web/FPM worker, and a paced
-        // drain holds that worker for minutes — inbound federation traffic then
-        // starves the pool and the whole site 524s. The Accept goes out fast;
-        // any backfill queued alongside it rides the CLI delivery cron, which
-        // paces it in order with no HTTP timeout to trip.
-        if (function_exists('fastcgi_finish_request')) {
+        // Accept was sent inline. The catalogue normally belongs to the detached
+        // CLI worker kicked by the Follow handler. If exec is unavailable, use a
+        // post-response FPM fallback ONLY for an actor with a pending backfill
+        // job. Likes, replies, Deletes and duplicate Follows never drain a queue.
+        $sv_backfill_actor = (string)($settings['_sv_follow_backfill_actor'] ?? '');
+        $sv_backfill_inbox = (string)($settings['_sv_follow_backfill_inbox'] ?? '');
+        $sv_cli_kicked     = (($settings['_sv_delivery_kicked'] ?? '0') === '1');
+        if ($sv_backfill_actor !== '' && $sv_backfill_inbox !== '' && !$sv_cli_kicked
+            && function_exists('fastcgi_finish_request')) {
             fastcgi_finish_request();
+            @ignore_user_abort(true);
+            @set_time_limit(0);
+
+            // Same advisory lock as cron: no duplicate drains across Unix users.
+            $sv_lock = 'snapsmack_sv_' . substr(hash('sha256', realpath(__DIR__) ?: __DIR__), 0, 40);
+            $sv_have_lock = 0;
+            try {
+                $sv_ls = $pdo->prepare("SELECT GET_LOCK(?, 0)");
+                $sv_ls->execute([$sv_lock]);
+                $sv_have_lock = (int)$sv_ls->fetchColumn();
+            } catch (\Throwable $e) { $sv_have_lock = 0; }
+            if ($sv_have_lock === 1) {
+                try {
+                    // Build only THIS follower's job and drain only the queue ids
+                    // it created. Existing global backlog cannot consume the cap.
+                    [$sv_jobs, $sv_queued, $sv_first_id, $sv_last_id]
+                        = sv_process_backfill_jobs($pdo, $settings, 1, $sv_backfill_actor);
+                    if ($sv_queued > 0 && $sv_first_id !== null && $sv_last_id !== null) {
+                        // Pixelfed profile order is ingestion order. Preserve the
+                        // measured cadence that prevents burst-order shuffling.
+                        sv_process_deliveries(
+                            $pdo,
+                            $settings,
+                            $sv_queued,
+                            sv_delivery_cadence($settings),
+                            $sv_first_id,
+                            $sv_last_id,
+                            $sv_backfill_inbox
+                        );
+                    }
+                    sv_set_setting($pdo, $settings, 'smackverse_cron_last_run', date('Y-m-d H:i:s'));
+                } catch (\Throwable $e) { /* queued remainder stays retryable */ }
+                try { $pdo->prepare("SELECT RELEASE_LOCK(?)")->execute([$sv_lock]); } catch (\Throwable $e) {}
+            }
         }
-        try { sv_process_deliveries($pdo, $settings, 20); } catch (\Throwable $e) { /* cron will retry */ }
         exit;
 
     default:
