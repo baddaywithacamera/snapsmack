@@ -10,6 +10,10 @@
 
 # SnapSmack Changelog
 
+## 0.7.447 "The Ticket Master" — 2026-07-25
+
+- **Fixed first-follow federation delivery without turning every inbox request into an unbounded global queue drain.** A valid Follow now receives its signed Accept immediately, with the existing retry queue retained as fallback. A new or reactivated follower gets one backfill job; duplicate Follow deliveries cannot manufacture another catalogue. The no-exec PHP-FPM fallback runs only after a Follow with a pending job, builds only that actor's catalogue, and drains only the exact queue-id range and inbox it created at the established Pixelfed-safe cadence. Existing unrelated backlog can no longer consume the new follower's delivery limit, and Likes/replies/Deletes cannot trigger hundreds of outbound requests. The detached CLI/cron worker remains the preferred delivery path where available. (`core/smackverse.php`, `smackverse.php`.)
+
 ## 0.7.446 "Separate Ways" — 2026-07-24
 - **Separated phone and desktop full-page caches.** The anonymous page-cache key contained only host + URL even though phones can render the same URL through the dedicated PHOTOGRAM skin. Because cache lookup happened before mobile skin selection, a desktop INSTANT CAMERA response cached first could be served verbatim to phones, bypassing PHOTOGRAM entirely (and vice versa). Cache keys now include the mobile/desktop rendering class; old mixed entries are naturally ignored after deployment. (`core/page-cache.php`.)
 

@@ -127,9 +127,9 @@ function sv_ensure_tables(PDO $pdo): void {
         PRIMARY KEY (`id`),
         KEY `idx_ap_due` (`status`, `next_try_at`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-    // First-follow backfill jobs: a NEW follower's catalogue backfill is recorded
-    // here by the inbox Follow handler and built + paced by the cron
-    // (sv_process_backfill_jobs) — never inside the inbox POST.
+    // First-follow backfill jobs: a new/reactivated follower's catalogue backfill
+    // is recorded here by the inbox Follow handler. A detached CLI worker builds
+    // and paces it when available; a post-response FPM tail is the no-exec fallback.
     $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_backfill_jobs` (
         `id`         int unsigned NOT NULL AUTO_INCREMENT,
         `actor_url`  varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1069,10 +1069,11 @@ function sv_deliver(array $settings, string $inbox_url, string $activity_json): 
 
 // ─── Delivery queue ──────────────────────────────────────────────────────────
 
-/** Queue one activity JSON for a remote inbox. */
-function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json): void {
+/** Queue one activity JSON for a remote inbox and return its queue id. */
+function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json): int {
     $pdo->prepare("INSERT INTO snap_ap_deliveries (inbox_url, activity_json) VALUES (?, ?)")
         ->execute([$inbox_url, $activity_json]);
+    return (int)$pdo->lastInsertId();
 }
 
 /** Base gap in seconds between consecutive POSTS in a paced drain (clamped
@@ -1130,14 +1131,30 @@ function sv_follower_inboxes(PDO $pdo): array {
  * (CLI cron or a post-fastcgi_finish_request web tail) — never inline before a
  * response.
  */
-function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $cadence_secs = 0): array {
+function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $cadence_secs = 0,
+                               ?int $first_id = null, ?int $last_id = null,
+                               ?string $inbox_url = null): array {
     $now  = date('Y-m-d H:i:s');
+    $where = "status = 'queued' AND next_try_at <= ?";
+    $args  = [$now];
+    if ($first_id !== null) {
+        $where .= " AND id >= ?";
+        $args[] = $first_id;
+    }
+    if ($last_id !== null) {
+        $where .= " AND id <= ?";
+        $args[] = $last_id;
+    }
+    if ($inbox_url !== null) {
+        $where .= " AND inbox_url = ?";
+        $args[] = $inbox_url;
+    }
     $stmt = $pdo->prepare(
         "SELECT * FROM snap_ap_deliveries
-         WHERE status = 'queued' AND next_try_at <= ?
-         ORDER BY id ASC LIMIT " . (int)$limit
+         WHERE {$where}
+         ORDER BY id ASC LIMIT " . max(1, (int)$limit)
     );
-    $stmt->execute([$now]);
+    $stmt->execute($args);
     $due = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $layer_gap = ($cadence_secs > 0) ? sv_layer_cadence($settings) : 0;
@@ -1453,6 +1470,17 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         if ($shared !== null && !sv_url_is_public($shared)) $shared = null;
         $handle = ($actor_doc['preferredUsername'] ?? '') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
 
+        // A transition from absent/inactive to active is a genuine new follow.
+        // A duplicate delivery while already active must not manufacture
+        // another full catalogue backfill.
+        $was_active = false;
+        $fst = $pdo->prepare(
+            "SELECT is_active FROM snap_ap_followers WHERE actor_url = ? LIMIT 1"
+        );
+        $fst->execute([$actor_id]);
+        $prior_active = $fst->fetchColumn();
+        if ($prior_active !== false) $was_active = ((int)$prior_active === 1);
+
         $pdo->prepare(
             "INSERT INTO snap_ap_followers (actor_url, actor_handle, inbox_url, shared_inbox_url, is_active)
              VALUES (?, ?, ?, ?, 1)
@@ -1460,7 +1488,14 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                                      shared_inbox_url=VALUES(shared_inbox_url), is_active=1"
         )->execute([$actor_id, substr($handle, 0, 190), $inbox, $shared]);
 
-        // Queue the Accept back to the follower's own inbox.
+        // Send the Accept back to the follower's inbox NOW — in THIS request.
+        // A Follow→Accept is a server-to-server handshake: the remote server is
+        // POSTing to us, no human is waiting on a page, and the reply is a single
+        // fast signed POST. It belongs here, not in a queue that only drains when
+        // a system cron or exec-worker happens to fire (which never happens on a
+        // no-exec / no-crontab host — the follower would sit un-Accepted forever).
+        // Queue is the FALLBACK: if the live send fails (remote down / transient
+        // network), drop it in the queue for the paced retry backstop.
         $accept = [
             '@context' => 'https://www.w3.org/ns/activitystreams',
             'id'       => sv_actor_url($settings) . '#accept-' . bin2hex(random_bytes(8)),
@@ -1468,31 +1503,43 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             'actor'    => sv_actor_url($settings),
             'object'   => $activity,
         ];
-        sv_queue_delivery($pdo, $inbox, json_encode($accept, JSON_UNESCAPED_SLASHES));
+        $accept_json = json_encode($accept, JSON_UNESCAPED_SLASHES);
+        [$acc_ok, $acc_info] = sv_deliver($settings, $inbox, $accept_json);
+        sv_inbox_log($pdo, 'Accept', $actor_id, $object,
+            $acc_ok ? 'sent inline (' . $acc_info . ')'
+                    : 'inline send failed (' . $acc_info . ') — queued for retry');
+        if (!$acc_ok) {
+            sv_queue_delivery($pdo, $inbox, $accept_json);
+        }
 
-        // Backfill: seed this NEW follower with our recent catalogue so their view
-        // of the blog isn't an empty grid. DEFERRED to the paced cron
-        // (sv_process_backfill_jobs): building up to smackverse_backfill_count
-        // (default 200) Notes must NEVER happen inside this inbox POST — we only
-        // record a one-shot job; the cron builds, paces, and adds the over-500
-        // "more on the site" pointer. Skipped on a re-follow (already following).
+        // Backfill: seed this new/reactivated follower with our recent catalogue.
+        // We record a one-shot job here; a detached CLI worker owns it when
+        // available, otherwise the router uses a post-response FPM fallback.
         $backfill = (int)($settings['smackverse_backfill_count'] ?? 200);
-        $is_refollow = (bool)$pdo->query(
-            "SELECT 1 FROM snap_ap_followers WHERE actor_url = " . $pdo->quote($actor_id)
-            . " AND followed_at < DATE_SUB(NOW(), INTERVAL 1 MINUTE) LIMIT 1"
-        )->fetchColumn();
-        if ($backfill > 0 && !$is_refollow) {
+        if ($backfill > 0 && !$was_active) {
             $pdo->prepare(
                 "INSERT INTO snap_ap_backfill_jobs (actor_url, inbox_url) VALUES (?, ?)
                  ON DUPLICATE KEY UPDATE inbox_url = VALUES(inbox_url), created_at = NOW()"
             )->execute([$actor_id, $inbox]);
+        }
+        // A pending job may pre-date this request. Mark only this actor for the
+        // safe post-response fallback; replayed Follows find no job after it runs.
+        if ($backfill > 0) {
+            $bj = $pdo->prepare(
+                "SELECT 1 FROM snap_ap_backfill_jobs WHERE actor_url = ? LIMIT 1"
+            );
+            $bj->execute([$actor_id]);
+            if ($bj->fetchColumn()) {
+                $settings['_sv_follow_backfill_actor'] = $actor_id;
+                $settings['_sv_follow_backfill_inbox'] = $inbox;
+            }
         }
         sv_cache_actor($pdo, $actor_doc);
         sv_notify($pdo, 'follow', $actor_id, $handle, null, sv_actor_url($settings), null);
         // Start the Accept + first-follow catalogue now. The detached CLI owns
         // pacing; this inbox request still returns immediately.
         require_once __DIR__ . '/smackverse-kick.php';
-        sv_kick_delivery();
+        $settings['_sv_delivery_kicked'] = sv_kick_delivery() ? '1' : '0';
         return 202;
     }
 
@@ -4513,37 +4560,57 @@ function sv_backfill_addendum_create(PDO $pdo, array $settings, int $shown, int 
  * queued. Bounded per run so a burst of new follows can't build a giant tick; the
  * rest are picked up next cron. Grid-order dates are synced once up front, and the
  * Create set is built once and shared across this tick's jobs.
- * Returns [jobsProcessed, deliveriesQueued].
+ * When $actor_url is supplied, only that actor's pending job is built. The
+ * returned queue-id range lets a web fallback drain exactly those activities
+ * instead of unrelated global backlog.
+ * Returns [jobsProcessed, deliveriesQueued, firstQueueId, lastQueueId].
  */
-function sv_process_backfill_jobs(PDO $pdo, array $settings, int $max_jobs = 3): array {
+function sv_process_backfill_jobs(PDO $pdo, array $settings, int $max_jobs = 3,
+                                  ?string $actor_url = null): array {
     $cap = (int)($settings['smackverse_backfill_count'] ?? 200);
-    if ($cap < 1) return [0, 0];
+    if ($cap < 1) return [0, 0, null, null];
     try {
-        $jobs = $pdo->query(
-            "SELECT * FROM snap_ap_backfill_jobs ORDER BY id ASC LIMIT " . max(1, $max_jobs)
-        )->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) { return [0, 0]; }
-    if (!$jobs) return [0, 0];
+        if ($actor_url !== null) {
+            $jst = $pdo->prepare(
+                "SELECT * FROM snap_ap_backfill_jobs
+                 WHERE actor_url = ? ORDER BY id ASC LIMIT " . max(1, $max_jobs)
+            );
+            $jst->execute([$actor_url]);
+            $jobs = $jst->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            $jobs = $pdo->query(
+                "SELECT * FROM snap_ap_backfill_jobs ORDER BY id ASC LIMIT " . max(1, $max_jobs)
+            )->fetchAll(PDO::FETCH_ASSOC);
+        }
+    } catch (Exception $e) { return [0, 0, null, null]; }
+    if (!$jobs) return [0, 0, null, null];
 
     sv_sync_fedi_dates($pdo, $settings);              // grid-order dates before building
     $creates = sv_recent_creates($pdo, $settings, $cap);
     $shown   = count($creates);
     $total   = sv_federatable_total($pdo, $settings);
 
-    $jobsDone = 0; $queued = 0;
+    $jobsDone = 0; $queued = 0; $firstQueueId = null; $lastQueueId = null;
     foreach ($jobs as $job) {
         $inbox = (string)$job['inbox_url'];
         if ($inbox !== '') {
-            foreach ($creates as $create_json) { sv_queue_delivery($pdo, $inbox, $create_json); $queued++; }
+            foreach ($creates as $create_json) {
+                $qid = sv_queue_delivery($pdo, $inbox, $create_json);
+                if ($firstQueueId === null) $firstQueueId = $qid;
+                $lastQueueId = $qid;
+                $queued++;
+            }
             if ($total > 500) {
-                sv_queue_delivery($pdo, $inbox, sv_backfill_addendum_create($pdo, $settings, $shown, $total));
+                $qid = sv_queue_delivery($pdo, $inbox, sv_backfill_addendum_create($pdo, $settings, $shown, $total));
+                if ($firstQueueId === null) $firstQueueId = $qid;
+                $lastQueueId = $qid;
                 $queued++;
             }
         }
         $pdo->prepare("DELETE FROM snap_ap_backfill_jobs WHERE id = ?")->execute([$job['id']]);
         $jobsDone++;
     }
-    return [$jobsDone, $queued];
+    return [$jobsDone, $queued, $firstQueueId, $lastQueueId];
 }
 
 /** Approved LOCAL (non-fediverse) comment ids attached to a content unit, in
@@ -4588,8 +4655,9 @@ function sv_reseed_all(PDO $pdo, array $settings, ?int $limit = null): array {
     if (!sv_enabled($settings)) return [0, 0, 0];
     if ($limit === null) $limit = (int)($settings['smackverse_backfill_count'] ?? 200);
 
-    // Encode grid order into published dates FIRST — that's what the remote sorts
-    // by. Without this the delivery order is irrelevant and rows swap by date.
+    // Keep published metadata aligned with grid order for servers that honour it.
+    // Pixelfed profile position is still ingestion-id based, so the reversed,
+    // paced delivery order below remains authoritative there.
     sv_sync_fedi_dates($pdo, $settings);
 
     $units   = sv_ordered_units($pdo, $settings, $limit);
