@@ -57,10 +57,12 @@ if (!empty($requested)) {
         foreach ($requested as $handle) {
             if (isset($inventory['scripts'][$handle])) {
                 $script = $inventory['scripts'][$handle];
-                // Skin-owned scripts bust on the skin version and load deferred;
-                // core engines stay on the core version.
+                // Every engine shipped by this skin must bust on the skin
+                // version. Skin packages may replace shared engine files while
+                // the CMS version stays put; using only SNAPSMACK_VERSION_SHORT
+                // here left browsers running the previous engine indefinitely.
                 $_is_skin = strpos($script['path'], 'skins/') === 0;
-                $_ver = $_is_skin ? $skin_asset_v : SNAPSMACK_VERSION_SHORT;
+                $_ver = $skin_asset_v;
                 echo '<script src="' . BASE_URL . $script['path'] . '?v=' . $_ver . '"' . ($_is_skin ? ' defer' : '') . '></script>' . "\n";
             }
         }
