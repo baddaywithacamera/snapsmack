@@ -1,12 +1,13 @@
 <?php
 /**
  * SNAPSMACK - Meta tags + stylesheet loader for the STANLEY skin
- * v1.0.0
+ * v1.0.3
  *
  * Includes core meta (SEO, OG, canonical, and the auto-generated skin-option CSS
  * block via custom_css_public — e.g. :root{--stanley-accent} and .post-inner
- * width), then loads STANLEY's stylesheet. Fonts are web-safe (Trebuchet MS /
- * Georgia), matching the original Kubrick, so no font files are shipped.
+ * width), then loads STANLEY's stylesheet. Fonts are web-safe (Lucida Grande /
+ * Verdana and Trebuchet MS), matching the original Kubrick, so no font files
+ * are shipped.
  *
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====

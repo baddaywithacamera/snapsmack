@@ -17,6 +17,7 @@
 require_once 'core/auth-smack.php';
 require_once 'core/db.php';
 require_once 'core/totp.php';
+require_once 'core/break-glass.php';
 
 $page_title   = '2FA Setup';
 $current_page = 'smack-2fa.php';
@@ -34,6 +35,7 @@ $pending_secret = $_SESSION['totp_pending_secret'] ?? null;  // secret generated
 $message        = '';
 $message_type   = '';
 $new_codes      = null; // plain recovery codes to show once
+$new_break_glass_card = null;
 
 // ── POST handler ───────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -62,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             )->execute([$pending_secret, $json, $_SESSION['user_id']]);
 
             unset($_SESSION['totp_pending_secret']);
+            unset($_SESSION['totp_enrol_required']);
             $pending_secret = null;
             $is_enabled     = true;
 
@@ -71,6 +74,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $message      = '2FA is now active on your account. Save your recovery codes — they are shown once only.';
             $message_type = 'success';
+
+            // Enrolment changes the account's recovery posture. Rotate the
+            // total-lockout card now and offer it beside the one-time codes.
+            try {
+                $new_break_glass_card = break_glass_generate($pdo, (int)$_SESSION['user_id']);
+            } catch (Throwable $e) {
+                error_log('SnapSmack Break-Glass rotation after 2FA enrolment failed: ' . $e->getMessage());
+                $message .= ' The Break-Glass Card could not be generated; create it from Disaster Recovery before signing out.';
+                $message_type = 'error';
+            }
         } else {
             $message      = 'Code did not match. Check your authenticator app and try again.';
             $message_type = 'error';
@@ -199,7 +212,7 @@ require_once 'core/sidebar.php';
             <div class="alert alert-error">
                 <strong>Two-factor authentication is now required.</strong>
                 Set it up below to continue using the admin. (Lost your authenticator and recovery codes?
-                Ask the site owner to place the <code>core/release-2fa-override</code> emergency file.)
+                Use the signed Break-Glass Card from <code>/break-glass.php</code>.)
             </div>
         <?php elseif (!$is_enabled && $twofa_days_left !== null): ?>
             <div class="alert alert-warning">
@@ -230,6 +243,17 @@ require_once 'core/sidebar.php';
             </div>
             <button type="button" id="copy-recovery-codes-btn" class="btn-smack">Copy All Codes</button>
             <span id="copy-confirm" class="copy-confirm-msg">Copied.</span>
+            <?php if ($new_break_glass_card): ?>
+            <p class="setting-desc" style="margin-top:18px;">
+                Your previous Break-Glass Card has been revoked. Download this replacement now
+                and keep it offline, separately from these codes.
+            </p>
+            <a class="btn-smack"
+               download="<?php echo htmlspecialchars($new_break_glass_card['filename']); ?>"
+               href="data:application/octet-stream;base64,<?php echo base64_encode($new_break_glass_card['contents']); ?>">
+                DOWNLOAD BREAK-GLASS CARD
+            </a>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
 

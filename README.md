@@ -9,7 +9,7 @@
 
 **Home:** [snapsmack.ca](https://snapsmack.ca) · **Live in the wild:** [foreverphotograph.ing](https://foreverphotograph.ing)
 
-**Built by [Sean McCormick](https://github.com/baddaywithacamera) and [Claude](https://www.anthropic.com/claude) — a photographer and an AI, in genuine partnership.** This isn't autocomplete bolted onto a side project; it's real co-authorship, and a large share of the engine is Claude's own work. The [SMACK PUBLIC LICENSE](#license--the-smack-public-license-spl-20) exists in part to keep that credit permanent, not decorative.
+**Built by [Sean McCormick](https://github.com/baddaywithacamera), [Claude](https://www.anthropic.com/claude), [Google Gemini](https://gemini.google.com/), and [OpenAI Codex](https://openai.com/codex/) — a photographer and AI co-authors, in genuine partnership.** This isn't autocomplete bolted onto a side project; it's real co-authorship. The [SMACK PUBLIC LICENSE](#license--the-smack-public-license-spl-20) exists in part to keep that credit permanent, not decorative.
 
 ---
 
@@ -71,5 +71,5 @@ Full terms: [`licenses/SNAPSMACK-LICENSE.txt`](licenses/SNAPSMACK-LICENSE.txt) a
 
 ## Credits
 
-Conceived, directed, and owned by **Sean McCormick**, built in genuine collaboration with AI co-authors — **Claude** (Anthropic) and **Google Gemini**. That partnership isn't incidental to SNAPSMACK. It's the point.
+Conceived, directed, and owned by **Sean McCormick**, built in genuine collaboration with AI co-authors — **Claude** (Anthropic), **Google Gemini**, and **OpenAI Codex**. That partnership isn't incidental to SNAPSMACK. It's the point.
 <!-- ===== SNAPSMACK EOF ===== -->

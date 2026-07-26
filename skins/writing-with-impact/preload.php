@@ -8,13 +8,14 @@
  * logic never runs.
  *
  * Routes:
- *   ?view=archive  -> grid of individual published photographs -> lightbox
+ *   ?view=archive  -> featured-image thumbnails linking to longform posts
  *   ?post=<slug>   -> single longform post by slug
  *   ?id=<int>      -> single longform post by ID
  *   (bare request) -> paginated feed of longform posts (single column)
  *
- * skin-header.php opens #wwi-page > #wwi-content; this file renders
- * <main class="content"> inside it; skin-footer.php closes the frame.
+ * skin-header.php opens #wwi-page > #wwi-wrapper > #wwi-content; this file
+ * renders <main class="content"> inside it; skin-footer.php closes the frame
+ * and renders the STANLEY-style sidebar.
  *
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====
@@ -25,44 +26,56 @@
 if (($settings['active_skin'] ?? '') !== 'writing-with-impact') return;
 
 // ============================================================
-//  ARCHIVE VIEW  (grid of individual photographs -> lightbox)
+//  ARCHIVE VIEW  (featured-image thumbnails -> longform posts)
 // ============================================================
 if (($_GET['view'] ?? '') === 'archive') {
 
-    if (($settings['archive_layout'] ?? 'square') === 'none') {
-        header('Location: ' . BASE_URL, true, 302);
-        exit();
-    }
-
     try {
         $_wwi_stmt = $pdo->query(
-            "SELECT id, img_title, img_file, img_thumb_square, img_thumb_aspect
-             FROM snap_images WHERE img_status = 'published'
-             ORDER BY sort_order ASC, id DESC"
+            "SELECT p.id, p.title, p.slug, p.created_at,
+                    i.img_file, i.img_thumb_square, i.img_thumb_aspect,
+                    i.img_width, i.img_height
+             FROM snap_posts p
+             INNER JOIN snap_images i ON i.id = p.featured_image_id
+             WHERE p.post_type = 'longform'
+               AND p.status = 'published'
+               AND i.img_status = 'published'
+             ORDER BY p.id DESC"
         );
-        $_wwi_images = $_wwi_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $_wwi_archive_posts = $_wwi_stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        $_wwi_images = [];
+        $_wwi_archive_posts = [];
     }
 
+    $_wwi_archive_layout = ($settings['archive_layout'] ?? 'cropped') === 'square'
+        ? 'square'
+        : 'cropped';
     $_wwi_tiles = [];
-    foreach ($_wwi_images as $_img) {
-        $full_rel = ltrim($_img['img_file'] ?? '', '/');
-        if ($full_rel === '') continue;
-        $thumb_rel = '';
-        if (!empty($_img['img_thumb_square'])) {
-            $thumb_rel = ltrim($_img['img_thumb_square'], '/');
-        } elseif (!empty($_img['img_thumb_aspect'])) {
-            $thumb_rel = ltrim($_img['img_thumb_aspect'], '/');
+    foreach ($_wwi_archive_posts as $_post) {
+        if ($_wwi_archive_layout === 'square' && !empty($_post['img_thumb_square'])) {
+            $_wwi_thumb_rel = ltrim($_post['img_thumb_square'], '/');
+        } elseif (!empty($_post['img_thumb_aspect'])) {
+            $_wwi_thumb_rel = ltrim($_post['img_thumb_aspect'], '/');
+        } elseif (!empty($_post['img_thumb_square'])) {
+            $_wwi_thumb_rel = ltrim($_post['img_thumb_square'], '/');
         } else {
-            $dir  = trim(str_replace(basename($full_rel), '', $full_rel), '/');
-            $base = basename($full_rel);
-            $thumb_rel = ($dir !== '' ? $dir . '/' : '') . 'thumbs/t_' . $base;
+            $_wwi_thumb_rel = ltrim($_post['img_file'] ?? '', '/');
+        }
+
+        if ($_wwi_thumb_rel === '') continue;
+        $_wwi_ratio = 1.0;
+        if ($_wwi_archive_layout === 'cropped') {
+            $_wwi_w = (int)($_post['img_width'] ?? 0);
+            $_wwi_h = (int)($_post['img_height'] ?? 0);
+            if ($_wwi_w > 0 && $_wwi_h > 0) {
+                $_wwi_ratio = max(2 / 3, min(3 / 2, $_wwi_w / $_wwi_h));
+            }
         }
         $_wwi_tiles[] = [
-            'full'  => BASE_URL . $full_rel,
-            'thumb' => BASE_URL . $thumb_rel,
-            'title' => (string)($_img['img_title'] ?? ''),
+            'url'   => BASE_URL . '?post=' . rawurlencode((string)$_post['slug']),
+            'thumb' => BASE_URL . $_wwi_thumb_rel,
+            'title' => (string)($_post['title'] ?? ''),
+            'ratio' => $_wwi_ratio,
         ];
     }
 
@@ -72,37 +85,27 @@ if (($_GET['view'] ?? '') === 'archive') {
 <head>
 <?php include __DIR__ . '/skin-meta.php'; ?>
 </head>
-<body class="wwi archive wwi-archive">
+<body class="wwi archive wwi-archive archive-layout-<?php echo $_wwi_archive_layout; ?>">
 
 <?php include __DIR__ . '/skin-header.php'; ?>
 
 <main class="content" role="main">
-    <h2 class="wwi-section-heading">ARCHIVE</h2>
     <?php if (empty($_wwi_tiles)): ?>
     <p class="wwi-empty">NO PHOTOGRAPHS YET.</p>
     <?php else: ?>
-    <div class="alfred-archive-grid wwi-archive-grid">
+    <div class="wwi-archive-grid">
     <?php foreach ($_wwi_tiles as $_t): ?>
-        <a href="<?php echo htmlspecialchars($_t['full'], ENT_QUOTES); ?>"
-           class="alfred-archive-tile"
-           data-full="<?php echo htmlspecialchars($_t['full'], ENT_QUOTES); ?>"
-           data-title="<?php echo htmlspecialchars($_t['title'], ENT_QUOTES); ?>"
+        <a href="<?php echo htmlspecialchars($_t['url'], ENT_QUOTES); ?>"
+           class="wwi-archive-item wwi-image-frame"
+           style="aspect-ratio:<?php echo number_format((float)$_t['ratio'], 4, '.', ''); ?>;"
+           aria-label="<?php echo htmlspecialchars($_t['title'], ENT_QUOTES); ?>"
            title="<?php echo htmlspecialchars($_t['title'], ENT_QUOTES); ?>">
-            <img src="<?php echo htmlspecialchars($_t['thumb'], ENT_QUOTES); ?>" alt="<?php echo htmlspecialchars($_t['title'], ENT_QUOTES); ?>" loading="lazy">
+            <img src="<?php echo htmlspecialchars($_t['thumb'], ENT_QUOTES); ?>" alt="" loading="lazy">
         </a>
     <?php endforeach; ?>
     </div>
     <?php endif; ?>
 </main>
-
-<div id="alfred-archive-lightbox" class="alfred-lightbox" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="Photograph viewer">
-    <button type="button" class="alfred-lb-close" aria-label="Close">&#10005;</button>
-    <button type="button" class="alfred-lb-prev" aria-label="Previous photograph">&#8249;</button>
-    <img class="alfred-lb-img" src="" alt="">
-    <button type="button" class="alfred-lb-next" aria-label="Next photograph">&#8250;</button>
-    <p class="alfred-lb-caption"></p>
-</div>
-<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-alfred-archive.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
 
@@ -196,7 +199,7 @@ if ($_wwi_post_slug || $_wwi_post_id) {
             $_cpy = isset($_wwi_post['cover_pos_y']) ? (int)$_wwi_post['cover_pos_y'] : 50;
             $_cz  = isset($_wwi_post['cover_zoom'])  ? (int)$_wwi_post['cover_zoom']  : 100;
         ?>
-        <figure class="featured-media" style="aspect-ratio:4/3;overflow:hidden;">
+        <figure class="featured-media wwi-image-frame" style="aspect-ratio:4/3;overflow:hidden;">
             <img src="<?php echo BASE_URL . ltrim($_wwi_post['featured_image_path'], '/'); ?>" alt="<?php echo htmlspecialchars($_wwi_post['title']); ?>"
                  style="width:100%;height:100%;object-fit:cover;object-position:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform-origin:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform:scale(<?php echo number_format($_cz / 100, 3); ?>);display:block;">
         </figure>
@@ -297,7 +300,7 @@ $_wwi_excerpt = function (string $html): string {
             <p class="summary-date"><?php echo strtoupper(date('D M j Y', strtotime($_p['created_at']))); ?></p>
             <h2 class="summary-title"><a href="<?php echo BASE_URL . '?post=' . rawurlencode($_p['slug']); ?>"><?php echo htmlspecialchars($_p['title']); ?></a></h2>
             <?php if (!empty($_p['featured_image_path'])): ?>
-            <a class="summary-thumb" href="<?php echo BASE_URL . '?post=' . rawurlencode($_p['slug']); ?>">
+            <a class="summary-thumb wwi-image-frame" href="<?php echo BASE_URL . '?post=' . rawurlencode($_p['slug']); ?>">
                 <img src="<?php echo htmlspecialchars(BASE_URL . ltrim($_p['featured_image_path'], '/'), ENT_QUOTES); ?>" alt="<?php echo htmlspecialchars($_p['title']); ?>" loading="lazy">
             </a>
             <?php endif; ?>

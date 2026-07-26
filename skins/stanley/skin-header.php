@@ -1,12 +1,11 @@
 <?php
 /**
  * SNAPSMACK - Skin header for the STANLEY skin
- * v1.0.0
+ * v1.0.3
  *
- * Emits the Kubrick blue banner (custom logo or blog title + tagline), the nav
- * bar (nav_menu_json structured menu, or a sensible default), and OPENS the
+ * Emits the Kubrick blue banner (custom logo or blog title + tagline) and OPENS the
  * page frame: #stanley-page > #stanley-wrapper > #stanley-content. skin-footer.php
- * closes them and renders the sidebar. Honours the shared Global Vibe logo
+ * closes them and renders navigation in the sidebar. Honours the shared Global Vibe logo
  * settings (header_logo / header_logo_url / site_logo).
  *
  * SNAPSMACK_EOF_HEADER
@@ -25,7 +24,7 @@ if ($stanley_header_image !== '') {
     $img_url = preg_match('#^https?://#', $stanley_header_image)
         ? $stanley_header_image
         : BASE_URL . ltrim($stanley_header_image, '/');
-    $banner_style = ' style="background-image:linear-gradient(rgba(0,0,0,.12),rgba(0,0,0,.42)),url(\'' . htmlspecialchars($img_url, ENT_QUOTES) . '\');background-size:cover;background-position:center;"';
+    $banner_style = ' style="background-image:linear-gradient(rgba(0,0,0,.06),rgba(0,0,0,.20)),url(\'' . htmlspecialchars($img_url, ENT_QUOTES) . '\');background-size:cover;background-position:center;"';
 }
 
 // --- pages for default nav ---
@@ -96,7 +95,7 @@ if (!function_exists('_stanley_default_nav')) {
         $base  = defined('BASE_URL') ? BASE_URL : '/';
         $items = [['label' => 'HOME', 'url' => $base]];
         if (($settings['homepage_mode'] ?? 'latest_post') === 'static_page') $items[] = ['label' => 'BLOG', 'url' => $base . 'blog.php'];
-        if (($settings['archive_layout'] ?? 'square') !== 'none')            $items[] = ['label' => 'ARCHIVE', 'url' => $base . '?view=archive'];
+        $items[] = ['label' => 'ARCHIVE', 'url' => $base . '?view=archive'];
         if (($settings['blogroll_enabled'] ?? '1') == '1')                    $items[] = ['label' => 'BLOGROLL', 'url' => $base . 'blogroll.php'];
         foreach ($pages as $p) $items[] = ['label' => strtoupper($p['title']), 'url' => $base . 'page.php?slug=' . rawurlencode($p['slug'])];
         return $items;
@@ -118,24 +117,6 @@ $stanley_show_sidebar = ($settings['show_sidebar'] ?? '1') === '1';
         <?php endif; ?>
         <?php if ($stanley_tagline !== '' && ($settings['show_tagline'] ?? '1') === '1'): ?><p class="stanley-blog-desc"><?php echo htmlspecialchars($stanley_tagline); ?></p><?php endif; ?>
     </div>
-
-    <nav id="stanley-nav" class="navigation" role="navigation">
-        <ul class="main-menu">
-        <?php if ($_use_json) { _stanley_nav_items($_nav_items, $pdo); } else { foreach (_stanley_default_nav($settings, $stanley_pages) as $it): ?>
-            <li><a href="<?php echo htmlspecialchars($it['url']); ?>"><?php echo htmlspecialchars($it['label']); ?></a></li>
-        <?php endforeach; } ?>
-        </ul>
-        <button class="nav-toggle" aria-label="Toggle navigation">
-            <div class="bars"><span class="bar"></span><span class="bar"></span><span class="bar"></span></div>
-        </button>
-        <div class="mobile-navigation">
-            <ul class="mobile-menu">
-            <?php if ($_use_json) { _stanley_nav_items($_nav_items, $pdo); } else { foreach (_stanley_default_nav($settings, $stanley_pages) as $it): ?>
-                <li><a href="<?php echo htmlspecialchars($it['url']); ?>"><?php echo htmlspecialchars($it['label']); ?></a></li>
-            <?php endforeach; } ?>
-            </ul>
-        </div>
-    </nav>
 
     <div id="stanley-wrapper">
         <div id="stanley-content">

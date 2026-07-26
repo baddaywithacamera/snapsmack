@@ -1,10 +1,11 @@
 <?php
 /**
  * SNAPSMACK - Skin footer for the STANLEY skin
- * v1.0.0
+ * v1.0.3
  *
- * Closes the content column, renders the Kubrick sidebar (About / Recent Posts /
- * Pages), closes the page frame, then loads manifest-required scripts, the shared
+ * Closes the content column, renders the Kubrick sidebar (navigation / recent
+ * posts / about), closes the page with a visible Heilemann credit, then loads
+ * manifest-required scripts, the shared
  * slot-bar footer (core/footer.php), and the shared public engines including the
  * REQUIRED Thomas the Bear easter egg (core/footer-scripts.php).
  *
@@ -20,17 +21,22 @@ $stanley_show_sidebar = ($settings['show_sidebar'] ?? '1') === '1';
     try {
         $stanley_recent = $pdo->query("SELECT title, slug FROM snap_posts WHERE post_type = 'longform' AND status = 'published' ORDER BY id DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) { $stanley_recent = []; }
-    try {
-        $stanley_side_pages = $pdo->query("SELECT title, slug FROM snap_pages WHERE is_active = 1 ORDER BY menu_order ASC")->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) { $stanley_side_pages = []; }
     $stanley_about = trim($settings['site_tagline'] ?? '');
 ?>
-        <aside id="stanley-sidebar">
+        <aside id="stanley-sidebar" aria-label="Sidebar">
+            <nav class="widget stanley-pages" aria-label="Site navigation">
+                <h2>Pages</h2>
+                <ul>
+                <?php if ($_use_json) { _stanley_nav_items($_nav_items, $pdo); } else { foreach (_stanley_default_nav($settings, $stanley_pages) as $it): ?>
+                    <li><a href="<?php echo htmlspecialchars($it['url']); ?>"><?php echo htmlspecialchars($it['label']); ?></a></li>
+                <?php endforeach; } ?>
+                </ul>
+            </nav>
             <?php if ($stanley_about !== ''): ?>
-            <section class="widget"><h3>About</h3><p><?php echo htmlspecialchars($stanley_about); ?></p></section>
+            <section class="widget"><h2>About</h2><p><?php echo htmlspecialchars($stanley_about); ?></p></section>
             <?php endif; ?>
             <?php if (!empty($stanley_recent)): ?>
-            <section class="widget"><h3>Recent Posts</h3>
+            <section class="widget"><h2>Archives</h2>
                 <ul>
                 <?php foreach ($stanley_recent as $rp): ?>
                     <li><a href="<?php echo BASE_URL . '?post=' . rawurlencode($rp['slug']); ?>"><?php echo htmlspecialchars($rp['title']); ?></a></li>
@@ -38,18 +44,17 @@ $stanley_show_sidebar = ($settings['show_sidebar'] ?? '1') === '1';
                 </ul>
             </section>
             <?php endif; ?>
-            <?php if (!empty($stanley_side_pages)): ?>
-            <section class="widget"><h3>Pages</h3>
-                <ul>
-                <?php foreach ($stanley_side_pages as $sp): ?>
-                    <li><a href="<?php echo BASE_URL . 'page.php?slug=' . rawurlencode($sp['slug']); ?>"><?php echo htmlspecialchars($sp['title']); ?></a></li>
-                <?php endforeach; ?>
-                </ul>
-            </section>
-            <?php endif; ?>
         </aside><!-- /#stanley-sidebar -->
 <?php endif; ?>
     </div><!-- /#stanley-wrapper -->
+    <footer id="stanley-footer">
+        <p>
+            <?php echo htmlspecialchars($site_display_name); ?> is powered by SnapSmack.<br>
+            STANLEY is a love letter to
+            <a href="https://github.com/Heilemann/kubrick-for-wordpress" rel="external">Kubrick</a>,
+            designed by Michael Heilemann.
+        </p>
+    </footer>
 </div><!-- /#stanley-page -->
 
 <?php

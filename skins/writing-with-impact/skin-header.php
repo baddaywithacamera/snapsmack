@@ -1,10 +1,10 @@
 <?php
 /**
  * SNAPSMACK - Skin header for the WRITING WITH IMPACT skin
- * v1.0.0
+ * v1.1.0
  *
- * Emits the dot-matrix nameplate (custom logo or site title + tagline), the nav
- * bar, and OPENS the continuous-feed page frame: #wwi-page > #wwi-content.
+ * Emits the dot-matrix nameplate (custom logo or site title + tagline) and
+ * OPENS the continuous-feed STANLEY frame: #wwi-page > #wwi-wrapper > #wwi-content.
  * skin-footer.php closes them. Paper stock (plain / green-bar) is applied as a
  * class on #wwi-page. Honours the shared Global Vibe logo settings.
  *
@@ -97,8 +97,9 @@ if (!function_exists('_wwi_default_nav')) {
 
 $_nav_items = json_decode($settings['nav_menu_json'] ?? '[]', true);
 $_use_json  = is_array($_nav_items) && count($_nav_items) > 0;
+$wwi_show_sidebar = ($settings['show_sidebar'] ?? '1') === '1';
 ?>
-<div id="wwi-page" class="<?php echo $wwi_paper; ?>">
+<div id="wwi-page" class="<?php echo $wwi_paper . ' ' . ($wwi_show_sidebar ? 'has-sidebar' : 'no-sidebar'); ?>">
 
     <header id="wwi-header">
         <?php if ($wwi_header_image !== ''):
@@ -114,23 +115,6 @@ $_use_json  = is_array($_nav_items) && count($_nav_items) > 0;
         <?php if ($wwi_tagline !== '' && ($settings['show_tagline'] ?? '1') === '1'): ?><p class="wwi-tagline"><?php echo htmlspecialchars($wwi_tagline); ?></p><?php endif; ?>
     </header>
 
-    <nav id="wwi-nav" class="navigation" role="navigation">
-        <ul class="main-menu">
-        <?php if ($_use_json) { _wwi_nav_items($_nav_items, $pdo); } else { foreach (_wwi_default_nav($settings, $wwi_pages) as $it): ?>
-            <li><a href="<?php echo htmlspecialchars($it['url']); ?>"><?php echo htmlspecialchars($it['label']); ?></a></li>
-        <?php endforeach; } ?>
-        </ul>
-        <button class="nav-toggle" aria-label="Toggle navigation">
-            <div class="bars"><span class="bar"></span><span class="bar"></span><span class="bar"></span></div>
-        </button>
-        <div class="mobile-navigation">
-            <ul class="mobile-menu">
-            <?php if ($_use_json) { _wwi_nav_items($_nav_items, $pdo); } else { foreach (_wwi_default_nav($settings, $wwi_pages) as $it): ?>
-                <li><a href="<?php echo htmlspecialchars($it['url']); ?>"><?php echo htmlspecialchars($it['label']); ?></a></li>
-            <?php endforeach; } ?>
-            </ul>
-        </div>
-    </nav>
-
-    <div id="wwi-content">
+    <div id="wwi-wrapper">
+        <div id="wwi-content">
 <?php // ===== SNAPSMACK EOF =====

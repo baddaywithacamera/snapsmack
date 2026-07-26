@@ -220,6 +220,7 @@ const UPDATER_DEPRECATED_FILES = [
     'core/navigation_bar.php' => '0.7.19',  // hygiene sweep → core/navigation-bar.php
     'core/layout_logic.php'   => '0.7.19',  // hygiene sweep → core/layout-logic.php
     'core/flkrdckr-api.php'   => '0.7.184', // renamed → core/flkrfckr-api.php (FLKR DCKR → FLKR FCKR)
+    'core/release-2fa-override' => '0.7.448', // arbitrary-content 2FA bypass retired by signed Break-Glass Card
 ];
 
 /**

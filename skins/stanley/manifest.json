@@ -1,10 +1,10 @@
 {
     "schema_version": 1,
     "name": "STANLEY",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
-    "description": "A SMACKTALK longform skin: a faithful re-imagining of the classic WordPress Kubrick default theme — blue sky banner, rounded page frame, right sidebar, and a clean serif reading column. Rebuilt on SnapSmack shortcodes, the menu system, and the shared footer. Named for Stanley Kubrick.",
+    "description": "A faithful visual reconstruction of Kubrick, Michael Heilemann's landmark WordPress theme. Its fixed white page, blue header, compact reading column, and right sidebar are rebuilt for SMACKTALK with modern responsive and accessibility support. Named STANLEY with gratitude.",
     "status": "stable",
     "modes": [
         "smacktalk"
@@ -17,6 +17,10 @@
     "cover_aspect": "4/3",
     "features": {
         "supports_wall": false,
+        "archive_layouts": [
+            "square",
+            "cropped"
+        ],
         "has_landing": false,
         "post_modes": [
             "longform"
@@ -28,7 +32,6 @@
         ]
     },
     "require_scripts": [
-        "smack-alfred-nav",
         "smack-footer",
         "smack-community"
     ],
@@ -42,8 +45,8 @@
             "label": "Header Banner Image",
             "default": "",
             "accept": "image/jpeg,image/png,image/webp",
-            "help": "Optional photo for the blue banner (the classic Kubrick sky-and-hills spot). Recommended 960x220px. Leave blank for the default blue gradient.",
-            "hint": "Recommended 960x220px. Leave blank for the default blue gradient."
+            "help": "Optional photo for Kubrick's blue header position. Recommended 1260x300px. Leave blank for the faithful blue gradient.",
+            "hint": "Recommended 1260x300px. Leave blank for the classic blue gradient."
         },
         "header_logo": {
             "section": "HEADER",
@@ -68,11 +71,53 @@
         "accent_color": {
             "section": "COLOURS",
             "type": "color",
-            "label": "Accent / Banner Colour",
-            "default": "#2e6da4",
+            "label": "Unvisited Link Colour",
+            "default": "#0066cc",
             "selector": ":root",
             "property": "--stanley-accent",
-            "help": "Banner gradient base, links, and header bars."
+            "help": "The normal colour for links that have not been visited."
+        },
+        "visited_link_color": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Visited Link Colour",
+            "default": "#b85b5a",
+            "selector": ":root",
+            "property": "--stanley-link-visited"
+        },
+        "hover_link_color": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Hover / Focus Link Colour",
+            "default": "#114477",
+            "selector": ":root",
+            "property": "--stanley-link-hover"
+        },
+        "active_link_color": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Active Link Colour",
+            "default": "#cc3300",
+            "selector": ":root",
+            "property": "--stanley-link-active",
+            "help": "The colour while a link is being clicked or tapped."
+        },
+        "banner_top_color": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Header Banner — Top",
+            "default": "#69aee6",
+            "selector": ":root",
+            "property": "--stanley-banner-top"
+        },
+        "banner_bottom_color": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Header Banner — Bottom",
+            "default": "#0066cc",
+            "selector": ":root",
+            "property": "--stanley-banner-bottom",
+            "help": "Together with the top colour, replaces Kubrick's classic blue gradient."
         },
         "show_sidebar": {
             "section": "LAYOUT",
@@ -88,9 +133,9 @@
         "post_content_width": {
             "section": "LAYOUT",
             "type": "range",
-            "label": "Content Width (px)",
-            "default": "640",
-            "min": "480",
+            "label": "Reading Column Width (px)",
+            "default": "760",
+            "min": "600",
             "max": "900",
             "selector": ".post-inner",
             "property": "width",

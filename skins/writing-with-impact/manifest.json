@@ -1,10 +1,10 @@
 {
     "schema_version": 1,
     "name": "WRITING WITH IMPACT",
-    "version": "1.0.2",
+    "version": "1.1.0",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
-    "description": "A SMACKTALK longform skin in the dot-matrix idiom of IMPACT PRINTER and SUDDEN IMPACT: continuous tractor-feed paper with perforated edges, Tiny5 / DotMatrix headlines, and ribbon-ink body type — but built for reading, a single clean column for essays and long-form writing. Two paper stocks: plain white and green-bar ledger.",
+    "description": "STANLEY's classic longform geometry fed through the dot-matrix print head from IMPACT PRINTER and SUDDEN IMPACT. Continuous tractor-feed paper, perforated edges, selectable Tiny5 / DotMatrix type, ASCII image frames, a reading column with sidebar, and post-linked archive thumbnails. Two paper stocks: plain white and green-bar ledger.",
     "status": "stable",
     "modes": [
         "smacktalk"
@@ -14,9 +14,44 @@
         "default": "WRITING WITH IMPACT (Plain Paper)"
     },
     "default_variant": "default",
+    "allowed_fonts": [
+        "Tiny5",
+        "Tiny5-Matrix",
+        "DotMatrix",
+        "DotMatrix-Bold",
+        "DotMatrix-Italic",
+        "DotMatrix-BoldItalic",
+        "DotMatrix-Condensed",
+        "DotMatrix-Condensed-Bold",
+        "DotMatrix-Condensed-Italic",
+        "DotMatrix-Condensed-BoldItalic",
+        "DotMatrix-Expanded",
+        "DotMatrix-Expanded-Bold",
+        "DotMatrix-Expanded-Italic",
+        "DotMatrix-Expanded-BoldItalic",
+        "DotMatrix-Quad",
+        "DotMatrix-Quad-Bold",
+        "DotMatrix-Quad-Italic",
+        "DotMatrix-Quad-BoldItalic",
+        "DotMatrix-Var",
+        "DotMatrix-Var-Condensed",
+        "DotMatrix-Var-Expanded",
+        "DotMatrix-VarDuo",
+        "DotMatrix-VarDuo-Condensed",
+        "DotMatrix-VarDuo-Expanded",
+        "DotMatrix-VarDuo-UltraCondensed",
+        "DotMatrix-Duo",
+        "DotMatrix-Duo-Condensed",
+        "DotMatrix-Duo-Expanded",
+        "DotMatrix-Duo-UltraCondensed"
+    ],
     "cover_aspect": "4/3",
     "features": {
         "supports_wall": false,
+        "archive_layouts": [
+            "square",
+            "cropped"
+        ],
         "has_landing": false,
         "post_modes": [
             "longform"
@@ -28,7 +63,6 @@
         ]
     },
     "require_scripts": [
-        "smack-alfred-nav",
         "smack-footer",
         "smack-community"
     ],
@@ -84,6 +118,147 @@
             "selector": ":root",
             "property": "--wwi-ink",
             "help": "The colour of the printed text, links, and rules."
+        },
+        "header_font_family": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Header / Display Font",
+            "default": "DotMatrix-Expanded-Bold",
+            "options": {
+                "Tiny5": "Tiny5",
+                "Tiny5-Matrix": "Tiny5 Matrix",
+                "DotMatrix": "DotMatrix",
+                "DotMatrix-Bold": "DotMatrix Bold",
+                "DotMatrix-Italic": "DotMatrix Italic",
+                "DotMatrix-BoldItalic": "DotMatrix Bold Italic",
+                "DotMatrix-Condensed": "DotMatrix Condensed",
+                "DotMatrix-Condensed-Bold": "DotMatrix Condensed Bold",
+                "DotMatrix-Condensed-Italic": "DotMatrix Condensed Italic",
+                "DotMatrix-Condensed-BoldItalic": "DotMatrix Condensed Bold Italic",
+                "DotMatrix-Expanded": "DotMatrix Expanded",
+                "DotMatrix-Expanded-Bold": "DotMatrix Expanded Bold",
+                "DotMatrix-Expanded-Italic": "DotMatrix Expanded Italic",
+                "DotMatrix-Expanded-BoldItalic": "DotMatrix Expanded Bold Italic",
+                "DotMatrix-Quad": "DotMatrix Quad",
+                "DotMatrix-Quad-Bold": "DotMatrix Quad Bold",
+                "DotMatrix-Quad-Italic": "DotMatrix Quad Italic",
+                "DotMatrix-Quad-BoldItalic": "DotMatrix Quad Bold Italic",
+                "DotMatrix-Var": "DotMatrix Var",
+                "DotMatrix-Var-Condensed": "DotMatrix Var Condensed",
+                "DotMatrix-Var-Expanded": "DotMatrix Var Expanded",
+                "DotMatrix-VarDuo": "DotMatrix VarDuo",
+                "DotMatrix-VarDuo-Condensed": "DotMatrix VarDuo Condensed",
+                "DotMatrix-VarDuo-Expanded": "DotMatrix VarDuo Expanded",
+                "DotMatrix-VarDuo-UltraCondensed": "DotMatrix VarDuo Ultra Condensed",
+                "DotMatrix-Duo": "DotMatrix Duo",
+                "DotMatrix-Duo-Condensed": "DotMatrix Duo Condensed",
+                "DotMatrix-Duo-Expanded": "DotMatrix Duo Expanded",
+                "DotMatrix-Duo-UltraCondensed": "DotMatrix Duo Ultra Condensed"
+            },
+            "selector": ".wwi-title, .post-title, .summary-title, #wwi-sidebar h2",
+            "property": "font-family",
+            "help": "Uses the complete DotMatrix/Tiny5 library shared with IMPACT PRINTER."
+        },
+        "body_font_family": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Body Font",
+            "default": "DotMatrix",
+            "options": {
+                "Tiny5": "Tiny5",
+                "Tiny5-Matrix": "Tiny5 Matrix",
+                "DotMatrix": "DotMatrix",
+                "DotMatrix-Bold": "DotMatrix Bold",
+                "DotMatrix-Italic": "DotMatrix Italic",
+                "DotMatrix-BoldItalic": "DotMatrix Bold Italic",
+                "DotMatrix-Condensed": "DotMatrix Condensed",
+                "DotMatrix-Condensed-Bold": "DotMatrix Condensed Bold",
+                "DotMatrix-Condensed-Italic": "DotMatrix Condensed Italic",
+                "DotMatrix-Condensed-BoldItalic": "DotMatrix Condensed Bold Italic",
+                "DotMatrix-Expanded": "DotMatrix Expanded",
+                "DotMatrix-Expanded-Bold": "DotMatrix Expanded Bold",
+                "DotMatrix-Expanded-Italic": "DotMatrix Expanded Italic",
+                "DotMatrix-Expanded-BoldItalic": "DotMatrix Expanded Bold Italic",
+                "DotMatrix-Quad": "DotMatrix Quad",
+                "DotMatrix-Quad-Bold": "DotMatrix Quad Bold",
+                "DotMatrix-Quad-Italic": "DotMatrix Quad Italic",
+                "DotMatrix-Quad-BoldItalic": "DotMatrix Quad Bold Italic",
+                "DotMatrix-Var": "DotMatrix Var",
+                "DotMatrix-Var-Condensed": "DotMatrix Var Condensed",
+                "DotMatrix-Var-Expanded": "DotMatrix Var Expanded",
+                "DotMatrix-VarDuo": "DotMatrix VarDuo",
+                "DotMatrix-VarDuo-Condensed": "DotMatrix VarDuo Condensed",
+                "DotMatrix-VarDuo-Expanded": "DotMatrix VarDuo Expanded",
+                "DotMatrix-VarDuo-UltraCondensed": "DotMatrix VarDuo Ultra Condensed",
+                "DotMatrix-Duo": "DotMatrix Duo",
+                "DotMatrix-Duo-Condensed": "DotMatrix Duo Condensed",
+                "DotMatrix-Duo-Expanded": "DotMatrix Duo Expanded",
+                "DotMatrix-Duo-UltraCondensed": "DotMatrix Duo Ultra Condensed"
+            },
+            "selector": "body.wwi",
+            "property": "font-family"
+        },
+        "image_frame_style": {
+            "section": "PRINT HEAD",
+            "type": "select",
+            "label": "Image Border Treatment",
+            "default": "box",
+            "selector": ".wwi-image-frame",
+            "property": "custom-framing",
+            "options": {
+                "box": {
+                    "label": "ASCII Box     +----|----+",
+                    "css": "{ border-style: solid; border-color: transparent; border-image: url('skins/writing-with-impact/textures/border-box.svg') 12 repeat; }"
+                },
+                "plus": {
+                    "label": "ASCII Plus    + + + + + +",
+                    "css": "{ border-style: solid; border-color: transparent; border-image: url('skins/writing-with-impact/textures/border-plus.svg') 12 repeat; }"
+                },
+                "equals": {
+                    "label": "ASCII Equals  = = = = = =",
+                    "css": "{ border-style: solid; border-color: transparent; border-image: url('skins/writing-with-impact/textures/border-equals.svg') 12 repeat; }"
+                },
+                "slash": {
+                    "label": "ASCII Slash   / / / / / /",
+                    "css": "{ border-style: solid; border-color: transparent; border-image: url('skins/writing-with-impact/textures/border-slash.svg') 12 repeat; }"
+                },
+                "none": {
+                    "label": "No Frame (Raw Print)",
+                    "css": "{ border: none !important; padding: 0 !important; }"
+                }
+            }
+        },
+        "image_frame_weight": {
+            "section": "PRINT HEAD",
+            "type": "range",
+            "label": "Image Border Weight (px)",
+            "default": "14",
+            "min": "4",
+            "max": "32",
+            "selector": ".wwi-image-frame",
+            "property": "border-width",
+            "unit": "px"
+        },
+        "image_frame_padding": {
+            "section": "PRINT HEAD",
+            "type": "range",
+            "label": "Image Border Padding (px)",
+            "default": "10",
+            "min": "0",
+            "max": "30",
+            "selector": ".wwi-image-frame",
+            "property": "padding",
+            "unit": "px"
+        },
+        "show_sidebar": {
+            "section": "LAYOUT",
+            "type": "select",
+            "label": "Show Sidebar",
+            "default": "1",
+            "options": {
+                "1": "Yes (STANLEY geometry)",
+                "0": "No (single column)"
+            }
         },
         "post_content_width": {
             "section": "LAYOUT",
