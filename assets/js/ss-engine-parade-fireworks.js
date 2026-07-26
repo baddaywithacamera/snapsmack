@@ -74,57 +74,65 @@
             cv.height = Math.max(1, Math.round(window.innerHeight*SC)); ctx.imageSmoothingEnabled = true; }
         window.addEventListener('resize', sizeCanvas); sizeCanvas();
 
-        var GRAV = 58;
+        var GRAV = 78;
         var rockets = [], parts = [], spawnAcc = 0;
         var MAX_PARTS = 2200;
 
         function launch(){
             var w = cv.width, h = cv.height;
-            rockets.push({ x:w*(0.03+0.94*Math.random()), y:h,
-                vx:(Math.random()-0.5)*14, vy:-(h*(0.5+0.42*Math.random())),
-                targetY:h*(0.05+0.6*Math.random()), palStart:Math.random() });
+            var speedScale = 0.72+launchSpeed*1.7;
+            rockets.push({
+                x:w*(0.06+0.88*Math.random()), y:h+8,
+                vx:(Math.random()-0.5)*22,
+                vy:-h*(0.62+0.24*Math.random())*speedScale,
+                targetY:h*(0.10+0.48*Math.random()),
+                palStart:Math.random()
+            });
         }
         function burst(r){
             var n = burstSize + Math.round((Math.random()-0.5)*burstSize*0.3);
-            var vmax = cv.height*spreadAmt*1.34;
+            var vmax = cv.height*(0.20+spreadAmt*3.2);
             var style = Math.floor(Math.random()*4); // peony, ring, chrysanthemum, willow
             var phase = Math.random()*Math.PI*2;
             for (var i = 0; i < n && parts.length < MAX_PARTS; i++){
                 var ang = style === 1
-                    ? phase + (i/n)*Math.PI*2 + (Math.random()-0.5)*0.035
+                    ? phase + (i/n)*Math.PI*2 + (Math.random()-0.5)*0.025
                     : Math.random()*Math.PI*2;
                 var depth = Math.random();
                 var sp = style === 1
-                    ? vmax*(0.88+0.12*Math.random())
+                    ? vmax*(0.92+0.08*Math.random())
                     : (style === 2
-                        ? vmax*(0.42+0.58*Math.pow(depth,0.24))
-                        : Math.cos(depth*Math.PI/2)*vmax);
-                if (style === 3) sp *= 0.72+0.22*Math.sin(ang)*Math.sin(ang);
+                        ? vmax*(0.55+0.45*Math.pow(depth,0.22))
+                        : vmax*(0.28+0.72*Math.sqrt(depth)));
+                if (style === 3) sp *= 0.58+0.16*Math.sin(ang)*Math.sin(ang);
                 var col = pastel(sampleArr(PAL, r.palStart + i/n), softAmt);
-                parts.push({ x:r.x, y:r.y, px:r.x, py:r.y, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp,
-                    col:col, size:(5.5+6*Math.random()), alpha:1,
-                    fade:(style === 3 ? 0.004 : 0.006)+0.009*Math.random(),
-                    flick:true, sparkle:Math.random()<0.22, age:0 });
+                var life = (style === 3 ? 2.8 : 1.75)+Math.random()*0.85;
+                parts.push({
+                    x:r.x, y:r.y,
+                    vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp,
+                    col:col, size:1.0+1.4*Math.random(), alpha:1,
+                    life:life, maxLife:life,
+                    drag:style === 3 ? 1.25 : 0.92,
+                    gravity:style === 3 ? 1.18 : 1,
+                    sparkle:Math.random()<0.18
+                });
             }
         }
-        function fadeFrame(amt){
-            ctx.globalCompositeOperation = 'destination-out';
-            ctx.fillStyle = 'rgba(0,0,0,'+amt.toFixed(3)+')';
-            ctx.fillRect(0, 0, cv.width, cv.height);
-            ctx.globalCompositeOperation = 'source-over';
-        }
         function drawParticle(p){
-            var a = Math.max(0,p.alpha), w = p.flick ? (0.8+0.25*Math.random()) : 1;
+            var a = Math.max(0,p.alpha);
+            var speed = Math.sqrt(p.vx*p.vx+p.vy*p.vy);
+            var tailSeconds = 0.025+Math.min(0.035,speed/9000);
+            var tx = p.x-p.vx*tailSeconds, ty = p.y-p.vy*tailSeconds;
             ctx.strokeStyle = hsla([p.col[0],Math.min(1,p.col[1]+0.08),Math.max(0.38,p.col[2]-0.09)], a*0.98);
-            ctx.lineWidth = Math.max(0.75, p.size*0.68*streamerW); ctx.lineCap='round'; ctx.lineJoin='round';
-            ctx.beginPath(); ctx.moveTo(p.px,p.py); ctx.lineTo(p.x,p.y); ctx.stroke();
-            var r = Math.max(0.6, p.size*0.62*streamerW*w);
+            ctx.lineWidth = Math.max(0.65,p.size*streamerW); ctx.lineCap='round'; ctx.lineJoin='round';
+            ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(p.x,p.y); ctx.stroke();
+            var r = Math.max(0.65,p.size*(0.7+streamerW*0.32));
             var g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
             g.addColorStop(0, 'rgba(255,255,255,'+(a*0.78).toFixed(3)+')');
             g.addColorStop(0.22, hsla([p.col[0],Math.min(1,p.col[1]+0.12),Math.min(0.93,p.col[2]+0.08)], a*0.72));
             g.addColorStop(1, hsla(p.col, 0));
             ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x,p.y,r,0,7); ctx.fill();
-            if (p.sparkle && p.age > 9 && Math.random() < 0.09) {
+            if (p.sparkle && p.life < p.maxLife*0.62 && Math.random() < 0.08) {
                 ctx.fillStyle = 'rgba(255,255,255,'+(a*0.88).toFixed(3)+')';
                 ctx.fillRect(p.x-0.7,p.y-0.7,1.4,1.4);
             }
@@ -133,14 +141,13 @@
         var lastT = performance.now();
         function step(now){
             var dt = (now-lastT)/1000; lastT = now; dt = Math.min(dt, 0.05);
-            var rdt = dt*launchSpeed*2.0;                         // rocket rise
-            var k = Math.max(0.0001, explodeSpeed*1.7);           // burst sim speed
+            var simDt = dt*(0.36+explodeSpeed*1.9);
             spawnAcc += dt*launchRate;
             while (spawnAcc >= 1){ spawnAcc -= 1; launch(); }
-            fadeFrame(Math.max(0.012, Math.min(0.13, 0.035*k)));  // fade scales with speed → constant streamer length
+            ctx.clearRect(0,0,cv.width,cv.height);
             for (var i = rockets.length-1; i >= 0; i--){
                 var r = rockets[i];
-                r.vy += GRAV*rdt; r.x += r.vx*rdt; r.y += r.vy*rdt;
+                r.vy += GRAV*dt; r.x += r.vx*dt; r.y += r.vy*dt;
                 var tail = Math.max(5, Math.min(20, -r.vy*0.028));
                 var rg = ctx.createLinearGradient(r.x,r.y,r.x-r.vx*0.06,r.y+tail);
                 rg.addColorStop(0,'rgba(255,255,255,0.92)');
@@ -152,15 +159,16 @@
                 ctx.beginPath(); ctx.arc(r.x, r.y, 1.35, 0, 7); ctx.fill();
                 if (r.vy >= 0 || r.y <= r.targetY){ burst(r); rockets.splice(i, 1); }
             }
-            var resK = Math.pow(0.90,k), shrinkK = Math.pow(0.94,k), gravK = cv.height*0.0011*k;
             for (var j = parts.length-1; j >= 0; j--){
                 var p = parts[j];
-                p.age++;
-                p.px = p.x; p.py = p.y;
-                p.vx *= resK; p.vy *= resK; p.vy += gravK;
-                p.x += p.vx*k; p.y += p.vy*k;
-                p.size *= shrinkK; p.alpha -= p.fade*k;
-                if (p.alpha <= 0.05 || p.size < 0.5){ parts.splice(j, 1); continue; }
+                var damp = Math.exp(-p.drag*simDt);
+                p.vx *= damp;
+                p.vy = p.vy*damp+GRAV*p.gravity*simDt;
+                p.x += p.vx*simDt;
+                p.y += p.vy*simDt;
+                p.life -= simDt;
+                p.alpha = Math.min(1,p.life/Math.min(0.55,p.maxLife*0.28));
+                if (p.life <= 0){ parts.splice(j,1); continue; }
                 drawParticle(p);
             }
         }
@@ -169,18 +177,18 @@
         // at mixed ages, so you don't wait for the first rocket to rise and pop.
         function primeScene(){
             var w = cv.width, h = cv.height;
-            for (var b = 0; b < 7; b++) burst({ x:w*(0.06+0.88*Math.random()), y:h*(0.08+0.5*Math.random()), palStart:Math.random() });
-            var resK = Math.pow(0.90,1), shrinkK = Math.pow(0.94,1), gravK = cv.height*0.0011;
+            for (var b = 0; b < 4; b++) burst({ x:w*(0.08+0.84*Math.random()), y:h*(0.10+0.46*Math.random()), palStart:Math.random() });
             for (var i = 0; i < parts.length; i++){
-                var p = parts[i], age = Math.floor(Math.random()*Math.random()*45);   // mostly young, a few fading
-                for (var s = 0; s < age; s++){
-                    p.px = p.x; p.py = p.y;
-                    p.vx *= resK; p.vy *= resK; p.vy += gravK;
-                    p.x += p.vx; p.y += p.vy;
-                    p.size *= shrinkK; p.alpha -= p.fade;
-                }
+                var p = parts[i], age = Math.random()*Math.random()*1.15;
+                var damp = Math.exp(-p.drag*age);
+                p.x += p.vx*(1-damp)/p.drag;
+                p.y += p.vy*(1-damp)/p.drag+0.5*GRAV*p.gravity*age*age;
+                p.vx *= damp;
+                p.vy = p.vy*damp+GRAV*p.gravity*age;
+                p.life -= age;
+                p.alpha = Math.min(1,p.life/Math.min(0.55,p.maxLife*0.28));
             }
-            for (var r = 0; r < 2; r++) launch();   // a couple already climbing
+            launch();
         }
 
         // reduced-motion: a few static, coherent bursts; no animation
