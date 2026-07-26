@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Meta tags + stylesheet loader for the STANLEY skin
- * v1.0.3
+ * v1.1.0
  *
  * Includes core meta (SEO, OG, canonical, and the auto-generated skin-option CSS
  * block via custom_css_public — e.g. :root{--stanley-accent} and .post-inner
@@ -13,6 +13,16 @@
  *     <?php // ===== SNAPSMACK EOF =====
  * Last non-empty line of this file MUST match the line above.
  */
+
+$allowed_variants = ['retro-flicker', 'retro-stable', 'other-flicker', 'other-stable'];
+$active_variant   = $settings['active_skin_variant'] ?? 'retro-flicker';
+if (!in_array($active_variant, $allowed_variants, true)) {
+    $active_variant = 'retro-flicker';
+}
+
+// The alternate reality is presentation-only and therefore remains in its own
+// stylesheet. The selected variant and the engine decide when its scoped rules apply.
+$skin_variant_url = BASE_URL . 'skins/stanley/other-side.css';
 
 include dirname(__DIR__, 2) . '/core/meta.php';
 

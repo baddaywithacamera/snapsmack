@@ -82,8 +82,8 @@
         var ampCfg   = clamp(+d.amplitude, 1, 100, 40);
         var opacity  = clamp(+d.opacity, 0, 100, 100) / 100;
 
-        var omega   = 0.00045 * speedCfg;          // travelling-sine cadence
-        var ampFrac = (ampCfg / 100) * 0.16;       // ripple depth as a fraction of H
+        var omega   = 0.00032 * speedCfg;          // travelling-sine cadence
+        var ampFrac = (ampCfg / 100) * 0.20;       // ripple depth as a fraction of H
         if (prefersReduced) omega *= 0.05;
         var waveLen = 0;
 
@@ -157,15 +157,38 @@
         function renderWave(t) {
             ctx.clearRect(0, 0, W, H);
             var ampPx = ampFrac * H;
+            var gust = 0.82 + 0.18 * Math.sin(t * omega * 0.17);
+            var overscan = ampPx * 1.55 + 8;
             for (var x = 0; x < W; x += sliceW) {
                 var edge = x / (W || 1);
                 var p = (x / waveLen) * Math.PI * 2 - omega * t;
-                var dy = ampPx * edge * (Math.sin(p) + 0.35 * Math.sin(p * 1.7 + 0.6));
-                ctx.drawImage(off, x * dpr, 0, sliceW * dpr, H * dpr, x, dy, sliceW, H);
-                var sl = Math.cos(p) * edge;
-                ctx.fillStyle = sl > 0 ? 'rgba(255,255,255,' + (sl * 0.16).toFixed(3) + ')'
-                                       : 'rgba(0,0,0,' + (-sl * 0.22).toFixed(3) + ')';
-                ctx.fillRect(x, dy, sliceW + 1, H);
+                var primary = Math.sin(p);
+                var ripple = 0.38 * Math.sin(p * 1.83 + 0.8) +
+                             0.14 * Math.sin(p * 3.35 - 1.1);
+                var dy = ampPx * edge * gust * (primary + ripple);
+                var pull = ampPx * 0.075 * edge * Math.cos(p * 0.72 - 0.4);
+                var sourceX = Math.max(0, Math.min(W - sliceW, x + pull));
+
+                // Overscan vertically so moving cloth never exposes a bare strip
+                // at the top or bottom of the viewport.
+                ctx.drawImage(
+                    off,
+                    sourceX * dpr, 0, Math.min(sliceW + 1, W - sourceX) * dpr, H * dpr,
+                    x, dy - overscan, sliceW + 1, H + overscan * 2
+                );
+
+                // Broad folds plus a tight highlight ridge make this read as
+                // cloth instead of coloured window blinds.
+                var fold = (Math.cos(p) + 0.42 * Math.cos(p * 1.83 + 0.8)) * edge * gust;
+                ctx.fillStyle = fold > 0
+                    ? 'rgba(255,255,255,' + Math.min(0.25, fold * 0.19).toFixed(3) + ')'
+                    : 'rgba(0,0,0,' + Math.min(0.30, -fold * 0.23).toFixed(3) + ')';
+                ctx.fillRect(x, 0, sliceW + 1, H);
+                var ridge = Math.pow(Math.max(0, Math.cos(p + 0.34)), 12) * edge;
+                if (ridge > 0.01) {
+                    ctx.fillStyle = 'rgba(255,255,255,' + (ridge * 0.17).toFixed(3) + ')';
+                    ctx.fillRect(x, 0, sliceW + 1, H);
+                }
             }
         }
 

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin header for the STANLEY skin
- * v1.0.3
+ * v1.1.0
  *
  * Emits the Kubrick blue banner (custom logo or blog title + tagline) and OPENS the
  * page frame: #stanley-page > #stanley-wrapper > #stanley-content. skin-footer.php
@@ -18,13 +18,47 @@ $stanley_header_image = trim($settings['header_image'] ?? '');
 $stanley_header_logo  = trim(($settings['header_logo'] ?? '') ?: ($settings['header_logo_url'] ?? '') ?: ($settings['site_logo'] ?? ''));
 $site_display_name    = $settings['site_name'] ?? 'SNAPSMACK';
 $stanley_tagline      = trim($settings['site_tagline'] ?? '');
+$stanley_2024_hero    = trim($settings['stanley_2024_hero'] ?? '');
+
+// Seed the alternate reality once from the owner's own Asset Repository. The
+// persisted choice never rotates behind their back and can be changed in admin.
+if ($stanley_2024_hero === '') {
+    try {
+        $hero_stmt = $pdo->query(
+            "SELECT asset_path FROM snap_assets
+             WHERE LOWER(asset_path) REGEXP '\\.(jpe?g|png|gif|webp|avif)$'
+             ORDER BY created_at DESC, id DESC LIMIT 1"
+        );
+        $stanley_2024_hero = trim((string)$hero_stmt->fetchColumn());
+        if ($stanley_2024_hero !== '') {
+            $pdo->prepare(
+                "INSERT INTO snap_settings (setting_key, setting_val)
+                 VALUES ('stanley__stanley_2024_hero', ?)
+                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+            )->execute([$stanley_2024_hero]);
+            $settings['stanley_2024_hero'] = $stanley_2024_hero;
+        }
+    } catch (Throwable $e) {
+        // Older installs without the Asset Repository retain the CSS fallback.
+    }
+}
 
 $banner_style = '';
+$banner_vars = [];
 if ($stanley_header_image !== '') {
     $img_url = preg_match('#^https?://#', $stanley_header_image)
         ? $stanley_header_image
         : BASE_URL . ltrim($stanley_header_image, '/');
-    $banner_style = ' style="background-image:linear-gradient(rgba(0,0,0,.06),rgba(0,0,0,.20)),url(\'' . htmlspecialchars($img_url, ENT_QUOTES) . '\');background-size:cover;background-position:center;"';
+    $banner_vars[] = '--stanley-header-photo:url(\'' . htmlspecialchars($img_url, ENT_QUOTES) . '\')';
+}
+if ($stanley_2024_hero !== '') {
+    $hero_url = preg_match('#^https?://#', $stanley_2024_hero)
+        ? $stanley_2024_hero
+        : BASE_URL . ltrim($stanley_2024_hero, '/');
+    $banner_vars[] = '--stanley-2024-photo:url(\'' . htmlspecialchars($hero_url, ENT_QUOTES) . '\')';
+}
+if ($banner_vars) {
+    $banner_style = ' style="' . implode(';', $banner_vars) . ';"';
 }
 
 // --- pages for default nav ---
@@ -105,8 +139,19 @@ if (!function_exists('_stanley_default_nav')) {
 $_nav_items = json_decode($settings['nav_menu_json'] ?? '[]', true);
 $_use_json  = is_array($_nav_items) && count($_nav_items) > 0;
 $stanley_show_sidebar = ($settings['show_sidebar'] ?? '1') === '1';
+$stanley_allowed_variants = ['retro-flicker', 'retro-stable', 'other-flicker', 'other-stable'];
+$stanley_variant = $settings['active_skin_variant'] ?? 'retro-flicker';
+if (!in_array($stanley_variant, $stanley_allowed_variants, true)) {
+    $stanley_variant = 'retro-flicker';
+}
+$stanley_reality_class = str_starts_with($stanley_variant, 'other-')
+    ? ' stanley-other-side-active'
+    : '';
 ?>
-<div id="stanley-page" class="<?php echo $stanley_show_sidebar ? 'has-sidebar' : 'no-sidebar'; ?>">
+<div id="stanley-page"
+     class="<?php echo ($stanley_show_sidebar ? 'has-sidebar' : 'no-sidebar') . $stanley_reality_class; ?>"
+     data-stanley-variant="<?php echo htmlspecialchars($stanley_variant, ENT_QUOTES); ?>"
+     data-stanley-test="<?php echo ($settings['other_side_test_mode'] ?? '0') === '1' ? '1' : '0'; ?>">
 
     <div id="stanley-header"<?php echo $banner_style; ?>>
         <?php if ($stanley_header_logo !== ''):

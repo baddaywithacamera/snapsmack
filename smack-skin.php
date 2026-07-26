@@ -201,6 +201,25 @@ $target_skin       = $_GET['s'] ?? $current_db_active;
 if (!isset($available_skins[$target_skin])) $target_skin = array_key_first($available_skins);
 if ($target_skin) snapsmack_apply_skin_settings($settings, $target_skin);
 $manifest = load_skin_manifest($target_skin);
+$skin_asset_picker_needed = false;
+$skin_picker_assets = [];
+foreach (($manifest['options'] ?? []) as $_skin_option_meta) {
+    if (($_skin_option_meta['type'] ?? '') === 'asset') {
+        $skin_asset_picker_needed = true;
+        break;
+    }
+}
+if ($skin_asset_picker_needed) {
+    try {
+        $skin_picker_assets = $pdo->query(
+            "SELECT id, asset_name, asset_path FROM snap_assets
+             WHERE LOWER(asset_path) REGEXP '\\.(jpe?g|png|gif|webp|svg|avif)$'
+             ORDER BY created_at DESC, id DESC"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        $skin_picker_assets = [];
+    }
+}
 
 // --- 3. ENGINE RESOLUTION ---
 // Identify which engines the selected skin requires based on its manifest.
@@ -1190,6 +1209,33 @@ if (!empty($google_families)) {
                                 <?php if (!empty($o['hint'])): ?>
                                 <p class="dim field-hint" style="margin-top:4px;"><?php echo htmlspecialchars(strtoupper($o['hint'])); ?></p>
                                 <?php endif; ?>
+                            <?php elseif ($o['type'] === 'asset'): ?>
+                                <?php
+                                $asset_input_id = 'skinasset-' . preg_replace('/[^a-z0-9_-]/i', '', $k);
+                                $asset_preview_id = $asset_input_id . '-preview';
+                                $asset_preview_url = $val ? BASE_URL . ltrim($val, '/') : '';
+                                ?>
+                                <input type="hidden"
+                                       id="<?php echo htmlspecialchars($asset_input_id); ?>"
+                                       name="skin_opt[<?php echo htmlspecialchars($k); ?>]"
+                                       value="<?php echo htmlspecialchars($val); ?>"
+                                       data-preview-target="<?php echo htmlspecialchars($asset_preview_id); ?>">
+                                <div id="<?php echo htmlspecialchars($asset_preview_id); ?>" style="margin-bottom:8px;">
+                                    <?php if ($asset_preview_url): ?>
+                                    <img src="<?php echo htmlspecialchars($asset_preview_url); ?>" alt=""
+                                         style="width:100%;max-width:240px;height:110px;object-fit:cover;border-radius:4px;display:block;">
+                                    <?php else: ?>
+                                    <span class="dim">AN IMAGE WILL BE CHOSEN FROM YOUR LIBRARY ON FIRST USE.</span>
+                                    <?php endif; ?>
+                                </div>
+                                <button type="button" class="sc-btn"
+                                        onclick="window.ssOpenAssetPicker('field',document.getElementById('<?php echo htmlspecialchars($asset_input_id); ?>'))">
+                                    SELECT FROM LIBRARY
+                                </button>
+                                <button type="button" class="sc-btn"
+                                        onclick="(function(i,p){i.value='';p.innerHTML='<span class=&quot;dim&quot;>AN IMAGE WILL BE CHOSEN FROM YOUR LIBRARY ON FIRST USE.</span>';})(document.getElementById('<?php echo htmlspecialchars($asset_input_id); ?>'),document.getElementById('<?php echo htmlspecialchars($asset_preview_id); ?>'))">
+                                    USE AUTOMATIC
+                                </button>
                             <?php else: ?>
                                 <input type="text" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">
                             <?php endif; ?>
@@ -2036,6 +2082,26 @@ document.querySelectorAll('.skin-card-actions, .skin-card-actions button, .skin-
     el.addEventListener('click', function(e) { e.stopPropagation(); });
 });
 </script>
+
+<?php if ($skin_asset_picker_needed): ?>
+<div id="ss-asset-picker-overlay" class="asset-picker-overlay d-none">
+    <div class="asset-picker-modal">
+        <div class="asset-picker-header">
+            <span>SELECT IMAGE FROM LIBRARY</span>
+            <button type="button" id="asset-picker-close">&times;</button>
+        </div>
+        <div class="asset-picker-grid" id="asset-picker-grid"
+             data-assets="<?php echo htmlspecialchars(json_encode(array_values($skin_picker_assets)), ENT_QUOTES, 'UTF-8'); ?>"
+             data-base-url="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES, 'UTF-8'); ?>"></div>
+        <div id="asset-picker-sc-opts" class="asset-picker-sc-opts d-none">
+            <select id="asset-sc-size"><option value="full">Full</option></select>
+            <select id="asset-sc-align"><option value="center">Center</option></select>
+            <button type="button" id="asset-sc-insert" class="sc-btn">INSERT</button>
+        </div>
+    </div>
+</div>
+<script src="<?php echo BASE_URL; ?>assets/js/smack-asset-picker.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+<?php endif; ?>
 
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-font-preview.js?v=<?php echo time(); ?>"></script>
 <script>

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin footer for the STANLEY skin
- * v1.0.3
+ * v1.1.0
  *
  * Closes the content column, renders the Kubrick sidebar (navigation / recent
  * posts / about), closes the page with a visible Heilemann credit, then loads
@@ -52,7 +52,9 @@ $stanley_show_sidebar = ($settings['show_sidebar'] ?? '1') === '1';
             <?php echo htmlspecialchars($site_display_name); ?> is powered by SnapSmack.<br>
             STANLEY is a love letter to
             <a href="https://github.com/Heilemann/kubrick-for-wordpress" rel="external">Kubrick</a>,
-            designed by Michael Heilemann.
+            designed by Michael Heilemann, and
+            <a href="https://roughpixels.ch/themes/kubrick-2024/" rel="external">KUBRICK 2024</a>
+            by Rough Pixels.
         </p>
     </footer>
 </div><!-- /#stanley-page -->
