@@ -43,6 +43,30 @@ return [
             'label'  => 'Non-Binary — yellow / white / purple / black',
             'colors' => ['#fcf434', '#ffffff', '#9c59d1', '#2c2c2c'],
         ],
+        'pan' => [
+            'label'  => 'Pansexual — pink / yellow / blue',
+            'colors' => ['#ff218c', '#ffd800', '#21b1ff'],
+        ],
+        'lesbian' => [
+            'label'  => 'Lesbian — orange / white / pink',
+            'colors' => ['#d52d00', '#ff9a56', '#ffffff', '#d362a4', '#a30262'],
+        ],
+        'asexual' => [
+            'label'  => 'Asexual — black / grey / white / purple',
+            'colors' => ['#000000', '#a3a3a3', '#ffffff', '#800080'],
+        ],
+        'aromantic' => [
+            'label'  => 'Aromantic — green / white / grey / black',
+            'colors' => ['#3da542', '#a7d379', '#ffffff', '#a9a9a9', '#000000'],
+        ],
+        'genderfluid' => [
+            'label'  => 'Genderfluid — pink / white / purple / black / blue',
+            'colors' => ['#ff76a4', '#ffffff', '#c011d7', '#000000', '#2f3cbe'],
+        ],
+        'genderqueer' => [
+            'label'  => 'Genderqueer — lavender / white / green',
+            'colors' => ['#b57edc', '#ffffff', '#4a8123'],
+        ],
         'two-spirit' => [
             'label'  => 'Two-Spirit — rainbow base',
             'colors' => ['#e40303', '#ff8c00', '#ffed00', '#008026', '#004dff', '#750787'],

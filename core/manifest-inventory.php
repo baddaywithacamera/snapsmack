@@ -542,6 +542,12 @@ return [
                         'stripes' => [['#D52D00', 1], ['#FF9A56', 1], ['#FFFFFF', 1], ['#D362A4', 1], ['#A30262', 1]]],
         'asexual'   => ['label' => 'Asexual',                  'o' => 'h',
                         'stripes' => [['#000000', 1], ['#A3A3A3', 1], ['#FFFFFF', 1], ['#800080', 1]]],
+        'aromantic' => ['label' => 'Aromantic',                'o' => 'h',
+                        'stripes' => [['#3DA542', 1], ['#A7D379', 1], ['#FFFFFF', 1], ['#A9A9A9', 1], ['#000000', 1]]],
+        'genderfluid' => ['label' => 'Genderfluid',            'o' => 'h',
+                        'stripes' => [['#FF76A4', 1], ['#FFFFFF', 1], ['#C011D7', 1], ['#000000', 1], ['#2F3CBE', 1]]],
+        'genderqueer' => ['label' => 'Genderqueer',            'o' => 'h',
+                        'stripes' => [['#B57EDC', 1], ['#FFFFFF', 1], ['#4A8123', 1]]],
     ],
 
 
