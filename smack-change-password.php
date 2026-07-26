@@ -40,7 +40,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ->execute([$hash, $uid]);
         snapsmack_clear_force_change($pdo, $uid);
         unset($_SESSION['force_password_change']);
-        header("Location: smack-dashboard.php?msg=password_changed");
+        if (!empty($_SESSION['break_glass_recovery'])) {
+            unset($_SESSION['break_glass_recovery']);
+            $_SESSION['totp_enrol_required'] = true;
+            header("Location: smack-2fa.php?enrol=required&from=break-glass");
+        } else {
+            header("Location: smack-dashboard.php?msg=password_changed");
+        }
         exit;
     }
 }
@@ -57,7 +63,12 @@ include 'core/sidebar.php';
 
     <div class="box">
         <p style="color:var(--text-muted, #888); font-size:0.85rem; margin-bottom:20px;">
-            You logged in with a one-time recovery code. You must set a new password before continuing.
+            <?php if (!empty($_SESSION['break_glass_recovery'])): ?>
+                Your Break-Glass Card revoked the old password and every other login credential.
+                Set a new password now; next you will enrol two-factor authentication again.
+            <?php else: ?>
+                You logged in with a one-time recovery code. You must set a new password before continuing.
+            <?php endif; ?>
         </p>
 
         <?php if ($err): ?>

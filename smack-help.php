@@ -1697,9 +1697,12 @@ Upgraded sites start their 30-day clock from the upgrade.</p>
 <p><strong>Recommended apps</strong> (open-source first): Aegis Authenticator (Android),
 Ente Auth (iOS/Android/desktop), 2FAS (iOS/Android). Also fine: Google Authenticator,
 Microsoft Authenticator, 1Password, Authy, Bitwarden. Any RFC 6238 TOTP app works.</p>
-<p><strong>Emergency override:</strong> if an owner loses both their authenticator and their
-recovery codes, placing a file named <code>core/release-2fa-override</code> on the server
-(any contents) suspends enforcement so they can log in and re-enrol. Remove it afterwards.</p>
+<p><strong>Total lockout:</strong> if an owner loses their password, authenticator, and
+recovery codes together, use the signed Break-Glass Card saved during installation or the
+most recent 2FA enrolment. Upload <code>BREAK-GLASS-CARD.sbc</code> to the site root without
+renaming it, visit <code>/break-glass.php</code>, verify the site and account shown, and
+confirm recovery. The card works once and revokes every old login credential and session
+before requiring a new password and fresh 2FA enrolment.</p>
 
 <h4>Setting Up 2FA</h4>
 <p>Go to <strong>Settings → Two-Factor Auth</strong> and click <em>Set Up
@@ -1715,8 +1718,8 @@ manually into your app.</p>
 let you log in if you ever lose access to your authenticator app. Each code works once and
 is removed after use.</p>
 <p><strong>Save your recovery codes somewhere safe — they are shown only once.</strong>
-A password manager is a good place. If you lose both your authenticator and your recovery
-codes, contact your host to reset the database column directly.</p>
+A password manager is a good place. Keep the separately downloaded Break-Glass Card offline
+as the independent recovery path for losing the password and both 2FA methods together.</p>
 
 <h4>Logging In with 2FA Active</h4>
 <p>After entering your username and password, you will see a verification screen. Enter
@@ -1738,6 +1741,49 @@ immediately.</p>
 <h4>Disabling 2FA</h4>
 <p>You can turn off 2FA at any time from the same page. You will need your current
 authenticator code to confirm the action. Once disabled, logins require only your password.</p>
+HTML
+];
+
+$help_topics['break-glass-card'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'BREAK THE GLASS Card',
+    'icon'     => '&#x1F6A8;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>BREAK THE GLASS</h3>
+<p>The Break-Glass Card is the last recovery path when you have lost your password,
+authenticator and recovery codes together. It is not a convenience login. It is a
+site-bound, administrator-bound, cryptographically signed file that works once.</p>
+
+<h4>Generate and Store the Card</h4>
+<ol>
+    <li>Open <strong>BREAK THE GLASS</strong> in the admin.</li>
+    <li>Confirm the action with your current password and 6-digit authenticator code.</li>
+    <li>Download <code>BREAK-GLASS-CARD.sbc</code> and store it offline somewhere you can
+    reach during a total lockout.</li>
+</ol>
+<p>SnapSmack does not retain a downloadable copy or reusable private signing key.
+Generating a replacement immediately revokes every older card for that installation.
+Anyone holding the active file can take control of the named site, so do not keep it
+in the web root, media library or ordinary public cloud folder.</p>
+
+<h4>Use It Only for Total Lockout</h4>
+<ol>
+    <li>Upload the exact <code>BREAK-GLASS-CARD.sbc</code> file to the SnapSmack web root
+    using FTP or your host's file manager. Do not rename it.</li>
+    <li>Visit <code>/break-glass.php</code> and verify the site and account displayed.</li>
+    <li>Type <code>BURN IT</code> to confirm.</li>
+    <li>Choose a new password and enrol 2FA again.</li>
+    <li>Generate a replacement card and remove any stray copy of the consumed card.</li>
+</ol>
+<p>Successful use burns the old password, TOTP secret, recovery codes, trusted devices,
+password-reset links, existing sessions and the card itself. It records the event and
+attempts to email the owner. A card copied from another installation, altered, replaced
+or previously consumed will be rejected.</p>
+
+<h4>If the Card Is Exposed</h4>
+<p>Log in normally, open BREAK THE GLASS, and rotate it immediately. The newly generated
+card invalidates the exposed one even if nobody has used it.</p>
 HTML
 ];
 

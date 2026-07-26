@@ -117,6 +117,12 @@ if (isset($_SESSION['force_password_change'])) {
         'smack-change-password.php', // destination page — must not loop
         'smack-update.php',           // never interrupt a live update mid-extraction
     ];
+    if (!empty($_SESSION['break_glass_recovery'])) {
+        // A Break-Glass session is not a normal authenticated session. Until
+        // the burned password is replaced, it may reach this page and nothing
+        // else — not even the usual updater exception.
+        $exempt = ['smack-change-password.php'];
+    }
     if (!in_array($current_script, $exempt, true)) {
         header("Location: " . BASE_URL . "smack-change-password.php");
         exit;
@@ -171,14 +177,32 @@ if (isset($_SESSION['user_login'])) {
 // After installed_at + 30 days, every admin must have TOTP enrolled. Until they
 // do, all admin pages redirect to the enrolment screen. The enrolment pages,
 // the updater, change-password, and logout are exempt so nobody is bricked.
-// An owner emergency override file (core/release-2fa-override — any contents)
-// suspends enforcement entirely: the documented escape hatch for a lost
-// authenticator AND lost recovery codes (see spec #1; Sean approved).
-if (isset($_SESSION['user_login']) && !file_exists(__DIR__ . '/release-2fa-override')) {
+// Total-lockout recovery is handled by the signed, site-bound, one-use
+// Break-Glass Card. The old release-2fa-override filename is intentionally
+// ignored: accepting an arbitrary file as an authentication bypass made any
+// webroot write primitive a 2FA bypass.
+if (isset($_SESSION['user_login'])) {
     $_2fa_current = basename($_SERVER['SCRIPT_FILENAME'] ?? '');
     $_2fa_exempt  = ['smack-2fa.php', 'smack-2fa-verify.php', 'smack-update.php', 'smack-change-password.php'];
+    if (!empty($_SESSION['totp_enrol_required'])) {
+        $_2fa_exempt = ['smack-2fa.php', 'smack-2fa-verify.php', 'smack-change-password.php'];
+    }
     if (!in_array($_2fa_current, $_2fa_exempt, true)) {
         try {
+            // BREAK THE GLASS sets this immediately. It overrides the normal
+            // grace period because the old TOTP material was deliberately burned.
+            if (!empty($_SESSION['totp_enrol_required'])) {
+                $_totp_stmt = $pdo->prepare(
+                    "SELECT totp_enabled FROM snap_users WHERE id = ? LIMIT 1"
+                );
+                $_totp_stmt->execute([$_SESSION['user_id'] ?? 0]);
+                if (!(int)$_totp_stmt->fetchColumn()) {
+                    header('Location: ' . BASE_URL . 'smack-2fa.php?enrol=required');
+                    exit;
+                }
+                unset($_SESSION['totp_enrol_required'], $_totp_stmt);
+            }
+
             $_installed_at = $pdo->query(
                 "SELECT setting_val FROM snap_settings WHERE setting_key = 'installed_at' LIMIT 1"
             )->fetchColumn();

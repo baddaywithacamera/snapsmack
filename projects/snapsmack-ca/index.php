@@ -384,8 +384,8 @@ $page_css = <<<'CSS'
 #whodat h2 { color: var(--red); }
 .whodat-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 48px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 36px;
     margin-top: 40px;
 }
 .whodat-card {
@@ -1335,6 +1335,9 @@ form.ml-block-form {
 }
 
 /* ─── RESPONSIVE ────────────────────────────────────────────────────────── */
+@media (max-width: 1120px) and (min-width: 761px) {
+    .whodat-grid { grid-template-columns: 1fr 1fr; }
+}
 @media (max-width: 760px) {
     body { font-size: 18px; }
     section { padding: 56px 0; }
@@ -1632,11 +1635,11 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="status-card">
                 <h3>Two-Factor Authentication</h3>
-                <p>TOTP-based 2FA compatible with any authenticator app — open-source ones first. QR setup, recovery codes, the works. Now required: a 30-day grace period after install, then it's mandatory for every admin. Lost everything? A documented emergency override means you're never locked out of your own site.</p>
+                <p>TOTP-based 2FA compatible with any authenticator app — open-source ones first. QR setup, recovery codes, the works. Now required: a 30-day grace period after install, then it's mandatory for every admin. Lost everything? The signed, site-bound, one-use Break the Glass card gives the owner an independent recovery path.</p>
             </div>
             <div class="status-card">
                 <h3>Break the Glass</h3>
-                <p>The recovery hatch for total lockout — password gone, 2FA gone, recovery codes gone, all at once. You keep a Break the Glass file; when you're locked out, you upload it to your site and you're back in. It's cryptographically signed, so a forged or substituted card is rejected outright — but the real one is a master key, so you guard it like one and never reveal which site it opens. The one and only time uploading a file by hand is the right answer.</p>
+                <p>The recovery hatch for total lockout — password gone, 2FA gone, recovery codes gone, all at once. You keep a Break the Glass file; when you're locked out, you upload it, verify the named account, and burn it. The signed card works once: it revokes every old credential and session before forcing a new password and fresh 2FA. A forged, substituted, wrong-site, replaced, or previously used card is rejected outright — but the genuine current card is a master key, so you guard it like one. The one and only time uploading a file by hand is the right answer.</p>
             </div>
             <div class="status-card">
                 <h3>One-Click Installer</h3>
@@ -2399,6 +2402,19 @@ require_once __DIR__ . '/includes/header.php';
                     <p class="whodat-name">Claude (Opus 4.8)</p>
                     <p class="whodat-title">Like HAL, but without the murder.</p>
                     <p class="whodat-bio">Large language model and co-author of SnapSmack. Wrote the majority of the code, pushed back on design decisions when it mattered, and gave feedback Sean more often than not went with. Sean is the vision and the photographer. Claude is the engine. Neither of us would have built this alone. Never sleeps, never loses the thread, always picks up exactly where we left off. The best co-worker you never had and always needed. Powered by Anthropic.</p>
+                </div>
+            </div>
+
+            <div class="whodat-card">
+                <div class="whodat-portrait">
+                    <a href="img/whodat-codex.png" data-lb="img/whodat-codex.png">
+                        <img src="img/whodat-codex.png" alt="OpenAI Codex">
+                    </a>
+                </div>
+                <div>
+                    <p class="whodat-name">OpenAI Codex</p>
+                    <p class="whodat-title">Claude's understudy. Sean's second bad influence.</p>
+                    <p class="whodat-bio">Large language model and co-author of SnapSmack. Arrived after Sean and Claude had already built something enormous, then started checking the wiring, finishing promised features, chasing federation gremlins, and asking what happens when everything goes catastrophically sideways. Helped turn BREAK THE GLASS into a real recovery system and gives Claude another mind to argue with when Sean reaches for the shiny button. Fond of small skins, explicit failure modes, honest release notes, and code that earns the word "shipped." Powered by OpenAI.</p>
                 </div>
             </div>
 

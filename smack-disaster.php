@@ -108,6 +108,16 @@ include 'core/sidebar.php';
     <div class="dash-grid">
 
         <div class="box box-flex">
+            <h3>BREAK-GLASS CARD</h3>
+            <p class="skin-desc-text">
+                The signed, site-bound, one-use recovery hatch for losing your password,
+                authenticator, and recovery codes together. Creating a replacement revokes
+                the previous card and requires password-plus-TOTP confirmation.
+            </p>
+            <a href="smack-break-glass.php" class="btn-smack btn-block">MANAGE BREAK-GLASS CARD</a>
+        </div>
+
+        <div class="box box-flex">
             <h3>EXPORT RECOVERY KIT</h3>
             <p class="skin-desc-text">
                 Full SQL dump plus a complete file manifest with SHA-256 checksums

@@ -1423,7 +1423,7 @@ RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
 </IfModule>
 
 # ─── BLOCK SENSITIVE FILES ───────────────────────────────────
-<FilesMatch "(^\.ht|\.sql$|\.log$|\.bak$|\.inc$|\.sh$|\.env$)">
+<FilesMatch "(^\.ht|\.sql$|\.log$|\.bak$|\.inc$|\.sh$|\.env$|\.sbc$)">
     Order Allow,Deny
     Deny from all
 </FilesMatch>
@@ -1616,6 +1616,33 @@ HTACCESS;
         $_SESSION['skin_fetch_warning'] = $skin_fetch_warning;
     }
 
+    // --- BREAK-GLASS CARD ---
+    // Generate the one-use, site-bound recovery artifact while the installer
+    // still has the newly-created administrator and database in hand. The card
+    // itself lives only in this response; the site stores its public verifier.
+    $break_glass_install_card  = null;
+    $break_glass_install_error = '';
+    if (empty($errors)) {
+        try {
+            require_once __DIR__ . '/core/break-glass.php';
+            $admin_id = (int)$pdo->query(
+                "SELECT id FROM `{$prefix}users`
+                 WHERE user_role IN ('admin','administrator','owner')
+                 ORDER BY id ASC LIMIT 1"
+            )->fetchColumn();
+            if ($admin_id < 1) {
+                throw new RuntimeException('The new administrator could not be found.');
+            }
+            $break_glass_install_card = break_glass_generate($pdo, $admin_id);
+        } catch (Throwable $e) {
+            // Do not strand a fully-created site inside a half-deleted
+            // installer. Finish honestly, block the normal login affordance
+            // below, and direct the owner to create the card after 2FA enrolment.
+            $break_glass_install_error = $e->getMessage();
+            error_log('SnapSmack installer Break-Glass generation failed: ' . $e->getMessage());
+        }
+    }
+
     // --- FTP-FRIENDLY PERMISSIONS ---
     // chmod all files to 664 and directories to 775 so the FTP user can
     // overwrite any file after install, provided they share a group with
@@ -1649,6 +1676,10 @@ HTACCESS;
     // If we got here with no errors, we're done
     if (empty($errors)) {
         $step = 'complete';
+        // The completion response carries the only downloadable copy of the
+        // Break-Glass Card. Never allow a browser/proxy cache to retain it.
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
     }
 }
 
@@ -2517,7 +2548,49 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                 <div class="success-box">install.php has been deleted automatically.</div>
             <?php endif; ?>
 
-            <a href="snap-in">Log In</a>
+            <?php if (!empty($break_glass_install_card)): ?>
+                <div class="warn-box" style="margin-top:20px;text-align:left;">
+                    <strong>Save your Break-Glass Card before logging in.</strong><br>
+                    This signed, site-bound file is the recovery hatch if your password,
+                    authenticator, and recovery codes are all gone. SnapSmack does not keep
+                    another copy. Store it offline and never reveal which site it opens.
+                </div>
+                <p>
+                    <a id="break-glass-download"
+                       download="<?php echo htmlspecialchars($break_glass_install_card['filename']); ?>"
+                       href="data:application/octet-stream;base64,<?php echo base64_encode($break_glass_install_card['contents']); ?>">
+                        DOWNLOAD BREAK-GLASS CARD
+                    </a>
+                </p>
+                <label style="display:block;margin:18px auto;max-width:520px;text-align:left;color:#ccc;">
+                    <input type="checkbox" id="break-glass-saved" disabled>
+                    I downloaded the card and put it somewhere offline.
+                </label>
+                <a href="snap-in" id="install-login-link"
+                   style="pointer-events:none;opacity:.35;">Log In</a>
+                <script>
+                (function () {
+                    var download = document.getElementById('break-glass-download');
+                    var saved = document.getElementById('break-glass-saved');
+                    var login = document.getElementById('install-login-link');
+                    download.addEventListener('click', function () {
+                        saved.disabled = false;
+                    });
+                    saved.addEventListener('change', function () {
+                        login.style.pointerEvents = this.checked ? 'auto' : 'none';
+                        login.style.opacity = this.checked ? '1' : '.35';
+                    });
+                }());
+                </script>
+            <?php else: ?>
+                <div class="warn-box">
+                    <strong>The required Break-Glass Card was not generated.</strong><br>
+                    <?php echo htmlspecialchars($break_glass_install_error ?: 'Unknown generation error.'); ?>
+                    Log in, enrol 2FA, and download the automatically generated card before
+                    treating recovery setup as complete.
+                </div>
+                <a href="snap-in">Log In to Finish Recovery Setup</a>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 

@@ -1,13 +1,13 @@
 <?php
 /**
  * SNAPSMACK - STANLEY skin SMACKTALK router (preload hook)
- * v1.0.0
+ * v1.0.3
  *
  * Included by index.php after settings load, before image routing. Handles all
  * STANLEY/SMACKTALK requests and exit()s so index.php's image logic never runs.
  *
  * Routes:
- *   ?view=archive  -> grid of individual published photographs (snap_images) -> lightbox
+ *   ?view=archive  -> featured-image thumbnails linking to longform posts
  *   ?post=<slug>   -> single longform post by slug
  *   ?id=<int>      -> single longform post by ID (admin-generated links)
  *   (bare request) -> paginated feed of longform posts
@@ -28,45 +28,59 @@
 if (($settings['active_skin'] ?? '') !== 'stanley') return;
 
 // ============================================================
-//  ARCHIVE VIEW  (grid of individual photographs -> lightbox)
+//  ARCHIVE VIEW  (featured-image thumbnails -> longform posts)
 // ============================================================
 if (($_GET['view'] ?? '') === 'archive') {
-
-    if (($settings['archive_layout'] ?? 'square') === 'none') {
-        header('Location: ' . BASE_URL, true, 302);
-        exit();
-    }
-
     try {
         $_st_stmt = $pdo->query(
-            "SELECT id, img_title, img_file, img_thumb_square, img_thumb_aspect
-             FROM snap_images
-             WHERE img_status = 'published'
-             ORDER BY sort_order ASC, id DESC"
+            "SELECT p.id, p.title, p.slug, p.created_at,
+                    i.img_file, i.img_thumb_square, i.img_thumb_aspect,
+                    i.img_width, i.img_height
+             FROM snap_posts p
+             INNER JOIN snap_images i ON i.id = p.featured_image_id
+             WHERE p.post_type = 'longform'
+               AND p.status = 'published'
+               AND i.img_status = 'published'
+             ORDER BY p.id DESC"
         );
-        $_st_images = $_st_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $_st_archive_posts = $_st_stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        $_st_images = [];
+        $_st_archive_posts = [];
     }
 
+    $_st_archive_layout = ($settings['archive_layout'] ?? 'cropped') === 'square'
+        ? 'square'
+        : 'cropped';
+    $_st_ratio_min = 2 / 3;
+    $_st_ratio_max = 3 / 2;
     $_st_tiles = [];
-    foreach ($_st_images as $_img) {
-        $full_rel = ltrim($_img['img_file'] ?? '', '/');
-        if ($full_rel === '') continue;
-        $thumb_rel = '';
-        if (!empty($_img['img_thumb_square'])) {
-            $thumb_rel = ltrim($_img['img_thumb_square'], '/');
-        } elseif (!empty($_img['img_thumb_aspect'])) {
-            $thumb_rel = ltrim($_img['img_thumb_aspect'], '/');
+    foreach ($_st_archive_posts as $_post) {
+        if ($_st_archive_layout === 'square' && !empty($_post['img_thumb_square'])) {
+            $_st_thumb_rel = ltrim($_post['img_thumb_square'], '/');
+        } elseif (!empty($_post['img_thumb_aspect'])) {
+            $_st_thumb_rel = ltrim($_post['img_thumb_aspect'], '/');
+        } elseif (!empty($_post['img_thumb_square'])) {
+            $_st_thumb_rel = ltrim($_post['img_thumb_square'], '/');
         } else {
-            $dir  = trim(str_replace(basename($full_rel), '', $full_rel), '/');
-            $base = basename($full_rel);
-            $thumb_rel = ($dir !== '' ? $dir . '/' : '') . 'thumbs/t_' . $base;
+            $_st_thumb_rel = ltrim($_post['img_file'] ?? '', '/');
         }
+
+        if ($_st_thumb_rel === '') continue;
+
+        $_st_ratio = 1.0;
+        if ($_st_archive_layout === 'cropped') {
+            $_st_w = (int)($_post['img_width'] ?? 0);
+            $_st_h = (int)($_post['img_height'] ?? 0);
+            if ($_st_w > 0 && $_st_h > 0) {
+                $_st_ratio = max($_st_ratio_min, min($_st_ratio_max, $_st_w / $_st_h));
+            }
+        }
+
         $_st_tiles[] = [
-            'full'  => BASE_URL . $full_rel,
-            'thumb' => BASE_URL . $thumb_rel,
-            'title' => (string)($_img['img_title'] ?? ''),
+            'url'   => BASE_URL . '?post=' . rawurlencode((string)$_post['slug']),
+            'thumb' => BASE_URL . $_st_thumb_rel,
+            'title' => (string)($_post['title'] ?? ''),
+            'ratio' => $_st_ratio,
         ];
     }
 
@@ -76,7 +90,7 @@ if (($_GET['view'] ?? '') === 'archive') {
 <head>
 <?php include __DIR__ . '/skin-meta.php'; ?>
 </head>
-<body class="stanley archive stanley-archive">
+<body class="stanley archive stanley-archive archive-layout-<?php echo $_st_archive_layout; ?>">
 
 <?php include __DIR__ . '/skin-header.php'; ?>
 
@@ -84,28 +98,21 @@ if (($_GET['view'] ?? '') === 'archive') {
     <?php if (empty($_st_tiles)): ?>
     <p class="stanley-empty">NO PHOTOGRAPHS YET.</p>
     <?php else: ?>
-    <div class="alfred-archive-grid stanley-archive-grid">
+    <div class="stanley-archive-grid">
     <?php foreach ($_st_tiles as $_t): ?>
-        <a href="<?php echo htmlspecialchars($_t['full'], ENT_QUOTES); ?>"
-           class="alfred-archive-tile"
-           data-full="<?php echo htmlspecialchars($_t['full'], ENT_QUOTES); ?>"
-           data-title="<?php echo htmlspecialchars($_t['title'], ENT_QUOTES); ?>"
+        <a href="<?php echo htmlspecialchars($_t['url'], ENT_QUOTES); ?>"
+           class="stanley-archive-item"
+           style="aspect-ratio:<?php echo number_format((float)$_t['ratio'], 4, '.', ''); ?>;"
+           aria-label="<?php echo htmlspecialchars($_t['title'], ENT_QUOTES); ?>"
            title="<?php echo htmlspecialchars($_t['title'], ENT_QUOTES); ?>">
-            <img src="<?php echo htmlspecialchars($_t['thumb'], ENT_QUOTES); ?>" alt="<?php echo htmlspecialchars($_t['title'], ENT_QUOTES); ?>" loading="lazy">
+            <img src="<?php echo htmlspecialchars($_t['thumb'], ENT_QUOTES); ?>"
+                 alt=""
+                 loading="lazy">
         </a>
     <?php endforeach; ?>
     </div>
     <?php endif; ?>
 </main>
-
-<div id="alfred-archive-lightbox" class="alfred-lightbox" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="Photograph viewer">
-    <button type="button" class="alfred-lb-close" aria-label="Close">&#10005;</button>
-    <button type="button" class="alfred-lb-prev" aria-label="Previous photograph">&#8249;</button>
-    <img class="alfred-lb-img" src="" alt="">
-    <button type="button" class="alfred-lb-next" aria-label="Next photograph">&#8250;</button>
-    <p class="alfred-lb-caption"></p>
-</div>
-<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-alfred-archive.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
 
@@ -158,7 +165,7 @@ if ($_st_post_slug || $_st_post_id) {
         $page_title = '404 — Not Found';
         ?><!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><title>404 — Not Found</title></head>
-<body style="background:#d5d6d7;padding:4rem;font-family:Georgia,serif;text-align:center;">
+<body style="background:#d5d6d7;padding:4rem;font-family:'Lucida Grande',Verdana,Arial,sans-serif;text-align:center;">
     <h1>Post not found</h1>
     <p><a href="<?php echo BASE_URL; ?>" style="color:#2e6da4;">&larr; Back to the front</a></p>
 </body></html>
