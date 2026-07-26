@@ -1,10 +1,10 @@
 {
     "schema_version": 1,
     "name": "PARADE",
-    "version": "1.2.29",
+    "version": "1.2.30",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
-    "description": "High-key desktop skin — AURORA's daylight twin. A classic 3-across square grid over slow-motion fireworks on a bright white field, painted in the identity-flag palette you choose. A real show of support, built so the photos are still why you came.",
+    "description": "High-key desktop skin — AURORA's daylight twin. A classic 3-across square grid over a full-screen waving identity flag with animated flag-coloured tile borders. A real show of support, built so the photos are still why you came.",
     "status": "beta",
     "modes": [
         "carousel"
@@ -44,7 +44,7 @@
         "smack-grid-modal",
         "smack-grid-lightbox",
         "smack-grid-nav",
-        "smack-parade-fireworks",
+        "smack-flag-wave",
         "smack-aurora-wave",
         "smack-progressive-reveal",
         "smack-tag-infinite",
@@ -68,7 +68,7 @@
                 "nonbinary": "Non-Binary — yellow / white / purple / black",
                 "two-spirit": "Two-Spirit — rainbow base"
             },
-            "hint": "The flag the fireworks are painted in. Each burst samples across the whole flag. Palettes are defined in parade-config.php."
+            "hint": "The full-screen flag flown behind the grid. Palettes are defined in parade-config.php."
         },
         "pa_background": {
             "section": "PARADE",
@@ -81,18 +81,7 @@
                 "warm": "Warm white",
                 "wash": "Palette wash (faint tint of the active flag)"
             },
-            "hint": "High-key only — palette-matched presets, never a generic colour. The field shows through the fading fireworks trails."
-        },
-        "pa_bg_mode": {
-            "section": "PARADE",
-            "type": "select",
-            "label": "Background Mode",
-            "default": "fireworks",
-            "options": {
-                "fireworks": "Fireworks (default)",
-                "flag": "Waving Flag (full-screen)"
-            },
-            "hint": "Fireworks paints the chosen Flag Palette as slow-motion fireworks. Waving Flag flies that same flag full-screen behind the grid. Mutually exclusive — only one engine loads."
+            "hint": "The solid field beneath the waving flag, visible wherever opacity is reduced."
         },
         "pa_flag_speed": {
             "section": "PARADE",
@@ -103,10 +92,7 @@
             "max": "100",
             "step": "1",
             "unit": "",
-            "show_when": {
-                "pa_bg_mode": "flag"
-            },
-            "hint": "Waving Flag mode only. Slow drift → active ripple."
+            "hint": "Slow drift → active ripple."
         },
         "pa_flag_amplitude": {
             "section": "PARADE",
@@ -117,10 +103,7 @@
             "max": "100",
             "step": "1",
             "unit": "",
-            "show_when": {
-                "pa_bg_mode": "flag"
-            },
-            "hint": "Waving Flag mode only. How deep the ripples run."
+            "hint": "How deep the flag ripples run."
         },
         "pa_flag_opacity": {
             "section": "PARADE",
@@ -131,66 +114,7 @@
             "max": "100",
             "step": "5",
             "unit": "%",
-            "show_when": {
-                "pa_bg_mode": "flag"
-            },
-            "hint": "Waving Flag mode only. Default full/bold; dial back if your photos need it."
-        },
-        "pa_rate": {
-            "section": "PARADE",
-            "type": "range_numeric",
-            "label": "Busyness (launches)",
-            "default": "8",
-            "min": "1",
-            "max": "40",
-            "step": "1",
-            "unit": "",
-            "show_when": {
-                "pa_bg_mode": "fireworks"
-            },
-            "hint": "Rocket launch rate (slider ÷ 3 = launches per second). Real-time, independent of the slow-motion."
-        },
-        "pa_explode": {
-            "section": "PARADE",
-            "type": "range_numeric",
-            "label": "Explosion speed",
-            "default": "21",
-            "min": "3",
-            "max": "150",
-            "step": "1",
-            "unit": "",
-            "show_when": {
-                "pa_bg_mode": "fireworks"
-            },
-            "hint": "Speed of the drifting burst particles. Lower = bursts hang in the air; higher = livelier."
-        },
-        "pa_intensity": {
-            "section": "PARADE",
-            "type": "range_numeric",
-            "label": "Burst intensity (particles)",
-            "default": "105",
-            "min": "20",
-            "max": "300",
-            "step": "5",
-            "unit": "particles",
-            "show_when": {
-                "pa_bg_mode": "fireworks"
-            },
-            "hint": "Particles per burst."
-        },
-        "pa_soft": {
-            "section": "PARADE",
-            "type": "range_numeric",
-            "label": "Softness (pastel)",
-            "default": "100",
-            "min": "0",
-            "max": "100",
-            "step": "1",
-            "unit": "%",
-            "show_when": {
-                "pa_bg_mode": "fireworks"
-            },
-            "hint": "How far the flag colours are softened toward pastel so they read against white. Flag hues stay true."
+            "hint": "Default full/bold; dial back if your photos need it."
         },
         "pa_border_style": {
             "section": "BORDER WAVE",
@@ -237,7 +161,7 @@
             "min": "40",
             "max": "400",
             "step": "5",
-            "hint": "Border-wave clock, independent of the fireworks rate. Lower = faster shimmer; higher = slower."
+            "hint": "Border-wave clock. Lower = faster shimmer; higher = slower."
         },
         "pa_border_width": {
             "section": "BORDER WAVE",
@@ -269,48 +193,6 @@
                 "square": "Square",
                 "rounded": "Rounded"
             }
-        },
-        "pa_spread": {
-            "section": "FIREWORKS DETAIL",
-            "type": "range_numeric",
-            "label": "Burst size (spread)",
-            "default": "45",
-            "min": "10",
-            "max": "120",
-            "step": "1",
-            "unit": "",
-            "show_when": {
-                "pa_bg_mode": "fireworks"
-            },
-            "hint": "How wide each burst opens."
-        },
-        "pa_launch": {
-            "section": "FIREWORKS DETAIL",
-            "type": "range_numeric",
-            "label": "Launch speed",
-            "default": "32",
-            "min": "5",
-            "max": "150",
-            "step": "1",
-            "unit": "",
-            "show_when": {
-                "pa_bg_mode": "fireworks"
-            },
-            "hint": "How fast rockets rise before they burst."
-        },
-        "pa_streamer": {
-            "section": "FIREWORKS DETAIL",
-            "type": "range_numeric",
-            "label": "Streamer width",
-            "default": "4",
-            "min": "2",
-            "max": "40",
-            "step": "1",
-            "unit": "",
-            "show_when": {
-                "pa_bg_mode": "fireworks"
-            },
-            "hint": "Thickness of the particle trails."
         },
         "pa_carousel_indicator": {
             "section": "GRID",
@@ -485,7 +367,7 @@
             "type": "color",
             "label": "Panel Colour",
             "default": "#ffffff",
-            "hint": "Backing colour behind the content column on every page so it reads over the fireworks/flag. PHP-handled → --panel-bg."
+            "hint": "Backing colour behind the content column on every page so it reads over the waving flag. PHP-handled → --panel-bg."
         },
         "pa_panel_opacity": {
             "section": "PANEL",

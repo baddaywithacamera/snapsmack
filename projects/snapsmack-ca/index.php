@@ -2062,7 +2062,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <div class="theme-info">
                     <h3>Parade</h3>
-                    <p>Pride, in motion. Rainbow, Bi, Trans, and Two-Spirit flag palettes, an animated waving-flag or fireworks background, colour-shifting tile borders, configurable effects. Built to celebrate.</p>
+                    <p>Pride, in motion. Rainbow, Bi, Trans, Non-Binary, and Two-Spirit palettes fly as a full-window waving flag behind colour-shifting tile borders. Built to celebrate without getting between you and the photographs.</p>
                     <a href="https://theschoolofhardnocks.ca" target="_blank" class="theme-link"><span class="theme-link-label">View live site</span>theschoolofhardnocks.ca →</a>
                 </div>
             </div>

@@ -6,12 +6,9 @@
  * post count, bio) and the sticky nav identically on the landing grid,
  * static pages and the blogroll. Requires $pdo and $settings in scope.
  *
- * Also emits the PARADE fireworks background carrier (.pa-parade-bg): the
- * fireworks engine (assets/js/ss-engine-parade-fireworks.js) reads the active
- * flag palette + motion params from this element's data-pa-* attributes and
- * appends its own <canvas>. The high-key background colour is a CSS var the
- * engine never paints over (trails erase via destination-out so the field
- * shows through). PARADE = THE GRID structure + this fireworks layer.
+ * Also emits the PARADE waving-flag carrier (.pa-parade-bg). The shared flag
+ * engine reads the active palette and motion controls from its data attributes
+ * and appends one full-viewport canvas behind the grid.
  */
 
 /**
@@ -60,11 +57,8 @@ $_pa_active_slug = $_GET['slug'] ?? null;
 $_pa_on_blogroll = ($_pa_script === 'blogroll.php');
 $_pa_on_home     = ($_pa_script === 'index.php' && !isset($_GET['s']) && $_pa_active_slug === null);
 
-// ── PARADE fireworks config (Layer 1 feed) ─────────────────────────────────
-// Resolve the active flag palette + high-key background from the data-driven
-// registry, and convert the integer admin sliders into the decimal params the
-// engine expects. (Admin range widgets are INTEGER-ONLY — never store decimals;
-// store an integer and divide here. Lesson carried from AURORA's stuck slider.)
+// ── PARADE flag config (Layer 1 feed) ──────────────────────────────────────
+// Resolve the active flag palette and the solid field beneath it.
 $_pa_reg      = include __DIR__ . '/parade-config.php';
 $_pa_palettes = $_pa_reg['palettes']    ?? [];
 $_pa_bgs      = $_pa_reg['backgrounds'] ?? [];
@@ -84,17 +78,6 @@ if ($_pa_bg_key === 'wash' || $_pa_bg_css === '') {
     $_pa_bg_css = 'color-mix(in srgb, ' . htmlspecialchars($_pa_first) . ' 8%, #ffffff)';
 }
 
-// Prototype-unit sliders → engine params. Scales AND defaults are test.html's dock,
-// VERBATIM, with Sean's signed-off prototype values as the defaults (he signed off the
-// prototype, not a re-mapping). Busyness /3 = launches/sec; Streamer /10; speeds /100; spread /1000.
-$_pa_rate      = number_format(max(1,  min(40,  (int)($settings['pa_rate']      ?? 8)))   / 3,    2);  // 8 → 2.7/s
-$_pa_launch    = number_format(max(5,  min(150, (int)($settings['pa_launch']    ?? 32)))  / 100,  2);  // 0.32×
-$_pa_explode   = number_format(max(3,  min(150, (int)($settings['pa_explode']   ?? 21)))  / 100,  2);  // 0.21×
-$_pa_intensity = max(20, min(300, (int)($settings['pa_intensity'] ?? 105)));                            // 105 particles
-$_pa_spread    = number_format(max(10, min(120, (int)($settings['pa_spread']    ?? 45)))  / 1000, 3);  // 0.045
-$_pa_streamer  = number_format(max(2,  min(40,  (int)($settings['pa_streamer']  ?? 4)))   / 10,   2);  // 0.4×
-$_pa_soft      = number_format(max(0,  min(100, (int)($settings['pa_soft']      ?? 100))) / 100,  2);  // 100%
-
 // ── Text colours (legibility over the bright field) — default DARK ──────────
 $_pa_text   = trim($settings['pa_text_color']   ?? '#1a1a1a');
 $_pa_muted  = trim($settings['pa_muted_color']  ?? '#5b5b66');
@@ -105,7 +88,7 @@ $_pa_accent = trim($settings['pa_accent_color'] ?? '#750787');
 $_pa_bstyle  = $settings['pa_border_style']  ?? 'circle';   // circle|sweep|across|pulse
 $_pa_bdir    = $settings['pa_border_dir']    ?? 'dtlbr';
 $_pa_brhythm = $settings['pa_border_rhythm'] ?? 'breath';   // breath|constant
-$_pa_wave_cycle = max(40, min(400, (int)($settings['pa_wave_speed'] ?? 160)));   // Layer-2 border-wave clock; higher = slower (independent of fireworks rate)
+$_pa_wave_cycle = max(40, min(400, (int)($settings['pa_wave_speed'] ?? 160)));
 $_pa_bw      = max(1,  min(10,  (int)($settings['pa_border_width']   ?? 5)));
 $_pa_bo      = number_format(max(10, min(100, (int)($settings['pa_border_opacity'] ?? 100))) / 100, 2);
 $_pa_corner  = $settings['pa_tile_corners'] ?? 'auto';      // auto|square|rounded
@@ -122,28 +105,20 @@ $_pa_nav_col  = ($_pa_nav_mode === 'fixed')
     ? htmlspecialchars(trim($settings['pa_nav_line_color'] ?? '#750787'))
     : 'var(--pa-wave-color, var(--pa-accent, #750787))';
 
-// ── Background mode: fireworks (default) OR a full-viewport waving flag ──────
-// Mutually exclusive (spec): only the chosen engine is loaded (skin-footer.php
-// swaps the require_scripts handle). The flag rendered = the active pa_palette,
-// resolved to stripe data from the central flag stock (core/manifest-inventory).
-$_pa_flag_mode = (($settings['pa_bg_mode'] ?? 'fireworks') === 'flag');
-$_pa_flag_stripes = null;
-if ($_pa_flag_mode) {
-    $_pa_inv       = include dirname(__DIR__, 2) . '/core/manifest-inventory.php';
-    $_pa_flag_def  = $_pa_inv['flags'][$_pa_pal_key] ?? null;
-    if ($_pa_flag_def) {
-        $_pa_flag_orient  = $_pa_flag_def['o'] ?? 'h';
-        $_pa_flag_stripes = $_pa_flag_def['stripes'];
-    } else {
-        // Palette has no stripe def (e.g. progress chevron / two-spirit) — degrade
-        // to equal stripes from the fireworks palette colours.
-        $_pa_flag_orient  = 'h';
-        $_pa_flag_stripes = array_map(function ($c) { return [$c, 1]; }, $_pa_colors);
-    }
-    $_pa_flag_speed   = max(1, min(100, (int) ($settings['pa_flag_speed']     ?? 30)));
-    $_pa_flag_amp     = max(1, min(100, (int) ($settings['pa_flag_amplitude'] ?? 40)));
-    $_pa_flag_opacity = max(0, min(100, (int) ($settings['pa_flag_opacity']   ?? 100)));
+// Resolve the selected flag to stripe data from the central flag stock.
+$_pa_inv          = include dirname(__DIR__, 2) . '/core/manifest-inventory.php';
+$_pa_flag_def     = $_pa_inv['flags'][$_pa_pal_key] ?? null;
+if ($_pa_flag_def) {
+    $_pa_flag_orient  = $_pa_flag_def['o'] ?? 'h';
+    $_pa_flag_stripes = $_pa_flag_def['stripes'];
+} else {
+    // Palettes without a dedicated geometry degrade to equal horizontal stripes.
+    $_pa_flag_orient  = 'h';
+    $_pa_flag_stripes = array_map(function ($c) { return [$c, 1]; }, $_pa_colors);
 }
+$_pa_flag_speed   = max(1, min(100, (int) ($settings['pa_flag_speed']      ?? 30)));
+$_pa_flag_amp     = max(1, min(100, (int) ($settings['pa_flag_amplitude'] ?? 40)));
+$_pa_flag_opacity = max(0, min(100, (int) ($settings['pa_flag_opacity']   ?? 100)));
 
 // ── Glow stack builder ───────────────────────────────────────────────────────
 //    A 2-shadow halo (the old approach) read as a wimpy haze even at max size,
@@ -263,10 +238,7 @@ if ($_pa_nls_sz > 0 && $_pa_nls_op > 0) {
 <!-- PARADE CSS vars: high-key field + text colours (read by style.css) -->
 <style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;--nav-line-opacity:<?php echo $_pa_nav_line_op; ?>;--nav-text-glow:<?php echo $_pa_navglow_css; ?>;--nav-text-glow-strong:<?php echo $_pa_navglow_strong; ?>;--profile-text-glow:<?php echo $_pa_glow_css; ?>;--footer-text-glow:<?php echo $_pa_ftglow_css; ?>;--panel-bg:<?php echo htmlspecialchars($_pa_panel_bg); ?>;--panel-extend:<?php echo (int)$_pa_panel_extend; ?>px;--pa-navbar-bg:<?php echo htmlspecialchars($_pa_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_pa_posts_glow); ?>;--post-count-color:<?php echo htmlspecialchars($settings['pa_posts_color'] ?? '#8a8a8a'); ?>;--pa-navline-shadow:<?php echo htmlspecialchars($_pa_navline_shadow); ?>;}</style>
 
-<?php if ($_pa_flag_mode): ?>
-<!-- PARADE waving-flag carrier — read by ss-engine-flag-wave.js (Layer 1
-     ALTERNATIVE to fireworks; mutually exclusive). Reuses .pa-parade-bg for the
-     fixed full-viewport positioning; the engine appends its own <canvas>. -->
+<!-- PARADE waving-flag carrier — read by ss-engine-flag-wave.js. -->
 <div class="pa-parade-bg pa-flag-bg" aria-hidden="true"
      data-flag-wave
      data-stripes='<?php echo htmlspecialchars(json_encode($_pa_flag_stripes), ENT_QUOTES); ?>'
@@ -280,24 +252,6 @@ if ($_pa_nls_sz > 0 && $_pa_nls_op > 0) {
      data-pa-border-rhythm="<?php echo htmlspecialchars($_pa_brhythm); ?>"
      data-pa-border-cycle="<?php echo $_pa_wave_cycle; ?>"
      data-pa-border-minl="<?php echo $_pa_border_minl; ?>"></div>
-<?php else: ?>
-<!-- PARADE fireworks carrier — read by ss-engine-parade-fireworks.js (Layer 1).
-     The engine appends its own <canvas class="pa-canvas">. -->
-<div class="pa-parade-bg" aria-hidden="true"
-     data-pa-palette='<?php echo htmlspecialchars(json_encode($_pa_colors), ENT_QUOTES); ?>'
-     data-pa-rate="<?php echo $_pa_rate; ?>"
-     data-pa-launch="<?php echo $_pa_launch; ?>"
-     data-pa-explode="<?php echo $_pa_explode; ?>"
-     data-pa-intensity="<?php echo $_pa_intensity; ?>"
-     data-pa-spread="<?php echo $_pa_spread; ?>"
-     data-pa-streamer="<?php echo $_pa_streamer; ?>"
-     data-pa-soft="<?php echo $_pa_soft; ?>"
-     data-pa-border-style="<?php echo htmlspecialchars($_pa_bstyle); ?>"
-     data-pa-border-dir="<?php echo htmlspecialchars($_pa_bdir); ?>"
-     data-pa-border-rhythm="<?php echo htmlspecialchars($_pa_brhythm); ?>"
-     data-pa-border-cycle="<?php echo $_pa_wave_cycle; ?>"
-     data-pa-border-minl="<?php echo $_pa_border_minl; ?>"></div>
-<?php endif; ?>
 
 <!-- Readability panel: centred translucent column behind the content, full
      viewport height (reaches the top, runs behind the footer) on every page

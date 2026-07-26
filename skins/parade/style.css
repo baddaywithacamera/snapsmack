@@ -31,7 +31,7 @@
        Every value here is also a manifest option default (Skin Admin overrides
        win via the compiled dynamic CSS). Keep the two in sync. */
     /* PARADE ships HIGH-KEY (white) — the daylight twin of AURORA. The bright
-       field lets the slow-motion flag fireworks read soft behind the photos.
+       field keeps the waving flag readable behind the photographs.
        Text/accent resolve from skin-profile.php's <style id="pa-vars"> vars
        (admin-tunable); the literals here are before-save fallbacks. */
     --bg-primary:        var(--pa-bg, #ffffff);
@@ -42,7 +42,7 @@
     --font-body:         'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
     --grid-gap:          2px;
-    --grid-bg:           transparent;   /* gaps let the fireworks show through */
+    --grid-bg:           transparent;   /* gaps let the waving flag show through */
     --tile-radius:       0px;
     --grid-gutter:       0px;
     --grid-max-width:    935px;
@@ -52,9 +52,9 @@
     --carousel-dot-active-color: var(--accent-color);
 
     /* ── PARADE variables ─────────────────────────────────────────────────
-       Layer 1 (slow-mo fireworks, ss-engine-parade-fireworks.js) reads its palette
-       from .pa-parade-bg data attributes — no CSS colour stops. The sky base
-       and the tile-ring vars below are set on :root by skin-profile.php's
+       The flag and tile-border engines read their palette from .pa-parade-bg
+       data attributes. The base field and tile-ring vars below are set on
+       :root by skin-profile.php's
        <style id="pa-vars"> block; these are just before-save fallbacks. */
     --pa-sky:       #ffffff;
     --tile-bw:      2px;   /* border ring thickness */
@@ -129,7 +129,7 @@ img { display: block; max-width: 100%; }
 }
 
 /* Stuck to top: fade in the high-key field behind the nav so the dark menu text
-   stays legible over the fireworks. .profile-hidden is added by the shared nav
+   stays legible over the moving flag. .profile-hidden is added by the shared nav
    engine when the profile scrolls out of view. */
 .pa-sticky-nav.profile-hidden {
     /* Admin Navbar Colour+Opacity overrides the default high-key backdrop. */
@@ -1070,7 +1070,7 @@ body.pa-modal-open { overflow: hidden; }
        carousel skin, no exceptions. .inside below keeps the text in the content
        column so the bar spans the panel while the text stays centred on content. */
     /* Lift the footer ABOVE the .pa-content-wrap z-index:1 stacking context,
-       which contains the fixed full-viewport fireworks/flag canvas. That canvas
+       which contains the fixed full-viewport flag canvas. That canvas
        is pointer-events:none, so it painted OVER the footer while hit-tests still
        found the footer underneath — the footer was in the DOM but invisible on
        landing + static ("missing footer"). z-index:2 > content-wrap's 1. Verified
@@ -1401,15 +1401,11 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 }
 
 /* ==========================================================================
-   PARADE — LAYER 1: BACKGROUND CURTAINS (canvas)
+   PARADE — WAVING FLAG BACKGROUND
    --------------------------------------------------------------------------
-   A fixed, full-viewport layer behind the photography. The fireworks engine
-   (ss-engine-parade-fireworks.js) renders flag-coloured bursts into a half-res
-   <canvas> (CSS-blurred for softness) and pauses itself when the tab is hidden
-   or reduced-motion is on. No CSS animation — the canvas owns the motion. The
-   high-key field (--pa-bg) shows through the fading trails (the engine erases
-   trails via destination-out). Layer 2 (tile border-wave) is deferred (spec
-   v0.2 §8) — PARADE ships clean tiles for the Layer-1 sign-off.
+   A fixed, full-viewport layer behind the photography. The shared flag engine
+   paints the selected identity flag and pauses whenever the tab is hidden.
+   Reduced-motion visitors receive a nearly still presentation.
    ========================================================================== */
 .pa-parade-bg {
     position: fixed;
@@ -1422,22 +1418,13 @@ body.is-blogroll .blogroll-peer-url { display: none; }
     pointer-events: none;
     background-color: var(--pa-bg, #ffffff);
 }
-.pa-parade-bg canvas.pa-canvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    display: block;
-    filter: blur(0.6px);
-}
-
-/* Content sits above the fixed fireworks layer. */
+/* Content sits above the fixed flag layer. */
 #page-wrapper,
 .pa-content-wrap { position: relative; z-index: 1; }
 /* Readability panel (ALL pages) — ONE centred translucent column behind the
    content, fixed + full viewport height so it reaches the top and runs behind
    the footer, on every page incl. blogroll. Width = content column + Panel
-   Extend each side. Sits at -1: above the fireworks/flag background (-2), below
+   Extend each side. Sits at -1: above the flag background (-2), below
    the content (+1). Ported from INSTANT CAMERA (.ic-panel). */
 .pa-panel {
     position: fixed;
@@ -1448,12 +1435,6 @@ body.is-blogroll .blogroll-peer-url { display: none; }
     background: var(--panel-bg, transparent);
     z-index: -1;
     pointer-events: none;
-}
-
-/* Reduced motion: the engine itself freezes to a few static coloured bursts.
-   Keep the layer calm here too. */
-@media (prefers-reduced-motion: reduce) {
-    .pa-parade-bg canvas.pa-canvas { filter: blur(1px); }
 }
 
 /* ===== SNAPSMACK EOF ===== */
