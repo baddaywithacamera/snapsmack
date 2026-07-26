@@ -40,7 +40,7 @@ $_sp_initial       = strtoupper(substr($_sp_site_name, 0, 1));
 <body class="pa-static-page">
 
 <!-- #page-wrapper carries z-index:1 so the footer (included below, inside this
-     wrapper) sits ABOVE the fixed fireworks/flag canvas — matching blogroll.php,
+     wrapper) sits ABOVE the fixed waving-flag canvas — matching blogroll.php,
      where the footer is visible for the same reason. Without it the footer
      renders behind the background and disappears. -->
 <div id="page-wrapper">

@@ -5,11 +5,11 @@
  * Data-driven config for the PARADE skin. Adding a flag palette or a high-key
  * background is a single entry here — no JS or template changes. skin-profile.php
  * reads the active selection (pa_palette / pa_bg) and emits it onto the
- * .pa-parade-bg element; ss-engine-parade-fireworks.js (Layer 1) and the reused
- * ss-engine-aurora-wave.js (Layer 2 tile borders) consume it from there.
+ * .pa-parade-bg element; the shared flag and tile-border engines consume it
+ * from there.
  *
- * PARADE is high-key: white/warm default, flag palettes rendered soft on a bright
- * field. NO hue-rotate — flag colours stay true (HSL interpolation in the engine).
+ * PARADE is high-key: white/warm default beneath the full-screen flag.
+ * NO hue-rotate — flag colours stay true.
  *
  * Returned shape:
  *   ['palettes'    => [slug => ['label'=>..., 'colors'=>[hex,...]]],

@@ -23,20 +23,16 @@ return [
             'body'  => 'PARADE presents your photographs in a clean, square-tile 3-column layout — the same format that made Instagram the de-facto portfolio platform for photographers. Every post occupies one tile on the landing page, regardless of how many images it contains. Tap or click any tile to view the full post.',
         ],
         [
-            'title' => 'The Fireworks Background',
-            'body'  => 'PARADE is AURORA\'s daylight twin. Behind your photographs, slow-motion fireworks drift across a high-key white field, painted in the identity flag you choose. Rockets launch in real time while the particles themselves run on a slowed clock, so the sky can ease to a near-freeze and back. In Skin Admin under PARADE you set the Flag Palette, the Background (Pure white, Soft white, Warm white, or a faint Palette wash), Busyness (launches per second), Motion (the slow-motion amount), Burst Size, and Softness (how far the flag colours are eased toward pastel so they read against white). Flag hues always stay true.',
+            'title' => 'The Waving Flag Background',
+            'body'  => 'PARADE is AURORA\'s daylight twin. Behind your photographs it flies the identity flag you choose across the full browser window. In Skin Admin under PARADE you can set the Flag Palette, the solid field beneath it, wave speed, wave depth, and flag opacity. The flag and the animated tile borders use the same palette.',
         ],
         [
             'title' => 'Flag Palettes — A Real Show of Support',
-            'body'  => 'PARADE is built to fly a flag, not toggle a token. Pick the palette that represents you or your community: Rainbow (six-stripe Pride), Progress Pride, Trans, Bisexual, Non-Binary, or Two-Spirit. Each individual burst samples across the whole palette, so a single firework paints the entire flag rather than one flat colour. Adding a flag is a one-line entry in parade-config.php — no code change.',
-        ],
-        [
-            'title' => 'Fine-Tuning the Fireworks',
-            'body'  => 'Under FIREWORKS DETAIL you can dial in Burst Spread (how wide each burst opens), Rocket Speed (how fast they rise before bursting), and Streamer Width (the thickness of the particle trails). The defaults are a good starting point — adjust on your own monitor until the rhythm feels right.',
+            'body'  => 'PARADE is built to fly a flag, not toggle a token. Pick the palette that represents you or your community: Rainbow (six-stripe Pride), Progress Pride, Trans, Bisexual, Non-Binary, or Two-Spirit. The full-screen flag and moving tile borders stay coordinated without changing the colours themselves.',
         ],
         [
             'title' => 'Motion & Accessibility',
-            'body'  => 'The fireworks respect your operating system\'s "reduce motion" setting: when it is on, the background settles into a few static, coloured bursts — coherent and still, with no animation. The animation also pauses automatically whenever the browser tab is hidden, so it never burns CPU in the background. The canvas renders at half resolution with a light blur so it stays soft behind the photography.',
+            'body'  => 'The waving flag and animated tile borders respect your operating system\'s "reduce motion" setting. When reduced motion is enabled, PARADE paints a still flag and a static border state. Animation also pauses whenever the browser tab is hidden.',
         ],
         [
             'title' => 'Text Colours for the Bright Field',
