@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "PARADE",
-    "version": "1.2.30",
+    "version": "1.2.31",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "High-key desktop skin — AURORA's daylight twin. A classic 3-across square grid over a full-screen waving identity flag with animated flag-coloured tile borders. A real show of support, built so the photos are still why you came.",
@@ -66,6 +66,12 @@
                 "trans": "Trans — blue / pink / white",
                 "bi": "Bisexual — magenta / purple / blue",
                 "nonbinary": "Non-Binary — yellow / white / purple / black",
+                "pan": "Pansexual — pink / yellow / blue",
+                "lesbian": "Lesbian — orange / white / pink",
+                "asexual": "Asexual — black / grey / white / purple",
+                "aromantic": "Aromantic — green / white / grey / black",
+                "genderfluid": "Genderfluid — pink / white / purple / black / blue",
+                "genderqueer": "Genderqueer — lavender / white / green",
                 "two-spirit": "Two-Spirit — rainbow base"
             },
             "hint": "The full-screen flag flown behind the grid. Palettes are defined in parade-config.php."

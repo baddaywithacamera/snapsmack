@@ -28,7 +28,7 @@ return [
         ],
         [
             'title' => 'Flag Palettes — A Real Show of Support',
-            'body'  => 'PARADE is built to fly a flag, not toggle a token. Pick the palette that represents you or your community: Rainbow (six-stripe Pride), Progress Pride, Trans, Bisexual, Non-Binary, or Two-Spirit. The full-screen flag and moving tile borders stay coordinated without changing the colours themselves.',
+            'body'  => 'PARADE is built to fly a flag, not toggle a token. Pick the palette that represents you or your community: Rainbow, Progress Pride, Trans, Bisexual, Non-Binary, Pansexual, Lesbian, Asexual, Aromantic, Genderfluid, Genderqueer, or Two-Spirit. The full-screen flag and moving tile borders stay coordinated without changing the colours themselves.',
         ],
         [
             'title' => 'Motion & Accessibility',
