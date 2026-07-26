@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - STANLEY skin SMACKTALK router (preload hook)
- * v1.0.3
+ * v1.1.0
  *
  * Included by index.php after settings load, before image routing. Handles all
  * STANLEY/SMACKTALK requests and exit()s so index.php's image logic never runs.
@@ -26,6 +26,15 @@
 
 // Only intercept when STANLEY is the active skin.
 if (($settings['active_skin'] ?? '') !== 'stanley') return;
+
+$_st_allowed_variants = ['retro-flicker', 'retro-stable', 'other-flicker', 'other-stable'];
+$_st_variant = $settings['active_skin_variant'] ?? 'retro-flicker';
+if (!in_array($_st_variant, $_st_allowed_variants, true)) {
+    $_st_variant = 'retro-flicker';
+}
+$_st_body_reality_class = str_starts_with($_st_variant, 'other-')
+    ? ' stanley-other-side-active'
+    : '';
 
 // ============================================================
 //  ARCHIVE VIEW  (featured-image thumbnails -> longform posts)
@@ -90,7 +99,7 @@ if (($_GET['view'] ?? '') === 'archive') {
 <head>
 <?php include __DIR__ . '/skin-meta.php'; ?>
 </head>
-<body class="stanley archive stanley-archive archive-layout-<?php echo $_st_archive_layout; ?>">
+<body class="stanley archive stanley-archive archive-layout-<?php echo $_st_archive_layout . $_st_body_reality_class; ?>">
 
 <?php include __DIR__ . '/skin-header.php'; ?>
 
@@ -193,7 +202,7 @@ if ($_st_post_slug || $_st_post_id) {
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/columns.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/shortcodes.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 </head>
-<body class="stanley single">
+<body class="stanley single<?php echo $_st_body_reality_class; ?>">
 
 <?php include __DIR__ . '/skin-header.php'; ?>
 
@@ -294,7 +303,7 @@ $_st_excerpt = function (string $html): string {
 <head>
 <?php include __DIR__ . '/skin-meta.php'; ?>
 </head>
-<body class="stanley blog">
+<body class="stanley blog<?php echo $_st_body_reality_class; ?>">
 
 <?php include __DIR__ . '/skin-header.php'; ?>
 

@@ -1,19 +1,22 @@
 {
     "schema_version": 1,
     "name": "STANLEY",
-    "version": "1.0.3",
+    "version": "1.1.1",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
-    "description": "A faithful visual reconstruction of Kubrick, Michael Heilemann's landmark WordPress theme. Its fixed white page, blue header, compact reading column, and right sidebar are rebuilt for SMACKTALK with modern responsive and accessibility support. Named STANLEY with gratitude.",
+    "description": "Two eras of Kubrick-inspired blogging in one SMACKTALK skin: Michael Heilemann's original Kubrick and Rough Pixels' contemporary KUBRICK 2024 reinterpretation. Choose retro STANLEY or modern STANLEY 2024, keep either stable, or let it occasionally glimpse its counterpart across THE OTHER SIDE.",
     "status": "stable",
     "modes": [
         "smacktalk"
     ],
     "skin_preload": "preload.php",
     "variants": {
-        "default": "STANLEY (Classic Blue)"
+        "retro-flicker": "STANLEY — THE OTHER SIDE occasionally breaks through",
+        "retro-stable": "STANLEY — Stable",
+        "other-flicker": "STANLEY 2024 — THE OTHER SIDE occasionally breaks through",
+        "other-stable": "STANLEY 2024 — Stable"
     },
-    "default_variant": "default",
+    "default_variant": "retro-flicker",
     "cover_aspect": "4/3",
     "features": {
         "supports_wall": false,
@@ -33,12 +36,32 @@
     },
     "require_scripts": [
         "smack-footer",
-        "smack-community"
+        "smack-community",
+        "smack-other-side"
     ],
     "community_comments": "1",
     "community_likes": "0",
     "community_reactions": "0",
     "options": {
+        "other_side_test_mode": {
+            "section": "THE OTHER SIDE",
+            "type": "select",
+            "label": "Crossing Test Mode",
+            "default": "0",
+            "options": {
+                "0": "Off — normal timing",
+                "1": "On — cross once after each page load"
+            },
+            "help": "Preview the real Other Side transition without waiting half an hour. Works with all four variants, performs one crossing shortly after each page load, and still respects the visitor's reduced-motion setting."
+        },
+        "stanley_2024_hero": {
+            "section": "THE OTHER SIDE",
+            "type": "asset",
+            "label": "STANLEY 2024 Hero Image",
+            "default": "",
+            "accept": "image",
+            "help": "Choose the modern reality's masthead photograph from the Asset Repository. On first use STANLEY chooses an existing image so THE OTHER SIDE never arrives empty; your selection then remains fixed until you change it."
+        },
         "header_image": {
             "section": "HEADER",
             "type": "image",

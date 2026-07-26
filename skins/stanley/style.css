@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK — STANLEY skin stylesheet
- * v1.0.3
+ * v1.1.0
  *
  * A faithful visual reconstruction of Michael Heilemann's Kubrick theme for
  * WordPress. The original proportions, blue inset header, Lucida body,
@@ -23,6 +23,7 @@
     --stanley-border: #959596;
     --stanley-ink: #333;
     --stanley-muted: #777;
+    --stanley-header-photo: none;
 }
 
 * {
@@ -93,7 +94,10 @@ body.stanley :focus-visible {
     color: #fff;
     background:
         linear-gradient(180deg, var(--stanley-banner-top) 0%, var(--stanley-banner-top) 20%,
-            var(--stanley-banner-bottom) 100%);
+            var(--stanley-banner-bottom) 100%),
+        var(--stanley-header-photo);
+    background-position: center;
+    background-size: cover;
     border: 12px solid #fff;
     border-radius: 21px 21px 16px 16px;
     box-shadow:

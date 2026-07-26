@@ -20,11 +20,33 @@ return [
 theme that gave early blogging a recognisable home. It recreates the visual language,
 not the original code. The fixed white page, blue masthead, compact reading column and
 right sidebar have been rebuilt for SMACKTALK with responsive and accessibility support.</p>
+<p>STANLEY 2024 honours <a href="https://roughpixels.ch/themes/kubrick-2024/"
+rel="external">KUBRICK 2024 by Rough Pixels</a>, the contemporary reinterpretation
+that showed how Kubrick's visual lineage could move forward. SnapSmack uses neither
+theme's WordPress code; both developers are credited for the designs that inspired it.</p>
 
 <h4>Best Fit</h4>
 <p>Use STANLEY for a writing-led photoblog where posts, captions and longer stories
 matter as much as the photographs. It supports SMACKTALK longform posts and comments.
 It deliberately does not include the calendar tray, masonry view or carousel.</p>
+
+<h4>Choose Your Reality</h4>
+<ul>
+    <li><strong>STANLEY &mdash; THE OTHER SIDE</strong> is the faithful retro design.
+    Roughly every half hour it may briefly glimpse STANLEY 2024 before returning.</li>
+    <li><strong>STANLEY &mdash; Stable</strong> keeps the retro design fixed.</li>
+    <li><strong>STANLEY 2024 &mdash; THE OTHER SIDE</strong> uses the modern design and
+    may briefly glimpse retro STANLEY.</li>
+    <li><strong>STANLEY 2024 &mdash; Stable</strong> keeps the modern design fixed.</li>
+</ul>
+<p>The crossings are decorative, never change content or navigation, pause while the
+tab is hidden, and are disabled when the visitor requests reduced motion.</p>
+<p><strong>Crossing Test Mode</strong> is available under THE OTHER SIDE in Smooth
+Your Skin. Turn it on to perform one real crossing shortly after each page load, with
+any of the four variants. Turn it off again for normal timing.</p>
+<p><strong>STANLEY 2024 Hero Image</strong> opens the existing Asset Repository picker.
+If you have not selected one, STANLEY chooses the newest image already in your library
+the first time it renders, saves that choice, and keeps using it until you change it.</p>
 HTML
     ],
 

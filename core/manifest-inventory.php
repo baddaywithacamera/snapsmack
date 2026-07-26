@@ -597,6 +597,11 @@ return [
                 ]
             ]
         ],
+        'smack-other-side' => [
+            'label'        => 'The Other Side reality bleed',
+            'path'         => 'assets/js/ss-engine-other-side.js',
+            'has_settings' => false
+        ],
         'smack-keyboard' => [
             'label'        => 'Hotkey/Comms Engine',
             'path'         => 'assets/js/ss-engine-comms.js',

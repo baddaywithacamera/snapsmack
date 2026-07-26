@@ -45,8 +45,8 @@
     }
     // HIGH-KEY softening: lift lightness hard, ease saturation — airy, warm, happy
     function pastel(c, amt){
-        var L = clamp(lerp(c[2], 0.80, amt*0.80), 0, 0.9);
-        var S = clamp(lerp(c[1], c[1]*0.78, amt), 0, 1);
+        var L = clamp(lerp(c[2], 0.72, amt*0.68), 0, 0.86);
+        var S = clamp(lerp(c[1], c[1]*0.88, amt), 0, 1);
         return [c[0], S, L];
     }
 
@@ -86,13 +86,25 @@
         }
         function burst(r){
             var n = burstSize + Math.round((Math.random()-0.5)*burstSize*0.3);
-            var vmax = cv.height*spreadAmt;
+            var vmax = cv.height*spreadAmt*1.34;
+            var style = Math.floor(Math.random()*4); // peony, ring, chrysanthemum, willow
+            var phase = Math.random()*Math.PI*2;
             for (var i = 0; i < n && parts.length < MAX_PARTS; i++){
-                var ang = Math.random()*Math.PI*2;
-                var sp = Math.cos(Math.random()*Math.PI/2)*vmax;   // cos-weighted shell + core depth
+                var ang = style === 1
+                    ? phase + (i/n)*Math.PI*2 + (Math.random()-0.5)*0.035
+                    : Math.random()*Math.PI*2;
+                var depth = Math.random();
+                var sp = style === 1
+                    ? vmax*(0.88+0.12*Math.random())
+                    : (style === 2
+                        ? vmax*(0.42+0.58*Math.pow(depth,0.24))
+                        : Math.cos(depth*Math.PI/2)*vmax);
+                if (style === 3) sp *= 0.72+0.22*Math.sin(ang)*Math.sin(ang);
                 var col = pastel(sampleArr(PAL, r.palStart + i/n), softAmt);
                 parts.push({ x:r.x, y:r.y, px:r.x, py:r.y, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp,
-                    col:col, size:(5+5*Math.random()), alpha:1, fade:0.006+0.010*Math.random(), flick:true });
+                    col:col, size:(5.5+6*Math.random()), alpha:1,
+                    fade:(style === 3 ? 0.004 : 0.006)+0.009*Math.random(),
+                    flick:true, sparkle:Math.random()<0.22, age:0 });
             }
         }
         function fadeFrame(amt){
@@ -103,14 +115,19 @@
         }
         function drawParticle(p){
             var a = Math.max(0,p.alpha), w = p.flick ? (0.8+0.25*Math.random()) : 1;
-            ctx.strokeStyle = hsla([p.col[0],Math.min(1,p.col[1]+0.06),Math.max(0.42,p.col[2]-0.05)], a*0.9);
-            ctx.lineWidth = Math.max(0.6, p.size*0.55*streamerW); ctx.lineCap='round'; ctx.lineJoin='round';
+            ctx.strokeStyle = hsla([p.col[0],Math.min(1,p.col[1]+0.08),Math.max(0.38,p.col[2]-0.09)], a*0.98);
+            ctx.lineWidth = Math.max(0.75, p.size*0.68*streamerW); ctx.lineCap='round'; ctx.lineJoin='round';
             ctx.beginPath(); ctx.moveTo(p.px,p.py); ctx.lineTo(p.x,p.y); ctx.stroke();
-            var r = Math.max(0.4, p.size*0.42*streamerW*w);
+            var r = Math.max(0.6, p.size*0.62*streamerW*w);
             var g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
-            g.addColorStop(0, hsla([p.col[0],Math.min(1,p.col[1]+0.12),Math.min(0.95,p.col[2]+0.10)], a*0.5));
+            g.addColorStop(0, 'rgba(255,255,255,'+(a*0.78).toFixed(3)+')');
+            g.addColorStop(0.22, hsla([p.col[0],Math.min(1,p.col[1]+0.12),Math.min(0.93,p.col[2]+0.08)], a*0.72));
             g.addColorStop(1, hsla(p.col, 0));
             ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x,p.y,r,0,7); ctx.fill();
+            if (p.sparkle && p.age > 9 && Math.random() < 0.09) {
+                ctx.fillStyle = 'rgba(255,255,255,'+(a*0.88).toFixed(3)+')';
+                ctx.fillRect(p.x-0.7,p.y-0.7,1.4,1.4);
+            }
         }
 
         var lastT = performance.now();
@@ -124,13 +141,21 @@
             for (var i = rockets.length-1; i >= 0; i--){
                 var r = rockets[i];
                 r.vy += GRAV*rdt; r.x += r.vx*rdt; r.y += r.vy*rdt;
-                ctx.fillStyle = 'rgba(255,170,70,0.11)';          // dim launch spark
-                ctx.beginPath(); ctx.arc(r.x, r.y, 1.6, 0, 7); ctx.fill();
+                var tail = Math.max(5, Math.min(20, -r.vy*0.028));
+                var rg = ctx.createLinearGradient(r.x,r.y,r.x-r.vx*0.06,r.y+tail);
+                rg.addColorStop(0,'rgba(255,255,255,0.92)');
+                rg.addColorStop(0.25,'rgba(255,184,76,0.72)');
+                rg.addColorStop(1,'rgba(255,184,76,0)');
+                ctx.strokeStyle=rg; ctx.lineWidth=1.5; ctx.beginPath();
+                ctx.moveTo(r.x,r.y); ctx.lineTo(r.x-r.vx*0.06,r.y+tail); ctx.stroke();
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                ctx.beginPath(); ctx.arc(r.x, r.y, 1.35, 0, 7); ctx.fill();
                 if (r.vy >= 0 || r.y <= r.targetY){ burst(r); rockets.splice(i, 1); }
             }
             var resK = Math.pow(0.90,k), shrinkK = Math.pow(0.94,k), gravK = cv.height*0.0011*k;
             for (var j = parts.length-1; j >= 0; j--){
                 var p = parts[j];
+                p.age++;
                 p.px = p.x; p.py = p.y;
                 p.vx *= resK; p.vy *= resK; p.vy += gravK;
                 p.x += p.vx*k; p.y += p.vy*k;

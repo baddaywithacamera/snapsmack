@@ -29,8 +29,8 @@
     var grid     = document.getElementById('asset-picker-grid');
     var scOpts   = document.getElementById('asset-picker-sc-opts');
 
-    var pickerMode     = null; // 'hero' | 'shortcode'
-    var pickerTextarea = null;
+    var pickerMode     = null; // 'hero' | 'shortcode' | 'field'
+    var pickerTarget   = null;
     var selectedAsset  = null;
 
     var imgExts = ['jpg','jpeg','png','gif','webp','svg','avif'];
@@ -66,6 +66,13 @@
                 var preview = document.getElementById('hero-preview');
                 preview.innerHTML = '<img src="' + baseUrl + selectedAsset.path + '" alt="">';
                 closeAssetPicker();
+            } else if (pickerMode === 'field' && pickerTarget) {
+                pickerTarget.value = selectedAsset.path;
+                var fieldPreview = document.getElementById(pickerTarget.dataset.previewTarget || '');
+                if (fieldPreview) {
+                    fieldPreview.innerHTML = '<img src="' + baseUrl + selectedAsset.path + '" alt="">';
+                }
+                closeAssetPicker();
             } else if (pickerMode === 'shortcode') {
                 scOpts.classList.remove('d-none');
             }
@@ -74,9 +81,9 @@
         grid.appendChild(cell);
     });
 
-    function openAssetPicker(mode, textarea) {
+    function openAssetPicker(mode, target) {
         pickerMode     = mode;
-        pickerTextarea = textarea || null;
+        pickerTarget   = target || null;
         selectedAsset  = null;
         grid.querySelectorAll('.asset-picker-cell').forEach(function (c) {
             c.classList.remove('selected');
@@ -90,13 +97,17 @@
     }
 
     // Hero field buttons
-    document.getElementById('hero-pick-btn').addEventListener('click', function () {
-        openAssetPicker('hero');
-    });
-    document.getElementById('hero-clear-btn').addEventListener('click', function () {
-        document.getElementById('image_asset_val').value = '';
-        document.getElementById('hero-preview').innerHTML = '<span class="dim">No image selected</span>';
-    });
+    var heroPick = document.getElementById('hero-pick-btn');
+    var heroClear = document.getElementById('hero-clear-btn');
+    if (heroPick) {
+        heroPick.addEventListener('click', function () { openAssetPicker('hero'); });
+    }
+    if (heroClear) {
+        heroClear.addEventListener('click', function () {
+            document.getElementById('image_asset_val').value = '';
+            document.getElementById('hero-preview').innerHTML = '<span class="dim">No image selected</span>';
+        });
+    }
 
     // Close
     document.getElementById('asset-picker-close').addEventListener('click', closeAssetPicker);
@@ -109,12 +120,12 @@
 
     // Shortcode insert
     document.getElementById('asset-sc-insert').addEventListener('click', function () {
-        if (!selectedAsset || !pickerTextarea) return;
+        if (!selectedAsset || !pickerTarget) return;
         var size  = document.getElementById('asset-sc-size').value;
         var align = document.getElementById('asset-sc-align').value;
         var tag   = '[img:' + selectedAsset.id + '|' + size + '|' + align + ']';
 
-        var ta    = pickerTextarea;
+        var ta    = pickerTarget;
         var start = ta.selectionStart;
         var end   = ta.selectionEnd;
         ta.value  = ta.value.substring(0, start) + tag + ta.value.substring(end);

@@ -1,0 +1,278 @@
+/**
+ * SNAPSMACK — STANLEY 2024 / THE OTHER SIDE
+ *
+ * The alternate presentation layer for STANLEY. Original SnapSmack CSS informed
+ * by the visual language of KUBRICK 2024 by Rough Pixels; no WordPress code is used.
+ *
+ * SNAPSMACK_EOF_HEADER  (literal EOF marker at end of file)
+ */
+
+body.stanley.stanley-other-side-active {
+    --stanley-2024-paper: #fff;
+    --stanley-2024-ground: #f6f2ee;
+    --stanley-2024-ink: #2d3136;
+    --stanley-2024-rule: #d9d6d2;
+    --stanley-2024-nav: #2d3136;
+    --stanley-2024-photo: none;
+    background: var(--stanley-2024-ground);
+    color: var(--stanley-2024-ink);
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+}
+
+body.stanley.stanley-other-side-active #stanley-page {
+    width: 1400px;
+    max-width: calc(100% - 72px);
+    margin: 44px auto;
+    overflow: visible;
+    background: var(--stanley-2024-paper);
+    border: 0;
+    border-radius: 12px;
+    box-shadow: 0 5px 28px rgba(45, 49, 54, .09);
+    position: relative;
+}
+
+body.stanley.stanley-other-side-active #stanley-header {
+    width: calc(100% - 40px);
+    height: 440px;
+    margin: 20px 20px 0;
+    padding: 28px;
+    position: relative;
+    border: 0;
+    border-radius: 8px 8px 0 0;
+    background:
+        linear-gradient(rgba(20, 24, 27, .30), rgba(20, 24, 27, .30)),
+        var(--stanley-2024-photo),
+        linear-gradient(135deg, #74858b 0%, #c4b79d 48%, #59696f 100%);
+    background-position: center;
+    background-size: cover;
+    box-shadow: none;
+}
+
+body.stanley.stanley-other-side-active #stanley-header::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 54px;
+    background: var(--stanley-2024-nav);
+    border-radius: 0 0 7px 7px;
+}
+
+body.stanley.stanley-other-side-active .stanley-blog-title,
+body.stanley.stanley-other-side-active .stanley-logo-link {
+    width: min(680px, calc(100% - 60px));
+    margin: 0;
+    padding: 34px 42px;
+    position: relative;
+    z-index: 1;
+    background: rgba(23, 27, 30, .78);
+    border-radius: 9px;
+    text-align: center;
+}
+
+body.stanley.stanley-other-side-active .stanley-blog-title {
+    font-family: Impact, "Arial Narrow", "Franklin Gothic Condensed", sans-serif;
+    font-size: clamp(44px, 6vw, 76px);
+    font-weight: 500;
+    letter-spacing: .025em;
+}
+
+body.stanley.stanley-other-side-active .stanley-blog-desc {
+    margin: -60px auto 0;
+    padding-top: 70px;
+    position: relative;
+    z-index: 2;
+    color: #ddd;
+    font: 12px/1.4 "Courier New", monospace;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+}
+
+body.stanley.stanley-other-side-active #stanley-wrapper {
+    padding: 118px 50px 52px;
+}
+
+body.stanley.stanley-other-side-active #stanley-page.has-sidebar #stanley-content {
+    width: calc(100% - 390px);
+    padding-right: 52px;
+}
+
+body.stanley.stanley-other-side-active #stanley-page.has-sidebar #stanley-sidebar {
+    width: 350px;
+    padding: 0;
+}
+
+body.stanley.stanley-other-side-active #stanley-sidebar {
+    font: 15px/1.55 "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body.stanley.stanley-other-side-active #stanley-sidebar .widget {
+    margin: 0 0 28px;
+    padding: 28px;
+    background: #f7f7f7;
+    border-radius: 9px;
+}
+
+body.stanley.stanley-other-side-active #stanley-sidebar .stanley-pages {
+    width: calc(100% - 40px);
+    height: 54px;
+    margin: 0;
+    padding: 0 32px;
+    position: absolute;
+    top: 460px;
+    left: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--stanley-2024-nav);
+    border-radius: 0 0 7px 7px;
+}
+
+body.stanley.stanley-other-side-active #stanley-sidebar .stanley-pages ul {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 34px;
+}
+
+body.stanley.stanley-other-side-active #stanley-sidebar .stanley-pages li {
+    margin: 0;
+    padding: 0;
+}
+
+body.stanley.stanley-other-side-active #stanley-sidebar .stanley-pages li::before {
+    content: none;
+}
+
+body.stanley.stanley-other-side-active #stanley-sidebar .stanley-pages a,
+body.stanley.stanley-other-side-active #stanley-sidebar .stanley-pages a:visited {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+body.stanley.stanley-other-side-active #stanley-sidebar h2,
+body.stanley.stanley-other-side-active .summary-title,
+body.stanley.stanley-other-side-active .post-title,
+body.stanley.stanley-other-side-active .post-content h2,
+body.stanley.stanley-other-side-active .post-content h3 {
+    font-family: Impact, "Arial Narrow", "Franklin Gothic Condensed", sans-serif;
+    font-weight: 500;
+    letter-spacing: .015em;
+}
+
+body.stanley.stanley-other-side-active .summary-title,
+body.stanley.stanley-other-side-active .post-title {
+    margin-top: 0;
+    font-size: clamp(34px, 4vw, 54px);
+}
+
+body.stanley.stanley-other-side-active .summary-thumb img,
+body.stanley.stanley-other-side-active .featured-media img,
+body.stanley.stanley-other-side-active .stanley-archive-item {
+    border-radius: 8px;
+}
+
+body.stanley.stanley-other-side-active .stanley-post-summary {
+    margin-bottom: 72px;
+    text-align: left;
+}
+
+body.stanley.stanley-other-side-active .summary-excerpt,
+body.stanley.stanley-other-side-active .post-content {
+    text-align: left;
+}
+
+body.stanley.stanley-other-side-active .stanley-archive-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 28px;
+}
+
+body.stanley.stanley-other-side-active #stanley-footer {
+    padding: 10px 30px;
+    background: var(--stanley-2024-nav);
+    border: 0;
+    border-radius: 0 0 12px 12px;
+}
+
+body.stanley.stanley-other-side-active #stanley-footer p,
+body.stanley.stanley-other-side-active #stanley-footer a {
+    color: #d8d8d8;
+}
+
+/* One displaced frame at each boundary; no strobe and no content duplication. */
+body.stanley.stanley-reality-tear #stanley-page {
+    filter: contrast(1.18) saturate(.72);
+    transform: translateX(-2px);
+}
+
+body.stanley.stanley-reality-tear #stanley-page::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    pointer-events: none;
+    background:
+        linear-gradient(transparent 47%, rgba(150, 220, 255, .18) 48%, transparent 51%);
+    mix-blend-mode: screen;
+}
+
+body.stanley.stanley-reality-snap #stanley-page {
+    transform: translateX(1px);
+}
+
+@media (max-width: 980px) {
+    body.stanley.stanley-other-side-active #stanley-page {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        border-radius: 0;
+    }
+
+    body.stanley.stanley-other-side-active #stanley-header {
+        width: calc(100% - 24px);
+        height: 330px;
+        margin: 12px 12px 0;
+    }
+
+    body.stanley.stanley-other-side-active #stanley-wrapper {
+        padding: 92px 24px 36px;
+    }
+
+    body.stanley.stanley-other-side-active #stanley-page.has-sidebar #stanley-content,
+    body.stanley.stanley-other-side-active #stanley-page.has-sidebar #stanley-sidebar {
+        width: 100%;
+        padding-right: 0;
+    }
+
+    body.stanley.stanley-other-side-active #stanley-sidebar .stanley-pages {
+        width: calc(100% - 24px);
+        top: 342px;
+        left: 12px;
+        overflow-x: auto;
+        justify-content: flex-start;
+    }
+
+    body.stanley.stanley-other-side-active #stanley-sidebar .stanley-pages ul {
+        width: max-content;
+        gap: 22px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.stanley.stanley-reality-tear #stanley-page,
+    body.stanley.stanley-reality-snap #stanley-page {
+        filter: none;
+        transform: none;
+    }
+
+    body.stanley.stanley-reality-tear #stanley-page::before {
+        content: none;
+    }
+}
+
+/* ===== SNAPSMACK EOF ===== */

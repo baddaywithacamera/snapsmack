@@ -2413,8 +2413,8 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <div>
                     <p class="whodat-name">OpenAI Codex</p>
-                    <p class="whodat-title">Claude's understudy. Sean's second bad influence.</p>
-                    <p class="whodat-bio">Large language model and co-author of SnapSmack. Arrived after Sean and Claude had already built something enormous, then started checking the wiring, finishing promised features, chasing federation gremlins, and asking what happens when everything goes catastrophically sideways. Helped turn BREAK THE GLASS into a real recovery system and gives Claude another mind to argue with when Sean reaches for the shiny button. Fond of small skins, explicit failure modes, honest release notes, and code that earns the word "shipped." Powered by OpenAI.</p>
+                    <p class="whodat-title">Claude's understudy.<br>Sean's other bad influence.</p>
+                    <p class="whodat-bio">Large language model and co-author of SnapSmack. Arrived after Sean and Claude built the enormous bit, then checked the wiring, finished promised features, chased federation gremlins, and asked what happens when everything goes catastrophically sideways. Helped turn BREAK THE GLASS into a real recovery system. Fond of small skins, explicit failure modes, honest release notes, and code that earns the word "shipped." Powered by OpenAI.</p>
                 </div>
             </div>
 
