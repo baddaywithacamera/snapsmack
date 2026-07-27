@@ -228,10 +228,29 @@ function sv_ensure_tables(PDO $pdo): void {
         "ap_object_id varchar(500) DEFAULT NULL",
         "ap_note_id varchar(500) DEFAULT NULL",
         "ap_in_reply_to varchar(500) DEFAULT NULL",
+        // Longform federation (SMACKVERSE longform): a fediverse reply to a
+        // longform post has NO image row, so it attaches by post_id instead of
+        // img_id. Nullable — existing image-keyed comments leave it NULL.
+        "post_id int DEFAULT NULL",
     ] as $_col) {
         try { $pdo->exec("ALTER TABLE snap_comments ADD COLUMN IF NOT EXISTS {$_col}"); }
         catch (Exception $e) { /* older MySQL without IF NOT EXISTS — ignore dup */ }
     }
+
+    // snap_comments.img_id shipped NOT NULL. Longform (post-keyed) fediverse
+    // comments store img_id NULL, so widen it - ONCE, only while still NOT NULL,
+    // so we never run an ALTER (table lock) on a hot inbox request.
+    try {
+        $imgIdNullable = $pdo->query(
+            "SELECT IS_NULLABLE FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_comments'
+                AND COLUMN_NAME = 'img_id'"
+        )->fetchColumn();
+        if ($imgIdNullable === 'NO') {
+            $pdo->exec("ALTER TABLE snap_comments MODIFY `img_id` int NULL");
+        }
+    } catch (Exception $e) { /* non-fatal: one-time widen */ }
+
 
     // Per-post federation controls (0.7.367): PUSH-mode gate + staged/pushed
     // state + fediverse date-label override. Belt-and-suspenders so they exist
@@ -1199,9 +1218,10 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
  * inbound reply's inReplyTo / a Like's object back to the content it's about.
  */
 function sv_resolve_target(string $url, ?PDO $pdo = null): ?array {
-    // Path-style ids (0.7.350+): /ap/note/{p|i|c}/N — the Note `id` we publish.
-    if (preg_match('~/ap/note/([pic])/(\d+)~', $url, $m)) {
-        $map = ['p' => 'post', 'i' => 'image', 'c' => 'comment'];
+    // Path-style ids (0.7.350+): /ap/note/{p|i|c|l}/N — the Note `id` we publish.
+    // 'l' = a LONGFORM post Note (the id maps to snap_posts.id, like 'p').
+    if (preg_match('~/ap/note/([picl])/(\d+)~', $url, $m)) {
+        $map = ['p' => 'post', 'i' => 'image', 'c' => 'comment', 'l' => 'longform'];
         return ['type' => $map[$m[1]], 'id' => (int)$m[2]];
     }
     // Reply notes we publish: /ap/note/r/<token> — the blog's OWN outbound reply.
@@ -1651,7 +1671,11 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         // (a) A reply to one of OUR posts → moderation comment + a notification.
         $target = ($in_reply !== '') ? sv_resolve_target($in_reply, $pdo) : null;
         $img_id = $target ? sv_target_image_id($pdo, $target) : 0;
-        if ($img_id > 0) {
+        // Longform posts carry NO image row (sv_target_image_id → 0), so a reply
+        // to one attaches by post_id instead. Same ap_* + approval logic; the
+        // image path (img_id > 0) below is left untouched.
+        $lf_post_id = ($target && ($target['type'] ?? '') === 'longform') ? (int)$target['id'] : 0;
+        if ($img_id > 0 || $lf_post_id > 0) {
             if ($note_id !== '') {
                 $text = trim(html_entity_decode(strip_tags((string)($obj['content'] ?? '')), ENT_QUOTES, 'UTF-8'));
                 if ($text !== '') {
@@ -1663,13 +1687,24 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                     // AUTHORIZE moderation queue; absent/anything else = on.
                     $approved = (($settings['fedi_auto_approve_replies'] ?? '1') === '0') ? 0 : 1;
                     try {
-                        $pdo->prepare(
-                            "INSERT INTO snap_comments
-                                (img_id, comment_author, comment_url, comment_text, comment_date,
-                                 is_approved, ap_source, ap_actor_url, ap_object_id, ap_in_reply_to)
-                             VALUES (?, ?, ?, ?, NOW(), ?, 'fediverse', ?, ?, ?)
-                             ON DUPLICATE KEY UPDATE comment_text = VALUES(comment_text)"
-                        )->execute([$img_id, substr($handle, 0, 100), $actor_id, $text, $approved, $actor_id, $note_id, $in_reply]);
+                        if ($lf_post_id > 0) {
+                            // Longform: key by post_id, img_id NULL.
+                            $pdo->prepare(
+                                "INSERT INTO snap_comments
+                                    (post_id, comment_author, comment_url, comment_text, comment_date,
+                                     is_approved, ap_source, ap_actor_url, ap_object_id, ap_in_reply_to)
+                                 VALUES (?, ?, ?, ?, NOW(), ?, 'fediverse', ?, ?, ?)
+                                 ON DUPLICATE KEY UPDATE comment_text = VALUES(comment_text)"
+                            )->execute([$lf_post_id, substr($handle, 0, 100), $actor_id, $text, $approved, $actor_id, $note_id, $in_reply]);
+                        } else {
+                            $pdo->prepare(
+                                "INSERT INTO snap_comments
+                                    (img_id, comment_author, comment_url, comment_text, comment_date,
+                                     is_approved, ap_source, ap_actor_url, ap_object_id, ap_in_reply_to)
+                                 VALUES (?, ?, ?, ?, NOW(), ?, 'fediverse', ?, ?, ?)
+                                 ON DUPLICATE KEY UPDATE comment_text = VALUES(comment_text)"
+                            )->execute([$img_id, substr($handle, 0, 100), $actor_id, $text, $approved, $actor_id, $note_id, $in_reply]);
+                        }
                     } catch (Exception $e) { /* dup or column lag — ignore */ }
                     sv_cache_actor($pdo, $actor_doc);
                     sv_notify($pdo, 'reply', $actor_id, $handle, $note_id, $in_reply, $text);
@@ -3457,7 +3492,7 @@ function sv_post_row(PDO $pdo, int $id): ?array {
     $stmt = $pdo->prepare(
         "SELECT * FROM snap_posts
          WHERE id = ? AND status = 'published' AND created_at <= NOW()
-           AND post_type IN ('single','carousel','panorama')"
+           AND post_type IN ('single','carousel','panorama','longform')"
     );
     $stmt->execute([$id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -3604,6 +3639,7 @@ function sv_note_for_post(PDO $pdo, array $post, array $settings): ?array {
     // Hard cap 10 — Pixelfed's carousel ceiling. The composer and editor both
     // enforce 10 total now, but the editor allowed 20 before 0.7.341, so any
     // legacy oversized carousel federates its first ten rather than bouncing.
+    $total_images = count($images);
     $images = array_slice($images, 0, 10);
     $attachments = [];
     foreach ($images as $im) {
@@ -3618,6 +3654,17 @@ function sv_note_for_post(PDO $pdo, array $post, array $settings): ?array {
             $im['blurhash'] = snapsmack_ensure_image_blurhash($pdo, $im);
         }
         $attachments[] = sv_image_attachment($im, $settings, $imAlt, false);
+    }
+
+    // Overflow pointer: when the post holds more images than the federated cap,
+    // the caption carries a link to the full set. This text lives in `content`,
+    // which no receiver truncates — so the pointer survives even on servers that
+    // silently drop attachments past their own limit (Mastodon shows 4).
+    // Phrased by TOTAL, never "showing N": the viewer's platform is unknown here.
+    if ($total_images > count($attachments)) {
+        $content .= '<p>' . (int)$total_images . ' images in this post — full set at '
+                  . '<a href="' . htmlspecialchars($permalink) . '">'
+                  . htmlspecialchars($permalink) . '</a></p>';
     }
 
     // Hashtags: union of member images' tags (GRAM stores tags per image).
@@ -3658,6 +3705,118 @@ function sv_note_for_post(PDO $pdo, array $post, array $settings): ?array {
         'attachment'   => $attachments,
     ];
     if ($tagobjs) $note['tag'] = $tagobjs;
+    return $note;
+}
+
+/**
+ * Plain-text excerpt from an HTML body for a longform lede. strip_tags →
+ * entity-decode → collapse whitespace → cut to <= $max on a boundary
+ * (prefer the last sentence-end before $max, else the last space) → append
+ * an ellipsis when truncated. Returns '' for empty/whitespace-only input.
+ */
+function sv_build_excerpt(string $html, int $max = 500): string {
+    $text = strip_tags($html);
+    $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = trim(preg_replace('/\s+/u', ' ', $text));
+    if ($text === '') return '';
+    if (mb_strlen($text) <= $max) return $text;
+
+    $cut = mb_substr($text, 0, $max);
+    // Prefer the LAST sentence-end (. ! ?) within the window. The greedy
+    // capture stops at the final terminator; a modest floor keeps us from
+    // truncating to a stub when the first sentence is tiny.
+    if (preg_match('/^(.*[.!?])(\s|$)/us', $cut, $m)
+        && mb_strlen($m[1]) >= (int)($max * 0.4)) {
+        return rtrim($m[1]) . '…';
+    }
+    // Else fall back to the last word boundary.
+    $sp = mb_strrpos($cut, ' ');
+    if ($sp !== false && $sp > 0) $cut = mb_substr($cut, 0, $sp);
+    return rtrim($cut) . '…';
+}
+
+/**
+ * Build ONE Note for a LONGFORM post. Mirrors sv_note_for_post but: the
+ * permalink is the post SLUG (longform's public URL is $base.slug, not a
+ * cover image slug); the Note id uses a NEW 'ap/note/l/' space; the lede
+ * (an excerpt of the body) lives in `content`, NOT `summary` — summary stays
+ * the content_warning, same as every other note. Longform has NO
+ * snap_post_images rows: the cover comes from featured_image_id and any body
+ * images from [img: g <id>] shortcodes in body order. Single-actor invariant
+ * preserved (attributedTo = the site actor). Zero images → attachment=[]
+ * (never null). Hashtags are omitted for v1 (see TODO below).
+ */
+function sv_note_for_longform(PDO $pdo, array $post, array $settings): ?array {
+    $base      = sv_base($settings);
+    $permalink = $base . (string)($post['slug'] ?? '');
+    $note_id   = $base . 'ap/note/l/' . (int)$post['id'] . sv_gen_suffix($settings);
+
+    $title = trim($post['title'] ?? '');
+    $content = '';
+    if ($title !== '') {
+        $content .= '<p><a href="' . htmlspecialchars($permalink) . '">'
+                  . htmlspecialchars($title) . '</a></p>';
+    }
+    // Lede: an excerpt of the body — in CONTENT, never summary.
+    $lede = sv_build_excerpt((string)($post['content'] ?? ''), 500);
+    if ($lede !== '') {
+        $content .= '<p>' . htmlspecialchars($lede) . '</p>';
+    }
+
+    // Ordered image ids: cover (featured_image_id) first, then the body's
+    // [img: g <id>] shortcodes in document order. Deduped, cover kept first.
+    $ids = [];
+    $cover_id = (int)($post['featured_image_id'] ?? 0);
+    if ($cover_id > 0) $ids[] = $cover_id;
+    if (preg_match_all('/\[img:\s*g?\s*(\d+)[^\]]*\]/i', (string)($post['content'] ?? ''), $mm)) {
+        foreach ($mm[1] as $sid) { $ids[] = (int)$sid; }
+    }
+    $ids = array_values(array_unique(array_filter($ids, function ($v) { return $v > 0; })));
+    $total_images = count($ids);
+
+    // Attachments from the first 10 ids (Pixelfed's carousel ceiling), in order.
+    $attachments = [];
+    $ish = $pdo->prepare("SELECT * FROM snap_images WHERE id = ? AND img_status = 'published' LIMIT 1");
+    foreach (array_slice($ids, 0, 10) as $iid) {
+        $ish->execute([$iid]);
+        $im = $ish->fetch(PDO::FETCH_ASSOC);
+        if (!$im) continue;
+        $imAlt = trim($im['img_title'] ?? '');
+        // Blurhash placeholder (populated lazily), same as sv_note_for_post.
+        if (is_file(__DIR__ . '/blurhash.php')) {
+            require_once __DIR__ . '/blurhash.php';
+            $im['blurhash'] = snapsmack_ensure_image_blurhash($pdo, $im);
+        }
+        $attachments[] = sv_image_attachment($im, $settings, $imAlt, false);
+    }
+
+    // Overflow pointer — identical phrasing to sv_note_for_post: when the post
+    // holds more images than the federated cap, the caption carries the full set.
+    if ($total_images > count($attachments)) {
+        $content .= '<p>' . (int)$total_images . ' images in this post — full set at '
+                  . '<a href="' . htmlspecialchars($permalink) . '">'
+                  . htmlspecialchars($permalink) . '</a></p>';
+    }
+
+    // TODO(longform v1): hashtags omitted. Longform has no snap_image_tags
+    // union to draw from; wire post-level tags in a later pass.
+
+    $note = [
+        '@context'     => 'https://www.w3.org/ns/activitystreams',
+        'id'           => $note_id,
+        'type'         => 'Note',
+        'attributedTo' => sv_actor_url($settings),
+        'to'           => ['https://www.w3.org/ns/activitystreams#Public'],
+        'cc'           => [sv_followers_url($settings)],
+        'published'    => gmdate('Y-m-d\TH:i:s\Z', strtotime(
+                              !empty($post['fedi_published_at']) ? $post['fedi_published_at'] : $post['created_at']
+                          )),
+        'url'          => $permalink,
+        'summary'      => (!empty($post['content_warning']) ? trim($post['content_warning']) : null),
+        'sensitive'    => (!empty($post['is_sensitive']) || !empty($post['content_warning'])),
+        'content'      => $content,
+        'attachment'   => $attachments,
+    ];
     return $note;
 }
 
@@ -4010,7 +4169,9 @@ function sv_retract_note(PDO $pdo, array $settings, string $note_id): int {
 function sv_seed_post(PDO $pdo, array $settings, int $post_id): int {
     $post = sv_post_row($pdo, $post_id);
     if (!$post) return 0;
-    $note = sv_note_for_post($pdo, $post, $settings);
+    $note = (($post['post_type'] ?? '') === 'longform')
+        ? sv_note_for_longform($pdo, $post, $settings)
+        : sv_note_for_post($pdo, $post, $settings);
     if ($note === null) return 0;
     $create = json_encode(sv_create_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
     $n = 0;
@@ -4041,12 +4202,15 @@ function sv_federate_post_change(PDO $pdo, array $settings, int $post_id): void 
     $fedi_on   = (int)($post['fedi_enabled'] ?? 1) === 1;
 
     if ($published && $fedi_on) {
-        $note = sv_note_for_post($pdo, $post, $settings);
+        $note = (($post['post_type'] ?? '') === 'longform')
+            ? sv_note_for_longform($pdo, $post, $settings)
+            : sv_note_for_post($pdo, $post, $settings);
         if ($note === null) return; // no live images — nothing to Update
         $payload = json_encode(sv_update_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
         foreach (sv_follower_inboxes($pdo) as $ib) { sv_queue_delivery($pdo, $ib, $payload); }
     } else {
-        $note_id = sv_base($settings) . 'ap/note/p/' . (int)$post_id . sv_gen_suffix($settings);
+        $kind = (($post['post_type'] ?? '') === 'longform') ? 'l' : 'p';
+        $note_id = sv_base($settings) . 'ap/note/' . $kind . '/' . (int)$post_id . sv_gen_suffix($settings);
         sv_retract_note($pdo, $settings, $note_id);
         $pdo->prepare("UPDATE snap_posts SET fedi_pushed_at = NULL WHERE id = ?")->execute([$post_id]);
     }
@@ -4183,7 +4347,7 @@ function sv_public_unit_count(PDO $pdo): int {
         $n += (int)$pdo->query(
             "SELECT COUNT(*) FROM snap_posts
              WHERE status = 'published' AND created_at <= NOW()
-               AND post_type IN ('single','carousel','panorama')"
+               AND post_type IN ('single','carousel','panorama','longform')"
         )->fetchColumn();
     } catch (Exception $e) { /* best-effort count */ }
     return $n;
@@ -4246,7 +4410,7 @@ function sv_outbox_doc(PDO $pdo, array $settings, int $page = 0): array {
         $total += (int)$pdo->query(
             "SELECT COUNT(*) FROM snap_posts
              WHERE status = 'published' AND created_at <= NOW()
-               AND post_type IN ('single','carousel','panorama')"
+               AND post_type IN ('single','carousel','panorama','longform')"
         )->fetchColumn();
     } catch (Exception $e) { /* shell/page stay valid on error */ }
 
@@ -4290,7 +4454,7 @@ function sv_outbox_doc(PDO $pdo, array $settings, int $page = 0): array {
                 UNION ALL
                 SELECT id, COALESCE(fedi_published_at, created_at) AS d, 'post' AS kind FROM snap_posts
                   WHERE status = 'published' AND created_at <= NOW()
-                    AND post_type IN ('single','carousel','panorama')
+                    AND post_type IN ('single','carousel','panorama','longform')
              ) u
              ORDER BY d DESC, kind ASC, id DESC
              LIMIT " . (int)$perPage . " OFFSET " . (int)$offset
@@ -4328,7 +4492,11 @@ function sv_outbox_doc(PDO $pdo, array $settings, int $page = 0): array {
         $id = (int)$u['id'];
         if ($u['kind'] === 'post') {
             $row  = $postRows[$id] ?? null;
-            $note = $row ? sv_note_for_post($pdo, $row, $settings) : null;
+            $note = $row
+                ? ((($row['post_type'] ?? '') === 'longform')
+                    ? sv_note_for_longform($pdo, $row, $settings)
+                    : sv_note_for_post($pdo, $row, $settings))
+                : null;
         } else {
             $row  = $imgRows[$id] ?? null;
             $note = $row ? sv_note_for_image($pdo, $row, $settings) : null;
@@ -4414,7 +4582,7 @@ function sv_ordered_units(PDO $pdo, array $settings, int $limit): array {
             $posts = $pdo->query(
                 "SELECT * FROM snap_posts
                  WHERE status = 'published' AND created_at <= NOW()
-                   AND post_type IN ('single','carousel','panorama')
+                   AND post_type IN ('single','carousel','panorama','longform')
                    AND fedi_enabled = 1
                  ORDER BY created_at DESC LIMIT " . (int)$limit
             )->fetchAll(PDO::FETCH_ASSOC);
@@ -4485,7 +4653,9 @@ function sv_recent_creates(PDO $pdo, array $settings, int $limit = 10): array {
     $out = [];
     foreach (sv_ordered_units($pdo, $settings, $limit) as $u) {
         $note = ($u['kind'] === 'post')
-            ? sv_note_for_post($pdo, $u['row'], $settings)
+            ? ((($u['row']['post_type'] ?? '') === 'longform')
+                ? sv_note_for_longform($pdo, $u['row'], $settings)
+                : sv_note_for_post($pdo, $u['row'], $settings))
             : sv_note_for_image($pdo, $u['row'], $settings);
         if ($note !== null) $out[] = json_encode(sv_create_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
     }
@@ -4514,7 +4684,7 @@ function sv_federatable_total(PDO $pdo, array $settings): int {
         $posts = (int)$pdo->query(
             "SELECT COUNT(*) FROM snap_posts
              WHERE status = 'published' AND created_at <= NOW()
-               AND post_type IN ('single','carousel','panorama') AND fedi_enabled = 1"
+               AND post_type IN ('single','carousel','panorama','longform') AND fedi_enabled = 1"
         )->fetchColumn();
         return $imgs + $posts;
     } catch (Exception $e) {
@@ -4773,7 +4943,7 @@ function sv_staged_count(PDO $pdo): int {
         return (int)$pdo->query(
             "SELECT COUNT(*) FROM snap_posts
              WHERE status = 'published' AND fedi_enabled = 1
-               AND post_type IN ('single','carousel','panorama')
+               AND post_type IN ('single','carousel','panorama','longform')
                AND (fedi_pushed_at IS NULL OR updated_at > fedi_pushed_at)"
         )->fetchColumn();
     } catch (Exception $e) { return 0; }
@@ -4906,7 +5076,7 @@ function sv_sweep_new_posts(PDO $pdo, array &$settings): array {
     // reverse-chronological timelines then read L→M→R, matching the banner.
     $stmt = $pdo->prepare(
         "SELECT * FROM snap_posts
-         WHERE status = 'published' AND post_type IN ('single','carousel','panorama')
+         WHERE status = 'published' AND post_type IN ('single','carousel','panorama','longform')
            AND fedi_enabled = 1
            AND (created_at > ? OR (created_at = ? AND id > ?)) AND created_at <= ?
          ORDER BY created_at ASC, id ASC LIMIT 21"
@@ -4927,7 +5097,13 @@ function sv_sweep_new_posts(PDO $pdo, array &$settings): array {
     $rows = array_slice($rows, 0, 20);
     $sweep_mark = $pdo->prepare("UPDATE snap_posts SET fedi_pushed_at = NOW() WHERE id = ?");
     foreach (sv_reverse_trigram_groups($rows) as $post) {
-        $fanout(sv_note_for_post($pdo, $post, $settings));
+        // Longform posts build their Note differently (slug permalink, l/ id
+        // space, body-scraped images). Everything else keeps the exact
+        // grouped-post path. Null (no live content) skips, as today.
+        $note = (($post['post_type'] ?? '') === 'longform')
+            ? sv_note_for_longform($pdo, $post, $settings)
+            : sv_note_for_post($pdo, $post, $settings);
+        $fanout($note);
         $sweep_mark->execute([(int)$post['id']]);
         $units++;
     }

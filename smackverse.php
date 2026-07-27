@@ -74,7 +74,7 @@ if (isset($_GET['appath'])) {
     $seg = explode('/', trim((string)$_GET['appath'], '/'));
     $_GET['ap'] = $seg[0] ?? '';
     if (($seg[0] ?? '') === 'note') {
-        $key = ['p' => 'post', 'i' => 'id', 'c' => 'comment', 'r' => 'reply'][$seg[1] ?? ''] ?? null;
+        $key = ['p' => 'post', 'i' => 'id', 'c' => 'comment', 'r' => 'reply', 'l' => 'longform'][$seg[1] ?? ''] ?? null;
         if ($key === null || !isset($seg[2])) sv_404();
         $_GET[$key] = $seg[2];
     }
@@ -205,6 +205,12 @@ switch ($ap) {
             $cst->execute([(int)$_GET['comment']]);
             $crow = $cst->fetch(PDO::FETCH_ASSOC);
             $note = $crow ? sv_note_for_comment($pdo, $crow, $settings) : null;
+        } elseif (isset($_GET['longform'])) {
+            // Dereferenceable Note for a LONGFORM post (/ap/note/l/N). Mirrors
+            // the p/ route; JSON-only for now (no HTML post view wired yet).
+            $post = sv_post_row($pdo, (int)$_GET['longform']);
+            $note = ($post && ($post['post_type'] ?? '') === 'longform')
+                ? sv_note_for_longform($pdo, $post, $settings) : null;
         } elseif (isset($_GET['post'])) {
             $post = sv_post_row($pdo, (int)$_GET['post']);
             $note = $post ? sv_note_for_post($pdo, $post, $settings) : null;
