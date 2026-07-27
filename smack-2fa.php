@@ -24,7 +24,7 @@ $current_page = 'smack-2fa.php';
 
 // Load current user's 2FA state
 $stmt = $pdo->prepare(
-    "SELECT id, username, email, totp_secret, totp_enabled, totp_recovery_json
+    "SELECT id, username, email, password_hash, user_role, totp_secret, totp_enabled, totp_recovery_json
      FROM snap_users WHERE id = ? LIMIT 1"
 );
 $stmt->execute([$_SESSION['user_id']]);
@@ -52,37 +52,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif ($action === 'confirm' && !$is_enabled && $pending_secret) {
         $submitted = trim($_POST['totp_code'] ?? '');
         if (totp_verify($pending_secret, $submitted)) {
-            // Generate recovery codes
-            $codes      = totp_generate_recovery_codes();
-            $new_codes  = $codes['plain'];
-            $json       = json_encode($codes['hashed']);
-
-            $pdo->prepare(
-                "UPDATE snap_users
-                 SET totp_secret = ?, totp_enabled = 1, totp_recovery_json = ?
-                 WHERE id = ?"
-            )->execute([$pending_secret, $json, $_SESSION['user_id']]);
-
-            unset($_SESSION['totp_pending_secret']);
-            unset($_SESSION['totp_enrol_required']);
-            $pending_secret = null;
-            $is_enabled     = true;
-
-            // Reload user
-            $stmt->execute([$_SESSION['user_id']]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            $message      = '2FA is now active on your account. Save your recovery codes — they are shown once only.';
-            $message_type = 'success';
-
-            // Enrolment changes the account's recovery posture. Rotate the
-            // total-lockout card now and offer it beside the one-time codes.
+            // LOCKOUT-PROOF GATE: for an ADMIN account the Break-Glass recovery
+            // card MUST exist before 2FA is switched on. Generate it FIRST; if it
+            // cannot be created (e.g. the sodium extension is missing) 2FA stays
+            // OFF for admins, so an admin can never end up 2FA-on with no way back
+            // in -- the exact hole behind the fresh-spoke lockout (enrolment used
+            // to enable 2FA first, then silently skip a failed card). Non-admin
+            // accounts, recoverable by an admin, keep the old tolerant behaviour.
             try {
                 $new_break_glass_card = break_glass_generate($pdo, (int)$_SESSION['user_id']);
             } catch (Throwable $e) {
-                error_log('SnapSmack Break-Glass rotation after 2FA enrolment failed: ' . $e->getMessage());
-                $message .= ' The Break-Glass Card could not be generated; create it from Disaster Recovery before signing out.';
+                error_log('SnapSmack 2FA enrol -- Break-Glass Card generation failed: ' . $e->getMessage());
+                $new_break_glass_card = null;
+            }
+
+            $is_admin_acct = in_array((string)($user['user_role'] ?? ''), ['admin', 'administrator', 'owner'], true);
+
+            if (!$new_break_glass_card && $is_admin_acct) {
+                // Fail closed: no recovery card for an admin => do not enable 2FA.
+                $message      = '2FA was NOT enabled: your Break-Glass recovery card could not be created '
+                              . '(the sodium PHP extension and working recovery storage are required). '
+                              . 'Fix the reported server problem first so you can never be locked out.';
                 $message_type = 'error';
+            } else {
+                // Safe to switch 2FA on: card in hand, or a non-admin account an
+                // administrator can recover.
+                $codes      = totp_generate_recovery_codes();
+                $new_codes  = $codes['plain'];
+                $json       = json_encode($codes['hashed']);
+
+                $pdo->prepare(
+                    "UPDATE snap_users
+                     SET totp_secret = ?, totp_enabled = 1, totp_recovery_json = ?
+                     WHERE id = ?"
+                )->execute([$pending_secret, $json, $_SESSION['user_id']]);
+
+                unset($_SESSION['totp_pending_secret']);
+                unset($_SESSION['totp_enrol_required']);
+                $pending_secret = null;
+                $is_enabled     = true;
+
+                // Reload user
+                $stmt->execute([$_SESSION['user_id']]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                $message      = $new_break_glass_card
+                    ? '2FA is now active. Save your recovery codes AND download the Break-Glass Card below -- both are shown once.'
+                    : '2FA is now active. Save your recovery codes below (shown once). No Break-Glass Card was created for this account.';
+                $message_type = 'success';
             }
         } else {
             $message      = 'Code did not match. Check your authenticator app and try again.';
@@ -93,7 +110,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ── Disable 2FA (requires valid TOTP code to confirm intent) ──────────
     elseif ($action === 'disable' && $is_enabled) {
         $submitted = trim($_POST['totp_code'] ?? '');
-        if (totp_verify($user['totp_secret'], $submitted)) {
+        $password  = (string)($_POST['confirm_password'] ?? '');
+        // Disabling 2FA requires BOTH a live authenticator code AND the account
+        // password, so a walked-away-from or hijacked session cannot silently
+        // strip it. (A raw DB write can still clear it -- the crown-jewel case
+        // no app layer can prevent.)
+        $code_ok = totp_verify($user['totp_secret'], $submitted);
+        $pw_ok   = $password !== '' && !empty($user['password_hash'])
+                   && password_verify($password, $user['password_hash']);
+        if ($code_ok && $pw_ok) {
             $pdo->prepare(
                 "UPDATE snap_users
                  SET totp_secret = NULL, totp_enabled = 0, totp_recovery_json = NULL
@@ -107,7 +132,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$_SESSION['user_id']]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
         } else {
-            $message      = 'Incorrect code. 2FA has not been disabled.';
+            $message      = !$code_ok
+                ? 'Incorrect authenticator code. 2FA has not been disabled.'
+                : 'Password did not match. 2FA has not been disabled.';
             $message_type = 'error';
         }
     }
@@ -284,7 +311,7 @@ require_once 'core/sidebar.php';
 
         <div class="setting-section setting-section-danger-zone">
             <h2 class="section-title section-title-danger">Disable Two-Factor Authentication</h2>
-            <p class="setting-desc">Removing 2FA makes your account less secure. You will need your current authenticator code to confirm.</p>
+            <p class="setting-desc">Removing 2FA makes your account less secure. You will need your current authenticator code <strong>and your account password</strong> to confirm.</p>
             <form method="POST" style="margin-top: 16px;">
                 <input type="hidden" name="action" value="disable">
                 <div class="control-group" style="max-width: 280px;">
@@ -292,6 +319,11 @@ require_once 'core/sidebar.php';
                     <input type="text" name="totp_code" maxlength="6" pattern="\d{6}"
                            inputmode="numeric" autocomplete="one-time-code"
                            placeholder="000000" required>
+                </div>
+                <div class="control-group" style="max-width: 280px;">
+                    <label>CONFIRM YOUR PASSWORD</label>
+                    <input type="password" name="confirm_password"
+                           autocomplete="current-password" required>
                 </div>
                 <button type="submit" class="btn-smack btn-danger"
                         onclick="return confirm('Disable 2FA? Your account will only be protected by your password.');">

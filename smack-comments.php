@@ -109,6 +109,57 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     }
 }
 
+// ── FEDIVERSE REPLY (SMACKVERSE) ─────────────────────────────────────────────
+// Reply to an INBOUND fediverse comment AS the blog actor. Inserts a NEW local
+// reply row wired exactly how sv_note_for_comment locates a fediverse parent:
+// ap_in_reply_to = the parent's ap_object_id (→ the Note's inReplyTo, and the
+// Mention lookup keys on that same value), keyed to the SAME img_id OR post_id
+// as the parent, is_approved = 1, ap_source = 'local'. Then sv_federate_comment
+// fans it out. Single-actor invariant preserved (attributedTo = the site actor;
+// no per-file tweak to sv_note_for_comment was required — it already threads
+// onto an inbound fedi parent via ap_in_reply_to).
+if ($_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_POST['reply_to_id'], $_POST['reply_text'])) {
+    $parent_id  = (int)$_POST['reply_to_id'];
+    $reply_text = trim((string)$_POST['reply_text']);
+    if ($parent_id > 0 && $reply_text !== '') {
+        $pst = $pdo->prepare(
+            "SELECT id, img_id, post_id, ap_object_id, ap_source
+             FROM snap_comments WHERE id = ? LIMIT 1");
+        $pst->execute([$parent_id]);
+        $parent = $pst->fetch(PDO::FETCH_ASSOC);
+        if ($parent && ($parent['ap_source'] ?? '') === 'fediverse'
+            && trim((string)($parent['ap_object_id'] ?? '')) !== '') {
+            // "<Author> wrote:" line → the single-actor blog name.
+            $reply_author = trim((string)($s_rows['site_name'] ?? '')) ?: 'Admin';
+            $p_img  = !empty($parent['img_id'])  ? (int)$parent['img_id']  : null;
+            $p_post = !empty($parent['post_id']) ? (int)$parent['post_id'] : null;
+            try {
+                $ins = $pdo->prepare(
+                    "INSERT INTO snap_comments
+                        (img_id, post_id, comment_author, comment_text, comment_date,
+                         is_approved, ap_source, ap_in_reply_to)
+                     VALUES (?, ?, ?, ?, NOW(), 1, 'local', ?)");
+                $ins->execute([$p_img, $p_post, $reply_author, $reply_text,
+                               (string)$parent['ap_object_id']]);
+                $new_id = (int)$pdo->lastInsertId();
+                if ($new_id > 0
+                    && ($s_rows['smackverse_enabled'] ?? '0') === '1'
+                    && is_file(__DIR__ . '/core/smackverse.php')) {
+                    require_once __DIR__ . '/core/smackverse.php';
+                    try { sv_federate_comment($pdo, $new_id, $s_rows); }
+                    catch (\Throwable $e) { /* federation non-fatal */ }
+                }
+                $msg = "Reply broadcast to the fediverse.";
+            } catch (\Throwable $e) {
+                $msg = "Reply could not be saved (check that snap_comments.img_id is NULL-able for longform).";
+            }
+        } else {
+            $msg = "Reply target is not a fediverse comment.";
+        }
+    }
+}
+
 // --- BAN LIST DATA (for bans tab) ---
 $ban_rows = [];
 if ($system === 'bans') {
@@ -250,15 +301,35 @@ if ($system === 'community') {
     $total_records = (int)$count_stmt->fetchColumn();
     $total_pages   = max(1, ceil($total_records / $per_page));
 
-    $data_sql = "SELECT c.*, i.img_title, i.img_file, i.allow_comments AS post_comments_active
-                 FROM snap_comments c
-                 LEFT JOIN snap_images i ON c.img_id = i.id
-                 WHERE c.is_approved = $approved_val" . $search_clause . "
-                 ORDER BY c.comment_date DESC
-                 LIMIT $per_page OFFSET $offset";
-    $data_stmt = $pdo->prepare($data_sql);
-    $data_stmt->execute($search_params);
-    $raw = $data_stmt->fetchAll();
+    // LEFT JOIN snap_posts so LONGFORM fediverse comments (post_id set, img_id
+    // NULL) carry a title and are not dropped by the image-only join. COALESCE
+    // prefers the image title, falling back to the post title. Approved-filter
+    // is unchanged. Wrapped so a pre-longform schema (no post_id column) falls
+    // back to the original image-only query instead of white-screening.
+    try {
+        $data_sql = "SELECT c.*,
+                            COALESCE(i.img_title, p.title) AS img_title,
+                            i.img_file, i.allow_comments AS post_comments_active
+                     FROM snap_comments c
+                     LEFT JOIN snap_images i ON c.img_id  = i.id
+                     LEFT JOIN snap_posts  p ON c.post_id = p.id
+                     WHERE c.is_approved = $approved_val" . $search_clause . "
+                     ORDER BY c.comment_date DESC
+                     LIMIT $per_page OFFSET $offset";
+        $data_stmt = $pdo->prepare($data_sql);
+        $data_stmt->execute($search_params);
+        $raw = $data_stmt->fetchAll();
+    } catch (PDOException $e) {
+        $data_sql = "SELECT c.*, i.img_title, i.img_file, i.allow_comments AS post_comments_active
+                     FROM snap_comments c
+                     LEFT JOIN snap_images i ON c.img_id = i.id
+                     WHERE c.is_approved = $approved_val" . $search_clause . "
+                     ORDER BY c.comment_date DESC
+                     LIMIT $per_page OFFSET $offset";
+        $data_stmt = $pdo->prepare($data_sql);
+        $data_stmt->execute($search_params);
+        $raw = $data_stmt->fetchAll();
+    }
 
     foreach ($raw as $row) {
         $row['display_author'] = $row['comment_author'] ?? 'Anonymous';
@@ -428,6 +499,14 @@ include 'core/sidebar.php';
                                     }
                                     ?>
                                 </div>
+
+                                <?php if (($c['ap_source'] ?? '') === 'fediverse'): ?>
+                                    <form method="POST" class="fedi-reply-form" style="margin-top:8px;">
+                                        <input type="hidden" name="reply_to_id" value="<?php echo (int)$c['id']; ?>">
+                                        <textarea name="reply_text" rows="2" placeholder="Reply as the blog to the fediverse…" style="width:100%;box-sizing:border-box;" required></textarea>
+                                        <button type="submit" class="btn-smack">REPLY TO FEDIVERSE</button>
+                                    </form>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>

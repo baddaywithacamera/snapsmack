@@ -10,6 +10,16 @@
 
 # SnapSmack Changelog
 
+## Unreleased
+
+## 0.7.450 "Should I Stay or Should I Go" — 2026-07-26
+
+- **2FA can no longer lock an administrator out of a fresh install.** Enrolment now generates the signed Break-Glass recovery card *before* switching 2FA on and fails closed for admin accounts: if the card cannot be created (for example the `sodium` extension is missing) 2FA stays OFF with a clear message, instead of the previous order that enabled 2FA first and then silently skipped a failed card — the exact hole behind a fresh-spoke lockout. Disabling 2FA now also requires the account password in addition to a live authenticator code, so a walked-away-from or hijacked session cannot strip it. (`smack-2fa.php`.)
+- **Longform (SMACKTALK) posts now federate as a Note-with-preview.** A longform post syndicates with a lede excerpt, cover-first image attachments capped at ten, an overflow "N images — full set at <link>" line when there are more, and the canonical link home; oversized carousels carry the same overflow line instead of silently dropping images past the cap. Longform Notes participate consistently in the actor outbox, new-follower backfill, resync, staged counts, edits, and retractions. Fediverse comments on longform posts are ingested (keyed to the post) and the comment admin can reply to a fediverse comment, threading the reply back onto the original. Inert unless `smackverse_enabled`. (`core/smackverse.php`, `smackverse.php`, `smack-comments.php`, `database/schema/snapsmack_canonical.sql`.)
+- **Multisite role picker leads with Spoke.** The ENABLE MULTISITE screen shows SPOKE on the left and HUB on the right, since most installs are spokes. (`smack-multisite.php`.)
+
+- **PARADE retires the fireworks and lets the flag carry the show.** The fireworks experiment was visually noisy, expensive beside a large animated grid, and briefly shipped a persistent-trail failure that turned the background into fluorescent ray-traced scribble. PARADE now has one background treatment: the selected identity flag waving behind coordinated flag-coloured tile borders. The mode selector, launch/burst/particle/softness controls, FIREWORKS DETAIL section, conditional engine loader, obsolete canvas styling, and all fireworks language in HELP and the public SnapSmack skin card are gone. Flag speed, depth, opacity, background field, border motion, and reduced-motion behaviour remain. (`skins/parade/`, `projects/snapsmack-ca/index.php`; PARADE 1.2.30.)
+
 ## 0.7.449 "The Other Side" — 2026-07-26
 
 - **PARADE's flag and fireworks now put on a show.** The full-screen flag uses layered travelling waves, changing gust strength, cloth pull, broad folds, and specular ridges instead of a single uniform sine-wave wobble. Fireworks retain more colour against the high-key field and gain larger, varied peony/ring/chrysanthemum/willow bursts, brighter cores, visible launch tails, and restrained after-sparkle. Existing speed, amplitude, intensity, spread, softness, and streamer controls still apply; hidden-tab pausing and reduced-motion behaviour remain intact. (`assets/js/ss-engine-flag-wave.js`, `assets/js/ss-engine-parade-fireworks.js`.)

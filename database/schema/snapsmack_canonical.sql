@@ -308,7 +308,9 @@ CREATE TABLE IF NOT EXISTS `snap_settings` (
 
 CREATE TABLE IF NOT EXISTS `snap_comments` (
   `id`             int          NOT NULL AUTO_INCREMENT,
-  `img_id`         int          NOT NULL,
+  `img_id`         int          NULL,
+  `post_id`        int          DEFAULT NULL
+                   COMMENT 'Longform federation: parent post when no image row exists.',
   `comment_author` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `comment_url`    varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `comment_email`  varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -329,6 +331,7 @@ CREATE TABLE IF NOT EXISTS `snap_comments` (
                    COMMENT 'The parent Note id this comment replies to (post Note or another comment Note).',
   PRIMARY KEY (`id`),
   KEY `img_id` (`img_id`),
+  KEY `post_id` (`post_id`),
   KEY `idx_fp_hash` (`fp_hash`),
   UNIQUE KEY `uq_ap_object` (`ap_object_id`(191))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

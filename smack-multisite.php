@@ -1084,18 +1084,6 @@ include 'core/sidebar.php';
 
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
                 <div style="padding:20px; border:1px solid var(--border,#333); background:var(--input-bg,#111);">
-                    <h4>HUB MODE</h4>
-                    <p style="font-size:0.9rem; color:var(--text-muted,#888); margin-bottom:15px;">
-                        Manage and monitor multiple SnapSmack installations from a central dashboard.
-                    </p>
-                    <form method="POST" style="margin:0;">
-                        <button type="submit" name="enable_hub" class="master-update-btn" style="width:100%;">
-                            ENABLE AS HUB
-                        </button>
-                    </form>
-                </div>
-
-                <div style="padding:20px; border:1px solid var(--border,#333); background:var(--input-bg,#111);">
                     <h4>SPOKE MODE</h4>
                     <p style="font-size:0.9rem; color:var(--text-muted,#888); margin-bottom:15px;">
                         Connect this site to a central hub for remote monitoring and management.
@@ -1103,6 +1091,18 @@ include 'core/sidebar.php';
                     <form method="POST" style="margin:0;">
                         <button type="submit" name="enable_spoke" class="master-update-btn" style="width:100%;">
                             ENABLE AS SPOKE
+                        </button>
+                    </form>
+                </div>
+
+                <div style="padding:20px; border:1px solid var(--border,#333); background:var(--input-bg,#111);">
+                    <h4>HUB MODE</h4>
+                    <p style="font-size:0.9rem; color:var(--text-muted,#888); margin-bottom:15px;">
+                        Manage and monitor multiple SnapSmack installations from a central dashboard.
+                    </p>
+                    <form method="POST" style="margin:0;">
+                        <button type="submit" name="enable_hub" class="master-update-btn" style="width:100%;">
+                            ENABLE AS HUB
                         </button>
                     </form>
                 </div>
