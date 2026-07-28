@@ -37,6 +37,10 @@
             }
         }
 
+        // Inline docks live inside shared navigation rather than the viewport.
+        // Keep download absorption above, then leave their layout to CSS.
+        if (dock.getAttribute('data-inline') === 'true') return;
+
         // --- BOUNDS CLAMPING ---
         // Keeps the dock within the content area between the header and the
         // bottom navigation bar, regardless of which skin is active.

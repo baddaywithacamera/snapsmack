@@ -1,0 +1,84 @@
+/**
+ * SNAPSMACK — Shared Grid Sticky Navigation
+ * Structural geometry only; skins own the visual treatment.
+ */
+
+.ss-grid-sticky-nav {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 58px;
+    padding: 8px clamp(16px, 4vw, 64px);
+    transform: translateY(-110%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 220ms ease, opacity 180ms ease;
+}
+
+.ss-grid-sticky-nav.profile-hidden {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.ss-grid-nav-identity,
+.ss-grid-nav-links,
+.ss-grid-nav-actions {
+    display: flex;
+    align-items: center;
+}
+
+.ss-grid-nav-identity { min-width: 0; }
+.ss-grid-nav-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ss-grid-nav-links,
+.ss-grid-nav-actions { gap: 8px; }
+.ss-grid-nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+    text-decoration: none;
+}
+.ss-grid-nav-link svg { width: 20px; height: 20px; }
+.ss-grid-nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+.ss-grid-sticky-nav .social-dock-inline {
+    position: static;
+    z-index: auto;
+    flex-direction: row;
+    gap: 8px;
+    max-height: none;
+    overflow: visible;
+    opacity: 1;
+    transform: none;
+}
+.ss-grid-sticky-nav .social-dock-inline .dock-link {
+    width: 40px;
+    height: 40px;
+}
+@media (max-width: 720px) {
+    .ss-grid-sticky-nav { padding-inline: 12px; }
+    .ss-grid-nav-links { gap: 2px; }
+    .ss-grid-nav-actions { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ss-grid-sticky-nav { transition: none; }
+}
+/* ===== SNAPSMACK EOF ===== */

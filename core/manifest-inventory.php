@@ -831,6 +831,7 @@ return [
         'smack-grid-nav' => [
             'label'        => 'Grid Sticky Nav (profile-aware sticky nav for The Grid)',
             'path'         => 'assets/js/ss-engine-grid-nav.js',
+            'css'          => 'assets/css/ss-engine-grid-nav.css',
             'has_settings' => false,
         ],
         'smack-grid-modal' => [

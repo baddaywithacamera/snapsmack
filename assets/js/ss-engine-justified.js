@@ -26,8 +26,8 @@
 
     // --- CONFIGURATION ---
     var config = window.JUSTIFIED_CONFIG || {};
-    var targetH = config.targetHeight || 280;
-    var gap = config.gap || 4;
+    var targetH = parseInt(grid.getAttribute('data-row-height'), 10) || config.targetHeight || 280;
+    var gap = parseInt(grid.getAttribute('data-gap'), 10) || config.gap || 4;
 
     // --- GALLERY INITIALIZATION ---
     var gallery = fjGallery(grid, {

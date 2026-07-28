@@ -1,0 +1,153 @@
+{
+    "schema_version": 1,
+    "name": "SCROLL",
+    "version": "0.1.0",
+    "author": "Sean McCormick, Claude, OpenAI Codex",
+    "description": "A solo photoblog skin with a typographic masthead and a proven Flickr-style justified parts wall. Built for photographs that refuse to show the whole damn car.",
+    "status": "development",
+    "features": {
+        "supports_wall": false,
+        "supports_slider": false,
+        "has_landing": true,
+        "post_modes": ["image"],
+        "instagram_mode": false,
+        "carousel": false,
+        "community": ["likes", "comments"],
+        "archive_layouts": ["justified"]
+    },
+    "require_scripts": [
+        "smack-footer",
+        "smack-image-fade-load",
+        "smack-lazyload",
+        "smack-justified-lib",
+        "smack-justified",
+        "smack-community",
+        "smack-keyboard",
+        "smack-grid-nav",
+        "smack-grid-lightbox",
+        "smack-lightbox"
+    ],
+    "community_comments": true,
+    "community_likes": true,
+    "community_reactions": false,
+    "options": {
+        "scroll_masthead_lines": {
+            "section": "MASTHEAD",
+            "type": "text",
+            "label": "Landing Masthead (use | for a line break)",
+            "default": "USED CAR|PARTS"
+        },
+        "scroll_masthead_angle": {
+            "section": "MASTHEAD",
+            "type": "range",
+            "label": "Counterclockwise Tilt (degrees)",
+            "default": "18",
+            "min": "0",
+            "max": "40",
+            "selector": ":root",
+            "property": "--scroll-title-angle",
+            "unit": "deg"
+        },
+        "scroll_masthead_font": {
+            "section": "MASTHEAD",
+            "type": "select",
+            "is_font": true,
+            "label": "Masthead Font",
+            "default": "Archivo Black",
+            "selector": ".scroll-masthead, .scroll-horizontal-title",
+            "property": "font-family",
+            "options": {
+                "Archivo Black": "Archivo Black",
+                "Bebas Neue": "Bebas Neue",
+                "Oswald": "Oswald",
+                "Roboto Slab": "Roboto Slab",
+                "Special Elite": "Special Elite",
+                "DM Mono": "DM Mono"
+            }
+        },
+        "main_canvas_width": {
+            "section": "PHOTO WALL",
+            "type": "range",
+            "label": "Wall Width (px)",
+            "default": "1500",
+            "min": "800",
+            "max": "1920",
+            "selector": ":root",
+            "property": "--scroll-canvas-width",
+            "unit": "px"
+        },
+        "justified_row_height": {
+            "section": "PHOTO WALL",
+            "type": "range",
+            "label": "Photo Size / Wall Density",
+            "default": "280",
+            "min": "140",
+            "max": "520",
+            "selector": ":root",
+            "property": "--scroll-row-height",
+            "unit": "px"
+        },
+        "scroll_corner_radius": {
+            "section": "PHOTO WALL",
+            "type": "range",
+            "label": "Image Corner Radius (px)",
+            "default": "0",
+            "min": "0",
+            "max": "32",
+            "selector": ":root",
+            "property": "--scroll-corner-radius",
+            "unit": "px"
+        },
+        "scroll_border_width": {
+            "section": "PHOTO WALL",
+            "type": "range",
+            "label": "Outside Border Width (px)",
+            "default": "0",
+            "min": "0",
+            "max": "12",
+            "selector": ":root",
+            "property": "--scroll-border-width",
+            "unit": "px"
+        },
+        "scroll_border_color": {
+            "section": "PHOTO WALL",
+            "type": "color",
+            "label": "Outside Border Colour",
+            "default": "#ffffff",
+            "selector": ":root",
+            "property": "--scroll-border-color"
+        },
+        "scroll_background": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Background",
+            "default": "#353535",
+            "selector": "body",
+            "property": "background-color"
+        },
+        "scroll_text": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Text",
+            "default": "#f4f4f4",
+            "selector": "body",
+            "property": "color"
+        },
+        "scroll_link": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Links",
+            "default": "#f4f4f4",
+            "selector": "a",
+            "property": "color"
+        },
+        "scroll_link_hover": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Link Hover",
+            "default": "#ff5a36",
+            "selector": "a:hover",
+            "property": "color"
+        }
+    }
+}
