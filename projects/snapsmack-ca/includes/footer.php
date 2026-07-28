@@ -18,6 +18,14 @@
 <!-- FOOTER -->
 <footer id="site-footer">
     <div class="wrap">
+        <nav class="footer-discovery" aria-label="Explore SnapSmack">
+            <a href="instagram-alternative.php">Instagram Alternative</a>
+            <a href="flickr-alternative.php">Flickr Alternative</a>
+            <a href="self-hosted-photography.php">Self-Hosted Photography</a>
+            <a href="photo-blog-software.php">Photo Blog Software</a>
+            <a href="fediverse-photography.php">Fediverse Photography</a>
+            <a href="export-your-photos.php">Export Your Photos</a>
+        </nav>
         <p class="footer-copy">&copy; 2026 Sean McCormick &middot; Dedicated to Raymond A. Vanderwoning, photographer and friend. <a href="https://www.serenity.ca/obituaries/Raymond-Anthony-Vanderwoning?obId=30943370" target="_blank" rel="noopener noreferrer">He is missed.</a></p>
     </div>
 </footer>

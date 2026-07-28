@@ -1,0 +1,12 @@
+# SnapSmack.ca public marketing site
+User-agent: *
+Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+
+Disallow: /smack-central/
+Disallow: /releases/
+Disallow: /sc-network-api.php
+Disallow: /sc-subscribe-redirect.php
+Disallow: /install-manifest.php
+
+Sitemap: https://snapsmack.ca/sitemap.xml
