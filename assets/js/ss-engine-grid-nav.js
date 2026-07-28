@@ -13,13 +13,14 @@
     'use strict';
 
     function init() {
-        var nav = document.querySelector('nav[class*="-sticky-nav"]');
+        var nav = document.querySelector('.ss-grid-sticky-nav, nav[class*="-sticky-nav"]');
         if (!nav) return;
-        var m = nav.className.match(/(?:^|\s)([a-z]+)-sticky-nav(?:\s|$)/);
+        var m = nav.className.match(/(?:^|\s)([a-z0-9_-]+)-sticky-nav(?:\s|$)/);
         if (!m) return;
         var P = m[1];
 
-        var profile = document.querySelector('.' + P + '-profile');
+        var observerClass = nav.getAttribute('data-grid-nav-observer') || (P + '-profile');
+        var profile = document.querySelector('.' + observerClass);
         if (!profile) { nav.classList.add('profile-hidden'); return; }
 
         if (!('IntersectionObserver' in window)) {

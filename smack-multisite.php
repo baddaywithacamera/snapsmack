@@ -1145,6 +1145,16 @@ include 'core/sidebar.php';
                     !empty($n['software_version']) &&
                     snap_version_compare(SNAPSMACK_VERSION_SHORT, $n['software_version'], '>')
                 ));
+                // Same predicate as $behind_count, kept as IDs so the browser can walk
+                // them one request at a time instead of one 18-spoke server-side loop.
+                $behind_ids = array_values(array_map(
+                    fn($n) => (int)$n['id'],
+                    array_filter($nodes, fn($n) =>
+                        $n['role'] === 'spoke' && $n['status'] === 'active' &&
+                        !empty($n['software_version']) &&
+                        snap_version_compare(SNAPSMACK_VERSION_SHORT, $n['software_version'], '>')
+                    )
+                ));
             ?>
 
             <div id="update-progress-live" style="margin-bottom:6px;"></div>
@@ -1178,7 +1188,7 @@ include 'core/sidebar.php';
             <?php else: ?>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
                     <?php if ($behind_count > 0): ?>
-                        <form method="POST" id="update-all-form">
+                        <form method="POST" id="update-all-form" data-behind-ids='<?php echo htmlspecialchars(json_encode($behind_ids), ENT_QUOTES, "UTF-8"); ?>'>
                             <button type="submit" name="push_update_all" class="btn-smack" style="width:auto;height:auto;margin-top:0;padding:8px 18px;">
                                 UPDATE ALL BEHIND (<?php echo $behind_count; ?>)
                             </button>
@@ -1205,6 +1215,107 @@ include 'core/sidebar.php';
                         </button>
                     </form>
                 </div>
+
+                <script>
+                /* UPDATE ALL BEHIND - client-driven sequential run (0.7.452).
+                   Was: one POST looped every behind-spoke server-side at up to 120s of
+                   cURL each. At ~18 spokes that can exceed max_execution_time and die
+                   mid-loop - the spokes already done stay done, but the operator sees
+                   no result at all and cannot tell what completed.
+                   Now: the browser drives ONE spoke per request against the same
+                   single-spoke AJAX endpoint that already existed, so nothing times
+                   out, one dead spoke cannot take the batch down, and progress shows. */
+                (function () {
+                    var form = document.getElementById("update-all-form");
+                    if (!form || !window.fetch) return;   // no JS/fetch -> plain POST still works
+                    var live = document.getElementById("update-progress-live");
+                    var btn  = form.querySelector("button[type='submit']");
+                    var ids;
+                    try { ids = JSON.parse(form.getAttribute("data-behind-ids") || "[]"); }
+                    catch (e) { ids = []; }
+                    if (!ids.length) return;
+
+                    var total = ids.length, done = 0, okCount = 0, failCount = 0;
+                    var queue = ids.slice();
+
+                    function esc(v) {
+                        var d = document.createElement("div");
+                        d.textContent = (v == null) ? "" : String(v);
+                        return d.innerHTML;
+                    }
+                    function rowMark(id, colour) {
+                        var row = document.getElementById("spoke-row-" + id);
+                        if (row) row.style.outline = colour ? ("2px solid " + colour) : "";
+                    }
+                    function paint(current) {
+                        if (!live) return;
+                        var pct = Math.round((done / total) * 100);
+                        live.innerHTML =
+                            '<div style="margin-bottom:6px;font-size:0.85rem;letter-spacing:1px;">' +
+                              'UPDATING ' + Math.min(done + 1, total) + ' OF ' + total +
+                              (current ? ' &mdash; ' + esc(current) : '') +
+                              '  <span style="color:var(--text-muted,#888);">(' + okCount +
+                              ' ok, ' + failCount + ' failed)</span></div>' +
+                            '<div style="height:6px;background:rgba(255,255,255,0.12);border-radius:3px;overflow:hidden;">' +
+                              '<div style="height:100%;width:' + pct + '%;background:var(--accent,#00d4d4);transition:width .2s;"></div>' +
+                            '</div>';
+                    }
+                    function finish() {
+                        if (btn) btn.textContent = "DONE";   // stays disabled; reload via the link
+                        if (live) {
+                            live.innerHTML =
+                                '<div class="alert ' + (failCount ? "alert-warning" : "alert-success") +
+                                '" style="margin-bottom:6px;">Finished &mdash; ' + okCount + ' updated, ' +
+                                failCount + ' failed. <a href="#" onclick="location.reload();return false;">' +
+                                'Reload</a> to refresh the board.</div>';
+                        }
+                    }
+                    function next() {
+                        if (!queue.length) { finish(); return; }
+                        var id  = queue.shift();
+                        var row = document.getElementById("spoke-row-" + id);
+                        var nm  = (row && row.cells[0]) ? row.cells[0].textContent.trim() : ("#" + id);
+                        rowMark(id, "var(--accent,#00d4d4)");
+                        paint(nm);
+
+                        var fd = new FormData();
+                        fd.append("push_update", "1");
+                        fd.append("spoke_id", id);
+
+                        fetch(window.location.href, {
+                            method: "POST",
+                            body: fd,
+                            credentials: "same-origin",
+                            headers: { "X-Requested-With": "XMLHttpRequest" }
+                        })
+                        .then(function (r) { return r.json(); })
+                        .then(function (d) {
+                            var res = (d && d.results && d.results[0]) || {};
+                            if (res.ok) {
+                                okCount++;
+                                rowMark(id, "var(--success,#2e9e4f)");
+                                var vc = document.getElementById("spoke-ver-" + id);
+                                if (vc && res.to) vc.textContent = String(res.to).replace(/^[^0-9]+/, "");
+                            } else {
+                                failCount++;
+                                rowMark(id, "var(--danger,#c0392b)");
+                            }
+                        })
+                        .catch(function () {
+                            failCount++;
+                            rowMark(id, "var(--danger,#c0392b)");
+                        })
+                        .then(function () { done++; paint(null); next(); });
+                    }
+
+                    form.addEventListener("submit", function (e) {
+                        e.preventDefault();
+                        if (btn) { btn.disabled = true; btn.textContent = "UPDATING\u2026"; }
+                        paint(null);
+                        next();
+                    });
+                })();
+                </script>
 
                 <div style="overflow-x:auto;">
                     <table class="multisite-table">

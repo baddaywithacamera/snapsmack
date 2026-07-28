@@ -18,6 +18,11 @@
  */
 
 
+// Do not render twice when a skin places the dock inside shared navigation.
+if (!empty($GLOBALS['_snapsmack_social_dock_rendered'])) {
+    return;
+}
+
 // Bail if dock is disabled
 if (empty($settings['social_dock_enabled']) || $settings['social_dock_enabled'] !== '1') {
     return;
@@ -171,6 +176,7 @@ if ($_dock_color_mode === 'light') {
 // Build CSS classes
 $_dock_classes = 'social-dock dock-' . $_dock_position;
 if ($_dock_shadow) $_dock_classes .= ' dock-shadow';
+if (!empty($social_dock_inline)) $_dock_classes .= ' social-dock-inline';
 
 // Inline custom properties
 $_dock_style = implode('; ', [
@@ -184,6 +190,7 @@ $_dock_style = implode('; ', [
 ?>
 <div class="<?php echo htmlspecialchars($_dock_classes); ?>"
      data-dock-position="<?php echo htmlspecialchars($_dock_position); ?>"
+     data-inline="<?php echo !empty($social_dock_inline) ? 'true' : 'false'; ?>"
      style="<?php echo $_dock_style; ?>">
 
     <?php
@@ -207,4 +214,5 @@ $_dock_style = implode('; ', [
         </a>
     <?php endforeach; ?>
 </div>
+<?php $GLOBALS['_snapsmack_social_dock_rendered'] = true; ?>
 <?php // ===== SNAPSMACK EOF =====
