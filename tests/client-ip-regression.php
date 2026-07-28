@@ -56,6 +56,16 @@ foreach (['core/flkrfckr-api.php', 'core/smackverse.php'] as $file) {
     ip_test(str_contains($body, "require_once __DIR__ . '/client-ip.php'"), "{$file} does not require the security component");
 }
 
+foreach (['snap-in.php', 'probe-ban.php', 'core/flkrfckr-api.php', 'core/smackverse.php'] as $file) {
+    $body = file_get_contents(__DIR__ . '/../' . $file);
+    ip_test(str_contains($body, 'snap_ip_record_ban'), "{$file} bypasses the bounded fixed-lifetime ban writer");
+    ip_test(!str_contains($body, 'INTO snap_ip_bans'), "{$file} still writes the ban table directly");
+}
+$resolver = file_get_contents(__DIR__ . '/../core/client-ip.php');
+ip_test(str_contains($resolver, "reason LIKE 'auto:%'"), 'historical automatic-ban reset is missing');
+ip_test(str_contains($resolver, '$recent >= 250 || $total >= 10000'), 'ban-table insertion bounds are missing');
+ip_test(str_contains($resolver, 'snap_ip_send_owner_ban_alert'), 'owner lockout alert path is missing');
+
 if ($failures) {
     fwrite(STDERR, "FAIL\n- " . implode("\n- ", $failures) . "\n");
     exit(1);

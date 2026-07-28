@@ -484,6 +484,7 @@ function sv_inbox_rate_ok(PDO $pdo, string $ip): bool {
     // accessor so enforcement, rate-limit keying and any ban use the true client.
     $ip = snap_trusted_client_ip($pdo);
     try {
+        snap_ip_ban_maintenance($pdo);
         $b = $pdo->prepare("SELECT 1 FROM snap_ip_bans WHERE ip = ? AND expires_at > NOW() LIMIT 1");
         $b->execute([$ip]);
         if ($b->fetchColumn()) return false;
@@ -507,11 +508,7 @@ function sv_inbox_rate_ok(PDO $pdo, string $ip): bool {
             // SECAUDIT 035: never record a ban against a private/loopback/proxy
             // address — that silences the whole audience, not the flooder.
             if (snap_ip_is_bannable($ip, $pdo)) {
-                $pdo->prepare(
-                    "INSERT INTO snap_ip_bans (ip, reason, banned_at, expires_at)
-                     VALUES (?, 'auto:smackverse_inbox', NOW(), DATE_ADD(NOW(), INTERVAL 24 HOUR))
-                     ON DUPLICATE KEY UPDATE reason = VALUES(reason), banned_at = NOW(), expires_at = VALUES(expires_at)"
-                )->execute([$ip]);
+                snap_ip_record_ban($pdo, $ip, 'auto:smackverse_inbox', 86400);
             }
             return false;
         }

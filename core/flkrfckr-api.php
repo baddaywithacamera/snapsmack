@@ -108,6 +108,7 @@ function flkrfckr_client_ip(?PDO $pdo = null): string {
 
 function flkrfckr_ip_banned(PDO $pdo, string $ip): bool {
     try {
+        snap_ip_ban_maintenance($pdo);
         $stmt = $pdo->prepare("SELECT 1 FROM snap_ip_bans WHERE ip = ? AND expires_at > NOW() LIMIT 1");
         $stmt->execute([$ip]);
         return (bool)$stmt->fetchColumn();
@@ -132,11 +133,7 @@ function flkrfckr_record_auth_failure(PDO $pdo, string $ip): void {
         if ((int)($row->fetchColumn() ?: 0) >= 5 && snap_ip_is_bannable($ip, $pdo)) {
             // SECAUDIT 035: never record a ban against a private/loopback/proxy
             // address — that takes the site down instead of the attacker.
-            $pdo->prepare(
-                "INSERT INTO snap_ip_bans (ip, reason, banned_at, expires_at)
-                 VALUES (?, 'auto:flkrfckr_auth', NOW(), DATE_ADD(NOW(), INTERVAL 7 DAY))
-                 ON DUPLICATE KEY UPDATE reason = VALUES(reason), banned_at = NOW(), expires_at = VALUES(expires_at)"
-            )->execute([$ip]);
+            snap_ip_record_ban($pdo, $ip, 'auto:flkrfckr_auth', 7 * 86400);
             $pdo->prepare("DELETE FROM snap_rate_limits WHERE ip = ? AND action = 'flkrfckr_auth_fail'")->execute([$ip]);
         }
     } catch (PDOException $e) { /* rate-limit is best-effort; never block on its failure */ }
