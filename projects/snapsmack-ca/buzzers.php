@@ -199,7 +199,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
 
             <article class="post" id="a035">
-                <div class="post-meta"><span class="post-date">Updated July 28, 2026</span><span class="post-tag">Code Remediated</span></div>
+                <div class="post-meta"><span class="post-date">Updated July 28, 2026</span><span class="post-tag">Closed</span></div>
                 <h2>IP SMACKER &amp; Login Shield &mdash; Client-Address Spoofing</h2>
                 <p>A fleet check found impossible addresses in every site's shared ban table, including loopback and private-network addresses that could only belong to our own infrastructure. Tracing those records exposed a critical trust mistake: IP SMACKER and the login brute-force shield accepted forwarded-address headers without first proving the request had actually arrived through a trusted proxy. A scanner could therefore choose who was banned, rotate its claimed address to avoid the five-strike login limit, or deliberately lock out a victim.</p>
                 <p>SnapSmack 0.7.451 closed the remotely exploitable spoofing path; 0.7.453 completed the shipped-code remediation. All four known ban writers and the shared-address rate limiters now use the mandatory trusted resolver and independently refuse infrastructure addresses as ban targets. Trusted proxies accept validated IP or CIDR entries, Configuration shows the observed peer and selected client, and permanent regression tests cover direct, tunnel, forged-header, and malformed-address cases. BREAK THE GLASS also preserves both the selected operator address and the observed network peer.</p>
