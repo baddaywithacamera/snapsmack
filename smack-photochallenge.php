@@ -1,0 +1,276 @@
+<?php
+/**
+ * SNAPSMACK - PHOTO CHALLENGE (admin surface)
+ *
+ * The control panel for the photofri.day / artfri.day profile that rides on top
+ * of this install's single SMACKVERSE actor (core/photochallenge.php). It is a
+ * thin admin page: flip the profile on, set the tag/timezone/scoring, watch the
+ * roster and the live board, crown a week into the Hall of Fame, and prune dead
+ * Hall-of-Fame links. All federation still belongs to SMACKVERSE — this page
+ * never touches a key or an inbox, it only sets policy and reads what landed.
+ *
+ * Turning the challenge ON only matters once SMACKVERSE itself is enabled: the
+ * follow=join / unfollow=leave hooks fire from the federation inbox, so with
+ * federation off this is inert. The page says so rather than pretending.
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ */
+require_once 'core/auth-smack.php';      // session + CSRF autovalidate + login gate + $pdo
+require_once 'core/smackverse.php';      // sv_set_setting, sv_enabled, sv_* helpers
+require_once 'core/photochallenge.php';  // pc_* policy layer
+
+$settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
+                ->fetchAll(PDO::FETCH_KEY_PAIR);
+try { pc_ensure_tables($pdo); } catch (Throwable $e) { /* fresh install */ }
+
+$msg = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-smack
+    $action = (string)($_POST['action'] ?? '');
+
+    if ($action === 'save_settings') {
+        $enabled = isset($_POST['pc_enabled']) ? '1' : '0';
+        $tag = ltrim(strtolower(trim((string)($_POST['pc_tag'] ?? 'photofri'))), '#');
+        $tag = preg_replace('/[^a-z0-9_]/', '', $tag);
+        if ($tag === '') $tag = 'photofri';
+        $tz  = trim((string)($_POST['pc_tz'] ?? ''));
+        if ($tz !== '') {
+            try { new DateTimeZone($tz); }
+            catch (Throwable $e) { $tz = ''; $msg = 'Unknown timezone — left blank (server default is used).'; }
+        }
+        $bw = (string)max(0, (int)($_POST['pc_boost_weight'] ?? 1));
+        sv_set_setting($pdo, $settings, 'photochallenge_tag', $tag);
+        sv_set_setting($pdo, $settings, 'photochallenge_tz', $tz);
+        sv_set_setting($pdo, $settings, 'photochallenge_boost_weight', $bw);
+        sv_set_setting($pdo, $settings, 'photochallenge_enabled', $enabled);   // flip last
+        if ($msg === '') $msg = $enabled === '1' ? 'Photo challenge ON. Settings saved.' : 'Settings saved (challenge OFF).';
+
+    } elseif ($action === 'crown_week') {
+        $n = max(1, min(10, (int)($_POST['pc_places'] ?? 3)));
+        $placed = pc_finalize_week($pdo, $settings, null, $n);
+        $msg = $placed > 0
+            ? "Crowned {$placed} place(s) for the current window into the Hall of Fame."
+            : 'No rankable entries in this window — nothing crowned.';
+
+    } elseif ($action === 'hof_toggle') {
+        pc_hof_set_active($pdo, (int)($_POST['hof_id'] ?? 0), (string)($_POST['to'] ?? '') === '1');
+        $msg = 'Hall of Fame updated.';
+
+    } elseif ($action === 'horsconcours') {
+        pc_set_horsconcours($pdo, (string)($_POST['actor_url'] ?? ''), (string)($_POST['to'] ?? '') === '1');
+        $msg = 'Participant updated.';
+    }
+
+    // Re-read settings so the render below reflects the write.
+    $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
+                    ->fetchAll(PDO::FETCH_KEY_PAIR);
+}
+
+$pc_on    = pc_enabled($settings);
+$fed_on   = sv_enabled($settings);
+$win      = pc_window($settings);
+$counts   = pc_participant_counts($pdo);
+$roster   = pc_participants($pdo, 300);
+$ranked   = $pc_on ? pc_board_ranked($pdo, $settings, $win, 60) : [];
+$hof      = pc_hof_list($pdo, 100);
+$board_url = rtrim(sv_base($settings), '/') . '/photochallenge-board.php';
+$hof_url   = rtrim(sv_base($settings), '/') . '/photochallenge-hof.php';
+$esc = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+
+$page_title = 'PHOTO CHALLENGE';
+include 'core/admin-header.php';
+include 'core/sidebar.php';
+?>
+
+<div class="main">
+
+    <div class="header-row header-row--ruled">
+        <h2>PHOTO CHALLENGE &mdash; PHOTOFRI.DAY</h2>
+    </div>
+
+    <?php if ($msg): ?>
+        <div class="alert alert-success">&gt; <?php echo $esc($msg); ?></div>
+    <?php endif; ?>
+
+    <?php if (!$fed_on): ?>
+        <div class="alert alert-warn">
+            &gt; SMACKVERSE federation is <strong>OFF</strong>. The challenge can be configured here, but
+            follow-to-join and the board only come alive once you enable federation on the
+            <a href="smack-smackverse.php">SMACKVERSE &rarr; FEDERATION</a> page.
+        </div>
+    <?php endif; ?>
+
+    <!-- SWITCH + SETTINGS -->
+    <div class="box mb-20">
+        <h3>CHALLENGE SWITCH</h3>
+        <p class="dim mb-20">
+            When ON, every fediverse account that <strong>follows this blog is entered as a participant</strong>
+            and followed back, so their <code>#<?php echo $esc(pc_tag($settings)); ?></code> photos flow onto the
+            board; unfollowing leaves. No participant image is ever stored &mdash; the board only points home to
+            the origin post. Turning this on does not open any new public surface (federation already did); it
+            just changes what this blog's actor does with a follow.
+        </p>
+        <form method="post" action="">
+            <?php csrf_field(); ?>
+            <input type="hidden" name="action" value="save_settings">
+
+            <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer; margin-bottom:18px;">
+                <input type="checkbox" name="pc_enabled" value="1" <?php echo $pc_on ? 'checked' : ''; ?> style="margin-top:3px; flex:0 0 auto;">
+                <span><strong>RUN THE PHOTO CHALLENGE ON THIS BLOG</strong>
+                    <span class="dim">(follow = join, unfollow = leave)</span></span>
+            </label>
+
+            <div class="lens-input-wrapper">
+                <label>CHALLENGE HASHTAG</label>
+                <input type="text" name="pc_tag" maxlength="60"
+                       value="<?php echo $esc(pc_tag($settings)); ?>" autocomplete="off">
+                <p class="dim">Entries must carry <code>#<?php echo $esc(pc_tag($settings)); ?></code>. Letters, numbers, underscore; no leading #.</p>
+            </div>
+
+            <div class="lens-input-wrapper">
+                <label>TIMEZONE FOR THE FRIDAY WINDOW</label>
+                <input type="text" name="pc_tz" maxlength="64"
+                       value="<?php echo $esc((string)($settings['photochallenge_tz'] ?? '')); ?>"
+                       placeholder="e.g. America/Edmonton — blank = server default" autocomplete="off">
+                <p class="dim">The 50-hour window opens Friday 00:00 and closes Sunday 02:00 in this zone.</p>
+            </div>
+
+            <div class="lens-input-wrapper">
+                <label>BOOST WEIGHT (SCORING)</label>
+                <input type="number" name="pc_boost_weight" min="0" max="20" step="1"
+                       value="<?php echo (int)pc_boost_weight($settings); ?>" style="width:90px;">
+                <p class="dim">Score = likes + boosts &times; this weight. Set 0 to rank on likes alone.</p>
+            </div>
+
+            <button type="submit" class="master-update-btn">SAVE CHALLENGE SETTINGS</button>
+        </form>
+    </div>
+
+    <!-- LIVE STATE -->
+    <div class="box mb-20">
+        <h3>THIS WINDOW &mdash; <?php echo $esc($win['label']); ?>
+            <span class="pc-state" style="margin-left:10px; font-family:'Courier New',monospace; color:<?php echo $win['open'] ? '#2ecc71' : '#e0b000'; ?>;">
+                <?php echo $win['open'] ? 'OPEN' : 'CLOSED'; ?>
+            </span>
+        </h3>
+        <p class="dim">
+            Week key <code><?php echo $esc($win['week_key']); ?></code> &middot;
+            participants: <strong><?php echo (int)$counts['active']; ?></strong> active,
+            <?php echo (int)$counts['left']; ?> left, <?php echo (int)$counts['blocked']; ?> blocked.
+        </p>
+        <p class="dim">
+            Public pages:
+            <a href="<?php echo $esc($board_url); ?>" target="_blank" rel="noopener">the board</a> &middot;
+            <a href="<?php echo $esc($hof_url); ?>" target="_blank" rel="noopener">the Hall of Fame</a>.
+        </p>
+    </div>
+
+    <!-- CROWN THE WEEK -->
+    <div class="box mb-20">
+        <h3>CROWN THIS WINDOW</h3>
+        <p class="dim mb-20">
+            Picks the top entries by score (likes + weighted boosts), skipping boosts, hors-concours and
+            image-less posts, and writes them to the Hall of Fame. Idempotent per week &mdash; re-crowning
+            the same window overwrites its places cleanly. Ranking needs engagement data to have landed
+            (that arrives once the Like/Announce inbox hooks are live &mdash; see the build handoff); until
+            then the board is chronological and crowning simply takes the newest.
+        </p>
+        <?php if ($ranked): ?>
+            <p class="dim">Current standings (top of this window):</p>
+            <ol style="margin:8px 0 18px 22px; line-height:1.7;">
+                <?php foreach (array_slice($ranked, 0, 8) as $r): if (($r['rank'] ?? 0) < 1) continue; ?>
+                    <li>
+                        <strong><?php echo $esc($r['handle']); ?></strong>
+                        <span class="dim">&mdash; score <?php echo (int)$r['score']; ?>
+                            (<?php echo (int)$r['likes']; ?> likes, <?php echo (int)$r['boosts']; ?> boosts)</span>
+                        <?php if (($r['url'] ?? '') !== ''): ?>
+                            &middot; <a href="<?php echo $esc($r['url']); ?>" target="_blank" rel="noopener">entry</a>
+                        <?php endif; ?>
+                    </li>
+                <?php endforeach; ?>
+            </ol>
+        <?php else: ?>
+            <p class="dim mb-20"><em>No rankable entries in this window yet.</em></p>
+        <?php endif; ?>
+        <form method="post" action="" onsubmit="return confirm('Crown the current window into the Hall of Fame?');">
+            <?php csrf_field(); ?>
+            <input type="hidden" name="action" value="crown_week">
+            <label class="dim">Places to crown:
+                <input type="number" name="pc_places" min="1" max="10" value="3" style="width:70px; margin-left:6px;">
+            </label>
+            <button type="submit" class="btn-smack" style="margin-left:10px;">CROWN</button>
+        </form>
+    </div>
+
+    <!-- HALL OF FAME -->
+    <div class="box mb-20">
+        <h3>HALL OF FAME</h3>
+        <?php if (!$hof): ?>
+            <p class="dim">Empty. Crown a window to populate it.</p>
+        <?php else: ?>
+            <table class="dim" style="width:100%; border-collapse:collapse;">
+                <?php foreach ($hof as $h): ?>
+                    <tr style="border-bottom:1px solid var(--border,#333);">
+                        <td style="padding:8px 6px; white-space:nowrap;">
+                            <code><?php echo $esc($h['week_key']); ?></code> #<?php echo (int)$h['place']; ?>
+                        </td>
+                        <td style="padding:8px 6px;">
+                            <strong><?php echo $esc($h['handle']); ?></strong>
+                            <?php if (($h['post_url'] ?? '') !== ''): ?>
+                                &middot; <a href="<?php echo $esc($h['post_url']); ?>" target="_blank" rel="noopener">post</a>
+                            <?php endif; ?>
+                        </td>
+                        <td style="padding:8px 6px; text-align:right; white-space:nowrap;">
+                            <form method="post" action="" style="display:inline;">
+                                <?php csrf_field(); ?>
+                                <input type="hidden" name="action" value="hof_toggle">
+                                <input type="hidden" name="hof_id" value="<?php echo (int)$h['id']; ?>">
+                                <input type="hidden" name="to" value="<?php echo ((int)$h['active'] === 1) ? '0' : '1'; ?>">
+                                <button type="submit" class="btn-smack">
+                                    <?php echo ((int)$h['active'] === 1) ? 'HIDE' : 'SHOW'; ?>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+        <?php endif; ?>
+    </div>
+
+    <!-- ROSTER -->
+    <div class="box">
+        <h3>PARTICIPANTS</h3>
+        <?php if (!$roster): ?>
+            <p class="dim">No participants yet. They join by following this blog once the challenge is ON.</p>
+        <?php else: ?>
+            <table class="dim" style="width:100%; border-collapse:collapse;">
+                <?php foreach ($roster as $p): $hc = (int)$p['horsconcours'] === 1; ?>
+                    <tr style="border-bottom:1px solid var(--border,#333);">
+                        <td style="padding:8px 6px;">
+                            <strong><?php echo $esc($p['handle'] ?: $p['actor_url']); ?></strong>
+                            <?php if ($hc): ?><span class="dim" title="hors concours — shown, never ranked"> · hc</span><?php endif; ?>
+                        </td>
+                        <td style="padding:8px 6px;"><span class="dim"><?php echo $esc($p['state']); ?></span></td>
+                        <td style="padding:8px 6px; text-align:right; white-space:nowrap;">
+                            <form method="post" action="" style="display:inline;">
+                                <?php csrf_field(); ?>
+                                <input type="hidden" name="action" value="horsconcours">
+                                <input type="hidden" name="actor_url" value="<?php echo $esc($p['actor_url']); ?>">
+                                <input type="hidden" name="to" value="<?php echo $hc ? '0' : '1'; ?>">
+                                <button type="submit" class="btn-smack">
+                                    <?php echo $hc ? 'RANK AGAIN' : 'HORS CONCOURS'; ?>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+        <?php endif; ?>
+    </div>
+
+</div>
+
+<?php include 'core/admin-footer.php'; ?>
+<?php // ===== SNAPSMACK EOF =====
