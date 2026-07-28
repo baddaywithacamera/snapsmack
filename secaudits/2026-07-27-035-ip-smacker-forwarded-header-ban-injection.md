@@ -8,7 +8,7 @@
 | **Date** | 2026-07-27 |
 | **Severity** | **CRITICAL** - login brute-force protection can be evaded entirely, and an arbitrary address (including the owner's) can be banned by an unauthenticated request. Availability and authentication impact; no direct confidentiality or integrity impact. |
 | **Component** | `snap_ip_bans` and every producer/consumer of it: `probe-ban.php` (IP SMACKER), `snap-in.php` (`snap_client_ip()`, login ban gate, brute-force counter), `core/smackverse.php` (inbox limiter), `core/flkrfckr-api.php` (auth limiter), `smack-fingerprints.php` (admin view) |
-| **Status** | **CODE REMEDIATED in 0.7.453** - all known writers and shared-address limiters use the mandatory resolver; authorized fleet cleanup and ban-lifecycle operations remain open |
+| **Status** | **CLOSED in 0.7.454** - trusted client resolution, guarded fixed-lifetime writers, recoverable historical cleanup, bounded pruning, and owner lockout alerting are complete |
 | **Reporter** | Sean (persistent 403 on squared.pixhellated.ca; questioned what the ban table was storing) + Claude (traced address resolution, ran the fleet sweep, traced the shared-table consumers) |
 | **Related** | **005 (login hardening / IP shield - this report supersedes its threat model)**, 021/021A (hub-spoke attack surface), 017 (SMACKBACK), 034 (closure discipline - one route removed is not proof the capability is gone) |
 | **Disclosure** | No targeted exploitation is known. Forged addresses are present in 16 of 16 site databases from ordinary scanner traffic (section 6), so the weakness is being exercised in the wild. Reachable by any unauthenticated visitor. |
