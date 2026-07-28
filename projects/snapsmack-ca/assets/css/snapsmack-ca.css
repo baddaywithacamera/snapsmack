@@ -153,26 +153,70 @@ nav a.active::after { width: 100%; }
 }
 
 /* --- FOOTER --- */
-#site-footer { background: var(--black); border-top: 3px solid var(--red); padding: 32px 0; }
-.footer-discovery {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px 20px;
-    margin: 0 auto 18px;
-    font: 700 0.76rem/1.35 Arial, sans-serif;
-    letter-spacing: 0.06em;
+.site-discovery {
+    background: #f4f1eb;
+    border-top: 3px solid var(--red);
+    padding: 48px 0 52px;
+}
+.site-discovery-kicker {
+    margin: 0 0 8px;
+    color: var(--red);
+    font: 700 0.7rem/1 Arial, sans-serif;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
 }
-.footer-discovery a { color: var(--white); text-decoration: none; }
+.site-discovery h2 {
+    margin: 0 0 28px;
+    color: var(--black);
+    font: 900 clamp(1.7rem, 3vw, 2.4rem)/1.05 Arial, sans-serif;
+    letter-spacing: -0.035em;
+}
+.footer-discovery {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid #c9c4ba;
+    border-left: 1px solid #c9c4ba;
+}
+.footer-discovery a {
+    min-height: 108px;
+    padding: 20px 22px;
+    color: var(--black);
+    background: #fff;
+    border-right: 1px solid #c9c4ba;
+    border-bottom: 1px solid #c9c4ba;
+    text-decoration: none;
+    transition: background 120ms ease, color 120ms ease;
+}
+.footer-discovery strong {
+    display: block;
+    margin-bottom: 8px;
+    font: 800 0.9rem/1.2 Arial, sans-serif;
+}
+.footer-discovery strong::after {
+    content: " →";
+    color: var(--red);
+}
+.footer-discovery span {
+    display: block;
+    color: #555;
+    font: 0.84rem/1.45 Georgia, serif;
+}
 .footer-discovery a:hover,
-.footer-discovery a:focus-visible { color: var(--red); text-decoration: underline; }
+.footer-discovery a:focus-visible { background: var(--black); color: var(--white); }
+.footer-discovery a:hover span,
+.footer-discovery a:focus-visible span { color: #ddd; }
+#site-footer { background: var(--black); padding: 26px 0; }
 .footer-copy {
     font-family: 'Courier New', monospace; font-size: 0.68rem; color: #aaa;
-    letter-spacing: 0.04em; line-height: 1; margin: 0; text-align: center;
+    letter-spacing: 0.04em; line-height: 1.5; margin: 0; text-align: center;
 }
 .footer-copy a { color: var(--white); text-decoration: none; }
 .footer-copy a:hover { text-decoration: underline; }
+@media (max-width: 760px) {
+    .site-discovery { padding: 36px 0 40px; }
+    .footer-discovery { grid-template-columns: 1fr; }
+    .footer-discovery a { min-height: 0; }
+}
 
 /* --- HEADER VERSION BADGES --- */
 .header-right {

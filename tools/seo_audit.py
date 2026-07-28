@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 """Validate the tracked SnapSmack.ca marketing site before FTP deployment."""
 
 from __future__ import annotations

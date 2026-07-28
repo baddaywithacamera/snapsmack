@@ -1,3 +1,5 @@
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+
 # SnapSmack.ca SEO Pre-change Audit
 
 Date: 2026-07-28
