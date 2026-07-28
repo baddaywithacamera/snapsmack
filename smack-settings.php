@@ -16,6 +16,7 @@
 
 require_once 'core/auth-smack.php';
 require_once 'core/ste-client.php';
+require_once 'core/client-ip.php';
 
 // --- AKISMET KEY TEST (AJAX) ---
 if (
@@ -195,6 +196,17 @@ if (isset($_POST['save_settings'])) {
     // archive_thumb_style: only 'square' or 'natural' are valid.
     if (isset($_POST['settings']['archive_thumb_style']) && !in_array($_POST['settings']['archive_thumb_style'], ['square', 'natural'], true)) {
         $_POST['settings']['archive_thumb_style'] = 'square';
+    }
+    if (isset($_POST['settings']['trusted_proxies'])) {
+        $proxy_raw = trim((string)$_POST['settings']['trusted_proxies']);
+        $proxy_valid = snap_parse_trusted_proxies($proxy_raw);
+        $proxy_parts = array_values(array_filter(array_map('trim', explode(',', $proxy_raw)), fn($v) => $v !== ''));
+        if (count($proxy_valid) !== count(array_unique($proxy_parts))) {
+            $msg = "Trusted proxies were not saved: use comma-separated IP addresses or CIDR ranges.";
+            unset($_POST['settings']['trusted_proxies']);
+        } else {
+            $_POST['settings']['trusted_proxies'] = implode(',', $proxy_valid);
+        }
     }
 
     // Persist all settings, inserting or updating as needed.
@@ -577,6 +589,7 @@ include 'core/sidebar.php';
         <div class="box">
             <h3>SECURITY</h3>
             <p class="dim">Harden your login endpoint against bots and brute-force attacks.</p>
+            <?php $ip_diag = snap_client_ip_diagnostic($pdo); ?>
             <div class="post-layout-grid">
                 <div class="lens-input-wrapper">
                     <label>LOGIN SLUG <span class="field-tip" data-tip="The URL path for your login page (e.g. snap-in → yoursite.com/snap-in). Bots won't find it. Changing this takes effect immediately — bookmark the new URL before saving.">ⓘ</span></label>
@@ -585,6 +598,20 @@ include 'core/sidebar.php';
                 <div class="lens-input-wrapper">
                     <label>RECOVERY TOKEN <span class="field-tip" data-tip="If you forget your login slug, visit snap-in.php?key=TOKEN to be redirected to it. Leave blank to disable. Use a long random string.">ⓘ</span></label>
                     <input type="text" name="settings[login_recovery_key]" value="<?php echo htmlspecialchars($settings['login_recovery_key'] ?? ''); ?>" placeholder="leave blank to disable" autocomplete="off">
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>TRUSTED PROXIES <span class="field-tip" data-tip="Only these peers may assert a forwarded client address. Use comma-separated IPs or CIDR ranges. Never add the whole internet.">i</span></label>
+                    <input type="text" name="settings[trusted_proxies]" value="<?php echo htmlspecialchars($settings['trusted_proxies'] ?? '127.0.0.1,::1'); ?>" placeholder="127.0.0.1,::1">
+                    <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">The loopback default suits a same-host Cloudflare Tunnel or reverse proxy.</span>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>CLIENT-IP DIAGNOSTIC</label>
+                    <div class="read-only-display">
+                        Peer: <?php echo htmlspecialchars($ip_diag['observed_peer']); ?><br>
+                        Selected client: <?php echo htmlspecialchars($ip_diag['selected_client']); ?><br>
+                        Source: <?php echo htmlspecialchars($ip_diag['source']); ?><br>
+                        Peer trusted: <?php echo $ip_diag['peer_trusted'] ? 'YES' : 'NO'; ?>
+                    </div>
                 </div>
             </div>
         </div>

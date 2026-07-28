@@ -12,6 +12,10 @@
 
 ## Unreleased
 
+## 0.7.453 "Trust but Verify" — 2026-07-28
+
+- **Completed the shipped-code closure for SECAUDIT 035.** Every known `snap_ip_bans` writer now uses the mandatory trusted client-address resolver and independently refuses private, reserved, loopback, malformed, or configured-proxy ban targets; a missing security component can no longer fail open. Password-reset and community rate limits now key on the selected client instead of collapsing an entire audience onto a tunnel address. BREAK THE GLASS records both the selected operator and observed network peer. Trusted-proxy configuration now accepts validated IP/CIDR entries and Configuration shows the observed peer, selected client, trust decision, and source. A permanent regression suite covers forged headers, trusted Cloudflare Tunnel and XFF paths, direct installs, malformed/private targets, CIDR matching, all four ban writers, and both shared-address limiters. Fleet data cleanup and lifecycle operations remain deliberately separate and require an authorized, recoverable database pass. (`core/client-ip.php`, all ban writers, rate limiters, BREAK THE GLASS, Configuration, `tests/client-ip-regression.php`.)
+
 ## 0.7.452 "Parting Out Cars Since 1972" — 2026-07-28
 
 - **SCROLL turns a SMACKONEOUT archive into a deliberate photographic journey.** The new solo-mode skin keeps the proven SLICKR justified-grid engine for its scrolling landing page, routes every image to a restrained 50 SHADES OF NOAH GREY–inspired solo view with the normal lightbox, and adds configurable masthead line breaks, counter-clockwise landing-title rotation, typography and colours, image corners and outside borders, social/site navigation, and an optional shared sticky header that appears only after the landing masthead leaves view. The first shared grid-navigation component and stylesheet establish a migration path for other skins without destabilizing the nine sites already using their current implementations. (`skins/scroll/`, `core/components/grid-sticky-nav.php`, `assets/css/ss-engine-grid-nav.css`, shared grid/social engines; SCROLL 0.1.0.)

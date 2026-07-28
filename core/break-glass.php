@@ -16,6 +16,8 @@ const SNAP_BREAK_GLASS_FORMAT   = 'snapsmack-break-glass-v1';
 const SNAP_BREAK_GLASS_FILENAME = 'BREAK-GLASS-CARD.sbc';
 const SNAP_BREAK_GLASS_MAX_SIZE = 16384;
 
+require_once __DIR__ . '/client-ip.php';
+
 function break_glass_setting_get(PDO $pdo, string $key, string $default = ''): string {
     $stmt = $pdo->prepare(
         "SELECT setting_val FROM snap_settings WHERE setting_key = ? LIMIT 1"
@@ -302,7 +304,10 @@ function break_glass_consume(PDO $pdo, array $verified_payload): array {
         break_glass_setting_set($pdo, 'break_glass_consumed_at', $consumed_at);
         break_glass_setting_set($pdo, 'break_glass_public_key', '');
         break_glass_setting_set($pdo, 'break_glass_card_id_hash', '');
-        break_glass_setting_set($pdo, 'break_glass_last_ip', substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45));
+        $client_ip = snap_trusted_client_ip($pdo);
+        $peer_ip = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+        break_glass_setting_set($pdo, 'break_glass_last_ip', substr($client_ip, 0, 45));
+        break_glass_setting_set($pdo, 'break_glass_last_peer_ip', substr($peer_ip, 0, 45));
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
@@ -314,7 +319,8 @@ function break_glass_consume(PDO $pdo, array $verified_payload): array {
     error_log(
         'SNAPSMACK BREAK-GLASS USED: user=' . (string)$user['username']
         . ' at=' . $consumed_at
-        . ' ip=' . (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown')
+        . ' client_ip=' . $client_ip
+        . ' peer_ip=' . $peer_ip
     );
 
     // Loud-on-use: best-effort owner email after the transaction is safely
@@ -332,7 +338,8 @@ function break_glass_consume(PDO $pdo, array $verified_payload): array {
                 "[{$site_name}] BREAK-GLASS CARD USED",
                 "The Break-Glass Card for {$site_name} was used at {$consumed_at} UTC.\n\n"
                 . "Account: {$user['username']}\n"
-                . "IP: " . (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown') . "\n\n"
+                . "Client IP: {$client_ip}\n"
+                . "Observed peer: {$peer_ip}\n\n"
                 . "The old password, 2FA material, recovery codes, trusted devices, reset links, "
                 . "sessions, and card were revoked. If this was not you, treat the host and database "
                 . "as compromised immediately."
