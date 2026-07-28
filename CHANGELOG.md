@@ -12,6 +12,11 @@
 
 ## Unreleased
 
+## 0.7.452 "Parting Out Cars Since 1972" — 2026-07-28
+
+- **SCROLL turns a SMACKONEOUT archive into a deliberate photographic journey.** The new solo-mode skin keeps the proven SLICKR justified-grid engine for its scrolling landing page, routes every image to a restrained 50 SHADES OF NOAH GREY–inspired solo view with the normal lightbox, and adds configurable masthead line breaks, counter-clockwise landing-title rotation, typography and colours, image corners and outside borders, social/site navigation, and an optional shared sticky header that appears only after the landing masthead leaves view. The first shared grid-navigation component and stylesheet establish a migration path for other skins without destabilizing the nine sites already using their current implementations. (`skins/scroll/`, `core/components/grid-sticky-nav.php`, `assets/css/ss-engine-grid-nav.css`, shared grid/social engines; SCROLL 0.1.0.)
+- **Fleet updates now keep working after the first batch.** UPDATE ALL BEHIND no longer treats its initial batch as the whole job: it carries the remaining target list forward, advances through bounded batches, reports honest progress and failures, and preserves the existing per-spoke safeguards. A large hub can update every eligible spoke without seventeen rounds of manual clicking or one oversized request timing out. (`smack-multisite.php`.)
+
 ## 0.7.451 "Foolproof and Incapable of Error" — 2026-07-27
 
 - **AI enrichment is now attached to the fields it is meant to help.** Native-sized controls can enrich titles, captions/bodies, and hashtags across SMACKONEOUT, SMACKTALK, GRAMOFSMACK, the standard editor, and the carousel editor, without inventing fields a mode does not have. Each field has selectable built-in and owner-written prompts; custom prompts can be saved, preferred per field, edited, or deleted. The library lives in ordinary backed-up site settings, requires no schema migration, retains immutable safe fallbacks, uses the configured consent-gated AI provider, and adds no inline CSS. (`smack-ai-assist.php`, `core/ai-enrichment-prompts.php`, `assets/js/ss-engine-ai-enrichment.js`, `assets/css/ss-engine-ai-enrichment.css`, posting/editing surfaces.)
