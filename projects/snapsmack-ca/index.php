@@ -46,7 +46,7 @@ if (file_exists($_stats_cache) && (time() - filemtime($_stats_cache)) < $_stats_
 }
 
 // Cache miss — fetch from each site in parallel
-if (empty($_demo_stats)) {
+if (empty($_demo_stats) && function_exists('curl_multi_init')) {
     $_mh      = curl_multi_init();
     $_handles = [];
     foreach ($_demo_sites as $_domain => $_base_url) {
@@ -99,9 +99,11 @@ function ss_card_stats(string $domain, array $all): string {
     return htmlspecialchars(json_encode($all[$domain] ?? null, JSON_UNESCAPED_SLASHES));
 }
 
-$page_title       = 'SnapSmack — Photo Blogging Is Back';
-$page_description = 'SnapSmack is a self-hosted photo blogging platform built for people who still believe that putting your photographs on your own corner of the internet is worth doing.';
+$page_title       = 'SnapSmack — Self-Hosted Photo Publishing and Instagram Alternative';
+$page_description = 'SnapSmack is free, self-hosted photo publishing software for photographers who want to own their website, photos, audience, and archive.';
 $page_og_url      = 'https://snapsmack.ca/';
+$page_social_title = 'SnapSmack — Retro Photo Blogging. Modern Technology.';
+$page_social_description = 'Free self-hosted photo publishing software for photographers who want control of their photos, domain, audience, and archive.';
 $nav_active       = 'index';
 
 $page_css = <<<'CSS'
@@ -1357,6 +1359,9 @@ form.ml-block-form {
     .not-grid { grid-template-columns: 1fr; }
     .dict-pull { padding: 32px 24px; }
 }
+@media (max-width: 480px) {
+    .hero-headline { font-size: 2rem; overflow-wrap: anywhere; }
+}
 
 /* ─── DICTIONARY PULL-QUOTES ──────────────────────────────────────────── */
 .dict-pull {
@@ -1480,9 +1485,9 @@ require_once __DIR__ . '/includes/header.php';
                 ?></span>
             </div>
         </div>
-        <h1 class="hero-headline">A photo blog platform that doesn't treat you like a <span>product.</span></h1>
-        <p class="hero-kicker">SnapSmack lets you smack your snaps up.</p>
-        <p class="hero-sub">Self-hosted, free and open-source, built for photographers who got tired of Instagram, Facebook, and every other platform deciding what happens to their work. Own your archive. Own your audience. No middleman.</p>
+        <h1 class="hero-headline">Retro Photo Blogging. <span>Modern Technology.</span></h1>
+        <p class="hero-kicker">The joy of the old web. Without the old software.</p>
+        <p class="hero-sub">SnapSmack is a free, self-hosted photography publishing platform for people who want to own their photos, website, audience, domain, and archive. A personal photography website and chronological photo feed—not another centralized platform deciding what gets seen.</p>
         <div class="hero-actions">
             <a href="#what" class="btn btn-secondary">See What It Does</a>
             <a href="#beta" class="btn btn-primary">Apply for the Closed Beta</a>
@@ -1571,9 +1576,9 @@ require_once __DIR__ . '/includes/header.php';
         <p class="fed-body">Jump in the pool or just dip a toe — your call, every time. That's why ActivityPub is baked into the <strong>core</strong> of SnapSmack, not bolted on as some clumsy plugin. It's an integrated function of the software: full, two-way interactivity with the whole Fediverse if you want it — and completely ignorable if you don't.</p>
 
         <div class="fed-shots">
-            <figure data-lb="img/smackverse-blog-view.png"><img src="img/smackverse-blog-view.png" alt="A photoblog profile rendered as its own SnapSmack blog" loading="lazy"><figcaption>Your blog</figcaption></figure>
-            <figure data-lb="img/smackverse-home-view.png"><img src="img/smackverse-home-view.png" alt="The same profile inside the SMACKVERSE client" loading="lazy"><figcaption>In SMACKVERSE</figcaption></figure>
-            <figure data-lb="img/smackverse-pixelfed-ca-view.png"><img src="img/smackverse-pixelfed-ca-view.png" alt="The same profile seen from Pixelfed" loading="lazy"><figcaption>Seen from Pixelfed</figcaption></figure>
+            <figure data-lb="img/smackverse-blog-view.png"><img src="img/smackverse-blog-view.png" alt="A photoblog profile rendered as its own SnapSmack blog" loading="lazy" width="1920" height="1080"><figcaption>Your blog</figcaption></figure>
+            <figure data-lb="img/smackverse-home-view.png"><img src="img/smackverse-home-view.png" alt="The same profile inside the SMACKVERSE client" loading="lazy" width="1920" height="1080"><figcaption>In SMACKVERSE</figcaption></figure>
+            <figure data-lb="img/smackverse-pixelfed-ca-view.png"><img src="img/smackverse-pixelfed-ca-view.png" alt="The same profile seen from Pixelfed" loading="lazy" width="1920" height="1080"><figcaption>Seen from Pixelfed</figcaption></figure>
         </div>
 
         <div class="fed-split">
@@ -1780,9 +1785,9 @@ require_once __DIR__ . '/includes/header.php';
         <h2>Pick a Colour, Any Colour</h2>
         <p class="lede">The admin interface has sixteen colour themed skins available for it (so far). This one is Bumblebee, for those photographers who are ready to roll out. Don't see something you like? Use the skin designer to create something that tickles your pickle and add it to the repository for others to enjoy, too.</p>
         <div class="admin-shots" style="margin-top: 24px;">
-            <a href="img/admin-dashboard.png" data-lb="img/admin-dashboard.png"><img src="img/admin-dashboard.png" alt="SnapSmack admin — dashboard"></a>
-            <a href="img/admin-newpost.png" data-lb="img/admin-newpost.png"><img src="img/admin-newpost.png" alt="SnapSmack admin — new post"></a>
-            <a href="img/admin-global.png" data-lb="img/admin-global.png"><img src="img/admin-global.png" alt="SnapSmack admin — global settings"></a>
+            <a href="img/admin-dashboard.png" data-lb="img/admin-dashboard.png"><img src="img/admin-dashboard.png" alt="SnapSmack admin — dashboard" width="1920" height="1032" loading="lazy"></a>
+            <a href="img/admin-newpost.png" data-lb="img/admin-newpost.png"><img src="img/admin-newpost.png" alt="SnapSmack admin — new post" width="1920" height="1032" loading="lazy"></a>
+            <a href="img/admin-global.png" data-lb="img/admin-global.png"><img src="img/admin-global.png" alt="SnapSmack admin — global settings" width="1920" height="1032" loading="lazy"></a>
         </div>
     </div>
 </section>
@@ -1875,15 +1880,15 @@ require_once __DIR__ . '/includes/header.php';
             <div class="theme-card" data-stats="<?php echo ss_card_stats('unzucked.ca', $_demo_stats); ?>">
                 <div class="theme-main-shot">
                     <a href="img/grid-landing.png" data-lb="img/grid-landing.png">
-                        <img src="img/grid-landing.png" alt="The Grid — landing">
+                        <img src="img/grid-landing.png" alt="The Grid — landing" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-thumbs">
                     <a href="img/grid-solo.png" data-lb="img/grid-solo.png">
-                        <img src="img/grid-solo.png" alt="The Grid — post view">
+                        <img src="img/grid-solo.png" alt="The Grid — post view" width="1920" height="1080" loading="lazy">
                     </a>
                     <a href="img/grid-page.png" data-lb="img/grid-page.png">
-                        <img src="img/grid-page.png" alt="The Grid — static page">
+                        <img src="img/grid-page.png" alt="The Grid — static page" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -1897,15 +1902,15 @@ require_once __DIR__ . '/includes/header.php';
             <div class="theme-card" data-stats="<?php echo ss_card_stats('photowalk.ing', $_demo_stats); ?>">
                 <div class="theme-main-shot">
                     <a href="img/50shades-landing.png" data-lb="img/50shades-landing.png">
-                        <img src="img/50shades-landing.png" alt="50 Shades of Noah Grey — landing">
+                        <img src="img/50shades-landing.png" alt="50 Shades of Noah Grey — landing" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-thumbs">
                     <a href="img/50shades-archive.png" data-lb="img/50shades-archive.png">
-                        <img src="img/50shades-archive.png" alt="50 Shades — archive">
+                        <img src="img/50shades-archive.png" alt="50 Shades — archive" width="1920" height="1080" loading="lazy">
                     </a>
                     <a href="img/50shades-page.png" data-lb="img/50shades-page.png">
-                        <img src="img/50shades-page.png" alt="50 Shades — pages">
+                        <img src="img/50shades-page.png" alt="50 Shades — pages" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -1919,15 +1924,15 @@ require_once __DIR__ . '/includes/header.php';
             <div class="theme-card" data-stats="<?php echo ss_card_stats('hekeepsdroningon.ca', $_demo_stats); ?>">
                 <div class="theme-main-shot">
                     <a href="img/galleria-landing.png" data-lb="img/galleria-landing.png">
-                        <img src="img/galleria-landing.png" alt="Galleria — landing">
+                        <img src="img/galleria-landing.png" alt="Galleria — landing" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-thumbs">
                     <a href="img/galleria-archive.png" data-lb="img/galleria-archive.png">
-                        <img src="img/galleria-archive.png" alt="Galleria — archive">
+                        <img src="img/galleria-archive.png" alt="Galleria — archive" width="1920" height="1080" loading="lazy">
                     </a>
                     <a href="img/galleria-page.png" data-lb="img/galleria-page.png">
-                        <img src="img/galleria-page.png" alt="Galleria — pages">
+                        <img src="img/galleria-page.png" alt="Galleria — pages" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -1941,15 +1946,15 @@ require_once __DIR__ . '/includes/header.php';
             <div class="theme-card" data-stats="<?php echo ss_card_stats('pixhellated.ca', $_demo_stats); ?>">
                 <div class="theme-main-shot">
                     <a href="img/impact-landing.png" data-lb="img/impact-landing.png">
-                        <img src="img/impact-landing.png" alt="Impact Printer — landing">
+                        <img src="img/impact-landing.png" alt="Impact Printer — landing" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-thumbs">
                     <a href="img/impact-archive.png" data-lb="img/impact-archive.png">
-                        <img src="img/impact-archive.png" alt="Impact Printer — archive">
+                        <img src="img/impact-archive.png" alt="Impact Printer — archive" width="1920" height="1080" loading="lazy">
                     </a>
                     <a href="img/impact-page.png" data-lb="img/impact-page.png">
-                        <img src="img/impact-page.png" alt="Impact Printer — pages">
+                        <img src="img/impact-page.png" alt="Impact Printer — pages" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -1963,15 +1968,15 @@ require_once __DIR__ . '/includes/header.php';
             <div class="theme-card" data-stats="<?php echo ss_card_stats('wateronthebrain.ca', $_demo_stats); ?>">
                 <div class="theme-main-shot">
                     <a href="img/rationalgeo-landing.png" data-lb="img/rationalgeo-landing.png">
-                        <img src="img/rationalgeo-landing.png" alt="Rational Geo — landing">
+                        <img src="img/rationalgeo-landing.png" alt="Rational Geo — landing" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-thumbs">
                     <a href="img/rationalgeo-archive.png" data-lb="img/rationalgeo-archive.png">
-                        <img src="img/rationalgeo-archive.png" alt="Rational Geo — archive">
+                        <img src="img/rationalgeo-archive.png" alt="Rational Geo — archive" width="1920" height="1080" loading="lazy">
                     </a>
                     <a href="img/rationalgeo-page.png" data-lb="img/rationalgeo-page.png">
-                        <img src="img/rationalgeo-page.png" alt="Rational Geo — pages">
+                        <img src="img/rationalgeo-page.png" alt="Rational Geo — pages" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -1985,15 +1990,15 @@ require_once __DIR__ . '/includes/header.php';
             <div class="theme-card" data-stats="<?php echo ss_card_stats('foundtextures.ca', $_demo_stats); ?>">
                 <div class="theme-main-shot">
                     <a href="img/truegrit-landing.png" data-lb="img/truegrit-landing.png">
-                        <img src="img/truegrit-landing.png" alt="True Grit — landing">
+                        <img src="img/truegrit-landing.png" alt="True Grit — landing" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-thumbs">
                     <a href="img/truegrit-archive.png" data-lb="img/truegrit-archive.png">
-                        <img src="img/truegrit-archive.png" alt="True Grit — archive">
+                        <img src="img/truegrit-archive.png" alt="True Grit — archive" width="1920" height="1080" loading="lazy">
                     </a>
                     <a href="img/truegrit-page.png" data-lb="img/truegrit-page.png">
-                        <img src="img/truegrit-page.png" alt="True Grit — pages">
+                        <img src="img/truegrit-page.png" alt="True Grit — pages" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -2007,15 +2012,15 @@ require_once __DIR__ . '/includes/header.php';
             <div class="theme-card" data-stats="<?php echo ss_card_stats('acolourlesslife.ca', $_demo_stats); ?>">
                 <div class="theme-main-shot">
                     <a href="img/chaplin-landing.png" data-lb="img/chaplin-landing.png">
-                        <img src="img/chaplin-landing.png" alt="Chaplin — single image view">
+                        <img src="img/chaplin-landing.png" alt="Chaplin — single image view" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-thumbs">
                     <a href="img/chaplin-archive.png" data-lb="img/chaplin-archive.png">
-                        <img src="img/chaplin-archive.png" alt="Chaplin — archive">
+                        <img src="img/chaplin-archive.png" alt="Chaplin — archive" width="1920" height="1080" loading="lazy">
                     </a>
                     <a href="img/chaplin-page.png" data-lb="img/chaplin-page.png">
-                        <img src="img/chaplin-page.png" alt="Chaplin — static page">
+                        <img src="img/chaplin-page.png" alt="Chaplin — static page" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -2028,15 +2033,15 @@ require_once __DIR__ . '/includes/header.php';
             <div class="theme-card" data-stats="<?php echo ss_card_stats('foreverphotograph.ing', $_demo_stats); ?>">
                 <div class="theme-main-shot">
                     <a href="img/slickr-landing.png" data-lb="img/slickr-landing.png">
-                        <img src="img/slickr-landing.png" alt="Slickr — photostream">
+                        <img src="img/slickr-landing.png" alt="Slickr — photostream" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-thumbs">
                     <a href="img/slickr-archive.png" data-lb="img/slickr-archive.png">
-                        <img src="img/slickr-archive.png" alt="Slickr — albums">
+                        <img src="img/slickr-archive.png" alt="Slickr — albums" width="1920" height="1080" loading="lazy">
                     </a>
                     <a href="img/slickr-page.png" data-lb="img/slickr-page.png">
-                        <img src="img/slickr-page.png" alt="Slickr — about page">
+                        <img src="img/slickr-page.png" alt="Slickr — about page" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -2049,15 +2054,15 @@ require_once __DIR__ . '/includes/header.php';
             <div class="theme-card" data-stats="<?php echo ss_card_stats('theschoolofhardnocks.ca', $_demo_stats); ?>">
                 <div class="theme-main-shot">
                     <a href="img/parade-landing.png" data-lb="img/parade-landing.png">
-                        <img src="img/parade-landing.png" alt="Parade — landing">
+                        <img src="img/parade-landing.png" alt="Parade — landing" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-thumbs">
                     <a href="img/parade-archive.png" data-lb="img/parade-archive.png">
-                        <img src="img/parade-archive.png" alt="Parade — archive">
+                        <img src="img/parade-archive.png" alt="Parade — archive" width="1920" height="1080" loading="lazy">
                     </a>
                     <a href="img/parade-page.png" data-lb="img/parade-page.png">
-                        <img src="img/parade-page.png" alt="Parade — pages">
+                        <img src="img/parade-page.png" alt="Parade — pages" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -2070,15 +2075,15 @@ require_once __DIR__ . '/includes/header.php';
             <div class="theme-card" data-stats="<?php echo ss_card_stats('fauxlaroid.fyi', $_demo_stats); ?>">
                 <div class="theme-main-shot">
                     <a href="img/instantcam-landing.png" data-lb="img/instantcam-landing.png">
-                        <img src="img/instantcam-landing.png" alt="Instant Camera — landing">
+                        <img src="img/instantcam-landing.png" alt="Instant Camera — landing" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-thumbs">
                     <a href="img/instantcam-archive.png" data-lb="img/instantcam-archive.png">
-                        <img src="img/instantcam-archive.png" alt="Instant Camera — archive">
+                        <img src="img/instantcam-archive.png" alt="Instant Camera — archive" width="1920" height="1080" loading="lazy">
                     </a>
                     <a href="img/instantcam-page.png" data-lb="img/instantcam-page.png">
-                        <img src="img/instantcam-page.png" alt="Instant Camera — pages">
+                        <img src="img/instantcam-page.png" alt="Instant Camera — pages" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -2091,15 +2096,15 @@ require_once __DIR__ . '/includes/header.php';
             <div class="theme-card" data-stats="<?php echo ss_card_stats('lightafterdark.ca', $_demo_stats); ?>">
                 <div class="theme-main-shot">
                     <a href="img/aurora-landing.png" data-lb="img/aurora-landing.png">
-                        <img src="img/aurora-landing.png" alt="Aurora — landing">
+                        <img src="img/aurora-landing.png" alt="Aurora — landing" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-thumbs">
                     <a href="img/aurora-archive.png" data-lb="img/aurora-archive.png">
-                        <img src="img/aurora-archive.png" alt="Aurora — archive">
+                        <img src="img/aurora-archive.png" alt="Aurora — archive" width="1920" height="1080" loading="lazy">
                     </a>
                     <a href="img/aurora-page.png" data-lb="img/aurora-page.png">
-                        <img src="img/aurora-page.png" alt="Aurora — post view">
+                        <img src="img/aurora-page.png" alt="Aurora — post view" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -2112,15 +2117,15 @@ require_once __DIR__ . '/includes/header.php';
             <div class="theme-card" data-stats="<?php echo ss_card_stats('craptasti.ca', $_demo_stats); ?>">
                 <div class="theme-main-shot">
                     <a href="img/jturk-landing.png" data-lb="img/jturk-landing.png">
-                        <img src="img/jturk-landing.png" alt="Jive Turkey — landing">
+                        <img src="img/jturk-landing.png" alt="Jive Turkey — landing" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-thumbs">
                     <a href="img/jturk-archive.png" data-lb="img/jturk-archive.png">
-                        <img src="img/jturk-archive.png" alt="Jive Turkey — archive">
+                        <img src="img/jturk-archive.png" alt="Jive Turkey — archive" width="1920" height="1080" loading="lazy">
                     </a>
                     <a href="img/jturk-page.png" data-lb="img/jturk-page.png">
-                        <img src="img/jturk-page.png" alt="Jive Turkey — post view">
+                        <img src="img/jturk-page.png" alt="Jive Turkey — post view" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -2145,10 +2150,10 @@ require_once __DIR__ . '/includes/header.php';
             <div class="tool-screenshot">
                 <div class="tool-screenshot-duo">
                     <a href="img/sybu-credentials.png" data-lb="img/sybu-credentials.png">
-                        <img src="img/sybu-credentials.png" alt="Smack Your Batch Up — connection and credentials">
+                        <img src="img/sybu-credentials.png" alt="Smack Your Batch Up — connection and credentials" width="1920" height="1032" loading="lazy">
                     </a>
                     <a href="img/sybu-uploading.png" data-lb="img/sybu-uploading.png">
-                        <img src="img/sybu-uploading.png" alt="Smack Your Batch Up — batch posting in progress">
+                        <img src="img/sybu-uploading.png" alt="Smack Your Batch Up — batch posting in progress" width="1920" height="1032" loading="lazy">
                     </a>
                 </div>
             </div>
@@ -2167,13 +2172,13 @@ require_once __DIR__ . '/includes/header.php';
             <div class="tool-screenshot">
                 <div class="tool-screenshot-trio">
                     <a href="img/suyb-backupinprogress-01.png" data-lb="img/suyb-backupinprogress-01.png">
-                        <img src="img/suyb-backupinprogress-01.png" alt="Smack Up Your Backup — backup uploading">
+                        <img src="img/suyb-backupinprogress-01.png" alt="Smack Up Your Backup — backup uploading" width="1920" height="1032" loading="lazy">
                     </a>
                     <a href="img/suyb-settings-02.png" data-lb="img/suyb-settings-02.png">
-                        <img src="img/suyb-settings-02.png" alt="Smack Up Your Backup — settings">
+                        <img src="img/suyb-settings-02.png" alt="Smack Up Your Backup — settings" width="1920" height="1032" loading="lazy">
                     </a>
                     <a href="img/suyb-recovery-03.png" data-lb="img/suyb-recovery-03.png">
-                        <img src="img/suyb-recovery-03.png" alt="Smack Up Your Backup — help and recovery">
+                        <img src="img/suyb-recovery-03.png" alt="Smack Up Your Backup — help and recovery" width="1920" height="1032" loading="lazy">
                     </a>
                 </div>
             </div>
@@ -2194,10 +2199,10 @@ require_once __DIR__ . '/includes/header.php';
             <div class="tool-screenshot">
                 <div class="tool-screenshot-duo">
                     <a href="img/unzucker-config.png" data-lb="img/unzucker-config.png">
-                        <img src="img/unzucker-config.png" alt="UNZUCKER — configuration and connection">
+                        <img src="img/unzucker-config.png" alt="UNZUCKER — configuration and connection" width="1920" height="1032" loading="lazy">
                     </a>
                     <a href="img/unzucker-gridsorter.png" data-lb="img/unzucker-gridsorter.png">
-                        <img src="img/unzucker-gridsorter.png" alt="UNZUCKER — post grid and trigram sorter">
+                        <img src="img/unzucker-gridsorter.png" alt="UNZUCKER — post grid and trigram sorter" width="1920" height="1032" loading="lazy">
                     </a>
                 </div>
             </div>
@@ -2217,10 +2222,10 @@ require_once __DIR__ . '/includes/header.php';
             <div class="tool-screenshot">
                 <div class="tool-screenshot-duo">
                     <a href="img/flkr-fckr.png" data-lb="img/flkr-fckr.png">
-                        <img src="img/flkr-fckr.png" alt="FLKR FCKR — Flickr import">
+                        <img src="img/flkr-fckr.png" alt="FLKR FCKR — Flickr import" width="1920" height="1032" loading="lazy">
                     </a>
                     <a href="img/slickr-landing.png" data-lb="img/slickr-landing.png">
-                        <img src="img/slickr-landing.png" alt="SLICKR skin — your imported Flickr archive, Flickr-style, running on SnapSmack">
+                        <img src="img/slickr-landing.png" alt="SLICKR skin — your imported Flickr archive, Flickr-style, running on SnapSmack" width="1920" height="1080" loading="lazy">
                     </a>
                 </div>
             </div>
@@ -2382,7 +2387,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="whodat-card">
                 <div class="whodat-portrait">
                     <a href="img/whodat-sean.png" data-lb="img/whodat-sean.png">
-                        <img src="img/whodat-sean.png" alt="Sean McCormick">
+                        <img src="img/whodat-sean.png" alt="Sean McCormick" width="686" height="784" loading="lazy">
                     </a>
                 </div>
                 <div>
@@ -2395,7 +2400,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="whodat-card">
                 <div class="whodat-portrait">
                     <a href="img/whodat-claude.png" data-lb="img/whodat-claude.png">
-                        <img src="img/whodat-claude.png" alt="Claude">
+                        <img src="img/whodat-claude.png" alt="Claude" width="686" height="784" loading="lazy">
                     </a>
                 </div>
                 <div>
@@ -2408,7 +2413,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="whodat-card">
                 <div class="whodat-portrait">
                     <a href="img/whodat-codex.png" data-lb="img/whodat-codex.png">
-                        <img src="img/whodat-codex.png" alt="OpenAI Codex">
+                        <img src="img/whodat-codex.png" alt="OpenAI Codex" width="1128" height="1338" loading="lazy">
                     </a>
                 </div>
                 <div>

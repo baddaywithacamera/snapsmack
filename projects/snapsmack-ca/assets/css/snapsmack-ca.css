@@ -154,6 +154,19 @@ nav a.active::after { width: 100%; }
 
 /* --- FOOTER --- */
 #site-footer { background: var(--black); border-top: 3px solid var(--red); padding: 32px 0; }
+.footer-discovery {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 20px;
+    margin: 0 auto 18px;
+    font: 700 0.76rem/1.35 Arial, sans-serif;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.footer-discovery a { color: var(--white); text-decoration: none; }
+.footer-discovery a:hover,
+.footer-discovery a:focus-visible { color: var(--red); text-decoration: underline; }
 .footer-copy {
     font-family: 'Courier New', monospace; font-size: 0.68rem; color: #aaa;
     letter-spacing: 0.04em; line-height: 1; margin: 0; text-align: center;

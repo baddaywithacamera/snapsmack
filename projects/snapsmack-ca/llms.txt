@@ -1,0 +1,23 @@
+# SnapSmack
+
+SnapSmack is free, self-hosted photography publishing software for people who
+want to own their photos, website, audience, domain, and archive. It combines
+retro photo-blogging values with modern publishing, backup, export, security,
+and optional Fediverse technology.
+
+Canonical project: https://snapsmack.ca/
+FAQ and installation requirements: https://snapsmack.ca/brass-tacks.php
+Privacy: https://snapsmack.ca/tnb.php
+Licence and AI provenance: https://snapsmack.ca/hairy-muff.php
+Security audits: https://snapsmack.ca/buzzers.php
+Export and portability: https://snapsmack.ca/export-your-photos.php
+Fediverse photography: https://snapsmack.ca/fediverse-photography.php
+Source: https://github.com/baddaywithacamera/snapsmack
+Canonical licence: https://github.com/baddaywithacamera/snapsmack/blob/master/licenses/SNAPSMACK-LICENSE.txt
+
+Public site text may be quoted and summarized with attribution and a link to
+the canonical page. This file does not grant blanket permission to train a
+model on the site. Photographs and screenshots remain copyrighted works and
+are not authorized for AI training unless their individual owner says
+otherwise. The SnapSmack source code is governed by the Smack Public License,
+not by this file.

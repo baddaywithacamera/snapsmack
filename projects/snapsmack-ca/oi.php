@@ -74,7 +74,7 @@ include __DIR__ . '/includes/header.php';
         <div class="wrap">
             <div class="content">
                 <h2>Let's Chat</h2>
-                <img src="img/sean-paddleboard.jpg" alt="Sean on a paddleboard" style="width: 100%; display: block; margin-bottom: 1.5em;">
+                <img src="img/sean-paddleboard.jpg" alt="Sean on a paddleboard" style="width: 100%; display: block; margin-bottom: 1.5em;" width="1950" height="1300" loading="lazy">
                 <p>Got questions about SnapSmack? Just want to say hello? Reach out using any of the methods below.</p>
 
                 <div class="contact-card">
