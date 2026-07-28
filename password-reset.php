@@ -18,6 +18,7 @@
 
 require_once 'core/db.php';
 require_once 'core/auth-recovery.php';
+require_once 'core/client-ip.php';
 
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $site_name = $settings['site_name'] ?? 'SnapSmack';
@@ -58,7 +59,7 @@ if ($step === 'reset' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 // ─── STEP 1: Request reset link ──────────────────────────────────────────────
 if ($step === 'request' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     // Rate limit: max 5 admin reset requests per IP per hour.
-    $rl_ip     = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $rl_ip     = snap_trusted_client_ip($pdo);
     $rl_action = 'admin_password_reset';
     $rl_window = date('Y-m-d H:i:00', floor(time() / 3600) * 3600);
     try {

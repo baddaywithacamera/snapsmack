@@ -27,6 +27,7 @@
 if (!isset($pdo)) {
     require_once __DIR__ . '/db.php';
 }
+require_once __DIR__ . '/client-ip.php';
 
 // --- CONSTANTS ---
 define('COMMUNITY_COOKIE_NAME',    'ss_community_token');
@@ -280,7 +281,7 @@ function snap_community_ready(): bool {
 function community_rate_limit(string $action): bool {
     global $pdo;
 
-    $ip       = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $ip       = snap_trusted_client_ip($pdo);
     $limit    = (int)community_setting('rate_limit_' . $action, 10);
     $window   = date('Y-m-d H:i:00', floor(time() / 3600) * 3600); // top of current hour
 

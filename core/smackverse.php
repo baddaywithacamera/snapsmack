@@ -33,6 +33,8 @@
 // ─── Identity / config ──────────────────────────────────────────────────────
 
 /** Is federation switched on for this install? Absent setting = OFF. */
+require_once __DIR__ . '/client-ip.php';  // mandatory security boundary — SECAUDIT 035
+
 function sv_enabled(array $settings): bool {
     return ($settings['smackverse_enabled'] ?? '0') === '1';
 }
@@ -475,6 +477,11 @@ function sv_url_is_public(string $url): bool {
  * Best-effort: a limiter failure never blocks legitimate federation.
  */
 function sv_inbox_rate_ok(PDO $pdo, string $ip): bool {
+    // SECAUDIT 035: the router hands us REMOTE_ADDR, which behind Cloudflare is
+    // the shared tunnel address — auto-banning it would cut off ALL federation
+    // to this site at once. Resolve the real peer through the one trusted
+    // accessor so enforcement, rate-limit keying and any ban use the true client.
+    $ip = snap_trusted_client_ip($pdo);
     try {
         $b = $pdo->prepare("SELECT 1 FROM snap_ip_bans WHERE ip = ? AND expires_at > NOW() LIMIT 1");
         $b->execute([$ip]);
@@ -496,11 +503,15 @@ function sv_inbox_rate_ok(PDO $pdo, string $ip): bool {
         $n = (int)($q->fetchColumn() ?: 0);
 
         if ($n > 180) {
-            $pdo->prepare(
-                "INSERT INTO snap_ip_bans (ip, reason, banned_at, expires_at)
-                 VALUES (?, 'auto:smackverse_inbox', NOW(), DATE_ADD(NOW(), INTERVAL 24 HOUR))
-                 ON DUPLICATE KEY UPDATE reason = VALUES(reason), banned_at = NOW(), expires_at = VALUES(expires_at)"
-            )->execute([$ip]);
+            // SECAUDIT 035: never record a ban against a private/loopback/proxy
+            // address — that silences the whole audience, not the flooder.
+            if (snap_ip_is_bannable($ip, $pdo)) {
+                $pdo->prepare(
+                    "INSERT INTO snap_ip_bans (ip, reason, banned_at, expires_at)
+                     VALUES (?, 'auto:smackverse_inbox', NOW(), DATE_ADD(NOW(), INTERVAL 24 HOUR))
+                     ON DUPLICATE KEY UPDATE reason = VALUES(reason), banned_at = NOW(), expires_at = VALUES(expires_at)"
+                )->execute([$ip]);
+            }
             return false;
         }
         return $n <= 60;

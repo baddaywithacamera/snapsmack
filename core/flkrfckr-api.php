@@ -23,6 +23,7 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/snap-tags.php';
 require_once __DIR__ . '/thumb-generator.php';
 require_once __DIR__ . '/totp.php';   // totp_verify() for the step-up authorize endpoint
+require_once __DIR__ . '/client-ip.php';   // mandatory security boundary — SECAUDIT 035
 
 // ---------------------------------------------------------------------------
 // Auth
@@ -98,8 +99,11 @@ function flkrfckr_window_minutes(PDO $pdo): int {
 // IP rate-limit (reuses snap_rate_limits / snap_ip_bans — same as login)
 // ---------------------------------------------------------------------------
 
-function flkrfckr_client_ip(): string {
-    return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+function flkrfckr_client_ip(?PDO $pdo = null): string {
+    // SECAUDIT 035: behind Cloudflare the raw REMOTE_ADDR is the shared tunnel
+    // address — banning it locks out every FLKR FCKR client at once. Resolve the
+    // real client through the one trusted accessor.
+    return snap_trusted_client_ip($pdo);
 }
 
 function flkrfckr_ip_banned(PDO $pdo, string $ip): bool {
@@ -125,7 +129,9 @@ function flkrfckr_record_auth_failure(PDO $pdo, string $ip): void {
                AND window_start >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
         );
         $row->execute([$ip]);
-        if ((int)($row->fetchColumn() ?: 0) >= 5) {
+        if ((int)($row->fetchColumn() ?: 0) >= 5 && snap_ip_is_bannable($ip, $pdo)) {
+            // SECAUDIT 035: never record a ban against a private/loopback/proxy
+            // address — that takes the site down instead of the attacker.
             $pdo->prepare(
                 "INSERT INTO snap_ip_bans (ip, reason, banned_at, expires_at)
                  VALUES (?, 'auto:flkrfckr_auth', NOW(), DATE_ADD(NOW(), INTERVAL 7 DAY))
@@ -208,7 +214,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 // ---------------------------------------------------------------------------
 
 if ($sub === 'authorize' && $method === 'POST') {
-    $ip = flkrfckr_client_ip();
+    $ip = flkrfckr_client_ip($pdo);
     if (flkrfckr_ip_banned($pdo, $ip)) {
         flkrfckr_error(429, 'Too many attempts. Try again later.');
     }

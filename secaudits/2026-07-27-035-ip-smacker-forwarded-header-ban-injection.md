@@ -8,7 +8,7 @@
 | **Date** | 2026-07-27 |
 | **Severity** | **CRITICAL** - login brute-force protection can be evaded entirely, and an arbitrary address (including the owner's) can be banned by an unauthenticated request. Availability and authentication impact; no direct confidentiality or integrity impact. |
 | **Component** | `snap_ip_bans` and every producer/consumer of it: `probe-ban.php` (IP SMACKER), `snap-in.php` (`snap_client_ip()`, login ban gate, brute-force counter), `core/smackverse.php` (inbox limiter), `core/flkrfckr-api.php` (auth limiter), `smack-fingerprints.php` (admin view) |
-| **Status** | **PARTIALLY REMEDIATED in 0.7.451** - the attacker-controlled identity path is closed; fleet cleanup and secondary hardening remain open |
+| **Status** | **CODE REMEDIATED in 0.7.453** - all known writers and shared-address limiters use the mandatory resolver; authorized fleet cleanup and ban-lifecycle operations remain open |
 | **Reporter** | Sean (persistent 403 on squared.pixhellated.ca; questioned what the ban table was storing) + Claude (traced address resolution, ran the fleet sweep, traced the shared-table consumers) |
 | **Related** | **005 (login hardening / IP shield - this report supersedes its threat model)**, 021/021A (hub-spoke attack surface), 017 (SMACKBACK), 034 (closure discipline - one route removed is not proof the capability is gone) |
 | **Disclosure** | No targeted exploitation is known. Forged addresses are present in 16 of 16 site databases from ordinary scanner traffic (section 6), so the weakness is being exercised in the wild. Reachable by any unauthenticated visitor. |
@@ -283,18 +283,19 @@ changes.
 
 ## 9. Disposition
 
-**PARTIALLY REMEDIATED in 0.7.451.** `core/client-ip.php` now provides the
-shared trust-boundary resolver. `probe-ban.php` and `snap-in.php` honour
-forwarded headers only when the actual peer is a configured trusted proxy;
-direct clients can no longer choose the address recorded by either subsystem.
-IP SMACKER and the login shield also refuse to record bans against private,
-reserved, loopback, or configured proxy addresses. This closes the critical
-header-spoofing primitive behind Findings A, B, and C.
+**CODE REMEDIATED in 0.7.453.** The 0.7.451 resolver now gates all four known
+ban writers and both shared-address rate limiters. The security component is
+mandatory rather than fail-open. Trusted proxies accept validated IP or CIDR
+entries, and Configuration shows the observed peer, selected client, trust
+decision, and source. BREAK THE GLASS preserves both selected-client and raw
+peer attribution. Permanent regression tests cover the trust boundary, unsafe
+ban targets, writer integration, and tunnel-safe limiter keying.
 
-The audit remains open for the non-spoofing hardening and operational cleanup
-listed above: existing poisoned rows must be purged across the fleet, duplicate
-bans need a bounded lifetime, table growth needs pruning, and owner-lockout
-visibility still needs an interface. Those are real remaining tasks, but they
-do not restore the attacker's ability to nominate a ban identity.
+Operational closure remains intentionally separate: existing poisoned rows
+must be dumped and purged across the fleet only after authorization, and ban
+lifetime/pruning and owner lockout alerting still require a dedicated,
+recoverable fleet pass. None of those remaining operations restores the
+attacker's ability to nominate a ban identity or collapses visitors onto a
+shared proxy key.
 
 <!-- ===== SNAPSMACK EOF ===== -->

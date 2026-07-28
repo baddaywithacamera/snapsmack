@@ -17,7 +17,8 @@
  * visitor ban any address it named, and let an attacker evade login
  * brute-force limiting entirely by varying the header on each attempt.
  *
- * CONFIGURATION: snap_settings key `trusted_proxies`, comma-separated.
+ * CONFIGURATION: snap_settings key `trusted_proxies`, comma-separated IPs or
+ * CIDR ranges.
  * Default is loopback only, which is correct for a same-host Cloudflare Tunnel
  * or nginx. If the proxy is on another host you MUST add its address, or every
  * visitor will resolve to that proxy and per-client rate limiting becomes
@@ -54,12 +55,55 @@ function snap_trusted_proxies(?PDO $pdo = null): array {
         }
     }
 
+    return $cache = snap_parse_trusted_proxies($raw);
+}
+
+/**
+ * Validate and normalize a comma-separated trusted-proxy configuration.
+ */
+function snap_parse_trusted_proxies(string $raw): array {
     $out = [];
-    foreach (explode(',', $raw) as $p) {
-        $p = trim($p);
-        if ($p !== '' && filter_var($p, FILTER_VALIDATE_IP)) $out[] = $p;
+    foreach (explode(',', $raw) as $entry) {
+        $entry = trim($entry);
+        if ($entry === '') continue;
+        if (filter_var($entry, FILTER_VALIDATE_IP)) {
+            $out[] = $entry;
+            continue;
+        }
+        if (preg_match('#^([^/]+)/(\d{1,3})$#', $entry, $m)
+            && filter_var($m[1], FILTER_VALIDATE_IP)) {
+            $packed = inet_pton($m[1]);
+            $bits = strlen($packed) * 8;
+            $prefix = (int)$m[2];
+            if ($prefix >= 0 && $prefix <= $bits) {
+                $out[] = $m[1] . '/' . $prefix;
+            }
+        }
     }
-    return $cache = $out;
+    return array_values(array_unique($out));
+}
+
+function snap_ip_in_cidr(string $ip, string $cidr): bool {
+    if (!preg_match('#^([^/]+)/(\d{1,3})$#', $cidr, $m)) return false;
+    $address = @inet_pton($ip);
+    $network = @inet_pton($m[1]);
+    if ($address === false || $network === false || strlen($address) !== strlen($network)) return false;
+    $prefix = (int)$m[2];
+    $bits = strlen($address) * 8;
+    if ($prefix < 0 || $prefix > $bits) return false;
+    $bytes = intdiv($prefix, 8);
+    $remainder = $prefix % 8;
+    if ($bytes > 0 && substr($address, 0, $bytes) !== substr($network, 0, $bytes)) return false;
+    if ($remainder === 0) return true;
+    $mask = (0xff << (8 - $remainder)) & 0xff;
+    return (ord($address[$bytes]) & $mask) === (ord($network[$bytes]) & $mask);
+}
+
+function snap_ip_is_trusted_proxy(string $ip, array $trusted): bool {
+    foreach ($trusted as $entry) {
+        if ($ip === $entry || (str_contains($entry, '/') && snap_ip_in_cidr($ip, $entry))) return true;
+    }
+    return false;
 }
 
 /**
@@ -73,7 +117,7 @@ function snap_trusted_client_ip(?PDO $pdo = null): string {
     $trusted = snap_trusted_proxies($pdo);
 
     // Direct connection: the peer IS the client. Ignore anything it claims.
-    if (!in_array($peer, $trusted, true)) return $peer;
+    if (!snap_ip_is_trusted_proxy($peer, $trusted)) return $peer;
 
     // Cloudflare sets exactly one authoritative value.
     $cf = trim((string)($_SERVER['HTTP_CF_CONNECTING_IP'] ?? ''));
@@ -89,7 +133,7 @@ function snap_trusted_client_ip(?PDO $pdo = null): string {
         for ($i = count($chain) - 1; $i >= 0; $i--) {
             $c = $chain[$i];
             if (!filter_var($c, FILTER_VALIDATE_IP)) continue;
-            if (in_array($c, $trusted, true)) continue;
+            if (snap_ip_is_trusted_proxy($c, $trusted)) continue;
             return $c;
         }
     }
@@ -108,8 +152,34 @@ function snap_trusted_client_ip(?PDO $pdo = null): string {
 function snap_ip_is_bannable(string $ip, ?PDO $pdo = null): bool {
     if (!filter_var($ip, FILTER_VALIDATE_IP)) return false;
     if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return false;
-    if (in_array($ip, snap_trusted_proxies($pdo), true)) return false;
+    if (snap_ip_is_trusted_proxy($ip, snap_trusted_proxies($pdo))) return false;
     return true;
+}
+
+/**
+ * Owner-facing diagnostic without exposing untrusted header values as truth.
+ */
+function snap_client_ip_diagnostic(?PDO $pdo = null): array {
+    $peer = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+    $trusted = snap_trusted_proxies($pdo);
+    $peer_trusted = filter_var($peer, FILTER_VALIDATE_IP)
+        && snap_ip_is_trusted_proxy($peer, $trusted);
+    $selected = snap_trusted_client_ip($pdo);
+    $source = 'direct peer';
+    if ($peer_trusted && filter_var(trim((string)($_SERVER['HTTP_CF_CONNECTING_IP'] ?? '')), FILTER_VALIDATE_IP)) {
+        $source = 'CF-Connecting-IP from trusted proxy';
+    } elseif ($peer_trusted && trim((string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '')) !== '' && $selected !== $peer) {
+        $source = 'X-Forwarded-For from trusted proxy';
+    } elseif ($peer_trusted) {
+        $source = 'trusted proxy peer (no valid forwarded client)';
+    }
+    return [
+        'observed_peer' => $peer !== '' ? $peer : 'missing',
+        'selected_client' => $selected,
+        'peer_trusted' => (bool)$peer_trusted,
+        'source' => $source,
+        'trusted_proxies' => $trusted,
+    ];
 }
 
 }
