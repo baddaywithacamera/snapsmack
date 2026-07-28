@@ -1,0 +1,1534 @@
+/**
+ * SNAPSMACK - HEURISTIC Skin Styles
+ * Alpha v0.7.5
+ *
+ * Clean, minimal Instagram-inspired grid skin.
+ * All configurable values are CSS custom properties on :root.
+ * The compiled CSS blob from smack-skin.php loads after this file
+ * and overrides defaults via the same :root variables.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
+/* ==========================================================================
+   CUSTOM PROPERTY DEFAULTS
+   Override these via the skin settings panel (compiled CSS blob).
+   ========================================================================== */
+
+:root {
+    /* HEURISTIC ships dark by default — northern-lights aesthetic. The photography
+       is the content; the dark canvas lets the heuristic breathe behind it.
+       Every value here is also a manifest option default (Skin Admin overrides
+       win via the compiled dynamic CSS). Keep the two in sync. */
+    /* HEURISTIC ships HIGH-KEY (white) — the daylight twin of AURORA. The bright
+       field keeps the waving flag readable behind the photographs.
+       Text/accent resolve from skin-profile.php's <style id="he-vars"> vars
+       (admin-tunable); the literals here are before-save fallbacks. */
+    --bg-primary:        var(--he-bg, #ffffff);
+    --text-primary:      var(--he-text, #1a1a1a);
+    --text-secondary:    var(--he-muted, #5b5b66);
+    --accent-color:      var(--he-accent, #750787);
+    --border-color:      #e6e6e6;
+    --font-body:         'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+    --grid-gap:          2px;
+    --grid-bg:           transparent;   /* gaps let the waving flag show through */
+    --tile-radius:       0px;
+    --grid-gutter:       0px;
+    --grid-max-width:    935px;
+
+    /* Carousel dot colours — inherit site accent */
+    --carousel-dot-color:        rgba(0, 0, 0, 0.22);
+    --carousel-dot-active-color: var(--accent-color);
+
+    /* ── HEURISTIC variables ─────────────────────────────────────────────────
+       The flag and tile-border engines read their palette from .he-heuristic-bg
+       data attributes. The base field and tile-ring vars below are set on
+       :root by skin-profile.php's
+       <style id="he-vars"> block; these are just before-save fallbacks. */
+    --he-sky:       #ffffff;
+    --tile-bw:      2px;   /* border ring thickness */
+    --tile-radius:  4px;   /* tile corner radius    */
+    --ring-op:      1;     /* border ring opacity   */
+}
+
+/* ==========================================================================
+   RESET & BASE
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    color: var(--text-primary);
+    text-decoration: none;
+}
+a:hover { opacity: 0.7; }
+
+img { display: block; max-width: 100%; }
+
+/* ==========================================================================
+   LAYOUT SHELL
+   ========================================================================== */
+
+/* Max-width content column — wraps profile, sticky nav, and grid on landing page */
+.he-content-wrap {
+    box-sizing: border-box;
+    /* Card = grid width + a white gutter on each side. With box-sizing:border-box
+       the inner content stays at --grid-max-width while the card itself grows by
+       the gutter, so the white extends outward over the background treatment. */
+    max-width: calc(var(--grid-max-width, 935px) + (2 * var(--grid-gutter, 0px)));
+    margin: 0 auto;
+    padding-left: var(--grid-gutter, 0px);
+    padding-right: var(--grid-gutter, 0px);
+}
+
+/* General constrained wrapper — profile header, topbar, post view, archive */
+.he-wrap {
+    padding: 0 var(--grid-gutter);
+}
+
+/* ==========================================================================
+   STICKY NAV
+   Sits between profile header and grid. Sticks to top when profile scrolls off.
+   JS (he-nav.js) adds .profile-hidden class to reveal the mini avatar.
+   ========================================================================== */
+
+.he-sticky-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: transparent;
+    /* Optional admin drop shadow on the nav line (capped 3px, hard, down-right). */
+    box-shadow: var(--he-navline-shadow, none);
+    transition: background 0.18s ease-in;
+    /* Single 1px divider line, top + bottom. Colour = --he-nav-line, set by
+       skin-profile.php to a fixed admin colour OR the live wave colour (track mode). */
+    border-top:    1px solid color-mix(in srgb, var(--he-nav-line, var(--he-accent, #750787)) calc(var(--he-nav-line-op, 100) * 1%), transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--he-nav-line, var(--he-accent, #750787)) calc(var(--he-nav-line-op, 100) * 1%), transparent);
+}
+
+/* Stuck to top: fade in the high-key field behind the nav so the dark menu text
+   stays legible over the moving flag. .profile-hidden is added by the shared nav
+   engine when the profile scrolls out of view. */
+.he-sticky-nav.profile-hidden {
+    /* Admin Navbar Colour+Opacity overrides the default high-key backdrop. */
+    background: var(--he-navbar-bg, color-mix(in srgb, var(--he-bg, #ffffff) 88%, transparent));
+}
+
+.he-sticky-nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 0 var(--grid-gutter, 0px);
+    height: 40px;
+    overflow: hidden;
+}
+
+/* Mini avatar — absolutely positioned left, hidden until profile scrolls off screen */
+.he-sticky-avatar {
+    position: absolute;
+    left: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+}
+
+.he-sticky-avatar-initials {
+    position: absolute;
+    left: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+}
+
+.he-sticky-nav.profile-hidden .he-sticky-avatar,
+.he-sticky-nav.profile-hidden .he-sticky-avatar-initials {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+/* Nav links */
+.he-sticky-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.he-sticky-nav-links a {
+    font-size:      var(--nav-font-size, 13px);
+    font-weight:    var(--nav-font-weight, 500);
+    font-family:    var(--nav-font, inherit);
+    color:          var(--nav-color, var(--text-secondary));
+    text-decoration: none;
+    letter-spacing: 0.2px;
+    text-transform: var(--nav-text-transform, none);
+    /* Outer glow — keeps the nav legible over the dark, animated heuristic bg.
+       Admin-tunable via the Menu / Nav glow controls (--nav-text-glow). */
+    text-shadow: var(--nav-text-glow, 0 0 4px rgba(97,233,110,0.45), 0 0 10px rgba(97,233,110,0.30));
+    transition: color 0.15s, text-shadow 0.15s;
+}
+
+.he-sticky-nav-links a:hover,
+.he-sticky-nav-links a.active {
+    color: var(--text-primary);
+    opacity: 1;
+    /* Brighter halo on hover / current page. */
+    text-shadow: var(--nav-text-glow-strong, 0 0 6px rgba(97,233,110,0.70), 0 0 16px rgba(97,233,110,0.45));
+}
+
+/* Top nav bar (existing) */
+.he-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.he-topbar-inner {
+    padding: 0 var(--grid-gutter);
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.he-site-name {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   PROFILE HEADER
+   Shown above the grid on the landing page.
+   ========================================================================== */
+
+.he-profile {
+    padding: 30px 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.he-profile-avatar {
+    width: 77px;
+    height: 77px;
+    border-radius: 50%;
+    background: var(--border-color);
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.he-profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.he-profile-avatar-initials {
+    font-size: 28px;
+    font-weight: 300;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.he-profile-info { flex: 0 1 auto; min-width: 0; }
+
+.he-profile-nameline {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 10px;
+}
+
+.he-profile-username {
+    font-size:   var(--blog-title-size, 20px);
+    font-weight: var(--blog-title-weight, 300);
+    font-family: var(--blog-title-font, inherit);
+    margin: 0;
+    color:       var(--blog-title-color, var(--text-primary));
+    text-shadow: var(--profile-text-glow, none);
+}
+
+.he-profile-tagline-sep {
+    font-size:   var(--blog-title-size, 20px);
+    font-weight: 300;
+    color:       var(--text-secondary);
+    line-height: 1;
+    text-shadow: var(--profile-text-glow, none);
+}
+
+.he-profile-tagline {
+    font-size:   var(--tagline-size, 16px);
+    font-weight: var(--tagline-weight, 300);
+    font-family: var(--tagline-font, inherit);
+    color:       var(--tagline-color, var(--text-secondary));
+    margin: 0;
+    text-shadow: var(--profile-text-glow, none);
+}
+
+.he-profile-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 10px;
+}
+
+.he-profile-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.he-profile-stat-num {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--post-count-color, var(--text-primary));
+}
+
+.he-profile-stat-label {
+    font-size: 14px;
+    color: var(--post-count-color, var(--text-secondary));
+    text-shadow: var(--posts-glow, none);
+}
+
+.he-profile-bio {
+    margin:      8px 0 0;
+    font-size:   var(--bio-size, 14px);
+    line-height: 1.5;
+    color:       var(--bio-color, var(--text-secondary));
+    max-width:   480px;
+    text-shadow: var(--profile-text-glow, none);
+}
+
+
+/* ==========================================================================
+   3-COLUMN GRID
+   ========================================================================== */
+
+/* 3-column grid — constrained by .he-content-wrap max-width.
+   Width is 100% of the content column (not full viewport). */
+.he-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--grid-gap);
+    /* Transparent on purpose — the fixed heuristic layer shows through the gaps
+       between tiles. HEURISTIC never paints a gap/background colour (unlike The
+       Grid); the heuristic IS the background. */
+    background: transparent;
+    margin-top: var(--nav-tile-gap, var(--grid-gap));
+    width: 100%;
+}
+
+/* Individual grid tile */
+.he-tile {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: var(--border-color);
+    border-radius: var(--tile-radius);
+    /* Off-screen tiles skip layout/paint entirely — the mask-composite ring is
+       costly, so on a 1400-image grid this keeps render work to what's visible.
+       aspect-ratio already fixes the square height; contain-intrinsic-size is the
+       placeholder used while a tile is skipped. Pair with heuristic-wave.js's
+       viewport-scoped animation. If layout ever looks off, this is the line to pull. */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 300px;
+}
+
+/* Progressive reveal: tiles past the first batch are folded out of layout by
+   he-grid-reveal.js so the page starts short and GROWS as you scroll, instead
+   of dumping all posts to full height at once. */
+.he-grid .he-tile.he-fold { display: none; }
+
+/* DORMANT Layer-2 ring overlay — DEFERRED in HEURISTIC v1.0.0 (spec v0.2 §8).
+   No engine drives this in v1; with no background set it renders invisible, so
+   HEURISTIC ships clean tiles. The CSS + the .he-ring divs in the templates are
+   left in place, ready to wire up if/when Layer 2 is approved. */
+.he-ring {
+    position:      absolute;
+    inset:         0;
+    border-radius: var(--tile-radius);
+    padding:       var(--tile-bw, 2px);
+    pointer-events: none;
+    z-index:       2;
+    opacity:       var(--ring-op, 1);
+    -webkit-mask:  linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:          linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+}
+
+.he-tile a {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+}
+
+.he-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: opacity 0.2s;
+}
+
+.he-tile:hover img { opacity: 0.85; }
+
+/* Carousel indicator badge (top-right corner) */
+.he-tile-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    pointer-events: none;
+    line-height: 1;
+}
+
+.he-tile-indicator--icon {
+    color: #fff;
+    font-size: 16px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    /* Unicode: layered squares ⧉ */
+}
+
+.he-tile-indicator--count {
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    letter-spacing: 0.3px;
+}
+
+/* Hover overlay: title or count shown on hover */
+.he-tile-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 1;
+    pointer-events: none;
+    padding: 12px;
+}
+
+.he-tile:hover .he-tile-overlay { opacity: 1; }
+
+/* Dark-only hover: no pointer events, no padding needed */
+.he-tile-overlay--dark { padding: 0; }
+
+.he-tile-overlay-text {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.3;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+/* ── Framed tile mode ──────────────────────────────────────────────────────
+   Applied when per-image/carousel/grid style brings size below 100%,
+   adds a border, or adds a shadow. PHP emits class .he-tile--framed and
+   CSS custom properties on the .he-tile element itself.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.he-tile--framed {
+    background: var(--tile-bg, #ffffff);
+    /* No glow on image tiles by design — the per-tile border is what separates
+       them from the animated heuristic background. Glow is text-only in HEURISTIC. */
+}
+
+.he-tile--framed a {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--tile-bg, #ffffff);
+}
+
+.he-tile--framed img {
+    /* Border/shadow hug the IMAGE itself (natural aspect), not a square box.
+       Landscape: size% of WIDTH, height follows. Portrait override below. */
+    width:        var(--tile-img-size, 100%);
+    height:       auto;
+    max-width:    var(--tile-img-size, 100%);
+    max-height:   100%;
+    margin:       auto;   /* bulletproof flex centring — splits matte evenly */
+    object-fit:   contain;
+    border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
+    /* Fill the sub-pixel object-fit:contain letterbox with the border colour
+       instead of letting the tile bg show through as a thin sliver between
+       the image and its border (the "white line" bug). Falls back to
+       transparent when there's no border, preserving the matte. */
+    background-color: var(--tile-border-c, transparent);
+    box-sizing:   border-box;
+    transition:   opacity 0.2s;
+}
+.he-tile--framed.he-tile--portrait img {
+    /* Portrait: size% of HEIGHT so it can't overflow the square tile. */
+    width:        auto;
+    height:       var(--tile-img-size, 100%);
+    max-width:    100%;
+    max-height:   var(--tile-img-size, 100%);
+}
+
+/* ── Trigram row ──────────────────────────────────────────────────────────
+   Trigram tiles are plain square tiles. No special CSS needed — L, M, R
+   all inherit .he-tile's aspect-ratio: 1/1 and sit in the grid normally.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* Phantom tile: invisible placeholder to complete a partial row before a
+   trigram set, so the L tile always starts at column 0. */
+.he-tile--phantom {
+    visibility:     hidden;
+    pointer-events: none;
+}
+
+/* Panorama tiles: the first tile forces a new row via grid-column: 1 */
+.he-tile--heno-first  { grid-column: 1; }
+.he-tile--heno-middle { /* naturally placed in column 2 */ }
+.he-tile--heno-last   { /* naturally placed in column 3 */ }
+
+/* ==========================================================================
+   SINGLE POST VIEW (layout.php) — Instagram two-panel layout
+   ========================================================================== */
+
+/* ── Outer two-panel container ─────────────────────────────────────────── */
+.he-post-ig {
+    display:         flex;
+    justify-content: center;
+    height:          100dvh;
+    overflow:        hidden;
+    background:      var(--post-bg, #000);
+}
+
+/* ── Left: image panel (fixed, never scrolls) ──────────────────────────── */
+.he-post-ig-image {
+    /* HEURISTIC is classic-IG: the image panel is ALWAYS 1:1 square.
+       Sized by container height; width derives from aspect-ratio. */
+    flex:            0 0 auto;
+    height:          100%;
+    aspect-ratio:    1 / 1;
+    min-width:       0;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    overflow:        hidden;
+    background:      var(--post-bg, #000);
+    position:        relative;
+    padding:         0;
+}
+
+.he-post-ig-image .he-single-img {
+    width:      100%;
+    height:     100%;
+    object-fit: contain;
+    display:    block;
+}
+
+/* Carousel fills the image panel */
+.he-post-ig-image .he-carousel-wrap {
+    width:    100%;
+    height:   100%;
+    position: relative;
+}
+
+.he-post-ig-image .ss-slider,
+.he-post-ig-image .slider-track {
+    height: 100%;
+}
+
+.he-post-ig-image .slider-slide {
+    height:          100%;
+    display:         flex !important;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--post-bg, #000);
+}
+
+.he-post-ig-image .slider-slide img {
+    max-width:   100% !important;
+    max-height:  100% !important;
+    width:       auto !important;
+    height:      auto !important;
+    object-fit:  contain !important;
+}
+
+/* Framed slides inside the image panel */
+.he-post-ig-image .he-slide--framed img {
+    max-height: 100% !important;
+}
+
+/* ── Right: info panel (scrollable) ────────────────────────────────────── */
+.he-post-ig-info {
+    flex:           0 0 335px;
+    width:          335px;
+    border-left:    1px solid var(--border-color);
+    background:     var(--bg-primary, #fff);
+    display:        flex;
+    flex-direction: column;
+    overflow:       hidden;
+}
+
+/* Fixed header: back + avatar + site name */
+.he-post-ig-header {
+    display:       flex;
+    align-items:   center;
+    gap:           10px;
+    padding:       14px 16px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink:   0;
+}
+
+.he-back-btn {
+    background:  none;
+    border:      none;
+    cursor:      pointer;
+    color:       var(--text-primary);
+    font-size:   20px;
+    padding:     4px 8px 4px 0;
+    display:     flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.he-back-btn:hover { opacity: 0.6; }
+
+.he-post-ig-avatar {
+    width:         32px;
+    height:        32px;
+    border-radius: 50%;
+    object-fit:    cover;
+    flex-shrink:   0;
+}
+
+.he-post-ig-avatar--initials {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--text-secondary, #8e8e8e);
+    color:           #fff;
+    font-size:       14px;
+    font-weight:     600;
+}
+
+.he-post-ig-sitename {
+    font-size:     14px;
+    font-weight:   600;
+    color:         var(--text-primary);
+    flex:          1;
+    overflow:      hidden;
+    white-space:   nowrap;
+    text-overflow: ellipsis;
+}
+
+/* Scrollable body */
+.he-post-ig-body {
+    flex:       1 1 0;
+    overflow-y: auto;
+    padding:    20px 22px;
+}
+
+/* IG-style caption block: bold username inline then caption text */
+.he-post-caption-block {
+    margin-bottom: 12px;
+}
+
+.he-post-ig-caption {
+    font-size:   14px;
+    color:       var(--text-primary);
+    line-height: 1.6;
+    margin:      0;
+}
+
+.he-post-ig-caption-user {
+    font-weight:  600;
+    margin-right: 4px;
+}
+
+.description a,
+.static-content a:not(.nav-menu a) {
+    color:                  var(--accent-color);
+    text-decoration:        underline;
+    text-underline-offset:  2px;
+}
+
+.description a:hover,
+.static-content a:not(.nav-menu a):hover { color: var(--text-primary); }
+
+.description a:has(img),
+.static-content a:has(img) {
+    text-decoration: none !important;
+    border-bottom:   none !important;
+}
+
+/* EXIF panel */
+.he-exif-panel {
+    display:       flex;
+    flex-wrap:     wrap;
+    gap:           6px 16px;
+    padding:       10px 0;
+    border-top:    1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 12px;
+}
+/* No EXIF to show (phone/IG imports, GramOfSmack mode) → don't paint the bordered
+   strip as empty stray lines. PHP also skips emitting the panel when no image has
+   EXIF; this covers the carousel edge where only a later slide does. */
+.he-exif-panel:empty { display: none; }
+
+.he-exif-item {
+    display:        flex;
+    flex-direction: column;
+}
+
+.he-exif-label {
+    font-size:      10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color:          var(--text-secondary);
+}
+
+.he-exif-value {
+    font-size: 13px;
+    color:     var(--text-primary);
+}
+
+/* Engagement bar — pinned between body and footer */
+.he-post-ig-actions {
+    flex-shrink:  0;
+    border-top:   1px solid var(--border-color);
+    padding:      10px 16px 8px;
+    background:   var(--bg-primary, #fff);
+}
+
+.he-post-ig-action-icons {
+    display:       flex;
+    gap:           16px;
+    margin-bottom: 6px;
+}
+
+.he-action-btn {
+    background:  none;
+    border:      none;
+    padding:     0;
+    cursor:      pointer;
+    color:       var(--text-primary);
+    line-height: 1;
+    display:     flex;
+    align-items: center;
+}
+
+.he-action-btn:hover { opacity: 0.6; }
+
+.he-action-bookmark { margin-left: auto; }
+
+.he-post-ig-date {
+    font-size:      10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color:          var(--text-secondary);
+    margin:         0;
+}
+
+/* Community component — flush to body edges */
+.he-community-wrap {
+    border-top: 1px solid var(--border-color);
+    margin:     16px -16px 0;
+    padding:    0 16px;
+}
+
+/* ── Framed carousel slide (shared with grid tiles) ────────────────────── */
+.he-slide--framed {
+    background:      var(--slide-bg, #000) !important;
+    display:         flex !important;
+    align-items:     center;
+    justify-content: center;
+    min-height:      280px;
+}
+
+.he-slide--framed img {
+    width:      var(--slide-img-size, 100%) !important;
+    height:     auto !important;
+    max-height: 80vh !important;
+    object-fit: contain !important;
+    border:     var(--slide-border-w, 0px) solid var(--slide-border-c, transparent) !important;
+    box-shadow: var(--slide-shadow, none) !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+}
+
+/* Fallback carousel/single-img classes (used outside post view) */
+.he-carousel-wrap {
+    position:   relative;
+    background: var(--post-bg, #000);
+    width:      100%;
+}
+
+.he-single-img {
+    width:      100%;
+    max-height: 80vh;
+    object-fit: contain;
+    display:    block;
+}
+
+/* ── Footer pinned to bottom of right panel ────────────────────────────── */
+.he-post-ig-info > #system-footer {
+    flex-shrink:   0;
+    border-top:    1px solid var(--border-color);
+    background:    var(--bg-primary, #fff);
+    padding:       8px 16px;
+    margin:        0;
+}
+
+.he-post-ig-info > #system-footer .footer-metadata-bar p {
+    font-size:      10px;
+    letter-spacing: 0.3px;
+    color:          var(--text-secondary);
+    margin:         0;
+}
+
+/* ── Mobile: stack vertically ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .he-post-ig {
+        flex-direction: column;
+        height:         auto;
+        overflow:       visible;
+    }
+
+    .he-post-ig-image {
+        /* Square here too — full width, 1:1. */
+        flex:         0 0 auto;
+        width:        100%;
+        aspect-ratio: 1 / 1;
+        height:       auto;
+    }
+
+    .he-post-ig-info {
+        width:    100%;
+        flex:     0 0 auto;
+        height:   auto;
+        overflow: visible;
+    }
+
+    .he-post-ig-body {
+        overflow: visible;
+    }
+}
+
+/* ==========================================================================
+   POST MODAL OVERLAY
+   IG-style popover: grid stays visible, dimmed behind 80% opaque backdrop.
+   he-modal.js populates #he-modal-frame by fetching ?modal=1 fragments.
+   ========================================================================== */
+
+.he-modal-overlay {
+    position:        fixed;
+    inset:           0;
+    z-index:         900;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+}
+
+.he-modal-overlay[hidden] { display: none; }
+
+/* Prevent grid scroll while modal is open */
+body.he-modal-open { overflow: hidden; }
+
+.he-modal-backdrop {
+    position:   absolute;
+    inset:      0;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.he-modal-frame {
+    position:      relative;
+    z-index:       1;
+    width:         auto;
+    max-width:     92vw;
+    height:        min(92vh, 900px);
+    border-radius: 4px;
+    overflow:      hidden;
+    box-shadow:    0 8px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* Force the post layout to fill the frame (overrides 100dvh default) */
+.he-modal-frame .he-post-ig {
+    height: 100%;
+}
+
+/* ==========================================================================
+   ARCHIVE VIEW (categories, albums)
+   Same grid as landing — just no profile header.
+   ========================================================================== */
+
+.he-archive-header {
+    padding: 20px 0 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.he-archive-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 4px;
+}
+
+.he-archive-meta {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ── Hashtag / Tag Page ──────────────────────────────────────────────────── */
+
+.he-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    opacity: .7;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.he-archive-header h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px;
+}
+
+.he-archive-header p {
+    font-size: 13px;
+    opacity: .6;
+    margin: 0;
+}
+
+.he-grid-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    opacity: .5;
+}
+
+/* ==========================================================================
+   PAGINATION
+   ========================================================================== */
+
+.he-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 20px 16px;
+}
+
+.he-page-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.15s;
+}
+
+.he-page-btn:hover,
+.he-page-btn.is-current {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border-color: var(--text-primary);
+}
+
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
+
+.he-footer {
+    border-top: 1px solid var(--border-color);
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    /* Footer text glow — its own admin control (--footer-text-glow). text-shadow
+       inherits, so footer links pick it up too. 'none' default = off until set. */
+    text-shadow: var(--footer-text-glow, none);
+}
+
+.he-footer a {
+    color: var(--text-secondary);
+}
+
+.he-footer a:hover {
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 600px) {
+    .he-profile {
+        gap: 20px;
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+    .he-profile-avatar {
+        width: 56px;
+        height: 56px;
+    }
+    .he-profile-username { font-size: 16px; }
+    .he-profile-tagline-sep { font-size: 16px; }
+    .he-profile-tagline { font-size: 14px; }
+    .he-profile-stats { gap: 16px; }
+}
+
+/* ── Hashtag links in captions ────────────────────────────────────────────── */
+.he-hashtag {
+    color: var(--accent-color, #0095f6);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.he-hashtag:hover {
+    text-decoration: underline;
+}
+/* ==========================================================================
+   SYSTEM FOOTER OVERRIDES (core/footer.php → #system-footer)
+   ========================================================================== */
+
+#system-footer {
+    /* Footer tracks the readability PANEL: spans the full panel width
+       (content column + Panel Extend), centred, and never beyond it — the same
+       content-aligned footer geometry as THE GRID, with this skin's own colours.
+       Previously #system-footer was uncapped, so the bar/border/background
+       spilled the full viewport width across the animated background ("escapes
+       the content box"). SnapSmack footer rule: footer == panel width on every
+       carousel skin, no exceptions. .inside below keeps the text in the content
+       column so the bar spans the panel while the text stays centred on content. */
+    /* Lift the footer ABOVE the .he-content-wrap z-index:1 stacking context,
+       which contains the fixed full-viewport flag canvas. That canvas
+       is pointer-events:none, so it painted OVER the footer while hit-tests still
+       found the footer underneath — the footer was in the DOM but invisible on
+       landing + static ("missing footer"). z-index:2 > content-wrap's 1. Verified
+       live 2026-07-01. */
+    position:   relative;
+    z-index:    2;
+    border-top: 1px solid var(--border-color);
+    background:  var(--footer-bg, var(--henel-bg, transparent));
+    max-width:   calc(var(--grid-max-width, 935px) + 2 * var(--henel-extend, 0px));
+    margin:      0 auto;
+}
+
+#system-footer .inside {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+    padding: 20px var(--grid-gutter, 0px);
+}
+
+#system-footer .footer-metadata-bar {
+    text-align: center;
+}
+
+#system-footer .footer-metadata-bar p {
+    margin: 0;
+    font-size: 11px;
+    color: var(--text-secondary);
+    letter-spacing: 0.4px;
+    line-height: 2;
+}
+
+#system-footer .footer-metadata-bar .sep {
+    margin: 0 8px;
+    opacity: 0.4;
+}
+
+#system-footer .footer-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+#system-footer .footer-link:hover {
+    color: var(--text-primary);
+    opacity: 1;
+}
+
+/* ==========================================================================
+   STATIC PAGE (About, etc.)
+   ========================================================================== */
+
+.he-static-page .he-sticky-nav {
+    position: sticky;
+    top: 0;
+}
+
+.he-static-content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 40px 28px 60px;
+    /* Readability backing is now the shared full-height .he-panel (ported from
+       INSTANT CAMERA, covers every page) — this column just sets reading width. */
+}
+
+.he-static-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 24px;
+}
+
+.he-static-body {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.he-static-body p {
+    margin: 0 0 16px;
+}
+
+.he-static-body a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.he-static-body a:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   BACKGROUND TREATMENT  (skin admin → Treatment)
+   Full-viewport image/colour layer behind the centred content card.
+   The .he-treatment-* layers are emitted by skin-profile.php ONLY when a
+   treatment is active, so with no treatment these rules never match and the
+   default flat layout is completely untouched.
+   ========================================================================== */
+
+.he-treatment-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+.he-treatment-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* When a treatment is present, the content column reads as a card floating
+   over the background. */
+body:has(.he-treatment-bg) .he-content-wrap,
+body:has(.he-treatment-bg).is-blogroll #scroll-stage {
+    background: var(--bg-primary, #ffffff);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.28);
+    min-height: 100vh;
+}
+
+body:has(.he-treatment-bg).is-blogroll #scroll-stage {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+}
+
+/* Constrain the blogroll's scroll-stage to the content width so its sticky nav
+   matches every other page (it otherwise spans the full window). Ported from
+   INSTANT CAMERA — applies on the normal animated-background blogroll, not just
+   when an optional treatment image is set. */
+body.is-blogroll #scroll-stage {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+}
+
+/* ==========================================================================
+   AVATAR LIGHTBOX
+   ========================================================================== */
+
+.he-profile-avatar--zoom { cursor: zoom-in; }
+
+.he-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5vmin;
+    background: rgba(0, 0, 0, 0.85);
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+.he-lightbox[hidden] { display: none; }
+.he-lightbox.is-open { opacity: 1; }
+
+.he-lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 4px;
+    box-shadow: 0 10px 60px rgba(0, 0, 0, 0.6);
+    cursor: zoom-out;
+}
+
+.he-lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 34px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.8;
+}
+.he-lightbox-close:hover { opacity: 1; }
+
+/* ==========================================================================
+   BLOGROLL  (core blogroll.php rendered inside the Grid shell)
+   Scoped to body.is-blogroll so it only affects the blogroll page, and only
+   on HEURISTIC (this stylesheet is loaded only when HEURISTIC is active).
+   ========================================================================== */
+
+body.is-blogroll .blogroll-canvas {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 32px 20px 60px;
+}
+
+body.is-blogroll .static-page-title {
+    font-size: var(--blog-title-size, 24px);
+    font-weight: 300;
+    color: var(--text-primary);
+    margin: 0 0 24px;
+}
+
+body.is-blogroll .blogroll-category-heading {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 6px;
+    margin: 32px 0 16px;
+}
+
+body.is-blogroll .blogroll-peer { margin: 0 0 20px; }
+
+body.is-blogroll .blogroll-peer-name a {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+body.is-blogroll .blogroll-peer-name a:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
+
+body.is-blogroll .blogroll-peer-desc {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin: 3px 0 0;
+}
+
+/* Drop the raw URL line — the peer name is the link. */
+body.is-blogroll .blogroll-peer-url { display: none; }
+
+/* ==========================================================================
+   COMMUNITY COMMENT FORM  (inside the Grid post modal)
+   The core community component ships raw browser inputs; theme them to match
+   the Grid modal. Scoped to .he-post-ig so only the modal is affected, and
+   higher specificity than ss-community.css so these win regardless of order.
+   ========================================================================== */
+
+.he-post-ig .ss-comment-guest-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.he-post-ig .ss-guest-name,
+.he-post-ig .ss-guest-email,
+.he-post-ig .ss-comment-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--border-color, #dbdbdb);
+    border-radius: 8px;
+    background: transparent;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-primary);
+    transition: border-color 0.15s ease;
+}
+
+.he-post-ig .ss-guest-name::placeholder,
+.he-post-ig .ss-guest-email::placeholder,
+.he-post-ig .ss-comment-textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+.he-post-ig .ss-guest-name:focus,
+.he-post-ig .ss-guest-email:focus,
+.he-post-ig .ss-comment-textarea:focus {
+    outline: none;
+    border-color: var(--accent-color, #0095f6);
+}
+
+.he-post-ig .ss-comment-input-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.he-post-ig .ss-comment-textarea {
+    resize: none;
+    line-height: 1.4;
+    min-height: 38px;
+}
+
+.he-post-ig .ss-comment-input-row .ss-avatar-placeholder {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--border-color, #dbdbdb);
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.he-post-ig .ss-comment-btns {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+.he-post-ig .ss-comment-cancel,
+.he-post-ig .ss-comment-submit {
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+}
+
+.he-post-ig .ss-comment-cancel { color: var(--text-secondary); }
+.he-post-ig .ss-comment-submit { color: var(--accent-color, #0095f6); }
+.he-post-ig .ss-comment-submit:hover { background: rgba(0, 149, 246, 0.08); }
+
+.he-post-ig .ss-comment-author {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   HEURISTIC — WAVING FLAG BACKGROUND
+   --------------------------------------------------------------------------
+   A fixed, full-viewport layer behind the photography. The shared flag engine
+   paints the selected identity flag and pauses whenever the tab is hidden.
+   Reduced-motion visitors receive a nearly still presentation.
+   ========================================================================== */
+.he-heuristic-bg {
+    position: fixed;
+    inset: 0;
+    /* MUST be negative — a fixed field layer painted above the propagated body
+       background but behind static content. Mirrors AURORA's z-index fix that
+       stopped the fixed background covering the profile header. The readability
+       panel (.he-panel) sits at -1, just above this. */
+    z-index: -2;
+    pointer-events: none;
+    background-color: var(--he-bg, #ffffff);
+}
+/* Content sits above the fixed flag layer. */
+#page-wrapper,
+.he-content-wrap { position: relative; z-index: 1; }
+/* Readability panel (ALL pages) — ONE centred translucent column behind the
+   content, fixed + full viewport height so it reaches the top and runs behind
+   the footer, on every page incl. blogroll. Width = content column + Panel
+   Extend each side. Sits at -1: above the flag background (-2), below
+   the content (+1). Ported from INSTANT CAMERA (.ic-panel). */
+.he-panel {
+    position: fixed;
+    top: 0; bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(var(--grid-max-width, 935px) + 2 * var(--henel-extend, 0px));
+    background: var(--henel-bg, transparent);
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* ── HEURISTIC: HAL 9000 logic memory centre ───────────────────────────── */
+:root {
+    --he-bg: #030305;
+    --he-text: #e8ebed;
+    --he-muted: #9ba2a8;
+    --he-accent: #d7193f;
+    --he-panel: rgba(3, 4, 7, .78);
+}
+
+html, body { background: var(--he-bg) !important; color: var(--he-text) !important; }
+body { font-family: "Helvetica Neue", Arial, sans-serif; }
+.he-memory-centre { position: fixed; inset: 0; z-index: -3; overflow: hidden; background: #030305; }
+.he-memory-canvas { display: block; }
+.he-panel {
+    position: fixed; inset: 0 max(0px, calc((100vw - 1080px) / 2));
+    z-index: -2; background: var(--he-panel); backdrop-filter: blur(2px);
+}
+.he-content-wrap { position: relative; width: min(1020px, calc(100% - 36px)); margin-inline: auto; }
+.he-profile { color: var(--he-text); padding-top: 38px; }
+.he-profile-username, .he-profile-tagline, .he-profile-bio,
+.he-profile-stat-num, .he-profile-stat-label { color: inherit !important; text-shadow: none !important; }
+.he-profile-tagline, .he-profile-bio, .he-profile-stat-label { color: var(--he-muted) !important; }
+.he-profile-avatar {
+    background: #090a0d; border: 1px solid #333941; box-shadow: 0 0 0 4px #090a0d, 0 0 22px rgba(215,25,63,.25);
+}
+.he-profile-avatar img { filter: saturate(.85) contrast(1.08); }
+.he-sticky-nav {
+    background: rgba(4,5,8,.88) !important; border-block: 1px solid #343941 !important;
+    box-shadow: none !important; backdrop-filter: blur(12px);
+}
+.he-sticky-nav a { color: #d8dde0 !important; letter-spacing: .12em; }
+.he-sticky-nav a:hover, .he-sticky-nav a[aria-current="page"] { color: #fff !important; text-shadow: 0 0 10px var(--he-memory-red); }
+.he-grid { gap: 14px !important; padding-block: 18px 44px; }
+.he-tile {
+    position: relative; overflow: hidden; border-radius: 7px !important;
+    background: #08090c !important; box-shadow: 0 0 0 1px #2c3138, 0 8px 24px rgba(0,0,0,.5) !important;
+}
+.he-tile .he-ring { display: none !important; }
+.he-tile > a { display: block; width: 100%; height: 100%; }
+.he-tile img { filter: saturate(.88) contrast(1.03); transition: filter .35s ease, transform .35s ease; }
+.he-tile:hover img { filter: saturate(1) contrast(1.05); transform: scale(1.012); }
+.he-tile-overlay { background: linear-gradient(transparent 55%, rgba(0,0,0,.78)) !important; }
+.he-infomatic {
+    --he-screen: #2a7891; position: absolute; inset: 0; z-index: 12;
+    display: grid; align-content: center; justify-items: center; gap: .45rem;
+    padding: 10%; color: #fff; background:
+        radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--he-screen) 88%, #fff 12%), var(--he-screen) 66%, color-mix(in srgb, var(--he-screen) 58%, #000) 100%);
+    opacity: 0; transform: scale(.985); pointer-events: none;
+    transition: opacity .42s ease-out, transform .42s ease-out;
+}
+.he-infomatic::before {
+    content: ""; position: absolute; inset: 7%; border: 1px solid rgba(255,255,255,.16);
+    background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 100% 7px;
+}
+.he-infomatic--fault { --he-screen: var(--he-fault); }
+.he-infomatic--blue { --he-screen: #174b91; }
+.he-infomatic--violet { --he-screen: #65377e; }
+.he-infomatic--calm { --he-screen: var(--he-calm); }
+.he-infomatic.is-online { opacity: 1; transform: scale(1); }
+.he-infomatic.is-offline { opacity: 0; transform: scale(1.01); }
+.he-infomatic.is-pulsing { animation: he-screen-pulse .9s ease-in-out var(--he-pulses); }
+.he-infomatic-telemetry {
+    position: absolute; top: 11%; left: 11%; z-index: 1; font-size: clamp(6px, .7vw, 10px);
+    letter-spacing: .09em; opacity: .72;
+}
+.he-infomatic-code {
+    z-index: 1; font: 700 clamp(1.55rem, 4.2vw, 4.4rem)/1 Arial, sans-serif;
+    letter-spacing: .24em; text-indent: .24em;
+}
+.he-infomatic-value {
+    z-index: 1; font: 300 clamp(1rem, 2vw, 2rem)/1 Arial, sans-serif; letter-spacing: .18em;
+}
+.he-infomatic-label {
+    z-index: 1; max-width: 90%; text-align: center; font-size: clamp(7px, .8vw, 11px);
+    letter-spacing: .18em; text-transform: uppercase;
+}
+@keyframes he-screen-pulse {
+    0%, 100% { opacity: 1; filter: brightness(1); }
+    50% { opacity: .68; filter: brightness(.82); }
+}
+@media (max-width: 1024px) { .he-content-wrap { width: min(94vw, 900px); } }
+@media (max-width: 680px) {
+    .he-memory-centre { background:
+        repeating-linear-gradient(90deg, rgba(215,25,63,.22) 0 7px, transparent 7px 13px), #030305; }
+    .he-memory-canvas { display: none; }
+    .he-infomatic { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .he-memory-canvas { opacity: .55; }
+    .he-infomatic { display: none !important; }
+    .he-tile img { transition: none; }
+}
+
+/* ===== SNAPSMACK EOF ===== */

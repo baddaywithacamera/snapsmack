@@ -652,5 +652,7 @@ document.querySelectorAll('.palette-swatches .swatch').forEach(s => {
 </script>
 <link rel="stylesheet" href="assets/css/ss-engine-photo-editor.css?v=079L">
 <script src="assets/js/ss-engine-photo-editor.js?v=079L"></script>
+<link rel="stylesheet" href="assets/css/ss-engine-ai-enrichment.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<script src="assets/js/ss-engine-ai-enrichment.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

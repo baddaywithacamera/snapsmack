@@ -679,5 +679,7 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-scan-align.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <?php endif; ?>
 <script src="assets/js/ss-engine-gram-post.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+<link rel="stylesheet" href="assets/css/ss-engine-ai-enrichment.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<script src="assets/js/ss-engine-ai-enrichment.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

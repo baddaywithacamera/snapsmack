@@ -18,30 +18,28 @@
 require_once 'core/db.php';
 require_once 'core/auth-recovery.php';
 require_once 'core/totp.php';
+require_once 'core/client-ip.php';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LOGIN PROTECTION HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Resolve the real client IP, trusting X-Forwarded-For only for the first
- * hop (Cloudflare / reverse proxy). Falls back to REMOTE_ADDR.
+ * Resolve the real client IP.
  *
- * ASSUMPTION: single reverse proxy in front of PHP (Cloudflare or one Nginx).
- * X-Forwarded-For is: <client>, <proxy1>, ...
- * We trust the leftmost value, which Cloudflare sets to the real client IP.
- * If a second untrusted proxy is ever added upstream this trust model breaks —
- * revisit by validating against Cloudflare's published IP ranges instead.
+ * SECAUDIT 035: this used to prefer X-Forwarded-For unconditionally. Because
+ * nothing verified that the request actually ARRIVED through a proxy, any
+ * visitor could set the header and choose which address the login gate and the
+ * brute-force counter would act on — evading the five-strike ban by varying it,
+ * or banning a chosen victim (including the owner) by repeating it.
+ *
+ * Resolution now lives in core/client-ip.php and honours forwarded headers only
+ * when the peer is a configured trusted proxy. The name is kept so existing
+ * call sites are unchanged.
  */
 function snap_client_ip(): string {
-    $fwd = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
-    if ($fwd !== '') {
-        $first = trim(explode(',', $fwd)[0]);
-        if (filter_var($first, FILTER_VALIDATE_IP)) return $first;
-    }
-    return filter_var($_SERVER['REMOTE_ADDR'] ?? '', FILTER_VALIDATE_IP)
-        ? $_SERVER['REMOTE_ADDR']
-        : '0.0.0.0';
+    global $pdo;
+    return snap_trusted_client_ip(isset($pdo) && $pdo instanceof PDO ? $pdo : null);
 }
 
 /**
@@ -72,7 +70,7 @@ function snap_record_login_failure(PDO $pdo, string $ip): void {
     $row->execute([$ip]);
     $fail_count = (int)($row->fetchColumn() ?: 0);
 
-    if ($fail_count >= 5) {
+    if ($fail_count >= 5 && snap_ip_is_bannable($ip, $pdo)) {
         // Issue a 7-day ban; ON DUPLICATE resets/extends an existing ban
         $pdo->prepare(
             "INSERT INTO snap_ip_bans (ip, reason, banned_at, expires_at)

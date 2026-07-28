@@ -19,16 +19,17 @@
 
 // Bootstrap DB (defines $pdo)
 require_once __DIR__ . '/core/db.php';
+require_once __DIR__ . '/core/client-ip.php';
 
-// Resolve real IP: Cloudflare Tunnel passes CF-Connecting-IP
-$ip = trim(explode(',', (
-    $_SERVER['HTTP_CF_CONNECTING_IP']
-    ?? $_SERVER['HTTP_X_FORWARDED_FOR']
-    ?? $_SERVER['REMOTE_ADDR']
-    ?? '0.0.0.0'
-))[0]);
+// Resolve the client address through the shared trusted resolver (SECAUDIT 035).
+// Forwarded headers are honoured ONLY when the peer is a configured trusted
+// proxy, so a direct request can no longer nominate someone else to be banned.
+$ip = snap_trusted_client_ip($pdo);
 
-if ($ip && $ip !== '0.0.0.0') {
+// Refusing the request is always right; RECORDING a ban is not. Private,
+// reserved, loopback and our own proxy addresses can only be our own
+// infrastructure — banning those takes us down, not the scanner.
+if (snap_ip_is_bannable($ip, $pdo)) {
     try {
         $pdo->prepare(
             "INSERT INTO snap_ip_bans (ip, reason, banned_at, expires_at)

@@ -888,6 +888,11 @@ return [
             'path'         => 'assets/js/ss-engine-flag-wave.js',
             'has_settings' => false,
         ],
+        'smack-heuristic' => [
+            'label'        => 'HEURISTIC logic memory centre and tile infomatics',
+            'path'         => 'assets/js/ss-engine-heuristic.js',
+            'has_settings' => false,
+        ],
         'smack-racetrack' => [
             'label'        => 'RACETRACK (long-exposure light trails lapping a circuit, canvas)',
             'path'         => 'assets/js/ss-engine-racetrack.js',
