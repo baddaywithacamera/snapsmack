@@ -15,6 +15,81 @@
  */
 ?>
 
+<!-- Kept with the footer markup so a stale shared stylesheet cannot break it. -->
+<style>
+.site-discovery {
+    background: #f4f1eb;
+    border-top: 3px solid var(--red);
+    padding: 48px 0 52px;
+}
+.site-discovery-kicker {
+    margin: 0 0 8px;
+    color: var(--red);
+    font: 700 0.7rem/1 Arial, sans-serif;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+.site-discovery h2 {
+    margin: 0 0 28px;
+    color: var(--black);
+    font: 900 clamp(1.7rem, 3vw, 2.4rem)/1.05 Arial, sans-serif;
+    letter-spacing: -0.035em;
+}
+.site-discovery .footer-discovery {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    margin: 0;
+    border-top: 1px solid #c9c4ba;
+    border-left: 1px solid #c9c4ba;
+    font: inherit;
+    letter-spacing: normal;
+    text-transform: none;
+}
+.site-discovery .footer-discovery a {
+    min-height: 108px;
+    padding: 20px 22px;
+    color: var(--black);
+    background: #fff;
+    border-right: 1px solid #c9c4ba;
+    border-bottom: 1px solid #c9c4ba;
+    text-decoration: none;
+    transition: background 120ms ease, color 120ms ease;
+}
+.site-discovery .footer-discovery strong {
+    display: block;
+    margin-bottom: 8px;
+    font: 800 0.9rem/1.2 Arial, sans-serif;
+}
+.site-discovery .footer-discovery strong::after {
+    content: " →";
+    color: var(--red);
+}
+.site-discovery .footer-discovery span {
+    display: block;
+    color: #555;
+    font: 0.84rem/1.45 Georgia, serif;
+}
+.site-discovery .footer-discovery a:hover,
+.site-discovery .footer-discovery a:focus-visible {
+    color: var(--white);
+    background: var(--black);
+}
+.site-discovery .footer-discovery a:hover span,
+.site-discovery .footer-discovery a:focus-visible span { color: #ddd; }
+#site-footer {
+    background: var(--black);
+    border-top: 0;
+    padding: 26px 0;
+}
+#site-footer .footer-copy { line-height: 1.5; }
+@media (max-width: 760px) {
+    .site-discovery { padding: 36px 0 40px; }
+    .site-discovery .footer-discovery { grid-template-columns: 1fr; }
+    .site-discovery .footer-discovery a { min-height: 0; }
+}
+</style>
+
 <!-- DISCOVERY -->
 <aside class="site-discovery" aria-labelledby="site-discovery-title">
     <div class="wrap">
