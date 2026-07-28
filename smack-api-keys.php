@@ -58,10 +58,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
     $key_hash   = hash('sha256', $raw_key);
     $key_prefix = substr($raw_key, 0, 8);
 
-    // Mandatory expiry — keys live at most 4 weeks (0.7.263). No "never" option.
+    // Mandatory expiry — no "never" option. Import keys (flkrfckr/unzucker/gyss/
+    // ohsnap/smackpress) are one-shot migrations and stay capped at 4 weeks (0.7.263).
+    // Backup keys (suyb/sybu) are standing infrastructure, not a migration: a 4-week
+    // fuse meant every key in a fleet expired on the same day and backups stopped
+    // silently. Those get 3 months and default to it. Server-side is authoritative —
+    // '3m' only exists in the map for backup types, so it cannot be forced by POST.
+    $backup_key = in_array($key_type, ['suyb', 'sybu'], true);
     $expiry_map = ['1d' => '+1 day', '1w' => '+1 week', '2w' => '+2 weeks', '4w' => '+4 weeks'];
+    if ($backup_key) $expiry_map['3m'] = '+3 months';
     $expiry_sel = (string)($_POST['expiry'] ?? '');
-    if (!isset($expiry_map[$expiry_sel])) $expiry_sel = '4w'; // default + cap
+    if (!isset($expiry_map[$expiry_sel])) $expiry_sel = $backup_key ? '3m' : '4w'; // default + cap
     $expires_at = date('Y-m-d H:i:s', strtotime($expiry_map[$expiry_sel]));
 
     // Bind the key to its creator. Per-user keys: each user generates their own,
@@ -301,9 +308,10 @@ include 'core/sidebar.php';
                             <option value="1d">1 day</option>
                             <option value="1w">1 week</option>
                             <option value="2w">2 weeks</option>
-                            <option value="4w" selected>4 weeks (max)</option>
+                            <option value="4w" selected>4 weeks (max for import keys)</option>
+                            <option value="3m">3 months (backup keys only)</option>
                         </select>
-                        <p class="field-hint">Keys expire automatically &mdash; 4 weeks max. Mint a fresh one when this lapses.</p>
+                        <p class="field-hint">Import keys are one-shot &mdash; 4 weeks max. Backup keys (SMACK UP YOUR BACKUP / SMACK YOUR BATCH UP) get 3 months and default to it; choosing 3 months on any other key type falls back to 4 weeks.</p>
                     </div>
 
                     <div class="lens-input-wrapper mt-20">

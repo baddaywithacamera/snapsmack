@@ -162,6 +162,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Jul 27</span><a href="#a035">IP SMACKER &amp; Login Shield &mdash; Client-Address Spoofing</a></li>
                 <li><span class="idx-date">Jul 24</span><a href="#a034">Skin Manifest RCE &amp; Credentials Export — Closure</a></li>
                 <li><span class="idx-date">Jul 15</span><a href="#a033">SMACKVERSE Federation Client — Attack Surface</a></li>
                 <li><span class="idx-date">Jul 4</span><a href="#a032">SMACKVERSE Piggyback Search — Token Isolation</a></li>
@@ -196,6 +197,14 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a035">
+                <div class="post-meta"><span class="post-date">July 27, 2026</span><span class="post-tag">Critical Path Fixed</span></div>
+                <h2>IP SMACKER &amp; Login Shield &mdash; Client-Address Spoofing</h2>
+                <p>A fleet check found impossible addresses in every site's shared ban table, including loopback and private-network addresses that could only belong to our own infrastructure. Tracing those records exposed a critical trust mistake: IP SMACKER and the login brute-force shield accepted forwarded-address headers without first proving the request had actually arrived through a trusted proxy. A scanner could therefore choose who was banned, rotate its claimed address to avoid the five-strike login limit, or deliberately lock out a victim.</p>
+                <p>SnapSmack 0.7.451 closes that path. One shared resolver now trusts forwarded addresses only behind a configured proxy and otherwise uses the web server's real connection address. Private, reserved, loopback, and configured proxy addresses cannot be recorded as bans. The critical spoofing primitive is fixed; the report remains marked <strong>PARTIALLY REMEDIATED</strong> because poisoned historical rows still need fleet cleanup and secondary work remains around ban lifetimes, pruning, and owner notification. That distinction is deliberate: fixed means fixed, and unfinished means unfinished.</p>
+                <a class="report-link" href="secaudits/2026-07-27-035-ip-smacker-forwarded-header-ban-injection.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a034">
                 <div class="post-meta"><span class="post-date">July 24, 2026</span><span class="post-tag">Closed</span></div>

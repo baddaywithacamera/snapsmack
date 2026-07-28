@@ -179,6 +179,21 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                         $grouped[$cat][] = $p;
                     }
 
+                    // --- SECTION ORDER ---
+                    // Categories arrive alphabetically from the query, which buried
+                    // MY BLOGS in the middle of the page (F, I, M, W...). A blogroll
+                    // is a list of OTHER people's sites; your own belong at the END,
+                    // after the recommendations, so a visitor reads the generosity
+                    // before the self-promotion. Pin the own-sites sections to the
+                    // bottom; everything else keeps its A-Z order.
+                    $pin_last = ['my blogs', 'my sites', 'the network'];
+                    uksort($grouped, function ($a, $b) use ($pin_last) {
+                        $a_pin = in_array(strtolower(trim((string)$a)), $pin_last, true) ? 1 : 0;
+                        $b_pin = in_array(strtolower(trim((string)$b)), $pin_last, true) ? 1 : 0;
+                        if ($a_pin !== $b_pin) return $a_pin - $b_pin;
+                        return strcasecmp((string)$a, (string)$b);
+                    });
+
                     // Render each category block
                     foreach ($grouped as $cat_name => $cat_peers):
                 ?>

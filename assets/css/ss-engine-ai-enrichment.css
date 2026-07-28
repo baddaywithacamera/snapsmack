@@ -1,0 +1,191 @@
+/**
+ * SNAPSMACK — AI metadata enrichment controls
+ *
+ * Shared geometry for title, caption/body, and hashtag enrichment. This file
+ * intentionally contains every presentation rule used by the component.
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     /* ===== SNAPSMACK EOF ===== */
+ * Last non-empty line of this file MUST match the line above.
+ */
+
+.ss-ai-enrich-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.ss-ai-enrich-select {
+    width: 100%;
+    min-width: 0;
+    height: 34px;
+}
+
+.ss-ai-enrich-button,
+.ss-ai-prompts-button,
+.ss-ai-modal-button {
+    display: inline-flex;
+    width: auto;
+    min-height: 34px;
+    margin: 0;
+    padding: 4px 12px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: .65rem;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.ss-ai-enrich-button.is-working {
+    opacity: .65;
+    cursor: wait;
+}
+
+.ss-ai-enrich-button {
+    background: var(--lens-accent, #39ff14);
+    color: var(--lens-bg, #141414);
+}
+
+.ss-ai-prompts-button,
+.ss-ai-modal-button {
+    border: 1px solid var(--border-color, #555);
+    background: var(--bg-primary, #141414);
+    color: var(--text-primary, #ddd);
+}
+
+.ss-ai-prompts-button:hover,
+.ss-ai-modal-button:hover {
+    border-color: var(--lens-accent, #39ff14);
+}
+
+.ss-ai-enrich-status {
+    grid-column: 1 / -1;
+    min-height: 1.2em;
+    color: var(--text-muted, #888);
+    font-size: .75rem;
+}
+
+.ss-ai-enrich-status.is-error {
+    color: var(--danger, #d9534f);
+}
+
+.ss-ai-modal[hidden] {
+    display: none;
+}
+
+.ss-ai-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10020;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(0, 0, 0, .72);
+}
+
+.ss-ai-modal-card {
+    width: min(680px, 100%);
+    max-height: calc(100vh - 48px);
+    overflow: auto;
+    padding: 24px;
+    border: 1px solid var(--border-color, #444);
+    border-radius: 4px;
+    background: var(--bg-secondary, #1e1e1e);
+    color: var(--text-primary, #ddd);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, .55);
+}
+
+.ss-ai-modal-header,
+.ss-ai-modal-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ss-ai-modal-header {
+    margin-bottom: 18px;
+}
+
+.ss-ai-modal-header h3 {
+    margin: 0;
+}
+
+.ss-ai-modal-close {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.ss-ai-modal-close:hover {
+    color: var(--lens-accent, #39ff14);
+}
+
+.ss-ai-modal-grid {
+    display: grid;
+    gap: 14px;
+}
+
+.ss-ai-modal-grid label {
+    display: grid;
+    gap: 6px;
+}
+
+.ss-ai-modal-grid input,
+.ss-ai-modal-grid select,
+.ss-ai-modal-grid textarea {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.ss-ai-modal-grid textarea {
+    min-height: 170px;
+    resize: vertical;
+}
+
+.ss-ai-preferred {
+    display: flex !important;
+    grid-template-columns: none !important;
+    flex-direction: row;
+    align-items: center;
+}
+
+.ss-ai-preferred input {
+    width: auto;
+}
+
+.ss-ai-modal-help {
+    margin: 0;
+    color: var(--text-muted, #888);
+    font-size: .8rem;
+    line-height: 1.5;
+}
+
+.ss-ai-modal-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-top: 18px;
+}
+
+@media (max-width: 620px) {
+    .ss-ai-enrich-row {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .ss-ai-enrich-select {
+        grid-column: 1 / -1;
+    }
+}
+
+/* ===== SNAPSMACK EOF ===== */

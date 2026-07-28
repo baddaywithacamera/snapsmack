@@ -1,0 +1,219 @@
+{
+    "schema_version": 1,
+    "name": "HEURISTIC",
+    "version": "0.1.0",
+    "author": "Sean McCormick with Claude and OpenAI Codex",
+    "support": "sean@baddaywithacamera.ca",
+    "description": "A GRAMOFSMACK skin inspired by the logical memory and infomatic displays of serious old science fiction. Photographs remain photographs until HAL requires the screen.",
+    "status": "experimental",
+    "modes": ["carousel"],
+    "post_page": "gram",
+    "edit_page": "carousel",
+    "features": {
+        "supports_wall": false,
+        "masonry_supported": false,
+        "archive_layouts": ["square"],
+        "supports_slider": false,
+        "has_landing": true,
+        "post_modes": ["image"],
+        "instagram_mode": true,
+        "carousel": true,
+        "mobile_only": false,
+        "community": ["likes", "comments"]
+    },
+    "require_scripts": [
+        "smack-keyboard",
+        "smack-community",
+        "smack-slider",
+        "smack-carousel-view",
+        "smack-image-fade-load",
+        "smack-lightbox",
+        "smack-grid-modal",
+        "smack-grid-lightbox",
+        "smack-grid-nav",
+        "smack-heuristic",
+        "smack-progressive-reveal",
+        "smack-tag-infinite",
+        "smack-thomas",
+        "smack-gram-search"
+    ],
+    "community_comments": true,
+    "community_likes": true,
+    "community_reactions": false,
+    "options": {
+        "he_system_mode": {
+            "section": "LOGIC MEMORY CENTRE",
+            "type": "select",
+            "label": "System Activity",
+            "default": "live",
+            "options": {
+                "live": "Live — memory and infomatics operate",
+                "quiet": "Quiet — static memory display",
+                "static": "Static — no autonomous effects"
+            },
+            "hint": "Reduced-motion visitors and phones always receive the static presentation."
+        },
+        "he_memory_activity": {
+            "section": "LOGIC MEMORY CENTRE",
+            "type": "select",
+            "label": "Optical Memory Activity",
+            "default": "1",
+            "options": {"1": "On", "0": "Off"}
+        },
+        "he_memory_red": {
+            "section": "LOGIC MEMORY CENTRE",
+            "type": "color",
+            "label": "Memory Bank Red",
+            "default": "#d7193f"
+        },
+        "he_infomatics": {
+            "section": "INFOMATICS",
+            "type": "select",
+            "label": "Tile Infomatics",
+            "default": "1",
+            "options": {"1": "On", "0": "Off"}
+        },
+        "he_classic_fallback": {
+            "section": "INFOMATICS",
+            "type": "select",
+            "label": "Classic Automatic Screens",
+            "default": "1",
+            "options": {"1": "On", "0": "Mapped posts only"},
+            "hint": "When enabled, unmapped photographs occasionally display a classic system screen."
+        },
+        "he_first_delay": {
+            "section": "INFOMATICS",
+            "type": "range_numeric",
+            "label": "First Screen Delay",
+            "default": "20",
+            "min": "8",
+            "max": "90",
+            "step": "1",
+            "unit": "s"
+        },
+        "he_hold_seconds": {
+            "section": "INFOMATICS",
+            "type": "range_numeric",
+            "label": "Screen Hold",
+            "default": "8",
+            "min": "4",
+            "max": "20",
+            "step": "1",
+            "unit": "s"
+        },
+        "he_rest_seconds": {
+            "section": "INFOMATICS",
+            "type": "range_numeric",
+            "label": "Time Between Screens",
+            "default": "16",
+            "min": "8",
+            "max": "90",
+            "step": "1",
+            "unit": "s"
+        },
+        "he_pulse_count": {
+            "section": "INFOMATICS",
+            "type": "range_numeric",
+            "label": "Closing Pulses",
+            "default": "3",
+            "min": "0",
+            "max": "3",
+            "step": "1",
+            "unit": ""
+        },
+        "he_calm_color": {
+            "section": "INFOMATICS",
+            "type": "color",
+            "label": "Normal Screen Colour",
+            "default": "#2a7891"
+        },
+        "he_fault_color": {
+            "section": "INFOMATICS",
+            "type": "color",
+            "label": "Warning Screen Colour",
+            "default": "#c7193f"
+        },
+        "he_infomatic_map": {
+            "section": "INFOMATICS",
+            "type": "text",
+            "label": "Category and Post Screens",
+            "default": "",
+            "size": "100",
+            "hint": "Rules separated by semicolons. Example: clive-cussler=CUS|CONTAMINATION|fault|total; post:42=NIV|KNOWN SPACE|blue|images"
+        },
+        "he_profile_header": {
+            "section": "PROFILE",
+            "type": "select",
+            "label": "Profile Header",
+            "default": "1",
+            "options": {"1": "Show", "0": "Hide"}
+        },
+        "he_show_tagline": {
+            "section": "PROFILE",
+            "type": "select",
+            "label": "Tagline",
+            "default": "1",
+            "options": {"1": "Show", "0": "Hide"}
+        },
+        "he_carousel_indicator": {
+            "section": "GRID",
+            "type": "select",
+            "label": "Carousel Indicator",
+            "default": "icon",
+            "options": {"icon": "Stack icon", "count": "Image count", "none": "None"}
+        },
+        "he_hover_overlay": {
+            "section": "GRID",
+            "type": "select",
+            "label": "Hover Information",
+            "default": "title",
+            "options": {"title": "Post title", "count": "Image count", "dark": "Darken only", "none": "None"}
+        },
+        "he_customize_level": {
+            "section": "IMAGE FRAMES",
+            "type": "select",
+            "label": "Frame Source",
+            "default": "per_grid",
+            "options": {"per_grid": "One frame for this grid", "per_carousel": "Per post", "per_image": "Per image"}
+        },
+        "he_frame_size_pct": {
+            "section": "IMAGE FRAMES",
+            "type": "range_numeric",
+            "label": "Image Size",
+            "default": "100",
+            "min": "60",
+            "max": "100",
+            "step": "1",
+            "unit": "%"
+        },
+        "he_frame_border_px": {
+            "section": "IMAGE FRAMES",
+            "type": "range_numeric",
+            "label": "Border Width",
+            "default": "0",
+            "min": "0",
+            "max": "20",
+            "step": "1",
+            "unit": "px"
+        },
+        "he_frame_border_color": {
+            "section": "IMAGE FRAMES",
+            "type": "color",
+            "label": "Border Colour",
+            "default": "#d9dde0"
+        },
+        "he_frame_bg_color": {
+            "section": "IMAGE FRAMES",
+            "type": "color",
+            "label": "Mat Colour",
+            "default": "#090a0d"
+        },
+        "he_frame_shadow": {
+            "section": "IMAGE FRAMES",
+            "type": "select",
+            "label": "Frame Shadow",
+            "default": "0",
+            "options": {"0": "None", "1": "Light", "2": "Medium", "3": "Heavy"}
+        }
+    }
+}

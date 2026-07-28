@@ -926,5 +926,7 @@ include 'core/sidebar.php';
 </div>
 <script src="assets/js/ss-engine-ai.js?v=<?php echo time(); ?>"></script>
 <?php endif; ?>
+<link rel="stylesheet" href="assets/css/ss-engine-ai-enrichment.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<script src="assets/js/ss-engine-ai-enrichment.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
