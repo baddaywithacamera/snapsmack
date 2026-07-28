@@ -202,9 +202,13 @@ nav a.active::after { width: 100%; }
     font: 0.84rem/1.45 Georgia, serif;
 }
 .footer-discovery a:hover,
-.footer-discovery a:focus-visible { background: var(--black); color: var(--white); }
+.footer-discovery a:focus-visible {
+    background: #fff8f6;
+    color: var(--black);
+    box-shadow: inset 0 -3px 0 var(--red);
+}
 .footer-discovery a:hover span,
-.footer-discovery a:focus-visible span { color: #ddd; }
+.footer-discovery a:focus-visible span { color: #555; }
 #site-footer { background: var(--black); padding: 26px 0; }
 .footer-copy {
     font-family: 'Courier New', monospace; font-size: 0.68rem; color: #aaa;

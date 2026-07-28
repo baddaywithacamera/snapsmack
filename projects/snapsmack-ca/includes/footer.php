@@ -72,11 +72,12 @@
 }
 .site-discovery .footer-discovery a:hover,
 .site-discovery .footer-discovery a:focus-visible {
-    color: var(--white);
-    background: var(--black);
+    color: var(--black);
+    background: #fff8f6;
+    box-shadow: inset 0 -3px 0 var(--red);
 }
 .site-discovery .footer-discovery a:hover span,
-.site-discovery .footer-discovery a:focus-visible span { color: #ddd; }
+.site-discovery .footer-discovery a:focus-visible span { color: #555; }
 #site-footer {
     background: var(--black);
     border-top: 0;

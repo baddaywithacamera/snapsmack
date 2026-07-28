@@ -49,10 +49,6 @@ $page_css = <<<'CSS'
 .seo-section p { margin-bottom: 1em; }
 .seo-section ul { margin: 18px 0 0 22px; }
 .seo-section a { color: var(--red); font-weight: 700; }
-.seo-related { padding: 46px 0; background: var(--red); color: var(--white); }
-.seo-related h2 { font: 900 1.25rem/1.2 Arial Black, Arial, sans-serif; margin-bottom: 14px; }
-.seo-related-links { display: flex; flex-wrap: wrap; gap: 10px 18px; }
-.seo-related a { color: var(--white); font-weight: 800; }
 @media (max-width: 480px) {
     .seo-hero .wrap { padding-left: 18px; padding-right: 18px; }
     .seo-hero h1 { font-size: 2rem; overflow-wrap: anywhere; }
@@ -91,20 +87,6 @@ require_once __DIR__ . '/header.php';
         </div>
     </section>
 <?php endforeach; ?>
-
-    <aside class="seo-related">
-        <div class="wrap">
-            <h2>Keep wandering</h2>
-            <div class="seo-related-links">
-                <a href="index.php">SnapSmack home</a>
-                <a href="self-hosted-photography.php">Self-hosted photography</a>
-                <a href="photo-blog-software.php">Photo blog software</a>
-                <a href="fediverse-photography.php">Fediverse photography</a>
-                <a href="export-your-photos.php">Export your photos</a>
-                <a href="hairy-muff.php">Licence and philosophy</a>
-            </div>
-        </div>
-    </aside>
 </main>
 <?php require_once __DIR__ . '/footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
