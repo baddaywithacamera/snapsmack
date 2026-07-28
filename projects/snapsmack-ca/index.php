@@ -2062,7 +2062,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <div class="theme-info">
                     <h3>Parade</h3>
-                    <p>Pride, in motion. A growing collection of LGBTQ+ identity flags fly full-window behind colour-shifting tile borders. Built to celebrate without getting between you and the photographs.</p>
+                    <p>Pride, in motion. An expanded collection of LGBTQ+ identity flags waves full-window behind coordinated, flag-coloured tile borders. Pick the identity that belongs behind your photographs, then tune its speed, depth, opacity, background field, and border motion.</p>
                     <a href="https://theschoolofhardnocks.ca" target="_blank" class="theme-link"><span class="theme-link-label">View live site</span>theschoolofhardnocks.ca →</a>
                 </div>
             </div>
