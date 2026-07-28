@@ -33,6 +33,7 @@
 // ─── Identity / config ──────────────────────────────────────────────────────
 
 /** Is federation switched on for this install? Absent setting = OFF. */
+if (is_file(__DIR__ . '/photochallenge.php')) require_once __DIR__ . '/photochallenge.php';  // FEDISTRUCTURE photo-challenge profile — inert unless enabled
 require_once __DIR__ . '/client-ip.php';  // mandatory security boundary — SECAUDIT 035
 
 function sv_enabled(array $settings): bool {
@@ -1464,17 +1465,28 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
     }
     if (!$images) return;   // photo client — skip text-only
 
+    $tags = [];
+    foreach (($obj['tag'] ?? []) as $tag) {
+        if (!is_array($tag) || strcasecmp((string)($tag['type'] ?? ''), 'Hashtag') !== 0) continue;
+        $name = strtolower(ltrim(trim((string)($tag['name'] ?? '')), '#'));
+        $name = preg_replace('/[^a-z0-9_]/', '', $name) ?? '';
+        if ($name !== '') $tags[] = $name;
+    }
+    $tags = array_values(array_unique($tags));
+
     $pub = isset($obj['published']) ? date('Y-m-d H:i:s', strtotime((string)$obj['published'])) : null;
     try {
         $pdo->prepare(
             "INSERT INTO snap_ap_timeline
-                (object_id, actor_url, actor_handle, content, media_json, url, in_reply_to, is_boost, boosted_by, source, published)
-             VALUES (?,?,?,?,?,?,?,?,?,'home',?)
-             ON DUPLICATE KEY UPDATE content=VALUES(content), media_json=VALUES(media_json), fetched_at=NOW()"
+                (object_id, actor_url, actor_handle, content, media_json, tags_json, url, in_reply_to, is_boost, boosted_by, source, published)
+             VALUES (?,?,?,?,?,?,?,?,?,?,'home',?)
+             ON DUPLICATE KEY UPDATE content=VALUES(content), media_json=VALUES(media_json),
+                                     tags_json=VALUES(tags_json), fetched_at=NOW()"
         )->execute([
             substr($object_id, 0, 500), substr($actor_url, 0, 500), substr($handle, 0, 190),
             mb_substr(trim(strip_tags((string)($obj['content'] ?? ''))), 0, 4000),
             json_encode($images, JSON_UNESCAPED_SLASHES),
+            json_encode($tags, JSON_UNESCAPED_SLASHES),
             substr((string)($obj['url'] ?? $object_id), 0, 600),
             isset($obj['inReplyTo']) && is_string($obj['inReplyTo']) ? substr($obj['inReplyTo'], 0, 500) : null,
             $is_boost ? 1 : 0, $boosted_by ? substr($boosted_by, 0, 500) : null, $pub,
@@ -1518,6 +1530,12 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
              ON DUPLICATE KEY UPDATE actor_handle=VALUES(actor_handle), inbox_url=VALUES(inbox_url),
                                      shared_inbox_url=VALUES(shared_inbox_url), is_active=1"
         )->execute([$actor_id, substr($handle, 0, 190), $inbox, $shared]);
+
+        // PHOTO CHALLENGE (FEDISTRUCTURE spoke): a Follow of this actor = JOIN.
+        // Guarded: inert on every ordinary blog (module absent or disabled).
+        if (function_exists('pc_on_follow')) {
+            try { pc_on_follow($pdo, $settings, $actor_doc); } catch (Throwable $e) {}
+        }
 
         // Send the Accept back to the follower's inbox NOW — in THIS request.
         // A Follow→Accept is a server-to-server handshake: the remote server is
@@ -1602,6 +1620,9 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         if ($otype === 'Follow') {
             $pdo->prepare("UPDATE snap_ap_followers SET is_active = 0 WHERE actor_url = ?")
                 ->execute([$actor_id]);
+            if (function_exists('pc_on_leave')) {
+                try { pc_on_leave($pdo, $settings, $actor_id); } catch (Throwable $e) {}
+            }
         } elseif ($otype === 'Like') {
             // Un-like: drop the federated like on our target.
             $liked = is_array($obj['object'] ?? null) ? ($obj['object']['id'] ?? '') : ($obj['object'] ?? '');
@@ -1611,6 +1632,9 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             if ($t && $t['type'] !== 'comment' && $t['type'] !== 'reply') {
                 $pdo->prepare("DELETE FROM snap_ap_likes WHERE target_type = ? AND target_id = ? AND actor_url = ?")
                     ->execute([$t['type'], (int)$t['id'], $actor_id]);
+            }
+            if (is_string($liked) && function_exists('pc_remove_engagement')) {
+                try { pc_remove_engagement($pdo, $settings, $liked, $actor_id, 'like'); } catch (Throwable $e) {}
             }
         } elseif ($otype === 'Announce') {
             // Un-boost: a remote retracted a boost of one of our posts. Drop the
@@ -1622,6 +1646,9 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                     "DELETE FROM snap_ap_notifications
                      WHERE ntype = 'boost' AND actor_url = ? AND object_id = ?"
                 )->execute([$actor_id, $boosted]);
+                if (function_exists('pc_remove_engagement')) {
+                    try { pc_remove_engagement($pdo, $settings, $boosted, $actor_id, 'boost'); } catch (Throwable $e) {}
+                }
             }
         }
         return 202;
@@ -1653,6 +1680,13 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             sv_inbox_log($pdo, 'Like', $actor_id, $obj_s,
                 'resolved ' . $t['type'] . ':' . $t['id'] . ($inserted ? ' — recorded' : ' — already had it'));
         } else {
+            if ($t === null && function_exists('pc_has_entry') && function_exists('pc_record_like')) {
+                try {
+                    if (pc_has_entry($pdo, $settings, $obj_s)) {
+                        pc_record_like($pdo, $settings, $obj_s, $actor_id);
+                    }
+                } catch (Throwable $e) {}
+            }
             // The most likely silent-drop point: the liked object URL didn't map
             // to a local post. Log it with the exact object so we can see what
             // Pixelfed actually sent vs. what sv_resolve_target() expects.
@@ -1823,6 +1857,13 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                         : (string)($boosted['attributedTo'] ?? '');
                     sv_ingest_timeline($pdo, $boosted, $battr !== '' ? $battr : $actor_id, '', true, $actor_id);
                 }
+            }
+            if (function_exists('pc_has_entry') && function_exists('pc_record_boost')) {
+                try {
+                    if (pc_has_entry($pdo, $settings, $obj_id)) {
+                        pc_record_boost($pdo, $settings, $obj_id, $actor_id);
+                    }
+                } catch (Throwable $e) {}
             }
         }
         return 202;

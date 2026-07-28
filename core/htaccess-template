@@ -57,6 +57,8 @@ RewriteRule ^nodeinfo/2\.0$ smackverse.php?ap=nodeinfo2 [L,QSA]
 # AP ids must be query-string-free: Pixelfed HTML-encodes '&' when it fetches
 # object URLs, so ?a=1&b=2 ids 404 on their side. Harmless while off.
 RewriteRule ^ap/(.+)$ smackverse.php?appath=$1 [L,QSA]
+RewriteRule ^board/?$ photochallenge-board.php [L,QSA]
+RewriteRule ^hall-of-fame/?$ photochallenge-hof.php [L,QSA]
 
 # Everything else → index.php (image slugs, static pages)
 RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]

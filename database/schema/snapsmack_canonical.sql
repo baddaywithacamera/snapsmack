@@ -1045,6 +1045,8 @@ CREATE TABLE IF NOT EXISTS `snap_ap_timeline` (
   `content`      mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `media_json`   mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                  COMMENT 'JSON array of image URLs',
+  `tags_json`    mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                 COMMENT 'JSON array of normalized ActivityPub Hashtag names',
   `url`          varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `in_reply_to`  varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_boost`     tinyint(1)   NOT NULL DEFAULT '0',
@@ -1108,6 +1110,42 @@ CREATE TABLE IF NOT EXISTS `snap_ap_inbox_log` (
   `outcome`     varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_inbox_log_time` (`received_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- FEDISTRUCTURE photo-challenge profile. Inert unless enabled.
+CREATE TABLE IF NOT EXISTS `pc_participants` (
+  `actor_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `handle` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `joined_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `horsconcours` tinyint(1) NOT NULL DEFAULT '0',
+  `state` enum('active','left','blocked') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+  PRIMARY KEY (`actor_url`(191)),
+  KEY `idx_pc_participant_state` (`state`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pc_hall_of_fame` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `week_key` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `place` tinyint unsigned NOT NULL,
+  `actor_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `handle` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `post_url` varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `caption` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `captured_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `active` tinyint(1) NOT NULL DEFAULT '1',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_pc_hof_place` (`week_key`,`place`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pc_engagement` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `object_id` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `actor_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `kind` enum('like','boost') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_pc_engagement` (`object_id`(150),`actor_url`(150),`kind`),
+  KEY `idx_pc_engagement_object` (`object_id`(191))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ===== SNAPSMACK EOF =====
