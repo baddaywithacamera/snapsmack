@@ -71,13 +71,8 @@ function snap_record_login_failure(PDO $pdo, string $ip): void {
     $fail_count = (int)($row->fetchColumn() ?: 0);
 
     if ($fail_count >= 5 && snap_ip_is_bannable($ip, $pdo)) {
-        // Issue a 7-day ban; ON DUPLICATE resets/extends an existing ban
-        $pdo->prepare(
-            "INSERT INTO snap_ip_bans (ip, reason, banned_at, expires_at)
-             VALUES (?, 'auto:brute_force', NOW(), DATE_ADD(NOW(), INTERVAL 7 DAY))
-             ON DUPLICATE KEY UPDATE
-               reason = VALUES(reason), banned_at = NOW(), expires_at = VALUES(expires_at)"
-        )->execute([$ip]);
+        // Fixed seven-day lifetime. A duplicate does not renew the clock.
+        snap_ip_record_ban($pdo, $ip, 'auto:brute_force', 7 * 86400, true);
         // Clear the counter so it doesn't re-fire on every subsequent page hit
         $pdo->prepare(
             "DELETE FROM snap_rate_limits WHERE ip = ? AND action = 'login_fail'"
@@ -127,6 +122,7 @@ unset($_ua_bot_rx);
 // Resolve client IP and check for an active ban before doing anything else.
 $_snap_ip = snap_client_ip();
 try {
+    snap_ip_ban_maintenance($pdo);
     $_ban_check = $pdo->prepare(
         "SELECT expires_at FROM snap_ip_bans WHERE ip = ? AND expires_at > NOW() LIMIT 1"
     );

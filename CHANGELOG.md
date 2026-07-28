@@ -12,6 +12,10 @@
 
 ## Unreleased
 
+## 0.7.454 "Case Closed" — 2026-07-28
+
+- **Completed SECAUDIT 035 operational closure.** All four automatic-ban producers now use one bounded writer with fixed lifetimes: a duplicate can no longer roll `banned_at` or `expires_at` forward forever. The first request after the normal updater's recoverable database backup clears potentially forged pre-fix automatic bans while preserving manual moderation; ongoing maintenance removes expired, malformed, private, reserved, loopback, and configured-proxy rows plus stale limiter counters. Ten-minute and total-row caps prevent rotating-address storage exhaustion, and a newly imposed administrator-login ban sends a best-effort out-of-band owner alert with recovery directions. The public audit is now closed. (`core/client-ip.php`, all four ban writers, `tests/client-ip-regression.php`, SECAUDIT 035.)
+
 ## 0.7.453 "Trust but Verify" — 2026-07-28
 
 - **Completed the shipped-code closure for SECAUDIT 035.** Every known `snap_ip_bans` writer now uses the mandatory trusted client-address resolver and independently refuses private, reserved, loopback, malformed, or configured-proxy ban targets; a missing security component can no longer fail open. Password-reset and community rate limits now key on the selected client instead of collapsing an entire audience onto a tunnel address. BREAK THE GLASS records both the selected operator and observed network peer. Trusted-proxy configuration now accepts validated IP/CIDR entries and Configuration shows the observed peer, selected client, trust decision, and source. A permanent regression suite covers forged headers, trusted Cloudflare Tunnel and XFF paths, direct installs, malformed/private targets, CIDR matching, all four ban writers, and both shared-address limiters. Fleet data cleanup and lifecycle operations remain deliberately separate and require an authorized, recoverable database pass. (`core/client-ip.php`, all ban writers, rate limiters, BREAK THE GLASS, Configuration, `tests/client-ip-regression.php`.)

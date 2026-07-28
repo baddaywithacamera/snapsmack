@@ -30,17 +30,7 @@ $ip = snap_trusted_client_ip($pdo);
 // reserved, loopback and our own proxy addresses can only be our own
 // infrastructure — banning those takes us down, not the scanner.
 if (snap_ip_is_bannable($ip, $pdo)) {
-    try {
-        $pdo->prepare(
-            "INSERT INTO snap_ip_bans (ip, reason, banned_at, expires_at)
-             VALUES (?, 'auto:probe', NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY))
-             ON DUPLICATE KEY UPDATE
-               reason = 'auto:probe', banned_at = NOW(),
-               expires_at = DATE_ADD(NOW(), INTERVAL 30 DAY)"
-        )->execute([$ip]);
-    } catch (PDOException $e) {
-        // Non-fatal — still 403 even if DB write fails
-    }
+    snap_ip_record_ban($pdo, $ip, 'auto:probe', 30 * 86400);
 }
 
 http_response_code(403);

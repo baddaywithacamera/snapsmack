@@ -157,6 +157,145 @@ function snap_ip_is_bannable(string $ip, ?PDO $pdo = null): bool {
 }
 
 /**
+ * Keep limiter storage bounded and clear potentially forged pre-fix bans.
+ *
+ * The updater's database backup makes the one-time reset recoverable. Manual
+ * moderation is preserved; only old automatic rows are reset.
+ */
+function snap_ip_ban_maintenance(PDO $pdo): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    try {
+        $marker = $pdo->prepare(
+            "INSERT IGNORE INTO snap_settings (setting_key, setting_val)
+             VALUES ('secaudit_035_ban_reset', 'running')"
+        );
+        $marker->execute();
+        if ($marker->rowCount() === 1) {
+            try {
+                $pdo->exec("DELETE FROM snap_ip_bans WHERE reason LIKE 'auto:%'");
+                $rows = $pdo->query(
+                    "SELECT id, ip FROM snap_ip_bans ORDER BY id ASC"
+                )->fetchAll(PDO::FETCH_ASSOC);
+                $delete = $pdo->prepare("DELETE FROM snap_ip_bans WHERE id = ?");
+                foreach ($rows as $row) {
+                    if (!snap_ip_is_bannable((string)$row['ip'], $pdo)) {
+                        $delete->execute([(int)$row['id']]);
+                    }
+                }
+                $complete = $pdo->prepare(
+                    "UPDATE snap_settings SET setting_val = ?
+                     WHERE setting_key = 'secaudit_035_ban_reset'"
+                );
+                $complete->execute([gmdate('Y-m-d H:i:s')]);
+            } catch (Throwable $cleanup_error) {
+                $pdo->exec(
+                    "DELETE FROM snap_settings
+                     WHERE setting_key = 'secaudit_035_ban_reset'
+                       AND setting_val = 'running'"
+                );
+                throw $cleanup_error;
+            }
+        }
+
+        $pdo->exec("DELETE FROM snap_ip_bans WHERE expires_at <= NOW()");
+        $pdo->exec(
+            "DELETE FROM snap_rate_limits
+             WHERE window_start < DATE_SUB(NOW(), INTERVAL 2 DAY)"
+        );
+    } catch (Throwable $e) {
+        error_log('SnapSmack IP-ban maintenance failed: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Record one fixed-lifetime automatic ban. Active duplicates are deliberately
+ * left untouched, and global caps prevent rotating-address storage abuse.
+ */
+function snap_ip_record_ban(
+    PDO $pdo,
+    string $ip,
+    string $reason,
+    int $lifetime_seconds,
+    bool $owner_alert = false
+): bool {
+    snap_ip_ban_maintenance($pdo);
+    if (!snap_ip_is_bannable($ip, $pdo)) return false;
+
+    $lifetime_seconds = max(60, min($lifetime_seconds, 30 * 86400));
+    try {
+        $existing = $pdo->prepare(
+            "SELECT 1 FROM snap_ip_bans WHERE ip = ? AND expires_at > NOW() LIMIT 1"
+        );
+        $existing->execute([$ip]);
+        if ($existing->fetchColumn()) return true;
+
+        $expired = $pdo->prepare(
+            "DELETE FROM snap_ip_bans WHERE ip = ? AND expires_at <= NOW()"
+        );
+        $expired->execute([$ip]);
+
+        $recent = (int)$pdo->query(
+            "SELECT COUNT(*) FROM snap_ip_bans
+             WHERE banned_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
+        )->fetchColumn();
+        $total = (int)$pdo->query("SELECT COUNT(*) FROM snap_ip_bans")->fetchColumn();
+        if ($recent >= 250 || $total >= 10000) {
+            error_log('SnapSmack IP-ban insertion cap reached; request refused without recording a ban');
+            return false;
+        }
+
+        $banned_at = gmdate('Y-m-d H:i:s');
+        $expires_at = gmdate('Y-m-d H:i:s', time() + $lifetime_seconds);
+        $insert = $pdo->prepare(
+            "INSERT IGNORE INTO snap_ip_bans (ip, reason, banned_at, expires_at)
+             VALUES (?, ?, ?, ?)"
+        );
+        $insert->execute([$ip, $reason, $banned_at, $expires_at]);
+        $created = $insert->rowCount() === 1;
+        if ($created && $owner_alert) {
+            snap_ip_send_owner_ban_alert($pdo, $ip, $reason, $expires_at);
+        }
+        return $created;
+    } catch (Throwable $e) {
+        error_log('SnapSmack IP ban write failed: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/** Best-effort out-of-band warning for a login-address lockout. */
+function snap_ip_send_owner_ban_alert(
+    PDO $pdo,
+    string $ip,
+    string $reason,
+    string $expires_at
+): void {
+    try {
+        require_once __DIR__ . '/mailer.php';
+        $settings = snapsmack_mail_settings($pdo);
+        $to = trim((string)($settings['admin_email'] ?? ''));
+        if ($to === '') return;
+        $site = (string)($settings['site_name'] ?? 'SnapSmack');
+        $url = rtrim((string)($settings['site_url'] ?? ''), '/');
+        $body = "SnapSmack blocked repeated failed administrator logins.\n\n"
+              . "Site: {$site}\nAddress: {$ip}\nReason: {$reason}\nExpires (UTC): {$expires_at}\n\n"
+              . "If this was you, use your current BREAK THE GLASS recovery card or remove the address in "
+              . "Troll Control > IP Shield after reaching the site from another address.\n"
+              . ($url !== '' ? "Site: {$url}\n" : '');
+        snapsmack_send_mail(
+            $to,
+            "[{$site}] administrator login address blocked",
+            $body,
+            ['pdo' => $pdo, 'settings' => $settings]
+        );
+    } catch (Throwable $e) {
+        error_log('SnapSmack IP-ban owner alert failed: ' . $e->getMessage());
+    }
+}
+
+/**
  * Owner-facing diagnostic without exposing untrusted header values as truth.
  */
 function snap_client_ip_diagnostic(?PDO $pdo = null): array {

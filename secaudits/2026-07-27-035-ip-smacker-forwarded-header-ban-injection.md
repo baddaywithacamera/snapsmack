@@ -283,19 +283,20 @@ changes.
 
 ## 9. Disposition
 
-**CODE REMEDIATED in 0.7.453.** The 0.7.451 resolver now gates all four known
-ban writers and both shared-address rate limiters. The security component is
-mandatory rather than fail-open. Trusted proxies accept validated IP or CIDR
-entries, and Configuration shows the observed peer, selected client, trust
-decision, and source. BREAK THE GLASS preserves both selected-client and raw
-peer attribution. Permanent regression tests cover the trust boundary, unsafe
-ban targets, writer integration, and tunnel-safe limiter keying.
+**CLOSED in 0.7.454.** The 0.7.453 trust boundary gates all four known ban
+writers and both shared-address rate limiters. In 0.7.454 those producers moved
+to one bounded writer: active duplicates preserve their original fixed expiry,
+expired and unsafe rows are pruned, stale limiter counters are removed, and
+ten-minute plus total-row caps prevent rotating-address storage exhaustion.
 
-Operational closure remains intentionally separate: existing poisoned rows
-must be dumped and purged across the fleet only after authorization, and ban
-lifetime/pruning and owner lockout alerting still require a dedicated,
-recoverable fleet pass. None of those remaining operations restores the
-attacker's ability to nominate a ban identity or collapses visitors onto a
-shared proxy key.
+The normal updater creates a recoverable database backup before the new code
+goes live. On the first request after update, a one-time marked cleanup clears
+all potentially forged pre-fix `auto:*` rows while preserving manual
+moderation; valid new hostile traffic is immediately eligible to be banned
+again through the corrected resolver. A newly imposed administrator-login ban
+also sends a best-effort owner email with expiry and recovery directions.
+Permanent regression tests cover the trust boundary, unsafe targets, all four
+writer integrations, fixed-lifetime routing, cleanup, bounds, alerts, and
+tunnel-safe limiter keying.
 
 <!-- ===== SNAPSMACK EOF ===== -->
