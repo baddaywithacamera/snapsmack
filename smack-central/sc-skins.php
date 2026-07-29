@@ -161,6 +161,75 @@ function sc_extract_skins(string $ref): array {
     return ['ok' => true, 'tmp_dir' => $tmp_dir, 'tmp_key' => $tmp_key];
 }
 
+/**
+ * Fetch one skin through GitHub's Contents API instead of downloading the
+ * entire repository archive. Used for quick beta/fix packaging.
+ */
+function sc_extract_one_skin(string $ref, string $slug): array {
+    if (!in_array($ref, ['master', 'dev'], true)
+        || !preg_match('/^[a-z0-9][a-z0-9-]*$/', $slug)) {
+        return ['ok' => false, 'msg' => 'Invalid branch or skin slug.'];
+    }
+
+    $tmp_key = md5($ref . $slug . uniqid('', true));
+    $tmp_dir = sc_skin_workdir($tmp_key);
+    @mkdir($tmp_dir . 'skins/' . $slug, 0755, true);
+    $count = 0;
+    $bytes = 0;
+
+    $fetch_dir = function (string $repo_path, string $dest) use (&$fetch_dir, $ref, &$count, &$bytes): bool {
+        $endpoint = 'repos/' . SNAPSMACK_GITHUB_REPO . '/contents/'
+                  . implode('/', array_map('rawurlencode', explode('/', $repo_path)))
+                  . '?ref=' . rawurlencode($ref);
+        $entries = sc_github_get($endpoint);
+        if (!is_array($entries) || isset($entries['message'])) return false;
+        foreach ($entries as $entry) {
+            if (!is_array($entry)) continue;
+            $name = (string)($entry['name'] ?? '');
+            if ($name === '' || $name === '.' || $name === '..'
+                || str_contains($name, '/') || str_contains($name, '\\')) return false;
+            $type = (string)($entry['type'] ?? '');
+            if ($type === 'dir') {
+                $child = $dest . '/' . $name;
+                if (!is_dir($child)) @mkdir($child, 0755, true);
+                if (!$fetch_dir($repo_path . '/' . $name, $child)) return false;
+            } elseif ($type === 'file') {
+                $size = (int)($entry['size'] ?? 0);
+                if (++$count > 500 || ($bytes += max(0, $size)) > 50 * 1024 * 1024) return false;
+                $url = (string)($entry['download_url'] ?? '');
+                $body = $url !== '' ? sc_http_raw($url, [], 30) : false;
+                if ($body === false || file_put_contents($dest . '/' . $name, $body) === false) return false;
+            }
+        }
+        return true;
+    };
+
+    if (!$fetch_dir('skins/' . $slug, $tmp_dir . 'skins/' . $slug)) {
+        sc_rrmdir($tmp_dir);
+        return ['ok' => false, 'msg' => "Could not fetch skins/{$slug} from {$ref}."];
+    }
+
+    // Manifests may consult the shared engine inventory during packaging.
+    $inv = sc_github_get(
+        'repos/' . SNAPSMACK_GITHUB_REPO
+        . '/contents/core/manifest-inventory.php?ref=' . rawurlencode($ref)
+    );
+    if (is_array($inv) && ($inv['type'] ?? '') === 'file') {
+        $inv_body = sc_http_raw((string)($inv['download_url'] ?? ''), [], 30);
+        if ($inv_body !== false) {
+            @mkdir($tmp_dir . 'core', 0755, true);
+            file_put_contents($tmp_dir . 'core/manifest-inventory.php', $inv_body);
+        }
+    }
+
+    return [
+        'ok'      => true,
+        'tmp_dir' => $tmp_dir,
+        'tmp_key' => $tmp_key,
+        'msg'     => "Fetched {$slug} from {$ref} ({$count} files).",
+    ];
+}
+
 // ── Permanent skin-build work area ───────────────────────────────────────────
 // Replaces the old per-run sys_get_temp_dir() scratch. A stable, app-managed
 // root (alongside .sc-sessions) so builds dodge /tmp's tmpfs/noexec/auto-wipe
@@ -259,7 +328,7 @@ $build_results = [];
 $build_errors  = [];
 $fetch_error  = '';
 
-$ref = 'master';
+if (!in_array($ref, ['master', 'dev'], true)) $ref = 'master';
 
 // ── Delete skin from registry (no preflight required) ─────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_skin'])) {
@@ -326,8 +395,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['prune_old_packages'])
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
 
     // ── Phase 2: fetch skins from GitHub ─────────────────────────────────────
-    if (isset($_POST['fetch_skins'])) {
-        $result = sc_extract_skins($ref);
+    if (isset($_POST['fetch_skins']) || isset($_POST['fetch_one_skin'])) {
+        $one_slug = preg_replace('/[^a-z0-9-]/', '', strtolower((string)($_POST['skin_slug'] ?? '')));
+        $result = isset($_POST['fetch_one_skin'])
+            ? sc_extract_one_skin($ref, $one_slug)
+            : sc_extract_skins($ref);
         if (!$result['ok']) {
             $fetch_error = $result['msg'];
             $phase = 'select_ref';
@@ -350,7 +422,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
 
         // Use cached temp dir if it still exists; re-download if not
         if (!$tmp_key || !is_dir($tmp_dir)) {
-            $result = sc_extract_skins($ref);
+            $fetch_slug = preg_replace('/[^a-z0-9-]/', '', strtolower((string)($_POST['fetch_slug'] ?? '')));
+            $result = $fetch_slug !== ''
+                ? sc_extract_one_skin($ref, $fetch_slug)
+                : sc_extract_skins($ref);
             if (!$result['ok']) {
                 $build_errors[] = 'Re-download failed: ' . $result['msg'];
                 $phase = 'results';
@@ -596,6 +671,31 @@ include __DIR__ . '/sc-layout-top.php';
                 Fetch Skins from Master
             </button>
         </form>
+
+        <hr style="border:0; border-top:1px solid var(--sc-border); margin:22px 0;">
+        <h3 style="margin-bottom:8px;">Fetch One Skin</h3>
+        <p class="sc-dim" style="margin-bottom:14px; font-size:0.875rem;">
+            Pull only one skin directory. Use <strong>dev</strong> for an unpublished beta;
+            use <strong>master</strong> for a stable skin.
+        </p>
+        <form method="POST" action="sc-skins.php"
+              style="display:grid; grid-template-columns:150px minmax(220px,1fr) auto; gap:10px; align-items:end;">
+            <div class="sc-field" style="margin:0;">
+                <label for="one-skin-ref">BRANCH</label>
+                <select id="one-skin-ref" name="ref" class="sc-select">
+                    <option value="dev">dev — BITCHIN'</option>
+                    <option value="master">master — BORING</option>
+                </select>
+            </div>
+            <div class="sc-field" style="margin:0;">
+                <label for="one-skin-slug">SKIN SLUG</label>
+                <input id="one-skin-slug" type="text" name="skin_slug"
+                       placeholder="tilez" pattern="[a-z0-9][a-z0-9-]*" required>
+            </div>
+            <button type="submit" name="fetch_one_skin" value="1" class="sc-btn sc-btn--primary">
+                Fetch One Skin
+            </button>
+        </form>
     </div>
 
 <?php // ── Phase 2: skin selection ────────────────────────────────────────── ?>
@@ -617,6 +717,8 @@ include __DIR__ . '/sc-layout-top.php';
         <form method="POST" action="sc-skins.php">
             <input type="hidden" name="ref"     value="<?php echo htmlspecialchars($ref); ?>">
             <input type="hidden" name="tmp_key" value="<?php echo htmlspecialchars($tmp_key); ?>">
+            <input type="hidden" name="fetch_slug"
+                   value="<?php echo count($repo_skins) === 1 ? htmlspecialchars((string)array_key_first($repo_skins)) : ''; ?>">
 
             <div style="margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap;">
                 <button type="button" onclick="document.querySelectorAll('input[name=\'skins[]\']').forEach(c=>c.checked=true)"

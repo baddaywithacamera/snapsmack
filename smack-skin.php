@@ -61,7 +61,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
         $slug   = $_POST['skin_slug'] ?? '';
         $active = $settings['active_skin'] ?? '';
 
-        if ($action === 'install' || $action === 'update') {
+        if ($action === 'upload') {
+            $upload = $_FILES['skin_package'] ?? null;
+            if (!is_array($upload) || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                $gallery_err = 'Choose a skin ZIP package to upload.';
+            } elseif ((int)($upload['size'] ?? 0) > 50 * 1024 * 1024) {
+                $gallery_err = 'Skin package refused: maximum upload size is 50 MB.';
+            } elseif (empty($_POST['accept_skin_code'])) {
+                $gallery_err = 'Confirm that you understand a skin package contains executable site code.';
+            } else {
+                require_once __DIR__ . '/core/reauth.php';
+                $reauth = reauth_verify(
+                    $pdo,
+                    (string)($_POST['reauth_password'] ?? ''),
+                    (string)($_POST['reauth_totp'] ?? '')
+                );
+                if (empty($reauth['ok'])) {
+                    $gallery_err = (string)($reauth['error'] ?? 'Verification failed.');
+                } elseif (!in_array((string)($reauth['role'] ?? ''), ['admin', 'administrator', 'owner'], true)) {
+                    $gallery_err = 'Only a full administrator may install executable skin packages.';
+                } else {
+                    $result = skin_registry_install_upload((string)$upload['tmp_name']);
+                    if ($result['success']) {
+                        skin_registry_clear_cache();
+                        $gallery_msg = $result['message'];
+                    } else {
+                        $gallery_err = $result['message'];
+                    }
+                }
+            }
+        } elseif ($action === 'install' || $action === 'update') {
             $download_url = $_POST['download_url'] ?? '';
             $signature    = $_POST['signature'] ?? '';
             require_once __DIR__ . '/core/release-pubkey.php';
@@ -914,6 +943,17 @@ if (!empty($google_families)) {
     margin-bottom: 16px;
 }
 .registry-info a { text-decoration: underline; color: #e8a020; opacity: 1; font-weight: 600; }
+.skin-upload-form { margin-top: 16px; }
+.skin-upload-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 0.45fr) minmax(150px, 0.3fr);
+    gap: 14px;
+    align-items: end;
+}
+.skin-upload-confirm { display: block; margin: 12px 0; }
+@media (max-width: 760px) {
+    .skin-upload-fields { grid-template-columns: 1fr; }
+}
 </style>
 
 <div class="main">
@@ -1518,6 +1558,40 @@ if (!empty($google_families)) {
             <span class="no-preview">NO PREVIEW</span>
         <?php endif;
     }
+
+    ?>
+    <div class="box">
+        <h3>INSTALL A SKIN PACKAGE</h3>
+        <p class="dim">
+            If a beta, private, or otherwise unlisted skin is absent from the registry,
+            upload its packaged ZIP directly. The package must carry its SMACKBACK
+            manifest. Installing code requires your password and two-factor code.
+        </p>
+        <form method="POST" enctype="multipart/form-data" class="skin-upload-form">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+            <input type="hidden" name="gallery_action" value="upload">
+            <div class="skin-upload-fields">
+                <div class="form-group">
+                    <label for="skin-package">SKIN PACKAGE (.ZIP)</label>
+                    <input type="file" id="skin-package" name="skin_package" accept=".zip,application/zip" required>
+                </div>
+                <div class="form-group">
+                    <label for="skin-upload-password">PASSWORD</label>
+                    <input type="password" id="skin-upload-password" name="reauth_password" autocomplete="current-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="skin-upload-totp">TWO-FACTOR CODE</label>
+                    <input type="text" id="skin-upload-totp" name="reauth_totp" inputmode="numeric" autocomplete="one-time-code" required>
+                </div>
+            </div>
+            <label class="skin-upload-confirm">
+                <input type="checkbox" name="accept_skin_code" value="1" required>
+                I understand that a skin package contains executable site code.
+            </label>
+            <button type="submit" class="gallery-btn install">UPLOAD &amp; INSTALL</button>
+        </form>
+    </div>
+    <?php
 
     // Fetch registry and local skin data
     $registry_url = SKIN_REGISTRY_DEFAULT_URL;

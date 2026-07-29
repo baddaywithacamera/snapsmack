@@ -34,7 +34,7 @@ function reauth_verify(PDO $pdo, string $password, string $totp_code = ''): arra
     }
     try {
         $stmt = $pdo->prepare(
-            "SELECT password_hash, totp_enabled, totp_secret FROM snap_users WHERE id = ? LIMIT 1"
+            "SELECT password_hash, totp_enabled, totp_secret, user_role FROM snap_users WHERE id = ? LIMIT 1"
         );
         $stmt->execute([$uid]);
         $u = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -65,7 +65,7 @@ function reauth_verify(PDO $pdo, string $password, string $totp_code = ''): arra
     if ($code === '' || !totp_verify($u['totp_secret'], $code)) {
         return ['ok' => false, 'error' => 'Authenticator code incorrect.'];
     }
-    return ['ok' => true, 'error' => ''];
+    return ['ok' => true, 'error' => '', 'role' => (string)($u['user_role'] ?? 'editor')];
 }
 
 /**

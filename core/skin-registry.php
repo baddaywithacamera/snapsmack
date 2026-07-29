@@ -360,6 +360,129 @@ function skin_registry_install(string $slug, string $download_url, string $signa
 }
 
 /**
+ * Install a skin ZIP deliberately uploaded by the authenticated owner.
+ *
+ * The caller must provide step-up authentication. Unlike registry installs,
+ * there is no detached transport signature, so this path validates every ZIP
+ * entry, requires one unambiguous skin root plus inert manifest.json/style.css,
+ * and initializes a new SMACKBACK skin baseline from the uploaded bytes.
+ */
+function skin_registry_install_upload(string $zip_path): array {
+    if (!is_file($zip_path) || filesize($zip_path) < 500) {
+        return ['success' => false, 'message' => 'The uploaded skin package is empty or unreadable.'];
+    }
+
+    $zip = new ZipArchive();
+    if ($zip->open($zip_path) !== true) {
+        return ['success' => false, 'message' => 'The uploaded file is not a readable ZIP package.'];
+    }
+
+    $manifest_entries = [];
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $entry = str_replace('\\', '/', (string)$zip->getNameIndex($i));
+        $parts = explode('/', $entry);
+        if ($entry === '' || str_contains($entry, "\0") || str_starts_with($entry, '/')
+            || preg_match('/^[a-zA-Z]:\//', $entry) || in_array('..', $parts, true)) {
+            $zip->close();
+            return ['success' => false, 'message' => 'Skin upload refused: unsafe path in ZIP archive.'];
+        }
+        if ($entry === 'manifest.json'
+            || (substr_count($entry, '/') === 1 && str_ends_with($entry, '/manifest.json'))) {
+            $manifest_entries[] = $entry;
+        }
+    }
+    if (count($manifest_entries) !== 1) {
+        $zip->close();
+        return ['success' => false, 'message' => 'Skin upload requires exactly one package root containing manifest.json.'];
+    }
+
+    $manifest_entry = $manifest_entries[0];
+    $prefix = $manifest_entry === 'manifest.json'
+        ? ''
+        : substr($manifest_entry, 0, -strlen('manifest.json'));
+    $manifest_raw = $zip->getFromName($manifest_entry);
+    $style_entry = $prefix . 'style.css';
+    if (!is_string($manifest_raw) || $zip->locateName($style_entry) === false) {
+        $zip->close();
+        return ['success' => false, 'message' => 'Invalid skin package: manifest.json and style.css are required.'];
+    }
+    try {
+        $manifest = json_decode($manifest_raw, true, 64, JSON_THROW_ON_ERROR);
+    } catch (Throwable $e) {
+        $zip->close();
+        return ['success' => false, 'message' => 'Invalid skin package: manifest.json could not be parsed.'];
+    }
+    $wrapper = rtrim($prefix, '/');
+    $slug = $wrapper !== ''
+        ? $wrapper
+        : strtolower(trim((string)preg_replace('/[^a-z0-9]+/i', '-', (string)($manifest['name'] ?? '')), '-'));
+    if (!preg_match('/^[a-z0-9][a-z0-9_-]*$/', $slug)) {
+        $zip->close();
+        return ['success' => false, 'message' => 'Invalid skin package: a safe skin slug could not be determined.'];
+    }
+
+    $staging = sys_get_temp_dir() . '/snapsmack-skin-upload-' . bin2hex(random_bytes(8));
+    if (!mkdir($staging, 0755, true) || !$zip->extractTo($staging)) {
+        $zip->close();
+        _skin_rmdir_recursive($staging);
+        return ['success' => false, 'message' => 'The skin package could not be staged for installation.'];
+    }
+    $zip->close();
+
+    $source = $prefix === '' ? $staging : $staging . '/' . $wrapper;
+    $target = SKINS_DIR . '/' . $slug;
+    if (!is_file($source . '/manifest.json') || !is_file($source . '/style.css')) {
+        _skin_rmdir_recursive($staging);
+        return ['success' => false, 'message' => 'The staged skin package is incomplete.'];
+    }
+
+    // Baseline the exact uploaded archive before moving its executable files.
+    require_once __DIR__ . '/smackback.php';
+    if (!smackback_init_skin_manifest($zip_path, $slug)) {
+        _skin_rmdir_recursive($staging);
+        return ['success' => false, 'message' => 'Skin upload refused: its SMACKBACK package manifest is missing or invalid.'];
+    }
+
+    $backup = '';
+    if (is_dir($target)) {
+        $backup = SKINS_DIR . '/.upload-backup-' . $slug . '-' . bin2hex(random_bytes(4));
+        if (!@rename($target, $backup)) {
+            _skin_rmdir_recursive($staging);
+            return ['success' => false, 'message' => 'The existing skin could not be moved aside safely.'];
+        }
+    }
+    if (!@rename($source, $target)) _skin_copy_recursive($source, $target);
+    if (is_dir($staging)) _skin_rmdir_recursive($staging);
+    if (!is_file($target . '/manifest.json')) {
+        if (is_dir($target)) _skin_rmdir_recursive($target);
+        if ($backup !== '') @rename($backup, $target);
+        return ['success' => false, 'message' => 'Skin installation failed after package validation.'];
+    }
+
+    $scan = smackback_run_skin_js_scan();
+    $violations = array_values(array_filter(
+        $scan['findings'] ?? [],
+        static fn(array $finding): bool =>
+            ($finding['skin'] ?? '') === $slug
+            && ($finding['severity'] ?? '') === 'violation'
+    ));
+    if ($violations) {
+        _skin_rmdir_recursive($target);
+        if ($backup !== '') @rename($backup, $target);
+        smackback_remove_skin_manifest($slug);
+        $first = (string)($violations[0]['detail'] ?? 'forbidden JavaScript');
+        return ['success' => false, 'message' => "Skin upload refused by the JavaScript safety scan: {$first}."];
+    }
+    if ($backup !== '' && is_dir($backup)) _skin_rmdir_recursive($backup);
+
+    return [
+        'success' => true,
+        'message' => 'Skin "' . $slug . '" installed from the uploaded package.',
+        'slug'    => $slug,
+    ];
+}
+
+/**
  * Remove an installed skin.
  *
  * Refuses to remove the currently active skin. Deletes the entire skin
