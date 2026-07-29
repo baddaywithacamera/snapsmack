@@ -98,8 +98,8 @@ if ($_canonical_url === 'https://snapsmack.ca/') {
 <link rel="canonical" href="<?php echo htmlspecialchars($_canonical_url); ?>">
 
 <!-- Favicon -->
-<link rel="icon" type="image/png" href="favicon.png">
-<link rel="apple-touch-icon" href="favicon.png">
+<link rel="icon" type="image/png" href="ss_favicon.png">
+<link rel="apple-touch-icon" href="ss_favicon.png">
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
