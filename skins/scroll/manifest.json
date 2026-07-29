@@ -1,10 +1,10 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a proven Flickr-style justified parts wall. Built for photographs that refuse to show the whole damn car.",
-    "status": "development",
+    "status": "beta",
     "features": {
         "supports_wall": false,
         "supports_slider": false,
