@@ -131,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cance
     exit;
 }
 
-// --- OFFLINE POSTING (SON OF A BATCH) consent gate ---
+// --- OFFLINE POSTING (SMACK YOUR BATCH UP) consent gate ---
 // Persistent owner opt-in: enabling lets the offline poster write to an
 // already-populated gram site. Enabling GRANTS access → requires re-auth;
 // disabling REDUCES access → no password. (SECAUDIT 2026-06-25 Finding 1.)
@@ -168,7 +168,7 @@ $revoked_keys = array_values(array_filter($keys, fn($k) => !$k['is_active']));
 $import_auth_until  = (int)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='import_authorized_until' LIMIT 1")->fetchColumn() ?: 0);
 $import_auth_active = $import_auth_until > time();
 
-// Offline-posting (SON OF A BATCH) consent state.
+// Offline-posting (SMACK YOUR BATCH UP) consent state.
 $gram_authoring_on = ((string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='gram_authoring_enabled' LIMIT 1")->fetchColumn() ?: '0')) === '1';
 
 include 'core/admin-header.php';
@@ -238,15 +238,15 @@ include 'core/sidebar.php';
         <?php endif; ?>
     </div>
 
-    <!-- OFFLINE POSTING (SON OF A BATCH) consent gate -->
+    <!-- OFFLINE POSTING (SMACK YOUR BATCH UP) consent gate -->
     <div class="box mb-20">
-        <h3>OFFLINE POSTING (SON OF A BATCH)</h3>
+        <h3>OFFLINE POSTING (SMACK YOUR BATCH UP)</h3>
         <p class="dim mb-20">
-            The SON OF A BATCH offline poster (BATCH SLAPPED / BATCH, PLEASE) writes new posts to
-            this site via the API. On a site that already holds content, posting stays blocked until
-            you enable it here — a one-time opt-in (no per-session re-authorizing). Enabling requires
-            your password (and 2FA code if enabled). The server also caps offline posting at 300
-            images/hour regardless. Empty or new sites need no opt-in.
+            This tool writes new posts to this site via the API. On a site that already holds
+            content, posting stays blocked until you enable it here — a one-time opt-in
+            (no per-session re-authorizing). Enabling requires your password (and 2FA code if
+            enabled). The server also caps offline posting at 300 images/hour regardless.
+            Empty or new sites need no opt-in.
         </p>
         <?php if ($gram_authoring_on): ?>
             <div class="alert alert-success">&#10003; Offline posting is ENABLED for this site.</div>
