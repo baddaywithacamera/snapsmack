@@ -53,6 +53,17 @@ function pc_tz(array $settings): DateTimeZone {
  */
 function pc_window(array $settings, ?int $now_ts = null): array {
     $now = (new DateTimeImmutable('@' . ($now_ts ?? time())))->setTimezone(new DateTimeZone('UTC'));
+    if (($settings['photochallenge_window_mode'] ?? 'weekly') === 'daily') {
+        $start = $now->setTime(0, 0, 0);
+        $end = $start->modify('+24 hours');
+        return [
+            'start'    => $start->format('Y-m-d H:i:s'),
+            'end'      => $end->format('Y-m-d H:i:s'),
+            'open'     => true,
+            'week_key' => $start->format('Y-m-d'),
+            'label'    => $start->format('M j, Y'),
+        ];
+    }
     $anchor = $now->setTime(10, 0, 0);
     $back = ((int)$anchor->format('N') - 4 + 7) % 7;       // 4 = Thursday
     $start = $anchor->modify("-{$back} days");
@@ -110,6 +121,17 @@ function pc_ensure_tables(PDO $pdo): void {
             created_at datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY uq_engage (object_id(160), actor_url(160), kind),
             KEY idx_engage_obj (object_id(191), kind)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS pc_outbound_boosts (
+            object_id  varchar(500) NOT NULL,
+            actor_url  varchar(500) NOT NULL,
+            state      varchar(16)  NOT NULL DEFAULT 'pending',
+            boosted_at datetime     NULL,
+            last_error varchar(500) NOT NULL DEFAULT '',
+            PRIMARY KEY (object_id(191)),
+            KEY idx_pc_boost_state (state)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
 }
@@ -179,12 +201,13 @@ function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit =
         $st = $pdo->prepare(
             "SELECT t.object_id, t.actor_url, t.actor_handle, t.content, t.media_json, t.tags_json, t.url,
                     t.published, t.is_boost,
-                    COALESCE(p.horsconcours, 0) AS horsconcours,
-                    COALESCE(p.state, 'active')  AS pstate
+                    p.horsconcours, p.state AS pstate
                FROM snap_ap_timeline t
-          LEFT JOIN pc_participants p ON p.actor_url = t.actor_url
+               JOIN pc_participants p ON p.actor_url = t.actor_url
+                                     AND p.state = 'active'
               WHERE t.published >= :start AND t.published < :end
-           ORDER BY t.published DESC
+                AND t.is_boost = 0
+           ORDER BY t.published ASC
               LIMIT " . min(1000, max($limit * 5, $limit))
         );
         $st->execute([
@@ -196,10 +219,11 @@ function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit =
             if (($r['pstate'] ?? '') !== 'active') continue;
             $tags = json_decode((string)($r['tags_json'] ?? '[]'), true) ?: [];
             if (!in_array($tag, $tags, true)) continue;
+            $media = json_decode((string)($r['media_json'] ?? '[]'), true) ?: [];
+            if (count($media) !== 1 || !is_string($media[0]) || trim($media[0]) === '') continue;
             $actor = (string)($r['actor_url'] ?? '');
             $per_actor[$actor] = ($per_actor[$actor] ?? 0) + 1;
             if ($per_actor[$actor] > 5) continue;
-            $media = json_decode((string)($r['media_json'] ?? '[]'), true) ?: [];
             $rows[] = [
                 'object_id'    => (string)($r['object_id'] ?? ''),   // AP object id (engagement key)
                 'handle'       => (string)($r['actor_handle'] ?? ''),
@@ -212,14 +236,68 @@ function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit =
                 'horsconcours' => ((int)($r['horsconcours'] ?? 0)) === 1
                                   || in_array('horsconcours', $tags, true),
             ];
-            if (count($rows) >= $limit) break;
         }
     } catch (Throwable $e) { /* fresh install: table may lag */ }
-    return $rows;
-    // NOTE: ranking by likes/boosts tally is the next layer. snap_ap_timeline
-    // carries is_boost; a per-object like/boost count needs a tally pass over the
-    // inbox Like/Announce log before winners can be picked. Board = chronological
-    // until then. #horsconcours rows are shown but must be excluded when ranking.
+    usort($rows, static fn($a, $b) => strcmp((string)$b['published'], (string)$a['published']));
+    return array_slice($rows, 0, $limit);
+}
+
+/**
+ * Boost a newly ingested qualifying original exactly once.
+ *
+ * Inbound Announce activities never reach this function: only an original Note
+ * ingested from an actor we follow is eligible. pc_board() supplies the complete
+ * qualification policy (active participant, real hashtag, current window,
+ * exactly one image, original-not-boost, first five for that author).
+ */
+function pc_maybe_boost_entry(PDO $pdo, array $settings, string $object_id): bool {
+    if (!pc_enabled($settings)
+        || ($settings['photochallenge_boost_enabled'] ?? '1') !== '1'
+        || $object_id === ''
+        || !function_exists('sv_boost_remote')) return false;
+
+    $qualified = false;
+    foreach (pc_board($pdo, $settings, null, 1000) as $entry) {
+        if (($entry['object_id'] ?? '') === $object_id) {
+            $qualified = true;
+            break;
+        }
+    }
+    if (!$qualified) return false;
+
+    pc_ensure_tables($pdo);
+    $actor_url = '';
+    try {
+        $actor = $pdo->prepare("SELECT actor_url FROM snap_ap_timeline WHERE object_id = ? LIMIT 1");
+        $actor->execute([$object_id]);
+        $actor_url = (string)($actor->fetchColumn() ?: '');
+        $claim = $pdo->prepare(
+            "INSERT IGNORE INTO pc_outbound_boosts (object_id, actor_url, state)
+             VALUES (?, ?, 'pending')"
+        );
+        $claim->execute([$object_id, $actor_url]);
+        if ($claim->rowCount() !== 1) return false;
+
+        [$ok, $message] = sv_boost_remote($pdo, $settings, $object_id);
+        if ($ok) {
+            $pdo->prepare(
+                "UPDATE pc_outbound_boosts
+                    SET state='sent', boosted_at=NOW(), last_error=''
+                  WHERE object_id=?"
+            )->execute([$object_id]);
+            return true;
+        }
+        // A transient remote failure must be retryable on a later delivery or
+        // explicit retry job; do not permanently consume the unique claim.
+        $pdo->prepare("DELETE FROM pc_outbound_boosts WHERE object_id=?")->execute([$object_id]);
+        return false;
+    } catch (Throwable $e) {
+        try {
+            $pdo->prepare("DELETE FROM pc_outbound_boosts WHERE object_id=? AND state='pending'")
+                ->execute([$object_id]);
+        } catch (Throwable $ignored) {}
+        return false;
+    }
 }
 
 /** Render the board as a self-contained teaser-card fragment (canonical -> origin). */

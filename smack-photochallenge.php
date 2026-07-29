@@ -130,11 +130,12 @@ include 'core/sidebar.php';
             </div>
 
             <div class="lens-input-wrapper">
-                <label>TIMEZONE FOR THE FRIDAY WINDOW</label>
+                <label>DISPLAY TIMEZONE</label>
                 <input type="text" name="pc_tz" maxlength="64"
                        value="<?php echo $esc((string)($settings['photochallenge_tz'] ?? '')); ?>"
                        placeholder="e.g. America/Edmonton — blank = server default" autocomplete="off">
-                <p class="dim">The 50-hour window opens Friday 00:00 and closes Sunday 02:00 in this zone.</p>
+                <p class="dim">Used for admin display only. Qualification always uses the global 50-hour window:
+                    Thursday 10:00 UTC through Saturday 12:00 UTC.</p>
             </div>
 
             <div class="lens-input-wrapper">

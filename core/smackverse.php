@@ -477,7 +477,7 @@ function sv_url_is_public(string $url): bool {
  * IP; a sustained flood (>180 in the window) earns a 24-hour auto-ban.
  * Best-effort: a limiter failure never blocks legitimate federation.
  */
-function sv_inbox_rate_ok(PDO $pdo, string $ip): bool {
+function sv_inbox_rate_ok(PDO $pdo, string $ip, array $settings = []): bool {
     // SECAUDIT 035: the router hands us REMOTE_ADDR, which behind Cloudflare is
     // the shared tunnel address — auto-banning it would cut off ALL federation
     // to this site at once. Resolve the real peer through the one trusted
@@ -504,7 +504,14 @@ function sv_inbox_rate_ok(PDO $pdo, string $ip): bool {
         $q->execute([$ip]);
         $n = (int)($q->fetchColumn() ?: 0);
 
-        if ($n > 180) {
+        // SMACKCAST is a relay and legitimately receives a much denser signed
+        // inbox stream than a photoblog. This is a route-specific allowance,
+        // not an IP trust bypass: signatures, body caps, SSRF checks, replay
+        // handling and the flood ceiling all remain enforced.
+        $is_relay = ($settings['distribution_profile'] ?? '') === 'smackcast';
+        $soft_cap = $is_relay ? 600 : 60;
+        $ban_cap  = $is_relay ? 1800 : 180;
+        if ($n > $ban_cap) {
             // SECAUDIT 035: never record a ban against a private/loopback/proxy
             // address — that silences the whole audience, not the flooder.
             if (snap_ip_is_bannable($ip, $pdo)) {
@@ -512,7 +519,7 @@ function sv_inbox_rate_ok(PDO $pdo, string $ip): bool {
             }
             return false;
         }
-        return $n <= 60;
+        return $n <= $soft_cap;
     } catch (PDOException $e) {
         return true; // never block federation on a limiter hiccup
     }
@@ -1772,6 +1779,11 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         if (sv_is_following($pdo, $actor_id)) {
             sv_cache_actor($pdo, $actor_doc);
             sv_ingest_timeline($pdo, $obj, $actor_id, $handle);
+            if (function_exists('pc_maybe_boost_entry')) {
+                try {
+                    pc_maybe_boost_entry($pdo, $settings, (string)($obj['id'] ?? ''));
+                } catch (Throwable $e) {}
+            }
         }
         return 202;
     }

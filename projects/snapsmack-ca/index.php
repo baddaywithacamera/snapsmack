@@ -2294,6 +2294,11 @@ require_once __DIR__ . '/includes/header.php';
                 <p>The offline companion to the Light Table. GET YOUR SHIT SORTED pulls down your archive's thumbnails and the data needed to organise it, then turns your own machine into the sorting workbench — no live connection, no server load, no waiting on page loads for a ten-thousand-image back catalog. Do the work on a plane, in a basement, wherever you like. When you're done, it resyncs every change back to your site in one pass.</p>
             </div>
             <div class="coming-item">
+                <span class="tag">Data Freedom</span>
+                <h3>TAKE YOUR SHIT WITH YOU</h3>
+                <p>Absolute data freedom, even for total pussies. Every image and every scrap of portable data gets packed into a complete, understandable copy on your own computer, with readable JSON sidecars, verification, and courtesy import files for other systems. No command line, no heroic server-side ZIP, no begging us for permission to leave. Ownership is bullshit if leaving means starting over. Your work is yours &mdash; including the right to take the whole damn thing somewhere else.</p>
+            </div>
+            <div class="coming-item">
                 <span class="tag">Network</span>
                 <h3>PHOTOFRI.DAY</h3>
                 <p>A weekly photo challenge for the whole Fediverse. One theme every Friday; shoot it and post it from your own blog or instance, and photofri.day points the world back to your work — your photo never leaves your site. Launching September 2026.</p>
