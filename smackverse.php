@@ -224,9 +224,16 @@ switch ($ap) {
 
     case 'inbox':
         if ($method !== 'POST') sv_404();
+        if (($settings['distribution_profile'] ?? '') === 'smackcast'
+            && ($settings['smackback_enabled'] ?? '0') === '1'
+            && ($settings['smackback_status'] ?? 'clean') === 'breach') {
+            header('Retry-After: 900');
+            http_response_code(503);
+            exit;
+        }
         // Rate limit BEFORE any work — every inbox POST otherwise costs a
         // signature check including a remote key fetch. Login-pattern limiter.
-        if (!sv_inbox_rate_ok($pdo, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0')) {
+        if (!sv_inbox_rate_ok($pdo, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', $settings)) {
             http_response_code(429); exit;
         }
         $raw = file_get_contents('php://input') ?: '';

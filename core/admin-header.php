@@ -41,9 +41,14 @@ if (function_exists('exec')) {
 }
 
 // --- THEME RESOLUTION ---
-// Use the user's session preference, fall back to the global setting,
-// then default to midnight-lime
-$active_theme = $_SESSION['user_preferred_skin'] ?? $settings['active_theme'] ?? 'midnight-lime';
+// Photo-challenge nodes have one fixed admin presentation: Midnight Lime (the
+// neon-lime-on-charcoal theme). Normal blogs retain per-user theme selection.
+// Security alert themes may still override it below.
+$_admin_is_photochallenge = ($settings['distribution_profile'] ?? '') === 'photo-challenge'
+                         || ($settings['photochallenge_enabled'] ?? '0') === '1';
+$active_theme = $_admin_is_photochallenge
+    ? 'midnight-lime'
+    : ($_SESSION['user_preferred_skin'] ?? $settings['active_theme'] ?? 'midnight-lime');
 
 // --- ALERT THEME OVERRIDE ---
 // Hidden pulsing themes auto-applied on an active alert, replacing the user's

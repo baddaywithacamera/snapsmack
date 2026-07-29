@@ -30,6 +30,14 @@ if (defined('SNAPSMACK_VERSION_SHORT')) {
     $installer_version_label = SNAPSMACK_VERSION;
 }
 
+// The Release Packager injects this marker only into the separately signed
+// FEDISTRUCTURE artifact. Normal setup.php installs never see service profiles.
+if (is_file(__DIR__ . '/core/fedistructure-package.php')) {
+    require_once __DIR__ . '/core/fedistructure-package.php';
+}
+$installer_is_fedistructure = defined('SNAPSMACK_DISTRIBUTION')
+                           && SNAPSMACK_DISTRIBUTION === 'fedistructure';
+
 // --- INSTALLER SKIN FETCH HELPERS ---
 // Used by the Step 5 skin fetch block. Standalone so there's no dependency on
 // core/skin-registry.php (which has smackback ties not safe at install time).
@@ -203,7 +211,19 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
         $errors[] = "Too many failed attempts. Please wait {$wait} seconds.";
         $step = 2;
     } else {
-        // Capture install mode choice (set on step 1 form, carried forward here)
+        // Capture the immutable product/profile choice from the edition screen.
+        if ($installer_is_fedistructure) {
+            $profile = (string)($_POST['distribution_profile'] ?? '');
+            if (!in_array($profile, ['photo-challenge', 'daily-photo', 'smackcast'], true)) {
+                $errors[] = 'Choose a FEDISTRUCTURE service profile.';
+                $step = 2;
+            } else {
+                $_SESSION['distribution'] = 'fedistructure';
+                $_SESSION['distribution_profile'] = $profile;
+                $_SESSION['node_role'] = $profile === 'smackcast' ? 'hub' : 'spoke';
+                $_SESSION['site_mode'] = 'photoblog';
+            }
+        } else {
         $posted_mode = $_POST['site_mode'] ?? '';
         if (in_array($posted_mode, ['photoblog', 'carousel', 'smacktalk'], true)) {
             // Mode-vs-content safety: refuse to set a mode that mismatches the
@@ -224,6 +244,7 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
             }
         } elseif (empty($_SESSION['site_mode'])) {
             $_SESSION['site_mode'] = 'photoblog'; // safe default
+        }
         }
 
         $db_host   = trim($_POST['db_host'] ?? 'localhost');
@@ -1089,7 +1110,9 @@ if ($step === 5 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
     $sec_na_receive = isset($_POST['network_alert_receive'])      ? '1' : '0';
     $sec_na_send    = isset($_POST['network_alert_send'])         ? '1' : '0';
     $sec_na_push    = isset($_POST['network_alert_push_enabled']) ? '1' : '0';
-    $sec_forum      = isset($_POST['forum_enabled'])              ? '1' : '0';
+    $sec_forum      = $installer_is_fedistructure
+                    ? '0'
+                    : (isset($_POST['forum_enabled']) ? '1' : '0');
     // AI cost acceptance can NOT be a signing event at install time (2FA isn't
     // enrolled yet), so the installer never enables AI. Enabling is a signed admin
     // action (password + TOTP) in Settings → AI. The installer checkbox is now
@@ -1238,6 +1261,9 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
             ]);
 
             $install_mode     = $_SESSION['site_mode'] ?? 'photoblog';
+            $install_distribution = $_SESSION['distribution'] ?? 'blog';
+            $install_profile  = $_SESSION['distribution_profile'] ?? '';
+            $install_role     = $_SESSION['node_role'] ?? '';
             $is_carousel      = ($install_mode === 'carousel');
             // Default skin per mode — fetched from snapsmack.ca during install.
             // carousel → the-grid, smacktalk → alfred (proven longform skin),
@@ -1255,9 +1281,18 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'site_url'                  => $_SESSION['site_url'] ?? '',
                 'site_email'                => $_SESSION['admin_email'] ?? '',
                 'site_mode'                 => $install_mode,
+                'distribution'              => $install_distribution,
+                'distribution_profile'      => $install_profile,
+                'node_role'                 => $install_role,
                 'active_skin'               => $default_skin,
                 'active_skin_variant'       => $default_variant,
                 'active_theme'              => 'midnight-lime',
+                'smackverse_enabled'        => $installer_is_fedistructure ? '1' : '0',
+                'photochallenge_enabled'    => in_array($install_profile, ['photo-challenge', 'daily-photo'], true) ? '1' : '0',
+                'photochallenge_tag'        => $install_profile === 'daily-photo' ? 'aphotoeveryday' : 'photofri',
+                'photochallenge_window_mode'=> $install_profile === 'daily-photo' ? 'daily' : 'weekly',
+                'photochallenge_boost_enabled'=> in_array($install_profile, ['photo-challenge', 'daily-photo'], true) ? '1' : '0',
+                'smackcast_inbox_policy'     => $install_profile === 'smackcast' ? 'relay' : 'standard',
                 'timezone'                  => 'UTC',
                 'date_format'               => 'F j, Y',
                 'header_type'               => 'text',
@@ -2289,6 +2324,38 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <input type="hidden" name="step" value="2">
 
             <div class="install-mode-cards">
+                <?php if ($installer_is_fedistructure): ?>
+                <label class="install-mode-card">
+                    <input type="radio" name="distribution_profile" value="photo-challenge" checked>
+                    <div class="install-mode-card-inner">
+                        <div class="install-mode-version">SPOKE</div>
+                        <div class="install-mode-body">
+                            <div class="install-mode-name">PHOTOFRI.DAY</div>
+                            <div class="install-mode-desc">A weekly, hashtag-qualified photo challenge. One actor follows participants and boosts their qualifying original single-image posts into followers' own feeds.</div>
+                        </div>
+                    </div>
+                </label>
+                <label class="install-mode-card">
+                    <input type="radio" name="distribution_profile" value="daily-photo">
+                    <div class="install-mode-card-inner">
+                        <div class="install-mode-version">SPOKE</div>
+                        <div class="install-mode-body">
+                            <div class="install-mode-name">APHOTOEVERY.DAY</div>
+                            <div class="install-mode-desc">A daily photo-discovery actor with configurable qualifying tags, boost cadence, entry limits, and public feed pages.</div>
+                        </div>
+                    </div>
+                </label>
+                <label class="install-mode-card">
+                    <input type="radio" name="distribution_profile" value="smackcast">
+                    <div class="install-mode-card-inner">
+                        <div class="install-mode-version">HUB</div>
+                        <div class="install-mode-body">
+                            <div class="install-mode-name">SMACKCAST</div>
+                            <div class="install-mode-desc">The dedicated SMACKVERSE relay service. Public-only fan-out, paced delivery, and relay administration on the shared FEDISTRUCTURE foundation.</div>
+                        </div>
+                    </div>
+                </label>
+                <?php else: ?>
                 <label class="install-mode-card">
                     <input type="radio" name="site_mode" value="photoblog" checked>
                     <div class="install-mode-card-inner">
@@ -2319,6 +2386,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                         </div>
                     </div>
                 </label>
+                <?php endif; ?>
             </div>
 
             <button type="submit">Continue</button>
@@ -2505,6 +2573,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             </div>
 
             <!-- Community Forum -->
+            <?php if (!$installer_is_fedistructure): ?>
             <div style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:22px 26px;margin-bottom:22px;">
                 <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0;">
                     <input type="checkbox" name="forum_enabled" value="1" checked style="margin-top:4px;flex-shrink:0;">
@@ -2514,6 +2583,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                     </span>
                 </label>
             </div>
+            <?php endif; ?>
 
             <!-- AI cost responsibility — OFF by default; not pre-checked (liability acceptance must be a deliberate choice) -->
             <div style="background:#1a1a1a;border:1px solid #4a3a00;border-radius:6px;padding:22px 26px;margin-bottom:22px;">

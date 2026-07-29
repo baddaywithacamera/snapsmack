@@ -20,6 +20,16 @@
 
 $current_page = basename($_SERVER['PHP_SELF']);
 
+// FEDISTRUCTURE photo-challenge installs deliberately expose a reduced control
+// surface. Keep the shared SnapSmack pages and federation machinery, but do not
+// advertise blog-only archive structures or the general help system.
+$_sidebar_photochallenge = ($settings['distribution_profile'] ?? '') === 'photo-challenge'
+                        || ($settings['photochallenge_enabled'] ?? '0') === '1';
+if ($_sidebar_photochallenge) {
+    require __DIR__ . '/sidebar-photochallenge.php';
+    return;
+}
+
 // --- UI MODE ---
 // ui_mode is per-user — stored in snap_users, loaded into session at login
 $_ui_pimpmobile    = ($_SESSION['user_ui_mode'] ?? 'bigwheel') === 'pimpmobile';

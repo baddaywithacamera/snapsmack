@@ -1148,4 +1148,14 @@ CREATE TABLE IF NOT EXISTS `pc_engagement` (
   KEY `idx_pc_engagement_object` (`object_id`(191))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `pc_outbound_boosts` (
+  `object_id` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `actor_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `state` enum('pending','sent') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `boosted_at` datetime DEFAULT NULL,
+  `last_error` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  PRIMARY KEY (`object_id`(191)),
+  KEY `idx_pc_boost_state` (`state`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ===== SNAPSMACK EOF =====

@@ -1,4 +1,9 @@
 <?php
+// Distribution marker is injected only into signed FEDISTRUCTURE packages.
+// Load it before updater/runtime decisions; ordinary SnapSmack has no marker.
+if (is_file(__DIR__ . '/fedistructure-package.php')) {
+    require_once __DIR__ . '/fedistructure-package.php';
+}
 /**
  * SNAPSMACK - System Constants
  *
@@ -63,9 +68,9 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.454');
-define('SNAPSMACK_VERSION_SHORT', '0.7.454');
-define('SNAPSMACK_VERSION_CODENAME', 'Case Closed');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.455');
+define('SNAPSMACK_VERSION_SHORT', '0.7.455');
+define('SNAPSMACK_VERSION_CODENAME', 'Fed Up');
 
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.

@@ -62,6 +62,13 @@ if (!sv_enabled($settings)) {
     exit(0);
 }
 
+if (($settings['distribution_profile'] ?? '') === 'smackcast'
+    && ($settings['smackback_enabled'] ?? '0') === '1'
+    && ($settings['smackback_status'] ?? 'clean') === 'breach') {
+    fwrite(STDERR, "SMACKCAST delivery suspended by SMACKBACK breach.\n");
+    exit(1);
+}
+
 // Cron and event kicks can arrive together. A database advisory lock works
 // across the root cron user and the web/PHP user without filesystem ownership
 // problems. It is released automatically when this connection closes.

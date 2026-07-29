@@ -144,6 +144,7 @@ if (!defined('UPDATER_KEY_ROTATION_URL')) {
 
 define('UPDATER_API_URL',     'https://snapsmack.ca/releases/latest.json');
 define('UPDATER_API_URL_DEV', 'https://snapsmack.ca/releases/latest-dev.json');
+define('UPDATER_API_URL_FEDISTRUCTURE', 'https://snapsmack.ca/releases/latest-fedistructure.json');
 define('UPDATER_BACKUP_DIR', dirname(__DIR__) . '/backups');
 define('UPDATER_MIGRATIONS_DIR', dirname(__DIR__) . '/migrations');
 define('UPDATER_TEMP_DIR', sys_get_temp_dir() . '/snapsmack_update');
@@ -382,7 +383,11 @@ function updater_fetch_release_info(bool $fast = false): array {
         $track = updater_get_track($pdo);
     }
 
-    $url = ($track === 'dev') ? UPDATER_API_URL_DEV : UPDATER_API_URL;
+    $is_fedistructure = defined('SNAPSMACK_DISTRIBUTION')
+                     && SNAPSMACK_DISTRIBUTION === 'fedistructure';
+    $url = $is_fedistructure
+        ? UPDATER_API_URL_FEDISTRUCTURE
+        : (($track === 'dev') ? UPDATER_API_URL_DEV : UPDATER_API_URL);
 
     // Phone-home ping — non-blocking, fails silently. Only fires on non-fast
     // (background) checks so the AJAX spinner loop doesn't double-ping.
@@ -403,6 +408,11 @@ function updater_fetch_release_info(bool $fast = false): array {
     $data = json_decode($json, true);
     if (!is_array($data) || empty($data['version'])) {
         return ['error' => 'Invalid response from update server.'];
+    }
+    $remote_distribution = (string)($data['distribution'] ?? 'blog');
+    $expected_distribution = $is_fedistructure ? 'fedistructure' : 'blog';
+    if ($remote_distribution !== $expected_distribution) {
+        return ['error' => 'Update package distribution mismatch. Refusing.'];
     }
 
     // Safety belt: stable-tracked sites must never receive a D-suffixed version,

@@ -283,7 +283,8 @@ function sc_audit_schema_completeness(string $schema_sql, string $zip_path): arr
  *                              When empty, all files are included (full release,
  *                              first-release fallback).
  */
-function sc_build_release_zip(string $tag, string $zip_dest, array $include_files = []): array {
+function sc_build_release_zip(string $tag, string $zip_dest, array $include_files = [],
+                              string $distribution = 'blog'): array {
     $url  = 'https://github.com/' . SNAPSMACK_GITHUB_REPO . '/archive/refs/tags/' . urlencode($tag) . '.zip';
     $data = sc_http_raw($url);
     if ($data === false) {
@@ -393,6 +394,10 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         $rel  = $prefix ? substr($name, strlen($prefix)) : $name;
         if ($rel === '' || str_ends_with($rel, '/')) continue;
         if (str_contains($rel, '..') || str_starts_with($rel, '/')) continue;
+        // The two bootstrap files are distribution selectors. Never put the
+        // wrong one inside an artifact or an update can reintroduce it.
+        if ($distribution === 'blog' && $rel === 'fedup.php') { $skipped++; continue; }
+        if ($distribution === 'fedistructure' && $rel === 'setup.php') { $skipped++; continue; }
 
         // Differential mode: only include files that changed
         if ($differential && !isset($include_set[$rel])) { $skipped++; continue; }
@@ -449,7 +454,7 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
             && !str_ends_with($basename, '.min.js')
             && !str_ends_with($basename, '.min.css')
             && strpos($rel, 'fjGallery') === false
-            && !in_array($basename, ['install.php', 'setup.php'], true) // self-delete post-install → false MISSING breach + lockout; ship in zip but NEVER in the manifest
+            && !in_array($basename, ['install.php', 'setup.php', 'fedup.php'], true) // self-delete post-install → false MISSING breach + lockout; ship in zip but NEVER in the manifest
             && !str_starts_with($rel, 'skins/')   // CORE manifest is core-only — skins are
                                                   // monitored via their own skin_id rows (Skin
                                                   // Packager). Keeping skin hashes out of the
@@ -494,6 +499,124 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
     return [
         'ok'  => true,
         'msg' => "Downloaded {$dl_kb} KB from GitHub, packaged {$mode}, skipped {$skipped}",
+    ];
+}
+
+/**
+ * Build and sign the FEDISTRUCTURE sibling artifact from the same source tag.
+ * It deliberately has its own manifest and bootstrap, but shares the release
+ * key and source version with SnapSmack so the products cannot drift.
+ */
+function sc_build_fedistructure_release(string $tag, string $version, string $version_full,
+                                        string $codename, string $released,
+                                        string $requires_php, string $requires_mysql,
+                                        array $changelog, string $signing_pubkey): array {
+    $zip_name = 'snapsmack-fedistructure-' . preg_replace('/[^a-zA-Z0-9._\-]/', '', $version) . '.zip';
+    $zip_dest = rtrim(RELEASES_DIR, '/') . '/' . $zip_name;
+    $built = sc_build_release_zip($tag, $zip_dest, [], 'fedistructure');
+    if (!$built['ok']) return $built;
+
+    $zip = new ZipArchive();
+    if ($zip->open($zip_dest) !== true) {
+        return ['ok' => false, 'msg' => 'Could not open FEDISTRUCTURE zip for finalization.'];
+    }
+    $marker = "<?php\n/** SNAPSMACK FEDISTRUCTURE package marker. */\n"
+            . "define('SNAPSMACK_DISTRIBUTION', 'fedistructure');\n"
+            . "// ===== SNAPSMACK EOF =====\n";
+    $zip->addFromString('core/fedistructure-package.php', $marker);
+    $smackback_raw = $zip->getFromName('smackback-manifest.json');
+    $smackback = is_string($smackback_raw) ? json_decode($smackback_raw, true) : null;
+    if (!is_array($smackback) || !is_array($smackback['files'] ?? null)) {
+        $zip->close();
+        @unlink($zip_dest);
+        return ['ok' => false, 'msg' => 'Could not extend the SMACKBACK manifest for FEDISTRUCTURE.'];
+    }
+    $smackback['files']['core/fedistructure-package.php'] = [
+        'hash'          => hash('sha256', $marker),
+        'size'          => strlen($marker),
+        'eof_signature' => '// ===== SNAPSMACK EOF =====',
+    ];
+    $zip->deleteName('smackback-manifest.json');
+    $zip->addFromString('smackback-manifest.json', json_encode(
+        $smackback,
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+    ));
+    $fedup = $zip->getFromName('fedup.php');
+    if ($fedup === false) {
+        $zip->close();
+        @unlink($zip_dest);
+        return ['ok' => false, 'msg' => 'fedup.php is absent from the FEDISTRUCTURE artifact.'];
+    }
+    if ($signing_pubkey !== '') {
+        if (!preg_match(
+            "/define\s*\(\s*'FEDUP_RELEASE_PUBKEY'\s*,\s*'[0-9a-fA-F]{64}'\s*\)/",
+            $fedup
+        )) {
+            $zip->close();
+            @unlink($zip_dest);
+            return ['ok' => false, 'msg' => 'Could not locate the signing key in fedup.php.'];
+        }
+        $patched = preg_replace(
+            "/define\s*\(\s*'FEDUP_RELEASE_PUBKEY'\s*,\s*'[0-9a-fA-F]{64}'\s*\)/",
+            "define('FEDUP_RELEASE_PUBKEY', '{$signing_pubkey}')",
+            $fedup
+        );
+        if (!is_string($patched)) {
+            $zip->close();
+            @unlink($zip_dest);
+            return ['ok' => false, 'msg' => 'Could not inject the signing key into fedup.php.'];
+        }
+        $fedup = $patched;
+    }
+    if (file_put_contents(rtrim(RELEASES_DIR, '/') . '/fedup.php', $fedup, LOCK_EX) === false) {
+        $zip->close();
+        @unlink($zip_dest);
+        return ['ok' => false, 'msg' => 'Could not publish the standalone fedup.php bootstrap.'];
+    }
+    $zip->deleteName('fedup.php');
+    $zip->close();
+
+    $checksum = hash_file('sha256', $zip_dest);
+    if ($checksum === false) {
+        @unlink($zip_dest);
+        return ['ok' => false, 'msg' => 'Could not checksum the FEDISTRUCTURE artifact.'];
+    }
+    try {
+        $signature = sodium_bin2hex(sodium_crypto_sign_detached(
+            $checksum,
+            sodium_hex2bin(SMACK_RELEASE_PRIVKEY)
+        ));
+    } catch (Throwable $e) {
+        @unlink($zip_dest);
+        return ['ok' => false, 'msg' => 'FEDISTRUCTURE signing failed: ' . $e->getMessage()];
+    }
+
+    $manifest = [
+        'distribution'    => 'fedistructure',
+        'version'         => $version,
+        'version_full'    => $version_full,
+        'codename'        => $codename,
+        'released'        => $released,
+        'download_url'    => rtrim(RELEASES_URL, '/') . '/' . $zip_name,
+        'checksum_sha256' => $checksum,
+        'signature'       => $signature,
+        'signing_pubkey'  => $signing_pubkey,
+        'changelog'       => $changelog,
+        'requires_php'    => $requires_php,
+        'requires_mysql'  => $requires_mysql,
+        'download_size'   => filesize($zip_dest),
+        'profiles'        => ['photo-challenge', 'daily-photo', 'smackcast'],
+    ];
+    $manifest_path = rtrim(RELEASES_DIR, '/') . '/latest-fedistructure.json';
+    if (file_put_contents($manifest_path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) === false) {
+        @unlink($zip_dest);
+        return ['ok' => false, 'msg' => 'Could not publish latest-fedistructure.json.'];
+    }
+    return [
+        'ok' => true,
+        'msg' => "FEDISTRUCTURE artifact signed: {$zip_name}",
+        'zip' => $zip_dest,
+        'manifest' => $manifest_path,
     ];
 }
 
@@ -818,6 +941,18 @@ if ($action === 'build' && $preflight_ok) {
                 $build_log[] = "→ Signed OK";
             } catch (SodiumException $e) {
                 $build_error = 'Signing failed: ' . $e->getMessage();
+            }
+
+            // Build the sibling service distribution before publishing either
+            // manifest. Both artifacts therefore always originate at one tag.
+            if (!$build_error) {
+                $fed_result = sc_build_fedistructure_release(
+                    $tag, $version, $version_full, $codename, $released,
+                    $requires_php, $requires_mysql, $changelog,
+                    (string)$sc_derived_pubkey
+                );
+                $build_log[] = '→ ' . $fed_result['msg'];
+                if (!$fed_result['ok']) $build_error = $fed_result['msg'];
             }
 
             if (!$build_error) {
