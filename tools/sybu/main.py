@@ -2395,6 +2395,8 @@ class App(tk.Tk):
                 int(-1 * (e.delta / 120)), "units")
             if self._active_tab == 'settings' else None)
 
+        ttk.Button(btn_bar, text="Dup", style="Ghost.TButton",
+                   command=self._on_profile_duplicate).pack(side="right")
         def _sbox(title):
             f = tk.Frame(right, bg=BG_CARD,
                          highlightthickness=1, highlightbackground=BORDER)
@@ -2613,6 +2615,33 @@ class App(tk.Tk):
             'drive_enabled':       True,
             'gemini_api_key':      self._sp_gemini_var.get().strip(),
             'copyright_text':      self._sp_copyright_var.get(),
+    def _on_profile_duplicate(self):
+        sel = self._profile_lb.curselection()
+        if not sel:
+            messagebox.showinfo("No profile", "Select a profile first.",
+                                parent=self)
+            return
+
+        name = self._profile_lb.get(sel[0])
+        existing = profile_manager.list_profiles()
+        base = f'{name} (copy)'
+        new_name = base
+        n = 2
+        while new_name in existing:
+            new_name = f'{base} {n}'
+            n += 1
+
+        if profile_manager.duplicate_profile(name, new_name) is None:
+            messagebox.showerror("Duplicate failed",
+                                 f'Could not duplicate "{name}".', parent=self)
+            return
+
+        self._settings_refresh_list(select_name=new_name)
+        self._sp_status_lbl.configure(
+            text='Copy ready ? change its name and site details, then save.',
+            fg=FG_OK,
+        )
+
             'default_category':    self._sp_cat_var.get().strip(),
             'default_album':       self._sp_alb_var.get().strip(),
             'default_orientation': self._sp_orient_var.get(),
