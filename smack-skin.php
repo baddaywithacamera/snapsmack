@@ -85,6 +85,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
                     if ($result['success']) {
                         skin_registry_clear_cache();
                         $gallery_msg = $result['message'];
+                        $installed_slug = (string)($result['slug'] ?? '');
+                        if (!empty($_POST['activate_uploaded_skin']) && $installed_slug !== '') {
+                            $installed_manifest = load_skin_manifest($installed_slug);
+                            $installed_modes = is_array($installed_manifest['modes'] ?? null)
+                                ? array_values($installed_manifest['modes'])
+                                : [];
+                            $pdo->prepare(
+                                "INSERT INTO snap_settings (setting_key, setting_val)
+                                 VALUES ('active_skin', ?)
+                                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+                            )->execute([$installed_slug]);
+                            if (count($installed_modes) === 1
+                                && in_array($installed_modes[0], ['photoblog', 'carousel', 'smacktalk'], true)) {
+                                $pdo->prepare(
+                                    "INSERT INTO snap_settings (setting_key, setting_val)
+                                     VALUES ('site_mode', ?)
+                                     ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+                                )->execute([$installed_modes[0]]);
+                                $gallery_msg .= ' Site mode switched to ' . $installed_modes[0] . '.';
+                            }
+                            if (is_file(__DIR__ . '/core/page-cache.php')) {
+                                require_once __DIR__ . '/core/page-cache.php';
+                                if (function_exists('page_cache_purge_all')) page_cache_purge_all();
+                            }
+                            $gallery_msg .= ' The uploaded skin is now active.';
+                        }
                     } else {
                         $gallery_err = $result['message'];
                     }
@@ -1587,6 +1613,10 @@ if (!empty($google_families)) {
             <label class="skin-upload-confirm">
                 <input type="checkbox" name="accept_skin_code" value="1" required>
                 I understand that a skin package contains executable site code.
+            </label>
+            <label class="skin-upload-confirm">
+                <input type="checkbox" name="activate_uploaded_skin" value="1">
+                Activate this skin after installation and switch the site to its required publishing mode.
             </label>
             <button type="submit" class="gallery-btn install">UPLOAD &amp; INSTALL</button>
         </form>

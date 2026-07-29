@@ -24,6 +24,7 @@ $expect(str_contains($gallery, "gallery_action\" value=\"upload"), 'gallery must
 $expect(str_contains($gallery, 'reauth_verify('), 'skin upload must require password and TOTP step-up');
 $expect(str_contains($gallery, "'admin', 'administrator', 'owner'"), 'skin upload must reject editor accounts');
 $expect(str_contains($gallery, 'accept_skin_code'), 'skin upload must require executable-code consent');
+$expect(str_contains($gallery, 'activate_uploaded_skin'), 'uploaded skins must offer activation and mode switching');
 $expect(str_contains($registry, "in_array('..', \$parts, true)"), 'upload installer must reject traversal paths');
 $expect(str_contains($registry, 'count($manifest_entries) !== 1'), 'upload installer must require one package root');
 $expect(str_contains($registry, 'smackback_init_skin_manifest('), 'upload installer must require a SMACKBACK manifest');
