@@ -68,9 +68,9 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.455');
-define('SNAPSMACK_VERSION_SHORT', '0.7.455');
-define('SNAPSMACK_VERSION_CODENAME', 'Fed Up');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.456');
+define('SNAPSMACK_VERSION_SHORT', '0.7.456');
+define('SNAPSMACK_VERSION_CODENAME', 'Guard Rails');
 
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.
