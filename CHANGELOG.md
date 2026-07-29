@@ -14,6 +14,14 @@
 
 - **SnapSmack.ca now explains the retro-web idea in language modern search can understand.** The homepage leads with “Retro Photo Blogging. Modern Technology.” and immediately identifies SnapSmack as free, self-hosted photography publishing software. Canonical URLs, Twitter cards, WebSite/SoftwareApplication/WebPage JSON-LD, a sitemap, robots policy, llms.txt, an `/index.php` redirect, descriptive footer navigation, explicit image dimensions, and below-the-fold lazy loading close the technical gaps. Six focused pages cover Instagram and Flickr alternatives, self-hosted photography, modern photo-blog software, Fediverse photography, and complete export/portability without inventing parity or adoption claims. A permanent `tools/seo_audit.py` command validates the crawl surface before the separately deployed marketing site goes live. (`projects/snapsmack-ca/`, `tools/seo_audit.py`, pre-change audit in `docs/`.)
 
+## 0.7.459 "One Pull" — 2026-07-29
+
+- **Smack Central self-updates cleanly in one pull.** A successful update now reports the version and codename written during the current request instead of comparing the new installed tag against PHP's immutable, already-loaded old constant and falsely demanding a second pull.
+- **SCROLL is available for packaging as a beta.** Its status advances from development to beta and its skin version advances to 0.1.1, so the gallery may publish it for photoblog sites.
+- **A GREY RECKONING is retired.** The redundant Noah Grey tribute skin has been removed; 50 SHADES OF NOAH GREY remains.
+- **Offline-posting consent uses the current product name.** The API-key screen now identifies SMACK YOUR BATCH UP without obsolete SON OF A BATCH, BATCH SLAPPED, or BATCH, PLEASE interface copy.
+- **SMACK YOUR BATCH UP can duplicate site profiles.** The Settings profile list adds a Dup action that copies credentials and defaults into a uniquely named editable profile for another site.
+
 ## 0.7.458 "Side Door" — 2026-07-29
 
 - **The Skin Gallery can now install a packaged skin even when the registry does not list it.** The full-administrator upload path accepts a Skin Packager ZIP, rejects traversal and ambiguous package roots, requires the inert manifest and stylesheet, requires password plus TOTP and explicit executable-code consent, and refuses packages without their SMACKBACK integrity manifest. An optional activation switch also changes the site to the uploaded skin's required publishing mode, so an intentionally uploaded SMACKTALK skin does not remain hidden on a photoblog-mode site. Registry visibility is no longer a lockout.
