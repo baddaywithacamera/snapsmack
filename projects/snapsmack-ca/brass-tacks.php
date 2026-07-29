@@ -260,7 +260,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="qa" id="q-platforms">
                 <h3>Platforms supported?</h3>
                 <p><strong>Server.</strong> LAMP. Linux, Apache, MySQL/MariaDB, PHP 8.1 or newer. Nginx with PHP-FPM works in principle and several testers run it. Officially supported once it's been through enough cycles to call it tested. WIMP — Windows, IIS, MySQL, PHP — can go eat a bag of dicks. Not supported. Not going to be. Don't file bug reports. See "Why no Apple support?" for the other platform we don't build for, and why.</p>
-                <p><strong>Desktop Companion Apps.</strong> Windows 10 and up. Any recent Linux distribution. That's it. FreeBSD: no. macOS: see "Why no Apple support?" Don't ask.</p>
+                <p><strong>Desktop Companion Apps.</strong> Windows 10 and up. Any recent Linux distribution. The Linux builds have also been found to work on macOS, entirely by accident, but macOS remains unsupported. See "Why no Apple support?" before getting excited.</p>
             </div>
 
             <div class="qa" id="q-mobile">
@@ -291,6 +291,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Partway through that work, Apple obsoleted his Mac. The machine he was using to do the most important job left in his life stopped getting the updates it needed to keep functioning as the tool he needed it to be. He could not afford to replace it. He was dying.</p>
                 <p>I sent him a Windows system. He finished what he could.</p>
                 <p>SnapSmack does not and will not build for Apple platforms. Not the OS, not the App Store, not iOS, not anything Apple makes money from. Not now. Not ever.</p>
+                <p><strong>Update:</strong> SnapSmack's desktop tools for Linux accidentally work on macOS. They were designed to be highly compatible across Linux distributions and did not disappoint &mdash; until we discovered macOS compatibility as well. We do not and will not support Apple's products, so this compatibility may break in the future without any fixes coming from us. Please plan accordingly.</p>
                 <p>This is not a technical decision. It will not be revisited.</p>
                 <p>Nobody hurts my friends and gets away with it. No Apple support ever.</p>
             </div>
