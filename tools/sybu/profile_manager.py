@@ -124,6 +124,16 @@ def rename_profile(old_name: str, new_name: str) -> bool:
     return True
 
 
+def duplicate_profile(name: str, new_name: str) -> Optional[Dict]:
+    """Duplicate an existing profile under a new name."""
+    profile = load_profile(name)
+    if profile is None:
+        return None
+    profile['name'] = new_name
+    save_profile(profile)
+    return profile
+
+
 def blank_profile() -> Dict:
     """Return a new empty profile with all required keys."""
     return {
