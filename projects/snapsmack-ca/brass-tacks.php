@@ -324,7 +324,7 @@ require_once __DIR__ . '/includes/header.php';
                 <h3>Why can't I switch install modes?</h3>
                 <p>SnapSmack ships in three install personalities — SMACKONEOUT (single-user photoblog), GRAMOFSMACK (a faithful 2016-Instagram-clone with three-across grids and carousel posts up to ten images deep), and SMACKTALK (essays and pages alongside the photoblog). You pick one when you install. You don't switch later.</p>
                 <p>This is deliberate. Each mode has its own database conventions, its own admin behaviours, its own assumptions about what a post is, its own visible feature set. Letting installs toggle between them would mean every feature has to handle three modes plus every transition state between them. That is the road to bloat and to the kind of bugs that don't get found until somebody loses data.</p>
-                <p>Pick the install mode that fits the site you're building. If the site changes shape later, you install fresh in the new mode and bring your content across. A dedicated mode-migration tool is on the build list — until it ships, that move is a manual one, and we're not going to pretend otherwise.</p>
+                <p>Pick the install mode that fits the site you're building. If the site changes shape later, install fresh in the new mode and move what maps cleanly by hand. There will not be an automatic mode switcher: a ten-image GRAMOFSMACK carousel has no honest translation into a one-image SMACKONEOUT post, and turning it into SMACKTALK would require the software to invent editorial structure or discard your work. We're not going to pretend otherwise.</p>
             </div>
 
             <div class="qa" id="q-classic-ig">
