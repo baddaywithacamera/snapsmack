@@ -19,6 +19,12 @@
 require_once __DIR__ . '/sc-auth.php';
 require_once __DIR__ . '/sc-version.php';
 
+// SC_VERSION is immutable for the lifetime of this PHP request. A successful
+// self-update rewrites sc-version.php, so keep a request-local display value
+// that can immediately reflect the version just installed.
+$sc_runtime_version = SC_VERSION;
+$sc_runtime_codename = SC_CODENAME;
+
 // ── HTTP + GitHub helpers (guarded — sc-release.php may already define them) ──
 
 if (!function_exists('sc_http_raw')) {
@@ -215,6 +221,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
             . "define('SC_CODENAME', '" . addslashes($tag_codename) . "');\n"
             . "// ===== SNAPSMACK EOF =====\n";
         file_put_contents($dest_dir . 'sc-version.php', $sc_ver_content);
+        $sc_runtime_version = $tag_version;
+        $sc_runtime_codename = $tag_codename;
         $result_log[] = ['ok', "sc-version.php updated to {$tag_version}"];
 
         // 3b. Copy projects/snapsmack-ca/ files to web root ───────────────────
@@ -393,15 +401,15 @@ include __DIR__ . '/sc-layout-top.php';
             <td>
                 <?php if ($installed_ref): ?>
                     <code><?php echo htmlspecialchars($installed_ref); ?></code>
-                    <?php if (SC_CODENAME): ?>
-                        <span class="sc-muted">(<?php echo htmlspecialchars(SC_CODENAME); ?>)</span>
+                    <?php if ($sc_runtime_codename): ?>
+                        <span class="sc-muted">(<?php echo htmlspecialchars($sc_runtime_codename); ?>)</span>
                     <?php endif; ?>
                     <?php
-                    $running_norm  = ltrim(SC_VERSION, 'v');
+                    $running_norm  = ltrim($sc_runtime_version, 'v');
                     $installed_norm = ltrim($installed_ref, 'v');
                     if ($running_norm !== $installed_norm):
                     ?>
-                        <span class="sc-warn" style="margin-left:8px;">⚠ file reports <?php echo htmlspecialchars(SC_VERSION); ?> — re-pull to sync</span>
+                        <span class="sc-warn" style="margin-left:8px;">⚠ file reports <?php echo htmlspecialchars($sc_runtime_version); ?> — re-pull to sync</span>
                     <?php endif; ?>
                 <?php else: ?>
                     <span class="sc-muted">Not recorded — run an update to set baseline.</span>
