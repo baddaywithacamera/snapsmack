@@ -21,6 +21,8 @@ $packager = file_get_contents($root . '/smack-central/sc-release.php') ?: '';
 $updater = file_get_contents($root . '/core/updater.php') ?: '';
 $fedup = file_get_contents($root . '/fedup.php') ?: '';
 $guard = file_get_contents($root . '/tools/release-flow.php') ?: '';
+$constants = file_get_contents($root . '/core/constants.php') ?: '';
+$changelog = file_get_contents($root . '/CHANGELOG.md') ?: '';
 
 rel_expect(str_contains($policy, 'All ordinary implementation pushes go to `dev` only'),
     'policy must make dev the ordinary push branch');
@@ -42,6 +44,12 @@ rel_expect(str_contains($guard, "if (\$command === 'push-dev')"),
     'release guard must provide ordinary dev pushes');
 rel_expect(str_contains($guard, "if (\$command === 'promote-stable')"),
     'release guard must provide guarded stable promotion');
+if (preg_match("/SNAPSMACK_VERSION_SHORT',\\s*'([^']+)'/", $constants, $version_match)) {
+    rel_expect(str_contains($changelog, '## ' . $version_match[1] . ' '),
+        'the source version must have a versioned changelog section before tagging');
+} else {
+    rel_expect(false, 'source version constant must be readable');
+}
 
 if ($failures) {
     foreach ($failures as $failure) fwrite(STDERR, "FAIL: {$failure}\n");
