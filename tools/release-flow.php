@@ -64,6 +64,14 @@ function rf_source_version(): string {
     return $m[1];
 }
 
+function rf_require_changelog(string $version): void {
+    $changelog = file_get_contents(__DIR__ . '/../CHANGELOG.md');
+    if (!is_string($changelog)
+        || !preg_match('/^## ' . preg_quote($version, '/') . '\s/m', $changelog)) {
+        rf_fail("CHANGELOG.md has no versioned {$version} section");
+    }
+}
+
 function rf_tag_target(string $tag): string {
     exec('git show-ref --verify --hash ' . escapeshellarg('refs/tags/' . $tag) . ' 2>&1', $lines, $code);
     return $code === 0 ? trim(implode("\n", $lines)) : '';
@@ -103,6 +111,7 @@ if ($command === 'tag-dev') {
     if (rf_source_version() !== $version) {
         rf_fail("source version is " . rf_source_version() . "; expected {$version}");
     }
+    rf_require_changelog($version);
     rf_git(['fetch', 'Github', '--tags', '--prune'], false);
     $tag = 'v' . $version . 'D';
     if (rf_tag_target($tag) !== '') rf_fail("tag {$tag} already exists; use the next version");
@@ -122,6 +131,7 @@ if ($command === 'promote-stable') {
     if (rf_source_version() !== $version) {
         rf_fail("source version is " . rf_source_version() . "; expected {$version}");
     }
+    rf_require_changelog($version);
     rf_git(['fetch', 'Github', '--tags', '--prune'], false);
     $head = rf_git(['rev-parse', 'HEAD']);
     if (rf_git(['rev-parse', 'refs/remotes/Github/dev']) !== $head) {
