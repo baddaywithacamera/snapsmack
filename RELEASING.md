@@ -26,11 +26,12 @@ FEDISTRUCTURE uses the same channels:
 
 1. All ordinary implementation pushes go to `dev` only. They do not receive a
    tag and cannot alter either release manifest.
-2. A beta candidate gets one new, immutable `D` tag on `dev`. Never move or
-   reuse a published tag.
+2. A beta candidate gets the next sequential `D` tag only after the complete
+   candidate is ready for Smack Central. Do not tag intermediate commits.
 3. Smack Central may package a `D` tag only into the dev manifests.
-4. Fixes found in beta go back to `dev` and receive the next unused numeric
-   version and `D` tag. Do not overwrite the previous beta.
+4. A tag becomes immutable when Smack Central publishes that build. Fixes found
+   after publication go back to `dev` and receive the next sequential `D` tag.
+   An unbuilt mistaken tag may be corrected or removed before publication.
 5. Stable promotion uses the exact commit that was tested under its matching
    `D` tag. `master` must fast-forward to that commit; no release-only code
    changes are allowed during promotion.
