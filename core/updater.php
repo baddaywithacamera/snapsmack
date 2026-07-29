@@ -145,6 +145,7 @@ if (!defined('UPDATER_KEY_ROTATION_URL')) {
 define('UPDATER_API_URL',     'https://snapsmack.ca/releases/latest.json');
 define('UPDATER_API_URL_DEV', 'https://snapsmack.ca/releases/latest-dev.json');
 define('UPDATER_API_URL_FEDISTRUCTURE', 'https://snapsmack.ca/releases/latest-fedistructure.json');
+define('UPDATER_API_URL_FEDISTRUCTURE_DEV', 'https://snapsmack.ca/releases/latest-fedistructure-dev.json');
 define('UPDATER_BACKUP_DIR', dirname(__DIR__) . '/backups');
 define('UPDATER_MIGRATIONS_DIR', dirname(__DIR__) . '/migrations');
 define('UPDATER_TEMP_DIR', sys_get_temp_dir() . '/snapsmack_update');
@@ -386,7 +387,7 @@ function updater_fetch_release_info(bool $fast = false): array {
     $is_fedistructure = defined('SNAPSMACK_DISTRIBUTION')
                      && SNAPSMACK_DISTRIBUTION === 'fedistructure';
     $url = $is_fedistructure
-        ? UPDATER_API_URL_FEDISTRUCTURE
+        ? (($track === 'dev') ? UPDATER_API_URL_FEDISTRUCTURE_DEV : UPDATER_API_URL_FEDISTRUCTURE)
         : (($track === 'dev') ? UPDATER_API_URL_DEV : UPDATER_API_URL);
 
     // Phone-home ping — non-blocking, fails silently. Only fires on non-fast

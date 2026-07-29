@@ -503,6 +503,60 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
 }
 
 /**
+ * Stamp a dev artifact with its D-suffixed runtime version and keep the
+ * SMACKBACK baseline synchronized with the exact modified bytes.
+ */
+function sc_stamp_package_version(string $zip_path, string $version, string $version_full): array {
+    $zip = new ZipArchive();
+    if ($zip->open($zip_path) !== true) {
+        return ['ok' => false, 'msg' => 'Could not open package for version stamping.'];
+    }
+    $constants = $zip->getFromName('core/constants.php');
+    $manifest_raw = $zip->getFromName('smackback-manifest.json');
+    $manifest = is_string($manifest_raw) ? json_decode($manifest_raw, true) : null;
+    if (!is_string($constants) || !is_array($manifest) || !is_array($manifest['files'] ?? null)) {
+        $zip->close();
+        return ['ok' => false, 'msg' => 'Package version inputs or SMACKBACK manifest are missing.'];
+    }
+    $stamped = preg_replace(
+        [
+            "/define\\('SNAPSMACK_VERSION',\\s*'[^']+'\\)/",
+            "/define\\('SNAPSMACK_VERSION_SHORT',\\s*'[^']+'\\)/",
+        ],
+        [
+            "define('SNAPSMACK_VERSION', '" . addslashes($version_full) . "')",
+            "define('SNAPSMACK_VERSION_SHORT', '" . addslashes($version) . "')",
+        ],
+        $constants
+    );
+    if (!is_string($stamped)) {
+        $zip->close();
+        return ['ok' => false, 'msg' => 'Could not stamp package version constants.'];
+    }
+    $eof = null;
+    foreach (array_reverse(explode("\n", substr($stamped, -1024))) as $line) {
+        if (rtrim($line) !== '') {
+            $eof = substr(rtrim($line), 0, 512);
+            break;
+        }
+    }
+    $manifest['files']['core/constants.php'] = [
+        'hash'          => hash('sha256', $stamped),
+        'size'          => strlen($stamped),
+        'eof_signature' => $eof,
+    ];
+    $zip->deleteName('core/constants.php');
+    $zip->addFromString('core/constants.php', $stamped);
+    $zip->deleteName('smackback-manifest.json');
+    $zip->addFromString('smackback-manifest.json', json_encode(
+        $manifest,
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+    ));
+    $zip->close();
+    return ['ok' => true, 'msg' => "Package stamped {$version}"];
+}
+
+/**
  * Build and sign the FEDISTRUCTURE sibling artifact from the same source tag.
  * It deliberately has its own manifest and bootstrap, but shares the release
  * key and source version with SnapSmack so the products cannot drift.
@@ -510,11 +564,19 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
 function sc_build_fedistructure_release(string $tag, string $version, string $version_full,
                                         string $codename, string $released,
                                         string $requires_php, string $requires_mysql,
-                                        array $changelog, string $signing_pubkey): array {
+                                        array $changelog, string $signing_pubkey,
+                                        string $track = 'stable'): array {
     $zip_name = 'snapsmack-fedistructure-' . preg_replace('/[^a-zA-Z0-9._\-]/', '', $version) . '.zip';
     $zip_dest = rtrim(RELEASES_DIR, '/') . '/' . $zip_name;
     $built = sc_build_release_zip($tag, $zip_dest, [], 'fedistructure');
     if (!$built['ok']) return $built;
+    if ($track === 'dev') {
+        $stamped = sc_stamp_package_version($zip_dest, $version, $version_full);
+        if (!$stamped['ok']) {
+            @unlink($zip_dest);
+            return $stamped;
+        }
+    }
 
     $zip = new ZipArchive();
     if ($zip->open($zip_dest) !== true) {
@@ -606,11 +668,15 @@ function sc_build_fedistructure_release(string $tag, string $version, string $ve
         'requires_mysql'  => $requires_mysql,
         'download_size'   => filesize($zip_dest),
         'profiles'        => ['photo-challenge', 'daily-photo', 'smackcast'],
+        'track'           => $track,
     ];
-    $manifest_path = rtrim(RELEASES_DIR, '/') . '/latest-fedistructure.json';
+    $manifest_name = $track === 'dev'
+        ? 'latest-fedistructure-dev.json'
+        : 'latest-fedistructure.json';
+    $manifest_path = rtrim(RELEASES_DIR, '/') . '/' . $manifest_name;
     if (file_put_contents($manifest_path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) === false) {
         @unlink($zip_dest);
-        return ['ok' => false, 'msg' => 'Could not publish latest-fedistructure.json.'];
+        return ['ok' => false, 'msg' => "Could not publish {$manifest_name}."];
     }
     return [
         'ok' => true,
@@ -848,6 +914,10 @@ if ($action === 'build' && $preflight_ok) {
     // Validate
     if (!preg_match('/^[a-zA-Z0-9._\-]+$/', $tag)) {
         $build_error = 'Invalid tag format.';
+    } elseif (preg_match('/D$/i', $tag) || preg_match('/D$/i', $version)) {
+        $build_error = 'Stable releases require a plain tag and version. Use the BITCHIN panel for D builds.';
+    } elseif (ltrim($tag, 'vV') !== $version) {
+        $build_error = 'Stable tag and version do not match.';
     } elseif ($version === '' || $version_full === '') {
         $build_error = 'Version and Version Full are required.';
     } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $released)) {
@@ -1168,11 +1238,16 @@ if ($action === 'build_dev' && $preflight_ok) {
     $released       = trim($_POST['released']       ?? date('Y-m-d'));
     $requires_php   = trim($_POST['requires_php']   ?? '8.0');
     $requires_mysql = trim($_POST['requires_mysql'] ?? '5.7');
+    $codename       = trim($_POST['codename']       ?? '');
     $changelog_raw  = trim($_POST['changelog'] ?? '');
     $changelog      = array_values(array_filter(array_map('trim', explode("\n", $changelog_raw))));
 
     if (!preg_match('/^[a-zA-Z0-9._\-]+$/', $tag)) {
         $dev_build_error = 'Invalid tag format.';
+    } elseif (!preg_match('/D$/i', $tag) || !preg_match('/D$/i', $version)) {
+        $dev_build_error = 'Dev releases require matching D-suffixed tag and version.';
+    } elseif (ltrim($tag, 'vV') !== $version) {
+        $dev_build_error = 'Dev tag and version do not match.';
     } elseif ($version === '' || $version_full === '') {
         $dev_build_error = 'Version and Version Full are required.';
     } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $released)) {
@@ -1190,8 +1265,15 @@ if ($action === 'build_dev' && $preflight_ok) {
         if (!$zip_result['ok']) {
             $dev_build_error = $zip_result['msg'];
         } else {
+            $stamp_result = sc_stamp_package_version($zip_dest, $version, $version_full);
+            if (!$stamp_result['ok']) {
+                $dev_build_error = $stamp_result['msg'];
+            } else {
+                $dev_build_log[] = '→ ' . $stamp_result['msg'];
+            }
+
             // Inject current pubkey into setup.php
-            if ($sc_derived_pubkey) {
+            if (!$dev_build_error && $sc_derived_pubkey) {
                 $patcher = new ZipArchive();
                 if ($patcher->open($zip_dest) === true) {
                     $setup_src = $patcher->getFromName('setup.php');
@@ -1238,6 +1320,18 @@ if ($action === 'build_dev' && $preflight_ok) {
                 $dev_build_log[] = "→ Signed OK";
             } catch (SodiumException $e) {
                 $dev_build_error = 'Signing failed: ' . $e->getMessage();
+            }
+
+            // FEDISTRUCTURE follows the same beta channel. Its dev manifest is
+            // separate, so a BITCHIN' build can never replace the stable feed.
+            if (!$dev_build_error) {
+                $fed_dev_result = sc_build_fedistructure_release(
+                    $tag, $version, $version_full, $codename, $released,
+                    $requires_php, $requires_mysql, $changelog,
+                    (string)$sc_derived_pubkey, 'dev'
+                );
+                $dev_build_log[] = '→ ' . $fed_dev_result['msg'];
+                if (!$fed_dev_result['ok']) $dev_build_error = $fed_dev_result['msg'];
             }
 
             if (!$dev_build_error) {

@@ -10,7 +10,10 @@
  * Last non-empty line of this file MUST match the line above.
  */
 
-$fedup_manifest_url = 'https://snapsmack.ca/releases/latest-fedistructure.json';
+$fedup_track = (($_GET['track'] ?? '') === 'dev') ? 'dev' : 'stable';
+$fedup_manifest_url = $fedup_track === 'dev'
+    ? 'https://snapsmack.ca/releases/latest-fedistructure-dev.json'
+    : 'https://snapsmack.ca/releases/latest-fedistructure.json';
 $fedup_target = __DIR__;
 define('FEDUP_RELEASE_PUBKEY', 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2');
 
@@ -194,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy']) && $fedup_r
 <li><span>Ed25519 verification</span><strong class="<?php echo function_exists('sodium_crypto_sign_verify_detached') ? 'ok' : 'bad'; ?>"><?php echo function_exists('sodium_crypto_sign_verify_detached') ? 'READY' : 'MISSING'; ?></strong></li>
 </ul>
 <?php if ($fedup_ready): ?>
-<form method="post"><button type="submit" name="deploy" value="1">INSTALL FEDISTRUCTURE</button></form>
+<form method="post" action="<?php echo $fedup_track === 'dev' ? '?track=dev' : ''; ?>"><button type="submit" name="deploy" value="1">INSTALL FEDISTRUCTURE</button></form>
 <?php else: ?><div class="status error">This server is missing a required capability. No unsigned fallback is permitted.</div><?php endif; ?>
 </main></body></html>
 <?php // ===== SNAPSMACK EOF =====
