@@ -33,9 +33,9 @@ own line breaks. Its size is adjustable from 6–18 percent of the viewport
 width, and it may be tilted up to 40 degrees counterclockwise. Its typeface and
 colour are independent of the rest of the site text. Solo and static pages use
 the same masthead styling horizontally.</p>
-<p>The compact navigation is visible immediately and remains fixed at the top
-while the masthead and photo wall scroll beneath it. Social Dock links share
-that navigation when enabled.</p>
+<p>On the landing page, the photographer sits at left, the masthead is centred,
+and navigation with Social Dock links sits at right in one visible header row.
+Solo and static pages use a compact header.</p>
 HTML
     ],
     'skin-scroll-wall' => [
@@ -46,9 +46,11 @@ HTML
 <h3>Photo Wall</h3>
 <p><strong>Photo Size / Wall Density</strong> changes the target row height.
 Smaller values fit more photographs across; larger values show fewer, larger
-photographs. SCROLL defaults to a dense, gapless wall with photographs roughly
-one-and-a-half times the row scale of the Forever Photographing reference. The
+photographs. SCROLL defaults to a dense, gapless 280-pixel wall—roughly
+one-and-a-half times the visible row scale of the Forever Photographing reference. The
 number per row adapts to the images and browser width.</p>
+<p><strong>Tile Spacing</strong> adds between zero and 25 pixels between
+photographs. Zero produces the uninterrupted wall.</p>
 <p>Corner radius, outside-border width and outside-border colour are independent
 controls. A border width of zero gives an unframed wall.</p>
 HTML

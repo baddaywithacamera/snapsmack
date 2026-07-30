@@ -558,10 +558,10 @@ if (isset($_POST['save_skin_settings'])) {
                 $fallback = "'Courier New', monospace";
             }
             $generated_public .= "{$meta['selector']} { font-family: \"{$val}\", {$fallback}; }\n";
-            // Companion font-size: always emit for every font picker. The 'size' key
-            // in the manifest provides custom min/max/default; falls back to generic
-            // defaults so all skins get a size slider without any manifest changes.
-            if (!empty($meta['selector'])) {
+            // Companion font-size is optional. Skins with their own responsive
+            // typography control can opt out so this generic rem value does not
+            // silently override their sizing system.
+            if (!empty($meta['selector']) && empty($meta['no_size_slider'])) {
                 $sz_key = $key . '_size';
                 $sz_val = ($all_settings[$sz_key] ?? '') !== '' ? $all_settings[$sz_key] : ($meta['size']['default'] ?? '1.0');
                 $generated_public .= "{$meta['selector']} { font-size: {$sz_val}rem; }\n";
@@ -630,6 +630,17 @@ if (isset($_POST['save_skin_settings'])) {
 
     // 4d-i. Google Font CDN links for any active font-family selections
     $google_catalog = $global_inventory['fonts'] ?? [];
+    $google_catalog_path = __DIR__ . '/core/google-font-families.json';
+    if (is_file($google_catalog_path)) {
+        $all_google_families = json_decode((string)file_get_contents($google_catalog_path), true);
+        if (is_array($all_google_families)) {
+            foreach ($all_google_families as $family) {
+                if (is_string($family) && $family !== '') {
+                    $google_catalog[$family] = $family;
+                }
+            }
+        }
+    }
     if (!empty($google_catalog)) {
         $google_needed = [];
         foreach ($manifest['options'] as $opt_key => $opt_meta) {
@@ -643,7 +654,7 @@ if (isset($_POST['save_skin_settings'])) {
         if (!empty($google_needed)) {
             $families = [];
             foreach (array_keys($google_needed) as $fam) {
-                $families[] = str_replace(' ', '+', $fam) . ':wght@400;700';
+                $families[] = str_replace(' ', '+', $fam);
             }
             $gf_url = 'https://fonts.googleapis.com/css2?' . implode('&', array_map(fn($f) => "family={$f}", $families)) . '&display=swap';
             $injection .= '<link rel="stylesheet" href="' . htmlspecialchars($gf_url) . '">' . "\n";

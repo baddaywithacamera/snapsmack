@@ -23,8 +23,6 @@ $images = $grid_stmt->fetchAll(PDO::FETCH_ASSOC);
 $masthead_raw = trim((string)($settings['scroll_masthead_lines'] ?? 'USED CAR|PARTS'));
 $masthead_lines = array_values(array_filter(array_map('trim', explode('|', $masthead_raw)), 'strlen'));
 if (!$masthead_lines) $masthead_lines = [$settings['site_name'] ?? 'SnapSmack'];
-
-include dirname(__DIR__, 2) . '/core/meta.php';
 ?>
 <div class="scroll-landing">
     <section class="scroll-profile" aria-labelledby="scroll-site-title">
@@ -36,28 +34,27 @@ include dirname(__DIR__, 2) . '/core/meta.php';
                 <span><?php echo htmlspecialchars($line); ?></span>
             <?php endforeach; ?>
         </h1>
-    </section>
 
-    <?php
-    $grid_nav_config = [
-        'prefix' => 'scroll',
-        'observer_class' => 'scroll-profile',
-        'identity' => $settings['photographer_name'] ?? ($settings['site_name'] ?? 'SnapSmack'),
-        'always_visible' => true,
-        'inline_social' => true,
-        'links' => [
-            ['label' => 'Home', 'url' => BASE_URL, 'icon' => 'home'],
-            ['label' => 'Archive', 'url' => BASE_URL . 'archive.php', 'icon' => 'archive'],
-            ['label' => 'Blogroll', 'url' => BASE_URL . 'blogroll.php', 'icon' => 'people']
-        ]
-    ];
-    include dirname(__DIR__, 2) . '/core/components/grid-sticky-nav.php';
-    ?>
+        <?php
+        $grid_nav_config = [
+            'prefix' => 'scroll',
+            'observer_class' => 'scroll-profile',
+            'identity' => $settings['photographer_name'] ?? ($settings['site_name'] ?? 'SnapSmack'),
+            'always_visible' => true,
+            'inline_social' => true,
+            'links' => [
+                ['label' => 'Home', 'url' => BASE_URL, 'icon' => 'home'],
+                ['label' => 'Albums', 'url' => BASE_URL . 'albums.php', 'icon' => 'archive']
+            ]
+        ];
+        include dirname(__DIR__, 2) . '/core/components/grid-sticky-nav.php';
+        ?>
+    </section>
 
     <main class="scroll-wall">
         <div class="justified-grid"
-             data-row-height="<?php echo (int)($settings['scroll_row_height'] ?? 420); ?>"
-             data-gap="0">
+             data-row-height="<?php echo (int)($settings['scroll_row_height'] ?? 280); ?>"
+             data-gap="<?php echo max(0, min(25, (int)($settings['scroll_tile_gap'] ?? 0))); ?>">
             <?php foreach ($images as $image):
                 $width = max(1, (int)($image['img_width'] ?? 1));
                 $height = max(1, (int)($image['img_height'] ?? 1));

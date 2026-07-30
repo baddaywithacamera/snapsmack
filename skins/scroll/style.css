@@ -14,7 +14,8 @@
 
 :root {
     --scroll-canvas-width: 1500px;
-    --scroll-row-height: 420px;
+    --scroll-row-height: 280px;
+    --scroll-tile-gap: 0px;
     --scroll-title-angle: 18deg;
     --scroll-title-size: 11vw;
     --scroll-corner-radius: 0;
@@ -38,13 +39,12 @@ a { color: inherit; }
     display: grid;
     grid-template-columns: minmax(100px, 1fr) minmax(280px, 2fr) minmax(100px, 1fr);
     align-items: center;
-    min-height: min(72vh, 760px);
-    padding: max(88px, clamp(30px, 7vw, 110px)) clamp(30px, 7vw, 110px) clamp(30px, 7vw, 110px);
+    min-height: clamp(260px, 32vh, 420px);
+    padding: clamp(48px, 7vw, 110px);
     overflow: hidden;
 }
 .scroll-photographer {
-    align-self: end;
-    padding-bottom: 2rem;
+    align-self: center;
     font-size: .82rem;
     letter-spacing: .16em;
     text-transform: uppercase;
@@ -53,7 +53,7 @@ a { color: inherit; }
     grid-column: 2;
     margin: 0;
     font-family: "Archivo Black", sans-serif;
-    font-size: clamp(4rem, var(--scroll-title-size), 18rem);
+    font-size: clamp(4rem, var(--scroll-title-size), 18rem) !important;
     font-weight: 900;
     line-height: .78;
     letter-spacing: -.06em;
@@ -62,6 +62,19 @@ a { color: inherit; }
     transform: rotate(calc(var(--scroll-title-angle) * -1));
 }
 .scroll-masthead span { display: block; }
+.scroll-profile > .scroll-sticky-nav {
+    position: static;
+    grid-column: 3;
+    justify-content: flex-end;
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    backdrop-filter: none;
+}
+.scroll-profile > .scroll-sticky-nav .ss-grid-nav-identity {
+    display: none;
+}
 .scroll-wall {
     width: min(calc(100% - 32px), var(--scroll-canvas-width));
     margin: 0 auto;
@@ -78,8 +91,7 @@ a { color: inherit; }
 .justified-item img {
     display: block;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    height: auto;
     transition: transform 180ms ease, opacity 180ms ease;
 }
 .scroll-item-title {
@@ -197,6 +209,10 @@ a { color: inherit; }
     }
     .scroll-masthead { grid-column: 1; font-size: clamp(3.6rem, 18vw, 7rem); }
     .scroll-photographer { grid-column: 1; justify-self: center; align-self: auto; }
+    .scroll-profile > .scroll-sticky-nav {
+        grid-column: 1;
+        justify-content: center;
+    }
     .scroll-page-header { align-items: flex-start; flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) {
