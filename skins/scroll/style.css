@@ -37,23 +37,32 @@ a { color: inherit; }
 .scroll-profile {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(100px, 1fr) minmax(280px, 2fr) minmax(100px, 1fr);
+    grid-template-columns: minmax(150px, 1fr) minmax(320px, 1.7fr) minmax(230px, 1fr);
     align-items: center;
-    min-height: clamp(260px, 32vh, 420px);
-    padding: clamp(48px, 7vw, 110px);
+    min-height: clamp(320px, 38vh, 420px);
+    padding: clamp(34px, 5vw, 76px);
     overflow: hidden;
 }
 .scroll-photographer {
     align-self: center;
+    justify-self: start;
     font-size: .82rem;
     letter-spacing: .16em;
     text-transform: uppercase;
+}
+.scroll-byline-prefix,
+.scroll-byline-name {
+    display: block;
+}
+.scroll-byline-name {
+    margin-top: .32rem;
+    font-weight: 700;
 }
 .scroll-masthead {
     grid-column: 2;
     margin: 0;
     font-family: "Archivo Black", sans-serif;
-    font-size: clamp(3rem, min(var(--scroll-title-size), 8vw), 10rem) !important;
+    font-size: clamp(2.75rem, var(--scroll-title-size), 7.5rem) !important;
     font-weight: 900;
     line-height: .78;
     letter-spacing: -.06em;
@@ -67,6 +76,7 @@ a { color: inherit; }
 }
 .scroll-profile > .scroll-sticky-nav {
     grid-column: 3;
+    justify-self: end;
     justify-content: flex-end;
     min-height: 0;
     padding: 0;
@@ -95,9 +105,47 @@ a { color: inherit; }
     margin: 0 auto;
     padding-bottom: 0;
 }
+.scroll-browse-tools {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    width: min(calc(100% - 32px), var(--scroll-canvas-width));
+    min-height: 58px;
+    margin: 0 auto;
+    border-top: 1px solid rgba(255,255,255,.18);
+}
+.scroll-browse-link,
+.scroll-search-label {
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-decoration: none;
+    text-transform: uppercase;
+}
+.scroll-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}
+.scroll-search-input {
+    width: clamp(180px, 24vw, 340px);
+    padding: 9px 12px;
+    color: inherit;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.28);
+    border-radius: 2px;
+    font: inherit;
+}
+.scroll-search-input:focus {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
 #scroll-justified-grid { width: 100%; }
 #scroll-justified-grid .justified-row {
-    display: flex;
+    display: flex !important;
+    flex-flow: row nowrap;
+    align-items: stretch;
     gap: var(--scroll-tile-gap);
     margin-bottom: var(--scroll-tile-gap);
 }
@@ -114,7 +162,7 @@ a { color: inherit; }
     height: 100%;
 }
 .justified-item {
-    display: block;
+    display: block !important;
     flex-shrink: 1;
     min-width: 0;
     position: relative;
@@ -270,6 +318,17 @@ a { color: inherit; }
         grid-column: 1;
         justify-content: center;
     }
+    .scroll-browse-tools {
+        align-items: stretch;
+        flex-wrap: wrap;
+        gap: 12px 18px;
+        padding: 14px 0;
+    }
+    .scroll-search {
+        flex-basis: 100%;
+        margin-left: 0;
+    }
+    .scroll-search-input { flex: 1; width: auto; }
     .scroll-page-header { align-items: flex-start; flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a proven Flickr-style justified parts wall. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -34,6 +34,12 @@
             "type": "text",
             "label": "Landing Masthead (use | for a line break)",
             "default": "USED CAR|PARTS"
+        },
+        "scroll_byline_prefix": {
+            "section": "MASTHEAD",
+            "type": "text",
+            "label": "Photographer Byline Prefix",
+            "default": "PHOTOGRAPHY BY"
         },
         "scroll_masthead_angle": {
             "section": "MASTHEAD",
