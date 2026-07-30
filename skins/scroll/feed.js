@@ -6,6 +6,28 @@
     if (!grid || !sentinel || !('IntersectionObserver' in window)) return;
 
     var loading = false;
+
+    function classifyUnknownPortraits(scope) {
+        scope.querySelectorAll(
+            '.scroll-feature-item[data-scroll-orientation="unknown"] img'
+        ).forEach(function (image) {
+            function classify() {
+                if (!image.naturalWidth || !image.naturalHeight) return;
+                var item = image.closest('.scroll-feature-item');
+                if (!item) return;
+                item.classList.toggle(
+                    'scroll-feature-portrait',
+                    image.naturalWidth / image.naturalHeight < 0.82
+                );
+                item.dataset.scrollOrientation = 'measured';
+            }
+
+            if (image.complete) classify();
+            else image.addEventListener('load', classify, { once: true });
+        });
+    }
+
+    classifyUnknownPortraits(grid);
     var observer = new IntersectionObserver(function (entries) {
         if (!entries[0].isIntersecting || loading) return;
 
@@ -33,6 +55,7 @@
                 Array.from(nextGrid.children).forEach(function (node) {
                     grid.appendChild(document.importNode(node, true));
                 });
+                classifyUnknownPortraits(grid);
                 sentinel.dataset.nextPage = nextSentinel.dataset.nextPage || '0';
 
                 document.dispatchEvent(new CustomEvent('snapsmack:grid-appended', {

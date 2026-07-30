@@ -21,7 +21,8 @@ $scroll_count_stmt = $pdo->prepare(
 $scroll_count_stmt->execute([$now_local]);
 $scroll_total = (int)$scroll_count_stmt->fetchColumn();
 $grid_stmt = $pdo->prepare(
-    "SELECT id, img_title, img_slug, img_file, img_thumb_aspect, img_width, img_height
+    "SELECT id, img_title, img_slug, img_file, img_thumb_aspect,
+            img_width, img_height, img_orientation
      FROM snap_images
      WHERE img_status = 'published' AND img_date <= ?
      ORDER BY sort_order ASC, id DESC
@@ -119,15 +120,27 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
              class="scroll-feature-grid"
              style="--scroll-row-height: <?php echo $target_row_h; ?>px; --scroll-tile-gap: <?php echo $gap; ?>px;">
             <?php foreach ($images as $image):
-                $iw = max(1, (int)($image['img_width'] ?? 1));
-                $ih = max(1, (int)($image['img_height'] ?? 1));
+                $stored_iw = (int)($image['img_width'] ?? 0);
+                $stored_ih = (int)($image['img_height'] ?? 0);
+                $has_dimensions = $stored_iw > 0 && $stored_ih > 0;
+                $stored_orientation = array_key_exists('img_orientation', $image)
+                    ? (int)$image['img_orientation']
+                    : null;
+                $iw = max(1, $stored_iw);
+                $ih = max(1, $stored_ih);
                 $aspect = $iw / $ih;
                 $thumb = trim((string)($image['img_thumb_aspect'] ?? ''));
                 $src = BASE_URL . ltrim($thumb !== '' ? $thumb : ($image['img_file'] ?? ''), '/');
-                $feature_class = $aspect < .82 ? ' scroll-feature-portrait' : '';
+                $is_portrait = $stored_orientation === 1
+                    || ($stored_orientation === null && $has_dimensions && $aspect < .82);
+                $orientation_source = $stored_orientation !== null
+                    ? 'stored'
+                    : ($has_dimensions ? 'dimensions' : 'unknown');
+                $feature_class = $is_portrait ? ' scroll-feature-portrait' : '';
             ?>
             <a class="justified-item scroll-feature-item<?php echo $feature_class; ?>"
                href="<?php echo BASE_URL . htmlspecialchars($image['img_slug']); ?>"
+               data-scroll-orientation="<?php echo $orientation_source; ?>"
                aria-label="<?php echo htmlspecialchars($image['img_title'] ?? 'View photograph'); ?>">
                 <img src="<?php echo htmlspecialchars($src); ?>"
                      width="<?php echo $iw; ?>"
