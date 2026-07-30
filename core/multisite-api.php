@@ -1167,6 +1167,25 @@ if ($resource === 'ban-sync' && $method === 'POST') {
 // Hub instructs this spoke to download and apply the latest release.
 // Hub role required. Returns {ok, version, files_updated, migrations, errors[]}.
 // ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'updates' && $sub_action === 'track' && $method === 'POST') {
+    if ($node['role'] !== 'hub') ms_err('Only a hub may set the update track', 403);
+    if (($settings['multisite_allow_update'] ?? '0') !== '1')
+        ms_err('Remote updates are disabled on this site (enable them in Multisite settings).', 403);
+
+    $body  = json_decode(file_get_contents('php://input'), true) ?? [];
+    $track = (string)($body['track'] ?? '');
+    if (!in_array($track, ['stable', 'dev'], true)) {
+        ms_err('track must be stable or dev', 400);
+    }
+
+    $pdo->prepare(
+        "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('update_track', ?)
+         ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+    )->execute([$track]);
+
+    ms_ok(['update_track' => $track]);
+}
+
 if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') {
     if ($node['role'] !== 'hub') ms_err('Only a hub may trigger spoke updates', 403);
     // CONSENT GATE: remote code deploy. Off unless the owner enabled it.

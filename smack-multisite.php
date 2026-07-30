@@ -400,6 +400,55 @@ if (isset($_POST['save_hub_perms']) && $multisite_role === 'spoke') {
 // --- PUSH UPDATE TO SPOKE(S) ---
 // Hub triggers a remote update on one or all behind-spokes.
 $is_ajax = (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest');
+if (isset($_POST['set_spoke_track'])) {
+    if ($multisite_role !== 'hub') {
+        $err = "Only a hub can set a spoke's update track.";
+    } else {
+        $spoke_id = (int)($_POST['spoke_id'] ?? 0);
+        $track    = (string)($_POST['update_track'] ?? '');
+        if (!in_array($track, ['stable', 'dev'], true)) {
+            $err = 'Invalid update track.';
+        } else {
+            $stmt = $pdo->prepare("SELECT * FROM snap_multisite_nodes WHERE id = ? AND role = 'spoke' LIMIT 1");
+            $stmt->execute([$spoke_id]);
+            $tn = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$tn) {
+                $err = 'Spoke not found.';
+            } else {
+                $ch = curl_init();
+                curl_setopt_array($ch, [
+                    CURLOPT_URL            => rtrim($tn['site_url'], '/') . '/api.php?route=multisite/updates/track',
+                    CURLOPT_POST           => true,
+                    CURLOPT_POSTFIELDS     => json_encode(['track' => $track]),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_TIMEOUT        => 15,
+                    CURLOPT_HTTPHEADER     => [
+                        'Authorization: Bearer ' . $tn['api_key_local'],
+                        'Content-Type: application/json',
+                        'Accept: application/json',
+                    ],
+                ]);
+                $raw  = curl_exec($ch);
+                $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $cerr = curl_error($ch);
+                curl_close($ch);
+                $data = json_decode((string)$raw, true);
+
+                if ($cerr || $code !== 200 || empty($data['ok'])) {
+                    $detail = $cerr ?: ($data['error'] ?? ('HTTP ' . $code));
+                    $err = 'Could not change track for ' . ($tn['site_name'] ?? $tn['site_url']) . ': ' . $detail;
+                } else {
+                    $pdo->prepare("UPDATE snap_multisite_nodes SET update_track = ? WHERE id = ?")
+                        ->execute([$track, $spoke_id]);
+                    $msg = ($tn['site_name'] ?? $tn['site_url']) . ' is now on the '
+                         . ($track === 'dev' ? "BITCHIN'" : 'BORING') . ' track.';
+                }
+            }
+        }
+    }
+}
+
 if (isset($_POST['push_update']) || isset($_POST['push_update_all'])) {
     if ($multisite_role !== 'hub') {
         $err = "Only a hub can push updates.";
@@ -1422,14 +1471,18 @@ include 'core/sidebar.php';
                                         ?>
                                     </td>
                                     <td class="col-center">
-                                        <?php
-                                            $spoke_track = $n['update_track'] ?? 'stable';
-                                            if ($spoke_track === 'dev') {
-                                                echo '<span style="font-size:0.7rem; font-weight:700; letter-spacing:1px; color:#f90;">BITCHIN\'</span>';
-                                            } else {
-                                                echo '<span style="font-size:0.7rem; font-weight:700; letter-spacing:1px; color:var(--text-muted,#888);">BORING</span>';
-                                            }
-                                        ?>
+                                        <?php $spoke_track = $n['update_track'] ?? 'stable'; ?>
+                                        <form method="POST" class="spoke-track-form">
+                                            <input type="hidden" name="spoke_id" value="<?php echo (int)$n['id']; ?>">
+                                            <input type="hidden" name="set_spoke_track" value="1">
+                                            <select name="update_track"
+                                                    class="spoke-track-select spoke-track-select--<?php echo $spoke_track === 'dev' ? 'dev' : 'stable'; ?>"
+                                                    aria-label="Update track for <?php echo htmlspecialchars($n['site_name'] ?? $n['site_url']); ?>"
+                                                    onchange="this.form.requestSubmit();">
+                                                <option value="stable" <?php echo $spoke_track === 'stable' ? 'selected' : ''; ?>>BORING</option>
+                                                <option value="dev" <?php echo $spoke_track === 'dev' ? 'selected' : ''; ?>>BITCHIN'</option>
+                                            </select>
+                                        </form>
                                     </td>
                                     <td class="col-center">
                                         <span class="status-dot status-dot--<?php echo htmlspecialchars($node_status); ?>" title="<?php echo htmlspecialchars($node_status); ?>"></span>
@@ -1988,6 +2041,19 @@ include 'core/sidebar.php';
 .spoke-act-wrap .action-warning   { min-width:118px; text-align:center; }
 .spoke-act-wrap .action-delete    { min-width:95px;  text-align:center; }
 .spoke-act-wrap .action-update    { min-width:72px;  text-align:center; }
+.spoke-track-form { margin:0; }
+.spoke-track-select {
+    width:auto;
+    min-width:86px;
+    padding:3px 20px 3px 6px;
+    border:1px solid var(--border,#555);
+    background:var(--input-bg,#111);
+    color:var(--text-muted,#888);
+    font:700 0.7rem/1 monospace;
+    letter-spacing:1px;
+    cursor:pointer;
+}
+.spoke-track-select--dev { color:var(--warning,#f90); }
 
 /* Skin deployment: fleet action first, surgical controls deliberately quiet. */
 .skin-deploy-head { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; margin-bottom:18px; }
