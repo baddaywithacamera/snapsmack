@@ -160,7 +160,7 @@ function snapsmack_normalize_manifest_options(mixed $options, string $slug): arr
     $types = ['color', 'hidden', 'image', 'range', 'range_numeric', 'select', 'text', 'asset'];
     $fields = [
         'accept', 'admin_page', 'css_var', 'default', 'font_filter', 'help',
-        'hint', 'is_font', 'is_greyscale', 'label', 'max', 'min', 'min_height',
+        'font_source', 'hint', 'is_font', 'is_greyscale', 'label', 'max', 'min', 'min_height',
         'min_width', 'no_size_slider', 'options', 'property', 'section',
         'selector', 'show_when', 'size', 'step', 'sz_key_override', 'type',
         'unit', 'uppercase', 'lowercase', 'capitalize',
@@ -218,6 +218,18 @@ function manifest_resolve_fonts(array $manifest): array {
 
     $inventory_path = __DIR__ . '/manifest-inventory.php';
     $inventory = is_file($inventory_path) ? include $inventory_path : [];
+    $google_catalog_path = __DIR__ . '/google-font-families.json';
+    $google_catalog = [];
+    if (is_file($google_catalog_path)) {
+        $decoded_google_catalog = json_decode((string)file_get_contents($google_catalog_path), true);
+        if (is_array($decoded_google_catalog)) {
+            foreach ($decoded_google_catalog as $family) {
+                if (is_string($family) && $family !== '') {
+                    $google_catalog[$family] = $family;
+                }
+            }
+        }
+    }
     $fonts = [];
     foreach (($inventory['local_fonts'] ?? []) as $key => $font) {
         $fonts[(string)$key] = (string)($font['label'] ?? $key);
@@ -233,7 +245,9 @@ function manifest_resolve_fonts(array $manifest): array {
         // inventory expansion is only for new declarative manifests that omit
         // their font choices.
         if (!empty($descriptor['options']) && is_array($descriptor['options'])) continue;
-        $choices = $fonts;
+        $choices = (($descriptor['font_source'] ?? '') === 'google' && $google_catalog)
+            ? $google_catalog
+            : $fonts;
         $filters = $descriptor['font_filter'] ?? [];
         if (is_string($filters)) $filters = [$filters];
         if (is_array($filters) && $filters) {

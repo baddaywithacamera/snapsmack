@@ -24,8 +24,7 @@ $grid_nav_config = [
     'inline_social' => true,
     'links' => [
         ['label' => 'Home', 'url' => BASE_URL, 'icon' => 'home'],
-        ['label' => 'Archive', 'url' => BASE_URL . 'archive.php', 'icon' => 'archive'],
-        ['label' => 'Blogroll', 'url' => BASE_URL . 'blogroll.php', 'icon' => 'people']
+        ['label' => 'Albums', 'url' => BASE_URL . 'albums.php', 'icon' => 'archive']
     ]
 ];
 include dirname(__DIR__, 2) . '/core/components/grid-sticky-nav.php';
@@ -36,7 +35,7 @@ include dirname(__DIR__, 2) . '/core/components/grid-sticky-nav.php';
     </a>
     <nav class="scroll-text-nav" aria-label="Page navigation">
         <a href="<?php echo BASE_URL; ?>">Home</a>
-        <a href="<?php echo BASE_URL; ?>archive.php">Archive</a>
+        <a href="<?php echo BASE_URL; ?>albums.php">Albums</a>
         <?php foreach ($scroll_nav_pages as $scroll_page): ?>
             <a href="<?php echo BASE_URL . 'page.php?slug=' . urlencode($scroll_page['slug']); ?>">
                 <?php echo htmlspecialchars($scroll_page['title']); ?>
