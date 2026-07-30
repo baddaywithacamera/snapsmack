@@ -330,26 +330,36 @@ try {
     $params = [$now_local];
 
     if ($search_query !== '') {
-        // Search: join tags, match title/description/tags/colour-family
+        // Search: match title/description/tags/colour-family + album/category NAME.
         // color_family match enables "blue", "teal" etc. to return images tagged with
         // matching hex colour codes (e.g. searching "teal" finds #007a8b-tagged images).
-        $sql .= "LEFT JOIN snap_image_tags sit ON sit.image_id = i.id ";
-        $sql .= "LEFT JOIN snap_tags st ON st.id = sit.tag_id ";
-        $like         = '%' . $search_query . '%';
-        $tag_like     = '%' . strtolower($search_query) . '%';
-        $family_exact = strtolower(trim($search_query));
-        // Match image text/tags/colour, AND membership of an album or category
-        // whose NAME matches the query (so "helios" finds the Helios album's shots
-        // even when the images themselves carry no helios title/tag).
-        $where_clauses[] = "(i.img_title LIKE ? OR i.img_description LIKE ? OR st.slug LIKE ? OR st.color_family = ?"
-            . " OR EXISTS (SELECT 1 FROM snap_image_album_map _sam JOIN snap_albums _sa ON _sa.id = _sam.album_id WHERE _sam.image_id = i.id AND _sa.album_name LIKE ?)"
-            . " OR EXISTS (SELECT 1 FROM snap_image_cat_map _scm JOIN snap_categories _sca ON _sca.id = _scm.cat_id WHERE _scm.image_id = i.id AND _sca.cat_name LIKE ?))";
-        $params[] = $like;         // img_title
-        $params[] = $like;         // img_description
-        $params[] = $tag_like;     // tag slug
-        $params[] = $family_exact; // colour family
-        $params[] = $like;         // album name
-        $params[] = $like;         // category name
+        //
+        // Multi-word queries are TOKENISED and AND-ed: every word must match SOMEWHERE
+        // (title, description, tag, colour family, album name, or category name), in any
+        // order. So "car show strathmore" finds a "Car Show" shot that lives in the
+        // "Strathmore" album — the old single contiguous LIKE ('%car show strathmore%')
+        // required all three words together in one field and never matched.
+        //
+        // Tags/album/category use per-term EXISTS subqueries (not one shared LEFT JOIN)
+        // so a term satisfied only by tag A and another satisfied only by tag B still AND
+        // correctly — a single joined tag row can't carry two different tags.
+        $terms = preg_split('/\s+/', trim($search_query), -1, PREG_SPLIT_NO_EMPTY);
+        if (empty($terms)) { $terms = [$search_query]; }
+        foreach ($terms as $term) {
+            $like         = '%' . $term . '%';
+            $tag_like     = '%' . strtolower($term) . '%';
+            $family_exact = strtolower($term);
+            $where_clauses[] = "(i.img_title LIKE ? OR i.img_description LIKE ?"
+                . " OR EXISTS (SELECT 1 FROM snap_image_tags _sit JOIN snap_tags _st ON _st.id = _sit.tag_id WHERE _sit.image_id = i.id AND (_st.slug LIKE ? OR _st.color_family = ?))"
+                . " OR EXISTS (SELECT 1 FROM snap_image_album_map _sam JOIN snap_albums _sa ON _sa.id = _sam.album_id WHERE _sam.image_id = i.id AND _sa.album_name LIKE ?)"
+                . " OR EXISTS (SELECT 1 FROM snap_image_cat_map _scm JOIN snap_categories _sca ON _sca.id = _scm.cat_id WHERE _scm.image_id = i.id AND _sca.cat_name LIKE ?))";
+            $params[] = $like;         // img_title
+            $params[] = $like;         // img_description
+            $params[] = $tag_like;     // tag slug
+            $params[] = $family_exact; // colour family
+            $params[] = $like;         // album name
+            $params[] = $like;         // category name
+        }
     } elseif ($from_filter && $to_filter) {
         // Calendar date-range browse.
         $where_clauses[] = "DATE(i.img_date) >= ? AND DATE(i.img_date) <= ?";
@@ -412,6 +422,44 @@ try {
     $all_cats        = $pdo->query("SELECT id, cat_name FROM snap_categories WHERE show_in_archive = 1 ORDER BY cat_name ASC")->fetchAll();
     $all_albums      = $pdo->query("SELECT id, album_name FROM snap_albums ORDER BY album_name ASC")->fetchAll();
     $all_collections = $pdo->query("SELECT id, title FROM snap_collections ORDER BY title ASC")->fetchAll();
+
+    // --- ARCHIVE HEADING (core-wide) ---
+    // When the archive is showing exactly ONE taxonomy (a single album, category,
+    // or collection) with no search or date filter, expose its name as a heading
+    // so every skin can title the view — e.g. an album page leads with the album
+    // name (the Flickr idiom Slickr expects). Blank on the unfiltered photostream,
+    // on search, on calendar browse, or on multi-select (where no one name applies).
+    $archive_heading      = '';
+    $archive_heading_kind = '';   // 'album' | 'category' | 'collection'
+    if ($search_query === '' && !$from_filter && !$to_filter && !$date_filter
+        && $active_filter_count === 1) {
+        if (count($filter_albums) === 1) {
+            foreach ($all_albums as $_a) {
+                if ((int)$_a['id'] === (int)$filter_albums[0]) { $archive_heading = (string)$_a['album_name']; $archive_heading_kind = 'album'; break; }
+            }
+            // Album may be hidden from the filter list but still directly linkable.
+            if ($archive_heading === '') {
+                $_hs = $pdo->prepare("SELECT album_name FROM snap_albums WHERE id = ?");
+                $_hs->execute([(int)$filter_albums[0]]);
+                $_hn = $_hs->fetchColumn();
+                if ($_hn !== false) { $archive_heading = (string)$_hn; $archive_heading_kind = 'album'; }
+            }
+        } elseif (count($filter_cats) === 1) {
+            foreach ($all_cats as $_c) {
+                if ((int)$_c['id'] === (int)$filter_cats[0]) { $archive_heading = (string)$_c['cat_name']; $archive_heading_kind = 'category'; break; }
+            }
+            if ($archive_heading === '') {
+                $_hs = $pdo->prepare("SELECT cat_name FROM snap_categories WHERE id = ?");
+                $_hs->execute([(int)$filter_cats[0]]);
+                $_hn = $_hs->fetchColumn();
+                if ($_hn !== false) { $archive_heading = (string)$_hn; $archive_heading_kind = 'category'; }
+            }
+        } elseif (count($filter_collections) === 1) {
+            foreach ($all_collections as $_col) {
+                if ((int)$_col['id'] === (int)$filter_collections[0]) { $archive_heading = (string)$_col['title']; $archive_heading_kind = 'collection'; break; }
+            }
+        }
+    }
 
     // Matching tags (shown when searching)
     // Includes colour-family matches so searching "teal" surfaces #007a8b etc.
@@ -622,6 +670,13 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
+        <?php endif; ?>
+
+        <?php if ($archive_heading !== ''): ?>
+        <div class="archive-heading archive-heading--<?php echo htmlspecialchars($archive_heading_kind); ?>">
+            <h1 class="archive-heading-title"><?php echo htmlspecialchars($archive_heading); ?></h1>
+            <span class="archive-heading-count"><?php echo count($images); ?> photo<?php echo count($images) !== 1 ? 's' : ''; ?></span>
+        </div>
         <?php endif; ?>
 
         <div id="scroll-stage">

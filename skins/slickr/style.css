@@ -513,6 +513,92 @@ a:hover { color: var(--sl-link-hover); }
   padding: 0 24px;
 }
 
+/* ── Archive filter row (archive.php) ──────────────────────────────────────
+   Core emits #infobox .nav-links > .center holding [SHOW ALL], the FILTER
+   panel (.saf-*, styled by core), separators, and the search form. Slickr had
+   no archive-page rules for this row, so it collapsed to raw inline text with
+   the search box overlapping. Style it in the Flickr idiom: centred to the
+   canvas, small uppercase links, search pushed to the right. (The masthead tab
+   bar above is .sl-profile-tabs — a separate element.) */
+.archive-page #infobox { padding: 0 24px; }
+.archive-page #infobox .nav-links {
+  max-width: var(--sl-canvas-width);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+}
+.archive-page #infobox .nav-links .center {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+.archive-page #infobox .nav-links a {
+  color: var(--sl-link);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  white-space: nowrap;
+}
+.archive-page #infobox .nav-links a:hover { color: var(--sl-link-hover); }
+.archive-page #infobox .nav-links a.inactive { color: var(--sl-text-secondary); }
+.archive-page #infobox .nav-links .sep { color: #cfcfcf; }
+.archive-page #infobox .nav-links .filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+/* Search form: last group on the row, pushed hard right. */
+.archive-page #infobox .nav-links .center > .filter-group:last-child { margin-left: auto; }
+.archive-page #infobox .archive-search-form { margin: 0; }
+.archive-page #infobox .archive-search-input {
+  appearance: none;
+  -webkit-appearance: none;
+  background: #fff;
+  border: 1px solid var(--sl-header-border);
+  border-radius: 4px;
+  color: var(--sl-text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 7px 12px;
+  width: 220px;
+  max-width: 46vw;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.archive-page #infobox .archive-search-input:focus {
+  border-color: var(--sl-link);
+  box-shadow: 0 0 0 3px rgba(0, 99, 220, .12);
+}
+.archive-page #infobox .archive-search-input::placeholder { color: var(--sl-text-secondary); }
+
+/* ── Archive heading (core .archive-heading — album / category / collection) ─
+   Core titles a single-taxonomy archive view. Lead with the name Flickr-style,
+   photo count beneath, aligned to the same canvas as the grid. */
+.archive-heading {
+  max-width: var(--sl-canvas-width);
+  margin: 22px auto 6px;
+  padding: 0 24px;
+}
+.archive-heading-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--sl-text-primary);
+  letter-spacing: -.01em;
+}
+.archive-heading-count {
+  display: inline-block;
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--sl-text-secondary);
+}
+
 /* ============================================================================
    FLICKR-PROFILE LANDING  (landing.php)
    ========================================================================== */

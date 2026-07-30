@@ -3,17 +3,24 @@
     "name": "SCROLL",
     "version": "0.1.7",
     "author": "Sean McCormick, Claude, OpenAI Codex",
-    "description": "A solo photoblog skin with a typographic masthead and a proven Flickr-style justified parts wall. Built for photographs that refuse to show the whole damn car.",
+    "description": "A solo photoblog skin with a typographic masthead and an in-house native-aspect masonry parts wall. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
     "features": {
         "supports_wall": false,
         "supports_slider": false,
         "has_landing": true,
-        "post_modes": ["image"],
+        "post_modes": [
+            "image"
+        ],
         "instagram_mode": false,
         "carousel": false,
-        "community": ["likes", "comments"],
-        "archive_layouts": ["justified"]
+        "community": [
+            "likes",
+            "comments"
+        ],
+        "archive_layouts": [
+            "justified"
+        ]
     },
     "require_scripts": [
         "smack-footer",
@@ -152,16 +159,6 @@
             "min": "12",
             "max": "60",
             "step": "6"
-        },
-        "scroll_portrait_span": {
-            "section": "PHOTO WALL",
-            "type": "select",
-            "label": "Portrait Images Span Two Rows",
-            "default": "off",
-            "options": {
-                "off": "Off — Justified Rows",
-                "on": "On — Feature Portraits"
-            }
         },
         "scroll_tile_gap": {
             "section": "PHOTO WALL",
