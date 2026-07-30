@@ -55,6 +55,10 @@ number per row adapts to the images and browser width.</p>
 photographs. Zero produces the uninterrupted wall.</p>
 <p>Corner radius, outside-border width and outside-border colour are independent
 controls. A border width of zero gives an unframed wall.</p>
+<p>The browse bar above the wall leads to the complete category, album and
+collection filter, or searches titles, descriptions, tags, colours, albums and
+categories. The same filter and search controls are available as icons at the
+right side of the masthead and in the sticky navigation.</p>
 HTML
     ],
 ];
