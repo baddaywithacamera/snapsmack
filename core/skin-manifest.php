@@ -218,17 +218,9 @@ function manifest_resolve_fonts(array $manifest): array {
 
     $inventory_path = __DIR__ . '/manifest-inventory.php';
     $inventory = is_file($inventory_path) ? include $inventory_path : [];
-    $google_catalog_path = __DIR__ . '/google-font-families.json';
-    $google_catalog = [];
-    if (is_file($google_catalog_path)) {
-        $decoded_google_catalog = json_decode((string)file_get_contents($google_catalog_path), true);
-        if (is_array($decoded_google_catalog)) {
-            foreach ($decoded_google_catalog as $family) {
-                if (is_string($family) && $family !== '') {
-                    $google_catalog[$family] = $family;
-                }
-            }
-        }
+    $google_fonts = [];
+    foreach (($inventory['fonts'] ?? []) as $key => $label) {
+        $google_fonts[(string)$key] = (string)$label;
     }
     $fonts = [];
     foreach (($inventory['local_fonts'] ?? []) as $key => $font) {
@@ -245,8 +237,8 @@ function manifest_resolve_fonts(array $manifest): array {
         // inventory expansion is only for new declarative manifests that omit
         // their font choices.
         if (!empty($descriptor['options']) && is_array($descriptor['options'])) continue;
-        $choices = (($descriptor['font_source'] ?? '') === 'google' && $google_catalog)
-            ? $google_catalog
+        $choices = (($descriptor['font_source'] ?? '') === 'google' && $google_fonts)
+            ? $google_fonts
             : $fonts;
         $filters = $descriptor['font_filter'] ?? [];
         if (is_string($filters)) $filters = [$filters];
