@@ -74,6 +74,12 @@ function sc_forum_ago(string $datetime): string {
     return date('M j', $ts);
 }
 
+function sc_forum_slug(string $value): string {
+    $value = mb_strtolower(trim($value));
+    $value = preg_replace('/[^a-z0-9]+/u', '-', $value);
+    return trim((string)$value, '-');
+}
+
 // ── View Routing ──────────────────────────────────────────────────────────────
 $section   = $_GET['section'] ?? 'forum';      // forum | installs | boards
 $view      = $_GET['view']    ?? 'categories'; // categories | threads | thread | new-thread

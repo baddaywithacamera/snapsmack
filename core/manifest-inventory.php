@@ -983,6 +983,11 @@ return [
                 ]
             ]
         ],
+        'smack-scroll-feed' => [
+            'label'        => 'SCROLL Native-Aspect Feed Engine',
+            'path'         => 'assets/js/ss-engine-scroll-feed.js',
+            'has_settings' => false,
+        ],
         'smack-fullscreen' => [
             'label'        => 'Fullscreen Engine (Distraction-free image viewing)',
             'path'         => 'assets/js/ss-engine-fullscreen.js',

@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.8",
+    "version": "0.1.9",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and an in-house native-aspect masonry parts wall. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -23,6 +23,7 @@
         ]
     },
     "require_scripts": [
+        "smack-scroll-feed",
         "smack-footer",
         "smack-image-fade-load",
         "smack-lazyload",

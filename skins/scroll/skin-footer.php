@@ -20,8 +20,6 @@ if (!empty($requested)) {
         }
     }
 }
-echo '<script src="' . BASE_URL . 'skins/scroll/feed.js?v='
-    . SNAPSMACK_VERSION_SHORT . '"></script>' . "\n";
 include_once dirname(__DIR__, 2) . '/core/footer.php';
 ?>
 <?php // ===== SNAPSMACK EOF =====
