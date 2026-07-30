@@ -757,40 +757,40 @@ include 'core/sidebar.php';
             $ai_needs_2fa  = !empty($_SESSION['ai_accept_needs_2fa']);
             unset($_SESSION['ai_accept_error'], $_SESSION['ai_accept_needs_2fa']);
             ?>
-            <div id="ai-key" style="background:#2a2200; border:1px solid #4a3a00; border-radius:6px; padding:18px 20px; margin:0 0 18px;">
-                <strong style="display:block; margin-bottom:6px;">AI is off until you accept cost responsibility</strong>
-                <p class="dim" style="margin:0 0 14px; line-height:1.6;">
+            <div id="ai-key" class="ai-consent-gate">
+                <strong class="ai-consent-title">AI is off until you accept cost responsibility</strong>
+                <p class="ai-consent-copy">
                     AI helpers use <strong>your own</strong> third-party API key (Claude, Gemini, or OpenAI),
                     which bills <strong>per use</strong>. An uncapped key can run up a real bill. Accepting
                     responsibility is a <strong>signed action</strong>: confirm with your password and
                     authenticator code to enable AI — then set a spending cap on your provider account.
                 </p>
                 <?php if ($ai_accept_err): ?>
-                <p style="color:#ff9b9b; margin:0 0 12px; line-height:1.5;">
+                <p class="ai-consent-error">
                     <?php echo htmlspecialchars($ai_accept_err); ?>
                     <?php if ($ai_needs_2fa): ?><br><span class="dim">Enrol 2FA in Security settings, then return here.</span><?php endif; ?>
                 </p>
                 <?php endif; ?>
                 <!-- No nested <form>: these inputs + button submit the outer settings form
                      with action=ai_accept_cost; the handler verifies password + TOTP first. -->
-                <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px;">
-                    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; letter-spacing:.04em;">ACCOUNT PASSWORD
-                        <input type="password" name="reauth_password" autocomplete="current-password" style="padding:7px 9px;">
+                <div class="ai-consent-credentials">
+                    <label class="ai-consent-label">ACCOUNT PASSWORD
+                        <input class="ai-consent-input" type="password" name="reauth_password" autocomplete="current-password">
                     </label>
-                    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; letter-spacing:.04em;">AUTHENTICATOR CODE
-                        <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="9" style="padding:7px 9px; width:130px;">
+                    <label class="ai-consent-label">AUTHENTICATOR CODE
+                        <input class="ai-consent-input ai-consent-input--totp" type="text" name="reauth_totp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="9">
                     </label>
                 </div>
                 <button type="submit" name="action" value="ai_accept_cost" class="btn-smack btn-smack--sm">I ACCEPT — ENABLE AI</button>
             </div>
             <?php endif; ?>
-            <fieldset <?php echo $ai_cost_accepted ? '' : 'disabled'; ?> style="border:0; padding:0; margin:0;<?php echo $ai_cost_accepted ? '' : ' opacity:.5;'; ?>">
-            <p class="dim" style="margin:0 0 16px;">
+            <fieldset <?php echo $ai_cost_accepted ? '' : 'disabled'; ?> class="ai-settings-fields<?php echo $ai_cost_accepted ? '' : ' is-disabled'; ?>">
+            <p class="dim ai-settings-description">
                 Powers the Spell/Grammar check and AI Assist panel in the post editor.
                 Your API key is stored in the database and never exposed publicly.
             </p>
 
-            <div class="dash-grid" style="grid-template-columns: 1fr 1fr;">
+            <div class="dash-grid ai-settings-grid">
                 <div class="lens-input-wrapper">
                     <label>PROVIDER</label>
                     <select name="settings[ai_provider]" id="ai-provider-select">

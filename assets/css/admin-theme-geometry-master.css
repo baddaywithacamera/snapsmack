@@ -1839,6 +1839,57 @@ input[type="range"]:active::-webkit-slider-thumb {
     border-color: #c47f00;
     color: #ffbb33;
 }
+
+/* AI cost gate: presentation follows the active admin theme. The previous
+   inline brown/black block bypassed light themes and made its text unreadable. */
+.ai-consent-gate {
+    padding: 18px 20px;
+    margin: 0 0 18px;
+    color: inherit;
+    background: color-mix(in srgb, var(--accent, currentColor) 7%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent, currentColor) 45%, transparent);
+    border-radius: 6px;
+}
+.ai-consent-title {
+    display: block;
+    margin-bottom: 6px;
+    color: inherit;
+}
+.ai-consent-copy {
+    margin: 0 0 14px;
+    line-height: 1.6;
+    opacity: .82;
+}
+.ai-consent-error {
+    margin: 0 0 12px;
+    color: var(--danger, #c0392b);
+    line-height: 1.5;
+}
+.ai-consent-credentials {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+.ai-consent-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    letter-spacing: .04em;
+}
+.ai-consent-input { padding: 7px 9px; }
+.ai-consent-input--totp { width: 130px; }
+.ai-settings-fields {
+    padding: 0;
+    margin: 0;
+    border: 0;
+}
+.ai-settings-fields.is-disabled { opacity: .5; }
+.ai-settings-description { margin: 0 0 16px; }
+.ai-settings-grid { grid-template-columns: 1fr 1fr; }
+
 /* Neutral/informational alert — for benign, non-actionable outcomes (e.g. a
    skin push SKIPPED because the spoke doesn't run that skin). Reserves red
    (alert-error) for real failures and green (alert-success) for real wins, so
