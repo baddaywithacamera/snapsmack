@@ -549,6 +549,17 @@ textarea,
     pointer-events: auto;
 }
 
+.client-ip-diagnostic {
+    display: block;
+    height: auto;
+    min-height: 52px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    line-height: 1.5;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
 /* --- SHORTCODE TOOLBAR --- */
 .sc-toolbar {
     display: flex;
