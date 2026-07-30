@@ -29,18 +29,4 @@ $grid_nav_config = [
 ];
 include dirname(__DIR__, 2) . '/core/components/grid-sticky-nav.php';
 ?>
-<header class="scroll-page-header">
-    <a class="scroll-horizontal-title" href="<?php echo BASE_URL; ?>">
-        <?php echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack'); ?>
-    </a>
-    <nav class="scroll-text-nav" aria-label="Page navigation">
-        <a href="<?php echo BASE_URL; ?>">Home</a>
-        <a href="<?php echo BASE_URL; ?>albums.php">Albums</a>
-        <?php foreach ($scroll_nav_pages as $scroll_page): ?>
-            <a href="<?php echo BASE_URL . 'page.php?slug=' . urlencode($scroll_page['slug']); ?>">
-                <?php echo htmlspecialchars($scroll_page['title']); ?>
-            </a>
-        <?php endforeach; ?>
-    </nav>
-</header>
 <?php // ===== SNAPSMACK EOF =====

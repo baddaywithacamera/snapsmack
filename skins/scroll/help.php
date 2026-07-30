@@ -29,13 +29,15 @@ HTML
         'content' => <<<'HTML'
 <h3>Masthead and Navigation</h3>
 <p>Use a vertical bar (<code>|</code>) in the masthead setting to choose your
-own line breaks. Its size is adjustable from 6–18 percent of the viewport
+own line breaks. Its size is adjustable from 3–8 percent of the viewport
 width, and it may be tilted up to 40 degrees counterclockwise. Its typeface and
 colour are independent of the rest of the site text. Solo and static pages use
-the same masthead styling horizontally.</p>
+the same colour and type family for their compact headings.</p>
 <p>On the landing page, the photographer sits at left, the masthead is centred,
 and navigation with Social Dock links sits at right in one visible header row.
-Solo and static pages use a compact header.</p>
+After the masthead scrolls away, that navigation becomes a compact sticky bar.
+Solo and static pages use the compact navigation bar without repeating the
+landing masthead.</p>
 HTML
     ],
     'skin-scroll-wall' => [
