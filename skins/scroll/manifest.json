@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a proven Flickr-style justified parts wall. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -41,6 +41,12 @@
             "label": "Photographer Byline Prefix",
             "default": "PHOTOGRAPHY BY"
         },
+        "photographer_name": {
+            "section": "MASTHEAD",
+            "type": "text",
+            "label": "Photographer Name",
+            "default": ""
+        },
         "scroll_masthead_angle": {
             "section": "MASTHEAD",
             "type": "range",
@@ -62,6 +68,39 @@
             "default": "Archivo Black",
             "selector": ".scroll-masthead, .scroll-horizontal-title",
             "property": "font-family"
+        },
+        "scroll_body_font": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "is_font": true,
+            "font_source": "google",
+            "label": "Body / Metadata Font",
+            "default": "DM Sans",
+            "selector": "body, .scroll-infobox, #system-footer",
+            "property": "font-family"
+        },
+        "scroll_header_font": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "is_font": true,
+            "font_source": "google",
+            "label": "Solo Header Font",
+            "default": "DM Sans",
+            "selector": ".scroll-solo-header",
+            "property": "font-family"
+        },
+        "scroll_text_case": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Text Case",
+            "default": "none",
+            "options": {
+                "none": "As Entered",
+                "lowercase": "all lowercase",
+                "uppercase": "ALL UPPERCASE"
+            },
+            "selector": ".scroll-solo-header, .scroll-infobox, .scroll-solo-title, #system-footer",
+            "property": "text-transform"
         },
         "scroll_masthead_color": {
             "section": "MASTHEAD",
@@ -104,6 +143,25 @@
             "selector": ":root",
             "property": "--scroll-row-height",
             "unit": "px"
+        },
+        "scroll_page_size": {
+            "section": "PHOTO WALL",
+            "type": "range",
+            "label": "Images Loaded Per Scroll",
+            "default": "36",
+            "min": "12",
+            "max": "60",
+            "step": "6"
+        },
+        "scroll_portrait_span": {
+            "section": "PHOTO WALL",
+            "type": "select",
+            "label": "Portrait Images Span Two Rows",
+            "default": "off",
+            "options": {
+                "off": "Off — Justified Rows",
+                "on": "On — Feature Portraits"
+            }
         },
         "scroll_tile_gap": {
             "section": "PHOTO WALL",
@@ -150,7 +208,7 @@
             "section": "COLOURS",
             "type": "color",
             "label": "Background",
-            "default": "#353535",
+            "default": "#ffffff",
             "selector": "body",
             "property": "background-color"
         },
@@ -158,7 +216,7 @@
             "section": "COLOURS",
             "type": "color",
             "label": "Text",
-            "default": "#f4f4f4",
+            "default": "#3a3a3a",
             "selector": "body",
             "property": "color"
         },
@@ -166,7 +224,7 @@
             "section": "COLOURS",
             "type": "color",
             "label": "Links",
-            "default": "#f4f4f4",
+            "default": "#000000",
             "selector": "a",
             "property": "color"
         },
@@ -174,9 +232,33 @@
             "section": "COLOURS",
             "type": "color",
             "label": "Link Hover",
-            "default": "#ff5a36",
+            "default": "#555555",
             "selector": "a:hover",
             "property": "color"
+        },
+        "scroll_footer_background": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Footer Background",
+            "default": "#ffffff",
+            "selector": "#system-footer",
+            "property": "background-color"
+        },
+        "scroll_footer_text": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Footer Text",
+            "default": "#3a3a3a",
+            "selector": "#system-footer",
+            "property": "color"
+        },
+        "scroll_navigation_background": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Solo Navigation Bar Background",
+            "default": "#ffffff",
+            "selector": ".scroll-infobox",
+            "property": "background-color"
         }
     }
 }

@@ -77,6 +77,18 @@ export class SnapSmackGYSSAPI {
         return this._call('GET', 'meta');
     }
 
+    /** Read-only scan for published photos with missing enrichment fields. */
+    async enrichmentAudit(limit = 1000) {
+        return this._call('GET', 'enrichment-audit', { limit });
+    }
+
+    /** Enrich exactly one photo. Queueing always remains in the desktop app. */
+    async enrichOne(id, prompt, fields, overwrite = false) {
+        return this._call('POST', 'enrich-one', null, {
+            id, prompt, fields, overwrite
+        });
+    }
+
     /**
      * POST gyss/batch-update — push dirty records back
      * @param {Array} updates  Array of update objects (see gyss-api.php docs)

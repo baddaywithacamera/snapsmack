@@ -11,14 +11,28 @@
  */
 
 $now_local = date('Y-m-d H:i:s');
+$scroll_per_page = max(12, min(60, (int)($settings['scroll_page_size'] ?? 36)));
+$scroll_page = max(1, (int)($_GET['scroll_page'] ?? 1));
+$scroll_offset = ($scroll_page - 1) * $scroll_per_page;
+$scroll_count_stmt = $pdo->prepare(
+    "SELECT COUNT(*) FROM snap_images
+     WHERE img_status = 'published' AND img_date <= ?"
+);
+$scroll_count_stmt->execute([$now_local]);
+$scroll_total = (int)$scroll_count_stmt->fetchColumn();
 $grid_stmt = $pdo->prepare(
     "SELECT id, img_title, img_slug, img_file, img_thumb_aspect, img_width, img_height
      FROM snap_images
      WHERE img_status = 'published' AND img_date <= ?
-     ORDER BY sort_order ASC, id DESC"
+     ORDER BY sort_order ASC, id DESC
+     LIMIT ? OFFSET ?"
 );
-$grid_stmt->execute([$now_local]);
+$grid_stmt->bindValue(1, $now_local);
+$grid_stmt->bindValue(2, $scroll_per_page, PDO::PARAM_INT);
+$grid_stmt->bindValue(3, $scroll_offset, PDO::PARAM_INT);
+$grid_stmt->execute();
 $images = $grid_stmt->fetchAll(PDO::FETCH_ASSOC);
+$scroll_has_more = ($scroll_offset + count($images)) < $scroll_total;
 
 $masthead_raw = trim((string)($settings['scroll_masthead_lines'] ?? 'USED CAR|PARTS'));
 $masthead_lines = array_values(array_filter(array_map('trim', explode('|', $masthead_raw)), 'strlen'));
@@ -55,10 +69,21 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zm6 7h6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
                     <span class="ss-grid-nav-label">Albums</span>
                 </a>
-                <a class="ss-grid-nav-link" href="<?php echo BASE_URL; ?>archive.php#archive-search" title="Search">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m15.5 15.5 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-                    <span class="ss-grid-nav-label">Search</span>
-                </a>
+                <details class="scroll-nav-search">
+                    <summary class="ss-grid-nav-link" title="Search">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m15.5 15.5 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+                        <span class="ss-grid-nav-label">Search</span>
+                    </summary>
+                    <form class="scroll-nav-search-panel" method="get" action="<?php echo BASE_URL; ?>archive.php">
+                        <label class="ss-grid-nav-label" for="scroll-nav-search-input">Search photographs</label>
+                        <input id="scroll-nav-search-input"
+                               type="search"
+                               name="q"
+                               placeholder="<?php echo htmlspecialchars($settings['search_placeholder'] ?? 'Search or #tag…'); ?>"
+                               autocomplete="off">
+                        <button type="submit">GO</button>
+                    </form>
+                </details>
                 <a class="ss-grid-nav-link" href="<?php echo BASE_URL; ?>archive.php#smack-archive-filter-btn" title="Filter">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v5l-4 2v-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
                     <span class="ss-grid-nav-label">Filter</span>
@@ -77,15 +102,6 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
     <div class="scroll-browse-tools" aria-label="Browse photographs">
         <a class="scroll-browse-link" href="<?php echo BASE_URL; ?>">Show all</a>
         <a class="scroll-browse-link" href="<?php echo BASE_URL; ?>archive.php#smack-archive-filter-btn">Filter</a>
-        <form class="scroll-search" method="get" action="<?php echo BASE_URL; ?>archive.php">
-            <label class="scroll-search-label" for="scroll-search-input">Search</label>
-            <input id="scroll-search-input"
-                   class="scroll-search-input"
-                   type="search"
-                   name="q"
-                   placeholder="<?php echo htmlspecialchars($settings['search_placeholder'] ?? 'Search or #tag…'); ?>"
-                   autocomplete="off">
-        </form>
     </div>
 
     <main class="scroll-wall">
@@ -93,9 +109,37 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
         $target_row_h = max(1, (int)($settings['scroll_row_height'] ?? 280));
         $gap = max(0, min(25, (int)($settings['scroll_tile_gap'] ?? 0)));
         $ref_w = max(1, (int)($settings['main_canvas_width'] ?? 1500));
+        $portrait_feature = (($settings['scroll_portrait_span'] ?? 'off') === 'on');
 
         // Give every tile stable geometry before the shared lazy loader observes
         // it, so an unlaid-out wall cannot make all images intersect at once.
+        if ($portrait_feature):
+        ?>
+        <div id="scroll-justified-grid"
+             class="scroll-feature-grid"
+             style="--scroll-row-height: <?php echo $target_row_h; ?>px; --scroll-tile-gap: <?php echo $gap; ?>px;">
+            <?php foreach ($images as $image):
+                $iw = max(1, (int)($image['img_width'] ?? 1));
+                $ih = max(1, (int)($image['img_height'] ?? 1));
+                $aspect = $iw / $ih;
+                $thumb = trim((string)($image['img_thumb_aspect'] ?? ''));
+                $src = BASE_URL . ltrim($thumb !== '' ? $thumb : ($image['img_file'] ?? ''), '/');
+                $feature_class = $aspect < .82 ? ' scroll-feature-portrait' : '';
+            ?>
+            <a class="justified-item scroll-feature-item<?php echo $feature_class; ?>"
+               href="<?php echo BASE_URL . htmlspecialchars($image['img_slug']); ?>"
+               aria-label="<?php echo htmlspecialchars($image['img_title'] ?? 'View photograph'); ?>">
+                <img src="<?php echo htmlspecialchars($src); ?>"
+                     width="<?php echo $iw; ?>"
+                     height="<?php echo $ih; ?>"
+                     alt="<?php echo htmlspecialchars($image['img_title'] ?? ''); ?>"
+                     loading="lazy">
+                <span class="scroll-item-title"><?php echo htmlspecialchars($image['img_title'] ?? ''); ?></span>
+            </a>
+            <?php endforeach; ?>
+        </div>
+        <?php
+        else:
         $rows = [];
         $current_row = [];
         $current_row_width = 0;
@@ -138,10 +182,14 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
             </div>
             <?php endforeach; ?>
         </div>
+        <?php endif; ?>
         <?php if (!$images): ?>
             <p class="scroll-empty">No parts in inventory yet.</p>
         <?php endif; ?>
     </main>
+    <div id="scroll-feed-sentinel"
+         data-next-page="<?php echo $scroll_has_more ? $scroll_page + 1 : 0; ?>"
+         aria-hidden="true"></div>
 </div>
 <?php include __DIR__ . '/skin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

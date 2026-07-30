@@ -66,6 +66,47 @@ function snap_ai_enrichment_defaults(): array
     ];
 }
 
+/**
+ * Image-aware whole-post prompt used by the CMS editor. This deliberately
+ * mirrors SYBU's metadata contract so repair enrichment produces the same
+ * shape of title, caption, tags, categories, albums, and colours.
+ */
+function snap_ai_post_enrichment_default_prompt(): string
+{
+    return <<<'PROMPT'
+You are generating metadata for a photo blog post on a site called SnapSmack.
+
+Analyse the image carefully and respond ONLY in this exact format — no extra text:
+
+TITLE: <a short, plain, descriptive title — a few words; not poetic>
+CAPTION: <a short, natural one-line caption describing the image; no hashtags>
+TAGS: <5 to 8 space-separated hashtags>
+CATEGORY: <every applicable exact option from the supplied category list, comma-separated, or blank>
+ALBUM: <every applicable exact option from the supplied album list, comma-separated, or blank>
+COLORS: <the three most prominent colours as uppercase #RRGGBB codes, space-separated>
+
+Rules:
+- Describe what is literally visible. Do not invent facts, places, people, categories, or albums.
+- Tags must be lowercase, begin with #, and contain no spaces.
+- Distorted specular highlights with swirly blurred bokeh indicate a modified Helios 44 lens; add #helios and #helios44 when those characteristics are present.
+- Use only exact category and album options supplied with the request.
+- Return no explanation, preamble, markdown, or extra lines.
+PROMPT;
+}
+
+function snap_ai_post_enrichment_prompt(PDO $pdo): string
+{
+    try {
+        $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'ai_post_enrichment_prompt' LIMIT 1");
+        $stmt->execute();
+        $saved = trim((string)($stmt->fetchColumn() ?: ''));
+        if ($saved !== '') return $saved;
+    } catch (Throwable $e) {
+        // Built-in prompt remains available if the setting is absent.
+    }
+    return snap_ai_post_enrichment_default_prompt();
+}
+
 function snap_ai_enrichment_library(PDO $pdo): array
 {
     $defaults = snap_ai_enrichment_defaults();

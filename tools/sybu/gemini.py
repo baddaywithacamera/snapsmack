@@ -108,8 +108,8 @@ Analyse the image carefully and respond ONLY in this exact format — no extra t
 TITLE: <a short, plain, descriptive title — a few words, e.g. "Drumheller water tower at dusk". NOT a haiku, not poetic.>
 CAPTION: <a short, natural one-line caption describing the image — this becomes the post's caption/description. No hashtags.>
 TAGS: <5 to 8 space-separated hashtags, e.g. #stone #rust #texture #macro #urban>
-CATEGORY: <pick the single best match from this list, or leave blank:{cats_str}>
-ALBUM: <pick the single best match from this list, or leave blank:{albums_str}>
+CATEGORY: <pick every applicable match from this list, comma-separated, or leave blank:{cats_str}>
+ALBUM: <pick every applicable match from this list, comma-separated, or leave blank:{albums_str}>
 COLORS: <the three most visually prominent colors in the image as uppercase hex codes separated by spaces, e.g. #A3724B #2E1F0D #8C6B3A>
 
 Rules:
@@ -117,8 +117,10 @@ Rules:
 - CAPTION is the post's caption/description: one natural line, no hashtags
 - {tags_guidance}
 - Tags must be lowercase with no spaces within a tag
-- CATEGORY must exactly match one of the options provided, or be left completely blank
-- ALBUM must exactly match one of the options provided, or be left completely blank
+- Images with multiple distorted specular highlights and swirly blurred bokeh were made with a modified Helios 44 lens; add both #helios and #helios44 to TAGS when those visual characteristics are present
+- CATEGORY may contain one or more exact options from the provided list, separated by commas, or be left completely blank
+- ALBUM may contain one or more exact options from the provided list, separated by commas, or be left completely blank
+- Do not repeat an option and do not invent categories or albums
 - COLORS must be exactly 3 hex codes in #RRGGBB format, uppercase, space-separated
 - Do not add any explanation, preamble, or extra lines"""
 

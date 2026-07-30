@@ -24,6 +24,7 @@
         <button class="tab-btn active" data-tab="connect">CONNECT</button>
         <button class="tab-btn"        data-tab="filter">FILTER</button>
         <button class="tab-btn"        data-tab="sort">SORT</button>
+        <button class="tab-btn"        data-tab="repair">REPAIR</button>
     </div>
 
     <!-- ── Tab Panes ───────────────────────────────────────────────────── -->
@@ -168,6 +169,42 @@
                         <button id="btn-ep-revert" class="btn-secondary btn-sm">REVERT</button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- REPAIR ───────────────────────────────────────────────────── -->
+        <div id="tab-repair" class="tab-pane">
+            <div class="repair-shell">
+                <div class="repair-header">
+                    <div>
+                        <h3>ENRICH MISSING POST DATA</h3>
+                        <p>GYSS processes one image at a time. Progress remains on this computer; the server never runs a batch.</p>
+                    </div>
+                    <button id="btn-enrich-scan" class="btn-secondary">SCAN SITE</button>
+                </div>
+
+                <div class="repair-options">
+                    <label><input type="checkbox" class="repair-field" value="title" checked> Missing title</label>
+                    <label><input type="checkbox" class="repair-field" value="caption" checked> Missing caption</label>
+                    <label><input type="checkbox" class="repair-field" value="tags" checked> Missing tags</label>
+                    <label><input type="checkbox" class="repair-field" value="category"> Missing category</label>
+                    <label><input type="checkbox" class="repair-field" value="album"> Missing album</label>
+                    <label><input type="checkbox" class="repair-field" value="colors" checked> Missing AI colours</label>
+                    <label class="repair-overwrite"><input type="checkbox" id="enrich-overwrite"> Replace existing values</label>
+                </div>
+
+                <label class="form-label" for="enrich-prompt">IMAGE ENRICHMENT PROMPT</label>
+                <textarea id="enrich-prompt" class="form-input repair-prompt" rows="13"
+                          placeholder="Scan the site to load the saved SYBU-style prompt."></textarea>
+
+                <div class="repair-runbar">
+                    <button id="btn-enrich-run" class="btn-primary" disabled>ENRICH MISSING POSTS</button>
+                    <button id="btn-enrich-stop" class="btn-danger" disabled>STOP</button>
+                    <strong id="enrich-count">Not scanned</strong>
+                    <span id="enrich-progress"></span>
+                </div>
+                <div id="enrich-status" class="status-line status-info" hidden></div>
+                <div id="enrich-results"></div>
             </div>
         </div>
 

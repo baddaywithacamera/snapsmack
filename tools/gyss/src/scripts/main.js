@@ -28,6 +28,8 @@ let state = {
     editPanelId:    null,         // currently open edit panel photo id
     selectedIds:    new Set(),    // multi-selected photo ids
     dragIds:        [],           // ids being dragged
+    repairItems:    [],
+    repairStop:     false,
 };
 
 // ---------------------------------------------------------------------------
@@ -40,6 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     bindConnectTab();
     bindFilterTab();
     bindSortTab();
+    bindRepairTab();
     bindConflictModal();
 });
 
@@ -702,6 +705,121 @@ async function resolveConflict(photoId, action) {
     } else {
         closeConflictModal();
     }
+}
+
+// ---------------------------------------------------------------------------
+// REPAIR TAB — desktop-owned, resumable one-at-a-time enrichment
+// ---------------------------------------------------------------------------
+function bindRepairTab() {
+    document.getElementById('btn-enrich-scan')?.addEventListener('click', scanEnrichment);
+    document.getElementById('btn-enrich-run')?.addEventListener('click', runEnrichment);
+    document.getElementById('btn-enrich-stop')?.addEventListener('click', () => {
+        state.repairStop = true;
+        setStatus('enrich-status', 'Stopping after the current image…', 'info');
+    });
+    document.querySelectorAll('.repair-field').forEach(box => {
+        box.addEventListener('change', renderRepairCount);
+    });
+}
+
+function selectedRepairFields() {
+    return Array.from(document.querySelectorAll('.repair-field:checked')).map(el => el.value);
+}
+
+function repairQueue() {
+    const fields = new Set(selectedRepairFields());
+    return state.repairItems.filter(item => item.missing.some(field => fields.has(field)));
+}
+
+function renderRepairCount() {
+    const queue = repairQueue();
+    const count = document.getElementById('enrich-count');
+    if (count) count.textContent = `${queue.length} post${queue.length === 1 ? '' : 's'} need selected fields`;
+    const run = document.getElementById('btn-enrich-run');
+    if (run) run.disabled = !state.api || queue.length === 0 || selectedRepairFields().length === 0;
+}
+
+async function scanEnrichment() {
+    if (!state.api) {
+        toast('Connect to a site first.', 'error');
+        showTab('connect');
+        return;
+    }
+    setStatus('enrich-status', 'Scanning published posts…', 'info');
+    document.getElementById('btn-enrich-run').disabled = true;
+    try {
+        const result = await state.api.enrichmentAudit(1000);
+        state.repairItems = result.items || [];
+        const prompt = document.getElementById('enrich-prompt');
+        if (prompt && (!prompt.value.trim() || prompt.dataset.loaded !== '1')) {
+            prompt.value = result.prompt || '';
+            prompt.dataset.loaded = '1';
+        }
+        renderRepairCount();
+        setStatus(
+            'enrich-status',
+            result.ai_ready
+                ? `Scan complete. ${state.repairItems.length} posts have missing metadata.`
+                : 'Scan complete, but AI is not configured on this site.',
+            result.ai_ready ? 'ok' : 'error'
+        );
+        if (!result.ai_ready) document.getElementById('btn-enrich-run').disabled = true;
+    } catch (err) {
+        setStatus('enrich-status', `Scan failed: ${err.message}`, 'error');
+    }
+}
+
+async function runEnrichment() {
+    const fields = selectedRepairFields();
+    const queue = repairQueue();
+    const prompt = document.getElementById('enrich-prompt').value.trim();
+    const overwrite = document.getElementById('enrich-overwrite').checked;
+    if (!queue.length || !fields.length || !prompt) {
+        toast('Scan, select fields, and provide a prompt first.', 'error');
+        return;
+    }
+    if (overwrite && !confirm('Replace populated metadata where selected? This is broader than filling blanks.')) return;
+
+    state.repairStop = false;
+    const run = document.getElementById('btn-enrich-run');
+    const stop = document.getElementById('btn-enrich-stop');
+    const results = document.getElementById('enrich-results');
+    run.disabled = true;
+    stop.disabled = false;
+    results.textContent = '';
+    let completed = 0;
+
+    for (const item of queue) {
+        if (state.repairStop) break;
+        document.getElementById('enrich-progress').textContent = `${completed} / ${queue.length}`;
+        setStatus('enrich-status', `Enriching image ${item.id}…`, 'info');
+        try {
+            const wanted = overwrite ? fields : fields.filter(field => item.missing.includes(field));
+            const result = await state.api.enrichOne(item.id, prompt, wanted, overwrite);
+            completed++;
+            item.missing = item.missing.filter(field => !(result.applied || []).includes(field));
+            results.insertAdjacentHTML('afterbegin',
+                `<div class="enrich-result"><img src="${escHtml(item.thumb_url)}" alt="">` +
+                `<span>${escHtml(result.metadata?.title || item.title || `Image ${item.id}`)}</span>` +
+                `<strong class="ok">${escHtml((result.applied || []).join(', ') || 'review')}</strong></div>`);
+        } catch (err) {
+            results.insertAdjacentHTML('afterbegin',
+                `<div class="enrich-result"><img src="${escHtml(item.thumb_url)}" alt="">` +
+                `<span>Image ${item.id}</span><strong class="error">${escHtml(err.message)}</strong></div>`);
+            state.repairStop = true;
+            setStatus('enrich-status', `Stopped: ${err.message}. Scan and resume after correcting it.`, 'error');
+            break;
+        }
+        // Gentle client-side pacing; there is never a server-side batch loop.
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    document.getElementById('enrich-progress').textContent = `${completed} / ${queue.length}`;
+    stop.disabled = true;
+    if (!state.repairStop) {
+        setStatus('enrich-status', `Enrichment complete — ${completed} posts processed. Scan again to verify.`, 'ok');
+    }
+    renderRepairCount();
 }
 
 // ---------------------------------------------------------------------------

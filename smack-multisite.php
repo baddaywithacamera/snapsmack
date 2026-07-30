@@ -435,6 +435,70 @@ if (isset($_POST['set_spoke_track'])) {
                 curl_close($ch);
                 $data = json_decode((string)$raw, true);
 
+                // The track endpoint first shipped in 0.7.456. If an older
+                // spoke does not know it, bring that spoke to the current
+                // stable maintenance release, then retry the requested track
+                // change. This keeps the hub selector usable across the
+                // version boundary instead of exposing an "unknown endpoint"
+                // dead end to the owner.
+                $legacy_track_endpoint = (
+                    !$cerr
+                    && $code === 404
+                    && stripos((string)($data['error'] ?? ''), 'unknown multisite endpoint') !== false
+                );
+                if ($legacy_track_endpoint) {
+                    $uch = curl_init();
+                    curl_setopt_array($uch, [
+                        CURLOPT_URL            => rtrim($tn['site_url'], '/') . '/api.php?route=multisite/updates/trigger',
+                        CURLOPT_POST           => true,
+                        CURLOPT_POSTFIELDS     => '',
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_SSL_VERIFYPEER => true,
+                        CURLOPT_TIMEOUT        => 120,
+                        CURLOPT_HTTPHEADER     => [
+                            'Authorization: Bearer ' . $tn['api_key_local'],
+                            'Accept: application/json',
+                            'Content-Length: 0',
+                        ],
+                    ]);
+                    $uraw  = curl_exec($uch);
+                    $ucode = curl_getinfo($uch, CURLINFO_HTTP_CODE);
+                    $ucerr = curl_error($uch);
+                    curl_close($uch);
+                    $udata = json_decode((string)$uraw, true);
+
+                    if (!$ucerr && $ucode === 200 && !empty($udata['ok'])) {
+                        if (!empty($udata['to_version'])) {
+                            $clean_ver = preg_replace('/^[^0-9]+/', '', $udata['to_version']);
+                            $pdo->prepare("UPDATE snap_multisite_nodes SET software_version = ? WHERE id = ?")
+                                ->execute([$clean_ver, $spoke_id]);
+                        }
+
+                        $rch = curl_init();
+                        curl_setopt_array($rch, [
+                            CURLOPT_URL            => rtrim($tn['site_url'], '/') . '/api.php?route=multisite/updates/track',
+                            CURLOPT_POST           => true,
+                            CURLOPT_POSTFIELDS     => json_encode(['track' => $track]),
+                            CURLOPT_RETURNTRANSFER => true,
+                            CURLOPT_SSL_VERIFYPEER => true,
+                            CURLOPT_TIMEOUT        => 15,
+                            CURLOPT_HTTPHEADER     => [
+                                'Authorization: Bearer ' . $tn['api_key_local'],
+                                'Content-Type: application/json',
+                                'Accept: application/json',
+                            ],
+                        ]);
+                        $raw  = curl_exec($rch);
+                        $code = curl_getinfo($rch, CURLINFO_HTTP_CODE);
+                        $cerr = curl_error($rch);
+                        curl_close($rch);
+                        $data = json_decode((string)$raw, true);
+                    } else {
+                        $update_detail = $ucerr ?: ($udata['error'] ?? ('HTTP ' . $ucode));
+                        $cerr = 'The spoke must update before its track can be changed: ' . $update_detail;
+                    }
+                }
+
                 if ($cerr || $code !== 200 || empty($data['ok'])) {
                     $detail = $cerr ?: ($data['error'] ?? ('HTTP ' . $code));
                     $err = 'Could not change track for ' . ($tn['site_name'] ?? $tn['site_url']) . ': ' . $detail;
@@ -2043,13 +2107,16 @@ include 'core/sidebar.php';
 .spoke-act-wrap .action-update    { min-width:72px;  text-align:center; }
 .spoke-track-form { margin:0; }
 .spoke-track-select {
-    width:auto;
-    min-width:86px;
-    padding:3px 20px 3px 6px;
+    display:inline-block;
+    width:90px;
+    min-width:90px;
+    height:30px;
+    min-height:0;
+    padding:0 22px 0 8px;
     border:1px solid var(--border,#555);
     background:var(--input-bg,#111);
     color:var(--text-muted,#888);
-    font:700 0.7rem/1 monospace;
+    font:700 0.68rem/30px monospace;
     letter-spacing:1px;
     cursor:pointer;
 }
