@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK — SCROLL landing page.
- * In-house native-aspect masonry (feed.js) + aspect thumbnails.
+ * Shared CMS native-aspect feed engine + aspect thumbnails.
  */
 
 /**

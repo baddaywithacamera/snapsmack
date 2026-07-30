@@ -12,7 +12,9 @@
 
 ## Unreleased
 
-- **SCROLL 0.1.7 restores authoritative portrait handling.** The imported `img_orientation` value now drives two-row spanning; dimensions are only a fallback when orientation is genuinely unavailable, and legacy records missing both are measured from the loaded image.
+## 0.7.462 "Proper Channels" — 2026-07-30
+
+- **SCROLL's executable feed engine now ships through the CMS, never the skin ZIP.** The native-aspect wall and bounded infinite-scroll controller live in `assets/js`, are registered in the shared manifest inventory, and are requested by SCROLL 0.1.9 through `require_scripts`. The invalid skin-local JavaScript from 0.1.8 is removed.
 
 ## 0.7.461 "Long Tall Sally" — 2026-07-30
 

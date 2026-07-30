@@ -68,9 +68,9 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.461');
-define('SNAPSMACK_VERSION_SHORT', '0.7.461');
-define('SNAPSMACK_VERSION_CODENAME', 'Long Tall Sally');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.462');
+define('SNAPSMACK_VERSION_SHORT', '0.7.462');
+define('SNAPSMACK_VERSION_CODENAME', 'Proper Channels');
 
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.
