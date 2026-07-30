@@ -36,9 +36,6 @@ include dirname(__DIR__, 2) . '/core/meta.php';
                 <span><?php echo htmlspecialchars($line); ?></span>
             <?php endforeach; ?>
         </h1>
-        <p class="scroll-tagline">
-            <?php echo htmlspecialchars($settings['site_tagline'] ?? 'parting out cars since 1972'); ?>
-        </p>
     </section>
 
     <?php
@@ -46,6 +43,7 @@ include dirname(__DIR__, 2) . '/core/meta.php';
         'prefix' => 'scroll',
         'observer_class' => 'scroll-profile',
         'identity' => $settings['photographer_name'] ?? ($settings['site_name'] ?? 'SnapSmack'),
+        'always_visible' => true,
         'inline_social' => true,
         'links' => [
             ['label' => 'Home', 'url' => BASE_URL, 'icon' => 'home'],
@@ -58,8 +56,8 @@ include dirname(__DIR__, 2) . '/core/meta.php';
 
     <main class="scroll-wall">
         <div class="justified-grid"
-             data-row-height="<?php echo (int)($settings['justified_row_height'] ?? 280); ?>"
-             data-gap="8">
+             data-row-height="<?php echo (int)($settings['scroll_row_height'] ?? 420); ?>"
+             data-gap="0">
             <?php foreach ($images as $image):
                 $width = max(1, (int)($image['img_width'] ?? 1));
                 $height = max(1, (int)($image['img_height'] ?? 1));
@@ -68,12 +66,15 @@ include dirname(__DIR__, 2) . '/core/meta.php';
             ?>
             <a class="justified-item"
                href="<?php echo BASE_URL . htmlspecialchars($image['img_slug']); ?>"
-               title="<?php echo htmlspecialchars($image['img_title'] ?? ''); ?>">
+               aria-label="<?php echo htmlspecialchars($image['img_title'] ?? 'View photograph'); ?>">
                 <img src="<?php echo htmlspecialchars($src); ?>"
                      width="<?php echo $width; ?>"
                      height="<?php echo $height; ?>"
                      alt="<?php echo htmlspecialchars($image['img_title'] ?? ''); ?>"
                      loading="lazy">
+                <span class="scroll-item-title">
+                    <?php echo htmlspecialchars($image['img_title'] ?? ''); ?>
+                </span>
             </a>
             <?php endforeach; ?>
         </div>

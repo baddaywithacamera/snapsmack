@@ -18,8 +18,9 @@ $_gn_prefix = preg_replace('/[^a-z0-9_-]/i', '', $grid_nav_config['prefix'] ?? '
 $_gn_observer = preg_replace('/[^a-z0-9_-]/i', '', $grid_nav_config['observer_class'] ?? ($_gn_prefix . '-profile'));
 $_gn_identity = (string)($grid_nav_config['identity'] ?? ($settings['photographer_name'] ?? ($settings['site_name'] ?? 'SnapSmack')));
 $_gn_links = is_array($grid_nav_config['links'] ?? null) ? $grid_nav_config['links'] : [];
+$_gn_always_visible = !empty($grid_nav_config['always_visible']);
 ?>
-<nav class="<?php echo htmlspecialchars($_gn_prefix); ?>-sticky-nav ss-grid-sticky-nav"
+<nav class="<?php echo htmlspecialchars($_gn_prefix); ?>-sticky-nav ss-grid-sticky-nav<?php echo $_gn_always_visible ? ' ss-grid-nav-always-visible' : ''; ?>"
      aria-label="Site navigation"
      data-grid-nav-observer="<?php echo htmlspecialchars($_gn_observer); ?>">
     <div class="ss-grid-nav-identity">

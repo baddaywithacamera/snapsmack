@@ -33,6 +33,12 @@
     pointer-events: auto;
 }
 
+.ss-grid-sticky-nav.ss-grid-nav-always-visible {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
 .ss-grid-nav-identity,
 .ss-grid-nav-links,
 .ss-grid-nav-actions {

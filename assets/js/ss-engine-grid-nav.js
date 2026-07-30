@@ -15,6 +15,7 @@
     function init() {
         var nav = document.querySelector('.ss-grid-sticky-nav, nav[class*="-sticky-nav"]');
         if (!nav) return;
+        if (nav.classList.contains('ss-grid-nav-always-visible')) return;
         var m = nav.className.match(/(?:^|\s)([a-z0-9_-]+)-sticky-nav(?:\s|$)/);
         if (!m) return;
         var P = m[1];

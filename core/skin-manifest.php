@@ -222,6 +222,9 @@ function manifest_resolve_fonts(array $manifest): array {
     foreach (($inventory['local_fonts'] ?? []) as $key => $font) {
         $fonts[(string)$key] = (string)($font['label'] ?? $key);
     }
+    foreach (($inventory['fonts'] ?? []) as $key => $label) {
+        $fonts[(string)$key] = (string)$label;
+    }
 
     foreach ($manifest['options'] as &$descriptor) {
         if (empty($descriptor['is_font'])) continue;
