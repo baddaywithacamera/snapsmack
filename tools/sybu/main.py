@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.1.21"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
+BUILD_VERSION = "0.1.30"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -48,7 +48,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import List, Optional
 
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from PIL import Image, ImageTk
 
 import config as cfg_module
@@ -99,14 +99,14 @@ except Exception:
 
 BG_DEEP   = "#141414"   # window background (Midnight Lime)
 BG_CARD   = "#1C1C1C"   # row / card background
-BG_MID    = "#050505"   # input fields
+BG_MID    = "#111111"   # input fields — distinct from the page, not black slabs
 BG_HOVER  = "#252525"   # hover state
 ACCENT    = "#39FF14"   # neon lime
 ACCENT2   = "#2ECC10"   # darker lime
-BORDER    = "#2A2A2A"   # subtle borders
+BORDER    = "#383838"   # visible field edges without the heavy boxed-in look
 
 FG_MAIN   = "#EEEEEE"   # primary text
-FG_DIM    = "#777777"   # muted / placeholder
+FG_DIM    = "#999999"   # labels must remain readable beside dark controls
 FG_OK     = "#4EC994"   # success
 FG_ERR    = "#FF3E3E"   # error
 FG_WARN   = "#D4872A"   # warning
@@ -260,7 +260,8 @@ class EntryRow(tk.Frame):
         self._tags_var.trace_add("write", lambda *a: setattr(self.entry, 'tags', self._tags_var.get()))
 
         # ── Category combobox ─────────────────────────────────────────
-        tk.Label(self, text="cat", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=190, y=88)
+        self._cat_lbl = tk.Label(self, text="cat", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
+        self._cat_lbl.place(x=190, y=88)
         self._cat_var = tk.StringVar(value=self.entry.category)
         self._cat_cb = ttk.Combobox(
             self, textvariable=self._cat_var, values=[''] + cats,
@@ -273,7 +274,8 @@ class EntryRow(tk.Frame):
                     lambda *a: setattr(self.entry, 'category', self._cat_var.get()))
 
         # ── Album combobox ────────────────────────────────────────────
-        tk.Label(self, text="album", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=402, y=88)
+        self._album_lbl = tk.Label(self, text="album", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
+        self._album_lbl.place(x=402, y=88)
         self._album_var = tk.StringVar(value=self.entry.album)
         self._album_cb = ttk.Combobox(
             self, textvariable=self._album_var, values=[''] + albums,
@@ -286,7 +288,8 @@ class EntryRow(tk.Frame):
                       lambda *a: setattr(self.entry, 'album', self._album_var.get()))
 
         # ── Orientation combobox ─────────────────────────────────────
-        tk.Label(self, text="orient", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=614, y=88)
+        self._orient_lbl = tk.Label(self, text="orient", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
+        self._orient_lbl.place(x=614, y=88)
         orient_display = {'auto': 'Auto', '0': 'Landscape', '1': 'Portrait', '2': 'Square'}
         display_val = orient_display.get(self.entry.orientation, 'Auto')
         self._orient_var = tk.StringVar(value=display_val)
@@ -302,7 +305,8 @@ class EntryRow(tk.Frame):
                                         orient_reverse.get(self._orient_var.get(), 'auto')))
 
         # ── Colour swatches (filled by Gemini) ────────────────────────
-        tk.Label(self, text="colors", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=736, y=88)
+        self._colors_lbl = tk.Label(self, text="colors", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
+        self._colors_lbl.place(x=736, y=88)
         self._swatch_labels = []
         for i in range(3):
             sw = tk.Label(self, bg=BG_CARD, relief="flat", width=4,
@@ -350,8 +354,32 @@ class EntryRow(tk.Frame):
         fname_w  = badge_x - 190 - 10                 # filename starts at x=190
         self._title_entry.place(width=max(entry_w, 50))
         self._tags_entry.place(width=max(entry_w, 50))
+        self._caption_entry.place(width=max(entry_w - 20, 50))  # caption starts 20px right of the entries
         self._fname_lbl.place(width=max(fname_w, 50))
         self._status_lbl.place(x=badge_x)
+        # -- Metadata row: distribute cat/album/orient/colours across the row width.
+        #    Previously these were pinned at fixed x, so the colours swatches were
+        #    clipped / hidden behind the status badge and the row looked cut off.
+        GAP       = 14
+        orient_w  = 110
+        colours_w = 3 * 50            # three 44px swatches on a 50px pitch
+        row_right = badge_x - self._BADGE_GAP
+        usable    = row_right - 190
+        combo_w   = int((usable - orient_w - colours_w - 3 * GAP) / 2)
+        combo_w   = max(140, min(combo_w, 460))
+        cat_x     = 190
+        album_x   = cat_x   + combo_w + GAP
+        orient_x  = album_x + combo_w + GAP
+        colours_x = orient_x + orient_w + GAP
+        self._cat_lbl.place(x=cat_x)
+        self._cat_cb.place(x=cat_x, width=combo_w)
+        self._album_lbl.place(x=album_x)
+        self._album_cb.place(x=album_x, width=combo_w)
+        self._orient_lbl.place(x=orient_x)
+        self._orient_cb.place(x=orient_x, width=orient_w)
+        self._colors_lbl.place(x=colours_x)
+        for _i, _sw in enumerate(self._swatch_labels):
+            _sw.place(x=colours_x + _i * 50)
 
     def set_thumb(self, img: ImageTk.PhotoImage):
         self._thumb_img = img
@@ -470,6 +498,12 @@ class EntryList(tk.Frame):
         self._rows:      List[EntryRow] = []
         self._cats:      List[str]      = []
         self._albums:    List[str]      = []
+        self._thumb_pool = ThreadPoolExecutor(
+            max_workers=4, thread_name_prefix="sybu-thumb")
+        self._thumb_results = queue.Queue()
+        self._thumb_shutdown = False
+        self._thumb_generation = 0
+        self._image_folder = ''
 
         # Drag state
         self._drag_row:     Optional[EntryRow] = None
@@ -477,6 +511,7 @@ class EntryList(tk.Frame):
         self._drag_origin:  int = 0   # original index
 
         self._build()
+        self.after(30, self._drain_thumb_results)
 
     def _build(self):
         # Canvas + scrollbar for scrollable row list
@@ -536,21 +571,12 @@ class EntryList(tk.Frame):
              cats: List[str], albums: List[str]):
         self._cats   = cats
         self._albums = albums
+        self._image_folder = image_folder
         # Append to existing rows — caller uses clear() explicitly via the Clear button.
 
         offset = len(self._rows)
         for i, entry in enumerate(entries):
-            row = EntryRow(
-                self._inner, entry, offset + i, cats, albums,
-                on_drag_start=self._drag_start,
-                on_drag_motion=self._drag_motion,
-                on_drag_end=self._drag_end,
-            )
-            row.pack(fill="x", pady=(0, 2))
-            self._rows.append(row)
-
-            # Load thumbnail in background
-            self._load_thumb_async(row, os.path.join(image_folder, entry.file))
+            self._append_row(entry, offset + i)
 
         # Flush pending geometry events so the scrollregion is correct before
         # snapping to the top — without this, yview_moveto(0) fires before
@@ -596,17 +622,52 @@ class EntryList(tk.Frame):
 
     def shuffle(self):
         """Randomly reorder the queue. POST order follows _rows order, so this
-        randomizes the import order too. Re-packs existing rows (no thumbnail
-        reload)."""
+        randomizes the import order too. Rebuild the rows because repacking
+        hundreds of live Tk widgets corrupts canvas painting on Windows."""
         import random
-        random.shuffle(self._rows)
-        for i, row in enumerate(self._rows):
-            row.row_index = i
-            row.pack_forget()
-            row.pack(fill="x", pady=(0, 2))
+        snapshots = [
+            (row.entry, row.is_selected(), row._status,
+             row._status_lbl.cget("text"))
+            for row in self._rows
+        ]
+        random.shuffle(snapshots)
+
+        self._thumb_generation += 1
+        self._thumb_pool.shutdown(wait=False, cancel_futures=True)
+        self._thumb_pool = ThreadPoolExecutor(
+            max_workers=4, thread_name_prefix="sybu-thumb")
+        while True:
+            try:
+                self._thumb_results.get_nowait()
+            except queue.Empty:
+                break
+
+        for row in self._rows:
+            row.destroy()
+        self._rows = []
+
+        for i, (entry, selected, status, status_text) in enumerate(snapshots):
+            row = self._append_row(entry, i)
+            row.set_selected(selected)
+            if status != 'pending':
+                row.set_status(status, status_text)
+
         self._inner.update_idletasks()
         self._canvas.configure(scrollregion=self._canvas.bbox("all"))
         self._canvas.yview_moveto(0)
+
+    def _append_row(self, entry: ManifestEntry, index: int) -> EntryRow:
+        row = EntryRow(
+            self._inner, entry, index, self._cats, self._albums,
+            on_drag_start=self._drag_start,
+            on_drag_motion=self._drag_motion,
+            on_drag_end=self._drag_end,
+        )
+        row.pack(fill="x", pady=(0, 2))
+        self._rows.append(row)
+        self._load_thumb_async(
+            row, os.path.join(self._image_folder, entry.file))
+        return row
 
     def get_row(self, index: int) -> Optional['EntryRow']:
         if 0 <= index < len(self._rows):
@@ -631,10 +692,13 @@ class EntryList(tk.Frame):
     # ------------------------------------------------------------------
 
     def _load_thumb_async(self, row: EntryRow, img_path: str):
+        generation = self._thumb_generation
+
         def load():
             try:
-                img = Image.open(img_path)
-                img.thumbnail(THUMB_SIZE, Image.LANCZOS)
+                with Image.open(img_path) as source:
+                    img = source.convert("RGB")
+                    img.thumbnail(THUMB_SIZE, Image.LANCZOS)
                 # Pad to exact THUMB_SIZE with dark background
                 canvas = Image.new("RGB", THUMB_SIZE, (10, 10, 14))
                 offset = (
@@ -642,12 +706,38 @@ class EntryList(tk.Frame):
                     (THUMB_SIZE[1] - img.height) // 2,
                 )
                 canvas.paste(img, offset)
-                photo = ImageTk.PhotoImage(canvas)
-                self.after(0, lambda: row.set_thumb(photo))
-            except Exception:
-                pass  # Leave the placeholder text
+                self._thumb_results.put((generation, row, canvas, None))
+            except Exception as exc:
+                self._thumb_results.put((generation, row, None, str(exc)))
 
-        threading.Thread(target=load, daemon=True).start()
+        if not self._thumb_shutdown:
+            self._thumb_pool.submit(load)
+
+    def _drain_thumb_results(self):
+        """Create Tk images on Tk's thread; worker threads only decode pixels."""
+        if self._thumb_shutdown:
+            return
+        for _ in range(12):
+            try:
+                generation, row, canvas, error = self._thumb_results.get_nowait()
+            except queue.Empty:
+                break
+            if generation != self._thumb_generation:
+                continue
+            if error:
+                log.warning("THUMBNAIL FAILED %s — %s", row.entry.file, error)
+                continue
+            try:
+                if row.winfo_exists():
+                    row.set_thumb(ImageTk.PhotoImage(canvas))
+            except tk.TclError:
+                pass
+        self.after(30, self._drain_thumb_results)
+
+    def destroy(self):
+        self._thumb_shutdown = True
+        self._thumb_pool.shutdown(wait=False, cancel_futures=True)
+        super().destroy()
 
     # ------------------------------------------------------------------
     # Drag reorder
@@ -1095,6 +1185,9 @@ class App(tk.Tk):
         self._site_data:    Optional[SiteData]        = None
         self._drive_service = None
         self._posting           = False
+        # Failed or incomplete AI enrichment is a hard posting latch. It can
+        # only be removed by a successful retry or an explicit user override.
+        self._enrichment_warnings = {}
         self._keepalive_running = False
         self._cancel_evt        = threading.Event()    # set to abort a running POST
         self._active_conn       = None                 # disposable gram conn — closed on cancel for instant abort
@@ -1661,11 +1754,17 @@ class App(tk.Tk):
         # GRAMOFSMACK (single grams). _switch_tab sets this var; the post path
         # still branches on it. No visible checkbox.
         self._post_as_grams_var = tk.BooleanVar(
-            value=bool(self._config.get('post_as_grams', False)))
+            value=False)
 
         self._clear_btn = ttk.Button(bottom, text="Clear", style="Ghost.TButton",
                                       command=self._on_clear)
         self._clear_btn.pack(side="left", padx=(10, 0), pady=10)
+
+        self._clear_enrich_warning_btn = ttk.Button(
+            bottom, text="Clear AI Warning", style="Ghost.TButton",
+            command=self._on_clear_enrichment_warning, state="disabled",
+        )
+        self._clear_enrich_warning_btn.pack(side="left", padx=(6, 0), pady=10)
 
         self._random_btn = ttk.Button(bottom, text="Randomize", style="Ghost.TButton",
                                        command=self._on_randomize)
@@ -2363,12 +2462,15 @@ class App(tk.Tk):
 
         btn_bar = tk.Frame(left, bg=BG_CARD)
         btn_bar.pack(fill="x", padx=6, pady=8)
+        for col in range(3):
+            btn_bar.columnconfigure(col, weight=1, uniform="profile-actions")
         ttk.Button(btn_bar, text="+ New", style="Ghost.TButton",
-                   command=self._on_profile_new).pack(side="left")
+                   command=self._on_profile_new).grid(row=0, column=0, sticky="ew")
+        ttk.Button(btn_bar, text="Duplicate", style="Ghost.TButton",
+                   command=self._on_profile_duplicate).grid(
+                       row=0, column=1, sticky="ew", padx=2)
         ttk.Button(btn_bar, text="Delete", style="Ghost.TButton",
-                   command=self._on_profile_delete).pack(side="right")
-        ttk.Button(btn_bar, text="Dup", style="Ghost.TButton",
-                   command=self._on_profile_duplicate).pack(side="right")
+                   command=self._on_profile_delete).grid(row=0, column=2, sticky="ew")
 
         load_btn = tk.Frame(left, bg=BG_CARD)
         load_btn.pack(fill="x", padx=6, pady=(0, 10))
@@ -2610,7 +2712,7 @@ class App(tk.Tk):
 
         self._settings_refresh_list(select_name=new_name)
         self._sp_status_lbl.configure(
-            text='Copy ready - change its name and site details, then save.',
+            text='Copy ready — change its name and site details, then save.',
             fg=FG_OK,
         )
 
@@ -3971,15 +4073,36 @@ class App(tk.Tk):
         self._bottom_enrich_canvas.unbind("<Button-1>")
         self._bottom_enrich_canvas.itemconfig(self._bottom_enrich_rect, fill="#1A1A1A")
         self._bottom_enrich_canvas.itemconfig(self._bottom_enrich_text, fill=FG_DIM)
+        self._progress['maximum'] = len(entries)
+        self._prog_var.set(0)
+        self._prog_lbl.configure(text=f"0 / {len(entries)}")
         self._set_status(f"Enriching with Gemini — 0 / {len(entries)}…", FG_WARN)
 
         def _enrich_thread():
+            run_state = {'completed': 0, 'last_error': ''}
+            enriched_keys = set()
+
             def _progress(idx, total, entry, error):
+                run_state['completed'] = idx
+                if error:
+                    run_state['last_error'] = str(error)
+                else:
+                    enriched_keys.add(self._enrichment_warning_key(entry))
+
                 def _ui_update():
+                    self._prog_var.set(idx)
+                    self._prog_lbl.configure(text=f"{idx} / {total}")
                     if error:
+                        self._enrichment_warnings[
+                            self._enrichment_warning_key(entry)
+                        ] = str(error)
+                        self._update_enrichment_warning_button()
                         self._set_status(
                             f"Gemini: {entry.file} — {error}", FG_ERR)
                     else:
+                        self._enrichment_warnings.pop(
+                            self._enrichment_warning_key(entry), None)
+                        self._update_enrichment_warning_button()
                         # Locate the row by entry identity — robust even when only
                         # a selected subset of the queue is being enriched.
                         row = self._entry_list.row_for_entry(entry)
@@ -4026,7 +4149,24 @@ class App(tk.Tk):
                 self._bottom_enrich_canvas.bind("<Button-1>", lambda e: self._on_enrich())
                 self._bottom_enrich_canvas.itemconfig(self._bottom_enrich_rect, fill="#0D2B3E")
                 self._bottom_enrich_canvas.itemconfig(self._bottom_enrich_text, fill="#00BFFF")
-                self._set_status("Gemini enrichment complete. Review and post.", FG_OK)
+                if run_state['last_error']:
+                    # Fatal Gemini errors stop the remaining batch. Unprocessed
+                    # images must be blocked too, not only the image that raised
+                    # the error.
+                    for entry in entries:
+                        key = self._enrichment_warning_key(entry)
+                        if key not in enriched_keys:
+                            self._enrichment_warnings[key] = (
+                                f"Enrichment did not complete: {run_state['last_error']}"
+                            )
+                    self._update_enrichment_warning_button()
+                    self._set_status(
+                        "Gemini enrichment stopped — POSTING BLOCKED until "
+                        "enrichment succeeds or Clear AI Warning is confirmed.",
+                        FG_ERR,
+                    )
+                else:
+                    self._set_status("Gemini enrichment complete. Review and post.", FG_OK)
                 self._save_config()
             self.after(0, _done)
 
@@ -4045,6 +4185,35 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
     # Clear queue
     # ------------------------------------------------------------------
+
+    def _enrichment_warning_key(self, entry):
+        """Stable queue key used by the failed-enrichment posting latch."""
+        folder = self._folder_var.get().strip()
+        return os.path.normcase(os.path.normpath(os.path.join(folder, entry.file)))
+
+    def _update_enrichment_warning_button(self):
+        state = "normal" if self._enrichment_warnings else "disabled"
+        self._clear_enrich_warning_btn.configure(state=state)
+
+    def _on_clear_enrichment_warning(self):
+        count = len(self._enrichment_warnings)
+        if not count:
+            return
+        if not messagebox.askyesno(
+            "Allow unenriched upload?",
+            f"Clear the failed-enrichment warning for {count} image"
+            f"{'s' if count != 1 else ''}?\n\n"
+            "This deliberately allows those images to be posted without "
+            "successful Gemini enrichment. Their current fields will be "
+            "uploaded as-is.",
+        ):
+            return
+        self._enrichment_warnings.clear()
+        self._update_enrichment_warning_button()
+        self._set_status(
+            "AI warning cleared manually — unenriched posting is now allowed.",
+            FG_WARN,
+        )
 
     def _append_failure(self, name, reason=""):
         """Append ONE failed upload to this run's failures file the instant it
@@ -4077,6 +4246,15 @@ class App(tk.Tk):
         # Never let Clear wipe FAILED uploads — they must survive so they can be
         # re-posted rather than silently lost.
         self._entry_list.clear(keep_errors=True)
+        remaining_keys = {
+            self._enrichment_warning_key(entry)
+            for entry in self._entry_list.get_entries()
+        }
+        self._enrichment_warnings = {
+            key: reason for key, reason in self._enrichment_warnings.items()
+            if key in remaining_keys
+        }
+        self._update_enrichment_warning_button()
         remaining = len(self._entry_list.get_entries())
         self._progress['maximum'] = 1
         self._prog_var.set(0)
@@ -4291,6 +4469,30 @@ class App(tk.Tk):
                                  "Tick at least one image to post (or use Select all).")
             return
 
+        blocked = [
+            (entry, self._enrichment_warnings[self._enrichment_warning_key(entry)])
+            for entry in entries
+            if self._enrichment_warning_key(entry) in self._enrichment_warnings
+        ]
+        if blocked:
+            details = "\n".join(
+                f"• {entry.file}: {reason}" for entry, reason in blocked[:8]
+            )
+            if len(blocked) > 8:
+                details += f"\n…and {len(blocked) - 8} more"
+            self._set_status(
+                f"POSTING BLOCKED — {len(blocked)} image(s) failed enrichment.",
+                FG_ERR,
+            )
+            messagebox.showerror(
+                "Posting blocked — enrichment failed",
+                f"{len(blocked)} selected image(s) do not have a completed "
+                f"Gemini enrichment:\n\n{details}\n\n"
+                "Run ENRICH again, or click Clear AI Warning and explicitly "
+                "confirm that these images may upload unenriched.",
+            )
+            return
+
         # ── Warn if Drive is enabled but not connected (dismissable) ────
         if self._drive_enabled_var.get() and self._drive_service is None:
             if not self._confirm_no_drive():
@@ -4323,12 +4525,13 @@ class App(tk.Tk):
 
         thread = threading.Thread(
             target=self._post_thread,
-            args=(entries, self._folder_var.get().strip(), count),
+            args=(entries, self._folder_var.get().strip(), count,
+                  self._active_tab == 'gram'),
             daemon=True,
         )
         thread.start()
 
-    def _post_thread(self, entries, image_folder, total):
+    def _post_thread(self, entries, image_folder, total, post_as_grams):
         def on_progress(current, total, result):
             self._msg_queue.put(('progress', current, total, result))
 
@@ -4336,7 +4539,7 @@ class App(tk.Tk):
         orient_map = {'auto': 'auto', 'landscape': '0', 'portrait': '1', 'square': '2'}
         orient_val = orient_map.get(self._def_orient_var.get().strip().lower(), 'auto')
 
-        if self._post_as_grams_var.get():
+        if post_as_grams:
             # Carousel/GRAMOFSMACK site: post each enriched row as its OWN single
             # gram via the LIVE gram API in poster.py. The Bearer key comes off the
             # live solo client's session; the gram runner uses a DISPOSABLE session

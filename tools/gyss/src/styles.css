@@ -179,4 +179,22 @@ textarea.form-input { resize: vertical; min-height: 64px; }
 /* ─── Misc ──────────────────────────────────────────────────────────────── */
 .empty-hint { font-size: 12px; color: var(--text-dim); font-style: italic; }
 
+/* ─── REPAIR / local enrichment runner ─────────────────────────────────── */
+.repair-shell { height:100%; overflow:auto; padding:24px; }
+.repair-header { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; margin-bottom:18px; }
+.repair-header h3 { margin:0 0 6px; }
+.repair-header p { margin:0; color:var(--text-mid); font-size:12px; }
+.repair-options { display:flex; flex-wrap:wrap; gap:10px 20px; padding:13px 15px; margin-bottom:16px; background:var(--bg-card); border:1px solid var(--border); }
+.repair-options label { display:flex; align-items:center; gap:7px; font-size:12px; }
+.repair-options .repair-overwrite { margin-left:auto; color:var(--red); }
+.repair-prompt { height:auto; min-height:230px; resize:vertical; line-height:1.45; font-family:monospace; }
+.repair-runbar { display:flex; align-items:center; gap:10px; margin-top:14px; }
+#enrich-count { margin-left:auto; color:var(--text-mid); font-size:12px; }
+#enrich-progress { min-width:90px; color:var(--green); font-size:12px; text-align:right; }
+#enrich-results { margin-top:12px; max-height:260px; overflow:auto; border-top:1px solid var(--border); }
+.enrich-result { display:grid; grid-template-columns:56px 1fr auto; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:11px; }
+.enrich-result img { width:56px; height:42px; object-fit:cover; }
+.enrich-result .ok { color:var(--green); }
+.enrich-result .error { color:var(--red); }
+
 /* ===== SNAPSMACK EOF ===== */
