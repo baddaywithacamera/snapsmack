@@ -29,11 +29,13 @@ HTML
         'content' => <<<'HTML'
 <h3>Masthead and Navigation</h3>
 <p>Use a vertical bar (<code>|</code>) in the masthead setting to choose your
-own line breaks. The landing masthead may be tilted up to 40 degrees
-counterclockwise. Solo and static pages use the same typeface horizontally.</p>
-<p>The large masthead owns the top of the landing page. After it scrolls out of
-view, compact icon navigation slides into place. Social Dock links share that
-compact navigation when enabled.</p>
+own line breaks. Its size is adjustable from 6–18 percent of the viewport
+width, and it may be tilted up to 40 degrees counterclockwise. Its typeface and
+colour are independent of the rest of the site text. Solo and static pages use
+the same masthead styling horizontally.</p>
+<p>The compact navigation is visible immediately and remains fixed at the top
+while the masthead and photo wall scroll beneath it. Social Dock links share
+that navigation when enabled.</p>
 HTML
     ],
     'skin-scroll-wall' => [
@@ -44,7 +46,9 @@ HTML
 <h3>Photo Wall</h3>
 <p><strong>Photo Size / Wall Density</strong> changes the target row height.
 Smaller values fit more photographs across; larger values show fewer, larger
-photographs. The number per row adapts to the images and browser width.</p>
+photographs. SCROLL defaults to a dense, gapless wall with photographs roughly
+one-and-a-half times the row scale of the Forever Photographing reference. The
+number per row adapts to the images and browser width.</p>
 <p>Corner radius, outside-border width and outside-border colour are independent
 controls. A border width of zero gives an unframed wall.</p>
 HTML

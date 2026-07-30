@@ -26,8 +26,17 @@
 
     // --- CONFIGURATION ---
     var config = window.JUSTIFIED_CONFIG || {};
-    var targetH = parseInt(grid.getAttribute('data-row-height'), 10) || config.targetHeight || 280;
-    var gap = parseInt(grid.getAttribute('data-gap'), 10) || config.gap || 4;
+    var targetH = parseInt(grid.getAttribute('data-row-height'), 10);
+    if (!Number.isFinite(targetH) || targetH <= 0) {
+        targetH = parseInt(config.targetHeight, 10) || 280;
+    }
+
+    // Zero is a deliberate edge-to-edge layout, not a missing value.
+    var gapAttr = grid.getAttribute('data-gap');
+    var gap = gapAttr === null || gapAttr === ''
+        ? parseInt(config.gap, 10)
+        : parseInt(gapAttr, 10);
+    if (!Number.isFinite(gap) || gap < 0) gap = 4;
 
     // --- GALLERY INITIALIZATION ---
     var gallery = fjGallery(grid, {

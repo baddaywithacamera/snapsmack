@@ -20,6 +20,7 @@ $grid_nav_config = [
     'prefix' => 'scroll',
     'observer_class' => 'scroll-profile',
     'identity' => $settings['photographer_name'] ?? ($settings['site_name'] ?? 'SnapSmack'),
+    'always_visible' => true,
     'inline_social' => true,
     'links' => [
         ['label' => 'Home', 'url' => BASE_URL, 'icon' => 'home'],
