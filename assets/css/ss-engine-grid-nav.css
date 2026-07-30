@@ -51,6 +51,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: inherit;
+    text-decoration: none;
 }
 .ss-grid-nav-links,
 .ss-grid-nav-actions { gap: 8px; }

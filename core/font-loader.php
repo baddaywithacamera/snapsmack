@@ -53,17 +53,6 @@ function snapsmack_emit_font_tags(array $font_keys, string $base_url): void {
         $inv         = include __DIR__ . '/manifest-inventory.php';
         $local_fonts  = $inv['local_fonts'] ?? [];
         $google_fonts = $inv['fonts']        ?? [];
-        $google_catalog_path = __DIR__ . '/google-font-families.json';
-        if (is_file($google_catalog_path)) {
-            $all_google_families = json_decode((string)file_get_contents($google_catalog_path), true);
-            if (is_array($all_google_families)) {
-                foreach ($all_google_families as $family) {
-                    if (is_string($family) && $family !== '') {
-                        $google_fonts[$family] = $family;
-                    }
-                }
-            }
-        }
     }
 
     // ── Normalise input: de-dupe, drop empty, drop font stack suffixes ────────
@@ -102,7 +91,7 @@ function snapsmack_emit_font_tags(array $font_keys, string $base_url): void {
     if (!empty($google_to_load)) {
         $parts = [];
         foreach ($google_to_load as $family) {
-            $parts[] = 'family=' . urlencode($family);
+            $parts[] = 'family=' . urlencode($family) . ':wght@300;400;500;600;700;900';
         }
         $gf_url = 'https://fonts.googleapis.com/css2?' . implode('&', $parts) . '&display=swap';
         ?>
