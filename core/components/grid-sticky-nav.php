@@ -20,8 +20,12 @@ $_gn_identity = (string)($grid_nav_config['identity'] ?? ($settings['photographe
 $_gn_identity_url = (string)($grid_nav_config['identity_url'] ?? (defined('BASE_URL') ? BASE_URL : '/'));
 $_gn_links = is_array($grid_nav_config['links'] ?? null) ? $grid_nav_config['links'] : [];
 $_gn_always_visible = !empty($grid_nav_config['always_visible']);
+$_gn_inline_then_sticky = !empty($grid_nav_config['inline_then_sticky']);
 ?>
-<nav class="<?php echo htmlspecialchars($_gn_prefix); ?>-sticky-nav ss-grid-sticky-nav<?php echo $_gn_always_visible ? ' ss-grid-nav-always-visible' : ''; ?>"
+<nav class="<?php echo htmlspecialchars($_gn_prefix); ?>-sticky-nav ss-grid-sticky-nav<?php
+     echo $_gn_always_visible ? ' ss-grid-nav-always-visible' : '';
+     echo $_gn_inline_then_sticky ? ' ss-grid-nav-inline-then-sticky' : '';
+     ?>"
      aria-label="Site navigation"
      data-grid-nav-observer="<?php echo htmlspecialchars($_gn_observer); ?>">
     <div class="ss-grid-nav-identity">

@@ -39,6 +39,17 @@
     pointer-events: auto;
 }
 
+.ss-grid-sticky-nav.ss-grid-nav-inline-then-sticky {
+    position: static;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.ss-grid-sticky-nav.ss-grid-nav-inline-then-sticky.profile-hidden {
+    position: fixed;
+}
+
 .ss-grid-nav-identity,
 .ss-grid-nav-links,
 .ss-grid-nav-actions {
