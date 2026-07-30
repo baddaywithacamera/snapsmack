@@ -353,7 +353,7 @@ include 'core/sidebar.php';
                     <?php endif; ?>
 
                     <label>ACTIVE SKIN</label>
-                    <div class="read-only-display">
+                    <div class="read-only-display client-ip-diagnostic">
                         <?php echo strtoupper(htmlspecialchars($active_skin_friendly)); ?>
                     </div>
                 </div>
