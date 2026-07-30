@@ -867,6 +867,7 @@ $hub_site_name       = $settings['site_name']            ?? 'Hub';
 $hub_site_url        = rtrim($settings['site_url']       ?? '', '/');
 $hub_smackback       = $settings['smackback_status']     ?? (($settings['smackback_enabled'] ?? '0') === '1' ? 'pending' : 'unknown');
 $hub_site_mode       = $settings['site_mode']            ?? 'photoblog';
+$hub_update_track    = $settings['update_track']         ?? 'stable';
 
 // --- HEARTBEAT SWEEP (hub only, once per page load) ---
 // Calls each active spoke's heartbeat endpoint and caches the stats locally.
@@ -1360,7 +1361,11 @@ include 'core/sidebar.php';
                                     ?>
                                 </td>
                                 <td class="col-center">
-                                    <span style="font-size:0.7rem; font-weight:700; letter-spacing:1px; color:var(--text-muted,#888);">BORING</span>
+                                    <?php if ($hub_update_track === 'dev'): ?>
+                                        <span style="font-size:0.7rem; font-weight:700; letter-spacing:1px; color:#f90;">BITCHIN'</span>
+                                    <?php else: ?>
+                                        <span style="font-size:0.7rem; font-weight:700; letter-spacing:1px; color:var(--text-muted,#888);">BORING</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="col-center">
                                     <span class="status-dot status-dot--active" title="active"></span>
