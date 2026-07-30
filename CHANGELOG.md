@@ -12,6 +12,8 @@
 
 ## Unreleased
 
+- **SCROLL 0.1.7 restores authoritative portrait handling.** The imported `img_orientation` value now drives two-row spanning; dimensions are only a fallback when orientation is genuinely unavailable, and legacy records missing both are measured from the loaded image.
+
 ## 0.7.461 "Long Tall Sally" — 2026-07-30
 
 - **SCROLL 0.1.6 now delivers the requested presentation instead of an approximation.** Its solo page adopts the proven 50 SHADES OF NOAH GREY structure: identity/navigation header, viewport-fitted photograph, fixed previous/info/comments/next rail, and a coordinated information drawer. White, dark-grey, and black are the defaults, while page, navigation, footer, link, typography, and text-case controls remain owner-selectable. Landing search moves into the icon bar, masthead whitespace is reduced, the photographer byline has its own setting, and an optional dense feature layout lets portrait images span two rows without changing the default justified wall.
