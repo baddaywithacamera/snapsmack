@@ -1,7 +1,9 @@
 <?php
 /**
  * SNAPSMACK — SCROLL landing page.
- * Shared CMS native-aspect feed engine + aspect thumbnails.
+ * 2D CSS-Grid MOSAIC ("bento") wall: portraits stand tall, landscapes run wide,
+ * panos wider, squares square — dense-packed by CSS Grid with no gaps and no
+ * skin-local JS. PHP only tags each photo by shape from its stored dimensions.
  */
 
 /**
@@ -11,35 +13,26 @@
  */
 
 $now_local = date('Y-m-d H:i:s');
-$scroll_per_page = max(12, min(60, (int)($settings['scroll_page_size'] ?? 36)));
-$scroll_page = max(1, (int)($_GET['scroll_page'] ?? 1));
-$scroll_offset = ($scroll_page - 1) * $scroll_per_page;
-$scroll_count_stmt = $pdo->prepare(
-    "SELECT COUNT(*) FROM snap_images
-     WHERE img_status = 'published' AND img_date <= ?"
-);
-$scroll_count_stmt->execute([$now_local]);
-$scroll_total = (int)$scroll_count_stmt->fetchColumn();
 $grid_stmt = $pdo->prepare(
     "SELECT id, img_title, img_slug, img_file, img_thumb_aspect,
             img_width, img_height, img_orientation
      FROM snap_images
      WHERE img_status = 'published' AND img_date <= ?
-     ORDER BY sort_order ASC, id DESC
-     LIMIT ? OFFSET ?"
+     ORDER BY sort_order ASC, id DESC"
 );
-$grid_stmt->bindValue(1, $now_local);
-$grid_stmt->bindValue(2, $scroll_per_page, PDO::PARAM_INT);
-$grid_stmt->bindValue(3, $scroll_offset, PDO::PARAM_INT);
-$grid_stmt->execute();
+$grid_stmt->execute([$now_local]);
 $images = $grid_stmt->fetchAll(PDO::FETCH_ASSOC);
-$scroll_has_more = ($scroll_offset + count($images)) < $scroll_total;
 
 $masthead_raw = trim((string)($settings['scroll_masthead_lines'] ?? 'USED CAR|PARTS'));
 $masthead_lines = array_values(array_filter(array_map('trim', explode('|', $masthead_raw)), 'strlen'));
 if (!$masthead_lines) $masthead_lines = [$settings['site_name'] ?? 'SnapSmack'];
 $photographer_name = trim((string)($settings['photographer_name'] ?? ($settings['site_name'] ?? '')));
 $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY BY'));
+
+// Mosaic tuning (all optional settings, sensible defaults).
+$mosaic_col = max(140, min(420, (int)($settings['scroll_mosaic_col'] ?? 230)));  // base column min-width
+$mosaic_row = max(140, min(420, (int)($settings['scroll_mosaic_row'] ?? 230)));  // base cell height
+$mosaic_gap = max(0,   min(24,  (int)($settings['scroll_mosaic_gap'] ?? 6)));     // gap between tiles
 ?>
 <div class="scroll-landing">
     <section class="scroll-profile" aria-labelledby="scroll-site-title">
@@ -106,31 +99,36 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
     </div>
 
     <main class="scroll-wall">
-        <div id="scroll-feed-grid" class="scroll-feature-grid">
-            <?php foreach ($images as $image):
-                $stored_iw = (int)($image['img_width'] ?? 0);
-                $stored_ih = (int)($image['img_height'] ?? 0);
-                $has_dimensions = $stored_iw > 0 && $stored_ih > 0;
-                $thumb = trim((string)($image['img_thumb_aspect'] ?? ''));
-                $src = BASE_URL . ltrim($thumb !== '' ? $thumb : ($image['img_file'] ?? ''), '/');
-            ?>
-            <a class="scroll-feature-item"
-               href="<?php echo BASE_URL . htmlspecialchars($image['img_slug']); ?>"
-               aria-label="<?php echo htmlspecialchars($image['img_title'] ?? 'View photograph'); ?>">
-                <img src="<?php echo htmlspecialchars($src); ?>"
-                     <?php if ($has_dimensions): ?>width="<?php echo $stored_iw; ?>" height="<?php echo $stored_ih; ?>" <?php endif; ?>alt="<?php echo htmlspecialchars($image['img_title'] ?? ''); ?>"
-                     loading="lazy">
-                <span class="scroll-item-title"><?php echo htmlspecialchars($image['img_title'] ?? ''); ?></span>
-            </a>
-            <?php endforeach; ?>
+        <div class="scroll-mosaic"
+             style="--mosaic-col: <?php echo $mosaic_col; ?>px; --mosaic-row: <?php echo $mosaic_row; ?>px; --mosaic-gap: <?php echo $mosaic_gap; ?>px;">
+            <?php if (!empty($images)): ?>
+                <?php foreach ($images as $img):
+                    $iw = (int)($img['img_width']  ?? 0);
+                    $ih = (int)($img['img_height'] ?? 0);
+                    $a  = ($iw > 0 && $ih > 0) ? ($iw / $ih) : 0;
+                    // Shape class → CSS Grid span. Neither orientation is shrunk to
+                    // serve the other: portraits get a tall cell, landscapes a wide one.
+                    if      ($a >= 2.4)               $cls = 'is-pano';       // 3 cols wide
+                    elseif  ($a >= 1.35)              $cls = 'is-landscape';  // 2 cols wide
+                    elseif  ($a > 0 && $a <= 0.75)    $cls = 'is-portrait';   // 2 rows tall
+                    else                              $cls = 'is-square';     // 1 x 1 (also unknown dims)
+                    $thumb_rel = trim((string)($img['img_thumb_aspect'] ?? ''));
+                    $img_url   = BASE_URL . ltrim($thumb_rel !== '' ? $thumb_rel : ($img['img_file'] ?? ''), '/');
+                ?>
+                <a class="mtile <?php echo $cls; ?>"
+                   href="<?php echo BASE_URL . htmlspecialchars($img['img_slug']); ?>"
+                   aria-label="<?php echo htmlspecialchars($img['img_title'] ?? 'View photograph'); ?>">
+                    <img src="<?php echo htmlspecialchars($img_url); ?>"
+                         alt="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>"
+                         loading="lazy">
+                    <span class="scroll-item-title"><?php echo htmlspecialchars($img['img_title'] ?? ''); ?></span>
+                </a>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <p class="scroll-empty">No parts in inventory yet.</p>
+            <?php endif; ?>
         </div>
-        <?php if (!$images): ?>
-            <p class="scroll-empty">No parts in inventory yet.</p>
-        <?php endif; ?>
     </main>
-    <div id="scroll-feed-sentinel"
-         data-next-page="<?php echo $scroll_has_more ? $scroll_page + 1 : 0; ?>"
-         aria-hidden="true"></div>
 </div>
 <?php include __DIR__ . '/skin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
