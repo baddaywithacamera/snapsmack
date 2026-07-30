@@ -12,6 +12,8 @@
 
 ## Unreleased
 
+- **SCROLL's repaired wall is discoverable as a new skin package.** The server-packed justified rows stop the landing page from treating the entire photo archive as initially visible, restore ordinary thumbnail lazy loading, and ship the corrected inline-to-sticky header geometry as skin version 0.1.4 so the Skin Packager can publish the build. (`skins/scroll/`, shared grid navigation.)
+
 - **SnapSmack.ca now explains the retro-web idea in language modern search can understand.** The homepage leads with “Retro Photo Blogging. Modern Technology.” and immediately identifies SnapSmack as free, self-hosted photography publishing software. Canonical URLs, Twitter cards, WebSite/SoftwareApplication/WebPage JSON-LD, a sitemap, robots policy, llms.txt, an `/index.php` redirect, descriptive footer navigation, explicit image dimensions, and below-the-fold lazy loading close the technical gaps. Six focused pages cover Instagram and Flickr alternatives, self-hosted photography, modern photo-blog software, Fediverse photography, and complete export/portability without inventing parity or adoption claims. A permanent `tools/seo_audit.py` command validates the crawl surface before the separately deployed marketing site goes live. (`projects/snapsmack-ca/`, `tools/seo_audit.py`, pre-change audit in `docs/`.)
 
 ## 0.7.459 "One Pull" — 2026-07-29
