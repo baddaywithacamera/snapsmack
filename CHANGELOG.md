@@ -12,6 +12,13 @@
 
 ## Unreleased
 
+## 0.7.456 "Hub Control" — 2026-07-30
+
+- **A hub can change a connected spoke's update track without logging into the spoke.** Every spoke row now has a BORING/BITCHIN' selector backed by a narrow authenticated endpoint that accepts only `stable` or `dev` and honours the spoke's existing remote-update permission. The hub immediately records the confirmed track returned by the spoke.
+- **Multisite reports the hub's real update track.** The hub row no longer hardcodes BORING when its own Configuration is set to BITCHIN'.
+- **Security diagnostics and AI consent follow the admin theme cleanly.** The client-IP diagnostic expands for all four lines and wraps long IPv6 addresses, while the AI cost-consent panel no longer forces an unreadable inline black/brown palette.
+- **SCROLL's shared browse controls and justified-wall support are repaired.** The core grid navigation supplies visible Show All, Filter, and Search controls, restores curated Google font choices, and prevents shared geometry from turning justified tiles into full-width images. The separately packaged SCROLL skin remains distributed through the Skin Packager rather than the core release.
+
 - **SCROLL 0.1.5 repairs the live wall and completes its browse header.** Explicit flex-row geometry prevents packaged or stale shared styles from turning every justified tile into a full-width image. The landing masthead now follows the requested three-part reference geometry—a configurable `PHOTOGRAPHY BY` byline plus the site photographer at left, restrained title centred, icon/Social Dock navigation right—and adds visible Show All, Filter, and Search controls. Filter links lead to the canonical archive taxonomy panel instead of inventing a second filtering system. (`skins/scroll/`.)
 
 - **SCROLL's repaired wall is discoverable as a new skin package.** The server-packed justified rows stop the landing page from treating the entire photo archive as initially visible, restore ordinary thumbnail lazy loading, and ship the corrected inline-to-sticky header geometry as skin version 0.1.4 so the Skin Packager can publish the build. (`skins/scroll/`, shared grid navigation.)
