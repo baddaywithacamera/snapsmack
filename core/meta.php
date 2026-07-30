@@ -225,8 +225,17 @@ if (in_array($_snap_page, ['page', 'blog', 'index'])): ?>
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-lightbox.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 <?php endif; ?>
 <script>window.SNAP_SITE_MODE = <?php echo json_encode($settings['site_mode'] ?? 'photoblog'); ?>;</script>
+<?php
+// MOSAIC ([mosaic:ID]) is a POST-BODY shortcode engine (SMACKTALK longform +
+// static Pages): it renders inside parseContent() output and can never appear
+// on a photo landing / archive / solo-image page. Gate it to post-body pages so
+// a SMACKONEOUT skin (e.g. SCROLL) never drags the SMACKTALK mosaic engine onto
+// its photo wall. Was loading unconditionally on every page in every install
+// mode (a cross-mode leak). Mirrors the shortcodes/columns/lightbox guard above.
+if (in_array($_snap_page, ['page', 'blog'], true)): ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-mosaic.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
+<?php endif; ?>
 
 <?php
 /**

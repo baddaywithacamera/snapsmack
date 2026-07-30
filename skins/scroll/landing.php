@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK — SCROLL landing page.
- * Uses the established shared justified engine and aspect thumbnails.
+ * In-house native-aspect masonry (feed.js) + aspect thumbnails.
  */
 
 /**
@@ -106,96 +106,24 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
     </div>
 
     <main class="scroll-wall">
-        <?php
-        $target_row_h = max(1, (int)($settings['scroll_row_height'] ?? 280));
-        $gap = max(0, min(25, (int)($settings['scroll_tile_gap'] ?? 0)));
-        $ref_w = max(1, (int)($settings['main_canvas_width'] ?? 1500));
-        $portrait_feature = (($settings['scroll_portrait_span'] ?? 'off') === 'on');
-
-        // Give every tile stable geometry before the shared lazy loader observes
-        // it, so an unlaid-out wall cannot make all images intersect at once.
-        if ($portrait_feature):
-        ?>
-        <div id="scroll-justified-grid"
-             class="scroll-feature-grid"
-             style="--scroll-row-height: <?php echo $target_row_h; ?>px; --scroll-tile-gap: <?php echo $gap; ?>px;">
+        <div id="scroll-feed-grid" class="scroll-feature-grid">
             <?php foreach ($images as $image):
                 $stored_iw = (int)($image['img_width'] ?? 0);
                 $stored_ih = (int)($image['img_height'] ?? 0);
                 $has_dimensions = $stored_iw > 0 && $stored_ih > 0;
-                $stored_orientation = array_key_exists('img_orientation', $image)
-                    ? (int)$image['img_orientation']
-                    : null;
-                $iw = max(1, $stored_iw);
-                $ih = max(1, $stored_ih);
-                $aspect = $iw / $ih;
                 $thumb = trim((string)($image['img_thumb_aspect'] ?? ''));
                 $src = BASE_URL . ltrim($thumb !== '' ? $thumb : ($image['img_file'] ?? ''), '/');
-                $is_portrait = $stored_orientation === 1
-                    || ($stored_orientation === null && $has_dimensions && $aspect < .82);
-                $orientation_source = $stored_orientation !== null
-                    ? 'stored'
-                    : ($has_dimensions ? 'dimensions' : 'unknown');
-                $feature_class = $is_portrait ? ' scroll-feature-portrait' : '';
             ?>
-            <a class="justified-item scroll-feature-item<?php echo $feature_class; ?>"
+            <a class="scroll-feature-item"
                href="<?php echo BASE_URL . htmlspecialchars($image['img_slug']); ?>"
-               data-scroll-orientation="<?php echo $orientation_source; ?>"
                aria-label="<?php echo htmlspecialchars($image['img_title'] ?? 'View photograph'); ?>">
                 <img src="<?php echo htmlspecialchars($src); ?>"
-                     width="<?php echo $iw; ?>"
-                     height="<?php echo $ih; ?>"
-                     alt="<?php echo htmlspecialchars($image['img_title'] ?? ''); ?>"
+                     <?php if ($has_dimensions): ?>width="<?php echo $stored_iw; ?>" height="<?php echo $stored_ih; ?>" <?php endif; ?>alt="<?php echo htmlspecialchars($image['img_title'] ?? ''); ?>"
                      loading="lazy">
                 <span class="scroll-item-title"><?php echo htmlspecialchars($image['img_title'] ?? ''); ?></span>
             </a>
             <?php endforeach; ?>
         </div>
-        <?php
-        else:
-        $rows = [];
-        $current_row = [];
-        $current_row_width = 0;
-        foreach ($images as $img) {
-            $iw = max(1, (int)($img['img_width'] ?? 1));
-            $ih = max(1, (int)($img['img_height'] ?? 1));
-            $img['_aspect'] = $iw / $ih;
-            $current_row[] = $img;
-            $current_row_width += round($img['_aspect'] * $target_row_h) + $gap;
-            if ($current_row_width - $gap >= $ref_w) {
-                $rows[] = ['images' => $current_row, 'full' => true];
-                $current_row = [];
-                $current_row_width = 0;
-            }
-        }
-        if ($current_row) $rows[] = ['images' => $current_row, 'full' => false];
-        ?>
-        <div id="scroll-justified-grid"
-             style="--scroll-row-height: <?php echo $target_row_h; ?>px; --scroll-tile-gap: <?php echo $gap; ?>px;">
-            <?php foreach ($rows as $row_data):
-                $row_class = 'justified-row' . (!$row_data['full'] ? ' justified-row-last' : '');
-            ?>
-            <div class="<?php echo $row_class; ?>">
-                <?php foreach ($row_data['images'] as $image):
-                    $thumb = trim((string)($image['img_thumb_aspect'] ?? ''));
-                    $src = BASE_URL . ltrim($thumb !== '' ? $thumb : ($image['img_file'] ?? ''), '/');
-                ?>
-                <a class="justified-item"
-                   href="<?php echo BASE_URL . htmlspecialchars($image['img_slug']); ?>"
-                   aria-label="<?php echo htmlspecialchars($image['img_title'] ?? 'View photograph'); ?>"
-                   style="flex-grow: <?php echo round($image['_aspect'] * 100); ?>; flex-basis: 0; aspect-ratio: <?php echo round($image['_aspect'], 4); ?>;">
-                    <img src="<?php echo htmlspecialchars($src); ?>"
-                         width="<?php echo max(1, (int)($image['img_width'] ?? 1)); ?>"
-                         height="<?php echo max(1, (int)($image['img_height'] ?? 1)); ?>"
-                         alt="<?php echo htmlspecialchars($image['img_title'] ?? ''); ?>"
-                         loading="lazy">
-                    <span class="scroll-item-title"><?php echo htmlspecialchars($image['img_title'] ?? ''); ?></span>
-                </a>
-                <?php endforeach; ?>
-            </div>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
         <?php if (!$images): ?>
             <p class="scroll-empty">No parts in inventory yet.</p>
         <?php endif; ?>
