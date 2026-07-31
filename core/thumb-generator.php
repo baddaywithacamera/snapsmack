@@ -20,6 +20,13 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
+// Thumbnail sizes normally come from core/constants.php. Guard them here so this
+// shared generator — and every caller that require's it before using the
+// constants — still works if an install's constants.php predates them (a partial
+// update), instead of a fatal "Undefined constant" 500.
+if (!defined('SNAPSMACK_THUMB_SQUARE'))      define('SNAPSMACK_THUMB_SQUARE', 400);
+if (!defined('SNAPSMACK_THUMB_ASPECT_LONG')) define('SNAPSMACK_THUMB_ASPECT_LONG', 900);
+
 
 /**
  * Generate square + aspect thumbnails for a given source image path.
