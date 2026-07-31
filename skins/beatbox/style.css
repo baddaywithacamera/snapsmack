@@ -1,0 +1,110 @@
+/*
+ * SNAPSMACK — BEATBOX skin styles (GRAMOFSMACK)
+ * skins/beatbox/style.css
+ *
+ * Layer 1 (LED EQ tile borders) is rendered ENTIRELY here from the live band
+ * amplitude custom properties (--bb-b0..--bb-b4) that ss-engine-beatbox-viz.js
+ * writes onto [data-beatbox-grid] each frame. No per-tile JS. Each of the 15
+ * positions in a band-cycle (3 columns x 5 bands) reads its row's band var and its
+ * column's VU threshold; brightness builds continuously via clamp()+color-mix().
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     / * ===== SNAPSMACK EOF ===== * /
+ * Last non-empty line of this file MUST be the SNAPSMACK EOF comment.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+/* ---- palette tokens (mirror beatbox-config.php; class set on the carrier) ---- */
+[data-beatbox]{
+  --bb-g-on:#00FF41; --bb-g-off:#003B0F;   /* col 1 — green  (thr .25) */
+  --bb-y-on:#FFD700; --bb-y-off:#3B2F00;   /* col 2 — yellow (thr .55) */
+  --bb-r-on:#FF2020; --bb-r-off:#3B0000;   /* col 3 — red    (thr .80) */
+  --bb-intensity:0.3;
+  --bb-bg:#111111;
+  --bb-tile-gap:3px;
+  --bb-border:2px;
+}
+[data-beatbox].bb-pal-neon{ --bb-g-on:#00E5FF;--bb-g-off:#04313A; --bb-y-on:#FF00E5;--bb-y-off:#3A0034; --bb-r-on:#7C4DFF;--bb-r-off:#1B1140; }
+[data-beatbox].bb-pal-fire{ --bb-g-on:#FFE24D;--bb-g-off:#3A3300; --bb-y-on:#FF8A00;--bb-y-off:#3A2000; --bb-r-on:#FF1E1E;--bb-r-off:#3A0000; }
+[data-beatbox].bb-pal-ice{  --bb-g-on:#CFFAFE;--bb-g-off:#0B3A40; --bb-y-on:#67E8F9;--bb-y-off:#083A44; --bb-r-on:#3B82F6;--bb-r-off:#0A1E4A; }
+
+.beatbox, body.beatbox{ background:var(--bb-bg); color:#e8e8e8; }
+
+/* ---- layer stacking ---- */
+[data-beatbox-bg]{ position:fixed; inset:0; z-index:0; display:grid;
+  grid-template-columns:repeat(var(--bb-cols,8),1fr); grid-auto-rows:1fr; gap:0;
+  pointer-events:none; opacity:0; transition:opacity .4s ease; }
+[data-beatbox-bg].bb-collage-on{ opacity:1; }
+[data-beatbox-viz]{ position:fixed; inset:0; z-index:1; width:100%; height:100%;
+  pointer-events:none; opacity:0; transition:opacity .4s ease; }
+[data-beatbox-viz].bb-viz-on{ opacity:1; }
+.bb-content{ position:relative; z-index:2; }
+
+/* ---- Layer 3 collage tiles ---- */
+.bb-ctile{ width:100%; height:100%; background-size:cover; background-position:center;
+  opacity:var(--bb-rest-op,.15);
+  filter:saturate(var(--bb-rest-sat,20%)) brightness(.6);
+  transform:scale(1); transform-origin:center center;
+  transition:transform .3s ease-out, filter .3s ease-out, opacity .3s ease-out;
+  will-change:transform,filter,opacity; }
+.bb-ctile.bb-hit{ opacity:1; filter:saturate(140%) brightness(1.25);
+  transform:scale(var(--bb-hit-scale,1.05));
+  transition:transform .04s ease-out, filter .04s ease-out; }  /* fast attack; slow decay on class-remove */
+
+/* ---- Layer 1 EQ tile grid ---- */
+[data-beatbox-grid]{ display:grid; grid-template-columns:repeat(3,1fr); gap:var(--bb-tile-gap,3px);
+  --bb-b0:0; --bb-b1:0; --bb-b2:0; --bb-b3:0; --bb-b4:0; }
+[data-beatbox-grid] .bb-tile{ position:relative; aspect-ratio:1/1; overflow:hidden;
+  background-size:cover; background-position:center; border-radius:2px;
+  border:var(--bb-border,2px) solid var(--bb-r-off);
+  /* per-position amp + threshold + colour set by the nth-child rules below */
+  --amp:0; --thr:0.25; --on:var(--bb-r-on); --off:var(--bb-r-off);
+  --lit:clamp(0, calc((var(--amp) - var(--thr)) / (1 - var(--thr))), 1);
+  border-color:color-mix(in srgb, var(--on) calc(var(--lit)*100%), var(--off));
+  box-shadow:
+    0 0 calc(var(--lit) * var(--bb-intensity) * 26px) color-mix(in srgb, var(--on) calc(var(--lit)*100%), transparent),
+    inset 0 0 calc(var(--lit) * var(--bb-intensity) * 14px) color-mix(in srgb, var(--on) calc(var(--lit)*70%), transparent); }
+
+/* column → colour + VU threshold */
+[data-beatbox-grid] .bb-tile:nth-child(3n+1){ --on:var(--bb-g-on); --off:var(--bb-g-off); --thr:0.25; }
+[data-beatbox-grid] .bb-tile:nth-child(3n+2){ --on:var(--bb-y-on); --off:var(--bb-y-off); --thr:0.55; }
+[data-beatbox-grid] .bb-tile:nth-child(3n+3){ --on:var(--bb-r-on); --off:var(--bb-r-off); --thr:0.80; }
+/* row → band (row % 5); 15 tiles = one full 5-row band cycle */
+[data-beatbox-grid] .bb-tile:nth-child(15n+1),[data-beatbox-grid] .bb-tile:nth-child(15n+2),[data-beatbox-grid] .bb-tile:nth-child(15n+3){ --amp:var(--bb-b0); }   /* highs  */
+[data-beatbox-grid] .bb-tile:nth-child(15n+4),[data-beatbox-grid] .bb-tile:nth-child(15n+5),[data-beatbox-grid] .bb-tile:nth-child(15n+6){ --amp:var(--bb-b1); }   /* hi-mid */
+[data-beatbox-grid] .bb-tile:nth-child(15n+7),[data-beatbox-grid] .bb-tile:nth-child(15n+8),[data-beatbox-grid] .bb-tile:nth-child(15n+9){ --amp:var(--bb-b2); }   /* mids   */
+[data-beatbox-grid] .bb-tile:nth-child(15n+10),[data-beatbox-grid] .bb-tile:nth-child(15n+11),[data-beatbox-grid] .bb-tile:nth-child(15n+12){ --amp:var(--bb-b3); } /* lo-mid */
+[data-beatbox-grid] .bb-tile:nth-child(15n+13),[data-beatbox-grid] .bb-tile:nth-child(15n+14),[data-beatbox-grid] .bb-tile:nth-child(15n+15){ --amp:var(--bb-b4); } /* bass   */
+
+/* ---- player bar (docked, always visible) ---- */
+[data-beatbox-bar]{ position:fixed; left:0; right:0; bottom:0; z-index:50; height:60px;
+  display:flex; align-items:center; gap:14px; padding:0 16px;
+  background:#0a0a0a; border-top:1px solid #262626; box-shadow:0 -6px 24px rgba(0,0,0,.6);
+  font-family:"Work Sans",Helvetica,Arial,sans-serif; font-size:12px; color:#e8e8e8; }
+[data-beatbox-bar] .bb-art{ width:40px; height:40px; border-radius:4px; flex:0 0 auto; background:#222; background-size:cover; }
+[data-beatbox-bar] .bb-meta{ flex:0 0 150px; min-width:110px; }
+[data-beatbox-bar] .bb-meta .bb-t{ font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+[data-beatbox-bar] .bb-meta .bb-a{ color:#8a8a8a; }
+[data-beatbox-bar] button{ background:#1c1c1c; border:1px solid #333; color:#e8e8e8; border-radius:6px; padding:8px 12px; cursor:pointer; font:inherit; }
+[data-beatbox-bar] button:hover{ background:#262626; }
+[data-beatbox-bar] [data-bb="play"]{ background:var(--bb-g-on,#00FF41); color:#000; border-color:var(--bb-g-on,#00FF41); font-weight:800; min-width:44px; }
+[data-beatbox-bar] [data-bb="play"][data-playing="1"]::after{ content:"❚❚"; }
+[data-beatbox-bar] [data-bb="play"][data-playing="0"]::after,[data-beatbox-bar] [data-bb="play"]:not([data-playing])::after{ content:"▶"; }
+[data-beatbox-bar] [data-bb="prog"]{ flex:1 1 auto; height:6px; background:#242424; border-radius:3px; position:relative; cursor:pointer; min-width:60px; }
+[data-beatbox-bar] [data-bb="progfill"]{ position:absolute; left:0; top:0; bottom:0; width:0; background:var(--bb-g-on,#00FF41); border-radius:3px; }
+[data-beatbox-bar] select{ background:#1c1c1c; color:#e8e8e8; border:1px solid #333; border-radius:6px; padding:6px; font:inherit; }
+[data-beatbox-bar] input[type=range]{ width:80px; accent-color:var(--bb-g-on,#00FF41); }
+
+/* ---- photosensitivity interstitial ---- */
+[data-beatbox-warn]{ position:fixed; inset:0; z-index:100; display:none; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.92); padding:24px; }
+[data-beatbox-warn].bb-warn-show{ display:flex; }
+[data-beatbox-warn] .bb-warn-box{ max-width:480px; background:#141414; border:1px solid #333; border-radius:12px; padding:30px; text-align:center; }
+[data-beatbox-warn] h2{ font-family:"Source Sans Pro",sans-serif; letter-spacing:2px; margin:0 0 6px; color:#FF2020; text-transform:uppercase; }
+[data-beatbox-warn] p{ color:#c4c4c4; line-height:1.6; font-size:14px; }
+[data-beatbox-warn] .bb-warn-row{ display:flex; gap:12px; justify-content:center; margin-top:22px; }
+
+@media (prefers-reduced-motion: reduce){ [data-beatbox]{ --bb-intensity:0 !important; } }
+@media (max-width:720px){ [data-beatbox-bar] .bb-meta{ flex-basis:96px; } }
+
+/* ===== SNAPSMACK EOF ===== */

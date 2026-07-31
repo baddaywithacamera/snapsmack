@@ -183,3 +183,9 @@ tools/gyss/src-tauri/target/
 # they stop deploying to prod and tripping the integrity scan.
 _crash-recovery-*/
 _to_delete/
+
+# Codex / build scratch — regenerable, never source (PyInstaller output,
+# PDF page-renders). Untracked so they stop bloating history.
+.codex-temp/
+.codex-tmp/
+tmp/
