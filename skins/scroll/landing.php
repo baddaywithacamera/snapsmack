@@ -28,11 +28,9 @@ $masthead_lines = array_values(array_filter(array_map('trim', explode('|', $mast
 if (!$masthead_lines) $masthead_lines = [$settings['site_name'] ?? 'SnapSmack'];
 $photographer_name = trim((string)($settings['photographer_name'] ?? ($settings['site_name'] ?? '')));
 $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY BY'));
-
-// Mosaic tuning (all optional settings, sensible defaults).
-$mosaic_col = max(140, min(420, (int)($settings['scroll_mosaic_col'] ?? 230)));  // base column min-width
-$mosaic_row = max(140, min(420, (int)($settings['scroll_mosaic_row'] ?? 230)));  // base cell height
-$mosaic_gap = max(0,   min(24,  (int)($settings['scroll_mosaic_gap'] ?? 6)));     // gap between tiles
+// Mosaic sizing (--mosaic-col / --mosaic-row / --mosaic-gap) is driven by the
+// SCROLL config sliders via compiled custom_css_public; style.css carries the
+// 230/230/6 fallbacks, so the wall is unchanged until those sliders are moved.
 ?>
 <div class="scroll-landing">
     <section class="scroll-profile" aria-labelledby="scroll-site-title">
@@ -99,8 +97,7 @@ $mosaic_gap = max(0,   min(24,  (int)($settings['scroll_mosaic_gap'] ?? 6)));   
     </div>
 
     <main class="scroll-wall">
-        <div class="scroll-mosaic"
-             style="--mosaic-col: <?php echo $mosaic_col; ?>px; --mosaic-row: <?php echo $mosaic_row; ?>px; --mosaic-gap: <?php echo $mosaic_gap; ?>px;">
+        <div class="scroll-mosaic">
             <?php if (!empty($images)): ?>
                 <?php foreach ($images as $img):
                     $iw = (int)($img['img_width']  ?? 0);
