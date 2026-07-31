@@ -1,37 +1,44 @@
 /**
  * SNAPSMACK - Masonry Grid Engine (ss-engine-masonry.js)
  *
- * Hand-rolled CSS-Grid masonry — the in-house replacement for the external
- * fjGallery justified library. No dependencies. Each tile spans a number of
- * grid row-units proportional to its TRUE aspect ratio, so a portrait stands
- * ~2x taller than a landscape and images show full-frame (only a sub-row-unit
- * cover-crop from rounding). "Portraits span ~2 rows" falls out of the aspect
- * math — it is NOT a hard-coded class you can accidentally apply to everything.
+ * Asymmetric tiled wall. NOT justified rows — a dense-packed CSS-Grid masonry
+ * where landscapes run WIDE (span N columns) and portraits stay NARROW (1
+ * column) and are deliberately capped SHORTER than landscapes are wide, so the
+ * two orientations balance on screen instead of portraits out-muscling the wall.
  *
- * THE BUG THIS FIXES ("everything is a portrait"): aspect is derived ONLY from
- * reliable dimensions — the server's data-w/data-h first (flash-free, correct on
- * first paint), else the image's own natural size once it has actually decoded.
- * An unknown / zero ratio is treated as ONE row (landscape), NEVER portrait, and
- * re-measured on image load. A tile can never fall into the tall branch just
- * because its size wasn't ready yet.
+ * SIZE RULE (Sean's spec):
+ *   - A landscape spans `landscapeCols` columns (default 2). Its height follows
+ *     its TRUE aspect (native, minus a sub-row-unit cover crop).
+ *   - A portrait spans 1 column. Its height is capped at `portraitRatio` (0.85)
+ *     of a landscape's long side (= landscapeCols column-widths). Portraits look
+ *     taller at equal size, so they get sized DOWN 15% to match visual weight.
+ *     The image cover-crops a bit to fill — display quality is the priority.
+ *   - Panoramas span `panoCols` (default 3), native height. Squares span 1.
  *
- * MARKUP CONTRACT (skin emits — zero inline JS/style, per SnapSmack rules):
- *   <div class="ss-masonry">
- *     <a class="ss-masonry-item" href="...">
- *       <img src="..." data-w="1200" data-h="800" alt="..." loading="lazy">
- *     </a>
- *     ...
- *   </div>
- * The engine sets one per-tile CSS var, --ss-rows. The SKIN STYLESHEET owns the
- * grid container and the span rule:
- *   .ss-masonry       { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
- *                       grid-auto-rows:8px; gap:6px; }
- *   .ss-masonry-item  { grid-row-end: span var(--ss-rows, 1); overflow:hidden; }
+ * The engine sets two per-tile CSS vars — --ss-cols (column span) and --ss-rows
+ * (row span). The SKIN STYLESHEET owns the grid container + the span rules:
+ *   .ss-masonry      { display:grid; grid-auto-flow:dense;
+ *                      grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+ *                      grid-auto-rows:8px; gap:6px; }
+ *   .ss-masonry-item { grid-column:span var(--ss-cols,1);
+ *                      grid-row:span var(--ss-rows,1); overflow:hidden; }
  *   .ss-masonry-item img { width:100%; height:100%; object-fit:cover; display:block; }
- * The engine reads the row-unit + gap straight from the grid's computed style
- * (grid-auto-rows / row-gap), so the CSS is the single source of truth — no data
- * attribute to keep in sync. Optional overrides: window.SS_MASONRY_CONFIG
- * { rowUnit, gap }.
+ *
+ * MARKUP CONTRACT (skin emits — zero inline JS, per SnapSmack rules):
+ *   <div class="ss-masonry">
+ *     <a class="ss-masonry-item" href="..."><img src="..." data-w="1200" data-h="800" loading="lazy"></a>
+ *   </div>
+ *
+ * Column widths + gaps are read from the grid's own computed style, so the CSS
+ * is the single source of truth. Tunable hooks (all optional):
+ *   window.SS_MASONRY_CONFIG = {
+ *     portraitRatio: 0.85,   // portrait long side ÷ landscape long side
+ *     landscapeCols: 2,      // columns a landscape spans
+ *     panoCols:      3,      // columns a panorama spans
+ *     landscapeMin:  1.15,   // aspect ≥ this  => landscape
+ *     portraitMax:   0.87,   // aspect ≤ this  => portrait
+ *     panoMin:       2.2     // aspect ≥ this  => panorama
+ *   }
  */
 
 /**
@@ -47,57 +54,86 @@
 
     var cfg = window.SS_MASONRY_CONFIG || {};
 
-    function intOf(v, fallback) {
-        var n = parseInt(v, 10);
-        return Number.isFinite(n) ? n : fallback;
-    }
-    function pxOf(v, fallback) {
+    function numOf(v, fallback) {
         var n = parseFloat(v);
         return Number.isFinite(n) ? n : fallback;
     }
 
+    var portraitRatio = numOf(cfg.portraitRatio, 0.85);
+    var landscapeCols = Math.max(1, Math.round(numOf(cfg.landscapeCols, 2)));
+    var panoCols      = Math.max(landscapeCols, Math.round(numOf(cfg.panoCols, 3)));
+    var landscapeMin  = numOf(cfg.landscapeMin, 1.15);
+    var portraitMax   = numOf(cfg.portraitMax, 0.87);
+    var panoMin       = numOf(cfg.panoMin, 2.2);
+
     /** Reliable aspect (w/h) for a tile, or 0 when not yet knowable. */
     function tileAspect(item, img) {
-        // 1) Server-supplied dimensions — right on the first paint, no reflow.
-        var w = intOf(item.getAttribute('data-w'), 0) || (img ? intOf(img.getAttribute('data-w'), 0) : 0);
-        var h = intOf(item.getAttribute('data-h'), 0) || (img ? intOf(img.getAttribute('data-h'), 0) : 0);
-        // 2) Natural size, but ONLY once the image has really decoded.
+        var w = parseInt(item.getAttribute('data-w'), 10) || (img ? parseInt(img.getAttribute('data-w'), 10) : 0);
+        var h = parseInt(item.getAttribute('data-h'), 10) || (img ? parseInt(img.getAttribute('data-h'), 10) : 0);
         if ((!w || !h) && img && img.naturalWidth > 0 && img.naturalHeight > 0) {
             w = img.naturalWidth;
             h = img.naturalHeight;
         }
-        return (w > 0 && h > 0) ? (w / h) : 0;   // 0 == unknown → caller uses 1 row
+        return (w > 0 && h > 0) ? (w / h) : 0;   // 0 == unknown → treat as square
+    }
+
+    function firstTrackPx(gridTemplateColumns) {
+        var parts = String(gridTemplateColumns || '').split(/\s+/);
+        for (var i = 0; i < parts.length; i++) {
+            var n = parseFloat(parts[i]);
+            if (Number.isFinite(n) && n > 0) return n;
+        }
+        return 0;
     }
 
     function layoutGrid(grid) {
-        var cs = window.getComputedStyle(grid);
-        var rowUnit = pxOf(cs.gridAutoRows, intOf(cfg.rowUnit, 8));
+        var cs      = window.getComputedStyle(grid);
+        var colW    = firstTrackPx(cs.gridTemplateColumns);          // resolved 1-column width
+        if (!(colW > 0)) return;                                     // not laid out yet — a later tick catches it
+        var colGap  = numOf(cs.columnGap, 6);
+        var rowGap  = numOf(cs.rowGap, 6);
+        var rowUnit = numOf(cs.gridAutoRows, 8);
         if (!(rowUnit >= 1)) rowUnit = 8;
-        var gap = pxOf(cs.rowGap, intOf(cfg.gap, 4));
-        if (!(gap >= 0)) gap = 4;
+
+        // A landscape's long side (width) — the reference every portrait scales from.
+        var landscapeLong = landscapeCols * colW + (landscapeCols - 1) * colGap;
 
         var items = grid.querySelectorAll('.ss-masonry-item');
         for (var i = 0; i < items.length; i++) {
-            var item = items[i];
-            var cw = item.getBoundingClientRect().width;   // real, responsive column width
-            if (cw <= 0) continue;                          // grid not laid out yet — a later run catches it
+            var item   = items[i];
             var aspect = tileAspect(item, item.querySelector('img'));
-            // Unknown aspect => a single landscape row. NEVER the portrait branch.
-            var pxHeight = (aspect > 0) ? (cw / aspect) : rowUnit;
-            var span = Math.max(1, Math.round((pxHeight + gap) / (rowUnit + gap)));
+
+            var cols, pxHeight;
+            if (aspect >= panoMin) {
+                cols = panoCols;
+                pxHeight = tileWidth(cols, colW, colGap) / aspect;      // native
+            } else if (aspect >= landscapeMin) {
+                cols = landscapeCols;
+                pxHeight = tileWidth(cols, colW, colGap) / aspect;      // native
+            } else if (aspect > 0 && aspect <= portraitMax) {
+                cols = 1;
+                pxHeight = portraitRatio * landscapeLong;               // CAPPED — the whole point
+            } else {
+                cols = 1;                                               // square / unknown
+                pxHeight = colW;
+            }
+
+            var span = Math.max(1, Math.round((pxHeight + rowGap) / (rowUnit + rowGap)));
+            item.style.setProperty('--ss-cols', cols);
             item.style.setProperty('--ss-rows', span);
         }
     }
 
+    function tileWidth(cols, colW, colGap) {
+        return cols * colW + (cols - 1) * colGap;
+    }
+
     function init(grid) {
-        if (grid.__ssMasonry) return;                       // idempotent — safe to re-init
+        if (grid.__ssMasonry) return;                       // idempotent
         grid.__ssMasonry = true;
 
         var run = function () { layoutGrid(grid); };
 
-        // Re-measure each image the instant it decodes — this is what stops a
-        // not-yet-loaded image being mis-sized. Plus two stabilisation ticks for
-        // web-font / late-CSS reflow, mirroring the old justified engine.
         var imgs = grid.querySelectorAll('.ss-masonry-item img');
         for (var i = 0; i < imgs.length; i++) {
             if (imgs[i].complete && imgs[i].naturalWidth > 0) continue;

@@ -94,26 +94,21 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
     </div>
 
     <main class="scroll-wall">
-        <div class="scroll-mosaic"
-             style="--mosaic-col:230px;--mosaic-row:230px;">
+        <div class="ss-masonry" style="--ss-col-min:160px;--ss-row-unit:8px;">
             <?php if (!empty($images)): ?>
                 <?php foreach ($images as $img):
                     $iw = (int)($img['img_width']  ?? 0);
                     $ih = (int)($img['img_height'] ?? 0);
-                    $a  = ($iw > 0 && $ih > 0) ? ($iw / $ih) : 0;
-                    // Shape class → CSS Grid span. Neither orientation is shrunk to
-                    // serve the other: portraits get a tall cell, landscapes a wide one.
-                    if      ($a >= 2.4)               $cls = 'is-pano';       // 3 cols wide
-                    elseif  ($a >= 1.35)              $cls = 'is-landscape';  // 2 cols wide
-                    elseif  ($a > 0 && $a <= 0.75)    $cls = 'is-portrait';   // 2 rows tall
-                    else                              $cls = 'is-square';     // 1 x 1 (also unknown dims)
+                    // data-w/data-h feed ss-engine-masonry.js: it sizes landscapes
+                    // wide (2 cols) and caps portraits to 85% of a landscape's width.
                     $thumb_rel = trim((string)($img['img_thumb_aspect'] ?? ''));
                     $img_url   = BASE_URL . ltrim($thumb_rel !== '' ? $thumb_rel : ($img['img_file'] ?? ''), '/');
                 ?>
-                <a class="mtile <?php echo $cls; ?>"
+                <a class="ss-masonry-item"
                    href="<?php echo BASE_URL . htmlspecialchars($img['img_slug']); ?>"
                    aria-label="<?php echo htmlspecialchars($img['img_title'] ?? 'View photograph'); ?>">
                     <img src="<?php echo htmlspecialchars($img_url); ?>"
+                         <?php if ($iw > 0 && $ih > 0): ?>data-w="<?php echo $iw; ?>" data-h="<?php echo $ih; ?>"<?php endif; ?>
                          alt="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>"
                          loading="lazy">
                     <span class="scroll-item-title"><?php echo htmlspecialchars($img['img_title'] ?? ''); ?></span>
