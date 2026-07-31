@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.14",
+    "version": "0.1.15",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a balanced 2D grid-mosaic parts wall. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -149,6 +149,18 @@
             "min": "12",
             "max": "60",
             "step": "6"
+        },
+        "scroll_tile_size": {
+            "section": "PHOTO WALL",
+            "type": "range",
+            "label": "Photo Size (px)",
+            "default": "460",
+            "min": "260",
+            "max": "760",
+            "step": "20",
+            "selector": ".ss-masonry",
+            "property": "--ss-base",
+            "unit": "px"
         },
         "scroll_mosaic_gap": {
             "section": "PHOTO WALL",

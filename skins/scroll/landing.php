@@ -23,6 +23,28 @@ $grid_stmt = $pdo->prepare(
 $grid_stmt->execute([$now_local]);
 $images = $grid_stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Spread portraits (tall tiles) evenly through the stream so the dense pack
+// doesn't clump them into one region. Display-first ordering — order can move a
+// bit for the packing. Weave one portrait every $stride non-portrait tiles.
+$_ss_port = $_ss_rest = [];
+foreach ($images as $_im) {
+    $iw = (int)($_im['img_width'] ?? 0);
+    $ih = (int)($_im['img_height'] ?? 0);
+    if ($iw > 0 && $ih > 0 && ($iw / $ih) < 0.9) { $_ss_port[] = $_im; }
+    else { $_ss_rest[] = $_im; }
+}
+if ($_ss_port && $_ss_rest) {
+    $stride = max(1, (int)floor(count($_ss_rest) / count($_ss_port)));
+    $woven  = [];
+    $pi     = 0;
+    foreach ($_ss_rest as $k => $_im) {
+        $woven[] = $_im;
+        if ((($k + 1) % $stride) === 0 && $pi < count($_ss_port)) $woven[] = $_ss_port[$pi++];
+    }
+    while ($pi < count($_ss_port)) $woven[] = $_ss_port[$pi++];
+    $images = $woven;
+}
+
 $masthead_raw = trim((string)($settings['scroll_masthead_lines'] ?? 'USED CAR|PARTS'));
 $masthead_lines = array_values(array_filter(array_map('trim', explode('|', $masthead_raw)), 'strlen'));
 if (!$masthead_lines) $masthead_lines = [$settings['site_name'] ?? 'SnapSmack'];
@@ -94,17 +116,23 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
     </div>
 
     <main class="scroll-wall">
-        <div class="ss-masonry" style="--ss-col-min:160px;--ss-row-unit:8px;">
+        <div class="ss-masonry">
             <?php if (!empty($images)): ?>
-                <?php foreach ($images as $img):
+                <?php $ss_idx = 0; foreach ($images as $img):
                     $iw = (int)($img['img_width']  ?? 0);
                     $ih = (int)($img['img_height'] ?? 0);
-                    // data-w/data-h feed ss-engine-masonry.js: it sizes landscapes
-                    // wide (2 cols) and caps portraits to 85% of a landscape's width.
+                    // data-w/data-h feed ss-engine-masonry.js (it sizes each tile
+                    // to native aspect, portraits capped to 85% of a landscape).
+                    // Infrequent hero (a big landscape) + pimple (tiny accent) tiles
+                    // break the wall up visually — the engine reads these flags.
+                    $ss_a      = ($iw > 0 && $ih > 0) ? ($iw / $ih) : 1;
+                    $ss_hero   = ($ss_idx % 14 === 7) && $ss_a >= 1.2;
+                    $ss_pimple = !$ss_hero && ($ss_idx % 18 === 4);
+                    $ss_idx++;
                     $thumb_rel = trim((string)($img['img_thumb_aspect'] ?? ''));
                     $img_url   = BASE_URL . ltrim($thumb_rel !== '' ? $thumb_rel : ($img['img_file'] ?? ''), '/');
                 ?>
-                <a class="ss-masonry-item"
+                <a class="ss-masonry-item"<?php if ($ss_hero): ?> data-hero<?php elseif ($ss_pimple): ?> data-pimple<?php endif; ?>
                    href="<?php echo BASE_URL . htmlspecialchars($img['img_slug']); ?>"
                    aria-label="<?php echo htmlspecialchars($img['img_title'] ?? 'View photograph'); ?>">
                     <img src="<?php echo htmlspecialchars($img_url); ?>"
