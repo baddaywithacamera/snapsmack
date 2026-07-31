@@ -12,6 +12,10 @@
 
 ## Unreleased
 
+## 0.7.463 "Two by Two" — 2026-07-30
+
+- **SCROLL renders its landing wall as a single native-aspect CSS-grid mosaic.** Each tile is sized from the photograph's true dimensions — portraits span tall, landscapes span wide — so the wall composes itself with no skin-side JavaScript. The previous two-branch justified layout and its portrait-span toggle are retired. (`skins/scroll/`.)
+
 ## 0.7.462 "Proper Channels" — 2026-07-30
 
 - **SCROLL's executable feed engine now ships through the CMS, never the skin ZIP.** The native-aspect wall and bounded infinite-scroll controller live in `assets/js`, are registered in the shared manifest inventory, and are requested by SCROLL 0.1.9 through `require_scripts`. The invalid skin-local JavaScript from 0.1.8 is removed.
