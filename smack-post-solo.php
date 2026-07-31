@@ -441,7 +441,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
 
             // --- SQUARE THUMBNAIL (t_ prefix) ---
             // 400x400 center-cropped square for grid display.
-            $sq_size = SNAPSMACK_THUMB_SQUARE;
+            $sq_size = defined('SNAPSMACK_THUMB_SQUARE') ? SNAPSMACK_THUMB_SQUARE : 400;
             $sq_thumb = imagecreatetruecolor($sq_size, $sq_size);
             $min_dim = min($orig_w, $orig_h);
             $off_x = ($orig_w - $min_dim) / 2;
@@ -461,7 +461,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
 
             // --- ASPECT-PRESERVED THUMBNAIL (a_ prefix) ---
             // Long side per SNAPSMACK_THUMB_ASPECT_LONG; native aspect ratio.
-            $aspect_long = SNAPSMACK_THUMB_ASPECT_LONG;
+            $aspect_long = defined('SNAPSMACK_THUMB_ASPECT_LONG') ? SNAPSMACK_THUMB_ASPECT_LONG : 900;
 
             if ($orig_w >= $orig_h) {
                 $a_w = $aspect_long;
