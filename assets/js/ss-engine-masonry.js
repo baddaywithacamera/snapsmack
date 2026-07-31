@@ -1,35 +1,32 @@
 /**
  * SNAPSMACK - Masonry Grid Engine (ss-engine-masonry.js)
  *
- * ASYMMETRIC free tessellation — NO visible columns, NO rows. The skin lays a
- * FINE CSS-grid unit (e.g. 40px square) with dense auto-flow; this engine spans
- * each tile a computed number of units in BOTH axes from its native aspect,
- * scaled to a base size. Because every tile spans many fine units at staggered
- * offsets, tiles pack tightly WITHOUT snapping into vertical columns or
- * horizontal rows — the mosaic reads as an asymmetric wall.
+ * JUSTIFIED photo wall (v3). Each run of photos is sized so it fills the FULL
+ * content width exactly — ZERO gaps, ZERO ragged edge, edge-to-edge (therefore
+ * centred). Run heights vary with the photos in them, so it reads as an organic
+ * asymmetric wall, not a rigid grid of rows or columns. This is the trick Flickr
+ * / Google Photos use, and the only way to be gap-free AND edge-to-edge while
+ * keeping native aspect (all three at once is geometrically impossible).
  *
- * BALANCE (Sean's spec): a LANDSCAPE's long side (width) = `base` — the
- * adjustable tile size. A PORTRAIT's long side (height) = `portraitRatio`
- * (0.85) × base. Portraits read taller at equal size, so they're sized down 15%
- * to balance the wall — NOT squeezed into skinny one-column strips. Each tile
- * keeps its native aspect; sizes round to the unit (a sub-unit cover crop).
+ * SIZE: --ss-base ("Photo Size") sets a target run height (base / 1.5) so a
+ * typical landscape's long side lands near --ss-base. Landscapes stay wide,
+ * portraits tall+narrow; sharing a run height, they balance without a per-tile
+ * cap. A run is closed the moment its photos at target height would overflow W,
+ * so the exact-fit height is always <= target — no photo is ever upscaled past
+ * its ~900px source into chunky mush. The last (short) run centres via the CSS.
  *
  * MARKUP CONTRACT (skin emits — zero inline JS):
  *   <div class="ss-masonry">
  *     <a class="ss-masonry-item" href="..."><img src="..." data-w="1200" data-h="800" loading="lazy"></a>
  *   </div>
- * SKIN STYLESHEET owns the container + span rules:
- *   .ss-masonry      { display:grid; grid-auto-flow:dense;
- *                      grid-template-columns:repeat(auto-fill,var(--ss-unit,40px));
- *                      grid-auto-rows:var(--ss-unit,40px); gap:var(--ss-gap,6px); }
- *   .ss-masonry-item { grid-column:span var(--ss-cols,1);
- *                      grid-row:span var(--ss-rows,1); overflow:hidden; }
+ * SKIN STYLESHEET owns the container; the engine sets each item's px w/h:
+ *   .ss-masonry      { display:flex; flex-wrap:wrap; gap:var(--ss-gap,6px);
+ *                      align-content:flex-start; justify-content:center; }
+ *   .ss-masonry-item { overflow:hidden; }
  *   .ss-masonry-item img { width:100%; height:100%; object-fit:cover; display:block; }
  *
- * The engine reads unit, gap and --ss-base straight from the grid's computed
- * style, so the CSS is the single source of truth. Optional overrides:
- *   window.SS_MASONRY_CONFIG = { base, portraitRatio, unit }
- * or CSS vars --ss-base (landscape long side, px) / --ss-portrait-ratio.
+ * Tunable hooks (CSS vars on .ss-masonry, or window.SS_MASONRY_CONFIG):
+ *   --ss-base (px) target size · --ss-gap (px). All tuning is skin-side.
  */
 
 /**
@@ -61,52 +58,64 @@
         return (w > 0 && h > 0) ? (w / h) : 0;
     }
 
+    /** Inner content width of the grid (excludes its own padding). */
+    function contentWidth(grid, cs) {
+        var w = grid.clientWidth
+              - numOf(cs.paddingLeft, 0)
+              - numOf(cs.paddingRight, 0);
+        return w > 0 ? w : 0;
+    }
+
     function layoutGrid(grid) {
         var cs   = window.getComputedStyle(grid);
-        var unit = numOf(cs.gridAutoRows, numOf(cfg.unit, 40));
-        if (!(unit >= 1)) unit = 40;
-        var gap  = numOf(cs.rowGap, numOf(cfg.gap, 6));
-        if (!(gap >= 0)) gap = 6;
-        // Landscape long side (px) — the adjustable "tile size". CSS var wins,
-        // then config, then a sensible ~20-unit default.
-        var base = numOf(cfg.base, numOf(cs.getPropertyValue('--ss-base'), 20 * unit));
-        if (!(base >= unit)) base = 20 * unit;
-        var pr   = numOf(cfg.portraitRatio, numOf(cs.getPropertyValue('--ss-portrait-ratio'), 0.85));
-        if (!(pr > 0)) pr = 0.85;
+        var W    = contentWidth(grid, cs);
+        if (!(W > 0)) return;                                // not laid out yet — a later tick catches it
 
-        var step = unit + gap;   // one unit's on-screen advance including the gap
+        var gap  = numOf(cs.getPropertyValue('--ss-gap'), numOf(cfg.gap, 6));
+        if (!(gap >= 0)) gap = 6;
+        // --ss-base ("Photo Size") ≈ a landscape's long side. A ~1.5 landscape at
+        // run height H has width 1.5·H, so H ≈ base/1.5 lands the long side on base.
+        var base = numOf(cfg.base, numOf(cs.getPropertyValue('--ss-base'), 460));
+        if (!(base >= 80)) base = 460;
+        var targetH = base / 1.5;
 
         var items = grid.querySelectorAll('.ss-masonry-item');
-        for (var i = 0; i < items.length; i++) {
-            var item   = items[i];
-            var aspect = tileAspect(item, item.querySelector('img'));
-            if (!(aspect > 0)) aspect = 1;
+        var run = [], aspectSum = 0;
 
-            var tw, th;
-            if (aspect >= 1) {           // landscape / square — long side is the WIDTH
-                tw = base;
-                th = base / aspect;
-            } else {                      // portrait — long side is the HEIGHT, capped to pr·base
-                th = pr * base;
-                tw = th * aspect;
+        function place(list, height) {
+            for (var j = 0; j < list.length; j++) {
+                var it = list[j];
+                it.style.width  = Math.floor(height * it.__a) + 'px';
+                it.style.height = Math.round(height) + 'px';
+                it.style.flex   = '0 0 auto';
             }
-
-            // Occasional HERO (bigger) and PIMPLE (tiny) tiles break up the wall
-            // and help the dense pack fill. The skin flags a few — infrequent by
-            // design; scales are CSS hooks so they tune skin-side.
-            if (item.hasAttribute('data-hero')) {
-                var hs = numOf(cs.getPropertyValue('--ss-hero-scale'), numOf(cfg.heroScale, 1.7));
-                tw *= hs; th *= hs;
-            } else if (item.hasAttribute('data-pimple')) {
-                var ps = numOf(cs.getPropertyValue('--ss-pimple-scale'), numOf(cfg.pimpleScale, 0.55));
-                tw *= ps; th *= ps;
-            }
-
-            var cols = Math.max(1, Math.round((tw + gap) / step));
-            var rows = Math.max(1, Math.round((th + gap) / step));
-            item.style.setProperty('--ss-cols', cols);
-            item.style.setProperty('--ss-rows', rows);
         }
+
+        // A run is closed once its photos, laid at targetH, would overflow W.
+        // At that point the exact-fit height (fitH) is <= targetH, so the run
+        // fills W edge-to-edge WITHOUT upscaling past targetH. The last run is
+        // never stretched — it sits at targetH and centres via the CSS.
+        function flush(isLast) {
+            if (!run.length) return;
+            var gaps = gap * (run.length - 1);
+            var fitH = (W - gaps) / aspectSum;
+            place(run, isLast ? Math.min(targetH, fitH) : fitH);
+            run = []; aspectSum = 0;
+        }
+
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var a = tileAspect(item, item.querySelector('img'));
+            if (!(a > 0)) a = 1;
+            item.__a = a;
+
+            run.push(item);
+            aspectSum += a;
+
+            var gaps = gap * (run.length - 1);
+            if (aspectSum * targetH + gaps >= W) flush(false);
+        }
+        flush(true);
     }
 
     function init(grid) {
