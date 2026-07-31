@@ -95,7 +95,7 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
 
     <main class="scroll-wall">
         <div class="scroll-mosaic"
-             style="--mosaic-col:230px;--mosaic-row:230px;--mosaic-gap:6px;">
+             style="--mosaic-col:230px;--mosaic-row:230px;">
             <?php if (!empty($images)): ?>
                 <?php foreach ($images as $img):
                     $iw = (int)($img['img_width']  ?? 0);

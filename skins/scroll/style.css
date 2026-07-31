@@ -72,7 +72,7 @@ a { color: inherit; }
     line-height: .78;
     letter-spacing: -.06em;
     text-align: center;
-    text-transform: uppercase;
+    text-transform: none;   /* respect the case the owner typed (e.g. "Used Car Parts") */
     transform: rotate(calc(var(--scroll-title-angle) * -1));
 }
 .scroll-masthead span {
