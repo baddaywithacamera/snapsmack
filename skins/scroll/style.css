@@ -41,7 +41,8 @@ a { color: inherit; }
     grid-template-columns: minmax(150px, 1fr) minmax(320px, 1.7fr) minmax(230px, 1fr);
     align-items: center;
     min-height: clamp(150px, 18vh, 205px);
-    padding: clamp(18px, 3vw, 40px) clamp(24px, 4vw, 56px) clamp(8px, 1.6vw, 18px);
+    /* ~20px of breathing room moved from below the masthead to above it. */
+    padding: clamp(38px, 4vw, 60px) clamp(24px, 4vw, 56px) 0;
     overflow: hidden;
 }
 .scroll-photographer {

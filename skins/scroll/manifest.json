@@ -140,15 +140,26 @@
             "property": "--scroll-canvas-width",
             "unit": "px"
         },
-        "scroll_row_height": {
+        "scroll_mosaic_col": {
             "section": "PHOTO WALL",
             "type": "range",
-            "label": "Photo Size / Wall Density",
-            "default": "280",
-            "min": "160",
-            "max": "600",
-            "selector": ":root",
-            "property": "--scroll-row-height",
+            "label": "Landscape / Column Scale (px)",
+            "default": "230",
+            "min": "150",
+            "max": "400",
+            "selector": ".scroll-mosaic",
+            "property": "--mosaic-col",
+            "unit": "px"
+        },
+        "scroll_mosaic_row": {
+            "section": "PHOTO WALL",
+            "type": "range",
+            "label": "Portrait / Row Scale (px)",
+            "default": "230",
+            "min": "150",
+            "max": "400",
+            "selector": ".scroll-mosaic",
+            "property": "--mosaic-row",
             "unit": "px"
         },
         "scroll_page_size": {
@@ -160,15 +171,15 @@
             "max": "60",
             "step": "6"
         },
-        "scroll_tile_gap": {
+        "scroll_mosaic_gap": {
             "section": "PHOTO WALL",
             "type": "range",
             "label": "Tile Spacing",
-            "default": "0",
+            "default": "6",
             "min": "0",
             "max": "25",
-            "selector": ":root",
-            "property": "--scroll-tile-gap",
+            "selector": ".scroll-mosaic",
+            "property": "--mosaic-gap",
             "unit": "px"
         },
         "scroll_corner_radius": {
