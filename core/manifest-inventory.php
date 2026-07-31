@@ -844,6 +844,11 @@ return [
             'path'         => 'assets/js/ss-engine-grid-lightbox.js',
             'has_settings' => false,
         ],
+        'smack-masonry' => [
+            'label'        => 'Asymmetric masonry wall (landscapes wide, portraits capped to 85%)',
+            'path'         => 'assets/js/ss-engine-masonry.js',
+            'has_settings' => false,
+        ],
         'smack-aurora-bg' => [
             'label'        => 'AURORA Layer 1 background curtains (canvas)',
             'path'         => 'assets/js/ss-engine-aurora-bg.js',
