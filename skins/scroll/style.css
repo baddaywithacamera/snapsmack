@@ -280,6 +280,46 @@ a { color: inherit; }
     text-transform: uppercase;
 }
 .scroll-text-nav a { text-decoration: none; }
+/* Solo/static header icon nav — icons only, matching the landing icon bar
+   (overrides the .scroll-sticky-nav pill background/border it also carries). */
+.scroll-solo-nav {
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    backdrop-filter: none;
+    color: inherit;
+}
+.scroll-solo-nav .ss-grid-nav-links {
+    display: flex;
+    align-items: center;
+    gap: clamp(14px, 2vw, 24px);
+}
+.scroll-solo-nav .ss-grid-nav-link {
+    display: flex;
+    align-items: center;
+    color: inherit;
+}
+.scroll-solo-nav .ss-grid-nav-link svg {
+    display: block;
+    width: 22px;
+    height: 22px;
+    stroke: currentColor;
+}
+.scroll-solo-nav .ss-grid-nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+.scroll-solo-nav .scroll-nav-search { position: relative; }
+.scroll-solo-nav .scroll-nav-search > summary { list-style: none; cursor: pointer; }
+.scroll-solo-nav .scroll-nav-search > summary::-webkit-details-marker { display: none; }
 .scroll-solo-stage {
     display: flex;
     flex: 1;
