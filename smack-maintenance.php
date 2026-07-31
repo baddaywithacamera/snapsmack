@@ -291,7 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sync_pi_stmt->execute([$img['id']]);
                 $sync_pi = $sync_pi_stmt->fetch(PDO::FETCH_ASSOC) ?: [];
                 $result = snapsmack_generate_thumbs(
-                    $file, __DIR__, 400, 600,
+                    $file, __DIR__, SNAPSMACK_THUMB_SQUARE, SNAPSMACK_THUMB_ASPECT_LONG,
                     max(0,   min(100, (int)($sync_pi['img_focus_x'] ?? 50))),
                     max(0,   min(100, (int)($sync_pi['img_focus_y'] ?? 50))),
                     max(100, min(300, (int)($sync_pi['img_zoom']    ?? 100)))
@@ -412,9 +412,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fy = max(0,   min(100, (int)($pi['img_focus_y'] ?? 50)));
             $zm = max(100, min(300, (int)($pi['img_zoom']    ?? 100)));
 
-            // 400px square matches the live t_ inventory (Grid tiles render at
-            // 305px); 600px aspect is the generator default.
-            $result = snapsmack_generate_thumbs($row['img_file'], __DIR__, 400, 600, $fx, $fy, $zm);
+            // Sizes come from SNAPSMACK_THUMB_SQUARE / SNAPSMACK_THUMB_ASPECT_LONG
+            // (400 square / 900 aspect) — the one source of truth for every path.
+            $result = snapsmack_generate_thumbs($row['img_file'], __DIR__, SNAPSMACK_THUMB_SQUARE, SNAPSMACK_THUMB_ASPECT_LONG, $fx, $fy, $zm);
             if (!$result) {
                 $fail++;
                 continue;

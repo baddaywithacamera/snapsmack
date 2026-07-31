@@ -463,7 +463,7 @@ if ($sub === 'posts' && $method === 'POST') {
         // RecoveryEngine::regenerateAndChecksum() so backfills stay consistent.
         $img_thumb_square = null;
         $img_thumb_aspect = null;
-        $_thumb = snapsmack_generate_thumbs($img_path, dirname(__DIR__), 400, 400);
+        $_thumb = snapsmack_generate_thumbs($img_path, dirname(__DIR__), SNAPSMACK_THUMB_SQUARE, SNAPSMACK_THUMB_ASPECT_LONG);
         if ($_thumb !== false) {
             $img_thumb_square = $_thumb['sq_path'];
             $img_thumb_aspect = $_thumb['asp_path'];
@@ -937,7 +937,7 @@ if ($sub === 'gram/post' && $method === 'POST') {
             $t_sq = $valid_thumb($im['thumb_square'] ?? '');
             $t_as = $valid_thumb($im['thumb_aspect'] ?? '');
             if ($t_sq === '' || $t_as === '') {
-                $gen = snapsmack_generate_thumbs($path, $site_root, 400, 400, $st['fx'], $st['fy'], $st['zoom']);
+                $gen = snapsmack_generate_thumbs($path, $site_root, SNAPSMACK_THUMB_SQUARE, SNAPSMACK_THUMB_ASPECT_LONG, $st['fx'], $st['fy'], $st['zoom']);
                 if ($gen !== false) {
                     $t_sq = $t_sq ?: $gen['sq_path'];
                     $t_as = $t_as ?: $gen['asp_path'];

@@ -701,7 +701,7 @@ if ($sub === 'upload' && $method === 'POST') {
 
     // ── Fallback: server-side generation (any tool not yet shipping thumbs) ──
     if (!$client_thumbs_ok) {
-        $thumbs = snapsmack_generate_thumbs($rel_path, $site_root);
+        $thumbs = snapsmack_generate_thumbs($rel_path, $site_root, SNAPSMACK_THUMB_SQUARE, SNAPSMACK_THUMB_ASPECT_LONG);
         if ($thumbs !== false) {
             $thumb_sq = $thumbs['sq_path'];
             $thumb_as = $thumbs['asp_path'];

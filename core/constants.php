@@ -72,6 +72,17 @@ define('SNAPSMACK_VERSION', 'Alpha 0.7.463');
 define('SNAPSMACK_VERSION_SHORT', '0.7.463');
 define('SNAPSMACK_VERSION_CODENAME', 'Proper Channels');
 
+// --- THUMBNAIL DIMENSIONS (single source of truth) ---
+// Every display-thumbnail generator reads these so the a_ (aspect) and t_
+// (square) derivatives are ONE size library-wide, instead of the old 400/600
+// split where the value depended on which code path created the image:
+//   core/thumb-generator.php, the inline uploaders in core/image-ingest.php,
+//   smack-post-solo.php and smack-swap.php, and backfill-thumbs.php.
+// a_ feeds the display wall/grid/archive. The fediverse bakes (p_/f_) and the
+// full img_file are SEPARATE and deliberately NOT governed by these.
+define('SNAPSMACK_THUMB_SQUARE', 400);        // t_ square centre-crop (px)
+define('SNAPSMACK_THUMB_ASPECT_LONG', 900);   // a_ aspect long-side max (px)
+
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.
 // Milestone map: 0.7.x = Alpha, 0.8.x = Closed Beta, 0.9.x = Open Beta, 1.0 = Stable.

@@ -310,7 +310,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                        WHERE post_id = ? AND image_id = ?")
             ->execute([$fx, $fy, $zm, $post_id, $crop_img_id]);
         if ((int)$crow['img_focus_x'] !== $fx || (int)$crow['img_focus_y'] !== $fy || (int)$crow['img_zoom'] !== $zm) {
-            $t = snapsmack_generate_thumbs($crow['img_file'], __DIR__, 300, 600, $fx, $fy, $zm);
+            $t = snapsmack_generate_thumbs($crow['img_file'], __DIR__, SNAPSMACK_THUMB_SQUARE, SNAPSMACK_THUMB_ASPECT_LONG, $fx, $fy, $zm);
             if ($t && !empty($t['sq_path'])) {
                 $pdo->prepare("UPDATE snap_images SET img_thumb_square = ? WHERE id = ?")
                     ->execute([$t['sq_path'], $crop_img_id]);

@@ -393,8 +393,8 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
             snap_exif_inject($target_path, $preserved_exif);
         }
 
-        // --- SQUARE THUMBNAIL (t_ prefix): 400x400 center-cropped ---
-        $sq_size = 400;
+        // --- SQUARE THUMBNAIL (t_ prefix): center-cropped ---
+        $sq_size = SNAPSMACK_THUMB_SQUARE;
         $sq_thumb = imagecreatetruecolor($sq_size, $sq_size);
         $min_dim = min($orig_w, $orig_h);
         $off_x = ($orig_w - $min_dim) / 2;
@@ -409,8 +409,8 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
         else                            { imagewebp($sq_thumb, $thumb_dir . 't_' . $new_file_name, 78); }
         imagedestroy($sq_thumb);
 
-        // --- ASPECT-PRESERVED THUMBNAIL (a_ prefix): 400px long side ---
-        $aspect_long = 400;
+        // --- ASPECT-PRESERVED THUMBNAIL (a_ prefix): long side per constant ---
+        $aspect_long = SNAPSMACK_THUMB_ASPECT_LONG;
         if ($orig_w >= $orig_h) {
             $a_w = $aspect_long;
             $a_h = round($orig_h * ($aspect_long / $orig_w));

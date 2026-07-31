@@ -6,8 +6,9 @@
  * call the same logic for batch regeneration without duplicating code.
  *
  * Generates two derivative files for a given source image:
- *   t_filename.jpg  — 300×300px square centre-crop   (img_thumb_square)
- *   a_filename.jpg  — max 600px aspect-preserving    (img_thumb_aspect)
+ *   t_filename.jpg  — 400×400px square centre-crop   (img_thumb_square)
+ *   a_filename.jpg  — max 900px aspect-preserving    (img_thumb_aspect)
+ * Sizes default to SNAPSMACK_THUMB_SQUARE / SNAPSMACK_THUMB_ASPECT_LONG.
  *
  * Thumbs land in a /thumbs/ subdirectory alongside the source file.
  */
@@ -27,8 +28,8 @@
  *                          stored in img_file — e.g. "uploads/2024/01/photo.jpg")
  * @param string $base_dir  Filesystem root to resolve relative paths against.
  *                          Typically __DIR__ of the calling script's repo root.
- * @param int    $sq_size   Square thumbnail dimension. Default 300.
- * @param int    $asp_max   Aspect thumbnail longest-edge limit. Default 600.
+ * @param int    $sq_size   Square thumbnail dimension. Default 400.
+ * @param int    $asp_max   Aspect thumbnail longest-edge limit. Default 900.
  *
  * @return array|false  On success: [
  *                        'sq_path'  => relative path to square thumb,
@@ -41,8 +42,8 @@
 function snapsmack_generate_thumbs(
     string $img_file,
     string $base_dir,
-    int    $sq_size  = 300,
-    int    $asp_max  = 600,
+    int    $sq_size  = 400,
+    int    $asp_max  = 900,
     int    $focus_x  = 50,
     int    $focus_y  = 50,
     int    $zoom     = 100
@@ -98,7 +99,11 @@ function snapsmack_generate_thumbs(
     imagedestroy($sq_img);
 
     // ── Aspect thumbnail (a_) ─────────────────────────────────────────────
-    if ($w >= $h) {
+    if ($w <= $asp_max && $h <= $asp_max) {
+        // Never upscale past the source — a small original stays native size.
+        $asp_w = $w;
+        $asp_h = $h;
+    } elseif ($w >= $h) {
         $asp_w = $asp_max;
         $asp_h = (int)round($h * ($asp_max / $w));
     } else {
