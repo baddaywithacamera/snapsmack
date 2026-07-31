@@ -375,8 +375,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // the square crop and the bake — same render the carousel editor's Save
     // produces, so a bulk run here is the "regen everything" button.
     if ($action === 'regen_thumbs') {
-        set_time_limit(120);
-        ini_set('memory_limit', '256M');
+        // No hard time cap: a batch of 25 that each builds a 400 + 900 thumb AND
+        // a 1080² fediverse bake can outrun a fixed limit (the 900px bump tipped
+        // it over the old 120s → 500). The batch is still bounded at 25 with a
+        // CONTINUE button, so a lifted limit can't run away.
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
         require_once __DIR__ . '/core/thumb-generator.php';
 
         $batch_size = 25;
