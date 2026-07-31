@@ -1,44 +1,35 @@
 /**
  * SNAPSMACK - Masonry Grid Engine (ss-engine-masonry.js)
  *
- * Asymmetric tiled wall. NOT justified rows — a dense-packed CSS-Grid masonry
- * where landscapes run WIDE (span N columns) and portraits stay NARROW (1
- * column) and are deliberately capped SHORTER than landscapes are wide, so the
- * two orientations balance on screen instead of portraits out-muscling the wall.
+ * ASYMMETRIC free tessellation — NO visible columns, NO rows. The skin lays a
+ * FINE CSS-grid unit (e.g. 40px square) with dense auto-flow; this engine spans
+ * each tile a computed number of units in BOTH axes from its native aspect,
+ * scaled to a base size. Because every tile spans many fine units at staggered
+ * offsets, tiles pack tightly WITHOUT snapping into vertical columns or
+ * horizontal rows — the mosaic reads as an asymmetric wall.
  *
- * SIZE RULE (Sean's spec):
- *   - A landscape spans `landscapeCols` columns (default 2). Its height follows
- *     its TRUE aspect (native, minus a sub-row-unit cover crop).
- *   - A portrait spans 1 column. Its height is capped at `portraitRatio` (0.85)
- *     of a landscape's long side (= landscapeCols column-widths). Portraits look
- *     taller at equal size, so they get sized DOWN 15% to match visual weight.
- *     The image cover-crops a bit to fill — display quality is the priority.
- *   - Panoramas span `panoCols` (default 3), native height. Squares span 1.
+ * BALANCE (Sean's spec): a LANDSCAPE's long side (width) = `base` — the
+ * adjustable tile size. A PORTRAIT's long side (height) = `portraitRatio`
+ * (0.85) × base. Portraits read taller at equal size, so they're sized down 15%
+ * to balance the wall — NOT squeezed into skinny one-column strips. Each tile
+ * keeps its native aspect; sizes round to the unit (a sub-unit cover crop).
  *
- * The engine sets two per-tile CSS vars — --ss-cols (column span) and --ss-rows
- * (row span). The SKIN STYLESHEET owns the grid container + the span rules:
+ * MARKUP CONTRACT (skin emits — zero inline JS):
+ *   <div class="ss-masonry">
+ *     <a class="ss-masonry-item" href="..."><img src="..." data-w="1200" data-h="800" loading="lazy"></a>
+ *   </div>
+ * SKIN STYLESHEET owns the container + span rules:
  *   .ss-masonry      { display:grid; grid-auto-flow:dense;
- *                      grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
- *                      grid-auto-rows:8px; gap:6px; }
+ *                      grid-template-columns:repeat(auto-fill,var(--ss-unit,40px));
+ *                      grid-auto-rows:var(--ss-unit,40px); gap:var(--ss-gap,6px); }
  *   .ss-masonry-item { grid-column:span var(--ss-cols,1);
  *                      grid-row:span var(--ss-rows,1); overflow:hidden; }
  *   .ss-masonry-item img { width:100%; height:100%; object-fit:cover; display:block; }
  *
- * MARKUP CONTRACT (skin emits — zero inline JS, per SnapSmack rules):
- *   <div class="ss-masonry">
- *     <a class="ss-masonry-item" href="..."><img src="..." data-w="1200" data-h="800" loading="lazy"></a>
- *   </div>
- *
- * Column widths + gaps are read from the grid's own computed style, so the CSS
- * is the single source of truth. Tunable hooks (all optional):
- *   window.SS_MASONRY_CONFIG = {
- *     portraitRatio: 0.85,   // portrait long side ÷ landscape long side
- *     landscapeCols: 2,      // columns a landscape spans
- *     panoCols:      3,      // columns a panorama spans
- *     landscapeMin:  1.15,   // aspect ≥ this  => landscape
- *     portraitMax:   0.87,   // aspect ≤ this  => portrait
- *     panoMin:       2.2     // aspect ≥ this  => panorama
- *   }
+ * The engine reads unit, gap and --ss-base straight from the grid's computed
+ * style, so the CSS is the single source of truth. Optional overrides:
+ *   window.SS_MASONRY_CONFIG = { base, portraitRatio, unit }
+ * or CSS vars --ss-base (landscape long side, px) / --ss-portrait-ratio.
  */
 
 /**
@@ -59,14 +50,7 @@
         return Number.isFinite(n) ? n : fallback;
     }
 
-    var portraitRatio = numOf(cfg.portraitRatio, 0.85);
-    var landscapeCols = Math.max(1, Math.round(numOf(cfg.landscapeCols, 2)));
-    var panoCols      = Math.max(landscapeCols, Math.round(numOf(cfg.panoCols, 3)));
-    var landscapeMin  = numOf(cfg.landscapeMin, 1.15);
-    var portraitMax   = numOf(cfg.portraitMax, 0.87);
-    var panoMin       = numOf(cfg.panoMin, 2.2);
-
-    /** Reliable aspect (w/h) for a tile, or 0 when not yet knowable. */
+    /** Reliable aspect (w/h), or 0 when not yet knowable. */
     function tileAspect(item, img) {
         var w = parseInt(item.getAttribute('data-w'), 10) || (img ? parseInt(img.getAttribute('data-w'), 10) : 0);
         var h = parseInt(item.getAttribute('data-h'), 10) || (img ? parseInt(img.getAttribute('data-h'), 10) : 0);
@@ -74,58 +58,55 @@
             w = img.naturalWidth;
             h = img.naturalHeight;
         }
-        return (w > 0 && h > 0) ? (w / h) : 0;   // 0 == unknown → treat as square
-    }
-
-    function firstTrackPx(gridTemplateColumns) {
-        var parts = String(gridTemplateColumns || '').split(/\s+/);
-        for (var i = 0; i < parts.length; i++) {
-            var n = parseFloat(parts[i]);
-            if (Number.isFinite(n) && n > 0) return n;
-        }
-        return 0;
+        return (w > 0 && h > 0) ? (w / h) : 0;
     }
 
     function layoutGrid(grid) {
-        var cs      = window.getComputedStyle(grid);
-        var colW    = firstTrackPx(cs.gridTemplateColumns);          // resolved 1-column width
-        if (!(colW > 0)) return;                                     // not laid out yet — a later tick catches it
-        var colGap  = numOf(cs.columnGap, 6);
-        var rowGap  = numOf(cs.rowGap, 6);
-        var rowUnit = numOf(cs.gridAutoRows, 8);
-        if (!(rowUnit >= 1)) rowUnit = 8;
+        var cs   = window.getComputedStyle(grid);
+        var unit = numOf(cs.gridAutoRows, numOf(cfg.unit, 40));
+        if (!(unit >= 1)) unit = 40;
+        var gap  = numOf(cs.rowGap, numOf(cfg.gap, 6));
+        if (!(gap >= 0)) gap = 6;
+        // Landscape long side (px) — the adjustable "tile size". CSS var wins,
+        // then config, then a sensible ~20-unit default.
+        var base = numOf(cfg.base, numOf(cs.getPropertyValue('--ss-base'), 20 * unit));
+        if (!(base >= unit)) base = 20 * unit;
+        var pr   = numOf(cfg.portraitRatio, numOf(cs.getPropertyValue('--ss-portrait-ratio'), 0.85));
+        if (!(pr > 0)) pr = 0.85;
 
-        // A landscape's long side (width) — the reference every portrait scales from.
-        var landscapeLong = landscapeCols * colW + (landscapeCols - 1) * colGap;
+        var step = unit + gap;   // one unit's on-screen advance including the gap
 
         var items = grid.querySelectorAll('.ss-masonry-item');
         for (var i = 0; i < items.length; i++) {
             var item   = items[i];
             var aspect = tileAspect(item, item.querySelector('img'));
+            if (!(aspect > 0)) aspect = 1;
 
-            var cols, pxHeight;
-            if (aspect >= panoMin) {
-                cols = panoCols;
-                pxHeight = tileWidth(cols, colW, colGap) / aspect;      // native
-            } else if (aspect >= landscapeMin) {
-                cols = landscapeCols;
-                pxHeight = tileWidth(cols, colW, colGap) / aspect;      // native
-            } else if (aspect > 0 && aspect <= portraitMax) {
-                cols = 1;
-                pxHeight = portraitRatio * landscapeLong;               // CAPPED — the whole point
-            } else {
-                cols = 1;                                               // square / unknown
-                pxHeight = colW;
+            var tw, th;
+            if (aspect >= 1) {           // landscape / square — long side is the WIDTH
+                tw = base;
+                th = base / aspect;
+            } else {                      // portrait — long side is the HEIGHT, capped to pr·base
+                th = pr * base;
+                tw = th * aspect;
             }
 
-            var span = Math.max(1, Math.round((pxHeight + rowGap) / (rowUnit + rowGap)));
-            item.style.setProperty('--ss-cols', cols);
-            item.style.setProperty('--ss-rows', span);
-        }
-    }
+            // Occasional HERO (bigger) and PIMPLE (tiny) tiles break up the wall
+            // and help the dense pack fill. The skin flags a few — infrequent by
+            // design; scales are CSS hooks so they tune skin-side.
+            if (item.hasAttribute('data-hero')) {
+                var hs = numOf(cs.getPropertyValue('--ss-hero-scale'), numOf(cfg.heroScale, 1.7));
+                tw *= hs; th *= hs;
+            } else if (item.hasAttribute('data-pimple')) {
+                var ps = numOf(cs.getPropertyValue('--ss-pimple-scale'), numOf(cfg.pimpleScale, 0.55));
+                tw *= ps; th *= ps;
+            }
 
-    function tileWidth(cols, colW, colGap) {
-        return cols * colW + (cols - 1) * colGap;
+            var cols = Math.max(1, Math.round((tw + gap) / step));
+            var rows = Math.max(1, Math.round((th + gap) / step));
+            item.style.setProperty('--ss-cols', cols);
+            item.style.setProperty('--ss-rows', rows);
+        }
     }
 
     function init(grid) {

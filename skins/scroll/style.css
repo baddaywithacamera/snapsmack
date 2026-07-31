@@ -182,11 +182,15 @@ a { color: inherit; }
       landscape's width). The CSS owns the container + span rules; the engine
       reads the resolved column width and gaps back from this computed style. ── */
 .ss-masonry {
+    --ss-unit: 40px;   /* fine granularity — tiles span many units so they
+                          tessellate instead of snapping to visible columns/rows */
+    --ss-base: 460px;  /* landscape long side (px) — the adjustable tile size */
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(var(--ss-col-min, 160px), 1fr));
-    grid-auto-rows: var(--ss-row-unit, 8px);
+    grid-template-columns: repeat(auto-fill, var(--ss-unit, 40px));
+    grid-auto-rows: var(--ss-unit, 40px);
     grid-auto-flow: dense;
     gap: var(--ss-gap, 6px);
+    justify-content: center;
     width: 100%;
 }
 .ss-masonry-item {
@@ -229,7 +233,7 @@ a { color: inherit; }
 .ss-masonry-item:focus-visible .scroll-item-title { opacity: 1; }
 .scroll-empty { padding: 15vh 0; text-align: center; }
 @media (max-width: 640px) {
-    .ss-masonry { --ss-col-min: 120px; }
+    .ss-masonry { --ss-base: 300px; --ss-unit: 30px; }
 }
 
 .scroll-sticky-nav {
