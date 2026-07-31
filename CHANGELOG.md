@@ -12,6 +12,11 @@
 
 ## Unreleased
 
+## 0.7.464 "Sharper Than a Tack" — 2026-07-30
+
+- **Display thumbnails are unified on one size, library-wide.** Every generator — the shared `snapsmack_generate_thumbs()`, the inline uploaders, the backfill tool, and the import/editor/maintenance callers — now reads `SNAPSMACK_THUMB_SQUARE` (400) and `SNAPSMACK_THUMB_ASPECT_LONG` (900) from a single source of truth. This ends the split where an image's aspect thumbnail was 400px or 600px depending on which code path created it — the cause of jagged tiles on larger wall layouts. An upscale guard keeps small originals from being blown up past their native size. Regenerate an existing library from **Maintenance → REGEN THUMBS**. Fediverse image delivery is unaffected — it uses the `p_`/`f_` bakes or the full image, never the aspect thumbnail.
+- **SCROLL's grid-mosaic wall gains live scale controls.** Landscape/column, portrait/row, and tile-spacing sliders now drive the wall directly, replacing two controls that wrote CSS variables nothing read; the masthead gains ~20px of breathing room above. (`skins/scroll/` 0.1.10.)
+
 ## 0.7.463 "Two by Two" — 2026-07-30
 
 - **SCROLL renders its landing wall as a single native-aspect CSS-grid mosaic.** Each tile is sized from the photograph's true dimensions — portraits span tall, landscapes span wide — so the wall composes itself with no skin-side JavaScript. The previous two-branch justified layout and its portrait-span toggle are retired. (`skins/scroll/`.)
