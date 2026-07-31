@@ -28,9 +28,6 @@ $masthead_lines = array_values(array_filter(array_map('trim', explode('|', $mast
 if (!$masthead_lines) $masthead_lines = [$settings['site_name'] ?? 'SnapSmack'];
 $photographer_name = trim((string)($settings['photographer_name'] ?? ($settings['site_name'] ?? '')));
 $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY BY'));
-// Mosaic sizing (--mosaic-col / --mosaic-row / --mosaic-gap) is driven by the
-// SCROLL config sliders via compiled custom_css_public; style.css carries the
-// 230/230/6 fallbacks, so the wall is unchanged until those sliders are moved.
 ?>
 <div class="scroll-landing">
     <section class="scroll-profile" aria-labelledby="scroll-site-title">
@@ -97,7 +94,8 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
     </div>
 
     <main class="scroll-wall">
-        <div class="scroll-mosaic">
+        <div class="scroll-mosaic"
+             style="--mosaic-col:230px;--mosaic-row:230px;--mosaic-gap:6px;">
             <?php if (!empty($images)): ?>
                 <?php foreach ($images as $img):
                     $iw = (int)($img['img_width']  ?? 0);
