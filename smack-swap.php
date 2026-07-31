@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['new_image'])) {
             imagedestroy($t_dst);
 
             // --- ASPECT-PRESERVED THUMBNAIL (a_ prefix) ---
-            $aspect_long = 400;
+            $aspect_long = SNAPSMACK_THUMB_ASPECT_LONG;
             if ($orig_w >= $orig_h) {
                 $a_w = $aspect_long;
                 $a_h = round($orig_h * ($aspect_long / $orig_w));

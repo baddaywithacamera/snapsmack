@@ -3,8 +3,8 @@
  * SNAPSMACK - Thumbnail regeneration utility
  *
  * Generates two thumbnail variants per image:
- *   t_ — 400x400 center-cropped square (for square grid layout)
- *   a_ — 400px on the long side, aspect preserved (for cropped & masonry layouts)
+ *   t_ — square centre-crop        (SNAPSMACK_THUMB_SQUARE, default 400)
+ *   a_ — aspect-preserved long side (SNAPSMACK_THUMB_ASPECT_LONG, default 900)
  *
  * Requires authentication. Generates thumbnails in subdirectories per image folder.
  */
@@ -26,13 +26,26 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 // --- CONFIGURATION ---
-// Thumbnail dimension parameters
-$square_size   = 400;  // Square thumbnail dimension (t_ prefix)
-$aspect_long   = 400;  // Long-side max for aspect-preserved thumbnail (a_ prefix)
+// Thumbnail dimension parameters. Read from the library-wide constants so this
+// tool can never drift from the live uploaders again (the old 400/600 split).
+// Regenerating writes t_/a_ to the SAME paths, so it OVERWRITES the previous
+// (400px) thumbnails in place — no orphaned files, no deletion step needed.
+$square_size   = defined('SNAPSMACK_THUMB_SQUARE')      ? SNAPSMACK_THUMB_SQUARE      : 400;
+$aspect_long   = defined('SNAPSMACK_THUMB_ASPECT_LONG') ? SNAPSMACK_THUMB_ASPECT_LONG : 900;
+
+// Big libraries can outrun PHP's default time limit; this is an admin-gated,
+// run-once utility, so lift it. Optional ?offset=&limit= chunks a huge library
+// across several gentler passes instead of one long grind.
+set_time_limit(0);
+$_bf_offset = max(0, (int)($_GET['offset'] ?? 0));
+$_bf_limit  = max(0, (int)($_GET['limit']  ?? 0));   // 0 = all remaining
 
 // --- IMAGE LOOKUP ---
 // Retrieve all image file paths from the database
-$stmt = $pdo->query("SELECT img_file FROM snap_images");
+$_bf_sql = "SELECT img_file FROM snap_images ORDER BY id ASC";
+if ($_bf_limit > 0)  $_bf_sql .= " LIMIT {$_bf_limit} OFFSET {$_bf_offset}";
+elseif ($_bf_offset) $_bf_sql .= " LIMIT 18446744073709551615 OFFSET {$_bf_offset}";
+$stmt = $pdo->query($_bf_sql);
 $images = $stmt->fetchAll();
 
 // --- PROGRESS UI ---
@@ -40,7 +53,7 @@ $images = $stmt->fetchAll();
 echo "<html><head><title>SnapSmack Backfill</title>";
 echo "<style>body{background:#1a1a1a;color:#ccc;font-family:monospace;padding:20px;} .success{color:#39FF14;} .info{color:#00bfff;} .warn{color:#ffaa00;}</style></head><body>";
 echo "<h2>MULTI-LAYOUT THUMBNAIL BACKFILL</h2>";
-echo "<p class='info'>GENERATING: t_ (400x400 square) + a_ (400px long side, aspect preserved)</p><hr>";
+echo "<p class='info'>GENERATING: t_ ({$square_size}x{$square_size} square) + a_ ({$aspect_long}px long side, aspect preserved) — overwrites old thumbnails in place</p><hr>";
 
 $processed = 0;
 $skipped = 0;
