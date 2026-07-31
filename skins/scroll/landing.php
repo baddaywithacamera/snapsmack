@@ -118,21 +118,16 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
     <main class="scroll-wall">
         <div class="ss-masonry">
             <?php if (!empty($images)): ?>
-                <?php $ss_idx = 0; foreach ($images as $img):
+                <?php foreach ($images as $img):
                     $iw = (int)($img['img_width']  ?? 0);
                     $ih = (int)($img['img_height'] ?? 0);
-                    // data-w/data-h feed ss-engine-masonry.js (it sizes each tile
-                    // to native aspect, portraits capped to 85% of a landscape).
-                    // Infrequent hero (a big landscape) + pimple (tiny accent) tiles
-                    // break the wall up visually — the engine reads these flags.
-                    $ss_a      = ($iw > 0 && $ih > 0) ? ($iw / $ih) : 1;
-                    $ss_hero   = ($ss_idx % 14 === 7) && $ss_a >= 1.2;
-                    $ss_pimple = !$ss_hero && ($ss_idx % 18 === 4);
-                    $ss_idx++;
+                    // data-w/data-h feed ss-engine-masonry.js: it justifies each run
+                    // of photos to fill the full width (native aspect, no gaps). The
+                    // portrait-weave above spreads tall tiles so runs vary nicely.
                     $thumb_rel = trim((string)($img['img_thumb_aspect'] ?? ''));
                     $img_url   = BASE_URL . ltrim($thumb_rel !== '' ? $thumb_rel : ($img['img_file'] ?? ''), '/');
                 ?>
-                <a class="ss-masonry-item"<?php if ($ss_hero): ?> data-hero<?php elseif ($ss_pimple): ?> data-pimple<?php endif; ?>
+                <a class="ss-masonry-item"
                    href="<?php echo BASE_URL . htmlspecialchars($img['img_slug']); ?>"
                    aria-label="<?php echo htmlspecialchars($img['img_title'] ?? 'View photograph'); ?>">
                     <img src="<?php echo htmlspecialchars($img_url); ?>"

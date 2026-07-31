@@ -43,7 +43,7 @@ function _ssLazyInit() {
     // --- AUTO-UPGRADE EXISTING IMAGES ---
     // Convert standard <img src="..."> inside known gallery containers
     // to lazy-loadable images so skins get this for free.
-    const autoContainers = '.justified-item, .archive-thumb-link, .grid-cell, .stats-image-card, .pile-card, .wall-cell';
+    const autoContainers = '.justified-item, .archive-thumb-link, .grid-cell, .stats-image-card, .pile-card, .wall-cell, .ss-masonry-item';
     document.querySelectorAll(autoContainers).forEach(container => {
         container.querySelectorAll('img[src]:not([data-src]):not(.ss-lazy-done)').forEach(img => {
             if (!img.src || img.src.indexOf('data:') === 0) return;
