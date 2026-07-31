@@ -51,6 +51,13 @@
 }
 
 .ss-ai-enrich-button {
+    /* Match the admin scheme: dark button with the accent as an OUTLINE, not a
+       neon slab. Fills the accent only on hover to signal the AI action. */
+    border: 1px solid var(--lens-accent, #39ff14);
+    background: var(--bg-primary, #141414);
+    color: var(--text-primary, #ddd);
+}
+.ss-ai-enrich-button:hover {
     background: var(--lens-accent, #39ff14);
     color: var(--lens-bg, #141414);
 }
