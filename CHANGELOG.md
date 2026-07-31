@@ -12,6 +12,11 @@
 
 ## Unreleased
 
+## 0.7.465 "Belt and Suspenders" — 2026-07-31
+
+- **REGEN THUMBS no longer 500s after an update.** The 0.7.464 thumbnail sizes were added to `core/constants.php`, which the updater treats as a protected path and never overwrites — so updated sites ran the new maintenance code against an old constants file and hit a fatal "Undefined constant". The `SNAPSMACK_THUMB_SQUARE` / `SNAPSMACK_THUMB_ASPECT_LONG` values now carry `if(!defined())` fallbacks in `core/thumb-generator.php` and the inline uploaders, so they reach every install regardless of update order. The maintenance regen also drops its fixed time cap so a heavier 900px batch can finish instead of timing out.
+- **SCROLL wall restored.** The experimental mosaic scale sliders distorted every tile into panoramas at higher values (increasing "Landscape Scale" cut the column count); they are removed and the wall returns to its balanced native-aspect layout. The tilted masthead is also no longer clipped at the bottom. (`skins/scroll/` 0.1.11, shipped via the Skin Packager.)
+
 ## 0.7.464 "Sharper Than a Tack" — 2026-07-30
 
 - **Display thumbnails are unified on one size, library-wide.** Every generator — the shared `snapsmack_generate_thumbs()`, the inline uploaders, the backfill tool, and the import/editor/maintenance callers — now reads `SNAPSMACK_THUMB_SQUARE` (400) and `SNAPSMACK_THUMB_ASPECT_LONG` (900) from a single source of truth. This ends the split where an image's aspect thumbnail was 400px or 600px depending on which code path created it — the cause of jagged tiles on larger wall layouts. An upscale guard keeps small originals from being blown up past their native size. Regenerate an existing library from **Maintenance → REGEN THUMBS**. Fediverse image delivery is unaffected — it uses the `p_`/`f_` bakes or the full image, never the aspect thumbnail.
