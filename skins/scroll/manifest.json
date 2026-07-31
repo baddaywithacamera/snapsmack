@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.10",
+    "version": "0.1.11",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a balanced 2D grid-mosaic parts wall. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -140,28 +140,6 @@
             "property": "--scroll-canvas-width",
             "unit": "px"
         },
-        "scroll_mosaic_col": {
-            "section": "PHOTO WALL",
-            "type": "range",
-            "label": "Landscape / Column Scale (px)",
-            "default": "230",
-            "min": "150",
-            "max": "400",
-            "selector": ".scroll-mosaic",
-            "property": "--mosaic-col",
-            "unit": "px"
-        },
-        "scroll_mosaic_row": {
-            "section": "PHOTO WALL",
-            "type": "range",
-            "label": "Portrait / Row Scale (px)",
-            "default": "230",
-            "min": "150",
-            "max": "400",
-            "selector": ".scroll-mosaic",
-            "property": "--mosaic-row",
-            "unit": "px"
-        },
         "scroll_page_size": {
             "section": "PHOTO WALL",
             "type": "range",
@@ -170,17 +148,6 @@
             "min": "12",
             "max": "60",
             "step": "6"
-        },
-        "scroll_mosaic_gap": {
-            "section": "PHOTO WALL",
-            "type": "range",
-            "label": "Tile Spacing",
-            "default": "6",
-            "min": "0",
-            "max": "25",
-            "selector": ".scroll-mosaic",
-            "property": "--mosaic-gap",
-            "unit": "px"
         },
         "scroll_corner_radius": {
             "section": "PHOTO WALL",
