@@ -12,6 +12,12 @@
 
 ## Unreleased
 
+## 0.7.468 "Edge to Edge" — 2026-07-31
+
+- **SCROLL's photo wall is now a justified pack (masonry v3) — no gaps, no ragged edge.** The grid-span masonry (v2) left holes and a ragged right edge because CSS grid places tiles in order and hopes they fit — it is not a packer. The engine now sizes each *run* of photos so it fills the full content width exactly (the Flickr / Google Photos method): zero gaps, edge-to-edge (therefore centred), native aspect kept, and no photo is ever upscaled past its source into a chunky slab. Run heights vary, so it still reads as an organic asymmetric wall. All tuning stays skin-side (`--ss-base` "Photo Size", `--ss-gap`).
+- **Fixed the scrollbar-reflow bug that made the wall look off-centre.** The wall reserved no scrollbar gutter, so the engine sized rows to the wider (no-scrollbar) width; the tall result then added a scrollbar, every row became a hair too wide, and the last tile of each row wrapped — reading as ragged, left-shifted rows. SCROLL now reserves a stable scrollbar gutter, so the wall measures once, correctly.
+- **Lazy loading now works on the SCROLL wall.** The lazy-load engine only auto-upgraded images inside a fixed set of gallery containers; the wall's `.ss-masonry-item` was not one, so wall images fell back to native `loading="lazy"` — unreliable, because the tiles have no height until the layout JS runs, so the browser fetched the whole wall at once. `.ss-masonry-item` is now a recognised container, so wall images load progressively as you scroll. (Requires SCROLL repackaged to 0.1.16 alongside this core build; core first.)
+
 ## 0.7.467 "Off the Grid" — 2026-07-31
 
 - **SCROLL's photo wall is rebuilt as a fine-unit free tessellation (masonry v2).** The old column-based masonry snapped tiles into visible columns and forced photos toward fixed spans. The engine now lays a fine 40px CSS-grid unit with dense auto-flow and spans each tile a computed number of units in *both* axes from its native aspect, so tiles pack tightly with no visible columns or rows. Landscapes size to the `--ss-base` long side; portraits are capped at 85% of that so the two orientations balance instead of portraits out-muscling the wall. Occasional hero (upsized) and pimple (shrunk) tiles break the wall up — all tunable skin-side via CSS vars, so future balance tweaks are a skin repackage with no core rebuild. (Requires SCROLL repackaged to 0.1.15 alongside this core build; core first.)
