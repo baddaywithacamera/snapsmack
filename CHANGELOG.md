@@ -12,6 +12,12 @@
 
 ## Unreleased
 
+## 0.7.466 "Wall to Wall" — 2026-07-31
+
+- **SCROLL's photo wall is now an asymmetric masonry driven by a reusable JS engine.** `ss-engine-masonry.js` sizes landscapes wide (2 columns, near-native) and keeps portraits to a single column capped at 85% of a landscape's long side, so portraits stop out-muscling the wall; tiles dense-pack and crop-to-fill. The `0.85` ratio and column spans are `SS_MASONRY_CONFIG` hooks. Registered as `smack-masonry` in the manifest inventory and loaded via SCROLL 0.1.13's `require_scripts`. (Requires the skin repackaged to 0.1.13 alongside this core build.)
+- **Solo-page lightbox: click the zoomed image to shrink it.** The enlarged photo now closes on click (not only on background click) and shows a zoom-out cursor on hover, restoring the expected dismiss gesture.
+- **AI enrichment buttons match the admin scheme.** The AI Caption/Title/Hashtags buttons drop their solid neon-green fill for the same restrained dark/accent-outline treatment as the adjacent Prompts button, filling the accent only on hover.
+
 ## 0.7.465 "Belt and Suspenders" — 2026-07-31
 
 - **REGEN THUMBS no longer 500s after an update.** The 0.7.464 thumbnail sizes were added to `core/constants.php`, which the updater treats as a protected path and never overwrites — so updated sites ran the new maintenance code against an old constants file and hit a fatal "Undefined constant". The `SNAPSMACK_THUMB_SQUARE` / `SNAPSMACK_THUMB_ASPECT_LONG` values now carry `if(!defined())` fallbacks in `core/thumb-generator.php` and the inline uploaders, so they reach every install regardless of update order. The maintenance regen also drops its fixed time cap so a heavier 900px batch can finish instead of timing out.
