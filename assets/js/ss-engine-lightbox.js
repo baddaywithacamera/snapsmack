@@ -83,7 +83,7 @@ function _lbBuildOverlay() {
         'z-index:9999;opacity:0;transition:opacity .18s ease-out;cursor:zoom-out;';
 
     _lbBigImg = document.createElement('img');
-    _lbBigImg.style.cssText = 'max-width:95vw;max-height:95vh;object-fit:contain;box-shadow:0 0 40px rgba(0,0,0,.8);cursor:default;';
+    _lbBigImg.style.cssText = 'max-width:95vw;max-height:95vh;object-fit:contain;box-shadow:0 0 40px rgba(0,0,0,.8);cursor:zoom-out;';
     _lbOverlay.appendChild(_lbBigImg);
 
     _lbPrev = _lbNavBtn('‹', 'left');
@@ -93,9 +93,11 @@ function _lbBuildOverlay() {
     _lbPrev.addEventListener('click', function (e) { e.stopPropagation(); _lbGo(_lbCurrent - 1); });
     _lbNext.addEventListener('click', function (e) { e.stopPropagation(); _lbGo(_lbCurrent + 1); });
 
-    // Click background (not the image) closes; image click does nothing.
+    // Click anywhere — background OR the image itself — shrinks/closes. The
+    // zoomed image shows a zoom-out cursor, so clicking it to dismiss is the
+    // obvious gesture. Nav-arrow clicks stopPropagation above so they don't close.
     _lbOverlay.addEventListener('click', function (e) { if (e.target === _lbOverlay) _lbClose(); });
-    _lbBigImg.addEventListener('click', function (e) { e.stopPropagation(); });
+    _lbBigImg.addEventListener('click', function (e) { e.stopPropagation(); _lbClose(); });
 
     // Touch swipe (tablet).
     var tsx = 0, tsy = 0;
