@@ -12,6 +12,10 @@
 
 ## Unreleased
 
+## 0.7.467 "Off the Grid" — 2026-07-31
+
+- **SCROLL's photo wall is rebuilt as a fine-unit free tessellation (masonry v2).** The old column-based masonry snapped tiles into visible columns and forced photos toward fixed spans. The engine now lays a fine 40px CSS-grid unit with dense auto-flow and spans each tile a computed number of units in *both* axes from its native aspect, so tiles pack tightly with no visible columns or rows. Landscapes size to the `--ss-base` long side; portraits are capped at 85% of that so the two orientations balance instead of portraits out-muscling the wall. Occasional hero (upsized) and pimple (shrunk) tiles break the wall up — all tunable skin-side via CSS vars, so future balance tweaks are a skin repackage with no core rebuild. (Requires SCROLL repackaged to 0.1.15 alongside this core build; core first.)
+
 ## 0.7.466 "Wall to Wall" — 2026-07-31
 
 - **SCROLL's photo wall is now an asymmetric masonry driven by a reusable JS engine.** `ss-engine-masonry.js` sizes landscapes wide (2 columns, near-native) and keeps portraits to a single column capped at 85% of a landscape's long side, so portraits stop out-muscling the wall; tiles dense-pack and crop-to-fill. The `0.85` ratio and column spans are `SS_MASONRY_CONFIG` hooks. Registered as `smack-masonry` in the manifest inventory and loaded via SCROLL 0.1.13's `require_scripts`. (Requires the skin repackaged to 0.1.13 alongside this core build.)
