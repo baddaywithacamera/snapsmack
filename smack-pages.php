@@ -99,15 +99,30 @@ if (isset($_POST['save_page'])) {
     $image_align  = in_array($raw_align, ['center','left','right'])  ? $raw_align : 'center';
     $image_shadow = ($_POST['image_shadow'] ?? '0') === '1' ? 1 : 0;
 
-    if ($id) {
-        $stmt = $pdo->prepare("UPDATE snap_pages SET title = ?, slug = ?, content = ?, image_asset = ?, image_size = ?, image_align = ?, image_shadow = ? WHERE id = ?");
-        $stmt->execute([$title, $slug, $content, $asset, $image_size, $image_align, $image_shadow, $id]);
-    } else {
-        $stmt = $pdo->prepare("INSERT INTO snap_pages (title, slug, content, image_asset, image_size, image_align, image_shadow) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$title, $slug, $content, $asset, $image_size, $image_align, $image_shadow]);
-    }
+    // `slug` carries a UNIQUE key. A collision (e.g. saving a second "about")
+    // makes execute() throw an uncaught PDOException that 500s the whole Page
+    // Manager — the visitor sees a blank error page, not "that slug is taken".
+    // Check first (excluding the row being edited), and wrap the write as well
+    // so nothing in this handler can ever hard-fail the page again.
+    $dupe = $pdo->prepare("SELECT id FROM snap_pages WHERE slug = ?" . ($id ? " AND id <> ?" : ""));
+    $dupe->execute($id ? [$slug, $id] : [$slug]);
 
-    $msg = "Static transmission synchronized. HTML hidden in interface.";
+    if ($dupe->fetchColumn()) {
+        $msg = 'A page with the slug "' . htmlspecialchars($slug) . '" already exists. Edit that page, or choose a different slug.';
+    } else {
+        try {
+            if ($id) {
+                $stmt = $pdo->prepare("UPDATE snap_pages SET title = ?, slug = ?, content = ?, image_asset = ?, image_size = ?, image_align = ?, image_shadow = ? WHERE id = ?");
+                $stmt->execute([$title, $slug, $content, $asset, $image_size, $image_align, $image_shadow, $id]);
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO snap_pages (title, slug, content, image_asset, image_size, image_align, image_shadow) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$title, $slug, $content, $asset, $image_size, $image_align, $image_shadow]);
+            }
+            $msg = "Static transmission synchronized. HTML hidden in interface.";
+        } catch (PDOException $e) {
+            $msg = "That page could not be saved — the slug may already be in use. Nothing was changed.";
+        }
+    }
 }
 
 // --- DELETION HANDLER ---
