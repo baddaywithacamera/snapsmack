@@ -102,13 +102,15 @@ a { color: inherit; }
     display: none;
 }
 .scroll-profile > .scroll-sticky-nav .ss-grid-nav-link {
-    color: inherit !important;
+    /* On the landing masthead the nav sits on the page background, but the chip
+       carries its own colour, so the glyph follows the dock icon colour rather
+       than inheriting the page text colour. Always fully opaque. */
+    color: var(--dock-icon, #1a1a1a) !important;
     opacity: 1 !important;
 }
 .scroll-profile > .scroll-sticky-nav .ss-grid-nav-link svg {
     display: block;
     opacity: 1;
-    stroke: currentColor;
 }
 .scroll-nav-search {
     position: relative;
@@ -251,13 +253,37 @@ a { color: inherit; }
     letter-spacing: .12em;
     text-transform: uppercase;
 }
+/* ── Primary nav icons wear the SOCIAL DOCK chip. ───────────────────────────
+   The social dock (core/social-dock.php + assets/css/ss-engine-social-dock.css)
+   must look identical on every skin, so it is NOT restyled — the nav icons are
+   restyled to match IT. Each nav icon becomes the same filled circular chip:
+   the same --dock-* custom properties (with the dock's light-mode defaults as
+   fallbacks, since the dock sets those variables only on its own element), the
+   same 40px inline size, the same 20px glyph.
+
+   ONE deliberate difference: the dock activates on hover (idle-translucent).
+   This is PRIMARY navigation and is ALWAYS 100% visible — opacity is pinned to
+   1 and there is no idle fade. Only the background/border deepen on hover. ── */
 .scroll-sticky-nav .ss-grid-nav-link {
-    border: 1px solid transparent;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
+    /* SCROLL is a light skin, so the chip is a faint hairline ring with a dark
+       line-art glyph — matching the social dock set to "Dark icons (for light
+       sites)" + Outline. Reads the same --dock-* variables the dock uses, with
+       light-site fallbacks, so nav and dock stay one family. */
+    background: var(--dock-bg, transparent);
+    border: 2px solid var(--dock-border, rgba(26, 26, 26, .3));
+    color: var(--dock-icon, #1a1a1a);
+    opacity: 1;
+    transition: background .15s ease, border-color .15s ease;
 }
-.scroll-sticky-nav .ss-grid-nav-link:hover {
-    border-color: currentColor;
+.scroll-sticky-nav .ss-grid-nav-link:hover,
+.scroll-sticky-nav .ss-grid-nav-link:focus-visible {
+    background: var(--dock-bg-hover, rgba(255, 255, 255, .95));
+    border-color: var(--dock-border-hover, rgba(26, 26, 26, .7));
 }
+.scroll-sticky-nav .ss-grid-nav-link svg { width: 20px; height: 20px; }
 
 .scroll-profile-compact {
     display: block;
