@@ -12,6 +12,12 @@
 
 ## Unreleased
 
+## 0.7.471 "Errata" — 2026-08-01
+
+- **Page Manager no longer 500s on a duplicate slug.** Saving a static page whose slug already exists (e.g. a second `about`) threw an uncaught PDOException and blanked the whole Page Manager with an HTTP 500. It now checks for the collision first and reports it inline, and the write is wrapped so no integrity error can hard-fail the page. No schema change.
+- **FEDISTRUCTURE installer: the service profile is no longer lost at the database step.** The chosen profile was re-validated from `$_POST` on every step-2 submission, but the DB-credentials form doesn't resubmit it — so entering DB credentials dead-ended the install with "Choose a FEDISTRUCTURE service profile." It now falls back to the session value already captured on the edition screen.
+- **SCROLL skin version corrected to 0.1.17.** It had been mis-bumped from 0.1.16 straight to 0.2.0 during the four-column-wall change; the correct next version is a single patch step.
+
 ## 0.7.470 "Broadsheet" — 2026-08-01
 
 - **SCROLL's photo wall is now a fixed four-column wall.** The asymmetric mosaic packer is retired from SCROLL (preserved on the `mosaic-wall-wip` branch, not shipped). The new wall — `assets/js/ss-engine-columns.js` — divides the container into four equal columns and drops each photograph into the shortest column at its **own** aspect ratio, never cropped. Because every column is the same width, a 2:3 portrait covers 2.25× the area of a 3:2 landscape with no special-casing, which is what makes the (rarer) portraits read as the large pictures. There is no search and no solve time: the geometry is O(n) arithmetic, ~1ms for a full feed, versus the packer's ~2s per chunk. Measured on the real engine at W≈1200, n=100: exactly four columns, zero overlaps, wall flush to the right edge, portrait/landscape median area 2.25×, and borders (0–12px) no longer buy any crop because tile height is computed from the inner width.
