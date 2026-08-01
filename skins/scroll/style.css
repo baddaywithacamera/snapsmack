@@ -27,11 +27,11 @@
 }
 
 * { box-sizing: border-box; }
-/* Reserve the scrollbar gutter so the wall's content width never changes when a
-   vertical scrollbar appears. Without this, the justified engine sizes rows to
-   the wider (no-scrollbar) width, the tall result adds a scrollbar, and every
-   row ends up a hair too wide → the last tile wraps → ragged, under-filled rows
-   that read as "not centred". Stable gutter = the engine measures once, right. */
+/* A NICETY, NOT A CRUTCH. ss-engine-masonry.js runs its own predictive +
+   corrective two-pass measurement and is correct with no reserved gutter at all
+   (verified: a layout measured at 1200 and re-measured at 1185 lands flush at
+   1185, zero overflow). This rule only stops the one-frame reflow from being
+   visible, and browsers without scrollbar-gutter support are equally correct. */
 html { overflow-y: scroll; scrollbar-gutter: stable; }
 html, body { margin: 0; min-height: 100%; }
 body {
@@ -152,8 +152,20 @@ a { color: inherit; }
     cursor: pointer;
 }
 .scroll-profile > .scroll-sticky-nav.profile-hidden {
+    /* A FULL-WIDTH BAR. position:fixed with no left/right shrinks to its content
+       and parks itself wherever it happened to sit — which is how this became a
+       lump in the top-right corner. Pin all three edges so it spans the page, and
+       space-between so the name sits left and the icons right. */
     position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+    justify-self: stretch;
+    width: auto;
     padding: 8px clamp(16px, 4vw, 64px);
     color: inherit;
     background: rgba(255,255,255,.94);
@@ -185,32 +197,65 @@ a { color: inherit; }
     text-decoration: none;
     text-transform: uppercase;
 }
-/* ── Justified photo wall (v3). ss-engine-masonry.js sizes each item to px
-      width/height so a run of photos fills the full content width exactly —
-      no gaps, no ragged edge, edge-to-edge (therefore centred). The CSS owns
-      the flex container + tile chrome; the engine owns the numbers. ── */
+/* ── Mosaic photo wall (SS-HYPOGRAPH). assets/js/ss-engine-masonry.js computes
+      EVERY layout number in JavaScript and writes it as an explicit inline pixel
+      value: the container's height, and each tile's left / top / width / height,
+      and each <img>'s own cover-crop box. There is deliberately NO CSS layout
+      here — no flex, no grid, no float, no gap, no aspect-ratio, no percentage
+      sizing — because browsers disagree about all of those and this wall must
+      not. The gutter is arithmetic the engine performs, not a CSS property.
+
+      What is left below is COSMETIC ONLY: border, radius, background, overflow,
+      colour, transition, cursor, and the hover title overlay. If a property
+      would move or resize a tile, it does not belong in this file.
+
+      The custom properties on .ss-masonry are NUMBERS THE ENGINE READS (once,
+      per solve) — they are tuning, not layout. See the engine's file header. ── */
 .ss-masonry {
-    --ss-base: 460px;  /* "Photo Size" — a typical landscape's long side (px) */
-    display: flex;
-    flex-wrap: wrap;
-    align-content: flex-start;
-    justify-content: center;   /* only the short last run ever needs centring */
-    gap: var(--ss-gap, 6px);
-    width: 100%;
+    /* tuning hooks — read by ss-engine-masonry.js */
+    --ss-base: 720px;          /* CEILING on a typical landscape's long side. It only
+                                  binds above ~2000px wide; --ss-across-relief is what
+                                  sets the size at ordinary widths.               */
+    --ss-gap: 6px;             /* "Space Between Tiles" - the ONLY separation     */
+    --ss-crop: 1.12;           /* hard bound on crop ratio; never exceeded        */
+    --ss-effort: 2600;         /* search budget in ms (clamped 200..5000)         */
+    --ss-min-across: 5;        /* minimum photos across (anti-column clamp).
+                                  LOAD-BEARING - do not lower it. Measured at 3.4
+                                  and 3.0 it fires "few-across" on half to all
+                                  walls and the column band degrades to 0.75-0.91. */
+    --ss-min-tile: 96;         /* minimum drawn tile edge, px                     */
+    --ss-across-relief: 1.7;   /* THE DENSITY LEVER: multiplies the MEDIAN tile's
+                                  target area over the min-across clamp. 1.0 is the
+                                  old density. Above ~2 the targets outrun what the
+                                  packer can tile and the wall gets SMALLER, not
+                                  bigger - measured, not assumed.                 */
+    --ss-hero-min: 450;        /* FLOOR on the hero's long side, px = half of the
+                                  900px aspect thumbnail. Built by construction.   */
+    --ss-hero-cap: 900;        /* past this the aspect thumbnail upscales          */
+    --ss-hero-mult: 3.4;       /* hero area as a multiple of the median rung's     */
+    --ss-anchors: 5;           /* 1 hero + 4 majors per chunk                      */
+    --ss-fill-k: 3;            /* companion depth beside an anchor                 */
+    --ss-hero-rate: 0.12;      /* fraction of photos on the TOP rung               */
+    --ss-rag: 2.6;             /* ragged-bottom allowance, in median tile heights.
+                                  A hero is several median heights tall, so the
+                                  bottom is legitimately more uneven than before.  */
+    --ss-seam-h: 0.50;         /* max horizontal seam, as a fraction of the width.
+                                  Widened automatically - and reported - at narrow
+                                  widths where a 450px hero forces it.             */
+    --ss-seam-v: 2.4;          /* max vertical seam, in reference tile heights     */
+    position: relative;        /* the engine positions every tile absolutely      */
 }
 .ss-masonry-item {
-    position: relative;
-    display: block;
     overflow: hidden;
-    flex: 0 0 auto;
     border: var(--scroll-border-width) solid var(--scroll-border-color);
     border-radius: var(--scroll-corner-radius);
-    background: #111;
+    background: var(--scroll-bg, #111);   /* lazy-load placeholder = skin surface */
+    cursor: pointer;
 }
 .ss-masonry-item img {
-    display: block;
-    width: 100%;
-    height: 100%;
+    /* object-fit is an inert fallback only: the engine already sets the img's
+       pixel box to the photo's own aspect, so `cover` is a no-op and cannot
+       double-crop. The layout is correct without it. */
     object-fit: cover;
     transition: transform 180ms ease, opacity 180ms ease;
 }
@@ -218,9 +263,14 @@ a { color: inherit; }
     position: absolute;
     inset: 0;
     z-index: 2;
+    /* The hover scrim is the one place spec 10 permits a CSS layout system, and
+       it CANNOT move or resize a tile: it is an absolutely-positioned child of a
+       box whose left/top/width/height/overflow the engine writes inline. Viewport
+       units are gone from it all the same - nothing in the wall should depend on
+       the window. */
     display: grid;
     place-items: center;
-    padding: clamp(12px, 3vw, 32px);
+    padding: 16px;
     color: #fff;
     background: rgba(0, 0, 0, .62);
     font-size: clamp(.9rem, 1.5vw, 1.35rem);
@@ -235,9 +285,28 @@ a { color: inherit; }
 .ss-masonry-item:focus-visible img { transform: scale(1.015); }
 .ss-masonry-item:hover .scroll-item-title,
 .ss-masonry-item:focus-visible .scroll-item-title { opacity: 1; }
+/* Chunk containers are independent mosaics stacked in normal flow. This is the
+   ONE separation between them, set to the same value as the internal tile gap so
+   a chunk boundary is no wider a line than any other seam in the wall. This is
+   NOT tile layout: the engine positions every tile absolutely inside its own
+   container and never reads this value. */
+.ss-masonry + .ss-masonry { margin-top: var(--ss-gap, 6px); }
+.scroll-wall-sentinel { height: 1px; }
 .scroll-empty { padding: 15vh 0; text-align: center; }
+@media (max-width: 900px) {
+    /* tuning, not layout. A narrower canvas is closer to the degenerate edge, so the
+       density lever steps down and the hero is asked for less area — it still has to
+       clear --ss-hero-min, and on a container too narrow to host that at all the engine
+       reports data-ss-hero-short rather than pretending. */
+    .ss-masonry { --ss-across-relief: 1.4; --ss-hero-mult: 2.6; --ss-anchors: 3; }
+}
 @media (max-width: 640px) {
-    .ss-masonry { --ss-base: 300px; }
+    /* a smaller minimum tile keeps 2-3 photos across on a phone, which is what the
+       packer needs to avoid degenerating to a stack. */
+    .ss-masonry {
+        --ss-base: 420px; --ss-min-tile: 88;
+        --ss-across-relief: 1.2; --ss-hero-mult: 2.2; --ss-anchors: 2;
+    }
 }
 
 .scroll-sticky-nav {
