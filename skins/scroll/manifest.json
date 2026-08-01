@@ -154,16 +154,29 @@
             "label": "Sticky Bar Logo (left side)",
             "hint": "Optional graphic shown on the LEFT of the sticky nav bar that appears once you scroll past the masthead. It replaces the text name there. Not shown on the landing header or static pages. PNG/SVG-as-PNG/WebP; sized to the bar height."
         },
+        "scroll_canvas_pct": {
+            "section": "PHOTO WALL",
+            "type": "range",
+            "label": "Wall Width (% of window)",
+            "hint": "Landing wall + header width as a percentage of the browser window, so it fits any screen resolution. The header icons/byline line up with the wall edges.",
+            "default": "90",
+            "min": "50",
+            "max": "98",
+            "selector": ":root",
+            "property": "--scroll-canvas-pct",
+            "unit": "%"
+        },
         "main_canvas_width": {
             "section": "PHOTO WALL",
             "type": "range",
-            "label": "Wall Width (px)",
+            "label": "Photo Page Width (px)",
             "default": "1500",
             "min": "800",
             "max": "1920",
             "selector": ":root",
             "property": "--scroll-canvas-width",
-            "unit": "px"
+            "unit": "px",
+            "hint": "Max width of an individual photo/solo page (not the landing wall — that is set by Wall Width % above)."
         },
         "scroll_page_size": {
             "section": "PHOTO WALL",
