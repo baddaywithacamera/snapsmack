@@ -19,7 +19,7 @@
 - **"Photo Size" wall control removed; "Space Between Tiles" floor raised to 5px.** Column width is the wall width ÷ 4, so the old per-tile size slider did nothing. Corner-radius and border controls are unchanged.
 - **The social dock has an Outline icon set.** A new Solid/Outline choice in Social Dock settings swaps the bold brand marks for a lighter line-art set (all platforms), so the dock can sit comfortably in minimal, hairline skins. Solid stays the default — existing sites are unchanged until they switch.
 - **SCROLL's primary nav reuses the social-dock chip.** Home, About, Blogroll, Search and Filter now render as the same chip as the dock, drawn in the matching outline language and pinned to full opacity (primary nav never fades; the dock keeps its hover-reveal). About links to a static `about` page; Blogroll to `blogroll.php`.
-- SCROLL skin bumped to 0.2.0. Requires SCROLL repackaged.
+- SCROLL skin bumped to 0.1.17. Requires SCROLL repackaged.
 
 ## 0.7.469 "Index Card" — 2026-07-31
 
