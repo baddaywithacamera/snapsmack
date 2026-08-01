@@ -73,9 +73,15 @@ a { color: inherit; }
 .scroll-byline-name {
     display: block;
 }
+/* Independent size controls for the two byline lines (admin: Byline Prefix Size
+   / Photographer Name Size). Fall back to the block's .82rem if unset. */
+.scroll-byline-prefix {
+    font-size: var(--scroll-byline-prefix-size, .82rem);
+}
 .scroll-byline-name {
     margin-top: .32rem;
     font-weight: 700;
+    font-size: var(--scroll-byline-name-size, .82rem);
 }
 .scroll-masthead {
     grid-column: 2;
