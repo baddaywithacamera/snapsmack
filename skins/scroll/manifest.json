@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.18",
+    "version": "0.1.19",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -129,6 +129,18 @@
             "selector": ":root",
             "property": "--scroll-title-size",
             "unit": "vw"
+        },
+        "scroll_nav_transparency": {
+            "section": "MASTHEAD",
+            "type": "range",
+            "label": "Sticky Bar Opacity",
+            "hint": "Opacity of the fixed nav bar that appears once you scroll past the masthead. 1 = solid, lower = see-through.",
+            "default": "0.94",
+            "min": "0",
+            "max": "1",
+            "step": "0.02",
+            "selector": ":root",
+            "property": "--scroll-nav-alpha"
         },
         "main_canvas_width": {
             "section": "PHOTO WALL",

@@ -160,16 +160,32 @@ a { color: inherit; }
     cursor: pointer;
 }
 .scroll-profile > .scroll-sticky-nav.profile-hidden {
+    /* FULL-WIDTH FIXED BAR. Pin all three edges and override the inline nav's
+       grid-column:3 / justify-self:end — without the explicit left/right/width a
+       position:fixed element shrinks to its content and parks in the corner it
+       was in, which is the top-right pill this replaces.
+       Background opacity is driven by --scroll-nav-alpha (admin: Sticky Bar
+       Opacity); default 0.94. */
     position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 9000;
     display: flex;
     padding: 8px clamp(16px, 4vw, 64px);
     color: inherit;
-    background: rgba(255,255,255,.94);
-    border-bottom: 1px solid rgba(0,0,0,.18);
+    background: rgba(255, 255, 255, var(--scroll-nav-alpha, .94));
+    border-bottom: 1px solid rgba(0, 0, 0, .18);
     backdrop-filter: blur(14px);
 }
 .scroll-profile > .scroll-sticky-nav.profile-hidden .ss-grid-nav-identity {
     display: flex;
+    margin-right: auto;   /* identity hard left; links + socials clump right */
 }
 .scroll-wall {
     width: min(calc(100% - 32px), var(--scroll-canvas-width));
