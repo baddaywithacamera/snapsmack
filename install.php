@@ -212,8 +212,13 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
         $step = 2;
     } else {
         // Capture the immutable product/profile choice from the edition screen.
+        // The edition ('1b') form stores it in the session; later step-2 posts
+        // (the DB-credentials form) do NOT resubmit distribution_profile, so read
+        // POST first and fall back to the already-chosen session value — without
+        // this, submitting DB creds re-demands a profile that was picked two
+        // screens back and dead-ends the FEDISTRUCTURE install.
         if ($installer_is_fedistructure) {
-            $profile = (string)($_POST['distribution_profile'] ?? '');
+            $profile = (string)($_POST['distribution_profile'] ?? $_SESSION['distribution_profile'] ?? '');
             if (!in_array($profile, ['photo-challenge', 'daily-photo', 'smackcast'], true)) {
                 $errors[] = 'Choose a FEDISTRUCTURE service profile.';
                 $step = 2;
