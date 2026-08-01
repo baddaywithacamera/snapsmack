@@ -199,6 +199,22 @@ a { color: inherit; }
     display: flex;
     margin-right: auto;   /* identity hard left; links + socials clump right */
 }
+/* Static / photo pages: the header is an ALWAYS-VISIBLE fixed bar (skin-header.php).
+   Give it the same white bar + name-left / icons-right treatment as the landing's
+   scrolled sticky bar, so every page shares one consistent header. */
+.scroll-sticky-nav.ss-grid-nav-always-visible {
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, var(--scroll-nav-alpha, .94));
+    border-bottom: 1px solid rgba(0, 0, 0, .18);
+    backdrop-filter: blur(14px);
+    color: inherit;
+}
+.scroll-sticky-nav.ss-grid-nav-always-visible .ss-grid-nav-identity {
+    display: flex;
+    margin-right: auto;   /* name hard left; links + socials clump right */
+}
+
 /* Optional sticky-bar logo (admin: Sticky Bar Logo). Lives in the identity slot,
    which only appears in the sticky bar — so the graphic never shows on the inline
    landing header. Sized to the bar height; replaces the text name when present. */
