@@ -14,6 +14,11 @@
 
 :root {
     --scroll-canvas-width: 1500px;
+    /* Landing wall/header width as a PERCENTAGE of the window, so it adapts to
+       any screen resolution instead of a fixed pixel cap. Admin: "Wall Width
+       (% of window)". Header, browse-tools and wall all use this one value, so
+       their left/right edges line up. */
+    --scroll-canvas-pct: 90%;
     --scroll-row-height: 280px;
     --scroll-row-unit: 10px;
     --scroll-tile-gap: 0px;
@@ -44,16 +49,17 @@ a { color: inherit; }
 .scroll-profile {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(150px, 1fr) minmax(320px, 1.7fr) minmax(230px, 1fr);
+    grid-template-columns: minmax(150px, 1fr) minmax(320px, 1.7fr) minmax(150px, 1fr);
     align-items: center;
-    /* Tall enough to contain the TILTED masthead's rotated bounding box (its
-       visual height exceeds its layout height), with symmetric vertical padding
-       so it centres with clearance and never clips. overflow:hidden stays for
-       horizontal safety. Sized to give the masthead breathing room WITHOUT a dead
-       band above the wall — the old 18vw/3.8vw caps ballooned on wide screens
-       (~360px min-height + 72px padding for ~150px of content). */
-    min-height: clamp(150px, 10vw, 210px);
-    padding: clamp(22px, 2.2vw, 40px) clamp(24px, 4vw, 56px);
+    /* SAME width + centring as the wall, so the byline (left) and the nav icons
+       (right) line up with the OUTSIDE edges of the photo grid. Horizontal
+       padding is gone — the width does the insetting now. Vertical padding is
+       symmetric and matches the wall gutter so the gap under the header equals
+       the gap between photos. overflow:hidden stays for the tilted masthead. */
+    width: var(--scroll-canvas-pct, 90%);
+    margin: 0 auto;
+    min-height: clamp(140px, 9vw, 200px);
+    padding: clamp(18px, 2vw, 32px) 0 var(--ss-gap, 12px);
     overflow: hidden;
 }
 .scroll-photographer {
@@ -198,7 +204,7 @@ a { color: inherit; }
     object-fit: contain;
 }
 .scroll-wall {
-    width: min(calc(100% - 32px), var(--scroll-canvas-width));
+    width: var(--scroll-canvas-pct, 90%);
     margin: 0 auto;
     padding-bottom: 0;
 }
@@ -206,10 +212,13 @@ a { color: inherit; }
     display: flex;
     align-items: center;
     gap: 22px;
-    width: min(calc(100% - 32px), var(--scroll-canvas-width));
-    min-height: 48px;
-    margin: 0 auto;
-    border-top: 1px solid rgba(255,255,255,.18);
+    width: var(--scroll-canvas-pct, 90%);
+    min-height: 0;
+    /* the gap above the photos = the wall gutter, matching the spacing between
+       photos rather than a big dead band */
+    margin: 0 auto var(--ss-gap, 12px);
+    padding-top: var(--ss-gap, 12px);
+    border-top: 1px solid rgba(0,0,0,.12);
 }
 .scroll-browse-link,
 .scroll-search-label {
