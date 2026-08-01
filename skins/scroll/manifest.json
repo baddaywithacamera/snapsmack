@@ -61,6 +61,32 @@
             "label": "Photographer Name",
             "default": ""
         },
+        "scroll_byline_prefix_size": {
+            "section": "MASTHEAD",
+            "type": "range",
+            "label": "Byline Prefix Size (rem)",
+            "hint": "Font size of the small “PHOTOS BY” line at top left.",
+            "default": "0.82",
+            "min": "0.6",
+            "max": "2.2",
+            "step": "0.05",
+            "selector": ":root",
+            "property": "--scroll-byline-prefix-size",
+            "unit": "rem"
+        },
+        "scroll_byline_name_size": {
+            "section": "MASTHEAD",
+            "type": "range",
+            "label": "Photographer Name Size (rem)",
+            "hint": "Font size of the photographer name line at top left.",
+            "default": "0.82",
+            "min": "0.6",
+            "max": "2.2",
+            "step": "0.05",
+            "selector": ":root",
+            "property": "--scroll-byline-name-size",
+            "unit": "rem"
+        },
         "scroll_masthead_angle": {
             "section": "MASTHEAD",
             "type": "range",
