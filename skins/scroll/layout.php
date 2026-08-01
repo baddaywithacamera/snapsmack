@@ -26,10 +26,6 @@ require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
                         <span class="ss-grid-nav-label">Home</span>
                     </a>
-                    <a class="ss-grid-nav-link" href="<?php echo BASE_URL; ?>albums.php" title="Albums">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zm6 7h6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-                        <span class="ss-grid-nav-label">Albums</span>
-                    </a>
                     <details class="scroll-nav-search">
                         <summary class="ss-grid-nav-link" title="Search">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m15.5 15.5 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>

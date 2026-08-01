@@ -23,8 +23,7 @@ $grid_nav_config = [
     'always_visible' => true,
     'inline_social' => true,
     'links' => [
-        ['label' => 'Home', 'url' => BASE_URL, 'icon' => 'home'],
-        ['label' => 'Albums', 'url' => BASE_URL . 'albums.php', 'icon' => 'archive']
+        ['label' => 'Home', 'url' => BASE_URL, 'icon' => 'home']
     ]
 ];
 include dirname(__DIR__, 2) . '/core/components/grid-sticky-nav.php';

@@ -1,9 +1,9 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.17",
+    "version": "0.2.0",
     "author": "Sean McCormick, Claude, OpenAI Codex",
-    "description": "A solo photoblog skin with a typographic masthead and a balanced 2D grid-mosaic parts wall. Built for photographs that refuse to show the whole damn car.",
+    "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
     "features": {
         "supports_wall": false,
@@ -31,7 +31,7 @@
         "smack-grid-nav",
         "smack-grid-lightbox",
         "smack-lightbox",
-        "smack-masonry"
+        "smack-columns"
     ],
     "community_comments": true,
     "community_likes": true,
@@ -150,24 +150,12 @@
             "max": "60",
             "step": "6"
         },
-        "scroll_tile_size": {
-            "section": "PHOTO WALL",
-            "type": "range",
-            "label": "Photo Size (px)",
-            "default": "460",
-            "min": "260",
-            "max": "760",
-            "step": "20",
-            "selector": ".ss-masonry",
-            "property": "--ss-base",
-            "unit": "px"
-        },
         "scroll_mosaic_gap": {
             "section": "PHOTO WALL",
             "type": "range",
             "label": "Space Between Tiles (px)",
             "default": "6",
-            "min": "0",
+            "min": "5",
             "max": "25",
             "selector": ".ss-masonry",
             "property": "--ss-gap",

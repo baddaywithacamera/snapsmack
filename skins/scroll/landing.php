@@ -1,9 +1,11 @@
 <?php
 /**
  * SNAPSMACK — SCROLL landing page.
- * 2D CSS-Grid MOSAIC ("bento") wall: portraits stand tall, landscapes run wide,
- * panos wider, squares square — dense-packed by CSS Grid with no gaps and no
- * skin-local JS. PHP only tags each photo by shape from its stored dimensions.
+ * FOUR-COLUMN photo wall. Every photograph is drawn at its own native aspect
+ * ratio and is never cropped, so shape alone decides a tile's height: in equal
+ * columns a 2:3 portrait covers 2.25x the area of a 3:2 landscape, which is what
+ * makes the portraits read as the big pictures. PHP emits the photographs and
+ * their stored dimensions; assets/js/ss-engine-columns.js owns the geometry.
  */
 
 /**
@@ -23,9 +25,11 @@ $grid_stmt = $pdo->prepare(
 $grid_stmt->execute([$now_local]);
 $images = $grid_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Spread portraits (tall tiles) evenly through the stream so the dense pack
-// doesn't clump them into one region. Display-first ordering — order can move a
-// bit for the packing. Weave one portrait every $stride non-portrait tiles.
+// Spread portraits (tall tiles) evenly through the stream. The engine drops each
+// photo into whichever column is currently shortest, so a clump of consecutive
+// portraits would load one or two columns with all the height and leave the wall
+// lopsided for a long stretch. Weave one portrait every $stride non-portrait
+// tiles. Display-first ordering — order can move a little for the look.
 $_ss_port = $_ss_rest = [];
 foreach ($images as $_im) {
     $iw = (int)($_im['img_width'] ?? 0);
@@ -76,10 +80,6 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
                     <span class="ss-grid-nav-label">Home</span>
                 </a>
-                <a class="ss-grid-nav-link" href="<?php echo BASE_URL; ?>albums.php" title="Albums">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zm6 7h6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-                    <span class="ss-grid-nav-label">Albums</span>
-                </a>
                 <details class="scroll-nav-search">
                     <summary class="ss-grid-nav-link" title="Search">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m15.5 15.5 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
@@ -121,9 +121,9 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
                 <?php foreach ($images as $img):
                     $iw = (int)($img['img_width']  ?? 0);
                     $ih = (int)($img['img_height'] ?? 0);
-                    // data-w/data-h feed ss-engine-masonry.js: it justifies each run
-                    // of photos to fill the full width (native aspect, no gaps). The
-                    // portrait-weave above spreads tall tiles so runs vary nicely.
+                    // data-w/data-h feed ss-engine-columns.js — it reads the shape
+                    // from these attributes and NEVER from naturalWidth, because the
+                    // lazy loader swaps src for a 1x1 GIF until a photo scrolls in.
                     $thumb_rel = trim((string)($img['img_thumb_aspect'] ?? ''));
                     $img_url   = BASE_URL . ltrim($thumb_rel !== '' ? $thumb_rel : ($img['img_file'] ?? ''), '/');
                 ?>
