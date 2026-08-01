@@ -12,6 +12,10 @@
 
 ## Unreleased
 
+## 0.7.472 "Skin Deep" — 2026-08-01
+
+- **A skin can now own the social dock's appearance, location and shadow.** A `social_dock` block in a skin's `manifest.json` (keys: `position`, `color_mode`, `icon_style`, `shadow`, `color_light`, `color_dark`, `opacity`) overrides the matching admin settings at render time (`core/social-dock.php`). In the Social Dock admin, any control the active skin owns now shows **"(controlled by the <SKIN> skin)"** instead of an input that would do nothing — no more dead Position box under a skin that pins the dock inline. Skins that declare no block are unaffected; the admin behaves exactly as before.
+
 ## 0.7.471 "Errata" — 2026-08-01
 
 - **Page Manager no longer 500s on a duplicate slug.** Saving a static page whose slug already exists (e.g. a second `about`) threw an uncaught PDOException and blanked the whole Page Manager with an HTTP 500. It now checks for the collision first and reports it inline, and the write is wrapped so no integrity error can hard-fail the page. No schema change.
