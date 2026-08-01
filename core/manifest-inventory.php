@@ -849,6 +849,11 @@ return [
             'path'         => 'assets/js/ss-engine-masonry.js',
             'has_settings' => false,
         ],
+        'smack-scroll-chunks' => [
+            'label'        => 'SCROLL chunked wall fetcher (paged mosaic chunks on scroll)',
+            'path'         => 'assets/js/ss-engine-scroll-chunks.js',
+            'has_settings' => false,
+        ],
         'smack-aurora-bg' => [
             'label'        => 'AURORA Layer 1 background curtains (canvas)',
             'path'         => 'assets/js/ss-engine-aurora-bg.js',
