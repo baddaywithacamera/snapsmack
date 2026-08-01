@@ -12,6 +12,13 @@
 
 ## Unreleased
 
+## 0.7.470 "Broadsheet" — 2026-08-01
+
+- **SCROLL's photo wall is now a fixed four-column wall.** The asymmetric mosaic packer is retired from SCROLL (preserved on the `mosaic-wall-wip` branch, not shipped). The new wall — `assets/js/ss-engine-columns.js` — divides the container into four equal columns and drops each photograph into the shortest column at its **own** aspect ratio, never cropped. Because every column is the same width, a 2:3 portrait covers 2.25× the area of a 3:2 landscape with no special-casing, which is what makes the (rarer) portraits read as the large pictures. There is no search and no solve time: the geometry is O(n) arithmetic, ~1ms for a full feed, versus the packer's ~2s per chunk. Measured on the real engine at W≈1200, n=100: exactly four columns, zero overlaps, wall flush to the right edge, portrait/landscape median area 2.25×, and borders (0–12px) no longer buy any crop because tile height is computed from the inner width.
+- **The chunked/JSON wall endpoint is gone from SCROLL.** With no multi-second solve to page around, `landing.php` returns to a single server-bounded query. This also removes the `?t=` / `?c=` / `?format=json` chunk endpoint that the packer work had introduced (that code never shipped in a tagged build).
+- **"Photo Size" wall control removed; "Space Between Tiles" floor raised to 5px.** Column width is the wall width ÷ 4, so the old per-tile size slider did nothing. Corner-radius and border controls are unchanged.
+- SCROLL skin bumped to 0.2.0. Requires SCROLL repackaged.
+
 ## 0.7.469 "Index Card" — 2026-07-31
 
 - **`snap_images` finally has indexes.** The table shipped with nothing but its `PRIMARY KEY`, so the feed query (`WHERE img_status='published' AND img_date <= ? ORDER BY sort_order ASC, id DESC`) did a full table scan plus a filesort on **every** page render. Two indexes are added: `idx_images_status_sort` (`img_status`, `sort_order`, `id`) lets the optimiser filter on status and read straight out in display order, killing the filesort; `idx_images_status_date` (`img_status`, `img_date`) serves the date-range filter and the published-count query. Fresh installs get them from the canonical schema; existing installs have them retrofitted idempotently by the schema-sync engine on update. This is a pre-existing performance defect, unrelated to any skin.

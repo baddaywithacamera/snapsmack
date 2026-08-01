@@ -849,6 +849,11 @@ return [
             'path'         => 'assets/js/ss-engine-masonry.js',
             'has_settings' => false,
         ],
+        'smack-columns' => [
+            'label'        => 'Fixed-column photo wall (native aspect, portraits largest)',
+            'path'         => 'assets/js/ss-engine-columns.js',
+            'has_settings' => false,
+        ],
         'smack-aurora-bg' => [
             'label'        => 'AURORA Layer 1 background curtains (canvas)',
             'path'         => 'assets/js/ss-engine-aurora-bg.js',
