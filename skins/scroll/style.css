@@ -76,10 +76,13 @@ a { color: inherit; }
     margin: 0;
     font-family: "Archivo Black", sans-serif;
     font-size: clamp(2.75rem, var(--scroll-title-size), 7.5rem) !important;
-    /* No hardcoded weight. The masthead renders at the chosen font's OWN weight,
-       so it matches the admin font-picker preview. The default (Archivo Black) is
-       already an ultra-black face; a lighter font the owner picks is no longer
-       faux-bolded to 900 (which thickened/smeared any font without a real 900). */
+    /* Render at the chosen font's OWN weight so it matches the admin font-picker
+       preview. This must be set explicitly to `normal`: .scroll-masthead is an
+       <h1>, whose default UA weight is bold (700), so merely dropping the old
+       900 would still leave it bold. The default Archivo Black is already an
+       ultra-black face and ignores this; a lighter picked font is no longer
+       faux-bolded (which thickened/smeared any font lacking a real heavy cut). */
+    font-weight: normal;
     line-height: .78;
     letter-spacing: -.06em;
     text-align: center;
