@@ -187,6 +187,16 @@ a { color: inherit; }
     display: flex;
     margin-right: auto;   /* identity hard left; links + socials clump right */
 }
+/* Optional sticky-bar logo (admin: Sticky Bar Logo). Lives in the identity slot,
+   which only appears in the sticky bar — so the graphic never shows on the inline
+   landing header. Sized to the bar height; replaces the text name when present. */
+.scroll-nav-logo {
+    display: block;
+    height: 34px;
+    width: auto;
+    max-height: 40px;
+    object-fit: contain;
+}
 .scroll-wall {
     width: min(calc(100% - 32px), var(--scroll-canvas-width));
     margin: 0 auto;
