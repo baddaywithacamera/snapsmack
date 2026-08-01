@@ -86,6 +86,26 @@ include 'core/sidebar.php';
         <div class="alert">> <?php echo htmlspecialchars($msg); ?></div>
     <?php endif; ?>
 
+    <?php
+    // Skin-owned dock controls. A "social_dock" block in the ACTIVE skin's
+    // manifest locks the matching controls here — they render as
+    // "(controlled by skin)" instead of an input the admin can't actually use,
+    // because core/social-dock.php overrides them at render time.
+    $_dock_skin = basename((string)($settings['active_skin'] ?? ''));
+    $_dock_ovr  = [];
+    if ($_dock_skin !== '') {
+        $_dock_mf = __DIR__ . '/skins/' . $_dock_skin . '/manifest.json';
+        if (is_file($_dock_mf)) {
+            $_dock_mfd = json_decode((string)file_get_contents($_dock_mf), true);
+            if (is_array($_dock_mfd['social_dock'] ?? null)) $_dock_ovr = $_dock_mfd['social_dock'];
+        }
+    }
+    $_dock_locked = static function (string $k) use ($_dock_ovr) { return array_key_exists($k, $_dock_ovr); };
+    $_dock_lock_note = static function () use ($_dock_skin) {
+        echo '<div class="dim" style="padding:8px 0;font-style:italic;opacity:.75;">(controlled by the '
+           . htmlspecialchars(strtoupper($_dock_skin)) . ' skin)</div>';
+    };
+    ?>
     <form method="POST">
 
         <!-- ============================================================
@@ -104,6 +124,7 @@ include 'core/sidebar.php';
 
                 <div class="post-col-right">
                     <label>POSITION <span class="field-tip" data-tip="Side positions slide out of view while scrolling. Corner positions stay fixed.">ⓘ</span></label>
+                    <?php if ($_dock_locked('position')): $_dock_lock_note(); else: ?>
                     <?php
                     $current_pos = $settings['social_dock_position'] ?? 'bottom-right';
                     $positions = [
@@ -130,6 +151,7 @@ include 'core/sidebar.php';
                             </optgroup>
                         <?php endforeach; ?>
                     </select>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -156,25 +178,34 @@ include 'core/sidebar.php';
                     </div>
 
                     <label style="margin-top: 15px;">DEFAULT MODE <span class="field-tip" data-tip="Which icon colour set to use — light icons for dark sites, dark icons for light sites.">ⓘ</span></label>
+                    <?php if ($_dock_locked('color_mode')): $_dock_lock_note(); else: ?>
                     <?php $current_mode = $settings['social_dock_color_mode'] ?? 'light'; ?>
                     <select name="social_dock_color_mode">
                         <option value="light" <?php echo $current_mode === 'light' ? 'selected' : ''; ?>>Light icons (for dark sites)</option>
                         <option value="dark" <?php echo $current_mode === 'dark' ? 'selected' : ''; ?>>Dark icons (for light sites)</option>
                     </select>
+                    <?php endif; ?>
 
                     <label style="margin-top: 15px;">ICON STYLE <span class="field-tip" data-tip="Solid glyphs are the bold brand marks. Outline glyphs are lighter line-art that suits minimal, hairline skins.">ⓘ</span></label>
+                    <?php if ($_dock_locked('icon_style')): $_dock_lock_note(); else: ?>
                     <?php $current_icon_style = $settings['social_dock_icon_style'] ?? 'solid'; ?>
                     <select name="social_dock_icon_style">
                         <option value="solid" <?php echo $current_icon_style === 'solid' ? 'selected' : ''; ?>>Solid (bold brand marks)</option>
                         <option value="outline" <?php echo $current_icon_style === 'outline' ? 'selected' : ''; ?>>Outline (line art)</option>
                     </select>
+                    <?php endif; ?>
                 </div>
 
                 <div class="post-col-right">
+                    <?php if ($_dock_locked('shadow')): ?>
+                    <label>ICON DROP SHADOW</label>
+                    <?php $_dock_lock_note(); ?>
+                    <?php else: ?>
                     <label>
                         <input type="checkbox" name="social_dock_shadow" value="1" <?php echo ($settings['social_dock_shadow'] ?? '1') === '1' ? 'checked' : ''; ?>>
                         ICON DROP SHADOW <span class="field-tip" data-tip="Subtle shadow behind each circle for contrast against busy backgrounds.">ⓘ</span>
                     </label>
+                    <?php endif; ?>
 
                     <label style="margin-top: 15px;">IDLE OPACITY <span class="field-tip" data-tip="How visible the dock is when not being hovered. Hovering always reveals at full opacity.">ⓘ</span></label>
                     <div style="display: flex; align-items: center; gap: 10px;">

@@ -28,6 +28,25 @@ if (empty($settings['social_dock_enabled']) || $settings['social_dock_enabled'] 
     return;
 }
 
+// ── SKIN OVERRIDES ────────────────────────────────────────────────────────
+// A skin may take ownership of the dock's appearance / location / shadow via a
+// "social_dock" block in its manifest.json. Any key present there wins over the
+// admin setting, and smack-social-dock.php shows "(controlled by skin)" for it.
+// Recognised keys: position, color_mode, icon_style, shadow, color_light,
+// color_dark, opacity, inline.
+if (!function_exists('snapsmack_dock_skin_overrides')) {
+    function snapsmack_dock_skin_overrides(array $settings): array {
+        $skin = basename((string)($settings['active_skin'] ?? ''));
+        if ($skin === '') return [];
+        $mf = __DIR__ . '/../skins/' . $skin . '/manifest.json';
+        if (!is_file($mf)) return [];
+        $data = json_decode((string)file_get_contents($mf), true);
+        return (is_array($data) && isset($data['social_dock']) && is_array($data['social_dock']))
+            ? $data['social_dock'] : [];
+    }
+}
+$_dock_ovr = snapsmack_dock_skin_overrides($settings);
+
 // Platform definitions: key => [label, settings_key, svg]
 // SVGs use fill="currentColor" for CSS theming, 24x24 viewBox
 $_dock_platforms = [
@@ -137,7 +156,7 @@ $_dock_outline = [
     'linktree'   => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8.5v9"/><path d="M8 11.5l4-4 4 4"/><path d="M9 20h6"/></svg>',
     'website'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.5 3.7 5.6 3.7 8.5S14.4 18 12 20.5C9.6 18 8.3 14.9 8.3 12S9.6 6 12 3.5z"/></svg>',
 ];
-$_dock_icon_style = (($settings['social_dock_icon_style'] ?? 'solid') === 'outline') ? 'outline' : 'solid';
+$_dock_icon_style = (($_dock_ovr['icon_style'] ?? ($settings['social_dock_icon_style'] ?? 'solid')) === 'outline') ? 'outline' : 'solid';
 
 // Build active links array
 $_dock_links = [];
@@ -164,19 +183,21 @@ if (empty($_dock_links) && !$_dock_has_download) {
     return;
 }
 
-// Get and validate position
-$_dock_position = $settings['social_dock_position'] ?? 'bottom-right';
+// Get and validate position (skin override wins)
+$_dock_position = $_dock_ovr['position'] ?? ($settings['social_dock_position'] ?? 'bottom-right');
 $_valid_positions = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'left-top', 'left-bottom', 'right-top', 'right-bottom'];
 if (!in_array($_dock_position, $_valid_positions)) {
     $_dock_position = 'bottom-right';
 }
 
-// Appearance settings
-$_dock_color_light = $settings['social_dock_color_light'] ?? '#ffffff';
-$_dock_color_dark  = $settings['social_dock_color_dark'] ?? '#1a1a1a';
-$_dock_color_mode  = ($settings['social_dock_color_mode'] ?? 'light') === 'dark' ? 'dark' : 'light';
-$_dock_shadow      = ($settings['social_dock_shadow'] ?? '1') === '1';
-$_dock_opacity     = max(0, min(100, (int)($settings['social_dock_opacity'] ?? 50)));
+// Appearance settings (skin overrides win over admin settings)
+$_dock_color_light = $_dock_ovr['color_light'] ?? ($settings['social_dock_color_light'] ?? '#ffffff');
+$_dock_color_dark  = $_dock_ovr['color_dark']  ?? ($settings['social_dock_color_dark'] ?? '#1a1a1a');
+$_dock_color_mode  = (($_dock_ovr['color_mode'] ?? ($settings['social_dock_color_mode'] ?? 'light')) === 'dark') ? 'dark' : 'light';
+$_dock_shadow      = isset($_dock_ovr['shadow'])
+    ? filter_var($_dock_ovr['shadow'], FILTER_VALIDATE_BOOLEAN)
+    : (($settings['social_dock_shadow'] ?? '1') === '1');
+$_dock_opacity     = max(0, min(100, (int)($_dock_ovr['opacity'] ?? ($settings['social_dock_opacity'] ?? 50))));
 
 // Active colour based on mode
 $_dock_color = ($_dock_color_mode === 'dark') ? $_dock_color_dark : $_dock_color_light;
