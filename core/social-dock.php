@@ -113,15 +113,44 @@ $_dock_platforms = [
     ]
 ];
 
+// OUTLINE ICON SET — an alternate, lighter line-art glyph for every platform,
+// selected by social_dock_icon_style = 'outline'. One cohesive family: 24x24,
+// fill:none, stroke:currentColor, stroke-width 1.8, round joins — so it matches
+// hairline nav icons on minimal skins. These are deliberately clean line-art
+// rather than exact brand marks. Keyed by the same platform key; any platform
+// missing an outline entry simply falls back to its solid svg.
+$_dock_outline = [
+    'flickr'     => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7.5" cy="12" r="4"/><circle cx="16.5" cy="12" r="4"/></svg>',
+    'smugmug'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.6-2.5h6.8L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.2"/></svg>',
+    'instagram'  => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r="1.05" fill="currentColor" stroke="none"/></svg>',
+    'facebook'   => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 5.5H14A2.5 2.5 0 0 0 11.5 8v11"/><path d="M8.5 11.5h6.5"/></svg>',
+    'youtube'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="3.2"/><path d="M10.8 9.6l4 2.4-4 2.4z" fill="currentColor" stroke="none"/></svg>',
+    '500px'      => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="5.5"/><path d="M8.5 6.5h7"/></svg>',
+    'vero'       => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5l8 12 8-12"/></svg>',
+    'threads'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.8 13.2c0 1.5 1.3 2.4 3.1 2.3 2-.1 3.1-1.4 3.1-3.3 0-2.2-1.5-3.6-3.5-3.6-1.3 0-2.4.6-3 1.6"/></svg>',
+    'bluesky'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11c-1.8-2.8-4.6-4.2-6-3.3-1.2.8-.6 3.4 2 4.3-2.4.3-3 2.2-1.7 3.3 1.7 1.4 4.3-.4 5.7-3.1 1.4 2.7 4 4.5 5.7 3.1 1.3-1.1.7-3-1.7-3.3 2.6-.9 3.2-3.5 2-4.3-1.4-.9-4.2.5-6 3.3z"/></svg>',
+    'linkedin'   => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M7.5 10.5v6"/><path d="M7.5 7.6v.01"/><path d="M11.5 16.5v-3.4c0-1.1.8-1.9 1.9-1.9s1.9.8 1.9 1.9v3.4"/></svg>',
+    'pinterest'  => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.6 16.8l1.6-6.4"/><path d="M9.9 10.6c0-1.5 1.2-2.7 2.9-2.7 1.7 0 2.8 1.2 2.8 2.9 0 2-1.2 3.5-2.8 3.5-.9 0-1.5-.7-1.3-1.6"/></svg>',
+    'tumblr'     => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 5v10c0 1.8 1 2.7 2.8 2.5"/><path d="M10.5 9.5h5.5"/></svg>',
+    'deviantart' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 4.5h-3l-1.4 2.8H8.5v3.4h2.4L8.5 15.4v4.1h3l1.4-2.8h4.1v-3.4h-2.4L17 8.6z"/></svg>',
+    'behance'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5h3.4a1.8 1.8 0 0 1 0 3.6H4z"/><path d="M4 11.1h3.9a1.9 1.9 0 0 1 0 3.8H4V7.5z"/><path d="M14 12.6h4.2a2.3 2.3 0 0 0-4.2 0 2.3 2.3 0 0 0 3.8 1.7"/><path d="M15 8.4h3"/></svg>',
+    'linktree'   => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8.5v9"/><path d="M8 11.5l4-4 4 4"/><path d="M9 20h6"/></svg>',
+    'website'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.5 3.7 5.6 3.7 8.5S14.4 18 12 20.5C9.6 18 8.3 14.9 8.3 12S9.6 6 12 3.5z"/></svg>',
+];
+$_dock_icon_style = (($settings['social_dock_icon_style'] ?? 'solid') === 'outline') ? 'outline' : 'solid';
+
 // Build active links array
 $_dock_links = [];
 foreach ($_dock_platforms as $_platform_key => $_platform) {
     $_url = $settings[ $_platform['key'] ] ?? '';
     if (!empty($_url)) {
+        $_svg = ($_dock_icon_style === 'outline' && isset($_dock_outline[$_platform_key]))
+            ? $_dock_outline[$_platform_key]
+            : $_platform['svg'];
         $_dock_links[] = [
             'url' => $_url,
             'label' => $_platform['label'],
-            'svg' => $_platform['svg']
+            'svg' => $_svg
         ];
     }
 }

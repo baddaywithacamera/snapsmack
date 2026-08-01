@@ -38,12 +38,14 @@ if (isset($_POST['save_social_dock'])) {
         'social_dock_color_light' => '#ffffff',
         'social_dock_color_dark'  => '#1a1a1a',
         'social_dock_color_mode'  => 'light',
+        'social_dock_icon_style'  => 'solid',
         'social_dock_shadow'      => '1',
         'social_dock_opacity'     => '50',
     ];
     foreach ($appearance_keys as $akey => $default) {
         $aval = trim($_POST[$akey] ?? $default);
         if ($akey === 'social_dock_color_mode' && !in_array($aval, ['light', 'dark'])) $aval = 'light';
+        if ($akey === 'social_dock_icon_style' && !in_array($aval, ['solid', 'outline'])) $aval = 'solid';
         if ($akey === 'social_dock_shadow') $aval = isset($_POST[$akey]) ? '1' : '0';
         if ($akey === 'social_dock_opacity') $aval = max(0, min(100, (int)$aval));
         $stmt->execute([$akey, $aval, $aval]);
@@ -158,6 +160,13 @@ include 'core/sidebar.php';
                     <select name="social_dock_color_mode">
                         <option value="light" <?php echo $current_mode === 'light' ? 'selected' : ''; ?>>Light icons (for dark sites)</option>
                         <option value="dark" <?php echo $current_mode === 'dark' ? 'selected' : ''; ?>>Dark icons (for light sites)</option>
+                    </select>
+
+                    <label style="margin-top: 15px;">ICON STYLE <span class="field-tip" data-tip="Solid glyphs are the bold brand marks. Outline glyphs are lighter line-art that suits minimal, hairline skins.">ⓘ</span></label>
+                    <?php $current_icon_style = $settings['social_dock_icon_style'] ?? 'solid'; ?>
+                    <select name="social_dock_icon_style">
+                        <option value="solid" <?php echo $current_icon_style === 'solid' ? 'selected' : ''; ?>>Solid (bold brand marks)</option>
+                        <option value="outline" <?php echo $current_icon_style === 'outline' ? 'selected' : ''; ?>>Outline (line art)</option>
                     </select>
                 </div>
 

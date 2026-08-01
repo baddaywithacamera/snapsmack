@@ -1333,6 +1333,7 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'community_session_days'    => '30',
                 'social_dock_enabled'       => '0',
                 'social_dock_position'      => 'left',
+                'social_dock_icon_style'    => 'solid',
                 'social_dock_opacity'       => '50',
                 'forum_enabled'             => $sec_forum,
                 'search_enabled'            => '1',
