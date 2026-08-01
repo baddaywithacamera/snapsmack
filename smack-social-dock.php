@@ -55,7 +55,7 @@ if (isset($_POST['save_social_dock'])) {
     $platforms = [
         'social_dock_flickr', 'social_dock_smugmug', 'social_dock_instagram',
         'social_dock_facebook', 'social_dock_youtube', 'social_dock_500px',
-        'social_dock_vero', 'social_dock_threads', 'social_dock_bluesky',
+        'social_dock_vero', 'social_dock_threads', 'social_dock_mastodon', 'social_dock_bluesky',
         'social_dock_linkedin', 'social_dock_pinterest', 'social_dock_tumblr',
         'social_dock_deviantart', 'social_dock_behance', 'social_dock_linktree',
         'social_dock_website',
@@ -253,6 +253,9 @@ include 'core/sidebar.php';
                 </div>
 
                 <div class="post-col-right">
+
+                    <label>MASTODON</label>
+                    <input type="url" name="social_dock_mastodon" value="<?php echo htmlspecialchars($settings['social_dock_mastodon'] ?? ''); ?>" placeholder="https://mastodon.social/@you">
 
                     <label>BLUESKY</label>
                     <input type="url" name="social_dock_bluesky" value="<?php echo htmlspecialchars($settings['social_dock_bluesky'] ?? ''); ?>" placeholder="https://bsky.app/profile/you.bsky.social">
