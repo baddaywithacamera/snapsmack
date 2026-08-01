@@ -180,6 +180,18 @@
             "label": "Sticky Bar Logo (left side)",
             "hint": "Optional graphic shown on the LEFT of the sticky nav bar that appears once you scroll past the masthead. It replaces the text name there. Not shown on the landing header or static pages. PNG/SVG-as-PNG/WebP; sized to the bar height."
         },
+        "scroll_wall_cols": {
+            "section": "PHOTO WALL",
+            "type": "range",
+            "label": "Columns Across",
+            "hint": "Number of columns in the landing wall. Default 4. Fewer = bigger photos; more = smaller.",
+            "default": "4",
+            "min": "3",
+            "max": "6",
+            "step": "1",
+            "selector": ".ss-masonry",
+            "property": "--ss-cols"
+        },
         "scroll_canvas_pct": {
             "section": "PHOTO WALL",
             "type": "range",
