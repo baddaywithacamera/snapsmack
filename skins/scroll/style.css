@@ -49,9 +49,11 @@ a { color: inherit; }
     /* Tall enough to contain the TILTED masthead's rotated bounding box (its
        visual height exceeds its layout height), with symmetric vertical padding
        so it centres with clearance and never clips. overflow:hidden stays for
-       horizontal safety. */
-    min-height: clamp(200px, 18vw, 360px);
-    padding: clamp(34px, 3.8vw, 72px) clamp(24px, 4vw, 56px);
+       horizontal safety. Sized to give the masthead breathing room WITHOUT a dead
+       band above the wall — the old 18vw/3.8vw caps ballooned on wide screens
+       (~360px min-height + 72px padding for ~150px of content). */
+    min-height: clamp(150px, 10vw, 210px);
+    padding: clamp(22px, 2.2vw, 40px) clamp(24px, 4vw, 56px);
     overflow: hidden;
 }
 .scroll-photographer {

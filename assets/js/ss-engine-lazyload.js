@@ -29,7 +29,16 @@
 if (!window._ssLazyLoaded) {
 window._ssLazyLoaded = true;
 
-function _ssLazyInit() {
+function _ssLazyInit(root) {
+
+    // Optional scope. Called with no argument (or with anything that isn't an
+    // element) it scans the whole document exactly as before — that is the only
+    // way every existing consumer calls it, so their behaviour is unchanged.
+    // Called with an element it scans ONLY that subtree, which is what lets
+    // dynamically appended content (e.g. a SCROLL wall chunk) be picked up
+    // without re-collecting, re-styling and re-observing every still-pending
+    // image already on the page. Same retrofit as ss-engine-image-fade-load.js.
+    var scope = (root && root.querySelectorAll) ? root : document;
 
     // --- CONFIGURATION ---
     const rootMargin = (window.SMACK_CONFIG && window.SMACK_CONFIG.lazy && window.SMACK_CONFIG.lazy.rootMargin)
@@ -44,7 +53,7 @@ function _ssLazyInit() {
     // Convert standard <img src="..."> inside known gallery containers
     // to lazy-loadable images so skins get this for free.
     const autoContainers = '.justified-item, .archive-thumb-link, .grid-cell, .stats-image-card, .pile-card, .wall-cell, .ss-masonry-item';
-    document.querySelectorAll(autoContainers).forEach(container => {
+    scope.querySelectorAll(autoContainers).forEach(container => {
         container.querySelectorAll('img[src]:not([data-src]):not(.ss-lazy-done)').forEach(img => {
             if (!img.src || img.src.indexOf('data:') === 0) return;
             img.dataset.src = img.src;
@@ -54,7 +63,7 @@ function _ssLazyInit() {
     });
 
     // --- COLLECT ALL LAZY TARGETS ---
-    const lazyImages = document.querySelectorAll('img[data-src], img[data-lazy-src]');
+    const lazyImages = scope.querySelectorAll('img[data-src], img[data-lazy-src]');
     if (!lazyImages.length) return;
 
     // --- INITIAL STYLES ---
@@ -105,11 +114,28 @@ function _ssLazyInit() {
     }
 }
 
+// Re-scan hook for content injected after the initial pass. Pass the newly
+// inserted container element; passing nothing rescans the whole document.
+// Inert for any skin that never calls it.
+//
+// ALWAYS PASS THE NEW CONTAINER. The argument is optional to the parser, not in
+// practice: called bare, this re-collects every image on the page that is still
+// pending and hands them to a SECOND IntersectionObserver over targets the first
+// one is already watching. That duplicate never releases them either — once the
+// first observer swaps src and drops data-src, the second's handler returns at
+// the `if (!realSrc)` guard BEFORE its unobserve(), so the observer leaks for the
+// life of the page. Scoped to the injected subtree it is exactly one observer
+// over exactly the new images, which is what makes repeated calls safe.
+window.ssLazyScan = function (root) { _ssLazyInit(root); };
+
 // Scripts load at end of <body> — DOMContentLoaded may have already fired.
+// The listener is WRAPPED deliberately: an unwrapped listener receives the
+// DOMContentLoaded Event as argument 1, which must never be mistaken for a
+// scope root. (The duck-type guard above also catches it; both, on purpose.)
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _ssLazyInit);
+    document.addEventListener('DOMContentLoaded', function () { _ssLazyInit(document); });
 } else {
-    _ssLazyInit();
+    _ssLazyInit(document);
 }
 
 } // end double-load guard

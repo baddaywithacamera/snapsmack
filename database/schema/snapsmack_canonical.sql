@@ -76,7 +76,16 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
                         COMMENT 'SMACKVERSE (0.7.393): Note.summary content-warning text shown before a sensitive image.',
   `fedi_published_at`   datetime       DEFAULT NULL
                         COMMENT 'SMACKVERSE (0.7.403): fediverse date LABEL override for a standalone SMACKONEOUT image (Note published ts). NULL = use img_date. Stamped by IMPRINT ORDER FOR FEDIVERSE, at parity with snap_posts.',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  -- 0.7.469: the feed query is
+  --   WHERE img_status='published' AND img_date <= ? ORDER BY sort_order ASC, id DESC
+  -- and this table carried NO secondary index at all, so every feed render was a
+  -- full table scan plus a filesort. idx_images_status_sort lets the optimiser
+  -- filter on status and read straight out in display order (killing the
+  -- filesort); idx_images_status_date serves the date-range filter and the
+  -- published-count query.
+  KEY `idx_images_status_sort` (`img_status`, `sort_order`, `id`),
+  KEY `idx_images_status_date` (`img_status`, `img_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

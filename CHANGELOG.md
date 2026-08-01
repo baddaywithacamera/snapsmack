@@ -12,6 +12,12 @@
 
 ## Unreleased
 
+## 0.7.469 "Index Card" — 2026-07-31
+
+- **`snap_images` finally has indexes.** The table shipped with nothing but its `PRIMARY KEY`, so the feed query (`WHERE img_status='published' AND img_date <= ? ORDER BY sort_order ASC, id DESC`) did a full table scan plus a filesort on **every** page render. Two indexes are added: `idx_images_status_sort` (`img_status`, `sort_order`, `id`) lets the optimiser filter on status and read straight out in display order, killing the filesort; `idx_images_status_date` (`img_status`, `img_date`) serves the date-range filter and the published-count query. Fresh installs get them from the canonical schema; existing installs have them retrofitted idempotently by the schema-sync engine on update. This is a pre-existing performance defect, unrelated to any skin.
+- **The lazy-load engine can now be pointed at content added after page load.** `window.ssLazyScan(element)` scans a single injected subtree instead of re-collecting, re-styling and re-observing every still-pending image on the page. Called with no argument it scans the whole document exactly as before, which is how every existing consumer calls it — so behaviour is unchanged for every skin that does not opt in.
+- **SCROLL's masthead no longer leaves a dead band above the photo wall.** The header block was sized off viewport width (`min-height` up to 360px plus 72px of padding, for roughly 150px of actual content), so it ballooned on wide monitors. It is now capped at 210px plus 40px, which keeps clearance for the tilted masthead without the empty gap. (Requires SCROLL repackaged to 0.1.17.)
+
 ## 0.7.468 "Edge to Edge" — 2026-07-31
 
 - **SCROLL's photo wall is now a justified pack (masonry v3) — no gaps, no ragged edge.** The grid-span masonry (v2) left holes and a ragged right edge because CSS grid places tiles in order and hopes they fit — it is not a packer. The engine now sizes each *run* of photos so it fills the full content width exactly (the Flickr / Google Photos method): zero gaps, edge-to-edge (therefore centred), native aspect kept, and no photo is ever upscaled past its source into a chunky slab. Run heights vary, so it still reads as an organic asymmetric wall. All tuning stays skin-side (`--ss-base` "Photo Size", `--ss-gap`).

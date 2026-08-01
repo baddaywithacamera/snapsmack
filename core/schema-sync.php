@@ -470,6 +470,14 @@ function snap_schema_sync(PDO $pdo): array {
     $index_additions = [
         ['snap_tags', 'idx_tags_color_family',
             "ALTER TABLE `snap_tags` ADD INDEX `idx_tags_color_family` (`color_family`)"],
+        // 0.7.469 — snap_images shipped with ONLY a PRIMARY KEY, so the feed query
+        // (WHERE img_status='published' AND img_date <= ? ORDER BY sort_order, id)
+        // full-scanned and filesorted on every render. Existing installs need these
+        // retrofitted; fresh installs get them from the canonical schema.
+        ['snap_images', 'idx_images_status_sort',
+            "ALTER TABLE `snap_images` ADD INDEX `idx_images_status_sort` (`img_status`, `sort_order`, `id`)"],
+        ['snap_images', 'idx_images_status_date',
+            "ALTER TABLE `snap_images` ADD INDEX `idx_images_status_date` (`img_status`, `img_date`)"],
     ];
 
     $idx_check = $pdo->prepare(
