@@ -518,6 +518,34 @@ a { color: inherit; }
 .scroll-solo-stage .description {
     line-height: 1.8;
 }
+/* GLOBAL system footer (landing + static pages). Without this the footer is
+   only styled under .scroll-solo-stage (photo pages), so everywhere else it fell
+   back to raw browser defaults — a cramped, left-aligned line. Centred, padded,
+   letter-spaced and uppercased to match the site. Background and text colour are
+   left to the "Footer Background" / "Footer Text" admin controls (which target
+   #system-footer) and otherwise inherit the page. */
+#system-footer {
+    width: 100%;
+    margin-top: 48px;
+    padding: 34px 0;
+    text-align: center;
+    border-top: 1px solid rgba(0, 0, 0, .12);
+}
+#system-footer .inside {
+    width: min(calc(100% - 40px), var(--scroll-canvas-width, 1500px));
+    margin: 0 auto;
+}
+#system-footer p {
+    margin: 0;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .14em;
+    line-height: 1.9;
+    text-transform: uppercase;
+}
+#system-footer a,
+#system-footer .footer-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
 .scroll-solo-stage ~ #system-footer,
 .scroll-solo-stage #system-footer {
     padding: 28px 20px;
