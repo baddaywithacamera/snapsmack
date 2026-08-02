@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.23",
+    "version": "0.1.24",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -312,6 +312,18 @@
             "max": "1400",
             "selector": ":root",
             "property": "--scroll-static-width",
+            "unit": "px"
+        },
+        "scroll_hero_pad": {
+            "section": "STATIC & BLOG",
+            "type": "range",
+            "label": "Hero Image Spacing — Top & Bottom (px)",
+            "hint": "Vertical breathing room above and below the big image on a static page.",
+            "default": "48",
+            "min": "0",
+            "max": "200",
+            "selector": ":root",
+            "property": "--scroll-hero-pad",
             "unit": "px"
         },
         "scroll_page_divider": {
