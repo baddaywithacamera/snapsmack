@@ -1461,6 +1461,17 @@ no preview image is sent — which is intentional.</p>
 <p>An XML sitemap is generated automatically at <code>/sitemap.xml</code> and is already
 referenced from your robots.txt. It lists your homepage, published posts/images, and active
 static pages with last-modified dates. Nothing to configure.</p>
+<h4>Hashtags in the Page Source</h4>
+<p>Every photo's hashtags are written into the page's <code>&lt;head&gt;</code> — as a
+<code>keywords</code> tag and as JSON-LD structured data — <strong>even on skins that don't
+show tags on screen</strong>. This is the text a search engine or AI crawler matches against
+for specific, long-tail queries, so enriching a photo's hashtags directly improves how findable
+it is. Nothing to switch on; it's automatic on every photo page.</p>
+<h4>AI Crawler Policy</h4>
+<p>The <strong>AI training policy</strong> setting decides whether the site asks AI crawlers to
+stay away (it emits a <code>noai, noimageai</code> directive only when set to <em>disallow</em>;
+the default is no opinion). If you <em>want</em> to be discoverable inside AI answers, leave it
+off <em>disallow</em> — otherwise you're inviting the crawl and telling it to ignore you.</p>
 HTML
 ];
 

@@ -124,6 +124,30 @@ $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 // Make this available to all skin layouts so they know whether to show
 // camera/lens metadata
 $exif_display_enabled = (($settings['exif_display_enabled'] ?? '1') == '1');
+
+// --- HASHTAGS / KEYWORDS IN PAGE SOURCE (crawler discoverability) ---
+// Every photo's hashtags go into the <head> as <meta name="keywords"> AND as
+// JSON-LD keywords — crawlable by search engines and AI even on skins that never
+// paint the tags on screen. This is the match surface for long-tail queries.
+$page_keywords = [];
+if (!empty($img['id']) && isset($pdo)) {
+    try {
+        $_kwq = $pdo->prepare(
+            "SELECT t.tag FROM snap_image_tags it
+             JOIN snap_tags t ON t.id = it.tag_id
+             WHERE it.image_id = ?
+             ORDER BY t.tag ASC"
+        );
+        $_kwq->execute([(int)$img['id']]);
+        $page_keywords = array_values(array_filter(array_map(
+            static function ($t) { return ltrim(trim((string)$t), '#'); },
+            $_kwq->fetchAll(PDO::FETCH_COLUMN)
+        ), 'strlen'));
+    } catch (Throwable $e) {
+        $page_keywords = [];
+    }
+}
+$keywords_str = implode(', ', $page_keywords);
 ?>
 
 <meta charset="UTF-8">
@@ -140,6 +164,9 @@ if ($ai_policy === 'disallow'): ?>
 <title><?php echo $display_title; ?></title>
 <?php if (!empty($meta_description)): ?>
 <meta name="description" content="<?php echo htmlspecialchars($meta_description); ?>">
+<?php endif; ?>
+<?php if ($keywords_str !== ''): ?>
+<meta name="keywords" content="<?php echo htmlspecialchars($keywords_str); ?>">
 <?php endif; ?>
 
 <link rel="canonical" href="<?php echo $canonical_url; ?>">
@@ -180,6 +207,23 @@ if (!empty($settings['favicon_url'])):
 <?php endif; ?>
 <?php if (!empty($og_image)): ?>
 <meta name="twitter:image" content="<?php echo $og_image; ?>">
+<?php endif; ?>
+<?php
+// --- JSON-LD ImageObject (photo pages): the machine-legible form search and AI
+// actually parse — carries the photo's title, caption and hashtags as keywords. ---
+if (!empty($img['id'])):
+    $_ld = [
+        '@context'   => 'https://schema.org',
+        '@type'      => 'ImageObject',
+        'name'       => (string)($img['img_title'] ?? ''),
+        'description'=> (string)($meta_description ?? ''),
+        'contentUrl' => !empty($img['img_file']) ? BASE_URL . ltrim($img['img_file'], '/') : '',
+        'url'        => $canonical_url,
+    ];
+    if (!empty($page_keywords)) $_ld['keywords'] = $page_keywords;
+    $_ld = array_filter($_ld, static function ($v) { return $v !== '' && $v !== null && $v !== []; });
+?>
+<script type="application/ld+json"><?php echo json_encode($_ld, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?></script>
 <?php endif; ?>
 
 <style id="snapsmack-core-vars">
