@@ -14,39 +14,94 @@
  * Last non-empty line of this file MUST match the line above.
  */
 
-$now_local = date('Y-m-d H:i:s');
+// ── PAGED WALL ──────────────────────────────────────────────────────────────
+// The wall is paged so the DOM isn't built from every published photo at once.
+// The first page renders here; ss-engine-columns.js fetches later pages as JSON
+// from THIS file and appends them into the SAME .ss-masonry — columns just keep
+// flowing, no join seam. scroll_page_size rows per page.
+$_ss_ps    = $settings['scroll_page_size'] ?? '';
+$page_size = is_numeric($_ss_ps) ? max(12, min(60, (int)$_ss_ps)) : 50;
+$is_json   = (($_GET['format'] ?? '') === 'json') && (($_GET['pg'] ?? '') === 'wall');
+
+// ?c= chunk index — meaningful only on the JSON path; the HTML page is always
+// page 0. Upper cap keeps $chunk * $page_size inside PHP's int range.
+$chunk  = $is_json ? min(1000000, max(0, (int)($_GET['c'] ?? 0))) : 0;
+$offset = $chunk * $page_size;
+
+// Freeze the publish window across the scroll session so a post going live
+// mid-scroll can't shift OFFSET and duplicate/skip at a page seam.
+// SECURITY: ?t= is the only query-fed date gate here — clamp it to now. An
+// unclamped future cutoff would surface scheduled (future-dated) photos' slugs
+// and thumbnails before their publish time.
+$_ss_now = date('Y-m-d H:i:s');
+$cutoff  = (string)($_GET['t'] ?? '');
+if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $cutoff)) $cutoff = $_ss_now;
+if ($cutoff > $_ss_now) $cutoff = $_ss_now;
+
+$total_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published' AND img_date <= ?");
+$total_stmt->execute([$cutoff]);
+$total = (int)$total_stmt->fetchColumn();
+
 $grid_stmt = $pdo->prepare(
     "SELECT id, img_title, img_slug, img_file, img_thumb_aspect,
             img_width, img_height, img_orientation
      FROM snap_images
-     WHERE img_status = 'published' AND img_date <= ?
-     ORDER BY sort_order ASC, id DESC"
+     WHERE img_status = 'published' AND img_date <= :cutoff
+     ORDER BY sort_order ASC, id DESC
+     LIMIT :lim OFFSET :off"
 );
-$grid_stmt->execute([$now_local]);
-$images = $grid_stmt->fetchAll(PDO::FETCH_ASSOC);
+$grid_stmt->bindValue(':cutoff', $cutoff);
+$grid_stmt->bindValue(':lim', $page_size, PDO::PARAM_INT);  // PARAM_INT required in LIMIT
+$grid_stmt->bindValue(':off', $offset, PDO::PARAM_INT);
+$grid_stmt->execute();
+$images   = $grid_stmt->fetchAll(PDO::FETCH_ASSOC);
+$has_more = ($offset + count($images)) < $total;
 
-// Spread portraits (tall tiles) evenly through the stream. The engine drops each
-// photo into whichever column is currently shortest, so a clump of consecutive
-// portraits would load one or two columns with all the height and leave the wall
-// lopsided for a long stretch. Weave one portrait every $stride non-portrait
-// tiles. Display-first ordering — order can move a little for the look.
-$_ss_port = $_ss_rest = [];
-foreach ($images as $_im) {
-    $iw = (int)($_im['img_width'] ?? 0);
-    $ih = (int)($_im['img_height'] ?? 0);
-    if ($iw > 0 && $ih > 0 && ($iw / $ih) < 0.9) { $_ss_port[] = $_im; }
-    else { $_ss_rest[] = $_im; }
-}
-if ($_ss_port && $_ss_rest) {
-    $stride = max(1, (int)floor(count($_ss_rest) / count($_ss_port)));
-    $woven  = [];
-    $pi     = 0;
-    foreach ($_ss_rest as $k => $_im) {
-        $woven[] = $_im;
-        if ((($k + 1) % $stride) === 0 && $pi < count($_ss_port)) $woven[] = $_ss_port[$pi++];
+// Weave portraits evenly within THIS page so a clump doesn't load one column with
+// all the height. Per-page (we only ever hold one page), which is fine — the
+// engine drops each tile into the currently-shortest column regardless.
+if (!function_exists('scroll_wall_weave')) {
+function scroll_wall_weave(array $rows): array {
+    $port = $rest = [];
+    foreach ($rows as $r) {
+        $iw = (int)($r['img_width'] ?? 0); $ih = (int)($r['img_height'] ?? 0);
+        if ($iw > 0 && $ih > 0 && ($iw / $ih) < 0.9) $port[] = $r; else $rest[] = $r;
     }
-    while ($pi < count($_ss_port)) $woven[] = $_ss_port[$pi++];
-    $images = $woven;
+    if (!$port || !$rest) return $rows;
+    $stride = max(1, (int)floor(count($rest) / count($port))); $woven = []; $pi = 0;
+    foreach ($rest as $k => $r) { $woven[] = $r; if ((($k + 1) % $stride) === 0 && $pi < count($port)) $woven[] = $port[$pi++]; }
+    while ($pi < count($port)) $woven[] = $port[$pi++];
+    return $woven;
+}
+}
+$images = scroll_wall_weave($images);
+
+// One tile, rendered identically on the HTML page and the JSON chunk. data-w/h
+// feed ss-engine-columns.js (it never reads naturalWidth — lazyload swaps src for
+// a 1x1 GIF), falling back to 3:2 so the layout matches the engine's own default.
+if (!function_exists('scroll_wall_tile')) {
+function scroll_wall_tile(array $img): string {
+    $iw = (int)($img['img_width'] ?? 0); $ih = (int)($img['img_height'] ?? 0);
+    if ($iw <= 0 || $ih <= 0) { $iw = 3; $ih = 2; }
+    $thumb_rel = trim((string)($img['img_thumb_aspect'] ?? ''));
+    $img_url   = BASE_URL . ltrim($thumb_rel !== '' ? $thumb_rel : (string)($img['img_file'] ?? ''), '/');
+    $title     = (string)($img['img_title'] ?? '');
+    return '<a class="ss-masonry-item" href="' . BASE_URL . htmlspecialchars((string)($img['img_slug'] ?? '')) . '"'
+         . ' aria-label="' . htmlspecialchars($title !== '' ? $title : 'View photograph') . '">'
+         . '<img src="' . htmlspecialchars($img_url) . '" data-w="' . $iw . '" data-h="' . $ih . '"'
+         . ' alt="' . htmlspecialchars($title) . '" loading="lazy">'
+         . '<span class="scroll-item-title">' . htmlspecialchars($title) . '</span></a>';
+}
+}
+
+// JSON chunk path (via index.php's ?format=json&pg=wall hook): emit just this
+// page's tiles + paging state, then stop.
+if ($is_json) {
+    $_html = '';
+    foreach ($images as $_im) $_html .= scroll_wall_tile($_im);
+    header('Content-Type: application/json');
+    echo json_encode(['html' => $_html, 'next' => $chunk + 1, 'has_more' => $has_more, 'cutoff' => $cutoff]);
+    return;
 }
 
 $masthead_raw = trim((string)($settings['scroll_masthead_lines'] ?? 'USED CAR|PARTS'));
@@ -139,29 +194,20 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
     <main class="scroll-wall">
         <div class="ss-masonry">
             <?php if (!empty($images)): ?>
-                <?php foreach ($images as $img):
-                    $iw = (int)($img['img_width']  ?? 0);
-                    $ih = (int)($img['img_height'] ?? 0);
-                    // data-w/data-h feed ss-engine-columns.js — it reads the shape
-                    // from these attributes and NEVER from naturalWidth, because the
-                    // lazy loader swaps src for a 1x1 GIF until a photo scrolls in.
-                    $thumb_rel = trim((string)($img['img_thumb_aspect'] ?? ''));
-                    $img_url   = BASE_URL . ltrim($thumb_rel !== '' ? $thumb_rel : ($img['img_file'] ?? ''), '/');
-                ?>
-                <a class="ss-masonry-item"
-                   href="<?php echo BASE_URL . htmlspecialchars($img['img_slug']); ?>"
-                   aria-label="<?php echo htmlspecialchars($img['img_title'] ?? 'View photograph'); ?>">
-                    <img src="<?php echo htmlspecialchars($img_url); ?>"
-                         <?php if ($iw > 0 && $ih > 0): ?>data-w="<?php echo $iw; ?>" data-h="<?php echo $ih; ?>"<?php endif; ?>
-                         alt="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>"
-                         loading="lazy">
-                    <span class="scroll-item-title"><?php echo htmlspecialchars($img['img_title'] ?? ''); ?></span>
-                </a>
-                <?php endforeach; ?>
+                <?php foreach ($images as $img) echo scroll_wall_tile($img); ?>
             <?php else: ?>
                 <p class="scroll-empty">No parts in inventory yet.</p>
             <?php endif; ?>
         </div>
+        <?php if ($has_more): ?>
+        <!-- Infinite scroll: ss-engine-columns.js watches this, fetches the next
+             page as JSON, appends it into .ss-masonry above, and relayouts. -->
+        <div class="scroll-wall-sentinel"
+             data-next="1"
+             data-cutoff="<?php echo htmlspecialchars($cutoff); ?>"
+             data-has-more="1"
+             aria-hidden="true"></div>
+        <?php endif; ?>
     </main>
 </div>
 <?php include __DIR__ . '/skin-footer.php'; ?>
