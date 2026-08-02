@@ -568,22 +568,25 @@ body.is-photo-page #page-wrapper {
    like/reaction dock stays (that's solo functionality, same as 50-Shades). */
 body.is-photo-page .social-dock:not(.social-dock-inline) { display: none; }
 /* Static & blog pages carry a thin divider level with where the landing photo
-   wall begins (88px below the shared header — measured), with EQUAL space above
-   and below the line before the content. Colour is the "Top Divider Line Colour"
-   control; set it near the background to hide it. Text width is a control too. */
+   wall begins. MEASURED on the live site: the header bottom sits at ~155px and
+   the landing's first image row starts at ~195px, so the divider is 40px below
+   the shared header — matching the landing exactly. Equal 40px above and below
+   the line before the content. Colour is the "Top Divider Line Colour" control. */
 .scroll-static-content {
     width: min(calc(100% - 40px), var(--scroll-static-width, 920px));
-    margin: 88px auto 0;
+    margin: 40px auto 0;
     border-top: 1px solid var(--scroll-page-divider, #999999);
-    padding: 88px 0 clamp(32px, 6vw, 90px);
+    padding: 40px 0 clamp(32px, 6vw, 90px);
 }
-/* Blogroll: SCROLL styles the core .blogroll-canvas so its width, divider and
-   entry spacing match the rest of the skin (they were core defaults before). */
-.blogroll-canvas {
+/* Blogroll: core CSS also targets .blogroll-canvas and was WINNING (its margin/
+   padding overrode ours → divider stuck at the header). Scope to body.is-blogroll
+   so SCROLL's rule has the higher specificity and the divider lands at the same
+   40px as the static pages. */
+body.is-blogroll .blogroll-canvas {
     max-width: var(--scroll-static-width, 920px);
-    margin: 88px auto 0;
+    margin: 40px auto 0;
     border-top: 1px solid var(--scroll-page-divider, #999999);
-    padding-top: 88px;
+    padding-top: 40px;
 }
 .blogroll-category-block { margin-bottom: 3rem; }
 .blogroll-category-block:last-child { margin-bottom: 0; }
@@ -597,7 +600,14 @@ body.is-photo-page .social-dock:not(.social-dock-inline) { display: none; }
 /* URL hidden by default via the "Blogroll URLs" control (the name is the link);
    when shown, it sits under the description, not jammed against the next entry. */
 .blogroll-peer-url { margin-top: .5rem; word-break: break-word; opacity: .6; }
-.scroll-static-content .post-image { max-width: 100%; height: auto; }
+/* Static-page hero image. Vertical breathing room is the "Hero Image Spacing"
+   admin control (STATIC & BLOG); display:block so the margins actually apply. */
+.scroll-static-content .post-image {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin-block: var(--scroll-hero-pad, 48px);
+}
 .scroll-solo-stage > #footer {
     display: none;
     width: 100%;
