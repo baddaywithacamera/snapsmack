@@ -96,7 +96,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $csrf_valid && isset($_POST['save_d
 $push_groups = [
     'push_timezone'  => ['timezone', 'date_format'],
     'push_akismet'   => ['akismet_key'],
-    'push_ai'        => ['ai_training_policy', 'ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_gemini_model', 'ai_openai_model'],
+    // SECURITY (2026-08-02): ai_training_policy (FREE crawler directive) removed from
+    // this billable bundle so pushing AI config can't ride the free crawler policy —
+    // and vice-versa. Crawler policy pushes via smack-push-it.php's 'aicrawl' group.
+    'push_ai'        => ['ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_gemini_model', 'ai_openai_model'],
     'push_smackback' => ['smackback_enabled', 'smackback_mode'],
     'push_comments'  => ['global_comments_enabled'],
     'push_email'     => ['site_email'],
