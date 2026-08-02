@@ -49,6 +49,19 @@ $push_group_keys = [
     'email'     => ['site_email', 'admin_email', 'email_from', 'email_from_name', 'brevo_api_key', 'hub_controls_email'],
     'footer'    => ['footer_slot_copyright', 'footer_slot_copyright_custom', 'footer_slot_theme', 'footer_slot_theme_custom', 'hub_controls_footer'],
     'netalert'  => ['network_alert_receive', 'network_alert_send', 'hub_controls_netalert'],
+    // Social dock: enable + appearance + every profile URL. Your profiles are the
+    // same across the fleet, so push once from here to all spokes.
+    'socialdock' => [
+        'social_dock_enabled',
+        'social_dock_position', 'social_dock_color_light', 'social_dock_color_dark',
+        'social_dock_color_mode', 'social_dock_icon_style', 'social_dock_shadow', 'social_dock_opacity',
+        'social_dock_flickr', 'social_dock_smugmug', 'social_dock_instagram', 'social_dock_facebook',
+        'social_dock_youtube', 'social_dock_500px', 'social_dock_vero', 'social_dock_threads',
+        'social_dock_mastodon', 'social_dock_bluesky', 'social_dock_linkedin', 'social_dock_pinterest',
+        'social_dock_tumblr', 'social_dock_deviantart', 'social_dock_behance', 'social_dock_linktree',
+        'social_dock_website',
+        'hub_controls_socialdock',
+    ],
 ];
 
 // ─── cURL PUSH HELPER ────────────────────────────────────────────────────────
@@ -471,6 +484,41 @@ include 'core/sidebar.php';
                     FORCE RE-REGISTER PUSH
                 </button>
             </div>
+        </div>
+
+        <!-- ── SOCIAL DOCK ───────────────────────────────────────────────── -->
+        <div class="box">
+            <h3>SOCIAL DOCK</h3>
+            <p class="dim" style="font-size:0.82rem;margin:0 0 14px;">
+                Pushing this group syncs the whole dock to the fleet — enabled state,
+                appearance, and every profile URL. Your profiles are the same everywhere,
+                so set them once here and push to all sites.
+            </p>
+            <div class="dash-grid" style="margin-bottom:16px;">
+                <div class="lens-input-wrapper">
+                    <label>ENABLED</label>
+                    <div class="read-only-display"><?php echo ($settings['social_dock_enabled'] ?? '0') === '1' ? 'YES' : 'NO'; ?></div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>PROFILE LINKS SET</label>
+                    <div class="read-only-display"><?php
+                        $_dock_platform_keys = ['social_dock_flickr','social_dock_smugmug','social_dock_instagram','social_dock_facebook','social_dock_youtube','social_dock_500px','social_dock_vero','social_dock_threads','social_dock_mastodon','social_dock_bluesky','social_dock_linkedin','social_dock_pinterest','social_dock_tumblr','social_dock_deviantart','social_dock_behance','social_dock_linktree','social_dock_website'];
+                        $_dock_set = 0;
+                        foreach ($_dock_platform_keys as $_dk) { if (trim((string)($settings[$_dk] ?? '')) !== '') $_dock_set++; }
+                        echo (int)$_dock_set . ' of ' . count($_dock_platform_keys);
+                    ?></div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>HUB CONTROLS THIS GROUP</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" name="hub_controls[socialdock]" value="1"
+                               <?php echo ($settings['hub_controls_socialdock'] ?? '0') === '1' ? 'checked' : ''; ?>>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="dim" style="font-size:0.82rem;">When on, the dock's enable state, appearance and profile URLs are pushed from the hub and spokes use the hub's values.</span>
+                </div>
+            </div>
+            <?php $render_result('socialdock'); ?>
         </div>
 
         <!-- STEP-UP AUTH — one entry covers every push on this page. Sits right
