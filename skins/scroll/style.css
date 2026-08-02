@@ -53,13 +53,14 @@ a { color: inherit; }
     align-items: center;
     /* SAME width + centring as the wall, so the byline (left) and the nav icons
        (right) line up with the OUTSIDE edges of the photo grid. Horizontal
-       padding is gone — the width does the insetting now. Vertical padding is
-       EQUAL top and bottom so the space over the masthead matches the space
-       under it. overflow:hidden stays for the tilted masthead. */
+       padding is gone — the width does the insetting now. The extra top padding
+       (+36px) offsets the browse bar that sits BELOW the header, so the masthead
+       ends up optically CENTRED between the top of the window and the first row
+       of photos rather than riding high. overflow:hidden stays for the tilt. */
     width: var(--scroll-canvas-pct, 90%);
     margin: 0 auto;
     min-height: clamp(140px, 9vw, 200px);
-    padding: clamp(18px, 2vw, 32px) 0;
+    padding: calc(clamp(18px, 2vw, 32px) + 36px) 0 clamp(18px, 2vw, 32px);
     overflow: hidden;
 }
 .scroll-photographer {
@@ -312,6 +313,12 @@ a { color: inherit; }
     background: rgba(255,255,255,.94);
     border-bottom: 1px solid rgba(0,0,0,.18);
     backdrop-filter: blur(14px);
+    /* One gap for the WHOLE row. The nav's three groups (identity | links |
+       dock) each space their own icons at 8px, but nothing sat between the
+       groups — so the last nav icon and the first dock icon butted together
+       while every other pair had 8px. Setting the parent gap to the same 8px
+       makes the entire icon run evenly spaced. */
+    gap: 8px;
 }
 .scroll-sticky-nav .ss-grid-nav-name {
     font-size: .78rem;
@@ -476,7 +483,10 @@ a { color: inherit; }
     justify-content: center;
     width: 100%;
     min-height: 0;
-    padding: 30px 30px 50px;
+    /* Whitespace above/below the photo is an admin control (SOLO PAGE →
+       "Whitespace Above & Below Photo"). Equal top and bottom keeps the photo
+       centred; sides stay a fixed 30px. */
+    padding: var(--scroll-image-pad, 50px) 30px;
     overflow: hidden;
     background: inherit;
 }
@@ -529,9 +539,17 @@ a { color: inherit; }
     opacity: .35;
 }
 .scroll-static-content {
-    width: min(calc(100% - 40px), 920px);
+    /* Text column width is an admin control (STATIC & BLOG → "Text Column Width"). */
+    width: min(calc(100% - 40px), var(--scroll-static-width, 920px));
     margin: 0 auto;
     padding: clamp(32px, 6vw, 90px) 0;
+}
+/* Blogroll shares the STATIC & BLOG text-width control. SCROLL styles the core
+   .blogroll-canvas container so the blog page column is adjustable too. */
+.blogroll-canvas {
+    max-width: var(--scroll-static-width, 920px);
+    margin-left: auto;
+    margin-right: auto;
 }
 .scroll-static-content .post-image { max-width: 100%; height: auto; }
 .scroll-solo-stage > #footer {
@@ -545,7 +563,8 @@ a { color: inherit; }
 .scroll-solo-stage .footer-pane,
 .scroll-solo-stage .scroll-solo-title,
 .scroll-solo-stage .description {
-    width: min(calc(100% - 40px), 850px);
+    /* Text column width is an admin control (SOLO PAGE → "Text Column Width"). */
+    width: min(calc(100% - 40px), var(--scroll-solo-text-width, 850px));
     margin-inline: auto;
 }
 .scroll-solo-title {
