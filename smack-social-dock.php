@@ -27,6 +27,10 @@ if (isset($_POST['save_social_dock'])) {
     $enabled = isset($_POST['social_dock_enabled']) ? '1' : '0';
     $stmt->execute(['social_dock_enabled', $enabled, $enabled]);
 
+    // This site's own fediverse page in the dock (checkbox: present=1, missing=0)
+    $own_fedi = isset($_POST['social_dock_own_fedi']) ? '1' : '0';
+    $stmt->execute(['social_dock_own_fedi', $own_fedi, $own_fedi]);
+
     // Position
     $position = $_POST['social_dock_position'] ?? 'bottom-right';
     $valid_positions = ['top-left','top-right','bottom-left','bottom-right','left-top','left-bottom','right-top','right-bottom'];
@@ -119,6 +123,15 @@ include 'core/sidebar.php';
                     <label>
                         <input type="checkbox" name="social_dock_enabled" value="1" <?php echo ($settings['social_dock_enabled'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         ENABLE SOCIAL DOCK <span class="field-tip" data-tip="Floating profile links visible on every public page. When downloads are enabled for an image, the download button appears in the dock automatically.">ⓘ</span>
+                    </label>
+                    <?php
+                    $_fedi_on   = ($settings['smackverse_enabled'] ?? '0') === '1';
+                    $_fedi_kind = (($settings['site_mode'] ?? 'photoblog') === 'smacktalk') ? 'Mastodon' : 'Pixelfed';
+                    ?>
+                    <label style="margin-top:8px;display:block;<?php echo $_fedi_on ? '' : 'opacity:.55;'; ?>">
+                        <input type="checkbox" name="social_dock_own_fedi" value="1" <?php echo ($settings['social_dock_own_fedi'] ?? '0') === '1' ? 'checked' : ''; ?> <?php echo $_fedi_on ? '' : 'disabled'; ?>>
+                        SHOW MY OWN FEDIVERSE PAGE <span class="field-tip" data-tip="Adds a <?php echo $_fedi_kind; ?> icon to the dock linking to THIS site's public fediverse profile, so visitors can follow you. Requires SMACKVERSE federation to be turned on.">ⓘ</span>
+                        <?php if (!$_fedi_on): ?><em style="font-size:.8em;">(turn on SMACKVERSE federation first)</em><?php endif; ?>
                     </label>
                 </div>
 
