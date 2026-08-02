@@ -1568,6 +1568,16 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
         $applied[] = $key;
     }
 
+    // AI 30-day grace: a hub push that ENABLES AI gives this spoke its OWN fresh
+    // 30-day window (not the hub's absolute expiry), so every site runs its own
+    // clock and lapses independently unless renewed. The spoke can still veto AI
+    // locally at any time.
+    if (in_array('ai_cost_accepted', $applied, true) && (string)($pairs['ai_cost_accepted'] ?? '') === '1') {
+        $grace_days = defined('SNAPSMACK_AI_GRACE_DAYS') ? SNAPSMACK_AI_GRACE_DAYS : 30;
+        $upsert->execute(['ai_enabled_until', (string)(time() + $grace_days * 86400)]);
+        $applied[] = 'ai_enabled_until';
+    }
+
     ms_ok(['applied' => $applied, 'skipped' => $skipped, 'pending_confirmation' => $pending]);
 }
 

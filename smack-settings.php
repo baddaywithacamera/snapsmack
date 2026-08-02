@@ -121,6 +121,8 @@ if (($_POST['action'] ?? '') === 'ai_accept_cost') {
     }
     // Verified. Enable AI site-wide and write the signed acceptance to the audit log.
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ai_cost_accepted', '1') ON DUPLICATE KEY UPDATE setting_val = '1'")->execute();
+    // Start the 30-day grace clock (AI lapses after this unless renewed).
+    if (function_exists('snap_ai_renew')) snap_ai_renew();
     try {
         // Defensive create (belt-and-suspenders; canonical schema is the real delivery).
         $pdo->exec(
@@ -147,6 +149,32 @@ if (($_POST['action'] ?? '') === 'ai_accept_cost') {
         error_log('SnapSmack AI acceptance audit insert failed — ' . $e->getMessage());
     }
     header('Location: smack-settings.php');
+    exit;
+}
+
+// --- AI grace renewal: re-stamp the 30-day window ---
+// Lower-stakes than first-accept (cost was already consented), so a plain
+// authenticated POST from the owner in admin is enough. Extends AI for another
+// 30 days from now; logs a 'renewed' audit row for parity with acceptance.
+if (($_POST['action'] ?? '') === 'ai_renew') {
+    if (function_exists('snap_ai_cost_accepted') && snap_ai_cost_accepted() && function_exists('snap_ai_renew')) {
+        snap_ai_renew();
+        try {
+            $pdo->prepare(
+                "INSERT INTO snap_ai_acceptance_audit (user_id, username, action, ip_address, user_agent)
+                 VALUES (?, ?, 'renewed', ?, ?)"
+            )->execute([
+                ($_SESSION['user_id'] ?? null) ?: null,
+                (string)($_SESSION['username'] ?? ''),
+                substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45),
+                substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512),
+            ]);
+        } catch (PDOException $e) {
+            error_log('SnapSmack AI renewal audit insert failed — ' . $e->getMessage());
+        }
+        $_SESSION['ai_flash'] = 'AI renewed for ' . SNAPSMACK_AI_GRACE_DAYS . ' more days.';
+    }
+    header('Location: smack-settings.php#ai-key');
     exit;
 }
 
@@ -782,6 +810,28 @@ include 'core/sidebar.php';
                     </label>
                 </div>
                 <button type="submit" name="action" value="ai_accept_cost" class="btn-smack btn-smack--sm">I ACCEPT — ENABLE AI</button>
+            </div>
+            <?php endif; ?>
+            <?php if ($ai_cost_accepted): ?>
+            <?php
+            // 30-day grace status + renewal. AI lapses after the window unless
+            // renewed here (or by a hub push). The RENEW button submits the outer
+            // settings form with action=ai_renew (handled before the generic save).
+            $ai_grace_flash = $_SESSION['ai_flash'] ?? ''; unset($_SESSION['ai_flash']);
+            $ai_days_left   = function_exists('snap_ai_days_left') ? snap_ai_days_left() : 0;
+            $ai_lapsed      = function_exists('snap_ai_grace_active') ? !snap_ai_grace_active() : false;
+            ?>
+            <div class="ai-grace-status" style="margin:0 0 16px;padding:12px 14px;border-radius:6px;border:1px solid <?php echo $ai_lapsed ? '#c55400' : 'rgba(76,175,80,.4)'; ?>;background:<?php echo $ai_lapsed ? 'rgba(197,84,0,.10)' : 'rgba(76,175,80,.08)'; ?>;">
+                <?php if ($ai_grace_flash): ?>
+                <p style="margin:0 0 8px;color:#4caf50;font-size:.85rem;">✓ <?php echo htmlspecialchars($ai_grace_flash); ?></p>
+                <?php endif; ?>
+                <?php if ($ai_lapsed): ?>
+                <p style="margin:0 0 10px;font-size:.9rem;color:#e0a06a;"><strong>AI has lapsed.</strong> <?php echo htmlspecialchars(snap_ai_expired_message()); ?></p>
+                <?php else: ?>
+                <p style="margin:0 0 10px;font-size:.9rem;"><strong>AI active — renews in <?php echo (int)$ai_days_left; ?> day<?php echo $ai_days_left === 1 ? '' : 's'; ?>.</strong>
+                    <span class="dim">Every <?php echo SNAPSMACK_AI_GRACE_DAYS; ?> days AI switches itself off unless renewed, so API costs can't quietly run on across your sites.</span></p>
+                <?php endif; ?>
+                <button type="submit" name="action" value="ai_renew" class="btn-smack btn-smack--sm">RENEW (<?php echo SNAPSMACK_AI_GRACE_DAYS; ?> DAYS)</button>
             </div>
             <?php endif; ?>
             <fieldset <?php echo $ai_cost_accepted ? '' : 'disabled'; ?> class="ai-settings-fields<?php echo $ai_cost_accepted ? '' : ' is-disabled'; ?>">

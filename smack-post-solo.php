@@ -742,7 +742,7 @@ include 'core/sidebar.php';
                                 <button type="button" class="sc-btn" data-action="dropcap" title="Dropcap">DROP</button>
                                 <button type="button" class="sc-btn" data-action="spacer" title="Vertical Spacer (1-100px)">SPACER</button>
                                 <button type="button" class="sc-btn sc-btn-preview" data-action="preview" title="Preview in New Tab">PREVIEW</button>
-                                <?php if (snap_ai_configured()): ?>
+                                <?php if (snap_ai_active()): ?>
                                 <span class="sc-sep"></span>
                                 <button type="button" class="sc-btn sc-btn-ai" id="btn-spellcheck" title="Check spelling and grammar with AI">SP/GR</button>
                                 <button type="button" class="sc-btn sc-btn-ai" id="btn-ai-assist" title="AI Writing Assistant">AI ASSIST</button>
@@ -902,7 +902,7 @@ include 'core/sidebar.php';
     });
 </script>
 <script src="assets/js/shortcode-toolbar.js"></script>
-<?php if (snap_ai_configured()): ?>
+<?php if (snap_ai_active()): ?>
 <!-- AI Assist Modal -->
 <div id="ai-assist-overlay" class="ai-assist-overlay" style="display:none;" aria-modal="true" role="dialog" aria-label="AI Writing Assistant">
     <div id="ai-assist-modal" class="ai-assist-modal">
