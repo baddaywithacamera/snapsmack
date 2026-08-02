@@ -12,6 +12,10 @@
 
 ## Unreleased
 
+## 0.7.474 "Triage" — 2026-08-02
+
+- **Manage Archive: filter for posts that still need work.** A new **NEEDS WORK** filter in the archive manager finds posts **missing a title**, **missing a caption**, or **with no hashtags** (or any of the three at once) — so you can jump straight to what needs enriching instead of clicking through pages. It combines with the existing status/category/album filters and is carried through pagination. Pairs with the VISION FILL button on the editor. (Note: "auto rotation" can't be filtered yet — only the final orientation is stored, not whether it was auto-detected; see the reply for options.)
+
 ## 0.7.473 "Grace Period" — 2026-08-01
 
 - **SCROLL layout controls restored + header fixes (skin 0.1.22).** A batch of fixes and — importantly — controls that had been hardcoded are now adjustable again from **Smooth Your Skin**:

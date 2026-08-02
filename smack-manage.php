@@ -189,9 +189,10 @@ $cat_filter        = $_GET['cat_id']        ?? '';
 $album_filter      = $_GET['album_id']      ?? '';
 $collection_filter = $_GET['collection_id'] ?? '';
 $status_filter     = $_GET['status']        ?? '';
+$needs_filter      = $_GET['needs']         ?? '';   // missing metadata: title|caption|tags|any
 
 // Drag reorder only available when showing all posts unfiltered.
-$filters_active = ($search !== '' || $cat_filter !== '' || $album_filter !== '' || $collection_filter !== '' || $status_filter !== '');
+$filters_active = ($search !== '' || $cat_filter !== '' || $album_filter !== '' || $collection_filter !== '' || $status_filter !== '' || $needs_filter !== '');
 
 // --- PAGINATION ---
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -227,6 +228,23 @@ if ($status_filter === 'draft') {
 } elseif ($status_filter === 'live') {
     $where_clauses[] = "i.img_status = 'published' AND i.img_date <= ?";
     $params[] = $now_local;
+}
+
+// --- "NEEDS WORK" FILTER ---
+// Find posts still missing metadata so they can be enriched without paging
+// through the whole archive. A title/caption is "missing" when NULL or empty;
+// hashtags are "missing" when the image has no rows in snap_image_tags.
+$no_title   = "(i.img_title IS NULL OR i.img_title = '')";
+$no_caption = "(i.img_description IS NULL OR i.img_description = '')";
+$no_tags    = "i.id NOT IN (SELECT image_id FROM snap_image_tags)";
+if ($needs_filter === 'title') {
+    $where_clauses[] = $no_title;
+} elseif ($needs_filter === 'caption') {
+    $where_clauses[] = $no_caption;
+} elseif ($needs_filter === 'tags') {
+    $where_clauses[] = $no_tags;
+} elseif ($needs_filter === 'any') {
+    $where_clauses[] = "($no_title OR $no_caption OR $no_tags)";
 }
 
 $where_sql = $where_clauses ? " WHERE " . implode(" AND ", $where_clauses) : "";
@@ -357,6 +375,17 @@ include 'core/sidebar.php';
                         <option value="live" <?php echo ($status_filter == 'live') ? 'selected' : ''; ?>>LIVE</option>
                         <option value="scheduled" <?php echo ($status_filter == 'scheduled') ? 'selected' : ''; ?>>SCHEDULED</option>
                         <option value="draft" <?php echo ($status_filter == 'draft') ? 'selected' : ''; ?>>DRAFT</option>
+                    </select>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>NEEDS WORK</label>
+                    <select name="needs">
+                        <option value="">ANYTHING</option>
+                        <option value="any"     <?php echo ($needs_filter == 'any')     ? 'selected' : ''; ?>>MISSING TITLE, CAPTION OR TAGS</option>
+                        <option value="title"   <?php echo ($needs_filter == 'title')   ? 'selected' : ''; ?>>NO TITLE</option>
+                        <option value="caption" <?php echo ($needs_filter == 'caption') ? 'selected' : ''; ?>>NO CAPTION</option>
+                        <option value="tags"    <?php echo ($needs_filter == 'tags')    ? 'selected' : ''; ?>>NO HASHTAGS</option>
                     </select>
                 </div>
 
@@ -493,6 +522,7 @@ include 'core/sidebar.php';
                     'album_id'      => $album_filter,
                     'collection_id' => $collection_filter,
                     'status'        => $status_filter,
+                    'needs'         => $needs_filter,
                 ], 'strlen'));
                 $href = function($p) use ($qs) {
                     return '?page=' . $p . ($qs ? '&' . $qs : '');
