@@ -148,6 +148,10 @@ edit, or delete posts.</p>
 <p>Type in the search box to filter by title. Use the status dropdown to show only
 published, draft, or scheduled transmissions. Category and album filters narrow results
 further.</p>
+<p>The <strong>NEEDS WORK</strong> dropdown finds posts still missing metadata — no title,
+no caption, or no hashtags (or any of the three at once) — so you can go straight to what
+needs enriching instead of paging through the whole archive. It stacks with the other
+filters and stays applied as you page. Handy alongside the editor's VISION FILL button.</p>
 
 <h4>Actions</h4>
 <ul>
