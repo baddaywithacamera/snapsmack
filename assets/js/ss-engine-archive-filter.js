@@ -98,20 +98,21 @@
 
     // ── SELECTION COUNT ───────────────────────────────────────────────────────
     function getSelections() {
-        var cats = [], albs = [], cols = [];
-        if (!_panel) return { cats: cats, albs: albs, cols: cols };
+        var cats = [], albs = [], cols = [], usrs = [];
+        if (!_panel) return { cats: cats, albs: albs, cols: cols, usrs: usrs };
         _panel.querySelectorAll('.saf-checkbox:checked').forEach(function (cb) {
             var type = cb.dataset.type;
             if (type === 'cat') cats.push(cb.value);
             else if (type === 'alb') albs.push(cb.value);
             else if (type === 'col') cols.push(cb.value);
+            else if (type === 'usr') usrs.push(cb.value);
         });
-        return { cats: cats, albs: albs, cols: cols };
+        return { cats: cats, albs: albs, cols: cols, usrs: usrs };
     }
 
     function updateButton() {
         var sel   = getSelections();
-        var total = sel.cats.length + sel.albs.length + sel.cols.length;
+        var total = sel.cats.length + sel.albs.length + sel.cols.length + sel.usrs.length;
         if (_label) _label.textContent = total === 0 ? 'FILTER' : total + ' SELECTED';
         if (_btn) _btn.classList.toggle('saf-btn--active', total > 0);
     }
@@ -131,6 +132,7 @@
         sel.cats.forEach(function (id) { params.append('f[]', 'cat:' + id); });
         sel.albs.forEach(function (id) { params.append('f[]', 'alb:' + id); });
         sel.cols.forEach(function (id) { params.append('f[]', 'col:' + id); });
+        sel.usrs.forEach(function (id) { params.append('f[]', 'usr:' + id); });
 
         var qs = params.toString();
         window.location.href = 'archive.php' + (qs ? '?' + qs : '');
