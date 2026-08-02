@@ -96,6 +96,74 @@ function snap_ai_configured(): bool {
     return snap_ai_cost_accepted() && snap_ai_provider() !== 'none' && snap_ai_api_key() !== '';
 }
 
+// ── 30-DAY GRACE ─────────────────────────────────────────────────────────────
+// AI (on ANY site, however it was turned on) runs for 30 days and then switches
+// itself off until renewed — from the spoke's Settings → AI, or by a hub push.
+// This is a blast-radius cap: an API bill can't quietly run forever, especially
+// across a fleet. Renewing (or first-accepting cost, or a hub push) re-stamps
+// ai_enabled_until = now + 30 days.
+if (!defined('SNAPSMACK_AI_GRACE_DAYS')) define('SNAPSMACK_AI_GRACE_DAYS', 30);
+
+function snap_ai_enabled_until(): int {
+    global $pdo;
+    try {
+        $row = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'ai_enabled_until' LIMIT 1")->fetch();
+    } catch (Throwable $e) { return 0; }
+    return $row ? (int)$row['setting_val'] : 0;
+}
+
+/** Re-stamp the 30-day window (renew / first-accept / hub push). Returns the new expiry ts. */
+function snap_ai_renew(): int {
+    global $pdo;
+    $until = time() + (SNAPSMACK_AI_GRACE_DAYS * 86400);
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ai_enabled_until', ?)
+                   ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute([(string)$until]);
+    return $until;
+}
+
+/** Grandfather existing installs: if cost is accepted but the clock was never
+ *  stamped (pre-grace installs), start it now — once — so AI doesn't die abruptly
+ *  on update, but everyone is put on the clock from here. */
+function snap_ai_ensure_grace(): int {
+    if (!snap_ai_cost_accepted()) return 0;
+    $until = snap_ai_enabled_until();
+    if ($until <= 0) $until = snap_ai_renew();
+    return $until;
+}
+
+function snap_ai_grace_active(): bool {
+    return snap_ai_ensure_grace() > time();
+}
+
+/** Whole days left in the window (>=0); 0 once lapsed. */
+function snap_ai_days_left(): int {
+    $left = snap_ai_enabled_until() - time();
+    return $left > 0 ? (int)ceil($left / 86400) : 0;
+}
+
+/** Full usability gate — replaces snap_ai_configured() at every AI CALL site so
+ *  the grace applies everywhere at once. */
+function snap_ai_active(): bool {
+    return snap_ai_configured() && snap_ai_grace_active();
+}
+
+/** 'unconfigured' | 'expired' | 'active' — lets callers give the RIGHT message. */
+function snap_ai_status(): string {
+    if (!snap_ai_configured()) return 'unconfigured';
+    return snap_ai_grace_active() ? 'active' : 'expired';
+}
+
+/** The plain-language lapsed message, shared by every AI entry point. */
+function snap_ai_expired_message(): string {
+    $when = snap_ai_enabled_until();
+    $on   = $when > 0 ? date('M j, Y', $when) : 'its start date';
+    return 'AI has switched itself off. It ran for ' . SNAPSMACK_AI_GRACE_DAYS
+         . ' days (through ' . $on . ') before needing renewal — a safety cap so AI '
+         . 'charges can\'t quietly pile up across your sites. Renew it in Settings → AI '
+         . '(or push AI again from the hub) to turn it back on for another '
+         . SNAPSMACK_AI_GRACE_DAYS . ' days.';
+}
+
 // ── Main completion function ─────────────────────────────────────────────────
 
 /**

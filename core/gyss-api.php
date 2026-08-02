@@ -314,7 +314,7 @@ if ($resource === 'enrichment-audit' && $method === 'GET') {
         'total'   => count($items),
         'items'   => $items,
         'prompt'  => snap_ai_post_enrichment_prompt($pdo),
-        'ai_ready'=> snap_ai_configured(),
+        'ai_ready'=> snap_ai_active(),
     ]);
 }
 
@@ -327,7 +327,10 @@ if ($resource === 'enrich-one' && $method === 'POST') {
     if (!is_array($data)) gy_err('JSON request body required');
     $id = (int)($data['id'] ?? 0);
     if ($id <= 0) gy_err('Valid image id required');
-    if (!snap_ai_configured()) gy_err('AI is not configured on this site.', 409);
+    if (!snap_ai_active()) gy_err(
+        snap_ai_status() === 'expired' ? snap_ai_expired_message() : 'AI is not configured on this site.',
+        409
+    );
 
     $allowed_fields = ['title', 'caption', 'tags', 'category', 'album', 'colors'];
     $fields = array_values(array_intersect(

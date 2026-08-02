@@ -1237,6 +1237,52 @@ instantaneous with no data loss.</p>
 HTML
 ];
 
+$help_topics['ai-assistant'] = [
+    'section'  => 'Settings',
+    'title'    => 'AI Assistant & the 30-Day Grace',
+    'icon'     => '&#x2728;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>AI Assistant</h3>
+<p>The AI Assistant powers spell/grammar check and the enrichment buttons
+(<strong>AI TITLE</strong>, <strong>AI CAPTION</strong>, <strong>AI HASHTAGS</strong>) beside the
+title, description, and tags fields when you post or edit an image. It uses <strong>your own</strong>
+API key (Claude, Gemini, or OpenAI) and bills <strong>per use</strong>.</p>
+
+<h4>Turning It On</h4>
+<p>Go to <strong>Settings &rarr; AI</strong>. Three things are required before any AI control appears:</p>
+<ol>
+<li><strong>Accept cost responsibility</strong> — a signed action (password + 2FA). AI stays hard-off until you do; this is your API bill.</li>
+<li><strong>Provider</strong> set to Claude, Gemini, or OpenAI (not "None").</li>
+<li><strong>API key</strong> entered for that provider.</li>
+</ol>
+<p>Miss any one and the enrichment buttons don't render at all, and the endpoint reports
+"No AI provider configured." Set all three and reload — the buttons appear on their own.</p>
+
+<h4>The 30-Day Grace</h4>
+<p>Once enabled, AI runs for <strong>30 days</strong> and then <strong>switches itself off</strong>
+until renewed. This is a deliberate blast-radius cap: an uncapped key can run up a real bill, and
+across a fleet of sites that can compound fast. The clock means AI can never quietly bill forever —
+you have to actively renew, so you notice.</p>
+<p>Settings &rarr; AI shows the live status: <em>"AI active — renews in N days"</em>, or, once
+lapsed, a notice explaining it switched off and how to turn it back on.</p>
+
+<h4>Renewing</h4>
+<p>Two ways, either end:</p>
+<ul>
+<li><strong>On the site</strong> — click <strong>RENEW (30 DAYS)</strong> in Settings &rarr; AI. That extends the window another 30 days from now.</li>
+<li><strong>From a network hub</strong> — pushing the AI group in <strong>Push It</strong> gives every spoke its own fresh 30-day window.</li>
+</ul>
+<p>When AI has lapsed, any AI feature you invoke tells you plainly what happened and points you to
+renew — it won't fail silently.</p>
+
+<h4>Spoke Sovereignty</h4>
+<p>If your site is a spoke joined to someone else's hub, you always keep local control: you can turn
+AI off on your own site at any time regardless of the hub, and the 30-day cap still applies so a
+hub can't leave AI running on your account indefinitely.</p>
+HTML
+];
+
 $help_topics['maintenance-mode'] = [
     'section'  => 'Settings',
     'title'    => 'Maintenance Mode',

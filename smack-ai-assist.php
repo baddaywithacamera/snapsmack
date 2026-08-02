@@ -32,8 +32,14 @@ if (!isset($_SERVER['HTTP_X_REQUESTED_WITH']) || $_SERVER['REQUEST_METHOD'] !== 
     exit;
 }
 
-if (!snap_ai_configured()) {
-    echo json_encode(['ok' => false, 'error' => 'No AI provider configured.']);
+if (!snap_ai_active()) {
+    echo json_encode([
+        'ok'      => false,
+        'status'  => snap_ai_status(),
+        'error'   => snap_ai_status() === 'expired'
+            ? snap_ai_expired_message()
+            : 'No AI provider configured. Set a provider, add its API key, and accept the cost in Settings → AI.',
+    ]);
     exit;
 }
 

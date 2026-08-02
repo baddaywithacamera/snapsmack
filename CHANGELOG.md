@@ -12,6 +12,14 @@
 
 ## Unreleased
 
+## 0.7.473 "Grace Period" — 2026-08-01
+
+- **AI now runs on a 30-day grace clock.** However AI is turned on — locally by accepting cost, or by a hub push — it runs for 30 days and then switches itself off until renewed. This is a blast-radius cap so a per-use API key can't quietly bill forever, especially across a fleet. Settings → AI shows the live status ("AI active — renews in N days" / a plain notice once lapsed) and a **RENEW (30 DAYS)** button; a hub AI push gives every spoke its own fresh 30-day window. Every AI entry point (enrichment buttons, GYSS enrich, spell/grammar) reports a clear message when lapsed instead of failing silently. Spokes keep local control regardless of the hub.
+- **Social dock gains Mastodon.** A Mastodon profile field (solid + outline glyphs) joins the platform list — a fediverse-native omission, now fixed.
+- **Push the whole social dock from the hub.** Push It has a SOCIAL DOCK group that sends the dock's enable state, appearance, and every profile URL to your active spokes — set your profiles once on the hub, push to all sites.
+- **Pushing AI now actually enables it fleet-wide.** The AI push group was missing `ai_cost_accepted`, so pushed spokes stayed off until someone accepted cost locally. It's included now (and starts the grace clock on each spoke).
+- **Dock outline icons: bigger Bluesky butterfly, redrawn Linktree, and no hover-clip inline.**
+
 ## 0.7.472 "Skin Deep" — 2026-08-01
 
 - **A skin can now own the social dock's appearance, location and shadow.** A `social_dock` block in a skin's `manifest.json` (keys: `position`, `color_mode`, `icon_style`, `shadow`, `color_light`, `color_dark`, `opacity`) overrides the matching admin settings at render time (`core/social-dock.php`). In the Social Dock admin, any control the active skin owns now shows **"(controlled by the <SKIN> skin)"** instead of an input that would do nothing — no more dead Position box under a skin that pins the dock inline. Skins that declare no block are unaffected; the admin behaves exactly as before.
