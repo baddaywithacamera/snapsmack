@@ -451,13 +451,15 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
     elseif ($orig_h > $orig_w)   { $auto_orientation = 1; } // portrait
 
     // --- DATABASE RECORD CREATION ---
+    // Ingest always auto-detects orientation, so the auto-orient flag is 1.
+    $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_auto_orient TINYINT(1) NOT NULL DEFAULT 0");
     $stmt = $pdo->prepare("
         INSERT INTO snap_images (
             img_title, img_slug, img_file, img_description, img_film, img_exif,
-            img_status, img_date, img_orientation, img_width, img_height,
+            img_status, img_date, img_orientation, img_auto_orient, img_width, img_height,
             allow_comments, allow_download, download_url,
             img_thumb_square, img_thumb_aspect, img_checksum, img_display_options
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $title,
@@ -469,6 +471,7 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
         $status,
         $custom_date,
         $auto_orientation,
+        1,
         $orig_w,
         $orig_h,
         $allow_comments,
