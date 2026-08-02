@@ -222,12 +222,77 @@
         else init(grid);
     }
 
+    /* ---------- INFINITE SCROLL ----------------------------------------------
+     * The wall is paged: the skin renders page 0 into .ss-masonry plus a
+     * .scroll-wall-sentinel carrying data-next / data-cutoff / data-has-more.
+     * As the sentinel nears the viewport we fetch the next page as JSON from the
+     * same URL (?pg=wall&format=json&c=N&t=cutoff), append its tiles into the
+     * EXISTING grid, hand them to the lazy loader, and relayout. Because the
+     * column placement is deterministic (item i -> shortest column at step i),
+     * re-laying out with the new tiles appended leaves every earlier tile in the
+     * exact same spot — no reflow, no jump — it just extends the columns. Columns
+     * have no ragged join, so appended pages flow in seamlessly. */
+    function initInfiniteScroll() {
+        var sentinel = document.querySelector('.scroll-wall-sentinel');
+        var grid = document.querySelector('.ss-masonry');
+        if (!sentinel || !grid) return;
+
+        var loading = false, fails = 0, MAX_FAILS = 4;
+
+        function exhausted() { return sentinel.getAttribute('data-has-more') !== '1'; }
+        function stop() { sentinel.setAttribute('data-has-more', '0'); if (io) io.disconnect(); }
+
+        function loadNext() {
+            if (loading || exhausted()) return;
+            loading = true;
+            var next = parseInt(sentinel.getAttribute('data-next'), 10) || 1;
+            var url = '?pg=wall&format=json&c=' + next
+                    + '&t=' + encodeURIComponent(sentinel.getAttribute('data-cutoff') || '');
+            fetch(url, { credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (data) {
+                    if (!data || !data.html) { stop(); return; }
+                    fails = 0;
+                    var tmp = document.createElement('div');
+                    tmp.innerHTML = data.html;
+                    var added = [], el;
+                    while ((el = tmp.firstElementChild)) { grid.appendChild(el); added.push(el); }
+                    sentinel.setAttribute('data-next', String(data.next));
+                    sentinel.setAttribute('data-has-more', data.has_more ? '1' : '0');
+                    // Hand the new tiles to the shared lazy loader, then relayout.
+                    if (window.ssLazyScan) window.ssLazyScan(grid);
+                    relayout(grid);
+                    if (exhausted() && io) io.disconnect();
+                })
+                .catch(function () {
+                    // A non-JSON response (another skin answering ?pg=wall) would
+                    // fail identically and retry forever — give up after a few.
+                    if (++fails >= MAX_FAILS) stop();
+                })
+                .then(function () { loading = false; });
+        }
+
+        var io = null;
+        if (typeof IntersectionObserver !== 'undefined') {
+            io = new IntersectionObserver(function (entries) {
+                var i;
+                for (i = 0; i < entries.length; i++) if (entries[i].isIntersecting) { loadNext(); break; }
+            }, { rootMargin: '1200px 0px' });   // ~a screen of lead before the seam
+            io.observe(sentinel);
+        } else {
+            window.addEventListener('scroll', function () {
+                if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 1200) loadNext();
+            }, { passive: true });
+        }
+    }
+
     window.SSColumns = { init: init, initAll: initAll, relayout: relayout, layout: layout };
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { initAll(); });
+        document.addEventListener('DOMContentLoaded', function () { initAll(); initInfiniteScroll(); });
     } else {
         initAll();
+        initInfiniteScroll();
     }
     // Late webfont swaps change nothing about tile geometry, but a late scrollbar
     // does. One more pass on full load costs a millisecond.

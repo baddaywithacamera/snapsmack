@@ -304,6 +304,9 @@ a { color: inherit; }
 .ss-masonry-item:hover .scroll-item-title,
 .ss-masonry-item:focus-visible .scroll-item-title { opacity: 1; }
 .scroll-empty { padding: 15vh 0; text-align: center; }
+/* Infinite-scroll tripwire — ss-engine-columns.js observes it and appends the
+   next page into the wall. Near-zero height so it adds no visible gap. */
+.scroll-wall-sentinel { height: 1px; width: 100%; }
 
 .scroll-sticky-nav {
     color: inherit;
