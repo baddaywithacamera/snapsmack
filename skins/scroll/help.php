@@ -75,6 +75,10 @@ link.</p>
 <p><strong>TYPOGRAPHY</strong> — the fonts are independent by design: <em>Masthead Font</em> styles the big
 landing masthead ONLY; <em>Page Title Font</em> styles static and photo page titles; <em>Body / Metadata
 Font</em> and <em>Solo Header Font</em> cover the rest. Changing one never changes the others.</p>
+<p>The <strong>single-photo page</strong> is a deliberately minimal, full-window lightbox: the photo fills
+the window with the title top-left and navigation top-right, and the page itself never scrolls. The
+title/caption and comments live in a <strong>drawer</strong> that only opens when you click INFO or
+COMMENTS in the bottom bar — nothing below the photo until you ask for it.</p>
 HTML
     ],
 ];
