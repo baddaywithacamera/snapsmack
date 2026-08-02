@@ -56,5 +56,22 @@ pages flow into the existing columns with no gap or jump. <strong>Wall Width (% 
 sizes the wall to the browser (any resolution), and <strong>Space Between Tiles</strong> is the gutter.</p>
 HTML
     ],
+    'skin-scroll-layout-type' => [
+        'section' => 'Active Skin: SCROLL',
+        'title' => 'Solo & Page Layout, Type',
+        'icon' => '&#x25A4;',
+        'content' => <<<'HTML'
+<h3>Solo &amp; Page Layout, Type</h3>
+<p>These live in <strong>Pimp Your Ride &rarr; Smooth Your Skin</strong>, grouped by section.</p>
+<p><strong>SOLO PAGE</strong> — <em>Whitespace Above &amp; Below Photo</em> sets the breathing room over and
+under a single photograph (equal top and bottom, so the photo stays vertically centred).
+<em>Text Column Width</em> sets how wide the title and description block runs beneath the photo.</p>
+<p><strong>STATIC &amp; BLOG</strong> — <em>Text Column Width</em> sets the reading width of static pages
+(About, etc.) and the blogroll.</p>
+<p><strong>TYPOGRAPHY</strong> — the fonts are independent by design: <em>Masthead Font</em> styles the big
+landing masthead ONLY; <em>Page Title Font</em> styles static and photo page titles; <em>Body / Metadata
+Font</em> and <em>Solo Header Font</em> cover the rest. Changing one never changes the others.</p>
+HTML
+    ],
 ];
 // ===== SNAPSMACK EOF =====

@@ -105,8 +105,9 @@
             "font_source": "google",
             "no_size_slider": true,
             "label": "Masthead Font",
+            "hint": "The big tilted landing masthead ONLY. Page titles have their own font below.",
             "default": "Archivo Black",
-            "selector": ".scroll-masthead, .scroll-horizontal-title",
+            "selector": ".scroll-masthead",
             "property": "font-family"
         },
         "scroll_body_font": {
@@ -129,6 +130,17 @@
             "selector": ".scroll-solo-header",
             "property": "font-family"
         },
+        "scroll_pagetitle_font": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "is_font": true,
+            "font_source": "google",
+            "label": "Page Title Font",
+            "hint": "Static and photo page titles. Independent of the landing masthead font.",
+            "default": "Archivo Black",
+            "selector": ".scroll-horizontal-title",
+            "property": "font-family"
+        },
         "scroll_text_case": {
             "section": "TYPOGRAPHY",
             "type": "select",
@@ -147,7 +159,7 @@
             "type": "color",
             "label": "Masthead Colour",
             "default": "#f4f4f4",
-            "selector": ".scroll-masthead, .scroll-horizontal-title",
+            "selector": ".scroll-masthead",
             "property": "color"
         },
         "scroll_masthead_size": {
@@ -265,6 +277,42 @@
             "default": "#ffffff",
             "selector": ":root",
             "property": "--scroll-border-color"
+        },
+        "scroll_image_pad": {
+            "section": "SOLO PAGE",
+            "type": "range",
+            "label": "Whitespace Above & Below Photo (px)",
+            "hint": "Vertical breathing room over and under a single photo. Equal top and bottom, so the photo stays centred.",
+            "default": "50",
+            "min": "0",
+            "max": "160",
+            "selector": ":root",
+            "property": "--scroll-image-pad",
+            "unit": "px"
+        },
+        "scroll_solo_text_width": {
+            "section": "SOLO PAGE",
+            "type": "range",
+            "label": "Text Column Width (px)",
+            "hint": "Width of the title and description text block under a photo.",
+            "default": "850",
+            "min": "500",
+            "max": "1400",
+            "selector": ":root",
+            "property": "--scroll-solo-text-width",
+            "unit": "px"
+        },
+        "scroll_static_width": {
+            "section": "STATIC & BLOG",
+            "type": "range",
+            "label": "Text Column Width (px)",
+            "hint": "Width of the text column on static pages (About, etc.) and the blogroll.",
+            "default": "920",
+            "min": "500",
+            "max": "1400",
+            "selector": ":root",
+            "property": "--scroll-static-width",
+            "unit": "px"
         },
         "scroll_background": {
             "section": "COLOURS",
