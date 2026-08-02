@@ -189,10 +189,15 @@ $cat_filter        = $_GET['cat_id']        ?? '';
 $album_filter      = $_GET['album_id']      ?? '';
 $collection_filter = $_GET['collection_id'] ?? '';
 $status_filter     = $_GET['status']        ?? '';
-$needs_filter      = $_GET['needs']         ?? '';   // missing metadata: title|caption|tags|any
+$needs_filter      = $_GET['needs']         ?? '';   // title|caption|tags|any|autoorient|fubar
+$orient_filter     = $_GET['orient']        ?? '';   // landscape|portrait|square
+
+// Belt-and-suspenders: the auto-orient flag column is read below; guarantee it
+// exists on installs that haven't posted (which would otherwise add it) since the update.
+$pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_auto_orient TINYINT(1) NOT NULL DEFAULT 0");
 
 // Drag reorder only available when showing all posts unfiltered.
-$filters_active = ($search !== '' || $cat_filter !== '' || $album_filter !== '' || $collection_filter !== '' || $status_filter !== '' || $needs_filter !== '');
+$filters_active = ($search !== '' || $cat_filter !== '' || $album_filter !== '' || $collection_filter !== '' || $status_filter !== '' || $needs_filter !== '' || $orient_filter !== '');
 
 // --- PAGINATION ---
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -237,6 +242,7 @@ if ($status_filter === 'draft') {
 $no_title   = "(i.img_title IS NULL OR i.img_title = '')";
 $no_caption = "(i.img_description IS NULL OR i.img_description = '')";
 $no_tags    = "i.id NOT IN (SELECT image_id FROM snap_image_tags)";
+$no_file    = "(i.img_file IS NULL OR i.img_file = '')";
 if ($needs_filter === 'title') {
     $where_clauses[] = $no_title;
 } elseif ($needs_filter === 'caption') {
@@ -245,6 +251,18 @@ if ($needs_filter === 'title') {
     $where_clauses[] = $no_tags;
 } elseif ($needs_filter === 'any') {
     $where_clauses[] = "($no_title OR $no_caption OR $no_tags)";
+} elseif ($needs_filter === 'autoorient') {
+    $where_clauses[] = "i.img_auto_orient = 1";
+} elseif ($needs_filter === 'fubar') {
+    // "Find the fucked-up stuff": anything incomplete OR with a missing file record.
+    $where_clauses[] = "($no_title OR $no_caption OR $no_tags OR $no_file)";
+}
+
+// Orientation: 0 = landscape, 1 = portrait, 2 = square (img_orientation).
+$orient_map = ['landscape' => 0, 'portrait' => 1, 'square' => 2];
+if (isset($orient_map[$orient_filter])) {
+    $where_clauses[] = "i.img_orientation = ?";
+    $params[] = $orient_map[$orient_filter];
 }
 
 $where_sql = $where_clauses ? " WHERE " . implode(" AND ", $where_clauses) : "";
@@ -382,10 +400,22 @@ include 'core/sidebar.php';
                     <label>NEEDS WORK</label>
                     <select name="needs">
                         <option value="">ANYTHING</option>
-                        <option value="any"     <?php echo ($needs_filter == 'any')     ? 'selected' : ''; ?>>MISSING TITLE, CAPTION OR TAGS</option>
-                        <option value="title"   <?php echo ($needs_filter == 'title')   ? 'selected' : ''; ?>>NO TITLE</option>
-                        <option value="caption" <?php echo ($needs_filter == 'caption') ? 'selected' : ''; ?>>NO CAPTION</option>
-                        <option value="tags"    <?php echo ($needs_filter == 'tags')    ? 'selected' : ''; ?>>NO HASHTAGS</option>
+                        <option value="fubar"      <?php echo ($needs_filter == 'fubar')      ? 'selected' : ''; ?>>THE FUCKED-UP STUFF</option>
+                        <option value="any"        <?php echo ($needs_filter == 'any')        ? 'selected' : ''; ?>>MISSING TITLE, CAPTION OR TAGS</option>
+                        <option value="title"      <?php echo ($needs_filter == 'title')      ? 'selected' : ''; ?>>NO TITLE</option>
+                        <option value="caption"    <?php echo ($needs_filter == 'caption')    ? 'selected' : ''; ?>>NO CAPTION</option>
+                        <option value="tags"       <?php echo ($needs_filter == 'tags')       ? 'selected' : ''; ?>>NO HASHTAGS</option>
+                        <option value="autoorient" <?php echo ($needs_filter == 'autoorient') ? 'selected' : ''; ?>>AUTO-ROTATED (CHECK ORIENTATION)</option>
+                    </select>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>ORIENTATION</label>
+                    <select name="orient">
+                        <option value="">ALL SHAPES</option>
+                        <option value="landscape" <?php echo ($orient_filter == 'landscape') ? 'selected' : ''; ?>>LANDSCAPE</option>
+                        <option value="portrait"  <?php echo ($orient_filter == 'portrait')  ? 'selected' : ''; ?>>PORTRAIT</option>
+                        <option value="square"    <?php echo ($orient_filter == 'square')    ? 'selected' : ''; ?>>SQUARE</option>
                     </select>
                 </div>
 
@@ -523,6 +553,7 @@ include 'core/sidebar.php';
                     'collection_id' => $collection_filter,
                     'status'        => $status_filter,
                     'needs'         => $needs_filter,
+                    'orient'        => $orient_filter,
                 ], 'strlen'));
                 $href = function($p) use ($qs) {
                     return '?page=' . $p . ($qs ? '&' . $qs : '');

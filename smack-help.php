@@ -152,6 +152,11 @@ further.</p>
 no caption, or no hashtags (or any of the three at once) — so you can go straight to what
 needs enriching instead of paging through the whole archive. It stacks with the other
 filters and stays applied as you page. Handy alongside the editor's VISION FILL button.</p>
+<p><strong>THE FUCKED-UP STUFF</strong> is the catch-all: one pick that surfaces anything off —
+missing title, caption, hashtags, or a missing file record. <strong>Auto-rotated (check
+orientation)</strong> lists posts whose orientation was auto-detected rather than set by hand,
+so you can eyeball them for rotation mistakes (recorded on posts made from this version on).
+The separate <strong>ORIENTATION</strong> dropdown filters by Landscape, Portrait or Square.</p>
 
 <h4>Actions</h4>
 <ul>

@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
   `img_height`          int            DEFAULT '0',
   `img_status`          enum('published','draft') COLLATE utf8mb4_unicode_ci DEFAULT 'published',
   `img_orientation`     int            DEFAULT '0',
+  `img_auto_orient`     tinyint(1)     NOT NULL DEFAULT '0'
+                        COMMENT '1 = orientation auto-detected, 0 = set by hand (added 0.7.474)',
   `allow_comments`      tinyint(1)     DEFAULT '1',
   `allow_download`      tinyint(1)     NOT NULL DEFAULT '1',
   `download_url`        varchar(512)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',

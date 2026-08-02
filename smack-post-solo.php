@@ -532,9 +532,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 $auto_orientation = 1; // portrait
             }
         }
+        // 1 = orientation was auto-detected, 0 = the poster set it by hand. Lets the
+        // archive manager surface auto-oriented shots for a rotation double-check.
+        $auto_orient_flag = ($orient_override === 'auto') ? 1 : 0;
 
         // --- DATABASE RECORD CREATION ---
         // Stores image metadata, dimensions, processing flags, and category/album mappings.
+        // Belt-and-suspenders: guarantee the auto-orient flag column exists on older installs.
+        $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_auto_orient TINYINT(1) NOT NULL DEFAULT 0");
         $stmt = $pdo->prepare("
             INSERT INTO snap_images (
                 img_title,
@@ -547,6 +552,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 img_status,
                 img_date,
                 img_orientation,
+                img_auto_orient,
                 img_width,
                 img_height,
                 allow_comments,
@@ -556,7 +562,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 img_thumb_aspect,
                 img_checksum,
                 img_display_options
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -570,6 +576,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             $status,
             $custom_date,
             $auto_orientation,
+            $auto_orient_flag,
             $orig_w,
             $orig_h,
             $allow_comments,
