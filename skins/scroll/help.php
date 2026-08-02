@@ -67,7 +67,11 @@ HTML
 under a single photograph (equal top and bottom, so the photo stays vertically centred).
 <em>Text Column Width</em> sets how wide the title and description block runs beneath the photo.</p>
 <p><strong>STATIC &amp; BLOG</strong> — <em>Text Column Width</em> sets the reading width of static pages
-(About, etc.) and the blogroll.</p>
+(About, etc.) and the blogroll. <em>Top Divider Line Colour</em> is the thin line that sits level with
+where the landing photo wall begins (set it near the background colour to hide it). The blogroll has
+its own controls too: <em>Blogroll Columns</em> (1–3), <em>Blogroll Gap</em>, and show/hide toggles for
+<em>Descriptions</em> and <em>URLs</em> — URLs are hidden by default because the blog name is already a
+link.</p>
 <p><strong>TYPOGRAPHY</strong> — the fonts are independent by design: <em>Masthead Font</em> styles the big
 landing masthead ONLY; <em>Page Title Font</em> styles static and photo page titles; <em>Body / Metadata
 Font</em> and <em>Solo Header Font</em> cover the rest. Changing one never changes the others.</p>
