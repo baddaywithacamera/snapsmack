@@ -433,11 +433,23 @@ a { color: inherit; }
 .scroll-solo-nav .scroll-nav-search { position: relative; }
 .scroll-solo-nav .scroll-nav-search > summary { list-style: none; cursor: pointer; }
 .scroll-solo-nav .scroll-nav-search > summary::-webkit-details-marker { display: none; }
+/* SOLO PAGE = a viewport-locked lightbox (mirrors 50-Shades). The page never
+   scrolls; only the stage does, and only once the INFO/COMMENTS drawer opens.
+   Scoped to body.is-photo-page so the landing wall and archive still scroll. */
+html:has(body.is-photo-page) { overflow: hidden; scrollbar-gutter: auto; }
+body.is-photo-page { height: 100dvh; overflow: hidden; }
+body.is-photo-page #page-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    min-height: 0;
+}
 .scroll-solo-stage {
     display: flex;
-    flex: 1;
+    flex: 1 1 auto;
     flex-direction: column;
-    min-height: 100dvh;
+    min-height: 0;
+    overflow-y: auto;     /* the ONLY scroller — reveals the drawer when opened */
     overflow-x: hidden;
     background: inherit;
 }
@@ -513,21 +525,30 @@ a { color: inherit; }
     align-items: center;
     justify-content: center;
     width: 100%;
-    border-block: 1px solid currentColor;
+    /* No line above the nav — SCROLL stays minimal. The only rule on the solo
+       page is the one above the footer drawer (see #footer below). */
     background: inherit;
-    opacity: .92;
 }
+/* Bottom nav (PREV/FIRST · INFO/COMMENTS · LAST/NEXT) sits as a single centred
+   cluster with even gaps between the three groups — the 50-Shades treatment. */
 .scroll-infobox .nav-links {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    width: min(calc(100% - 40px), 920px);
+    justify-content: center;
+    gap: 40px;
     margin: 0 auto;
     padding: 0;
     font-size: .75rem;
     letter-spacing: .08em;
     text-transform: uppercase;
+}
+.scroll-infobox .nav-links .left,
+.scroll-infobox .nav-links .center,
+.scroll-infobox .nav-links .right {
+    display: inline-flex;
+    align-items: center;
+    gap: 40px;
+    margin: 0;
 }
 .scroll-infobox .nav-links > .sep {
     display: none;
@@ -538,6 +559,14 @@ a { color: inherit; }
 .scroll-infobox .nav-links .dim {
     opacity: .35;
 }
+/* Drawer panes stay hidden until the footer engine reveals the clicked one
+   (INFO or COMMENTS) — the 50-Shades #footer model. Without this, opening the
+   drawer would show both panes stacked. */
+.footer-pane { display: none; }
+/* Ultra-minimal solo page: no FLOATING social dock here — it belongs on the
+   landing header, and core injects it site-wide via footer-scripts. The
+   like/reaction dock stays (that's solo functionality, same as 50-Shades). */
+body.is-photo-page .social-dock:not(.social-dock-inline) { display: none; }
 /* Static & blog pages carry a thin divider level with where the landing photo
    wall begins (88px below the shared header — measured), with EQUAL space above
    and below the line before the content. Colour is the "Top Divider Line Colour"
