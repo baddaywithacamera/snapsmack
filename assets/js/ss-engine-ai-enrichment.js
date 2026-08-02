@@ -324,7 +324,102 @@
         });
     }
 
+    // ── Vision fill: analyse the selected image and populate every field ──────
+    function setVisionStatus(el, message, error) {
+        if (!el) return;
+        el.textContent = message || '';
+        el.classList.toggle('is-error', Boolean(error));
+    }
+
+    // Downscale to <= maxEdge on the long side and return a data: URI. Vision is
+    // billed by image size; a 600px thumb carries all the detail these fields
+    // need (mirrors SYBU's _load_image_part).
+    function downscaleToDataUrl(file, maxEdge) {
+        return new Promise(function (resolve, reject) {
+            var url = URL.createObjectURL(file);
+            var img = new Image();
+            img.onload = function () {
+                var w = img.naturalWidth || 1;
+                var h = img.naturalHeight || 1;
+                var scale = Math.min(1, maxEdge / Math.max(w, h));
+                var canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, Math.round(w * scale));
+                canvas.height = Math.max(1, Math.round(h * scale));
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                URL.revokeObjectURL(url);
+                try { resolve(canvas.toDataURL('image/jpeg', 0.85)); }
+                catch (e) { reject(e); }
+            };
+            img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('image load failed')); };
+            img.src = url;
+        });
+    }
+
+    function applyVision(result) {
+        var setField = function (selector, value) {
+            if (!value) return;
+            var field = document.querySelector(selector);
+            if (!field) return;
+            field.value = value;
+            field.dispatchEvent(new Event('input', { bubbles: true }));
+        };
+        setField(fieldMap.title.selector, result.title);
+        setField(fieldMap.caption.selector, result.caption);
+        setField(fieldMap.hashtags.selector, result.tags);
+
+        var check = function (name, ids) {
+            if (!ids || !ids.length) return;
+            var want = {};
+            ids.forEach(function (id) { want[String(id)] = true; });
+            document.querySelectorAll('input[name="' + name + '"]').forEach(function (box) {
+                if (want[String(box.value)] && !box.checked) {
+                    box.checked = true;
+                    box.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+        };
+        check('cat_ids[]', result.category_ids);
+        check('album_ids[]', result.album_ids);
+    }
+
+    function wireVision() {
+        var button = document.getElementById('btn-ai-vision');
+        var fileInput = document.getElementById('post-file-input');
+        var status = document.getElementById('ai-vision-status');
+        if (!button || !fileInput) return;
+
+        button.addEventListener('click', function () {
+            var file = fileInput.files && fileInput.files[0];
+            if (!file) {
+                setVisionStatus(status, 'Choose an image first — vision reads the photo itself.', true);
+                return;
+            }
+            button.disabled = true;
+            button.classList.add('is-working');
+            setVisionStatus(status, 'Reading the photo…', false);
+
+            downscaleToDataUrl(file, 600).then(function (dataUrl) {
+                setVisionStatus(status, 'Asking the AI…', false);
+                return request({ mode: 'vision', image: dataUrl });
+            }).then(function (result) {
+                button.disabled = false;
+                button.classList.remove('is-working');
+                if (!result || !result.ok) {
+                    setVisionStatus(status, (result && result.error) || 'Vision enrichment failed.', true);
+                    return;
+                }
+                applyVision(result);
+                setVisionStatus(status, 'Filled from the image — review before publishing.', false);
+            }).catch(function () {
+                button.disabled = false;
+                button.classList.remove('is-working');
+                setVisionStatus(status, 'The vision request failed.', true);
+            });
+        });
+    }
+
     function initialise() {
+        wireVision();
         request({ mode: 'prompt_list' }).then(function (result) {
             if (!result.ok) return;
             library = result.library;

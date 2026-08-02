@@ -746,6 +746,8 @@ include 'core/sidebar.php';
                                 <span class="sc-sep"></span>
                                 <button type="button" class="sc-btn sc-btn-ai" id="btn-spellcheck" title="Check spelling and grammar with AI">SP/GR</button>
                                 <button type="button" class="sc-btn sc-btn-ai" id="btn-ai-assist" title="AI Writing Assistant">AI ASSIST</button>
+                                <button type="button" class="sc-btn sc-btn-ai" id="btn-ai-vision" title="Analyse the chosen photo and fill title, caption, tags, categories and albums (AI vision — same as SYBU)">VISION FILL</button>
+                                <span id="ai-vision-status" class="ss-ai-enrich-status" aria-live="polite"></span>
                                 <?php endif; ?>
                             </div>
                         </div>

@@ -1254,10 +1254,19 @@ $help_topics['ai-assistant'] = [
     'role'     => 'admin',
     'content'  => <<<'HTML'
 <h3>AI Assistant</h3>
-<p>The AI Assistant powers spell/grammar check and the enrichment buttons
-(<strong>AI TITLE</strong>, <strong>AI CAPTION</strong>, <strong>AI HASHTAGS</strong>) beside the
-title, description, and tags fields when you post or edit an image. It uses <strong>your own</strong>
-API key (Claude, Gemini, or OpenAI) and bills <strong>per use</strong>.</p>
+<p>The AI Assistant powers spell/grammar check, the per-field enrichment buttons
+(<strong>AI TITLE</strong>, <strong>AI CAPTION</strong>, <strong>AI HASHTAGS</strong>), and
+<strong>VISION FILL</strong> beside the title, description, and tags fields when you post or edit an
+image. It uses <strong>your own</strong> API key (Claude, Gemini, or OpenAI) and bills
+<strong>per use</strong>.</p>
+
+<h4>Vision Fill (from the image)</h4>
+<p><strong>VISION FILL</strong> is the in-app version of the SYBU desktop batch tool. Choose your
+photo, click it, and the AI looks at the actual image and fills the title, caption and hashtags and
+ticks the matching categories and albums in one pass — using the very same prompt SYBU uses, fed your
+own category, album and tag vocabulary. The photo is shrunk in your browser before it's sent (vision
+is billed by image size, and a small copy carries all the detail these fields need). Always review
+what it wrote before publishing.</p>
 
 <h4>Turning It On</h4>
 <p>Go to <strong>Settings &rarr; AI</strong>. Three things are required before any AI control appears:</p>

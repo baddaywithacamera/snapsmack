@@ -332,12 +332,13 @@ function _snap_ai_claude_vision(string $key, string $system, string $user, array
     foreach ($images as $im) {
         $content[] = ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $im['mime'], 'data' => $im['data']]];
     }
-    $payload = json_encode([
+    $payload_arr = [
         'model'      => 'claude-haiku-4-5-20251001',
         'max_tokens' => $max_tokens,
-        'system'     => $system,
         'messages'   => [['role' => 'user', 'content' => $content]],
-    ]);
+    ];
+    if ($system !== '') $payload_arr['system'] = $system;   // omit empty (SYBU sends none)
+    $payload = json_encode($payload_arr);
     $response = _snap_ai_post('https://api.anthropic.com/v1/messages', $payload, [
         'x-api-key: ' . $key, 'anthropic-version: 2023-06-01', 'content-type: application/json',
     ]);
@@ -354,11 +355,14 @@ function _snap_ai_gemini_vision(string $key, string $system, string $user, array
     }
     $model   = snap_ai_gemini_model();
     $url     = 'https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':generateContent?key=' . urlencode($key);
-    $payload = json_encode([
-        'system_instruction' => ['parts' => [['text' => $system]]],
-        'contents'           => [['parts' => $parts]],
-        'generationConfig'   => _snap_ai_gemini_gencfg($model, $max_tokens),
-    ]);
+    $payload_arr = [
+        'contents'         => [['parts' => $parts]],
+        'generationConfig' => _snap_ai_gemini_gencfg($model, $max_tokens),
+    ];
+    // Omit system_instruction when empty — Gemini rejects an empty one, and SYBU
+    // sends the whole prompt as the sole user text with no system.
+    if ($system !== '') $payload_arr['system_instruction'] = ['parts' => [['text' => $system]]];
+    $payload = json_encode($payload_arr);
     $response = _snap_ai_post($url, $payload, ['content-type: application/json']);
     if (!$response['ok']) return $response;
     $data = json_decode($response['body'], true);
@@ -372,13 +376,13 @@ function _snap_ai_openai_vision(string $key, string $system, string $user, array
     foreach ($images as $im) {
         $content[] = ['type' => 'image_url', 'image_url' => ['url' => 'data:' . $im['mime'] . ';base64,' . $im['data']]];
     }
+    $messages = [];
+    if ($system !== '') $messages[] = ['role' => 'system', 'content' => $system];  // omit empty
+    $messages[] = ['role' => 'user', 'content' => $content];
     $payload = json_encode([
         'model'                 => snap_ai_openai_model(),
         'max_completion_tokens' => $max_tokens,
-        'messages'   => [
-            ['role' => 'system', 'content' => $system],
-            ['role' => 'user',   'content' => $content],
-        ],
+        'messages'              => $messages,
     ]);
     $response = _snap_ai_post('https://api.openai.com/v1/chat/completions', $payload, [
         'Authorization: Bearer ' . $key, 'content-type: application/json',

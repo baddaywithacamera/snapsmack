@@ -174,6 +174,83 @@ if ($mode === 'enrich') {
     exit;
 }
 
+// ── Vision enrichment (analyse the actual image) ─────────────────────────────
+// The in-CMS counterpart to the SYBU desktop batch tool: sends the selected
+// image to the configured vision model with SYBU's EXACT prompt and fills every
+// field at once (title, caption, tags, and matching categories/albums). The
+// client downscales the image to ~600px before upload — vision is billed by
+// image size and a thumb carries all the detail these fields need.
+if ($mode === 'vision') {
+    $raw  = (string)($_POST['image'] ?? '');
+    // Accept a bare base64 payload or a data: URI.
+    if (preg_match('/^data:([^;]+);base64,(.*)$/s', $raw, $m)) {
+        $mime = $m[1];
+        $b64  = $m[2];
+    } else {
+        $mime = trim($_POST['mime'] ?? 'image/jpeg');
+        $b64  = $raw;
+    }
+    $b64 = preg_replace('/\s+/', '', $b64);
+    if ($b64 === '' || strlen($b64) > 12_000_000) {
+        echo json_encode(['ok' => false, 'error' => $b64 === ''
+            ? 'Choose an image first — vision enrichment reads the photo itself.'
+            : 'That image is too large to enrich. Try a smaller file.']);
+        exit;
+    }
+    if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) $mime = 'image/jpeg';
+
+    // Gather the site's taxonomy + tag vocabulary, exactly as SYBU is fed it.
+    $categories = $albums = [];
+    $cat_desc = $album_desc = [];
+    $cat_id_by = $album_id_by = [];
+    foreach ($pdo->query("SELECT id, cat_name, cat_description FROM snap_categories ORDER BY cat_name") as $r) {
+        $categories[] = $r['cat_name'];
+        $cat_desc[mb_strtolower($r['cat_name'])] = (string)($r['cat_description'] ?? '');
+        $cat_id_by[mb_strtolower(trim($r['cat_name']))] = (int)$r['id'];
+    }
+    foreach ($pdo->query("SELECT id, album_name, album_description FROM snap_albums ORDER BY album_name") as $r) {
+        $albums[] = $r['album_name'];
+        $album_desc[mb_strtolower($r['album_name'])] = (string)($r['album_description'] ?? '');
+        $album_id_by[mb_strtolower(trim($r['album_name']))] = (int)$r['id'];
+    }
+    $existing_tags = [];
+    foreach ($pdo->query("SELECT tag FROM snap_tags ORDER BY use_count DESC, tag ASC LIMIT 200") as $r) {
+        $existing_tags[] = $r['tag'];
+    }
+
+    $prompt = snap_ai_vision_prompt($categories, $albums, $cat_desc, $album_desc, $existing_tags);
+    $result = snap_ai_vision('', $prompt, [['mime' => $mime, 'data' => $b64]], 800);
+    if (!$result['ok']) {
+        echo json_encode(['ok' => false, 'error' => $result['error'] ?: 'The vision request failed.']);
+        exit;
+    }
+
+    $parsed = snap_ai_vision_parse($result['text']);
+
+    // Map the returned CATEGORY / ALBUM names back to existing IDs (exact,
+    // case-insensitive) so the editor can tick the right boxes. Names the model
+    // invented despite the "do not invent" rule simply find no match.
+    $names_to_ids = static function (string $csv, array $map): array {
+        $ids = [];
+        foreach (explode(',', $csv) as $name) {
+            $key = mb_strtolower(trim($name));
+            if ($key !== '' && isset($map[$key])) $ids[] = $map[$key];
+        }
+        return array_values(array_unique($ids));
+    };
+
+    echo json_encode([
+        'ok'           => true,
+        'title'        => $parsed['title'],
+        'caption'      => $parsed['caption'],
+        'tags'         => $parsed['tags'],
+        'colors'       => $parsed['colors'],
+        'category_ids' => $names_to_ids($parsed['category'], $cat_id_by),
+        'album_ids'    => $names_to_ids($parsed['album'], $album_id_by),
+    ]);
+    exit;
+}
+
 // ── Spell / Grammar check ────────────────────────────────────────────────────
 if ($mode === 'spellcheck') {
     $target = $selected !== '' ? $selected : $content;

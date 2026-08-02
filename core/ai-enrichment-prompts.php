@@ -185,4 +185,90 @@ function snap_ai_enrichment_prompt(array $library, string $id, string $type): ?a
     return null;
 }
 
+/**
+ * Vision enrichment prompt — a byte-for-byte PHP port of SYBU's
+ * gemini.py::_build_prompt(). "Same prompt exactly" is a hard requirement: this
+ * text (including the Helios-44 rule, the COLORS line, and the category/album
+ * interpolation) MUST stay identical to the desktop tool so the in-CMS "enrich
+ * from image" produces the same metadata SnapSmack owners already trust from
+ * SYBU. If you change one, change the other.
+ *
+ * @param string[] $categories          category names (cat_name)
+ * @param string[] $albums              album names (album_name)
+ * @param array    $cat_descriptions    map of lower(name) => description
+ * @param array    $album_descriptions  map of lower(name) => description
+ * @param string[] $existing_tags       hashtags already in use (soft matching)
+ */
+function snap_ai_vision_prompt(
+    array $categories,
+    array $albums,
+    array $cat_descriptions = [],
+    array $album_descriptions = [],
+    array $existing_tags = []
+): string {
+    $list = static function (array $items, array $desc): string {
+        if (!$items) return ' (none)';
+        $lines = [];
+        foreach ($items as $c) {
+            $d = trim((string)($desc[mb_strtolower($c)] ?? ''));
+            $lines[] = '  - ' . $c . ($d !== '' ? ' (' . $d . ')' : '');
+        }
+        return "\n" . implode("\n", $lines);
+    };
+    $cats_str   = $list($categories, $cat_descriptions);
+    $albums_str = $list($albums, $album_descriptions);
+
+    if ($existing_tags) {
+        $tag_sample    = implode(' ', array_slice($existing_tags, 0, 80));
+        $tags_guidance = "Prefer tags from this existing list where they fit: {$tag_sample}\n"
+                       . "Invent new tags only when nothing in the list applies.";
+    } else {
+        $tags_guidance = 'Use descriptive hashtags for subject, texture, colour, and mood.';
+    }
+
+    return <<<PROMPT
+You are generating metadata for a photo blog post on a site called SnapSmack.
+
+Analyse the image carefully and respond ONLY in this exact format — no extra text:
+
+TITLE: <a short, plain, descriptive title — a few words, e.g. "Drumheller water tower at dusk". NOT a haiku, not poetic.>
+CAPTION: <a short, natural one-line caption describing the image — this becomes the post's caption/description. No hashtags.>
+TAGS: <5 to 8 space-separated hashtags, e.g. #stone #rust #texture #macro #urban>
+CATEGORY: <pick every applicable match from this list, comma-separated, or leave blank:{$cats_str}>
+ALBUM: <pick every applicable match from this list, comma-separated, or leave blank:{$albums_str}>
+COLORS: <the three most visually prominent colors in the image as uppercase hex codes separated by spaces, e.g. #A3724B #2E1F0D #8C6B3A>
+
+Rules:
+- TITLE must be a short, plain description of what is literally in the image — not a haiku, not poetic
+- CAPTION is the post's caption/description: one natural line, no hashtags
+- {$tags_guidance}
+- Tags must be lowercase with no spaces within a tag
+- Images with multiple distorted specular highlights and swirly blurred bokeh were made with a modified Helios 44 lens; add both #helios and #helios44 to TAGS when those visual characteristics are present
+- CATEGORY may contain one or more exact options from the provided list, separated by commas, or be left completely blank
+- ALBUM may contain one or more exact options from the provided list, separated by commas, or be left completely blank
+- Do not repeat an option and do not invent categories or albums
+- COLORS must be exactly 3 hex codes in #RRGGBB format, uppercase, space-separated
+- Do not add any explanation, preamble, or extra lines
+PROMPT;
+}
+
+/**
+ * Parse a SYBU-format vision response — port of gemini.py::_parse_response().
+ * Returns keys: title, caption, tags, category, album, colors.
+ */
+function snap_ai_vision_parse(string $text): array
+{
+    $result = ['title' => '', 'caption' => '', 'tags' => '', 'category' => '', 'album' => '', 'colors' => ''];
+    foreach (preg_split('/\r\n|\r|\n/', trim($text)) as $line) {
+        if (preg_match('/^(TITLE|CAPTION|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)/i', trim($line), $m)) {
+            $result[strtolower($m[1])] = trim($m[2]);
+        }
+    }
+    if ($result['colors'] !== '') {
+        preg_match_all('/#[0-9A-Fa-f]{6}/', $result['colors'], $mm);
+        $result['colors'] = implode(' ', array_map('strtoupper', array_slice($mm[0], 0, 3)));
+    }
+    return $result;
+}
+
 // ===== SNAPSMACK EOF =====
