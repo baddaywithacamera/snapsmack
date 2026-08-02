@@ -43,7 +43,12 @@ $spokes = $pdo->query("
 $push_group_keys = [
     'timezone'  => ['timezone', 'date_format',          'hub_controls_timezone'],
     'akismet'   => ['akismet_key',                       'hub_controls_akismet'],
-    'ai'        => ['ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_gemini_model', 'ai_openai_model', 'ai_training_policy', 'ai_cost_accepted', 'hub_controls_ai'],
+    // BILLABLE: provider + API keys + cost-acceptance (arms paid enrichment on the
+    // spoke). Kept deliberately separate from the free crawler policy below so a
+    // push meant to open the crawler door can NEVER silently start billing.
+    'ai'        => ['ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_gemini_model', 'ai_openai_model', 'ai_cost_accepted', 'hub_controls_ai'],
+    // FREE: the AI-crawler directive only (meta tag + robots.txt). No keys, no cost.
+    'aicrawl'   => ['ai_training_policy', 'hub_controls_aicrawl'],
     'smackback' => ['smackback_enabled', 'smackback_mode', 'hub_controls_smackback'],
     'comments'  => ['global_comments_enabled',           'hub_controls_comments'],
     'email'     => ['site_email', 'admin_email', 'email_from', 'email_from_name', 'brevo_api_key', 'hub_controls_email'],
@@ -306,9 +311,14 @@ include 'core/sidebar.php';
             <?php $render_result('akismet'); ?>
         </div>
 
-        <!-- ── AI SETTINGS ──────────────────────────────────────────────── -->
+        <!-- ── AI ENRICHMENT (BILLABLE) ─────────────────────────────────── -->
         <div class="box">
-            <h3>AI SETTINGS</h3>
+            <h3>AI ENRICHMENT <span class="dim" style="font-size:0.72rem;letter-spacing:.1em;">— BILLABLE</span></h3>
+            <p class="dim" style="font-size:0.82rem;margin:0 0 12px;">
+                ⚠ Pushing this arms <strong>paid</strong> AI enrichment on every spoke it reaches
+                (provider + keys + cost-acceptance, starting each spoke's 30-day grace). It does
+                NOT touch AI crawling — that's the free section below.
+            </p>
             <div class="dash-grid" style="margin-bottom:16px;">
                 <div class="lens-input-wrapper">
                     <label>PROVIDER</label>
@@ -319,6 +329,28 @@ include 'core/sidebar.php';
                     <div class="read-only-display"><?php echo $ai_has_key ? '<span class="msg">SET</span>' : '<span class="dim">NOT SET</span>'; ?></div>
                 </div>
                 <div class="lens-input-wrapper">
+                    <label>HUB CONTROLS THIS SETTING</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" name="hub_controls[ai]" value="1"
+                               <?php echo ($settings['hub_controls_ai'] ?? '0') === '1' ? 'checked' : ''; ?>>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their AI provider or keys.</span>
+                </div>
+            </div>
+            <?php $render_result('ai'); ?>
+        </div>
+
+        <!-- ── AI CRAWLER POLICY (FREE) ─────────────────────────────────── -->
+        <div class="box">
+            <h3>AI CRAWLER POLICY <span class="dim" style="font-size:0.72rem;letter-spacing:.1em;">— FREE</span></h3>
+            <p class="dim" style="font-size:0.82rem;margin:0 0 12px;">
+                Whether AI/search crawlers may use the site (a meta tag + robots.txt only —
+                no cost, no keys). Separate from enrichment so "allow AI to find me" can never
+                start a bill.
+            </p>
+            <div class="dash-grid" style="margin-bottom:16px;">
+                <div class="lens-input-wrapper">
                     <label>CRAWLER POLICY</label>
                     <div class="read-only-display"><?php
                         $pol = $settings['ai_training_policy'] ?? 'no_opinion';
@@ -328,14 +360,14 @@ include 'core/sidebar.php';
                 <div class="lens-input-wrapper">
                     <label>HUB CONTROLS THIS SETTING</label>
                     <label class="toggle-switch">
-                        <input type="checkbox" name="hub_controls[ai]" value="1"
-                               <?php echo ($settings['hub_controls_ai'] ?? '0') === '1' ? 'checked' : ''; ?>>
+                        <input type="checkbox" name="hub_controls[aicrawl]" value="1"
+                               <?php echo ($settings['hub_controls_aicrawl'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their AI provider, keys, or crawler policy.</span>
+                    <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their AI crawler policy.</span>
                 </div>
             </div>
-            <?php $render_result('ai'); ?>
+            <?php $render_result('aicrawl'); ?>
         </div>
 
         <!-- ── FOOTER ────────────────────────────────────────────────────── -->
