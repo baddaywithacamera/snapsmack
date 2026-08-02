@@ -60,6 +60,7 @@ $push_group_keys = [
         'social_dock_mastodon', 'social_dock_bluesky', 'social_dock_linkedin', 'social_dock_pinterest',
         'social_dock_tumblr', 'social_dock_deviantart', 'social_dock_behance', 'social_dock_linktree',
         'social_dock_website',
+        'social_dock_own_fedi',
         'hub_controls_socialdock',
     ],
 ];

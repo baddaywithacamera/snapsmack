@@ -164,6 +164,12 @@ $_dock_outline = [
 ];
 $_dock_icon_style = (($_dock_ovr['icon_style'] ?? ($settings['social_dock_icon_style'] ?? 'solid')) === 'outline') ? 'outline' : 'solid';
 
+// Pixelfed glyphs (used for THIS site's own fediverse page on image installs;
+// Mastodon glyphs above cover the text install). Solid = filled "P" mark;
+// outline = line-art to match the outline set.
+$_dock_pixelfed_solid   = '<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M6.5 3h11A3.5 3.5 0 0 1 21 6.5v11a3.5 3.5 0 0 1-3.5 3.5h-11A3.5 3.5 0 0 1 3 17.5v-11A3.5 3.5 0 0 1 6.5 3Zm4 5.2v8.3h1.9v-2.6h1.4a2.85 2.85 0 0 0 0-5.7Zm1.9 1.8h1.3a1.05 1.05 0 0 1 0 2.1h-1.3Z"/></svg>';
+$_dock_pixelfed_outline = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="M10 16.5v-9h3a3 3 0 0 1 0 6h-3"/></svg>';
+
 // Build active links array
 $_dock_links = [];
 foreach ($_dock_platforms as $_platform_key => $_platform) {
@@ -177,6 +183,37 @@ foreach ($_dock_platforms as $_platform_key => $_platform) {
             'label' => $_platform['label'],
             'svg' => $_svg
         ];
+    }
+}
+
+// THIS SITE'S OWN FEDIVERSE PAGE (opt-in: social_dock_own_fedi). Links to the
+// content-negotiated public profile at BASE_URL/<handle> — a browser gets the
+// human profile page, a fediverse app gets the actor to follow. The icon follows
+// the install type: image installs (photoblog/carousel) present as Pixelfed; the
+// text install (smacktalk) as Mastodon. Only when federation is on.
+if (($settings['social_dock_own_fedi'] ?? '0') === '1'
+    && ($settings['smackverse_enabled'] ?? '0') === '1') {
+    $_sv_file = __DIR__ . '/smackverse.php';
+    if (is_file($_sv_file)) {
+        require_once $_sv_file;
+        if (function_exists('sv_handle') && function_exists('sv_domain') && defined('BASE_URL')) {
+            $_fh = sv_handle($settings);
+            $_fd = sv_domain($settings);
+            if ($_fh !== '' && $_fd !== '') {
+                $_is_text  = (($settings['site_mode'] ?? 'photoblog') === 'smacktalk');
+                if ($_dock_icon_style === 'outline') {
+                    $_fedi_svg = $_is_text ? ($_dock_outline['mastodon'] ?? '') : $_dock_pixelfed_outline;
+                } else {
+                    $_fedi_svg = $_is_text ? ($_dock_platforms['mastodon']['svg'] ?? '') : $_dock_pixelfed_solid;
+                }
+                // First in the row — it's the site's own presence, not an external link.
+                array_unshift($_dock_links, [
+                    'url'   => rtrim(BASE_URL, '/') . '/' . rawurlencode($_fh),
+                    'label' => 'My fediverse page (@' . $_fh . '@' . $_fd . ')',
+                    'svg'   => $_fedi_svg,
+                ]);
+            }
+        }
     }
 }
 

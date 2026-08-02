@@ -666,8 +666,18 @@ automatically hidden.</p>
 </ul>
 
 <h4>Supported Platforms</h4>
-<p>Flickr, SmugMug, Instagram, Facebook, YouTube, 500px, Vero, Threads, Bluesky,
-LinkedIn, Pinterest, Tumblr, DeviantArt, Behance, and a generic Website link.</p>
+<p>Flickr, SmugMug, Instagram, Facebook, YouTube, 500px, Vero, Threads, Mastodon,
+Bluesky, LinkedIn, Pinterest, Tumblr, DeviantArt, Behance, and a generic Website link.</p>
+
+<h4>Show My Own Fediverse Page</h4>
+<p>Separate from the profile links above, this option adds an icon for <em>this
+site's own</em> fediverse presence, so visitors can follow you directly. It links to
+your public profile at your site address, which a fediverse app resolves to a
+follow button and a browser opens as your profile page.</p>
+<p>The icon matches your install type automatically — a <strong>Pixelfed</strong> icon on
+photoblog and carousel installs, a <strong>Mastodon</strong> icon on a SmackTalk (text)
+install. The option only works when <strong>SMACKVERSE federation is turned on</strong>;
+until then the checkbox is disabled.</p>
 HTML
 ];
 

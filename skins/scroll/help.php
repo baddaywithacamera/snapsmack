@@ -56,26 +56,5 @@ pages flow into the existing columns with no gap or jump. <strong>Wall Width (% 
 sizes the wall to the browser (any resolution), and <strong>Space Between Tiles</strong> is the gutter.</p>
 HTML
     ],
-    'skin-scroll-wall' => [
-        'section' => 'Active Skin: SCROLL',
-        'title' => 'Photo Wall',
-        'icon' => '&#x25A6;',
-        'content' => <<<'HTML'
-<h3>Photo Wall</h3>
-<p><strong>Photo Size / Wall Density</strong> changes the target row height.
-Smaller values fit more photographs across; larger values show fewer, larger
-photographs. SCROLL defaults to a dense, gapless 280-pixel wall—roughly
-one-and-a-half times the visible row scale of the Forever Photographing reference. The
-number per row adapts to the images and browser width.</p>
-<p><strong>Tile Spacing</strong> adds between zero and 25 pixels between
-photographs. Zero produces the uninterrupted wall.</p>
-<p>Corner radius, outside-border width and outside-border colour are independent
-controls. A border width of zero gives an unframed wall.</p>
-<p>The browse bar above the wall leads to the complete category, album and
-collection filter, or searches titles, descriptions, tags, colours, albums and
-categories. The same filter and search controls are available as icons at the
-right side of the masthead and in the sticky navigation.</p>
-HTML
-    ],
 ];
 // ===== SNAPSMACK EOF =====
