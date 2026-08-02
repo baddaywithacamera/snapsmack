@@ -1515,6 +1515,17 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
         'network_alert_receive', 'network_alert_send',
         'hub_controls_netalert',
         'network_alert_push_registered',
+        // Social dock: enable + appearance + profile URLs, pushed as one group
+        // from the hub's Network Settings Push (Social Dock).
+        'social_dock_enabled',
+        'social_dock_position', 'social_dock_color_light', 'social_dock_color_dark',
+        'social_dock_color_mode', 'social_dock_icon_style', 'social_dock_shadow', 'social_dock_opacity',
+        'social_dock_flickr', 'social_dock_smugmug', 'social_dock_instagram', 'social_dock_facebook',
+        'social_dock_youtube', 'social_dock_500px', 'social_dock_vero', 'social_dock_threads',
+        'social_dock_mastodon', 'social_dock_bluesky', 'social_dock_linkedin', 'social_dock_pinterest',
+        'social_dock_tumblr', 'social_dock_deviantart', 'social_dock_behance', 'social_dock_linktree',
+        'social_dock_website',
+        'hub_controls_socialdock',
     ];
 
     $pairs_raw = trim($_POST['settings'] ?? '');
