@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.24",
+    "version": "0.1.25",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -135,10 +135,21 @@
             "type": "select",
             "is_font": true,
             "font_source": "google",
-            "label": "Page Title Font",
-            "hint": "Static and photo page titles. Independent of the landing masthead font.",
+            "label": "Static & Blog Heading Font",
+            "hint": "Static/photo page titles AND blogroll section headings + names. Keep this sans-serif; set the body serif separately below. Independent of the masthead.",
             "default": "Archivo Black",
-            "selector": ".scroll-horizontal-title",
+            "selector": ".scroll-horizontal-title, .blogroll-category-heading, .blogroll-peer-name",
+            "property": "font-family"
+        },
+        "scroll_static_body_font": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "is_font": true,
+            "font_source": "google",
+            "label": "Static & Blog Body Font",
+            "hint": "Body/reading text on static pages and the blogroll — pick a serif here while the headings above stay sans-serif.",
+            "default": "DM Sans",
+            "selector": ".scroll-static-content .description, .blogroll-peer-desc",
             "property": "font-family"
         },
         "scroll_text_case": {

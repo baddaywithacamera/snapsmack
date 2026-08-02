@@ -567,6 +567,16 @@ body.is-photo-page #page-wrapper {
    landing header, and core injects it site-wide via footer-scripts. The
    like/reaction dock stays (that's solo functionality, same as 50-Shades). */
 body.is-photo-page .social-dock:not(.social-dock-inline) { display: none; }
+/* THE 50-Shades solo behaviour, verbatim: the system footer lives INSIDE the
+   scrolling stage, so if it's visible you can scroll the photo up to reach it.
+   Hide it on the solo page until a drawer (INFO/COMMENTS) is opened — then the
+   page is pinned to the viewport and nothing scrolls until you ask for it.
+   Measured: this removes exactly the 127px of overflow (79px footer + 48px
+   margin) that was letting the page scroll. Scoped to solo; other pages keep
+   their footer. */
+body.is-photo-page #system-footer { display: none; }
+body.is-photo-page #footer[style*="display: block"] ~ #system-footer,
+body.is-photo-page #footer[style*="display:block"]  ~ #system-footer { display: block; }
 /* Static & blog pages carry a thin divider level with where the landing photo
    wall begins. MEASURED on the live site: the header bottom sits at ~155px and
    the landing's first image row starts at ~195px, so the divider is 40px below
