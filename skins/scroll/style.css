@@ -538,19 +538,36 @@ a { color: inherit; }
 .scroll-infobox .nav-links .dim {
     opacity: .35;
 }
+/* Static & blog pages carry a thin divider level with where the landing photo
+   wall begins (88px below the shared header — measured), with EQUAL space above
+   and below the line before the content. Colour is the "Top Divider Line Colour"
+   control; set it near the background to hide it. Text width is a control too. */
 .scroll-static-content {
-    /* Text column width is an admin control (STATIC & BLOG → "Text Column Width"). */
     width: min(calc(100% - 40px), var(--scroll-static-width, 920px));
-    margin: 0 auto;
-    padding: clamp(32px, 6vw, 90px) 0;
+    margin: 88px auto 0;
+    border-top: 1px solid var(--scroll-page-divider, #999999);
+    padding: 88px 0 clamp(32px, 6vw, 90px);
 }
-/* Blogroll shares the STATIC & BLOG text-width control. SCROLL styles the core
-   .blogroll-canvas container so the blog page column is adjustable too. */
+/* Blogroll: SCROLL styles the core .blogroll-canvas so its width, divider and
+   entry spacing match the rest of the skin (they were core defaults before). */
 .blogroll-canvas {
     max-width: var(--scroll-static-width, 920px);
-    margin-left: auto;
-    margin-right: auto;
+    margin: 88px auto 0;
+    border-top: 1px solid var(--scroll-page-divider, #999999);
+    padding-top: 88px;
 }
+.blogroll-category-block { margin-bottom: 3rem; }
+.blogroll-category-block:last-child { margin-bottom: 0; }
+.blogroll-category-heading { margin: 0 0 1.5rem; }
+/* Grid gap is what separates entries — the columns and gap are admin controls
+   (STATIC & BLOG), with these fallbacks so entries never collapse together. */
+.blogroll-grid { display: grid; grid-template-columns: 1fr; gap: 44px; }
+.blogroll-peer { margin: 0; }
+.blogroll-peer-name { margin: 0 0 .4rem; }
+.blogroll-peer-desc { margin: 0; }
+/* URL hidden by default via the "Blogroll URLs" control (the name is the link);
+   when shown, it sits under the description, not jammed against the next entry. */
+.blogroll-peer-url { margin-top: .5rem; word-break: break-word; opacity: .6; }
 .scroll-static-content .post-image { max-width: 100%; height: auto; }
 .scroll-solo-stage > #footer {
     display: none;

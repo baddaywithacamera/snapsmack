@@ -314,6 +314,65 @@
             "property": "--scroll-static-width",
             "unit": "px"
         },
+        "scroll_page_divider": {
+            "section": "STATIC & BLOG",
+            "type": "color",
+            "label": "Top Divider Line Colour",
+            "hint": "Thin line across static and blog pages, level with where the landing photo wall begins. Set it close to the background colour to hide it.",
+            "default": "#999999",
+            "selector": ":root",
+            "property": "--scroll-page-divider"
+        },
+        "blogroll_columns": {
+            "section": "STATIC & BLOG",
+            "type": "select",
+            "label": "Blogroll Columns",
+            "default": "1fr",
+            "options": {
+                "1fr": "1 Column",
+                "1fr 1fr": "2 Columns",
+                "1fr 1fr 1fr": "3 Columns"
+            },
+            "selector": ".blogroll-grid",
+            "property": "grid-template-columns"
+        },
+        "blogroll_col_gap": {
+            "section": "STATIC & BLOG",
+            "type": "range",
+            "label": "Blogroll Gap (px)",
+            "hint": "Space between blogroll entries (and between columns).",
+            "default": "44",
+            "min": "16",
+            "max": "120",
+            "selector": ".blogroll-grid",
+            "property": "gap",
+            "unit": "px"
+        },
+        "blogroll_show_desc": {
+            "section": "STATIC & BLOG",
+            "type": "select",
+            "label": "Blogroll Descriptions",
+            "default": "block",
+            "options": {
+                "block": "Shown",
+                "none": "Hidden"
+            },
+            "selector": ".blogroll-peer-desc",
+            "property": "display"
+        },
+        "blogroll_show_url": {
+            "section": "STATIC & BLOG",
+            "type": "select",
+            "label": "Blogroll URLs",
+            "hint": "The blog name is already a link, so the raw URL is hidden by default.",
+            "default": "none",
+            "options": {
+                "none": "Hidden (name is the link)",
+                "block": "Shown"
+            },
+            "selector": ".blogroll-peer-url",
+            "property": "display"
+        },
         "scroll_background": {
             "section": "COLOURS",
             "type": "color",
