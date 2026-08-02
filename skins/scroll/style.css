@@ -347,6 +347,13 @@ a { color: inherit; }
     border-color: var(--dock-border-hover, rgba(26, 26, 26, .7));
 }
 .scroll-sticky-nav .ss-grid-nav-link svg { width: 20px; height: 20px; }
+/* The floating dock pops 1.1x on hover; inline in the nav that enlarged edge
+   icon gets clipped by the profile's overflow:hidden ("cut off on the right").
+   The nav chips don't scale, so neither should the inline dock — drop the pop. */
+.scroll-sticky-nav .social-dock-inline .dock-link:hover,
+.scroll-sticky-nav .social-dock-inline .dock-link:focus-visible {
+    transform: none;
+}
 
 .scroll-profile-compact {
     display: block;
