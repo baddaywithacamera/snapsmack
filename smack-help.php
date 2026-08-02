@@ -2455,6 +2455,10 @@ descriptions, and tags. Queries starting with <code>#</code> redirect straight t
 hashtag archive for that tag.</p>
 <p>When searching, matching tags appear as clickable chips above the results with post
 counts, making it easy to discover related content.</p>
+<p>On blogs with <strong>more than one photographer</strong>, the filter panel also shows a
+<strong>PHOTOGRAPHER</strong> group so visitors can narrow the archive to one contributor's
+photos (it combines with the category/album filters). Solo blogs never see it — it only
+appears once a second photographer has published work.</p>
 
 <h4>Calendar View</h4>
 <p>Skins that include <code>croppedwithcalendar</code> in their archive layouts show a

@@ -257,16 +257,18 @@ try {
     $filter_cats        = [];
     $filter_albums      = [];
     $filter_collections = [];
+    $filter_authors     = [];   // multi-author blogs: filter by photographer (usr:N)
 
     $raw_f = $_GET['f'] ?? [];
     if (is_array($raw_f)) {
         foreach ($raw_f as $token) {
-            if (preg_match('/^(cat|alb|col):(\d+)$/', trim($token), $m)) {
+            if (preg_match('/^(cat|alb|col|usr):(\d+)$/', trim($token), $m)) {
                 $id = (int)$m[2];
                 if ($id > 0) {
                     if ($m[1] === 'cat') $filter_cats[]        = $id;
                     if ($m[1] === 'alb') $filter_albums[]      = $id;
                     if ($m[1] === 'col') $filter_collections[] = $id;
+                    if ($m[1] === 'usr') $filter_authors[]     = $id;
                 }
             }
         }
@@ -274,8 +276,9 @@ try {
     // Legacy single-select backwards compat
     if (empty($filter_cats) && isset($_GET['cat']))     $filter_cats[]   = (int)$_GET['cat'];
     if (empty($filter_albums) && isset($_GET['album'])) $filter_albums[] = (int)$_GET['album'];
+    if (empty($filter_authors) && isset($_GET['author'])) $filter_authors[] = (int)$_GET['author'];
 
-    $active_filter_count = count($filter_cats) + count($filter_albums) + count($filter_collections);
+    $active_filter_count = count($filter_cats) + count($filter_albums) + count($filter_collections) + count($filter_authors);
 
     // Legacy vars for any skin templates that may reference them
     $cat_filter   = $filter_cats[0]   ?? null;
@@ -395,6 +398,12 @@ try {
             )";
             $params[] = $colid;
         }
+        // Author: photos by any of the selected photographers (OR within authors).
+        if ($filter_authors) {
+            $ph = implode(',', array_fill(0, count($filter_authors), '?'));
+            $where_clauses[] = "i.user_id IN ($ph)";
+            foreach ($filter_authors as $uid) { $params[] = $uid; }
+        }
     } else {
         // Unfiltered browse: exclude images that belong exclusively to hidden categories.
         // Images with no category (uncategorized) always show.
@@ -422,6 +431,17 @@ try {
     $all_cats        = $pdo->query("SELECT id, cat_name FROM snap_categories WHERE show_in_archive = 1 ORDER BY cat_name ASC")->fetchAll();
     $all_albums      = $pdo->query("SELECT id, album_name FROM snap_albums ORDER BY album_name ASC")->fetchAll();
     $all_collections = $pdo->query("SELECT id, title FROM snap_collections ORDER BY title ASC")->fetchAll();
+    // Photographers who actually have published photos. Only surfaced as a filter
+    // when the blog genuinely has more than one — a solo blog shows no author group.
+    $all_authors     = $pdo->query("
+        SELECT u.id, u.username
+        FROM snap_users u
+        WHERE EXISTS (
+            SELECT 1 FROM snap_images i2
+            WHERE i2.user_id = u.id AND i2.img_status = 'published'
+        )
+        ORDER BY u.username ASC
+    ")->fetchAll();
 
     // --- ARCHIVE HEADING (core-wide) ---
     // When the archive is showing exactly ONE taxonomy (a single album, category,
@@ -457,6 +477,10 @@ try {
         } elseif (count($filter_collections) === 1) {
             foreach ($all_collections as $_col) {
                 if ((int)$_col['id'] === (int)$filter_collections[0]) { $archive_heading = (string)$_col['title']; $archive_heading_kind = 'collection'; break; }
+            }
+        } elseif (count($filter_authors) === 1) {
+            foreach ($all_authors as $_au) {
+                if ((int)$_au['id'] === (int)$filter_authors[0]) { $archive_heading = (string)$_au['username']; $archive_heading_kind = 'author'; break; }
             }
         }
     }
@@ -572,6 +596,20 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                                            data-type="col" value="<?php echo (int)$col['id']; ?>"
                                            <?php echo in_array((int)$col['id'], $filter_collections) ? 'checked' : ''; ?>>
                                     <span class="saf-label"><?php echo htmlspecialchars(strtoupper($col['title'])); ?></span>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if (count($all_authors) > 1): /* multi-author blogs only */ ?>
+                            <div class="saf-group">
+                                <div class="saf-group-header">PHOTOGRAPHER</div>
+                                <?php foreach ($all_authors as $au): ?>
+                                <label class="saf-item">
+                                    <input type="checkbox" class="saf-checkbox"
+                                           data-type="usr" value="<?php echo (int)$au['id']; ?>"
+                                           <?php echo in_array((int)$au['id'], $filter_authors) ? 'checked' : ''; ?>>
+                                    <span class="saf-label"><?php echo htmlspecialchars(strtoupper($au['username'])); ?></span>
                                 </label>
                                 <?php endforeach; ?>
                             </div>
