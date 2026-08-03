@@ -222,7 +222,10 @@ a { color: inherit; }
     align-items: center;
     z-index: 9000;
     display: flex;
-    padding: 8px clamp(16px, 4vw, 64px);
+    /* Bar background is full-bleed, but its CONTENT insets to the wall's edges so
+       the name (left) and icons (right) line up with the photo grid's outer edges.
+       Inset = half the leftover once the wall takes its --scroll-canvas-pct width. */
+    padding: 8px calc((100% - var(--scroll-canvas-pct, 90%)) / 2);
     color: inherit;
     background: rgba(255, 255, 255, var(--scroll-nav-alpha, .94));
     border-bottom: 1px solid rgba(0, 0, 0, .18);
@@ -622,7 +625,7 @@ body.is-photo-page:has(.scroll-solo-stage) #page-wrapper {
     gap: 40px;
     margin: 0 auto;
     padding: 0;
-    font-size: .75rem;
+    font-size: var(--scroll-bottomnav-size, .75rem);
     letter-spacing: .08em;
     text-transform: uppercase;
 }

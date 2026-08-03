@@ -12,6 +12,22 @@
 
 ## Unreleased
 
+## SCROLL 0.1.29 — 2026-08-02
+
+- **Sticky bar aligns to the wall edges.** The scrolled sticky bar was full-bleed while
+  the photo wall is 90%-centred, so the blog name (left) and icons (right) sat outside
+  the grid. Bar background stays full-width; its content now insets to the wall's outer
+  edges (`calc((100% - --scroll-canvas-pct)/2)`). Verified live: both edges delta 0.
+- **Solo page site name now uses the masthead font.** `.scroll-horizontal-title` was not
+  in the Masthead Font control's selector, so the solo title fell back to bold sans;
+  added it.
+- **New "Bottom Nav Font Size" control (SOLO PAGE).** Sizes the PREV / FIRST · INFO /
+  COMMENTS · LAST / NEXT row under the solo photo (`--scroll-bottomnav-size`, default
+  0.75rem). Previously not adjustable.
+- Known/remaining: the solo page header still carries only a 3-icon nav and no social dock,
+  and its layout doesn't yet match the sticky bar. That header rebuild is tracked
+  separately (visual-architecture work).
+
 ## SCROLL 0.1.28 — 2026-08-02
 
 - **Optional masthead logo.** New MASTHEAD controls "Masthead Logo (replaces the title
