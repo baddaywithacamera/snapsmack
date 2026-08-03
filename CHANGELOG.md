@@ -12,6 +12,16 @@
 
 ## Unreleased
 
+## 0.7.481 "Back to the Photograph" — 2026-08-02
+
+- **Restored the original MOSAIC compositor and made only two bounded
+  adjustments.** Portrait hero-plus-stack sections remain unchanged when they
+  fit, but an over-900px trio falls back to the original uncropped row layout.
+  Alternating landscape-led trios may use the same hero-plus-stack treatment
+  when it fits below 900px. Both paths retain source aspect ratios, eliminating
+  the severe cover crop introduced by the discarded fixed-ratio experiment and
+  remaining safely inside MOSAIC's 15% maximum-crop rule.
+
 ## 0.7.480 "No Introduction Necessary" — 2026-08-02
 
 - **The full-library MOSAIC feed now begins exactly where SCROLL's landing wall

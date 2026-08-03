@@ -74,6 +74,24 @@ test('portrait-led four-image section spans a three-image stack', () => {
     assert.ok(layout.items[1].y < layout.items[2].y && layout.items[2].y < layout.items[3].y);
 });
 
+test('an over-height portrait trio falls back to an uncropped row below 900px', () => {
+    const images = [
+        { width: 500, height: 1800 },
+        { width: 900, height: 700 },
+        { width: 1000, height: 700 }
+    ];
+    const layout = engine.computeLayout(images, 1600, 6);
+
+    assertCleanGeometry(layout, 1600);
+    assert.ok(layout.height <= 900.02);
+    layout.items.forEach((item, index) => {
+        const sourceAR = images[index].width / images[index].height;
+        const cellAR = item.width / item.height;
+        const retained = Math.min(cellAR / sourceAR, sourceAR / cellAR);
+        assert.ok(retained >= 0.85, `tile ${index} retains at least 85%`);
+    });
+});
+
 test('landscape-led block mixes a two-column span with a two-row span', () => {
     const layout = engine.computeLayout([
         { width: 1500, height: 800 },
@@ -97,38 +115,6 @@ test('landscape-led block mixes a two-column span with a two-row span', () => {
     assert.ok(Math.abs(acrossRows.height - layout.height) < 0.02);
     assert.ok(lowerLeft.y > acrossColumns.y);
     assert.ok(lowerRight.y > acrossColumns.y);
-});
-
-test('landscape-led three-image section gives the landscape a large hero cell without narrowing the canvas', () => {
-    const layout = engine.computeLayout([
-        { width: 1600, height: 800 },
-        { width: 700, height: 1000 },
-        { width: 900, height: 900 }
-    ], 900, 6);
-
-    assertCleanGeometry(layout, 900);
-    assert.equal(layout.items[0].y, 0);
-    assert.ok(layout.items[0].width > layout.items[1].width);
-    assert.ok(layout.items[0].width <= 900);
-    assert.equal(layout.items[1].y, 0);
-    assert.ok(layout.items[2].y > layout.items[1].y);
-    assert.ok(Math.abs(layout.sections[0].width - 900) < 0.02);
-});
-
-test('desktop tiles never exceed 900px or their source pixel dimensions', () => {
-    const images = [
-        { width: 700, height: 1600 },
-        { width: 1800, height: 700 },
-        { width: 1200, height: 800 }
-    ];
-    const layout = engine.computeLayout(images, 1600, 6);
-
-    assertCleanGeometry(layout, 1600);
-    layout.items.forEach((item, index) => {
-        assert.ok(item.width <= Math.min(900, images[index].width) + 0.02);
-        assert.ok(item.height <= Math.min(900, images[index].height) + 0.02);
-    });
-    assert.ok(layout.sections[0].width > 1500, 'large source files preserve the wide canvas');
 });
 
 test('five-image layout ends with a full-width image', () => {

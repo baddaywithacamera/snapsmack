@@ -17,7 +17,7 @@
     'use strict';
 
     var MOBILE_BREAKPOINT = 520;
-    var MAX_TILE_DIMENSION = 900;
+    var MAX_SECTION_HEIGHT = 900;
     var mosaicContainers = [];
     var resizeBound = false;
 
@@ -46,13 +46,21 @@
      * mixed-span quilt: image one crosses two columns, image two crosses two
      * rows, and the remaining pair occupy unequal cells beneath image one.
      */
-    function buildSection(images) {
+    function buildSection(images, preferLandscapeHero) {
         var cells = images.map(function (image, index) { return leaf(image, index); });
 
         if (cells.length === 1) return cells[0];
         if (cells.length === 2) return group('horizontal', cells);
 
-        if (cells.length === 3) return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
+        if (cells.length === 3) {
+            if (cells[0].ar < 1.15) {
+                return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
+            }
+            if (preferLandscapeHero) {
+                return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
+            }
+            return group('horizontal', cells);
+        }
 
         if (cells[0].ar < 1.15) {
             return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
@@ -134,44 +142,6 @@
         return height;
     }
 
-    function tileLimit(image, dimension) {
-        var source = Number(image[dimension]) || MAX_TILE_DIMENSION;
-        return Math.max(1, Math.min(MAX_TILE_DIMENSION, source));
-    }
-
-    function placeThreeSection(images, y, containerWidth, gap, output) {
-        var hero = images[0];
-        var supportWidthLimit = Math.min(
-            tileLimit(images[1], 'width'),
-            tileLimit(images[2], 'width')
-        );
-        var heroWidthLimit = tileLimit(hero, 'width');
-        var usableWidth = Math.min(containerWidth, heroWidthLimit + supportWidthLimit + gap);
-        var sectionX = (containerWidth - usableWidth) / 2;
-        var desiredHeroShare = hero.width / hero.height >= 1.15 ? 0.55 : 0.42;
-        var heroWidth = Math.min(heroWidthLimit, usableWidth * desiredHeroShare);
-        var supportWidth = usableWidth - heroWidth - gap;
-
-        if (supportWidth > supportWidthLimit) {
-            supportWidth = supportWidthLimit;
-            heroWidth = usableWidth - supportWidth - gap;
-        }
-        if (heroWidth > heroWidthLimit) {
-            heroWidth = heroWidthLimit;
-            supportWidth = usableWidth - heroWidth - gap;
-        }
-
-        var naturalHeroHeight = heroWidth / imageAR(hero);
-        var sectionHeight = Math.min(MAX_TILE_DIMENSION, tileLimit(hero, 'height'), naturalHeroHeight);
-        var supportHeight = (sectionHeight - gap) / 2;
-
-        output.push({ image: hero, order: 0, x: sectionX, y: y, width: heroWidth, height: sectionHeight });
-        output.push({ image: images[1], order: 1, x: sectionX + heroWidth + gap, y: y, width: supportWidth, height: supportHeight });
-        output.push({ image: images[2], order: 2, x: sectionX + heroWidth + gap, y: y + supportHeight + gap, width: supportWidth, height: supportHeight });
-
-        return { x: sectionX, width: usableWidth, height: sectionHeight };
-    }
-
     function computeLayout(images, containerWidth, gap) {
         gap = Math.max(0, Math.min(20, Number(gap) || 0));
         containerWidth = Math.max(0, Number(containerWidth) || 0);
@@ -186,36 +156,37 @@
 
         if (containerWidth <= MOBILE_BREAKPOINT) {
             images.forEach(function (image) {
-                var itemWidth = Math.min(containerWidth, tileLimit(image, 'width'), tileLimit(image, 'height') * imageAR(image));
-                var height = itemWidth / imageAR(image);
-                var itemX = (containerWidth - itemWidth) / 2;
-                items.push({ image: image, x: itemX, y: y, width: itemWidth, height: height });
-                sections.push({ x: itemX, y: y, width: itemWidth, height: height });
+                var height = containerWidth / imageAR(image);
+                items.push({ image: image, x: 0, y: y, width: containerWidth, height: height });
+                sections.push({ x: 0, y: y, width: containerWidth, height: height });
                 y += height + gap;
             });
         } else {
+            var sectionNumber = 0;
             while (index < images.length) {
                 var count = sectionSize(images.length - index);
                 var sectionImages = images.slice(index, index + count);
+                var preferLandscapeHero = sectionNumber % 2 === 1 && imageAR(sectionImages[0]) >= 1.15;
+                var tree = buildSection(sectionImages, preferLandscapeHero);
                 var sectionItems = [];
-                var sectionX = 0;
-                var sectionWidth = containerWidth;
-                var sectionHeight;
+                var sectionHeight = placeNode(tree, 0, y, containerWidth, gap, sectionItems);
 
-                if (count === 3) {
-                    var placed = placeThreeSection(sectionImages, y, containerWidth, gap, sectionItems);
-                    sectionX = placed.x;
-                    sectionWidth = placed.width;
-                    sectionHeight = placed.height;
-                } else {
-                    var tree = buildSection(sectionImages);
+                // Keep the first-draft hero composition whenever it fits a FullHD
+                // viewport. If it does not, use the original uncropped row for this
+                // trio rather than flattening or cover-cropping the photographs.
+                if (count === 3 && sectionHeight > MAX_SECTION_HEIGHT) {
+                    tree = group('horizontal', sectionImages.map(function (image, order) {
+                        return leaf(image, order);
+                    }));
+                    sectionItems = [];
                     sectionHeight = placeNode(tree, 0, y, containerWidth, gap, sectionItems);
                 }
                 sectionItems.sort(function (a, b) { return a.order - b.order; });
                 Array.prototype.push.apply(items, sectionItems);
-                sections.push({ x: sectionX, y: y, width: sectionWidth, height: sectionHeight });
+                sections.push({ x: 0, y: y, width: containerWidth, height: sectionHeight });
                 y += sectionHeight + gap;
                 index += count;
+                sectionNumber++;
             }
         }
 
