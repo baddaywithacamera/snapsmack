@@ -646,11 +646,14 @@ body.is-photo-page:has(.scroll-solo-stage) #page-wrapper {
 }
 .scroll-solo-header {
     display: flex;
-    flex: 0 0 80px;
+    flex: 0 0 var(--scroll-solo-header-h, 80px);
     align-items: center;
     width: 100%;
     color: inherit;
     background: inherit;
+    /* Solo header has its OWN chrome (admin: SOLO HEADER) — height, background, and an
+       optional bottom border, all independent of the landing sticky bar. */
+    border-bottom: var(--scroll-solo-header-border-w, 0) solid var(--scroll-solo-header-border-c, transparent);
 }
 .scroll-solo-header-inside {
     display: flex;
@@ -711,16 +714,24 @@ body.is-photo-page:has(.scroll-solo-stage) #page-wrapper {
     width: auto;
     height: auto;
     cursor: zoom-in;
+    /* Solo image treatment (admin: SOLO IMAGE) — pick your own border width/colour and
+       rounded corners here; the Image Treatment select layers shadow/glow/double-line
+       on top via box-shadow (it references --scroll-solo-img-border-c so they match). */
+    border: var(--scroll-solo-img-border-w, 0) solid var(--scroll-solo-img-border-c, transparent);
+    border-radius: var(--scroll-solo-img-radius, 0);
 }
 .scroll-infobox {
     display: flex;
-    flex: 0 0 60px;
+    flex: 0 0 var(--scroll-infobox-h, 60px);
     align-items: center;
     justify-content: center;
     width: 100%;
-    /* No line above the nav — SCROLL stays minimal. The only rule on the solo
-       page is the one above the footer drawer (see #footer below). */
     background: inherit;
+    /* Solo nav bar has its OWN chrome (admin: SOLO NAV) — height, background, and
+       optional top/bottom borders (shared colour). Off by default so SCROLL stays
+       minimal until the owner turns them on. */
+    border-top: var(--scroll-infobox-top-w, 0) solid var(--scroll-infobox-border-c, transparent);
+    border-bottom: var(--scroll-infobox-bottom-w, 0) solid var(--scroll-infobox-border-c, transparent);
 }
 /* Bottom nav (PREV/FIRST · INFO/COMMENTS · LAST/NEXT) sits as a single centred
    cluster with even gaps between the three groups — the 50-Shades treatment. */

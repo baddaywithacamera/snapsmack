@@ -398,6 +398,195 @@
             "selector": ".scroll-solo-nav .ss-grid-nav-name",
             "property": "font-family"
         },
+        "scroll_solo_header_bg": {
+            "section": "SOLO HEADER",
+            "admin_page": "solo",
+            "type": "color",
+            "label": "Header Background",
+            "hint": "Background of the solo photo page's own header bar (independent of the landing sticky bar).",
+            "default": "#ffffff",
+            "selector": ".scroll-solo-header",
+            "property": "background-color"
+        },
+        "scroll_solo_header_height": {
+            "section": "SOLO HEADER",
+            "admin_page": "solo",
+            "type": "range",
+            "label": "Header Height (px)",
+            "default": "80",
+            "min": "48",
+            "max": "160",
+            "step": "2",
+            "selector": ":root",
+            "property": "--scroll-solo-header-h",
+            "unit": "px"
+        },
+        "scroll_solo_header_border_w": {
+            "section": "SOLO HEADER",
+            "admin_page": "solo",
+            "type": "range",
+            "label": "Header Bottom Border (px)",
+            "default": "0",
+            "min": "0",
+            "max": "8",
+            "selector": ":root",
+            "property": "--scroll-solo-header-border-w",
+            "unit": "px"
+        },
+        "scroll_solo_header_border_c": {
+            "section": "SOLO HEADER",
+            "admin_page": "solo",
+            "type": "color",
+            "label": "Header Border Colour",
+            "default": "#dddddd",
+            "selector": ":root",
+            "property": "--scroll-solo-header-border-c"
+        },
+        "scroll_solo_name_color": {
+            "section": "SOLO HEADER",
+            "admin_page": "solo",
+            "type": "color",
+            "label": "Blog Name Colour",
+            "default": "#1a1a1a",
+            "selector": ".scroll-solo-nav .ss-grid-nav-name",
+            "property": "color"
+        },
+        "scroll_solo_name_weight": {
+            "section": "SOLO HEADER",
+            "admin_page": "solo",
+            "type": "select",
+            "label": "Blog Name Weight",
+            "default": "400",
+            "options": {
+                "300": "Light (300)",
+                "400": "Regular (400)",
+                "500": "Medium (500)",
+                "600": "Semi-Bold (600)",
+                "700": "Bold (700)",
+                "900": "Black (900)"
+            },
+            "selector": ".scroll-solo-nav .ss-grid-nav-name",
+            "property": "font-weight"
+        },
+        "scroll_solo_img_border_w": {
+            "section": "SOLO IMAGE",
+            "admin_page": "solo",
+            "type": "range",
+            "label": "Image Border Width (px)",
+            "default": "0",
+            "min": "0",
+            "max": "30",
+            "selector": ":root",
+            "property": "--scroll-solo-img-border-w",
+            "unit": "px"
+        },
+        "scroll_solo_img_border_c": {
+            "section": "SOLO IMAGE",
+            "admin_page": "solo",
+            "type": "color",
+            "label": "Image Border / Glow Colour",
+            "hint": "Colour of the image border. Also drives the Outer Glow and Double-Line treatments so they match.",
+            "default": "#ffffff",
+            "selector": ":root",
+            "property": "--scroll-solo-img-border-c"
+        },
+        "scroll_solo_img_radius": {
+            "section": "SOLO IMAGE",
+            "admin_page": "solo",
+            "type": "range",
+            "label": "Image Rounded Corners (px)",
+            "default": "0",
+            "min": "0",
+            "max": "40",
+            "selector": ":root",
+            "property": "--scroll-solo-img-radius",
+            "unit": "px"
+        },
+        "scroll_solo_img_frame": {
+            "section": "SOLO IMAGE",
+            "admin_page": "solo",
+            "type": "select",
+            "label": "Image Treatment",
+            "hint": "Layered effects on the photo. Shadow / Glow / Double-Line stack on top of the border + corners above; Glow and Double-Line use your Image Border colour.",
+            "default": "none",
+            "selector": ".scroll-image",
+            "property": "custom-framing",
+            "options": {
+                "none":   { "label": "None", "css": "{ box-shadow: none; }" },
+                "soft":   { "label": "Soft Shadow", "css": "{ box-shadow: 0 4px 24px rgba(0,0,0,.35), 0 1px 6px rgba(0,0,0,.2); }" },
+                "heavy":  { "label": "Heavy Shadow", "css": "{ box-shadow: 0 8px 40px rgba(0,0,0,.55), 0 2px 10px rgba(0,0,0,.3); }" },
+                "glow":   { "label": "Outer Glow (border colour)", "css": "{ box-shadow: 0 0 26px 6px var(--scroll-solo-img-border-c, rgba(255,255,255,.7)); }" },
+                "double": { "label": "Double Line (mat + border colour)", "css": "{ box-shadow: 0 0 0 12px var(--scroll-bg, #ffffff), 0 0 0 14px var(--scroll-solo-img-border-c, #1a1a1a); }" }
+            }
+        },
+        "scroll_infobox_height": {
+            "section": "SOLO NAV",
+            "admin_page": "solo",
+            "type": "range",
+            "label": "Nav Bar Height (px)",
+            "default": "60",
+            "min": "40",
+            "max": "140",
+            "step": "2",
+            "selector": ":root",
+            "property": "--scroll-infobox-h",
+            "unit": "px"
+        },
+        "scroll_infobox_top_w": {
+            "section": "SOLO NAV",
+            "admin_page": "solo",
+            "type": "range",
+            "label": "Nav Top Border (px)",
+            "default": "0",
+            "min": "0",
+            "max": "6",
+            "selector": ":root",
+            "property": "--scroll-infobox-top-w",
+            "unit": "px"
+        },
+        "scroll_infobox_bottom_w": {
+            "section": "SOLO NAV",
+            "admin_page": "solo",
+            "type": "range",
+            "label": "Nav Bottom Border (px)",
+            "default": "0",
+            "min": "0",
+            "max": "6",
+            "selector": ":root",
+            "property": "--scroll-infobox-bottom-w",
+            "unit": "px"
+        },
+        "scroll_infobox_border_c": {
+            "section": "SOLO NAV",
+            "admin_page": "solo",
+            "type": "color",
+            "label": "Nav Border Colour (top & bottom)",
+            "default": "#cccccc",
+            "selector": ":root",
+            "property": "--scroll-infobox-border-c"
+        },
+        "scroll_infobox_nav_font": {
+            "section": "SOLO NAV",
+            "admin_page": "solo",
+            "type": "select",
+            "is_font": true,
+            "font_source": "google",
+            "no_size_slider": true,
+            "label": "Nav Font",
+            "hint": "Font for the PREV / FIRST · INFO / COMMENTS · LAST / NEXT row. Leave as the first option to inherit the body font.",
+            "default": "",
+            "selector": ".scroll-infobox .nav-links",
+            "property": "font-family"
+        },
+        "scroll_infobox_nav_color": {
+            "section": "SOLO NAV",
+            "admin_page": "solo",
+            "type": "color",
+            "label": "Nav Text Colour",
+            "default": "#1a1a1a",
+            "selector": ".scroll-infobox .nav-links, .scroll-infobox .nav-links a",
+            "property": "color"
+        },
         "scroll_static_width": {
             "section": "STATIC & BLOG",
             "type": "range",
