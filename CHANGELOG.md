@@ -12,6 +12,22 @@
 
 ## Unreleased
 
+## SCROLL 0.1.26 — 2026-08-02
+
+- **SCROLL: fix landing freeze (regression from the 0.1.25 solo-page rework).** The
+  solo page's viewport lock (`body.is-photo-page { height:100dvh; overflow:hidden }`)
+  and its footer-hide were keyed on `body.is-photo-page` — but `index.php` renders the
+  LANDING under that same class. The landing therefore got viewport-locked with no
+  scroller, so the infinite-scroll sentinel stayed permanently in view and the wall
+  fetched pages forever, hanging the browser (no scrollbar, no resize/page-up/down;
+  triggered when a control change recompiled the skin CSS, e.g. Columns Across). Both
+  rules are now gated on `:has(.scroll-solo-stage)` — a marker only the solo page
+  (`layout.php`) emits, never the landing — so the landing scrolls normally and shows
+  its footer again while the solo page keeps its lightbox lock.
+- **SCROLL: "Columns Across" and "Images Loaded Per Scroll" no longer read "PX".** Both
+  are counts; the admin range renderer defaults an unlabelled control to `px`. Set an
+  explicit empty `unit` on both so the value shows plainly (e.g. "4", not "4PX").
+
 ## 0.7.474 "Triage" — 2026-08-02
 
 - **SCROLL 0.1.25: divider aligned to the landing image row, solo page matches 50-Shades, hero spacing + serif body controls, landing filter modal.** The next version after the deployed 0.1.24. Everything since 0.1.24:

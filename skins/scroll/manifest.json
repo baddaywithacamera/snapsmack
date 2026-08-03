@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.25",
+    "version": "0.1.26",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -213,7 +213,8 @@
             "max": "6",
             "step": "1",
             "selector": ".ss-masonry",
-            "property": "--ss-cols"
+            "property": "--ss-cols",
+            "unit": ""
         },
         "scroll_canvas_pct": {
             "section": "PHOTO WALL",
@@ -246,7 +247,8 @@
             "default": "36",
             "min": "12",
             "max": "60",
-            "step": "6"
+            "step": "6",
+            "unit": ""
         },
         "scroll_mosaic_gap": {
             "section": "PHOTO WALL",
