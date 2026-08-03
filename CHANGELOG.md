@@ -65,6 +65,15 @@
   { position: static }` rule never matched and the dock kept its default `position:
   fixed`. Added the class; the dock now goes inline exactly like the landing. Verified
   live: dock computes to `static` and sits in the header.
+- **Fix: solo header lost its side margins and icon spacing (bespoke divergence).** The
+  solo nav had drifted into a bespoke layout and the core grid-nav engine was pinning it
+  `profile-hidden` (position:fixed, full-bleed), so the name hit the left edge and icons
+  the right. Now REUSES the landing bar: nav carries `ss-grid-nav-always-visible` (the
+  engine's permanent-bar mode, same as the landing treatment) with one solo-only override
+  keeping it in-flow (`position: static`), and `.scroll-solo-header-inside` uses the wall's
+  own `--scroll-canvas-pct` (90%) width — so the header lines up with the same edges as the
+  landing and the wall. Verified live: name aligns to the left inset, icons to the right,
+  chips and inline dock intact.
 
 ## SCROLL 0.1.29 — 2026-08-02
 
