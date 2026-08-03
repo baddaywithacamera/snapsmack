@@ -118,28 +118,21 @@ test('landscape-led block mixes a two-column span with a two-row span', () => {
     assert.ok(lowerRight.y > acrossColumns.y);
 });
 
-test('landscape hero promotion is occasional rather than every eligible section', () => {
-    const base = [
+test('admin emphasis chooses the eligible hero orientation', () => {
+    const images = [
         { id: 1, width: 700, height: 1100 },
         { id: 2, width: 900, height: 700 },
-        { id: 4, width: 800, height: 900 }
-    ];
-    const promoted = engine.computeLayout(base.concat([
+        { id: 4, width: 800, height: 900 },
+        { id: 5, width: 700, height: 1100 },
         { id: 6, width: 1500, height: 800 },
-        { id: 7, width: 700, height: 1100 },
         { id: 8, width: 900, height: 700 }
-    ]), 1000, 6);
-    const ordinary = engine.computeLayout(base.concat([
-        { id: 5, width: 1500, height: 800 },
-        { id: 7, width: 700, height: 1100 },
-        { id: 8, width: 900, height: 700 }
-    ]), 1000, 6);
+    ];
+    const landscape = engine.computeLayout(images, 1000, 6, 'landscape');
+    const portrait = engine.computeLayout(images, 1000, 6, 'portrait');
 
-    assert.ok(promoted.items[3].width > promoted.items[4].width, 'selected landscape receives hero width');
-    assert.ok(promoted.items[5].y > promoted.sections[1].y, 'promoted landscape sits beside a stack');
-    assert.equal(ordinary.items[3].y, ordinary.sections[1].y);
-    assert.equal(ordinary.items[4].y, ordinary.sections[1].y);
-    assert.equal(ordinary.items[5].y, ordinary.sections[1].y);
+    assert.equal(landscape.items[3].image.id, 6, 'landscape-forward promotes the available landscape');
+    assert.ok(landscape.items[5].y > landscape.sections[1].y, 'landscape hero sits beside a stack');
+    assert.equal(portrait.items[3].image.id, 5, 'portrait-forward preserves the available portrait hero');
 });
 
 test('five-image layout ends with a full-width image', () => {

@@ -170,9 +170,30 @@
         return { x: sectionX, width: scaledWidth, height: MAX_SECTION_HEIGHT };
     }
 
-    function computeLayout(images, containerWidth, gap) {
+    function heroOrientation(mode, sectionNumber, sectionImages) {
+        var leadId = Number(sectionImages[0].id) || sectionNumber;
+        var bucket = Math.abs(leadId) % 3;
+        if (mode === 'balanced') return sectionNumber % 2 === 0 ? 'portrait' : 'landscape';
+        if (mode === 'landscape') return bucket === 0 ? 'portrait' : 'landscape';
+        if (mode === 'portrait') return bucket === 0 ? 'landscape' : 'portrait';
+        return '';
+    }
+
+    function promoteOrientation(images, orientation) {
+        if (!orientation) return images;
+        var wantedPortrait = orientation === 'portrait';
+        var promoted = images.slice();
+        var at = promoted.findIndex(function (image) {
+            return (imageAR(image) < 1.15) === wantedPortrait;
+        });
+        if (at > 0) promoted.unshift(promoted.splice(at, 1)[0]);
+        return promoted;
+    }
+
+    function computeLayout(images, containerWidth, gap, emphasis) {
         gap = Math.max(0, Math.min(20, Number(gap) || 0));
         containerWidth = Math.max(0, Number(containerWidth) || 0);
+        emphasis = ['natural', 'balanced', 'landscape', 'portrait'].indexOf(emphasis) >= 0 ? emphasis : 'natural';
         if (!images || images.length === 0 || containerWidth === 0) {
             return { items: [], sections: [], height: 0 };
         }
@@ -194,9 +215,9 @@
             while (index < images.length) {
                 var count = sectionSize(images.length - index);
                 var sectionImages = images.slice(index, index + count);
-                var leadId = Number(sectionImages[0].id) || 0;
-                var preferLandscapeHero = sectionNumber % 2 === 1 &&
-                    imageAR(sectionImages[0]) >= 1.15 && leadId % 3 === 0;
+                var desiredHero = heroOrientation(emphasis, sectionNumber, sectionImages);
+                sectionImages = promoteOrientation(sectionImages, desiredHero);
+                var preferLandscapeHero = desiredHero === 'landscape' && imageAR(sectionImages[0]) >= 1.15;
                 var tree = buildSection(sectionImages, preferLandscapeHero);
                 var sectionItems = [];
                 var sectionHeight = placeNode(tree, 0, y, containerWidth, gap, sectionItems);
@@ -232,10 +253,11 @@
         }
 
         var gap = parseInt(container.getAttribute('data-gap') || '4', 10);
+        var emphasis = container.getAttribute('data-emphasis') || 'natural';
         var width = container.clientWidth || container.offsetWidth;
         if (width <= 0) return;
 
-        var layout = computeLayout(images, width, gap);
+        var layout = computeLayout(images, width, gap, emphasis);
         var fragment = document.createDocumentFragment();
 
         layout.items.forEach(function (tile) {

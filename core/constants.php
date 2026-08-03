@@ -68,9 +68,9 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.482');
-define('SNAPSMACK_VERSION_SHORT', '0.7.482');
-define('SNAPSMACK_VERSION_CODENAME', 'Portraits Are People Too');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.483');
+define('SNAPSMACK_VERSION_SHORT', '0.7.483');
+define('SNAPSMACK_VERSION_CODENAME', 'Your Wall Your Bias');
 
 // --- THUMBNAIL DIMENSIONS (single source of truth) ---
 // Every display-thumbnail generator reads these so the a_ (aspect) and t_

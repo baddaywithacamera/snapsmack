@@ -20,6 +20,7 @@
     var hasMore = sentinel.getAttribute('data-has-more') === '1';
     var cutoff = sentinel.getAttribute('data-cutoff') || '';
     var gap = parseInt(feed.getAttribute('data-gap') || '6', 10);
+    var emphasis = feed.getAttribute('data-emphasis') || 'natural';
     var loading = false;
     var observer = null;
 
@@ -57,6 +58,7 @@
                 block.className = 'snap-mosaic eatmeclaude-block';
                 block.setAttribute('data-mosaic', JSON.stringify(data.images));
                 block.setAttribute('data-gap', String(gap));
+                block.setAttribute('data-emphasis', emphasis);
                 feed.appendChild(block);
                 prepare(block);
 
