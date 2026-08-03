@@ -532,7 +532,55 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-        } // end dock picker
+        } // end dock picker (inert once reactions are removed — see below)
+
+        // --- HEART-ONLY LIKE FAB (reactions removed; Fediverse-standard heart) ---
+        // With reactions gone, community-dock.php renders no picker/react-trigger, so
+        // the block above never runs. Wire the single heart FAB (.ss-cdock-heart)
+        // straight to the existing like path (process-like.php / snap_likes).
+        if (dockHeartBtn && !dockPicker) {
+            const setDockCount = (count) => {
+                let el = dockHeartBtn.querySelector('.ss-cdock-rx-count');
+                if (!el && count > 0) {
+                    el = document.createElement('span');
+                    el.className = 'ss-cdock-rx-count';
+                    dockHeartBtn.appendChild(el);
+                }
+                if (el) { if (count > 0) { el.textContent = count; } else { el.remove(); } }
+            };
+            dockHeartBtn.addEventListener('click', () => {
+                const wasLiked  = dockHeartBtn.dataset.liked === '1';
+                const cEl       = dockHeartBtn.querySelector('.ss-cdock-rx-count');
+                const prevCount = cEl ? (parseInt(cEl.textContent, 10) || 0) : 0;
+                const nowLiked  = !wasLiked;
+                // Optimistic
+                dockHeartBtn.dataset.liked = nowLiked ? '1' : '0';
+                dockHeartBtn.classList.toggle('is-active', nowLiked);
+                dockHeartBtn.setAttribute('aria-pressed', String(nowLiked));
+                dockHeartBtn.title = nowLiked ? 'Unlike' : 'Like';
+                post('/process-like.php', { post_id: dockPostId })
+                    .then(data => {
+                        if (data.error) {
+                            dockHeartBtn.dataset.liked = wasLiked ? '1' : '0';
+                            dockHeartBtn.classList.toggle('is-active', wasLiked);
+                            dockHeartBtn.setAttribute('aria-pressed', String(wasLiked));
+                            setDockCount(prevCount);
+                        } else {
+                            dockHeartBtn.dataset.liked = data.liked ? '1' : '0';
+                            dockHeartBtn.classList.toggle('is-active', !!data.liked);
+                            dockHeartBtn.setAttribute('aria-pressed', String(!!data.liked));
+                            dockHeartBtn.title = data.liked ? 'Unlike' : 'Like';
+                            setDockCount(data.count);
+                        }
+                    })
+                    .catch(() => {
+                        dockHeartBtn.dataset.liked = wasLiked ? '1' : '0';
+                        dockHeartBtn.classList.toggle('is-active', wasLiked);
+                        dockHeartBtn.setAttribute('aria-pressed', String(wasLiked));
+                        setDockCount(prevCount);
+                    });
+            });
+        }
 
     } // end dock
 
