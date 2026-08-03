@@ -130,11 +130,8 @@ include $skin_path . '/skin-meta.php';
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic-feed.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 <body class="scroll-static eatmeclaude-page">
-<div class="scroll-profile scroll-profile-compact">
-    <?php include $skin_path . '/skin-header.php'; ?>
-</div>
-<main class="eatmeclaude-content">
-    <h1 class="scroll-horizontal-title eatmeclaude-title">EAT ME, CLAUDE</h1>
+<?php include $skin_path . '/skin-header.php'; ?>
+<main class="scroll-wall eatmeclaude-content">
     <div id="eatmeclaude-feed" class="eatmeclaude-feed"
          data-gap="<?php echo $gap; ?>"
          style="--eatmeclaude-gap:<?php echo $gap; ?>px;">
