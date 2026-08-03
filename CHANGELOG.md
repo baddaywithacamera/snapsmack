@@ -12,6 +12,16 @@
 
 ## Unreleased
 
+## SCROLL 0.1.28 — 2026-08-02
+
+- **Optional masthead logo.** New MASTHEAD controls "Masthead Logo (replaces the title
+  text)" and "Masthead Logo Height (px)". When a logo is set it replaces the tilted
+  title text on the landing AND static pages, sits upright, and is sized by the height
+  slider. Crucially, the site title stays in the `<h1>` as visually-hidden text, so the
+  heading keeps its full SEO and screen-reader value — the logo is decorative
+  (`alt=""`) and the hidden text is the accessible/indexed name. The sticky bar keeps
+  showing the text blog name regardless.
+
 ## SCROLL 0.1.27 — 2026-08-02
 
 - **Masthead spacing is now a control, and symmetric by construction.** New MASTHEAD

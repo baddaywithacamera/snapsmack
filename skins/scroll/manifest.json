@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.27",
+    "version": "0.1.28",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -48,6 +48,25 @@
             "type": "text",
             "label": "Landing Masthead (use | for a line break)",
             "default": "USED CAR|PARTS"
+        },
+        "masthead_logo": {
+            "section": "MASTHEAD",
+            "type": "image",
+            "label": "Masthead Logo (replaces the title text)",
+            "hint": "Optional. When set, the tilted title text is replaced by this image on the landing AND static pages. Your masthead text stays in the page source, hidden, so the heading keeps its SEO and screen-reader value. The sticky bar still shows the text blog name. PNG/SVG-as-PNG/WebP."
+        },
+        "masthead_logo_height": {
+            "section": "MASTHEAD",
+            "type": "range",
+            "label": "Masthead Logo Height (px)",
+            "hint": "Height of the masthead logo (only applies when a logo is set).",
+            "default": "120",
+            "min": "40",
+            "max": "300",
+            "step": "4",
+            "selector": ":root",
+            "property": "--scroll-masthead-logo-h",
+            "unit": "px"
         },
         "scroll_byline_prefix": {
             "section": "MASTHEAD",

@@ -24,6 +24,9 @@ $masthead_lines = array_values(array_filter(array_map('trim', explode('|', $mast
 if (!$masthead_lines) $masthead_lines = [$settings['site_name'] ?? 'SnapSmack'];
 $photographer_name = trim((string)($settings['photographer_name'] ?? ($settings['site_name'] ?? '')));
 $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY BY'));
+// Optional masthead logo — same as the landing (scroll__masthead_logo). Replaces the
+// title text visually; the title stays in the source (hidden) for SEO/screen readers.
+$scroll_masthead_logo = trim((string)($settings['scroll__masthead_logo'] ?? ''));
 ?>
 <div class="scroll-landing">
     <section class="scroll-profile" aria-labelledby="scroll-site-title">
@@ -33,10 +36,15 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
             <?php endif; ?>
             <span class="scroll-byline-name"><?php echo htmlspecialchars($photographer_name); ?></span>
         </div>
-        <h1 class="scroll-masthead" id="scroll-site-title">
-            <?php foreach ($masthead_lines as $line): ?>
-                <span><?php echo htmlspecialchars($line); ?></span>
-            <?php endforeach; ?>
+        <h1 class="scroll-masthead<?php echo $scroll_masthead_logo !== '' ? ' has-logo' : ''; ?>" id="scroll-site-title">
+            <?php if ($scroll_masthead_logo !== ''): ?>
+                <span class="scroll-visually-hidden"><?php echo htmlspecialchars(implode(' ', $masthead_lines)); ?></span>
+                <img class="scroll-masthead-logo" src="<?php echo BASE_URL . htmlspecialchars(ltrim($scroll_masthead_logo, '/')); ?>" alt="">
+            <?php else: ?>
+                <?php foreach ($masthead_lines as $line): ?>
+                    <span><?php echo htmlspecialchars($line); ?></span>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </h1>
 
         <nav class="scroll-sticky-nav ss-grid-sticky-nav ss-grid-nav-inline-then-sticky"

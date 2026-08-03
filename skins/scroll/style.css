@@ -112,6 +112,32 @@ a { color: inherit; }
     display: block;
     white-space: nowrap;
 }
+/* Masthead LOGO mode (admin: "Masthead Logo"). The logo replaces the title text;
+   the real title stays in the <h1> as .scroll-visually-hidden text so the heading
+   keeps its SEO + screen-reader value. Logo sits upright (no tilt) and is sized by
+   the "Masthead Logo Height" control. */
+.scroll-masthead.has-logo { transform: none; }
+.scroll-masthead-logo {
+    display: block;
+    height: var(--scroll-masthead-logo-h, 120px);
+    width: auto;
+    max-width: 100%;
+    margin: 0 auto;
+    object-fit: contain;
+}
+/* In the page source but not on screen — keeps a real, titled <h1> for SEO and
+   assistive tech while the logo image carries the visual. */
+.scroll-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
 .scroll-profile > .scroll-sticky-nav {
     grid-column: 3;
     justify-self: end;
