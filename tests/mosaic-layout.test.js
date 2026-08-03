@@ -167,11 +167,29 @@ test('six-photo desktop blocks do not collapse into postage-stamp cells', () => 
     ], 1688, 20, 'portrait');
 
     assertCleanGeometry(layout, 1688);
+    const areas = layout.items.map(item => item.width * item.height);
     layout.items.forEach((item, index) => {
-        assert.ok(item.width >= 219.98, `tile ${index} is wide enough to read as a photograph`);
-        assert.ok(item.height >= 179.98, `tile ${index} is tall enough to read as a photograph`);
-        assert.ok(item.width * item.height >= 49990, `tile ${index} has useful visible area`);
+        assert.ok(item.width >= 259.98, `tile ${index} is wide enough to read as a photograph`);
+        assert.ok(item.height >= 199.98, `tile ${index} is tall enough to read as a photograph`);
+        assert.ok(item.width * item.height >= 69990, `tile ${index} has useful visible area`);
     });
+    assert.ok(Math.max(...areas) / Math.min(...areas) <= 6.001,
+        'supporting photographs remain substantial beside the hero');
+});
+
+test('an unsuitable six-photo group splits instead of bypassing useful-size rules', () => {
+    const layout = engine.computeLayout([
+        { width: 900, height: 1200 },
+        { width: 900, height: 1200 },
+        { width: 900, height: 1200 },
+        { width: 900, height: 1200 },
+        { width: 900, height: 1200 },
+        { width: 900, height: 1200 }
+    ], 1688, 20, 'landscape');
+
+    assertCleanGeometry(layout, 1688);
+    assert.ok(layout.sections.length >= 2, 'the incompatible group becomes smaller mosaics');
+    assert.equal(layout.items.length, 6, 'splitting never drops a photograph');
 });
 
 test('five-image layout ends with a full-width image', () => {
