@@ -12,6 +12,17 @@
 
 ## Unreleased
 
+## SCROLL 0.1.30 — 2026-08-02
+
+- **Fix: the landing filter modal (and the header search dropdown) were clipped and
+  unreadable.** `.scroll-profile` had `overflow: hidden` (originally to hide the tilted
+  masthead's empty corners), but both the filter panel and the search dropdown are
+  `position:absolute` children of the header that extend far below it — so `hidden` cut
+  them off at the header edge, leaving the filter options hidden behind the photos.
+  Changed to `overflow: visible`. Verified live: the full panel renders over the grid,
+  no horizontal scroll is introduced, and the masthead's transparent spill sits behind
+  the photos (no visual, no click-blocking).
+
 ## SCROLL 0.1.29 — 2026-08-02
 
 - **Sticky bar aligns to the wall edges.** The scrolled sticky bar was full-bleed while

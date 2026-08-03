@@ -59,7 +59,8 @@ a { color: inherit; }
        +36px top-ONLY fudge here to offset the old SHOW ALL/FILTER browse bar that
        sat below the header. That bar is gone; the fudge only made the padding
        asymmetric and jumpy — verified live it put the masthead 18px low of centre.
-       Do NOT bring it back.) overflow:hidden stays for the tilt. */
+       Do NOT bring it back.)
+       overflow MUST stay `visible` (see the overflow line below). */
     width: var(--scroll-canvas-pct, 90%);
     margin: 0 auto;
     min-height: clamp(140px, 9vw, 200px);
@@ -67,7 +68,11 @@ a { color: inherit; }
        so it can never go asymmetric again. Fallback keeps the old responsive clamp
        for installs that haven't set the control. */
     padding: var(--scroll-masthead-pad, clamp(18px, 2vw, 32px)) 0;
-    overflow: hidden;
+    /* MUST be visible: `hidden` clipped the filter panel + search dropdown (both are
+       position:absolute children that extend below the header), which made the filter
+       unreadable. The tilted masthead's only spill is transparent corners that sit
+       BEHIND the photos, so nothing shows or blocks clicks; verified no h-scroll. */
+    overflow: visible;
 }
 .scroll-photographer {
     align-self: center;
