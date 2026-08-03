@@ -164,6 +164,7 @@ define('UPDATER_PROTECTED_PATHS_FILE', dirname(__DIR__) . '/protected_paths.json
  * Add each new migration filename here when you create it.
  */
 const UPDATER_KNOWN_MIGRATIONS = [
+    'migrate-reactions-to-likes.sql',
     'migrate-076.sql',
     'migrate-077.sql',
     'migrate-078.sql',
