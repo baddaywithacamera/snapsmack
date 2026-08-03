@@ -12,6 +12,20 @@
 
 ## Unreleased
 
+## 0.7.491 "Big Enough to Matter" — 2026-08-03
+
+- **Asymmetric MOSAIC layouts no longer sacrifice supporting photographs to a
+  hero.** Six-photo desktop blocks now require every cell to remain at least
+  260px wide, 200px tall, and 70,000px² at full SCROLL width. The largest cell
+  may be no more than six times the smallest cell's area, and portrait or
+  landscape emphasis must give the largest cell to the requested orientation.
+- **Unsuitable groups split instead of falling back to thumbnail strips.** When
+  no respectable six-photo exact-aspect composition exists, the engine renders
+  smaller mosaics without dropping photographs. Exact source aspect ratios,
+  the 900px/source-size ceilings, full wall width, and lazy loading remain.
+- SCROLL remains **0.1.37**; this compositor correction ships in core and does
+  not require a skin-package rebuild.
+
 ## 0.7.490 "Now You See It" — 2026-08-03
 
 - **Fix: admin-page-scoped skin controls never rendered (Solo Image Appearance +
