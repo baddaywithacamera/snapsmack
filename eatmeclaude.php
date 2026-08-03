@@ -52,11 +52,14 @@ function eatmeclaude_block_sizes(int $total): array {
 
 function eatmeclaude_images(PDO $pdo, string $cutoff, int $offset, int $limit): array {
     $stmt = $pdo->prepare(
-        "SELECT id, img_title, img_slug, img_file, img_thumb_aspect,
-                img_width, img_height, img_focus_x, img_focus_y
-         FROM snap_images
-         WHERE img_status = 'published' AND img_date <= :cutoff
-         ORDER BY sort_order ASC, id DESC
+        "SELECT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_aspect,
+                i.img_width, i.img_height,
+                COALESCE(pi.img_focus_x, 50) AS img_focus_x,
+                COALESCE(pi.img_focus_y, 50) AS img_focus_y
+         FROM snap_images i
+         LEFT JOIN snap_post_images pi ON pi.image_id = i.id
+         WHERE i.img_status = 'published' AND i.img_date <= :cutoff
+         ORDER BY i.sort_order ASC, i.id DESC
          LIMIT :lim OFFSET :off"
     );
     $stmt->bindValue(':cutoff', $cutoff);

@@ -12,6 +12,13 @@
 
 ## Unreleased
 
+## 0.7.477 "Second Helping" — 2026-08-02
+
+- **Fixed `eatmeclaude.php` failing with HTTP 500.** Gallery-wide MOSAIC blocks
+  now read crop focal points from their actual home in `snap_post_images` via a
+  safe left join; standalone photographs without a post-image row default to a
+  centred focal point.
+
 ## SCROLL 0.1.30 — 2026-08-02
 
 - **Fix: social dock floated at the bottom on the solo page instead of sitting in the
