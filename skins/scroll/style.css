@@ -30,15 +30,15 @@
     --scroll-bg: #ffffff;
     --scroll-text: #3a3a3a;
     --scroll-footer-text: #3a3a3a;
-    /* Community LIKE dock derives from existing colour controls — no extra sliders:
-       circle background = page Background; circle border + unchecked heart outline =
-       Footer Text. The heart turns solid RED when liked (--ss-heart-color's default),
-       while the circle keeps its Background/Footer colours. */
-    --ss-cdock-bg: var(--scroll-bg, #ffffff);
-    --ss-cdock-border: var(--scroll-footer-text, #3a3a3a);
-    --ss-cdock-icon: var(--scroll-footer-text, #3a3a3a);
+    /* Community LIKE chip is VISUALLY IDENTICAL to the top nav icons — it reads the same
+       --dock-* variables the nav chips use (transparent fill, hairline border, dark
+       line-art glyph). On click ONLY the heart turns red (--ss-heart-color's default);
+       the circle's fill and border stay the nav-icon colours, unchanged. No new sliders. */
+    --ss-cdock-bg: transparent;
+    --ss-cdock-border: rgba(26, 26, 26, .3);
+    --ss-cdock-icon: #1a1a1a;
     --ss-cdock-opacity: 1;
-    --ss-heart-outline: var(--scroll-footer-text, #3a3a3a);
+    --ss-heart-outline: #1a1a1a;
 }
 
 * { box-sizing: border-box; }
@@ -459,6 +459,31 @@ a { color: inherit; }
 .scroll-sticky-nav .social-dock-inline .dock-link:focus-visible {
     transform: none;
 }
+/* Community LIKE chip reads as one of the nav icons: same 40px size / 20px glyph (not
+   the core dock's 48px). Colours come from the --dock-* mapping in :root; it stays
+   centred (the like count is an absolute corner badge in core). */
+/* High specificity (0,3,0) so it beats core .ss-cdock-btn (0,1,0) regardless of how
+   --ss-cdock-* resolve. Chip = the nav icons' rendered look: transparent fill, hairline
+   dark border, 40px. On click ONLY the heart glyph turns red (core rule); circle stays
+   transparent + hairline. */
+.ss-community-dock .ss-cdock-btn.ss-cdock-heart {
+    width: 40px;
+    height: 40px;
+    background: transparent;
+    border-color: rgba(26, 26, 26, .3);
+    color: #1a1a1a;
+    opacity: 1;
+}
+.ss-community-dock .ss-cdock-btn.ss-cdock-heart.is-active {
+    background: transparent;
+    border-color: rgba(26, 26, 26, .3);
+}
+.ss-community-dock .ss-cdock-heart .ss-cdock-heart-svg svg {
+    width: 20px;
+    height: 20px;
+}
+/* Blogroll: never display the raw URL string under an entry — the name stays linked. */
+.blogroll-peer-url { display: none !important; }
 
 .scroll-profile-compact {
     display: block;
@@ -477,7 +502,10 @@ a { color: inherit; }
 }
 .scroll-horizontal-title {
     font-family: "Archivo Black", sans-serif;
-    font-size: clamp(1.2rem, 2.4vw, 2rem);
+    /* Static/blog page title — was clamp(1.2rem,2.4vw,2rem), which read tiny/weak next
+       to the masthead. Bigger and more present. */
+    font-size: clamp(2rem, 4.5vw, 3.4rem);
+    line-height: 1.05;
     text-decoration: none;
 }
 .scroll-text-nav {
@@ -714,8 +742,13 @@ body.is-photo-page #footer[style*="display:block"]  ~ #system-footer { display: 
    the shared header — matching the landing exactly. Equal 40px above and below
    the line before the content. Colour is the "Top Divider Line Colour" control. */
 .scroll-static-content {
-    width: min(calc(100% - 40px), var(--scroll-static-width, 920px));
-    margin: 40px auto 0;
+    /* The thin line is this element's border-top. Anchor it to the SAME reference as the
+       landing photo wall: width = --scroll-canvas-pct (90%, identical var to .scroll-wall)
+       and margin-top = 0 so the line sits at the header bottom, which is exactly the
+       landing photo-top (measured: gap 0). The old 40px margin dropped it 40px low and
+       the 920px cap inset it. */
+    width: var(--scroll-canvas-pct, 90%);
+    margin: 0 auto;
     border-top: 1px solid var(--scroll-page-divider, #999999);
     padding: 40px 0 clamp(32px, 6vw, 90px);
 }
@@ -724,8 +757,11 @@ body.is-photo-page #footer[style*="display:block"]  ~ #system-footer { display: 
    so SCROLL's rule has the higher specificity and the divider lands at the same
    40px as the static pages. */
 body.is-blogroll .blogroll-canvas {
-    max-width: var(--scroll-static-width, 920px);
-    margin: 40px auto 0;
+    /* Same anchor as .scroll-static-content: line = wall width (90%) at the header
+       bottom (photo-top line), not the 920px cap / 40px drop. */
+    width: var(--scroll-canvas-pct, 90%);
+    max-width: none;
+    margin: 0 auto;
     border-top: 1px solid var(--scroll-page-divider, #999999);
     padding-top: 40px;
 }
