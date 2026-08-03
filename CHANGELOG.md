@@ -12,19 +12,19 @@
 
 ## Unreleased
 
-## SCROLL 0.1.30 — 2026-08-02
+## SCROLL 0.1.28 — 2026-08-02
 
-- **Fix: the landing filter modal (and the header search dropdown) were clipped and
-  unreadable.** `.scroll-profile` had `overflow: hidden` (originally to hide the tilted
-  masthead's empty corners), but both the filter panel and the search dropdown are
-  `position:absolute` children of the header that extend far below it — so `hidden` cut
-  them off at the header edge, leaving the filter options hidden behind the photos.
-  Changed to `overflow: visible`. Verified live: the full panel renders over the grid,
-  no horizontal scroll is introduced, and the masthead's transparent spill sits behind
-  the photos (no visual, no click-blocking).
+The single next version after the shipped 0.1.27. (Bundles what were briefly tagged
+0.1.28/0.1.29/0.1.30 in dev — none of those shipped; consolidated to keep the
+released sequence contiguous with no skips.)
 
-## SCROLL 0.1.29 — 2026-08-02
-
+- **Optional masthead logo.** New MASTHEAD controls "Masthead Logo (replaces the title
+  text)" and "Masthead Logo Height (px)". When a logo is set it replaces the tilted
+  title text on the landing AND static pages, sits upright, and is sized by the height
+  slider. Crucially, the site title stays in the `<h1>` as visually-hidden text, so the
+  heading keeps its full SEO and screen-reader value — the logo is decorative
+  (`alt=""`) and the hidden text is the accessible/indexed name. The sticky bar keeps
+  showing the text blog name regardless.
 - **Sticky bar aligns to the wall edges.** The scrolled sticky bar was full-bleed while
   the photo wall is 90%-centred, so the blog name (left) and icons (right) sat outside
   the grid. Bar background stays full-width; its content now insets to the wall's outer
@@ -35,19 +35,14 @@
 - **New "Bottom Nav Font Size" control (SOLO PAGE).** Sizes the PREV / FIRST · INFO /
   COMMENTS · LAST / NEXT row under the solo photo (`--scroll-bottomnav-size`, default
   0.75rem). Previously not adjustable.
-- Known/remaining: the solo page header still carries only a 3-icon nav and no social dock,
-  and its layout doesn't yet match the sticky bar. That header rebuild is tracked
-  separately (visual-architecture work).
-
-## SCROLL 0.1.28 — 2026-08-02
-
-- **Optional masthead logo.** New MASTHEAD controls "Masthead Logo (replaces the title
-  text)" and "Masthead Logo Height (px)". When a logo is set it replaces the tilted
-  title text on the landing AND static pages, sits upright, and is sized by the height
-  slider. Crucially, the site title stays in the `<h1>` as visually-hidden text, so the
-  heading keeps its full SEO and screen-reader value — the logo is decorative
-  (`alt=""`) and the hidden text is the accessible/indexed name. The sticky bar keeps
-  showing the text blog name regardless.
+- **Fix: the landing filter modal + header search dropdown were clipped and unreadable.**
+  `.scroll-profile` had `overflow: hidden` (to hide the tilted masthead's empty corners),
+  but the filter panel and search dropdown are `position:absolute` children that extend
+  far below the header, so `hidden` cut them off and hid the filter options behind the
+  photos. Changed to `overflow: visible`. Verified live: full panel renders over the grid,
+  no horizontal scroll, masthead's transparent spill sits behind the photos.
+- Known/remaining: the solo page header still carries only a 3-icon nav and no social
+  dock, and its layout doesn't yet match the sticky bar (visual-architecture work).
 
 ## SCROLL 0.1.27 — 2026-08-02
 
