@@ -84,7 +84,13 @@ if (!function_exists('sc_github_get')) {
     }
 }
 
-// Packaging always uses master. Branch/tag picker removed — dev branch is never used.
+// Skin packaging fetches from the git ref chosen at the select-ref step below —
+// master or dev (both accepted; see the clamp near the phase handling). USE DEV:
+// stable and dev are no longer pushed together, so master lags badly (it sat at
+// SCROLL 0.1.5 while dev carried the current skins) and DEV is the branch with
+// up-to-date skins. Consequence: a skin change must be pushed to Github/dev before
+// it can be packaged. (The old "always uses master, picker removed, dev never used"
+// note here was simply wrong — corrected 2026-08-02.)
 
 // ── Download repo zip and extract skins/ to a temp directory ─────────────────
 
