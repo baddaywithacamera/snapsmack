@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.35",
+    "version": "0.1.36",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -140,7 +140,8 @@
             "property": "font-family"
         },
         "scroll_header_font": {
-            "section": "TYPOGRAPHY",
+            "section": "SOLO PAGE",
+            "admin_page": "solo",
             "type": "select",
             "is_font": true,
             "font_source": "google",
@@ -206,6 +207,7 @@
         },
         "scroll_bottomnav_size": {
             "section": "SOLO PAGE",
+            "admin_page": "solo",
             "type": "range",
             "label": "Bottom Nav Font Size (rem)",
             "hint": "Size of the PREV / FIRST · INFO / COMMENTS · LAST / NEXT row under the solo photo.",
@@ -345,6 +347,7 @@
         },
         "scroll_image_pad": {
             "section": "SOLO PAGE",
+            "admin_page": "solo",
             "type": "range",
             "label": "Whitespace Above & Below Photo (px)",
             "hint": "Vertical breathing room over and under a single photo. Equal top and bottom, so the photo stays centred.",
@@ -357,6 +360,7 @@
         },
         "scroll_solo_text_width": {
             "section": "SOLO PAGE",
+            "admin_page": "solo",
             "type": "range",
             "label": "Text Column Width (px)",
             "hint": "Width of the title and description text block under a photo.",
@@ -369,9 +373,10 @@
         },
         "scroll_solo_name_size": {
             "section": "SOLO PAGE",
+            "admin_page": "solo",
             "type": "range",
             "label": "Blog Name Size (rem)",
-            "hint": "Size of the blog name at the top-left of a solo photo page. The font follows the Masthead Font control.",
+            "hint": "Size of the blog name at the top-left of a solo photo page. Font is set by “Blog Name Font” below (or the Masthead Font if left as “Same as masthead”).",
             "default": "1.05",
             "min": "0.7",
             "max": "2.4",
@@ -379,6 +384,19 @@
             "selector": ":root",
             "property": "--scroll-solo-name-size",
             "unit": "rem"
+        },
+        "scroll_solo_name_font": {
+            "section": "SOLO PAGE",
+            "admin_page": "solo",
+            "type": "select",
+            "is_font": true,
+            "font_source": "google",
+            "no_size_slider": true,
+            "label": "Blog Name Font",
+            "hint": "Font for the blog name on solo photo pages ONLY. The other pages share one header and use the Masthead Font. Leave as “Same as masthead” to keep them matched.",
+            "default": "",
+            "selector": ".scroll-solo-nav .ss-grid-nav-name",
+            "property": "font-family"
         },
         "scroll_static_width": {
             "section": "STATIC & BLOG",
@@ -512,7 +530,8 @@
             "property": "--scroll-footer-text"
         },
         "scroll_navigation_background": {
-            "section": "COLOURS",
+            "section": "SOLO PAGE",
+            "admin_page": "solo",
             "type": "color",
             "label": "Solo Navigation Bar Background",
             "default": "#ffffff",
