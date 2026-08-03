@@ -12,6 +12,35 @@
 
 ## Unreleased
 
+## 0.7.475 "Quilt Trip" — 2026-08-02
+
+- **MOSAIC is now a true two-dimensional tiled compositor.** The old
+  equal-height justified-row engine has been replaced with deterministic nested
+  horizontal/vertical packing. Portrait-led blocks can place one tall image
+  beside a stack; landscape-led blocks can simultaneously span one photograph
+  across two columns and another across two rows; trailing photographs may form
+  full-width editorial beats. Layouts may be deliberately asymmetric, preserve
+  selection/lightbox order, recalculate responsively, and collapse to one image
+  per row on narrow screens. The completed-row gap overflow bug is gone with the
+  retired row engine.
+- **MOSAIC builder swaps photographs instead of shifting the intervening list.**
+  Drag one selected image onto another and the two trade places. A swap is
+  accepted only when both photographs have roughly the same orientation, both
+  have enough source resolution to fill the other's frame without enlargement,
+  and each destination retains at least 80% of the source after cover cropping.
+  Rejected swaps leave the composition untouched and explain why.
+- **Per-mosaic crop positioning.** Cropped photographs in the live preview can
+  be dragged horizontally or vertically to choose their focal point before
+  saving, reusing GRAMOFSMACK's proven crop-pan interaction. Movement is enabled
+  only along an axis that actually overflows. Focal X/Y percentages are stored
+  in the new `snap_mosaics.focus_positions` JSON field and passed through the
+  shortcode parser to public `object-position`; existing mosaics remain centred.
+  The canonical schema, fresh installer, and a defensive builder-side schema
+  guard are included, with a backward-compatible parser read during schema sync.
+- **MOSAIC geometry regression suite.** Five Node tests cover portrait spanning,
+  mixed row/column spanning, full-width trailing images, mobile collapse, exact
+  boundaries, and overlap prevention.
+
 ## SCROLL 0.1.26 — 2026-08-02
 
 - **SCROLL: fix landing freeze (regression from the 0.1.25 solo-page rework).** The

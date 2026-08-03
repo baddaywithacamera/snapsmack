@@ -18,21 +18,16 @@
 /* ── PUBLIC MOSAIC ───────────────────────────────────────────────────────── */
 
 .snap-mosaic {
+    position: relative;
     width: 100%;
     margin: 1.5em 0;
     box-sizing: border-box;
 }
 
-.mosaic-row {
-    display: flex;
-    width: 100%;
-}
-
 .mosaic-item {
-    position: relative;
+    position: absolute;
     overflow: hidden;
     background: #111;
-    flex-shrink: 0;
 }
 
 .mosaic-item img {
