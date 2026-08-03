@@ -109,6 +109,10 @@ $masthead_lines = array_values(array_filter(array_map('trim', explode('|', $mast
 if (!$masthead_lines) $masthead_lines = [$settings['site_name'] ?? 'SnapSmack'];
 $photographer_name = trim((string)($settings['photographer_name'] ?? ($settings['site_name'] ?? '')));
 $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY BY'));
+// Optional masthead logo (type:image, stored scoped as scroll__masthead_logo). When
+// set it REPLACES the tilted title text on the landing; the title text stays in the
+// source, visually hidden, so the <h1> keeps its SEO/screen-reader value.
+$scroll_masthead_logo = trim((string)($settings['scroll__masthead_logo'] ?? ''));
 ?>
 <?php
 // Filter modal data — reuses the archive's proven filter panel + JS
@@ -127,10 +131,15 @@ $af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE E
             <?php endif; ?>
             <span class="scroll-byline-name"><?php echo htmlspecialchars($photographer_name); ?></span>
         </div>
-        <h1 class="scroll-masthead" id="scroll-site-title">
-            <?php foreach ($masthead_lines as $line): ?>
-                <span><?php echo htmlspecialchars($line); ?></span>
-            <?php endforeach; ?>
+        <h1 class="scroll-masthead<?php echo $scroll_masthead_logo !== '' ? ' has-logo' : ''; ?>" id="scroll-site-title">
+            <?php if ($scroll_masthead_logo !== ''): ?>
+                <span class="scroll-visually-hidden"><?php echo htmlspecialchars(implode(' ', $masthead_lines)); ?></span>
+                <img class="scroll-masthead-logo" src="<?php echo BASE_URL . htmlspecialchars(ltrim($scroll_masthead_logo, '/')); ?>" alt="">
+            <?php else: ?>
+                <?php foreach ($masthead_lines as $line): ?>
+                    <span><?php echo htmlspecialchars($line); ?></span>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </h1>
 
         <nav class="scroll-sticky-nav ss-grid-sticky-nav ss-grid-nav-inline-then-sticky"
