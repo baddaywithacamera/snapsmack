@@ -142,86 +142,66 @@
         return height;
     }
 
-    function sourceHeight(image) {
-        return Math.max(1, Number(image.height) || MAX_SECTION_HEIGHT);
-    }
-
-    function fitHeroTrio(images, y, containerWidth, gap) {
-        var heroAR = imageAR(images[0]);
-        var heroWidth = Math.min(MAX_SECTION_HEIGHT, Number(images[0].width) || MAX_SECTION_HEIGHT);
-        var heroHeight = heroWidth / heroAR;
-        if (heroHeight > MAX_SECTION_HEIGHT || heroHeight > sourceHeight(images[0])) {
-            heroHeight = Math.min(MAX_SECTION_HEIGHT, sourceHeight(images[0]));
-            heroWidth = heroHeight * heroAR;
-        }
-        var available = Math.max(1, containerWidth - heroWidth - gap);
-        var stackWidth = Math.min(
-            available,
-            Number(images[1].width) || available,
-            Number(images[2].width) || available,
-            (MAX_SECTION_HEIGHT - gap) / (1 / imageAR(images[1]) + 1 / imageAR(images[2]))
-        );
-        var firstHeight = stackWidth / imageAR(images[1]);
-        var secondHeight = stackWidth / imageAR(images[2]);
-        var stackX = containerWidth - stackWidth;
-        return {
-            items: [
-                { image: images[0], order: 0, x: 0, y: y, width: heroWidth, height: heroHeight },
-                { image: images[1], order: 1, x: stackX, y: y, width: stackWidth, height: firstHeight },
-                { image: images[2], order: 2, x: stackX, y: y + firstHeight + gap, width: stackWidth, height: secondHeight }
-            ],
-            height: Math.max(heroHeight, firstHeight + gap + secondHeight)
-        };
-    }
-
-    function fitNaturalRow(images, y, containerWidth, gap) {
-        var heights = images.map(function (image) {
-            var ar = imageAR(image);
-            var sourceWidth = Math.max(1, Number(image.width) || MAX_SECTION_HEIGHT);
-            return Math.min(MAX_SECTION_HEIGHT, sourceHeight(image), MAX_SECTION_HEIGHT / ar, sourceWidth / ar);
-        });
-        var widths = images.map(function (image, index) { return heights[index] * imageAR(image); });
-        var used = widths.reduce(function (sum, width) { return sum + width; }, 0);
-        if (used > containerWidth) {
-            var shrink = containerWidth / used;
-            widths = widths.map(function (width) { return width * shrink; });
-            heights = heights.map(function (height) { return height * shrink; });
-            used = containerWidth;
-        }
-        var spacing = images.length > 1 ? (containerWidth - used) / (images.length - 1) : 0;
-        var x = 0;
-        var row = images.map(function (image, order) {
-            var tile = { image: image, order: order, x: x, y: y, width: widths[order], height: heights[order] };
-            x += widths[order] + spacing;
-            return tile;
-        });
-        return { items: row, height: Math.max.apply(Math, heights) };
-    }
-
     function tileExceedsLimit(tile) {
         var sourceWidth = Math.max(1, Number(tile.image.width) || MAX_SECTION_HEIGHT);
+        var sourceHeight = Math.max(1, Number(tile.image.height) || MAX_SECTION_HEIGHT);
         return tile.width > Math.min(MAX_SECTION_HEIGHT, sourceWidth) + 0.01 ||
-               tile.height > Math.min(MAX_SECTION_HEIGHT, sourceHeight(tile.image)) + 0.01;
+               tile.height > Math.min(MAX_SECTION_HEIGHT, sourceHeight) + 0.01;
     }
 
-    function heroOrientation(mode, sectionNumber, sectionImages) {
-        var leadId = Number(sectionImages[0].id) || sectionNumber;
-        var bucket = Math.abs(leadId) % 3;
-        if (mode === 'balanced') return sectionNumber % 2 === 0 ? 'portrait' : 'landscape';
-        if (mode === 'landscape') return bucket === 0 ? 'portrait' : 'landscape';
-        if (mode === 'portrait') return bucket === 0 ? 'landscape' : 'portrait';
-        return '';
+    function candidateTrees(images, start, end, memo) {
+        var key = start + ':' + end;
+        if (memo[key]) return memo[key];
+        if (end - start === 1) return (memo[key] = [leaf(images[start], start)]);
+
+        var trees = [];
+        for (var split = start + 1; split < end; split++) {
+            var left = candidateTrees(images, start, split, memo);
+            var right = candidateTrees(images, split, end, memo);
+            left.forEach(function (a) {
+                right.forEach(function (b) {
+                    trees.push(group('horizontal', [a, b]));
+                    trees.push(group('vertical', [a, b]));
+                });
+            });
+        }
+        return (memo[key] = trees);
     }
 
-    function promoteOrientation(images, orientation) {
-        if (!orientation) return images;
-        var wantedPortrait = orientation === 'portrait';
-        var promoted = images.slice();
-        var at = promoted.findIndex(function (image) {
-            return (imageAR(image) < 1.15) === wantedPortrait;
+    function blockScore(items, height, containerWidth, emphasis) {
+        var portraitMax = 0;
+        var landscapeMax = 0;
+        var smallest = Infinity;
+        var leadArea = 0;
+        items.forEach(function (tile) {
+            var area = tile.width * tile.height;
+            if (tile.order === 0) leadArea = area;
+            smallest = Math.min(smallest, area);
+            if (imageAR(tile.image) < 1.15) portraitMax = Math.max(portraitMax, area);
+            else landscapeMax = Math.max(landscapeMax, area);
         });
-        if (at > 0) promoted.unshift(promoted.splice(at, 1)[0]);
-        return promoted;
+
+        var score;
+        if (emphasis === 'portrait') score = portraitMax * 5 + landscapeMax * 1.5;
+        else if (emphasis === 'landscape') score = landscapeMax * 5 + portraitMax * 1.5;
+        else if (emphasis === 'balanced') score = Math.min(portraitMax, landscapeMax) * 5 + Math.max(portraitMax, landscapeMax);
+        else score = leadArea * 4 + Math.max(portraitMax, landscapeMax) + Math.min(portraitMax, landscapeMax);
+
+        score += smallest * 0.2;
+        score -= Math.abs(height - 850) * containerWidth * 0.12;
+        return score;
+    }
+
+    function solveBlock(images, y, containerWidth, gap, emphasis) {
+        var best = null;
+        candidateTrees(images, 0, images.length, {}).forEach(function (tree) {
+            var trial = [];
+            var height = placeNode(tree, 0, y, containerWidth, gap, trial);
+            if (height <= 0 || trial.some(tileExceedsLimit)) return;
+            var score = blockScore(trial, height, containerWidth, emphasis);
+            if (!best || score > best.score) best = { items: trial, height: height, score: score };
+        });
+        return best;
     }
 
     function computeLayout(images, containerWidth, gap, emphasis) {
@@ -245,30 +225,26 @@
                 y += height + gap;
             });
         } else {
-            var sectionNumber = 0;
             while (index < images.length) {
-                var count = sectionSize(images.length - index);
+                var remaining = images.length - index;
+                var count = remaining >= 6 ? 6 : sectionSize(remaining);
                 var sectionImages = images.slice(index, index + count);
-                var desiredHero = heroOrientation(emphasis, sectionNumber, sectionImages);
-                sectionImages = promoteOrientation(sectionImages, desiredHero);
-                var preferLandscapeHero = desiredHero === 'landscape' && imageAR(sectionImages[0]) >= 1.15;
-                var tree = buildSection(sectionImages, preferLandscapeHero);
-                var sectionItems = [];
-                var sectionHeight = placeNode(tree, 0, y, containerWidth, gap, sectionItems);
-                if (sectionHeight > MAX_SECTION_HEIGHT || sectionItems.some(tileExceedsLimit)) {
-                    var isHeroTrio = count === 3 && (imageAR(sectionImages[0]) < 1.15 || preferLandscapeHero);
-                    var fitted = isHeroTrio
-                        ? fitHeroTrio(sectionImages, y, containerWidth, gap)
-                        : fitNaturalRow(sectionImages, y, containerWidth, gap);
-                    sectionItems = fitted.items;
-                    sectionHeight = fitted.height;
+                var solved = count === 6 ? solveBlock(sectionImages, y, containerWidth, gap, emphasis) : null;
+                if (!solved) {
+                    var fallbackTree = buildSection(sectionImages, false);
+                    solved = { items: [], height: 0 };
+                    solved.height = placeNode(fallbackTree, 0, y, containerWidth, gap, solved.items);
+                    if (solved.items.some(tileExceedsLimit)) {
+                        solved = solveBlock(sectionImages, y, containerWidth, gap, emphasis) || solved;
+                    }
                 }
+                var sectionItems = solved.items;
+                var sectionHeight = solved.height;
                 sectionItems.sort(function (a, b) { return a.order - b.order; });
                 Array.prototype.push.apply(items, sectionItems);
                 sections.push({ x: 0, y: y, width: containerWidth, height: sectionHeight });
                 y += sectionHeight + gap;
                 index += count;
-                sectionNumber++;
             }
         }
 

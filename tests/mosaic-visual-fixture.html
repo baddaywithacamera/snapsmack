@@ -1,0 +1,29 @@
+<!doctype html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the canonical HTML EOF marker. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MOSAIC visual fixture</title>
+<link rel="stylesheet" href="/assets/css/ss-engine-mosaic.css">
+<style>
+body{margin:0;background:#f4f4f1;color:#171717;font-family:Arial,sans-serif}.fixture{width:90%;margin:32px auto 80px}.fixture h2{font-size:14px;letter-spacing:.12em;text-transform:uppercase}.snap-mosaic{background:#e9e9e5}.mosaic-item{border:2px solid #777;border-radius:10px;box-sizing:border-box}.mosaic-item img{filter:none!important}.metrics{font:12px monospace;margin:8px 0 28px}
+</style>
+</head>
+<body>
+<main class="fixture">
+<section><h2>Portrait forward</h2><div class="snap-mosaic" data-mode="portrait"></div><div class="metrics"></div></section>
+<section><h2>Landscape forward</h2><div class="snap-mosaic" data-mode="landscape"></div><div class="metrics"></div></section>
+<section><h2>Balanced</h2><div class="snap-mosaic" data-mode="balanced"></div><div class="metrics"></div></section>
+</main>
+<script src="/assets/js/ss-engine-mosaic.js"></script>
+<script>
+const dims=[[620,1200],[1600,760],[1450,900],[700,1150],[1700,820],[1300,900]];
+const colours=['#ae4f78','#315f8f','#b57a39','#4c8b86','#7d5438','#595284'];
+function svg(i,w,h){const s=`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="100%" height="100%" fill="${colours[i]}"/><circle cx="${w*.68}" cy="${h*.38}" r="${Math.min(w,h)*.22}" fill="none" stroke="white" stroke-width="14" opacity=".55"/><text x="40" y="80" fill="white" font-family="Arial" font-size="42">${i+1} · ${w}×${h}</text></svg>`;return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(s)}
+const images=dims.map((d,i)=>({id:i+1,width:d[0],height:d[1],src:svg(i,d[0],d[1]),alt:`Fixture ${i+1}`}));
+document.querySelectorAll('.snap-mosaic').forEach(el=>{el.dataset.mosaic=JSON.stringify(images);el.dataset.gap='20';el.dataset.emphasis=el.dataset.mode;SnapMosaic.renderMosaic(el);const layout=SnapMosaic.computeLayout(images,el.clientWidth,20,el.dataset.mode);const maxW=Math.max(...layout.items.map(x=>x.width));const maxH=Math.max(...layout.items.map(x=>x.height));el.nextElementSibling.textContent=`block ${layout.height.toFixed(0)}px · max tile ${maxW.toFixed(0)}×${maxH.toFixed(0)}px · ${layout.items.length} photos`;});
+</script>
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
