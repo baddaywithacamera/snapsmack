@@ -74,7 +74,7 @@ test('portrait-led four-image section spans a three-image stack', () => {
     assert.ok(layout.items[1].y < layout.items[2].y && layout.items[2].y < layout.items[3].y);
 });
 
-test('an over-height portrait trio keeps its hero below 900px and within the crop ceiling', () => {
+test('an extreme portrait trio keeps full wall width and never exceeds the crop ceiling', () => {
     const images = [
         { width: 500, height: 1800 },
         { width: 900, height: 700 },
@@ -83,13 +83,14 @@ test('an over-height portrait trio keeps its hero below 900px and within the cro
     const layout = engine.computeLayout(images, 1600, 6);
 
     assertCleanGeometry(layout, 1600);
-    assert.ok(layout.height <= 900.02);
+    assert.equal(layout.sections[0].width, 1600);
+    assert.equal(layout.sections[0].x, 0);
     assert.ok(Math.abs(layout.items[0].height - layout.height) < 0.02, 'portrait remains the spanning hero');
     layout.items.forEach((item, index) => {
         const sourceAR = images[index].width / images[index].height;
         const cellAR = item.width / item.height;
         const retained = Math.min(cellAR / sourceAR, sourceAR / cellAR);
-        assert.ok(retained >= 0.85, `tile ${index} retains at least 85%`);
+        assert.ok(retained >= 0.8499, `tile ${index} retains at least 85%`);
     });
 });
 

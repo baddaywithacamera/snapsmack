@@ -147,27 +147,15 @@
             return { x: 0, width: containerWidth, height: sectionHeight };
         }
 
-        var scale = MAX_SECTION_HEIGHT / sectionHeight;
-        if (scale >= 0.85) {
-            items.forEach(function (tile) {
-                tile.y = sectionY + (tile.y - sectionY) * scale;
-                tile.height *= scale;
-            });
-            return { x: 0, width: containerWidth, height: MAX_SECTION_HEIGHT };
-        }
-
-        // A deeper vertical squeeze would violate MOSAIC's 15% crop ceiling.
-        // Scale the complete composition instead, retaining every pixel and
-        // centring only this unusually tall section inside the landing canvas.
-        var scaledWidth = containerWidth * scale;
-        var sectionX = (containerWidth - scaledWidth) / 2;
+        // The wall width is inviolable. Cap the vertical squeeze at 15%; when
+        // a 900px result would require more cropping, retain 85% and allow that
+        // unusually tall section to exceed the preferred height instead.
+        var scale = Math.max(0.85, MAX_SECTION_HEIGHT / sectionHeight);
         items.forEach(function (tile) {
-            tile.x = sectionX + tile.x * scale;
             tile.y = sectionY + (tile.y - sectionY) * scale;
-            tile.width *= scale;
             tile.height *= scale;
         });
-        return { x: sectionX, width: scaledWidth, height: MAX_SECTION_HEIGHT };
+        return { x: 0, width: containerWidth, height: sectionHeight * scale };
     }
 
     function heroOrientation(mode, sectionNumber, sectionImages) {
