@@ -161,6 +161,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="idx-group">
                 <h3><a href="#future">The Future</a></h3>
                 <ol>
+                    <li><a href="#q-trust">Why should I trust you or your software?</a></li>
                     <li><a href="#q-stay-free">Is SnapSmack going to stay free?</a></li>
                     <li><a href="#q-add-feature">Will you add [feature]?</a></li>
                     <li><a href="#q-video">When is video support coming?</a></li>
@@ -465,6 +466,13 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h2 class="section-title">The Future</h2>
             <div class="section-rule"></div>
+
+            <div class="qa" id="q-trust">
+                <h3>Why should I trust you or your software?</h3>
+                <p>You should not. Assume the software will fail. Assume I will fail, because at some point we both will. I've been on the Net since 1992. Nothing that I use now is stuff I used then; it's all gone. I give my word I will do my best while I can, but the day will arrive when I can't.</p>
+                <p>To that end there is a succession plan (already chosen and coming up to speed, to be named when the time is right) and also the fact that the code for SnapSmack &mdash; and that would be EVERY LINE OF CODE &mdash; is on GitHub. Anyone who really wants to carry it forward can, with or without me. You don't even need to be a good coder. I mean, I'm not and you're here, right? AI can help the next person like they helped me.</p>
+                <p>In the meantime, there are fantastic backup and export tools that ship inside every install &mdash; not scattered across some download site to go stale &mdash; and they work, but that is only my word for it. Test your own backups anyhow, don't trust my word. Distrust is the sanest choice. Someone has to say it.</p>
+            </div>
 
             <div class="qa" id="q-stay-free">
                 <h3>Is SnapSmack going to stay free?</h3>
