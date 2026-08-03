@@ -482,12 +482,27 @@ a { color: inherit; }
 /* Solo/static header icon nav — icons only, matching the landing icon bar
    (overrides the .scroll-sticky-nav pill background/border it also carries). */
 .scroll-solo-nav {
+    /* Full-width bar: blog name hard-left, nav links + social dock right — the same
+       shape as the landing sticky bar. */
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: clamp(14px, 2vw, 24px);
     min-height: 0;
     padding: 0;
     background: transparent;
     border: 0;
     backdrop-filter: none;
     color: inherit;
+}
+.scroll-solo-nav .ss-grid-nav-identity {
+    display: flex;
+    align-items: center;
+    margin-right: auto;   /* name left; links + dock clump right */
+}
+.scroll-solo-nav .ss-grid-nav-actions {
+    display: flex;
+    align-items: center;
 }
 .scroll-solo-nav .ss-grid-nav-links {
     display: flex;
