@@ -494,26 +494,20 @@ a { color: inherit; }
     width: 20px;
     height: 20px;
 }
-/* Like-count badge shows briefly on load / on a like, then fades out so a persistent
-   "1" doesn't just hang on the heart. It comes back on hover/focus of the chip. A fresh
-   like (0→1) creates a new badge element, so the animation replays on each like. */
+/* Like-count badge is HIDDEN by default, so it does not sit on the heart on every
+   page load (the old rule faded it in for ~2s each load, which read as "always on"
+   while browsing photo-to-photo). It appears only on hover/focus of the chip — and
+   since you are hovering the heart the instant you like a photo, the count still ticks
+   up right when you click, then tucks away as soon as you move off. */
 .ss-community-dock .ss-cdock-heart .ss-cdock-rx-count {
-    animation: scroll-cdock-count-fade 2.8s ease forwards;
+    opacity: 0;
+    transition: opacity .18s ease;
 }
 .ss-community-dock .ss-cdock-heart:hover .ss-cdock-rx-count,
 .ss-community-dock .ss-cdock-heart:focus-visible .ss-cdock-rx-count,
+.ss-community-dock:focus-within .ss-cdock-heart .ss-cdock-rx-count,
 .ss-community-dock:hover .ss-cdock-heart .ss-cdock-rx-count {
-    animation: none;
     opacity: 1;
-}
-@keyframes scroll-cdock-count-fade {
-    0%   { opacity: 0; transform: scale(.6); }
-    12%  { opacity: 1; transform: scale(1); }
-    68%  { opacity: 1; }
-    100% { opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-    .ss-community-dock .ss-cdock-heart .ss-cdock-rx-count { animation: none; opacity: 1; }
 }
 /* Blogroll: never display the raw URL string under an entry — the name stays linked. */
 .blogroll-peer-url { display: none !important; }
