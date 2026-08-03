@@ -21,7 +21,8 @@
   to `--scroll-bg` / `--scroll-footer-text`. Those two colour controls were repointed to
   write CSS variables (`:root` `--scroll-bg` / `--scroll-footer-text`) that the page,
   footer, and heart all read (needs one settings re-save to recompile). Defaults
-  unchanged.
+  unchanged. SCROLL advances to 0.1.32 and must be rebuilt through the separate
+  Skin Packager; skin files are not included in the core release ZIP.
 
 - **CORE: emoji reactions removed — standardized on the single Fediverse heart.** The
   community dock (`core/community-dock.php`) now renders one always-visible **heart** like
