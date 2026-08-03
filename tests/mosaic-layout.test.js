@@ -156,6 +156,24 @@ test('admin emphasis chooses the eligible hero orientation', () => {
         'portrait-forward gives the largest cell to a portrait');
 });
 
+test('six-photo desktop blocks do not collapse into postage-stamp cells', () => {
+    const layout = engine.computeLayout([
+        { width: 1000, height: 1000 },
+        { width: 900, height: 700 },
+        { width: 1500, height: 800 },
+        { width: 1100, height: 800 },
+        { width: 1400, height: 800 },
+        { width: 1500, height: 900 }
+    ], 1688, 20, 'portrait');
+
+    assertCleanGeometry(layout, 1688);
+    layout.items.forEach((item, index) => {
+        assert.ok(item.width >= 219.98, `tile ${index} is wide enough to read as a photograph`);
+        assert.ok(item.height >= 179.98, `tile ${index} is tall enough to read as a photograph`);
+        assert.ok(item.width * item.height >= 49990, `tile ${index} has useful visible area`);
+    });
+});
+
 test('five-image layout ends with a full-width image', () => {
     const layout = engine.computeLayout([
         { width: 1400, height: 900 },
