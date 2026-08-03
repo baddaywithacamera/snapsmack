@@ -94,12 +94,28 @@ include 'core/sidebar.php';
                 }
             }
         ?>
-        <!-- ── SOLO LAYOUT (skin controls that only affect the solo photo page) ── -->
+        <!-- ── SOLO CONTROLS (skin controls that only affect the solo photo page) ── -->
+        <p class="dim" style="margin:0 0 14px;">These affect the individual photo page only — its own header, image treatment, and nav bar. Site-wide skin controls stay under Smooth Your Skin.</p>
+        <?php
+            // Group the solo controls by manifest section into their own sub-panels,
+            // ordered HEADER → IMAGE → NAV → anything else.
+            $solo_by_section = [];
+            foreach ($solo_manifest_opts as $k => $o) {
+                $solo_by_section[$o['section'] ?? 'SOLO LAYOUT'][] = ['key' => $k, 'meta' => $o];
+            }
+            $solo_order = ['SOLO HEADER', 'SOLO IMAGE', 'SOLO NAV', 'SOLO PAGE', 'SOLO LAYOUT'];
+            uksort($solo_by_section, function ($a, $b) use ($solo_order) {
+                $ia = array_search($a, $solo_order, true); $ia = ($ia === false) ? 999 : $ia;
+                $ib = array_search($b, $solo_order, true); $ib = ($ib === false) ? 999 : $ib;
+                return ($ia <=> $ib) ?: strcmp($a, $b);
+            });
+        ?>
+        <?php foreach ($solo_by_section as $sec_title => $sec_opts): ?>
         <div class="box">
-            <h3>SOLO LAYOUT</h3>
-            <p class="dim" style="margin:-6px 0 14px;">These affect the individual photo page only — its own header, spacing, and blog-name type. Site-wide skin controls stay under Smooth Your Skin.</p>
+            <h3><?php echo htmlspecialchars($sec_title); ?></h3>
             <div class="config-grid">
-            <?php foreach ($solo_manifest_opts as $k => $o):
+            <?php foreach ($sec_opts as $item):
+                $k = $item['key']; $o = $item['meta'];
                 $val = ($settings[$k] ?? '') !== '' ? $settings[$k] : ($o['default'] ?? '');
             ?>
                 <div class="lens-input-wrapper">
@@ -128,7 +144,7 @@ include 'core/sidebar.php';
                         <select name="settings[<?php echo $k; ?>]"
                             <?php if ($is_font): ?>onchange="var p=this.parentNode.querySelector('.font-preview span'); if(p) p.style.fontFamily=(this.value?(\"'\"+this.value+\"'\"):'inherit')+',sans-serif';"<?php endif; ?>>
                             <?php if ($is_font && $inherit_ok): ?>
-                                <option value="" <?php echo ($val === '') ? 'selected' : ''; ?>>Same as masthead</option>
+                                <option value="" <?php echo ($val === '') ? 'selected' : ''; ?>><?php echo htmlspecialchars($o['inherit_label'] ?? 'Same as masthead'); ?></option>
                             <?php endif; ?>
                             <?php foreach (($o['options'] ?? []) as $sv => $sl): ?>
                                 <option value="<?php echo htmlspecialchars($sv); ?>"
@@ -164,6 +180,7 @@ include 'core/sidebar.php';
             <?php endforeach; ?>
             </div>
         </div>
+        <?php endforeach; ?>
         <?php endif; ?>
 
         <!-- ── TECHNICAL DETAILS ────────────────────────────────────── -->
@@ -214,7 +231,9 @@ include 'core/sidebar.php';
             </div>
         </div>
 
-        <!-- ── TYPOGRAPHY ─────────────────────────────────────────────── -->
+        <!-- ── TYPOGRAPHY (drop caps / pull quotes — shown ONLY when the skin declares
+             those features; a skin's own fonts live in the SOLO panels above) ── -->
+        <?php if ($supports_drop_caps || $supports_pull_quotes): ?>
         <div class="box">
             <h3>TYPOGRAPHY</h3>
             <div class="config-grid">
@@ -240,16 +259,9 @@ include 'core/sidebar.php';
                 </div>
                 <?php endif; ?>
 
-                <?php if (!$supports_drop_caps && !$supports_pull_quotes): ?>
-                <div class="lens-input-wrapper" style="grid-column: 1 / -1;">
-                    <p class="dim" style="margin:0; padding:4px 0;">
-                        ACTIVE SKIN DOES NOT DECLARE TYPOGRAPHY FEATURES. DROP CAPS AND PULL QUOTES WILL APPEAR HERE ONCE A SKIN ADDS <code>features.supports_drop_caps</code> OR <code>features.supports_pull_quotes</code> TO ITS MANIFEST.
-                    </p>
-                </div>
-                <?php endif; ?>
-
             </div>
         </div>
+        <?php endif; ?>
 
         <!-- ── SAVE ───────────────────────────────────────────────────── -->
         <div style="margin-top:4px;">

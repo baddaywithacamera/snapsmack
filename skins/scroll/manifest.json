@@ -574,6 +574,7 @@
             "no_size_slider": true,
             "label": "Nav Font",
             "hint": "Font for the PREV / FIRST · INFO / COMMENTS · LAST / NEXT row. Leave as the first option to inherit the body font.",
+            "inherit_label": "Same as body",
             "default": "",
             "selector": ".scroll-infobox .nav-links",
             "property": "font-family"

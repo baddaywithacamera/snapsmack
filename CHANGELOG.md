@@ -12,24 +12,36 @@
 
 ## Unreleased
 
-## 0.7.488 "A Place For Everything" — 2026-08-03
+## 0.7.489 "Dial It In" — 2026-08-03
 
-- **Skin controls can now live on the admin page they belong to.** A skin
-  manifest option (or engine control) already supported `admin_page` to route it
-  off "Smooth Your Skin"; the **Solo Image Appearance** page now consumes
-  `admin_page: "solo"` the same way the Archive page consumes `"archive"`. Options
-  flagged `solo` render in a new **SOLO LAYOUT** panel (ranges, colours, and font
-  pickers with live previews) and disappear from Smooth Your Skin automatically.
-- **Solo page saves recompile the skin CSS.** New `core/skin-css-recompile.php`
-  (`snapsmack_recompile_public_skin_css()`) regenerates the `custom_css_public`
-  SKIN block + font injection and flushes the page cache after a non-skin admin
-  page saves skin option values — otherwise moved controls would save but never
-  take effect. It is a deliberate, self-contained copy of smack-skin.php's compile;
-  the primary Smooth-Your-Skin path is left untouched so it cannot regress.
-- **Includes SCROLL 0.1.35.** Six solo-only controls (bottom-nav size, photo
-  whitespace, text-column width, blog-name size, solo header font, solo nav-bar
-  background) move to the SOLO LAYOUT panel, plus a new **Blog Name Font** picker
-  that themes the solo page's own header independently of the shared masthead font.
+Supersedes the never-built 0.7.488 tag; this is the coherent build of everything
+since 0.7.487.
+
+- **Solo Image Appearance panel is grouped and self-organising.** Skin controls
+  flagged `admin_page: "solo"` now render in per-section sub-panels (SOLO HEADER /
+  SOLO IMAGE / SOLO NAV) on the Solo Image Appearance page, ordered sensibly, instead
+  of one long list. The core "TYPOGRAPHY" (drop-caps/pull-quotes) box now shows ONLY
+  when the active skin declares those features — no more empty placeholder box beside
+  a skin's real solo typography.
+- **New `inherit_label` manifest field.** A font control with an empty default can
+  now label its inherit option per-control (e.g. "Same as masthead" vs "Same as body")
+  instead of a hard-coded string.
+- **Skin controls can live on the admin page they belong to.** The Solo Image
+  Appearance page consumes `admin_page: "solo"` the same way the Archive page consumes
+  `"archive"`; flagged options render on the solo page and leave Smooth Your Skin.
+- **Solo page saves recompile the skin CSS.** `core/skin-css-recompile.php`
+  (`snapsmack_recompile_public_skin_css()`) regenerates the `custom_css_public` SKIN
+  block + font injection and flushes the page cache after a non-skin admin page saves
+  skin option values. Self-contained copy of smack-skin.php's compile; the primary
+  Smooth-Your-Skin path is untouched so it cannot regress.
+- **Includes SCROLL 0.1.35 — the full solo control surface.** The solo photo page
+  gets its own dial-in set, assembled from patterns already shipping in NEW HORIZON /
+  50 SHADES / GALLERIA: SOLO HEADER (background, height, bottom-border width+colour,
+  blog-name colour + weight + font + size), SOLO IMAGE (border width+colour, rounded
+  corners, and a treatment select — None/Soft/Heavy shadow/Outer Glow/Double Line that
+  reuse the owner's border colour), and SOLO NAV (bar height, top/bottom borders +
+  colour, nav font + colour + size). All default to off/inherit — current SCROLL is
+  unchanged until the owner dials it in.
 
 ## 0.7.487 "No More Postage Stamps" — 2026-08-03
 

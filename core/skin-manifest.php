@@ -160,7 +160,7 @@ function snapsmack_normalize_manifest_options(mixed $options, string $slug): arr
     $types = ['color', 'hidden', 'image', 'range', 'range_numeric', 'select', 'text', 'asset'];
     $fields = [
         'accept', 'admin_page', 'css_var', 'default', 'font_filter', 'help',
-        'font_source', 'hint', 'is_font', 'is_greyscale', 'label', 'max', 'min', 'min_height',
+        'font_source', 'hint', 'inherit_label', 'is_font', 'is_greyscale', 'label', 'max', 'min', 'min_height',
         'min_width', 'no_size_slider', 'options', 'property', 'section',
         'selector', 'show_when', 'size', 'step', 'sz_key_override', 'type',
         'unit', 'uppercase', 'lowercase', 'capitalize',
