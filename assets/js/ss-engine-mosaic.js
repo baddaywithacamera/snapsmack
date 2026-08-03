@@ -142,20 +142,47 @@
         return height;
     }
 
-    function capSectionHeight(items, sectionY, sectionHeight, containerWidth) {
-        if (sectionHeight <= MAX_SECTION_HEIGHT) {
-            return { x: 0, width: containerWidth, height: sectionHeight };
-        }
+    function sourceHeight(image) {
+        return Math.max(1, Number(image.height) || MAX_SECTION_HEIGHT);
+    }
 
-        // The wall width is inviolable. Cap the vertical squeeze at 15%; when
-        // a 900px result would require more cropping, retain 85% and allow that
-        // unusually tall section to exceed the preferred height instead.
-        var scale = Math.max(0.85, MAX_SECTION_HEIGHT / sectionHeight);
-        items.forEach(function (tile) {
-            tile.y = sectionY + (tile.y - sectionY) * scale;
-            tile.height *= scale;
+    function fitTallPortraitTrio(images, y, containerWidth, gap) {
+        var heroHeight = Math.min(MAX_SECTION_HEIGHT, sourceHeight(images[0]));
+        var heroWidth = heroHeight * imageAR(images[0]);
+        var available = Math.max(1, containerWidth - heroWidth - gap);
+        var stackWidth = Math.min(
+            available,
+            Number(images[1].width) || available,
+            Number(images[2].width) || available,
+            (MAX_SECTION_HEIGHT - gap) / (1 / imageAR(images[1]) + 1 / imageAR(images[2]))
+        );
+        var firstHeight = stackWidth / imageAR(images[1]);
+        var secondHeight = stackWidth / imageAR(images[2]);
+        var stackX = containerWidth - stackWidth;
+        return {
+            items: [
+                { image: images[0], order: 0, x: 0, y: y, width: heroWidth, height: heroHeight },
+                { image: images[1], order: 1, x: stackX, y: y, width: stackWidth, height: firstHeight },
+                { image: images[2], order: 2, x: stackX, y: y + firstHeight + gap, width: stackWidth, height: secondHeight }
+            ],
+            height: Math.max(heroHeight, firstHeight + gap + secondHeight)
+        };
+    }
+
+    function fitNaturalRow(images, y, containerWidth, gap) {
+        var totalAR = images.reduce(function (sum, image) { return sum + imageAR(image); }, 0);
+        var height = Math.min(MAX_SECTION_HEIGHT, (containerWidth - gap * (images.length - 1)) / totalAR);
+        images.forEach(function (image) { height = Math.min(height, sourceHeight(image)); });
+        var widths = images.map(function (image) { return height * imageAR(image); });
+        var used = widths.reduce(function (sum, width) { return sum + width; }, 0);
+        var spacing = images.length > 1 ? (containerWidth - used) / (images.length - 1) : 0;
+        var x = 0;
+        var row = images.map(function (image, order) {
+            var tile = { image: image, order: order, x: x, y: y, width: widths[order], height: height };
+            x += widths[order] + spacing;
+            return tile;
         });
-        return { x: 0, width: containerWidth, height: sectionHeight * scale };
+        return { items: row, height: height };
     }
 
     function heroOrientation(mode, sectionNumber, sectionImages) {
@@ -209,11 +236,16 @@
                 var tree = buildSection(sectionImages, preferLandscapeHero);
                 var sectionItems = [];
                 var sectionHeight = placeNode(tree, 0, y, containerWidth, gap, sectionItems);
-                var capped = capSectionHeight(sectionItems, y, sectionHeight, containerWidth);
-                sectionHeight = capped.height;
+                if (sectionHeight > MAX_SECTION_HEIGHT) {
+                    var fitted = count === 3 && imageAR(sectionImages[0]) < 1.15
+                        ? fitTallPortraitTrio(sectionImages, y, containerWidth, gap)
+                        : fitNaturalRow(sectionImages, y, containerWidth, gap);
+                    sectionItems = fitted.items;
+                    sectionHeight = fitted.height;
+                }
                 sectionItems.sort(function (a, b) { return a.order - b.order; });
                 Array.prototype.push.apply(items, sectionItems);
-                sections.push({ x: capped.x, y: y, width: capped.width, height: sectionHeight });
+                sections.push({ x: 0, y: y, width: containerWidth, height: sectionHeight });
                 y += sectionHeight + gap;
                 index += count;
                 sectionNumber++;

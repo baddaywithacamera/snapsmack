@@ -85,6 +85,9 @@ test('an extreme portrait trio keeps full wall width and never exceeds the crop 
     assertCleanGeometry(layout, 1600);
     assert.equal(layout.sections[0].width, 1600);
     assert.equal(layout.sections[0].x, 0);
+    assert.ok(layout.height <= 900.02);
+    assert.equal(layout.items[0].x, 0);
+    assert.ok(Math.abs(layout.items[2].x + layout.items[2].width - 1600) < 0.02, 'supporting stack reaches the opposite wall edge');
     assert.ok(Math.abs(layout.items[0].height - layout.height) < 0.02, 'portrait remains the spanning hero');
     layout.items.forEach((item, index) => {
         const sourceAR = images[index].width / images[index].height;
