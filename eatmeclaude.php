@@ -122,6 +122,10 @@ if (($_GET['format'] ?? '') === 'json') {
 }
 
 $gap = max(0, min(25, (int)($settings['scroll_mosaic_gap'] ?? 6)));
+$emphasis = (string)($settings['scroll_mosaic_emphasis'] ?? 'landscape');
+if (!in_array($emphasis, ['natural', 'balanced', 'landscape', 'portrait'], true)) {
+    $emphasis = 'landscape';
+}
 $skin_path = __DIR__ . '/skins/' . $active_skin;
 include $skin_path . '/skin-meta.php';
 ?>
@@ -134,10 +138,12 @@ include $skin_path . '/skin-meta.php';
 <main class="scroll-wall eatmeclaude-content">
     <div id="eatmeclaude-feed" class="eatmeclaude-feed"
          data-gap="<?php echo $gap; ?>"
+         data-emphasis="<?php echo htmlspecialchars($emphasis, ENT_QUOTES); ?>"
          style="--eatmeclaude-gap:<?php echo $gap; ?>px;">
         <?php if ($images): ?>
             <div class="snap-mosaic eatmeclaude-block"
                  data-gap="<?php echo $gap; ?>"
+                 data-emphasis="<?php echo htmlspecialchars($emphasis, ENT_QUOTES); ?>"
                  data-mosaic="<?php echo htmlspecialchars(json_encode($images, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>"></div>
         <?php else: ?>
             <p class="scroll-empty">No photographs found.</p>

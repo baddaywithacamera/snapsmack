@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.30",
+    "version": "0.1.31",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -299,6 +299,19 @@
             "selector": ".ss-masonry",
             "property": "--ss-gap",
             "unit": "px"
+        },
+        "scroll_mosaic_emphasis": {
+            "section": "PHOTO WALL",
+            "type": "select",
+            "label": "MOSAIC Hero Emphasis",
+            "hint": "Controls which orientation is promoted into the largest cells on MOSAIC feeds. This does not change the saved library order.",
+            "default": "landscape",
+            "options": {
+                "natural": "Follow Library Order",
+                "balanced": "Balance Portraits & Landscapes",
+                "landscape": "Favor Landscapes",
+                "portrait": "Favor Portraits"
+            }
         },
         "scroll_corner_radius": {
             "section": "PHOTO WALL",
