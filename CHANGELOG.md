@@ -31,7 +31,9 @@
   composition according to the SCROLL hero-emphasis setting. This fills the
   enormous internal channels created by the discarded edge-anchored fallback,
   retains the full wall width, and crops 0% because every cell keeps its source
-  aspect ratio. A browser-rendered portrait/landscape/balanced fixture is
+  aspect ratio. Six-photo desktop layouts also reject postage-stamp cells; at
+  full SCROLL width each photograph must be at least 220px wide, 180px tall,
+  and 50,000px². A browser-rendered portrait/landscape/balanced fixture is
   included for visual regression checks.
 
 ## 0.7.483 "No Shrinkage" — 2026-08-03

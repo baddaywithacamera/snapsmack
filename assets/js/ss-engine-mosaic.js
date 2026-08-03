@@ -182,8 +182,8 @@
         });
 
         var score;
-        if (emphasis === 'portrait') score = portraitMax * 5 + landscapeMax * 1.5;
-        else if (emphasis === 'landscape') score = landscapeMax * 5 + portraitMax * 1.5;
+        if (emphasis === 'portrait') score = portraitMax * 20 + landscapeMax;
+        else if (emphasis === 'landscape') score = landscapeMax * 20 + portraitMax;
         else if (emphasis === 'balanced') score = Math.min(portraitMax, landscapeMax) * 5 + Math.max(portraitMax, landscapeMax);
         else score = leadArea * 4 + Math.max(portraitMax, landscapeMax) + Math.min(portraitMax, landscapeMax);
 
@@ -192,12 +192,25 @@
         return score;
     }
 
-    function solveBlock(images, y, containerWidth, gap, emphasis) {
+    function tileIsTooSmall(tile, containerWidth) {
+        /* Six-photo desktop blocks must remain photographs, not navigation thumbnails.
+           Scale the floor down on narrower walls, but hold a useful minimum on the
+           full-width SCROLL wall. */
+        var scale = Math.min(1, containerWidth / 1200);
+        var minWidth = 220 * scale;
+        var minHeight = 180 * scale;
+        var minArea = 50000 * scale * scale;
+        return tile.width < minWidth || tile.height < minHeight || tile.width * tile.height < minArea;
+    }
+
+    function solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize) {
         var best = null;
         candidateTrees(images, 0, images.length, {}).forEach(function (tree) {
             var trial = [];
             var height = placeNode(tree, 0, y, containerWidth, gap, trial);
-            if (height <= 0 || trial.some(tileExceedsLimit)) return;
+            if (height <= 0 || trial.some(tileExceedsLimit) || (enforceUsefulSize && trial.some(function (tile) {
+                return tileIsTooSmall(tile, containerWidth);
+            }))) return;
             var score = blockScore(trial, height, containerWidth, emphasis);
             if (!best || score > best.score) best = { items: trial, height: height, score: score };
         });
@@ -229,7 +242,7 @@
                 var remaining = images.length - index;
                 var count = remaining >= 6 ? 6 : sectionSize(remaining);
                 var sectionImages = images.slice(index, index + count);
-                var solved = count === 6 ? solveBlock(sectionImages, y, containerWidth, gap, emphasis) : null;
+                var solved = count === 6 ? solveBlock(sectionImages, y, containerWidth, gap, emphasis, true) : null;
                 if (!solved) {
                     var fallbackTree = buildSection(sectionImages, false);
                     solved = { items: [], height: 0 };
