@@ -30,12 +30,33 @@ if ($active_skin && skin_manifest_exists($active_skin)) {
 $supports_drop_caps   = !empty($manifest['features']['supports_drop_caps']);
 $supports_pull_quotes = !empty($manifest['features']['supports_pull_quotes']);
 
+// Skin manifest options flagged admin_page => 'solo' are OWNED by this page —
+// controls whose effect is confined to the solo photo page (the only page with
+// its own header). Cross-page controls stay under Smooth Your Skin. Rendered
+// below; saved + recompiled by the POST handler.
+$solo_manifest_opts = [];
+if (is_array($manifest)) {
+    foreach ($manifest['options'] ?? [] as $k => $o) {
+        if (($o['admin_page'] ?? 'skin') === 'solo') {
+            $solo_manifest_opts[$k] = $o;
+        }
+    }
+}
+
 // --- POST HANDLER ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_solo_appearance'])) {
     if (isset($_POST['settings']) && is_array($_POST['settings'])) {
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
         foreach ($_POST['settings'] as $k => $v) {
             $stmt->execute([$k, $v, $v]);
+        }
+        // Skin option values just landed in snap_settings, but the compiled skin
+        // CSS blob is still stale. Recompile it here so the moved solo controls
+        // take effect without a separate Smooth-Your-Skin re-save. Isolated copy
+        // of the compile — smack-skin.php's own path is untouched.
+        if (!empty($solo_manifest_opts) && $active_skin) {
+            require_once __DIR__ . '/core/skin-css-recompile.php';
+            snapsmack_recompile_public_skin_css($pdo, $active_skin);
         }
     }
     header("Location: smack-appearance-solo.php?msg=SAVED");
@@ -57,6 +78,93 @@ include 'core/sidebar.php';
 
     <form method="POST">
     <div id="smack-skin-config-wrap">
+
+        <?php if (!empty($solo_manifest_opts)): ?>
+        <?php
+            // Load the Google Font catalogue so the font pickers + previews render.
+            $solo_has_font = false;
+            foreach ($solo_manifest_opts as $o) { if (!empty($o['is_font'])) { $solo_has_font = true; break; } }
+            if ($solo_has_font) {
+                $inv   = (function () { return include __DIR__ . '/core/manifest-inventory.php'; })();
+                $gfams = is_array($inv) ? ($inv['fonts'] ?? []) : [];
+                if (!empty($gfams)) {
+                    $gp = [];
+                    foreach (array_keys($gfams) as $fam) { $gp[] = 'family=' . str_replace(' ', '+', $fam) . ':wght@400;700'; }
+                    echo '<link rel="stylesheet" href="' . htmlspecialchars('https://fonts.googleapis.com/css2?' . implode('&', $gp) . '&display=swap') . '">' . "\n";
+                }
+            }
+        ?>
+        <!-- ── SOLO LAYOUT (skin controls that only affect the solo photo page) ── -->
+        <div class="box">
+            <h3>SOLO LAYOUT</h3>
+            <p class="dim" style="margin:-6px 0 14px;">These affect the individual photo page only — its own header, spacing, and blog-name type. Site-wide skin controls stay under Smooth Your Skin.</p>
+            <div class="config-grid">
+            <?php foreach ($solo_manifest_opts as $k => $o):
+                $val = ($settings[$k] ?? '') !== '' ? $settings[$k] : ($o['default'] ?? '');
+            ?>
+                <div class="lens-input-wrapper">
+                    <label><?php echo strtoupper($o['label']); ?><?php if (!empty($o['hint'])): ?> <span class="field-tip" data-tip="<?php echo htmlspecialchars($o['hint']); ?>">ⓘ</span><?php endif; ?></label>
+                    <?php if ($o['type'] === 'color'): ?>
+                        <div class="color-picker-container">
+                            <input type="color" name="settings[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val ?: '#000000'); ?>"
+                                   oninput="var s=this.nextElementSibling; if(s) s.innerText=this.value.toUpperCase();">
+                            <span class="hex-display"><?php echo strtoupper(htmlspecialchars($val)); ?></span>
+                        </div>
+                    <?php elseif ($o['type'] === 'range'):
+                        $u = strtoupper($o['unit'] ?? 'px');
+                    ?>
+                        <div class="range-wrapper">
+                            <input type="range" name="settings[<?php echo $k; ?>]"
+                                min="<?php echo htmlspecialchars($o['min']); ?>" max="<?php echo htmlspecialchars($o['max']); ?>"
+                                step="<?php echo htmlspecialchars($o['step'] ?? '1'); ?>"
+                                value="<?php echo htmlspecialchars($val); ?>"
+                                oninput="this.nextElementSibling.innerText=this.value+'<?php echo $u; ?>'">
+                            <span class="active-val"><?php echo strtoupper(htmlspecialchars($val)); ?><?php echo $u; ?></span>
+                        </div>
+                    <?php elseif ($o['type'] === 'select'):
+                        $is_font    = (($o['property'] ?? '') === 'font-family') || !empty($o['is_font']);
+                        $inherit_ok = ($o['default'] ?? '') === '';   // empty default => offer "Same as masthead"
+                    ?>
+                        <select name="settings[<?php echo $k; ?>]"
+                            <?php if ($is_font): ?>onchange="var p=this.parentNode.querySelector('.font-preview span'); if(p) p.style.fontFamily=(this.value?(\"'\"+this.value+\"'\"):'inherit')+',sans-serif';"<?php endif; ?>>
+                            <?php if ($is_font && $inherit_ok): ?>
+                                <option value="" <?php echo ($val === '') ? 'selected' : ''; ?>>Same as masthead</option>
+                            <?php endif; ?>
+                            <?php foreach (($o['options'] ?? []) as $sv => $sl): ?>
+                                <option value="<?php echo htmlspecialchars($sv); ?>"
+                                    <?php echo ((string)$val === (string)$sv) ? 'selected' : ''; ?>
+                                    <?php if ($is_font): ?>style="font-family: '<?php echo htmlspecialchars($sv); ?>', sans-serif;"<?php endif; ?>>
+                                    <?php echo htmlspecialchars(is_array($sl) ? ($sl['label'] ?? $sv) : $sl); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php if ($is_font): ?>
+                            <div class="font-preview" style="margin-top:8px;padding:10px 14px;background:rgba(128,128,128,0.08);border:1px solid rgba(128,128,128,0.2);border-radius:3px;">
+                                <span style="display:block;font-family:<?php echo $val ? "'" . htmlspecialchars($val) . "'" : 'inherit'; ?>,sans-serif;font-size:16px;opacity:0.75;">The quick brown fox jumps over the lazy dog</span>
+                            </div>
+                            <?php if (empty($o['no_size_slider'])):
+                                $sz_key = $k . '_size';
+                                $sz     = $o['size'] ?? [];
+                                $sz_u   = strtoupper($sz['unit'] ?? 'REM');
+                                $sz_val = ($settings[$sz_key] ?? '') !== '' ? $settings[$sz_key] : ($sz['default'] ?? '1.0');
+                            ?>
+                            <div style="margin-top:12px;">
+                                <label style="display:block;font-size:0.7rem;letter-spacing:1.5px;text-transform:uppercase;opacity:0.5;margin-bottom:6px;">Font Size (<?php echo strtolower($sz_u); ?>)</label>
+                                <div class="range-wrapper">
+                                    <input type="range" name="settings[<?php echo $sz_key; ?>]" min="0.6" max="2.4" step="0.05"
+                                        value="<?php echo htmlspecialchars($sz_val); ?>"
+                                        oninput="this.nextElementSibling.innerText=this.value+'<?php echo $sz_u; ?>'">
+                                    <span class="active-val"><?php echo htmlspecialchars($sz_val); ?><?php echo $sz_u; ?></span>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <!-- ── TECHNICAL DETAILS ────────────────────────────────────── -->
         <div class="box">
