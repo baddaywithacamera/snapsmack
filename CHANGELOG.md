@@ -12,15 +12,25 @@
 
 ## Unreleased
 
-- **Like heart: exact spec + centered, and top-right icon gap matches the landing.**
-  Verified live in both states. Unchecked = the page-Background circle with a Footer-Text
-  border and a Footer-Text **outline** heart; liked = the heart goes **solid red** while the
-  circle keeps its Background/Footer colours. The chip is themeable
-  (`--ss-cdock-bg`/`--ss-cdock-border`/`--ss-cdock-icon`/`--ss-cdock-opacity`, defaults keep
-  the old dark chip for other skins); SCROLL maps them to `--scroll-bg`/`--scroll-footer-text`.
-  The like-count is now a corner badge (`position:absolute`) so the heart stays centred
-  instead of being pushed up. And the solo header's icon gap is set to **8px** to match the
-  landing exactly (was a bespoke `clamp(14–24px)`).
+## 0.7.485 — 2026-08-03
+
+- **SCROLL header identical on every page (except the solo lightbox).** `skin-page.php`
+  double-nested `.scroll-profile` (it wrapped `skin-header.php` in another
+  `.scroll-profile scroll-profile-compact`), rendering the static header grid at 90%-of-90%
+  and pushing the icon bar ~86px inward. Removed the wrapper; static/blog headers now render
+  `skin-header.php`'s `.scroll-profile` verbatim — flush to the wall edge like the landing.
+- **SCROLL thin line anchored to the wall.** The static/blog divider
+  (`.scroll-static-content` / `.blogroll-canvas` border-top) now uses the wall's
+  `--scroll-canvas-pct` (90%) width and `margin-top: 0`, so it sits at the header bottom
+  (= the landing photo-top, measured gap 0) and spans the photo-grid width, instead of a
+  920px block dropped 40px below.
+- **SCROLL blogroll raw URLs hidden** (`.blogroll-peer-url`); the entry name stays linked.
+- **SCROLL like heart matches the top nav icons** — transparent circle, hairline border,
+  dark outline heart (40px). On click ONLY the heart glyph turns solid red; the circle's
+  fill and border stay the nav-icon look; the like count is an absolute corner badge so the
+  heart stays centred.
+- **SCROLL static page title enlarged** (`.scroll-horizontal-title`, `clamp(1.2rem,…,2rem)`
+  → `clamp(2rem, 4.5vw, 3.4rem)`) — it read tiny/weak next to the masthead.
 
 ## 0.7.484 "Fill the Damn Gap" — 2026-08-03
 
