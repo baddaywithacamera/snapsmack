@@ -74,6 +74,18 @@ released sequence contiguous with no skips.)
   CSS regardless of the "Landing Masthead Size" slider. (Unchanged here — raise the cap
   if a bigger masthead is wanted.)
 
+## 0.7.476 "Six Pack" — 2026-08-02
+
+- **`eatmeclaude.php`: bounded MOSAIC blocks prove the abandoned global wall was
+  solving the wrong problem.** This hidden SCROLL test page streams the complete
+  published Gallery in deterministic six-photo blocks, avoids a final singleton
+  by splitting `6+1` as `5+2`, and appends blocks only as the visitor approaches
+  the bottom. It uses the real MOSAIC compositor, native post links, stored focal
+  points, SCROLL's existing header/nav/footer, and the existing tile gap, border,
+  border-colour, and corner-radius controls. Optional link/lazy metadata was added
+  to the compositor; dynamically inserted blocks now join its responsive registry
+  and are re-observed safely after resize.
+
 ## 0.7.475 "Quilt Trip" — 2026-08-02
 
 - **MOSAIC is now a true two-dimensional tiled compositor.** The old
@@ -102,16 +114,6 @@ released sequence contiguous with no skips.)
 - **MOSAIC geometry regression suite.** Five Node tests cover portrait spanning,
   mixed row/column spanning, full-width trailing images, mobile collapse, exact
   boundaries, and overlap prevention.
-- **`eatmeclaude.php`: bounded MOSAIC blocks prove the abandoned global wall was
-  solving the wrong problem.** This hidden SCROLL test page streams the complete
-  published Gallery in deterministic six-photo blocks, avoids a final singleton
-  by splitting `6+1` as `5+2`, and appends blocks only as the visitor approaches
-  the bottom. It uses the real MOSAIC compositor, native post links, stored focal
-  points, SCROLL's existing header/nav/footer, and the existing tile gap, border,
-  border-colour, and corner-radius controls. Optional link/lazy metadata was added
-  to the compositor; dynamically inserted blocks now join its responsive registry
-  and are re-observed safely after resize.
-
 ## SCROLL 0.1.26 — 2026-08-02
 
 - **SCROLL: fix landing freeze (regression from the 0.1.25 solo-page rework).** The
