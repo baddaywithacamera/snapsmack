@@ -39,6 +39,18 @@
     --ss-cdock-icon: #1a1a1a;
     --ss-cdock-opacity: 1;
     --ss-heart-outline: #1a1a1a;
+    /* Solo running-head blog name size (admin: "Blog Name Size" on the solo page). */
+    --scroll-solo-name-size: 1.05rem;
+    /* Keyboard/help overlay + shared core widgets (calendar, search dock, contact form)
+       read these generic theme names. SCROLL never set them, so the help modal fell back
+       to its dark terminal defaults (near-black panel, neon-green accent) and clashed on
+       this light skin. Map them onto SCROLL's palette: the modal now follows the page,
+       and its accent is a settable colour (admin: "Help Overlay Accent"). */
+    --bg-primary: var(--scroll-bg, #ffffff);
+    --page-bg: var(--scroll-bg, #ffffff);
+    --text-primary: var(--scroll-text, #3a3a3a);
+    --text-secondary: #8a8a8a;
+    --accent-color: #1a1a1a;   /* fallback before compile; the "Help Overlay Accent" control overrides this */
 }
 
 * { box-sizing: border-box; }
@@ -570,6 +582,13 @@ a { color: inherit; }
     display: flex;
     align-items: center;
     margin-right: auto;   /* name left; links + dock clump right */
+}
+/* Blog name on the solo page: size is its own control (admin: "Blog Name Size").
+   Font family still follows the Masthead Font control (its selector covers
+   .scroll-sticky-nav .ss-grid-nav-name, which this element carries) unless the
+   solo-specific "Blog Name Font" is set. */
+.scroll-solo-nav .ss-grid-nav-name {
+    font-size: var(--scroll-solo-name-size, 1.05rem);
 }
 .scroll-solo-nav .ss-grid-nav-actions {
     display: flex;

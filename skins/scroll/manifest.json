@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.34",
+    "version": "0.1.35",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -367,6 +367,19 @@
             "property": "--scroll-solo-text-width",
             "unit": "px"
         },
+        "scroll_solo_name_size": {
+            "section": "SOLO PAGE",
+            "type": "range",
+            "label": "Blog Name Size (rem)",
+            "hint": "Size of the blog name at the top-left of a solo photo page. The font follows the Masthead Font control.",
+            "default": "1.05",
+            "min": "0.7",
+            "max": "2.4",
+            "step": "0.05",
+            "selector": ":root",
+            "property": "--scroll-solo-name-size",
+            "unit": "rem"
+        },
         "scroll_static_width": {
             "section": "STATIC & BLOG",
             "type": "range",
@@ -505,6 +518,15 @@
             "default": "#ffffff",
             "selector": ".scroll-infobox",
             "property": "background-color"
+        },
+        "scroll_modal_accent": {
+            "section": "COLOURS",
+            "type": "color",
+            "label": "Help Overlay Accent",
+            "hint": "Accent colour for the keyboard-help (F1) overlay — the key labels and title. Its panel and text already follow the page background and text colours.",
+            "default": "#1a1a1a",
+            "selector": ":root",
+            "property": "--accent-color"
         }
     }
 }
