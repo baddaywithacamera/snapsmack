@@ -12,6 +12,15 @@
 
 ## Unreleased
 
+## SCROLL 0.1.30 — 2026-08-02
+
+- **Fix: social dock floated at the bottom on the solo page instead of sitting in the
+  nav.** No new code — the solo nav was simply missing the `ss-grid-sticky-nav` class
+  that the landing nav carries, so the existing `.ss-grid-sticky-nav .social-dock-inline
+  { position: static }` rule never matched and the dock kept its default `position:
+  fixed`. Added the class; the dock now goes inline exactly like the landing. Verified
+  live: dock computes to `static` and sits in the header.
+
 ## SCROLL 0.1.29 — 2026-08-02
 
 - **Solo page header now matches the landing sticky bar.** Rebuilt the solo (single
