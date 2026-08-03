@@ -1,0 +1,63 @@
+/**
+ * SNAPSMACK — SCROLL MOSAIC feed experiment.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line must be the canonical CSS SNAPSMACK EOF marker.
+ */
+
+.eatmeclaude-content {
+    width: var(--scroll-canvas-pct, 90%);
+    margin: 40px auto 0;
+    border-top: 1px solid var(--scroll-page-divider, #999);
+    padding: 40px 0 clamp(32px, 6vw, 90px);
+}
+
+.eatmeclaude-title {
+    margin: 0 0 40px;
+}
+
+.eatmeclaude-feed .snap-mosaic {
+    margin: 0 0 var(--eatmeclaude-gap, 6px);
+}
+
+.eatmeclaude-feed .mosaic-item {
+    box-sizing: border-box;
+    border: var(--scroll-border-width, 0) solid var(--scroll-border-color, #fff);
+    border-radius: var(--scroll-corner-radius, 0);
+}
+
+.eatmeclaude-feed .mosaic-link {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.eatmeclaude-feed .mosaic-link:focus-visible {
+    outline: 3px solid currentColor;
+    outline-offset: -3px;
+}
+
+.eatmeclaude-sentinel {
+    width: 100%;
+    height: 1px;
+}
+
+.eatmeclaude-status {
+    min-height: 1.4em;
+    margin: 20px 0 0;
+    font-size: .72rem;
+    letter-spacing: .12em;
+    text-align: center;
+    text-transform: uppercase;
+    opacity: .55;
+}
+
+@media (max-width: 560px) {
+    .eatmeclaude-content {
+        width: calc(100% - 24px);
+    }
+}
+
+/* ===== SNAPSMACK EOF ===== */

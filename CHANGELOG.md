@@ -12,6 +12,18 @@
 
 ## Unreleased
 
+## SCROLL 0.1.29 — 2026-08-02
+
+- **Solo page header now matches the landing sticky bar.** Rebuilt the solo (single
+  photo) header to use the shared sticky-nav structure instead of its bespoke
+  3-icon nav: blog name on the left as `.ss-grid-nav-name`, the full nav on the right
+  (Home / About / Blogroll / Search / Filter), plus the inline social dock — same as
+  every other page. Because the name now uses `.ss-grid-nav-name` — the exact selector
+  the Masthead Font control already compiles to — it picks up the masthead font with
+  NO settings re-save required (the previous `.scroll-horizontal-title` approach needed
+  a recompile to take effect). Verified live: injected `.ss-grid-nav-name` in the solo
+  nav computes to the masthead font; layout is name-left / icons-right.
+
 ## SCROLL 0.1.28 — 2026-08-02
 
 The single next version after the shipped 0.1.27. (Bundles what were briefly tagged
@@ -90,6 +102,15 @@ released sequence contiguous with no skips.)
 - **MOSAIC geometry regression suite.** Five Node tests cover portrait spanning,
   mixed row/column spanning, full-width trailing images, mobile collapse, exact
   boundaries, and overlap prevention.
+- **`eatmeclaude.php`: bounded MOSAIC blocks prove the abandoned global wall was
+  solving the wrong problem.** This hidden SCROLL test page streams the complete
+  published Gallery in deterministic six-photo blocks, avoids a final singleton
+  by splitting `6+1` as `5+2`, and appends blocks only as the visitor approaches
+  the bottom. It uses the real MOSAIC compositor, native post links, stored focal
+  points, SCROLL's existing header/nav/footer, and the existing tile gap, border,
+  border-colour, and corner-radius controls. Optional link/lazy metadata was added
+  to the compositor; dynamically inserted blocks now join its responsive registry
+  and are re-observed safely after resize.
 
 ## SCROLL 0.1.26 — 2026-08-02
 
