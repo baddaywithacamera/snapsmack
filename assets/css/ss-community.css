@@ -611,14 +611,14 @@
 
 .ss-cdock-heart-svg svg {
     fill: none;
-    stroke: var(--ss-heart-color, #e05252);
+    stroke: var(--ss-heart-outline, var(--ss-heart-color, #e05252));
     stroke-width: 1.5;
     transition: fill 0.15s ease, stroke 0.15s ease;
 }
 
 .ss-cdock-heart.is-active .ss-cdock-heart-svg svg {
     fill: var(--ss-heart-color, #e05252);
-    stroke: var(--ss-heart-color, #e05252);
+    stroke: var(--ss-heart-outline, var(--ss-heart-color, #e05252));
 }
 
 .ss-cdock-heart.is-active {
@@ -633,7 +633,7 @@
 /* Heart SVG in FAB button */
 .ss-cdock-heart-active svg {
     fill: var(--ss-heart-color, #e05252);
-    stroke: var(--ss-heart-color, #e05252);
+    stroke: var(--ss-heart-outline, var(--ss-heart-color, #e05252));
     stroke-width: 1.5;
     width: 20px;
     height: 20px;

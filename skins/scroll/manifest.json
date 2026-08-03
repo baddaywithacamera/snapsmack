@@ -455,8 +455,8 @@
             "type": "color",
             "label": "Background",
             "default": "#ffffff",
-            "selector": "body",
-            "property": "background-color"
+            "selector": ":root",
+            "property": "--scroll-bg"
         },
         "scroll_text": {
             "section": "COLOURS",
@@ -495,8 +495,8 @@
             "type": "color",
             "label": "Footer Text",
             "default": "#3a3a3a",
-            "selector": "#system-footer",
-            "property": "color"
+            "selector": ":root",
+            "property": "--scroll-footer-text"
         },
         "scroll_navigation_background": {
             "section": "COLOURS",

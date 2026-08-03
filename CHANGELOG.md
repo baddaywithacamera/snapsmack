@@ -12,6 +12,15 @@
 
 ## Unreleased
 
+- **Heart colour derives from existing controls — no new sliders.** The like heart now
+  takes its FILL from the page **Background** colour and its OUTLINE from the **Footer
+  Text** colour, so it always matches how the page is set up. Core `ss-community.css`
+  splits fill (`--ss-heart-color`) from outline (`--ss-heart-outline`); SCROLL maps them
+  to `--scroll-bg` / `--scroll-footer-text`. Those two colour controls were repointed to
+  write CSS variables (`:root` `--scroll-bg` / `--scroll-footer-text`) that the page,
+  footer, and heart all read (needs one settings re-save to recompile). Defaults
+  unchanged.
+
 - **CORE: emoji reactions removed — standardized on the single Fediverse heart.** The
   community dock (`core/community-dock.php`) now renders one always-visible **heart** like
   button (outline by default, filled when liked) instead of the smiley React FAB + emoji
