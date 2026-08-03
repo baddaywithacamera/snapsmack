@@ -148,9 +148,12 @@ test('admin emphasis chooses the eligible hero orientation', () => {
     const landscape = engine.computeLayout(images, 1000, 6, 'landscape');
     const portrait = engine.computeLayout(images, 1000, 6, 'portrait');
 
-    assert.equal(landscape.items[3].image.id, 6, 'landscape-forward promotes the available landscape');
-    assert.ok(landscape.items[5].y > landscape.sections[1].y, 'landscape hero sits beside a stack');
-    assert.equal(portrait.items[3].image.id, 5, 'portrait-forward preserves the available portrait hero');
+    const largestArea = layout => layout.items.reduce((best, item) =>
+        item.width * item.height > best.width * best.height ? item : best);
+    assert.ok(largestArea(landscape).image.width / largestArea(landscape).image.height >= 1.15,
+        'landscape-forward gives the largest cell to a landscape');
+    assert.ok(largestArea(portrait).image.width / largestArea(portrait).image.height < 1.15,
+        'portrait-forward gives the largest cell to a portrait');
 });
 
 test('five-image layout ends with a full-width image', () => {

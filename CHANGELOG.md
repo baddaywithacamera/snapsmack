@@ -12,6 +12,18 @@
 
 ## Unreleased
 
+## 0.7.484 "Fill the Damn Gap" — 2026-08-03
+
+- **Six-photo feed blocks now pack as one exact-aspect composition.** The
+  original compositor remains unchanged for smaller mosaics that already fit.
+  Full feed blocks evaluate bounded nested row/column arrangements, reject any
+  tile that would exceed 900px or its source dimensions, and choose a dense
+  composition according to the SCROLL hero-emphasis setting. This fills the
+  enormous internal channels created by the discarded edge-anchored fallback,
+  retains the full wall width, and crops 0% because every cell keeps its source
+  aspect ratio. A browser-rendered portrait/landscape/balanced fixture is
+  included for visual regression checks.
+
 ## 0.7.483 "No Shrinkage" — 2026-08-03
 
 - **Heart colour derives from existing controls — no new sliders.** The like heart now
