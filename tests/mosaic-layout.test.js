@@ -99,6 +99,37 @@ test('landscape-led block mixes a two-column span with a two-row span', () => {
     assert.ok(lowerRight.y > acrossColumns.y);
 });
 
+test('landscape-led three-image section gives the landscape a full-width hero row', () => {
+    const layout = engine.computeLayout([
+        { width: 1600, height: 800 },
+        { width: 700, height: 1000 },
+        { width: 900, height: 900 }
+    ], 900, 6);
+
+    assertCleanGeometry(layout, 900);
+    assert.equal(layout.items[0].x, 0);
+    assert.equal(layout.items[0].y, 0);
+    assert.equal(layout.items[0].width, 900);
+    assert.ok(layout.items[1].y > layout.items[0].y);
+    assert.ok(layout.items[2].y > layout.items[0].y);
+});
+
+test('desktop tiles never exceed 900px or their source pixel dimensions', () => {
+    const images = [
+        { width: 700, height: 1600 },
+        { width: 1800, height: 700 },
+        { width: 420, height: 360 }
+    ];
+    const layout = engine.computeLayout(images, 1600, 6);
+
+    assertCleanGeometry(layout, 1600);
+    layout.items.forEach((item, index) => {
+        assert.ok(item.width <= Math.min(900, images[index].width) + 0.02);
+        assert.ok(item.height <= Math.min(900, images[index].height) + 0.02);
+    });
+    assert.ok(layout.sections[0].x > 0, 'bounded section is centred in a wide canvas');
+});
+
 test('five-image layout ends with a full-width image', () => {
     const layout = engine.computeLayout([
         { width: 1400, height: 900 },

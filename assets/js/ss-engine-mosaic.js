@@ -17,6 +17,7 @@
     'use strict';
 
     var MOBILE_BREAKPOINT = 520;
+    var MAX_TILE_DIMENSION = 900;
     var mosaicContainers = [];
     var resizeBound = false;
 
@@ -55,7 +56,7 @@
             if (cells[0].ar < 1.15) {
                 return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
             }
-            return group('horizontal', cells);
+            return group('vertical', [cells[0], group('horizontal', cells.slice(1))]);
         }
 
         if (cells[0].ar < 1.15) {
@@ -138,6 +139,33 @@
         return height;
     }
 
+    function tileLimit(image, dimension) {
+        var source = Number(image[dimension]) || MAX_TILE_DIMENSION;
+        return Math.max(1, Math.min(MAX_TILE_DIMENSION, source));
+    }
+
+    function sectionFits(tree, width, gap) {
+        var trial = [];
+        placeNode(tree, 0, 0, width, gap, trial);
+        return trial.every(function (tile) {
+            return tile.width <= tileLimit(tile.image, 'width') + 0.01 &&
+                   tile.height <= tileLimit(tile.image, 'height') + 0.01;
+        });
+    }
+
+    function fittedSectionWidth(tree, containerWidth, gap) {
+        if (sectionFits(tree, containerWidth, gap)) return containerWidth;
+
+        var low = 1;
+        var high = containerWidth;
+        for (var pass = 0; pass < 24; pass++) {
+            var middle = (low + high) / 2;
+            if (sectionFits(tree, middle, gap)) low = middle;
+            else high = middle;
+        }
+        return low;
+    }
+
     function computeLayout(images, containerWidth, gap) {
         gap = Math.max(0, Math.min(20, Number(gap) || 0));
         containerWidth = Math.max(0, Number(containerWidth) || 0);
@@ -152,9 +180,11 @@
 
         if (containerWidth <= MOBILE_BREAKPOINT) {
             images.forEach(function (image) {
-                var height = containerWidth / imageAR(image);
-                items.push({ image: image, x: 0, y: y, width: containerWidth, height: height });
-                sections.push({ x: 0, y: y, width: containerWidth, height: height });
+                var itemWidth = Math.min(containerWidth, tileLimit(image, 'width'), tileLimit(image, 'height') * imageAR(image));
+                var height = itemWidth / imageAR(image);
+                var itemX = (containerWidth - itemWidth) / 2;
+                items.push({ image: image, x: itemX, y: y, width: itemWidth, height: height });
+                sections.push({ x: itemX, y: y, width: itemWidth, height: height });
                 y += height + gap;
             });
         } else {
@@ -162,10 +192,12 @@
                 var count = sectionSize(images.length - index);
                 var tree = buildSection(images.slice(index, index + count));
                 var sectionItems = [];
-                var sectionHeight = placeNode(tree, 0, y, containerWidth, gap, sectionItems);
+                var sectionWidth = fittedSectionWidth(tree, containerWidth, gap);
+                var sectionX = (containerWidth - sectionWidth) / 2;
+                var sectionHeight = placeNode(tree, sectionX, y, sectionWidth, gap, sectionItems);
                 sectionItems.sort(function (a, b) { return a.order - b.order; });
                 Array.prototype.push.apply(items, sectionItems);
-                sections.push({ x: 0, y: y, width: containerWidth, height: sectionHeight });
+                sections.push({ x: sectionX, y: y, width: sectionWidth, height: sectionHeight });
                 y += sectionHeight + gap;
                 index += count;
             }
