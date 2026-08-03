@@ -326,7 +326,7 @@ if (file_exists($registry_path)) {
 // phase 3 (POST package): package selected skins, show results
 
 $phase        = 'select_ref';
-$ref          = trim($_POST['ref'] ?? 'master');
+$ref          = trim($_POST['ref'] ?? 'dev');
 $tmp_key      = preg_replace('/[^a-f0-9]/', '', $_POST['tmp_key'] ?? '');
 $tmp_dir      = $tmp_key ? sc_skin_workdir($tmp_key) : '';
 $repo_skins   = [];
@@ -334,7 +334,7 @@ $build_results = [];
 $build_errors  = [];
 $fetch_error  = '';
 
-if (!in_array($ref, ['master', 'dev'], true)) $ref = 'master';
+if (!in_array($ref, ['master', 'dev'], true)) $ref = 'dev';
 
 // ── Delete skin from registry (no preflight required) ─────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_skin'])) {
@@ -669,20 +669,21 @@ include __DIR__ . '/sc-layout-top.php';
         <h2 class="sc-card-title">Package Skins</h2>
         <p class="sc-dim" style="margin-bottom:20px; font-size:0.875rem;">
             Downloads <strong><?php echo htmlspecialchars(SNAPSMACK_GITHUB_REPO); ?></strong>
-            from <strong>master</strong> and extracts the skins directory for packaging.
+            from <strong>dev</strong> and extracts the skins directory for packaging.
+            Dev is the source of truth for skins — master lags (see the note at the top of this file).
         </p>
         <form method="POST" action="sc-skins.php">
-            <input type="hidden" name="ref" value="master">
+            <input type="hidden" name="ref" value="dev">
             <button type="submit" name="fetch_skins" value="1" class="sc-btn sc-btn--primary">
-                Fetch Skins from Master
+                Fetch Skins from Dev
             </button>
         </form>
 
         <hr style="border:0; border-top:1px solid var(--sc-border); margin:22px 0;">
         <h3 style="margin-bottom:8px;">Fetch One Skin</h3>
         <p class="sc-dim" style="margin-bottom:14px; font-size:0.875rem;">
-            Pull only one skin directory. Use <strong>dev</strong> for an unpublished beta;
-            use <strong>master</strong> for a stable skin.
+            Pull only one skin directory. Defaults to <strong>dev</strong> (the current skins);
+            <strong>master</strong> is still selectable but lags and is rarely what you want.
         </p>
         <form method="POST" action="sc-skins.php"
               style="display:grid; grid-template-columns:150px minmax(220px,1fr) auto; gap:10px; align-items:end;">
