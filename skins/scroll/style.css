@@ -485,10 +485,16 @@ a { color: inherit; }
 .scroll-solo-nav .scroll-nav-search > summary::-webkit-details-marker { display: none; }
 /* SOLO PAGE = a viewport-locked lightbox (mirrors 50-Shades). The page never
    scrolls; only the stage does, and only once the INFO/COMMENTS drawer opens.
-   Scoped to body.is-photo-page so the landing wall and archive still scroll. */
-html:has(body.is-photo-page) { overflow: hidden; scrollbar-gutter: auto; }
-body.is-photo-page { height: 100dvh; overflow: hidden; }
-body.is-photo-page #page-wrapper {
+   CRITICAL SCOPING — gate on .scroll-solo-stage, NOT body.is-photo-page alone.
+   index.php renders the LANDING under the same body.is-photo-page as the solo
+   page, but the landing is a scrolling wall. The one marker that separates them
+   is .scroll-solo-stage, which ONLY layout.php (the solo page) emits; the landing
+   emits .scroll-landing. Locking on body.is-photo-page alone froze the landing:
+   with no scroller, the infinite-scroll sentinel stayed permanently in view, so
+   the wall fetched page after page forever and hung the browser. Keep it gated. */
+html:has(.scroll-solo-stage) { overflow: hidden; scrollbar-gutter: auto; }
+body.is-photo-page:has(.scroll-solo-stage) { height: 100dvh; overflow: hidden; }
+body.is-photo-page:has(.scroll-solo-stage) #page-wrapper {
     display: flex;
     flex-direction: column;
     height: 100dvh;
@@ -623,8 +629,9 @@ body.is-photo-page .social-dock:not(.social-dock-inline) { display: none; }
    page is pinned to the viewport and nothing scrolls until you ask for it.
    Measured: this removes exactly the 127px of overflow (79px footer + 48px
    margin) that was letting the page scroll. Scoped to solo; other pages keep
-   their footer. */
-body.is-photo-page #system-footer { display: none; }
+   their footer. Same scoping rule as the viewport lock above: gate on
+   .scroll-solo-stage so the LANDING (also body.is-photo-page) keeps its footer. */
+body.is-photo-page:has(.scroll-solo-stage) #system-footer { display: none; }
 body.is-photo-page #footer[style*="display: block"] ~ #system-footer,
 body.is-photo-page #footer[style*="display:block"]  ~ #system-footer { display: block; }
 /* Static & blog pages carry a thin divider level with where the landing photo
