@@ -14,7 +14,7 @@ require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 <div id="scroll-stage" class="scroll-solo-stage">
     <header class="scroll-solo-header">
         <div class="scroll-solo-header-inside">
-            <nav class="scroll-sticky-nav scroll-solo-nav" aria-label="Site navigation">
+            <nav class="scroll-sticky-nav ss-grid-sticky-nav scroll-solo-nav" aria-label="Site navigation">
                 <?php
                 // Same identity + full nav + social dock as the shared header, so the
                 // solo page matches the landing's sticky bar. The blog name uses
