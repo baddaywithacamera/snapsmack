@@ -495,6 +495,17 @@ a { color: inherit; }
     backdrop-filter: none;
     color: inherit;
 }
+/* The always-visible bar is position:fixed by the core engine (that's how the landing
+   sticky bar reuses it). The solo lightbox header is IN-FLOW inside .scroll-solo-header,
+   so keep it static — the .scroll-solo-header-inside wrapper (90% wide, centred) then
+   provides the inset, matching the landing. This is the ONLY solo-specific override. */
+.scroll-solo-nav.ss-grid-nav-always-visible {
+    position: static;
+    width: 100%;
+    background: transparent;
+    border: 0;
+    backdrop-filter: none;
+}
 .scroll-solo-nav .ss-grid-nav-identity {
     display: flex;
     align-items: center;
@@ -572,7 +583,9 @@ body.is-photo-page:has(.scroll-solo-stage) #page-wrapper {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: min(calc(100% - 48px), var(--scroll-canvas-width));
+    /* Match the WALL/landing width (same --scroll-canvas-pct, 90%) so the header's
+       name-left / icons-right line up with the same edges as everywhere else. */
+    width: var(--scroll-canvas-pct, 90%);
     margin: 0 auto;
 }
 .scroll-solo-header .site-title-text,
