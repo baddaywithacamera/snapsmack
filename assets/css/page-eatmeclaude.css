@@ -9,13 +9,8 @@
 
 .eatmeclaude-content {
     width: var(--scroll-canvas-pct, 90%);
-    margin: 40px auto 0;
-    border-top: 1px solid var(--scroll-page-divider, #999);
-    padding: 40px 0 clamp(32px, 6vw, 90px);
-}
-
-.eatmeclaude-title {
-    margin: 0 0 40px;
+    margin: 0 auto;
+    padding: 0 0 clamp(32px, 6vw, 90px);
 }
 
 .eatmeclaude-feed .snap-mosaic {

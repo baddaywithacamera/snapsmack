@@ -12,6 +12,13 @@
 
 ## Unreleased
 
+## 0.7.480 "No Introduction Necessary" — 2026-08-02
+
+- **The full-library MOSAIC feed now begins exactly where SCROLL's landing wall
+  begins.** Removed the experimental divider and “EAT ME, CLAUDE” heading, and
+  removed the redundant compact-header wrapper. The page now uses SCROLL's
+  native `.scroll-wall` geometry directly beneath the unchanged landing header.
+
 ## 0.7.479 "Full Width Apology" — 2026-08-02
 
 - **Restored the full SCROLL canvas to bounded MOSAIC blocks.** The 900px limit
