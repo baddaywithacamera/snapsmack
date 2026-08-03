@@ -12,6 +12,15 @@
 
 ## Unreleased
 
+## 0.7.482 "Portraits Are People Too" — 2026-08-02
+
+- **Portrait heroes are never demoted by the 900px ceiling.** A mildly
+  over-height composition is reduced vertically only within MOSAIC's 15% crop
+  allowance; a more extreme composition scales proportionally, retaining the
+  complete photographs and the spanning portrait. Landscape hero promotion is
+  now a deterministic occasional accent (roughly one third of eligible second
+  sections), replacing the over-aggressive every-block treatment.
+
 ## 0.7.481 "Back to the Photograph" — 2026-08-02
 
 - **Restored the original MOSAIC compositor and made only two bounded
