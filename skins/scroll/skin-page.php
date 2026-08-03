@@ -12,9 +12,10 @@
 include __DIR__ . '/skin-meta.php';
 ?>
 <body class="scroll-static">
-<div class="scroll-profile scroll-profile-compact">
-    <?php include __DIR__ . '/skin-header.php'; ?>
-</div>
+<?php // Header is skin-header.php's .scroll-profile verbatim — the SAME header as the
+      // landing. Do NOT wrap it in another .scroll-profile: that double-nested the grid
+      // (90% of 90%) and pushed the icon bar ~86px in. ?>
+<?php include __DIR__ . '/skin-header.php'; ?>
 <main class="scroll-static-content">
     <h1 class="scroll-horizontal-title"><?php echo htmlspecialchars($page_title); ?></h1>
     <?php if (!empty($page_data['image_asset'])): ?>
