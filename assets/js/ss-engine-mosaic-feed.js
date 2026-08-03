@@ -36,6 +36,10 @@
         if (status) status.textContent = message || '';
     }
 
+    function sentinelStillNear() {
+        return sentinel.getBoundingClientRect().top <= window.innerHeight + 1000;
+    }
+
     function loadNext() {
         if (!hasMore || loading) return;
         loading = true;
@@ -70,7 +74,14 @@
             .catch(function () {
                 if (status) status.textContent = 'Could not load the next mosaic. Scroll to retry.';
             })
-            .then(function () { loading = false; });
+            .then(function () {
+                loading = false;
+                // IntersectionObserver fires on boundary changes, not after each
+                // append. A short block can leave the sentinel continuously inside
+                // the 1000px prefetch margin, which previously stalled after exactly
+                // one request. Keep filling until it has genuinely moved beyond it.
+                if (hasMore && sentinelStillNear()) loadNext();
+            });
     }
 
     if ('IntersectionObserver' in window) {
