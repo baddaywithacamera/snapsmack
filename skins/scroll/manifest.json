@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.28",
+    "version": "0.1.29",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -126,7 +126,7 @@
             "label": "Masthead Font",
             "hint": "The big tilted landing masthead AND the small blog-name running head in the sticky bar. Page titles have their own font below.",
             "default": "Archivo Black",
-            "selector": ".scroll-masthead, .scroll-sticky-nav .ss-grid-nav-name",
+            "selector": ".scroll-masthead, .scroll-sticky-nav .ss-grid-nav-name, .scroll-horizontal-title",
             "property": "font-family"
         },
         "scroll_body_font": {
@@ -203,6 +203,19 @@
             "selector": ":root",
             "property": "--scroll-title-size",
             "unit": "vw"
+        },
+        "scroll_bottomnav_size": {
+            "section": "SOLO PAGE",
+            "type": "range",
+            "label": "Bottom Nav Font Size (rem)",
+            "hint": "Size of the PREV / FIRST · INFO / COMMENTS · LAST / NEXT row under the solo photo.",
+            "default": "0.75",
+            "min": "0.6",
+            "max": "1.6",
+            "step": "0.05",
+            "selector": ".scroll-infobox .nav-links",
+            "property": "--scroll-bottomnav-size",
+            "unit": "rem"
         },
         "scroll_masthead_pad": {
             "section": "MASTHEAD",
