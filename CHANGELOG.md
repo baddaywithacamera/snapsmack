@@ -26,7 +26,7 @@
   page saves skin option values — otherwise moved controls would save but never
   take effect. It is a deliberate, self-contained copy of smack-skin.php's compile;
   the primary Smooth-Your-Skin path is left untouched so it cannot regress.
-- **Includes SCROLL 0.1.36.** Six solo-only controls (bottom-nav size, photo
+- **Includes SCROLL 0.1.35.** Six solo-only controls (bottom-nav size, photo
   whitespace, text-column width, blog-name size, solo header font, solo nav-bar
   background) move to the SOLO LAYOUT panel, plus a new **Blog Name Font** picker
   that themes the solo page's own header independently of the shared masthead font.
