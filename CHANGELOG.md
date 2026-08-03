@@ -20,6 +20,11 @@
   capped at MOSAIC's 15% crop allowance; if a section cannot reach the preferred
   900px height within that allowance, it stays taller rather than sacrificing
   page width or more of the photograph.
+- **Fixed the lazy feed stopping after twelve photographs.** When an appended
+  six-photo block left the sentinel continuously inside its prefetch margin,
+  IntersectionObserver had no boundary change to report and never requested
+  the next block. The loader now continues until the sentinel actually moves
+  beyond that margin, then resumes loading normally as the visitor scrolls.
 
 ## 0.7.482 "Your Wall Your Bias" — 2026-08-02
 
