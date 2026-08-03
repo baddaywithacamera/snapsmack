@@ -12,6 +12,16 @@
 
 ## Unreleased
 
+## 0.7.486 "No More Postage Stamps" — 2026-08-03
+
+- **MOSAIC minimum useful photo size is now in the tagged release.** Six-photo
+  desktop compositions reject any arrangement containing a cell under 220px
+  wide, 180px tall, or 50,000px² at full SCROLL width. This removes the narrow
+  thumbnail strips seen beside otherwise useful hero photographs while keeping
+  exact source aspect ratios, the 900px maximum, and the selected hero emphasis.
+- **Includes SCROLL 0.1.33.** The corrected skin version from the preceding
+  header/heart deployment is preserved unchanged in this release state.
+
 ## 0.7.485 — 2026-08-03
 
 - **SCROLL header identical on every page (except the solo lightbox).** `skin-page.php`
