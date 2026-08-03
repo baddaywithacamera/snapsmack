@@ -1126,7 +1126,7 @@ if (!empty($google_families)) {
                         $k   = $item['key'];
                         $o   = $item['meta'];
                         if ($o['type'] === 'spacer') { echo '<div class="lens-input-wrapper"></div>'; continue; }
-                        $val = ($settings[$k] ?? '') !== '' ? $settings[$k] : $o['default'];
+                        $val = ($settings[$k] ?? '') !== '' ? $settings[$k] : ($o['default'] ?? '');
                         // Context-sensitive controls: a manifest 'show_when' =>
                         // ['<other_key>' => '<value>'] hides this wrapper unless that
                         // control currently equals the value (toggled live by the

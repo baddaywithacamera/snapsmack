@@ -12,6 +12,18 @@
 
 ## Unreleased
 
+## 0.7.478 "Equal Billing" — 2026-08-02
+
+- **MOSAIC now gives landscape and portrait heroes equal billing.** A
+  landscape-led three-photo section receives a full-width hero row above its
+  supporting pair, balancing the existing tall portrait-plus-stack pattern.
+  Individual tiles never render wider or taller than 900px and never exceed
+  their source pixel dimensions; constrained sections remain centred instead
+  of enlarging photographs to fill the canvas.
+- **Quieted two SCROLL administration warnings.** `social_dock` is now a known,
+  safely normalized manifest block, and optional skin controls without a
+  declared default correctly fall back to an empty value.
+
 ## 0.7.477 "Second Helping" — 2026-08-02
 
 - **Fixed `eatmeclaude.php` failing with HTTP 500.** Gallery-wide MOSAIC blocks

@@ -92,7 +92,7 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
     $array_keys = [
         'features', 'variants', 'allowed_fonts', 'require_scripts',
         'hide_controls', 'options', 'admin_styling', 'css_variables',
-        'incompatible', 'modes',
+        'incompatible', 'modes', 'social_dock',
     ];
     $boolean_keys = [
         'community_comments', 'community_likes', 'community_reactions',
