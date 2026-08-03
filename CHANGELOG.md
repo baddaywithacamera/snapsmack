@@ -12,6 +12,15 @@
 
 ## Unreleased
 
+## 0.7.483 "No Shrinkage" — 2026-08-02
+
+- **MOSAIC sections never narrow the SCROLL wall.** Removed the deep-height
+  fallback that proportionally shrank an entire composition and created white
+  side gutters. The wall remains at the configured width. Height reduction is
+  capped at MOSAIC's 15% crop allowance; if a section cannot reach the preferred
+  900px height within that allowance, it stays taller rather than sacrificing
+  page width or more of the photograph.
+
 ## 0.7.482 "Your Wall Your Bias" — 2026-08-02
 
 - **MOSAIC hero orientation is now a SCROLL admin setting.** PHOTO WALL gains
