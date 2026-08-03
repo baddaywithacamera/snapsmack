@@ -32,6 +32,7 @@ function assertCleanGeometry(layout, containerWidth) {
     const epsilon = 0.02;
     layout.items.forEach((item, index) => {
         assert.ok(item.width > 0 && item.height > 0, `tile ${index} has positive dimensions`);
+        assert.ok(item.width <= 900.02 && item.height <= 900.02, `tile ${index} stays within the 900px derivative ceiling`);
         assert.ok(item.x >= -epsilon && item.y >= -epsilon, `tile ${index} begins inside the mosaic`);
         assert.ok(item.x + item.width <= containerWidth + epsilon, `tile ${index} stays inside the right edge`);
         assert.ok(item.y + item.height <= layout.height + epsilon, `tile ${index} stays inside the bottom edge`);
@@ -90,6 +91,8 @@ test('an extreme portrait trio keeps full wall width and never exceeds the crop 
     assert.ok(Math.abs(layout.items[2].x + layout.items[2].width - 1600) < 0.02, 'supporting stack reaches the opposite wall edge');
     assert.ok(Math.abs(layout.items[0].height - layout.height) < 0.02, 'portrait remains the spanning hero');
     layout.items.forEach((item, index) => {
+        assert.ok(item.width <= 900.02, `tile ${index} width stays within the large thumbnail`);
+        assert.ok(item.height <= 900.02, `tile ${index} height stays within the large thumbnail`);
         const sourceAR = images[index].width / images[index].height;
         const cellAR = item.width / item.height;
         const retained = Math.min(cellAR / sourceAR, sourceAR / cellAR);
@@ -120,6 +123,17 @@ test('landscape-led block mixes a two-column span with a two-row span', () => {
     assert.ok(Math.abs(acrossRows.height - layout.height) < 0.02);
     assert.ok(lowerLeft.y > acrossColumns.y);
     assert.ok(lowerRight.y > acrossColumns.y);
+});
+
+test('wide-wall landscapes never render wider than the 900px derivative', () => {
+    const layout = engine.computeLayout([
+        { id: 11, width: 1800, height: 800 },
+        { id: 12, width: 1600, height: 900 },
+        { id: 13, width: 1400, height: 800 }
+    ], 1600, 6, 'natural');
+
+    assertCleanGeometry(layout, 1600);
+    assert.ok(Math.abs(layout.items[2].x + layout.items[2].width - 1600) < 0.02, 'row still anchors both wall edges');
 });
 
 test('admin emphasis chooses the eligible hero orientation', () => {
