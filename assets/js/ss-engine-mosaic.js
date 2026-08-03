@@ -52,12 +52,7 @@
         if (cells.length === 1) return cells[0];
         if (cells.length === 2) return group('horizontal', cells);
 
-        if (cells.length === 3) {
-            if (cells[0].ar < 1.15) {
-                return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
-            }
-            return group('vertical', [cells[0], group('horizontal', cells.slice(1))]);
-        }
+        if (cells.length === 3) return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
 
         if (cells[0].ar < 1.15) {
             return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
@@ -144,26 +139,37 @@
         return Math.max(1, Math.min(MAX_TILE_DIMENSION, source));
     }
 
-    function sectionFits(tree, width, gap) {
-        var trial = [];
-        placeNode(tree, 0, 0, width, gap, trial);
-        return trial.every(function (tile) {
-            return tile.width <= tileLimit(tile.image, 'width') + 0.01 &&
-                   tile.height <= tileLimit(tile.image, 'height') + 0.01;
-        });
-    }
+    function placeThreeSection(images, y, containerWidth, gap, output) {
+        var hero = images[0];
+        var supportWidthLimit = Math.min(
+            tileLimit(images[1], 'width'),
+            tileLimit(images[2], 'width')
+        );
+        var heroWidthLimit = tileLimit(hero, 'width');
+        var usableWidth = Math.min(containerWidth, heroWidthLimit + supportWidthLimit + gap);
+        var sectionX = (containerWidth - usableWidth) / 2;
+        var desiredHeroShare = hero.width / hero.height >= 1.15 ? 0.55 : 0.42;
+        var heroWidth = Math.min(heroWidthLimit, usableWidth * desiredHeroShare);
+        var supportWidth = usableWidth - heroWidth - gap;
 
-    function fittedSectionWidth(tree, containerWidth, gap) {
-        if (sectionFits(tree, containerWidth, gap)) return containerWidth;
-
-        var low = 1;
-        var high = containerWidth;
-        for (var pass = 0; pass < 24; pass++) {
-            var middle = (low + high) / 2;
-            if (sectionFits(tree, middle, gap)) low = middle;
-            else high = middle;
+        if (supportWidth > supportWidthLimit) {
+            supportWidth = supportWidthLimit;
+            heroWidth = usableWidth - supportWidth - gap;
         }
-        return low;
+        if (heroWidth > heroWidthLimit) {
+            heroWidth = heroWidthLimit;
+            supportWidth = usableWidth - heroWidth - gap;
+        }
+
+        var naturalHeroHeight = heroWidth / imageAR(hero);
+        var sectionHeight = Math.min(MAX_TILE_DIMENSION, tileLimit(hero, 'height'), naturalHeroHeight);
+        var supportHeight = (sectionHeight - gap) / 2;
+
+        output.push({ image: hero, order: 0, x: sectionX, y: y, width: heroWidth, height: sectionHeight });
+        output.push({ image: images[1], order: 1, x: sectionX + heroWidth + gap, y: y, width: supportWidth, height: supportHeight });
+        output.push({ image: images[2], order: 2, x: sectionX + heroWidth + gap, y: y + supportHeight + gap, width: supportWidth, height: supportHeight });
+
+        return { x: sectionX, width: usableWidth, height: sectionHeight };
     }
 
     function computeLayout(images, containerWidth, gap) {
@@ -190,11 +196,21 @@
         } else {
             while (index < images.length) {
                 var count = sectionSize(images.length - index);
-                var tree = buildSection(images.slice(index, index + count));
+                var sectionImages = images.slice(index, index + count);
                 var sectionItems = [];
-                var sectionWidth = fittedSectionWidth(tree, containerWidth, gap);
-                var sectionX = (containerWidth - sectionWidth) / 2;
-                var sectionHeight = placeNode(tree, sectionX, y, sectionWidth, gap, sectionItems);
+                var sectionX = 0;
+                var sectionWidth = containerWidth;
+                var sectionHeight;
+
+                if (count === 3) {
+                    var placed = placeThreeSection(sectionImages, y, containerWidth, gap, sectionItems);
+                    sectionX = placed.x;
+                    sectionWidth = placed.width;
+                    sectionHeight = placed.height;
+                } else {
+                    var tree = buildSection(sectionImages);
+                    sectionHeight = placeNode(tree, 0, y, containerWidth, gap, sectionItems);
+                }
                 sectionItems.sort(function (a, b) { return a.order - b.order; });
                 Array.prototype.push.apply(items, sectionItems);
                 sections.push({ x: sectionX, y: y, width: sectionWidth, height: sectionHeight });

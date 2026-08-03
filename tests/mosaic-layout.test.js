@@ -99,7 +99,7 @@ test('landscape-led block mixes a two-column span with a two-row span', () => {
     assert.ok(lowerRight.y > acrossColumns.y);
 });
 
-test('landscape-led three-image section gives the landscape a full-width hero row', () => {
+test('landscape-led three-image section gives the landscape a large hero cell without narrowing the canvas', () => {
     const layout = engine.computeLayout([
         { width: 1600, height: 800 },
         { width: 700, height: 1000 },
@@ -107,18 +107,19 @@ test('landscape-led three-image section gives the landscape a full-width hero ro
     ], 900, 6);
 
     assertCleanGeometry(layout, 900);
-    assert.equal(layout.items[0].x, 0);
     assert.equal(layout.items[0].y, 0);
-    assert.equal(layout.items[0].width, 900);
-    assert.ok(layout.items[1].y > layout.items[0].y);
-    assert.ok(layout.items[2].y > layout.items[0].y);
+    assert.ok(layout.items[0].width > layout.items[1].width);
+    assert.ok(layout.items[0].width <= 900);
+    assert.equal(layout.items[1].y, 0);
+    assert.ok(layout.items[2].y > layout.items[1].y);
+    assert.ok(Math.abs(layout.sections[0].width - 900) < 0.02);
 });
 
 test('desktop tiles never exceed 900px or their source pixel dimensions', () => {
     const images = [
         { width: 700, height: 1600 },
         { width: 1800, height: 700 },
-        { width: 420, height: 360 }
+        { width: 1200, height: 800 }
     ];
     const layout = engine.computeLayout(images, 1600, 6);
 
@@ -127,7 +128,7 @@ test('desktop tiles never exceed 900px or their source pixel dimensions', () => 
         assert.ok(item.width <= Math.min(900, images[index].width) + 0.02);
         assert.ok(item.height <= Math.min(900, images[index].height) + 0.02);
     });
-    assert.ok(layout.sections[0].x > 0, 'bounded section is centred in a wide canvas');
+    assert.ok(layout.sections[0].width > 1500, 'large source files preserve the wide canvas');
 });
 
 test('five-image layout ends with a full-width image', () => {
