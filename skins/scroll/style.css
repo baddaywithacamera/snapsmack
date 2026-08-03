@@ -53,14 +53,20 @@ a { color: inherit; }
     align-items: center;
     /* SAME width + centring as the wall, so the byline (left) and the nav icons
        (right) line up with the OUTSIDE edges of the photo grid. Horizontal
-       padding is gone — the width does the insetting now. The extra top padding
-       (+36px) offsets the browse bar that sits BELOW the header, so the masthead
-       ends up optically CENTRED between the top of the window and the first row
-       of photos rather than riding high. overflow:hidden stays for the tilt. */
+       padding is gone — the width does the insetting now. Top and bottom padding
+       are EQUAL, so the masthead has the same space above and below it and stays
+       put when you resize or change the masthead's size/angle. (There used to be a
+       +36px top-ONLY fudge here to offset the old SHOW ALL/FILTER browse bar that
+       sat below the header. That bar is gone; the fudge only made the padding
+       asymmetric and jumpy — verified live it put the masthead 18px low of centre.
+       Do NOT bring it back.) overflow:hidden stays for the tilt. */
     width: var(--scroll-canvas-pct, 90%);
     margin: 0 auto;
     min-height: clamp(140px, 9vw, 200px);
-    padding: calc(clamp(18px, 2vw, 32px) + 36px) 0 clamp(18px, 2vw, 32px);
+    /* Symmetric top+bottom via ONE value (admin: "Space Above & Below Masthead")
+       so it can never go asymmetric again. Fallback keeps the old responsive clamp
+       for installs that haven't set the control. */
+    padding: var(--scroll-masthead-pad, clamp(18px, 2vw, 32px)) 0;
     overflow: hidden;
 }
 .scroll-photographer {
@@ -216,16 +222,6 @@ a { color: inherit; }
     margin-right: auto;   /* name hard left; links + socials clump right */
 }
 
-/* Optional sticky-bar logo (admin: Sticky Bar Logo). Lives in the identity slot,
-   which only appears in the sticky bar — so the graphic never shows on the inline
-   landing header. Sized to the bar height; replaces the text name when present. */
-.scroll-nav-logo {
-    display: block;
-    height: 34px;
-    width: auto;
-    max-height: 40px;
-    object-fit: contain;
-}
 .scroll-wall {
     width: var(--scroll-canvas-pct, 90%);
     margin: 0 auto;
@@ -371,9 +367,15 @@ a { color: inherit; }
     gap: 8px;
 }
 .scroll-sticky-nav .ss-grid-nav-name {
-    font-size: .78rem;
-    letter-spacing: .12em;
-    text-transform: uppercase;
+    /* The blog name as a small running head in the sticky bar — the masthead that
+       scrolled away, shrunk. Font family follows the "Masthead Font" control
+       (its selector includes this element); Archivo Black is the fallback before a
+       pick. Case is respected like the masthead, not force-uppercased. */
+    font-family: "Archivo Black", sans-serif;
+    font-size: 1.05rem;
+    letter-spacing: -.02em;
+    text-transform: none;
+    text-decoration: none;
 }
 /* ── Primary nav icons wear the SOCIAL DOCK chip. ───────────────────────────
    The social dock (core/social-dock.php + assets/css/ss-engine-social-dock.css)

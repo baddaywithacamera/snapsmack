@@ -12,6 +12,24 @@
 
 ## Unreleased
 
+## SCROLL 0.1.27 — 2026-08-02
+
+- **Masthead spacing is now a control, and symmetric by construction.** New MASTHEAD
+  slider "Space Above & Below Masthead (px)" drives one value for both top and bottom
+  padding of the landing header (`--scroll-masthead-pad`), so the space over and under
+  the title is always equal and stops jumping when you resize or change the masthead's
+  size/angle. Removed the old +36px top-only fudge (a leftover from the deleted
+  SHOW ALL/FILTER browse bar) that had pushed the masthead 18px below centre.
+- **Sticky bar now shows the BLOG NAME, not the photographer name.** Once you scroll
+  past the header and the big masthead is gone, the top-left running head shows the blog
+  name in the masthead font (smaller), on the landing and on static pages alike — so the
+  site identity never disappears. Case is respected like the masthead.
+- **Removed the "Sticky Bar Logo" option.** A logo image in the sticky header was the
+  wrong call; the blog-name running head replaces it.
+- Masthead note: the landing title is still hard-capped at 7.5rem by a `clamp()` in the
+  CSS regardless of the "Landing Masthead Size" slider. (Unchanged here — raise the cap
+  if a bigger masthead is wanted.)
+
 ## 0.7.475 "Quilt Trip" — 2026-08-02
 
 - **MOSAIC is now a true two-dimensional tiled compositor.** The old
