@@ -239,16 +239,25 @@ class SnapSmack {
             $id = (int)$m[1];
 
             try {
-                $stmt = $this->pdo->prepare("SELECT asset_ids, gap FROM snap_mosaics WHERE id = ? LIMIT 1");
+                $stmt = $this->pdo->prepare("SELECT asset_ids, focus_positions, gap FROM snap_mosaics WHERE id = ? LIMIT 1");
                 $stmt->execute([$id]);
                 $mosaic = $stmt->fetch(\PDO::FETCH_ASSOC);
             } catch (\PDOException $e) {
-                return ''; // table absent or query failed — drop the shortcode
+                // Backward-compatible read while canonical schema sync is pending.
+                try {
+                    $stmt = $this->pdo->prepare("SELECT asset_ids, gap FROM snap_mosaics WHERE id = ? LIMIT 1");
+                    $stmt->execute([$id]);
+                    $mosaic = $stmt->fetch(\PDO::FETCH_ASSOC);
+                } catch (\PDOException $fallback) {
+                    return ''; // table absent or query failed — drop the shortcode
+                }
             }
             if (!$mosaic) return '';
 
             $image_ids = json_decode($mosaic['asset_ids'] ?? '[]', true);
             if (!is_array($image_ids) || empty($image_ids)) return '';
+            $focus_positions = json_decode($mosaic['focus_positions'] ?? '{}', true);
+            if (!is_array($focus_positions)) $focus_positions = [];
             $gap = max(0, min(20, (int)($mosaic['gap'] ?? 4)));
 
             $base = defined('BASE_URL') ? BASE_URL : (rtrim($this->config['site_url'] ?? '/', '/') . '/');
@@ -278,6 +287,8 @@ class SnapSmack {
                     'full' => $base . $full_rel,    // full image for the lightbox
                     'alt'  => (string)($by_id[$iid]['img_title'] ?? ''),
                     'id'   => $iid,
+                    'focusX' => max(0, min(100, (float)($focus_positions[$iid]['x'] ?? 50))),
+                    'focusY' => max(0, min(100, (float)($focus_positions[$iid]['y'] ?? 50))),
                 ];
                 $w = (int)($by_id[$iid]['img_width'] ?? 0);
                 $h = (int)($by_id[$iid]['img_height'] ?? 0);

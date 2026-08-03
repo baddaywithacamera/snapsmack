@@ -34,6 +34,16 @@ try {
         migration_038_up($pdo);
     }
 }
+// Updated installs receive this from canonical schema sync; keep the builder
+// defensive for sites that reach this screen before their next sync pass.
+try {
+    $focus_col = $pdo->query("SHOW COLUMNS FROM snap_mosaics LIKE 'focus_positions'")->fetch(PDO::FETCH_ASSOC);
+    if (!$focus_col) {
+        $pdo->exec("ALTER TABLE snap_mosaics ADD COLUMN focus_positions LONGTEXT NULL AFTER asset_ids");
+    }
+} catch (PDOException $e) {
+    // Canonical schema sync remains authoritative if this defensive add fails.
+}
 
 // --- AJAX HANDLERS ---
 $is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
@@ -64,6 +74,7 @@ if ($is_ajax && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action']
         $id        = !empty($_POST['mosaic_id']) ? (int)$_POST['mosaic_id'] : 0;
         $title     = trim($_POST['title'] ?? '') ?: 'Untitled Mosaic';
         $asset_ids = json_decode($_POST['asset_ids'] ?? '[]', true);
+        $focus      = json_decode($_POST['focus_positions'] ?? '{}', true);
         $gap       = max(0, min(20, (int)($_POST['gap'] ?? 4)));
 
         if (empty($asset_ids)) {
@@ -72,13 +83,14 @@ if ($is_ajax && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action']
         }
 
         $json_ids = json_encode(array_values($asset_ids));
+        $json_focus = json_encode(is_array($focus) ? $focus : new stdClass());
 
         if ($id > 0) {
-            $pdo->prepare("UPDATE snap_mosaics SET title = ?, asset_ids = ?, gap = ? WHERE id = ?")
-                ->execute([$title, $json_ids, $gap, $id]);
+            $pdo->prepare("UPDATE snap_mosaics SET title = ?, asset_ids = ?, focus_positions = ?, gap = ? WHERE id = ?")
+                ->execute([$title, $json_ids, $json_focus, $gap, $id]);
         } else {
-            $pdo->prepare("INSERT INTO snap_mosaics (title, asset_ids, gap) VALUES (?, ?, ?)")
-                ->execute([$title, $json_ids, $gap]);
+            $pdo->prepare("INSERT INTO snap_mosaics (title, asset_ids, focus_positions, gap) VALUES (?, ?, ?, ?)")
+                ->execute([$title, $json_ids, $json_focus, $gap]);
             $id = (int)$pdo->lastInsertId();
         }
 
@@ -120,6 +132,7 @@ include 'core/sidebar.php';
     $mosaic_id    = $editing['id']           ?? 0;
     $mosaic_title = htmlspecialchars($editing['title'] ?? 'Untitled Mosaic');
     $mosaic_ids   = $editing ? (json_decode($editing['asset_ids'], true) ?: []) : [];
+    $mosaic_focus = $editing ? (json_decode($editing['focus_positions'] ?? '{}', true) ?: []) : [];
     $mosaic_gap   = (int)($editing['gap']    ?? 4);
     ?>
 
@@ -165,7 +178,7 @@ include 'core/sidebar.php';
             <div class="box">
                 <!-- SELECTED ASSETS -->
                 <div class="lens-input-wrapper">
-                    <label>SELECTED IMAGES — drag to reorder, × to remove</label>
+                    <label>SELECTED IMAGES — drag one onto another to swap, × to remove</label>
                     <div id="mosaic-selected" style="display:flex;flex-wrap:wrap;gap:8px;min-height:80px;padding:12px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);margin-top:6px;"></div>
                 </div>
 
@@ -185,6 +198,7 @@ include 'core/sidebar.php';
                 <!-- LIVE PREVIEW -->
                 <div class="lens-input-wrapper mt-20">
                     <label>LIVE PREVIEW</label>
+                    <div class="gp-pan-hint" style="font:10px/1.3 monospace;opacity:.55;margin:5px 0 0;">drag a cropped photo to reposition it before saving</div>
                     <div class="mosaic-preview-wrap" id="mosaic-preview-wrap">
                         <div id="mosaic-preview" class="snap-mosaic">
                             <p class="dim" style="text-align:center;padding:20px 0;margin:0;">Add images to see preview.</p>
@@ -202,9 +216,11 @@ include 'core/sidebar.php';
         var BASE          = <?php echo json_encode(BASE_URL); ?>;
         var mosaicId      = <?php echo $mosaic_id; ?>;
         var selectedIds   = <?php echo json_encode($mosaic_ids); ?>;
+        var focusPositions = <?php echo json_encode($mosaic_focus); ?>;
         var allAssets     = {};   // id → {id, asset_name, asset_path}
         var dragSrcIndex  = null;
         var pickerOpen    = false;
+        var MIN_CROP_KEEP = 0.80; // Destination may crop no more than 20%.
 
         // --- Bootstrap ---
         document.addEventListener('DOMContentLoaded', function () {
@@ -274,7 +290,7 @@ include 'core/sidebar.php';
                 var a = allAssets[id];
                 if (!a) return;
                 html += '<div class="mosaic-thumb-wrap" draggable="true" data-index="' + i + '"'
-                      + ' ondragstart="dragStart(event,' + i + ')" ondragover="dragOver(event)" ondrop="dragDrop(event,' + i + ')"'
+                      + ' ondragstart="dragStart(event,' + i + ')" ondragend="dragEnd()" ondragover="dragOver(event)" ondrop="dragDrop(event,' + i + ')"'
                       + ' style="position:relative;width:72px;height:72px;border:1px solid var(--border);border-radius:3px;overflow:hidden;cursor:grab;flex-shrink:0;">'
                       + '<img src="' + BASE + a.asset_path + '" style="width:100%;height:100%;object-fit:cover;" loading="lazy">'
                       + '<button type="button" onclick="removeAsset(' + i + ')" title="Remove"'
@@ -294,16 +310,88 @@ include 'core/sidebar.php';
 
         // --- Drag reorder ---
         window.dragStart = function (e, i) { dragSrcIndex = i; e.dataTransfer.effectAllowed = 'move'; };
-        window.dragOver  = function (e) { e.preventDefault(); };
+        window.dragEnd   = function () { dragSrcIndex = null; };
+        window.dragOver  = function (e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
         window.dragDrop  = function (e, target) {
             e.preventDefault();
             if (dragSrcIndex === null || dragSrcIndex === target) return;
-            var item = selectedIds.splice(dragSrcIndex, 1)[0];
-            selectedIds.splice(target, 0, item);
+            var sourceId = selectedIds[dragSrcIndex];
+            var targetId = selectedIds[target];
+            var refusal = swapRefusal(sourceId, targetId);
+            if (refusal) {
+                dragSrcIndex = null;
+                alert('These images cannot trade places. ' + refusal);
+                return;
+            }
+
+            selectedIds[dragSrcIndex] = selectedIds[target];
+            selectedIds[target] = sourceId;
             dragSrcIndex = null;
+            renderPickerGrid();
             renderSelected();
             updatePreview();
         };
+
+        function orientation(width, height) {
+            var ratio = width / height;
+            if (ratio < 0.90) return 'portrait';
+            if (ratio > 1.10) return 'landscape';
+            return 'square';
+        }
+
+        function focalValue(value) {
+            value = parseFloat(value);
+            return isFinite(value) ? Math.max(0, Math.min(100, value)) : 50;
+        }
+
+        function previewFrame(id) {
+            var image = document.querySelector('#mosaic-preview img[data-asset-id="' + id + '"]');
+            if (!image || !image.parentElement) return null;
+            return {
+                width: image.parentElement.clientWidth,
+                height: image.parentElement.clientHeight
+            };
+        }
+
+        function canFill(asset, frame) {
+            if (!asset || !frame || !asset.naturalWidth || !asset.naturalHeight) return false;
+
+            // Cropping is acceptable; enlarging an undersized source is not.
+            var fillScale = Math.max(
+                frame.width / asset.naturalWidth,
+                frame.height / asset.naturalHeight
+            );
+            if (fillScale > 1) return false;
+
+            var sourceAspect = asset.naturalWidth / asset.naturalHeight;
+            var frameAspect = frame.width / frame.height;
+            var visibleFraction = Math.min(sourceAspect / frameAspect, frameAspect / sourceAspect);
+            return visibleFraction >= MIN_CROP_KEEP;
+        }
+
+        function swapRefusal(sourceId, targetId) {
+            var source = allAssets[sourceId];
+            var target = allAssets[targetId];
+            var sourceFrame = previewFrame(sourceId);
+            var targetFrame = previewFrame(targetId);
+
+            if (!source || !target || !sourceFrame || !targetFrame
+                    || !source.naturalWidth || !source.naturalHeight
+                    || !target.naturalWidth || !target.naturalHeight) {
+                return 'Wait for the live preview to finish loading, then try again.';
+            }
+
+            if (orientation(source.naturalWidth, source.naturalHeight)
+                    !== orientation(target.naturalWidth, target.naturalHeight)) {
+                return 'They need to have roughly the same orientation.';
+            }
+
+            if (!canFill(source, targetFrame) || !canFill(target, sourceFrame)) {
+                return 'One is too small or would require more than a mild crop in its destination frame.';
+            }
+
+            return '';
+        }
 
         // --- Live preview ---
         function updatePreview() {
@@ -318,7 +406,16 @@ include 'core/sidebar.php';
             var images = [];
             selectedIds.forEach(function (id) {
                 var a = allAssets[id];
-                if (a) images.push({ src: BASE + a.asset_path, width: 800, height: 600, alt: a.asset_name, id: id });
+                var focus = focusPositions[id] || { x: 50, y: 50 };
+                if (a) images.push({
+                    src: BASE + a.asset_path,
+                    width: 800,
+                    height: 600,
+                    alt: a.asset_name,
+                    id: id,
+                    focusX: focalValue(focus.x),
+                    focusY: focalValue(focus.y)
+                });
             });
 
             // Preload to get real dimensions, then render
@@ -326,8 +423,14 @@ include 'core/sidebar.php';
             images.forEach(function (img, idx) {
                 var t   = new Image();
                 t.onload = t.onerror = function () {
-                    if (t.naturalWidth)  { images[idx].width  = t.naturalWidth; }
-                    if (t.naturalHeight) { images[idx].height = t.naturalHeight; }
+                    if (t.naturalWidth) {
+                        images[idx].width = t.naturalWidth;
+                        allAssets[img.id].naturalWidth = t.naturalWidth;
+                    }
+                    if (t.naturalHeight) {
+                        images[idx].height = t.naturalHeight;
+                        allAssets[img.id].naturalHeight = t.naturalHeight;
+                    }
                     if (++loaded === images.length) renderWithData(images, gap, container);
                 };
                 t.src = img.src;
@@ -337,7 +440,61 @@ include 'core/sidebar.php';
         function renderWithData(images, gap, container) {
             container.setAttribute('data-mosaic', JSON.stringify(images));
             container.setAttribute('data-gap',    gap);
-            if (window.SnapMosaic) window.SnapMosaic.renderMosaic(container);
+            if (window.SnapMosaic) {
+                window.SnapMosaic.renderMosaic(container);
+                bindCropPanning(container);
+            }
+        }
+
+        // Same focal-point drag model used by the GRAMOFSMACK square crop.
+        // Movement is enabled only on an axis where object-fit:cover overflows.
+        function bindCropPanning(container) {
+            container.querySelectorAll('.mosaic-item img').forEach(function (image) {
+                var frame = image.parentElement;
+                var id = image.getAttribute('data-asset-id');
+                var asset = allAssets[id];
+                if (!asset) return;
+
+                var scale = Math.max(
+                    frame.clientWidth / asset.naturalWidth,
+                    frame.clientHeight / asset.naturalHeight
+                );
+                var rangeX = asset.naturalWidth * scale - frame.clientWidth;
+                var rangeY = asset.naturalHeight * scale - frame.clientHeight;
+                if (rangeX <= 1 && rangeY <= 1) return;
+
+                image.style.cursor = 'grab';
+                image.addEventListener('mousedown', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    image.style.cursor = 'grabbing';
+
+                    var focus = focusPositions[id] || { x: 50, y: 50 };
+                    var lastX = e.clientX;
+                    var lastY = e.clientY;
+
+                    function move(ev) {
+                        var dx = ev.clientX - lastX;
+                        var dy = ev.clientY - lastY;
+                        lastX = ev.clientX;
+                        lastY = ev.clientY;
+
+                        if (rangeX > 1) focus.x = Math.max(0, Math.min(100, focus.x - (dx / rangeX) * 100));
+                        if (rangeY > 1) focus.y = Math.max(0, Math.min(100, focus.y - (dy / rangeY) * 100));
+                        focusPositions[id] = focus;
+                        image.style.objectPosition = focus.x + '% ' + focus.y + '%';
+                    }
+
+                    function up() {
+                        image.style.cursor = 'grab';
+                        document.removeEventListener('mousemove', move);
+                        document.removeEventListener('mouseup', up);
+                    }
+
+                    document.addEventListener('mousemove', move);
+                    document.addEventListener('mouseup', up);
+                });
+            });
         }
 
         // --- Save ---
@@ -350,6 +507,7 @@ include 'core/sidebar.php';
                 mosaic_id: mosaicId,
                 title:     title,
                 asset_ids: JSON.stringify(selectedIds),
+                focus_positions: JSON.stringify(focusPositions),
                 gap:       gap
             }, function (resp) {
                 if (resp.ok) {

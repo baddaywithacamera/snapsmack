@@ -1,15 +1,9 @@
 /**
  * SNAPSMACK — Mosaic Layout Engine
  *
- * Renders inline image mosaics from [mosaic:ID] shortcodes.
- * Takes a set of images and packs them into rows that form a clean
- * rectangular block, respecting aspect ratios so nothing gets cropped.
- *
- * The algorithm is row-based: for each row, images are scaled to a
- * common height so their combined width (plus gaps) equals the
- * container width. This produces a Jetpack-style tiled gallery.
- *
- * Also used by smack-mosaics.php for the admin live preview.
+ * Renders inline image mosaics from [mosaic:ID] shortcodes. Unlike a
+ * justified-row gallery, this compositor can nest horizontal and vertical
+ * groups, allowing a tall photograph to span a stack of smaller photographs.
  */
 
 /**
@@ -19,183 +13,234 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-
 (function () {
     'use strict';
 
-    // --- CONFIGURATION ---
-    var TARGET_ROW_HEIGHT = 260;  // Ideal row height in pixels
-    var MIN_ROW_HEIGHT    = 160;  // Don't squish rows below this
-    var MAX_ROW_HEIGHT    = 400;  // Don't stretch rows above this
+    var MOBILE_BREAKPOINT = 520;
 
-    /**
-     * Compute the mosaic layout for a set of images.
-     *
-     * @param {Array}  images         - [{src, width, height, alt, id}, ...]
-     * @param {number} containerWidth - Available width in pixels
-     * @param {number} gap            - Gap between images in pixels
-     * @returns {Array} rows - Each row is an object {images, height, isLastRow}
-     */
-    function computeLayout(images, containerWidth, gap) {
-        if (!images || images.length === 0) return [];
-
-        var rows       = [];
-        var currentRow = [];
-        var currentAR  = 0; // sum of aspect ratios in current row
-
-        for (var i = 0; i < images.length; i++) {
-            var img = images[i];
-            var ar  = (img.width && img.height) ? img.width / img.height : 1.5;
-
-            currentRow.push({ src: img.src, full: img.full || img.src, alt: img.alt || '', id: img.id, ar: ar });
-            currentAR += ar;
-
-            // What would row height be if we closed the row here?
-            var totalGap  = (currentRow.length - 1) * gap;
-            var rowHeight = (containerWidth - totalGap) / currentAR;
-
-            if (rowHeight <= TARGET_ROW_HEIGHT) {
-                rowHeight = Math.max(MIN_ROW_HEIGHT, rowHeight);
-                rows.push(finalizeRow(currentRow, rowHeight, containerWidth, gap, false));
-                currentRow = [];
-                currentAR  = 0;
-            }
-        }
-
-        // Leftover images that didn't fill a complete row
-        if (currentRow.length > 0) {
-            var totalGap  = (currentRow.length - 1) * gap;
-            var rowHeight = (containerWidth - totalGap) / currentAR;
-            rowHeight = Math.min(MAX_ROW_HEIGHT, Math.max(MIN_ROW_HEIGHT, rowHeight));
-
-            // Single image in last row: cap width at 60% of container
-            if (currentRow.length === 1) {
-                var singleAR     = currentRow[0].ar;
-                var naturalWidth = singleAR * rowHeight;
-                if (naturalWidth > containerWidth * 0.6) {
-                    rowHeight = (containerWidth * 0.6) / singleAR;
-                }
-            }
-
-            rows.push(finalizeRow(currentRow, rowHeight, containerWidth, gap, true));
-        }
-
-        return rows;
+    function imageAR(image) {
+        var width  = Number(image.width) || 0;
+        var height = Number(image.height) || 0;
+        return width > 0 && height > 0 ? width / height : 1.5;
     }
 
-    /**
-     * Assign pixel dimensions to each image in a row.
+    function focalValue(value) {
+        value = Number(value);
+        return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 50;
+    }
+
+    function leaf(image, order) {
+        return { type: 'leaf', image: image, ar: imageAR(image), order: order };
+    }
+
+    function group(direction, children) {
+        return { type: direction, children: children };
+    }
+
+    /*
+     * Build one editorial block. Portrait-led groups become a spanning image
+     * beside a vertical stack. Landscape-led four-image groups become a true
+     * mixed-span quilt: image one crosses two columns, image two crosses two
+     * rows, and the remaining pair occupy unequal cells beneath image one.
      */
-    function finalizeRow(rowImages, rowHeight, containerWidth, gap, isLastRow) {
-        var totalGap = (rowImages.length - 1) * gap;
-        var result   = [];
-        var usedWidth = 0;
+    function buildSection(images) {
+        var cells = images.map(function (image, index) { return leaf(image, index); });
 
-        for (var i = 0; i < rowImages.length; i++) {
-            var img         = rowImages[i];
-            var renderWidth = Math.round(img.ar * rowHeight);
+        if (cells.length === 1) return cells[0];
+        if (cells.length === 2) return group('horizontal', cells);
 
-            // Last image in a non-last row absorbs any rounding remainder
-            if (i === rowImages.length - 1 && !isLastRow) {
-                renderWidth = containerWidth - usedWidth - totalGap + ((rowImages.length - 1) * gap);
-                // Simpler equivalent: remaining space
-                renderWidth = containerWidth - usedWidth - (rowImages.length - 1 - i) * gap;
+        if (cells.length === 3) {
+            if (cells[0].ar < 1.15) {
+                return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
             }
+            return group('horizontal', cells);
+        }
 
-            result.push({
-                src:          img.src,
-                full:         img.full || img.src,
-                alt:          img.alt,
-                id:           img.id,
-                renderWidth:  renderWidth,
-                renderHeight: Math.round(rowHeight)
+        if (cells[0].ar < 1.15) {
+            return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
+        }
+
+        return group('horizontal', [
+            group('vertical', [cells[0], group('horizontal', cells.slice(2, 4))]),
+            cells[1]
+        ]);
+    }
+
+    function sectionSize(remaining) {
+        if (remaining <= 4) return remaining;
+        if (remaining === 5) return 4;
+        if (remaining === 6) return 3;
+        if (remaining === 9) return 3;
+        return 4;
+    }
+
+    /*
+     * Every node's height can be expressed as height = a × width + b. Keeping
+     * the gap term in b lets nested groups land on exact container boundaries.
+     */
+    function coefficients(node, gap) {
+        if (node.type === 'leaf') return { a: 1 / node.ar, b: 0 };
+
+        var child = node.children.map(function (item) {
+            return coefficients(item, gap);
+        });
+        node._coefficients = child;
+
+        if (node.type === 'vertical') {
+            return {
+                a: child.reduce(function (sum, value) { return sum + value.a; }, 0),
+                b: child.reduce(function (sum, value) { return sum + value.b; }, 0) + gap * (child.length - 1)
+            };
+        }
+
+        var inverseA = child.reduce(function (sum, value) { return sum + 1 / value.a; }, 0);
+        var bOverA   = child.reduce(function (sum, value) { return sum + value.b / value.a; }, 0);
+        return {
+            a: 1 / inverseA,
+            b: (bOverA - gap * (child.length - 1)) / inverseA
+        };
+    }
+
+    function placeNode(node, x, y, width, gap, output) {
+        var own = coefficients(node, gap);
+        var height = own.a * width + own.b;
+
+        if (node.type === 'leaf') {
+            output.push({
+                image: node.image,
+                order: node.order,
+                x: x,
+                y: y,
+                width: width,
+                height: height
             });
-
-            usedWidth += renderWidth;
+            return height;
         }
 
-        return { images: result, height: Math.round(rowHeight), isLastRow: !!isLastRow };
+        if (node.type === 'vertical') {
+            var childY = y;
+            node.children.forEach(function (child) {
+                var childHeight = placeNode(child, x, childY, width, gap, output);
+                childY += childHeight + gap;
+            });
+            return height;
+        }
+
+        var childX = x;
+        node.children.forEach(function (child, index) {
+            var coeff = node._coefficients[index];
+            var childWidth = (height - coeff.b) / coeff.a;
+            placeNode(child, childX, y, childWidth, gap, output);
+            childX += childWidth + gap;
+        });
+        return height;
     }
 
-    /**
-     * Render a mosaic into a container element.
-     * The element must have data-mosaic (JSON image array) and optionally data-gap.
-     */
+    function computeLayout(images, containerWidth, gap) {
+        gap = Math.max(0, Math.min(20, Number(gap) || 0));
+        containerWidth = Math.max(0, Number(containerWidth) || 0);
+        if (!images || images.length === 0 || containerWidth === 0) {
+            return { items: [], sections: [], height: 0 };
+        }
+
+        var sections = [];
+        var items = [];
+        var index = 0;
+        var y = 0;
+
+        if (containerWidth <= MOBILE_BREAKPOINT) {
+            images.forEach(function (image) {
+                var height = containerWidth / imageAR(image);
+                items.push({ image: image, x: 0, y: y, width: containerWidth, height: height });
+                sections.push({ x: 0, y: y, width: containerWidth, height: height });
+                y += height + gap;
+            });
+        } else {
+            while (index < images.length) {
+                var count = sectionSize(images.length - index);
+                var tree = buildSection(images.slice(index, index + count));
+                var sectionItems = [];
+                var sectionHeight = placeNode(tree, 0, y, containerWidth, gap, sectionItems);
+                sectionItems.sort(function (a, b) { return a.order - b.order; });
+                Array.prototype.push.apply(items, sectionItems);
+                sections.push({ x: 0, y: y, width: containerWidth, height: sectionHeight });
+                y += sectionHeight + gap;
+                index += count;
+            }
+        }
+
+        return {
+            items: items,
+            sections: sections,
+            height: Math.max(0, y - gap)
+        };
+    }
+
     function renderMosaic(container) {
         var dataAttr = container.getAttribute('data-mosaic');
         if (!dataAttr) return;
 
-        var data;
+        var images;
         try {
-            data = JSON.parse(dataAttr);
-        } catch (e) {
-            console.error('SnapMosaic: invalid JSON in data-mosaic', e);
+            images = JSON.parse(dataAttr);
+        } catch (error) {
+            console.error('SnapMosaic: invalid JSON in data-mosaic', error);
             return;
         }
 
-        var gap            = parseInt(container.getAttribute('data-gap') || '4', 10);
-        var containerWidth = container.offsetWidth;
-        if (containerWidth <= 0) return;
+        var gap = parseInt(container.getAttribute('data-gap') || '4', 10);
+        var width = container.clientWidth || container.offsetWidth;
+        if (width <= 0) return;
 
-        var rows = computeLayout(data, containerWidth, gap);
+        var layout = computeLayout(images, width, gap);
+        var fragment = document.createDocumentFragment();
 
-        var html = '';
-        for (var r = 0; r < rows.length; r++) {
-            var row       = rows[r];
-            var mbStyle   = r < rows.length - 1 ? 'margin-bottom:' + gap + 'px;' : '';
-            var justStyle = row.isLastRow ? 'justify-content:flex-start;' : '';
+        layout.items.forEach(function (tile) {
+            var image = tile.image;
+            var item = document.createElement('div');
+            var img = document.createElement('img');
 
-            html += '<div class="mosaic-row" style="display:flex;gap:' + gap + 'px;' + mbStyle + justStyle + '">';
+            item.className = 'mosaic-item';
+            item.style.left = tile.x.toFixed(2) + 'px';
+            item.style.top = tile.y.toFixed(2) + 'px';
+            item.style.width = tile.width.toFixed(2) + 'px';
+            item.style.height = tile.height.toFixed(2) + 'px';
 
-            for (var c = 0; c < row.images.length; c++) {
-                var img = row.images[c];
-                html += '<div class="mosaic-item" style="width:' + img.renderWidth + 'px;height:' + row.height + 'px;">';
-                html += '<img src="' + img.src + '"'
-                      + ' alt="' + img.alt + '"'
-                      + ' loading="lazy"'
-                      + ' data-asset-id="' + (img.id || '') + '"'
-                      + ' data-lightbox-src="' + (img.full || img.src) + '"'
-                      + ' style="width:100%;height:100%;object-fit:cover;cursor:zoom-in;display:block;">';
-                html += '</div>';
-            }
-
-            html += '</div>';
-        }
-
-        container.innerHTML = html;
-    }
-
-    /**
-     * Find and render all .snap-mosaic[data-mosaic] containers on the page.
-     */
-    function initMosaics() {
-        var containers = document.querySelectorAll('.snap-mosaic[data-mosaic]');
-        if (containers.length === 0) return;
-
-        containers.forEach(function (el) {
-            renderMosaic(el);
+            img.src = image.src;
+            img.alt = image.alt || '';
+            img.loading = 'lazy';
+            img.setAttribute('data-asset-id', image.id || '');
+            img.setAttribute('data-lightbox-src', image.full || image.src);
+            img.style.objectPosition = focalValue(image.focusX) + '% ' + focalValue(image.focusY) + '%';
+            item.appendChild(img);
+            fragment.appendChild(item);
         });
 
-        // Re-render on resize (debounced 200 ms)
+        container.replaceChildren(fragment);
+        container.style.height = layout.height.toFixed(2) + 'px';
+    }
+
+    function initMosaics() {
+        var containers = Array.prototype.slice.call(document.querySelectorAll('.snap-mosaic[data-mosaic]'));
+        if (containers.length === 0) return;
+
+        containers.forEach(renderMosaic);
+
         var resizeTimer;
         window.addEventListener('resize', function () {
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(function () {
-                containers.forEach(function (el) {
-                    renderMosaic(el);
-                });
-            }, 200);
+                containers.forEach(renderMosaic);
+            }, 150);
         });
     }
 
-    // --- PUBLIC API (used by smack-mosaics.php admin preview) ---
     window.SnapMosaic = {
         computeLayout: computeLayout,
-        renderMosaic:  renderMosaic,
-        init:          initMosaics
+        renderMosaic: renderMosaic,
+        init: initMosaics
     };
 
-    // Auto-init on DOM ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initMosaics);
     } else {

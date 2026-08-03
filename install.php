@@ -972,6 +972,7 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                 `id`         int unsigned  NOT NULL AUTO_INCREMENT,
                 `title`      varchar(150)  COLLATE utf8mb4_unicode_ci NOT NULL,
                 `asset_ids`  longtext      COLLATE utf8mb4_unicode_ci NOT NULL,
+                `focus_positions` longtext COLLATE utf8mb4_unicode_ci DEFAULT NULL,
                 `gap`        tinyint       NOT NULL DEFAULT 4,
                 `created_at` timestamp     NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 `updated_at` timestamp     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
