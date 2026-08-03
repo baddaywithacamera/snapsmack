@@ -12,6 +12,8 @@
 
 ## Unreleased
 
+## 0.7.483 "No Shrinkage" — 2026-08-03
+
 - **Heart colour derives from existing controls — no new sliders.** The like heart now
   takes its FILL from the page **Background** colour and its OUTLINE from the **Footer
   Text** colour, so it always matches how the page is set up. Core `ss-community.css`
@@ -35,8 +37,6 @@
   hearts; `snap_reactions` is left in place until tallies are confirmed. Needs a core release
   to reach installs. (In-flow component's reaction *queries* still run but its output is
   hidden — a later cleanup.)
-
-## 0.7.483 "No Shrinkage" — 2026-08-02
 
 - **MOSAIC sections never narrow the SCROLL wall.** Removed the deep-height
   fallback that proportionally shrank an entire composition and created white
