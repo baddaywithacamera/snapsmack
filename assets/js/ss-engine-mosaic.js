@@ -142,6 +142,34 @@
         return height;
     }
 
+    function capSectionHeight(items, sectionY, sectionHeight, containerWidth) {
+        if (sectionHeight <= MAX_SECTION_HEIGHT) {
+            return { x: 0, width: containerWidth, height: sectionHeight };
+        }
+
+        var scale = MAX_SECTION_HEIGHT / sectionHeight;
+        if (scale >= 0.85) {
+            items.forEach(function (tile) {
+                tile.y = sectionY + (tile.y - sectionY) * scale;
+                tile.height *= scale;
+            });
+            return { x: 0, width: containerWidth, height: MAX_SECTION_HEIGHT };
+        }
+
+        // A deeper vertical squeeze would violate MOSAIC's 15% crop ceiling.
+        // Scale the complete composition instead, retaining every pixel and
+        // centring only this unusually tall section inside the landing canvas.
+        var scaledWidth = containerWidth * scale;
+        var sectionX = (containerWidth - scaledWidth) / 2;
+        items.forEach(function (tile) {
+            tile.x = sectionX + tile.x * scale;
+            tile.y = sectionY + (tile.y - sectionY) * scale;
+            tile.width *= scale;
+            tile.height *= scale;
+        });
+        return { x: sectionX, width: scaledWidth, height: MAX_SECTION_HEIGHT };
+    }
+
     function computeLayout(images, containerWidth, gap) {
         gap = Math.max(0, Math.min(20, Number(gap) || 0));
         containerWidth = Math.max(0, Number(containerWidth) || 0);
@@ -166,24 +194,17 @@
             while (index < images.length) {
                 var count = sectionSize(images.length - index);
                 var sectionImages = images.slice(index, index + count);
-                var preferLandscapeHero = sectionNumber % 2 === 1 && imageAR(sectionImages[0]) >= 1.15;
+                var leadId = Number(sectionImages[0].id) || 0;
+                var preferLandscapeHero = sectionNumber % 2 === 1 &&
+                    imageAR(sectionImages[0]) >= 1.15 && leadId % 3 === 0;
                 var tree = buildSection(sectionImages, preferLandscapeHero);
                 var sectionItems = [];
                 var sectionHeight = placeNode(tree, 0, y, containerWidth, gap, sectionItems);
-
-                // Keep the first-draft hero composition whenever it fits a FullHD
-                // viewport. If it does not, use the original uncropped row for this
-                // trio rather than flattening or cover-cropping the photographs.
-                if (count === 3 && sectionHeight > MAX_SECTION_HEIGHT) {
-                    tree = group('horizontal', sectionImages.map(function (image, order) {
-                        return leaf(image, order);
-                    }));
-                    sectionItems = [];
-                    sectionHeight = placeNode(tree, 0, y, containerWidth, gap, sectionItems);
-                }
+                var capped = capSectionHeight(sectionItems, y, sectionHeight, containerWidth);
+                sectionHeight = capped.height;
                 sectionItems.sort(function (a, b) { return a.order - b.order; });
                 Array.prototype.push.apply(items, sectionItems);
-                sections.push({ x: 0, y: y, width: containerWidth, height: sectionHeight });
+                sections.push({ x: capped.x, y: y, width: capped.width, height: sectionHeight });
                 y += sectionHeight + gap;
                 index += count;
                 sectionNumber++;

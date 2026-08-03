@@ -74,7 +74,7 @@ test('portrait-led four-image section spans a three-image stack', () => {
     assert.ok(layout.items[1].y < layout.items[2].y && layout.items[2].y < layout.items[3].y);
 });
 
-test('an over-height portrait trio falls back to an uncropped row below 900px', () => {
+test('an over-height portrait trio keeps its hero below 900px and within the crop ceiling', () => {
     const images = [
         { width: 500, height: 1800 },
         { width: 900, height: 700 },
@@ -84,6 +84,7 @@ test('an over-height portrait trio falls back to an uncropped row below 900px', 
 
     assertCleanGeometry(layout, 1600);
     assert.ok(layout.height <= 900.02);
+    assert.ok(Math.abs(layout.items[0].height - layout.height) < 0.02, 'portrait remains the spanning hero');
     layout.items.forEach((item, index) => {
         const sourceAR = images[index].width / images[index].height;
         const cellAR = item.width / item.height;
@@ -115,6 +116,30 @@ test('landscape-led block mixes a two-column span with a two-row span', () => {
     assert.ok(Math.abs(acrossRows.height - layout.height) < 0.02);
     assert.ok(lowerLeft.y > acrossColumns.y);
     assert.ok(lowerRight.y > acrossColumns.y);
+});
+
+test('landscape hero promotion is occasional rather than every eligible section', () => {
+    const base = [
+        { id: 1, width: 700, height: 1100 },
+        { id: 2, width: 900, height: 700 },
+        { id: 4, width: 800, height: 900 }
+    ];
+    const promoted = engine.computeLayout(base.concat([
+        { id: 6, width: 1500, height: 800 },
+        { id: 7, width: 700, height: 1100 },
+        { id: 8, width: 900, height: 700 }
+    ]), 1000, 6);
+    const ordinary = engine.computeLayout(base.concat([
+        { id: 5, width: 1500, height: 800 },
+        { id: 7, width: 700, height: 1100 },
+        { id: 8, width: 900, height: 700 }
+    ]), 1000, 6);
+
+    assert.ok(promoted.items[3].width > promoted.items[4].width, 'selected landscape receives hero width');
+    assert.ok(promoted.items[5].y > promoted.sections[1].y, 'promoted landscape sits beside a stack');
+    assert.equal(ordinary.items[3].y, ordinary.sections[1].y);
+    assert.equal(ordinary.items[4].y, ordinary.sections[1].y);
+    assert.equal(ordinary.items[5].y, ordinary.sections[1].y);
 });
 
 test('five-image layout ends with a full-width image', () => {
