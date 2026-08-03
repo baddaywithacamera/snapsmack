@@ -197,10 +197,34 @@
            Scale the floor down on narrower walls, but hold a useful minimum on the
            full-width SCROLL wall. */
         var scale = Math.min(1, containerWidth / 1200);
-        var minWidth = 220 * scale;
-        var minHeight = 180 * scale;
-        var minArea = 50000 * scale * scale;
+        var minWidth = 260 * scale;
+        var minHeight = 200 * scale;
+        var minArea = 70000 * scale * scale;
         return tile.width < minWidth || tile.height < minHeight || tile.width * tile.height < minArea;
+    }
+
+    function blockIsVisuallyBalanced(items, containerWidth) {
+        var smallest = Infinity;
+        var largest = 0;
+        for (var i = 0; i < items.length; i++) {
+            if (tileIsTooSmall(items[i], containerWidth)) return false;
+            var area = items[i].width * items[i].height;
+            smallest = Math.min(smallest, area);
+            largest = Math.max(largest, area);
+        }
+        /* A hero may lead, but no supporting photograph may collapse into a
+           thumbnail beside it. */
+        return smallest > 0 && largest / smallest <= 6;
+    }
+
+    function blockMatchesEmphasis(items, emphasis) {
+        if (emphasis !== 'portrait' && emphasis !== 'landscape') return true;
+        var hero = items[0];
+        for (var i = 1; i < items.length; i++) {
+            if (items[i].width * items[i].height > hero.width * hero.height) hero = items[i];
+        }
+        var heroIsPortrait = imageAR(hero.image) < 1.15;
+        return emphasis === 'portrait' ? heroIsPortrait : !heroIsPortrait;
     }
 
     function solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize) {
@@ -208,9 +232,9 @@
         candidateTrees(images, 0, images.length, {}).forEach(function (tree) {
             var trial = [];
             var height = placeNode(tree, 0, y, containerWidth, gap, trial);
-            if (height <= 0 || trial.some(tileExceedsLimit) || (enforceUsefulSize && trial.some(function (tile) {
-                return tileIsTooSmall(tile, containerWidth);
-            }))) return;
+            if (height <= 0 || trial.some(tileExceedsLimit) ||
+                (enforceUsefulSize && (!blockIsVisuallyBalanced(trial, containerWidth) ||
+                    !blockMatchesEmphasis(trial, emphasis)))) return;
             var score = blockScore(trial, height, containerWidth, emphasis);
             if (!best || score > best.score) best = { items: trial, height: height, score: score };
         });
@@ -243,6 +267,13 @@
                 var count = remaining >= 6 ? 6 : sectionSize(remaining);
                 var sectionImages = images.slice(index, index + count);
                 var solved = count === 6 ? solveBlock(sectionImages, y, containerWidth, gap, emphasis, true) : null;
+                if (count === 6 && !solved) {
+                    /* There is no respectable six-photo composition for this mix.
+                       Split it into two smaller mosaics rather than silently falling
+                       back to a strip of thumbnails. */
+                    count = 3;
+                    sectionImages = images.slice(index, index + count);
+                }
                 if (!solved) {
                     var fallbackTree = buildSection(sectionImages, false);
                     solved = { items: [], height: 0 };
