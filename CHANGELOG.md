@@ -12,7 +12,7 @@
 
 ## Unreleased
 
-## 0.7.486 "No More Postage Stamps" — 2026-08-03
+## 0.7.487 "No More Postage Stamps" — 2026-08-03
 
 - **MOSAIC minimum useful photo size is now in the tagged release.** Six-photo
   desktop compositions reject any arrangement containing a cell under 220px
