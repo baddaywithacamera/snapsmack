@@ -16,10 +16,11 @@
 
 - **MOSAIC sections never narrow the SCROLL wall.** Removed the deep-height
   fallback that proportionally shrank an entire composition and created white
-  side gutters. The wall remains at the configured width. Height reduction is
-  capped at MOSAIC's 15% crop allowance; if a section cannot reach the preferred
-  900px height within that allowance, it stays taller rather than sacrificing
-  page width or more of the photograph.
+  side gutters. The wall remains at the configured width and 900px is now a hard
+  section-height ceiling. An oversized portrait remains a natural-aspect hero
+  on one wall edge while its natural-aspect supporting stack anchors the other;
+  unavoidable unused space remains internal to that asymmetric block. No image
+  is enlarged or cropped to force the fit.
 - **Fixed the lazy feed stopping after twelve photographs.** When an appended
   six-photo block left the sentinel continuously inside its prefetch margin,
   IntersectionObserver had no boundary change to report and never requested
