@@ -12,6 +12,15 @@
 
 ## Unreleased
 
+## 0.7.479 "Full Width Apology" — 2026-08-02
+
+- **Restored the full SCROLL canvas to bounded MOSAIC blocks.** The 900px limit
+  now constrains individual hero cells instead of shrinking the whole section.
+  Three-photo blocks use a large hero beside a stacked supporting column, with
+  both columns consuming the available page width whenever their source files
+  can do so without enlargement. A block narrows only when the combined source
+  pixel widths genuinely cannot fill the canvas.
+
 ## 0.7.478 "Equal Billing" — 2026-08-02
 
 - **MOSAIC now gives landscape and portrait heroes equal billing.** A
