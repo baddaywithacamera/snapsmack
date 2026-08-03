@@ -12,15 +12,13 @@
 
 ## Unreleased
 
-## 0.7.483 "Your Wall Your Bias" — 2026-08-02
+## 0.7.482 "Your Wall Your Bias" — 2026-08-02
 
 - **MOSAIC hero orientation is now a SCROLL admin setting.** PHOTO WALL gains
   “MOSAIC Hero Emphasis” with Follow Library Order, Balance Portraits &
   Landscapes, Favor Landscapes, and Favor Portraits choices. The lazy full-
   library feed carries the selected policy into every appended block without
   changing the saved library order. SCROLL advances to 0.1.31.
-
-## 0.7.482 "Portraits Are People Too" — 2026-08-02
 
 - **Portrait heroes are never demoted by the 900px ceiling.** A mildly
   over-height composition is reduced vertically only within MOSAIC's 15% crop
