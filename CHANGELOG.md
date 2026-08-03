@@ -12,6 +12,18 @@
 
 ## Unreleased
 
+## 0.7.490 "Now You See It" — 2026-08-03
+
+- **Fix: admin-page-scoped skin controls never rendered (Solo Image Appearance +
+  Archive Appearance).** Both pages read `$active_skin = $settings['active_skin']`
+  at the top of the file, but `$settings` is not populated until `admin-header.php`
+  is included much further down — so `$active_skin` was `''`, the skin manifest never
+  loaded, and `$solo_manifest_opts` / `$archive_manifest_opts` came up empty. The Solo
+  panels (and, latently, `admin_page:"archive"` controls) silently never appeared. Both
+  pages now read the active skin straight from the DB (`$pdo` is live from auth) before
+  the manifest load and POST recompile. Pre-existing bug — the solo controls were correct
+  all along; the page just wasn't loading the manifest to see them.
+
 ## 0.7.489 "Dial It In" — 2026-08-03
 
 Supersedes the never-built 0.7.488 tag; this is the coherent build of everything

@@ -21,7 +21,14 @@
 require_once 'core/auth-smack.php';
 
 // --- MANIFEST (best-effort: skin-specific options if it loads; not required for core controls) ---
-$active_skin = $settings['active_skin'] ?? '';
+// $settings is not populated until admin-header.php (included far below), so read the
+// active skin from the DB here — otherwise admin_page:"archive" controls never collect.
+$active_skin = '';
+try {
+    $active_skin = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'active_skin' LIMIT 1")->fetchColumn() ?: '');
+} catch (\Throwable $e) {
+    $active_skin = '';
+}
 $manifest    = [];
 if ($active_skin) {
     $manifest_path = "skins/{$active_skin}/manifest.json";

@@ -20,7 +20,17 @@
 require_once 'core/auth-smack.php';
 
 // --- MANIFEST (for skin-gated options) ---
-$active_skin = $settings['active_skin'] ?? '';
+// $settings is not populated until admin-header.php (included far below), but the
+// manifest load, the solo-control collection, AND the POST recompile all run up here
+// first. Reading $settings['active_skin'] at this point yields '' — which silently
+// emptied the manifest and hid every solo panel. Read the active skin straight from
+// the DB instead ($pdo is live from auth-smack.php).
+$active_skin = '';
+try {
+    $active_skin = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'active_skin' LIMIT 1")->fetchColumn() ?: '');
+} catch (\Throwable $e) {
+    $active_skin = '';
+}
 $manifest    = [];
 if ($active_skin && skin_manifest_exists($active_skin)) {
     $manifest = load_skin_manifest($active_skin);
