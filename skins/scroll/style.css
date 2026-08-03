@@ -482,6 +482,27 @@ a { color: inherit; }
     width: 20px;
     height: 20px;
 }
+/* Like-count badge shows briefly on load / on a like, then fades out so a persistent
+   "1" doesn't just hang on the heart. It comes back on hover/focus of the chip. A fresh
+   like (0→1) creates a new badge element, so the animation replays on each like. */
+.ss-community-dock .ss-cdock-heart .ss-cdock-rx-count {
+    animation: scroll-cdock-count-fade 2.8s ease forwards;
+}
+.ss-community-dock .ss-cdock-heart:hover .ss-cdock-rx-count,
+.ss-community-dock .ss-cdock-heart:focus-visible .ss-cdock-rx-count,
+.ss-community-dock:hover .ss-cdock-heart .ss-cdock-rx-count {
+    animation: none;
+    opacity: 1;
+}
+@keyframes scroll-cdock-count-fade {
+    0%   { opacity: 0; transform: scale(.6); }
+    12%  { opacity: 1; transform: scale(1); }
+    68%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ss-community-dock .ss-cdock-heart .ss-cdock-rx-count { animation: none; opacity: 1; }
+}
 /* Blogroll: never display the raw URL string under an entry — the name stays linked. */
 .blogroll-peer-url { display: none !important; }
 
@@ -525,7 +546,8 @@ a { color: inherit; }
     display: flex;
     align-items: center;
     width: 100%;
-    gap: clamp(14px, 2vw, 24px);
+    gap: 8px;   /* nav icons ↔ social dock: same 8px as the landing (was clamp 14–24px,
+                   which left a visible seam between the native nav and the social dock). */
     min-height: 0;
     padding: 0;
     background: transparent;
