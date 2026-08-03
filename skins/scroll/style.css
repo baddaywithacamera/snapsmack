@@ -583,6 +583,12 @@ a { color: inherit; }
    solo-specific "Blog Name Font" is set. */
 .scroll-solo-nav .ss-grid-nav-name {
     font-size: var(--scroll-solo-name-size, 1.05rem);
+    /* Optical vertical centering. The metric line box is dead-centre in the header,
+       but faces like Special Elite reserve a deep, mostly-empty descent, so the
+       visible glyphs sit ~0.14em high in the bar. Nudge the ink down to the true
+       centre. em-relative, so it tracks the Blog Name Size control. Measured against
+       the live header (ink centre landed within 0.5px of the bar centre). */
+    transform: translateY(0.14em);
 }
 .scroll-solo-nav .ss-grid-nav-actions {
     display: flex;
