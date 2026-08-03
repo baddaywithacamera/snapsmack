@@ -14,17 +14,29 @@ require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 <div id="scroll-stage" class="scroll-solo-stage">
     <header class="scroll-solo-header">
         <div class="scroll-solo-header-inside">
-            <a class="scroll-horizontal-title" href="<?php echo BASE_URL; ?>">
-                <?php
-                $solo_masthead = trim((string)($settings['scroll_masthead_lines'] ?? ($settings['site_name'] ?? 'SnapSmack')));
-                echo htmlspecialchars(str_replace('|', ' ', $solo_masthead));
-                ?>
-            </a>
             <nav class="scroll-sticky-nav scroll-solo-nav" aria-label="Site navigation">
+                <?php
+                // Same identity + full nav + social dock as the shared header, so the
+                // solo page matches the landing's sticky bar. The blog name uses
+                // .ss-grid-nav-name — the SAME selector the Masthead Font control already
+                // compiles to — so it picks up the masthead font with no recompile.
+                $solo_masthead = trim((string)($settings['scroll_masthead_lines'] ?? ($settings['site_name'] ?? 'SnapSmack')));
+                ?>
+                <div class="ss-grid-nav-identity">
+                    <a class="ss-grid-nav-name" href="<?php echo BASE_URL; ?>"><?php echo htmlspecialchars(str_replace('|', ' ', $solo_masthead)); ?></a>
+                </div>
                 <div class="ss-grid-nav-links">
                     <a class="ss-grid-nav-link" href="<?php echo BASE_URL; ?>" title="Home">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
                         <span class="ss-grid-nav-label">Home</span>
+                    </a>
+                    <a class="ss-grid-nav-link" href="<?php echo BASE_URL; ?>about" title="About">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="12" y1="11" x2="12" y2="16.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.8" r="1.05" fill="currentColor"/></svg>
+                        <span class="ss-grid-nav-label">About</span>
+                    </a>
+                    <a class="ss-grid-nav-link" href="<?php echo BASE_URL; ?>blogroll.php" title="Blogroll">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="1.5" fill="currentColor"/><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="5" cy="18" r="1.5" fill="currentColor"/><path d="M9 6h11M9 12h11M9 18h11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                        <span class="ss-grid-nav-label">Blogroll</span>
                     </a>
                     <details class="scroll-nav-search">
                         <summary class="ss-grid-nav-link" title="Search">
@@ -43,6 +55,13 @@ require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v5l-4 2v-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
                         <span class="ss-grid-nav-label">Filter</span>
                     </a>
+                </div>
+                <div class="ss-grid-nav-actions">
+                    <?php
+                    $social_dock_inline = true;
+                    include dirname(__DIR__, 2) . '/core/social-dock.php';
+                    unset($social_dock_inline);
+                    ?>
                 </div>
             </nav>
         </div>
