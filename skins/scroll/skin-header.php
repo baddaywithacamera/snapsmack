@@ -8,8 +8,9 @@
  * Markup mirrors skins/scroll/landing.php's .scroll-profile so it reuses the
  * exact same CSS and sticky behaviour, without a core change.
  *
- * The sticky-bar logo (scroll__nav_logo) is deliberately NOT used here — it is a
- * landing-only element; static pages show the photographer name.
+ * The sticky bar's left identity carries the BLOG NAME (the masthead, shrunk, in
+ * the masthead font) — same as the landing — so the site identity is consistent
+ * everywhere once you scroll past the header.
  */
 
 /**
@@ -42,7 +43,7 @@ $byline_prefix = trim((string)($settings['scroll_byline_prefix'] ?? 'PHOTOGRAPHY
              aria-label="Site navigation"
              data-grid-nav-observer="scroll-profile">
             <div class="ss-grid-nav-identity">
-                <a class="ss-grid-nav-name" href="<?php echo BASE_URL; ?>"><?php echo htmlspecialchars($photographer_name); ?></a>
+                <a class="ss-grid-nav-name" href="<?php echo BASE_URL; ?>"><?php echo htmlspecialchars(implode(' ', $masthead_lines)); ?></a>
             </div>
             <div class="ss-grid-nav-links">
                 <a class="ss-grid-nav-link" href="<?php echo BASE_URL; ?>" title="Home">

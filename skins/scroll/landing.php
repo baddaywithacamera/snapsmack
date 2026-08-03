@@ -138,19 +138,12 @@ $af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE E
              data-grid-nav-observer="scroll-profile">
             <div class="ss-grid-nav-identity">
                 <?php
-                // Sticky-bar logo (type:image option, stored scoped as scroll__nav_logo).
                 // The identity slot is display:none on the inline landing header and only
-                // shows in the fixed/sticky bar, so the logo appears ONLY there. When set,
-                // it replaces the text name.
-                $scroll_nav_logo = trim((string)($settings['scroll__nav_logo'] ?? ''));
+                // shows in the fixed/sticky bar. It carries the BLOG NAME (the masthead,
+                // shrunk, in the masthead font) so the site identity stays put once the big
+                // masthead scrolls away.
                 ?>
-                <a class="ss-grid-nav-name<?php echo $scroll_nav_logo !== '' ? ' has-logo' : ''; ?>" href="<?php echo BASE_URL; ?>">
-                    <?php if ($scroll_nav_logo !== ''): ?>
-                        <img class="scroll-nav-logo" src="<?php echo BASE_URL . htmlspecialchars(ltrim($scroll_nav_logo, '/')); ?>" alt="<?php echo htmlspecialchars($photographer_name !== '' ? $photographer_name : 'Home'); ?>">
-                    <?php else: ?>
-                        <?php echo htmlspecialchars($photographer_name); ?>
-                    <?php endif; ?>
-                </a>
+                <a class="ss-grid-nav-name" href="<?php echo BASE_URL; ?>"><?php echo htmlspecialchars(implode(' ', $masthead_lines)); ?></a>
             </div>
             <div class="ss-grid-nav-links">
                 <a class="ss-grid-nav-link" href="<?php echo BASE_URL; ?>" title="Home">
