@@ -29,6 +29,12 @@
     --scroll-border-color: #fff;
     --scroll-bg: #ffffff;
     --scroll-text: #3a3a3a;
+    --scroll-footer-text: #3a3a3a;
+    /* Community LIKE heart derives from existing controls — no extra sliders. Fill =
+       page Background, outline = Footer Text, so it matches however the page is set up.
+       (Both are the same colour controls that already drive the page + footer.) */
+    --ss-heart-color: var(--scroll-bg, #ffffff);
+    --ss-heart-outline: var(--scroll-footer-text, #3a3a3a);
 }
 
 * { box-sizing: border-box; }
@@ -776,6 +782,9 @@ body.is-blogroll .blogroll-canvas {
     padding: 34px 0;
     text-align: center;
     border-top: 1px solid rgba(0, 0, 0, .12);
+    /* Footer Text control now writes :root/--scroll-footer-text (so the heart can
+       reuse it too); consume it here. */
+    color: var(--scroll-footer-text, #3a3a3a);
 }
 #system-footer .inside {
     width: min(calc(100% - 40px), var(--scroll-canvas-width, 1500px));
