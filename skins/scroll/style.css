@@ -30,10 +30,14 @@
     --scroll-bg: #ffffff;
     --scroll-text: #3a3a3a;
     --scroll-footer-text: #3a3a3a;
-    /* Community LIKE heart derives from existing controls — no extra sliders. Fill =
-       page Background, outline = Footer Text, so it matches however the page is set up.
-       (Both are the same colour controls that already drive the page + footer.) */
-    --ss-heart-color: var(--scroll-bg, #ffffff);
+    /* Community LIKE dock derives from existing colour controls — no extra sliders:
+       circle background = page Background; circle border + unchecked heart outline =
+       Footer Text. The heart turns solid RED when liked (--ss-heart-color's default),
+       while the circle keeps its Background/Footer colours. */
+    --ss-cdock-bg: var(--scroll-bg, #ffffff);
+    --ss-cdock-border: var(--scroll-footer-text, #3a3a3a);
+    --ss-cdock-icon: var(--scroll-footer-text, #3a3a3a);
+    --ss-cdock-opacity: 1;
     --ss-heart-outline: var(--scroll-footer-text, #3a3a3a);
 }
 
@@ -524,7 +528,7 @@ a { color: inherit; }
 .scroll-solo-nav .ss-grid-nav-links {
     display: flex;
     align-items: center;
-    gap: clamp(14px, 2vw, 24px);
+    gap: 8px;   /* match the landing nav exactly (was a bespoke clamp) */
 }
 .scroll-solo-nav .ss-grid-nav-link {
     display: flex;

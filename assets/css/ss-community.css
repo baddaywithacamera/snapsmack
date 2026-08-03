@@ -554,14 +554,18 @@
 /* --- INDIVIDUAL BUTTONS --- */
 
 .ss-cdock-btn {
+    /* Chip is themeable: skins map --ss-cdock-* to their own palette (e.g. SCROLL sets
+       bg = page Background, border/icon = Footer Text). Defaults keep the original dark
+       overlay chip so other skins are unchanged. */
+    position: relative;
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.25);
-    background: rgba(0, 0, 0, 0.65);
+    border: 2px solid var(--ss-cdock-border, rgba(255, 255, 255, 0.25));
+    background: var(--ss-cdock-bg, rgba(0, 0, 0, 0.65));
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--ss-cdock-icon, rgba(255, 255, 255, 0.75));
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -572,7 +576,7 @@
     line-height: 1;
     transition: background 0.15s, border-color 0.15s, transform 0.15s, color 0.15s;
     padding: 0;
-    opacity: 0.7;
+    opacity: var(--ss-cdock-opacity, 0.7);
     text-decoration: none;
     -webkit-user-select: none;
     user-select: none;
@@ -616,18 +620,22 @@
     transition: fill 0.15s ease, stroke 0.15s ease;
 }
 
+/* LIKED: the heart itself goes solid red (fill AND its own outline). */
 .ss-cdock-heart.is-active .ss-cdock-heart-svg svg {
     fill: var(--ss-heart-color, #e05252);
-    stroke: var(--ss-heart-outline, var(--ss-heart-color, #e05252));
+    stroke: var(--ss-heart-color, #e05252);
 }
 
+/* LIKED: the CIRCLE keeps its themed colour (only the heart turns red). Skins that
+   theme the chip (--ss-cdock-bg/border) hold that colour; others keep the classic
+   red-tint. */
 .ss-cdock-heart.is-active {
-    border-color: var(--ss-heart-border, rgba(224, 82, 82, 0.5));
-    background: var(--ss-heart-bg-active, rgba(224, 82, 82, 0.12));
+    border-color: var(--ss-cdock-border, rgba(224, 82, 82, 0.5));
+    background: var(--ss-cdock-bg, rgba(224, 82, 82, 0.12));
 }
 
 .ss-cdock-heart.is-active:hover {
-    background: var(--ss-heart-bg-active-hover, rgba(224, 82, 82, 0.2));
+    background: var(--ss-cdock-bg, rgba(224, 82, 82, 0.2));
 }
 
 /* Heart SVG in FAB button */
@@ -735,9 +743,20 @@
 }
 
 .ss-cdock-rx-count {
-    font-size: 8px;
-    color: rgba(255, 255, 255, 0.6);
-    line-height: 1;
+    /* Corner badge, absolutely positioned so the heart stays centred in the chip.
+       (It used to be a flex-column sibling, which pushed the heart up off-centre when
+       a like count appeared.) */
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 14px;
+    padding: 0 4px;
+    border-radius: 10px;
+    background: var(--ss-heart-color, #e05252);
+    color: #fff;
+    font-size: 9px;
+    line-height: 16px;
+    text-align: center;
     font-family: inherit;
 }
 

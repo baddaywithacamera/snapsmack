@@ -12,6 +12,16 @@
 
 ## Unreleased
 
+- **Like heart: exact spec + centered, and top-right icon gap matches the landing.**
+  Verified live in both states. Unchecked = the page-Background circle with a Footer-Text
+  border and a Footer-Text **outline** heart; liked = the heart goes **solid red** while the
+  circle keeps its Background/Footer colours. The chip is themeable
+  (`--ss-cdock-bg`/`--ss-cdock-border`/`--ss-cdock-icon`/`--ss-cdock-opacity`, defaults keep
+  the old dark chip for other skins); SCROLL maps them to `--scroll-bg`/`--scroll-footer-text`.
+  The like-count is now a corner badge (`position:absolute`) so the heart stays centred
+  instead of being pushed up. And the solo header's icon gap is set to **8px** to match the
+  landing exactly (was a bespoke `clamp(14–24px)`).
+
 ## 0.7.484 "Fill the Damn Gap" — 2026-08-03
 
 - **Six-photo feed blocks now pack as one exact-aspect composition.** The
