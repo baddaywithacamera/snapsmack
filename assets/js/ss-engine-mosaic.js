@@ -146,9 +146,14 @@
         return Math.max(1, Number(image.height) || MAX_SECTION_HEIGHT);
     }
 
-    function fitTallPortraitTrio(images, y, containerWidth, gap) {
-        var heroHeight = Math.min(MAX_SECTION_HEIGHT, sourceHeight(images[0]));
-        var heroWidth = heroHeight * imageAR(images[0]);
+    function fitHeroTrio(images, y, containerWidth, gap) {
+        var heroAR = imageAR(images[0]);
+        var heroWidth = Math.min(MAX_SECTION_HEIGHT, Number(images[0].width) || MAX_SECTION_HEIGHT);
+        var heroHeight = heroWidth / heroAR;
+        if (heroHeight > MAX_SECTION_HEIGHT || heroHeight > sourceHeight(images[0])) {
+            heroHeight = Math.min(MAX_SECTION_HEIGHT, sourceHeight(images[0]));
+            heroWidth = heroHeight * heroAR;
+        }
         var available = Math.max(1, containerWidth - heroWidth - gap);
         var stackWidth = Math.min(
             available,
@@ -170,19 +175,33 @@
     }
 
     function fitNaturalRow(images, y, containerWidth, gap) {
-        var totalAR = images.reduce(function (sum, image) { return sum + imageAR(image); }, 0);
-        var height = Math.min(MAX_SECTION_HEIGHT, (containerWidth - gap * (images.length - 1)) / totalAR);
-        images.forEach(function (image) { height = Math.min(height, sourceHeight(image)); });
-        var widths = images.map(function (image) { return height * imageAR(image); });
+        var heights = images.map(function (image) {
+            var ar = imageAR(image);
+            var sourceWidth = Math.max(1, Number(image.width) || MAX_SECTION_HEIGHT);
+            return Math.min(MAX_SECTION_HEIGHT, sourceHeight(image), MAX_SECTION_HEIGHT / ar, sourceWidth / ar);
+        });
+        var widths = images.map(function (image, index) { return heights[index] * imageAR(image); });
         var used = widths.reduce(function (sum, width) { return sum + width; }, 0);
+        if (used > containerWidth) {
+            var shrink = containerWidth / used;
+            widths = widths.map(function (width) { return width * shrink; });
+            heights = heights.map(function (height) { return height * shrink; });
+            used = containerWidth;
+        }
         var spacing = images.length > 1 ? (containerWidth - used) / (images.length - 1) : 0;
         var x = 0;
         var row = images.map(function (image, order) {
-            var tile = { image: image, order: order, x: x, y: y, width: widths[order], height: height };
+            var tile = { image: image, order: order, x: x, y: y, width: widths[order], height: heights[order] };
             x += widths[order] + spacing;
             return tile;
         });
-        return { items: row, height: height };
+        return { items: row, height: Math.max.apply(Math, heights) };
+    }
+
+    function tileExceedsLimit(tile) {
+        var sourceWidth = Math.max(1, Number(tile.image.width) || MAX_SECTION_HEIGHT);
+        return tile.width > Math.min(MAX_SECTION_HEIGHT, sourceWidth) + 0.01 ||
+               tile.height > Math.min(MAX_SECTION_HEIGHT, sourceHeight(tile.image)) + 0.01;
     }
 
     function heroOrientation(mode, sectionNumber, sectionImages) {
@@ -236,9 +255,10 @@
                 var tree = buildSection(sectionImages, preferLandscapeHero);
                 var sectionItems = [];
                 var sectionHeight = placeNode(tree, 0, y, containerWidth, gap, sectionItems);
-                if (sectionHeight > MAX_SECTION_HEIGHT) {
-                    var fitted = count === 3 && imageAR(sectionImages[0]) < 1.15
-                        ? fitTallPortraitTrio(sectionImages, y, containerWidth, gap)
+                if (sectionHeight > MAX_SECTION_HEIGHT || sectionItems.some(tileExceedsLimit)) {
+                    var isHeroTrio = count === 3 && (imageAR(sectionImages[0]) < 1.15 || preferLandscapeHero);
+                    var fitted = isHeroTrio
+                        ? fitHeroTrio(sectionImages, y, containerWidth, gap)
                         : fitNaturalRow(sectionImages, y, containerWidth, gap);
                     sectionItems = fitted.items;
                     sectionHeight = fitted.height;

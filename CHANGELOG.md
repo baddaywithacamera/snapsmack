@@ -12,12 +12,28 @@
 
 ## Unreleased
 
+- **CORE: emoji reactions removed — standardized on the single Fediverse heart.** The
+  community dock (`core/community-dock.php`) now renders one always-visible **heart** like
+  button (outline by default, filled when liked) instead of the smiley React FAB + emoji
+  picker; it reuses the existing like path (`process-like.php` / `snap_likes`).
+  `assets/js/ss-engine-community.js` wires the heart FAB straight to the like endpoint (the
+  old picker block goes inert with no picker present). Any legacy reaction UI is also hidden
+  in `ss-community.css`. **Likes and Fediverse (federated) likes are untouched** — they live
+  in separate tables. The heart colour is now themeable via `--ss-heart-color` (default red;
+  set white/black per skin, e.g. CHAPLIN). A non-destructive migration
+  (`migrate-reactions-to-likes.sql`, registered in `UPDATER_KNOWN_MIGRATIONS`) converts every
+  existing `snap_reactions` row into a `snap_like` (dedup'd) so past engagement survives as
+  hearts; `snap_reactions` is left in place until tallies are confirmed. Needs a core release
+  to reach installs. (In-flow component's reaction *queries* still run but its output is
+  hidden — a later cleanup.)
+
 ## 0.7.483 "No Shrinkage" — 2026-08-02
 
 - **MOSAIC sections never narrow the SCROLL wall.** Removed the deep-height
   fallback that proportionally shrank an entire composition and created white
   side gutters. The wall remains at the configured width and 900px is now a hard
-  section-height ceiling. An oversized portrait remains a natural-aspect hero
+  width-and-height ceiling for every tile, matching the large derivative. An
+  oversized portrait remains a natural-aspect hero
   on one wall edge while its natural-aspect supporting stack anchors the other;
   unavoidable unused space remains internal to that asymmetric block. No image
   is enlarged or cropped to force the fit.
