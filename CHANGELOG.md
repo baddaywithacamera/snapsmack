@@ -12,6 +12,15 @@
 
 ## Unreleased
 
+## 0.7.497 "Outside the Box" — 2026-08-04
+
+- **Photo-wall derivative limits are now hard layout rules.** MOSAIC no longer
+  falls back to a rejected composition containing over-900px heroes or tiny
+  supporting tiles; it regroups the block until every desktop tile is useful
+  and within the 900px derivative ceiling. SCROLL Columns also caps extreme
+  portraits at 900px, narrowing and centring them in their column without crop
+  or aspect distortion. FullHD MOSAIC and two-/three-column regressions added.
+
 ## 0.7.496 "<codename TBD — Sean>" — 2026-08-04
 
 - **SmackPress import hardening (security).** Migrated WordPress content is now

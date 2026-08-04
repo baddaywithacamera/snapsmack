@@ -47,6 +47,7 @@
     var DEFAULT_COLS = 4;
     var DEFAULT_GAP = 6;
     var FALLBACK_ASPECT = 3 / 2;   // matches the server-side fallback in landing.php
+    var MAX_TILE_EDGE = 900;       // a_ thumbnail derivative longest edge
 
     function cssNum(cs, name, fb) {
         var v = parseFloat(cs.getPropertyValue(name));
@@ -73,6 +74,18 @@
             });
         }
         return out;
+    }
+
+    function boundedTileSize(slotWidth, aspect, borderWidth) {
+        aspect = aspect > 0 ? aspect : FALLBACK_ASPECT;
+        borderWidth = Math.max(0, borderWidth || 0);
+        var maxInnerEdge = Math.max(1, MAX_TILE_EDGE - 2 * borderWidth);
+        var slotInnerWidth = Math.max(1, slotWidth - 2 * borderWidth);
+        var innerWidth = Math.min(slotInnerWidth, maxInnerEdge, maxInnerEdge * aspect);
+        return {
+            width: innerWidth + 2 * borderWidth,
+            height: innerWidth / aspect + 2 * borderWidth
+        };
     }
 
     function layout(grid) {
@@ -108,17 +121,20 @@
             for (c = 1; c < cols; c++) if (colH[c] < colH[best] - 1e-6) best = c;
 
             var top = colH[best] === 0 ? 0 : colH[best] + gap;
-            // Height from the INNER width, so a border never crops or distorts.
-            var innerW = colW - 2 * bw;
-            var h = innerW / it.aspect + 2 * bw;
+            // Preserve native aspect without enlarging the 900px derivative.
+            // Extreme portraits become narrower than their column slot and are
+            // centred inside it instead of growing beyond 900px in height.
+            var bounded = boundedTileSize(colW, it.aspect, bw);
+            var tileW = bounded.width;
+            var h = bounded.height;
 
             var st = it.el.style;
             st.position = 'absolute';
             st.boxSizing = 'border-box';
             st.margin = '0';
-            st.left = (padL + best * (colW + gap)) + 'px';
+            st.left = (padL + best * (colW + gap) + (colW - tileW) / 2) + 'px';
             st.top = top + 'px';
-            st.width = colW + 'px';
+            st.width = tileW + 'px';
             st.height = h + 'px';
             st.overflow = 'hidden';
 
@@ -286,7 +302,13 @@
         }
     }
 
-    window.SSColumns = { init: init, initAll: initAll, relayout: relayout, layout: layout };
+    window.SSColumns = {
+        init: init,
+        initAll: initAll,
+        relayout: relayout,
+        layout: layout,
+        boundedTileSize: boundedTileSize
+    };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () { initAll(); initInfiniteScroll(); });
