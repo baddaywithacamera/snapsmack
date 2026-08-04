@@ -477,15 +477,7 @@ try {
 $skin_path = 'skins/' . $active_skin;
 $page_title = $img['img_title'] ?? 'Home';
 
-// TEST wall preview (0.7.492D, temporary): ?walltest=1 swaps the skin's landing.php
-// for its test.php when one exists, so the three-layout wall can be tried
-// in-product. Query-gated — with no flag, live behaviour is identical. The wall's
-// JSON feed still comes from landing.php (shared ?pg=wall tiles), so only the HTML
-// page render is swapped. Remove with the SCROLL test page once the picker ships.
 $landing_basename = 'landing.php';
-if (($_GET['walltest'] ?? '') === '1' && file_exists(__DIR__ . '/' . $skin_path . '/test.php')) {
-    $landing_basename = 'test.php';
-}
 
 // ── Early exit for JSON AJAX requests ────────────────────────────────────────
 // Must happen BEFORE skin-meta.php outputs any HTML, otherwise

@@ -12,6 +12,18 @@
 
 ## Unreleased
 
+- **Skin controls can now declare `enable_when` dependencies.** Dependent fields
+  stay visible but become greyed out and unclickable until the controlling
+  choice matches, then wake immediately without a reload. SCROLL uses this for
+  MOSAIC Emphasis: it is dormant for Columns and Rows because it has no effect
+  there, and active only for Asymmetric (MOSAIC).
+
+- **SCROLL's tested three-layout photo wall is now the production landing wall.**
+  PHOTO WALL can select Columns, Rows, or Asymmetric (MOSAIC); the temporary test
+  route and test-only controls are gone. The Tile Size control now applies to
+  Columns and Rows, with a new two-across setting for substantially larger tiles.
+  MOSAIC keeps its compositor-managed sizing. SCROLL advances to **0.1.41**.
+
 - **Removed the direct skin-package UPLOAD feature from the skin admin** (`smack-skin.php`).
   Closed beta uses registry skins only; custom-skin uploads are a support headache we
   don't want. The registry install / update / remove / activate gallery is unchanged.

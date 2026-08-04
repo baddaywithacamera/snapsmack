@@ -659,6 +659,14 @@ if (!empty($google_families)) {
 ?>
 
 <style>
+.lens-input-wrapper.is-dormant {
+    opacity: 0.3;
+    filter: grayscale(1);
+    transition: opacity 0.18s ease, filter 0.18s ease;
+}
+.lens-input-wrapper.is-dormant select,
+.lens-input-wrapper.is-dormant input,
+.lens-input-wrapper.is-dormant button { cursor: not-allowed; }
 /* --- SKIN PAGE: TAB NAVIGATION --- */
 .skin-tabs {
     display: flex;
@@ -1086,8 +1094,15 @@ if (!empty($google_families)) {
                             $show_attr = ' data-show-when="' . htmlspecialchars($sw_key)
                                        . '" data-show-eq="' . htmlspecialchars($sw_val) . '"';
                         }
+                        $enable_attr = '';
+                        if (!empty($o['enable_when']) && is_array($o['enable_when'])) {
+                            $ew_key = (string) array_key_first($o['enable_when']);
+                            $ew_val = (string) $o['enable_when'][$ew_key];
+                            $enable_attr = ' data-enable-when="' . htmlspecialchars($ew_key)
+                                         . '" data-enable-eq="' . htmlspecialchars($ew_val) . '"';
+                        }
                         ?>
-                        <div class="lens-input-wrapper"<?php echo $show_attr; ?>>
+                        <div class="lens-input-wrapper"<?php echo $show_attr . $enable_attr; ?>>
                             <label><?php echo strtoupper($o['label']); ?></label>
                             <?php if ($o['type'] === 'color' && !empty($o['is_greyscale'])): ?>
                                 <?php
@@ -1280,6 +1295,18 @@ if (!empty($google_families)) {
                             return w.style.display !== 'none';
                         });
                         box.style.display = anyVisible ? '' : 'none';
+                    });
+                    document.querySelectorAll('[data-enable-when]').forEach(function (el) {
+                        var key  = el.getAttribute('data-enable-when');
+                        var eq   = el.getAttribute('data-enable-eq');
+                        var ctrl = document.querySelector('[name="skin_opt[' + key + ']"]');
+                        if (!ctrl) return;
+                        var enabled = String(ctrl.value) === eq;
+                        el.classList.toggle('is-dormant', !enabled);
+                        el.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+                        el.querySelectorAll('input, select, textarea, button').forEach(function (field) {
+                            field.disabled = !enabled;
+                        });
                     });
                 }
                 document.addEventListener('change', function (e) {
