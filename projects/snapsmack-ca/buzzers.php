@@ -162,6 +162,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Aug 4</span><a href="#a036">SmackPress WordPress Migration &mdash; Import Sanitising</a></li>
                 <li><span class="idx-date">Jul 27</span><a href="#a035">IP SMACKER &amp; Login Shield &mdash; Client-Address Spoofing</a></li>
                 <li><span class="idx-date">Jul 24</span><a href="#a034">Skin Manifest RCE &amp; Credentials Export — Closure</a></li>
                 <li><span class="idx-date">Jul 15</span><a href="#a033">SMACKVERSE Federation Client — Attack Surface</a></li>
@@ -197,6 +198,14 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a036">
+                <div class="post-meta"><span class="post-date">August 4, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>SmackPress WordPress Migration &mdash; Import Sanitising</h2>
+                <p>SmackPress is the tool that moves an existing WordPress blog into SnapSmack. This audit walked its whole path &mdash; the authenticated import API, the image upload, and the desktop client &mdash; before the first real blog was migrated. The core held up well: every database query is parameterised, the import key is a short-lived 256-bit token stored only as a hash, and uploaded images are re-encoded so they can't smuggle in code.</p>
+                <p>The finding that mattered: a WordPress post body is raw HTML, and plugins inject all manner of things into it &mdash; including scripts. SmackPress was storing that HTML as-is, so anything hostile in a source post could have run on the new site for every visitor. It now passes every imported post and page through a strict allowlist that strips scripts, styles, iframes, event handlers, and <code>javascript:</code> links before anything is saved &mdash; verified against a dozen attack payloads. Two smaller items closed alongside: GIF uploads are now re-encoded like every other image format, and the desktop tool keeps your WordPress and API keys in your operating system's keychain instead of a plain file. Closed in 0.7.496.</p>
+                <a class="report-link" href="secaudits/2026-08-04-036-smackpress-migration-attack-surface.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a035">
                 <div class="post-meta"><span class="post-date">Updated July 28, 2026</span><span class="post-tag">Closed</span></div>
