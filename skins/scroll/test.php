@@ -7,8 +7,10 @@
  *                #eatmeclaude-feed block markup + ss-engine-mosaic.js +
  *                ss-engine-mosaic-feed.js, which streams later blocks from
  *                eatmeclaude.php. Identical to the page that already works.
- *   • rows     — NOT wired yet (no existing rows engine to paste); currently
- *                falls back to columns. TODO: wire the justified/fjGallery engine.
+ *   • rows     — justified rows via ss-engine-rows.js: a pure-SnapSmack adaptation
+ *                of ss-engine-columns.js (NO third-party library — licensing stays
+ *                all-SnapSmack). Landscapes lead. Container .ss-scroll-wall so the
+ *                global columns engine ignores it; reuses the .ss-scroll-wall CSS.
  * Reached at ?walltest=1 (routed in index.php). Layout + MOSAIC emphasis come from
  * the "PHOTO WALL — TEST" controls. Delete this file + the walltest route + the
  * test controls once a picker is promoted onto landing.php.
@@ -35,6 +37,7 @@ if (!in_array($_ss_test_layout, ['columns', 'rows', 'mosaic'], true)) $_ss_test_
 $_ss_test_emph = (string)($settings['scroll_test_emphasis'] ?? 'landscape');
 if (!in_array($_ss_test_emph, ['natural', 'balanced', 'landscape', 'portrait'], true)) $_ss_test_emph = 'landscape';
 $_is_mosaic = ($_ss_test_layout === 'mosaic');
+$_is_rows   = ($_ss_test_layout === 'rows');
 $is_json   = (($_GET['format'] ?? '') === 'json') && (($_GET['pg'] ?? '') === 'wall');
 
 // ?c= chunk index — meaningful only on the JSON path; the HTML page is always
@@ -330,7 +333,10 @@ $af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE E
     </main>
     <?php else: ?>
     <main class="scroll-wall scroll-wall-test">
-        <div class="ss-masonry">
+        <?php // ROWS uses .ss-scroll-wall (driven by ss-engine-rows.js) so the global
+              // columns engine ignores it; COLUMNS uses .ss-masonry (ss-engine-columns.js).
+              // Same .ss-masonry-item tiles + same ?pg=wall feed either way. ?>
+        <div class="<?php echo $_is_rows ? 'ss-scroll-wall' : 'ss-masonry'; ?>">
             <?php if (!empty($images)): ?>
                 <?php foreach ($images as $img) echo scroll_wall_tile($img); ?>
             <?php else: ?>
@@ -338,8 +344,8 @@ $af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE E
             <?php endif; ?>
         </div>
         <?php if ($has_more): ?>
-        <!-- Infinite scroll: ss-engine-columns.js watches this, fetches the next
-             page as JSON (?pg=wall → landing.php), appends into .ss-masonry above. -->
+        <!-- Infinite scroll: the row/column engine watches this, fetches the next
+             page as JSON (?pg=wall → landing.php), appends the tiles above. -->
         <div class="scroll-wall-sentinel"
              data-next="1"
              data-cutoff="<?php echo htmlspecialchars($cutoff); ?>"
@@ -358,6 +364,12 @@ $af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE E
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/page-eatmeclaude.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic-feed.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
+<?php elseif ($_is_rows): ?>
+<!-- ROWS: pure-SnapSmack justified rows, a direct adaptation of ss-engine-columns.js
+     (no third-party library). Skin-scoped for the test page; reuses the .ss-scroll-wall
+     tile CSS already shipped in 0.7.492D. -->
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-scroll-wall.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<script src="<?php echo BASE_URL; ?>skins/scroll/assets/js/ss-engine-rows.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <?php endif; ?>
 <?php include __DIR__ . '/skin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

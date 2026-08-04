@@ -23,10 +23,12 @@
     `eatmeclaude.php`: its `.snap-mosaic` block markup + `ss-engine-mosaic.js` +
     `ss-engine-mosaic-feed.js` (which streams later blocks from `eatmeclaude.php`).
     Not an adaptation — the same engine, markup and feed that already ship.
-  - **Rows** — not wired yet (no existing rows engine to reuse); currently falls
-    back to columns. TODO: wire the justified/fjGallery engine.
+  - **Rows** — justified rows via `ss-engine-rows.js`: a pure-SnapSmack adaptation
+    of `ss-engine-columns.js` (NO third-party library — licensing stays all-SnapSmack).
+    Landscapes lead, the mirror of columns. Skin-scoped for the test page; container
+    `.ss-scroll-wall`, reusing the tile CSS already shipped in 0.7.492D.
   The abandoned unified `ss-engine-scroll-wall.js` is no longer referenced (it read
-  columns for asymmetric and regressed lazy loading). SCROLL manifest → 0.1.39.
+  columns for asymmetric and regressed lazy loading). SCROLL manifest → 0.1.40.
 
 ## 0.7.491 "Big Enough to Matter" — 2026-08-03
 
