@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.40",
+    "version": "0.1.41",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -247,15 +247,27 @@
         "scroll_wall_cols": {
             "section": "PHOTO WALL",
             "type": "range",
-            "label": "Columns Across",
-            "hint": "Number of columns in the landing wall. Default 4. Fewer = bigger photos; more = smaller.",
+            "label": "Tile Size (fewer across = bigger)",
+            "hint": "Controls tile scale for Columns and Rows. Move left for larger photographs; right for more photographs across.",
             "default": "4",
-            "min": "3",
+            "min": "2",
             "max": "6",
             "step": "1",
-            "selector": ".ss-masonry",
+            "selector": ".ss-masonry, .ss-scroll-wall",
             "property": "--ss-cols",
             "unit": ""
+        },
+        "scroll_wall_layout": {
+            "section": "PHOTO WALL",
+            "type": "select",
+            "label": "Wall Layout",
+            "hint": "Columns favours portraits, Rows favours landscapes, and Asymmetric builds a MOSAIC quilt.",
+            "default": "columns",
+            "options": {
+                "columns": "Columns (portraits stand tallest)",
+                "rows": "Rows (landscapes lead)",
+                "mosaic": "Asymmetric (MOSAIC quilt)"
+            }
         },
         "scroll_canvas_pct": {
             "section": "PHOTO WALL",
@@ -298,7 +310,7 @@
             "default": "6",
             "min": "5",
             "max": "25",
-            "selector": ".ss-masonry",
+            "selector": ".ss-masonry, .ss-scroll-wall",
             "property": "--ss-gap",
             "unit": "px"
         },
@@ -307,31 +319,9 @@
             "type": "select",
             "label": "MOSAIC Hero Emphasis",
             "hint": "Controls which orientation is promoted into the largest cells on MOSAIC feeds. This does not change the saved library order.",
-            "default": "landscape",
-            "options": {
-                "natural": "Follow Library Order",
-                "balanced": "Balance Portraits & Landscapes",
-                "landscape": "Favor Landscapes",
-                "portrait": "Favor Portraits"
-            }
-        },
-        "scroll_test_wall_layout": {
-            "section": "PHOTO WALL — TEST",
-            "type": "select",
-            "label": "TEST Wall Layout",
-            "hint": "Drives the ?walltest=1 preview page ONLY — try the three walls before they replace the live landing. Columns favours portraits, Rows favours landscapes, Asymmetric is the MOSAIC quilt.",
-            "default": "columns",
-            "options": {
-                "columns": "Columns (portraits stand tallest)",
-                "rows": "Rows (landscapes lead)",
-                "mosaic": "Asymmetric (MOSAIC quilt)"
-            }
-        },
-        "scroll_test_emphasis": {
-            "section": "PHOTO WALL — TEST",
-            "type": "select",
-            "label": "TEST — MOSAIC Emphasis",
-            "hint": "For the Asymmetric layout on the ?walltest=1 page: which orientation is promoted into the largest cells. No effect on Columns or Rows.",
+            "enable_when": {
+                "scroll_wall_layout": "mosaic"
+            },
             "default": "landscape",
             "options": {
                 "natural": "Follow Library Order",

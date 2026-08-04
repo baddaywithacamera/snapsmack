@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK — SCROLL wall TEST page (0.7.492D, temporary).
+ * SNAPSMACK — SCROLL production landing wall.
  * Each layout uses the EXISTING working code, not a new engine:
  *   • columns  — landing.php's .ss-masonry + ss-engine-columns.js (unchanged).
  *   • mosaic   — Codex's real MOSAIC, cut-and-pasted from eatmeclaude.php: the
@@ -11,9 +11,7 @@
  *                of ss-engine-columns.js (NO third-party library — licensing stays
  *                all-SnapSmack). Landscapes lead. Container .ss-scroll-wall so the
  *                global columns engine ignores it; reuses the .ss-scroll-wall CSS.
- * Reached at ?walltest=1 (routed in index.php). Layout + MOSAIC emphasis come from
- * the "PHOTO WALL — TEST" controls. Delete this file + the walltest route + the
- * test controls once a picker is promoted onto landing.php.
+ * Layout and MOSAIC emphasis come from the production PHOTO WALL controls.
  */
 
 /**
@@ -30,14 +28,13 @@
 $_ss_ps    = $settings['scroll_page_size'] ?? '';
 $page_size = is_numeric($_ss_ps) ? max(12, min(60, (int)$_ss_ps)) : 50;
 
-// TEST-page wall controls (stored-value selects, read from $settings). These pick
-// which layout the unified engine runs and how MOSAIC emphasises orientation.
-$_ss_test_layout = (string)($settings['scroll_test_wall_layout'] ?? 'columns');
-if (!in_array($_ss_test_layout, ['columns', 'rows', 'mosaic'], true)) $_ss_test_layout = 'columns';
-$_ss_test_emph = (string)($settings['scroll_test_emphasis'] ?? 'landscape');
-if (!in_array($_ss_test_emph, ['natural', 'balanced', 'landscape', 'portrait'], true)) $_ss_test_emph = 'landscape';
-$_is_mosaic = ($_ss_test_layout === 'mosaic');
-$_is_rows   = ($_ss_test_layout === 'rows');
+// Production wall controls (stored-value selects, read from $settings).
+$_ss_wall_layout = (string)($settings['scroll_wall_layout'] ?? 'columns');
+if (!in_array($_ss_wall_layout, ['columns', 'rows', 'mosaic'], true)) $_ss_wall_layout = 'columns';
+$_ss_wall_emph = (string)($settings['scroll_mosaic_emphasis'] ?? 'landscape');
+if (!in_array($_ss_wall_emph, ['natural', 'balanced', 'landscape', 'portrait'], true)) $_ss_wall_emph = 'landscape';
+$_is_mosaic = ($_ss_wall_layout === 'mosaic');
+$_is_rows   = ($_ss_wall_layout === 'rows');
 $is_json   = (($_GET['format'] ?? '') === 'json') && (($_GET['pg'] ?? '') === 'wall');
 
 // ?c= chunk index — meaningful only on the JSON path; the HTML page is always
@@ -180,7 +177,7 @@ if ($_is_mosaic) {
     $emc_images   = $emc_limit > 0 ? eatmeclaude_images($pdo, $cutoff, 0, $emc_limit) : [];
     $emc_has_more = count($emc_block_sizes) > 1;
     $emc_gap      = max(0, min(25, (int)($settings['scroll_mosaic_gap'] ?? 6)));
-    $emc_emphasis = $_ss_test_emph;   // the TEST page's own emphasis control
+    $emc_emphasis = $_ss_wall_emph;
 }
 
 $masthead_raw = trim((string)($settings['scroll_masthead_lines'] ?? 'USED CAR|PARTS'));
@@ -315,7 +312,7 @@ $af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE E
           // .scroll-landing header wrapper is CLOSED before the feed <main> begins.
           // Putting this main inside that wrapper changes its layout context even
           // when the mosaic payload and engine are byte-identical. ?>
-    <main class="scroll-wall scroll-wall-test eatmeclaude-content">
+    <main class="scroll-wall eatmeclaude-content">
         <div id="eatmeclaude-feed" class="eatmeclaude-feed"
              data-gap="<?php echo $emc_gap; ?>"
              data-emphasis="<?php echo htmlspecialchars($emc_emphasis, ENT_QUOTES); ?>"
@@ -337,7 +334,7 @@ $af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE E
         <p id="eatmeclaude-status" class="eatmeclaude-status" aria-live="polite"></p>
     </main>
 <?php else: ?>
-    <main class="scroll-wall scroll-wall-test">
+    <main class="scroll-wall">
         <?php // ROWS uses .ss-scroll-wall (driven by ss-engine-rows.js) so the global
               // columns engine ignores it; COLUMNS uses .ss-masonry (ss-engine-columns.js).
               // Same .ss-masonry-item tiles + same ?pg=wall feed either way. ?>
