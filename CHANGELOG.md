@@ -12,6 +12,23 @@
 
 ## Unreleased
 
+- **SCROLL promoted to stable.** SCROLL ships as a stable skin at **0.1.42**.
+
+- **SCROLL: dedicated page-title Font & Size control (STATIC & BLOG).** The
+  About / static-page title now has its own font picker and size slider,
+  independent of the masthead and the blogroll headings. The former "Static &
+  Blog Heading Font" is now "Blogroll Heading Font" (blogroll only) with a
+  proper size range, so saving skin settings no longer shrank the page title.
+
+- **SCROLL: static pages now honour the Text Column Width control.** Body text
+  on static pages (About, etc.) is capped to the CONTENT WIDTH / SIDE GUTTERS
+  settings; the full-width top divider line and hero image are left as they were.
+
+- **SCROLL's PHOTO WALL controls now follow the layout choice clearly.** Wall
+  Layout, MOSAIC Hero Emphasis, and Tile Size sit together in that order. MOSAIC
+  emphasis sleeps for Columns/Rows; Tile Size sleeps for MOSAIC. `enable_when`
+  now accepts multiple valid controlling values. SCROLL advances to **0.1.42**.
+
 - **Skin controls can now declare `enable_when` dependencies.** Dependent fields
   stay visible but become greyed out and unclickable until the controlling
   choice matches, then wake immediately without a reload. SCROLL uses this for

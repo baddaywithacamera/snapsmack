@@ -1,10 +1,10 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.41",
+    "version": "0.1.42",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
-    "status": "beta",
+    "status": "stable",
     "features": {
         "supports_wall": false,
         "supports_slider": false,
@@ -155,11 +155,12 @@
             "type": "select",
             "is_font": true,
             "font_source": "google",
-            "label": "Static & Blog Heading Font",
-            "hint": "Static/photo page titles AND blogroll section headings + names. Keep this sans-serif; set the body serif separately below. Independent of the masthead.",
+            "label": "Blogroll Heading Font",
+            "hint": "Blogroll section headings and blog names only. The About / static page title has its own Font & Size control under STATIC & BLOG. Keep this sans-serif; set the body serif separately below.",
             "default": "Archivo Black",
-            "selector": ".scroll-horizontal-title, .blogroll-category-heading, .blogroll-peer-name",
-            "property": "font-family"
+            "selector": ".blogroll-category-heading, .blogroll-peer-name",
+            "property": "font-family",
+            "size": { "min": "0.8", "max": "3.0", "step": "0.05", "default": "1.4", "unit": "rem" }
         },
         "scroll_static_body_font": {
             "section": "TYPOGRAPHY",
@@ -244,19 +245,6 @@
             "selector": ":root",
             "property": "--scroll-nav-alpha"
         },
-        "scroll_wall_cols": {
-            "section": "PHOTO WALL",
-            "type": "range",
-            "label": "Tile Size (fewer across = bigger)",
-            "hint": "Controls tile scale for Columns and Rows. Move left for larger photographs; right for more photographs across.",
-            "default": "4",
-            "min": "2",
-            "max": "6",
-            "step": "1",
-            "selector": ".ss-masonry, .ss-scroll-wall",
-            "property": "--ss-cols",
-            "unit": ""
-        },
         "scroll_wall_layout": {
             "section": "PHOTO WALL",
             "type": "select",
@@ -268,6 +256,38 @@
                 "rows": "Rows (landscapes lead)",
                 "mosaic": "Asymmetric (MOSAIC quilt)"
             }
+        },
+        "scroll_mosaic_emphasis": {
+            "section": "PHOTO WALL",
+            "type": "select",
+            "label": "MOSAIC Hero Emphasis",
+            "hint": "Controls which orientation is promoted into the largest cells on MOSAIC feeds. This does not change the saved library order.",
+            "enable_when": {
+                "scroll_wall_layout": "mosaic"
+            },
+            "default": "landscape",
+            "options": {
+                "natural": "Follow Library Order",
+                "balanced": "Balance Portraits & Landscapes",
+                "landscape": "Favor Landscapes",
+                "portrait": "Favor Portraits"
+            }
+        },
+        "scroll_wall_cols": {
+            "section": "PHOTO WALL",
+            "type": "range",
+            "label": "Tile Size (fewer across = bigger)",
+            "hint": "Controls tile scale for Columns and Rows. Move left for larger photographs; right for more photographs across.",
+            "enable_when": {
+                "scroll_wall_layout": ["columns", "rows"]
+            },
+            "default": "4",
+            "min": "2",
+            "max": "6",
+            "step": "1",
+            "selector": ".ss-masonry, .ss-scroll-wall",
+            "property": "--ss-cols",
+            "unit": ""
         },
         "scroll_canvas_pct": {
             "section": "PHOTO WALL",
@@ -313,22 +333,6 @@
             "selector": ".ss-masonry, .ss-scroll-wall",
             "property": "--ss-gap",
             "unit": "px"
-        },
-        "scroll_mosaic_emphasis": {
-            "section": "PHOTO WALL",
-            "type": "select",
-            "label": "MOSAIC Hero Emphasis",
-            "hint": "Controls which orientation is promoted into the largest cells on MOSAIC feeds. This does not change the saved library order.",
-            "enable_when": {
-                "scroll_wall_layout": "mosaic"
-            },
-            "default": "landscape",
-            "options": {
-                "natural": "Follow Library Order",
-                "balanced": "Balance Portraits & Landscapes",
-                "landscape": "Favor Landscapes",
-                "portrait": "Favor Portraits"
-            }
         },
         "scroll_corner_radius": {
             "section": "PHOTO WALL",
@@ -614,6 +618,18 @@
             "selector": ":root",
             "property": "--scroll-static-width",
             "unit": "px"
+        },
+        "scroll_horizontal_title_font": {
+            "section": "STATIC & BLOG",
+            "type": "select",
+            "is_font": true,
+            "font_source": "google",
+            "label": "Page Title Font & Size (About, etc.)",
+            "hint": "Font and size of the big page title at the top of static pages such as About. The size slider sits directly under the font. Independent of the masthead and the blogroll headings.",
+            "default": "Archivo Black",
+            "selector": ".scroll-horizontal-title",
+            "property": "font-family",
+            "size": { "min": "1.5", "max": "6", "step": "0.1", "default": "3.4", "unit": "rem" }
         },
         "scroll_hero_pad": {
             "section": "STATIC & BLOG",
