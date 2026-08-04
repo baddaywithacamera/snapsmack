@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.37",
+    "version": "0.1.38",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
     "status": "beta",
@@ -307,6 +307,31 @@
             "type": "select",
             "label": "MOSAIC Hero Emphasis",
             "hint": "Controls which orientation is promoted into the largest cells on MOSAIC feeds. This does not change the saved library order.",
+            "default": "landscape",
+            "options": {
+                "natural": "Follow Library Order",
+                "balanced": "Balance Portraits & Landscapes",
+                "landscape": "Favor Landscapes",
+                "portrait": "Favor Portraits"
+            }
+        },
+        "scroll_test_wall_layout": {
+            "section": "PHOTO WALL — TEST",
+            "type": "select",
+            "label": "TEST Wall Layout",
+            "hint": "Drives the ?walltest=1 preview page ONLY — try the three walls before they replace the live landing. Columns favours portraits, Rows favours landscapes, Asymmetric is the MOSAIC quilt.",
+            "default": "columns",
+            "options": {
+                "columns": "Columns (portraits stand tallest)",
+                "rows": "Rows (landscapes lead)",
+                "mosaic": "Asymmetric (MOSAIC quilt)"
+            }
+        },
+        "scroll_test_emphasis": {
+            "section": "PHOTO WALL — TEST",
+            "type": "select",
+            "label": "TEST — MOSAIC Emphasis",
+            "hint": "For the Asymmetric layout on the ?walltest=1 page: which orientation is promoted into the largest cells. No effect on Columns or Rows.",
             "default": "landscape",
             "options": {
                 "natural": "Follow Library Order",

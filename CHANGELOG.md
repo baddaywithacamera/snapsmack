@@ -12,6 +12,21 @@
 
 ## Unreleased
 
+## 0.7.492 "Claude talks too much" — 2026-08-03
+
+- **SCROLL wall — three layouts behind one engine (test scaffold).** New unified
+  `ss-engine-scroll-wall.js` offers all three walls from one file: **Columns**
+  (portraits stand tallest — the existing geometry, carried over unchanged),
+  **Rows** (justified rows, landscapes lead — the mirror of columns), and
+  **Asymmetric/MOSAIC** (Codex's compositor, driven in blocks of 6 exactly as the
+  live mosaic page does). All three read the same `.ss-masonry-item` tiles and the
+  same `?pg=wall` feed; shape is read only from `data-w`/`data-h`, never
+  `naturalWidth`, so lazy loading is preserved. Exposed for evaluation on a
+  temporary `?walltest=1` preview page (SCROLL `test.php`) driven by a new
+  "PHOTO WALL — TEST" control section (layout + MOSAIC emphasis). The live landing
+  is untouched until the picker is promoted. Ships `assets/css/ss-engine-scroll-wall.css`
+  (scoped to `.ss-scroll-wall`). SCROLL manifest 0.1.37 → 0.1.38.
+
 ## 0.7.491 "Big Enough to Matter" — 2026-08-03
 
 - **Asymmetric MOSAIC layouts no longer sacrifice supporting photographs to a
