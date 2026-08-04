@@ -68,8 +68,8 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.492');
-define('SNAPSMACK_VERSION_SHORT', '0.7.492');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.493');
+define('SNAPSMACK_VERSION_SHORT', '0.7.493');
 define('SNAPSMACK_VERSION_CODENAME', 'Claude talks too much');
 
 // --- THUMBNAIL DIMENSIONS (single source of truth) ---

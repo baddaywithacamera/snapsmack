@@ -854,6 +854,11 @@ return [
             'path'         => 'assets/js/ss-engine-columns.js',
             'has_settings' => false,
         ],
+        'smack-rows' => [
+            'label'        => 'Justified-row photo wall (native aspect, landscapes largest — mirror of smack-columns)',
+            'path'         => 'assets/js/ss-engine-rows.js',
+            'has_settings' => false,
+        ],
         'smack-aurora-bg' => [
             'label'        => 'AURORA Layer 1 background curtains (canvas)',
             'path'         => 'assets/js/ss-engine-aurora-bg.js',

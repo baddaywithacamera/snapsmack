@@ -366,10 +366,10 @@ $af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE E
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic-feed.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 <?php elseif ($_is_rows): ?>
 <!-- ROWS: pure-SnapSmack justified rows, a direct adaptation of ss-engine-columns.js
-     (no third-party library). Skin-scoped for the test page; reuses the .ss-scroll-wall
-     tile CSS already shipped in 0.7.492D. -->
+     (no third-party library). Core engine (peer of columns & mosaic); reuses the
+     .ss-scroll-wall tile CSS. -->
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-scroll-wall.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
-<script src="<?php echo BASE_URL; ?>skins/scroll/assets/js/ss-engine-rows.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-rows.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <?php endif; ?>
 <?php include __DIR__ . '/skin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
