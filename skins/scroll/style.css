@@ -837,6 +837,18 @@ body.is-blogroll .blogroll-canvas {
     height: auto;
     margin-block: var(--scroll-hero-pad, 48px);
 }
+/* Static-page body text column. The wall-width top divider line (border-top of
+   .scroll-static-content) and the full-bleed hero stay at 90% (--scroll-canvas-pct)
+   — the "top line" is deliberately left as is. Only the running text is capped to
+   the Static Page Appearance controls (CONTENT WIDTH → --static-content-width,
+   SIDE GUTTERS → --static-content-gutter), left-aligned to the same left edge as
+   the title and hero so nothing above it shifts. Without this the text inherited
+   the full 90% lane and the CONTENT WIDTH slider did nothing. */
+.scroll-static-content .description {
+    max-width: var(--static-content-width, 850px);
+    padding-inline: var(--static-content-gutter, 40px);
+    box-sizing: border-box;
+}
 .scroll-solo-stage > #footer {
     display: none;
     width: 100%;

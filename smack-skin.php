@@ -1097,9 +1097,10 @@ if (!empty($google_families)) {
                         $enable_attr = '';
                         if (!empty($o['enable_when']) && is_array($o['enable_when'])) {
                             $ew_key = (string) array_key_first($o['enable_when']);
-                            $ew_val = (string) $o['enable_when'][$ew_key];
+                            $ew_raw = $o['enable_when'][$ew_key];
+                            $ew_vals = is_array($ew_raw) ? array_map('strval', $ew_raw) : [(string) $ew_raw];
                             $enable_attr = ' data-enable-when="' . htmlspecialchars($ew_key)
-                                         . '" data-enable-eq="' . htmlspecialchars($ew_val) . '"';
+                                         . '" data-enable-values="' . htmlspecialchars(json_encode(array_values($ew_vals))) . '"';
                         }
                         ?>
                         <div class="lens-input-wrapper"<?php echo $show_attr . $enable_attr; ?>>
@@ -1298,10 +1299,12 @@ if (!empty($google_families)) {
                     });
                     document.querySelectorAll('[data-enable-when]').forEach(function (el) {
                         var key  = el.getAttribute('data-enable-when');
-                        var eq   = el.getAttribute('data-enable-eq');
+                        var values;
+                        try { values = JSON.parse(el.getAttribute('data-enable-values') || '[]'); }
+                        catch (ignore) { values = []; }
                         var ctrl = document.querySelector('[name="skin_opt[' + key + ']"]');
                         if (!ctrl) return;
-                        var enabled = String(ctrl.value) === eq;
+                        var enabled = values.indexOf(String(ctrl.value)) !== -1;
                         el.classList.toggle('is-dormant', !enabled);
                         el.setAttribute('aria-disabled', enabled ? 'false' : 'true');
                         el.querySelectorAll('input, select, textarea, button').forEach(function (field) {
