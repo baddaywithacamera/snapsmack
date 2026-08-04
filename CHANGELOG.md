@@ -12,6 +12,8 @@
 
 ## Unreleased
 
+## 0.7.495 "<codename TBD — Sean>" — 2026-08-04
+
 - **Light Table now reorders.** The SMACKONEOUT Light Table loads the whole
   (filtered) library on one page and supports drag-to-reorder: drag a photo to a
   new spot — an insertion marker shows where it lands — then **CONFIRM ORDER**
