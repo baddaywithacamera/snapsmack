@@ -128,10 +128,18 @@ if (!empty($_POST['action']) || !empty($_GET['action'])) {
         $count_stmt->execute($params);
         $total = (int)$count_stmt->fetchColumn();
 
-        // Photo rows
-        $params_page   = $params;
-        $params_page[] = $per_page;
-        $params_page[] = $offset;
+        // Load mode: the Light Table loads the WHOLE (filtered) library in one
+        // page so drag-to-reorder can move a photo across the entire set — you
+        // can't drag to a tile that isn't in the DOM. all=1 drops LIMIT/OFFSET.
+        // The old paginated path is kept for any caller that still passes a page.
+        $load_all  = (!empty($_GET['all']) || !empty($_POST['all']));
+        $limit_sql = '';
+        $params_page = $params;
+        if (!$load_all) {
+            $limit_sql     = ' LIMIT ? OFFSET ?';
+            $params_page[] = $per_page;
+            $params_page[] = $offset;
+        }
 
         $stmt = $pdo->prepare(
             "SELECT i.id, i.img_title, i.img_file, i.img_width, i.img_height, i.img_date,
@@ -141,8 +149,7 @@ if (!empty($_POST['action']) || !empty($_GET['action'])) {
                     (SELECT COUNT(*) FROM snap_collection_items WHERE image_id = i.id) AS col_cnt
                FROM snap_images i
               WHERE $where_sql
-              ORDER BY i.sort_order ASC, i.id DESC
-              LIMIT ? OFFSET ?"
+              ORDER BY i.sort_order ASC, i.id DESC" . $limit_sql
         );
         $stmt->execute($params_page);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -183,7 +190,8 @@ if (!empty($_POST['action']) || !empty($_GET['action'])) {
             'total'    => $total,
             'page'     => $page,
             'per_page' => $per_page,
-            'pages'    => (int)ceil($total / $per_page),
+            'pages'    => $load_all ? 1 : (int)ceil($total / $per_page),
+            'all'      => $load_all,
         ]);
         exit;
     }
@@ -426,6 +434,54 @@ if (!empty($_POST['action']) || !empty($_GET['action'])) {
         exit;
     }
 
+    // -----------------------------------------------------------------------
+    // reorder — renumber snap_images.sort_order from a visible ID order.
+    // Mirrors smack-manage.php's reorder EXACTLY so the Light Table and Manage
+    // Archive agree on the one canonical image order. The posted ids[] are the
+    // currently-visible order (the whole library when unfiltered, a subset when
+    // a filter is active); they are spliced into the full global order at the
+    // position their first member currently holds, then every row is renumbered.
+    // -----------------------------------------------------------------------
+    if ($action === 'reorder') {
+        $new_visible_order = array_map('intval', $_POST['ids'] ?? []);
+        if (empty($new_visible_order)) {
+            echo json_encode(['ok' => false, 'err' => 'No IDs supplied']); exit;
+        }
+
+        // Full current order (same ORDER BY as load_photos + Manage Archive).
+        $all_ids = array_map('intval', $pdo->query(
+            "SELECT id FROM snap_images ORDER BY sort_order ASC, id DESC"
+        )->fetchAll(PDO::FETCH_COLUMN));
+
+        // Strip the visible IDs out, then splice them back in at the position
+        // their first member currently occupies in the global list.
+        $page_set = array_flip($new_visible_order);
+        $stripped = array_values(array_filter($all_ids, fn($id) => !isset($page_set[$id])));
+
+        $insert_at = count($stripped); // default: append
+        foreach ($all_ids as $pos => $id) {
+            if (isset($page_set[$id])) {
+                $insert_at = count(array_filter(
+                    array_slice($all_ids, 0, $pos),
+                    fn($x) => !isset($page_set[$x])
+                ));
+                break;
+            }
+        }
+        array_splice($stripped, $insert_at, 0, $new_visible_order);
+
+        // Renumber every row (1-based) inside one transaction.
+        $stmt = $pdo->prepare("UPDATE snap_images SET sort_order = ? WHERE id = ?");
+        $pdo->beginTransaction();
+        foreach ($stripped as $pos => $id) {
+            $stmt->execute([$pos + 1, $id]);
+        }
+        $pdo->commit();
+
+        echo json_encode(['ok' => true, 'count' => count($stripped)]);
+        exit;
+    }
+
     echo json_encode(['ok' => false, 'err' => 'unknown action']);
     exit;
 }
@@ -478,6 +534,11 @@ include 'core/admin-header.php';
             <button id="sorter-filter-apply">Filter</button>
         </div>
         <div class="sorter-topbar-right">
+            <label class="sorter-size-label" title="Tile size — bigger tiles, fewer across">
+                🔍 <input type="range" id="sorter-size-slider" min="90" max="320" step="10" value="180">
+            </label>
+            <span class="sorter-save-status" id="sorter-save-status"></span>
+            <button class="sorter-confirm-order" id="sorter-confirm-order" title="Write this exact order to the library. Nothing saves until you click this.">&#10003; CONFIRM ORDER</button>
             <span class="sorter-sel-count" id="sorter-sel-count" style="display:none;"></span>
             <button class="sorter-sel-clear" id="sorter-sel-clear" style="display:none;">Clear selection</button>
             <span class="sorter-photo-count" id="sorter-photo-count"></span>
@@ -685,9 +746,52 @@ include 'core/admin-header.php';
 
 /* Rail collapsed */
 .sorter-body.rail-hidden .sorter-rail { display: none; }
+
+/* ---- Reorder: uniform grid + drag-to-reorder ------------------------ */
+/* The Light Table loads the whole (filtered) library on one page and lays it
+   out as a uniform square grid — NOT a justified gallery — so tiles drag-
+   reorder cleanly. Tile size is the 🔍 slider (--lt-tile px minimum); the grid
+   auto-fills as many columns as fit. */
+.justified-grid.sorter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--lt-tile, 180px), 1fr));
+    gap: 6px;
+    align-content: start;
+    width: 100%;
+}
+.sorter-grid .justified-item { aspect-ratio: 1; width: auto; height: auto; cursor: grab; }
+.sorter-grid .justified-item:active { cursor: grabbing; }
+
+/* Drop-between insertion marker (which side of a tile the drop lands on). The
+   tile clips overflow, so the bar sits on the tile's inner edge. */
+.justified-item.insert-before::before,
+.justified-item.insert-after::after {
+    content: ''; position: absolute; top: 4%; bottom: 4%; width: 3px;
+    background: var(--accent); z-index: 20; pointer-events: none;
+    box-shadow: 0 0 6px var(--accent);
+}
+.justified-item.insert-before::before { left: 0; }
+.justified-item.insert-after::after   { right: 0; }
+
+/* Size slider */
+.sorter-size-label { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; color: var(--text-muted); cursor: default; white-space: nowrap; }
+.sorter-size-label input[type="range"] { width: 90px; cursor: pointer; accent-color: var(--accent); }
+
+/* CONFIRM ORDER + save status */
+.sorter-confirm-order {
+    padding: 0.28rem 0.7rem; border: 1px solid var(--border); border-radius: 3px;
+    background: var(--bg); color: var(--text); cursor: pointer; font-size: 0.78rem;
+    font-weight: 600; letter-spacing: 0.04em; white-space: nowrap;
+}
+.sorter-confirm-order.dirty { background: var(--accent); color: #fff; border-color: var(--accent); }
+.sorter-confirm-order:disabled { opacity: 0.5; cursor: default; }
+.sorter-save-status { font-size: 0.75rem; color: var(--text-muted); min-width: 60px; text-align: right; }
+.sorter-save-status[data-state="saved"] { color: #5aaa5a; }
+.sorter-save-status[data-state="error"] { color: #e05a5a; }
 </style>
 
-<script src="assets/js/fjGallery.min.js"></script>
+<!-- Light Table now uses a uniform CSS grid (fjGallery justified layout dropped
+     so tiles drag-reorder cleanly). -->
 <script src="assets/js/ss-engine-lighttable.js"></script>
 
 <?php include 'core/admin-footer.php'; ?>

@@ -36,8 +36,10 @@
     var ctxImageId    = null;   // image under context menu
     var ctxImageUrl   = null;   // img_file URL for "open original"
     var hoverExpTimer = null;   // hover-to-expand timer
-    var gallery       = null;   // fjGallery instance
+    var gallery       = null;   // fjGallery instance (unused now — uniform CSS grid)
     var railOpen      = true;
+    var reorderRef    = null;   // pending drop position: { node, pos:'before'|'after' }
+    var isDirty       = false;  // unsaved reorder pending CONFIRM ORDER
 
     // -----------------------------------------------------------------------
     // DOM refs — assigned after DOMContentLoaded
@@ -47,6 +49,7 @@
     var dragGhostEl, ctxMenu, popover, popoverBody;
     var swapOverlay, swapModal, swapTitle, swapDesc, swapGrid;
     var railToggle;
+    var confirmBtn, saveStatus, sizeSlider;
 
     // -----------------------------------------------------------------------
     // Utility
@@ -247,33 +250,36 @@
     // -----------------------------------------------------------------------
     // Load photos
     // -----------------------------------------------------------------------
-    function loadPhotos(page) {
-        page = page || 1;
-        currentPage = page;
+    // The Light Table loads the WHOLE (filtered) library in one page (all=1) so
+    // drag-to-reorder can move a photo across the entire set. No pagination.
+    // (The `page` argument is ignored; kept so existing callers don't break.)
+    function loadPhotos() {
+        currentPage = 1;
 
         gridLoading.style.display = 'block';
+        gridLoading.textContent = 'Loading photos…';
         grid.style.display = 'none';
-        pagination.innerHTML = '';
+        if (pagination) pagination.innerHTML = '';
 
-        var params = Object.assign({ action: 'load_photos', page: page }, currentFilter);
+        var params = Object.assign({ action: 'load_photos', all: 1 }, currentFilter);
 
         ajax(params, function (data) {
             gridLoading.style.display = 'none';
             if (!data.ok) { gridLoading.textContent = 'Error loading photos.'; return; }
-            totalPages = data.pages || 1;
+            totalPages = 1;
             photoCount.textContent = data.total + ' photo' + (data.total !== 1 ? 's' : '');
             renderGrid(data.photos);
-            renderPagination(data.page, data.pages);
             grid.style.display = '';
+            clearDirty();
+            setSaveStatus('');
         });
     }
 
+    // Render every photo as a uniform square tile in a CSS grid. NOT a justified
+    // gallery — uniform tiles drag-reorder cleanly and the size slider controls
+    // tile size. Whole library is in the DOM at once, so imgs are native-lazy to
+    // avoid a request storm.
     function renderGrid(photos) {
-        // Destroy existing fjGallery instance
-        if (gallery) {
-            try { fjGallery(grid, 'destroy'); } catch(e) {}
-            gallery = null;
-        }
         grid.innerHTML = '';
 
         if (!photos || !photos.length) {
@@ -292,9 +298,6 @@
             item.dataset.albumCnt = p.album_cnt || 0;
             item.dataset.catCnt   = p.cat_cnt   || 0;
             item.dataset.colCnt   = p.col_cnt   || 0;
-            // fjGallery needs natural dimensions on the wrapper
-            item.dataset.width  = p.w || 4;
-            item.dataset.height = p.h || 3;
 
             var check = document.createElement('span');
             check.className = 'sorter-card-check';
@@ -303,7 +306,8 @@
             var img = document.createElement('img');
             img.src   = p.thumb;
             img.alt   = p.title || '';
-            img.draggable = false; // we handle drag ourselves
+            img.loading = 'lazy';   // whole library loads at once
+            img.draggable = false;  // we handle drag ourselves
 
             var badge = buildBadge(p.album_cnt, p.cat_cnt, p.col_cnt);
 
@@ -314,21 +318,6 @@
 
             bindPhotoCard(item);
         });
-
-        // Re-init fjGallery
-        if (typeof window.fjGallery !== 'undefined') {
-            gallery = fjGallery(grid, {
-                itemSelector: '.justified-item',
-                imageSelector: 'img',
-                rowHeight: 200,
-                gutter: 4,
-                rowHeightTolerance: 0.25,
-                lastRow: 'left',
-                transitionDuration: '0.2s',
-                resizeDebounce: 80
-            });
-            setTimeout(function () { try { fjGallery(grid, 'resize'); } catch(e) {} }, 60);
-        }
     }
 
     function buildBadge(a, c, co) {
@@ -570,40 +559,111 @@
         var targetLi = el ? el.closest('.sorter-target') : null;
         var sectionDiv = el ? el.closest('.sorter-section') : null;
 
-        // Clear previous hover
+        // Clear previous rail hover
         if (lastHoverTarget && lastHoverTarget !== targetLi) {
             lastHoverTarget.classList.remove('drag-over');
         }
 
+        // Over a filing target — filing wins; no reorder marker.
         if (targetLi) {
             targetLi.classList.add('drag-over');
             lastHoverTarget = targetLi;
             cancelHoverExpand();
-        } else if (sectionDiv) {
-            lastHoverTarget = null;
-            startHoverExpand(sectionDiv);
-        } else {
-            cancelHoverExpand();
-            lastHoverTarget = null;
+            clearReorderMarker();
+            reorderRef = null;
+            return;
         }
+
+        lastHoverTarget = null;
+
+        // Over a rail section header (not a target) — offer to expand it.
+        if (sectionDiv) {
+            startHoverExpand(sectionDiv);
+            clearReorderMarker();
+            reorderRef = null;
+            return;
+        }
+
+        cancelHoverExpand();
+
+        // Otherwise: over the grid → this is a REORDER. Show where it will land.
+        var overGrid = el ? el.closest('#sorter-grid-wrap') : null;
+        if (overGrid) {
+            updateReorderMarker(ev);
+        } else {
+            clearReorderMarker();
+            reorderRef = null;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Reorder — drop a photo (or the current selection) at a new grid position.
+    // Rides on the SAME drag as filing: drop on the rail files, drop in the grid
+    // reorders. The order is written to snap_images.sort_order only on CONFIRM
+    // ORDER, mirroring Manage Archive's canonical order.
+    // -----------------------------------------------------------------------
+    function clearReorderMarker() {
+        var marked = grid.querySelectorAll('.insert-before, .insert-after');
+        for (var i = 0; i < marked.length; i++) {
+            marked[i].classList.remove('insert-before', 'insert-after');
+        }
+    }
+
+    function updateReorderMarker(ev) {
+        var el   = document.elementFromPoint(ev.clientX, ev.clientY);
+        var tile = el ? el.closest('.justified-item') : null;
+        // Over a moving tile or a gap: keep the last valid marker.
+        if (!tile || tile.classList.contains('drag-source')) return;
+
+        clearReorderMarker();
+        var r = tile.getBoundingClientRect();
+        var after = ev.clientX > (r.left + r.width / 2);
+        tile.classList.add(after ? 'insert-after' : 'insert-before');
+        reorderRef = { node: tile, pos: after ? 'after' : 'before' };
+    }
+
+    function applyReorder(sources) {
+        if (!sources.length || !reorderRef) return;
+
+        var anchor = reorderRef.node;
+        var after  = (reorderRef.pos === 'after');
+
+        // Never anchor to a tile that is itself moving.
+        if (!anchor || !anchor.parentNode || sources.indexOf(anchor) !== -1) return;
+
+        // Move the sources as a block, preserving their current DOM order.
+        if (after) {
+            var refNext = anchor.nextSibling;
+            sources.forEach(function (s) { grid.insertBefore(s, refNext); });
+        } else {
+            sources.forEach(function (s) { grid.insertBefore(s, anchor); });
+        }
+        markDirty();
     }
 
     function endDrag(ev) {
         hideDragGhost();
         cancelHoverExpand();
 
-        grid.querySelectorAll('.justified-item.drag-source').forEach(function (c) {
-            c.classList.remove('drag-source');
-        });
+        // Capture the moving tiles in DOM order BEFORE clearing the class.
+        var sources = [].slice.call(grid.querySelectorAll('.justified-item.drag-source'));
+        sources.forEach(function (c) { c.classList.remove('drag-source'); });
 
         if (lastHoverTarget) {
+            // Dropped on a rail target → FILE (unchanged behaviour).
             lastHoverTarget.classList.remove('drag-over');
             var target = lastHoverTarget;
             lastHoverTarget = null;
+            clearReorderMarker();
+            reorderRef = null;
             handleDrop(target, ev.shiftKey);
-        } else {
-            lastHoverTarget = null;
+            return;
         }
+
+        // Dropped in the grid → REORDER.
+        applyReorder(sources);
+        clearReorderMarker();
+        reorderRef = null;
     }
 
     function handleDrop(targetEl, shiftHeld) {
@@ -955,6 +1015,58 @@
     }
 
     // -----------------------------------------------------------------------
+    // Reorder save (CONFIRM ORDER) + dirty state
+    // -----------------------------------------------------------------------
+    function markDirty() {
+        isDirty = true;
+        if (confirmBtn) { confirmBtn.classList.add('dirty'); confirmBtn.disabled = false; }
+        setSaveStatus('dirty');
+    }
+
+    function clearDirty() {
+        isDirty = false;
+        if (confirmBtn) confirmBtn.classList.remove('dirty');
+    }
+
+    function setSaveStatus(state) {
+        if (!saveStatus) return;
+        var map = {
+            saving: 'Saving…',
+            saved:  'Saved ✓',
+            dirty:  'Unsaved — CONFIRM ORDER',
+            error:  'Error — retry'
+        };
+        saveStatus.textContent   = map[state] || '';
+        saveStatus.dataset.state = state || '';
+        if (state === 'saved') {
+            setTimeout(function () {
+                if (saveStatus.dataset.state === 'saved') {
+                    saveStatus.textContent = '';
+                    saveStatus.dataset.state = '';
+                }
+            }, 2500);
+        }
+    }
+
+    function saveOrder() {
+        var ids = [].slice.call(grid.querySelectorAll('.justified-item'))
+                    .map(function (t) { return t.dataset.id; });
+        if (!ids.length) return;
+        setSaveStatus('saving');
+        ajax({ action: 'reorder', ids: ids }, function (data) {
+            if (data && data.ok) { setSaveStatus('saved'); clearDirty(); }
+            else { setSaveStatus('error'); }
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // Tile size slider — drives --lt-tile (min tile px); grid auto-fills columns.
+    // -----------------------------------------------------------------------
+    function applyTileSize(px) {
+        if (grid) grid.style.setProperty('--lt-tile', px + 'px');
+    }
+
+    // -----------------------------------------------------------------------
     // Boot
     // -----------------------------------------------------------------------
     document.addEventListener('DOMContentLoaded', function () {
@@ -979,17 +1091,34 @@
         swapDesc    = $('sorter-swap-desc');
         swapGrid    = $('sorter-swap-grid');
         railToggle  = $('sorter-rail-toggle');
+        confirmBtn  = $('sorter-confirm-order');
+        saveStatus  = $('sorter-save-status');
+        sizeSlider  = $('sorter-size-slider');
 
-        // Desktop check
+        // Desktop check (uniform CSS grid reflows on its own — no resize hook).
         checkDesktop();
-        window.addEventListener('resize', function () {
-            if (shell.style.display !== 'none') {
-                try { fjGallery(grid, 'resize'); } catch(e) {}
-            }
-        });
 
         // Rail toggle
         if (railToggle) railToggle.addEventListener('click', toggleRail);
+
+        // Tile-size slider (remembered per browser)
+        if (sizeSlider) {
+            var savedSize = parseInt(localStorage.getItem('lt_tile_size'), 10);
+            if (savedSize >= 90 && savedSize <= 320) sizeSlider.value = savedSize;
+            applyTileSize(sizeSlider.value);
+            sizeSlider.addEventListener('input', function () {
+                applyTileSize(this.value);
+                localStorage.setItem('lt_tile_size', this.value);
+            });
+        }
+
+        // CONFIRM ORDER — writes the current tile order to the library.
+        if (confirmBtn) confirmBtn.addEventListener('click', saveOrder);
+
+        // Guard against leaving with an unsaved reorder.
+        window.addEventListener('beforeunload', function (e) {
+            if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+        });
 
         // Accordion
         bindAccordion();
