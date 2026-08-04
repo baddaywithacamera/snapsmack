@@ -241,6 +241,44 @@
         return best;
     }
 
+    function preferredBlock(images, y, containerWidth, gap, emphasis) {
+        /* buildSection is the original editorial composition used by the demo.
+           Keep it when it is safe, but never let it bypass either hard size
+           boundary. Six-image groups require the general solver because the
+           original editorial tree only defines arrangements up to four cells. */
+        var enforceUsefulSize = containerWidth >= 1200;
+        if (images.length >= 6) {
+            return solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize);
+        }
+        var tree = buildSection(images, false);
+        var items = [];
+        var height = placeNode(tree, 0, y, containerWidth, gap, items);
+        if (height > 0 && !items.some(tileExceedsLimit) &&
+            (!enforceUsefulSize || blockIsVisuallyBalanced(items, containerWidth)) &&
+            blockMatchesEmphasis(items, emphasis)) {
+            return { items: items, height: height, score: 0 };
+        }
+        return solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize);
+    }
+
+    function boundedSingle(image, y, containerWidth) {
+        var ar = imageAR(image);
+        var sourceWidth = Math.max(1, Number(image.width) || MAX_SECTION_HEIGHT);
+        var sourceHeight = Math.max(1, Number(image.height) || MAX_SECTION_HEIGHT);
+        var maxWidth = Math.min(containerWidth, MAX_SECTION_HEIGHT, sourceWidth);
+        var maxHeight = Math.min(MAX_SECTION_HEIGHT, sourceHeight);
+        var width = Math.min(maxWidth, maxHeight * ar);
+        var height = width / ar;
+        var x = Math.max(0, (containerWidth - width) / 2);
+        return {
+            items: [{ image: image, order: 0, x: x, y: y, width: width, height: height }],
+            height: height,
+            x: x,
+            width: width,
+            score: 0
+        };
+    }
+
     function computeLayout(images, containerWidth, gap, emphasis) {
         gap = Math.max(0, Math.min(20, Number(gap) || 0));
         containerWidth = Math.max(0, Number(containerWidth) || 0);
@@ -256,37 +294,41 @@
 
         if (containerWidth <= MOBILE_BREAKPOINT) {
             images.forEach(function (image) {
-                var height = containerWidth / imageAR(image);
-                items.push({ image: image, x: 0, y: y, width: containerWidth, height: height });
-                sections.push({ x: 0, y: y, width: containerWidth, height: height });
-                y += height + gap;
+                var single = boundedSingle(image, y, containerWidth);
+                Array.prototype.push.apply(items, single.items);
+                sections.push({ x: single.x, y: y, width: single.width, height: single.height });
+                y += single.height + gap;
             });
         } else {
             while (index < images.length) {
                 var remaining = images.length - index;
                 var count = remaining >= 6 ? 6 : sectionSize(remaining);
-                var sectionImages = images.slice(index, index + count);
-                var solved = count === 6 ? solveBlock(sectionImages, y, containerWidth, gap, emphasis, true) : null;
-                if (count === 6 && !solved) {
-                    /* There is no respectable six-photo composition for this mix.
-                       Split it into two smaller mosaics rather than silently falling
-                       back to a strip of thumbnails. */
-                    count = 3;
+                var sectionImages;
+                var solved = null;
+
+                /* A rejected composition stays rejected. Try progressively smaller
+                   groups until every tile is both useful and within the 900px
+                   derivative ceiling; never fall back to the invalid geometry. */
+                while (count >= 2 && !solved) {
                     sectionImages = images.slice(index, index + count);
+                    solved = preferredBlock(sectionImages, y, containerWidth, gap, emphasis);
+                    if (!solved) count--;
                 }
                 if (!solved) {
-                    var fallbackTree = buildSection(sectionImages, false);
-                    solved = { items: [], height: 0 };
-                    solved.height = placeNode(fallbackTree, 0, y, containerWidth, gap, solved.items);
-                    if (solved.items.some(tileExceedsLimit)) {
-                        solved = solveBlock(sectionImages, y, containerWidth, gap, emphasis) || solved;
-                    }
+                    count = 1;
+                    sectionImages = images.slice(index, index + 1);
+                    solved = boundedSingle(sectionImages[0], y, containerWidth);
                 }
                 var sectionItems = solved.items;
                 var sectionHeight = solved.height;
                 sectionItems.sort(function (a, b) { return a.order - b.order; });
                 Array.prototype.push.apply(items, sectionItems);
-                sections.push({ x: 0, y: y, width: containerWidth, height: sectionHeight });
+                sections.push({
+                    x: solved.x || 0,
+                    y: y,
+                    width: solved.width || containerWidth,
+                    height: sectionHeight
+                });
                 y += sectionHeight + gap;
                 index += count;
             }

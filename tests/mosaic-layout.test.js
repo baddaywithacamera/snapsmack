@@ -75,7 +75,7 @@ test('portrait-led four-image section spans a three-image stack', () => {
     assert.ok(layout.items[1].y < layout.items[2].y && layout.items[2].y < layout.items[3].y);
 });
 
-test('an extreme portrait trio keeps full wall width and never exceeds the crop ceiling', () => {
+test('an extreme portrait trio splits rather than violating hard size limits', () => {
     const images = [
         { width: 500, height: 1800 },
         { width: 900, height: 700 },
@@ -84,12 +84,10 @@ test('an extreme portrait trio keeps full wall width and never exceeds the crop 
     const layout = engine.computeLayout(images, 1600, 6);
 
     assertCleanGeometry(layout, 1600);
-    assert.equal(layout.sections[0].width, 1600);
-    assert.equal(layout.sections[0].x, 0);
-    assert.ok(layout.height <= 900.02);
-    assert.equal(layout.items[0].x, 0);
-    assert.ok(Math.abs(layout.items[2].x + layout.items[2].width - 1600) < 0.02, 'supporting stack reaches the opposite wall edge');
-    assert.ok(Math.abs(layout.items[0].height - layout.height) < 0.02, 'portrait remains the spanning hero');
+    assert.ok(layout.sections.length >= 2, 'an impossible full-width group is split');
+    layout.sections.forEach((section, sectionIndex) => {
+        assert.ok(section.height <= 900.02, `section ${sectionIndex} stays within the hard ceiling`);
+    });
     layout.items.forEach((item, index) => {
         assert.ok(item.width <= 900.02, `tile ${index} width stays within the large thumbnail`);
         assert.ok(item.height <= 900.02, `tile ${index} height stays within the large thumbnail`);
@@ -97,6 +95,34 @@ test('an extreme portrait trio keeps full wall width and never exceeds the crop 
         const cellAR = item.width / item.height;
         const retained = Math.min(cellAR / sourceAR, sourceAR / cellAR);
         assert.ok(retained >= 0.8499, `tile ${index} retains at least 85%`);
+    });
+});
+
+test('FullHD wall rejects both giant heroes and postage-stamp supporting tiles', () => {
+    const layout = engine.computeLayout([
+        { width: 675, height: 1200 },
+        { width: 1600, height: 900 },
+        { width: 1500, height: 900 },
+        { width: 700, height: 1100 },
+        { width: 1400, height: 800 },
+        { width: 1200, height: 900 }
+    ], 1728, 20, 'portrait');
+
+    assertCleanGeometry(layout, 1728);
+    assert.equal(layout.items.length, 6, 'every photograph survives regrouping');
+    layout.sections.forEach((section, sectionIndex) => {
+        assert.ok(section.height <= 900.02, `section ${sectionIndex} fits the derivative and viewport ceiling`);
+    });
+    layout.items.forEach((item, index) => {
+        const section = layout.sections.find(candidate =>
+            item.y >= candidate.y - 0.02 && item.y < candidate.y + candidate.height + 0.02);
+        const peers = layout.items.filter(other =>
+            other.y >= section.y - 0.02 && other.y < section.y + section.height + 0.02);
+        if (peers.length > 1) {
+            assert.ok(item.width >= 259.98, `multi-tile item ${index} has useful width`);
+            assert.ok(item.height >= 199.98, `multi-tile item ${index} has useful height`);
+            assert.ok(item.width * item.height >= 69990, `multi-tile item ${index} has useful area`);
+        }
     });
 });
 
