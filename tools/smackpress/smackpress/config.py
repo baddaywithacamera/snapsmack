@@ -13,6 +13,32 @@ import sys
 from pathlib import Path
 
 
+# --- Secret-at-rest hardening -------------------------------------------------
+# The WordPress app password, SnapSmack API key, and AI key are live credentials.
+# When an OS keychain is available (Windows Credential Manager / macOS Keychain /
+# Linux Secret Service) they are stored there instead of in plaintext inside
+# smackpress.db. With no keychain backend we fall back to the DB so the tool keeps
+# working — see README for why you shouldn't then share/sync smackpress.db.
+_SECRET_KEYS = frozenset({"wp_app_password", "snap_api_key", "ai_api_key"})
+_KR_SERVICE = "SmackPress"
+
+try:
+    import keyring as _keyring
+except Exception:
+    _keyring = None
+
+
+def _keyring_ok() -> bool:
+    if _keyring is None:
+        return False
+    try:
+        backend = _keyring.get_keyring()
+        # keyring.backends.fail.Keyring is the "no usable backend" sentinel.
+        return backend is not None and "fail" not in type(backend).__module__.lower()
+    except Exception:
+        return False
+
+
 def _app_dir() -> Path:
     """Portable: state rides next to the .exe when frozen, else next to app.py."""
     if getattr(sys, "frozen", False):
@@ -90,17 +116,39 @@ def _conn() -> sqlite3.Connection:
 
 
 def get(key: str) -> str:
+    if key in _SECRET_KEYS and _keyring_ok():
+        try:
+            v = _keyring.get_password(_KR_SERVICE, key)
+            if v is not None:
+                return v
+        except Exception:
+            pass  # fall through to DB
     with _conn() as con:
         row = con.execute("SELECT value FROM config WHERE key=?", (key,)).fetchone()
         return row["value"] if row else _DEFAULTS.get(key, "")
 
 
 def set(key: str, value: str) -> None:
+    value = str(value)
+    if key in _SECRET_KEYS and _keyring_ok():
+        try:
+            _keyring.set_password(_KR_SERVICE, key, value)
+            # Clear any plaintext copy an older version left in the DB.
+            with _conn() as con:
+                con.execute(
+                    "INSERT INTO config (key, value) VALUES (?, '') "
+                    "ON CONFLICT(key) DO UPDATE SET value=''",
+                    (key,),
+                )
+                con.commit()
+            return
+        except Exception:
+            pass  # fall through to DB storage
     with _conn() as con:
         con.execute(
             "INSERT INTO config (key, value) VALUES (?, ?) "
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-            (key, str(value)),
+            (key, value),
         )
         con.commit()
 
@@ -108,7 +156,17 @@ def set(key: str, value: str) -> None:
 def get_all() -> dict:
     with _conn() as con:
         rows = con.execute("SELECT key, value FROM config").fetchall()
-        return {r["key"]: r["value"] for r in rows}
+        out = {r["key"]: r["value"] for r in rows}
+    # Overlay keychain-held secrets (DB copies are blanked when the keychain is used).
+    if _keyring_ok():
+        for k in _SECRET_KEYS:
+            try:
+                v = _keyring.get_password(_KR_SERVICE, k)
+                if v is not None:
+                    out[k] = v
+            except Exception:
+                pass
+    return out
 
 
 def get_db() -> sqlite3.Connection:

@@ -1,4 +1,5 @@
 customtkinter>=5.2.0
+keyring>=24.0            # OS keychain for credentials; falls back to DB if absent
 # All other deps (urllib, sqlite3, pathlib, threading) are stdlib.
 # Add your AI provider SDK only if you prefer it over the built-in HTTP client:
 #   google-generativeai   (Gemini)

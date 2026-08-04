@@ -313,6 +313,19 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
 
     $preserved_exif = ($mime === 'image/jpeg') ? snap_exif_extract($target_path) : null;
 
+    // GIF hardening: JPEG/PNG/WebP get re-encoded through GD below, which strips any
+    // bytes appended after the image data (polyglot defence). GIF isn't processed by
+    // that pipeline, so re-encode it in place here. GD flattens to the first frame —
+    // an accepted trade for a photoblog: animated GIFs lose animation rather than
+    // being stored byte-for-byte verbatim.
+    if ($mime === 'image/gif' && function_exists('imagecreatefromgif')) {
+        $gif_src = @imagecreatefromgif($target_path);
+        if ($gif_src !== false) {
+            @imagegif($gif_src, $target_path);
+            imagedestroy($gif_src);
+        }
+    }
+
     if ($mime == 'image/jpeg')      { $src = imagecreatefromjpeg($target_path); }
     elseif ($mime == 'image/png')   { $src = imagecreatefrompng($target_path); }
     elseif ($mime == 'image/webp')  { $src = imagecreatefromwebp($target_path); }

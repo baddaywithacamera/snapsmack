@@ -113,6 +113,116 @@ if (!function_exists('long_slugify')) {
     }
 }
 
+if (!function_exists('smackpress_sanitize_html')) {
+    /**
+     * DOM-based allowlist sanitiser for imported WordPress content.
+     *
+     * WordPress post bodies carry whatever plugins injected — <script>, tracking
+     * pixels, inline styles, iframes, event handlers. Importing that raw would run
+     * it in every visitor's browser on the new site. This parses the HTML (regex
+     * HTML sanitising is bypassable) and keeps ONLY known-safe tags + attributes:
+     *   - script/style/iframe/object/embed/form/link/meta/svg/... removed WITH content
+     *   - any other unknown tag is unwrapped (its safe text/children survive)
+     *   - style / class / id / on* attributes dropped (no inline JS or CSS)
+     *   - javascript:/vbscript:/data: URLs stripped from href/src
+     *   - comments removed
+     * On a parse failure it degrades to text-only — it never stores raw HTML.
+     */
+    function smackpress_sanitize_html(string $html): string {
+        $html = trim($html);
+        if ($html === '') return '';
+
+        static $strip_with_content = [
+            'script','style','iframe','object','embed','form','input','button',
+            'select','option','textarea','link','meta','base','noscript','svg',
+            'math','applet','frame','frameset','title','head','template','xml',
+        ];
+        static $allowed = [
+            'p','br','hr','a','strong','b','em','i','u','s','strike','del','ins',
+            'sub','sup','small','mark','abbr','cite','q','code','pre','kbd','samp',
+            'var','time','h1','h2','h3','h4','h5','h6','blockquote','ul','ol','li',
+            'dl','dt','dd','img','figure','figcaption','picture','source','table',
+            'thead','tbody','tfoot','tr','th','td','caption','colgroup','col',
+            'span','div','section','article','header','footer','main','aside','nav',
+        ];
+        static $attrs = [
+            'a'        => ['href','title','target','rel'],
+            'img'      => ['src','alt','title','width','height','loading'],
+            'source'   => ['src','srcset','sizes','type','media'],
+            'time'     => ['datetime'],
+            'td'       => ['colspan','rowspan'],
+            'th'       => ['colspan','rowspan','scope'],
+            'col'      => ['span'],
+            'colgroup' => ['span'],
+        ];
+
+        $dom  = new DOMDocument('1.0', 'UTF-8');
+        $prev = libxml_use_internal_errors(true);
+        // NB: no LIBXML_HTML_NOIMPLIED — with the charset <meta> that leaves two
+        // root nodes and the marker <div> lookup fails. Let libxml add html/body;
+        // we only ever serialise the marker div's children, so the wrapper is moot.
+        $ok   = $dom->loadHTML(
+            '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'
+            . '<div data-smk-root="1">' . $html . '</div>',
+            LIBXML_HTML_NODEFDTD
+        );
+        libxml_clear_errors();
+        libxml_use_internal_errors($prev);
+        if (!$ok) {
+            return '<p>' . htmlspecialchars(strip_tags($html), ENT_QUOTES) . '</p>';
+        }
+
+        $xpath = new DOMXPath($dom);
+        $root  = $xpath->query('//div[@data-smk-root="1"]')->item(0);
+        if (!$root) return '';
+
+        // Strip dangerous tags (with their subtree) and all comments.
+        $kill = [];
+        foreach ($xpath->query('.//*', $root) as $el) {
+            if (in_array(strtolower($el->nodeName), $strip_with_content, true)) $kill[] = $el;
+        }
+        foreach ($xpath->query('.//comment()', $root) as $c) $kill[] = $c;
+        foreach ($kill as $node) { if ($node->parentNode) $node->parentNode->removeChild($node); }
+
+        // Unwrap unknown tags, filter attributes on allowed ones. Reverse document
+        // order so children are finished before their parents are unwrapped.
+        $all = [];
+        foreach ($xpath->query('.//*', $root) as $el) $all[] = $el;
+        foreach (array_reverse($all) as $el) {
+            if (!$el->parentNode) continue;
+            $name = strtolower($el->nodeName);
+
+            if (!in_array($name, $allowed, true)) {
+                while ($el->firstChild) { $el->parentNode->insertBefore($el->firstChild, $el); }
+                $el->parentNode->removeChild($el);
+                continue;
+            }
+
+            $allow_for = $attrs[$name] ?? [];
+            $remove    = [];
+            if ($el->attributes) {
+                foreach ($el->attributes as $attr) {
+                    $an = strtolower($attr->nodeName);
+                    if (!in_array($an, $allow_for, true)) { $remove[] = $attr->nodeName; continue; }
+                    if (($an === 'href' || $an === 'src')
+                        && preg_match('#^\s*(javascript|vbscript|data)\s*:#i', (string)$attr->nodeValue)) {
+                        $remove[] = $attr->nodeName;
+                    }
+                }
+            }
+            foreach ($remove as $an) $el->removeAttribute($an);
+
+            if ($name === 'a' && strtolower((string)$el->getAttribute('target')) === '_blank') {
+                $el->setAttribute('rel', 'noopener noreferrer');
+            }
+        }
+
+        $out = '';
+        foreach ($root->childNodes as $child) { $out .= $dom->saveHTML($child); }
+        return trim($out);
+    }
+}
+
 if (!function_exists('snap_sync_tags')) {
     require_once __DIR__ . '/snap-tags.php';
 }
@@ -186,7 +296,9 @@ if ($sub === 'posts' && $method === 'POST') {
 
     $slug = $slug !== '' ? long_slugify($slug) : long_slugify($title);
 
-    $content_html = smack_autop_long($raw_content);
+    // Sanitise imported HTML (strip WP-plugin scripts/styles/iframes/handlers)
+    // before it is ever stored — this content renders on the public site.
+    $content_html = smackpress_sanitize_html(smack_autop_long($raw_content));
 
     if ($post_id) {
         // UPDATE
@@ -312,7 +424,9 @@ if ($sub === 'pages' && $method === 'POST') {
     if ($title === '') smackpress_error(422, 'Title is required.');
 
     $slug = $slug !== '' ? long_slugify($slug) : long_slugify($title);
-    $content_html = smack_autop_long($raw_content);
+    // Sanitise imported HTML (strip WP-plugin scripts/styles/iframes/handlers)
+    // before it is ever stored — this content renders on the public site.
+    $content_html = smackpress_sanitize_html(smack_autop_long($raw_content));
 
     if ($page_id) {
         // UPDATE
