@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.42",
+    "version": "0.1.43",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
     "status": "stable",
@@ -205,6 +205,19 @@
             "selector": ":root",
             "property": "--scroll-title-size",
             "unit": "vw"
+        },
+        "scroll_stickyname_size": {
+            "section": "MASTHEAD",
+            "type": "range",
+            "label": "Sticky Bar Name Size (rem)",
+            "hint": "Size of the small blog-name running head in the sticky bar that appears once you scroll past the big masthead. The landing masthead itself is sized above.",
+            "default": "1.05",
+            "min": "0.7",
+            "max": "2.6",
+            "step": "0.05",
+            "selector": ":root",
+            "property": "--scroll-stickyname-size",
+            "unit": "rem"
         },
         "scroll_bottomnav_size": {
             "section": "SOLO PAGE",

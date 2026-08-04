@@ -12,6 +12,11 @@
 
 ## Unreleased
 
+- **SCROLL: the sticky-bar blog name is now sizable.** A new "Sticky Bar Name
+  Size" control (MASTHEAD section) sizes the small blog-name running head in the
+  sticky header — the one that appears once you scroll past the big masthead —
+  independent of the landing masthead. SCROLL advances to **0.1.43**.
+
 ## 0.7.497 "Outside the Box" — 2026-08-04
 
 - **Photo-wall derivative limits are now hard layout rules.** MOSAIC no longer
