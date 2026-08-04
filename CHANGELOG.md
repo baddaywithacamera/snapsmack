@@ -12,6 +12,20 @@
 
 ## Unreleased
 
+## 0.7.493 "<codename TBD — Sean>" — SCROLL wall engines all in core (security)
+
+- **Rows engine moved to core, and the security hole that let it hide in a skin
+  is being closed.** `ss-engine-rows.js` now lives in `assets/js/` (core, covered by
+  SMACKBACK) instead of `skins/scroll/assets/js/`, registered as `smack-rows` in
+  `core/manifest-inventory.php` — a peer of `smack-columns`. Executable engine code
+  never belonged in the skin tree: the core SMACKBACK manifest is core-only, so an
+  engine in a skin escapes it (it only gets the skin package's Ed25519 signature,
+  not per-file core integrity). The dead unified `ss-engine-scroll-wall.js` monolith
+  is deleted. `test.php` loads rows from the core path. Row geometry verified
+  numerically (full rows fill width, zero aspect distortion). SCROLL manifest → 0.1.41.
+  FOLLOW-UP (FOR BETA): a Skin Packager guard that flags non-allowlisted `.js` in
+  skins so runtime code can't slip past SMACKBACK again.
+
 ## 0.7.492 "Claude talks too much" — 2026-08-03
 
 - **SCROLL wall — three-layout test scaffold, using the EXISTING working code per
