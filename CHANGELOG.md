@@ -25,6 +25,7 @@
   same feed inside that wrapper. The image payload and compositor were identical
   while the containing document structure was not. The test feed now uses the
   working page boundary exactly, so it receives the intended full wall layout.
+  SCROLL skin package version advances to **0.1.40**.
 
 ## 0.7.493 "<codename TBD — Sean>" — SCROLL wall engines all in core (security)
 
