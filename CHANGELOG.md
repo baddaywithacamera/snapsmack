@@ -14,18 +14,19 @@
 
 ## 0.7.492 "Claude talks too much" — 2026-08-03
 
-- **SCROLL wall — three layouts behind one engine (test scaffold).** New unified
-  `ss-engine-scroll-wall.js` offers all three walls from one file: **Columns**
-  (portraits stand tallest — the existing geometry, carried over unchanged),
-  **Rows** (justified rows, landscapes lead — the mirror of columns), and
-  **Asymmetric/MOSAIC** (Codex's compositor, driven in blocks of 6 exactly as the
-  live mosaic page does). All three read the same `.ss-masonry-item` tiles and the
-  same `?pg=wall` feed; shape is read only from `data-w`/`data-h`, never
-  `naturalWidth`, so lazy loading is preserved. Exposed for evaluation on a
-  temporary `?walltest=1` preview page (SCROLL `test.php`) driven by a new
-  "PHOTO WALL — TEST" control section (layout + MOSAIC emphasis). The live landing
-  is untouched until the picker is promoted. Ships `assets/css/ss-engine-scroll-wall.css`
-  (scoped to `.ss-scroll-wall`). SCROLL manifest 0.1.37 → 0.1.38.
+- **SCROLL wall — three-layout test scaffold, using the EXISTING working code per
+  layout (no new engine).** A temporary `?walltest=1` preview page (SCROLL
+  `test.php`) driven by a "PHOTO WALL — TEST" control section lets each wall be
+  tried in-product without touching the live landing:
+  - **Columns** — the live landing's `.ss-masonry` + `ss-engine-columns.js`, unchanged.
+  - **Asymmetric (MOSAIC)** — Codex's real mosaic, cut-and-pasted from the working
+    `eatmeclaude.php`: its `.snap-mosaic` block markup + `ss-engine-mosaic.js` +
+    `ss-engine-mosaic-feed.js` (which streams later blocks from `eatmeclaude.php`).
+    Not an adaptation — the same engine, markup and feed that already ship.
+  - **Rows** — not wired yet (no existing rows engine to reuse); currently falls
+    back to columns. TODO: wire the justified/fjGallery engine.
+  The abandoned unified `ss-engine-scroll-wall.js` is no longer referenced (it read
+  columns for asymmetric and regressed lazy loading). SCROLL manifest → 0.1.39.
 
 ## 0.7.491 "Big Enough to Matter" — 2026-08-03
 

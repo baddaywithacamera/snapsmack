@@ -1,15 +1,17 @@
 <?php
 /**
  * SNAPSMACK — SCROLL wall TEST page (0.7.492D, temporary).
- * Same photographs and tile markup as landing.php, but the wall is driven by the
- * unified ss-engine-scroll-wall.js so the three layouts (columns / rows / mosaic)
- * can be tried in-product without touching the live landing. Reached at
- * ?walltest=1 (routed in index.php). Its layout + emphasis come from the
- * "PHOTO WALL — TEST" controls in the skin admin. The container is .ss-scroll-wall
- * (NOT .ss-masonry) so the live columns engine never touches it; the tiles are the
- * same .ss-masonry-item markup and the same ?pg=wall JSON feed (landing.php).
- * Delete this file + the walltest route + the test controls once the picker is
- * promoted onto landing.php.
+ * Each layout uses the EXISTING working code, not a new engine:
+ *   • columns  — landing.php's .ss-masonry + ss-engine-columns.js (unchanged).
+ *   • mosaic   — Codex's real MOSAIC, cut-and-pasted from eatmeclaude.php: the
+ *                #eatmeclaude-feed block markup + ss-engine-mosaic.js +
+ *                ss-engine-mosaic-feed.js, which streams later blocks from
+ *                eatmeclaude.php. Identical to the page that already works.
+ *   • rows     — NOT wired yet (no existing rows engine to paste); currently
+ *                falls back to columns. TODO: wire the justified/fjGallery engine.
+ * Reached at ?walltest=1 (routed in index.php). Layout + MOSAIC emphasis come from
+ * the "PHOTO WALL — TEST" controls. Delete this file + the walltest route + the
+ * test controls once a picker is promoted onto landing.php.
  */
 
 /**
@@ -32,6 +34,7 @@ $_ss_test_layout = (string)($settings['scroll_test_wall_layout'] ?? 'columns');
 if (!in_array($_ss_test_layout, ['columns', 'rows', 'mosaic'], true)) $_ss_test_layout = 'columns';
 $_ss_test_emph = (string)($settings['scroll_test_emphasis'] ?? 'landscape');
 if (!in_array($_ss_test_emph, ['natural', 'balanced', 'landscape', 'portrait'], true)) $_ss_test_emph = 'landscape';
+$_is_mosaic = ($_ss_test_layout === 'mosaic');
 $is_json   = (($_GET['format'] ?? '') === 'json') && (($_GET['pg'] ?? '') === 'wall');
 
 // ?c= chunk index — meaningful only on the JSON path; the HTML page is always
@@ -113,6 +116,68 @@ if ($is_json) {
     header('Content-Type: application/json');
     echo json_encode(['html' => $_html, 'next' => $chunk + 1, 'has_more' => $has_more, 'cutoff' => $cutoff]);
     return;
+}
+
+// ── ASYMMETRIC (MOSAIC) — cut-and-paste of the working eatmeclaude.php ─────────
+// Builds the first six-image .snap-mosaic block exactly as eatmeclaude.php does;
+// ss-engine-mosaic-feed.js then streams the rest FROM eatmeclaude.php. Same
+// engine, markup and feed that already work in production — no adaptation.
+if ($_is_mosaic) {
+    if (!function_exists('eatmeclaude_block_sizes')) {
+    function eatmeclaude_block_sizes(int $total): array {
+        if ($total <= 0) return [];
+        if ($total <= 6) return [$total];
+        $full = intdiv($total, 6); $remainder = $total % 6;
+        $sizes = array_fill(0, $full, 6);
+        if ($remainder === 1) { $sizes[count($sizes) - 1] = 5; $sizes[] = 2; }
+        elseif ($remainder > 0) { $sizes[] = $remainder; }
+        return $sizes;
+    }
+    }
+    if (!function_exists('eatmeclaude_images')) {
+    function eatmeclaude_images(PDO $pdo, string $cutoff, int $offset, int $limit): array {
+        $stmt = $pdo->prepare(
+            "SELECT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_aspect,
+                    i.img_width, i.img_height,
+                    COALESCE(pi.img_focus_x, 50) AS img_focus_x,
+                    COALESCE(pi.img_focus_y, 50) AS img_focus_y
+             FROM snap_images i
+             LEFT JOIN snap_post_images pi ON pi.image_id = i.id
+             WHERE i.img_status = 'published' AND i.img_date <= :cutoff
+             ORDER BY i.sort_order ASC, i.id DESC
+             LIMIT :lim OFFSET :off"
+        );
+        $stmt->bindValue(':cutoff', $cutoff);
+        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $out = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $full = ltrim((string)($row['img_file'] ?? ''), '/');
+            if ($full === '') continue;
+            $thumb = ltrim((string)($row['img_thumb_aspect'] ?? ''), '/');
+            if ($thumb === '') $thumb = $full;
+            $title = trim((string)($row['img_title'] ?? ''));
+            $out[] = [
+                'src' => BASE_URL . $thumb, 'full' => BASE_URL . $full,
+                'href' => BASE_URL . ltrim((string)($row['img_slug'] ?? ''), '/'),
+                'alt' => $title, 'id' => (int)$row['id'],
+                'width' => max(1, (int)($row['img_width'] ?? 1)),
+                'height' => max(1, (int)($row['img_height'] ?? 1)),
+                'focusX' => max(0, min(100, (float)($row['img_focus_x'] ?? 50))),
+                'focusY' => max(0, min(100, (float)($row['img_focus_y'] ?? 50))),
+                'lazy' => true,
+            ];
+        }
+        return $out;
+    }
+    }
+    $emc_block_sizes = eatmeclaude_block_sizes($total);   // $total counted above (same WHERE + cutoff)
+    $emc_limit    = $emc_block_sizes[0] ?? 0;
+    $emc_images   = $emc_limit > 0 ? eatmeclaude_images($pdo, $cutoff, 0, $emc_limit) : [];
+    $emc_has_more = count($emc_block_sizes) > 1;
+    $emc_gap      = max(0, min(25, (int)($settings['scroll_mosaic_gap'] ?? 6)));
+    $emc_emphasis = $_ss_test_emph;   // the TEST page's own emphasis control
 }
 
 $masthead_raw = trim((string)($settings['scroll_masthead_lines'] ?? 'USED CAR|PARTS'));
@@ -241,10 +306,31 @@ $af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE E
         </nav>
     </section>
 
+    <?php if ($_is_mosaic): ?>
+    <main class="scroll-wall scroll-wall-test eatmeclaude-content">
+        <div id="eatmeclaude-feed" class="eatmeclaude-feed"
+             data-gap="<?php echo $emc_gap; ?>"
+             data-emphasis="<?php echo htmlspecialchars($emc_emphasis, ENT_QUOTES); ?>"
+             style="--eatmeclaude-gap:<?php echo $emc_gap; ?>px;">
+            <?php if ($emc_images): ?>
+                <div class="snap-mosaic eatmeclaude-block"
+                     data-gap="<?php echo $emc_gap; ?>"
+                     data-emphasis="<?php echo htmlspecialchars($emc_emphasis, ENT_QUOTES); ?>"
+                     data-mosaic="<?php echo htmlspecialchars(json_encode($emc_images, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>"></div>
+            <?php else: ?>
+                <p class="scroll-empty">No photographs found.</p>
+            <?php endif; ?>
+        </div>
+        <div id="eatmeclaude-sentinel" class="eatmeclaude-sentinel"
+             data-next="1"
+             data-has-more="<?php echo $emc_has_more ? '1' : '0'; ?>"
+             data-cutoff="<?php echo htmlspecialchars($cutoff, ENT_QUOTES); ?>"
+             aria-hidden="true"></div>
+        <p id="eatmeclaude-status" class="eatmeclaude-status" aria-live="polite"></p>
+    </main>
+    <?php else: ?>
     <main class="scroll-wall scroll-wall-test">
-        <div class="ss-scroll-wall"
-             data-wall-layout="<?php echo htmlspecialchars($_ss_test_layout); ?>"
-             data-emphasis="<?php echo htmlspecialchars($_ss_test_emph); ?>">
+        <div class="ss-masonry">
             <?php if (!empty($images)): ?>
                 <?php foreach ($images as $img) echo scroll_wall_tile($img); ?>
             <?php else: ?>
@@ -252,9 +338,8 @@ $af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE E
             <?php endif; ?>
         </div>
         <?php if ($has_more): ?>
-        <!-- Infinite scroll: ss-engine-scroll-wall.js watches this, fetches the next
-             page as JSON (shared ?pg=wall feed → landing.php), appends the tiles
-             into .ss-scroll-wall above, and relayouts in the chosen layout. -->
+        <!-- Infinite scroll: ss-engine-columns.js watches this, fetches the next
+             page as JSON (?pg=wall → landing.php), appends into .ss-masonry above. -->
         <div class="scroll-wall-sentinel"
              data-next="1"
              data-cutoff="<?php echo htmlspecialchars($cutoff); ?>"
@@ -262,13 +347,17 @@ $af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE E
              aria-hidden="true"></div>
         <?php endif; ?>
     </main>
+    <?php endif; ?>
 </div>
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-archive-filter.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
-<!-- TEST wall: the unified three-layout engine + Codex's mosaic compositor + the
-     scoped CSS bundle. Loaded ONLY here (not via require_scripts), so the live
-     landing keeps using ss-engine-columns.js untouched. -->
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-scroll-wall.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<?php if ($_is_mosaic): ?>
+<!-- ASYMMETRIC: Codex's real MOSAIC engine + feed, loaded exactly as eatmeclaude.php
+     does. Columns/rows load nothing here — ss-engine-columns.js comes via the skin's
+     require_scripts, same as the live landing. -->
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-mosaic.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/page-eatmeclaude.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
-<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-scroll-wall.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic-feed.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
+<?php endif; ?>
 <?php include __DIR__ . '/skin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
