@@ -428,7 +428,7 @@ a { color: inherit; }
        (its selector includes this element); Archivo Black is the fallback before a
        pick. Case is respected like the masthead, not force-uppercased. */
     font-family: "Archivo Black", sans-serif;
-    font-size: 1.05rem;
+    font-size: var(--scroll-stickyname-size, 1.05rem);
     letter-spacing: -.02em;
     text-transform: none;
     text-decoration: none;
