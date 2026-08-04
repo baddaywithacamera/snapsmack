@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "name": "GLIDE",
+  "version": "0.1.0",
+  "author": "Sean McCormick, OpenAI Codex",
+  "description": "A kinetic, full-window photo wall that turns vertical scrolling into angled lateral motion.",
+  "status": "alpha",
+  "features": {
+    "supports_wall": true,
+    "supports_slider": false,
+    "has_landing": true,
+    "post_modes": ["image"],
+    "instagram_mode": false,
+    "carousel": false,
+    "community": ["likes", "comments"],
+    "archive_layouts": ["justified"]
+  },
+  "require_scripts": ["smack-footer", "smack-image-fade-load", "smack-lazyload", "smack-community", "smack-keyboard", "smack-lightbox"],
+  "community_comments": true,
+  "community_likes": true,
+  "community_reactions": false,
+  "social_dock": { "position": "inline", "color_mode": "light", "icon_style": "outline", "shadow": false },
+  "options": {
+    "glide_flow_axis": {
+      "section": "GLIDE WALL", "type": "select", "label": "Flow Orientation",
+      "hint": "The wall travels both ways on this axis. Scrolling back reverses its direction.",
+      "default": "horizontal",
+      "options": {
+        "vertical": "Up / Down",
+        "horizontal": "Left / Right",
+        "diagonal_down": "Top Left / Bottom Right",
+        "diagonal_up": "Bottom Left / Top Right"
+      }
+    },
+    "glide_wall_angle": {
+      "section": "GLIDE WALL", "type": "range", "label": "Fine Angle Adjustment (degrees)",
+      "hint": "Adds a little lean to the selected flow orientation.", "default": "-7", "min": "-18", "max": "18", "step": "1",
+      "selector": ":root", "property": "--glide-angle", "unit": "deg"
+    },
+    "glide_row_height": {
+      "section": "GLIDE WALL", "type": "range", "label": "Photo Row Height (px)",
+      "default": "250", "min": "130", "max": "420", "step": "10",
+      "selector": ":root", "property": "--glide-row-height", "unit": "px"
+    },
+    "glide_gap": {
+      "section": "GLIDE WALL", "type": "range", "label": "Space Between Photos (px)",
+      "default": "12", "min": "0", "max": "40", "step": "1",
+      "selector": ":root", "property": "--glide-gap", "unit": "px"
+    },
+    "glide_travel": {
+      "section": "GLIDE WALL", "type": "range", "label": "Wheel / Drag Sensitivity",
+      "hint": "How strongly each strip responds to wheel, drag and swipe gestures.", "default": "0.9", "min": "0.25", "max": "2", "step": "0.05"
+    },
+    "glide_corner_radius": {
+      "section": "GLIDE WALL", "type": "range", "label": "Photo Corner Radius (px)",
+      "default": "0", "min": "0", "max": "32", "step": "1",
+      "selector": ":root", "property": "--glide-radius", "unit": "px"
+    },
+    "glide_background": {
+      "section": "COLOUR", "type": "color", "label": "Canvas Colour", "default": "#0b0b0b",
+      "selector": ":root", "property": "--glide-bg"
+    },
+    "glide_overlay_color": {
+      "section": "COLOUR", "type": "color", "label": "Overlay Text Colour", "default": "#ffffff",
+      "selector": ":root", "property": "--glide-ink"
+    }
+  }
+}
