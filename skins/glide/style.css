@@ -1,0 +1,69 @@
+/* SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */
+@import url('../scroll/style.css');
+
+:root {
+    --glide-angle: -7deg;
+    --glide-row-height: 250px;
+    --glide-gap: 12px;
+    --glide-radius: 0px;
+    --glide-bg: #0b0b0b;
+    --glide-ink: #fff;
+    --glide-axis-angle: 0deg;
+}
+
+.glide-page[data-flow-axis="horizontal"] { --glide-axis-angle: 0deg; }
+.glide-page[data-flow-axis="vertical"] { --glide-axis-angle: 90deg; }
+.glide-page[data-flow-axis="diagonal_down"] { --glide-axis-angle: 45deg; }
+.glide-page[data-flow-axis="diagonal_up"] { --glide-axis-angle: -45deg; }
+
+html:has(.glide-page), body:has(.glide-page) { width: 100%; height: 100%; background: var(--glide-bg); overflow: hidden; overscroll-behavior: none; }
+body:has(.glide-page) { margin: 0; }
+.glide-page { position: fixed; inset: 0; background: var(--glide-bg); color: var(--glide-ink); font-family: "DM Sans", sans-serif; overflow: hidden; }
+.glide-viewport { position: absolute; inset: 0; overflow: hidden; background: var(--glide-bg); }
+.glide-field {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 180vmax;
+    display: grid;
+    gap: var(--glide-gap);
+    transform: translate(-50%, -50%) rotate(calc(var(--glide-axis-angle) + var(--glide-angle)));
+    transform-origin: 50% 50%;
+    will-change: transform;
+}
+.glide-row { width: 100%; height: var(--glide-row-height); overflow: visible; cursor: grab; touch-action: none; user-select: none; }
+.glide-row.is-dragging { cursor: grabbing; }
+.glide-row.is-dragging .glide-tile { pointer-events: none; }
+.glide-track { display: flex; width: max-content; height: 100%; gap: var(--glide-gap); will-change: transform; }
+.glide-tile {
+    display: block;
+    height: 100%;
+    aspect-ratio: var(--glide-aspect, 3/2);
+    flex: 0 0 auto;
+    overflow: hidden;
+    border-radius: var(--glide-radius);
+    background: #181818;
+}
+.glide-tile img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .7s cubic-bezier(.2,.7,.2,1), filter .4s ease; }
+.glide-tile:hover img, .glide-tile:focus-visible img { transform: scale(1.035); filter: brightness(.8); }
+.glide-tile:focus-visible { outline: 2px solid var(--glide-ink); outline-offset: 4px; }
+.glide-overlay { position: fixed; z-index: 5; inset: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 22px 26px; pointer-events: none; mix-blend-mode: difference; }
+.glide-overlay a { color: var(--glide-ink); text-decoration: none; pointer-events: auto; }
+.glide-name { font-weight: 700; letter-spacing: -.035em; font-size: clamp(1rem, 1.6vw, 1.5rem); }
+.glide-nav { display: flex; gap: 22px; font-size: .76rem; text-transform: uppercase; letter-spacing: .12em; }
+.glide-scroll-cue { position: fixed; z-index: 5; right: 25px; bottom: 24px; display: flex; align-items: center; gap: 10px; color: var(--glide-ink); mix-blend-mode: difference; font-size: .62rem; letter-spacing: .18em; writing-mode: vertical-rl; }
+.glide-scroll-cue i { display: block; height: 42px; width: 1px; background: currentColor; transform-origin: top; animation: glide-pulse 1.8s ease-in-out infinite; }
+@keyframes glide-pulse { 0%,100% { transform: scaleY(.35); opacity: .45; } 50% { transform: scaleY(1); opacity: 1; } }
+
+@media (max-width: 720px) {
+    :root { --glide-row-height: clamp(125px, 25vh, 210px); }
+    .glide-field { width: 210vmax; }
+    .glide-overlay { padding: 17px 18px; }
+    .glide-nav { gap: 14px; }
+    .glide-scroll-cue { right: 17px; bottom: 17px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .glide-track { transform: none !important; }
+    .glide-scroll-cue i { animation: none; }
+    .glide-tile img { transition: none; }
+}
+/* ===== SNAPSMACK EOF ===== */
