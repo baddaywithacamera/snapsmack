@@ -1,0 +1,67 @@
+/*
+ * SNAPSMACK — SCROLL wall (three-layout) CSS bundle.
+ * Partner stylesheet to ss-engine-scroll-wall.js. Scopes the wall chrome to
+ * .ss-scroll-wall so it is fully isolated from the live .ss-masonry columns wall
+ * (they can coexist on different pages without colliding). Same tile look as the
+ * columns wall — border, radius, hover title — so columns / rows / mosaic all
+ * read as one skin.
+ *
+ * The ENGINE owns geometry (it writes left/top/width/height inline). This file
+ * owns only chrome. `gap` is arithmetic the engine performs — the container must
+ * NOT be flex or grid.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF marker:
+ * slash-star, space, five equals, space, the literal string 'SNAPSMACK EOF',
+ * space, five equals, space, star-slash.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+.ss-scroll-wall {
+    --ss-cols: 4;
+    position: relative;
+    display: block;
+    width: 100%;
+}
+.ss-scroll-wall .ss-masonry-item {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border: var(--scroll-border-width) solid var(--scroll-border-color);
+    border-radius: var(--scroll-corner-radius);
+    background: #111;
+}
+.ss-scroll-wall .ss-masonry-item img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;   /* box is already the tile's aspect, so this never crops */
+    transition: transform 180ms ease, opacity 180ms ease;
+}
+.ss-scroll-wall .scroll-item-title {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    padding: clamp(12px, 3vw, 32px);
+    color: #fff;
+    background: rgba(0, 0, 0, .62);
+    font-size: clamp(.9rem, 1.5vw, 1.35rem);
+    line-height: 1.2;
+    text-align: center;
+    text-wrap: balance;
+    opacity: 0;
+    transition: opacity 180ms ease;
+    pointer-events: none;
+}
+.ss-scroll-wall .ss-masonry-item:hover img,
+.ss-scroll-wall .ss-masonry-item:focus-visible img { transform: scale(1.015); }
+.ss-scroll-wall .ss-masonry-item:hover .scroll-item-title,
+.ss-scroll-wall .ss-masonry-item:focus-visible .scroll-item-title { opacity: 1; }
+/* Infinite-scroll tripwire — the engine observes it and appends the next page. */
+.ss-scroll-wall + .scroll-wall-sentinel,
+.scroll-wall .scroll-wall-sentinel { height: 1px; width: 100%; }
+/* ===== SNAPSMACK EOF ===== */

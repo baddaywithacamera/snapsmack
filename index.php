@@ -477,6 +477,16 @@ try {
 $skin_path = 'skins/' . $active_skin;
 $page_title = $img['img_title'] ?? 'Home';
 
+// TEST wall preview (0.7.492D, temporary): ?walltest=1 swaps the skin's landing.php
+// for its test.php when one exists, so the three-layout wall can be tried
+// in-product. Query-gated — with no flag, live behaviour is identical. The wall's
+// JSON feed still comes from landing.php (shared ?pg=wall tiles), so only the HTML
+// page render is swapped. Remove with the SCROLL test page once the picker ships.
+$landing_basename = 'landing.php';
+if (($_GET['walltest'] ?? '') === '1' && file_exists(__DIR__ . '/' . $skin_path . '/test.php')) {
+    $landing_basename = 'test.php';
+}
+
 // ── Early exit for JSON AJAX requests ────────────────────────────────────────
 // Must happen BEFORE skin-meta.php outputs any HTML, otherwise
 // feed.php cannot set Content-Type: application/json headers.
@@ -517,7 +527,7 @@ include __DIR__ . '/' . $skin_path . '/skin-meta.php';
         // Skin landing page: if no explicit slug was requested, the blog isn't being
         // forced, and the skin provides a landing.php, show that instead of the single image.
         if (!$requested_slug && !$force_blog && file_exists(__DIR__ . '/' . $skin_path . '/landing.php')) {
-            include __DIR__ . '/' . $skin_path . '/landing.php';
+            include __DIR__ . '/' . $skin_path . '/' . $landing_basename;
         } else {
             include __DIR__ . '/' . $skin_path . '/layout.php';
         }
@@ -525,7 +535,7 @@ include __DIR__ . '/' . $skin_path . '/skin-meta.php';
         // No current image — e.g. a freshly set-up site with no posts yet — but the
         // active skin has a landing page (which renders its own, possibly empty, grid).
         // Render it so an empty site shows its skin instead of a misleading 404.
-        include __DIR__ . '/' . $skin_path . '/landing.php';
+        include __DIR__ . '/' . $skin_path . '/' . $landing_basename;
     } elseif (is_dir(__DIR__ . '/' . $skin_path)) {
         // Skin is installed and present, but there's nothing to render and it has no
         // landing page. A real empty state — not a missing-skin error.
