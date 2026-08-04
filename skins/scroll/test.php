@@ -308,8 +308,13 @@ $af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE E
             </div>
         </nav>
     </section>
+</div>
 
-    <?php if ($_is_mosaic): ?>
+<?php if ($_is_mosaic): ?>
+    <?php // Keep the working eatmeclaude.php document boundary exact: the shared
+          // .scroll-landing header wrapper is CLOSED before the feed <main> begins.
+          // Putting this main inside that wrapper changes its layout context even
+          // when the mosaic payload and engine are byte-identical. ?>
     <main class="scroll-wall scroll-wall-test eatmeclaude-content">
         <div id="eatmeclaude-feed" class="eatmeclaude-feed"
              data-gap="<?php echo $emc_gap; ?>"
@@ -331,7 +336,7 @@ $af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE E
              aria-hidden="true"></div>
         <p id="eatmeclaude-status" class="eatmeclaude-status" aria-live="polite"></p>
     </main>
-    <?php else: ?>
+<?php else: ?>
     <main class="scroll-wall scroll-wall-test">
         <?php // ROWS uses .ss-scroll-wall (driven by ss-engine-rows.js) so the global
               // columns engine ignores it; COLUMNS uses .ss-masonry (ss-engine-columns.js).
@@ -353,8 +358,7 @@ $af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE E
              aria-hidden="true"></div>
         <?php endif; ?>
     </main>
-    <?php endif; ?>
-</div>
+<?php endif; ?>
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-archive-filter.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <?php if ($_is_mosaic): ?>
 <!-- ASYMMETRIC: Codex's real MOSAIC engine + feed, loaded exactly as eatmeclaude.php
