@@ -17,6 +17,15 @@
   don't want. The registry install / update / remove / activate gallery is unchanged.
   (Dead follow-up: excise `skin_registry_install_upload()` + its regression test.)
 
+## 0.7.494 "Outside the Box" — 2026-08-03
+
+- **Fixed the SCROLL asymmetric wall test rendering inside the wrong layout
+  wrapper.** The working `eatmeclaude.php` page closes the `.scroll-landing`
+  header wrapper before its MOSAIC `<main>`, but `skins/scroll/test.php` left the
+  same feed inside that wrapper. The image payload and compositor were identical
+  while the containing document structure was not. The test feed now uses the
+  working page boundary exactly, so it receives the intended full wall layout.
+
 ## 0.7.493 "<codename TBD — Sean>" — SCROLL wall engines all in core (security)
 
 - **Rows engine moved to core, and the security hole that let it hide in a skin
