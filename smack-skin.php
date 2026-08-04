@@ -61,62 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
         $slug   = $_POST['skin_slug'] ?? '';
         $active = $settings['active_skin'] ?? '';
 
-        if ($action === 'upload') {
-            $upload = $_FILES['skin_package'] ?? null;
-            if (!is_array($upload) || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-                $gallery_err = 'Choose a skin ZIP package to upload.';
-            } elseif ((int)($upload['size'] ?? 0) > 50 * 1024 * 1024) {
-                $gallery_err = 'Skin package refused: maximum upload size is 50 MB.';
-            } elseif (empty($_POST['accept_skin_code'])) {
-                $gallery_err = 'Confirm that you understand a skin package contains executable site code.';
-            } else {
-                require_once __DIR__ . '/core/reauth.php';
-                $reauth = reauth_verify(
-                    $pdo,
-                    (string)($_POST['reauth_password'] ?? ''),
-                    (string)($_POST['reauth_totp'] ?? '')
-                );
-                if (empty($reauth['ok'])) {
-                    $gallery_err = (string)($reauth['error'] ?? 'Verification failed.');
-                } elseif (!in_array((string)($reauth['role'] ?? ''), ['admin', 'administrator', 'owner'], true)) {
-                    $gallery_err = 'Only a full administrator may install executable skin packages.';
-                } else {
-                    $result = skin_registry_install_upload((string)$upload['tmp_name']);
-                    if ($result['success']) {
-                        skin_registry_clear_cache();
-                        $gallery_msg = $result['message'];
-                        $installed_slug = (string)($result['slug'] ?? '');
-                        if (!empty($_POST['activate_uploaded_skin']) && $installed_slug !== '') {
-                            $installed_manifest = load_skin_manifest($installed_slug);
-                            $installed_modes = is_array($installed_manifest['modes'] ?? null)
-                                ? array_values($installed_manifest['modes'])
-                                : [];
-                            $pdo->prepare(
-                                "INSERT INTO snap_settings (setting_key, setting_val)
-                                 VALUES ('active_skin', ?)
-                                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
-                            )->execute([$installed_slug]);
-                            if (count($installed_modes) === 1
-                                && in_array($installed_modes[0], ['photoblog', 'carousel', 'smacktalk'], true)) {
-                                $pdo->prepare(
-                                    "INSERT INTO snap_settings (setting_key, setting_val)
-                                     VALUES ('site_mode', ?)
-                                     ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
-                                )->execute([$installed_modes[0]]);
-                                $gallery_msg .= ' Site mode switched to ' . $installed_modes[0] . '.';
-                            }
-                            if (is_file(__DIR__ . '/core/page-cache.php')) {
-                                require_once __DIR__ . '/core/page-cache.php';
-                                if (function_exists('page_cache_purge_all')) page_cache_purge_all();
-                            }
-                            $gallery_msg .= ' The uploaded skin is now active.';
-                        }
-                    } else {
-                        $gallery_err = $result['message'];
-                    }
-                }
-            }
-        } elseif ($action === 'install' || $action === 'update') {
+        // Direct skin-package UPLOAD removed (Sean, 2026-08-03): closed beta uses
+        // registry skins only; custom-skin uploads are a support headache we don't
+        // want. Registry install / update / remove / activate remain below.
+        if ($action === 'install' || $action === 'update') {
             $download_url = $_POST['download_url'] ?? '';
             $signature    = $_POST['signature'] ?? '';
             require_once __DIR__ . '/core/release-pubkey.php';
@@ -1586,42 +1534,9 @@ if (!empty($google_families)) {
     }
 
     ?>
-    <div class="box">
-        <h3>INSTALL A SKIN PACKAGE</h3>
-        <p class="dim">
-            If a beta, private, or otherwise unlisted skin is absent from the registry,
-            upload its packaged ZIP directly. The package must carry its SMACKBACK
-            manifest. Installing code requires your password and two-factor code.
-        </p>
-        <form method="POST" enctype="multipart/form-data" class="skin-upload-form">
-            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
-            <input type="hidden" name="gallery_action" value="upload">
-            <div class="skin-upload-fields">
-                <div class="form-group">
-                    <label for="skin-package">SKIN PACKAGE (.ZIP)</label>
-                    <input type="file" id="skin-package" name="skin_package" accept=".zip,application/zip" required>
-                </div>
-                <div class="form-group">
-                    <label for="skin-upload-password">PASSWORD</label>
-                    <input type="password" id="skin-upload-password" name="reauth_password" autocomplete="current-password" required>
-                </div>
-                <div class="form-group">
-                    <label for="skin-upload-totp">TWO-FACTOR CODE</label>
-                    <input type="text" id="skin-upload-totp" name="reauth_totp" inputmode="numeric" autocomplete="one-time-code" required>
-                </div>
-            </div>
-            <label class="skin-upload-confirm">
-                <input type="checkbox" name="accept_skin_code" value="1" required>
-                I understand that a skin package contains executable site code.
-            </label>
-            <label class="skin-upload-confirm">
-                <input type="checkbox" name="activate_uploaded_skin" value="1">
-                Activate this skin after installation and switch the site to its required publishing mode.
-            </label>
-            <button type="submit" class="gallery-btn install">UPLOAD &amp; INSTALL</button>
-        </form>
-    </div>
-    <?php
+    <?php // Direct skin-package UPLOAD UI removed 2026-08-03 (Sean): closed beta
+          // uses registry skins only — no custom-skin uploads (support headache).
+          // The registry install/update/remove/activate gallery remains below.
 
     // Fetch registry and local skin data
     $registry_url = SKIN_REGISTRY_DEFAULT_URL;

@@ -12,6 +12,11 @@
 
 ## Unreleased
 
+- **Removed the direct skin-package UPLOAD feature from the skin admin** (`smack-skin.php`).
+  Closed beta uses registry skins only; custom-skin uploads are a support headache we
+  don't want. The registry install / update / remove / activate gallery is unchanged.
+  (Dead follow-up: excise `skin_registry_install_upload()` + its regression test.)
+
 ## 0.7.493 "<codename TBD — Sean>" — SCROLL wall engines all in core (security)
 
 - **Rows engine moved to core, and the security hole that let it hide in a skin
@@ -22,7 +27,7 @@
   engine in a skin escapes it (it only gets the skin package's Ed25519 signature,
   not per-file core integrity). The dead unified `ss-engine-scroll-wall.js` monolith
   is deleted. `test.php` loads rows from the core path. Row geometry verified
-  numerically (full rows fill width, zero aspect distortion). SCROLL manifest → 0.1.41.
+  numerically (full rows fill width, zero aspect distortion). SCROLL manifest → 0.1.39.
   FOLLOW-UP (FOR BETA): a Skin Packager guard that flags non-allowlisted `.js` in
   skins so runtime code can't slip past SMACKBACK again.
 
@@ -42,7 +47,7 @@
     Landscapes lead, the mirror of columns. Skin-scoped for the test page; container
     `.ss-scroll-wall`, reusing the tile CSS already shipped in 0.7.492D.
   The abandoned unified `ss-engine-scroll-wall.js` is no longer referenced (it read
-  columns for asymmetric and regressed lazy loading). SCROLL manifest → 0.1.40.
+  columns for asymmetric and regressed lazy loading). SCROLL manifest → 0.1.39.
 
 ## 0.7.491 "Big Enough to Matter" — 2026-08-03
 
