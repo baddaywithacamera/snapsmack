@@ -12,6 +12,14 @@
 
 ## Unreleased
 
+- **Light Table now reorders.** The SMACKONEOUT Light Table loads the whole
+  (filtered) library on one page and supports drag-to-reorder: drag a photo to a
+  new spot — an insertion marker shows where it lands — then **CONFIRM ORDER**
+  writes `snap_images.sort_order` using Manage Archive's exact algorithm, so both
+  tools agree on one canonical order. A tile-size slider replaces the fixed
+  thumbnail size, and pagination is gone. Dragging a photo onto an
+  album/category/collection still files it (ADD / multi-membership), unchanged.
+
 - **SCROLL promoted to stable.** SCROLL ships as a stable skin at **0.1.42**.
 
 - **SCROLL: dedicated page-title Font & Size control (STATIC & BLOG).** The
