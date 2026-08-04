@@ -6,7 +6,7 @@
  *              so the SmackPress desktop tool can pull posts from WordPress and mark
  *              migrated posts as private. Authenticate with a WordPress Application Password.
  *              Delete this plugin once migration is complete.
- * Version:     1.1.0
+ * Version:     1.1.1
  * Author:      SnapSmack
  * License:     GPL-2.0-or-later
  *
@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Constants
  * --------------------------------------------------------------------- */
 
-define( 'SMACKPRESS_COMPANION_VERSION', '1.1.0' );
+define( 'SMACKPRESS_COMPANION_VERSION', '1.1.1' );
 define( 'SMACKPRESS_NS',  'smackpress/v1' );
 define( 'SMACKPRESS_META', 'smackpress_migrated_to' );
 
@@ -36,6 +36,13 @@ define( 'SMACKPRESS_META', 'smackpress_migrated_to' );
 
 add_action( 'rest_api_init', 'smackpress_register_routes' );
 add_action( 'init',          'smackpress_register_meta' );
+
+// Live-display repair: rewrite legacy old-host image URLs on the front end so
+// the old blog stops showing broken images while it is still online during the
+// migration. No-op once URLs already point at the current host. Runs after
+// wpautop/shortcodes (priority 20) so it sees the final <img> tags.
+add_filter( 'the_content', 'smackpress_normalize_upload_hosts', 20 );
+add_filter( 'the_excerpt', 'smackpress_normalize_upload_hosts', 20 );
 
 /* -----------------------------------------------------------------------
  * Meta registration
@@ -354,8 +361,37 @@ function smackpress_shape_post( WP_Post $post, bool $full ): array {
  * Also collects every image attachment referenced in the post.
  * --------------------------------------------------------------------- */
 
+/* -----------------------------------------------------------------------
+ * Rewrite any host sitting in front of the uploads path to THIS site's host.
+ * Content authored before the blog moved (e.g. baddaywithacamera.ca ->
+ * old.baddaywithacamera.ca) carries hardcoded absolute image URLs on the OLD
+ * host, while the files are served from the current host now. Host-agnostic,
+ * and a no-op once URLs already point at the current host. Used for BOTH the
+ * migration (so images resolve + download) and the live front-end display
+ * filter below (so the old blog stops showing broken images while it is still
+ * online during the migration).
+ * --------------------------------------------------------------------- */
+
+function smackpress_normalize_upload_hosts( string $content ): string {
+    $upload = wp_upload_dir();
+    $parts  = wp_parse_url( $upload['baseurl'] );
+    if ( empty( $parts['host'] ) || empty( $parts['path'] ) ) {
+        return $content;
+    }
+    return preg_replace(
+        '#https?://[^/"\'\s]+' . preg_quote( $parts['path'], '#' ) . '/#i',
+        $parts['scheme'] . '://' . $parts['host'] . $parts['path'] . '/',
+        $content
+    );
+}
+
 function smackpress_expand_content( string $content, int $post_id ): array {
     $images = [];   // keyed by attachment ID to avoid dupes
+
+    // Rewrite legacy old-host image URLs to this site's host BEFORE resolution,
+    // or bare <img> tags and attachment lookups (which key off the current host)
+    // silently miss them. See smackpress_normalize_upload_hosts().
+    $content = smackpress_normalize_upload_hosts( $content );
 
     // Find all gallery shortcodes
     $content = preg_replace_callback(
