@@ -12,6 +12,8 @@
 
 ## Unreleased
 
+## 0.7.496 "<codename TBD — Sean>" — 2026-08-04
+
 - **SmackPress import hardening (security).** Migrated WordPress content is now
   sanitised on import — `<script>`, `<style>`, `<iframe>`, `<form>`, inline event
   handlers, `style`/`class`/`id`, and `javascript:`/`data:` URLs (whatever WP
