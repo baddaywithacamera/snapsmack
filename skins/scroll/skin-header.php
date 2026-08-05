@@ -81,10 +81,7 @@ $scroll_masthead_logo = trim((string)($settings['scroll__masthead_logo'] ?? ''))
                         <button type="submit">GO</button>
                     </form>
                 </details>
-                <a class="ss-grid-nav-link" href="<?php echo BASE_URL; ?>archive.php#smack-archive-filter-btn" title="Filter">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v5l-4 2v-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-                    <span class="ss-grid-nav-label">Filter</span>
-                </a>
+                <?php include __DIR__ . '/nav-filter.php'; ?>
             </div>
             <div class="ss-grid-nav-actions">
                 <?php

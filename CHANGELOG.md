@@ -12,6 +12,23 @@
 
 ## Unreleased
 
+- **SCROLL's FILTER funnel now opens its popup on every SCROLL page.** The
+  Blogroll/About/static shared header and solo-photo header had stale hard links
+  to `archive.php`, unlike the landing's working modal. Both now use one shared
+  popup component. The remaining SEARCH forms still intentionally target the
+  archive until the landing wall gains real search-result support. SCROLL
+  advances to **0.1.44**.
+
+- **SCROLL's sticky masthead is optically centred vertically.** Display faces
+  such as Special Elite carry a deep empty descender in their font metrics, so
+  the line box was centred while the visible lettering rode high. The existing
+  solo-header correction now applies consistently to every sticky masthead.
+
+- **SCROLL static-page heroes now obey the text container.** The page title,
+  hero image, and body share one centred inner container driven by Text Column
+  Width and the configured side gutters. The outer divider remains aligned to
+  the landing wall, but the hero can no longer spill out to the full wall width.
+
 - **SCROLL: the sticky-bar blog name is now sizable.** A new "Sticky Bar Name
   Size" control (MASTHEAD section) sizes the small blog-name running head in the
   sticky header — the one that appears once you scroll past the big masthead —
