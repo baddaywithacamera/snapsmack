@@ -1503,7 +1503,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="two-col">
             <div>
                 <h2>What Is SnapSmack?</h2>
-                <p>It's a free, open-source photo blogging platform you install on your own server. Every image you post is yours — sitting on your own hosting, in your own database, under your own domain. SnapSmack doesn't have an app to delete, a policy to change, or a feed to bury you in.</p>
+                <p>It's a free, <a href="https://github.com/baddaywithacamera/snapsmack" target="_blank" rel="noopener">open-source photo blogging platform</a> you install on your own server. Every image you post is yours — sitting on your own hosting, in your own database, under your own domain. SnapSmack doesn't have an app to delete, a policy to change, or a feed to bury you in.</p>
                 <p>Post one image at a time or thirty at a time — whatever suits the shoot. Title, description, tags, all easy to manage. Pick a skin that reflects your creative vision or make your own. SnapSmack doesn't try to be everything for everyone, just to be indispensable to image makers. That's on purpose.</p>
                 <p>The software is free. The skins are free. The companion tools are free. No membership, no freemium tier, no bait-and-switch. Any skin developed by a third party can only be distributed through the SnapSmack repository — and only for free. SnapSmack exists to give photographers a hand up, not extort them for handouts.</p>
                 <p>Currently in Alpha — stable enough to run a real site, rough around a few edges. Best experienced on a big screen.</p>
@@ -2294,6 +2294,11 @@ require_once __DIR__ . '/includes/header.php';
                 <p>The offline companion to the Light Table. GET YOUR SHIT SORTED pulls down your archive's thumbnails and the data needed to organise it, then turns your own machine into the sorting workbench — no live connection, no server load, no waiting on page loads for a ten-thousand-image back catalog. Do the work on a plane, in a basement, wherever you like. When you're done, it resyncs every change back to your site in one pass.</p>
             </div>
             <div class="coming-item">
+                <span class="tag">Tools</span>
+                <h3>COLD SNAP</h3>
+                <p>Post from anywhere — a plane, a cabin, a basement, the middle of nowhere with no bars on the phone. COLD SNAP is the offline composer: build your posts and stage your galleries entirely on your own machine, no connection required. Solo shots or full grams, written and arranged cold. When you're back on the grid it syncs the whole batch up to your site in one clean pass — nothing lost, nothing half-sent. The shoot doesn't wait for wifi. Neither should you.</p>
+            </div>
+            <div class="coming-item">
                 <span class="tag">Data Freedom</span>
                 <h3>TAKE YOUR SHIT WITH YOU</h3>
                 <p>Absolute data freedom, even for total pussies. Every image and every scrap of portable data gets packed into a complete, understandable copy on your own computer, with readable JSON sidecars, verification, and courtesy import files for other systems. No command line, no heroic server-side ZIP, no begging us for permission to leave. Ownership is bullshit if leaving means starting over. Your work is yours &mdash; including the right to take the whole damn thing somewhere else.</p>
@@ -2330,7 +2335,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="not-item">
                 <h3>Not a paid product</h3>
-                <p>SnapSmack is free and open source. No subscription, no premium tier, no upsell. You host it yourself and you own everything. It works because the person who built it runs it on his own sites every day and he can't have it going down like a five dolla ho. If something breaks, he finds out first. The trade-off is that there is no support contract or SLA.</p>
+                <p>SnapSmack is <a href="https://github.com/baddaywithacamera/snapsmack" target="_blank" rel="noopener">free and open source</a>. No subscription, no premium tier, no upsell. You host it yourself and you own everything. It works because the person who built it runs it on his own sites every day and he can't have it going down like a five dolla ho. If something breaks, he finds out first. The trade-off is that there is no support contract or SLA.</p>
             </div>
             <div class="not-item">
                 <h3>Not backed by a company</h3>
