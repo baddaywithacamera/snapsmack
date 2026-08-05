@@ -12,6 +12,8 @@
 
 ## Unreleased
 
+## 0.7.501 "<codename TBD — Sean>" — 2026-08-05
+
 - **Tool posts auto-correct the site's install mode.** When a companion tool (Smack
   Your Batch Up and friends) posts with a scoped API key to a site that is in the
   wrong mode, SnapSmack now switches the site to the mode the key needs and accepts
