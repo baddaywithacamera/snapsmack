@@ -2412,6 +2412,12 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
 
         <form method="post">
             <input type="hidden" name="step" value="2">
+            <?php if ($installer_is_fedistructure): ?>
+            <?php // Belt-and-suspenders: carry the FEDISTRUCTURE profile chosen on the
+                  // edition (1b) screen THROUGH the DB form so the gate never depends on
+                  // session persistence alone. The step-2 handler reads POST first, then
+                  // session — this makes the POST path self-sufficient. ?>
+            <input type="hidden" name="distribution_profile" value="<?php echo htmlspecialchars($_SESSION['distribution_profile'] ?? 'photo-challenge'); ?>"><?php endif; ?>
 
             <label for="db_host">Database Host</label>
             <input type="text" id="db_host" name="db_host" value="<?php echo htmlspecialchars($_POST['db_host'] ?? 'localhost'); ?>">

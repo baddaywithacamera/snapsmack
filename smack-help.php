@@ -996,6 +996,16 @@ type for the tool you are setting up:</p>
     migration.</li>
 </ul>
 
+<h4>Install Mode &amp; Your Key</h4>
+<p>Each posting key implies an install mode — a SYBU (Smack Your Batch Up) solo key is for a
+<strong>photoblog</strong> site, a gram key is for a <strong>carousel</strong> site, and so on.
+If you point a tool at a site that is in the <em>wrong</em> mode, SnapSmack now
+<strong>automatically switches the site to the mode the key needs</strong> and accepts the post,
+instead of refusing it — the key decides the mode, so you never get stuck on a cryptic error
+mid-batch. If a tool's endpoint could belong to more than one mode it can't guess, so it stops
+with a plain-English warning telling you exactly which mode to set. Every automatic switch is
+written to the server log.</p>
+
 <h4>Pasting Into a Tool</h4>
 <p>In SYBU: Settings tab &rarr; API Key field. Paste the key and save. SYBU will use it
 for all subsequent requests instead of prompting for a username and password.</p>

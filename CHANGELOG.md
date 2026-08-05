@@ -12,6 +12,26 @@
 
 ## Unreleased
 
+- **Tool posts auto-correct the site's install mode.** When a companion tool (Smack
+  Your Batch Up and friends) posts with a scoped API key to a site that is in the
+  wrong mode, SnapSmack now switches the site to the mode the key needs and accepts
+  the post, instead of refusing with a bare 409. The key decides the mode. An endpoint
+  that could belong to more than one mode still can't guess, so it stops with a
+  plain-English warning naming the mode to set; every automatic switch is logged.
+  (`core/api-auth.php`)
+- **FEDISTRUCTURE installer no longer loses the service profile on the DB step.** The
+  chosen profile (PHOTOFRI.DAY / APHOTOEVERY.DAY / SMACKCAST) is now carried through
+  the database-credentials form as a hidden field, so it survives even when a server's
+  sessions don't persist between screens. (`install.php`)
+- **FEDISTRUCTURE bootstrap defaults to the dev channel.** `fedup.php` installs the
+  current dev build by default (the stable feed was frozen at an older release); opt
+  back with `?track=stable`, and the active channel is now shown on the page.
+  (`fedup.php`)
+- **SCROLL 0.1.46 — blogroll reads in the static text column.** The blogroll's content
+  now sits in the same reading-width column as every other static page (honouring the
+  CONTENT WIDTH / SIDE GUTTERS controls) while the divider line still spans the full
+  wall width. (`skins/scroll`)
+
 ## 0.7.500 "<codename TBD — Sean>" — 2026-08-05
 
 - **Smack Up Your Backup 0.7.19 security closure.** The portable desktop client

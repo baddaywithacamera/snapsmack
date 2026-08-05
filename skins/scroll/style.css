@@ -821,6 +821,21 @@ body.is-blogroll .blogroll-canvas {
     border-top: 1px solid var(--scroll-page-divider, #999999);
     padding-top: 40px;
 }
+/* Blogroll is a static page of sorts: the divider LINE stays at wall width (the
+   canvas rule above), but the CONTENT — title + category blocks — must sit in the
+   SAME text column as every other static page, not sprawl to the full 90%. Reuse
+   the identical width formula as .scroll-static-inner so the CONTENT WIDTH / SIDE
+   GUTTERS admin controls drive the blogroll too. Divider consistent, content read-
+   width capped. (Sean's call: A — divider line is consistent.) */
+body.is-blogroll .blogroll-canvas > .static-page-title,
+body.is-blogroll .blogroll-canvas > .dim,
+body.is-blogroll .blogroll-canvas > .blogroll-category-block {
+    width: min(
+        calc(100% - 2 * var(--static-content-gutter, 40px)),
+        var(--scroll-static-width, 920px)
+    );
+    margin-inline: auto;
+}
 .blogroll-category-block { margin-bottom: 3rem; }
 .blogroll-category-block:last-child { margin-bottom: 0; }
 .blogroll-category-heading { margin: 0 0 1.5rem; }

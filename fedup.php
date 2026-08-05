@@ -10,7 +10,11 @@
  * Last non-empty line of this file MUST match the line above.
  */
 
-$fedup_track = (($_GET['track'] ?? '') === 'dev') ? 'dev' : 'stable';
+// Default channel: DEV. Dev is the active development channel; the stable
+// FEDISTRUCTURE feed is intentionally frozen at an older build, so a plain
+// install would otherwise fetch a stale package. New installs follow dev until
+// a current stable FEDISTRUCTURE release is cut. Opt back with ?track=stable.
+$fedup_track = (($_GET['track'] ?? '') === 'stable') ? 'stable' : 'dev';
 $fedup_manifest_url = $fedup_track === 'dev'
     ? 'https://snapsmack.ca/releases/latest-fedistructure-dev.json'
     : 'https://snapsmack.ca/releases/latest-fedistructure.json';
@@ -189,6 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy']) && $fedup_r
 <body><main class="card">
 <h1>FED UP <span>/ FEDISTRUCTURE</span></h1>
 <p>Installs the signed service distribution for PHOTOFRI.DAY, APHOTOEVERY.DAY, or SMACKCAST.</p>
+<p style="font-size:.85rem;color:#728293;margin-top:-8px">Channel: <strong style="color:#00ffff"><?php echo strtoupper($fedup_track); ?></strong><?php echo $fedup_track === 'dev' ? ' — current development build' : ' — frozen stable feed'; ?></p>
 <?php if ($fedup_error !== ''): ?><div class="status error"><?php echo $fedup_error; ?></div><?php endif; ?>
 <ul class="checks">
 <li><span>PHP 8+</span><strong class="<?php echo PHP_VERSION_ID >= 80000 ? 'ok' : 'bad'; ?>"><?php echo PHP_VERSION; ?></strong></li>
@@ -197,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy']) && $fedup_r
 <li><span>Ed25519 verification</span><strong class="<?php echo function_exists('sodium_crypto_sign_verify_detached') ? 'ok' : 'bad'; ?>"><?php echo function_exists('sodium_crypto_sign_verify_detached') ? 'READY' : 'MISSING'; ?></strong></li>
 </ul>
 <?php if ($fedup_ready): ?>
-<form method="post" action="<?php echo $fedup_track === 'dev' ? '?track=dev' : ''; ?>"><button type="submit" name="deploy" value="1">INSTALL FEDISTRUCTURE</button></form>
+<form method="post" action="<?php echo $fedup_track === 'stable' ? '?track=stable' : ''; ?>"><button type="submit" name="deploy" value="1">INSTALL FEDISTRUCTURE</button></form>
 <?php else: ?><div class="status error">This server is missing a required capability. No unsigned fallback is permitted.</div><?php endif; ?>
 </main></body></html>
 <?php // ===== SNAPSMACK EOF =====
