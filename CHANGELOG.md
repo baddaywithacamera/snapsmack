@@ -12,6 +12,8 @@
 
 ## Unreleased
 
+## 0.7.503 "<codename TBD — Sean>" — 2026-08-05
+
 - **Public stats endpoint degrades gracefully on an older schema.** `stats.php`
   wrapped `snap_stats_daily` and `img_view_seed` reads in per-metric guards, so a
   site missing those columns (an install whose schema lags the code) returns its
