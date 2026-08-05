@@ -44,36 +44,44 @@ try {
     // Post count
     $posts = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
 
-    // Stats — last 30 days
-    $stats = $pdo->query("
-        SELECT COALESCE(SUM(total_views), 0)     AS views_30d,
-               COALESCE(SUM(unique_visitors), 0) AS unique_30d
-        FROM snap_stats_daily
-        WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-    ")->fetch();
+    // Stats — snap_stats_daily and img_view_seed can be absent on an install whose
+    // schema lags the code (older version, or a column-add that hasn't applied yet).
+    // Degrade each metric to 0 rather than failing the WHOLE endpoint — a missing
+    // column must not blank a site's entire stats card. (Same tolerance pattern as
+    // the archive.php / SCROLL missing-user_id fixes.)
+    $stats     = ['views_30d' => 0, 'unique_30d' => 0];
+    $stats_all = ['views_all' => 0, 'unique_all' => 0];
+    try {
+        $stats = $pdo->query("
+            SELECT COALESCE(SUM(total_views), 0)     AS views_30d,
+                   COALESCE(SUM(unique_visitors), 0) AS unique_30d
+            FROM snap_stats_daily
+            WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        ")->fetch() ?: $stats;
+        $stats_all = $pdo->query("
+            SELECT COALESCE(SUM(total_views), 0)     AS views_all,
+                   COALESCE(SUM(unique_visitors), 0) AS unique_all
+            FROM snap_stats_daily
+        ")->fetch() ?: $stats_all;
+    } catch (Throwable $e) { /* snap_stats_daily absent — leave zeros */ }
 
-    // Stats — all time (live)
-    $stats_all = $pdo->query("
-        SELECT COALESCE(SUM(total_views), 0)     AS views_all,
-               COALESCE(SUM(unique_visitors), 0) AS unique_all
-        FROM snap_stats_daily
-    ")->fetch();
+    // Imported view history (e.g. Flickr count_views, per image as img_view_seed).
+    // Adds to ALL-TIME views only. Column may not exist on older installs — tolerate.
+    $seed_views = 0;
+    try {
+        $seed_views = (int)$pdo->query("
+            SELECT COALESCE(SUM(img_view_seed), 0) FROM snap_images WHERE img_status = 'published'
+        ")->fetchColumn();
+    } catch (Throwable $e) { /* img_view_seed absent — no seed */ }
 
-    // Imported view history (e.g. Flickr count_views, stored per image as img_view_seed).
-    // Adds to ALL-TIME views only — never the 30-day window, and never uniques (imports
-    // carry real view tallies but no unique-visitor data; see FLKR FCKR history spec).
-    $seed_views = (int)$pdo->query("
-        SELECT COALESCE(SUM(img_view_seed), 0) FROM snap_images WHERE img_status = 'published'
-    ")->fetchColumn();
-
-    // Active since — an explicit 'active_since' setting wins (e.g. a Flickr membership that
-    // predates the imported data, or a placeholder date sitting on imported rows); else
-    // fall back to the earliest published post date.
+    // Active since — an explicit 'active_since' setting wins; else the earliest post date.
     $since = (string)($settings['active_since'] ?? '');
     if (!preg_match('/^\d{4}-\d{2}-\d{2}/', $since)) {
-        $since = (string)$pdo->query("
-            SELECT DATE(MIN(img_date)) FROM snap_images WHERE img_status = 'published'
-        ")->fetchColumn();
+        try {
+            $since = (string)$pdo->query("
+                SELECT DATE(MIN(img_date)) FROM snap_images WHERE img_status = 'published'
+            ")->fetchColumn();
+        } catch (Throwable $e) { $since = ''; }
     }
 
     echo json_encode([
