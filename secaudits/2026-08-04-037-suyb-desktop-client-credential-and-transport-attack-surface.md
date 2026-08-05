@@ -307,6 +307,22 @@ Recorded so the findings do not obscure the parts that held up:
   admin login in `hub_discovery.py`. Deferred here because the current default
   exists for a real shared-hosting reason and flipping it can break live profiles.
 
+### 7.1 FTPS transport decision (2026-08-05)
+
+The FTPS certificate-verification default is **left OFF**, deliberately. SnapSmack's
+audience runs on budget shared hosts that ship self-signed or expired certificates;
+defaulting FTPS to full CA validation would break the majority of real profiles on
+first connect, and a binary "verify / don't verify" toggle only trades one bad
+outcome for another. This is a documented, accepted tradeoff — not an oversight.
+
+The forward path is **not** mandatory CA validation. It is **TOFU certificate-
+fingerprint pinning**, mirroring the SFTP host-key pinning already shipped in 0.7.18:
+on first connect, record the server's presented certificate fingerprint next to the
+executable; on every later connect, proceed silently if it matches and hard-warn if
+it changes. That gives real man-in-the-middle detection **without ever requiring a
+CA-signed certificate**, which is exactly the protection the cheap-host reality needs.
+Scheduled as a future SUYB enhancement; no code change in this release.
+
 ## 8. Verification
 
 - `_is_safe_rel_path()` was exercised against ten traversal/absolute/drive-letter/
