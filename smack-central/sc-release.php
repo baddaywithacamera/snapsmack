@@ -129,23 +129,34 @@ function sc_github_get(string $endpoint): array|false {
 // Only returns tags in the current three-segment numeric semver format
 // (e.g. v0.7.17). Old letter-suffix tags (v0.7.9P) and companion-tool
 // tags (vSYBU-*, vSUYB-*) are silently excluded. Returns at most 3 tags.
-function sc_list_tags(): array {
-    $data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=50');
-    if (!is_array($data)) return [];
-    $tags = array_column($data, 'name');
-
-    // Keep only clean X.Y.Z numeric tags — no letter suffix, no tool prefixes.
-    $tags = array_values(array_filter($tags, function (string $t): bool {
-        return (bool) preg_match('/^v?\d+\.\d+\.\d+$/i', $t);
-    }));
+function sc_list_tags(): array|false {
+    // Stable tags (plain vX.Y.Z) get buried far down the list once many dev
+    // (D-suffix) tags accumulate after the last stable release — a single 50-tag
+    // page can hold ZERO stable tags even though the fetch succeeded, which used
+    // to render as a false "could not fetch tags". Page through until we have
+    // enough stable tags or run out. Returns FALSE only on a genuine page-1 fetch
+    // failure, so the caller can tell a network/rate-limit error apart from a
+    // legitimately empty stable track.
+    $stable = [];
+    for ($page = 1; $page <= 6; $page++) {
+        $data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=100&page=' . $page);
+        if (!is_array($data)) {
+            return ($page === 1) ? false : $stable;   // page-1 failure = real fetch error
+        }
+        if (!$data) break;                              // no more tags on the repo
+        foreach (array_column($data, 'name') as $t) {
+            if (preg_match('/^v?\d+\.\d+\.\d+$/i', $t)) $stable[] = $t;
+        }
+        if (count($stable) >= 3) break;                 // enough for the 3 we expose
+    }
 
     // Sort descending by version_compare (plain semver — no normalisation needed).
-    usort($tags, function ($a, $b): int {
+    usort($stable, function ($a, $b): int {
         return version_compare(ltrim($b, 'vV'), ltrim($a, 'vV'));
     });
 
     // Expose only the three most recent releases.
-    return array_slice($tags, 0, 3);
+    return array_slice($stable, 0, 3);
 }
 
 // ── Helper: list BITCHIN' (D-suffix) dev tags from GitHub ────────────────────
@@ -1581,14 +1592,21 @@ require __DIR__ . '/sc-layout-top.php';
         <?php if (!$preflight_ok): ?>
         <p class="sc-dim">Fix the errors above before building a release.</p>
 
-        <?php elseif (empty($tags)): ?>
-        <div class="sc-alert sc-alert--warn">
-          Could not fetch tags from GitHub. Check that this server has outbound HTTPS access
-          and that <code><?php echo htmlspecialchars(SNAPSMACK_GITHUB_REPO); ?></code> is public.
+        <?php elseif ($tags === false): ?>
+        <div class="sc-alert sc-alert--error">
+          Could not reach GitHub to fetch tags — outbound HTTPS failed, or
+          <code><?php echo htmlspecialchars(SNAPSMACK_GITHUB_REPO); ?></code> is unreachable.
           <?php if (!SNAPSMACK_GITHUB_TOKEN): ?>
-          If you're hitting the rate limit (60 req/hr), add
+          You may also be rate-limited (60 req/hr unauthenticated); add
           <code>define('SNAPSMACK_GITHUB_TOKEN', 'your-token');</code> to sc-config.php.
           <?php endif; ?>
+        </div>
+
+        <?php elseif (empty($tags)): ?>
+        <div class="sc-alert sc-alert--warn">
+          No stable tags found — every recent tag is a dev (<code>D</code>) build. The GitHub
+          fetch worked; there's just nothing on the stable track yet. Promote a dev build to
+          stable first (<code>tools/release-flow.php promote-stable</code>) and it will appear here.
         </div>
 
         <?php else: ?>

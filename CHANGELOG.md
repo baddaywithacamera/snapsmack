@@ -12,6 +12,15 @@
 
 ## Unreleased
 
+- **Release Packager finds buried stable tags + honest empty-state message.** The
+  stable (BORING) tag list fetched only one 50-tag page, so once enough dev (D)
+  tags piled up after the last stable release the stable tag fell off the end and
+  the packager showed a misleading "could not fetch tags from GitHub" — even
+  though the fetch succeeded. `sc_list_tags()` now pages through the tag list to
+  find stable tags regardless of how many dev tags precede them, and the UI
+  distinguishes a real fetch failure from "no stable tags yet — promote a dev
+  build first." (`smack-central/sc-release.php`)
+
 ## 0.7.503 "<codename TBD — Sean>" — 2026-08-05
 
 - **Public stats endpoint degrades gracefully on an older schema.** `stats.php`
