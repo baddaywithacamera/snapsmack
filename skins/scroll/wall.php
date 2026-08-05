@@ -197,7 +197,16 @@ $scroll_masthead_logo = trim((string)($settings['scroll__masthead_logo'] ?? ''))
 $af_cats        = $pdo->query("SELECT id, cat_name FROM snap_categories WHERE show_in_archive = 1 ORDER BY cat_name ASC")->fetchAll();
 $af_albums      = $pdo->query("SELECT id, album_name FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 $af_collections = $pdo->query("SELECT id, title FROM snap_collections ORDER BY title ASC")->fetchAll();
-$af_authors     = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE EXISTS (SELECT 1 FROM snap_images i2 WHERE i2.user_id = u.id AND i2.img_status = 'published') ORDER BY u.username ASC")->fetchAll();
+// snap_images.user_id may be absent on legacy/unsynced installs — degrade the
+// author filter rather than 500 the wall.
+$af_authors     = [];
+try {
+    if ($pdo->query("SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_images' AND COLUMN_NAME = 'user_id' LIMIT 1")->fetchColumn()) {
+        $af_authors = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE EXISTS (SELECT 1 FROM snap_images i2 WHERE i2.user_id = u.id AND i2.img_status = 'published') ORDER BY u.username ASC")->fetchAll();
+    }
+} catch (Throwable $e) {
+    $af_authors = [];
+}
 ?>
 <div class="scroll-landing">
     <section class="scroll-profile" aria-labelledby="scroll-site-title">

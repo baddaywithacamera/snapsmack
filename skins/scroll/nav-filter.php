@@ -20,14 +20,27 @@ $scroll_filter_albums = $pdo->query(
 $scroll_filter_collections = $pdo->query(
     "SELECT id, title FROM snap_collections ORDER BY title ASC"
 )->fetchAll();
-$scroll_filter_authors = $pdo->query(
-    "SELECT u.id, u.username FROM snap_users u
-     WHERE EXISTS (
-        SELECT 1 FROM snap_images i2
-        WHERE i2.user_id = u.id AND i2.img_status = 'published'
-     )
-     ORDER BY u.username ASC"
-)->fetchAll();
+// snap_images.user_id (author attribution) is absent on legacy/unsynced installs;
+// degrade the author filter instead of 500-ing the page.
+$scroll_filter_authors = [];
+try {
+    if ($pdo->query(
+        "SELECT 1 FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_images'
+           AND COLUMN_NAME = 'user_id' LIMIT 1"
+    )->fetchColumn()) {
+        $scroll_filter_authors = $pdo->query(
+            "SELECT u.id, u.username FROM snap_users u
+             WHERE EXISTS (
+                SELECT 1 FROM snap_images i2
+                WHERE i2.user_id = u.id AND i2.img_status = 'published'
+             )
+             ORDER BY u.username ASC"
+        )->fetchAll();
+    }
+} catch (Throwable $e) {
+    $scroll_filter_authors = [];
+}
 ?>
 <div class="saf-wrap scroll-nav-filter">
     <button id="smack-archive-filter-btn" type="button" class="ss-grid-nav-link"
