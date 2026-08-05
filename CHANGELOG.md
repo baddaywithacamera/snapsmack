@@ -12,6 +12,16 @@
 
 ## Unreleased
 
+## 0.7.502 "<codename TBD — Sean>" — 2026-08-05
+
+- **Skin Packager no longer 500s after a Smack Central self-update.** `sc-skins.php`
+  required `tools/skin-scan.php` (the gallery clean-gate scanner), which lives
+  outside `smack-central/` — so the SC self-updater, which only deploys
+  `smack-central/`, left it absent and the packager fatal-errored on package. The
+  require is now guarded (missing scanner → gate skipped, not a crash), and
+  `sc-update.php` now also deploys `tools/skin-scan.php` so the gate keeps working.
+  (`smack-central/sc-skins.php`, `smack-central/sc-update.php`)
+
 ## 0.7.501 "<codename TBD — Sean>" — 2026-08-05
 
 - **Tool posts auto-correct the site's install mode.** When a companion tool (Smack

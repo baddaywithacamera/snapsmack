@@ -203,6 +203,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
         }
         $result_log[] = ['ok', "smack-central/: {$copied} files installed" . ($skipped ? ", {$skipped} protected skipped" : '')];
 
+        // 3a. Deploy the packager's out-of-tree dependency: tools/skin-scan.php.
+        // sc-skins.php require_once's it for the gallery clean-gate, but it lives
+        // OUTSIDE smack-central/, so the smack-central-only copy above misses it and
+        // the packager fatals. Ship it alongside.
+        $scan_src = $wrapper . 'tools/skin-scan.php';
+        if (is_file($scan_src)) {
+            $scan_dst = dirname(__DIR__) . '/tools/skin-scan.php';
+            if (!is_dir(dirname($scan_dst))) @mkdir(dirname($scan_dst), 0755, true);
+            $result_log[] = copy($scan_src, $scan_dst)
+                ? ['ok',  'tools/skin-scan.php deployed (packager clean-gate)']
+                : ['warn', 'Could not deploy tools/skin-scan.php — gate will be skipped'];
+        }
+
         // 3a. Write sc-version.php from the pulled tag ────────────────────────
         // sc-version.php in git is never updated (would require a commit per release).
         // We derive the version string from the tag and write it explicitly so
