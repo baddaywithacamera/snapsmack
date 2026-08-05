@@ -59,6 +59,5 @@ function glide_tile(array $image): string {
     </header>
     <div class="glide-scroll-cue" aria-hidden="true"><span>DRAG / SCROLL</span><i></i></div>
 </div>
-<script src="<?php echo BASE_URL; ?>skins/glide/glide.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 <?php include __DIR__ . '/skin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

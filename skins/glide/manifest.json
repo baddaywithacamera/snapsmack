@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "GLIDE",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Sean McCormick, OpenAI Codex",
   "description": "A kinetic, full-window photo wall that turns vertical scrolling into angled lateral motion.",
   "status": "alpha",
@@ -15,7 +15,7 @@
     "community": ["likes", "comments"],
     "archive_layouts": ["justified"]
   },
-  "require_scripts": ["smack-footer", "smack-image-fade-load", "smack-lazyload", "smack-community", "smack-keyboard", "smack-lightbox"],
+  "require_scripts": ["smack-footer", "smack-image-fade-load", "smack-lazyload", "smack-glide", "smack-community", "smack-keyboard", "smack-lightbox"],
   "community_comments": true,
   "community_likes": true,
   "community_reactions": false,
