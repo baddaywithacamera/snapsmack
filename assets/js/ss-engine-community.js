@@ -597,4 +597,32 @@ document.addEventListener('DOMContentLoaded', () => {
 }); // DOMContentLoaded
 
 } // double-load guard
+
+
+// =============================================================================
+// SHARED SKIN UI ACTIONS
+// Delegated handlers so skin markup triggers common UI behaviours via a
+// data-attribute hook instead of an inline onclick= (skins ship no JavaScript;
+// all JS lives here in the shared library). Kept in this engine because every
+// grid-family skin that uses these buttons already loads it. Document-level
+// delegation — isolated from the community code above, works for dynamically
+// inserted markup, and reproduces the exact prior inline behaviour.
+//   data-ss-action="history-back"                     -> history.back()
+//   data-ss-action="scroll-to" data-ss-target="SEL"   -> smooth-scroll to SEL
+// =============================================================================
+if (!window._ssUiActionsLoaded) {
+    window._ssUiActionsLoaded = true;
+    document.addEventListener('click', function (e) {
+        const el = e.target.closest('[data-ss-action]');
+        if (!el) return;
+        const action = el.getAttribute('data-ss-action');
+        if (action === 'history-back') {
+            history.back();
+        } else if (action === 'scroll-to') {
+            const sel = el.getAttribute('data-ss-target');
+            const target = sel && document.querySelector(sel);
+            if (target) target.scrollIntoView({ behavior: 'smooth' });
+        }
+    });
+}
 // ===== SNAPSMACK EOF =====

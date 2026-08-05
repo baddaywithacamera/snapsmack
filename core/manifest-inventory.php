@@ -961,7 +961,12 @@ return [
         ],
         'smack-alfred-nav' => [
             'label'        => 'Alfred skin mobile navigation toggle',
-            'path'         => 'skins/alfred/assets/js/alfred-nav.js',
+            'path'         => 'assets/js/ss-engine-alfred-nav.js',
+            'has_settings' => false,
+        ],
+        'smack-glide' => [
+            'label'        => 'GLIDE flowing photo wall (data-glide-wall / -row)',
+            'path'         => 'assets/js/ss-engine-glide.js',
             'has_settings' => false,
         ],
         // General-purpose film engines — live in the CMS library (/assets/js),

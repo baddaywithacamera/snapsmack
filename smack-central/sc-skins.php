@@ -466,6 +466,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
 
                 $meta         = $repo_skins[$slug];
                 $skin_dir     = rtrim($tmp_dir, '/') . '/skins/' . $slug;
+
+                // ── Gallery cleanliness gate (no JS in skins) ─────────────────
+                // Signing proves WHO built a skin; this proves it's CLEAN. A
+                // gallery skin must ship zero executable JavaScript — no bundled
+                // .js, no inline onclick=, no inline <script>, no external script.
+                // All JS lives in the shared, vetted assets/js library. Refuse to
+                // package (and therefore sign + publish) any skin that fails.
+                require_once dirname(__DIR__) . '/tools/skin-scan.php';
+                $scan     = snapsmack_scan_skin($skin_dir);
+                $blockers = array_values(array_filter(
+                    $scan, static fn($f) => $f['severity'] === 'block'));
+                if ($blockers) {
+                    $detail = array_map(static fn($f) =>
+                        $f['type'] . ' @ ' . $f['file']
+                        . ($f['line'] ? ':' . $f['line'] : ''),
+                        array_slice($blockers, 0, 8));
+                    $build_results[] = [
+                        'slug' => $slug, 'ok' => false,
+                        'msg'  => 'BLOCKED — ships JavaScript/nasties ('
+                                . count($blockers) . '): ' . implode('; ', $detail)
+                                . '. Move JS to assets/js and remove inline handlers.',
+                    ];
+                    continue;
+                }
+
                 $version      = $meta['version'];
                 $zip_name     = $slug . '-' . $version . '.zip';
                 $zip_path     = rtrim(RELEASES_DIR, '/') . '/skins/' . $zip_name;
