@@ -303,7 +303,7 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
         <!-- Engagement bar — pinned above footer, IG-style -->
         <div class="he-post-ig-actions">
             <div class="he-post-ig-action-icons">
-                <button class="he-action-btn" aria-label="Comment" onclick="document.querySelector('.he-community-wrap')?.scrollIntoView({behavior:'smooth'})">
+                <button type="button" class="he-action-btn" aria-label="Comment" data-ss-action="scroll-to" data-ss-target=".he-community-wrap">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 </button>
                 <button class="he-action-btn he-action-bookmark" aria-label="Save">

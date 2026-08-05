@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "HEURISTIC",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "author": "Sean McCormick with Claude and OpenAI Codex",
     "support": "sean@baddaywithacamera.ca",
     "description": "A GRAMOFSMACK skin inspired by the logical memory and infomatic displays of serious old science fiction. Photographs remain photographs until HAL requires the screen.",
