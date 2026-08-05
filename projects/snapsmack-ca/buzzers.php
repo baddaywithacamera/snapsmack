@@ -162,6 +162,8 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Aug 5</span><a href="#a038">Gallery Skins &mdash; JavaScript Package Boundary</a></li>
+                <li><span class="idx-date">Aug 4</span><a href="#a037">Smack Up Your Backup Desktop &mdash; Credential Vault &amp; Transport</a></li>
                 <li><span class="idx-date">Aug 4</span><a href="#a036">SmackPress WordPress Migration &mdash; Import Sanitising</a></li>
                 <li><span class="idx-date">Jul 27</span><a href="#a035">IP SMACKER &amp; Login Shield &mdash; Client-Address Spoofing</a></li>
                 <li><span class="idx-date">Jul 24</span><a href="#a034">Skin Manifest RCE &amp; Credentials Export — Closure</a></li>
@@ -198,6 +200,24 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a038">
+                <div class="post-meta"><span class="post-date">August 5, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Gallery Skins &mdash; JavaScript Package Boundary</h2>
+                <p>SnapSmack skins choose the site's look, while reusable browser behaviour belongs to a shared, reviewed engine library. The code followed that design most of the time, but the Gallery packager did not enforce it: several official skin folders still carried their own JavaScript, and a future package could have included a script, an inline event handler, or a remote script reference and still reached the signing step. The files we found were legitimate features, not malicious code. They exposed a missing rule at the publishing boundary.</p>
+                <p>That rule is now absolute: a Gallery skin ships no JavaScript. The official skin-local copies have been removed or moved into SnapSmack's shared engine library, where one repair reaches every skin that uses it. A repository scanner checks for bundled files, inline scripts, event handlers, JavaScript links, remote scripts, and active embedded content. Smack Central runs that same check before it creates, signs, or publishes a package; any blocking finding stops the build. A signature now answers who produced the package, while the clean gate separately proves that the package obeys the no-JavaScript policy.</p>
+                <p>The complete official skin set scans clean, the moved engines are registered in the core inventory, and the packager fails closed. No exploitation is known. Closed in 0.7.500D.</p>
+                <a class="report-link" href="secaudits/2026-08-05-038-skin-javascript-package-boundary.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a037">
+                <div class="post-meta"><span class="post-date">August 4, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Smack Up Your Backup Desktop &mdash; Credential Vault &amp; Transport</h2>
+                <p>Smack Up Your Backup is the desktop app that copies your whole site &mdash; images, database, everything &mdash; down to your own machine and off to cloud storage. To do that job it has to hold real keys: your FTP password, your site admin password, scoped API keys, and your Google Drive and Box tokens. This audit looked at how it kept them, and how it talked to your server.</p>
+                <p>The finding that mattered: those keys were sitting on disk with no real protection &mdash; plain text or trivially-reversible base64. Anyone who got hold of the backup folder (a lost laptop, a synced Dropbox, a shared PC) had working credentials to your site and your cloud backups. It now keeps every secret in a passphrase-locked vault (scrypt key derivation with Fernet encryption); lock it and the secrets are gone from memory, and switching it on leaves no plaintext copy behind. If the vault is locked or a write fails, it stops rather than quietly falling back to the old plaintext &mdash; it fails closed. Two smaller items closed alongside: the restore path can no longer be tricked by a doctored backup manifest into writing outside its target folder, and SFTP now remembers your server's identity on the first connection and warns you if it ever changes, which catches a machine-in-the-middle without needing anything from your host.</p>
+                <p>One thing was left as-is on purpose: for plain FTPS, certificate checking stays off by default, because the budget shared hosts most photographers use ship broken or self-signed certificates and turning it on would simply break everyone's backups. That tradeoff is documented in the report, along with the planned fix &mdash; pinning your host's certificate fingerprint on first use, the same trick now used for SFTP, so you get tamper detection without needing your host to fix their certificate. Closed in SUYB 0.7.19.</p>
+                <a class="report-link" href="secaudits/2026-08-04-037-suyb-desktop-client-credential-and-transport-attack-surface.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a036">
                 <div class="post-meta"><span class="post-date">August 4, 2026</span><span class="post-tag">Closed</span></div>
