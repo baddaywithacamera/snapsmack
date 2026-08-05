@@ -745,7 +745,7 @@ body.is-photo-page:has(.scroll-solo-stage) #page-wrapper {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 40px;
+    gap: 20px;
     margin: 0 auto;
     padding: 0;
     font-size: var(--scroll-bottomnav-size, .75rem);
@@ -759,9 +759,6 @@ body.is-photo-page:has(.scroll-solo-stage) #page-wrapper {
     align-items: center;
     gap: 40px;
     margin: 0;
-}
-.scroll-infobox .nav-links > .sep {
-    display: none;
 }
 .scroll-infobox .nav-links a {
     text-decoration: none;
