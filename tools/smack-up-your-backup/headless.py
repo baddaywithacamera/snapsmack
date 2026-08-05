@@ -26,6 +26,7 @@ from datetime import datetime
 
 import config as cfg_module
 import profile_manager
+import secret_vault
 from backup_engine import BackupEngine
 
 
@@ -75,6 +76,27 @@ def run_backup_all(silent: bool = True) -> int:
 
     cfg = cfg_module.load()
     global_cloud = _global_cloud_from_cfg(cfg)
+
+    try:
+        if profile_manager.recover_pending_migration():
+            log.info("Recovered an interrupted credential-vault migration.")
+    except Exception as exc:
+        log.info("Credential migration recovery failed; refusing backup: %s", exc)
+        return 1
+
+    # Credential encryption (SECAUDIT 037): an unattended run has no human to type
+    # the passphrase, so unlock from this machine's keychain. If that isn't
+    # available, refuse rather than run with blank credentials.
+    if secret_vault.is_enabled() and not secret_vault.is_unlocked():
+        if secret_vault.unlock_with_machine_key():
+            log.info("Credential vault unlocked via machine keychain.")
+        else:
+            log.info(
+                "Credential encryption is ON but no machine key is available on "
+                "this computer. Unattended backup cannot read credentials. Open "
+                "SUYB once and enable 'unattended backups on this machine' (stores "
+                "a machine key), or disable encryption. Skipping this run.")
+            return 1
 
     names = profile_manager.list_profiles()
     if not names:

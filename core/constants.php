@@ -68,8 +68,8 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.499');
-define('SNAPSMACK_VERSION_SHORT', '0.7.499');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.500');
+define('SNAPSMACK_VERSION_SHORT', '0.7.500');
 define('SNAPSMACK_VERSION_CODENAME', '<codename TBD — Sean>');
 
 // --- THUMBNAIL DIMENSIONS (single source of truth) ---

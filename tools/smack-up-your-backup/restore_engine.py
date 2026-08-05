@@ -19,9 +19,13 @@ import ftp_client as ftp_module
 import transport
 import file_matcher
 import manifest_reader
+from path_safety import is_safe_relative
 
 ProgressCallback = Callable[[str, str, float], None]
 # (stage, message, pct_overall)
+
+
+_is_safe_rel_path = is_safe_relative
 
 
 class RestoreEngine:
@@ -149,8 +153,16 @@ class RestoreEngine:
             return self._fail(f"FTP connection failed: {e}", result)
 
         # ── Pre-create directory tree ────────────────────────────────
+        # Drop any manifest directory that would escape remote_dir (Finding C).
+        safe_dirs = [d for d in manifest.directory_structure if _is_safe_rel_path(d)]
+        rejected_dirs = len(manifest.directory_structure) - len(safe_dirs)
+        if rejected_dirs:
+            self._log(
+                f"WARNING: {rejected_dirs} manifest directory path(s) rejected as "
+                f"unsafe (traversal/absolute) and skipped."
+            )
         self._progress("dirs", "Creating directory tree on server…", 0.33)
-        ftp.ensure_directory_tree(manifest.directory_structure)
+        ftp.ensure_directory_tree(safe_dirs)
 
         # ── Build remote index ───────────────────────────────────────
         self._progress("index", "Building remote file index…", 0.36)
@@ -170,6 +182,17 @@ class RestoreEngine:
 
             pct = 0.38 + 0.55 * (done / max(total, 1))
             match = matches.get(key)
+
+            # Refuse to upload to a target that escapes remote_dir (Finding C).
+            if not _is_safe_rel_path(record.restores_to):
+                result["failed"] += 1
+                result["failed_files"].append(record.restores_to)
+                result["errors"].append(
+                    f"Unsafe restore target rejected: {record.restores_to}"
+                )
+                self._log(f"✗ Unsafe restore target rejected: {record.restores_to}")
+                done += 1
+                continue
 
             if not match or match.strategy == "unmatched":
                 result["failed"] += 1
@@ -229,6 +252,8 @@ class RestoreEngine:
             match = matches.get(key)
             if not match or match.strategy == "unmatched":
                 continue
+            if not _is_safe_rel_path(record.restores_to):
+                continue  # already rejected during upload (Finding C)
             # Check remote size matches manifest expected size
             remote_size = ftp.get_remote_size(record.restores_to)
             if remote_size is not None and remote_size != record.size:

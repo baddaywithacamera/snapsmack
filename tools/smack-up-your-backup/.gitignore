@@ -7,3 +7,9 @@ __pycache__/
 *_token.json
 *_readonly_token.json
 *_box_token.json
+
+# SFTP host-key pins (SECAUDIT 037) — runtime state, per-machine.
+suyb_known_hosts
+
+# Credential vault metadata (SECAUDIT 037) — per-install, never commit.
+vault.meta

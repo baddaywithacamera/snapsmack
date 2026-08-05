@@ -12,6 +12,16 @@
 
 ## Unreleased
 
+## 0.7.500 "<codename TBD — Sean>" — 2026-08-05
+
+- **Smack Up Your Backup 0.7.19 security closure.** The portable desktop client
+  now protects profiles, cloud tokens, and cloud-sync credentials with a
+  passphrase-derived vault; performs crash-recoverable whole-store migrations;
+  refuses plaintext downgrade paths; pins SFTP hosts; and contains untrusted
+  backup/restore manifest paths in both directions. A persistent 13-case
+  adversarial regression suite covers lifecycle rollback, token/key migration,
+  local traversal, and fail-closed transport/credential behavior.
+
 ## 0.7.499 "<codename TBD — Sean>" — 2026-08-04
 
 - **SCROLL's solo navigation has all five separators again.** The skin was

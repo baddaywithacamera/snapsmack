@@ -19,6 +19,80 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.19 — 2026-08-04
+
+### Security (SECAUDIT 037, Finding A — credential encryption at rest)
+
+Closes the headline finding from 0.7.18's audit: saved credentials are no longer
+merely base64-obfuscated. A new **credential vault** encrypts the FTP password,
+admin password, scoped API key, and Google Drive / Box OAuth refresh tokens with
+a key derived from a passphrase (scrypt) and sealed with Fernet (AES-128-CBC +
+HMAC-SHA256). The passphrase is never stored, so a lost or synced thumb drive no
+longer yields working credentials.
+
+- **New module `secret_vault.py`** — enable / unlock / change-passphrase / disable,
+  plus transparent seal/unseal of secrets. Fully covered by roundtrip,
+  wrong-passphrase, tamper-detection, re-key, and fail-closed tests.
+- **Whole-store migration is transactional.** Profiles, Google upload/read-only
+  tokens, Box tokens, and cloud-sync Backblaze keys move together through a
+  durable rollback journal. Interrupted enable/re-key/disable operations recover
+  before normal startup; a locked vault can never downgrade a write to plaintext.
+- **Portable by design is preserved.** No machine-bound keychain is required for
+  normal (interactive) use — you enter the passphrase when SUYB starts. The vault
+  metadata (`vault.meta`) rides next to the app; the key never touches the drive.
+- **Unattended (scheduled) backups.** A headless run has nobody to type the
+  passphrase, so — only if you opt in — the master key is cached in *this
+  machine's* OS keychain (via `keyring`), off the portable drive. Scheduled runs
+  unlock from there. With no keychain backend, scheduled backups are cleanly
+  skipped with a clear log message rather than running without credentials.
+- **UI.** Settings → **Credential Encryption**: Enable / Change passphrase /
+  Disable, and an "allow unattended backups on this computer" toggle. SUYB prompts
+  for the passphrase at startup when the vault is on. Enabling the daily schedule
+  while encryption is on offers to store the machine key.
+- **Backward compatible.** Existing profiles (base64 passwords, plaintext API key)
+  load unchanged; enabling encryption re-seals every profile, disabling restores
+  the legacy encoding. Token caches written before enabling stay readable and are
+  re-sealed on next refresh/auth. Forgetting the passphrase is unrecoverable by
+  design (delete `vault.meta` and re-enter credentials).
+- Adds `cryptography` and `keyring` to requirements and to the PyInstaller spec
+  (with keyring backends named explicitly for the frozen build).
+
+## 0.7.18 — 2026-08-04
+
+### Security (SECAUDIT 037 — desktop client hardening, clean-as-we-go)
+
+First security audit of the SUYB **desktop client's** local attack surface (the
+server-side export endpoint was covered separately by SECAUDIT 034). Three
+findings; the no-regression tightenings below were applied in this build. Full
+report: `secaudits/2026-08-04-037-suyb-desktop-client-credential-and-transport-attack-surface.md`.
+
+- **Finding C — restore path traversal (CLOSED).** The restore pipeline now
+  validates every manifest `restores_to` and `directory_structure` entry before
+  use and refuses absolute paths, drive-letter paths, NUL bytes, and any `..`
+  traversal segment. A recovery kit from an untrusted source can no longer direct
+  uploads outside the profile's remote directory. Rejected entries are surfaced in
+  the restore log. (`restore_engine.py`)
+- **Reverse traversal closed too.** Server-supplied backup inventory paths are
+  resolved beneath the local staging directory and rejected if absolute,
+  drive/UNC-prefixed, or traversing, preventing local overwrite by a compromised
+  backup source. (`backup_engine.py`, `path_safety.py`)
+- **Finding B — SFTP host-key pinning (HARDENED).** SFTP previously accepted any
+  host key on every connection (weaker than trust-on-first-use, because the key
+  was never persisted or compared). It now pins the server's key to a portable
+  `suyb_known_hosts` file on first connect and rejects a **changed** key on later
+  connections — genuine TOFU. The first honest connection is unaffected. Delete
+  `suyb_known_hosts` to re-pin after a legitimate server key rotation.
+  (`sftp_client.py`) The FTPS "trust invalid certificate" default is unchanged
+  pending a product decision (it exists for mismatched shared-hosting certs).
+- **Finding A — credential-at-rest honesty + permissions (HARDENED, not closed).**
+  Profile and OAuth/Box token files are now tightened to owner-only where the OS
+  supports it (no-op on FAT/Windows). The storage is documented honestly: the
+  `_enc` fields are base64 **obfuscation, not encryption**, and the SUYB folder is
+  secret-equivalent to the credentials in it. Real at-rest protection
+  (passphrase-derived encryption that preserves portability) is recommended as a
+  separate, owner-approved build rather than faked here with an app-baked key.
+  (`profile_manager.py`, `cloud_client.py`)
+
 ## 0.7.17 — 2026-07-22
 
 ### Added

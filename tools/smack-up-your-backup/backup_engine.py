@@ -41,6 +41,12 @@ import checkpoint as checkpoint_module
 import ftp_client as ftp_module
 import transport
 import manifest_reader
+from path_safety import contained_local_path
+
+
+def _safe_local_download_path(root: str, relative: str) -> str:
+    """Resolve a server-supplied manifest path strictly below the staging root."""
+    return contained_local_path(root, relative)
 
 # Progress callback: (stage, message, pct_overall)
 ProgressCallback = Callable[[str, str, float], None]
@@ -730,7 +736,15 @@ class BackupEngine:
                 self._progress("stage3", f"Skip (unchanged): {record.restores_to}", pct)
                 continue
 
-            local_path = os.path.join(local_media_dir, record.restores_to.replace("/", os.sep))
+            try:
+                local_path = _safe_local_download_path(local_media_dir, record.restores_to)
+            except ValueError as exc:
+                result["files_failed"] += 1
+                result["errors"].append(str(exc))
+                self._log(f"✗ Unsafe download target rejected: {record.restores_to}")
+                cp.record(key, failed=True)
+                done += 1
+                continue
             self._progress("stage3", f"Downloading: {record.restores_to}", pct)
 
             ok, dl_err = ftp.download_file(
@@ -827,7 +841,10 @@ class BackupEngine:
         now_iso = datetime.now(timezone.utc).isoformat()
 
         for key, record in media_files.items():
-            local_path = os.path.join(local_media_dir, record.restores_to.replace("/", os.sep))
+            try:
+                local_path = _safe_local_download_path(local_media_dir, record.restores_to)
+            except ValueError:
+                continue
             if os.path.exists(local_path):
                 new_state_files[key] = {
                     "size":      record.size,
