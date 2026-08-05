@@ -12,6 +12,13 @@
 
 ## Unreleased
 
+## 0.7.499 "<codename TBD — Sean>" — 2026-08-04
+
+- **SCROLL's solo navigation has all five separators again.** The skin was
+  hiding the two core-provided pipes between its PREV/FIRST, INFO/COMMENTS, and
+  LAST/NEXT groups. Those group separators are visible again and centred in the
+  existing spacing. SCROLL advances to **0.1.45**.
+
 ## 0.7.498 "<codename TBD — Sean>" — 2026-08-04
 
 - **SCROLL's FILTER funnel now opens its popup on every SCROLL page.** The
