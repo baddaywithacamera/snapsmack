@@ -30,6 +30,62 @@ ProgressCallback = Callable[[int, int], None]   # (bytes_done, bytes_total)
 CHUNK_SIZE = 5 * 1024 * 1024   # 5 MB
 
 
+def _restrict_perms(path: str) -> None:
+    """Best-effort tighten a secret file to owner-only (SECAUDIT 037, Finding A).
+
+    OAuth/Box token caches hold long-lived refresh tokens. On POSIX this makes
+    them 0600 so a shared-machine user cannot read them; on Windows and on FAT
+    thumb drives chmod is a no-op, which is fine — this is defence-in-depth, not
+    the primary protection. The SUYB folder itself remains secret-equivalent."""
+    try:
+        os.chmod(path, 0o600)
+    except Exception:
+        pass
+
+
+def _seal_token_text(text: str) -> str:
+    """Wrap OAuth/Box token JSON for at-rest storage — sealed when the vault is
+    active (SECAUDIT 037), otherwise returned verbatim (legacy plaintext JSON)."""
+    import secret_vault
+    if secret_vault.is_enabled():
+        if not secret_vault.is_unlocked():
+            raise RuntimeError("Credential vault is locked; refusing plaintext token write.")
+        return json.dumps({"suyb_sealed": secret_vault.encrypt(text)})
+    return text
+
+
+def _write_token(path: str, text: str) -> None:
+    """Write a token cache, sealing it when the vault is active, then tighten perms."""
+    sealed = _seal_token_text(text)
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        f.write(sealed)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+    _restrict_perms(path)
+
+
+def _read_token_dict(path: str) -> dict:
+    """Read a token cache as a dict, transparently unsealing a vault-sealed file.
+    Returns {} if the file is missing/unreadable, or sealed while the vault is
+    locked (callers treat {} as 'not authenticated' and prompt for re-auth)."""
+    try:
+        with open(path) as f:
+            data = json.loads(f.read())
+    except Exception:
+        return {}
+    if isinstance(data, dict) and "suyb_sealed" in data:
+        try:
+            import secret_vault
+            if not secret_vault.is_unlocked():
+                return {}
+            return json.loads(secret_vault.decrypt(data["suyb_sealed"]))
+        except Exception:
+            return {}
+    return data if isinstance(data, dict) else {}
+
+
 # ---------------------------------------------------------------------------
 # Google Drive — OAuth (InstalledAppFlow)
 # ---------------------------------------------------------------------------
@@ -62,7 +118,14 @@ def _get_drive_service(credentials_file: str, readonly: bool = False):
     creds = None
 
     if os.path.exists(token_file):
-        creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+        _info = _read_token_dict(token_file)
+        if not _info:
+            raise RuntimeError(
+                f"Token at {token_file} could not be read.\n"
+                f"If credential encryption is on, unlock SUYB first; otherwise "
+                f"click 'Authenticate with Google' in the Edit dialog, then Save."
+            )
+        creds = Credentials.from_authorized_user_info(_info, SCOPES)
     else:
         raise RuntimeError(
             f"No token file found at: {token_file}\n"
@@ -82,8 +145,7 @@ def _get_drive_service(credentials_file: str, readonly: bool = False):
         else:
             flow = InstalledAppFlow.from_client_secrets_file(credentials_file, SCOPES)
             creds = flow.run_local_server(port=0)
-        with open(token_file, "w") as f:
-            f.write(creds.to_json())
+        _write_token(token_file, creds.to_json())
 
     return build("drive", "v3", credentials=creds)
 
@@ -133,14 +195,16 @@ def get_oauth_token_status(credentials_file: str, readonly: bool = False) -> str
     try:
         from google.oauth2.credentials import Credentials
         from google.auth.transport.requests import Request
-        creds = Credentials.from_authorized_user_file(token_file, scopes)
+        _info = _read_token_dict(token_file)
+        if not _info:
+            return "Not authenticated — click Authenticate"
+        creds = Credentials.from_authorized_user_info(_info, scopes)
         if creds.valid:
             return "✓ Authenticated"
         if creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
-                with open(token_file, "w") as f:
-                    f.write(creds.to_json())
+                _write_token(token_file, creds.to_json())
                 return "✓ Token refreshed"
             except Exception as e:
                 return f"Token expired — re-authenticate ({e})"
@@ -169,8 +233,7 @@ def authenticate_oauth(credentials_file: str, readonly: bool = False) -> tuple:
             token_file = credentials_file.replace(".json", "_token.json")
         flow = InstalledAppFlow.from_client_secrets_file(credentials_file, SCOPES)
         creds = flow.run_local_server(port=0)
-        with open(token_file, "w") as f:
-            f.write(creds.to_json())
+        _write_token(token_file, creds.to_json())
         return True, "✓ Authenticated successfully. Token saved."
     except Exception as e:
         return False, f"Authentication failed: {e}"
@@ -427,8 +490,9 @@ def get_box_token_status(credentials_file: str) -> str:
         import requests
         with open(credentials_file) as f:
             creds = json.load(f)
-        with open(token_file) as f:
-            tok = json.load(f)
+        tok = _read_token_dict(token_file)
+        if not tok:
+            return "Not authenticated — click Authenticate"
         # Try a lightweight API call to validate the token
         resp = requests.get(
             "https://api.box.com/2.0/users/me",
@@ -461,8 +525,7 @@ def _box_refresh_token(credentials_file: str, tok: dict) -> tuple:
         }, timeout=15)
         resp.raise_for_status()
         new_tok = resp.json()
-        with open(_box_token_file(credentials_file), "w") as f:
-            json.dump(new_tok, f)
+        _write_token(_box_token_file(credentials_file), json.dumps(new_tok))
         return True, "✓ Token refreshed"
     except Exception as e:
         return False, str(e)
@@ -546,8 +609,7 @@ def authenticate_box(credentials_file: str) -> tuple:
         }, timeout=15)
         resp.raise_for_status()
         tok = resp.json()
-        with open(_box_token_file(credentials_file), "w") as f:
-            json.dump(tok, f)
+        _write_token(_box_token_file(credentials_file), json.dumps(tok))
         return True, "✓ Authenticated with Box."
     except Exception as e:
         return False, f"Authentication failed: {e}"
@@ -568,8 +630,12 @@ class BoxClient:
             raise RuntimeError(
                 "Box not authenticated. Click 'Authenticate with Box' first."
             )
-        with open(token_file) as f:
-            tok = json.load(f)
+        tok = _read_token_dict(token_file)
+        if not tok:
+            raise RuntimeError(
+                "Box token could not be read. If credential encryption is on, "
+                "unlock SUYB first; otherwise re-authenticate with Box."
+            )
         # Proactively refresh if we can (access tokens last 1 hour)
         try:
             import requests as _req
@@ -579,8 +645,7 @@ class BoxClient:
             if r.status_code == 401:
                 ok, _ = _box_refresh_token(self.credentials_file, tok)
                 if ok:
-                    with open(token_file) as f:
-                        tok = json.load(f)
+                    tok = _read_token_dict(token_file)
         except Exception:
             pass
         return {"Authorization": f"Bearer {tok['access_token']}"}

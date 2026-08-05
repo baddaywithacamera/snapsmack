@@ -94,6 +94,7 @@ tools/*/profiles/
 tools/*/build/
 tools/*/dist/
 tools/*/*.spec
+!tools/smack-up-your-backup/smackupyourbackup.spec
 tools/oh-snap/src-tauri/target/
 tools/oh-snap/node_modules/
 

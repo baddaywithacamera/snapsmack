@@ -15,8 +15,18 @@ during pacing delays.
 import hashlib
 import os
 import stat as _stat
+import sys
 import time
 from typing import Callable, Dict, List, Optional
+
+
+def _default_known_hosts() -> str:
+    """SUYB-managed known_hosts pin file, portable (rides next to the exe)."""
+    if getattr(sys, "frozen", False):
+        base = os.path.dirname(sys.executable)
+    else:
+        base = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, "suyb_known_hosts")
 
 try:
     import paramiko
@@ -97,23 +107,41 @@ class SFTPClient:
                 f"available: {_PARAMIKO_IMPORT_ERROR}"
             )
         client = paramiko.SSHClient()
-        # Load known hosts: explicit file if provided, else the user's default.
-        if self.known_hosts and os.path.exists(self.known_hosts):
-            try:
-                client.load_host_keys(self.known_hosts)
-            except Exception:
+        # Host-key pinning / real trust-on-first-use (SECAUDIT 037, Finding B).
+        # Designate a persistent, SUYB-managed known_hosts as the WRITABLE host-key
+        # store. paramiko's AutoAddPolicy saves to the client's host-keys file when
+        # one is set, so the FIRST connection pins the server's key to disk; every
+        # later connection is then checked against that pin and paramiko rejects a
+        # CHANGED key on its own (BadHostKeyException). This upgrades the old blind
+        # "accept any key, every time" into genuine TOFU without breaking the first
+        # honest connection. Delete suyb_known_hosts to re-pin after a legitimate
+        # server key rotation.
+        managed_kh = self.known_hosts or _default_known_hosts()
+        pin_store_ready = False
+        try:
+            if not os.path.exists(managed_kh):
+                # load_host_keys needs the file to exist to designate it writable.
+                open(managed_kh, "a").close()
+            client.load_host_keys(managed_kh)
+            # Prove the TOFU store is writable before permitting AutoAddPolicy.
+            # Otherwise an unknown key could be accepted but never pinned.
+            with open(managed_kh, "a"):
                 pass
-        else:
+            pin_store_ready = True
+        except Exception:
+            # Read-only medium (e.g. locked thumb drive): fall back to the user's
+            # system known_hosts for read-only verification; no new pin persists.
             try:
                 client.load_system_host_keys()
             except Exception:
                 pass
-        if self.auto_add_host_key:
-            # Trust-on-first-use. Mirrors the FTP client's default of encrypting
-            # without verifying the peer cert. Turn this off (and populate
-            # known_hosts) for strict host-key verification.
+        if self.auto_add_host_key and pin_store_ready:
+            # First-use pin (persisted above). A later mismatched key is rejected
+            # by paramiko before this policy is consulted. Set auto_add_host_key
+            # False for strict mode (reject any host not already pinned).
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         else:
+            # Strict fail-closed fallback when the portable pin cannot persist.
             client.set_missing_host_key_policy(paramiko.RejectPolicy())
 
         connect_kwargs = dict(

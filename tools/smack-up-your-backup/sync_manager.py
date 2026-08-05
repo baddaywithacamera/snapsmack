@@ -17,6 +17,11 @@ import os
 import sys
 from typing import Dict, List, Optional
 
+import secret_vault
+
+_SECRET_FIELDS = ("source_b2_key_id", "source_b2_app_key",
+                  "dest_b2_key_id", "dest_b2_app_key")
+
 
 def _app_dir() -> str:
     # Portable app: sync jobs ride next to the executable, never in %APPDATA%.
@@ -59,20 +64,53 @@ def load_job(name: str) -> Optional[Dict]:
                     with open(candidate) as f:
                         data = json.load(f)
                     if data.get("name") == name:
-                        return data
+                        return _open_secrets(data)
                 except Exception:
                     pass
         return None
     with open(path) as f:
-        return json.load(f)
+        return _open_secrets(json.load(f))
 
 
 def save_job(config: Dict) -> None:
     """Save a sync job config."""
     os.makedirs(SYNC_JOBS_DIR, exist_ok=True)
     path = _job_path(config["name"])
-    with open(path, "w") as f:
-        json.dump(config, f, indent=2)
+    _atomic_write(path, _serialize_job(config))
+
+
+def _open_secrets(data: Dict) -> Dict:
+    data = dict(data)
+    for field in _SECRET_FIELDS:
+        value = data.get(field, "") or ""
+        if secret_vault.is_encrypted(value):
+            if not secret_vault.is_unlocked():
+                raise RuntimeError("Credential vault is locked; cannot load sync job.")
+            data[field] = secret_vault.decrypt(value)
+    return data
+
+
+def _serialize_job(config: Dict) -> bytes:
+    data = dict(config)
+    if secret_vault.is_enabled() and not secret_vault.is_unlocked():
+        raise RuntimeError("Credential vault is locked; refusing plaintext sync-key write.")
+    if secret_vault.is_enabled():
+        for field in _SECRET_FIELDS:
+            data[field] = secret_vault.encrypt(data.get(field, "") or "")
+    return json.dumps(data, indent=2).encode("utf-8")
+
+
+def _atomic_write(path: str, content: bytes) -> None:
+    tmp = path + ".tmp"
+    with open(tmp, "wb") as f:
+        f.write(content)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+    try:
+        os.chmod(path, 0o600)
+    except Exception:
+        pass
 
 
 def delete_job(name: str) -> None:

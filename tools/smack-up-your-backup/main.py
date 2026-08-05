@@ -13,7 +13,7 @@ Same visual family as Smack Your Batch Up.
 
 
 
-BUILD_VERSION = "0.7.17"
+BUILD_VERSION = "0.7.19"
 
 import os
 import queue
@@ -26,6 +26,7 @@ from typing import Optional
 
 import config as cfg_module
 import profile_manager
+import secret_vault
 import sync_manager
 import manifest_reader
 import cloud_manifest as cloud_manifest_module
@@ -2718,6 +2719,16 @@ class SettingsTab(tk.Frame):
                      font=FONT_MONO, width=WS).grid(
                 row=row, column=1, sticky="w", pady=3)
 
+        # ── Credential Encryption card (SECAUDIT 037, Finding A) ────────
+        c = self._card(right)
+        c.pack(fill="x", pady=(0, G))
+        self._heading(c, "Credential Encryption")
+        self._sub(c, "Encrypt saved FTP / admin / API / cloud credentials with a "
+                     "passphrase, so a lost thumb drive can't reveal them.")
+        self._enc_body = tk.Frame(c, bg=BG_MID)
+        self._enc_body.pack(fill="x")
+        self._enc_render()
+
         # ── Global Cloud Config card ────────────────────────────────────
         c = self._card(right)
         c.pack(fill="x", pady=(0, G))
@@ -3192,10 +3203,170 @@ class SettingsTab(tk.Frame):
         cfg.set("app", "startup_enabled", str(enabled).lower())
         cfg_module.save(cfg)
 
+    # ── Credential Encryption (SECAUDIT 037, Finding A) ─────────────────
+    def _enc_render(self):
+        """(Re)draw the encryption card body to match the current vault state."""
+        for w in self._enc_body.winfo_children():
+            w.destroy()
+        body = self._enc_body
+        if not secret_vault.crypto_available():
+            tk.Label(body, text="Encryption backend unavailable ('cryptography' "
+                     "not installed).", bg=BG_MID, fg=FG_DIM, font=FONT_BODY,
+                     wraplength=360, justify="left", anchor="w").pack(fill="x", pady=2)
+            return
+        enabled = secret_vault.is_enabled()
+        status = ("ON — credentials are encrypted at rest." if enabled else
+                  "OFF — credentials are stored obfuscated (base64), not encrypted.")
+        tk.Label(body, text=status, bg=BG_MID, fg=(ACCENT if enabled else FG_DIM),
+                 font=FONT_BODY, wraplength=360, justify="left",
+                 anchor="w").pack(fill="x", pady=(2, 8))
+        row = tk.Frame(body, bg=BG_MID); row.pack(fill="x")
+        if not enabled:
+            tk.Button(row, text="Enable encryption…", bg=ACCENT, fg=BG_DEEP,
+                      relief="flat", font=FONT_HEAD,
+                      command=self._on_enc_enable).pack(side="left")
+            return
+        tk.Button(row, text="Change passphrase…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY,
+                  command=self._on_enc_change).pack(side="left", padx=(0, 8))
+        tk.Button(row, text="Disable…", bg=BG_CARD, fg=FG_DIM,
+                  relief="flat", font=FONT_BODY,
+                  command=self._on_enc_disable).pack(side="left")
+        self._enc_mk_var = tk.BooleanVar(value=secret_vault.has_machine_key())
+        mk = tk.Checkbutton(
+            body, variable=self._enc_mk_var,
+            text="Allow unattended (scheduled) backups on this computer",
+            bg=BG_MID, fg=FG_DIM, selectcolor=BG_INPUT, activebackground=BG_MID,
+            activeforeground=FG_MAIN, font=FONT_BODY, anchor="w",
+            command=self._on_enc_toggle_machine_key)
+        mk.pack(fill="x", pady=(10, 0))
+        if not secret_vault.keychain_available():
+            mk.configure(state="disabled")
+            tk.Label(body, text="(No OS keychain on this computer, so scheduled "
+                     "backups can't run while encryption is on.)", bg=BG_MID,
+                     fg=FG_DIM, font=FONT_BODY, wraplength=360, justify="left",
+                     anchor="w").pack(fill="x")
+
+    def _ask_new_passphrase(self, title):
+        pw1 = simpledialog.askstring(title, "Choose a passphrase:", show="*", parent=self)
+        if not pw1:
+            return None
+        pw2 = simpledialog.askstring(title, "Re-enter to confirm:", show="*", parent=self)
+        if pw2 != pw1:
+            messagebox.showerror(title, "Passphrases didn't match.", parent=self)
+            return None
+        return pw1
+
+    def _on_enc_enable(self):
+        pw = self._ask_new_passphrase("Enable encryption")
+        if not pw:
+            return
+        store_mk = False
+        if secret_vault.keychain_available():
+            store_mk = messagebox.askyesno(
+                "Unattended backups?",
+                "Allow scheduled (unattended) backups to run on THIS computer "
+                "while encryption is on?\n\nThis caches a machine key in this "
+                "computer's OS keychain (never on the portable drive). Choose No "
+                "if you only ever back up manually.", parent=self)
+        try:
+            profile_manager.enable_encryption(pw, store_machine_key=store_mk)
+        except Exception as e:
+            messagebox.showerror("Enable encryption", f"Failed: {e}", parent=self)
+            return
+        messagebox.showinfo(
+            "Encryption enabled",
+            "Saved credentials are now encrypted. You'll enter this passphrase "
+            "each time SUYB starts.\n\nThere is NO recovery if you forget it.",
+            parent=self)
+        self._enc_render()
+
+    def _on_enc_change(self):
+        old = simpledialog.askstring("Change passphrase", "Current passphrase:",
+                                     show="*", parent=self)
+        if not old:
+            return
+        new = self._ask_new_passphrase("Change passphrase")
+        if not new:
+            return
+        try:
+            ok = profile_manager.change_encryption_passphrase(old, new)
+        except Exception as e:
+            messagebox.showerror("Change passphrase", f"Failed: {e}", parent=self)
+            return
+        if not ok:
+            messagebox.showerror("Change passphrase",
+                                 "Current passphrase was wrong.", parent=self)
+            return
+        messagebox.showinfo("Passphrase changed", "Your passphrase has been updated.",
+                            parent=self)
+        self._enc_render()
+
+    def _on_enc_disable(self):
+        if not messagebox.askyesno(
+                "Disable encryption",
+                "Turn OFF credential encryption? Saved credentials will return to "
+                "base64 obfuscation (not encrypted).", parent=self):
+            return
+        if not secret_vault.is_unlocked():
+            pw = simpledialog.askstring("Disable encryption", "Passphrase:",
+                                        show="*", parent=self)
+            if not pw or not secret_vault.unlock(pw):
+                messagebox.showerror("Disable encryption", "Wrong passphrase.",
+                                     parent=self)
+                return
+        try:
+            profile_manager.disable_encryption()
+        except Exception as e:
+            messagebox.showerror("Disable encryption", f"Failed: {e}", parent=self)
+            return
+        messagebox.showinfo("Encryption disabled", "Credential encryption is now off.",
+                            parent=self)
+        self._enc_render()
+
+    def _on_enc_toggle_machine_key(self):
+        if self._enc_mk_var.get():
+            if secret_vault.store_machine_key_now():
+                messagebox.showinfo("Unattended backups",
+                    "Scheduled backups can now run on this computer.", parent=self)
+            else:
+                self._enc_mk_var.set(False)
+                messagebox.showerror("Unattended backups",
+                    "Couldn't store the machine key (no OS keychain?).", parent=self)
+        else:
+            secret_vault.clear_machine_key()
+            messagebox.showinfo("Unattended backups",
+                "Scheduled backups on this computer are now disabled while "
+                "encryption is on.", parent=self)
+
     def _on_global_schedule_toggle(self) -> None:
         """One switch → an OS-level daily 'back up all blogs' task (headless)."""
         import os_schedule
         enabled  = self._global_sched_var.get()
+        # Encryption guard (SECAUDIT 037): a headless scheduled run needs a machine
+        # key to decrypt credentials, so warn before creating a schedule that can't run.
+        if enabled and secret_vault.is_enabled() and not secret_vault.has_machine_key():
+            if secret_vault.keychain_available() and secret_vault.is_unlocked():
+                if messagebox.askyesno(
+                        "Encryption is on",
+                        "Credential encryption is on. Scheduled backups run while "
+                        "you're away, so they need a machine key on this computer to "
+                        "decrypt credentials.\n\nStore a machine key now so scheduled "
+                        "backups can run?", parent=self):
+                    secret_vault.store_machine_key_now()
+                    self._enc_render()
+                else:
+                    messagebox.showinfo(
+                        "Encryption is on",
+                        "The schedule will be created, but scheduled runs will skip "
+                        "until you store a machine key (Settings → Credential "
+                        "Encryption).", parent=self)
+            else:
+                messagebox.showwarning(
+                    "Encryption is on",
+                    "Credential encryption is on and this computer has no OS keychain, "
+                    "so scheduled backups can't decrypt credentials and will skip. "
+                    "Back up manually, or disable encryption.", parent=self)
         time_str = (self._global_sched_time_var.get() or "02:00").strip()
         ok, msg = os_schedule.set_global_schedule(enabled, time_str)
         self._global_sched_status.set(("✓ " if ok else "✗ ") + msg)
@@ -3769,6 +3940,19 @@ Local working folder — where SUYB stages files during a backup. For cloud back
 Automatic Backup Schedule — per-profile. Set frequency (daily or weekly), the day (for weekly), and the time in 24-hour format. Enable the checkbox and save the profile.
 
 Automatic Backups (global) — enable the system tray so closing minimizes SUYB instead of quitting, and optionally launch SUYB at Windows startup so scheduled backups run without manual intervention.
+"""),
+    ("Credential encryption", """
+By default SUYB stores saved passwords obfuscated (base64), which is NOT encryption — anyone who can read the SUYB folder (a lost thumb drive, a synced copy, a shared PC) can recover them. Turn on Credential Encryption in Settings to fix that.
+
+Enable — Settings → Credential Encryption → Enable encryption. Choose a passphrase (entered twice). SUYB encrypts your FTP password, admin password, API key, and cloud tokens with a key derived from that passphrase. The passphrase is never stored.
+
+Unlocking — once encryption is on, SUYB asks for the passphrase each time it starts. There is NO recovery if you forget it: your only option is to delete "vault.meta" next to the app and re-enter your credentials from scratch.
+
+Scheduled (unattended) backups — a scheduled run has nobody to type the passphrase. If you want scheduled backups while encryption is on, tick "Allow unattended (scheduled) backups on this computer". That caches the key in THIS computer's OS keychain (never on the portable drive), so a stolen drive still can't decrypt. On a machine with no keychain, scheduled backups are skipped while encryption is on.
+
+Change passphrase / Disable — both are in the same panel. Disabling returns credentials to the old base64 storage.
+
+Portability note — the encrypted vault still rides on your thumb drive and works on any machine; only the optional unattended-backup key is machine-bound.
 """),
     ("Cloud setup", """
 SUYB supports Google Drive.
@@ -5265,6 +5449,25 @@ class App(tk.Tk):
         self.configure(bg=BG_DEEP)
         self.minsize(940, 720)
 
+        # A killed re-key/enable/disable operation must be rolled back before
+        # vault metadata, profiles, or OAuth caches are interpreted.
+        try:
+            profile_manager.recover_pending_migration()
+        except Exception as exc:
+            messagebox.showerror(
+                "Credential migration recovery failed",
+                "SUYB found an unfinished credential migration and could not "
+                f"restore it safely. No profiles were loaded.\n\n{exc}", parent=self)
+            self.destroy()
+            raise SystemExit(1)
+
+        # Credential vault gate (SECAUDIT 037): if encryption is on, unlock BEFORE
+        # any profile or token is read. Cancelling exits — a locked vault yields
+        # blank credentials, so there is nothing useful to show unlocked-out.
+        if not self._gate_encryption_unlock():
+            self.destroy()
+            raise SystemExit(0)
+
         self._cfg      = cfg_module.load()
         self._profiles = profile_manager.list_profiles()
         self._current_profile: Optional[dict] = None
@@ -5297,6 +5500,39 @@ class App(tk.Tk):
         # Start tray icon if enabled
         if self._cfg.getboolean("app", "tray_enabled", fallback=False):
             self.after(500, self._start_tray)
+
+    def _gate_encryption_unlock(self) -> bool:
+        """Modal unlock at startup when the credential vault is enabled.
+        Returns True once unlocked (or if encryption is off), False to exit."""
+        if not secret_vault.is_enabled():
+            return True
+        if not secret_vault.crypto_available():
+            messagebox.showerror(
+                "Encryption backend missing",
+                "This install has an encrypted credential vault, but the "
+                "'cryptography' package isn't available, so credentials can't be "
+                "decrypted. Reinstall SUYB with its dependencies.", parent=self)
+            return False
+        while True:
+            pw = simpledialog.askstring(
+                "Unlock SUYB",
+                "Credential encryption is on.\nEnter your passphrase to unlock:",
+                show="*", parent=self)
+            if pw is None:   # Cancel
+                if messagebox.askyesno(
+                    "Exit SUYB?",
+                    "Without the passphrase SUYB can't read your saved "
+                    "credentials.\n\nExit now?", parent=self):
+                    return False
+                continue
+            if secret_vault.unlock(pw):
+                return True
+            messagebox.showerror(
+                "Wrong passphrase",
+                "That passphrase didn't match. Try again, or Cancel to exit.\n\n"
+                "Forgot it? Encrypted secrets cannot be recovered without the "
+                "passphrase — you'd need to delete 'vault.meta' next to the app "
+                "and re-enter your credentials.", parent=self)
 
     def current_profile(self) -> Optional[dict]:
         return self._current_profile
