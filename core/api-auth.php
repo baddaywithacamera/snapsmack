@@ -44,12 +44,40 @@ if (!function_exists('snap_api_enforce_mode')) {
         } catch (PDOException $e) {
             $mode = 'photoblog';
         }
-        if (!in_array($mode, $allowed, true)) {
-            http_response_code(409);
-            header('Content-Type: application/json');
-            echo json_encode(['error' => "This tool works only on " . implode('/', $allowed) . " sites; this site is in '{$mode}' mode."]);
-            exit;
+        if (in_array($mode, $allowed, true)) return;   // already the right mode
+
+        // WRONG MODE — but the authenticated tool key already tells us the intent:
+        // a solo (sybu) key means "this is a photoblog," a gram key means "carousel,"
+        // etc. So instead of refusing the post and making the owner go hunt for a
+        // setting, FLIP the site to the mode the key needs and carry on. The KEY
+        // decides the MODE. Only auto-flips when the endpoint names exactly one
+        // target mode (unambiguous); every flip is logged.
+        if (count($allowed) === 1) {
+            try {
+                $pdo->prepare(
+                    "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('site_mode', ?)
+                     ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+                )->execute([$allowed[0]]);
+                error_log("SNAP_API: site_mode auto-flipped '{$mode}' -> '{$allowed[0]}' to match the authenticated tool key.");
+                $GLOBALS['SNAP_API_MODE_FLIPPED'] = ['from' => $mode, 'to' => $allowed[0]];
+                return;   // proceed — the site is now in the correct mode for this key
+            } catch (PDOException $e) {
+                // fall through to a clear warning if the flip could not be written
+            }
         }
+
+        // Ambiguous target (several allowed) or the flip failed: refuse, but with a
+        // plain-language, actionable warning instead of a bare status code.
+        http_response_code(409);
+        header('Content-Type: application/json');
+        echo json_encode([
+            'error' => "WRONG MODE. This tool posts to " . strtoupper(implode(' / ', $allowed))
+                     . " sites, but this site is set to '" . $mode . "' mode. Switch the site's mode to "
+                     . strtoupper(implode(' or ', $allowed)) . " in Settings, then re-post.",
+            'site_mode'     => $mode,
+            'required_mode' => $allowed,
+        ]);
+        exit;
     }
 }
 
