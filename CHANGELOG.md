@@ -12,6 +12,8 @@
 
 ## Unreleased
 
+## 0.7.498 "<codename TBD — Sean>" — 2026-08-04
+
 - **SCROLL's FILTER funnel now opens its popup on every SCROLL page.** The
   Blogroll/About/static shared header and solo-photo header had stale hard links
   to `archive.php`, unlike the landing's working modal. Both now use one shared
