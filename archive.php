@@ -332,6 +332,21 @@ try {
     $where_clauses = ["i.img_status = 'published'", "i.img_date <= ?"];
     $params = [$now_local];
 
+    // snap_images.user_id (per-user author attribution) is only guaranteed on
+    // installs that ran the Flickr import or a clean schema sync. Older/legacy
+    // databases lack it, so probe once and degrade the author dimension rather
+    // than 500 the whole archive when the column is absent.
+    $has_img_user_id = false;
+    try {
+        $has_img_user_id = (bool) $pdo->query(
+            "SELECT 1 FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_images'
+               AND COLUMN_NAME = 'user_id' LIMIT 1"
+        )->fetchColumn();
+    } catch (Throwable $e) {
+        $has_img_user_id = false;
+    }
+
     if ($search_query !== '') {
         // Search: match title/description/tags/colour-family + album/category NAME.
         // color_family match enables "blue", "teal" etc. to return images tagged with
@@ -399,7 +414,8 @@ try {
             $params[] = $colid;
         }
         // Author: photos by any of the selected photographers (OR within authors).
-        if ($filter_authors) {
+        // Skip silently if this install's snap_images has no user_id column.
+        if ($filter_authors && $has_img_user_id) {
             $ph = implode(',', array_fill(0, count($filter_authors), '?'));
             $where_clauses[] = "i.user_id IN ($ph)";
             foreach ($filter_authors as $uid) { $params[] = $uid; }
@@ -433,15 +449,21 @@ try {
     $all_collections = $pdo->query("SELECT id, title FROM snap_collections ORDER BY title ASC")->fetchAll();
     // Photographers who actually have published photos. Only surfaced as a filter
     // when the blog genuinely has more than one — a solo blog shows no author group.
-    $all_authors     = $pdo->query("
-        SELECT u.id, u.username
-        FROM snap_users u
-        WHERE EXISTS (
-            SELECT 1 FROM snap_images i2
-            WHERE i2.user_id = u.id AND i2.img_status = 'published'
-        )
-        ORDER BY u.username ASC
-    ")->fetchAll();
+    // Only query per-author grouping when the column exists (see probe above).
+    // Legacy installs without it simply show no author filter — the same result
+    // as a genuine solo blog.
+    $all_authors = [];
+    if ($has_img_user_id) {
+        $all_authors = $pdo->query("
+            SELECT u.id, u.username
+            FROM snap_users u
+            WHERE EXISTS (
+                SELECT 1 FROM snap_images i2
+                WHERE i2.user_id = u.id AND i2.img_status = 'published'
+            )
+            ORDER BY u.username ASC
+        ")->fetchAll();
+    }
 
     // --- ARCHIVE HEADING (core-wide) ---
     // When the archive is showing exactly ONE taxonomy (a single album, category,
