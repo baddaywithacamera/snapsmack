@@ -432,6 +432,11 @@ a { color: inherit; }
     letter-spacing: -.02em;
     text-transform: none;
     text-decoration: none;
+    /* Optical centring for display faces such as Special Elite. Their metric
+       line box is centred correctly, but the visible ink sits high because of
+       a deep mostly-empty descender area. Keep the correction em-relative so
+       it follows the Sticky Bar Name Size control. */
+    transform: translateY(0.14em);
 }
 /* ── Primary nav icons wear the SOCIAL DOCK chip. ───────────────────────────
    The social dock (core/social-dock.php + assets/css/ss-engine-social-dock.css)
@@ -583,12 +588,7 @@ a { color: inherit; }
    solo-specific "Blog Name Font" is set. */
 .scroll-solo-nav .ss-grid-nav-name {
     font-size: var(--scroll-solo-name-size, 1.05rem);
-    /* Optical vertical centering. The metric line box is dead-centre in the header,
-       but faces like Special Elite reserve a deep, mostly-empty descent, so the
-       visible glyphs sit ~0.14em high in the bar. Nudge the ink down to the true
-       centre. em-relative, so it tracks the Blog Name Size control. Measured against
-       the live header (ink centre landed within 0.5px of the bar centre). */
-    transform: translateY(0.14em);
+    /* Optical centring comes from the shared sticky-name rule above. */
 }
 .scroll-solo-nav .ss-grid-nav-actions {
     display: flex;
@@ -804,6 +804,13 @@ body.is-photo-page #footer[style*="display:block"]  ~ #system-footer { display: 
     border-top: 1px solid var(--scroll-page-divider, #999999);
     padding: 40px 0 clamp(32px, 6vw, 90px);
 }
+.scroll-static-inner {
+    width: min(
+        calc(100% - 2 * var(--static-content-gutter, 40px)),
+        var(--scroll-static-width, 920px)
+    );
+    margin-inline: auto;
+}
 /* Blogroll: core CSS also targets .blogroll-canvas and was WINNING (its margin/
    padding overrode ours → divider stuck at the header). Scope to body.is-blogroll
    so SCROLL's rule has the higher specificity and the divider lands at the same
@@ -833,20 +840,17 @@ body.is-blogroll .blogroll-canvas {
    admin control (STATIC & BLOG); display:block so the margins actually apply. */
 .scroll-static-content .post-image {
     display: block;
-    max-width: 100%;
+    width: 100%;
+    max-width: none;
     height: auto;
     margin-block: var(--scroll-hero-pad, 48px);
 }
-/* Static-page body text column. The wall-width top divider line (border-top of
-   .scroll-static-content) and the full-bleed hero stay at 90% (--scroll-canvas-pct)
-   — the "top line" is deliberately left as is. Only the running text is capped to
-   the Static Page Appearance controls (CONTENT WIDTH → --static-content-width,
-   SIDE GUTTERS → --static-content-gutter), left-aligned to the same left edge as
-   the title and hero so nothing above it shifts. Without this the text inherited
-   the full 90% lane and the CONTENT WIDTH slider did nothing. */
+/* Title, hero, and body share .scroll-static-inner, so the SCROLL Text Column
+   Width control resizes the complete page composition. */
 .scroll-static-content .description {
-    max-width: var(--static-content-width, 850px);
-    padding-inline: var(--static-content-gutter, 40px);
+    width: 100%;
+    max-width: none;
+    padding: 0;
     box-sizing: border-box;
 }
 .scroll-solo-stage > #footer {
