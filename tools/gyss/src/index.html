@@ -22,8 +22,9 @@
     <!-- ── Tab Strip ───────────────────────────────────────────────────── -->
     <div id="tab-strip">
         <button class="tab-btn active" data-tab="connect">CONNECT</button>
-        <button class="tab-btn"        data-tab="filter">FILTER</button>
-        <button class="tab-btn"        data-tab="sort">SORT</button>
+        <button class="tab-btn"        data-tab="filter" data-mode="photoblog">FILTER</button>
+        <button class="tab-btn"        data-tab="sort"   data-mode="photoblog">SORT</button>
+        <button class="tab-btn"        data-tab="grid"   data-mode="carousel" hidden>GRID</button>
         <button class="tab-btn"        data-tab="repair">REPAIR</button>
     </div>
 
@@ -168,6 +169,44 @@
                     <div id="edit-panel-actions">
                         <button id="btn-ep-revert" class="btn-secondary btn-sm">REVERT</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GRID (GRAMOFSMACK) ───────────────────────────────────────── -->
+        <div id="tab-grid" class="tab-pane">
+            <div id="grid-topbar">
+                <div id="grid-profile-label" style="color:var(--text-mid)">No grid loaded</div>
+                <div id="grid-count-label"></div>
+                <div class="topbar-actions">
+                    <div id="grid-status" hidden></div>
+                    <span id="grid-combine-bar" hidden>
+                        <label class="form-label" style="margin:0 6px 0 0;">Cover:
+                            <select id="grid-cover-sel" class="form-input" style="width:auto;display:inline-block;padding:2px 6px;"></select>
+                        </label>
+                        <button id="btn-grid-combine" class="btn-primary btn-sm">⧉ MAKE CAROUSEL</button>
+                    </span>
+                    <button id="btn-grid-refresh" class="btn-ghost btn-sm">REFRESH</button>
+                    <button id="btn-grid-push" class="btn-secondary btn-sm" disabled>PUSH ORDER</button>
+                </div>
+            </div>
+
+            <!-- Staleness warning: this grid is a snapshot; the live blog can move under it. -->
+            <div id="grid-stale" class="status-line status-warn" hidden>
+                <span id="grid-stale-msg"></span>
+                <button id="btn-grid-stale-refresh" class="btn-secondary btn-sm">REFRESH NOW</button>
+            </div>
+
+            <div id="grid-hint" class="status-line status-info" style="margin:0 0 8px;">
+                Drag to reorder the feed, then PUSH ORDER. Ctrl/Shift-click to select 2+ published
+                singles, then MAKE CAROUSEL (first selected = cover unless you change it).
+                Trigrams are managed in the web lighttable and aren't shown here.
+                <span id="grid-loaded-age" style="color:var(--text-dim)"></span>
+            </div>
+
+            <div id="grid-grid-wrap">
+                <div id="grid-grid">
+                    <p class="empty-hint" style="padding:20px">Loading the grid…</p>
                 </div>
             </div>
         </div>

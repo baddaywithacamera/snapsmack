@@ -302,6 +302,117 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_trigram') {
     echo json_encode(['ok' => true, 'trigram_id' => $trigram_id]); exit;
 }
 
+// ── AJAX: CREATE CAROUSEL (combine ≥2 selected single posts into one carousel) ──
+// The post-layer sibling of create_trigram. Selection order = carousel order
+// (first ticked = cover by default; the cover chooser can override). It feeds the
+// selected posts' images to the battle-built shared merge sv_convert_to_carousel()
+// (core/smackverse.php) — which writes the snap_post_images pivot (order + is_cover
+// + per-image style), repoints snap_images.post_id, deletes the emptied single
+// posts, and (federation on) retracts the old single Notes + seeds the carousel
+// Note. Then it PINS the new carousel where the earliest selected single sat (D3)
+// instead of letting its fresh created_at float it to the top of the feed.
+if (isset($_POST['action']) && $_POST['action'] === 'create_carousel') {
+    header('Content-Type: application/json');
+    $ids = array_values(array_unique(array_filter(array_map('intval', $_POST['ids'] ?? []))));
+    if (count($ids) < 2) {
+        echo json_encode(['ok' => false, 'err' => 'Select at least two posts to combine into a carousel.']); exit;
+    }
+    $cover_pid = (int)($_POST['cover_post_id'] ?? 0);
+    if (!in_array($cover_pid, $ids, true)) $cover_pid = $ids[0];
+
+    // Load type/trigram/existence for the selected posts.
+    $ph   = implode(',', array_fill(0, count($ids), '?'));
+    $meta = $pdo->prepare("SELECT id, post_type, trigram_id FROM snap_posts WHERE id IN ($ph)");
+    $meta->execute($ids);
+    $rows = $meta->fetchAll(PDO::FETCH_ASSOC);
+    if (count($rows) !== count($ids)) {
+        echo json_encode(['ok' => false, 'err' => 'One or more selected posts no longer exist — reload and try again.']); exit;
+    }
+    // D4 — only ungrouped singles combine. Reject carousels, panoramas, and any
+    // post already locked into a trigram (mirror create_trigram's guard).
+    foreach ($rows as $r) {
+        if (($r['post_type'] ?? 'single') !== 'single' || (int)($r['trigram_id'] ?? 0) > 0) {
+            echo json_encode(['ok' => false, 'err' => 'Only ungrouped single posts can be combined. Deselect any carousel, panorama, or locked-trigram tile.']); exit;
+        }
+    }
+
+    // Map each selected post → its image id(s), in the user's tick order. A single
+    // yields one image. We do NOT filter by status here: if a selected post is a
+    // draft, sv_convert_to_carousel() aborts cleanly ("isn't a published image —
+    // nothing changed") rather than silently dropping it.
+    $img_for_post = [];
+    $imgStmt = $pdo->prepare("SELECT id FROM snap_images WHERE post_id = ? ORDER BY id");
+    foreach ($ids as $pid) {
+        $imgStmt->execute([$pid]);
+        $img_for_post[$pid] = array_map('intval', $imgStmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+    $image_ids = [];
+    foreach ($ids as $pid) foreach ($img_for_post[$pid] as $iid) $image_ids[] = $iid;
+    if (count($image_ids) < 2) {
+        echo json_encode(['ok' => false, 'err' => 'The selected posts have fewer than two images to combine.']); exit;
+    }
+    $cover_id = $img_for_post[$cover_pid][0] ?? $image_ids[0];
+
+    // Earliest feed slot any selected post holds — the carousel pins there (D3).
+    // Compute the insertion index among the posts that will SURVIVE the merge
+    // (everything except the selected sources).
+    $seq_before = array_map('intval', $pdo->query(
+        "SELECT id FROM snap_posts
+          ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
+                   sort_order ASC, id DESC"
+    )->fetchAll(PDO::FETCH_COLUMN));
+    $insert_at = 0;
+    foreach ($seq_before as $sid) {
+        if (in_array($sid, $ids, true)) break;   // reached the earliest source
+        $insert_at++;                             // count surviving posts before it
+    }
+
+    // Shared merge core (federation-aware, transactional).
+    if (!function_exists('sv_convert_to_carousel')) { @require_once __DIR__ . '/core/smackverse.php'; }
+    if (!function_exists('sv_convert_to_carousel')) {
+        echo json_encode(['ok' => false, 'err' => 'Carousel engine unavailable on this install.']); exit;
+    }
+    $sv_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+    $res     = sv_convert_to_carousel($pdo, $sv_settings, $image_ids, $cover_id);
+    $ok      = (bool)($res[0] ?? false);
+    $msg     = (string)($res[1] ?? '');
+    $new_pid = (int)($res[2] ?? 0);
+    if (!$ok) { echo json_encode(['ok' => false, 'err' => $msg ?: 'Combine failed.']); exit; }
+
+    // Fallback for a core build that predates the pid return: the just-created
+    // carousel is the newest carousel row (single-admin tool — no race).
+    if ($new_pid <= 0) {
+        $new_pid = (int)$pdo->query("SELECT id FROM snap_posts WHERE post_type = 'carousel' ORDER BY id DESC LIMIT 1")->fetchColumn();
+    }
+
+    // Pin in place — splice the new carousel into the earliest source's slot and
+    // renumber the whole feed (same ordering the lighttable + public feed use), so
+    // the carousel sits where the singles were instead of jumping to the top.
+    if ($new_pid > 0) {
+        try {
+            $seq_after = array_map('intval', $pdo->query(
+                "SELECT id FROM snap_posts
+                  ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
+                           sort_order ASC, id DESC"
+            )->fetchAll(PDO::FETCH_COLUMN));
+            $seq_after = array_values(array_filter($seq_after, fn($x) => $x !== $new_pid));
+            $insert_at = min($insert_at, count($seq_after));
+            array_splice($seq_after, $insert_at, 0, [$new_pid]);
+
+            $so = $pdo->prepare("UPDATE snap_posts SET sort_order = ? WHERE id = ?");
+            $pdo->beginTransaction();
+            foreach ($seq_after as $pos => $sid) { $so->execute([$pos + 1, $sid]); }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            // Non-fatal: the carousel exists and is valid; it just sits on top
+            // until the next reorder. Don't fail the whole action for a pin miss.
+        }
+    }
+
+    echo json_encode(['ok' => true, 'msg' => $msg, 'post_id' => $new_pid]); exit;
+}
+
 // ── AJAX: TOGGLE 3-ACROSS ENFORCEMENT ──────────────────────────────────────
 if (isset($_POST['action']) && $_POST['action'] === 'set_threeacross') {
     header('Content-Type: application/json');
@@ -353,6 +464,15 @@ $posts = $pdo->query("
         pi.img_bg_color,
         pi.img_shadow,
         (SELECT COUNT(*) FROM snap_post_images spi WHERE spi.post_id = p.id) AS image_count,
+        -- Image id to open in the carousel/single editor (smack-edit.php?id=<image_id>
+        -- routes to smack-edit-carousel.php via the-grid manifest edit_page=carousel).
+        -- Prefer the cover pivot row; fall back to any image linked by post_id so
+        -- singles without a pivot row are still editable. NULL = not editable (e.g.
+        -- a placeholder post with no image).
+        COALESCE(
+            (SELECT spi2.image_id FROM snap_post_images spi2 WHERE spi2.post_id = p.id AND spi2.is_cover = 1 LIMIT 1),
+            (SELECT img2.id       FROM snap_images       img2 WHERE img2.post_id  = p.id ORDER BY img2.id LIMIT 1)
+        ) AS edit_image_id,
         CASE
             WHEN tg.post_id_1 = p.id THEN 1
             WHEN tg.post_id_2 = p.id THEN 2
@@ -403,6 +523,13 @@ include 'core/sidebar.php';
                 </select>
                 <button class="btn btn--sm" id="ltgLockTrigramBtn" onclick="ltgLockTrigram()" title="Lock the 3 selected posts into a trigram, in the order you ticked them">🔒 LOCK TRIGRAM</button>
             </span>
+            <span class="ltg-carousel-make" id="ltgCarouselMake" style="display:none;align-items:center;gap:6px;">
+                <label class="ltg-col-label" title="Which selected photo fronts the carousel (the tile shown in the feed). Defaults to the first you ticked.">
+                    Cover:
+                    <select id="ltgCoverSel" class="btn btn--sm" style="padding:3px 6px;"></select>
+                </label>
+                <button class="btn btn--sm" id="ltgMakeCarouselBtn" onclick="ltgMakeCarousel()" title="Combine the selected posts into ONE carousel, in the order you ticked them. The originals are merged in — this can retract them from followers and re-post as a carousel.">⧉ MAKE CAROUSEL</button>
+            </span>
             <button class="btn btn--sm" id="ltgBulkPublishBtn" style="display:none;" onclick="ltgBulkPublish()">PUBLISH SELECTED</button>
             <?php if (($settings['smackverse_enabled'] ?? '0') === '1'): ?>
                 <?php if (isset($_GET['imprinted'])): ?><span style="color:#4ade80; font-size:.85rem;">&#10003; Imprinted <?php echo (int)$_GET['imprinted']; ?> posts to fediverse order</span><?php endif; ?>
@@ -433,6 +560,11 @@ include 'core/sidebar.php';
         dragging any one tile moves all three together.
         A warning appears if the three tiles fall out of a valid row or column.
         <strong style="color:var(--accent,#c8a96e)">Queued</strong> posts wait for all 3 trigram slots before going live.
+        <br>
+        Tick <strong style="color:var(--text-primary)">2–10 published posts</strong> and hit
+        <strong style="color:var(--text-primary)">⧉ MAKE CAROUSEL</strong> to combine them into one carousel — tick order
+        is the carousel order, and the first tick (or the Cover chooser) sets the cover. Hover any tile and click
+        <strong style="color:var(--text-primary)">✎ EDIT</strong> to reorder, re-cover, or add/remove photos in an existing post.
     </div>
 
     <div class="ltg-grid" id="ltgGrid">
@@ -588,6 +720,14 @@ include 'core/sidebar.php';
                     <?php echo $is_queued ? 'QUEUED' : 'PUBLISH'; ?>
                 </button>
                 <?php endif; ?>
+                <?php // Edit opens the shared carousel/single editor (Phase B, already
+                      // built). Trigram slices are excluded — they have their own
+                      // slice/lock handling and don't edit as post-layer carousels. ?>
+                <?php if ($tg_id === 0 && !empty($post['edit_image_id'])): ?>
+                <a class="ltg-btn-edit"
+                   href="smack-edit.php?id=<?php echo (int)$post['edit_image_id']; ?>"
+                   title="<?php echo $img_count > 1 ? 'Edit this carousel — reorder, change cover, add or remove photos' : 'Edit this post'; ?>">✎ <?php echo $img_count > 1 ? 'EDIT CAROUSEL' : 'EDIT'; ?></a>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -628,7 +768,7 @@ include 'core/sidebar.php';
         ghostClass:      'ltg-tile--ghost',
         chosenClass:     'ltg-tile--chosen',
         dragClass:       'ltg-tile--drag',
-        filter:          '.ltg-select-cb, .ltg-btn-publish',
+        filter:          '.ltg-select-cb, .ltg-btn-publish, .ltg-btn-edit',
         preventOnFilter: false,
 
         onEnd: function (evt) {
@@ -841,7 +981,99 @@ include 'core/sidebar.php';
         // The lock control appears only when exactly 3 posts are selected.
         const lock = document.getElementById('ltgTrigramLock');
         if (lock) lock.style.display = (checked.length === 3) ? 'inline-flex' : 'none';
+
+        // MAKE CAROUSEL appears at 2+ selected (a carousel is 2–10 photos).
+        const make = document.getElementById('ltgCarouselMake');
+        if (make) make.style.display = (checked.length >= 2) ? 'inline-flex' : 'none';
+        renderCoverChooser();
     }
+
+    // Populate the cover <select> from the tick order (first ticked = default
+    // cover). Value = post id; label = the tick position, matching the ★-order
+    // the carousel will be built in.
+    function renderCoverChooser() {
+        const sel = document.getElementById('ltgCoverSel');
+        if (!sel) return;
+        const order = trigramTickOrder.filter(id =>
+            grid.querySelector('.ltg-select-cb[data-post-id="' + id + '"]:checked'));
+        const prev = sel.value;
+        sel.innerHTML = '';
+        order.forEach((id, i) => {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = (i === 0) ? `Photo 1 (first)` : `Photo ${i + 1}`;
+            sel.appendChild(opt);
+        });
+        // Keep the prior choice if it's still selected; else default to first.
+        if (order.includes(prev)) sel.value = prev;
+        else if (order.length)    sel.value = order[0];
+    }
+
+    // Combine the selected posts into one carousel, in tick order, with the
+    // chosen cover. Mirrors ltgLockTrigram: confirm → POST create_carousel →
+    // reload so the singles collapse into the new carousel tile in place.
+    window.ltgMakeCarousel = function () {
+        const checkedBoxes = [...grid.querySelectorAll('.ltg-select-cb:checked')];
+        const checkedIds   = checkedBoxes.map(cb => cb.dataset.postId);
+        if (checkedIds.length < 2) return;
+
+        // Combining merges published singles (the shared engine requires published
+        // images). Catch drafts/queued here with a clear message instead of a
+        // confusing server-side abort.
+        const notPublished = checkedBoxes.filter(cb => {
+            const tile = cb.closest('.ltg-tile');
+            return tile && tile.dataset.status !== 'published';
+        });
+        if (notPublished.length) {
+            alert('Only PUBLISHED posts can be combined into a carousel.\n\n' +
+                  'Publish the selected drafts first, then combine them.');
+            return;
+        }
+
+        // Order = tick order (fallback: reading order for any that slipped in).
+        let ordered = trigramTickOrder.filter(id => checkedIds.includes(id));
+        checkedIds.forEach(id => { if (!ordered.includes(id)) ordered.push(id); });
+
+        const sel      = document.getElementById('ltgCoverSel');
+        const coverPid = sel && sel.value ? sel.value : ordered[0];
+        const coverPos = ordered.indexOf(coverPid) + 1;
+
+        if (!confirm(
+            `Combine ${ordered.length} posts into ONE carousel?\n\n` +
+            `Order = the order you ticked them. Cover = Photo ${coverPos > 0 ? coverPos : 1}.\n\n` +
+            `The original single posts are merged into the carousel and deleted locally. ` +
+            `If federation is on, they're retracted from your followers and the carousel is re-posted. ` +
+            `This cannot be undone.`
+        )) return;
+
+        const btn = document.getElementById('ltgMakeCarouselBtn');
+        btn.disabled = true; btn.textContent = 'Combining…';
+
+        const fd = new FormData();
+        fd.append('action', 'create_carousel');
+        fd.append('cover_post_id', coverPid);
+        ordered.forEach(id => fd.append('ids[]', id));
+
+        fetch('smack-lt-gram.php', {
+            method:  'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body:    fd
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.ok) {
+                alert(d.err || 'Could not create the carousel.');
+                btn.disabled = false; btn.textContent = '⧉ MAKE CAROUSEL';
+                return;
+            }
+            clearPersistedSelection();
+            location.reload();
+        })
+        .catch(() => {
+            alert('Network error while creating the carousel.');
+            btn.disabled = false; btn.textContent = '⧉ MAKE CAROUSEL';
+        });
+    };
 
     window.ltgBulkPublish = function () {
         const checked = [...grid.querySelectorAll('.ltg-select-cb:checked')];
@@ -1201,6 +1433,23 @@ include 'core/sidebar.php';
 }
 .ltg-btn-publish:hover { filter: brightness(1.15); }
 .ltg-btn-publish:disabled { opacity: 0.6; cursor: default; }
+/* Edit link — opens the shared carousel/single editor. Outlined so it reads as
+   secondary to the solid PUBLISH action, and never grabs a drag (Sortable
+   filter excludes it). */
+.ltg-btn-edit {
+    background:  transparent;
+    color:       #fff;
+    border:      1px solid rgba(255,255,255,.65);
+    font-size:   0.65rem;
+    font-weight: 700;
+    padding:     2px 8px;
+    cursor:      pointer;
+    letter-spacing: 0.5px;
+    text-decoration: none;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.ltg-btn-edit:hover { background: rgba(255,255,255,.15); }
 .ltg-select-label {
     display:     flex;
     align-items: center;

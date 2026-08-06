@@ -4393,7 +4393,10 @@ function sv_convert_to_carousel(PDO $pdo, array $settings, array $image_ids, int
     $msg .= sv_enabled($settings)
         ? "Queued Delete of the old singles to $retracted follower-inbox(es) and a Create for the carousel — they roll out on the delivery cron."
         : 'Federation is off, so nothing was sent out.';
-    return [true, $msg];
+    // Third element = the new carousel post id, so callers that need to position
+    // the result (e.g. the lighttable's pin-in-place) don't have to re-query the
+    // freshest carousel. Existing list($ok,$msg)=... callers ignore it safely.
+    return [true, $msg, $new_pid];
 }
 
 /** Total published, federatable content units (standalone images + grouped
