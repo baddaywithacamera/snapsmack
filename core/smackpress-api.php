@@ -43,12 +43,25 @@ function smackpress_auth(PDO $pdo): bool {
         return false;
     }
     $hash = hash('sha256', $m[1]);
-    $stmt = $pdo->prepare("
-        SELECT id FROM snap_ohsnap_keys
-        WHERE key_hash = ? AND is_active = 1 AND key_type = 'smackpress'
-        LIMIT 1
-    ");
-    $stmt->execute([$hash]);
+    // SECAUDIT 039 (sweep): enforce key EXPIRY — this handler checked only
+    // is_active, so a lapsed SmackPress key kept working. Matches the pattern in
+    // core/api-auth.php. NULL expires_at = legacy key. Falls back if absent.
+    try {
+        $stmt = $pdo->prepare("
+            SELECT id FROM snap_ohsnap_keys
+            WHERE key_hash = ? AND is_active = 1 AND key_type = 'smackpress'
+              AND (expires_at IS NULL OR expires_at > NOW())
+            LIMIT 1
+        ");
+        $stmt->execute([$hash]);
+    } catch (Exception $e) {
+        $stmt = $pdo->prepare("
+            SELECT id FROM snap_ohsnap_keys
+            WHERE key_hash = ? AND is_active = 1 AND key_type = 'smackpress'
+            LIMIT 1
+        ");
+        $stmt->execute([$hash]);
+    }
     $row = $stmt->fetch();
     if (!$row) return false;
     $pdo->prepare("UPDATE snap_ohsnap_keys SET last_used_at = NOW() WHERE id = ?")

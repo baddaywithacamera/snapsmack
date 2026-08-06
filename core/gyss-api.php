@@ -98,16 +98,34 @@ if (!$raw_key) {
 }
 
 $key_hash = hash('sha256', $raw_key);
+// SECAUDIT 039: enforce key EXPIRY. smack-api-keys.php stamps every generated key
+// with an expires_at (mandatory <=4-week keys since 0.7.263) and core/api-auth.php
+// rejects past-expiry keys — but this handler only checked is_active, so an
+// "expired" GYSS key kept working indefinitely. Same expiry-aware pattern as
+// api-auth.php: NULL expires_at = legacy key (no expiry), a set past expiry is
+// rejected. Falls back to the old query if the column doesn't exist yet, so a
+// site mid-migration keeps working.
 try {
     $key_stmt = $pdo->prepare("
         SELECT id FROM snap_ohsnap_keys
         WHERE key_hash = ? AND key_type = 'gyss' AND is_active = 1
+          AND (expires_at IS NULL OR expires_at > NOW())
         LIMIT 1
     ");
     $key_stmt->execute([$key_hash]);
     $api_key_row = $key_stmt->fetch(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
-    gy_err('Database error during auth', 503);
+    try {
+        $key_stmt = $pdo->prepare("
+            SELECT id FROM snap_ohsnap_keys
+            WHERE key_hash = ? AND key_type = 'gyss' AND is_active = 1
+            LIMIT 1
+        ");
+        $key_stmt->execute([$key_hash]);
+        $api_key_row = $key_stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e2) {
+        gy_err('Database error during auth', 503);
+    }
 }
 
 if (!$api_key_row) {

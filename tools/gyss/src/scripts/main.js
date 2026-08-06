@@ -115,6 +115,7 @@ function bindConnectTab() {
         const url = document.getElementById('input-site-url').value.trim();
         const key = document.getElementById('input-api-key').value.trim();
         if (!url || !key) { toast('Enter site URL and API key first.', 'error'); return; }
+        if (!confirmInsecureUrl(url)) return;
         const api = new SnapSmackGYSSAPI(url, key);
         setStatus('connect-status', 'Testing...', 'info');
         try {
@@ -130,6 +131,7 @@ function bindConnectTab() {
         const key  = document.getElementById('input-api-key').value.trim();
         const name = document.getElementById('input-profile-name').value.trim() || new URL(url).hostname;
         if (!url || !key) { toast('Enter site URL and API key first.', 'error'); return; }
+        if (!confirmInsecureUrl(url)) return;
         try {
             const path = await saveProfile({ name, site_url: url, api_key: key });
             toast('Profile saved.', 'ok');
@@ -146,7 +148,28 @@ function bindConnectTab() {
     });
 }
 
+// SECAUDIT 039: the API key travels as a Bearer header. Over plain http:// it is
+// readable by anyone on the network path, who can then use it against the site —
+// and can also rewrite the JSON this app renders. Warn loudly; allow only a
+// deliberate override (localhost is exempt — it never leaves the machine).
+function confirmInsecureUrl(url) {
+    let u;
+    try { u = new URL(/^https?:\/\//i.test(url) ? url : 'https://' + url); }
+    catch { return true; }                      // malformed — the API call will fail anyway
+    if (u.protocol !== 'http:') return true;
+    const host = u.hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1' || host === '::1') return true;
+    return confirm(
+        `WARNING — insecure connection\n\n` +
+        `${u.origin} uses plain http://, so your API key is sent unencrypted and ` +
+        `anyone on the network can read it, use it against your site, or tamper with ` +
+        `what this app displays.\n\n` +
+        `Use https:// instead. Continue anyway?`
+    );
+}
+
 async function activateProfile(profile) {
+    if (!confirmInsecureUrl(profile.site_url)) return;
     state.activeProfile = profile;
     state.api           = new SnapSmackGYSSAPI(profile.site_url, profile.api_key);
     renderProfileList();
@@ -225,7 +248,7 @@ function renderSessionList(sessions) {
                 ${s.dirty_count > 0 ? `<span class="dirty-badge">${s.dirty_count} unsaved</span>` : ''}
                 ${s.unresolved_conflicts?.length > 0 ? `<span class="conflict-badge">${s.unresolved_conflicts.length} conflicts</span>` : ''}
             </div>
-            <div class="session-filter">${fmtFilter(s.filter)} · ${s.photos?.length || 0} photos</div>
+            <div class="session-filter">${escHtml(fmtFilter(s.filter))} · ${s.photos?.length || 0} photos</div>
             <button class="btn-primary btn-sm session-resume" data-path="${escHtml(s._path)}">RESUME</button>
             <button class="btn-danger  btn-sm session-delete"  data-path="${escHtml(s._path)}">DELETE</button>
         </div>
@@ -657,7 +680,7 @@ function openConflictModal(conflicts) {
         const p     = state.session?.photos.find(ph => ph.id === c.id);
         const thumb = p?.thumb_url || '';
         return `
-        <div class="conflict-item" data-conflict-id="${c.id}">
+        <div class="conflict-item" data-conflict-id="${escHtml(c.id)}">
             <img class="conflict-thumb" src="${escHtml(thumb)}" alt="">
             <div class="conflict-cols">
                 <div class="conflict-col">
@@ -685,7 +708,7 @@ function openConflictModal(conflicts) {
 function conflictFields(snap) {
     return `
         <div class="cf-field"><span class="cf-label">Title</span><span class="cf-val">${escHtml(snap.title || '')}</span></div>
-        <div class="cf-field"><span class="cf-label">Sort</span><span class="cf-val">${snap.sort_order ?? ''}</span></div>
+        <div class="cf-field"><span class="cf-label">Sort</span><span class="cf-val">${escHtml(snap.sort_order ?? '')}</span></div>
         <div class="cf-field"><span class="cf-label">Description</span><span class="cf-val cf-desc">${escHtml(snap.description || '')}</span></div>
     `;
 }
@@ -819,6 +842,20 @@ async function runEnrichment() {
     }
     if (overwrite && !confirm('Replace populated metadata where selected? This is broader than filling blanks.')) return;
 
+    // SECAUDIT 039: AI enrichment SPENDS MONEY — one paid vision call per image,
+    // billed to the site owner's own provider account. The run used to start with
+    // no cost warning at all (only the overwrite prompt above), so a 1000-image
+    // sweep began silently. Name the count up front; the live counter below then
+    // keeps the spend visible while it runs instead of arriving on a bill.
+    if (!confirm(
+        `Enrich ${queue.length} image${queue.length === 1 ? '' : 's'}?\n\n` +
+        `This makes ONE paid AI call per image — ${queue.length} in total — charged to ` +
+        `the AI provider account configured on this site. Cost depends on your provider ` +
+        `and model.\n\n` +
+        `Make sure you have a spending cap set with your provider. You can STOP at any ` +
+        `point; images already done are kept.`
+    )) return;
+
     state.repairStop = false;
     const run = document.getElementById('btn-enrich-run');
     const stop = document.getElementById('btn-enrich-stop');
@@ -830,7 +867,9 @@ async function runEnrichment() {
 
     for (const item of queue) {
         if (state.repairStop) break;
-        document.getElementById('enrich-progress').textContent = `${completed} / ${queue.length}`;
+        // Show paid calls made, not just progress — the spend stays visible.
+        document.getElementById('enrich-progress').textContent =
+            `${completed} / ${queue.length} · ${completed} paid AI call${completed === 1 ? '' : 's'}`;
         setStatus('enrich-status', `Enriching image ${item.id}…`, 'info');
         try {
             const wanted = overwrite ? fields : fields.filter(field => item.missing.includes(field));
@@ -853,7 +892,8 @@ async function runEnrichment() {
         await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    document.getElementById('enrich-progress').textContent = `${completed} / ${queue.length}`;
+    document.getElementById('enrich-progress').textContent =
+        `${completed} / ${queue.length} · ${completed} paid AI call${completed === 1 ? '' : 's'}`;
     stop.disabled = true;
     if (!state.repairStop) {
         setStatus('enrich-status', `Enrichment complete — ${completed} posts processed. Scan again to verify.`, 'ok');
@@ -944,7 +984,7 @@ function renderGridGrid() {
              data-id="${p.id}" data-idx="${idx}" draggable="true"
              title="${p.combinable ? 'Published single — selectable to combine' : escHtml(p.post_type) + (p.status !== 'published' ? ' · ' + escHtml(p.status) : '')}">
             <div class="drag-handle" title="Drag to reorder">⠿</div>
-            ${p.image_count > 1 ? `<div class="gram-badge" title="${p.image_count} photos">⧉${p.image_count}</div>` : ''}
+            ${p.image_count > 1 ? `<div class="gram-badge" title="${escHtml(p.image_count)} photos">⧉${escHtml(p.image_count)}</div>` : ''}
             ${p.status !== 'published' ? `<div class="gram-status-badge">${escHtml((p.status || '').toUpperCase())}</div>` : ''}
             <img src="${escHtml(p.thumb_url)}" alt="${escHtml(p.title)}" loading="lazy">
             <div class="card-title">${escHtml(p.title || '')}</div>
@@ -1198,9 +1238,12 @@ function escHtml(str) {
     return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// SECAUDIT 039: every caller interpolates this into innerHTML, and the catch
+// branch used to return the raw input — so a malformed timestamp in a session or
+// profile file became an injection vector. Escape the fallback at the source.
 function fmtDate(iso) {
     if (!iso) return '';
-    try { return new Date(iso).toLocaleString(); } catch { return iso; }
+    try { return new Date(iso).toLocaleString(); } catch { return escHtml(iso); }
 }
 
 function fmtFilter(f = {}) {

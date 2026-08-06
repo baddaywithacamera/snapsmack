@@ -61,12 +61,26 @@ function flkrfckr_auth(PDO $pdo) {
         return false;
     }
     $hash = hash('sha256', $m[1]);
-    $stmt = $pdo->prepare("
-        SELECT id, user_id FROM snap_ohsnap_keys
-        WHERE key_hash = ? AND is_active = 1 AND key_type = 'flkrfckr'
-        LIMIT 1
-    ");
-    $stmt->execute([$hash]);
+    // SECAUDIT 039 (sweep): enforce key EXPIRY. The platform mandates <=4-week
+    // keys (0.7.263) and core/api-auth.php rejects lapsed ones, but this handler
+    // checked only is_active — so an expired flkr-fckr key worked indefinitely.
+    // NULL expires_at = legacy key (no expiry). Falls back if the column is absent.
+    try {
+        $stmt = $pdo->prepare("
+            SELECT id, user_id FROM snap_ohsnap_keys
+            WHERE key_hash = ? AND is_active = 1 AND key_type = 'flkrfckr'
+              AND (expires_at IS NULL OR expires_at > NOW())
+            LIMIT 1
+        ");
+        $stmt->execute([$hash]);
+    } catch (Exception $e) {
+        $stmt = $pdo->prepare("
+            SELECT id, user_id FROM snap_ohsnap_keys
+            WHERE key_hash = ? AND is_active = 1 AND key_type = 'flkrfckr'
+            LIMIT 1
+        ");
+        $stmt->execute([$hash]);
+    }
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) return false;
     $pdo->prepare("UPDATE snap_ohsnap_keys SET last_used_at = NOW() WHERE id = ?")
