@@ -460,7 +460,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h2>Found Something? Tell Us.</h2>
             <p>SnapSmack is not bulletproof. No software is, and anyone who tells you theirs is, is lying. If you've found a security issue, we want to know about it — and we'd rather you tell us quietly than tell the internet.</p>
-            <p>Report it privately through the SnapSmack support forum rather than posting details in public, and give us a chance to close it before it's common knowledge. That's the same courtesy we extend to you: we don't publish the details of a serious, open issue until it's fixed. Once it's closed, it joins the list above. The codebase is public and open to inspection at any time — if you find something we missed, that's a contribution, and it's welcome.</p>
+            <p>Report it privately through the SnapSmack support forum rather than posting details in public, and give us a chance to close it before it's common knowledge. That's the same courtesy we extend to you: we don't publish the details of a serious, open issue until it's fixed. Once it's closed, it joins the list above. <a href="https://github.com/baddaywithacamera/snapsmack" target="_blank" rel="noopener">The codebase is public and open to inspection at any time</a> — if you find something we missed, that's a contribution, and it's welcome.</p>
         </div>
     </section>
 </main>

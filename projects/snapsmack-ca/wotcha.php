@@ -137,6 +137,14 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Aug 6</span>
+                    <a href="#scroll">SCROLL Refuses to Crop Your Photographs</a>
+                </li>
+                <li>
+                    <span class="idx-date">Aug 5</span>
+                    <a href="#skin-effects">All the Tricks, None of the Loose Wires</a>
+                </li>
+                <li>
                     <span class="idx-date">Jul 21</span>
                     <a href="#closed-beta">First Twenty Through the Door</a>
                 </li>
@@ -278,6 +286,30 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="scroll">
+                <div class="post-meta">
+                    <span class="post-date">August 6, 2026</span>
+                    <span class="post-tag">Skins</span>
+                </div>
+                <h2><a href="#scroll">SCROLL Refuses to Crop Your Photographs</a></h2>
+                <p>SCROLL is live. It starts with a simple refusal: your photographs do not all have the same shape, so the skin will not pretend they do. Portraits stand tall. Landscapes stretch out. Squares stay square. The wall composes itself around the pictures at their native proportions instead of feeding every frame through the same cookie cutter.</p>
+                <p>You choose how the wall moves: mosaic, columns, or rows. You choose how large the tiles read, how much air sits between them, how wide the wall runs, and whether portraits or landscapes should lead the rhythm. The landing page can carry the full masthead or get out of the way with a compact sticky header once you start looking. Search, filters, archive controls, likes, comments, pages, and the blogroll all stay inside the same restrained visual language.</p>
+                <p>Open a photograph and SCROLL drops the wall entirely. One image, full attention, with a quiet navigation strip underneath. Static pages keep the same measured text column and let their hero image obey it instead of escaping across the screen. It is a skin for photographers who want a big visual archive without turning every photograph into a thumbnail.</p>
+                <p>SCROLL is production-ready, free, and running live at <a href="https://usedcarparts.photoblogs.fyi" target="_blank" rel="noopener">usedcarparts.photoblogs.fyi</a>. It is also the thirteenth real site in the homepage skin gallery. Click through, drag the wall around, change its shape, and let the photographs keep theirs.</p>
+            </article>
+
+            <article class="post" id="skin-effects">
+                <div class="post-meta">
+                    <span class="post-date">August 5, 2026</span>
+                    <span class="post-tag">Architecture</span>
+                </div>
+                <h2><a href="#skin-effects">All the Tricks, None of the Loose Wires</a></h2>
+                <p>SnapSmack skins can do considerably more than swap colours and typefaces. Film scratches, aurora, fireworks, moving flags, masonry walls, infinite feeds, lightboxes, photo reveals, animated backgrounds &mdash; the effects use JavaScript because some jobs genuinely need JavaScript. What changed is where that code is allowed to live.</p>
+                <p>A Gallery skin now ships no JavaScript of its own. It declares the effects it needs in its manifest, and SnapSmack checks those engines out of one shared, reviewed library in the CMS. Fix an engine once and every skin using it gets the repair. No abandoned copy hiding in an old skin folder. No mystery script fetched from a package registry. No twenty slightly different versions of the same trick.</p>
+                <p>The rule is enforced, not suggested. A clean-gate scanner checks every skin for bundled scripts, inline code, event handlers, JavaScript links, remote script tags, and embedded active content. Smack Central runs that same check before it packages, signs, or publishes a skin. If executable browser code is hiding in the skin, the build stops.</p>
+                <p>So the spectacle stays. The loose wires do not. Skin authors choose from a growing box of effects; site owners control how far those effects go; and the executable machinery stays in one place where it can be inspected, patched, and watched by SMACKBACK. The full closure record is public in <a href="buzzers.php#a038">SECAUDIT 038</a>.</p>
+            </article>
 
             <!-- POST: POSSE -->
             <article class="post" id="closed-beta">
