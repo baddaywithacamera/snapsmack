@@ -12,6 +12,49 @@
 
 ## Unreleased
 
+## 0.7.504 "<codename TBD — Sean>" — 2026-08-06
+
+- **GYSS (desktop app, 0.1.1-alpha): GRAMOFSMACK mode — reorder the grid feed + build
+  carousels from the desktop.** GYSS was a SMACKONEOUT-only photo sorter; it now detects a
+  GRAMOFSMACK (carousel) site from `gyss/ping` (new `site_mode`) and shows a dedicated **GRID**
+  tab. There you can drag-reorder the whole feed (**PUSH ORDER**) and tick 2+ published single
+  posts, pick a cover, and **⧉ MAKE CAROUSEL** — the desktop twin of the lighttable action.
+  Server side (`core/gyss-api.php`): three new endpoints — `gram-posts` (feed as posts, cover
+  thumb, `⧉N` count; trigram members excluded), `gram-reorder` (trigram-preserving order write),
+  and `gram-carousel` (reuses the same battle-built, federation-aware `sv_convert_to_carousel()` +
+  pin-in-place the web lighttable uses). No new carousel logic — the desktop calls the same core.
+  Trigram management stays in the web lighttable (this MVP is carousel-builder + feed-reorder only).
+  The reorder merge and pin-in-place are harness-verified. Rust is unchanged. **Rebuild GYSS
+  (`cargo tauri build`) to ship; needs a live click-test on a GRAMOFSMACK install.**
+  Also: **GYSS now cleanly refuses SMACKTALK (longform) sites** instead of falling through to a
+  meaningless sorter. Longform images live *inside* the essay body (`[mosaic:ID]` post-body
+  shortcodes + one `featured_asset_id`), so there is no grid of tiles and no per-image order to
+  arrange — it's structurally incompatible, not merely unbuilt. `gyss/photos` and
+  `gyss/batch-update` now return 409 on `site_mode='smacktalk'` (guarding the write path against a
+  stale client), and the app shows a plain explanation on CONNECT pointing at SmackPress.
+  And the GRID tab now **warns when its copy is stale**: it stamps the pull time, shows "Loaded N
+  ago", raises a REFRESH NOW banner past 5 minutes, and asks before writing off a stale snapshot —
+  both for PUSH ORDER (wholesale; would stomp anything published since the pull) and MAKE CAROUSEL
+  (deletes the source singles and can retract them from followers). Choosing refresh cancels the
+  pending action on purpose, so you re-check the selection against the current blog.
+
+- **Grid Lighttable: MAKE CAROUSEL — combine existing single posts into one carousel, in place.**
+  The carousel *edit* surface already existed (`smack-edit-carousel.php`: reorder, cover, add/remove,
+  split, per-image framing, federation Update), but the only way to *combine* separate published
+  singles into a carousel was the buried id-typing form in SMACKVERSE tools. The lighttable now does
+  it visually: tick 2–10 posts (tick order = carousel order, first ticked = default cover), pick the
+  cover from the chooser, and hit **⧉ MAKE CAROUSEL**. It calls the same battle-built, federation-aware
+  `sv_convert_to_carousel()` core (writes the `snap_post_images` pivot with order + cover + per-image
+  style, repoints the images, deletes the emptied singles, and — federation on — retracts the old
+  single Notes and seeds the carousel Note), then **pins the new carousel where the earliest selected
+  single sat** instead of floating it to the top (mirrors the trigram-lock pin-in-place). Guards match
+  the trigram idiom: only ungrouped **published** singles combine — carousels, panoramas, and
+  locked-trigram tiles are rejected with a clear message. Every non-trigram tile also gained a
+  **✎ EDIT / EDIT CAROUSEL** link that opens the existing editor (`smack-edit.php?id=<cover image>`),
+  so create *and* edit are both reachable from the lighttable. `sv_convert_to_carousel()` now also
+  returns the new post id as a third element (existing `list($ok,$msg)=…` callers are unaffected).
+  Core change — ships via the updater; no repackage.
+
 - **SCROLL (skin package, 0.1.47): the solo bottom nav is evenly spaced again.** The
   `PREV / FIRST · INFO / COMMENTS · LAST / NEXT` bar had a mismatched gap — `20px` between the
   groups but `40px` between items *within* a group — so every separator alternated tight/wide down

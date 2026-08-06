@@ -96,6 +96,30 @@ export class SnapSmackGYSSAPI {
     async batchUpdate(updates) {
         return this._call('POST', 'batch-update', null, { updates });
     }
+
+    // ── GRAMOFSMACK (carousel-mode) ──────────────────────────────────────────
+
+    /** GET gyss/gram-posts — the grid feed as posts (cover thumb + count). */
+    async gramPosts(limit = 500) {
+        return this._call('GET', 'gram-posts', { limit });
+    }
+
+    /**
+     * POST gyss/gram-reorder — write the feed order.
+     * @param {number[]} ids  post ids in the new visible order
+     */
+    async gramReorder(ids) {
+        return this._call('POST', 'gram-reorder', null, { ids });
+    }
+
+    /**
+     * POST gyss/gram-carousel — combine selected single posts into one carousel.
+     * @param {number[]} ids           post ids, in carousel order
+     * @param {number}   coverPostId   which selected post is the cover
+     */
+    async gramCarousel(ids, coverPostId) {
+        return this._call('POST', 'gram-carousel', null, { ids, cover_post_id: coverPostId });
+    }
 }
 
 // ===== SNAPSMACK EOF =====

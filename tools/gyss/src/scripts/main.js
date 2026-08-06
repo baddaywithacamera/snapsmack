@@ -18,7 +18,7 @@ import {
 // State
 // ---------------------------------------------------------------------------
 let state = {
-    tab:            'connect',    // 'connect' | 'filter' | 'sort'
+    tab:            'connect',    // 'connect' | 'filter' | 'sort' | 'grid'
     profiles:       [],
     activeProfile:  null,         // { name, site_url, api_key, _path }
     api:            null,         // SnapSmackGYSSAPI instance
@@ -30,6 +30,9 @@ let state = {
     dragIds:        [],           // ids being dragged
     repairItems:    [],
     repairStop:     false,
+    siteMode:       'photoblog',  // 'photoblog' (SMACKONEOUT) | 'carousel' (GRAMOFSMACK)
+    gram:           null,         // GRAMOFSMACK grid: { posts:[], dirtyOrder:bool }
+    gramSelected:   new Set(),    // selected post ids in the GRID tab
 };
 
 // ---------------------------------------------------------------------------
@@ -42,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     bindConnectTab();
     bindFilterTab();
     bindSortTab();
+    bindGridTab();
     bindRepairTab();
     bindConflictModal();
 });
@@ -152,15 +156,50 @@ async function activateProfile(profile) {
     try {
         const r = await state.api.ping();
         await touchProfile(profile._path, new Date().toISOString());
-        setStatus('connect-status', `Connected: ${r.site_name} (v${r.version})`, 'ok');
+        state.siteMode = r.site_mode || 'photoblog';
+        applyModeTabs();
 
-        state.meta = await state.api.meta();
-        populateFilterDropdowns();
-        await refreshSessions();
-        showTab('filter');
+        if (state.siteMode === 'carousel') {
+            // GRAMOFSMACK: straight to the grid (posts, not the photo sorter).
+            setStatus('connect-status', `Connected: ${r.site_name} (v${r.version}) — GRAMOFSMACK`, 'ok');
+            showTab('grid');
+            await loadGrid();
+        } else if (state.siteMode === 'photoblog') {
+            // SMACKONEOUT: the original photo sorter.
+            setStatus('connect-status', `Connected: ${r.site_name} (v${r.version}) — SMACKONEOUT`, 'ok');
+            state.meta = await state.api.meta();
+            populateFilterDropdowns();
+            await refreshSessions();
+            showTab('filter');
+        } else {
+            // SMACKTALK (longform) or an unknown mode: GYSS can't sort it. Longform
+            // images live INSIDE essays (via [mosaic:ID] post-body shortcodes + a
+            // single featured asset), not as sortable tiles — there is no feed to
+            // arrange and no per-image order that means anything. Refuse cleanly and
+            // stay on CONNECT rather than show a meaningless sorter.
+            const modeName = state.siteMode === 'smacktalk' ? 'SMACKTALK (longform)' : `"${state.siteMode}"`;
+            setStatus('connect-status',
+                `Connected to ${r.site_name}, but GYSS doesn't support ${modeName} sites. ` +
+                `Longform images live inside essays and aren't sortable — use SmackPress to manage longform.`,
+                'error');
+            showTab('connect');
+        }
     } catch (err) {
         setStatus('connect-status', `Connection failed: ${err.message}`, 'error');
     }
+}
+
+// Show only the tabs that apply to the connected site's mode. CONNECT always
+// shows. FILTER/SORT are photoblog-only; GRID is carousel-only (data-mode). REPAIR
+// (image-metadata enrichment) applies to both photo modes but NOT to SMACKTALK
+// longform — so on any unsupported mode, only CONNECT remains.
+function applyModeTabs() {
+    const supported = (state.siteMode === 'photoblog' || state.siteMode === 'carousel');
+    document.querySelectorAll('.tab-btn[data-mode]').forEach(btn => {
+        btn.hidden = !supported || (btn.dataset.mode !== state.siteMode);
+    });
+    const repairBtn = document.querySelector('.tab-btn[data-tab="repair"]');
+    if (repairBtn) repairBtn.hidden = !supported;
 }
 
 // ---------------------------------------------------------------------------
@@ -820,6 +859,320 @@ async function runEnrichment() {
         setStatus('enrich-status', `Enrichment complete — ${completed} posts processed. Scan again to verify.`, 'ok');
     }
     renderRepairCount();
+}
+
+// ---------------------------------------------------------------------------
+// GRID TAB — GRAMOFSMACK: reorder the feed + combine singles into carousels
+// Post-layer twin of the SORT tab. Kept separate from the proven solo path.
+// ---------------------------------------------------------------------------
+// The grid is a SNAPSHOT — the live blog can move under it (web lighttable, another
+// device, the composer). Warn past this age, and gate writes on it.
+const GRID_STALE_MS = 5 * 60 * 1000;   // 5 minutes
+
+function bindGridTab() {
+    document.getElementById('btn-grid-refresh')?.addEventListener('click', loadGrid);
+    document.getElementById('btn-grid-push')?.addEventListener('click', doGramPushOrder);
+    document.getElementById('btn-grid-combine')?.addEventListener('click', doGramCombine);
+    document.getElementById('btn-grid-stale-refresh')?.addEventListener('click', loadGrid);
+
+    // Keep the "loaded N ago" label and the stale banner honest while the tab sits
+    // open. Cheap: text only, no network.
+    setInterval(renderGridStaleness, 30 * 1000);
+
+    // Drag listeners are attached ONCE here (delegated on the persistent grid),
+    // not per-render — re-attaching each render would stack duplicate handlers.
+    initGridDragAndDrop();
+
+    // Card selection (ctrl/shift/plain all select — there is no edit panel here).
+    // Only combinable posts (published singles) are selectable; carousels and
+    // panoramas still drag-reorder but can't be selected for combining.
+    document.getElementById('grid-grid')?.addEventListener('click', e => {
+        const card = e.target.closest('.photo-card');
+        if (!card) return;
+        const id = parseInt(card.dataset.id);
+        const post = state.gram?.posts.find(p => p.id === id);
+        if (!post?.combinable) {
+            toast('Only published single posts can be selected to combine.', 'info');
+            return;
+        }
+
+        if (e.shiftKey) {
+            // Range-select, but only the combinable posts in the span.
+            const ids     = state.gram.posts.map(p => p.id);
+            const lastSel = [...state.gramSelected].pop();
+            const from    = lastSel ? ids.indexOf(lastSel) : 0;
+            const to      = ids.indexOf(id);
+            ids.slice(Math.min(from, to), Math.max(from, to) + 1).forEach(rid => {
+                if (state.gram.posts.find(p => p.id === rid)?.combinable) state.gramSelected.add(rid);
+            });
+        } else {
+            // plain / ctrl / meta — toggle this card
+            if (state.gramSelected.has(id)) state.gramSelected.delete(id);
+            else state.gramSelected.add(id);
+        }
+        renderGridGrid();
+    });
+}
+
+async function loadGrid() {
+    if (!state.api) { toast('Connect to a site first.', 'error'); return; }
+    setStatus('grid-status', 'Loading grid…', 'info');
+    try {
+        const r = await state.api.gramPosts(1000);
+        state.gram = { posts: r.posts || [], dirtyOrder: false, loadedAt: Date.now() };
+        state.gramSelected.clear();
+        renderGridGrid();
+        setStatus('grid-status', `${r.total} posts`, 'ok');
+    } catch (err) {
+        setStatus('grid-status', `Load failed: ${err.message}`, 'error');
+    }
+}
+
+function renderGridGrid() {
+    const grid = document.getElementById('grid-grid');
+    if (!grid || !state.gram) return;
+    const posts = [...state.gram.posts].sort((a, b) => a.sort_order - b.sort_order || b.id - a.id);
+
+    if (posts.length === 0) {
+        grid.innerHTML = '<p class="empty-hint" style="padding:20px">No posts in this grid.</p>';
+        updateGridTopBar();
+        return;
+    }
+
+    grid.innerHTML = posts.map((p, idx) => `
+        <div class="photo-card ${state.gramSelected.has(p.id) ? 'selected' : ''} ${p.combinable ? '' : 'not-combinable'}"
+             data-id="${p.id}" data-idx="${idx}" draggable="true"
+             title="${p.combinable ? 'Published single — selectable to combine' : escHtml(p.post_type) + (p.status !== 'published' ? ' · ' + escHtml(p.status) : '')}">
+            <div class="drag-handle" title="Drag to reorder">⠿</div>
+            ${p.image_count > 1 ? `<div class="gram-badge" title="${p.image_count} photos">⧉${p.image_count}</div>` : ''}
+            ${p.status !== 'published' ? `<div class="gram-status-badge">${escHtml((p.status || '').toUpperCase())}</div>` : ''}
+            <img src="${escHtml(p.thumb_url)}" alt="${escHtml(p.title)}" loading="lazy">
+            <div class="card-title">${escHtml(p.title || '')}</div>
+        </div>
+    `).join('');
+
+    updateGridTopBar();
+}
+
+function updateGridTopBar() {
+    const profileLabel = document.getElementById('grid-profile-label');
+    if (profileLabel && state.activeProfile) {
+        profileLabel.textContent = `${state.activeProfile.name} — ${state.activeProfile.site_url}`;
+    }
+    const countLabel = document.getElementById('grid-count-label');
+    if (countLabel && state.gram) {
+        const sel = state.gramSelected.size;
+        countLabel.textContent = `${state.gram.posts.length} posts` + (sel ? ` · ${sel} selected` : '');
+    }
+    const pushBtn = document.getElementById('btn-grid-push');
+    if (pushBtn) {
+        const dirty = !!state.gram?.dirtyOrder;
+        pushBtn.disabled    = !dirty;
+        pushBtn.textContent = dirty ? 'PUSH ORDER *' : 'PUSH ORDER';
+    }
+    renderGridCombineBar();
+    renderGridStaleness();
+}
+
+// ── Staleness: front-stop warning ───────────────────────────────────────────
+// The GRID is a point-in-time snapshot. Conflict detection catches collisions at
+// write time (after the work); this tells you the copy has drifted BEFORE you
+// arrange or combine anything.
+function gridAgeMs() {
+    return state.gram?.loadedAt ? (Date.now() - state.gram.loadedAt) : 0;
+}
+
+function fmtAge(ms) {
+    const s = Math.round(ms / 1000);
+    if (s < 60)    return `${s}s ago`;
+    const m = Math.round(s / 60);
+    if (m < 60)    return `${m} minute${m === 1 ? '' : 's'} ago`;
+    const h = Math.round(m / 60);
+    if (h < 24)    return `${h} hour${h === 1 ? '' : 's'} ago`;
+    const d = Math.round(h / 24);
+    return `${d} day${d === 1 ? '' : 's'} ago`;
+}
+
+function renderGridStaleness() {
+    const banner = document.getElementById('grid-stale');
+    const ageEl  = document.getElementById('grid-loaded-age');
+    if (!state.gram?.loadedAt) {
+        if (banner) banner.hidden = true;
+        if (ageEl)  ageEl.textContent = '';
+        return;
+    }
+    const age   = gridAgeMs();
+    const stale = age > GRID_STALE_MS;
+
+    if (ageEl) ageEl.textContent = ` · Loaded ${fmtAge(age)}.`;
+    if (banner) {
+        banner.hidden = !stale;
+        const msg = document.getElementById('grid-stale-msg');
+        if (msg && stale) {
+            msg.textContent =
+                `This grid was loaded ${fmtAge(age)} and may be out of date — the blog may have ` +
+                `changed since (web lighttable, another device, or the composer). `;
+        }
+    }
+}
+
+// Gate a write on freshness. Returns true if the caller should proceed.
+// If stale: offer a refresh. Refreshing ABORTS the pending action on purpose —
+// the data changed underneath, so the selection/arrangement may no longer mean
+// what the user intended. Better to make them look again than to be clever.
+async function ensureGridFresh(actionLabel) {
+    if (!state.gram?.loadedAt || gridAgeMs() <= GRID_STALE_MS) return true;
+    const refresh = confirm(
+        `This grid was loaded ${fmtAge(gridAgeMs())} and may be out of date.\n\n` +
+        `OK = refresh now (recommended — your ${actionLabel} is cancelled so you can check it ` +
+        `against the current blog).\n` +
+        `Cancel = ${actionLabel} anyway with the copy you have.`
+    );
+    if (refresh) {
+        await loadGrid();
+        toast('Grid refreshed — check it, then try again.', 'info');
+        return false;
+    }
+    return true;
+}
+
+// Cover chooser + MAKE CAROUSEL appear at 2+ selected. Options are the selected
+// posts in selection order (a JS Set preserves insertion order); first = default
+// cover. Only meaningful when every selected post is combinable.
+function renderGridCombineBar() {
+    const bar = document.getElementById('grid-combine-bar');
+    const sel = [...state.gramSelected];
+    const combinable = sel.length >= 2 && sel.every(id =>
+        state.gram?.posts.find(p => p.id === id)?.combinable);
+    if (bar) bar.hidden = !combinable;
+    if (!combinable) return;
+
+    const coverSel = document.getElementById('grid-cover-sel');
+    if (!coverSel) return;
+    const prev = coverSel.value;
+    coverSel.innerHTML = sel.map((id, i) =>
+        `<option value="${id}">${i === 0 ? 'Photo 1 (first)' : 'Photo ' + (i + 1)}</option>`).join('');
+    if (sel.map(String).includes(prev)) coverSel.value = prev;
+}
+
+// Native HTML5 drag reorder (single card at a time — selection is for combining).
+function initGridDragAndDrop() {
+    const grid = document.getElementById('grid-grid');
+    if (!grid) return;
+    let draggedId = null;
+    let dropTarget = null;
+
+    grid.addEventListener('dragstart', e => {
+        const card = e.target.closest('.photo-card');
+        if (!card) return;
+        draggedId = parseInt(card.dataset.id);
+        e.dataTransfer.effectAllowed = 'move';
+        card.classList.add('dragging');
+    });
+    grid.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const card = e.target.closest('.photo-card');
+        if (card && parseInt(card.dataset.id) !== draggedId) {
+            if (dropTarget !== card) {
+                if (dropTarget) dropTarget.classList.remove('drop-target');
+                card.classList.add('drop-target');
+                dropTarget = card;
+            }
+        }
+    });
+    grid.addEventListener('dragleave', e => {
+        if (dropTarget && !grid.contains(e.relatedTarget)) {
+            dropTarget.classList.remove('drop-target');
+            dropTarget = null;
+        }
+    });
+    grid.addEventListener('drop', e => {
+        e.preventDefault();
+        if (dropTarget && draggedId !== null) {
+            dropTarget.classList.remove('drop-target');
+            gridReorder(draggedId, parseInt(dropTarget.dataset.idx));
+            dropTarget = null;
+        }
+        draggedId = null;
+        grid.querySelectorAll('.dragging').forEach(c => c.classList.remove('dragging'));
+    });
+    grid.addEventListener('dragend', () => {
+        grid.querySelectorAll('.dragging, .drop-target').forEach(c =>
+            c.classList.remove('dragging', 'drop-target'));
+        draggedId = null;
+    });
+}
+
+function gridReorder(movedId, targetIdx) {
+    if (!state.gram) return;
+    const posts = [...state.gram.posts].sort((a, b) => a.sort_order - b.sort_order);
+    const moved = posts.find(p => p.id === movedId);
+    if (!moved) return;
+    const rest = posts.filter(p => p.id !== movedId);
+    const before = rest[targetIdx] || null;
+    const insertIdx = before ? rest.indexOf(before) : rest.length;
+    rest.splice(insertIdx, 0, moved);
+    rest.forEach((p, i) => { p.sort_order = i + 1; });
+    state.gram.posts = rest;
+    state.gram.dirtyOrder = true;
+    renderGridGrid();
+}
+
+async function doGramPushOrder() {
+    if (!state.gram || !state.api || !state.gram.dirtyOrder) return;
+    // Reordering is wholesale ("make the feed look like this") — a stale copy
+    // would silently stomp anything published or rearranged since the pull.
+    if (!await ensureGridFresh('order push')) return;
+    const ids = [...state.gram.posts]
+        .sort((a, b) => a.sort_order - b.sort_order).map(p => p.id);
+    setStatus('grid-status', 'Pushing order…', 'info');
+    try {
+        await state.api.gramReorder(ids);
+        setStatus('grid-status', 'Order saved.', 'ok');
+        await loadGrid();   // reload authoritative order (trigrams stay anchored)
+    } catch (err) {
+        setStatus('grid-status', `Push failed: ${err.message}`, 'error');
+    }
+}
+
+async function doGramCombine() {
+    if (!state.gram || !state.api) return;
+    const ids = [...state.gramSelected];
+    if (ids.length < 2) return;
+    if (!ids.every(id => state.gram.posts.find(p => p.id === id)?.combinable)) {
+        toast('Only published single posts can be combined.', 'error');
+        return;
+    }
+    // Combining DELETES the source singles and can retract them from followers —
+    // never do that off a stale snapshot.
+    if (!await ensureGridFresh('carousel')) return;
+
+    const coverSel  = document.getElementById('grid-cover-sel');
+    const coverPid  = coverSel && coverSel.value ? parseInt(coverSel.value) : ids[0];
+    const coverPos  = ids.indexOf(coverPid) + 1;
+
+    if (!confirm(
+        `Combine ${ids.length} posts into ONE carousel?\n\n` +
+        `Order = the order you selected them. Cover = Photo ${coverPos > 0 ? coverPos : 1}.\n\n` +
+        `The original single posts are merged in and deleted. If federation is on, they're ` +
+        `retracted from your followers and the carousel is re-posted. This cannot be undone.`
+    )) return;
+
+    const btn = document.getElementById('btn-grid-combine');
+    if (btn) { btn.disabled = true; btn.textContent = 'Combining…'; }
+    setStatus('grid-status', 'Combining…', 'info');
+    try {
+        const r = await state.api.gramCarousel(ids, coverPid);
+        setStatus('grid-status', r.message || 'Carousel created.', 'ok');
+        toast('Carousel created.', 'ok');
+        await loadGrid();
+    } catch (err) {
+        setStatus('grid-status', `Combine failed: ${err.message}`, 'error');
+        toast(`Combine failed: ${err.message}`, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '⧉ MAKE CAROUSEL'; }
+    }
 }
 
 // ---------------------------------------------------------------------------

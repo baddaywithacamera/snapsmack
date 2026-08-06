@@ -6,18 +6,33 @@
  * All endpoints require a valid Bearer token from snap_ohsnap_keys (key_type = 'gyss').
  *
  * Route structure: gyss/{resource}
- *   GET  gyss/ping           — connection test, returns site vitals
+ *   GET  gyss/ping           — connection test, returns site vitals (incl. site_mode)
  *   GET  gyss/photos         — filtered photo export with metadata + modified_at
  *   GET  gyss/meta           — categories and albums for filter/edit dropdowns
  *   POST gyss/batch-update   — push a diff of sorted/edited records back to the blog
+ *   GET  gyss/gram-posts     — GRAMOFSMACK grid feed as posts (cover thumb + count)
+ *   POST gyss/gram-reorder   — rewrite the GRAMOFSMACK feed order (post sort_order)
+ *   POST gyss/gram-carousel  — combine selected single posts into one carousel
  *
  * Conflict detection (v0.2):
  *   batch-update accepts optional expected_modified_at per record. If the live
  *   modified_at differs, the record is returned in conflicts[] instead of applied.
  *   Pass force:true per record to skip the check and overwrite explicitly.
  *
- * Scope: SMACKONEOUT (site_mode 1.0 photoblog) only. Operates on snap_images
- *        and snap_image_cat_map. A separate GRAMOFSMACK sorter will be built later.
+ * Scope: two modes, keyed off snap_settings.site_mode.
+ *   - SMACKONEOUT (photoblog): the original photo sorter. photos/meta/batch-update
+ *     operate on snap_images + snap_image_cat_map.
+ *   - GRAMOFSMACK (carousel): the gram-* endpoints operate on the post layer
+ *     (snap_posts / snap_post_images), reusing the SAME battle-built core the web
+ *     lighttable uses (sv_convert_to_carousel + the reorder/pin-in-place logic).
+ *     Carousel-builder + feed-reorder only; trigram management stays in the web
+ *     lighttable (trigram members are excluded from gram-posts).
+ *   - SMACKTALK (longform): NOT SUPPORTED, and never will be — structurally
+ *     incompatible, not merely unbuilt. Longform images live INSIDE the essay body
+ *     ([mosaic:ID] post-body shortcodes + one featured_asset_id), so there is no
+ *     grid of tiles and no per-image order that means anything to sort. photos and
+ *     batch-update refuse with 409 on this mode; longform belongs to SmackPress
+ *     (core/smackpress-api.php).
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -131,6 +146,9 @@ if ($resource === 'ping' && $method === 'GET') {
         'tagline'   => $settings['site_tagline'] ?? '',
         'version'   => SNAPSMACK_VERSION,
         'base_url'  => BASE_URL,
+        // site_mode drives which GYSS mode the client offers: 'photoblog' =
+        // SMACKONEOUT (photo sorter), 'carousel' = GRAMOFSMACK (grid/carousel).
+        'site_mode' => $settings['site_mode'] ?? 'photoblog',
     ]);
 }
 
@@ -148,6 +166,14 @@ if ($resource === 'ping' && $method === 'GET') {
 //   offset       — int, default 0
 // =============================================================================
 if ($resource === 'photos' && $method === 'GET') {
+
+    // SMACKTALK (longform) has no sortable photo feed — its images live INSIDE
+    // essays via [mosaic:ID] post-body shortcodes plus one featured asset, so
+    // there is no per-image order to arrange. Refuse rather than hand back a list
+    // whose sort_order means nothing. (Longform is SmackPress's job.)
+    if (($settings['site_mode'] ?? 'photoblog') === 'smacktalk') {
+        gy_err('GYSS does not support SMACKTALK (longform) sites — images live inside essays and are not sortable. Use SmackPress to manage longform posts.', 409);
+    }
 
     $date_from   = $_GET['date_from']   ?? '';
     $date_to     = $_GET['date_to']     ?? '';
@@ -487,6 +513,12 @@ if ($resource === 'enrich-one' && $method === 'POST') {
 // =============================================================================
 if ($resource === 'batch-update' && $method === 'POST') {
 
+    // Same refusal as gyss/photos, on the WRITE path: never let a stale client
+    // rewrite sort_order on a SMACKTALK install, where image order is meaningless.
+    if (($settings['site_mode'] ?? 'photoblog') === 'smacktalk') {
+        gy_err('GYSS does not support SMACKTALK (longform) sites — images live inside essays and are not sortable. Use SmackPress to manage longform posts.', 409);
+    }
+
     $body = file_get_contents('php://input');
     $data = json_decode($body, true);
 
@@ -650,6 +682,258 @@ if ($resource === 'batch-update' && $method === 'POST') {
         'failed'    => $failed,
         'conflicts' => $conflicts,
     ]);
+}
+
+
+// =============================================================================
+// ENDPOINT: GET gyss/gram-posts   (GRAMOFSMACK only)
+// The grid feed as POSTS: cover thumb, image count, post_type, feed order.
+// Trigram members are EXCLUDED — trigram management lives in the web lighttable.
+//
+// Query params: limit (int, default 500, max 1000)
+// =============================================================================
+if ($resource === 'gram-posts' && $method === 'GET') {
+    if (($settings['site_mode'] ?? 'photoblog') !== 'carousel') {
+        gy_err('This site is not in GRAMOFSMACK (carousel) mode.', 409);
+    }
+    $limit = min(max((int)($_GET['limit'] ?? 500), 1), 1000);
+
+    try {
+        // Feed order mirrors smack-lt-gram.php exactly: new (sort_order 0) group
+        // first, then ascending, then id DESC. Cover file: prefer the is_cover
+        // pivot row, fall back to any image linked by post_id (singles without a
+        // pivot row). Trigram members excluded (p.trigram_id IS NULL).
+        $stmt = $pdo->prepare("
+            SELECT
+                p.id,
+                p.title,
+                p.status,
+                p.sort_order,
+                p.post_type,
+                p.created_at,
+                (SELECT COUNT(*) FROM snap_post_images spi WHERE spi.post_id = p.id) AS image_count,
+                COALESCE(
+                    (SELECT i1.img_file FROM snap_post_images pi1 JOIN snap_images i1 ON i1.id = pi1.image_id
+                      WHERE pi1.post_id = p.id AND pi1.is_cover = 1 LIMIT 1),
+                    (SELECT i2.img_file FROM snap_images i2 WHERE i2.post_id = p.id ORDER BY i2.id LIMIT 1)
+                ) AS cover_file
+            FROM snap_posts p
+            WHERE p.trigram_id IS NULL
+              AND p.post_type IN ('single','carousel','panorama')
+            ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
+                     p.sort_order ASC, p.id DESC
+            LIMIT ?
+        ");
+        $stmt->execute([$limit]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        gy_err('Database error fetching grid posts', 500);
+    }
+
+    $posts = [];
+    foreach ($rows as $row) {
+        $count = (int)$row['image_count'];
+        $posts[] = [
+            'id'          => (int)$row['id'],
+            'title'       => (string)$row['title'],
+            'status'      => (string)$row['status'],
+            'sort_order'  => (int)$row['sort_order'],
+            'post_type'   => (string)$row['post_type'],
+            'image_count' => $count,
+            // A post is combinable only if it's an ungrouped published single.
+            'combinable'  => ($count <= 1 && $row['post_type'] === 'single' && $row['status'] === 'published'),
+            'created_at'  => $row['created_at'],
+            'thumb_url'   => gy_thumb_url((string)$row['cover_file']),
+        ];
+    }
+
+    gy_ok(['total' => count($posts), 'posts' => $posts]);
+}
+
+
+// =============================================================================
+// ENDPOINT: POST gyss/gram-reorder   (GRAMOFSMACK only)
+// Rewrite the feed order for the NON-TRIGRAM posts GYSS shows. Because GYSS
+// excludes trigram members from its grid, we must NOT use the lighttable's
+// subset-splice (which would relocate the unseen trigrams). Instead we keep every
+// trigram post pinned at its exact current feed slot, and fill the remaining
+// (non-trigram) slots with the submitted order. Then re-stamp fediverse dates.
+//
+// Request body (JSON): { "ids": [postId, postId, ...] }   (the new visible order)
+// =============================================================================
+if ($resource === 'gram-reorder' && $method === 'POST') {
+    if (($settings['site_mode'] ?? 'photoblog') !== 'carousel') {
+        gy_err('This site is not in GRAMOFSMACK (carousel) mode.', 409);
+    }
+    $data      = json_decode((string)file_get_contents('php://input'), true);
+    $submitted = array_values(array_filter(array_map('intval', $data['ids'] ?? [])));
+    if (!$submitted) gy_err('No post ids provided.');
+
+    // Canonical feed order (same ordering as the lighttable + public feed).
+    $all_ids = array_map('intval', $pdo->query(
+        "SELECT id FROM snap_posts
+          ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
+                   sort_order ASC, id DESC"
+    )->fetchAll(PDO::FETCH_COLUMN));
+
+    // Which posts are trigram members — they stay pinned at their canonical slot.
+    $trigram_ids = [];
+    foreach ($pdo->query("SELECT id FROM snap_posts WHERE trigram_id IS NOT NULL")
+                 ->fetchAll(PDO::FETCH_COLUMN) as $tid) {
+        $trigram_ids[(int)$tid] = true;
+    }
+
+    // Build the fill queue: submitted ids that exist and aren't trigram members,
+    // unique, in submitted order.
+    $canon_set = array_flip($all_ids);
+    $queue = []; $seen = [];
+    foreach ($submitted as $sid) {
+        if (isset($canon_set[$sid]) && !isset($trigram_ids[$sid]) && !isset($seen[$sid])) {
+            $queue[] = $sid; $seen[$sid] = true;
+        }
+    }
+    // Append any non-trigram posts the client DIDN'T send (partial payload / a
+    // post added since load), in canonical order — so the queue is an exact
+    // permutation of the non-trigram set: no post duplicated, none dropped.
+    foreach ($all_ids as $id) {
+        if (!isset($trigram_ids[$id]) && !isset($seen[$id])) { $queue[] = $id; $seen[$id] = true; }
+    }
+
+    // Walk the canonical feed: trigram slots keep their post; every other slot is
+    // filled from the queue in order.
+    $result = [];
+    $qi = 0;
+    foreach ($all_ids as $id) {
+        $result[] = isset($trigram_ids[$id]) ? $id : $queue[$qi++];
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE snap_posts SET sort_order = ? WHERE id = ?");
+        $pdo->beginTransaction();
+        foreach ($result as $pos => $id) {
+            $stmt->execute([$pos + 1, $id]);
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        gy_err('Failed to write the new order — nothing changed.', 500);
+    }
+
+    // Keep the fediverse order honest (same imprint the lighttable reorder does).
+    if (($settings['smackverse_enabled'] ?? '0') === '1') {
+        try {
+            if (!function_exists('sv_sync_fedi_dates')) { @require_once __DIR__ . '/smackverse.php'; }
+            if (function_exists('sv_sync_fedi_dates')) { sv_sync_fedi_dates($pdo, $settings); }
+        } catch (Throwable $e) {
+            error_log('GYSS gram-reorder: fedi re-stamp failed — ' . $e->getMessage());
+        }
+    }
+
+    gy_ok(['reordered' => count($queue)]);
+}
+
+
+// =============================================================================
+// ENDPOINT: POST gyss/gram-carousel   (GRAMOFSMACK only)
+// Combine 2+ selected single posts into ONE carousel, in the given order, with a
+// chosen cover. Copies smack-lt-gram.php's `create_carousel` handler: guards
+// (D4 — ungrouped published singles only), maps posts→images, calls the shared
+// federation-aware sv_convert_to_carousel(), then pins the carousel where the
+// earliest source sat (D3).
+//
+// Request body (JSON): { "ids": [postId, ...], "cover_post_id": postId }
+// =============================================================================
+if ($resource === 'gram-carousel' && $method === 'POST') {
+    if (($settings['site_mode'] ?? 'photoblog') !== 'carousel') {
+        gy_err('This site is not in GRAMOFSMACK (carousel) mode.', 409);
+    }
+    $data = json_decode((string)file_get_contents('php://input'), true);
+    $ids  = array_values(array_unique(array_filter(array_map('intval', $data['ids'] ?? []))));
+    if (count($ids) < 2) gy_err('Select at least two posts to combine into a carousel.');
+
+    $cover_pid = (int)($data['cover_post_id'] ?? 0);
+    if (!in_array($cover_pid, $ids, true)) $cover_pid = $ids[0];
+
+    // Load type/trigram/existence.
+    $ph   = implode(',', array_fill(0, count($ids), '?'));
+    $meta = $pdo->prepare("SELECT id, post_type, trigram_id, status FROM snap_posts WHERE id IN ($ph)");
+    $meta->execute($ids);
+    $meta_rows = $meta->fetchAll(PDO::FETCH_ASSOC);
+    if (count($meta_rows) !== count($ids)) {
+        gy_err('One or more selected posts no longer exist — refresh and try again.');
+    }
+    // D4 — only ungrouped published singles combine.
+    foreach ($meta_rows as $r) {
+        if (($r['post_type'] ?? 'single') !== 'single' || (int)($r['trigram_id'] ?? 0) > 0) {
+            gy_err('Only ungrouped single posts can be combined. Deselect any carousel, panorama, or trigram tile.');
+        }
+        if (($r['status'] ?? '') !== 'published') {
+            gy_err('Only PUBLISHED posts can be combined into a carousel.');
+        }
+    }
+
+    // Map posts → image ids in the given (selection) order.
+    $img_for_post = [];
+    $imgStmt = $pdo->prepare("SELECT id FROM snap_images WHERE post_id = ? ORDER BY id");
+    foreach ($ids as $pid) {
+        $imgStmt->execute([$pid]);
+        $img_for_post[$pid] = array_map('intval', $imgStmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+    $image_ids = [];
+    foreach ($ids as $pid) foreach ($img_for_post[$pid] as $iid) $image_ids[] = $iid;
+    if (count($image_ids) < 2) gy_err('The selected posts have fewer than two images to combine.');
+    $cover_id = $img_for_post[$cover_pid][0] ?? $image_ids[0];
+
+    // Earliest feed slot any source holds — pin the carousel there (D3).
+    $seq_before = array_map('intval', $pdo->query(
+        "SELECT id FROM snap_posts
+          ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
+                   sort_order ASC, id DESC"
+    )->fetchAll(PDO::FETCH_COLUMN));
+    $insert_at = 0;
+    foreach ($seq_before as $sid) {
+        if (in_array($sid, $ids, true)) break;
+        $insert_at++;
+    }
+
+    // Shared merge core (federation-aware, transactional).
+    if (!function_exists('sv_convert_to_carousel')) { @require_once __DIR__ . '/smackverse.php'; }
+    if (!function_exists('sv_convert_to_carousel')) {
+        gy_err('Carousel engine unavailable on this install.', 500);
+    }
+    $res     = sv_convert_to_carousel($pdo, $settings, $image_ids, $cover_id);
+    $ok      = (bool)($res[0] ?? false);
+    $msg     = (string)($res[1] ?? '');
+    $new_pid = (int)($res[2] ?? 0);
+    if (!$ok) gy_err($msg ?: 'Combine failed.');
+
+    if ($new_pid <= 0) {
+        $new_pid = (int)$pdo->query("SELECT id FROM snap_posts WHERE post_type = 'carousel' ORDER BY id DESC LIMIT 1")->fetchColumn();
+    }
+
+    // Pin in place — splice the carousel into the earliest source's slot.
+    if ($new_pid > 0) {
+        try {
+            $seq_after = array_map('intval', $pdo->query(
+                "SELECT id FROM snap_posts
+                  ORDER BY CASE WHEN sort_order > 0 THEN 1 ELSE 0 END ASC,
+                           sort_order ASC, id DESC"
+            )->fetchAll(PDO::FETCH_COLUMN));
+            $seq_after = array_values(array_filter($seq_after, fn($x) => $x !== $new_pid));
+            $insert_at = min($insert_at, count($seq_after));
+            array_splice($seq_after, $insert_at, 0, [$new_pid]);
+
+            $so = $pdo->prepare("UPDATE snap_posts SET sort_order = ? WHERE id = ?");
+            $pdo->beginTransaction();
+            foreach ($seq_after as $pos => $sid) { $so->execute([$pos + 1, $sid]); }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            // Non-fatal: the carousel exists; it just sits on top until a reorder.
+        }
+    }
+
+    gy_ok(['post_id' => $new_pid, 'message' => $msg]);
 }
 
 
