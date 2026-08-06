@@ -12,6 +12,14 @@
 
 ## Unreleased
 
+- **SLICKR (skin package, 1.0.21): the archive/album masonry wall is back inside
+  the canvas.** On wide screens the justified/cropped grid ran full-bleed — its
+  `#scroll-stage` had no width cap, so the wall escaped the container while the
+  heading stayed centred. `#scroll-stage` is now constrained to the same box as
+  the landing wall (`max-width: var(--sl-canvas-width); margin: 0 auto`), so the
+  archive and landing pages agree; the T/M/C dock follows the narrower width.
+  **Repackage SLICKR 1.0.21 + reinstall to ship.**
+
 - **SLICKR (skin package, 1.0.20): the archive/album filter controls move up into
   the tab bar, and the redundant photo count is dropped.** On archive and album
   pages, `[SHOW ALL]` and the unified `FILTER` panel used to sit loose in core's
