@@ -572,6 +572,17 @@ a:hover { color: var(--sl-link-hover); }
 /* Album / category / collection heading: drop the redundant photo count. */
 .archive-page .archive-heading-count { display: none; }
 
+/* Archive wall containment — the justified/cropped grid used to run full-bleed
+   because #scroll-stage had no width cap, so on wide screens it escaped past the
+   canvas while the heading stayed centred. Constrain the stage to the same box
+   as the landing wall (.sl-landing-stream) so both pages agree; the T/M/C
+   controls dock to the grid's right edge and follow the narrower width. */
+.archive-page #scroll-stage {
+  max-width: var(--sl-canvas-width);
+  margin: 0 auto;
+  padding: 0 24px 60px;
+}
+
 /* ── Archive heading (core .archive-heading — album / category / collection) ─
    Core titles a single-taxonomy archive view. Lead with the name Flickr-style,
    photo count beneath, aligned to the same canvas as the grid. */
