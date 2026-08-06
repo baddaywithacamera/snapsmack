@@ -745,7 +745,9 @@ body.is-photo-page:has(.scroll-solo-stage) #page-wrapper {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 20px;
+    gap: 40px;   /* match the inner .left/.center/.right gap (and 50 Shades' model)
+                    so every item + separator is evenly spaced. Was 20px, which made
+                    between-group separators tighter than within-group ones. */
     margin: 0 auto;
     padding: 0;
     font-size: var(--scroll-bottomnav-size, .75rem);

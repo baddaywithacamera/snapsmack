@@ -12,6 +12,24 @@
 
 ## Unreleased
 
+- **SCROLL (skin package, 0.1.47): the solo bottom nav is evenly spaced again.** The
+  `PREV / FIRST · INFO / COMMENTS · LAST / NEXT` bar had a mismatched gap — `20px` between the
+  groups but `40px` between items *within* a group — so every separator alternated tight/wide down
+  the row (and within-group items sat farther apart than the groups did, so it didn't even read as
+  grouped). Unified to `40px` to match the 50 SHADES model this nav was meant to inherit from
+  (`.nav-links` and its `.left/.center/.right` both `40px`). Also ships three refreshed gallery
+  screenshots. **Repackage SCROLL 0.1.47.**
+
+- **stats.php never 500s a gallery card again.** The 0.7.503 schema-tolerance pass guarded the
+  optional metrics (`snap_stats_daily`, `img_view_seed`, `img_date`) but left the two core queries
+  (settings + published-post count) unguarded — so on a build whose schema lags, the FIRST failing
+  query still threw to the outer catch and returned `500 {"error":"query_failed"}`, blanking that
+  site's card on the snapsmack.ca gallery entirely (seen on photowalk.ing, hekeepsdroningon.ca,
+  pixhellated.ca, wateronthebrain.ca — the 50 Shades / Galleria / Impact Printer / Rational Geo demos).
+  Both core queries are now individually guarded and degrade to empty/zero, so the endpoint always
+  returns a 200 with best-effort data. NOTE: the affected demo sites still need to **update** to a
+  build carrying this (their live `stats.php` predates the guards) before their cards repopulate.
+
 - **SLICKR (skin package, 1.0.21): the archive/album masonry wall is back inside
   the canvas.** On wide screens the justified/cropped grid ran full-bleed — its
   `#scroll-stage` had no width cap, so the wall escaped the container while the
