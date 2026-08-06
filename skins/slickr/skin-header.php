@@ -203,6 +203,91 @@ $sl_czoom = max(100, min(300, (int)($settings['slickr_cover_zoom'] ?? 100))) / 1
                 <?php endforeach; ?>
             </div>
             <div class="sl-tabs-right">
+                <?php
+                // ── Archive filter controls, hosted in the tab bar ─────────────────
+                // On archive.php SLICKR renders [SHOW ALL] + the unified FILTER panel
+                // HERE (right side of the tab bar) instead of leaving them loose in
+                // core's separate #infobox row below the tabs. The manifest sets
+                // features.archive_filter=false so core suppresses that row AND its
+                // conditional load of the shared engine; skin-footer.php re-emits
+                // ss-engine-archive-filter.js on archive pages. style.css hides the
+                // residual #infobox and themes .saf-* for the light bar.
+                //
+                // MARKUP MIRRORS core/archive.php's #infobox filter panel — if the
+                // core filter taxonomy markup changes, mirror it here too. All vars
+                // are in scope because skin-header.php is included inside archive.php.
+                $sl_is_archive = isset($all_albums, $all_cats, $all_collections, $active_filter_count, $search_query);
+                if ($sl_is_archive):
+                ?>
+                <a href="<?php echo BASE_URL; ?>archive.php" class="sl-arch-showall<?php echo $active_filter_count === 0 && $search_query === '' ? ' is-active' : ''; ?>">[ SHOW ALL ]</a>
+                <div class="filter-group saf-wrap">
+                    <button id="smack-archive-filter-btn"
+                            class="saf-btn<?php echo $active_filter_count > 0 ? ' saf-btn--active' : ''; ?>"
+                            aria-expanded="false"
+                            aria-controls="smack-archive-filter-panel"
+                            type="button">
+                        <span class="saf-btn-label"><?php echo $active_filter_count > 0 ? $active_filter_count . ' SELECTED' : 'FILTER'; ?></span>
+                        <span class="saf-btn-arrow">▾</span>
+                    </button>
+                    <div id="smack-archive-filter-panel" class="saf-panel" role="dialog" aria-label="Filter photos">
+                        <input type="text" id="smack-archive-filter-search"
+                               class="saf-search" placeholder="SEARCH FILTERS…"
+                               autocomplete="off" spellcheck="false">
+                        <?php if ($all_cats): ?>
+                        <div class="saf-group">
+                            <div class="saf-group-header">REGISTRY</div>
+                            <?php foreach ($all_cats as $c): ?>
+                            <label class="saf-item">
+                                <input type="checkbox" class="saf-checkbox"
+                                       data-type="cat" value="<?php echo (int)$c['id']; ?>"
+                                       <?php echo in_array((int)$c['id'], $filter_cats) ? 'checked' : ''; ?>>
+                                <span class="saf-label"><?php echo htmlspecialchars(strtoupper($c['cat_name'])); ?></span>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($all_albums): ?>
+                        <div class="saf-group">
+                            <div class="saf-group-header">ALBUMS</div>
+                            <?php foreach ($all_albums as $a): ?>
+                            <label class="saf-item">
+                                <input type="checkbox" class="saf-checkbox"
+                                       data-type="alb" value="<?php echo (int)$a['id']; ?>"
+                                       <?php echo in_array((int)$a['id'], $filter_albums) ? 'checked' : ''; ?>>
+                                <span class="saf-label"><?php echo htmlspecialchars(strtoupper($a['album_name'])); ?></span>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($all_collections): ?>
+                        <div class="saf-group">
+                            <div class="saf-group-header">COLLECTIONS</div>
+                            <?php foreach ($all_collections as $col): ?>
+                            <label class="saf-item">
+                                <input type="checkbox" class="saf-checkbox"
+                                       data-type="col" value="<?php echo (int)$col['id']; ?>"
+                                       <?php echo in_array((int)$col['id'], $filter_collections) ? 'checked' : ''; ?>>
+                                <span class="saf-label"><?php echo htmlspecialchars(strtoupper($col['title'])); ?></span>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (count($all_authors) > 1): /* multi-author blogs only */ ?>
+                        <div class="saf-group">
+                            <div class="saf-group-header">PHOTOGRAPHER</div>
+                            <?php foreach ($all_authors as $au): ?>
+                            <label class="saf-item">
+                                <input type="checkbox" class="saf-checkbox"
+                                       data-type="usr" value="<?php echo (int)$au['id']; ?>"
+                                       <?php echo in_array((int)$au['id'], $filter_authors) ? 'checked' : ''; ?>>
+                                <span class="saf-label"><?php echo htmlspecialchars(strtoupper($au['username'])); ?></span>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+                    </div><!-- /saf-panel -->
+                </div><!-- /saf-wrap -->
+                <?php endif; ?>
                 <form class="sl-search" action="<?php echo BASE_URL; ?>archive.php" method="get" role="search">
                     <input type="search" name="search" class="sl-search-input" placeholder="Search photos" aria-label="Search photos">
                 </form>

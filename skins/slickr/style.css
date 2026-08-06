@@ -513,68 +513,64 @@ a:hover { color: var(--sl-link-hover); }
   padding: 0 24px;
 }
 
-/* ── Archive filter row (archive.php) ──────────────────────────────────────
-   Core emits #infobox .nav-links > .center holding [SHOW ALL], the FILTER
-   panel (.saf-*, styled by core), separators, and the search form. Slickr had
-   no archive-page rules for this row, so it collapsed to raw inline text with
-   the search box overlapping. Style it in the Flickr idiom: centred to the
-   canvas, small uppercase links, search pushed to the right. (The masthead tab
-   bar above is .sl-profile-tabs — a separate element.) */
-.archive-page #infobox { padding: 0 24px; }
-.archive-page #infobox .nav-links {
-  max-width: var(--sl-canvas-width);
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  min-height: 46px;
-}
-.archive-page #infobox .nav-links .center {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  width: 100%;
-}
-.archive-page #infobox .nav-links a {
-  color: var(--sl-link);
-  text-decoration: none;
+/* ── Archive filter — hosted in the tab bar, not a loose row ────────────────
+   SLICKR renders [SHOW ALL] + the unified FILTER panel inside .sl-tabs-right
+   (skin-header.php), so core's own filter row is suppressed (manifest
+   features.archive_filter=false) and its residual #infobox collapsed here.
+   The shared ss-engine-archive-filter.js is re-emitted by skin-footer.php on
+   archive pages. Base .saf-* styles come from core/page-archive.css; we only
+   recolour + reposition them for the light bar. (The masthead tab bar is
+   .sl-profile-tabs; the T/M/C control cluster lives elsewhere in #infobox and
+   docks over the grid, so we collapse the bar without hiding it.) */
+.archive-page #infobox { border: 0; background: none; padding: 0; }
+.archive-page #infobox .nav-links { display: none; }
+
+/* [SHOW ALL] reset link, sitting with the utilities on the right. */
+.sl-tabs-right .sl-arch-showall {
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: .5px;
+  text-decoration: none;
   white-space: nowrap;
+  color: var(--sl-text-secondary);
 }
-.archive-page #infobox .nav-links a:hover { color: var(--sl-link-hover); }
-.archive-page #infobox .nav-links a.inactive { color: var(--sl-text-secondary); }
-.archive-page #infobox .nav-links .sep { color: #cfcfcf; }
-.archive-page #infobox .nav-links .filter-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.sl-tabs-right .sl-arch-showall:hover,
+.sl-tabs-right .sl-arch-showall.is-active { color: var(--sl-link); }
+
+/* FILTER button — core .saf-btn--active defaults to var(--accent,#fff), i.e.
+   white, which is invisible on Slickr's light bar. Give it a readable colour. */
+.sl-tabs-right .saf-wrap { position: relative; display: inline-flex; align-items: center; }
+.sl-tabs-right .saf-btn {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  color: var(--sl-text-secondary);
 }
-/* Search form: last group on the row, pushed hard right. */
-.archive-page #infobox .nav-links .center > .filter-group:last-child { margin-left: auto; }
-.archive-page #infobox .archive-search-form { margin: 0; }
-.archive-page #infobox .archive-search-input {
-  appearance: none;
-  -webkit-appearance: none;
+.sl-tabs-right .saf-btn:hover,
+.sl-tabs-right .saf-btn.saf-btn--active { color: var(--sl-link); }
+
+/* FILTER panel — light theme + right-aligned so it can't overflow the viewport
+   edge when the button sits at the right of the bar (core centres it). */
+.sl-tabs-right .saf-panel {
+  left: auto;
+  right: 0;
+  transform: none;
   background: #fff;
   border: 1px solid var(--sl-header-border);
-  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .15);
+}
+.sl-tabs-right .saf-panel .saf-group-header { color: var(--sl-text-secondary); }
+.sl-tabs-right .saf-panel .saf-label { color: var(--sl-text-primary); }
+.sl-tabs-right .saf-search {
+  background: #fff;
+  border: 1px solid var(--sl-header-border);
   color: var(--sl-text-primary);
-  font-family: inherit;
-  font-size: 13px;
-  padding: 7px 12px;
-  width: 220px;
-  max-width: 46vw;
-  outline: none;
-  transition: border-color .15s ease, box-shadow .15s ease;
 }
-.archive-page #infobox .archive-search-input:focus {
-  border-color: var(--sl-link);
-  box-shadow: 0 0 0 3px rgba(0, 99, 220, .12);
-}
-.archive-page #infobox .archive-search-input::placeholder { color: var(--sl-text-secondary); }
+.sl-tabs-right .saf-search::placeholder { color: var(--sl-text-secondary); }
+
+/* Album / category / collection heading: drop the redundant photo count. */
+.archive-page .archive-heading-count { display: none; }
 
 /* ── Archive heading (core .archive-heading — album / category / collection) ─
    Core titles a single-taxonomy archive view. Lead with the name Flickr-style,
