@@ -12,6 +12,22 @@
 
 ## Unreleased
 
+- **SLICKR (skin package, 1.0.20): the archive/album filter controls move up into
+  the tab bar, and the redundant photo count is dropped.** On archive and album
+  pages, `[SHOW ALL]` and the unified `FILTER` panel used to sit loose in core's
+  own `#infobox` row below the tabs — jammed to the left, with the active FILTER
+  button rendering `var(--accent,#fff)` = white-on-white (invisible) on Slickr's
+  light bar, and a second search box duplicating the tab bar's. SLICKR now renders
+  those controls itself, right-aligned inside `.sl-tabs-right` next to the existing
+  search + calendar buttons (manifest `features.archive_filter=false` suppresses
+  core's row and its conditional engine load; `skin-footer.php` re-emits the shared
+  `ss-engine-archive-filter.js` on archive pages; the FILTER panel is re-themed for
+  the light skin and right-anchored so it can't overflow the viewport). The T/M/C
+  control cluster is untouched — it docks over the grid independently. The
+  `.archive-heading` "N photos" count is hidden. **Repackage SLICKR 1.0.20 via the
+  Skin Packager + reinstall to ship** (the deployed 1.0.19 predates the whole
+  archive-row restyle, so the number must bump for the update to land).
+
 - **Release Packager finds buried stable tags + honest empty-state message.** The
   stable (BORING) tag list fetched only one 50-tag page, so once enough dev (D)
   tags piled up after the last stable release the stable tag fell off the end and

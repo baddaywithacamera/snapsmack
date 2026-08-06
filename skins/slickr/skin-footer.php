@@ -42,5 +42,18 @@ if (!empty($requested)) {
     }
 }
 
+// ── Archive filter engine ───────────────────────────────────────────────────
+// SLICKR hosts the FILTER panel in its tab bar (skin-header.php) with manifest
+// features.archive_filter=false, which ALSO suppresses core's conditional load
+// of the shared engine (archive.php ~900). Re-emit the shared engine here on
+// archive pages so the relocated panel still toggles + filters. This references
+// a shared assets/js engine — no per-skin JS is shipped (same HTML-mode tag as
+// core/archive.php). Vars are in scope because skin-footer.php is included
+// inside archive.php.
+$sl_is_archive = isset($all_albums, $all_cats, $active_filter_count);
+if ($sl_is_archive): ?>
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-archive-filter.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+<?php endif;
+
 include dirname(__DIR__, 2) . '/core/footer.php';
 // ===== SNAPSMACK EOF =====
