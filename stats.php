@@ -37,12 +37,20 @@ try {
 require_once __DIR__ . '/core/constants.php';
 
 try {
-    // Settings
-    $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
-                    ->fetchAll(PDO::FETCH_KEY_PAIR);
+    // Settings — guarded like every metric below: a missing/renamed core table
+    // must degrade this card, never 500 it blank. (photowalk.ing et al. surfaced
+    // this: an old build's stats.php died on the FIRST failing query.)
+    $settings = [];
+    try {
+        $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
+                        ->fetchAll(PDO::FETCH_KEY_PAIR);
+    } catch (Throwable $e) { /* snap_settings shape lagged — leave empty */ }
 
-    // Post count
-    $posts = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
+    // Post count — guarded for the same reason.
+    $posts = 0;
+    try {
+        $posts = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
+    } catch (Throwable $e) { /* snap_images shape lagged — leave zero */ }
 
     // Stats — snap_stats_daily and img_view_seed can be absent on an install whose
     // schema lags the code (older version, or a column-add that hasn't applied yet).
