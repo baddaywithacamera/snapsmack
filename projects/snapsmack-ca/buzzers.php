@@ -162,6 +162,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Aug 6</span><a href="#a039">GET YOUR SHIT SORTED &mdash; Desktop Trust Boundary &amp; API Key Lifetime</a></li>
                 <li><span class="idx-date">Aug 5</span><a href="#a038">Gallery Skins &mdash; JavaScript Package Boundary</a></li>
                 <li><span class="idx-date">Aug 4</span><a href="#a037">Smack Up Your Backup Desktop &mdash; Credential Vault &amp; Transport</a></li>
                 <li><span class="idx-date">Aug 4</span><a href="#a036">SmackPress WordPress Migration &mdash; Import Sanitising</a></li>
@@ -200,6 +201,15 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a039">
+                <div class="post-meta"><span class="post-date">August 6, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>GET YOUR SHIT SORTED &mdash; Desktop Trust Boundary &amp; API Key Lifetime</h2>
+                <p>GET YOUR SHIT SORTED is the desktop sorting tool. Its window displays information fetched from the blog it is connected to, and it also had three unrestricted commands for reading and writing files on the computer running it. Those commands accepted any location on disk, the window had no content-security policy, and a handful of values arriving from the server were displayed without being neutralised first. Individually each was minor. Together they formed a path: a blog that had been tampered with &mdash; or an unencrypted connection someone else was sitting on &mdash; could have caused the tool to write a file somewhere it should never write. No exploitation is known, and the tool is used by one operator on their own machine.</p>
+                <p>The file commands are now confined to the tool's own data folder and reject any attempt to climb out of it. Every value arriving from the server is neutralised before display. Connecting over an unencrypted address now warns plainly that the key travels in the clear, and asks for a deliberate confirmation. Separately, the tool's API key was never checked for expiry &mdash; keys are issued with a lifetime of four weeks or less, but this handler honoured them forever. Reviewing that led to a sweep of every key-checking entry point in SnapSmack: three more had the same gap, and one accepted a key issued for a completely different tool. All four now verify both the key's type and its expiry.</p>
+                <p>Two items remain open by decision rather than oversight. The tool still stores its key with encoding rather than encryption, which will be replaced by the same protected vault that closed the equivalent finding for Smack Up Your Backup. A content-security policy is prepared but needs testing against a running build before it ships. AI enrichment, which spends money with a third-party provider, now states the number of paid requests before a run begins and counts them as it goes; it remains unavailable unless AI has been deliberately enabled and cost accepted on the blog itself. Closed in 0.7.505D.</p>
+                <a class="report-link" href="secaudits/2026-08-06-039-gyss-desktop-client-attack-surface.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a038">
                 <div class="post-meta"><span class="post-date">August 5, 2026</span><span class="post-tag">Closed</span></div>
