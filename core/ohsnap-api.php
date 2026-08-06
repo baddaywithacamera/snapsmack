@@ -83,16 +83,34 @@ if (!$raw_key) {
 }
 
 $key_hash = hash('sha256', $raw_key);
+// SECAUDIT 039 (sweep): this handler authenticated on key_hash + is_active ALONE.
+// Two gaps: (1) no key_type filter, so a key minted for ANY other tool — GYSS,
+// SYBU, flkr-fckr — authenticated here, crossing tool scopes the key UI implies
+// are separate; (2) no expiry check, so a lapsed key kept working (the platform
+// mandates <=4-week keys since 0.7.263, enforced in core/api-auth.php).
+// Legacy keys predating the key_type column default to 'ohsnap', so the added
+// filter does not lock out existing installs. Falls back if the column is absent.
 try {
     $key_stmt = $pdo->prepare("
         SELECT id FROM snap_ohsnap_keys
-        WHERE key_hash = ? AND is_active = 1
+        WHERE key_hash = ? AND is_active = 1 AND key_type = 'ohsnap'
+          AND (expires_at IS NULL OR expires_at > NOW())
         LIMIT 1
     ");
     $key_stmt->execute([$key_hash]);
     $api_key_row = $key_stmt->fetch(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
-    os_err('Database error during auth', 503);
+    try {
+        $key_stmt = $pdo->prepare("
+            SELECT id FROM snap_ohsnap_keys
+            WHERE key_hash = ? AND is_active = 1
+            LIMIT 1
+        ");
+        $key_stmt->execute([$key_hash]);
+        $api_key_row = $key_stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e2) {
+        os_err('Database error during auth', 503);
+    }
 }
 
 if (!$api_key_row) {

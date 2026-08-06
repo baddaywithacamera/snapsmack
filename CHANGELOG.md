@@ -12,6 +12,27 @@
 
 ## Unreleased
 
+## 0.7.505 "<codename TBD — Sean>" — 2026-08-06
+
+- **SECAUDIT 039 — GYSS desktop trust boundary + an API-key expiry sweep across every tool.**
+  GYSS exposed three unrestricted file read/write commands to its own webview while running with
+  no content-security policy, and rendered a few server-supplied values without escaping — together
+  a path by which a tampered-with blog (or an intercepted `http://` connection) could have made the
+  tool write a file anywhere on disk. The file commands are now confined to the app's own data
+  directory and reject `..`; five unescaped render sites are fixed; connecting over plain `http://`
+  now warns explicitly and requires confirmation.
+  **The key-lifetime half is core and ships here:** `gyss-api.php` never checked `expires_at`, so
+  keys issued with a mandatory ≤4-week lifetime were honoured forever. A sweep of every
+  `snap_ohsnap_keys` consumer found three more with the same gap — `flkrfckr-api.php`,
+  `smackpress-api.php`, and `ohsnap-api.php` — and `ohsnap-api.php` was worse: it checked **no
+  `key_type` at all**, so a key minted for any other tool (a GYSS sorter key, a SYBU batch key)
+  authenticated against the Oh Snap API. All four now verify key type *and* expiry, each with a
+  fallback if the `expires_at` column is absent so a lagging schema still authenticates.
+  GYSS also now declares AI cost before a REPAIR run (image count + "one paid call per image") and
+  counts paid calls live. No exploitation known. Full report:
+  `secaudits/2026-08-06-039-gyss-desktop-client-attack-surface.md`.
+  **GYSS needs a rebuild** to ship its half; the key-expiry fixes are core and ship in this build.
+
 ## 0.7.504 "<codename TBD — Sean>" — 2026-08-06
 
 - **GYSS (desktop app, 0.1.1-alpha): GRAMOFSMACK mode — reorder the grid feed + build
