@@ -31,6 +31,7 @@ $_demo_sites = [
     'fauxlaroid.fyi'          => 'https://fauxlaroid.fyi',
     'lightafterdark.ca'       => 'https://lightafterdark.ca',
     'craptasti.ca'            => 'https://craptasti.ca',
+    'usedcarparts.photoblogs.fyi' => 'https://usedcarparts.photoblogs.fyi',
 ];
 
 $_demo_stats      = [];
@@ -45,8 +46,11 @@ if (file_exists($_stats_cache) && (time() - filemtime($_stats_cache)) < $_stats_
     }
 }
 
-// Cache miss — fetch from each site in parallel
-if (empty($_demo_stats) && function_exists('curl_multi_init')) {
+// Cache miss, or a newly registered site missing from an otherwise-fresh cache —
+// fetch from each site in parallel. This keeps a new card from showing "Stats
+// unavailable" for up to an hour just because the previous cache predates it.
+$_missing_demo_stats = array_diff_key($_demo_sites, $_demo_stats);
+if ((empty($_demo_stats) || !empty($_missing_demo_stats)) && function_exists('curl_multi_init')) {
     $_mh      = curl_multi_init();
     $_handles = [];
     foreach ($_demo_sites as $_domain => $_base_url) {
@@ -1874,7 +1878,7 @@ require_once __DIR__ . '/includes/header.php';
 <section id="themes">
     <div class="wrap">
         <h2>Production Ready Skins</h2>
-        <p class="lede">Twelve skins. Twelve live sites. Not demos stuffed with stock photos — each is a real photographer's actual online portfolio. Click any screenshot to zoom in, then visit the live site. Hover a card for live site stats. More skins are in development.</p>
+        <p class="lede">Thirteen skins. Thirteen live sites. Not demos stuffed with stock photos — each is a real photographer's actual online portfolio. Click any screenshot to zoom in, then visit the live site. Hover a card for live site stats. More skins are in development.</p>
         <div class="theme-grid">
 
             <div class="theme-card" data-stats="<?php echo ss_card_stats('unzucked.ca', $_demo_stats); ?>">
@@ -2132,6 +2136,27 @@ require_once __DIR__ . '/includes/header.php';
                     <h3>Jive Turkey</h3>
                     <p>Unapologetic 70s. An animated flat-graphic background — kaleidoscope, flower field, racing-stripe ribbons, sunburst daisy, Bauhaus shuffle — churns behind a 3-across square grid, with a colour border cycling across the tiles and SURPRISE rolling a fresh look every visit. Maximalist on purpose; the photos still win.</p>
                     <a href="https://craptasti.ca" target="_blank" class="theme-link"><span class="theme-link-label">View live site</span>craptasti.ca →</a>
+                </div>
+            </div>
+
+            <div class="theme-card" data-stats="<?php echo ss_card_stats('usedcarparts.photoblogs.fyi', $_demo_stats); ?>">
+                <div class="theme-main-shot">
+                    <a href="img/scroll-landing.png" data-lb="img/scroll-landing.png">
+                        <img src="img/scroll-landing.png" alt="SCROLL — mosaic landing page" width="1920" height="1080" loading="lazy">
+                    </a>
+                </div>
+                <div class="theme-thumbs">
+                    <a href="img/scroll-archive.png" data-lb="img/scroll-archive.png">
+                        <img src="img/scroll-archive.png" alt="SCROLL — single photograph view" width="1920" height="1080" loading="lazy">
+                    </a>
+                    <a href="img/scroll-page.png" data-lb="img/scroll-page.png">
+                        <img src="img/scroll-page.png" alt="SCROLL — static page" width="1920" height="1080" loading="lazy">
+                    </a>
+                </div>
+                <div class="theme-info">
+                    <h3>SCROLL</h3>
+                    <p>A typographic masthead over a shape-aware photo wall that lets portraits stand tall and landscapes stretch out. Switch between mosaic, columns, and rows; tune the scale and spacing; then open each photograph in a clean, full-width archive view. Built for pictures that refuse to be cropped into matching boxes.</p>
+                    <a href="https://usedcarparts.photoblogs.fyi" target="_blank" class="theme-link"><span class="theme-link-label">View live site</span>usedcarparts.photoblogs.fyi →</a>
                 </div>
             </div>
 
