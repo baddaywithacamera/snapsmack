@@ -137,6 +137,10 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Aug 7</span>
+                    <a href="#indieweb-plumbing">The Open Web Can Read the Labels Now</a>
+                </li>
+                <li>
                     <span class="idx-date">Aug 6</span>
                     <a href="#scroll">SCROLL Refuses to Crop Your Photographs</a>
                 </li>
@@ -286,6 +290,16 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="indieweb-plumbing">
+                <div class="post-meta">
+                    <span class="post-date">August 7, 2026</span>
+                    <span class="post-tag">Plumbing</span>
+                </div>
+                <h2><a href="#indieweb-plumbing">The Open Web Can Read the Labels Now</a></h2>
+                <p>SnapSmack already publishes on your own domain, carries RSS, and syndicates through ActivityPub. In 0.7.506D we added the quiet IndieWeb labels underneath: validated <code>rel="me"</code> identity links, a shared <code>h-card</code> for the site owner, and <code>h-entry</code> data on photographs, longform pages, and public Fediverse posts. Browsers see the same pages; software that understands microformats can now identify the owner, original URL, photograph, title, date, and author without guessing.</p>
+                <p>This is compatibility plumbing, not another social system. There is no Webmention receiver, IndieAuth service, Micropub endpoint, remote page fetcher, or second comment path. ActivityPub remains the one social transport. We added the useful labels and deliberately declined the new attack surface.</p>
+            </article>
 
             <article class="post" id="scroll">
                 <div class="post-meta">
