@@ -8,7 +8,7 @@
 | **Date** | 2026-08-06 |
 | **Severity** | **MEDIUM** - the shared step-up helper transmits the operator's **account password and a live TOTP code** to whatever URL is configured, with no scheme check, so a `http://` site URL puts full account credentials on the wire in cleartext (Finding B, and it affects every tool in the family, not just this one). The scoped import key is base64-obfuscated at rest (Finding A). Two lower items: the server stores client-supplied image paths with no containment and later `unlink()`s them (C), and accepts an unvalidated URL that becomes a rendered link `href` (D). |
 | **Component** | `tools/flkr-fckr/` desktop client - `config.py` (key at rest), `main.py` (settings/step-up drive), `poster.py` (API transport), `flickr_parser.py` (export parsing), `image_prep.py` (EXIF/geo, file copy), `checkpoint.py`; `tools/_shared/snap_stepup.py` (**shared** step-up client); `core/flkrfckr-api.php` (server handler) |
-| **Status** | **B, C and D CLOSED**; **A's floor applied**, its vault port still an owner decision (2026-08-06, see section 9). EXIF/GPS preservation is a **settled** decision, recorded in section 6 - not a finding, not open. |
+| **Status** | **ALL FOUR FINDINGS CLOSED** (2026-08-06, see section 9). A was closed by porting SUYB's credential vault; the client needs a rebuild to ship. EXIF/GPS preservation is a **settled** decision, recorded in section 6 - not a finding, not open. |
 | **Reporter** | Sean (chose FLKR FCKR as the next desktop-client audit) + Claude (walked the client, the shared step-up helper, and the server handler end to end) |
 | **Related** | **037 (sibling desktop client SUYB - same credential-at-rest class, closed by a scrypt+Fernet vault; its deferred "HTTP admin login" sub-item is this audit's Finding B, now seen twice)**, 039 (GYSS desktop trust boundary - added the `http://` warning this tool lacks; its key-expiry sweep already fixed `flkrfckr-api.php`), 036 (SmackPress desktop credentials), 034 (path discipline on extraction), 024A (comment/caption escape-first - the reason Finding D is not an XSS), 035 (client-IP trust boundary - correctly honoured here). FLKR FCKR version at audit: **0.7.25**. |
 | **Disclosure** | No exploitation known. Finding B requires the operator to configure a plaintext-`http://` URL **and** an attacker on the network path. Finding A requires local read access to the app folder. Findings C and D are **post-authentication**: they require a valid `flkrfckr` key *and* an open step-up window, which in normal operation means the site owner. |
@@ -385,7 +385,27 @@ shape as `core/client-ip.php`, the SECAUDIT 035 boundary helper.
   renders unlinked. `htmlspecialchars()` at the render site stops attribute
   breakout but not a `javascript:` scheme; escaping is not scheme validation.
 
-**Finding A - FLOOR APPLIED, vault still open.** `config.py` now writes
+**Finding A - CLOSED.** The API key is now encrypted at rest. `tools/_shared/snap_vault.py`
+is a parameterised lift of the vault SECAUDIT 037 built for SUYB 0.7.19 - scrypt-derived
+master key (N=32768, r=8, p=1), Fernet sealing, passphrase never written. `init()` scopes
+both the keyring entry and the verifier per tool, so a `vault.meta` copied between tools
+fails closed rather than half-opening. FLKR FCKR gained a **Key** control for on/off/re-key,
+with an optional machine-bound cache of the unlock key so the passphrase is not demanded on
+every launch; that cache never travels with the folder.
+
+The lifecycle is read-then-switch-then-write in both directions, so an interruption cannot
+strand the key, and a locked vault **raises** rather than silently rewriting the key in the
+weaker base64 form. Legacy base64 keys keep loading, so no existing install is stranded.
+Verified by `tools/flkr-fckr/tests/test_vault.py` (12 tests, all passing), including that no
+plaintext or base64 residue of the key remains in `flkrfckr.ini` after enabling, that a
+tampered ciphertext is rejected, and that a full on -> re-key -> off -> on cycle never loses
+the key. The GUI was constructed end to end in a smoke test with the Key window built.
+
+**SUYB was deliberately not migrated onto the shared module** - it is shipped, tested, and
+wired through four other modules; converging it is worth doing as its own change with its
+own test pass, not as a side effect of this one.
+
+**The floor, applied alongside it.** `config.py` now writes
 `flkrfckr.ini` with `chmod 0600`, best-effort and swallowed so a permissions
 failure can never cost the operator their settings. Stated plainly because it
 would be easy to over-read: this is a real control on Linux, **near-cosmetic on
@@ -440,9 +460,8 @@ network request**.
    **DONE** (section 9).
 3. ~~**Section 7** - EXIF key names.~~ **DONE** - client rewritten and a REBUILD EXIF
    maintenance pass added to recover already-imported photos without re-importing.
-4. ~~**Finding A floor** - `chmod 0600` on `flkrfckr.ini`.~~ **DONE**, along with the
-   `.gitignore` gap it exposed (section 9). **The vault port remains open** and is the
-   only thing in this report still outstanding.
+4. ~~**Finding A** - credential vault + `chmod 0600` floor + the `.gitignore` gap.~~
+   **DONE** (section 9). Nothing in this report remains outstanding.
 
 ~~Also still open: whether to warn on `http://` for the non-credential calls.~~ **DONE** -
 Connect and Start Import both warn and require confirmation now.

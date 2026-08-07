@@ -39,7 +39,33 @@
   - `tests/api-input-safety-regression.php` — **48 checks**, including 23 hostile paths
     and 11 hostile URLs, plus assertions that the handler still calls the validators and
     that the Python HTTPS guard remains in both of its call sites.
-  - **Finding A floor applied.** `flkrfckr.ini` is now written owner-only (`chmod 0600`,
+  - **Finding A CLOSED — the API key is now encrypted at rest.** New shared credential
+    vault (`tools/_shared/snap_vault.py`): a master key derived from your passphrase with
+    **scrypt**, secrets sealed with **Fernet** (AES-128-CBC + HMAC-SHA256). The passphrase
+    is never written anywhere, so a copy of the FLKR FCKR folder is no longer enough to
+    read the key. This is a parameterised lift of the vault SECAUDIT 037 built for SUYB —
+    the crypto is deliberately a near-copy, because the tested implementation is the one
+    worth shipping. `init()` scopes the keyring entry and the verifier per tool, so two
+    tools never unlock each other's vault and a `vault.meta` copied between them fails
+    closed. GYSS, SYBU and Oh Snap can adopt the same module; **SUYB is deliberately NOT
+    migrated onto it** — it is shipped and tested, and moving it deserves its own change.
+    - New **Key** button in FLKR FCKR: encryption status, turn on/off, change passphrase.
+      Optionally lets *this machine* remember the unlock key so you are not typing a
+      passphrase every launch — that cache is machine-bound and never travels with the
+      folder.
+    - **Backward compatible in both directions.** Existing base64 keys load untouched;
+      turning encryption off rewrites the key in the old form. Enable and disable both
+      read the key *before* changing vault state, so an interrupted switch can never
+      leave a key nothing can read.
+    - **Fails closed, never silently downgrades.** Saving while the vault is locked raises
+      rather than quietly rewriting the key as base64. A locked vault hides the key but
+      still loads every other setting. Lose the passphrase and nothing is destroyed —
+      paste the key again or mint a new one.
+    - `tools/flkr-fckr/tests/test_vault.py` — **12 tests**: seal/open round-trip, no
+      plaintext or base64 residue after enabling, wrong-passphrase refusal, locked-save
+      refusal, locked-disable refusal, ciphertext tamper rejection, cross-tool vault
+      isolation, and a full on → re-key → off → on cycle proving the key survives.
+  - **Finding A floor also applied.** `flkrfckr.ini` is now written owner-only (`chmod 0600`,
     best-effort — it is a no-op on FAT and largely cosmetic on NTFS, and is deliberately
     swallowed so a permissions hiccup can never cost you your settings). This does **not**
     make the key confidential at rest; it is still base64, which is an encoding, not
