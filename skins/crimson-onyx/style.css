@@ -655,6 +655,11 @@ body.homepage-static .pfd-lede {
     padding: 24px var(--pfd-gutter) 40px;
 }
 
+#pane-comments {
+    border-top: 1px solid var(--pfd-hairline);
+    margin-top: 8px;
+}
+
 .photo-title-footer {
     font-family: var(--pfd-black);
     text-transform: uppercase;
@@ -677,12 +682,32 @@ body.homepage-static .pfd-lede {
 
 .exif-table {
     width: 100%;
+    max-width: 40rem;
     border-collapse: collapse;
     font-family: var(--pfd-mono);
     font-size: 0.8rem;
     color: var(--pfd-muted);
 }
 .exif-table td { padding: 5px 10px 5px 0; border-bottom: 1px solid var(--pfd-hairline); }
+
+/* Label in muted caps, value in ink — otherwise both inherit the same grey and
+   an EXIF table reads as one undifferentiated block of monospace. */
+.exif-table .exif-label {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--pfd-muted);
+    white-space: nowrap;
+    width: 1%;
+}
+.exif-table .exif-value { color: var(--pfd-ink); }
+
+.main-photo img,
+#main-image {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+}
 
 /* navigation-bar.php */
 #infobox a {
@@ -697,7 +722,7 @@ body.homepage-static .pfd-lede {
 }
 #infobox a:hover, #infobox a:focus-visible { color: var(--pfd-link); opacity: 1; }
 
-/* archive grid */
+/* --- archive: thumbnail grid ------------------------------------------- */
 .pfd-archive-grid {
     max-width: 1280px;
     margin: 0 auto;
@@ -706,12 +731,87 @@ body.homepage-static .pfd-lede {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 14px;
 }
-.pfd-archive-grid img { display: block; width: 100%; height: auto; }
 
+.pfd-archive-item {
+    display: block;
+    text-decoration: none;
+    color: var(--pfd-ink);
+    border: 2px solid transparent;
+    transition: border-color 0.15s, transform 0.15s;
+}
+.pfd-archive-item:hover,
+.pfd-archive-item:focus-visible {
+    border-color: var(--pfd-red);
+    transform: translateY(-2px);
+    outline: none;
+}
+
+/* The template sets aspect-ratio inline per image; this just fills it. */
+.pfd-thumb {
+    overflow: hidden;
+    background: #0b0b0b;
+}
+.pfd-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+/* Portraits crop from the top — a standing subject's head matters more than
+   their feet. */
+.pfd-thumb-portrait img { object-position: 50% 20%; }
+
+.pfd-archive-title {
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.7rem;
+    color: var(--pfd-muted);
+    padding: 8px 2px 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.pfd-archive-item:hover .pfd-archive-title,
+.pfd-archive-item:focus-visible .pfd-archive-title { color: var(--pfd-ink); }
+
+/* --- archive: justified rows -------------------------------------------
+   The justified grid belongs to CORE (assets/css/page-archive.css), which
+   archive.php loads before this file. Its own header says it plainly: override
+   what is decorative, never the grid structure.
+   So there are no row/item layout rules here. An earlier draft of this skin had
+   them, and they were both wrong and pointless — `flex-grow:0` on the last row
+   collapsed its images to 4px because core already handles the short final row
+   with an explicit height, and core kills item borders with `!important`
+   anyway, so the hover border never applied.
+   The sanctioned way to put a frame on a tile is the outline hook below.       */
 #justified-grid {
     max-width: 1280px;
     margin: 0 auto;
     padding: 40px var(--pfd-gutter);
+}
+
+:root {
+    --masonry-border-width: 0px;
+    --masonry-border-color: transparent;
+}
+#justified-grid .justified-item:hover,
+#justified-grid .justified-item:focus-visible {
+    --masonry-border-width: 2px;
+    --masonry-border-color: var(--pfd-red);
+    outline-color: var(--pfd-red);
+}
+
+/* --- nothing to show ---------------------------------------------------- */
+.empty-sector-msg {
+    font-family: var(--pfd-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 0.78rem;
+    color: var(--pfd-muted);
+    text-align: center;
+    padding: 80px 20px;
 }
 
 /* ===========================================================================
