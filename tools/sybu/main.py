@@ -61,6 +61,36 @@ import recovery as recovery_module
 from manifest_parser import ManifestEntry
 from poster import SnapSmackClient, SiteData
 
+# Shared transport guard (tools/_shared/snap_stepup.py). SECAUDIT 040 recorded
+# SYBU as covered by the shared fix; SECAUDIT 042 found SYBU imports the module
+# elsewhere but never calls the transport gate, so the Bearer key crossed
+# plaintext http:// unchecked. Warn-and-confirm, because this is a scoped key
+# rather than an account password.
+_SHARED_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '_shared')
+if os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in sys.path:
+    sys.path.insert(0, _SHARED_DIR)
+try:
+    from snap_stepup import confirm_insecure_transport, insecure_transport_reason
+except Exception:                      # helper absent from an old build
+    def insecure_transport_reason(base_url):
+        """Fail CLOSED: if we cannot verify the URL, only https:// is accepted."""
+        u = str(base_url).strip().lower()
+        if u.startswith('https://'):
+            return ''
+        for host in ('http://localhost', 'http://127.', 'http://[::1]'):
+            if u.startswith(host):
+                return ''
+        return ('This site URL is not https://, so your API key would be sent '
+                'across the network in the clear.')
+
+    def confirm_insecure_transport(parent, base_url, *, what='your API key'):
+        reason = insecure_transport_reason(base_url)
+        if not reason:
+            return True
+        from tkinter import messagebox
+        messagebox.showerror('Unencrypted connection', reason)
+        return False
+
 # Offline posting suite (BATCH SLAPPED / BATCH, PLEASE) now lives in COLD SNAP
 # (tools/coldsnap). SMACK YOUR BATCH UP is the LIVE poster only — no offline
 # modes here. Flag kept False so any residual guards stay inert.
@@ -2823,6 +2853,12 @@ class App(tk.Tk):
             self._sp_test_lbl.configure(text="Enter URL and API Key first.", fg=FG_WARN)
             return
 
+        # Gate on the main thread, before the worker starts — a worker thread
+        # cannot safely raise a modal (SECAUDIT 042).
+        if not confirm_insecure_transport(self, url, what='your API key'):
+            self._sp_test_lbl.configure(text="Cancelled — site URL is not https://", fg=FG_WARN)
+            return
+
         self._sp_test_btn.configure(state="disabled")
         self._sp_test_lbl.configure(text="Testing…", fg=FG_DIM)
 
@@ -3604,6 +3640,17 @@ class App(tk.Tk):
         # ── Site ──────────────────────────────────────────────────────
         url      = c.get('url', '').strip()
         api_key = c.get('api_key', '').strip()
+        # Auto-connect on startup. No prompt here: this is not a deliberate user
+        # action, and a modal raised from a background thread at launch is worse
+        # than not connecting. Refuse quietly and say why — pressing Connect
+        # gives the operator the normal warn-and-confirm (SECAUDIT 042).
+        if url and api_key and insecure_transport_reason(url):
+            self._conn_dot.configure(fg=LED_ERR)
+            self._conn_lbl.configure(text="NOT CONNECTED", fg=LED_ERR)
+            self._set_status("Not auto-connecting: the site URL is not https://. "
+                             "Press Connect to review.", FG_WARN)
+            return
+
         if url and api_key:
             self._conn_dot.configure(fg=LED_WARN)
             self._conn_lbl.configure(text="CONNECTING...", fg=LED_WARN)
@@ -3840,6 +3887,14 @@ class App(tk.Tk):
 
         if not url or not key:
             messagebox.showerror("Missing credentials", "Fill in Site URL and API Key.")
+            return
+
+        # Before the client is built — constructing it puts the key in a session
+        # header and verify() sends it on the next line (SECAUDIT 042).
+        if not confirm_insecure_transport(self, url, what='your API key'):
+            self._set_status("Connection cancelled — site URL is not https://.", FG_WARN)
+            self._conn_dot.configure(fg=LED_ERR)
+            self._conn_lbl.configure(text="NOT CONNECTED", fg=LED_ERR)
             return
 
         self._set_status("Connecting…", FG_WARN)

@@ -15,8 +15,31 @@ API (Bearer token) to fetch their backup config.
 
 
 import json
+import os
+import sys
 import requests
 from typing import Dict, List, Optional, Tuple
+
+# Shared transport guard. This is the file SECAUDIT 037 named when it deferred
+# "refusing plaintext-http admin login", and that SECAUDIT 040 recorded as
+# resolved. SECAUDIT 042 found it had never imported the helper. It posts an
+# account password, so it refuses rather than warns.
+_SHARED_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '_shared')
+if os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in sys.path:
+    sys.path.insert(0, _SHARED_DIR)
+try:
+    from snap_stepup import insecure_transport_reason
+except Exception:                      # helper absent from an old build
+    def insecure_transport_reason(base_url: str) -> str:
+        """Fail CLOSED: if we cannot verify the URL, only https:// is accepted."""
+        u = str(base_url).strip().lower()
+        if u.startswith('https://'):
+            return ''
+        for host in ('http://localhost', 'http://127.', 'http://[::1]'):
+            if u.startswith(host):
+                return ''
+        return ('This site URL is not https://, so your admin password would be '
+                'sent across the network in the clear.')
 
 
 class DiscoveryError(Exception):
@@ -51,6 +74,13 @@ class HubDiscovery:
             s.headers["Authorization"] = f"Bearer {self.api_key}"
             self._session = s
             return s
+
+        # Refused before the password leaves the process. Note this sits AFTER
+        # the api_key branch above on purpose: a Bearer key path returns earlier
+        # and is not gated here, matching the key-vs-password line 039 drew.
+        _reason = insecure_transport_reason(self.site_url)
+        if _reason:
+            raise DiscoveryError(_reason)
 
         login_url = f"{self.site_url}/{self.login_slug}"
         try:
