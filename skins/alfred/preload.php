@@ -257,7 +257,8 @@ if ($_alfred_post_slug || $_alfred_post_id) {
 
 <main class="content" role="main">
 
-    <article class="post-container">
+    <article class="post-container h-entry">
+        <?php snapsmack_indieweb_longform_properties($_alfred_post, $settings); ?>
 
         <?php if (!empty($_alfred_post['featured_image_path'])):
             // Cover framed to ALFRED's shape (1:1), with the post's pan/zoom applied
@@ -267,19 +268,19 @@ if ($_alfred_post_slug || $_alfred_post_id) {
             $_cz  = isset($_alfred_post['cover_zoom'])  ? (int)$_alfred_post['cover_zoom']  : 100;
         ?>
         <figure class="featured-media" style="aspect-ratio:1/1;overflow:hidden;">
-            <img src="<?php echo BASE_URL . ltrim($_alfred_post['featured_image_path'], '/'); ?>"
+            <img class="u-photo" src="<?php echo BASE_URL . ltrim($_alfred_post['featured_image_path'], '/'); ?>"
                  alt="<?php echo htmlspecialchars($_alfred_post['title']); ?>"
                  style="width:100%;height:100%;object-fit:cover;object-position:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform-origin:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform:scale(<?php echo number_format($_cz / 100, 3); ?>);display:block;">
         </figure>
         <?php endif; ?>
 
         <div class="post-header">
-            <p class="post-date"><?php echo date('F j, Y', strtotime($_alfred_post['created_at'])); ?></p>
-            <h1 class="post-title"><?php echo htmlspecialchars($_alfred_post['title']); ?></h1>
+            <p class="post-date"><time class="dt-published" datetime="<?php echo htmlspecialchars(date(DATE_ATOM, strtotime($_alfred_post['created_at']))); ?>"><?php echo date('F j, Y', strtotime($_alfred_post['created_at'])); ?></time></p>
+            <h1 class="post-title p-name"><?php echo htmlspecialchars($_alfred_post['title']); ?></h1>
         </div>
 
         <div class="post-inner">
-            <div class="post-content entry-content">
+            <div class="post-content entry-content e-content">
                 <?php
                 // Run the post body through the shortcode parser — [img:], [mosaic:],
                 // [columns], [dropcap], [spacer:], data shortcodes, etc. Without this

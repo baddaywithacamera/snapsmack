@@ -56,13 +56,15 @@ eval(substr($src, $keys_start, $keys_end - $keys_start));
 // One line, no /x — a line break inside an alternation list silently creates an
 // empty alternative ("private||signing") which matches every string, so the test
 // passes nothing and fails everything. Keep it flat and readable instead.
-$forbidden = '/(password|passwd|totp|secret|token|api_key|apikey|private|signing|csrf|session|nonce|salt|kek|recovery_code|fp_hash|ip_hash|guest_hash)/i';
+$forbidden = '/(password|passwd|totp|secret|token|api_key|apikey|private|signing|csrf|session|nonce|salt|kek|recovery_code|fp_hash|ip_hash|guest_hash|(^|_)ip(_|$)|user_agent)/i';
 // Self-check FIRST: a guard regex that matches nothing (or everything) passes
 // silently and protects nothing. Prove it discriminates before trusting it.
-foreach (['password_hash', 'totp_secret', 'api_key', 'fp_hash', 'ip_hash', 'guest_hash'] as $bad) {
+foreach (['password_hash', 'totp_secret', 'api_key', 'fp_hash', 'ip_hash', 'guest_hash',
+          'comment_ip', 'ip', 'user_agent'] as $bad) {
     t_ok(preg_match($forbidden, $bad) === 1, "guard regex fails to catch '{$bad}' — it is not protecting anything");
 }
-foreach (['img_title', 'created_at', 'sort_order', 'comment_text', 'peer_url'] as $good) {
+foreach (['img_title', 'created_at', 'sort_order', 'comment_text', 'peer_url',
+          'description', 'trigram_type', 'is_pinned'] as $good) {
     t_ok(preg_match($forbidden, $good) === 0, "guard regex falsely flags '{$good}' — it would match everything");
 }
 
@@ -86,6 +88,53 @@ t_ok(in_array('status', $types['comments']['cols'], true),
      'comments lost their moderation state (spec section 9 requires it)');
 t_ok(!in_array('guest_hash', $types['reactions']['cols'], true),
      'reactions export a third-party fingerprint');
+t_ok(!in_array('guest_hash', $types['emoji_reactions']['cols'], true),
+     'emoji reactions export a third-party fingerprint');
+
+// BOTH comment tables are exported. snap_comments hangs off images and holds a
+// SMACKONEOUT photoblog's entire comment history; snap_community_comments hangs
+// off posts. Exporting one and not the other silently loses a whole site's worth
+// of conversation, and nothing about the export would look wrong.
+t_ok($types['comments']['table'] === 'snap_community_comments',
+     'the post-attached comment table is no longer exported');
+t_ok($types['image_comments']['table'] === 'snap_comments',
+     'the image-attached comment table is no longer exported — a photoblog would lose every comment');
+t_ok(!in_array('comment_ip', $types['image_comments']['cols'], true),
+     'image comments export raw commenter IP addresses');
+t_ok(!in_array('fp_hash', $types['image_comments']['cols'], true),
+     'image comments export browser fingerprints');
+t_ok(in_array('is_approved', $types['image_comments']['cols'], true),
+     'image comments lost their moderation state (spec section 9 requires it)');
+
+// Statistics are the AGGREGATE table only. snap_stats is per-hit visitor
+// telemetry — ip_hash, user agents, referrers — and is not the owner's content.
+t_ok($types['stats_summary']['table'] === 'snap_stats_daily',
+     'stats_summary must read the aggregate table, never the per-hit table');
+foreach (tyswy_types() as $type => $def) {
+    t_ok($def['table'] !== 'snap_stats',
+         "record type '{$type}' exports the raw per-hit stats table (visitor telemetry)");
+}
+
+// Mode-mapping data that spec section 8 says must survive.
+t_ok(isset($types['trigrams']), 'trigram grid positioning is not exported (spec 8, GRAMOFSMACK)');
+t_ok(isset($types['mosaics']),  'MOSAIC layout data is not exported (spec 8, SMACKTALK)');
+t_ok(isset($types['assets']),   'longform inline assets are not exported — [img:ID] would point at nothing');
+t_ok(isset($types['tags']) && isset($types['image_tags']),
+     'tags are not exported (spec section 9 lists them as portable content)');
+t_ok(isset($types['post_category_memberships']) && isset($types['post_album_memberships']),
+     'post-level category/album membership is not exported');
+
+// No "export everything that does not look secret" fallback may exist. That
+// pattern excludes by remembering; the allowlists exclude by default.
+t_ok(!str_contains($src, 'dynamic_cols'),
+     'a dynamic column fallback is back — new columns would be exported by default');
+foreach (tyswy_types() as $type => $def) {
+    t_ok(!empty($def['cols']), "record type '{$type}' has no column allowlist");
+}
+
+// Longform assets are contained too, and to their OWN root.
+t_ok(str_contains($src, "snap_api_safe_rel_path(\$rel, ['media_assets'])"),
+     'longform asset paths are not contained to media_assets/');
 
 // Carousel order is sacred (spec section 8, GRAMOFSMACK).
 foreach (['sort_position', 'is_cover', 'grid_col', 'grid_row'] as $c) {

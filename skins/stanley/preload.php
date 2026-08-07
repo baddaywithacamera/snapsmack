@@ -207,7 +207,8 @@ if ($_st_post_slug || $_st_post_id) {
 <?php include __DIR__ . '/skin-header.php'; ?>
 
 <main class="content" role="main">
-    <article class="post-container">
+    <article class="post-container h-entry">
+        <?php snapsmack_indieweb_longform_properties($_st_post, $settings); ?>
 
         <?php if (!empty($_st_post['featured_image_path'])):
             // Cover framed to STANLEY's shape (4:3) with the post's pan/zoom (must match manifest cover_aspect).
@@ -216,18 +217,18 @@ if ($_st_post_slug || $_st_post_id) {
             $_cz  = isset($_st_post['cover_zoom'])  ? (int)$_st_post['cover_zoom']  : 100;
         ?>
         <figure class="featured-media" style="aspect-ratio:4/3;overflow:hidden;">
-            <img src="<?php echo BASE_URL . ltrim($_st_post['featured_image_path'], '/'); ?>" alt="<?php echo htmlspecialchars($_st_post['title']); ?>"
+            <img class="u-photo" src="<?php echo BASE_URL . ltrim($_st_post['featured_image_path'], '/'); ?>" alt="<?php echo htmlspecialchars($_st_post['title']); ?>"
                  style="width:100%;height:100%;object-fit:cover;object-position:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform-origin:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform:scale(<?php echo number_format($_cz / 100, 3); ?>);display:block;">
         </figure>
         <?php endif; ?>
 
         <div class="post-header">
-            <h1 class="post-title"><?php echo htmlspecialchars($_st_post['title']); ?></h1>
-            <p class="post-date"><?php echo date('F j, Y', strtotime($_st_post['created_at'])); ?></p>
+            <h1 class="post-title p-name"><?php echo htmlspecialchars($_st_post['title']); ?></h1>
+            <p class="post-date"><time class="dt-published" datetime="<?php echo htmlspecialchars(date(DATE_ATOM, strtotime($_st_post['created_at']))); ?>"><?php echo date('F j, Y', strtotime($_st_post['created_at'])); ?></time></p>
         </div>
 
         <div class="post-inner">
-            <div class="post-content entry-content">
+            <div class="post-content entry-content e-content">
                 <?php
                 require_once dirname(__DIR__, 2) . '/core/parser.php';
                 $_st_parser = new SnapSmack($pdo);

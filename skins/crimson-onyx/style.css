@@ -1,0 +1,930 @@
+/*
+ * SNAPSMACK — CRIMSON ONYX 0.1.0
+ * The photofri.day identity as a SnapSmack skin.
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST be a CSS comment containing the marker.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT THIS IS
+ *
+ * A verbatim port of the photofri.day static site (projects/photofri-day/*.html)
+ * onto the CMS's own markup. Nothing here was redesigned — the colours, the
+ * Arial Black wordmark, the crimson hairline rules, the vignette, the numbered
+ * steps and the accordion are the same values that shipped on the static site.
+ * If a rule here disagrees with those files, this file is wrong.
+ *
+ * WHY IT MAPS ONTO CORE CLASSES RATHER THAN THE ORIGINAL ONES
+ *
+ * The static site had .topnav / .wrap / footer. The CMS emits .logo-area,
+ * .nav-menu, .static-content, #system-footer. Rather than fight that with
+ * template overrides, the design is re-pointed at the markup the CMS already
+ * produces — so the nav is built from the actual pages, the footer carries the
+ * real site metadata, and Sean can add a page without editing a skin file.
+ *
+ * The landing page and the interior pages are told apart by a class the CORE
+ * already sets: index.php puts `homepage-static` on <body> when a static page is
+ * the homepage. That is the whole mechanism behind the giant wordmark on the
+ * front and the smaller title everywhere else — no per-page CSS, no body id.
+ *
+ * NO JAVASCRIPT. The FAQ accordion is <details>/<summary>, which is what the
+ * static site used too. Skins ship zero JS.
+ * ---------------------------------------------------------------------------
+ */
+
+:root {
+    /* The palette. Every colour control in the manifest writes to one of these,
+       so changing the accent changes it in forty places at once instead of
+       leaving half the skin crimson and half of it whatever came next. */
+    --pfd-red:      #D40000;   /* rules, borders, numerals, the dot */
+    --pfd-link:     #F50A0A;   /* links and hover — one step brighter than red */
+    --pfd-canvas:   #111111;   /* the onyx */
+    --pfd-ink:      #f4f4f4;   /* body text */
+    --pfd-muted:    #9a9a9a;   /* secondary text */
+    --pfd-hairline: #2a2a2a;   /* nav underline, accordion dividers */
+
+    --pfd-serif:  Georgia, 'Times New Roman', serif;
+    --pfd-black:  'Arial Black', 'Arial Bold', Arial, sans-serif;
+    --pfd-mono:   'Courier New', Courier, monospace;
+
+    --pfd-canvas-width: 840px;   /* interior pages */
+    --pfd-landing-width: 760px;  /* the front page is deliberately narrower */
+    --pfd-gutter: 24px;
+
+    --pfd-title-size: 4.2rem;    /* interior page <h1> */
+    --pfd-landing-title-size: 6rem;
+    --pfd-body-size: 1.05rem;
+    --pfd-vignette: 10;          /* glow strength, in percent */
+}
+
+/* ===========================================================================
+   BASE
+   =========================================================================== */
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--pfd-canvas);
+    color: var(--pfd-ink);
+    font-family: var(--pfd-serif);
+    font-size: var(--pfd-body-size);
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* The faint radial glow that stops the black being a flat slab. Fixed, behind
+   everything, and pointer-transparent so it can never eat a click.
+   Mixed FROM the accent rather than hardcoded red, so changing the accent
+   colour in the admin doesn't leave a red halo behind a blue site. */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 26%,
+                color-mix(in srgb, var(--pfd-red) calc(var(--pfd-vignette) * 1%), transparent),
+                transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+#page-wrapper {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 100%;
+}
+
+#scroll-stage {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+a { color: var(--pfd-link); }
+
+img { max-width: 100%; height: auto; }
+
+/* ===========================================================================
+   HEADER — the photofri.day top bar, built from core/header.php
+   =========================================================================== */
+
+#pfd-header {
+    position: relative;
+    z-index: 2;
+    border-bottom: 1px solid var(--pfd-hairline);
+}
+
+.pfd-header-inside {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 18px var(--pfd-gutter);
+}
+
+/* Brand. The static site coloured the "." crimson; a site title stored as plain
+   text has no span to hang that on, so the wordmark is one colour here and the
+   crimson lives in the rule underneath. Upload the wordmark PNG as the header
+   logo (img/logo-pf-white.png ships with this skin) to get the original exactly. */
+.logo-area a { text-decoration: none; }
+
+.logo-area .site-title-text {
+    margin: 0;
+    font-family: var(--pfd-black);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    font-size: 0.92rem;
+    color: var(--pfd-ink);
+}
+.logo-area a:hover .site-title-text,
+.logo-area a:focus-visible .site-title-text { color: var(--pfd-link); }
+
+.logo-area .site-logo {
+    display: block;
+    max-height: 34px;
+    width: auto;
+}
+
+/* Nav. Core emits one <li> with <a> and <span class="sep">|</span> between —
+   the pipes are hidden and replaced with real spacing, which is what the static
+   site had. */
+.nav-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+.nav-menu > li {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    flex-wrap: wrap;
+}
+.nav-menu .sep { display: none; }
+
+.nav-menu a {
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.8rem;
+    color: var(--pfd-ink);
+    opacity: 0.68;
+    text-decoration: none;
+    padding-bottom: 3px;
+    border-bottom: 2px solid transparent;
+}
+.nav-menu a:hover,
+.nav-menu a:focus-visible {
+    color: var(--pfd-link);
+    opacity: 1;
+    outline: none;
+}
+.nav-menu a[aria-current="page"],
+.nav-menu a.active {
+    opacity: 1;
+    border-bottom-color: var(--pfd-red);
+}
+
+/* ===========================================================================
+   STATIC PAGES — how it works / whut the whut / join the party
+   =========================================================================== */
+
+.static-content {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    width: 100%;
+    max-width: var(--pfd-canvas-width);
+    margin: 0 auto;
+    padding: 48px var(--pfd-gutter) 60px;
+}
+
+.static-page-title {
+    margin: 0;
+    font-family: var(--pfd-black);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 0.92;
+    font-size: clamp(2.4rem, 9vw, var(--pfd-title-size));
+    text-transform: uppercase;
+    color: var(--pfd-ink);
+    text-align: center;
+}
+
+/* The crimson full-stop after every page title, without asking anyone to type
+   markup into a title field. Content, not decoration — it is part of the
+   wordmark — so it is not aria-hidden. */
+.static-page-title::after {
+    content: ".";
+    color: var(--pfd-red);
+}
+
+.static-content .description {
+    margin-top: 8px;
+}
+
+/* Body defaults for page content, wrapped in :where() so they carry ZERO
+   specificity. Everything below in COMPONENTS is a plain single class, and a
+   plain single class must be able to beat the default without being written as
+   `.static-content .description .pfd-lede`. Without :where(), the descendant
+   selector wins and every ported component silently inherits 1.7 line-height —
+   which is exactly the bug the harness caught: a 96px wordmark rendering 163px
+   tall instead of 88px. */
+:where(.static-content .description p) {
+    margin: 0 0 16px;
+    line-height: 1.7;
+}
+
+:where(.static-content .description a) {
+    color: var(--pfd-link);
+    text-decoration: none;
+    border-bottom: 1px solid var(--pfd-red);
+}
+:where(.static-content .description a:hover),
+:where(.static-content .description a:focus-visible) { color: #fff; }
+
+.static-content .description code {
+    font-family: var(--pfd-mono);
+    background: color-mix(in srgb, var(--pfd-red) 14%, transparent);
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-size: 0.92em;
+}
+
+.static-content .description strong { color: var(--pfd-ink); }
+
+/* Page hero image, when a page has one. */
+.page-hero { margin: 26px 0; }
+.page-hero .main-photo img { display: block; margin: 0 auto; }
+.page-hero--shadow .main-photo img { box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55); }
+.page-hero--medium { max-width: 70%; margin-left: auto; margin-right: auto; }
+.page-hero--small  { max-width: 45%; margin-left: auto; margin-right: auto; }
+.page-hero--left   { margin-left: 0; }
+.page-hero--right  { margin-right: 0; }
+
+/* ===========================================================================
+   LANDING — body.homepage-static, set by core index.php
+   =========================================================================== */
+
+body.homepage-static .static-content {
+    max-width: var(--pfd-landing-width);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 30px var(--pfd-gutter);
+}
+
+/* On the front page the visible wordmark comes from the page CONTENT, not from
+   the page title, because the original has a crimson full-stop in the MIDDLE of
+   the word — PHOTOFRI.DAY — and no CSS can colour a character in the middle of a
+   string coming out of a database field.
+   The core <h1> is therefore hidden VISUALLY ONLY. It is still the document's
+   one and only h1 for screen readers and for search engines; the wordmark below
+   it is a <p>. Two visible h1s, or an h1 with display:none, would both have been
+   worse answers. */
+body.homepage-static .static-page-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+body.homepage-static .static-page-title::after { content: none; }
+
+.pfd-wordmark {
+    margin: 0;
+    font-family: var(--pfd-black);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 0.92;
+    font-size: clamp(2.6rem, 11vw, var(--pfd-landing-title-size));
+    text-transform: uppercase;
+    color: var(--pfd-ink);
+    text-align: center;
+}
+
+.pfd-dot { color: var(--pfd-red); }
+
+.pfd-logo-mark {
+    display: block;
+    width: clamp(80px, 17vw, 112px);
+    height: auto;
+    margin: 0 auto 16px;
+}
+
+body.homepage-static .description { width: 100%; }
+
+/* The landing sits centred in the viewport the way the static site did, rather
+   than starting under the header with a gap below. */
+body.homepage-static #scroll-stage { justify-content: center; }
+
+/* Landing-only mode (no header, no nav) — the "coming soon" state. */
+body.landing-only .static-content { padding-top: 60px; }
+
+/* ===========================================================================
+   PORTED COMPONENTS
+   These are the classes the page BODIES use. They live here rather than in the
+   page content so the copy stays copy and the design stays design.
+   =========================================================================== */
+
+/* --- kicker: the spaced-out monospace label above a title ---------------- */
+.pfd-kicker {
+    font-family: var(--pfd-mono);
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    color: var(--pfd-red);
+    margin: 0 0 18px;
+    padding-left: 0.42em;
+    text-align: center;
+}
+
+/* --- the short crimson rule --------------------------------------------- */
+.pfd-rule {
+    width: 64px;
+    height: 4px;
+    background: var(--pfd-red);
+    margin: 28px auto 8px;
+}
+body.homepage-static .pfd-rule { margin: 20px auto; }
+
+/* --- lede / tagline / sub ------------------------------------------------ */
+.pfd-tagline {
+    margin: 14px 0 0;
+    font-family: var(--pfd-black);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    font-size: clamp(1rem, 3.4vw, 1.5rem);
+    line-height: normal;   /* as the original: Arial Black set solid, not on a
+                              1.7 body rhythm meant for running text */
+    color: var(--pfd-ink);
+    text-align: center;
+}
+
+.pfd-lede {
+    margin: 16px auto 0;
+    font-size: 1.02rem;
+    line-height: 1.6;
+    color: var(--pfd-muted);
+    text-align: center;
+    max-width: 38em;
+}
+body.homepage-static .pfd-lede {
+    font-size: clamp(1.05rem, 2.6vw, 1.35rem);
+    color: var(--pfd-ink);
+    max-width: 34em;
+}
+
+.pfd-sub {
+    margin-top: 16px;
+    font-size: 0.98rem;
+    line-height: 1.7;
+    color: var(--pfd-muted);
+    max-width: 46em;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+.pfd-sub strong {
+    color: var(--pfd-ink);
+    font-weight: normal;
+    border-bottom: 1px solid var(--pfd-red);
+}
+
+.pfd-hash { color: var(--pfd-link); font-weight: bold; }
+
+/* --- participation pills ------------------------------------------------- */
+.pfd-participate {
+    margin: 30px auto 0;
+    width: 100%;
+    max-width: 40rem;   /* rem, not em: em would scale with the body-size control
+                           and quietly widen the pill grid past the original 640px */
+}
+
+.pfd-participate .pfd-label {
+    font-family: var(--pfd-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 0.72rem;
+    color: var(--pfd-muted);
+    margin: 0 0 30px;
+    line-height: 1.7;
+    text-align: center;
+}
+
+.pfd-links {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.pfd-pill {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px 18px;
+    border: 2px solid var(--pfd-red);
+    color: var(--pfd-ink);
+    text-decoration: none;
+    font-family: var(--pfd-black);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.82rem;
+    transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+.pfd-pill:hover,
+.pfd-pill:focus-visible {
+    background: var(--pfd-red);
+    color: #fff;
+    transform: translateX(3px);
+    outline: none;
+}
+
+.pfd-pill-main {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+}
+
+.pfd-pill .pfd-ico {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    display: block;
+    flex: none;
+}
+
+.pfd-pill .pfd-host {
+    font-family: var(--pfd-mono);
+    font-weight: normal;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.74rem;
+    color: var(--pfd-muted);
+}
+.pfd-pill:hover .pfd-host,
+.pfd-pill:focus-visible .pfd-host { color: #ffd0d0; }
+
+/* --- the solid crimson badge -------------------------------------------- */
+.pfd-badge {
+    margin-top: 40px;
+    display: inline-block;
+    font-family: var(--pfd-black);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.74rem;
+    line-height: normal;
+    color: var(--pfd-ink);
+    background: var(--pfd-red);
+    padding: 11px 20px;
+}
+
+/* --- numbered steps (HOW IT WORKS) --------------------------------------- */
+.pfd-steps {
+    list-style: none;
+    counter-reset: step;
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+    margin: 36px 0 0;
+    padding: 0;
+}
+
+.pfd-steps li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 54px;
+    font-size: 1.12rem;
+    line-height: 1.7;
+    color: var(--pfd-ink);
+}
+
+.pfd-steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--pfd-red);
+    color: var(--pfd-red);
+    font-family: var(--pfd-black);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pfd-steps li strong { color: var(--pfd-ink); }
+
+.pfd-steps-note {
+    margin-top: 24px;
+    font-size: 0.95rem;
+    color: var(--pfd-muted);
+    line-height: 1.6;
+}
+
+.pfd-shout {
+    color: var(--pfd-red);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+/* --- FAQ accordion — <details>/<summary>, no script ---------------------- */
+.pfd-faq { margin-top: 30px; }
+
+.pfd-faq details {
+    border-bottom: 1px solid var(--pfd-hairline);
+    padding: 20px 0;
+}
+.pfd-faq details:first-of-type { border-top: 1px solid var(--pfd-hairline); }
+
+.pfd-faq summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    font-family: var(--pfd-black);
+    font-size: clamp(1.02rem, 2.6vw, 1.18rem);
+    line-height: 1.4;
+    color: var(--pfd-ink);
+}
+.pfd-faq summary::-webkit-details-marker { display: none; }
+.pfd-faq summary::marker { content: ""; }
+
+.pfd-faq summary .pfd-q { flex: 1; }
+
+.pfd-faq summary .pfd-arrow {
+    flex: none;
+    font-family: var(--pfd-mono);
+    color: var(--pfd-red);
+    font-size: 1rem;
+    transition: transform 0.15s;
+    transform: rotate(0deg);
+}
+.pfd-faq details[open] summary .pfd-arrow { transform: rotate(45deg); }
+
+.pfd-faq summary:hover .pfd-q,
+.pfd-faq summary:focus-visible .pfd-q { color: var(--pfd-link); }
+.pfd-faq summary:focus-visible { outline: none; }
+
+.pfd-answer {
+    margin-top: 14px;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--pfd-ink);
+    opacity: 0.92;
+}
+.pfd-answer p { margin: 0; }
+.pfd-answer p + p { margin-top: 12px; }
+.pfd-answer ul { margin-top: 10px; padding-left: 1.2em; }
+.pfd-answer li { margin-bottom: 6px; }
+
+/* --- back link ----------------------------------------------------------- */
+.pfd-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--pfd-mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    color: var(--pfd-muted);
+    text-decoration: none;
+    margin-bottom: 26px;
+}
+.pfd-back:hover, .pfd-back:focus-visible { color: var(--pfd-link); outline: none; }
+
+/* ===========================================================================
+   THE BLOG — photo feed, archive, community
+   The static site had no feed; this is the same identity applied to the parts
+   of the CMS it never had to describe.
+   =========================================================================== */
+
+#pfd-photobox {
+    padding: 40px var(--pfd-gutter) 0;
+}
+
+.pfd-photo-wrap {
+    max-width: 1280px;
+    margin: 0 auto;
+    position: relative;
+}
+
+.pfd-image {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+#infobox {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 var(--pfd-gutter);
+}
+
+#footer .footer-pane {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px var(--pfd-gutter) 40px;
+}
+
+.photo-title-footer {
+    font-family: var(--pfd-black);
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    font-size: 1.6rem;
+    color: var(--pfd-ink);
+    margin: 0 0 12px;
+}
+
+#footer .description { color: var(--pfd-ink); }
+
+.meta-header {
+    font-family: var(--pfd-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 0.7rem;
+    color: var(--pfd-red);
+    margin: 28px 0 10px;
+}
+
+.exif-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--pfd-mono);
+    font-size: 0.8rem;
+    color: var(--pfd-muted);
+}
+.exif-table td { padding: 5px 10px 5px 0; border-bottom: 1px solid var(--pfd-hairline); }
+
+/* navigation-bar.php */
+#infobox a {
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.78rem;
+    color: var(--pfd-ink);
+    opacity: 0.68;
+    text-decoration: none;
+}
+#infobox a:hover, #infobox a:focus-visible { color: var(--pfd-link); opacity: 1; }
+
+/* archive grid */
+.pfd-archive-grid {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 40px var(--pfd-gutter);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+}
+.pfd-archive-grid img { display: block; width: 100%; height: auto; }
+
+#justified-grid {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 40px var(--pfd-gutter);
+}
+
+/* ===========================================================================
+   FOOTER — the 3px crimson rule the whole site is topped and tailed with
+   =========================================================================== */
+
+#system-footer {
+    position: relative;
+    z-index: 1;
+    border-top: 3px solid var(--pfd-red);
+    padding: 22px var(--pfd-gutter);
+    text-align: center;
+    margin-top: auto;
+}
+
+#system-footer .inside {
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+#system-footer,
+#system-footer .footer-metadata-bar {
+    font-family: var(--pfd-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    color: #888;
+}
+
+#system-footer a,
+#system-footer .footer-link {
+    color: var(--pfd-link);
+    text-decoration: none;
+}
+#system-footer a:hover,
+#system-footer .footer-link:hover { text-decoration: underline; }
+
+#system-footer .sep { color: #555; padding: 0 4px; }
+
+/* ===========================================================================
+   COMMUNITY (comments / likes), kept quiet and on-brand
+   =========================================================================== */
+
+.community-section {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 var(--pfd-gutter) 40px;
+}
+
+.community-section h3 {
+    font-family: var(--pfd-black);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.9rem;
+    color: var(--pfd-red);
+}
+
+.community-section input,
+.community-section textarea {
+    background: #1a1a1a;
+    color: var(--pfd-ink);
+    border: 1px solid #444;
+    border-radius: 0;
+    font-family: var(--pfd-serif);
+    font-size: 1rem;
+    padding: 12px 14px;
+    width: 100%;
+}
+.community-section input::placeholder,
+.community-section textarea::placeholder { color: #666; }
+
+.community-section button,
+.community-section input[type="submit"] {
+    background: var(--pfd-red);
+    color: #fff;
+    border: 1px solid var(--pfd-red);
+    border-radius: 0;
+    font-family: var(--pfd-black);
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 14px 22px;
+    cursor: pointer;
+}
+.community-section button:hover,
+.community-section input[type="submit"]:hover {
+    background: #a00000;
+    border-color: #a00000;
+}
+
+/* ===========================================================================
+   MAILERLITE SIGN-UP EMBED (JOIN THE PARTY)
+   Carried over verbatim from join.html so the form keeps its look IF the embed
+   is pasted into the page body. The embed needs MailerLite's own script, which
+   a skin may never ship — so this is styling for content Sean adds, not a
+   feature of the skin. Once follow-based joining is live the whole block, and
+   this section with it, can go.
+   =========================================================================== */
+
+.pfd-signup { margin-top: 36px; }
+
+.ml-embedded,
+.ml-form-align-center {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    text-align: left !important;
+}
+
+.ml-form-embedWrapper {
+    background: transparent !important;
+    border: 1px solid #444 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 28px 32px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.ml-form-embedBody {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    width: 100% !important;
+}
+
+.ml-form-embedContent h2,
+.ml-form-embedContent h3,
+.ml-form-embedContent h4 {
+    font-family: var(--pfd-black) !important;
+    font-size: 0.98rem !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    color: #ffffff !important;
+    margin: 0 0 12px 0 !important;
+    padding: 0 !important;
+}
+
+.ml-form-embedContent p {
+    font-family: var(--pfd-serif) !important;
+    font-size: 1.08rem !important;
+    line-height: 1.7 !important;
+    color: #aaaaaa !important;
+    margin: 0 0 20px 0 !important;
+    padding: 0 !important;
+}
+
+form.ml-block-form {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+    margin-bottom: 0 !important;
+    flex-wrap: wrap !important;
+}
+
+.ml-form-fieldRow {
+    flex: 1 1 auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+}
+.ml-form-fieldRow .ml-field-group { margin: 0 !important; padding: 0 !important; }
+
+.ml-form-fieldRow input[type="email"],
+.ml-form-fieldRow input[type="text"] {
+    width: 100% !important;
+    height: 54px !important;
+    background: #1a1a1a !important;
+    color: #ffffff !important;
+    border: 1px solid #444 !important;
+    border-radius: 0 !important;
+    font-family: var(--pfd-serif) !important;
+    font-size: 1.05rem !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+}
+.ml-form-fieldRow input::placeholder { color: #666 !important; opacity: 1 !important; }
+
+.ml-form-embedSubmit { flex: 0 0 180px !important; margin: 0 !important; padding: 0 !important; }
+
+.ml-embedded button,
+.ml-embedded input[type="submit"],
+.ml-form-embedSubmit button {
+    width: 100% !important;
+    height: 54px !important;
+    background: var(--pfd-red) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--pfd-red) !important;
+    border-radius: 0 !important;
+    font-family: var(--pfd-black) !important;
+    font-size: 0.85rem !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    transition: background 0.2s ease, border-color 0.2s ease !important;
+}
+.ml-embedded button:hover,
+.ml-form-embedSubmit button:hover {
+    background: #a00000 !important;
+    border-color: #a00000 !important;
+}
+
+.ml-form-successBody,
+.ml-form-successContent p {
+    color: #ffffff !important;
+    font-family: var(--pfd-serif) !important;
+}
+
+/* ===== SNAPSMACK EOF ===== */

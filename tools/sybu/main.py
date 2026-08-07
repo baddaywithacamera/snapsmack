@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.1.30"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
+BUILD_VERSION = "0.1.32"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -261,7 +261,7 @@ class EntryRow(tk.Frame):
 
         # ── Category combobox ─────────────────────────────────────────
         self._cat_lbl = tk.Label(self, text="cat", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
-        self._cat_lbl.place(x=190, y=88)
+        self._cat_lbl.place(x=190, y=78)
         self._cat_var = tk.StringVar(value=self.entry.category)
         self._cat_cb = ttk.Combobox(
             self, textvariable=self._cat_var, values=[''] + cats,
@@ -275,7 +275,7 @@ class EntryRow(tk.Frame):
 
         # ── Album combobox ────────────────────────────────────────────
         self._album_lbl = tk.Label(self, text="album", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
-        self._album_lbl.place(x=402, y=88)
+        self._album_lbl.place(x=402, y=78)
         self._album_var = tk.StringVar(value=self.entry.album)
         self._album_cb = ttk.Combobox(
             self, textvariable=self._album_var, values=[''] + albums,
@@ -289,7 +289,7 @@ class EntryRow(tk.Frame):
 
         # ── Orientation combobox ─────────────────────────────────────
         self._orient_lbl = tk.Label(self, text="orient", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
-        self._orient_lbl.place(x=614, y=88)
+        self._orient_lbl.place(x=614, y=78)
         orient_display = {'auto': 'Auto', '0': 'Landscape', '1': 'Portrait', '2': 'Square'}
         display_val = orient_display.get(self.entry.orientation, 'Auto')
         self._orient_var = tk.StringVar(value=display_val)
@@ -306,7 +306,7 @@ class EntryRow(tk.Frame):
 
         # ── Colour swatches (filled by Gemini) ────────────────────────
         self._colors_lbl = tk.Label(self, text="colors", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
-        self._colors_lbl.place(x=736, y=88)
+        self._colors_lbl.place(x=736, y=78)
         self._swatch_labels = []
         for i in range(3):
             sw = tk.Label(self, bg=BG_CARD, relief="flat", width=4,
@@ -3750,7 +3750,7 @@ class App(tk.Tk):
 
     def _browse_folder(self):
         init = self._folder_var.get().strip()
-        p = filedialog.askdirectory(parent=self.winfo_toplevel(), 
+        p = filedialog.askdirectory(parent=self.winfo_toplevel(),
             title="Select image folder",
             initialdir=init if init and os.path.isdir(init) else None,
         )
@@ -3761,7 +3761,7 @@ class App(tk.Tk):
     def _browse_manifest(self):
         init = self._manifest_var.get().strip()
         init_dir = os.path.dirname(init) if init and os.path.isfile(init) else None
-        p = filedialog.askopenfilename(parent=self.winfo_toplevel(), 
+        p = filedialog.askopenfilename(parent=self.winfo_toplevel(),
             title="Select manifest file",
             initialdir=init_dir,
             filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
@@ -3771,7 +3771,7 @@ class App(tk.Tk):
             self._save_config()
 
     def _browse_creds(self):
-        p = filedialog.askopenfilename(parent=self.winfo_toplevel(), 
+        p = filedialog.askopenfilename(parent=self.winfo_toplevel(),
             title="Select Google credentials.json",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
         )
@@ -4502,9 +4502,18 @@ class App(tk.Tk):
         total_in_queue = len(self._entry_list.get_entries())
         subset_note = ("" if count == total_in_queue
                        else f"  (of {total_in_queue} in the queue)")
+        # Name the ACTUAL destination site in the dialog, not a generic
+        # "SnapSmack" — so you always see which site a batch is about to hit.
+        try:
+            from urllib.parse import urlparse
+            _base = getattr(getattr(self, '_client', None), 'base_url', '') or self._url_var.get().strip()
+            _dest = urlparse(_base if '://' in _base else 'https://' + _base).netloc or _base
+        except Exception:
+            _dest = ''
+        _dest = _dest or 'your site'
         if not messagebox.askyesno(
             "Confirm post",
-            f"Post {count} selected image{'s' if count != 1 else ''}{subset_note} to SnapSmack?\n\n"
+            f"Post {count} selected image{'s' if count != 1 else ''}{subset_note} to {_dest}?\n\n"
             "They'll appear in the archive in the order shown.",
         ):
             return

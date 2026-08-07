@@ -1,0 +1,356 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://snapsmack.ca/schema/snapsmack-portable-v1.schema.json",
+  "title": "SnapSmack portable archive, schema version 1",
+  "description": "The canonical output of TAKE YOUR SHIT WITH YOU. This file ships inside every archive so the archive can be validated by someone who has never heard of SnapSmack and has no copy of the tool. Additive optional fields are a minor version; a breaking change to a field or its meaning is a major version, and a major version gets a new file rather than an edit to this one.",
+  "type": "object",
+  "$defs": {
+    "source": {
+      "type": "object",
+      "description": "Where this record came from. site_uuid identifies the installation, not the domain, so a site that changed address is still recognisably the same archive.",
+      "required": ["type", "id"],
+      "properties": {
+        "site_uuid": { "type": ["string", "null"] },
+        "site_mode": {
+          "type": ["string", "null"],
+          "description": "SMACKONEOUT (photoblog), GRAMOFSMACK (carousel/gram) or SMACKTALK (longform). The archive preserves the source shape; it never converts one mode into another."
+        },
+        "type": { "type": "string", "enum": ["image", "post", "page", "comment", "image_comment"] },
+        "id": { "type": "integer", "minimum": 0 },
+        "url": {
+          "type": ["string", "null"],
+          "description": "The canonical public URL this item had, when it had one. Null is honest; a guessed URL is not."
+        }
+      }
+    },
+    "dates": {
+      "type": "object",
+      "description": "ISO 8601, UTC. A null is a date the source did not hold or could not be parsed — never a substituted 'now'.",
+      "properties": {
+        "created":  { "type": ["string", "null"], "format": "date-time" },
+        "modified": { "type": ["string", "null"], "format": "date-time" },
+        "published": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "mediaRef": {
+      "type": "object",
+      "description": "A file in this archive, by path relative to the archive root.",
+      "required": ["path"],
+      "properties": {
+        "variant": { "type": "string", "enum": ["original", "web", "thumb", "asset", "federation_frame"] },
+        "path":    { "type": "string" },
+        "source_filename": { "type": ["string", "null"] },
+        "width":  { "type": ["integer", "null"] },
+        "height": { "type": ["integer", "null"] }
+      }
+    },
+    "comment": {
+      "type": "object",
+      "required": ["body"],
+      "properties": {
+        "source": { "$ref": "#/$defs/source" },
+        "author":       { "type": ["string", "null"] },
+        "author_url":   { "type": ["string", "null"] },
+        "author_email": { "type": ["string", "null"] },
+        "body":         { "type": "string" },
+        "date":         { "type": ["string", "null"], "format": "date-time" },
+        "edited":       { "type": ["string", "null"], "format": "date-time" },
+        "moderation": {
+          "type": "string",
+          "description": "Moderation state travels with the comment. An archive that silently promoted every pending comment to approved would be lying about the site.",
+          "enum": ["approved", "pending", "hidden", "deleted"]
+        },
+        "federated":   { "type": "boolean" },
+        "actor_url":   { "type": ["string", "null"] },
+        "in_reply_to": { "type": ["string", "null"] }
+      }
+    },
+    "membership": {
+      "type": "object",
+      "properties": {
+        "collection_id": { "type": "integer" },
+        "title":    { "type": ["string", "null"] },
+        "position": { "type": "integer" },
+        "caption":  { "type": ["string", "null"] }
+      }
+    },
+    "imageReference": {
+      "type": "object",
+      "description": "One entry in a post's ordered image array. The array order IS the carousel order; it must not be re-sorted on read.",
+      "required": ["image_id", "position"],
+      "properties": {
+        "image_id": { "type": "integer" },
+        "position": { "type": "integer" },
+        "is_cover": { "type": "boolean" },
+        "sidecar":  { "type": ["string", "null"] },
+        "media":    { "type": ["string", "null"] },
+        "presentation": {
+          "type": "object",
+          "description": "Crop mode, focal point, zoom, border, background, shadow, grid cell. Presentation detail that most destinations cannot represent — kept so the arrangement can be reproduced rather than approximated.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "snapsmackNamespace": {
+      "type": "object",
+      "description": "Every source field the portable mapping did not consume. This is what makes the promise 'nothing is silently discarded' true: an unrecognised column lands here rather than on the floor.",
+      "additionalProperties": true
+    },
+    "imageSidecar": {
+      "type": "object",
+      "title": "Image sidecar (content/images/*.json)",
+      "description": "One independent image record. In SMACKONEOUT this IS the published item. In GRAMOFSMACK it is also written for every image inside a carousel; there the post owns the order.",
+      "required": ["schema_version", "source", "media"],
+      "properties": {
+        "schema_version": { "type": "integer", "const": 1 },
+        "source": {
+          "allOf": [
+            { "$ref": "#/$defs/source" },
+            { "properties": { "type": { "const": "image" } } }
+          ]
+        },
+        "title":       { "type": ["string", "null"] },
+        "slug":        { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "status":      { "type": ["string", "null"] },
+        "sensitive":   { "type": "boolean" },
+        "content_warning": { "type": ["string", "null"] },
+        "dates": { "$ref": "#/$defs/dates" },
+        "media": { "type": "array", "items": { "$ref": "#/$defs/mediaRef" } },
+        "dimensions": {
+          "type": "object",
+          "properties": {
+            "width":  { "type": ["integer", "null"] },
+            "height": { "type": ["integer", "null"] },
+            "orientation": {}
+          }
+        },
+        "exif": {
+          "type": ["object", "null"],
+          "description": "Preserved as the site held it, GPS included. The tool does not decide what metadata an owner's own archive keeps. An unparseable value is kept under _unparsed rather than dropped.",
+          "additionalProperties": true
+        },
+        "license":     { "type": ["string", "null"] },
+        "tags":        { "type": "array", "items": { "type": "string" } },
+        "categories":  { "type": "array", "items": { "type": "string" } },
+        "albums":      { "type": "array", "items": { "type": "string" } },
+        "collections": { "type": "array", "items": { "$ref": "#/$defs/membership" } },
+        "comments":    { "type": "array", "items": { "$ref": "#/$defs/comment" } },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Anything omitted or approximated for THIS record, stated on the record itself."
+        },
+        "snapsmack": { "$ref": "#/$defs/snapsmackNamespace" }
+      }
+    },
+    "postSidecar": {
+      "type": "object",
+      "title": "Post sidecar (content/posts/*.json)",
+      "description": "A post owns an ordered image array (GRAMOFSMACK carousel) and/or a body (SMACKTALK longform).",
+      "required": ["schema_version", "source", "images"],
+      "properties": {
+        "schema_version": { "type": "integer", "const": 1 },
+        "source": {
+          "allOf": [
+            { "$ref": "#/$defs/source" },
+            { "properties": { "type": { "const": "post" } } }
+          ]
+        },
+        "title":       { "type": ["string", "null"] },
+        "slug":        { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "body":        { "type": ["string", "null"] },
+        "post_type":   { "type": ["string", "null"] },
+        "status":      { "type": ["string", "null"] },
+        "sensitive":   { "type": "boolean" },
+        "content_warning": { "type": ["string", "null"] },
+        "dates": { "$ref": "#/$defs/dates" },
+        "cover_image_id": { "type": ["integer", "string", "null"] },
+        "trigram_id":     { "type": ["integer", "string", "null"] },
+        "images": {
+          "type": "array",
+          "description": "ORDERED. Do not re-sort on read — this is the arrangement the owner made.",
+          "items": { "$ref": "#/$defs/imageReference" }
+        },
+        "inline_media": {
+          "type": "array",
+          "description": "Shortcode references found in the body ([img:ID], [mosaic:ID]) with their offsets, so a reader does not need to know SnapSmack's syntax to find which files a piece of writing depends on.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind":   { "type": "string", "enum": ["img", "mosaic"] },
+              "id":     { "type": "integer" },
+              "offset": { "type": "integer" }
+            }
+          }
+        },
+        "tags":        { "type": "array", "items": { "type": "string" } },
+        "categories":  { "type": "array", "items": { "type": "string" } },
+        "albums":      { "type": "array", "items": { "type": "string" } },
+        "collections": { "type": "array", "items": { "$ref": "#/$defs/membership" } },
+        "comments":    { "type": "array", "items": { "$ref": "#/$defs/comment" } },
+        "reactions": {
+          "type": "object",
+          "description": "Counts, not identities. The portable fact is how many people reacted, not who they were.",
+          "properties": {
+            "likes": { "type": "integer" },
+            "emoji": { "type": "object", "additionalProperties": { "type": "integer" } }
+          }
+        },
+        "warnings":  { "type": "array", "items": { "type": "string" } },
+        "snapsmack": { "$ref": "#/$defs/snapsmackNamespace" }
+      }
+    },
+    "pageSidecar": {
+      "type": "object",
+      "title": "Page sidecar (content/pages/*.json)",
+      "required": ["schema_version", "source", "menu_order"],
+      "properties": {
+        "schema_version": { "type": "integer", "const": 1 },
+        "source": {
+          "allOf": [
+            { "$ref": "#/$defs/source" },
+            { "properties": { "type": { "const": "page" } } }
+          ]
+        },
+        "title":   { "type": ["string", "null"] },
+        "slug":    { "type": ["string", "null"] },
+        "body":    { "type": ["string", "null"] },
+        "status":  { "type": "string" },
+        "menu_order": { "type": "integer" },
+        "dates":   { "$ref": "#/$defs/dates" },
+        "inline_media": { "type": "array" },
+        "warnings":  { "type": "array", "items": { "type": "string" } },
+        "snapsmack": { "$ref": "#/$defs/snapsmackNamespace" }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "title": "manifest.json",
+      "description": "The inventory. Every file in the archive with its SHA-256, plus what the export claims to be. Never contains an authentication key or any other credential — that is asserted at write time, not assumed.",
+      "required": ["format", "format_version", "files", "completed"],
+      "properties": {
+        "format": { "type": "string", "const": "snapsmack-portable" },
+        "format_version": { "type": "integer" },
+        "app_version":  { "type": "string" },
+        "export_uuid":  { "type": "string" },
+        "site": {
+          "type": "object",
+          "properties": {
+            "uuid": { "type": ["string", "null"] },
+            "name": { "type": ["string", "null"] },
+            "url":  { "type": ["string", "null"] },
+            "mode": { "type": ["string", "null"] },
+            "snapsmack_version": { "type": ["string", "null"] }
+          }
+        },
+        "snapshot":     { "type": "object" },
+        "generated_at": { "type": ["string", "null"] },
+        "counts":       { "type": "object" },
+        "media": {
+          "type": "object",
+          "properties": {
+            "files": { "type": "integer" },
+            "bytes": { "type": "integer" }
+          }
+        },
+        "files": {
+          "type": "object",
+          "description": "Relative path -> { sha256, bytes }, for every file this export wrote.",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["sha256", "bytes"],
+            "properties": {
+              "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+              "bytes":  { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "completed":  { "type": "boolean" },
+        "warnings":   { "type": "array", "items": { "type": "string" } },
+        "exclusions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Every class of data deliberately left out, named. The boundary is stated rather than implied."
+        },
+        "adapters": { "type": "object" }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "title": "verification.json",
+      "description": "What was expected against what actually arrived. An export is not complete if anything expected is missing; it may be 'complete with warnings' only when every omission is named.",
+      "required": ["complete", "stream_ledger", "expected_counts"],
+      "properties": {
+        "schema_version":  { "type": "integer" },
+        "export_uuid":     { "type": "string" },
+        "generated_at":    { "type": ["string", "null"] },
+        "expected_counts": { "type": "object", "additionalProperties": { "type": "integer" } },
+        "actual_counts":   { "type": "object", "additionalProperties": { "type": "integer" } },
+        "mismatches": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "expected": { "type": "integer" },
+              "actual":   { "type": "integer" }
+            }
+          }
+        },
+        "changed_during_export": {
+          "type": "object",
+          "description": "Records the site modified while the export was running. The archive holds the snapshot version; these ids say what moved underneath it.",
+          "additionalProperties": { "type": "array", "items": { "type": "integer" } }
+        },
+        "stream_ledger": {
+          "type": "object",
+          "description": "Per record type: rows written, the digest over every verified chunk hash, and the snapshot boundary they were read at.",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "rows":          { "type": "integer" },
+              "ledger_sha256": { "type": "string" },
+              "snapshot":      { "type": "integer" }
+            }
+          }
+        },
+        "media": {
+          "type": "object",
+          "properties": {
+            "files":   { "type": "integer" },
+            "bytes":   { "type": "integer" },
+            "missing": { "type": "array" }
+          }
+        },
+        "complete": { "type": "boolean" }
+      }
+    },
+    "site": {
+      "type": "object",
+      "title": "site.json",
+      "required": ["schema_version", "settings_public"],
+      "properties": {
+        "schema_version": { "type": "integer" },
+        "site_uuid": { "type": ["string", "null"] },
+        "name": { "type": ["string", "null"] },
+        "url":  { "type": ["string", "null"] },
+        "mode": { "type": ["string", "null"] },
+        "snapsmack_version": { "type": ["string", "null"] },
+        "settings_public": {
+          "type": "object",
+          "description": "Public-facing identity and presentation settings only, by explicit allowlist on the server. Never the whole settings table — that table holds SMTP passwords next to the site title.",
+          "additionalProperties": true
+        }
+      }
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/imageSidecar" },
+    { "$ref": "#/$defs/postSidecar" },
+    { "$ref": "#/$defs/pageSidecar" },
+    { "$ref": "#/$defs/manifest" },
+    { "$ref": "#/$defs/verification" },
+    { "$ref": "#/$defs/site" }
+  ]
+}

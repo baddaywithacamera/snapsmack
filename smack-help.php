@@ -1980,24 +1980,40 @@ to full disaster recovery.</p>
 <h4>Database Dumps</h4>
 <ul>
     <li><strong>Full SQL Dump</strong> — complete export of all tables with data.
-    The most important backup to have. Restore using phpMyAdmin or the MySQL CLI.</li>
-    <li><strong>User Credentials</strong> — exports the users table separately.</li>
+    The most important backup to have. Restore it with the Recovery Kit importer
+    or the MySQL command line.</li>
     <li><strong>Schema Only</strong> — table structure without data, for creating a blank
     installation with the same schema.</li>
 </ul>
 
-<h4>Data Liberation &amp; Maintenance</h4>
+<h4>Maintenance</h4>
 <ul>
-    <li><strong>WXR Export</strong> — WordPress-compatible XML export. Lets you migrate
-    content to WordPress or other CMS platforms that support WXR import.</li>
-    <li><strong>JSON Export</strong> — structured JSON export of all transmissions with
-    metadata. Useful for custom migrations or data analysis.</li>
     <li><strong>Verify Integrity</strong> — scans all uploaded images against their database
     records and SHA-256 checksums. Reports missing files, orphaned records, and hash
     mismatches.</li>
     <li><strong>Source Archive</strong> — downloads a compressed archive (tar.gz) of the
     SnapSmack codebase (code only, no uploaded images).</li>
 </ul>
+
+<h4>Portable export — not on this page any more</h4>
+<p>SnapSmack used to offer <em>WXR Export</em> and <em>JSON Export</em> here. It
+does not any more, and that is deliberate. Both built a complete export of your
+entire site inside a single PHP request on your web host: every table read into
+memory, joined into one enormous string, and handed back. On a small site that
+worked. On a real archive it either hit the memory limit and produced nothing, or
+it took the server down for as long as it ran — and it got worse every time you
+posted a photograph.</p>
+<p>Portable export now runs on <strong>your computer</strong>, where the memory
+and the patience are. <strong>TAKE YOUR SHIT WITH YOU</strong> is a free desktop
+tool that downloads every image and every scrap of portable data, writes readable
+JSON beside the photographs, verifies that nothing went missing, and can build a
+WordPress import package. Your site only has to answer small, bounded, restartable
+requests — the kind it answers all day anyway.</p>
+<p>You need a read-only export key: <em>Boring Ass Stuff → API Keys → TYSWY</em>.
+It cannot write anything, it works on this one site, and it expires in three
+months.</p>
+<p>Nothing was taken away without a replacement: the desktop tool shipped in the
+same release that removed these buttons.</p>
 
 <h4>Remote Push</h4>
 <p>Push backups to remote storage. See the <em>FTP Backup</em> and <em>Cloud Backup</em>

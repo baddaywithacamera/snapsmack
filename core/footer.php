@@ -29,7 +29,9 @@ $slots = [];
 $copy_mode = $settings['footer_slot_copyright'] ?? 'on';
 if ($copy_mode === 'on') {
     $site_name = htmlspecialchars($settings['site_name'] ?? 'SnapSmack');
-    $slots[] = "&copy; " . date("Y") . " " . $site_name;
+    $home_url = defined('BASE_URL') ? BASE_URL : '/';
+    $slots[] = "&copy; " . date("Y") . ' <a class="p-name u-url footer-link" href="'
+             . htmlspecialchars($home_url) . '">' . $site_name . '</a>';
 } elseif ($copy_mode === 'custom') {
     $custom = trim($settings['footer_slot_copyright_custom'] ?? '');
     if ($custom !== '') {
@@ -126,11 +128,18 @@ $slots[] = '<a href="' . $rss_url . '" class="footer-link rss-tag" title="RSS Fe
 // (.footer-lowercase). The footer background colour is a per-skin control (e.g.
 // JIVE TURKEY's Footer Background Colour), delivered through the skin's own
 // :root var block and consumed by a rule that lives in the skin stylesheet.
-$_footer_class = (($settings['footer_lowercase'] ?? '0') === '1') ? ' class="footer-lowercase"' : '';
+$_footer_lowercase = (($settings['footer_lowercase'] ?? '0') === '1');
 
 // --- RENDERING ---
 ?>
-<footer id="system-footer"<?php echo $_footer_class; ?>>
+<footer id="system-footer" class="h-card<?php echo $_footer_lowercase ? ' footer-lowercase' : ''; ?>">
+    <span class="snapsmack-indieweb-properties" hidden aria-hidden="true">
+        <data class="p-name" value="<?php echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack'); ?>"></data>
+        <a class="u-url" href="<?php echo htmlspecialchars(defined('BASE_URL') ? BASE_URL : '/'); ?>"></a>
+        <?php if (!empty($settings['site_description'])): ?>
+        <data class="p-note" value="<?php echo htmlspecialchars(strip_tags($settings['site_description'])); ?>"></data>
+        <?php endif; ?>
+    </span>
     <div class="inside">
 
         <?php

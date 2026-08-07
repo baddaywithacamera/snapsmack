@@ -70,6 +70,8 @@ function pk_img_url(array $im, string $base): string {
     return $base . $f;
 }
 
+require_once __DIR__ . '/indieweb.php';
+
 http_response_code(200);
 header('Content-Type: text/html; charset=utf-8');
 ?><!DOCTYPE html>
@@ -79,6 +81,7 @@ header('Content-Type: text/html; charset=utf-8');
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?php echo pk_e($pk_title !== '' ? $pk_title : $pk_name); ?> — <?php echo pk_e($pk_handle); ?></title>
 <link rel="alternate" type="application/activity+json" href="<?php echo pk_e($pk_note); ?>">
+<?php snapsmack_indieweb_head_links($settings); ?>
 <style>
   :root{ --pk-bg:#fafafa; --pk-card:#fff; --pk-fg:#161616; --pk-muted:#6b7280; --pk-line:#e6e6e6; --pk-accent:#6366f1; }
   *{ box-sizing:border-box; }
@@ -119,18 +122,20 @@ header('Content-Type: text/html; charset=utf-8');
     <a class="pk-back" href="<?php echo pk_e(sv_profile_url($settings)); ?>">← <?php echo pk_e($pk_handle); ?></a>
   </div></div>
 
-  <div class="pk-wrap">
-    <div class="pk-head">
-      <?php if ($pk_avatar !== ''): ?><img class="pk-avatar" src="<?php echo pk_e($pk_avatar); ?>" alt=""><?php else: ?><span class="pk-avatar"></span><?php endif; ?>
+  <article class="pk-wrap h-entry">
+    <a class="u-url" href="<?php echo pk_e($pk_note); ?>" hidden aria-hidden="true"></a>
+    <data class="p-name" value="<?php echo pk_e($pk_title !== '' ? $pk_title : $pk_name); ?>" hidden aria-hidden="true"></data>
+    <div class="pk-head p-author h-card">
+      <?php if ($pk_avatar !== ''): ?><img class="pk-avatar u-photo" src="<?php echo pk_e($pk_avatar); ?>" alt=""><?php else: ?><span class="pk-avatar"></span><?php endif; ?>
       <div>
-        <a class="pk-au" href="<?php echo pk_e(sv_profile_url($settings)); ?>"><?php echo pk_e($pk_name); ?></a>
+        <a class="pk-au p-name u-url" href="<?php echo pk_e(sv_profile_url($settings)); ?>"><?php echo pk_e($pk_name); ?></a>
         <div class="pk-au-sub"><?php echo pk_e($pk_handle); ?></div>
       </div>
     </div>
 
     <div class="pk-media">
       <?php foreach ($pk_images as $im): ?>
-        <img loading="lazy" src="<?php echo pk_e(pk_img_url($im, $pk_base)); ?>" alt="<?php echo pk_e($pk_title); ?>">
+        <img class="u-photo" loading="lazy" src="<?php echo pk_e(pk_img_url($im, $pk_base)); ?>" alt="<?php echo pk_e($pk_title); ?>">
       <?php endforeach; ?>
     </div>
 
@@ -140,10 +145,10 @@ header('Content-Type: text/html; charset=utf-8');
     </div>
 
     <?php if ($pk_title !== '' || $pk_desc !== ''): ?>
-      <div class="pk-caption"><b><?php echo pk_e(sv_handle($settings)); ?></b><?php
+      <div class="pk-caption e-content"><b><?php echo pk_e(sv_handle($settings)); ?></b><?php
         echo pk_e(trim(($pk_title !== '' ? $pk_title . ($pk_desc !== '' ? ' — ' : '') : '') . $pk_desc)); ?></div>
     <?php endif; ?>
-    <?php if ($pk_pub !== ''): ?><div class="pk-time"><?php echo pk_e(date('M j, Y', strtotime($pk_pub))); ?></div><?php endif; ?>
+    <?php if ($pk_pub !== ''): ?><div class="pk-time"><time class="dt-published" datetime="<?php echo pk_e(date(DATE_ATOM, strtotime($pk_pub))); ?>"><?php echo pk_e(date('M j, Y', strtotime($pk_pub))); ?></time></div><?php endif; ?>
 
     <div class="pk-interact">
       <form method="get" action="<?php echo pk_e($pk_base); ?>ap/remote-interact">
@@ -163,7 +168,7 @@ header('Content-Type: text/html; charset=utf-8');
         <div class="pk-none">No replies yet — be the first from your instance.</div>
       <?php endif; ?>
     </div>
-  </div>
+  </article>
 </body>
 </html>
 <?php // ===== SNAPSMACK EOF =====

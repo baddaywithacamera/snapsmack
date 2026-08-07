@@ -1513,6 +1513,17 @@ HTACCESS;
         $install_mode_str = $_SESSION['site_mode'] ?? 'photoblog';
         $manifest_url = 'https://snapsmack.ca/install-manifest.php?mode=' . urlencode($install_mode_str);
 
+        // FEDISTRUCTURE service profiles all run on site_mode 'photoblog', so the
+        // mode alone cannot tell snapsmack.ca that this is a PHOTOFRI.DAY install
+        // rather than an ordinary photoblog — and without that, a challenge site
+        // comes up wearing the generic photoblog skin. Send the profile too when
+        // there is one. Older manifests that ignore the parameter behave exactly
+        // as before.
+        $install_profile_str = $_SESSION['distribution_profile'] ?? '';
+        if ($install_profile_str !== '') {
+            $manifest_url .= '&profile=' . urlencode($install_profile_str);
+        }
+
         $manifest_json = false;
         if (function_exists('curl_init')) {
             $ch = curl_init($manifest_url);

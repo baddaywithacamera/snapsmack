@@ -174,6 +174,10 @@ foreach ($skin_dirs as $dir) {
         $temp = snapsmack_load_manifest($dir . '/manifest.json');
         // Development skins are not selectable in the admin skin picker
         if (($temp['status'] ?? 'stable') === 'development') continue;
+        // Service skins belong to a FEDISTRUCTURE product. Filtered here as well
+        // as in the gallery, so one arriving by hand (a copied folder, an old
+        // backup) still cannot be activated on an ordinary blog.
+        if (!snapsmack_skin_allowed_distribution($temp)) continue;
         // Mode filter
         $skin_is_carousel   = !empty($temp['features']['carousel']);
         $skin_is_smacktalk  = in_array('smacktalk', $temp['modes'] ?? []);
@@ -1572,6 +1576,15 @@ if (!empty($google_families)) {
     $registry_url = SKIN_REGISTRY_DEFAULT_URL;
     $registry     = skin_registry_fetch($registry_url);
     $local_skins  = skin_registry_local();
+
+    // Service skins (features.fedistructure_only) belong to a FEDISTRUCTURE
+    // product and carry its identity — they are filtered out here, ONCE, rather
+    // than at each of the four places below that render a card. One filter
+    // cannot be half-applied; four can.
+    if (isset($registry['skins']) && is_array($registry['skins'])) {
+        $registry['skins'] = snapsmack_skins_for_distribution($registry['skins']);
+    }
+    $local_skins = snapsmack_skins_for_distribution($local_skins);
 
     if (isset($registry['error'])):
     ?>

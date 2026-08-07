@@ -1,0 +1,235 @@
+{
+  "schema_version": 1,
+  "name": "CRIMSON ONYX",
+  "version": "0.1.0",
+  "author": "Sean McCormick",
+  "support": "sean@baddaywithacamera.ca",
+  "status": "alpha",
+  "description": "The photofri.day identity. Crimson on onyx, Arial Black wordmark, hairline rules, and a faint red glow behind the black. Built for the PHOTOFRI.DAY challenge install: a static-page front door with the blog behind it. Ships zero JavaScript of its own.",
+  "modes": ["photoblog"],
+
+  "features": {
+    "fedistructure_only": true,
+    "supports_wall": false,
+    "has_landing": false,
+    "post_modes": ["image"],
+    "instagram_mode": false,
+    "carousel": false,
+    "community": ["likes", "comments"],
+    "archive_layouts": ["square", "cropped", "masonry"]
+  },
+
+  "require_scripts": [
+    "smack-footer",
+    "smack-image-fade-load",
+    "smack-lightbox",
+    "smack-justified-lib",
+    "smack-justified",
+    "smack-community",
+    "smack-keyboard",
+    "smack-archive-grid-switch"
+  ],
+
+  "options": {
+    "pfd_canvas_width": {
+      "section": "CANVAS LAYOUT",
+      "type": "range",
+      "label": "Page Width (interior pages)",
+      "default": "840",
+      "min": "600",
+      "max": "1200",
+      "unit": "px",
+      "selector": ":root",
+      "property": "--pfd-canvas-width"
+    },
+    "pfd_landing_width": {
+      "section": "CANVAS LAYOUT",
+      "type": "range",
+      "label": "Front Page Width",
+      "default": "760",
+      "min": "520",
+      "max": "1100",
+      "unit": "px",
+      "selector": ":root",
+      "property": "--pfd-landing-width",
+      "hint": "The front page is deliberately narrower than the interior pages. That is the original design, not an oversight."
+    },
+    "pfd_gutter": {
+      "section": "CANVAS LAYOUT",
+      "type": "range",
+      "label": "Edge Padding",
+      "default": "24",
+      "min": "8",
+      "max": "72",
+      "unit": "px",
+      "selector": ":root",
+      "property": "--pfd-gutter"
+    },
+    "pfd_logo_height": {
+      "section": "CANVAS LAYOUT",
+      "type": "range",
+      "label": "Header Logo Height",
+      "default": "34",
+      "min": "18",
+      "max": "96",
+      "unit": "px",
+      "selector": ".logo-area .site-logo",
+      "property": "max-height",
+      "hint": "Only applies when a header logo image is uploaded. img/logo-pf-white.png ships with this skin — upload it as the header logo to get the original crimson-dot wordmark exactly."
+    },
+
+    "pfd_accent": {
+      "section": "COLOURS",
+      "type": "color",
+      "label": "Accent (rules, borders, numerals)",
+      "default": "#D40000",
+      "selector": ":root",
+      "property": "--pfd-red",
+      "hint": "One control. It drives every rule, border, step numeral, the footer bar and the glow behind the page."
+    },
+    "pfd_link": {
+      "section": "COLOURS",
+      "type": "color",
+      "label": "Links & Hover",
+      "default": "#F50A0A",
+      "selector": ":root",
+      "property": "--pfd-link"
+    },
+    "pfd_canvas_color": {
+      "section": "COLOURS",
+      "type": "color",
+      "label": "Canvas (the onyx)",
+      "default": "#111111",
+      "selector": ":root",
+      "property": "--pfd-canvas"
+    },
+    "pfd_ink": {
+      "section": "COLOURS",
+      "type": "color",
+      "label": "Body Text",
+      "default": "#f4f4f4",
+      "selector": ":root",
+      "property": "--pfd-ink"
+    },
+    "pfd_muted": {
+      "section": "COLOURS",
+      "type": "color",
+      "label": "Secondary Text",
+      "default": "#9a9a9a",
+      "selector": ":root",
+      "property": "--pfd-muted"
+    },
+    "pfd_hairline": {
+      "section": "COLOURS",
+      "type": "color",
+      "label": "Hairlines (nav underline, FAQ dividers)",
+      "default": "#2a2a2a",
+      "selector": ":root",
+      "property": "--pfd-hairline"
+    },
+    "pfd_vignette": {
+      "section": "COLOURS",
+      "type": "range",
+      "label": "Glow Strength (%)",
+      "default": "10",
+      "min": "0",
+      "max": "40",
+      "unit": "",
+      "selector": ":root",
+      "property": "--pfd-vignette",
+      "hint": "The soft accent-coloured glow behind the canvas that stops the black reading as a flat slab. 0 turns it off."
+    },
+
+    "pfd_display_font": {
+      "section": "TYPOGRAPHY",
+      "type": "select",
+      "label": "Display Face (wordmark, titles, pills)",
+      "default": "arial-black",
+      "options": {
+        "arial-black": {
+          "label": "Arial Black (the original)",
+          "css": "{ --pfd-black: 'Arial Black', 'Arial Bold', Arial, sans-serif; }"
+        },
+        "impact": {
+          "label": "Impact (tighter, louder)",
+          "css": "{ --pfd-black: Impact, 'Haettenschweiler', 'Arial Narrow Bold', sans-serif; }"
+        },
+        "helvetica-bold": {
+          "label": "Helvetica Bold (cleaner, less shouty)",
+          "css": "{ --pfd-black: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 800; }"
+        }
+      },
+      "selector": ":root",
+      "property": "custom-display-font",
+      "hint": "System faces only. This skin loads no web fonts — the original never did, and a wordmark that arrives a beat after the page is worse than one that never moves."
+    },
+    "pfd_body_font": {
+      "section": "TYPOGRAPHY",
+      "type": "select",
+      "label": "Body Face",
+      "default": "georgia",
+      "options": {
+        "georgia": {
+          "label": "Georgia (the original)",
+          "css": "{ --pfd-serif: Georgia, 'Times New Roman', serif; }"
+        },
+        "times": {
+          "label": "Times New Roman",
+          "css": "{ --pfd-serif: 'Times New Roman', Times, serif; }"
+        },
+        "system-sans": {
+          "label": "System Sans",
+          "css": "{ --pfd-serif: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }"
+        }
+      },
+      "selector": ":root",
+      "property": "custom-body-font"
+    },
+    "pfd_landing_title_size": {
+      "section": "TYPOGRAPHY",
+      "type": "range",
+      "label": "Front Page Wordmark Size",
+      "default": "6",
+      "min": "2",
+      "max": "10",
+      "step": "0.1",
+      "unit": "rem",
+      "selector": ":root",
+      "property": "--pfd-landing-title-size",
+      "hint": "Upper bound only — the wordmark still scales down with the viewport so it never overruns the column."
+    },
+    "pfd_title_size": {
+      "section": "TYPOGRAPHY",
+      "type": "range",
+      "label": "Page Title Size",
+      "default": "4.2",
+      "min": "1.6",
+      "max": "7",
+      "step": "0.1",
+      "unit": "rem",
+      "selector": ":root",
+      "property": "--pfd-title-size"
+    },
+    "pfd_body_size": {
+      "section": "TYPOGRAPHY",
+      "type": "range",
+      "label": "Body Text Size",
+      "default": "1.05",
+      "min": "0.85",
+      "max": "1.5",
+      "step": "0.05",
+      "unit": "rem",
+      "selector": ":root",
+      "property": "--pfd-body-size"
+    },
+
+    "skin_avatar": {
+      "section": "PROFILE HEADER",
+      "type": "image",
+      "label": "Profile Avatar",
+      "default": "",
+      "accept": "image/jpeg,image/png,image/webp,image/gif",
+      "hint": "The icon this site's Fediverse actor shows in other people's feeds and follower lists. Square image recommended. img/logo-pf-black.png ships with this skin and works well at small sizes."
+    }
+  }
+}

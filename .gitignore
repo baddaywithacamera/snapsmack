@@ -205,3 +205,8 @@ _to_delete/
 .codex-temp/
 .codex-tmp/
 tmp/
+
+# Offline layout harnesses. Generated from real templates + real CSS to check
+# a skin before it ships (the standing rule: never ship layout on reasoning
+# alone). Disposable output, never source.
+_harness/
