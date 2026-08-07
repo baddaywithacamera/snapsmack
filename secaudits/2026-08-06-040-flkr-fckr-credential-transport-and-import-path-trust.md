@@ -385,6 +385,38 @@ shape as `core/client-ip.php`, the SECAUDIT 035 boundary helper.
   renders unlinked. `htmlspecialchars()` at the render site stops attribute
   breakout but not a `javascript:` scheme; escaping is not scheme validation.
 
+**Finding A - FLOOR APPLIED, vault still open.** `config.py` now writes
+`flkrfckr.ini` with `chmod 0600`, best-effort and swallowed so a permissions
+failure can never cost the operator their settings. Stated plainly because it
+would be easy to over-read: this is a real control on Linux, **near-cosmetic on
+Windows** (the call succeeds but NTFS ignores the POSIX bits - the mode still
+reads `0666` afterwards), and it does **not** make the key confidential at rest.
+It is still base64, which is an encoding. The `secret_vault.py` port remains the
+actual fix and remains an owner decision.
+
+Applying it surfaced a related gap worth recording, because it is the same
+credential seen from the other side. `.gitignore` matched `tools/*/config.ini`,
+which covered only the tools that happen to use that exact filename. It did not
+cover:
+
+- `tools/flkr-fckr/flkrfckr.ini` - the scoped `flkrfckr` API key;
+- `tools/smackattack-scanner/gobsmacked-scanner.ini` - an `api_key` **and** a
+  `db_password`.
+
+Running either from source would therefore leave a live credential in the working
+tree as an untracked file, one `git add -A` from being committed to a public
+repository. (`tools/unzucker/unzucker.ini` was checked and is **not** affected -
+Unzucker keeps its secrets in the OS keyring and its ini holds only URL and
+paths. It is the pattern the others should follow.)
+
+**No exposure occurred.** `git log --all --diff-filter=A -- 'tools/*/*.ini'`
+returns empty across every branch: no tool `.ini` has ever been committed, and
+none of these files exist on the operator's disk. This was a latent trap, not an
+incident, and **no key rotation is required**. The rule now matches every `.ini`
+under `tools/` rather than naming files one at a time, plus import checkpoints
+and the dated logs; verified that no `.ini` was previously tracked, so nothing
+was orphaned by the change.
+
 **Verification.** `tests/api-input-safety-regression.php` - **48 checks, passing**:
 5 legitimate upload paths accepted; 23 hostile ones rejected (traversal, absolute,
 drive-letter, UNC, NUL, empty segment, shell metacharacters, quotes, prefix
