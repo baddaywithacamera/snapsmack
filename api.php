@@ -85,6 +85,14 @@ if (strpos($route, 'stats') === 0) {
     exit;
 }
 
+// --- TAKE YOUR SHIT WITH YOU (portable export) ---
+// Read-only, streaming export surface for the TYSWY desktop tool. Scoped to
+// key_type 'tyswy'; no write operation exists here by design.
+if (strpos($route, 'tyswy') === 0) {
+    require_once 'core/tyswy-api.php';
+    exit;
+}
+
 // --- FALLBACK: Unknown API endpoint ---
 header('HTTP/1.1 404 Not Found');
 header('Content-Type: application/json');

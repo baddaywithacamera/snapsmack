@@ -43,7 +43,7 @@ try { $pdo->query("SELECT user_id FROM snap_ohsnap_keys LIMIT 0");
 // --- GENERATE ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate') {
     $label    = trim($_POST['label'] ?? '');
-    $key_type = in_array($_POST['key_type'] ?? '', ['ohsnap','smackpress','flkrfckr','gyss','unzucker','suyb','sybu']) ? $_POST['key_type'] : 'ohsnap';
+    $key_type = in_array($_POST['key_type'] ?? '', ['ohsnap','smackpress','flkrfckr','gyss','unzucker','suyb','sybu','tyswy']) ? $_POST['key_type'] : 'ohsnap';
     if (!$label) $label = match($key_type) {
         'smackpress' => 'SmackPress Key',
         'flkrfckr'   => 'FLKR FCKR Import',
@@ -51,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
         'unzucker'   => 'Unzucker Import',
         'suyb'       => 'Smack Up Your Backup',
         'sybu'       => 'SMACK YOUR BATCH UP',
+        'tyswy'      => 'TAKE YOUR SHIT WITH YOU',
         default      => 'Oh Snap! Key',
     };
 
@@ -64,7 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
     // fuse meant every key in a fleet expired on the same day and backups stopped
     // silently. Those get 3 months and default to it. Server-side is authoritative —
     // '3m' only exists in the map for backup types, so it cannot be forced by POST.
-    $backup_key = in_array($key_type, ['suyb', 'sybu'], true);
+    // 'tyswy' joins the standing-utility tier rather than the one-shot import tier:
+    // a portable export is an owner-operated utility they may run repeatedly, and a
+    // 4-week fuse would expire it between exports. Recommended validity is 3 months
+    // (TYSWY spec section 5). Read-only, so a longer life is a smaller risk than an
+    // import key with the same lifetime.
+    $backup_key = in_array($key_type, ['suyb', 'sybu', 'tyswy'], true);
     $expiry_map = ['1d' => '+1 day', '1w' => '+1 week', '2w' => '+2 weeks', '4w' => '+4 weeks'];
     if ($backup_key) $expiry_map['3m'] = '+3 months';
     $expiry_sel = (string)($_POST['expiry'] ?? '');
@@ -292,6 +298,7 @@ include 'core/sidebar.php';
                             <option value="unzucker">UNZUCKER (INSTAGRAM IMPORT)</option>
                             <option value="suyb">SUYB (SMACK UP YOUR BACKUP)</option>
                             <option value="sybu">SYBU (SMACK YOUR BATCH UP)</option>
+                            <option value="tyswy">TYSWY (TAKE YOUR SHIT WITH YOU &mdash; READ-ONLY EXPORT)</option>
                         </select>
                     </div>
 

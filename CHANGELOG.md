@@ -12,6 +12,45 @@
 
 ## Unreleased
 
+- **TAKE YOUR SHIT WITH YOU — server API (first half).** `core/tyswy-api.php`, the
+  read-only export surface the TYSWY desktop tool will talk to. Six GET actions:
+  `preflight`, `stream`, `media`, `record`, `verify`, `changes`. Routed via
+  `api.php?route=tyswy/...`, scoped to a new read-only `tyswy` key type mintable from
+  Boring Ass Stuff → API Keys.
+  - **Nothing that can flatten a server runs on the server.** No ZIP/TAR/WXR building,
+    no media-tree walk, no library hashing, no job or queue, and no write operation —
+    the API is GET-only by design and returns 405 otherwise. Records stream as NDJSON
+    from an *unbuffered* cursor and are flushed as they are fetched, so PHP never holds
+    a chunk in memory. Restartable by `after_id` against an indexed primary key — no
+    `OFFSET` pagination — bounded at 500 rows by default and 2,000 maximum, inside a
+    snapshot watermark so rows created mid-export cannot shift the boundary. Each chunk
+    carries a header, per-record SHA-256, and a footer with a rolling stream hash; a
+    truncated response has no valid footer and cannot be mistaken for a finished chunk.
+  - **Every record type declares an explicit column allowlist. No `SELECT *` anywhere.**
+    That is the property that keeps the export honest as the schema grows: a column
+    added to `snap_images` or `snap_settings` next year is excluded by default instead
+    of by somebody remembering to exclude it. Commenter IPs and browser fingerprints,
+    reaction fingerprints, password hashes, TOTP secrets, keys and signing material are
+    all outside the boundary; moderation state, carousel order, grid position and EXIF
+    are inside it. `snap_settings` is a flat bag holding SMTP passwords next to the site
+    title, so it is read by explicit key allowlist with a secret-shaped-name denylist as
+    a second gate.
+  - **Media**: path resolved from the database and never from the request, re-validated
+    through the SECAUDIT 040 containment helper, then `realpath`-confined to the install
+    root. HTTP Range support for resume, ETag/304, optional `X-Sendfile`/`X-Accel-Redirect`,
+    and bounded 256 KB streaming — the file is never read into memory whole.
+  - HTTPS is enforced (loopback exempt); the key is expiry-checked and scoped so a key
+    minted for any other tool cannot reach this surface. `tyswy` sits on the 3-month
+    standing-utility expiry tier rather than the 4-week one-shot import tier, because a
+    portable export is a utility an owner re-runs, and it is read-only.
+  - `tests/tyswy-export-regression.php` — **216 checks** pinning the whole boundary,
+    including a self-check proving the guard regex actually discriminates (a guard that
+    matches everything, or nothing, passes silently and protects nothing).
+  - Still to come: the canonical archive format, the desktop client, and the CMS-side
+    removal of the old WXR/portable-JSON cards — which per spec section 4 must ship in
+    the SAME release as the desktop replacement, so no version loses the ability to
+    export.
+
 - **SECAUDIT 040 — FLKR FCKR desktop client + import API. Three of four findings closed.**
   - **The step-up helper no longer sends your password over an unencrypted connection.**
     `tools/_shared/snap_stepup.py` POSTed `{username, password, totp_code}` to whatever
