@@ -37,6 +37,30 @@ import poster as poster_module
 from ig_parser import ParsedPost
 from poster import UnzuckerClient, SiteData
 
+# Shared transport guard (tools/_shared/snap_stepup.py). SECAUDIT 041 found that
+# Unzucker sends its Bearer key with no scheme check at all, so an http:// site
+# URL put the key on the wire in the clear on every request. SECAUDIT 040 fixed
+# this class of bug in the shared helper and recorded Unzucker as covered — but
+# Unzucker never imported that helper, so it never was. Same bootstrap as the
+# other tools: _shared/ in dev, --paths ..\_shared in the frozen build.
+_SHARED_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '_shared')
+if os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in sys.path:
+    sys.path.insert(0, _SHARED_DIR)
+try:
+    from snap_stepup import confirm_insecure_transport
+except Exception:                       # helper absent from an old build
+    def confirm_insecure_transport(parent, base_url, *, what='your API key'):
+        """Fail CLOSED. If the guard cannot be loaded we do not know the URL is
+        safe, and quietly proceeding is how the key ends up on the wire."""
+        from tkinter import messagebox
+        if str(base_url).strip().lower().startswith('https://'):
+            return True
+        messagebox.showerror(
+            'Unencrypted connection',
+            'This build cannot load the transport safety check, and the site URL '
+            'is not https://. Refusing to send ' + what + '.')
+        return False
+
 # ---------------------------------------------------------------------------
 # Logging — rotating daily, 7-day retention, %APPDATA%\Unzucker\unzucker.log
 # ---------------------------------------------------------------------------
@@ -1726,6 +1750,16 @@ class App(tk.Tk):
 
         if not url or not api_key:
             messagebox.showerror("Missing credentials", "Fill in Site URL and API Key.")
+            return
+
+        # Checked BEFORE the client is built, because building it puts the key
+        # into a session header and the very next call sends it. Warn-and-confirm
+        # rather than a hard refusal: this is a scoped key, not an account
+        # password — the same line SECAUDIT 039 drew for GYSS.
+        if not confirm_insecure_transport(self, url, what='your API key'):
+            self._set_status("Connection cancelled — site URL is not https://.", FG_WARN)
+            self._conn_dot.configure(fg=FG_WARN)
+            self._conn_lbl.configure(text="Not connected", fg=FG_WARN)
             return
 
         self._set_status("Connecting…", FG_WARN)
