@@ -298,7 +298,7 @@ $_dock_style = implode('; ', [
         $_dl_target = (strpos($download_button, 'target="_blank"') !== false)
             ? ' target="_blank" rel="noopener"' : '';
     ?>
-        <a href="<?php echo $_dl_href; ?>" class="dock-link" title="Download full resolution"<?php echo $_dl_target; ?>>
+        <a href="<?php echo htmlspecialchars($_dl_href, ENT_QUOTES, 'UTF-8'); ?>" class="dock-link" title="Download full resolution"<?php echo $_dl_target; ?>>
             <span class="snap-download-icon"><span></span></span>
         </a>
     <?php endif; ?>

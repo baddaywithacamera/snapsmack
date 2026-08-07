@@ -35,7 +35,14 @@ $global_downloads = (($settings['global_downloads_enabled'] ?? '0') === '1');
 
 if ($global_downloads) {
 
-    $external_url = trim($img['download_url'] ?? '');
+    // The stored value is client-supplied on imported rows, and it is about to
+    // become an href. htmlspecialchars() below stops attribute breakout but does
+    // NOT stop a scheme — `javascript:alert(1)` contains nothing it escapes — so
+    // the scheme is checked here, before the value is used at all. An
+    // unacceptable URL is treated as absent, which falls through to the internal
+    // tokenised download rather than removing the button.
+    require_once __DIR__ . '/api-input-safety.php';
+    $external_url = snap_api_safe_link((string)($img['download_url'] ?? '')) ?? '';
 
     // --- EXTERNAL URL HANDLING ---
     // If an external URL is set, use it directly (with Google Drive / OneDrive conversion)

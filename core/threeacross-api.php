@@ -839,7 +839,10 @@ if ($sub === 'gram/post' && $method === 'POST') {
     $status     = ($body['status'] ?? 'published') === 'draft' ? 'draft' : 'published';
     $allow_cmt  = !empty($body['allow_comments']) ? 1 : 0;
     $allow_dl   = !empty($body['allow_download']) ? 1 : 0;
-    $dl_url     = substr(trim($body['download_url'] ?? ''), 0, 512);
+    // Stored, then later rendered as an href on the public photo page. Length
+    // and trim are not validation: `javascript:` is short and has no whitespace.
+    // Same helper the imported comment author URL uses (SECAUDIT 040 finding D).
+    $dl_url     = snap_api_safe_link(substr(trim($body['download_url'] ?? ''), 0, 512)) ?? '';
     $pano_rows  = max(1, min(3, (int)($body['panorama_rows'] ?? 1)));
     $want_type  = $body['post_type'] ?? '';
     // Post-level frame defaults.

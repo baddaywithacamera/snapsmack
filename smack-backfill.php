@@ -107,11 +107,17 @@ switch ($action) {
     // ── Update ───────────────────────────────────────────────────────────────
     case 'update':
         $snap_id      = (int)($_POST['snap_id']      ?? 0);
-        $download_url = trim($_POST['download_url']  ?? '');
+        // This value is stored and later rendered as an href on the public photo
+        // page, and this handler also force-enables the download button — so an
+        // unchecked scheme here is a stored XSS with its own switch. Must be a
+        // plain http(s) URL (SECAUDIT 041).
+        require_once 'core/api-input-safety.php';
+        $download_url = snap_api_safe_link(trim($_POST['download_url'] ?? '')) ?? '';
 
         if (!$snap_id || !$download_url) {
             http_response_code(400);
-            echo json_encode(['ok' => false, 'error' => 'snap_id and download_url are required']);
+            echo json_encode(['ok' => false,
+                              'error' => 'snap_id and an http(s) download_url are required']);
             break;
         }
 
