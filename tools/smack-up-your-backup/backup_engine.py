@@ -43,6 +43,30 @@ import transport
 import manifest_reader
 from path_safety import contained_local_path
 
+# Shared transport guard (tools/_shared/snap_stepup.py). SECAUDIT 037 deferred
+# "refusing plaintext-http admin login"; SECAUDIT 040 recorded it as resolved by
+# the shared helper; SECAUDIT 042 found neither this file nor hub_discovery.py
+# ever imported it, so it never was. This path carries the ACCOUNT PASSWORD, so
+# it refuses rather than warns — the line 039/040 drew.
+import os as _os
+import sys as _sys
+_SHARED_DIR = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '_shared')
+if _os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in _sys.path:
+    _sys.path.insert(0, _SHARED_DIR)
+try:
+    from snap_stepup import insecure_transport_reason as _insecure_transport_reason
+except Exception:                      # helper absent from an old build
+    def _insecure_transport_reason(base_url: str) -> str:
+        """Fail CLOSED: if we cannot verify the URL, only https:// is accepted."""
+        u = str(base_url).strip().lower()
+        if u.startswith('https://'):
+            return ''
+        for host in ('http://localhost', 'http://127.', 'http://[::1]'):
+            if u.startswith(host):
+                return ''
+        return ('This site URL is not https://, so your admin password would be '
+                'sent across the network in the clear.')
+
 
 def _safe_local_download_path(root: str, relative: str) -> str:
     """Resolve a server-supplied manifest path strictly below the staging root."""
@@ -101,6 +125,14 @@ class SnapSmackSession:
         if self._api_key:
             self._logged_in = True
             return
+        # Checked BEFORE the password is assigned or sent. A hard refusal, not a
+        # warning: this carries the operator's account password, and unlike a
+        # scoped key a password cannot be revoked without locking them out of
+        # their own site. Loopback is exempt (SECAUDIT 042 finding D).
+        _reason = _insecure_transport_reason(self.site_url)
+        if _reason:
+            raise RuntimeError(_reason)
+
         self._username = username
         self._password = password
         url  = f"{self.site_url}/{self.login_slug}"

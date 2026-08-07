@@ -74,6 +74,22 @@ def _insecure_reason(base_url: str) -> str:
     return f'Unsupported site URL scheme "{scheme}://". Use https://.'
 
 
+def insecure_transport_reason(base_url: str) -> str:
+    """
+    Public, GUI-free form of the scheme check: '' when the URL is safe to send
+    credentials to, otherwise a sentence explaining why it is not.
+
+    Exists for non-GUI callers — a transport layer inside a library module
+    cannot pop a dialog, and it should not have to import tkinter to find out
+    whether a URL is safe. Those callers REFUSE on a non-empty reason.
+
+    Added by SECAUDIT 042: SUYB posts an account password from
+    `backup_engine.SnapSmackSession.login()` and `hub_discovery`, neither of
+    which is GUI code, and both of which had no scheme check at all.
+    """
+    return _insecure_reason(base_url)
+
+
 @dataclass
 class AuthResult:
     ok:               bool
