@@ -1,3 +1,5 @@
 Pillow>=10.0.0
 requests>=2.31.0
+cryptography>=41.0.0   # credential vault — seals the API key at rest (SECAUDIT 040)
+keyring>=24.0.0        # optional: remember the unlock key on this machine
 # ===== SNAPSMACK EOF =====

@@ -99,9 +99,11 @@ tools/*/profiles/
 
 # Desktop tool runtime state — per-machine, never committed. Import checkpoints
 # record what has been uploaded; the dated logs sit next to the executable by
-# the portable-app convention.
+# the portable-app convention. vault.meta holds the KDF salt and an encrypted
+# verifier — not secret in itself, but per-install and meaningless to anyone else.
 tools/*/*checkpoint*.json
 tools/*/*.log
+tools/*/vault.meta
 
 # PyInstaller build artifacts — all tools
 tools/*/build/

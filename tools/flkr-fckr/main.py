@@ -136,6 +136,12 @@ class FlkrDckrApp(tk.Tk):
         self.resizable(True, True)
         self.minsize(700, 600)
 
+        # Credential vault (SECAUDIT 040 finding A) — must run BEFORE the config
+        # is read, or a sealed API key loads as empty and the settings bar comes
+        # up blank. Order: bind → try this machine's cached key → else ask.
+        cfg_mod.init_vault()
+        self._unlock_vault_if_needed()
+
         # State
         self._cfg: dict                              = cfg_mod.load()
         self._parse_result: Optional[flickr_parser.ParseResult] = None
@@ -171,6 +177,232 @@ class FlkrDckrApp(tk.Tk):
         self.protocol('WM_DELETE_WINDOW', self._on_close)
         self._check_resume()
         self.after(100, self._poll_queue)
+
+    # ------------------------------------------------------------------
+    # Credential vault
+    # ------------------------------------------------------------------
+
+    def _ask_passphrase(self, title: str, prompt: str, confirm: bool = False):
+        """Modal passphrase prompt. Returns the passphrase, or None if cancelled."""
+        top = tk.Toplevel(self)
+        top.title(title)
+        top.configure(bg=BG_PANEL)
+        top.resizable(False, False)
+        top.transient(self)
+        top.grab_set()
+
+        result = {'val': None}
+        tk.Label(top, text=prompt, bg=BG_PANEL, fg=TEXT_PRI, font=self._font_ui,
+                 wraplength=380, justify='left').pack(padx=16, pady=(14, 8), anchor='w')
+
+        v1 = tk.StringVar()
+        e1 = tk.Entry(top, textvariable=v1, show='•', bg=BG_CELL, fg=TEXT_PRI,
+                      insertbackground=TEXT_PRI, relief='flat', width=40)
+        e1.pack(padx=16, pady=(0, 6), ipady=3)
+
+        v2 = tk.StringVar()
+        if confirm:
+            tk.Label(top, text='Type it again', bg=BG_PANEL, fg=TEXT_DIM,
+                     font=self._font_label).pack(padx=16, anchor='w')
+            tk.Entry(top, textvariable=v2, show='•', bg=BG_CELL, fg=TEXT_PRI,
+                     insertbackground=TEXT_PRI, relief='flat', width=40
+                     ).pack(padx=16, pady=(0, 6), ipady=3)
+
+        err = tk.Label(top, text='', bg=BG_PANEL, fg=TEXT_ERR,
+                       font=self._font_label, wraplength=380, justify='left')
+        err.pack(padx=16, anchor='w')
+
+        def _ok(*_):
+            p = v1.get()
+            if not p:
+                err.config(text='Passphrase must not be empty.')
+                return
+            if confirm and p != v2.get():
+                err.config(text='The two entries do not match.')
+                return
+            result['val'] = p
+            top.destroy()
+
+        def _cancel(*_):
+            result['val'] = None
+            top.destroy()
+
+        btns = tk.Frame(top, bg=BG_PANEL)
+        btns.pack(fill='x', padx=16, pady=(6, 14))
+        tk.Button(btns, text='Cancel', bg=BG_CELL, fg=TEXT_PRI, relief='flat', bd=0,
+                  padx=12, pady=4, cursor='hand2', command=_cancel).pack(side='right')
+        tk.Button(btns, text='OK', bg=ACCENT, fg='#000000', relief='flat', bd=0,
+                  padx=16, pady=4, font=self._font_bold, cursor='hand2',
+                  command=_ok).pack(side='right', padx=(0, 8))
+
+        top.bind('<Return>', _ok)
+        top.bind('<Escape>', _cancel)
+        e1.focus_set()
+        self.wait_window(top)
+        return result['val']
+
+    def _unlock_vault_if_needed(self):
+        """
+        Open the vault at startup if one exists. Tries this machine's cached key
+        first so the common case needs no typing; otherwise asks, re-prompting on
+        a wrong passphrase until it opens or the operator gives up.
+
+        Declining is allowed and non-fatal: the tool runs with the API key field
+        blank, which is honest — it cannot read the key, so it does not pretend to.
+        """
+        if not cfg_mod.vault_available():
+            return
+        import snap_vault
+        if not snap_vault.is_enabled():
+            return
+        if snap_vault.unlock_with_machine_key():
+            log.info('Vault unlocked from this machine\'s stored key.')
+            return
+
+        while True:
+            p = self._ask_passphrase(
+                'Unlock saved API key',
+                'Your API key is encrypted. Enter the passphrase to unlock it.\n\n'
+                'Cancel to continue without it — you can still load an export, '
+                'but you will need to paste the key again to connect.')
+            if p is None:
+                log.info('Vault left locked by the operator.')
+                return
+            if snap_vault.unlock(p):
+                log.info('Vault unlocked.')
+                return
+            messagebox.showerror('FLKR FCKR', 'That passphrase did not work.')
+
+    def _show_key_security(self):
+        """Encryption status + on/off/re-key, in one small window."""
+        import snap_vault
+
+        if not cfg_mod.vault_available():
+            messagebox.showinfo(
+                'Key security',
+                'Encryption is not available in this build — the "cryptography" '
+                'package is missing.\n\nYour API key is stored base64-encoded, '
+                'which is NOT encryption: anyone who can read flkrfckr.ini can '
+                'recover the key with one command. Treat that file as a password.')
+            return
+
+        win = tk.Toplevel(self)
+        win.title('Key security')
+        win.configure(bg=BG_DEEP)
+        win.resizable(False, False)
+        win.transient(self)
+
+        body = tk.Frame(win, bg=BG_DEEP, padx=16, pady=14)
+        body.pack(fill='both', expand=True)
+
+        status = tk.Label(body, text='', bg=BG_DEEP, fg=TEXT_PRI, font=self._font_bold,
+                          justify='left', anchor='w')
+        status.pack(fill='x')
+        detail = tk.Label(body, text='', bg=BG_DEEP, fg=TEXT_DIM, font=self._font_label,
+                          wraplength=420, justify='left', anchor='w')
+        detail.pack(fill='x', pady=(4, 10))
+
+        btn_row = tk.Frame(body, bg=BG_DEEP)
+        btn_row.pack(fill='x')
+
+        def _refresh():
+            on = snap_vault.is_enabled()
+            status.config(
+                text='Encryption: ON' if on else 'Encryption: OFF',
+                fg=ACCENT if on else TEXT_WARN)
+            if on:
+                extra = (' The passphrase is also stored on this machine, so you are '
+                         'not asked for it on every launch.'
+                         if snap_vault.has_machine_key() else
+                         ' You will be asked for the passphrase each launch.')
+                detail.config(
+                    text='Your API key is sealed with a passphrase-derived key. '
+                         'The passphrase itself is never saved, so a copy of this '
+                         'folder is not enough to read the key.' + extra)
+            else:
+                detail.config(
+                    text='Your API key is stored base64-encoded. That is an '
+                         'encoding, not encryption — anyone who can read '
+                         'flkrfckr.ini can recover the key with one command. '
+                         'Turning encryption on fixes that.')
+            for w in btn_row.winfo_children():
+                w.destroy()
+
+            if not on:
+                tk.Button(btn_row, text='Turn encryption on', bg=ACCENT, fg='#000000',
+                          relief='flat', bd=0, padx=12, pady=5, font=self._font_bold,
+                          cursor='hand2', command=_enable).pack(side='left')
+            else:
+                tk.Button(btn_row, text='Change passphrase', bg=BG_CELL, fg=TEXT_PRI,
+                          relief='flat', bd=0, padx=12, pady=5, font=self._font_ui,
+                          cursor='hand2', command=_rekey).pack(side='left')
+                tk.Button(btn_row, text='Turn off', bg=BG_CELL, fg=TEXT_WARN,
+                          relief='flat', bd=0, padx=12, pady=5, font=self._font_ui,
+                          cursor='hand2', command=_disable).pack(side='left', padx=(8, 0))
+
+        def _enable():
+            p = self._ask_passphrase(
+                'Turn encryption on',
+                'Choose a passphrase. It is never saved anywhere — if you lose it, '
+                'you will have to paste your API key in again (which is harmless; '
+                'the key is not the only copy).', confirm=True)
+            if p is None:
+                return
+            remember = messagebox.askyesno(
+                'Remember on this machine?',
+                'Store the unlock key in this computer\'s credential manager, so '
+                'you are not asked for the passphrase every launch?\n\n'
+                'It never travels with the folder — a copy of this folder taken to '
+                'another machine still needs the passphrase.',
+                parent=win)
+            try:
+                cfg_mod.enable_encryption(p, remember_on_this_machine=remember)
+            except Exception as e:
+                messagebox.showerror('Key security', f'Could not turn encryption on:\n\n{e}',
+                                     parent=win)
+                return
+            self._log_write('API key encryption turned ON.', ACCENT)
+            _refresh()
+
+        def _disable():
+            if not messagebox.askokcancel(
+                    'Turn encryption off',
+                    'Your API key will go back to base64 in flkrfckr.ini — readable '
+                    'by anyone who can read the file.\n\nContinue?',
+                    icon='warning', default='cancel', parent=win):
+                return
+            try:
+                cfg_mod.disable_encryption()
+            except Exception as e:
+                messagebox.showerror('Key security', f'Could not turn encryption off:\n\n{e}',
+                                     parent=win)
+                return
+            self._log_write('API key encryption turned OFF.', TEXT_WARN)
+            _refresh()
+
+        def _rekey():
+            old = self._ask_passphrase('Change passphrase', 'Current passphrase')
+            if old is None:
+                return
+            new = self._ask_passphrase('Change passphrase', 'New passphrase', confirm=True)
+            if new is None:
+                return
+            try:
+                ok = cfg_mod.change_passphrase(old, new)
+            except Exception as e:
+                messagebox.showerror('Key security', str(e), parent=win)
+                return
+            if not ok:
+                messagebox.showerror('Key security', 'That passphrase did not work.',
+                                     parent=win)
+                return
+            self._log_write('Encryption passphrase changed.', ACCENT)
+            _refresh()
+
+        _refresh()
+        tk.Button(body, text='Close', bg=BG_CELL, fg=TEXT_PRI, relief='flat', bd=0,
+                  padx=14, pady=5, font=self._font_bold, cursor='hand2',
+                  command=win.destroy).pack(pady=(14, 0))
 
     def _on_close(self):
         """Signal any running import to stop, then close the window."""
@@ -329,6 +561,13 @@ class FlkrDckrApp(tk.Tk):
                              font=self._font_bold, cursor='hand2',
                              command=self._open_logs)
         btn_logs.grid(row=0, column=8, padx=(8, 34), sticky='ne')
+
+        # Key security — encryption on/off for the stored API key.
+        btn_key = tk.Button(bar, text='Key', bg=BG_CELL, fg=TEXT_DIM,
+                            relief='flat', bd=0, padx=6, pady=3,
+                            font=self._font_bold, cursor='hand2',
+                            command=self._show_key_security)
+        btn_key.grid(row=0, column=8, padx=(8, 72), sticky='ne')
 
     def _build_main_area(self):
         pane = tk.Frame(self, bg=BG_DEEP)
@@ -776,6 +1015,16 @@ class FlkrDckrApp(tk.Tk):
         h2('  API Key')
         p('The FLKR FCKR Import key generated from your SnapSmack admin panel. '
           'Revoke it when your import is done.')
+        h2('  Key security (the "Key" button)')
+        p('By default your API key is stored base64-encoded in flkrfckr.ini next to '
+          'the app. Base64 is an ENCODING, not encryption — anyone who can read that '
+          'file can recover the key with one command, so treat it like a password '
+          'file. Turn encryption on and the key is sealed with a passphrase instead: '
+          'the passphrase is never saved, so a copy of the folder is no longer enough '
+          'to read the key. You can optionally let this computer remember the unlock '
+          'key so you are not asked on every launch — that never travels with the '
+          'folder. Lost the passphrase? No harm done: paste the key in again, or '
+          'generate a fresh one in your admin panel.')
         h2('  Export Folder')
         p('The root of your unzipped Flickr export. Should contain albums.json and '
           'many photo_XXXXXXXX.json sidecar files.')

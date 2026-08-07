@@ -7,7 +7,10 @@ REM Forked from tools/unzucker/build.bat.
 echo === FLKR FCKR build ===
 
 REM Install / upgrade dependencies
-pip install --upgrade pyinstaller pillow requests
+REM cryptography + keyring back the credential vault (SECAUDIT 040 finding A).
+REM Without them the exe still runs, but "Key security" reports encryption
+REM unavailable and the API key stays base64 — so they are NOT optional here.
+pip install --upgrade pyinstaller pillow requests cryptography keyring
 
 REM Auto-increment the 0.7.xx build version (main.py BUILD_VERSION) before building.
 REM Try the py launcher first, then python; ABORT loudly if neither bumps so a
@@ -32,7 +35,12 @@ REM --paths ..\_shared + --hidden-import snap_thumbs: bundle the shared,
 REM build-once client thumbnailer (tools/_shared/snap_thumbs.py) so the frozen
 REM exe can import it. In dev a sys.path bootstrap in image_prep.py finds it;
 REM in the bundle PyInstaller must be told where it lives, hence these flags.
-pyinstaller --onefile --windowed --name flkrfckr --icon assets\icon.ico --version-file version_info.txt --collect-all PIL --hidden-import PIL._tkinter_finder --paths ..\_shared --hidden-import snap_thumbs --hidden-import snap_stepup main.py
+REM --hidden-import snap_vault: same story for the credential vault.
+REM --collect-submodules keyring.backends: keyring picks its backend at runtime by
+REM import, so PyInstaller's static analysis misses every backend and the frozen
+REM exe silently reports "no keychain" — which would quietly disable the
+REM remember-on-this-machine option rather than failing loudly.
+pyinstaller --onefile --windowed --name flkrfckr --icon assets\icon.ico --version-file version_info.txt --collect-all PIL --hidden-import PIL._tkinter_finder --paths ..\_shared --hidden-import snap_thumbs --hidden-import snap_stepup --hidden-import snap_vault --collect-submodules keyring.backends main.py
 
 echo.
 echo Done. Exe is in dist\flkrfckr.exe
