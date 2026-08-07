@@ -136,10 +136,16 @@ def save(data: dict) -> None:
     url     = data.get('url', '').strip()
     api_key = data.get('api_key', '')
 
-    # Store API key secret
-    if _HAS_KEYRING:
-        _kr_set(_api_key_account(url), api_key)
-        ini_api_key = ''   # wipe any old base64 value so it doesn't linger
+    # Store API key secret.
+    #
+    # _kr_set() returns False on ANY keyring failure — no backend, a locked
+    # keychain, D-Bus not running under a headless Linux session. Ignoring that
+    # return value and wiping the ini anyway destroyed the key: the keyring did
+    # not take it and the ini no longer held it, so the next launch came up
+    # blank with no explanation. The fallback is only correct when the keyring
+    # actually refused (SECAUDIT 041).
+    if _HAS_KEYRING and _kr_set(_api_key_account(url), api_key):
+        ini_api_key = ''   # safely stored — wipe any old base64 value
     else:
         ini_api_key = _b64_encode(api_key)
 
@@ -167,8 +173,20 @@ def save(data: dict) -> None:
         'state':    data.get('window_state', 'normal').strip(),
     }
 
-    with open(_config_path(), 'w') as f:
+    path = _config_path()
+    with open(path, 'w') as f:
         cfg.write(f)
+
+    # SECAUDIT 040 finding A (floor), applied here too: when the keyring is
+    # unavailable this file holds the API key as base64 — an ENCODING, not
+    # encryption — so make it owner-only. Best-effort and deliberately swallowed:
+    # a no-op on FAT, only partly meaningful on NTFS, and a permissions hiccup
+    # must never cost the operator their settings. This is the floor, not the
+    # ceiling; the keyring above is the ceiling.
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
 
 
 def has_keyring() -> bool:
