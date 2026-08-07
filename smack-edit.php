@@ -125,7 +125,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Compile metadata into JSON for storage.
-    $updated_exif = [
+    //
+    // MERGE onto what is stored — do not rebuild from the form. img_exif also
+    // holds latitude/longitude (imported photo locations) and anything a future
+    // importer writes, none of which this form shows. Building the array from
+    // the seven form fields alone silently deleted the GPS coordinates of every
+    // imported photo on save. Location is preserved by policy.
+    require_once __DIR__ . '/core/image-ingest.php';
+    $exif_prev_stmt = $pdo->prepare("SELECT img_exif FROM snap_images WHERE id = ?");
+    $exif_prev_stmt->execute([$id]);
+    $existing_exif = json_decode((string)($exif_prev_stmt->fetchColumn() ?: ''), true);
+    if (!is_array($existing_exif)) $existing_exif = [];
+
+    $updated_exif = snap_exif_merge_edit($existing_exif, [
         'camera'   => strtoupper($_POST['camera_model'] ?? ''),
         'lens'     => $_POST['lens_info'] ?? '',
         'focal'    => $_POST['focal_length'] ?? '',
@@ -133,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'aperture' => $_POST['aperture'] ?? '',
         'shutter'  => $_POST['shutter_speed'] ?? '',
         'flash'    => $_POST['flash_fire'] ?? 'No'
-    ];
+    ]);
 
     // --- FRAME & DISPLAY OPTIONS ---
     // Merge user-submitted frame/mat/bevel settings into img_display_options JSON.

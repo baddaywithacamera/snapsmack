@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 #
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+#
 # pfd-migrate-ct.sh — move photofri.day from one Proxmox CT to another.
 #
 # RUN ON THE PROXMOX HOST, AS ROOT. Not inside a container.
@@ -288,3 +293,5 @@ cat <<VERIFY
 
 VERIFY
 c_warn "Do NOT skip step 5 — two hosts draining as @participate@$SITE is split brain."
+
+# ===== SNAPSMACK EOF =====

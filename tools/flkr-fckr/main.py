@@ -848,6 +848,11 @@ class FlkrDckrApp(tk.Tk):
         if not url or not key:
             self._lbl_conn.config(text='URL and key required', fg=TEXT_ERR)
             return
+        # SECAUDIT 040 — a plaintext site URL puts the Bearer key on the wire.
+        # Warn once here rather than after the key has already been sent.
+        if not snap_stepup.confirm_insecure_transport(self, url):
+            self._lbl_conn.config(text='Cancelled — use https://', fg=TEXT_ERR)
+            return
         self._lbl_conn.config(text='Testing…', fg=TEXT_DIM)
         self._save_settings()
 
@@ -884,6 +889,16 @@ class FlkrDckrApp(tk.Tk):
         key = cfg.get('api_key', '').strip()
         if not url or not key:
             messagebox.showerror('FLKR FCKR', 'Site URL and API key are required.')
+            return
+
+        # SECAUDIT 040 — the step-up endpoint refuses plaintext outright, but that
+        # refusal only fires when a window actually needs opening. With a window
+        # already open the import proceeds straight to the write calls, so the
+        # Bearer key (and the whole import stream) would cross an http:// wire
+        # with nothing said. Gate the run itself, not just the credential step.
+        if not snap_stepup.confirm_insecure_transport(
+                self, url, what='your API key and everything you import'):
+            self._log_write('Import cancelled — site URL is not https://.', TEXT_WARN)
             return
 
         self._client = FlkrDckrClient(url, key)

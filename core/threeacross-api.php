@@ -39,6 +39,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/snap-tags.php';
 require_once __DIR__ . '/thumb-generator.php';
+require_once __DIR__ . '/api-input-safety.php';   // stored-path containment — SECAUDIT 040
 
 // Defensive schema guard — table may be absent on installs that predate
 // the Oh Snap! key table; columns key_type and key_prefix may be absent
@@ -423,8 +424,16 @@ if ($sub === 'posts' && $method === 'POST') {
         // SECAUDIT 2026-06-25 Finding 2: block directory traversal here too.
         // (Files arrive out-of-band via FTP, so a lexical check — no realpath —
         // is the right guard: relative, no '..', no NUL.)
-        if ($img_path[0] === '/' || strpos($img_path, '..') !== false || strpos($img_path, "\0") !== false) {
-            uz_error(400, "images[$seq].path is not allowed.");
+        //
+        // SECAUDIT 040 finding C (2026-08-06): that check caught traversal but not
+        // drive letters, backslash paths, UNC, or a relative path that stays inside
+        // the install while naming something that is not an upload — and img_file
+        // is later handed to unlink() by snap_manage_delete_image(). Upgraded to the
+        // shared rule, which additionally requires the value to sit under
+        // img_uploads/. The original checks are kept above for their clearer
+        // per-field error messages.
+        if (!snap_api_safe_upload_path($img_path)) {
+            uz_error(400, "images[$seq].path is not allowed — must be an img_uploads/ path.");
         }
 
         // All Instagram imports are square; img_orientation is INT (0=landscape/square)

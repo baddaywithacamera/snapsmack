@@ -28,8 +28,50 @@ Server contract (see core/flkrfckr-api.php flkrfckr/authorize):
 
 import json
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 import requests
+
+
+# Hosts where plaintext HTTP carries no network risk — there is no path between
+# the tool and the server for anyone to sit on.
+_LOCAL_HOSTS = {'localhost', '127.0.0.1', '::1', '[::1]'}
+
+
+def _insecure_reason(base_url: str) -> str:
+    """
+    Return '' if base_url is safe to send credentials to, otherwise the reason
+    it is not.
+
+    This endpoint carries the operator's ACCOUNT PASSWORD and a live TOTP code —
+    not an API key. Over plaintext http:// both cross the wire in the clear, and
+    a code is replayable for its remaining window. So this is a hard refusal
+    rather than the warn-and-confirm that SECAUDIT 039 gave GYSS, which only
+    exposes a scoped key that cannot write on its own. See SECAUDIT 040 finding B.
+    """
+    parts = urlsplit(base_url.strip())
+    scheme = parts.scheme.lower()
+
+    if scheme == 'https':
+        return ''
+
+    host = (parts.hostname or '').lower()
+    if scheme == 'http':
+        if host in _LOCAL_HOSTS or host.startswith('127.'):
+            return ''      # loopback — nothing to intercept
+        return (
+            'Refusing to send your password and 2FA code over an unencrypted '
+            'http:// connection to ' + (host or 'that address') + '.\n\n'
+            'Anyone between you and your server would be able to read both. '
+            'Change the site URL to https:// and try again.'
+        )
+
+    if scheme == '':
+        return ('The site URL needs to start with https:// — for example '
+                'https://' + base_url.strip().lstrip('/') + '\n\n'
+                'Without it, your password and 2FA code could be sent in the clear.')
+
+    return f'Unsupported site URL scheme "{scheme}://". Use https://.'
 
 
 @dataclass
@@ -42,6 +84,37 @@ class AuthResult:
     username:         str  = ''      # the username that was used (caller may persist it)
 
 
+def confirm_insecure_transport(parent, base_url: str, *, what: str = 'your API key') -> bool:
+    """
+    Gate for the tool's NON-credential calls (ping, listing, uploads, record
+    writes). Returns True if it is safe to proceed, or if the operator explicitly
+    accepted the risk.
+
+    Deliberately weaker than the hard refusal `request_authorization()` applies:
+    these calls carry a scoped API key, which cannot write on its own without an
+    open step-up window, whereas the authorize endpoint carries the account
+    password and a live TOTP code. Same reasoning SECAUDIT 039 used for GYSS —
+    warn and confirm for a key, refuse outright for a password.
+
+    Returns True when the URL is https or loopback, without prompting.
+    """
+    if not _insecure_reason(base_url):
+        return True
+
+    from tkinter import messagebox
+    return bool(messagebox.askokcancel(
+        'Unencrypted connection',
+        f'This site URL is not https://, so {what} will be sent across the '
+        f'network in the clear:\n\n{base_url.strip()}\n\n'
+        'Anyone between you and your server could read it. If this is a live '
+        'site, cancel and switch the URL to https://.\n\n'
+        'Continue anyway?',
+        icon='warning',
+        default='cancel',
+        parent=parent,
+    ))
+
+
 def request_authorization(base_url: str, route: str, api_key: str,
                           username: str, password: str, totp_code: str,
                           timeout: int = 20) -> AuthResult:
@@ -49,7 +122,13 @@ def request_authorization(base_url: str, route: str, api_key: str,
     Open a leased import window. Stateless: one POST, Bearer-authenticated by the
     per-user key, body carries the user's password + TOTP. Returns an AuthResult.
     Never raises — network/parse failures come back as ok=False.
+
+    Refuses outright if the URL would put those credentials on the wire in clear.
     """
+    insecure = _insecure_reason(base_url)
+    if insecure:
+        return AuthResult(False, insecure, username=username)
+
     url = base_url.rstrip('/') + '/api.php'
     try:
         resp = requests.post(
@@ -200,6 +279,14 @@ def authorize_interactive(parent, base_url: str, route: str, api_key: str, *,
     final AuthResult (ok=False with message 'Authorization cancelled.' if the user
     backs out). `on_status(text)` is an optional progress callback. Main thread only.
     """
+    # Check the destination BEFORE prompting. Refusing after the dialog would
+    # mean the operator has already typed their password for a destination we
+    # were never going to send it to, and the retry loop below would re-prompt
+    # forever against an error no amount of retyping can fix.
+    insecure = _insecure_reason(base_url)
+    if insecure:
+        return AuthResult(False, insecure, username=username_default)
+
     error = ''
     user_default = username_default
     while True:

@@ -448,6 +448,106 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $regen_thumbs_next_offset = $next_offset;
     }
 
+    // REBUILD EXIF
+    // Re-reads camera metadata from the image files already on disk and fills it
+    // into img_exif under the key names the skins actually read.
+    //
+    // Why this exists: FLKR FCKR wrote Pillow's raw tag names (Model, FNumber,
+    // ISOSpeedRatings…) while every skin reads core's lowercase names (camera,
+    // aperture, iso…), so imported photos show a blank INFO panel. The originals
+    // were copied byte-for-byte, so the real EXIF never left the server — this
+    // recovers it without re-importing anything. See SECAUDIT 040 section 7.
+    //
+    // FILL-ONLY, and that is deliberate: a value already present is NEVER
+    // overwritten. smack-edit.php lets you hand-enter camera/lens/film, and a
+    // film scan has no EXIF in the file at all — a clobbering rebuild would wipe
+    // exactly the metadata you typed in by hand. Nothing is ever deleted from
+    // img_exif either, so latitude/longitude and any hand-set film survive
+    // untouched. Safe to run repeatedly; a second pass changes nothing.
+    if ($action === 'rebuild_exif') {
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
+        require_once __DIR__ . '/core/image-ingest.php';
+
+        // Batches of 500 with a CONTINUE button, or one uninterrupted pass over
+        // everything. Reading an EXIF header is far cheaper than building a
+        // thumbnail, so 500 is comfortable where regen_thumbs needs 25.
+        $run_all    = (($_POST['exif_run'] ?? '') === 'everything');
+        $batch_size = 500;
+        $offset     = max(0, (int)($_POST['batch_offset'] ?? 0));
+        $total      = (int)$pdo->query("SELECT COUNT(*) FROM snap_images")->fetchColumn();
+
+        $sel = $pdo->prepare("SELECT id, img_file, img_exif FROM snap_images ORDER BY id LIMIT ? OFFSET ?");
+        $upd = $pdo->prepare("UPDATE snap_images SET img_exif = ? WHERE id = ?");
+
+        // The seven fields every skin reads — used only for the "already
+        // complete" tally; the merge rules live in snap_exif_fill_missing().
+        $display_keys = ['camera', 'lens', 'focal', 'iso', 'aperture', 'shutter', 'flash'];
+
+        $scanned = 0; $updated = 0; $already = 0; $no_data = 0; $skipped = 0;
+        $cursor  = $offset;
+
+        do {
+            $sel->execute([$batch_size, $cursor]);
+            $rows = $sel->fetchAll(PDO::FETCH_ASSOC);
+            if (!$rows) break;
+
+            foreach ($rows as $row) {
+                $scanned++;
+                $rel = (string)($row['img_file'] ?? '');
+
+                // Containment — img_file arrives from an API client and is stored
+                // verbatim (SECAUDIT 040 finding C). This pass reads files off
+                // disk, so it applies the check the writer should have: relative
+                // paths under the install root only.
+                $rel_norm = str_replace('\\', '/', $rel);
+                if ($rel_norm === ''
+                    || strpos($rel_norm, '..') !== false
+                    || strpos($rel_norm, "\0") !== false
+                    || $rel_norm[0] === '/'
+                    || preg_match('#^[a-zA-Z]:#', $rel_norm)) {
+                    $skipped++;
+                    continue;
+                }
+
+                $abs = __DIR__ . '/' . $rel_norm;
+                if (!is_file($abs)) { $skipped++; continue; }
+
+                $cur = json_decode((string)($row['img_exif'] ?? ''), true);
+                if (!is_array($cur)) $cur = [];
+
+                $from_file = snap_exif_display_from_file($abs);
+                $new       = snap_exif_fill_missing($cur, $from_file);
+
+                if ($new !== null) {
+                    $upd->execute([json_encode($new), (int)$row['id']]);
+                    $updated++;
+                } elseif ($from_file || array_intersect_key($cur, array_flip($display_keys))) {
+                    $already++;   // nothing to add — already complete
+                } else {
+                    $no_data++;   // no EXIF in the file and nothing to migrate
+                }
+            }
+
+            $cursor += count($rows);
+        } while ($run_all && $cursor < $total);
+
+        $has_more    = (!$run_all && $cursor < $total);
+        $next_offset = $cursor;
+
+        $msg = $run_all
+            ? "FULL PASS over {$scanned} image(s):"
+            : "BATCH {$offset}–{$cursor} of {$total}:";
+        $msg .= " {$updated} updated, {$already} already complete, {$no_data} with no EXIF to recover.";
+        if ($skipped)   $msg .= " {$skipped} skipped (file missing or path outside the install).";
+        if (!$has_more) $msg .= " <strong>ALL DONE.</strong>";
+        else            $msg .= " <strong>" . ($total - $cursor) . " images remaining.</strong>";
+        $log[] = "SUCCESS: " . $msg;
+
+        $rebuild_exif_has_more    = $has_more;
+        $rebuild_exif_next_offset = $next_offset;
+    }
+
     // SCHEMA HEALTH CHECK
     // Diffs the live DB against the canonical target schema defined here.
     // Generates ALTER TABLE / CREATE TABLE SQL for anything missing and optionally runs it.
@@ -1051,6 +1151,30 @@ include 'core/sidebar.php';
                     <button type="submit" class="btn-smack btn-block">REGENERATE ALL THUMBNAILS</button>
                 </form>
             <?php endif; ?>
+        </div>
+
+        <div class="box box-flex">
+            <h3>REBUILD EXIF</h3>
+            <p class="skin-desc-text">Re-reads camera data &mdash; camera, lens, focal length, ISO, aperture, shutter, flash &mdash; from the image files already on your server, and fills it into the INFO panel fields the skins read. Fixes photos imported by FLKR FCKR, which stored the data under names no skin looks for. <strong>Fill-only:</strong> anything already filled in, including values you typed by hand and film-scan entries, is never overwritten, and nothing is ever deleted &mdash; GPS coordinates are left untouched. Safe to re-run. JPEG only: PNG and WebP carry no EXIF to read.</p>
+            <?php if (!empty($rebuild_exif_has_more)): ?>
+                <form method="POST">
+                    <input type="hidden" name="action" value="rebuild_exif">
+                    <input type="hidden" name="batch_offset" value="<?php echo $rebuild_exif_next_offset; ?>">
+                    <button type="submit" class="btn-smack btn-block btn-backup">CONTINUE (BATCH <?php echo $rebuild_exif_next_offset; ?>+)</button>
+                </form>
+            <?php else: ?>
+                <form method="POST">
+                    <input type="hidden" name="action" value="rebuild_exif">
+                    <input type="hidden" name="batch_offset" value="0">
+                    <button type="submit" class="btn-smack btn-block">REBUILD (500 AT A TIME)</button>
+                </form>
+            <?php endif; ?>
+            <form method="POST" style="margin-top:8px;"
+                  onsubmit="return confirm('Run over EVERY image in one pass, without stopping?\n\nReading EXIF is much lighter than building thumbnails, so 10,000 images is typically a minute or two. On a slow shared host it will still hold one PHP process for that whole time and the page will look frozen until it finishes.\n\nNothing is overwritten and nothing is deleted, so this is safe to abandon and re-run.')">
+                <input type="hidden" name="action" value="rebuild_exif">
+                <input type="hidden" name="exif_run" value="everything">
+                <button type="submit" class="btn-smack btn-block btn-backup">REBUILD ALL IN ONE PASS</button>
+            </form>
         </div>
 
         <div class="box box-flex">

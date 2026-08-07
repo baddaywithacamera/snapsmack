@@ -24,6 +24,7 @@ require_once __DIR__ . '/snap-tags.php';
 require_once __DIR__ . '/thumb-generator.php';
 require_once __DIR__ . '/totp.php';   // totp_verify() for the step-up authorize endpoint
 require_once __DIR__ . '/client-ip.php';   // mandatory security boundary — SECAUDIT 035
+require_once __DIR__ . '/api-input-safety.php';   // stored-path + link containment — SECAUDIT 040
 
 // ---------------------------------------------------------------------------
 // Auth
@@ -432,6 +433,19 @@ if ($sub === 'images' && $method === 'POST') {
     if ($img_file  === '') flkrfckr_error(400, 'img_file is required.');
     if ($img_title === '') $img_title = 'Untitled';
 
+    // SECAUDIT 040 finding C — these three columns are later handed to unlink().
+    // Only ever accept a path this API wrote (under img_uploads/); reject
+    // absolute, drive-letter, UNC, NUL-bearing and traversing values outright.
+    if (!snap_api_safe_upload_path($img_file)) {
+        flkrfckr_error(400, 'img_file must be an img_uploads/ path returned by flkrfckr/upload.');
+    }
+    if ($img_thumb_square !== '' && !snap_api_safe_upload_path($img_thumb_square)) {
+        flkrfckr_error(400, 'img_thumb_square must be an img_uploads/ path returned by flkrfckr/upload.');
+    }
+    if ($img_thumb_aspect !== '' && !snap_api_safe_upload_path($img_thumb_aspect)) {
+        flkrfckr_error(400, 'img_thumb_aspect must be an img_uploads/ path returned by flkrfckr/upload.');
+    }
+
     // Normalise source file key
     $source_key = 'flickr:' . $flickr_id;
     if ($img_source_file === '') $img_source_file = $source_key;
@@ -764,7 +778,10 @@ if ($method === 'POST' && $sub === 'comments') {
     $stmt->execute([
         $image_id,
         $author_name ?: 'Anonymous',
-        $author_url ?: null,
+        // SECAUDIT 040 finding D — guest_url is rendered as a link href. Only a
+        // plain http(s) URL is stored; anything else (javascript:, data:, junk)
+        // becomes NULL and the name renders unlinked.
+        snap_api_safe_link($author_url),
         $comment_text,
         $dt,
     ]);

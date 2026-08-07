@@ -77,6 +77,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['new_image'])) {
         $final_exif['film'] = $film_manual;
         $final_exif['flash'] = $flash_manual;
 
+        // Swapping the file does not move the photograph. Merge onto the stored
+        // blob so latitude/longitude (and anything else this form does not own)
+        // survive the replacement — rebuilding from the harvest alone deleted
+        // the GPS coordinates of every imported photo on swap.
+        require_once __DIR__ . '/core/image-ingest.php';
+        $swap_prev = $pdo->prepare("SELECT img_exif FROM snap_images WHERE id = ?");
+        $swap_prev->execute([$id]);
+        $swap_existing = json_decode((string)($swap_prev->fetchColumn() ?: ''), true);
+        $final_exif = snap_exif_merge_edit(is_array($swap_existing) ? $swap_existing : [], $final_exif);
+
         // --- REPLACEMENT THUMBNAIL ENGINE ---
         list($orig_w, $orig_h) = getimagesize($tmp);
         $thumb_size = 400;

@@ -534,4 +534,168 @@ function snap_caption_from_filename(string $orig_name): string {
     return trim($s);
 }
 
+/**
+ * Read the DISPLAY EXIF fields out of an image file, using the same key names
+ * snap_ingest_image() writes and every skin reads (camera/lens/focal/iso/
+ * aperture/shutter/flash). Returns only the keys the file actually yields —
+ * an empty array means "this file told us nothing", never "clear these".
+ *
+ * Extracted so the REBUILD EXIF maintenance pass and the upload path can agree
+ * on one definition. snap_ingest_image() still has its own inline copy for now;
+ * this is the version to converge on.
+ *
+ * Note: JPEG/TIFF only — exif_read_data() reads nothing from PNG or WebP, so
+ * those come back empty by design rather than by failure.
+ */
+if (!function_exists('snap_exif_display_from_file')) {
+function snap_exif_display_from_file(string $abs_path): array {
+    $out = [];
+    if ($abs_path === '' || !is_file($abs_path) || !is_readable($abs_path)) return $out;
+
+    $ext = strtolower(pathinfo($abs_path, PATHINFO_EXTENSION));
+    if (!in_array($ext, ['jpg', 'jpeg', 'tif', 'tiff'], true)) return $out;
+
+    // ext-exif is not universal on shared hosts, and a missing function is a
+    // FATAL that '@' does not suppress — which would kill a bulk rebuild mid-run
+    // rather than skipping one image. Degrade to "nothing to read" instead.
+    if (!function_exists('exif_read_data')) return $out;
+
+    $d = @exif_read_data($abs_path);
+    if (!$d || !is_array($d)) return $out;
+
+    // Camera — core uppercases the model, so match it exactly.
+    if (!empty($d['Model']))       $out['camera'] = strtoupper(trim((string)$d['Model']));
+
+    // Lens — PHP surfaces LensModel under its raw tag id on most builds; the
+    // named key exists on others. snap_ingest_image() never filled this in at
+    // all, so imported photos can end up with MORE detail than uploaded ones.
+    $lens = $d['UndefinedTag:0xA434'] ?? $d['LensModel'] ?? '';
+    if (!empty($lens))             $out['lens'] = trim((string)$lens);
+
+    // Focal — EXIF stores a rational ("24/1", "2400/100"). snap_ingest_image()
+    // currently stores that raw, which renders as "24/1" in the INFO panel;
+    // FLKR FCKR formats it as "24mm". Match the readable form here. This never
+    // rewrites an existing value (the rebuild pass is fill-only), so no photo
+    // already showing "24/1" changes — it only affects fields that were blank.
+    if (!empty($d['FocalLength'])) {
+        $fl = (string)$d['FocalLength'];
+        if (preg_match('#^(\d+(?:\.\d+)?)/(\d+(?:\.\d+)?)$#', $fl, $m) && (float)$m[2] != 0.0) {
+            $fl = rtrim(rtrim(number_format((float)$m[1] / (float)$m[2], 2, '.', ''), '0'), '.');
+        }
+        // A rational we could not resolve (0/0, junk) is dropped rather than
+        // printed — "0/0mm" in the INFO panel is worse than no focal length.
+        if ($fl !== '' && strpos($fl, '/') === false) $out['focal'] = $fl . 'mm';
+    }
+
+    // ISO can arrive as an array (one entry per sensor reading) — take the first.
+    $iso = $d['ISOSpeedRatings'] ?? '';
+    if (is_array($iso)) $iso = reset($iso);
+    if ($iso !== '' && $iso !== null && $iso !== false) $out['iso'] = (string)$iso;
+
+    // COMPUTED gives the pretty "f/2.8" form — the same one core stores.
+    if (!empty($d['COMPUTED']['ApertureFNumber'])) {
+        $out['aperture'] = (string)$d['COMPUTED']['ApertureFNumber'];
+    }
+    if (!empty($d['ExposureTime'])) $out['shutter'] = (string)$d['ExposureTime'];
+    if (isset($d['Flash']))         $out['flash']   = ((int)$d['Flash'] & 1) ? 'Yes' : 'No';
+
+    return $out;
+}
+}
+
+/**
+ * Overlay an editor's form fields onto the STORED img_exif, preserving every key
+ * the form does not own.
+ *
+ * img_exif is not just the seven fields the edit form shows. It also carries
+ * latitude/longitude (imported photo locations), film, and anything a future
+ * importer adds. Rebuilding the array from the form alone — which smack-edit.php
+ * and smack-swap.php both did — silently deleted the operator's GPS coordinates
+ * every time a photo was saved. Location data is PRESERVED by policy: the tool
+ * does not get to decide what metadata survives (SECAUDIT 040 section 6).
+ *
+ * smack-edit-carousel.php already had this right; this is that rule, named, so
+ * the next editor to be written inherits it instead of rediscovering the bug.
+ *
+ * @param array $existing decoded img_exif as currently stored
+ * @param array $form     the fields this editor owns
+ */
+if (!function_exists('snap_exif_merge_edit')) {
+function snap_exif_merge_edit(array $existing, array $form): array {
+    return array_merge($existing, $form);
+}
+}
+
+/**
+ * FILL-ONLY merge of display EXIF into an existing img_exif array.
+ *
+ * Returns the merged array, or NULL when there is nothing to add (so the caller
+ * can skip the UPDATE entirely). The rules, in order of importance:
+ *
+ *   1. A value already present is NEVER overwritten. smack-edit.php lets the
+ *      operator hand-enter camera/lens/film, and a scanned film frame has no
+ *      EXIF in the file at all — clobbering would destroy exactly the metadata
+ *      that was typed in by hand.
+ *   2. Nothing is ever REMOVED. Unknown keys, latitude/longitude and film ride
+ *      through untouched.
+ *   3. The file wins over the legacy mis-keyed value when both exist.
+ *   4. 'shutter' has NO legacy fallback on purpose. FLKR FCKR rounded
+ *      ExposureTime to two decimals before storing it, so 1/125 became 0.01 and
+ *      1/1000 became 0.0. That precision is gone; reconstructing "1/100" from it
+ *      would be inventing a number. Aperture survives the same rounding intact
+ *      (2.8 is still 2.8), so it does map across.
+ *
+ * @param array $cur       decoded img_exif as stored
+ * @param array $from_file output of snap_exif_display_from_file()
+ */
+if (!function_exists('snap_exif_fill_missing')) {
+function snap_exif_fill_missing(array $cur, array $from_file): ?array {
+    // The seven fields the skins read. Anything else is left exactly as found.
+    $display_keys = ['camera', 'lens', 'focal', 'iso', 'aperture', 'shutter', 'flash'];
+
+    // Pillow's tag names, as FLKR FCKR wrote them before the key-name fix.
+    $legacy = [
+        'camera' => 'Model',
+        'lens'   => 'LensModel',
+        'focal'  => 'FocalLength',
+        'iso'    => 'ISOSpeedRatings',
+        'flash'  => 'Flash',
+    ];
+
+    $new     = $cur;
+    $changed = false;
+
+    foreach ($display_keys as $k) {
+        if (trim((string)($cur[$k] ?? '')) !== '') continue;   // rule 1
+
+        if (!empty($from_file[$k])) {                          // rule 3
+            $new[$k] = $from_file[$k];
+            $changed = true;
+            continue;
+        }
+
+        if ($k === 'aperture') {
+            $fn = trim((string)($cur['FNumber'] ?? ''));
+            if ($fn !== '' && is_numeric($fn)) {
+                $new['aperture'] = 'f/' . rtrim(rtrim($fn, '0'), '.');
+                $changed = true;
+            }
+            continue;
+        }
+
+        if (isset($legacy[$k])) {
+            $val = trim((string)($cur[$legacy[$k]] ?? ''));
+            if ($val === '') continue;
+            if ($k === 'camera')     $val = strtoupper($val);
+            elseif ($k === 'flash')  $val = ((int)$val & 1) ? 'Yes' : 'No';
+            elseif ($k === 'focal' && is_numeric($val)) $val = rtrim(rtrim($val, '0'), '.') . 'mm';
+            $new[$k] = $val;
+            $changed = true;
+        }
+    }
+
+    return $changed ? $new : null;
+}
+}
+
 // ===== SNAPSMACK EOF =====

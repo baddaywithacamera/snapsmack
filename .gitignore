@@ -86,9 +86,22 @@ core/community-key.php
 *-drive-key*.json
 tools/*/config.json
 
-# Desktop tool runtime config (contains key paths, folder IDs)
-tools/*/config.ini
+# Desktop tool runtime config (contains API keys, key paths, folder IDs)
+#
+# SECAUDIT 040: the old `config.ini` rule matched only the tools that happen to
+# use that exact name. FLKR FCKR writes `flkrfckr.ini`, Unzucker `unzucker.ini`,
+# the scanner `gobsmacked-scanner.ini` — all three carry a scoped API key and
+# NONE of them were ignored, so running any of those from source dropped a live
+# credential into the working tree as an untracked file. Match every .ini under
+# tools/ instead of naming them one at a time (verified: no .ini is tracked).
+tools/*/*.ini
 tools/*/profiles/
+
+# Desktop tool runtime state — per-machine, never committed. Import checkpoints
+# record what has been uploaded; the dated logs sit next to the executable by
+# the portable-app convention.
+tools/*/*checkpoint*.json
+tools/*/*.log
 
 # PyInstaller build artifacts — all tools
 tools/*/build/

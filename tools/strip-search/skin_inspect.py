@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
 """
 STRIP SEARCH -- SnapSmack skin frisker (airgap bench tool).
 
@@ -186,3 +190,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# ===== SNAPSMACK EOF =====

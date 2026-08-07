@@ -4,6 +4,12 @@ These tests intentionally exercise failure paths, not just successful migrations
 They use only unittest so they also run in the packaged build environment.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 from __future__ import annotations
 
 import base64
@@ -431,3 +437,5 @@ class SftpTofuTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+# ===== SNAPSMACK EOF =====

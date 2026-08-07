@@ -72,9 +72,74 @@ _EXIF_KEYS_OF_INTEREST = {
     'ISOSpeedRatings', 'FocalLength', 'Flash', 'DateTimeOriginal',
 }
 
+# Pillow's raw tag name → the key name SnapSmack stores and every skin reads.
+# These MUST match core/image-ingest.php's img_exif keys: writing Pillow's names
+# (Model, FNumber, ISOSpeedRatings…) is why imported photos showed a blank INFO
+# panel — no skin looks for them. See SECAUDIT 040 section 7.
+_EXIF_KEY_MAP = {
+    'Model':           'camera',
+    'LensModel':       'lens',
+    'FocalLength':     'focal',
+    'ISOSpeedRatings': 'iso',
+    'FNumber':         'aperture',
+    'ExposureTime':    'shutter',
+    'Flash':           'flash',
+}
+
+
+def _ratio(value):
+    """Pillow gives rationals as (num, den) or IFDRational. Return (num, den)
+    or None — kept exact, because rounding is what destroyed shutter speeds:
+    1/125 through round(x, 2) becomes 0.01, and 1/1000 becomes 0.0."""
+    if isinstance(value, tuple) and len(value) == 2 and value[1]:
+        return int(value[0]), int(value[1])
+    num = getattr(value, 'numerator', None)
+    den = getattr(value, 'denominator', None)
+    if num is not None and den:
+        return int(num), int(den)
+    return None
+
+
+def _fmt_shutter(value) -> str:
+    """'1/125' for fast speeds, '2' / '2.5' for long ones — the form core
+    stores and the skins print. Never a rounded decimal."""
+    r = _ratio(value)
+    if not r:
+        return str(value).strip()
+    num, den = r
+    if num and den and den > num:
+        return f'1/{round(den / num)}'
+    return f'{num / den:g}' if den else str(num)
+
+
+def _fmt_aperture(value) -> str:
+    """'f/2.8' — matches COMPUTED.ApertureFNumber, which is what core writes."""
+    r = _ratio(value)
+    f = (r[0] / r[1]) if r else None
+    if f is None:
+        try:
+            f = float(value)
+        except (TypeError, ValueError):
+            return str(value).strip()
+    return 'f/' + f'{f:g}'
+
+
+def _fmt_focal(value) -> str:
+    """'24mm'. Pillow hands back a rational; core stores the raw EXIF string."""
+    r = _ratio(value)
+    if r and r[1]:
+        return f'{r[0] / r[1]:g}mm'
+    try:
+        return f'{float(value):g}mm'
+    except (TypeError, ValueError):
+        return str(value).strip()
+
 
 def _read_exif(image_path: str) -> dict:
-    """Read EXIF from a JPEG/TIFF file. Returns empty dict on failure."""
+    """
+    Read EXIF from a JPEG/TIFF file, keyed the way SnapSmack stores it
+    (camera/lens/focal/iso/aperture/shutter/flash). Returns {} on failure.
+    """
     try:
         img = PILImage.open(image_path)
         raw = img._getexif()
@@ -83,12 +148,29 @@ def _read_exif(image_path: str) -> dict:
         result = {}
         for tag_id, value in raw.items():
             tag = TAGS.get(tag_id, str(tag_id))
-            if tag in _EXIF_KEYS_OF_INTEREST:
-                # Convert tuples (e.g. FNumber = (28, 10)) to float
-                if isinstance(value, tuple) and len(value) == 2 and value[1] != 0:
-                    result[tag] = round(value[0] / value[1], 2)
-                else:
-                    result[tag] = str(value)
+            key = _EXIF_KEY_MAP.get(tag)
+            if not key:
+                continue
+            if key == 'shutter':
+                result[key] = _fmt_shutter(value)
+            elif key == 'aperture':
+                result[key] = _fmt_aperture(value)
+            elif key == 'focal':
+                result[key] = _fmt_focal(value)
+            elif key == 'camera':
+                result[key] = str(value).strip().upper()   # core uppercases the model
+            elif key == 'flash':
+                try:
+                    result[key] = 'Yes' if (int(value) & 1) else 'No'
+                except (TypeError, ValueError):
+                    result[key] = 'No'
+            elif key == 'iso':
+                # Some bodies report a tuple of readings — take the first.
+                if isinstance(value, tuple) and value:
+                    value = value[0]
+                result[key] = str(value).strip()
+            else:
+                result[key] = str(value).strip()
         return result
     except Exception:
         return {}
