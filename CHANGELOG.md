@@ -12,6 +12,8 @@
 
 ## Unreleased
 
+## 0.7.505 "<codename TBD — Sean>" — 2026-08-07
+
 - **FIXED: a posting tool could silently convert your site to a different kind of site.**
   Pressing Connect in SYBU turned a 1,076-post GramOfSmack blog into a photo blog, and
   the site then could not be switched back from the admin at all. Recovering it took a
@@ -205,8 +207,6 @@
   `tools/pfd-migrate-ct.sh`, `tools/strip-search/skin_inspect.py`, and SUYB's
   `path_safety.py` + `tests/test_security_regressions.py`. `tools/check-eof.py` now
   reports 0 failures across 924 files. SUYB's own 13 tests still pass.
-
-## 0.7.505 "<codename TBD — Sean>" — 2026-08-06
 
 - **SECAUDIT 039 — GYSS desktop trust boundary + an API-key expiry sweep across every tool.**
   GYSS exposed three unrestricted file read/write commands to its own webview while running with
