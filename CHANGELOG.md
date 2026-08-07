@@ -12,6 +12,36 @@
 
 ## Unreleased
 
+- **FIXED: a posting tool could silently convert your site to a different kind of site.**
+  Pressing Connect in SYBU turned a 1,076-post GramOfSmack blog into a photo blog, and
+  the site then could not be switched back from the admin at all. Recovering it took a
+  signed VAX package. (2026-08-06, fauxlaroid.fyi.)
+  - **The mechanism.** `snap_api_enforce_mode()` answered a mode mismatch by rewriting
+    `snap_settings.site_mode` to whatever the calling tool wanted — "the KEY decides the
+    MODE". SYBU's `fetch_site_data()` tries `sybu-data.php` first (which permits both
+    modes, so it is harmless), but on any failure it silently fell through to scraping
+    `smack-post-solo.php`, which declares photoblog-only. So a failed metadata fetch
+    converted the site. The failure was swallowed by an `except: pass`, which is also why
+    the tool reported "0 CATS 0 ALBUMS" instead of an error.
+  - **Why it was unrecoverable.** With the mode wrong, the skin gallery and the Customize
+    tab both hide every gram skin — and activating a gram skin is the only supported way
+    to set the mode back. The site locked itself out of its own repair path. `tools/fix.php`
+    would have done it in one line, but `tools/` is excluded from the release, so it is not
+    on any install.
+  - **Server fix.** The mode is now only ever set automatically on a site with **no content**,
+    where "match the tool" is a fair reading of an unconfigured install. Anything with posts
+    or images is refused. If the count cannot be read, the site is treated as established —
+    it fails closed. The refusal also stops lying: it used to say "switch the mode in
+    Settings", and there is no such control, so it now names the actual mechanism (activate
+    a skin for that mode) and which skins those are.
+  - **Client fix.** SYBU no longer reaches for `smack-post-solo.php` by accident — the
+    legacy HTML scrape is opt-in and defaults to off, and a failed `sybu-data.php` fetch
+    now reports why instead of silently pretending the site is empty.
+  - `tests/site-mode-guard-regression.php` — 11 checks pinning both halves, including that
+    the emptiness check fails closed and that the refusal text stays actionable. It also
+    counts how many endpoints declare a single required mode, so adding another one is a
+    deliberate decision rather than a surprise.
+
 - **TAKE YOUR SHIT WITH YOU — server API (first half).** `core/tyswy-api.php`, the
   read-only export surface the TYSWY desktop tool will talk to. Six GET actions:
   `preflight`, `stream`, `media`, `record`, `verify`, `changes`. Routed via

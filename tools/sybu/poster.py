@@ -189,7 +189,27 @@ class SnapSmackClient:
 
     # ------------------------------------------------------------------
 
-    def fetch_site_data(self) -> SiteData:
+    def fetch_site_data(self, allow_legacy_scrape: bool = False) -> SiteData:
+        """
+        Load categories/albums/tags for the connected site.
+
+        `allow_legacy_scrape` opts into the old HTML-scrape fallback against
+        smack-post-solo.php. It defaults to OFF, and that default is the fix for
+        a real incident:
+
+        smack-post-solo.php declares itself photoblog-only, and the server used to
+        respond to a mode mismatch by silently switching the site to match the
+        calling tool. So when sybu-data.php failed for any reason, this function
+        quietly scraped the solo page instead — and pressing Connect converted a
+        1,076-post GramOfSmack blog into a photo blog. Every gram upload then failed
+        409, and because the skin gallery hides gram skins while the mode is wrong,
+        the site could not be switched back from the admin at all. It took a signed
+        VAX package to recover. (2026-08-06, fauxlaroid.fyi.)
+
+        The server no longer converts a site that has content. This is the client
+        half: do not reach for a photoblog endpoint by accident, and never swallow
+        the reason the real endpoint failed.
+        """
         if not self._api_key:
             raise RuntimeError("No API key configured.")
 
@@ -214,10 +234,24 @@ class SnapSmackClient:
                 data.tags    = payload.get('tags', [])
                 data.titles  = payload.get('titles', [])
                 return data
-        except Exception:
-            pass  # Fall through to HTML scrape if endpoint unavailable
+            why = f"sybu-data.php returned HTTP {api_resp.status_code}"
+        except Exception as e:
+            why = f"sybu-data.php failed: {e}"
 
-        # ── Fallback: scrape smack-post-solo.php HTML (older server versions) ────
+        # The real endpoint did not answer. Say so — the old code swallowed this
+        # and reported an empty site, which looked like "you have no categories"
+        # rather than "the fetch broke".
+        if not allow_legacy_scrape:
+            raise RuntimeError(
+                f"Could not load site data — {why}.\n\n"
+                "Not falling back to the old smack-post-solo.php scrape: that page is "
+                "for photoblog sites, and reaching it from here is what used to convert "
+                "a gram site into a photo blog. Check the site URL and API key."
+            )
+
+        # ── Legacy fallback: scrape smack-post-solo.php HTML (opt-in only) ──────
+        # Only safe on a site that is already a photoblog. Never call this from a
+        # GRAMOFSMACK flow.
         url  = f"{self.base_url}/smack-post-solo.php"
         resp = self.session.get(url, timeout=15)
         resp.raise_for_status()

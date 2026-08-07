@@ -46,36 +46,69 @@ if (!function_exists('snap_api_enforce_mode')) {
         }
         if (in_array($mode, $allowed, true)) return;   // already the right mode
 
-        // WRONG MODE — but the authenticated tool key already tells us the intent:
-        // a solo (sybu) key means "this is a photoblog," a gram key means "carousel,"
-        // etc. So instead of refusing the post and making the owner go hunt for a
-        // setting, FLIP the site to the mode the key needs and carry on. The KEY
-        // decides the MODE. Only auto-flips when the endpoint names exactly one
-        // target mode (unambiguous); every flip is logged.
-        if (count($allowed) === 1) {
+        // WRONG MODE. This used to auto-flip site_mode to whatever the calling
+        // tool wanted, on the reasoning that "the KEY decides the MODE" — it saved
+        // the owner hunting for a setting on a fresh install.
+        //
+        // It also converted established sites. SYBU's _on_connect() fetches
+        // categories and albums through smack-post-solo.php, which declares
+        // photoblog-only, so merely pressing Connect turned a 1,076-post GramOfSmack
+        // blog into a photo blog. Silently. And the conversion was one-way in
+        // practice: with the mode wrong, the skin gallery hides every gram skin, and
+        // activating a gram skin is the only supported way to set the mode back — so
+        // the site locked itself out of its own repair path and needed a signed VAX
+        // package to recover. (2026-08-06, fauxlaroid.fyi.)
+        //
+        // A posting tool must not be able to change what KIND of site this is. The
+        // convenience is kept only where it cannot destroy anything: a site with no
+        // content yet, where "flip to match the tool" is a reasonable reading of an
+        // otherwise unconfigured install. Anything with content is refused, loudly.
+        $has_content = false;
+        try {
+            $has_content = ((int)$pdo->query("SELECT COUNT(*) FROM snap_posts")->fetchColumn() > 0)
+                        || ((int)$pdo->query("SELECT COUNT(*) FROM snap_images")->fetchColumn() > 0);
+        } catch (PDOException $e) {
+            $has_content = true;   // cannot prove it is empty — treat it as established
+        }
+
+        if (count($allowed) === 1 && !$has_content) {
             try {
                 $pdo->prepare(
                     "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('site_mode', ?)
                      ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
                 )->execute([$allowed[0]]);
-                error_log("SNAP_API: site_mode auto-flipped '{$mode}' -> '{$allowed[0]}' to match the authenticated tool key.");
+                error_log("SNAP_API: site_mode set '{$mode}' -> '{$allowed[0]}' on an EMPTY site to match the authenticated tool key.");
                 $GLOBALS['SNAP_API_MODE_FLIPPED'] = ['from' => $mode, 'to' => $allowed[0]];
-                return;   // proceed — the site is now in the correct mode for this key
+                return;
             } catch (PDOException $e) {
-                // fall through to a clear warning if the flip could not be written
+                // fall through to the refusal below
             }
         }
 
-        // Ambiguous target (several allowed) or the flip failed: refuse, but with a
-        // plain-language, actionable warning instead of a bare status code.
+        // Refuse, with a plain-language, actionable message rather than a bare code.
         http_response_code(409);
         header('Content-Type: application/json');
+        // Say how to actually fix it. There is NO site-mode control in Settings —
+        // the mode follows the active skin (smack-skin.php) — and telling the owner
+        // to go find a setting that does not exist is how a five-minute problem
+        // becomes an hour.
+        $how = [
+            'photoblog' => 'activate a photoblog skin (50 Shades of Noah Grey, New Horizon)',
+            'carousel'  => 'activate a gram skin (The Grid, Instant Camera)',
+            'smacktalk' => 'activate a SmackTalk skin (Alfred)',
+        ];
+        $fix = [];
+        foreach ($allowed as $a) { if (isset($how[$a])) $fix[] = $how[$a]; }
+
         echo json_encode([
             'error' => "WRONG MODE. This tool posts to " . strtoupper(implode(' / ', $allowed))
-                     . " sites, but this site is set to '" . $mode . "' mode. Switch the site's mode to "
-                     . strtoupper(implode(' or ', $allowed)) . " in Settings, then re-post.",
+                     . " sites, but this site is in '" . $mode . "' mode, and it has content — so the mode "
+                     . "was NOT changed automatically. To change it, " . implode(' or ', $fix)
+                     . " in Pimp Your Ride -> Smooth Your Skin. The site mode follows the active skin; "
+                     . "there is no separate mode setting.",
             'site_mode'     => $mode,
             'required_mode' => $allowed,
+            'how_to_change' => $fix,
         ]);
         exit;
     }
