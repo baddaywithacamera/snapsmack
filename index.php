@@ -512,7 +512,13 @@ if (!empty($_GET['modal']) && $requested_slug && $img
 
 include __DIR__ . '/' . $skin_path . '/skin-meta.php';
 ?>
-<body class="is-photo-page<?php echo $landing_only_active ? ' landing-only' : ''; ?>">
+<body class="is-photo-page<?php echo ($requested_slug && $img) ? ' h-entry' : ''; ?><?php echo $landing_only_active ? ' landing-only' : ''; ?>">
+<?php
+if ($requested_slug && $img) {
+    require_once __DIR__ . '/core/indieweb.php';
+    snapsmack_indieweb_photo_properties($img, $settings);
+}
+?>
 <div id="page-wrapper">
     <?php
     if ($img && file_exists(__DIR__ . '/' . $skin_path . '/layout.php')) {

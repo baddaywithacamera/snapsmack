@@ -12,6 +12,80 @@
 
 ## Unreleased
 
+## 0.7.506 "<codename TBD — Sean>" — 2026-08-07
+
+- **SnapSmack is now IndieWeb-readable without adding another social attack
+  surface.** Public Social Dock identities emit validated `rel=me` links, every
+  page carries one shared `h-card`, solo photographs emit canonical `h-entry`
+  properties across every skin, and the four SMACKTALK longform renderers mark
+  their visible title, date, content, cover and author semantics. The public
+  ActivityPub post view carries the same microformats. This is deliberately the
+  passive semantic layer only: no Webmention endpoint, remote URL fetching,
+  IndieAuth, Micropub, backfeed, or second comment system. ActivityPub remains
+  the sole social transport. (`core/indieweb.php`, shared meta/footer/social
+  components, public photo and longform renderers.)
+
+- **CRIMSON ONYX — photofri.day's front door, as a skin.** `skins/crimson-onyx/`,
+  version 0.1.0, alpha. A straight port of the photofri.day static site into the CMS:
+  crimson on near-black, Arial Black wordmark, hairline rules, and the faint red glow
+  behind the canvas that stops the black reading as a flat slab.
+  - **Ported, not reinterpreted.** Every colour, size and spacing value came out of
+    `projects/photofri-day/*.html`, and the port was checked by measuring both against
+    each other rather than by eye: wordmark 88px tall, tagline 33px, lede 69px, pill grid
+    315+315, participation block 640px, crimson rule 64×4. The FAQ copy was converted by
+    script rather than retyped, so the words are provably the same words.
+  - **The design moved; the words stayed content.** The four pages are ordinary CMS static
+    pages, so the copy is editable without touching CSS and the CSS is tunable without
+    touching copy. Bodies ready to paste live in `projects/photofri-day/cms-pages/`.
+  - **The nav builds itself** from the active pages in menu order, with the homepage
+    excluded because it is already the HOME link. Add a page, it appears. Nothing about
+    the nav is written into the skin.
+  - **The front page and the interior pages style themselves apart** using a class the core
+    already sets (`homepage-static`) — one giant centred wordmark on the front, smaller
+    titles elsewhere, no per-page CSS and nothing to configure.
+  - **Two bugs the harness caught that reasoning would not have.** A generic
+    `.static-content .description p` rule was out-specifying every ported component, so a
+    96px wordmark rendered 163px tall; the content defaults are now wrapped in `:where()`
+    so they carry zero specificity and a single class can always win. And a `40em` width
+    resolved against the inherited body size rather than the root, widening the pill grid
+    from 640px to 672px — now `40rem`.
+  - **17 admin controls**, and the accent is one of them: a single colour drives every
+    rule, border, step numeral, the footer bar and the glow, because there is no second
+    place the red is written down. Separate size controls for the front-page wordmark,
+    page titles and body text. Includes the **Profile Avatar** control, which is what
+    feeds `sv_avatar()` — that is the icon other Fediverse servers show beside your posts,
+    and without it the actor shows up blank everywhere.
+  - Zero JavaScript, zero web fonts, `tools/skin-scan.php` clean. The FAQ accordion is
+    `<details>`/`<summary>`, exactly as the static site did it.
+
+- **Service skins no longer clutter ordinary galleries.** A skin can declare
+  `features.fedistructure_only`, and it is then offered only on a FEDISTRUCTURE
+  install — filtered out of both the download gallery and the local skin picker, so
+  one arriving by hand (a copied folder, an old backup) still cannot be activated on
+  a personal blog. Same mechanism Photogram already uses to stay out of the gallery,
+  and no Skin Packager change was needed because it copies `features` into the
+  registry wholesale. `tests/service-skin-visibility-regression.php` — 18 checks,
+  both directions, including that no *other* skin picked the flag up by accident and
+  that the packager keeps copying features (the day that becomes a named-field copy,
+  the flag stops travelling and the skin silently reappears everywhere).
+  - Considered and deferred: making service installs a genuine fourth site mode.
+    Tidier in principle, but `site_mode` is load-bearing in 32 files with 13
+    hardcoded three-mode allowlists — including `snap_api_enforce_mode()`, the
+    function that converted a live site to the wrong mode earlier in this very
+    release — and photofri.day is already installed as `photoblog`, so it would need
+    a migration for a live site with a live Fediverse actor. Routing it through the
+    manifest's `modes[]` does not work either: 12 of 26 shipped skins declare no
+    modes at all, so the gallery filters on what a skin *is*, not what it declares.
+
+- **The installer can tell a service install from an ordinary one.** Every FEDISTRUCTURE
+  profile runs on `site_mode = 'photoblog'`, so `install-manifest.php` could not
+  distinguish a PHOTOFRI.DAY install from a photo blog — and a challenge site would have
+  come up wearing the generic photoblog skin. The installer now sends the distribution
+  profile alongside the mode, and the manifest maps `photo-challenge` → CRIMSON ONYX.
+  Additive and backward compatible: an installer that sends no profile behaves exactly as
+  before, an unknown profile falls through to the mode default rather than erroring, and a
+  hostile value is rejected rather than echoed.
+
 ## 0.7.505 "<codename TBD — Sean>" — 2026-08-07
 
 - **FIXED: a posting tool could silently convert your site to a different kind of site.**
@@ -44,8 +118,86 @@
     counts how many endpoints declare a single required mode, so adding another one is a
     deliberate decision rather than a surprise.
 
-- **TAKE YOUR SHIT WITH YOU — server API (first half).** `core/tyswy-api.php`, the
-  read-only export surface the TYSWY desktop tool will talk to. Six GET actions:
+- **TAKE YOUR SHIT WITH YOU — the desktop tool, and the end of server-side portable
+  export.** `tools/take-your-shit-with-you/` — a Windows application that downloads a
+  complete, readable copy of everything you published onto your own machine, proves
+  nothing went missing, and can build a WordPress import package on the way out.
+  **Every image. Every scrap of data. Pack it up and leave.**
+  - **The whole point: this is not a backup.** A backup preserves an *implementation*
+    so a broken site can be put back — that is SMACK UP YOUR BACKUP and it is
+    untouched. This preserves *your work* so you can take it somewhere else. Different
+    jobs, different products, and conflating them is how people end up with neither.
+  - **The archive is a folder, and it stays a folder.** One readable JSON file per post
+    and per image, sitting beside the actual photographs. No SnapSmack, no TYSWY, no
+    database and no command line needed to read it — a file manager and a text editor
+    will do. `README.txt` inside explains the layout without mentioning us.
+    `manifest.json` lists every file with a SHA-256. Compression is local, optional,
+    and only after verification.
+  - **Nothing is silently discarded.** A column this version has never heard of lands
+    in a namespaced `snapsmack` object rather than on the floor, so a field added to
+    the CMS next year still survives an export written today.
+  - **The source shape is preserved, never converted.** A GramOfSmack carousel comes out
+    as one post owning an ordered image array, and the order is read from the source
+    rather than re-derived — carousel order is the arrangement you made, and guessing
+    at it is the same as losing it. A photoblog image comes out as a primary published
+    item. SMACKTALK bodies keep their inline `[img:ID]` / `[mosaic:ID]` references,
+    listed explicitly so a reader does not need to know our shortcode syntax to work
+    out which files a piece of writing depends on.
+  - **Verification is a stage, not a claim.** Every record is re-serialised locally and
+    its SHA-256 compared with the server's; every chunk is checked against a rolling
+    hash and a row count in its footer; **a chunk with no footer was cut off, and is
+    discarded whole rather than counted as short-but-complete** — that one property is
+    what makes a dropped connection safe. Afterwards the tool asks the site for fresh
+    counts at the export snapshot and compares them against its own ledger. An export
+    is not labelled complete if something expected is missing; it finishes as *complete
+    with warnings* only when every omission is named.
+  - **Stopping is safe, and the tool means it.** Record streams resume from the last
+    verified row (the raw ledger is truncated back to the last byte offset a verified
+    chunk ended on, so a half-written line is dropped without dropping the work before
+    it); media resumes mid-file with an HTTP Range request. It refuses to resume into a
+    folder holding a different site, and refuses to overwrite a finished export. An
+    incomplete run deliberately stays resumable — the completion screen tells you to run
+    it again against the same folder, and marking it finished would have made that a lie.
+  - **WordPress is a courtesy and says so.** WXR 1.2 with posts, pages, attachments,
+    comments, categories and tags; carousels become ordered galleries; longform becomes
+    conservative HTML. Every mapping WordPress cannot make is written into
+    `conversion-report.html` — albums flattened to tags, collections not imported at
+    all, MOSAIC layouts, trigram slicing, per-image crop/focal/zoom framing, reaction
+    counts, content warnings. All of it stays intact in the canonical archive; WordPress
+    simply has nowhere to put it. Media is hard-linked into the package where the
+    filesystem allows, so a 40 GB library is not copied to sit beside itself. The
+    adapter reads only the canonical archive and writes only under `courtesy/`; running
+    it twice leaves every canonical byte identical, which is a test rather than a hope.
+  - **A JSON Schema ships inside every archive** as well as with the app, so an archive
+    found on a drive in ten years can be machine-validated by someone who has never
+    heard of any of this. The test suite validates real export output against it, not a
+    handwritten example written to pass.
+  - **97 Python tests** across transport, resume, format, adapter and schema —
+    including one that pins the Python canonical serialisation to a SHA-256 computed by
+    PHP, because if those two ever drift apart every record on every export starts
+    failing verification and the test that catches it cannot be one that asks the same
+    code twice.
+  - **REMOVED, in the same release: `WORDPRESS WXR` and `PORTABLE JSON` from
+    Backup & Recovery**, along with `SnapSmackExport::exportWordPressWXR()` and
+    `::exportPortableJSON()`. Both built a complete export of an entire site inside one
+    PHP request — `SELECT *` across every content table, `fetchAll()` into arrays,
+    concatenated into one enormous string — on the same shared host that also has to
+    serve the site. On a small site it worked. On a real archive it was a memory-limit
+    fatal at best, and it got worse with every photograph. The Backup page now carries
+    one card pointing at the desktop tool.
+  - Spec section 4 requires removal and replacement to ship **together**, so that no
+    release ever loses the ability to export portable content.
+    `tests/tyswy-cms-removal-regression.php` (**36 checks**) asserts both halves in one
+    pass: the old machinery is gone, the recovery machinery it lived beside is
+    untouched, and the desktop replacement is present. A future commit that deletes or
+    renames the tool fails here rather than quietly leaving a release with no portable
+    export at all.
+  - The Companion Tools page can now mark a tool as not-yet-released, because a dead
+    download button on the page that guarantees you can leave is the worst possible
+    place in the product for one.
+
+- **TAKE YOUR SHIT WITH YOU — server API.** `core/tyswy-api.php`, the
+  read-only export surface the TYSWY desktop tool talks to. Six GET actions:
   `preflight`, `stream`, `media`, `record`, `verify`, `changes`. Routed via
   `api.php?route=tyswy/...`, scoped to a new read-only `tyswy` key type mintable from
   Boring Ass Stuff → API Keys.
@@ -75,13 +227,30 @@
     minted for any other tool cannot reach this surface. `tyswy` sits on the 3-month
     standing-utility expiry tier rather than the 4-week one-shot import tier, because a
     portable export is a utility an owner re-runs, and it is read-only.
-  - `tests/tyswy-export-regression.php` — **216 checks** pinning the whole boundary,
+  - `tests/tyswy-export-regression.php` — **387 checks** pinning the whole boundary,
     including a self-check proving the guard regex actually discriminates (a guard that
     matches everything, or nothing, passes silently and protects nothing).
-  - Still to come: the canonical archive format, the desktop client, and the CMS-side
-    removal of the old WXR/portable-JSON cards — which per spec section 4 must ship in
-    the SAME release as the desktop replacement, so no version loses the ability to
-    export.
+  - **Seven record types the first pass missed.** Reading the schema against spec
+    sections 6.2 and 8 turned up gaps that would each have produced an export that
+    looked complete and was not. `snap_comments` — the OTHER comment table, the one
+    that hangs off images — was not exported at all, so a SMACKONEOUT photoblog would
+    have lost **every comment it has ever received** without a single warning. Also
+    added: `tags` + `image_tags` (spec section 9 lists tags as portable content),
+    post-level category and album membership, `trigrams` (the slice geometry that makes
+    three posts one photograph), `mosaics` (SMACKTALK layout), `assets` (the files a
+    longform `[img:ID]` actually points at — without them the writing refers to
+    nothing), emoji reactions, blogroll categories, outbound follows, and
+    `stats_summary`. Statistics come from the **daily aggregate** table only: the
+    per-hit table carries IP hashes, user agents and referrer URLs, which is visitor
+    telemetry rather than the owner's content.
+  - Media serving learned a second source, `source=asset`, for longform inline files.
+    Same containment as an image and to its own root — `snap_api_safe_upload_path()`
+    was refactored into `snap_api_safe_rel_path($path, $roots)` so images stay pinned
+    to `img_uploads/` and assets to `media_assets/`, rather than one rule being
+    loosened until it covered both.
+  - The `dynamic_cols` fallback is gone. One record type used "export every column that
+    does not look secret", which is precisely the pattern the rest of this file argues
+    against: it excludes by *remembering*, and the allowlists exclude by *default*.
 
 - **SECAUDIT 040 — FLKR FCKR desktop client + import API. Three of four findings closed.**
   - **The step-up helper no longer sends your password over an unencrypted connection.**

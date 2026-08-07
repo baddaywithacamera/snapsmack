@@ -1,0 +1,20 @@
+# TAKE YOUR SHIT WITH YOU — runtime dependencies
+#
+# Deliberately short. This tool downloads an owner's whole archive and writes
+# JSON; every dependency is another thing that can go wrong on a machine we
+# will never see.
+#
+# tkinter is stdlib on the Windows python.org builds, so it is not listed.
+
+requests>=2.31.0
+
+# Credential vault (tools/_shared/snap_vault.py). Without these the tool still
+# runs, but "Key security" reports encryption unavailable and the export key is
+# stored as base64 — an encoding, not encryption. Not optional for a shipped
+# build.
+cryptography>=42.0.0
+keyring>=24.0.0
+
+# Test-only: validates written sidecars against the shipped JSON Schema.
+# jsonschema>=4.0.0
+# ===== SNAPSMACK EOF =====

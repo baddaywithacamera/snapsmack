@@ -235,10 +235,12 @@ function tyswy_types(): array {
             'table' => 'snap_images', 'id' => 'id',
             'cols'  => ['id','img_title','img_slug','img_description','img_film','img_license',
                         'img_date','img_file','img_source_file','img_source_url','img_exif',
-                        'img_width','img_height','img_status','img_orientation',
+                        'img_width','img_height','img_status','img_orientation','img_auto_orient',
                         'img_thumb_square','img_thumb_aspect','img_checksum','img_display_options',
-                        'post_id','sort_order','modified_at','blurhash',
-                        'is_sensitive','content_warning','img_like_seed','img_view_seed'],
+                        'img_download_url','img_download_count','allow_comments','allow_download',
+                        'download_url','post_id','user_id','sort_order','modified_at','blurhash',
+                        'is_sensitive','content_warning','fedi_published_at',
+                        'img_like_seed','img_view_seed'],
         ],
         'post_images' => [
             'table' => 'snap_post_images', 'id' => 'id',
@@ -248,10 +250,41 @@ function tyswy_types(): array {
                         'img_size_pct','img_border_px','img_border_color','img_bg_color',
                         'img_shadow','img_crop_mode','img_focus_x','img_focus_y','img_zoom'],
         ],
+        'trigrams' => [
+            'table' => 'snap_trigrams', 'id' => 'id',
+            // GRAMOFSMACK grid positioning (spec 8): three posts that are really
+            // one sliced image. Without the cut points the arrangement cannot be
+            // rebuilt, only guessed at.
+            'cols'  => ['id','trigram_type','source_path','orientation','cut_a','cut_b',
+                        'post_id_1','post_id_2','post_id_3','created_at'],
+        ],
+        'mosaics' => [
+            'table' => 'snap_mosaics', 'id' => 'id',
+            // SMACKTALK layout data (spec 8): preserved rather than flattened, so
+            // an adapter that simplifies presentation is simplifying something
+            // that still exists in the canonical archive.
+            'cols'  => ['id','title','asset_ids','focus_positions','gap',
+                        'created_at','updated_at'],
+        ],
+        'assets' => [
+            'table' => 'snap_assets', 'id' => 'id',
+            // Longform inline media. A SMACKTALK body says [img:ID] and [mosaic:ID];
+            // without these rows those references point at nothing.
+            'cols'  => ['id','asset_name','asset_path','asset_checksum',
+                        'asset_border_width','asset_border_color','created_at'],
+        ],
         'categories' => [
             'table' => 'snap_categories', 'id' => 'id',
             'cols'  => ['id','cat_name','cat_slug','cat_description','cover_image_id',
                         'show_in_archive','featured_post_id'],
+        ],
+        'tags' => [
+            'table' => 'snap_tags', 'id' => 'id',
+            'cols'  => ['id','tag','slug','use_count','color_family','created_at'],
+        ],
+        'image_tags' => [
+            'table' => 'snap_image_tags', 'id' => 'id',
+            'cols'  => ['id','image_id','tag_id','created_at'],
         ],
         'image_category_memberships' => [
             'table' => 'snap_image_cat_map', 'id' => 'image_id',
@@ -269,6 +302,18 @@ function tyswy_types(): array {
             'cols'  => ['image_id','album_id'],
             'composite' => true,
             'order'     => 'image_id, album_id',
+        ],
+        'post_category_memberships' => [
+            'table' => 'snap_post_cat_map', 'id' => 'post_id',
+            'cols'  => ['post_id','cat_id'],
+            'composite' => true,
+            'order'     => 'post_id, cat_id',
+        ],
+        'post_album_memberships' => [
+            'table' => 'snap_post_album_map', 'id' => 'post_id',
+            'cols'  => ['post_id','album_id'],
+            'composite' => true,
+            'order'     => 'post_id, album_id',
         ],
         'collections' => [
             'table' => 'snap_collections', 'id' => 'id',
@@ -295,22 +340,57 @@ function tyswy_types(): array {
             'cols'  => ['id','post_id','user_id','guest_name','guest_email','guest_url',
                         'comment_text','status','created_at','edited_at'],
         ],
+        'image_comments' => [
+            'table' => 'snap_comments', 'id' => 'id',
+            // The OTHER comment table. snap_community_comments hangs off posts;
+            // this one hangs off images, and on a SMACKONEOUT photoblog it holds
+            // essentially every comment the site has. Exporting only one of the
+            // two would have quietly lost a photoblog's entire comment history.
+            // comment_ip and fp_hash are excluded - raw IPs and browser
+            // fingerprints are named exclusions in spec section 9.
+            'cols'  => ['id','img_id','post_id','comment_author','comment_url','comment_email',
+                        'comment_text','comment_date','is_approved',
+                        'ap_source','ap_actor_url','ap_object_id','ap_note_id','ap_in_reply_to'],
+        ],
         'reactions' => [
             'table' => 'snap_likes', 'id' => 'id',
             // guest_hash is excluded: it is a fingerprint of a third party, and
             // the portable fact is "this post has N reactions", not who.
             'cols'  => ['id','post_id','user_id','created_at'],
         ],
+        'emoji_reactions' => [
+            'table' => 'snap_reactions', 'id' => 'id',
+            'cols'  => ['id','post_id','user_id','reaction_code','created_at'],
+        ],
         'blogroll' => [
             'table' => 'snap_blogroll', 'id' => 'id',
             'cols'  => ['id','peer_name','peer_url','cat_id','peer_rss','peer_desc','sort_order'],
         ],
+        'blogroll_categories' => [
+            'table' => 'snap_blogroll_cats', 'id' => 'id',
+            'cols'  => ['id','cat_name'],
+        ],
         'follows' => [
             'table' => 'snap_ap_followers', 'id' => 'id',
             // Reference only, never transferable identity (spec section 9). No
-            // keys, no tokens - just who follows this actor.
-            'cols'  => ['id'],
-            'dynamic_cols' => true,   // schema varies by version; resolved at runtime
+            // keys, no tokens - just who follows this actor, and the public
+            // endpoints that are already published in their actor document.
+            'cols'  => ['id','actor_url','actor_handle','inbox_url','shared_inbox_url',
+                        'followed_at','is_active'],
+        ],
+        'following' => [
+            'table' => 'snap_ap_following', 'id' => 'id',
+            'cols'  => ['id','actor_url','actor_handle','inbox_url','follow_id',
+                        'state','followed_at'],
+        ],
+        'stats_summary' => [
+            'table' => 'snap_stats_daily', 'id' => 'id',
+            // AGGREGATE ONLY, and deliberately not snap_stats. The raw hit table
+            // carries ip_hash, user agents and referrer URLs - visitor telemetry,
+            // not the owner's content. The portable statistic is "this day had
+            // this many views" (spec section 9).
+            'cols'  => ['id','stat_date','total_views','unique_visitors','bot_views',
+                        'top_image_id','top_referrer'],
         ],
     ];
 }
@@ -329,11 +409,10 @@ function tyswy_live_cols(PDO $pdo, array $def): array {
         } catch (Throwable $e) { $have = []; }
         $cache[$t] = $have;
     }
-    if (!empty($def['dynamic_cols'])) {
-        // Reference-only tables: take every non-secret-looking column.
-        $deny = '/(key|secret|token|password|hash|private|salt|nonce|signature)/i';
-        return array_values(array_filter(array_keys($have), fn($c) => !preg_match($deny, $c)));
-    }
+    // Every type names its columns. There is deliberately NO "take everything
+    // that does not look secret" fallback: that is the pattern this file's
+    // header argues against, and a column added next year would be exported by
+    // default instead of excluded by default.
     return array_values(array_filter($def['cols'], fn($c) => isset($have[strtolower($c)])));
 }
 
@@ -444,6 +523,19 @@ if ($action === 'preflight') {
         'chunk_max'      => TYSWY_CHUNK_MAX,
         'types'          => $types,
         'media_variants' => ['original', 'web', 'thumb'],
+        'media_sources'  => ['image', 'asset'],
+        // Honesty about what 'original' means HERE. SnapSmack stores one main
+        // file per image plus two derived thumbnails; there is no separate
+        // untouched master on the server. Saying so lets the desktop record an
+        // explicit fallback (spec 6.3) instead of labelling a web file "original"
+        // and letting the owner believe a master came across.
+        'media_variant_notes' => [
+            'original' => 'This install holds one main file per image. It is the best '
+                        . 'source the site has and it is what "original" returns; if you '
+                        . 'resized on upload, the untouched camera file was never here.',
+            'web'      => 'Same stored file as "original" on this install.',
+            'thumb'    => 'Generated thumbnail. Derived, not a source.',
+        ],
         'media_bytes_estimate' => $media_bytes,   // null = not known without a walk
         'settings_public'      => tyswy_settings_public($pdo),
         'excluded_classes'     => [
@@ -641,26 +733,47 @@ if ($action === 'changes') {
 if ($action === 'media') {
     $id      = (int)($_GET['id'] ?? 0);
     $variant = strtolower(trim((string)($_GET['variant'] ?? 'original')));
-    if ($id <= 0) tyswy_error(400, 'bad_id', 'A positive image id is required.');
+    $source  = strtolower(trim((string)($_GET['source'] ?? 'image')));
+    if ($id <= 0) tyswy_error(400, 'bad_id', 'A positive id is required.');
+    if (!in_array($source, ['image', 'asset'], true)) {
+        tyswy_error(400, 'bad_source', 'Unknown media source.');
+    }
     if (!in_array($variant, ['original', 'web', 'thumb'], true)) {
         tyswy_error(400, 'bad_variant', 'Unknown media variant.');
     }
 
     // The path comes from the DATABASE, never from the request (spec 6.3).
-    $st = $pdo->prepare("SELECT img_file, img_thumb_square, img_thumb_aspect
-                         FROM snap_images WHERE id = ? LIMIT 1");
-    $st->execute([$id]);
-    $img = $st->fetch(PDO::FETCH_ASSOC);
-    if (!$img) tyswy_error(404, 'not_found', 'No such image.');
+    if ($source === 'asset') {
+        // Longform inline media ([img:ID] / [mosaic:ID] in a SMACKTALK body).
+        // Same containment as an image; only the lookup table differs.
+        if (!tyswy_table_exists($pdo, 'snap_assets')) {
+            tyswy_error(404, 'not_supported', 'This site has no longform assets.');
+        }
+        $st = $pdo->prepare("SELECT asset_path FROM snap_assets WHERE id = ? LIMIT 1");
+        $st->execute([$id]);
+        $rel = (string)($st->fetchColumn() ?: '');
+        if ($rel === '') tyswy_error(404, 'not_found', 'No such asset.');
+    } else {
+        $st = $pdo->prepare("SELECT img_file, img_thumb_square, img_thumb_aspect
+                             FROM snap_images WHERE id = ? LIMIT 1");
+        $st->execute([$id]);
+        $img = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$img) tyswy_error(404, 'not_found', 'No such image.');
 
-    $rel = ($variant === 'thumb')
-        ? (string)($img['img_thumb_aspect'] ?: $img['img_thumb_square'] ?: '')
-        : (string)($img['img_file'] ?? '');
-    if ($rel === '') tyswy_error(404, 'variant_absent', 'That variant does not exist for this image.');
+        $rel = ($variant === 'thumb')
+            ? (string)($img['img_thumb_aspect'] ?: $img['img_thumb_square'] ?: '')
+            : (string)($img['img_file'] ?? '');
+        if ($rel === '') tyswy_error(404, 'variant_absent', 'That variant does not exist for this image.');
+    }
 
     // Containment: the stored value is client-supplied on imported rows
     // (SECAUDIT 040 finding C), so it is re-checked here rather than trusted.
-    if (!snap_api_safe_upload_path($rel)) {
+    // Images may only live under img_uploads/; longform assets only under
+    // media_assets/. Same rules, different permitted root - not a looser check.
+    $contained = ($source === 'asset')
+        ? snap_api_safe_rel_path($rel, ['media_assets'])
+        : snap_api_safe_upload_path($rel);
+    if (!$contained) {
         tyswy_error(403, 'path_refused', 'That media path is not exportable.');
     }
     $root = realpath(dirname(__DIR__));

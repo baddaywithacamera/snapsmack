@@ -2,9 +2,12 @@
 /**
  * SNAPSMACK - System backup and recovery
  *
- * Comprehensive backup & recovery system with Recovery Kit, Data Liberation exports,
- * and integration with FTP remote backup capabilities.
- * Preserves SQL database extractions, WordPress exports, portable JSON, and source archival.
+ * Comprehensive backup & recovery system with Recovery Kit, SQL extractions,
+ * source archival, and integration with FTP remote backup capabilities.
+ *
+ * This page is RECOVERY. Portable export (WordPress WXR / portable JSON) was
+ * removed in 0.7.505 and now runs on the owner's computer via TAKE YOUR SHIT
+ * WITH YOU — see core/tyswy-api.php and tools/take-your-shit-with-you/.
  */
 
 /**
@@ -130,39 +133,11 @@ if (isset($_POST['action']) && $_POST['action'] === 'export') {
         }
     }
 
-    // WORDPRESS WXR EXPORT: Standard WordPress eXtended RSS format.
-    if ($type === 'wxr') {
-        require_once 'core/export-engine.php';
-        try {
-            $exporter = new SnapSmackExport($pdo, __DIR__);
-            $wxrContent = $exporter->exportWordPressWXR();
-
-            $filename = "snapsmack_wordpress_" . date('Y-m-d_H-i') . ".xml";
-            header('Content-Type: application/xml');
-            header('Content-Disposition: attachment; filename="' . $filename . '"');
-            echo $wxrContent;
-            exit;
-        } catch (Exception $e) {
-            die("WXR_EXPORT_ERROR: " . $e->getMessage());
-        }
-    }
-
-    // PORTABLE JSON EXPORT: Platform-agnostic JSON with documented schema.
-    if ($type === 'json_export') {
-        require_once 'core/export-engine.php';
-        try {
-            $exporter = new SnapSmackExport($pdo, __DIR__);
-            $jsonContent = $exporter->exportPortableJSON();
-
-            $filename = "snapsmack_export_" . date('Y-m-d_H-i') . ".json";
-            header('Content-Type: application/json');
-            header('Content-Disposition: attachment; filename="' . $filename . '"');
-            echo $jsonContent;
-            exit;
-        } catch (Exception $e) {
-            die("JSON_EXPORT_ERROR: " . $e->getMessage());
-        }
-    }
+    // PORTABLE EXPORT ('wxr' / 'json_export') was REMOVED in 0.7.505.
+    // Both built a whole-site export inside one PHP request. Portable export now
+    // runs on your computer — TAKE YOUR SHIT WITH YOU, see the card below.
+    // Anything still posting the old types falls through to the page rather than
+    // downloading a truncated file that looks like a successful export.
 }
 
 // Load FTP settings for last push information.
@@ -201,30 +176,23 @@ include 'core/sidebar.php';
     </div>
 
     <!-- ============================================================
-         MIGRATION TOOLS — WordPress and JSON exports
+         PORTABLE EXPORT — moved off the server in 0.7.505
          ============================================================ -->
     <div class="box mt-30">
-        <h3>MIGRATION TOOLS</h3>
-        <div class="dash-grid dash-grid-2">
-            <div class="box box-flex">
-                <h3>WORDPRESS WXR</h3>
-                <p class="skin-desc-text">Standard WordPress eXtended RSS format. Import directly into any WordPress site.</p>
-                <form method="POST">
-                    <input type="hidden" name="action" value="export">
-                    <input type="hidden" name="type" value="wxr">
-                    <button type="submit" class="btn-smack btn-block">EXPORT</button>
-                </form>
-            </div>
-            <div class="box box-flex">
-                <h3>PORTABLE JSON</h3>
-                <p class="skin-desc-text">Platform-agnostic export with documented schema. For migration to any CMS.</p>
-                <form method="POST">
-                    <input type="hidden" name="action" value="export">
-                    <input type="hidden" name="type" value="json_export">
-                    <button type="submit" class="btn-smack btn-block">EXPORT</button>
-                </form>
-            </div>
-        </div>
+        <h3>TAKE YOUR SHIT WITH YOU</h3>
+        <p class="skin-desc-text">
+            Complete portable export now runs on your computer so a large archive
+            cannot flatten your web server. It downloads every image and every
+            scrap of portable data, writes readable JSON beside the photographs,
+            checks that nothing went missing, and can build a WordPress import
+            package on the way out. Free desktop tool.
+        </p>
+        <p class="skin-desc-text">
+            You will need a read-only export key: make one in
+            <a href="smack-api-keys.php">API Keys</a> and choose
+            <strong>TYSWY</strong>. It cannot write anything to this site.
+        </p>
+        <a href="smack-tools.php" class="btn-smack btn-block">GET THE TOOL</a>
     </div>
 
     <!-- ============================================================

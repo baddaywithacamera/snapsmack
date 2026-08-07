@@ -58,6 +58,55 @@ define('SKIN_REGISTRY_DEFAULT_URL', 'https://snapsmack.ca/releases/skins/registr
 define('SKINS_DIR', dirname(__DIR__) . '/skins');
 
 /**
+ * May this skin be offered on THIS install?
+ *
+ * A service skin (`features.fedistructure_only`) belongs to a FEDISTRUCTURE
+ * product — PHOTOFRI.DAY, APHOTOEVERY.DAY, SMACKCAST. It carries that service's
+ * identity, so on an ordinary photo blog it is not a choice, it is clutter that
+ * would make somebody's personal site look like somebody else's project.
+ *
+ * WHY A FLAG AND NOT A FOURTH SITE MODE. A service install is genuinely a
+ * different kind of thing, and "make it install mode 4.0" is the tidier idea.
+ * But `site_mode` is load-bearing in 32 files and 13 hardcoded three-mode
+ * allowlists, including `core/mode-guard.php` and `snap_api_enforce_mode()` —
+ * the function that converted a live site to the wrong mode in 0.7.505 — and
+ * photofri.day is already installed and running as `photoblog`, so it would
+ * need a migration too. Expressing it through `modes[]` does not work either:
+ * 12 of 26 shipped skins declare no modes at all, so the gallery filters on
+ * what a skin IS rather than what it declares, and a strict modes match would
+ * hide half the gallery.
+ *
+ * So this is the same mechanism Photogram already uses to stay out of the
+ * gallery: one feature flag, one filter. Mode 4.0 stays on the table as its own
+ * piece of work rather than being smuggled in behind a skin.
+ *
+ * @param array $manifest  A skin manifest, or a registry entry (same shape).
+ */
+if (!function_exists('snapsmack_skin_allowed_distribution')) {
+function snapsmack_skin_allowed_distribution($manifest): bool {
+    if (!is_array($manifest)) return true;
+    if (empty($manifest['features']['fedistructure_only'])) return true;
+    return defined('SNAPSMACK_DISTRIBUTION')
+        && SNAPSMACK_DISTRIBUTION === 'fedistructure';
+}
+}
+
+/**
+ * Drop service skins from a slug-keyed list (registry entries or local skins).
+ * Returns the list unchanged on a FEDISTRUCTURE install.
+ */
+if (!function_exists('snapsmack_skins_for_distribution')) {
+function snapsmack_skins_for_distribution(array $skins): array {
+    foreach ($skins as $slug => $meta) {
+        if (!snapsmack_skin_allowed_distribution($meta)) {
+            unset($skins[$slug]);
+        }
+    }
+    return $skins;
+}
+}
+
+/**
  * Fetch the remote skin registry JSON.
  *
  * Tries cURL first, falls back to file_get_contents. Returns decoded array

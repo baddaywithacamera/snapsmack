@@ -234,7 +234,7 @@ include 'core/sidebar.php';
              ============================================================ -->
         <div class="box">
             <h3>PROFILE LINKS</h3>
-            <p class="dim">Enter your profile URL for each platform. Leave blank to hide. No X/Twitter — by design.</p>
+            <p class="dim">Enter your profile URL for each platform. Leave blank to hide. When the Social Dock is enabled, these public links also carry <code>rel="me"</code> so IndieWeb-aware tools can verify that the profiles belong to this site. No X/Twitter — by design.</p>
 
             <div class="post-layout-grid">
                 <div class="post-col-left">

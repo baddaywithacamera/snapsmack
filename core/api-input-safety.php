@@ -30,8 +30,16 @@
  * may only name a file the upload endpoint itself wrote, and that endpoint only
  * ever writes under img_uploads/. That is what is enforced here.
  */
-if (!function_exists('snap_api_safe_upload_path')) {
-function snap_api_safe_upload_path(string $p): bool {
+if (!function_exists('snap_api_safe_rel_path')) {
+/**
+ * The shape rules, with the permitted root(s) as a parameter.
+ *
+ * Split out so a second caller cannot get "contained" by loosening the original
+ * — the rules stay in ONE place and the only thing a caller chooses is which
+ * directory the file is allowed to live in. A caller that passes no roots gets
+ * nothing: an empty allowlist means nothing is allowed, never everything.
+ */
+function snap_api_safe_rel_path(string $p, array $roots): bool {
     if ($p === '' || strlen($p) > 500)      return false;
     if (strpos($p, "\0") !== false)         return false;   // NUL truncation
     if (strpos($p, '\\') !== false)         return false;   // backslash paths
@@ -43,11 +51,22 @@ function snap_api_safe_upload_path(string $p): bool {
         if ($seg === '' || $seg === '.' || $seg === '..') return false;
     }
 
-    if (strncmp($p, 'img_uploads/', 12) !== 0) return false;
+    $rooted = false;
+    foreach ($roots as $root) {
+        $root = rtrim((string)$root, '/') . '/';
+        if ($root !== '/' && strncmp($p, $root, strlen($root)) === 0) { $rooted = true; break; }
+    }
+    if (!$rooted) return false;
 
     // Conservative charset — no spaces, quotes, or anything needing escaping
     // downstream in a shell, an SQL LIKE, or an HTML attribute.
     return (bool)preg_match('#^[A-Za-z0-9._/-]+$#', $p);
+}
+}
+
+if (!function_exists('snap_api_safe_upload_path')) {
+function snap_api_safe_upload_path(string $p): bool {
+    return snap_api_safe_rel_path($p, ['img_uploads']);
 }
 }
 

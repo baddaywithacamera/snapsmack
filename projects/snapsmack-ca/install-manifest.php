@@ -8,7 +8,15 @@
  * needed to update what the installer fetches.
  *
  * Request (GET):
- *   mode — photoblog | carousel | smacktalk
+ *   mode    — photoblog | carousel | smacktalk
+ *   profile — optional FEDISTRUCTURE service profile (photo-challenge | ...)
+ *
+ * WHY PROFILE EXISTS. Every FEDISTRUCTURE service runs on site_mode 'photoblog',
+ * so the mode alone cannot distinguish a PHOTOFRI.DAY install from an ordinary
+ * photo blog — and without that distinction a challenge site installs the
+ * generic photoblog skin and comes up looking like somebody else's site. The
+ * profile is optional and additive: an installer that doesn't send one gets
+ * exactly the behaviour it got before.
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -25,6 +33,11 @@ if (!in_array($mode, ['photoblog', 'carousel', 'smacktalk'], true)) {
     $mode = 'photoblog';
 }
 
+$profile = trim($_GET['profile'] ?? '');
+if (!in_array($profile, ['photo-challenge', 'daily-photo', 'smackcast'], true)) {
+    $profile = '';
+}
+
 // Default skin per mode — the skin set as active_skin after install.
 // Updated here when a mode gets a new flagship skin.
 $mode_defaults = [
@@ -32,7 +45,20 @@ $mode_defaults = [
     'carousel'  => 'the-grid',
     'smacktalk' => 'alfred',
 ];
-$default_skin = $mode_defaults[$mode] ?? 'new-horizon';
+
+// A FEDISTRUCTURE service profile overrides the mode default: these installs are
+// a branded front door with a blog behind it, not a photo blog that happens to
+// federate, and the skin is part of the product rather than a preference.
+// A profile with no entry here falls through to the mode default on purpose —
+// better a working generic skin than a 503 because somebody added a profile
+// before its skin was packaged.
+$profile_defaults = [
+    'photo-challenge' => 'crimson-onyx',
+];
+
+$default_skin = ($profile !== '' && isset($profile_defaults[$profile]))
+    ? $profile_defaults[$profile]
+    : ($mode_defaults[$mode] ?? 'new-horizon');
 
 // Read registry.json — source of truth for download URLs, signatures, versions.
 $registry_path = __DIR__ . '/releases/skins/registry.json';
@@ -69,6 +95,7 @@ foreach ($reg_skins as $slug => $s) {
 
 echo json_encode([
     'mode'         => $mode,
+    'profile'      => $profile,
     'default_skin' => $default_skin,
     'skins'        => $result,
 ], JSON_UNESCAPED_SLASHES);

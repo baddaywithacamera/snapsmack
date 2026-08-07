@@ -46,8 +46,13 @@ DIRS = [
     'content/posts', 'content/images', 'content/pages', 'content/comments',
     'content/relationships',
     'media/originals', 'media/web', 'media/optional',
-    'indexes', 'courtesy', 'logs',
+    'indexes', 'courtesy', 'logs', 'schema',
 ]
+
+# The JSON Schema ships INSIDE the archive as well as with the application
+# (spec 16), so an archive found on a drive in ten years can still be validated
+# by someone who has never heard of SnapSmack.
+SCHEMA_FILE = 'snapsmack-portable-v1.schema.json'
 
 
 # ---------------------------------------------------------------------------
@@ -298,9 +303,43 @@ class PortableArchive:
             f.write(text)
         return self._record(abs_path)
 
-    def register_media(self, abs_path):
-        """Record a media file that was downloaded into the archive."""
-        return self._record(abs_path)
+    def register_media(self, abs_path, sha256=None, bytes_=None):
+        """
+        Record a media file that was downloaded into the archive.
+
+        The downloader already hashed the bytes as they arrived, so it passes the
+        digest in rather than making us read a 40 GB library a second time. When
+        no digest is supplied the file is hashed here.
+        """
+        if sha256 is None:
+            return self._record(abs_path)
+        rel = self._rel(abs_path)
+        self.inventory[rel] = {
+            'sha256': sha256,
+            'bytes':  int(bytes_ if bytes_ is not None else os.path.getsize(abs_path)),
+        }
+        return rel
+
+    def write_schema(self, schema_text=None):
+        """
+        Put the portable JSON Schema in the archive (spec 16).
+
+        Reads the copy that ships beside this module unless one is passed in.
+        A missing schema is a warning, not a failure — the archive is still
+        readable, it just cannot be machine-validated without fetching the file.
+        """
+        if schema_text is None:
+            src = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               'schema', SCHEMA_FILE)
+            try:
+                with open(src, encoding='utf-8') as f:
+                    schema_text = f.read()
+            except OSError:
+                self.warn('The portable JSON Schema could not be copied into the '
+                          'archive. The archive is complete and readable; it just '
+                          'has no machine-checkable schema beside it.')
+                return None
+        return self.write_text(f'schema/{SCHEMA_FILE}', schema_text)
 
     def warn(self, message):
         self.warnings.append(message)
@@ -394,10 +433,16 @@ any of our tools to read it. Open it with a file manager and a text editor.
   media/      your actual photographs, at the best size the site had
   indexes/    albums, categories, collections and the blogroll
   courtesy/   optional files for importing into other systems
+  schema/     the machine-readable description of the JSON files
   logs/       what happened during the export
 
 manifest.json lists every file with a SHA-256 checksum.
 verification.json records what was expected against what actually arrived.
+
+Comments appear TWICE on purpose: inside the post or image they belong to, so
+one file tells you everything about one photograph, and again grouped by thread
+in content/comments/, so you can read the conversation without opening every
+photograph. They are the same comments.
 
 WHAT IS HERE: your photographs and their originals where available, titles,
 captions, descriptions, tags, dates, EXIF (including location where your camera

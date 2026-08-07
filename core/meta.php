@@ -25,6 +25,8 @@
 if (defined('SNAPSMACK_META_EMITTED')) { return; }
 define('SNAPSMACK_META_EMITTED', true);
 
+require_once __DIR__ . '/indieweb.php';
+
 // --- CSS VARIABLES (GRID GAP) ---
 // Set --grid-gap as a CSS custom property for consistent spacing across skins
 $grid_gap = $settings['browse_gap'] ?? '100';
@@ -171,6 +173,7 @@ if ($ai_policy === 'disallow'): ?>
 
 <link rel="canonical" href="<?php echo $canonical_url; ?>">
 <link rel="alternate" type="application/rss+xml" title="<?php echo $site_name; ?> RSS Feed" href="<?php echo BASE_URL; ?>rss.php" />
+<?php snapsmack_indieweb_head_links($settings); ?>
 
 <?php
 // --- FAVICON SUPPORT ---

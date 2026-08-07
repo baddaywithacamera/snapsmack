@@ -23,6 +23,8 @@ if (!empty($GLOBALS['_snapsmack_social_dock_rendered'])) {
     return;
 }
 
+require_once __DIR__ . '/indieweb.php';
+
 // Bail if dock is disabled
 if (empty($settings['social_dock_enabled']) || $settings['social_dock_enabled'] !== '1') {
     return;
@@ -173,8 +175,8 @@ $_dock_pixelfed_outline = '<svg viewBox="0 0 24 24" fill="none" stroke="currentC
 // Build active links array
 $_dock_links = [];
 foreach ($_dock_platforms as $_platform_key => $_platform) {
-    $_url = $settings[ $_platform['key'] ] ?? '';
-    if (!empty($_url)) {
+    $_url = snapsmack_indieweb_url((string)($settings[ $_platform['key'] ] ?? ''));
+    if ($_url !== '') {
         $_svg = ($_dock_icon_style === 'outline' && isset($_dock_outline[$_platform_key]))
             ? $_dock_outline[$_platform_key]
             : $_platform['svg'];
@@ -302,7 +304,7 @@ $_dock_style = implode('; ', [
     <?php endif; ?>
 
     <?php foreach ($_dock_links as $_link): ?>
-        <a href="<?php echo htmlspecialchars($_link['url']); ?>" target="_blank" rel="noopener" title="<?php echo htmlspecialchars($_link['label']); ?>" class="dock-link">
+        <a href="<?php echo htmlspecialchars($_link['url']); ?>" target="_blank" rel="me noopener" title="<?php echo htmlspecialchars($_link['label']); ?>" class="dock-link u-url">
             <?php echo $_link['svg']; ?>
         </a>
     <?php endforeach; ?>

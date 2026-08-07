@@ -104,10 +104,10 @@ function ss_card_stats(string $domain, array $all): string {
 }
 
 $page_title       = 'SnapSmack — Self-Hosted Photo Publishing and Instagram Alternative';
-$page_description = 'SnapSmack is free, self-hosted photo publishing software for photographers who want to own their website, photos, audience, and archive.';
+$page_description = 'Free, open-source IndieWeb photo publishing with POSSE and ActivityPub federation. Own your domain, photographs, audience, and archive.';
 $page_og_url      = 'https://snapsmack.ca/';
 $page_social_title = 'SnapSmack — Retro Photo Blogging. Modern Technology.';
-$page_social_description = 'Free self-hosted photo publishing software for photographers who want control of their photos, domain, audience, and archive.';
+$page_social_description = 'IndieWeb photo publishing with POSSE and ActivityPub: publish on your own domain, syndicate to the Fediverse, and keep your archive yours.';
 $nav_active       = 'index';
 
 $page_css = <<<'CSS'
@@ -190,6 +190,24 @@ $page_css = <<<'CSS'
     margin-bottom: 36px;
     line-height: 1.65;
 }
+
+.hero-principles {
+    max-width: 720px;
+    margin: -12px 0 32px;
+    padding: 14px 18px;
+    border-left: 5px solid var(--red);
+    background: var(--light-grey);
+    color: var(--dark-grey);
+    font-size: 1rem;
+    line-height: 1.55;
+}
+.hero-principles strong {
+    color: var(--black);
+    font-family: 'Arial Black', Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.hero-principles a { font-weight: 700; }
 
 .hero-actions {
     display: flex;
@@ -1492,11 +1510,12 @@ require_once __DIR__ . '/includes/header.php';
         <h1 class="hero-headline">Retro Photo Blogging. <span>Modern Technology.</span></h1>
         <p class="hero-kicker">The joy of the old web. Without the old software.</p>
         <p class="hero-sub">SnapSmack is a free, self-hosted photography publishing platform for people who want to own their photos, website, audience, domain, and archive. A personal photography website and chronological photo feed—not another centralized platform deciding what gets seen.</p>
+        <p class="hero-principles"><strong><a href="https://indieweb.org/" target="_blank" rel="noopener">IndieWeb</a> by design. <a href="wotcha.php#posse">POSSE</a> in practice.</strong> Publish the original on your own domain, syndicate copies elsewhere, and bring the conversation home. Built around <a href="#federate">ActivityPub</a> so your photography can travel through the Fediverse without your archive moving out.</p>
         <div class="hero-actions">
             <a href="#what" class="btn btn-secondary">See What It Does</a>
             <a href="#beta" class="btn btn-primary">Apply for the Closed Beta</a>
         </div>
-        <p class="hero-tags">#fightthealgorithm &nbsp; #takebackyourart &nbsp; #fuckzuck &nbsp; #elonbegone &nbsp; #deplatformyourself</p>
+        <p class="hero-tags">#IndieWeb &nbsp; #POSSE &nbsp; #FOSS &nbsp; #fightthealgorithm &nbsp; #takebackyourart &nbsp; #fuckzuck &nbsp; #deplatformyourself</p>
     </div>
 </section>
 
@@ -1521,6 +1540,7 @@ require_once __DIR__ . '/includes/header.php';
                     <li>Google Drive high-res download links</li>
                     <li>Static pages, albums, blogroll</li>
                     <li>RSS feed, built-in</li>
+                    <li>IndieWeb ownership, POSSE syndication, and ActivityPub federation</li>
                     <li>Community — reactions, comments, following</li>
                     <li>Privacy-first stats — visits only, no tracking</li>
                     <li>Bulk posting via companion desktop tool</li>
@@ -1578,6 +1598,7 @@ require_once __DIR__ . '/includes/header.php';
         <h2 class="fed-head">The ship has sailed on the lonely blog.</h2>
         <p class="fed-lede">Discoverability isn't optional anymore. You need social. But you need the <em>right</em> social — the kind where you own your art and you set the terms. Welcome to the Fediverse.</p>
         <p class="fed-body">Jump in the pool or just dip a toe — your call, every time. That's why ActivityPub is baked into the <strong>core</strong> of SnapSmack, not bolted on as some clumsy plugin. It's an integrated function of the software: full, two-way interactivity with the whole Fediverse if you want it — and completely ignorable if you don't.</p>
+        <p class="fed-body">ActivityPub was part of the plan from the beginning. Shipping it took longer because implementing the protocol was only half the job. We also spent the time to understand Fediverse culture: consent, attribution, content warnings, local norms, and the expectation that federation is participation in somebody else's community—not a growth hack aimed at it. SnapSmack arrived ready to join that culture, not offend the people who built it.</p>
 
         <div class="fed-shots">
             <figure data-lb="img/smackverse-blog-view.png"><img src="img/smackverse-blog-view.png" alt="A photoblog profile rendered as its own SnapSmack blog" loading="lazy" width="1920" height="1080"><figcaption>Your blog</figcaption></figure>
