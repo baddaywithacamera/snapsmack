@@ -97,6 +97,21 @@ def save(data: dict) -> None:
         'default_album':    data.get('default_album', ''),
     }
 
-    with open(_config_path(), 'w') as f:
+    path = _config_path()
+    with open(path, 'w') as f:
         cfg.write(f)
+
+    # SECAUDIT 040 finding A (floor) — this file holds the scoped API key. Make it
+    # owner-only so it is not readable by other accounts on a shared machine.
+    # Best-effort and deliberately swallowed: chmod is a no-op on FAT and only
+    # partially meaningful on Windows/NTFS, and a permissions hiccup must never
+    # cost the operator their settings. Same treatment SUYB 0.7.18 applied.
+    #
+    # This does NOT make the key confidential at rest — it is still base64, which
+    # is an encoding, not encryption. The real fix is the vault port; this is the
+    # floor, not the ceiling.
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
 # ===== SNAPSMACK EOF =====

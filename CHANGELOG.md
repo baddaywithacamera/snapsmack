@@ -12,6 +12,105 @@
 
 ## Unreleased
 
+- **SECAUDIT 040 — FLKR FCKR desktop client + import API. Three of four findings closed.**
+  - **The step-up helper no longer sends your password over an unencrypted connection.**
+    `tools/_shared/snap_stepup.py` POSTed `{username, password, totp_code}` to whatever
+    site URL was configured, with no check that it was HTTPS. On `http://` your account
+    password and a live 2FA code crossed the wire in the clear. It now **refuses**, with
+    loopback (`localhost`, `127.0.0.0/8`, `::1`) exempt since there is no network path to
+    intercept. This is a refusal rather than the warn-and-confirm SECAUDIT 039 gave GYSS,
+    because GYSS only exposes a scoped key that cannot write on its own — this endpoint
+    exposes the password behind it. The check runs *before* the password dialog appears,
+    so you never type credentials for a destination they were never going to reach.
+    The helper is shared: this closes the same gap in **Unzucker, GYSS, SUYB, SYBU and
+    Oh Snap** at the same time, and resolves the `hub_discovery.py` item SECAUDIT 037
+    deferred.
+  - **The import API stopped trusting paths and URLs the client sent it.** New
+    side-effect-free `core/api-input-safety.php`, adoptable by every desktop-tool handler:
+    `snap_api_safe_upload_path()` requires `img_file` and both thumbnail columns to name a
+    file the upload endpoint itself wrote (under `img_uploads/`), rejecting absolute,
+    drive-letter, UNC, backslash, NUL-bearing and traversing values. Those columns are
+    handed to `unlink()` when an image is deleted, so an unvalidated one was a stored,
+    delayed, arbitrary file delete — and root containment alone was not enough, since
+    `core/db.php` never leaves the install and is still catastrophic.
+    `snap_api_safe_link()` requires an imported comment's author URL to be a plain
+    http(s) URL before it is stored and rendered as a link `href`; `htmlspecialchars()`
+    at the render site stops attribute breakout but not a `javascript:` scheme.
+  - `tests/api-input-safety-regression.php` — **48 checks**, including 23 hostile paths
+    and 11 hostile URLs, plus assertions that the handler still calls the validators and
+    that the Python HTTPS guard remains in both of its call sites.
+  - **Finding A floor applied.** `flkrfckr.ini` is now written owner-only (`chmod 0600`,
+    best-effort — it is a no-op on FAT and largely cosmetic on NTFS, and is deliberately
+    swallowed so a permissions hiccup can never cost you your settings). This does **not**
+    make the key confidential at rest; it is still base64, which is an encoding, not
+    encryption. The `secret_vault.py` port remains the real fix and is still an owner call.
+  - **`.gitignore`: three desktop tools were dropping live API keys into the working tree.**
+    The old rule matched `tools/*/config.ini` only — but FLKR FCKR writes `flkrfckr.ini`,
+    Unzucker `unzucker.ini` and the scanner `gobsmacked-scanner.ini`, so running any of the
+    three from source left a scoped key sitting in the repo as an untracked file, one
+    `git add -A` away from being committed. Now matches every `.ini` under `tools/`, plus
+    import checkpoints and the dated logs. Verified no `.ini` was previously tracked.
+  - **Plaintext warning on the ordinary calls too.** The step-up refusal only fires when a
+    window actually needs opening — with one already open, an import went straight to the
+    write calls and would have put the Bearer key and the entire import stream on an
+    `http://` wire in silence. Connect and Start Import now both warn and require
+    confirmation (loopback exempt), GYSS-style.
+  - **`threeacross-api.php` adopted the path rule.** It already rejected leading `/`, `..`
+    and NUL (SECAUDIT 2026-06-25) but not drive letters, backslash paths, UNC, or a
+    relative path that stays inside the install while naming something that is not an
+    upload. Compatibility checked before tightening: both its upload endpoints return
+    `img_uploads/YYYY/MM/...` and sanitise filenames to `[a-z0-9_.-]`, a strict subset of
+    the accepted charset, so Unzucker and SYBU are unaffected. `gyss-api`, `ohsnap-api` and
+    `smackpress-api` need **no** change — none of them accepts a path from the client, and
+    the suite now asserts that stays true.
+
+- **REBUILD EXIF — imported photos get their camera data back, without re-importing.**
+  Every photo brought in by FLKR FCKR showed a blank INFO panel. The importer wrote
+  Pillow's raw EXIF tag names (`Model`, `FNumber`, `ISOSpeedRatings`) while every skin
+  reads core's lowercase ones (`camera`, `aperture`, `iso`), so nothing ever matched and
+  every field resolved empty. Found during SECAUDIT 040 (section 7).
+  - **New maintenance action: REBUILD EXIF.** Re-reads camera, lens, focal length, ISO,
+    aperture, shutter and flash from the image files already sitting in `img_uploads/`
+    and fills them in under the names the skins read. Because originals are stored
+    byte-for-byte, the real EXIF never left the server — nothing needs re-importing and
+    nothing is fetched from Flickr. Runs in batches of 500 with a CONTINUE button, or in
+    one uninterrupted pass over the whole library (warned: ~a minute or two for 10,000
+    images, and the page sits still until it finishes).
+  - **Fill-only, and it stays that way.** A value already present is never overwritten
+    and nothing is ever deleted, so hand-entered camera/lens/film survive, scanned film
+    frames come back untouched, and GPS coordinates are left alone. Re-running changes
+    nothing. `tests/exif-rebuild-regression.php` pins all of it (26 checks).
+  - **Shutter speeds are recovered from the file, never reconstructed.** The importer
+    rounded `ExposureTime` to two decimals before storing it, so 1/125 became `0.01` and
+    1/1000 became `0.0`. That precision is gone: the pass reads the true value from the
+    file, and where there is no file EXIF it leaves shutter blank rather than printing an
+    invented "1/100". Aperture survived the rounding intact and does map across.
+  - **FLKR FCKR now writes the right key names** and formats properly — `1/125` not
+    `0.01`, `f/2.8`, `24mm`, camera uppercased to match core. Client-side change:
+    **needs a rebuild to ship.**
+  - Guards added on the way through: `exif_read_data()` is now `function_exists`-checked
+    (ext-exif is missing on some shared hosts, and an undefined function is a fatal that
+    `@` does not suppress — it would have killed a 10,000-image run mid-pass), and the
+    pass validates `img_file` stays inside the install before reading it, since that
+    column arrives from an API client unvalidated (SECAUDIT 040 finding C).
+
+- **FIXED: saving a photo in admin silently deleted its GPS coordinates.**
+  `img_exif` holds more than the seven fields the edit form shows — it also carries
+  latitude/longitude for imported photos, plus film and anything a future importer adds.
+  Both **smack-edit.php** and **smack-swap.php** rebuilt the whole blob from the form
+  alone, so every Edit or Swap wiped the location off the photo. Silent, immediate, no
+  undo. Location is preserved by policy: the tool does not get to decide what metadata
+  survives. Both now merge onto what is stored via a named rule
+  (`snap_exif_merge_edit()`), which is what **smack-edit-carousel.php** was already doing
+  correctly. All three editors are pinned by the regression suite so the next editor
+  written inherits the rule instead of rediscovering the bug.
+
+- **EOF marker sweep — the repo audits clean again.** Five files were missing their
+  header tag, their trailing marker, or both: `projects/photoblogs-fyi/for-admins.html`,
+  `tools/pfd-migrate-ct.sh`, `tools/strip-search/skin_inspect.py`, and SUYB's
+  `path_safety.py` + `tests/test_security_regressions.py`. `tools/check-eof.py` now
+  reports 0 failures across 924 files. SUYB's own 13 tests still pass.
+
 ## 0.7.505 "<codename TBD — Sean>" — 2026-08-06
 
 - **SECAUDIT 039 — GYSS desktop trust boundary + an API-key expiry sweep across every tool.**
