@@ -10,6 +10,26 @@
 
 # SnapSmack Changelog
 
+## 0.7.508 "<codename TBD — Sean>" — 2026-08-08
+
+- **Pages editor: IMPORT HTML button.** The static-page editor now has an IMPORT
+  HTML button (next to PREVIEW) that loads a local `.html` file straight into the
+  body via FileReader — nothing is uploaded, no server round-trip. It strips the
+  repo EOF-marker header/footer comments so a skin page body (e.g.
+  `projects/photofri-day/cms-pages/*.html`) comes in clean, removing the
+  open-file-and-copy step when seeding CMS pages.
+
+- **Photo-challenge admin nav: skin management is reachable, and TURBO BOOST is
+  now CHALLENGE ME.** The photo-challenge profile (photofri.day) uses the reduced
+  `core/sidebar-photochallenge.php`, which had no skin/appearance link at all — so
+  a service admin had no nav path to install or activate a skin. Added "Smooth
+  Your Skin" to that section, and renamed the section from the generic "TURBO
+  BOOST" to "CHALLENGE ME".
+
+- **Multisite: track dropdown no longer clips BITCHIN' to BITCHI.** The per-spoke
+  track `<select>` on the Multisite dashboard was 90px, too narrow once the arrow
+  padding and letter-spacing were subtracted. Widened to 112px.
+
 ## 0.7.507 "SMACK SOME SPACKLE" — 2026-08-07
 
 - **`[snapsmack_contact]` contact form is now wired up and sends through Brevo.**
