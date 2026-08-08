@@ -197,6 +197,7 @@ require_once __DIR__ . '/includes/header.php';
                 <li><span class="idx-date">May 19</span><a href="#a015">2FA Cookie Flags &amp; Recovery Policy</a></li>
                 <li><span class="idx-date">May 19</span><a href="#a014">Orphaned login.php at a Predictable URL</a></li>
                 <li><span class="idx-date">May 19</span><a href="#a013">Installer Admin-Creation Bypass</a></li>
+                <li><span class="idx-date">May 18</span><a href="#a012">Installer Step-5 CSRF Bypass</a></li>
                 <li><span class="idx-date">May 18</span><a href="#a011">Post-Remediation Verification</a></li>
                 <li><span class="idx-date">May 18</span><a href="#a010">Delta Review: 0.7.147–0.7.152</a></li>
                 <li><span class="idx-date">May 10</span><a href="#a009">Multisite Remote-Admin Surface</a></li>
