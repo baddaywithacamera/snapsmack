@@ -162,6 +162,8 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Aug 7</span><a href="#a042">Desktop Tools &mdash; What "Already Fixed" Was Hiding</a></li>
+                <li><span class="idx-date">Aug 7</span><a href="#a041">Download Links &mdash; Escaping Is Not Validation</a></li>
                 <li><span class="idx-date">Aug 6</span><a href="#a039">GET YOUR SHIT SORTED &mdash; Desktop Trust Boundary &amp; API Key Lifetime</a></li>
                 <li><span class="idx-date">Aug 5</span><a href="#a038">Gallery Skins &mdash; JavaScript Package Boundary</a></li>
                 <li><span class="idx-date">Aug 4</span><a href="#a037">Smack Up Your Backup Desktop &mdash; Credential Vault &amp; Transport</a></li>
@@ -201,6 +203,26 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a042">
+                <div class="post-meta"><span class="post-date">August 7, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Desktop Tools &mdash; What &ldquo;Already Fixed&rdquo; Was Hiding</h2>
+                <p>Three days earlier we fixed a problem where a desktop tool could send your password or your access key across the internet unencrypted, and we wrote that the fix covered five tools at once. The fix was real. The claim that it covered five tools was not. The repair lived in a shared piece of code, and a shared safety check only protects the tools that actually call it &mdash; three of them never did. Nothing in the code could tell the difference between &ldquo;protected&rdquo; and &ldquo;never connected up&rdquo;, so the record said everything was fine while three tools carried on exactly as before.</p>
+                <p>Unzucker, the Instagram importer, sent its access key in the clear on every request if the blog address began with <code>http</code> instead of <code>https</code>. Smack Up Your Backup was worse: it sent your actual <strong>admin password</strong> that way, from two separate places &mdash; one of which was the exact file an audit had flagged a week before and a later audit had marked as fixed. Smack Your Batch Up sent its key unchecked from three different screens. All are now checked before anything is sent. The password paths <em>refuse</em> outright, because a key can be cancelled and reissued but your password cannot be without locking you out of your own site. The key paths warn clearly and ask you to confirm. Connecting to your own computer for testing is unaffected.</p>
+                <p>Two smaller things in Unzucker were fixed at the same time. If your computer's password store was unavailable &mdash; locked, or missing on that system &mdash; saving your settings quietly threw the access key away instead of falling back to storing it, so the tool came up blank next time with no explanation. And its settings file, which holds that key when no password store exists, was readable by any other account on the machine; it is now owner-only, as the equivalent file in FLKR FCKR already was.</p>
+                <p>The lasting change is in how this is tested. The new checks do not just confirm the safety code works &mdash; they confirm each tool actually calls it, before the credential is sent, in every place a connection is made. Tests that only checked the safety code itself would have passed happily throughout the entire period these tools were exposed. One tool, Oh Snap, has not been examined yet and is scheduled next. No exploitation is known; these are single-operator tools and an attacker would need to be positioned on the network between you and your own server.</p>
+                <a class="report-link" href="secaudits/2026-08-07-042-desktop-transport-coverage-unzucker-suyb-sybu.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a041">
+                <div class="post-meta"><span class="post-date">August 7, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Download Links &mdash; Escaping Is Not Validation</h2>
+                <p>SnapSmack lets you attach a download link to a photograph, pointing at a full-resolution copy on Google Drive, OneDrive or anywhere else. That link can be set by the desktop posting tools over their scoped key. Nothing checked what <em>kind</em> of link it was. A link does not have to point at a file &mdash; it can be written so that clicking it runs code in the visitor's browser instead, and that code runs as though it came from your site.</p>
+                <p>What makes this one worth reading is why it survived review. The page that draws the download button did pass the link through an escaping function, and escaping is a genuine defence &mdash; it stops a value breaking out of the surrounding HTML. But it works by neutralising particular characters, and this kind of malicious link contains none of them. The code looked defended, was defended against a different problem, and read as correct. Elsewhere, the floating social dock re-read the same link and printed it with no protection at all.</p>
+                <p>All four places &mdash; the two that store the link and the two that display it &mdash; now require it to be an ordinary web address before it is used. The two that display it re-check rather than trusting what is already saved, because links stored before this release are still in the database. If a stored link fails the check, the button quietly falls back to SnapSmack's own internal download instead of disappearing.</p>
+                <p>This was found while reviewing the IndieWeb markup added the same day, which turned out to be sound &mdash; and which had already closed a similar gap on the social dock's profile links on its way past. No exploitation is known: it needs a bad link to have been stored in the first place, and a visitor to click the download button.</p>
+                <a class="report-link" href="secaudits/2026-08-07-041-download-url-scheme-and-indieweb-identity-surface.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a039">
                 <div class="post-meta"><span class="post-date">August 6, 2026</span><span class="post-tag">Closed</span></div>
