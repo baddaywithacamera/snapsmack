@@ -72,7 +72,7 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
 
             <div class="nav-section<?php echo $_pc_active === 'turbo-boost' ? ' open' : ''; ?>" data-section="turbo-boost">
                 <button type="button" class="nav-section-toggle">
-                    <span class="nav-section-label">TURBO BOOST</span>
+                    <span class="nav-section-label">CHALLENGE ME</span>
                     <span class="nav-section-arrow"></span>
                 </button>
                 <ul class="nav-section-links">
