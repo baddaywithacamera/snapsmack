@@ -2108,8 +2108,8 @@ include 'core/sidebar.php';
 .spoke-track-form { margin:0; }
 .spoke-track-select {
     display:inline-block;
-    width:90px;
-    min-width:90px;
+    width:112px;
+    min-width:112px;
     height:30px;
     min-height:0;
     padding:0 22px 0 8px;
