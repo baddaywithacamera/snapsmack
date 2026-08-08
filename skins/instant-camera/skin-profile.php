@@ -90,7 +90,7 @@ if ($_tg_has_treat) {
 // (3 wide × 1 tall) is derived in style.css from the same var.
 $_ic_format = $settings['ic_format'] ?? 'instax_square';
 $_ic_ratios = [
-    'polaroid'      => '79 / 97',   // 600 / OneStep image area (portrait)
+    'polaroid'      => '823 / 1000', // 600 / OneStep FULL PRINT incl. border (portrait) — the scan is the whole print, so the tile must match the outer frame, not the image window
     'sx70'          => '1 / 1',     // square image
     'go'            => '47 / 60',   // portrait
     'instax_mini'   => '62 / 46',   // landscape
