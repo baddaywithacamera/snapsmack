@@ -111,6 +111,55 @@ function sc_http_raw(string $url, array $extra_headers = [], int $timeout = 120)
     return @file_get_contents($url, false, stream_context_create($ctx_opts));
 }
 
+// ── Helper: stream a URL to disk without buffering it in memory ────────────────
+// The GitHub repo archive is ~220MB and FATALS a shared host's memory_limit when
+// held as a PHP string (the old sc_http_raw() + file_put_contents() path). Proven
+// locally: buffering 220MB dies under a 128MB limit; streaming peaks at +0MB.
+if (!function_exists('sc_download_to_file')) {
+    function sc_download_to_file(string $url, string $dest, array $extra_headers = [], int $timeout = 600): bool {
+        @set_time_limit($timeout + 60);   // don't let PHP's clock kill a live transfer
+        $fh = @fopen($dest, 'wb');
+        if ($fh === false) return false;
+
+        if (function_exists('curl_init')) {
+            $ch   = curl_init($url);
+            $opts = [
+                CURLOPT_FILE            => $fh,     // body streams straight to disk
+                CURLOPT_FOLLOWLOCATION  => true,    // github.com -> codeload redirect
+                CURLOPT_MAXREDIRS       => 5,
+                CURLOPT_CONNECTTIMEOUT  => 30,
+                CURLOPT_TIMEOUT         => $timeout,
+                CURLOPT_SSL_VERIFYPEER  => true,
+                CURLOPT_USERAGENT       => 'SnapSmack-SC/0.7.3',
+                CURLOPT_LOW_SPEED_LIMIT => 1024,    // abort a genuinely stalled
+                CURLOPT_LOW_SPEED_TIME  => 60,      // transfer (<1KB/s for 60s)
+            ];
+            if ($extra_headers) $opts[CURLOPT_HTTPHEADER] = $extra_headers;
+            curl_setopt_array($ch, $opts);
+            $ok   = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            fclose($fh);
+            if ($ok === false || $code !== 200) { @unlink($dest); return false; }
+            return true;
+        }
+
+        $ctx = stream_context_create(['http' => [
+            'timeout'         => $timeout,
+            'user_agent'      => 'SnapSmack-SC/0.7.3',
+            'follow_location' => 1,
+            'max_redirects'   => 5,
+            'header'          => $extra_headers ? implode("\r\n", $extra_headers) : '',
+        ]]);
+        $in = @fopen($url, 'rb', false, $ctx);
+        if ($in === false) { fclose($fh); @unlink($dest); return false; }
+        stream_copy_to_stream($in, $fh);
+        fclose($in);
+        fclose($fh);
+        return filesize($dest) > 0;
+    }
+}
+
 // ── Helper: GitHub API GET → decoded array ────────────────────────────────────
 function sc_github_get(string $endpoint): array|false {
     $headers = ['Accept: application/vnd.github.v3+json', 'User-Agent: SnapSmack-SC/0.7.3'];
@@ -296,16 +345,15 @@ function sc_audit_schema_completeness(string $schema_sql, string $zip_path): arr
  */
 function sc_build_release_zip(string $tag, string $zip_dest, array $include_files = [],
                               string $distribution = 'blog'): array {
-    $url  = 'https://github.com/' . SNAPSMACK_GITHUB_REPO . '/archive/refs/tags/' . urlencode($tag) . '.zip';
-    $data = sc_http_raw($url);
-    if ($data === false) {
-        return ['ok' => false, 'msg' => 'Could not download zip from GitHub. Check outbound HTTPS access.'];
-    }
-
+    $url     = 'https://github.com/' . SNAPSMACK_GITHUB_REPO . '/archive/refs/tags/' . urlencode($tag) . '.zip';
     $tmp_src = sys_get_temp_dir() . '/sc_gh_' . bin2hex(random_bytes(16)) . '.zip';
-    file_put_contents($tmp_src, $data);
-    $dl_kb = round(strlen($data) / 1024);
-    unset($data);
+    // Stream to disk — the archive is ~220MB and buffering it in memory fatals a
+    // shared host's memory_limit. See sc_download_to_file().
+    if (!sc_download_to_file($url, $tmp_src)) {
+        @unlink($tmp_src);
+        return ['ok' => false, 'msg' => 'Could not download the tag zip from GitHub (~220MB — a shared host may be timing out or low on memory/disk). Check outbound HTTPS access and that the tag exists.'];
+    }
+    $dl_kb = round(filesize($tmp_src) / 1024);
 
     $src = new ZipArchive();
     if ($src->open($tmp_src) !== true) {

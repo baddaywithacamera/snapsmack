@@ -10,9 +10,66 @@
 
 # SnapSmack Changelog
 
-## Unreleased
-
 ## 0.7.507 "SMACK SOME SPACKLE" — 2026-08-07
+
+- **`[snapsmack_contact]` contact form is now wired up and sends through Brevo.**
+  The shortcode has shipped in Show N Tell's help for a while but never worked:
+  nothing in `core/parser.php` matched it (it rendered as literal text on the
+  page), and its header pointed at `core/page-renderer.php`, a file that has
+  never existed. It's now a real feature end to end.
+  - **Mail path.** Submissions go through `core/mailer.php`, which already speaks
+    Brevo's HTTP API (`api.brevo.com/v3/smtp/email`) and falls back to PHP
+    `mail()`. From is the site's own verified sender — the visitor's address
+    would fail SPF/DKIM and Brevo rejects unverified senders — with the visitor
+    set as Reply-To. (The form's own docs previously claimed it sent via
+    `mail()`, and Show N Tell's help claimed `wp_mail`, a WordPress function
+    that does not exist here. Both corrected.)
+  - **Cache-safe by construction.** The old form called `session_start()` for a
+    CSRF nonce, which fights the opt-in page cache both ways: a session cookie
+    drops the visitor out of the cache site-wide (`page_cache_eligible`), and a
+    nonce frozen into cached HTML fails validation for everyone after the first
+    hit. The form now renders static markup with no token and submits by JS
+    (`assets/js/ss-engine-contact.js`, inventory key `smack-contact`) to a
+    dedicated endpoint — the same model the guest comment form uses.
+  - **New endpoint `process-contact.php`.** Public, sessionless JSON handler.
+    Abuse controls replace the nonce: hidden honeypot, the shared per-IP hourly
+    rate limiter (`rate_limit_contact`, default 10/hr), the ban list, and the
+    keyword filter. CRLF is stripped from name/email before any header use.
+  - Show N Tell declares `smack-contact` in `require_scripts`; the engine
+    no-ops on pages with no form, so any skin can opt in the same way.
+
+- **Two unreachable admin pages removed — one of them destructive.** Neither was
+  linked from the sidebar, the help, or any other page, but both shipped in the
+  release zip and stayed directly requestable by URL.
+  - `smack-cleanup.php` did its entire job on page load. A plain GET ran step 1
+    (thumbnail regeneration) and then step 2, which walked `img_uploads/`
+    recursively and `unlink()`ed every jpg/png/webp with no matching row in
+    `snap_images` — no confirmation, no token, no batching. Because it needed
+    nothing but a GET from an authenticated admin, an `<img src>` pointing at it
+    in a comment or an email was enough to purge a logged-in admin's library.
+    Everything it did is already done properly by REGEN THUMBS in
+    `smack-maintenance.php`, which is POSTed with an action, batched 25 at a
+    time, resumable, and prunes orphans only on the final batch against a
+    complete registered-path list.
+  - `smack-admin-reference.php` was a stale duplicate of the old dashboard, long
+    superseded by `smack-admin.php`, still carrying its own live
+    cron-registration POST handlers against a UI that had moved on.
+  - Both are listed in `UPDATER_DEPRECATED_FILES`, so the updater removes them
+    from existing installs rather than only keeping them out of new ones —
+    deleting from the repo alone would have left the destructive page live on
+    every blog already running.
+
+- **Release tooling (Smack Central only): fixed the ~220MB repo-archive download
+  that was killing the Skin Packager.** The skin packager, the core release
+  builder, and the repo-zip updater all downloaded the GitHub archive by
+  buffering the whole thing into a PHP string before writing it. The archive has
+  grown to ~220MB (the heavy skins), so on shared hosting that overran
+  `memory_limit` and failed — which is why CRIMSON ONYX never appeared in the
+  packager list. All three now stream the download straight to disk (proven: the
+  old path fatals under a 128MB limit, streaming peaks at +0MB). Smack Central is
+  excluded from the release zip, so this changes nothing on an install — but
+  "Fetch One Skin" remains the quick path since it skips the full download
+  entirely.
 
 - **SECAUDIT 041 — a photograph's download link could carry a `javascript:` scheme.**
   `snap_images.download_url` is written by desktop importers over a scoped key and

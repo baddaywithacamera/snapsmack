@@ -224,6 +224,18 @@ const UPDATER_DEPRECATED_FILES = [
     'core/layout_logic.php'   => '0.7.19',  // hygiene sweep → core/layout-logic.php
     'core/flkrdckr-api.php'   => '0.7.184', // renamed → core/flkrfckr-api.php (FLKR DCKR → FLKR FCKR)
     'core/release-2fa-override' => '0.7.448', // arbitrary-content 2FA bypass retired by signed Break-Glass Card
+    // 0.7.507: unreachable admin PHP removed. Neither was linked from the sidebar,
+    // help, or any page — but both shipped in the zip and stayed directly
+    // requestable by URL, so repo deletion alone would have left them live on
+    // every existing install. That is what this list is for.
+    'smack-cleanup.php'         => '0.7.507', // superseded by smack-maintenance.php REGEN THUMBS. The old
+                                              // page ran its whole job on GET with no token and no
+                                              // confirmation: step 2 walked img_uploads/ and unlinked every
+                                              // jpg/png/webp missing from snap_images. An <img src> pointed
+                                              // at it was enough to purge a logged-in admin's library.
+    'smack-admin-reference.php' => '0.7.507', // stale duplicate of the old dashboard, superseded by
+                                              // smack-admin.php. Carried its own live cron-registration
+                                              // POST handlers against a long-diverged UI.
 ];
 
 /**

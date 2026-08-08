@@ -1024,6 +1024,11 @@ return [
             'css'          => 'assets/css/ss-engine-photo-editor.css',
             'has_settings' => false,
         ],
+        'smack-contact' => [
+            'label'        => 'Contact Form Engine',
+            'path'         => 'assets/js/ss-engine-contact.js',
+            'has_settings' => false
+        ],
         'smack-scroll-top' => [
             'label'        => 'Scroll-to-Top Button',
             'path'         => 'assets/js/ss-engine-scroll-top.js',
