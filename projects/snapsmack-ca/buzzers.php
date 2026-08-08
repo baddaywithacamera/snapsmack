@@ -164,6 +164,7 @@ require_once __DIR__ . '/includes/header.php';
             <ol>
                 <li><span class="idx-date">Aug 7</span><a href="#a042">Desktop Tools &mdash; What "Already Fixed" Was Hiding</a></li>
                 <li><span class="idx-date">Aug 7</span><a href="#a041">Download Links &mdash; Escaping Is Not Validation</a></li>
+                <li><span class="idx-date">Aug 7</span><a href="#a004c">Smack Up Your Backup&rsquo;s First Review &mdash; Closed at Last</a></li>
                 <li><span class="idx-date">Aug 6</span><a href="#a040">FLKR FCKR &mdash; Credentials at Rest, in Transit, and Trusted Paths</a></li>
                 <li><span class="idx-date">Aug 6</span><a href="#a039">GET YOUR SHIT SORTED &mdash; Desktop Trust Boundary &amp; API Key Lifetime</a></li>
                 <li><span class="idx-date">Aug 5</span><a href="#a038">Gallery Skins &mdash; JavaScript Package Boundary</a></li>
@@ -226,6 +227,16 @@ require_once __DIR__ . '/includes/header.php';
                 <p>All four places &mdash; the two that store the link and the two that display it &mdash; now require it to be an ordinary web address before it is used. The two that display it re-check rather than trusting what is already saved, because links stored before this release are still in the database. If a stored link fails the check, the button quietly falls back to SnapSmack's own internal download instead of disappearing.</p>
                 <p>This was found while reviewing the IndieWeb markup added the same day, which turned out to be sound &mdash; and which had already closed a similar gap on the social dock's profile links on its way past. No exploitation is known: it needs a bad link to have been stored in the first place, and a visitor to click the download button.</p>
                 <a class="report-link" href="secaudits/2026-08-07-041-download-url-scheme-and-indieweb-identity-surface.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a004c">
+                <div class="post-meta"><span class="post-date">August 7, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Smack Up Your Backup&rsquo;s First Review &mdash; Closed at Last</h2>
+                <p>The backup tool&rsquo;s first security review was done back in April. Its findings were fixed over the following months, but the report itself was never updated and never posted here &mdash; so the earliest audit of the tool that holds your server passwords has been the one thing missing from this page. This closes it, with every original finding re-checked against the code as it stands today rather than taken on trust from a later report.</p>
+                <p>The one that reads alarmingly in the original is a Google service-account key &mdash; the credential that lets the tool upload to your Drive &mdash; sitting loose in the tool&rsquo;s folder, where the ignore rules would not have stopped it being committed. The April report said, correctly, that if such a key has ever been committed it must be treated as public and rotated immediately. <strong>It never was.</strong> Checking the entire history of the repository, on every branch, turns up no commit of that file at any point. The risk was real &mdash; it was one careless command away from being published &mdash; but the key was never exposed, no rotation was ever needed, and the recommended ignore rule was adopted word for word.</p>
+                <p>Of the other four: passwords stored with reversible encoding are now in the passphrase-locked vault that arrived with the August review of the same tool. An unescaped filter that could break a Drive query is escaped. A debug log that quietly recorded activity to a file beside the program on every machine is gone entirely.</p>
+                <p>One is <strong>not</strong> fixed, deliberately, and this page would be worth less if it did not say so. FTPS certificate checking is still off by default. Most photographers running this are on inexpensive hosting that ships self-signed or expired certificates, and switching validation on would break the majority of real setups on the first connection &mdash; trading one bad outcome for another. The answer is not to demand a perfect certificate; it is to remember the certificate your server presented the first time and warn you if it ever changes, which is exactly what the tool already does for SFTP. That work is scheduled. Until then it is recorded here as an open decision with a date on it, not quietly dropped.</p>
+                <a class="report-link" href="secaudits/2026-08-07-004-closure-suyb-first-review.pdf" target="_blank" rel="noopener">Read the closure record &rarr;</a>
             </article>
 
             <article class="post" id="a040">
