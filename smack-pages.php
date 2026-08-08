@@ -258,8 +258,11 @@ include 'core/sidebar.php';
                     <button type="button" class="sc-btn" data-action="dropcap" title="Dropcap">DROP</button>
                     <button type="button" class="sc-btn" data-action="spacer" title="Vertical Spacer (1-100px)">SPACER</button>
                     <button type="button" class="sc-btn sc-btn-preview" data-action="preview" title="Preview in New Tab">PREVIEW</button>
+                    <span class="sc-sep"></span>
+                    <button type="button" class="sc-btn" data-action="import-html" title="Load a .html file straight into the editor (nothing is uploaded)">IMPORT HTML</button>
                 </div>
             </div>
+            <input type="file" id="page-html-import-file" accept=".html,.htm,text/html" style="display:none">
             <textarea id="page-content" name="content" rows="20"><?php echo htmlspecialchars($edit_page['content'] ?? ''); ?></textarea>
 
             <div class="form-action-row">
@@ -319,5 +322,6 @@ include 'core/sidebar.php';
 
 <script src="assets/js/smack-asset-picker.js"></script>
 <script src="assets/js/shortcode-toolbar.js"></script>
+<script src="assets/js/ss-engine-page-import.js"></script>
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
