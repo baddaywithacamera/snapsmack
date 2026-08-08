@@ -17,7 +17,7 @@ $_pc_sections = [
         'smack-fediverse.php', 'smack-dms.php', 'smack-smackverse.php',
         'smack-sv-followers.php', 'smack-sv-tools.php',
     ],
-    'turbo-boost' => ['smack-photochallenge.php'],
+    'turbo-boost' => ['smack-photochallenge.php', 'smack-skin.php'],
     'boring' => [
         'smack-settings.php', 'smack-users.php', 'smack-2fa.php',
         'smack-maintenance.php', 'smack-fingerprints.php', 'smack-backup.php',
@@ -77,6 +77,7 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                 </button>
                 <ul class="nav-section-links">
                     <li class="<?php echo $_pc_active_class('smack-photochallenge.php'); ?>"><a href="smack-photochallenge.php">Contest &amp; Feed</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-skin.php'); ?>"><a href="smack-skin.php">Smooth Your Skin</a></li>
                 </ul>
             </div>
 
