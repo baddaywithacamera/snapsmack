@@ -12,6 +12,59 @@
 
 ## Unreleased
 
+## 0.7.507 "SMACK SOME SPACKLE" — 2026-08-07
+
+- **SECAUDIT 041 — a photograph's download link could carry a `javascript:` scheme.**
+  `snap_images.download_url` is written by desktop importers over a scoped key and
+  rendered as an `href` on the public photo page. Nothing checked what kind of URL it
+  was, so a stored `javascript:` value executed in the site's origin when a visitor
+  clicked the download button.
+  - **Four unsafe points.** Both writers took it on trust — the gram import API applied
+    `substr`+`trim`, the Drive backfill endpoint applied `trim` alone. Length is not
+    validation: `javascript:alert(1)` is nineteen characters with no whitespace. The
+    backfill endpoint was the worse of the two, because the same request also sets
+    `global_downloads_enabled=1` — the exact condition the renderer needs before it
+    draws the button — so a bad URL arrived with its own switch.
+  - **The render side is the instructive half.** `download-overlay.php` passed the value
+    through `htmlspecialchars()`, which *is* escaping and does stop attribute breakout —
+    but it escapes `< > & " '` and a `javascript:` URL contains none of them.
+    **Escaping is not scheme validation.** Code that looks defended, is defended against
+    the wrong thing, and reads as fine in review. `social-dock.php` was blunter: it
+    re-extracted the same href with a regex and echoed it with no escaping at all.
+  - Fixed at all four points with `snap_api_safe_link()`, the helper SECAUDIT 040 built
+    for exactly this shape. Writers reject a non-`http(s)` value; **renderers re-check
+    rather than trusting the database**, because rows stored before this release are
+    still there. An unacceptable URL is treated as absent, so the overlay falls back to
+    the internal tokenised download instead of losing the button.
+  - `tests/download-url-scheme-regression.php` — **34 checks**, verified to fail against
+    the pre-fix tree (6 failures) before being accepted.
+  - **`core/indieweb.php` was reviewed line by line: no findings.** It validates schemes
+    rather than merely escaping, `ltrim()`s the photo path so a stored `//evil.com`
+    cannot become protocol-relative, and publishes no `rel=me` at all when the Social
+    Dock is disabled — upgrading never starts publishing profiles you kept private. It
+    also closed a latent instance of the same class on the dock's own identity links.
+
+- **CRIMSON ONYX: the archive and feed were never styled.** The skin shipped in 0.7.506
+  with its static pages measured against the original photofri.day site, but nine
+  selectors the archive and photo-feed templates emit had no styling at all — on a
+  near-black canvas the EXIF labels, tiles, titles and empty-state message fell back to
+  browser defaults.
+  - The more useful half is what came **out**. A first pass wrote row/item rules for the
+    justified grid, and an offline harness measured the last row's lone image at **4px
+    wide**. `assets/css/page-archive.css` already owns that grid, `archive.php` loads it
+    before the skin, and its header says plainly: override what is decorative, never the
+    grid structure. Core already handles the short final row, and kills item borders with
+    `!important` — so the rules were both wrong and, for the hover border, dead on
+    arrival. Replaced with the sanctioned `--masonry-border-width/-color` outline hook.
+  - The harness was at fault too: it loaded only the skin stylesheet, so it measured the
+    skin in isolation and invented a problem core had solved. It now loads
+    `public-base.css` and `page-archive.css` first, in the real order.
+
+- Desktop-tool fixes shipped in **SECAUDIT 042** (Unzucker, SUYB, SYBU) live entirely
+  under `tools/`, which is excluded from the release zip. They reach operators through
+  rebuilt binaries and **not** through this update. See
+  `secaudits/2026-08-07-042-desktop-transport-coverage-unzucker-suyb-sybu.md`.
+
 ## 0.7.506 "<codename TBD — Sean>" — 2026-08-07
 
 - **SnapSmack is now IndieWeb-readable without adding another social attack
