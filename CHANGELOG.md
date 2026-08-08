@@ -71,6 +71,18 @@
   "Fetch One Skin" remains the quick path since it skips the full download
   entirely.
 
+- **Direct skin-package install is back — but only on FEDISTRUCTURE service
+  installs.** The "install a skin ZIP directly" form was removed on 2026-08-03
+  because custom uploads on ordinary blogs are a support headache. That left a
+  service install (e.g. photofri.day) with no way to install its own self-built
+  skin: the direct path was gone, and the gallery path needs the skin published
+  to the public registry first. It's restored in `smack-skin.php`, gated on
+  `SNAPSMACK_DISTRIBUTION === 'fedistructure'` — ordinary blogs stay
+  registry-only exactly as before; service installs get the upload form back.
+  Security is unchanged from the original: re-auth (password + TOTP), full-admin
+  role, and explicit "this contains executable code" consent, through the signed
+  `skin_registry_install_upload()`.
+
 - **SECAUDIT 041 — a photograph's download link could carry a `javascript:` scheme.**
   `snap_images.download_url` is written by desktop importers over a scoped key and
   rendered as an `href` on the public photo page. Nothing checked what kind of URL it
