@@ -34,7 +34,8 @@
         "smack-justified-lib",
         "smack-justified",
         "smack-community",
-        "smack-overlay"
+        "smack-overlay",
+        "smack-contact"
     ],
     "options": {
         "htbs_slider_enabled": {

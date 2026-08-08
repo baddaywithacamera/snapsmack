@@ -4,7 +4,8 @@
  *
  * SnapSmack registers its own scheduled tasks in the system crontab so the
  * user never touches a terminal. Extracted from the RSS-fetcher registration
- * (smack-admin-reference.php) into a shared helper so every self-scheduling
+ * that used to live in smack-admin-reference.php (deleted in 0.7.508 — see
+ * UPDATER_DEPRECATED_FILES) into a shared helper so every self-scheduling
  * feature (RSS fetch, SMACKVERSE delivery, …) uses one proven code path.
  *
  * A job is identified by a unique tag comment (e.g. '# snapsmack-smackverse').

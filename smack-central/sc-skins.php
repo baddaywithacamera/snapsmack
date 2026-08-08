@@ -73,6 +73,63 @@ if (!function_exists('sc_http_raw')) {
     }
 }
 
+if (!function_exists('sc_download_to_file')) {
+    /**
+     * Stream a URL straight to a file on disk. Unlike sc_http_raw(), this NEVER
+     * holds the whole body in memory — required for the GitHub repo archive,
+     * which is ~220MB and FATALS a shared host's memory_limit when buffered as a
+     * PHP string (the old sc_http_raw() + file_put_contents() path). Proven
+     * locally: buffering 220MB dies under a 128MB limit; streaming peaks at +0MB.
+     * Returns true only on a clean 200 with the file written.
+     */
+    function sc_download_to_file(string $url, string $dest, array $extra_headers = [], int $timeout = 600): bool {
+        // The archive can take minutes on a slow shared host; don't let PHP's own
+        // execution clock kill a transfer curl is still happily streaming.
+        @set_time_limit($timeout + 60);
+
+        $fh = @fopen($dest, 'wb');
+        if ($fh === false) return false;
+
+        if (function_exists('curl_init')) {
+            $ch   = curl_init($url);
+            $opts = [
+                CURLOPT_FILE            => $fh,     // body streams straight to disk
+                CURLOPT_FOLLOWLOCATION  => true,    // github.com -> codeload redirect
+                CURLOPT_MAXREDIRS       => 5,
+                CURLOPT_CONNECTTIMEOUT  => 30,
+                CURLOPT_TIMEOUT         => $timeout,
+                CURLOPT_SSL_VERIFYPEER  => true,
+                CURLOPT_USERAGENT       => 'SnapSmack-SC/0.7.9c',
+                CURLOPT_LOW_SPEED_LIMIT => 1024,    // abort a genuinely stalled
+                CURLOPT_LOW_SPEED_TIME  => 60,      // transfer (<1KB/s for 60s)
+            ];
+            if ($extra_headers) $opts[CURLOPT_HTTPHEADER] = $extra_headers;
+            curl_setopt_array($ch, $opts);
+            $ok   = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            fclose($fh);
+            if ($ok === false || $code !== 200) { @unlink($dest); return false; }
+            return true;
+        }
+
+        // No curl: stream via a copy loop so we still never buffer the whole body.
+        $ctx = stream_context_create(['http' => [
+            'timeout'         => $timeout,
+            'user_agent'      => 'SnapSmack-SC/0.7.9c',
+            'follow_location' => 1,
+            'max_redirects'   => 5,
+            'header'          => $extra_headers ? implode("\r\n", $extra_headers) : '',
+        ]]);
+        $in = @fopen($url, 'rb', false, $ctx);
+        if ($in === false) { fclose($fh); @unlink($dest); return false; }
+        stream_copy_to_stream($in, $fh);
+        fclose($in);
+        fclose($fh);
+        return filesize($dest) > 0;
+    }
+}
+
 if (!function_exists('sc_github_get')) {
     function sc_github_get(string $endpoint): array|false {
         $headers = ['Accept: application/vnd.github.v3+json', 'User-Agent: SnapSmack-SC/0.7.9c'];
@@ -96,15 +153,15 @@ if (!function_exists('sc_github_get')) {
 
 function sc_extract_skins(string $ref): array {
     // Works for both branches and tags
-    $url  = 'https://github.com/' . SNAPSMACK_GITHUB_REPO . '/archive/' . urlencode($ref) . '.zip';
-    $data = sc_http_raw($url);
-    if ($data === false) {
-        return ['ok' => false, 'msg' => 'Could not download repo zip from GitHub. Check outbound HTTPS and verify the ref exists.'];
-    }
-
+    $url     = 'https://github.com/' . SNAPSMACK_GITHUB_REPO . '/archive/' . urlencode($ref) . '.zip';
     $tmp_zip = sc_skin_workroot() . '/repo_' . md5($ref . microtime()) . '.zip';
-    file_put_contents($tmp_zip, $data);
-    unset($data);
+    // Stream to disk. The archive is ~220MB (the heavy skins — true-grit,
+    // impact-printer, sudden-impact, chaplin) and buffering it in memory fatals
+    // a shared host's memory_limit. See sc_download_to_file().
+    if (!sc_download_to_file($url, $tmp_zip)) {
+        @unlink($tmp_zip);
+        return ['ok' => false, 'msg' => 'Could not download the repo zip from GitHub (~220MB archive — a shared host may be timing out or low on memory/disk). Use "Fetch One Skin" instead: it pulls a single skin through the API and skips the full download. Also verify outbound HTTPS and that the ref exists.'];
+    }
 
     $src = new ZipArchive();
     if ($src->open($tmp_zip) !== true) {

@@ -34,6 +34,8 @@
  *   [accent-grid cols="N"]...[accent-card title=""]...[/accent-card]...[/accent-grid]
  *   [feature-box title=""]item one|item two|item three[/feature-box]
  *   [bio img="" name="" role=""]text[/bio] — portrait + bio copy
+ *   [snapsmack_contact] — contact form (rendered by core/contact-form.php,
+ *                         submitted by ss-engine-contact.js → process-contact.php)
  *
  * Auto-paragraph: double newlines (\n\n) become <p> tags automatically.
  * Single newlines within a paragraph become <br>.
@@ -139,7 +141,34 @@ class SnapSmack {
         // it emits is already outside any wrapping <p>.
         $content = $this->parseMosaics($content);
 
+        // --- PHASE 9: CONTACT FORM ---
+        // [snapsmack_contact] expands to the contact form markup. Runs last,
+        // after block-nesting cleanup, so the emitted <form> block is already
+        // outside any wrapping <p> — same reason parseMosaics runs here.
+        $content = $this->parseContactForm($content);
+
         return $content;
+    }
+
+    // =========================================================================
+    //  CONTACT FORM
+    // =========================================================================
+
+    /**
+     * Expand [snapsmack_contact] into the contact form. The rendered markup is
+     * static (no session, no per-request token), so it is safe to page-cache;
+     * submission is handled by ss-engine-contact.js → process-contact.php.
+     */
+    private function parseContactForm($content) {
+        if (stripos($content, '[snapsmack_contact]') === false) {
+            return $content;
+        }
+        return preg_replace_callback('/\[snapsmack_contact\]/i', function () {
+            if (!function_exists('snapsmack_contact_form')) {
+                require_once __DIR__ . '/contact-form.php';
+            }
+            return snapsmack_contact_form($this->pdo, $this->config);
+        }, $content);
     }
 
     // =========================================================================

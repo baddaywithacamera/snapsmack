@@ -52,6 +52,58 @@ if (!function_exists('sc_http_raw')) {
     }
 }
 
+if (!function_exists('sc_download_to_file')) {
+    /**
+     * Stream a URL straight to a file on disk. Unlike sc_http_raw(), this NEVER
+     * holds the whole body in memory — required for the GitHub repo archive,
+     * which is ~220MB and FATALS a shared host's memory_limit when buffered as a
+     * PHP string. Proven: buffering 220MB dies under a 128MB limit; streaming
+     * peaks at +0MB. Returns true only on a clean 200 with the file written.
+     */
+    function sc_download_to_file(string $url, string $dest, array $extra_headers = [], int $timeout = 600): bool {
+        @set_time_limit($timeout + 60);   // don't let PHP's clock kill a live transfer
+        $fh = @fopen($dest, 'wb');
+        if ($fh === false) return false;
+
+        if (function_exists('curl_init')) {
+            $ch   = curl_init($url);
+            $opts = [
+                CURLOPT_FILE            => $fh,     // body streams straight to disk
+                CURLOPT_FOLLOWLOCATION  => true,    // github.com -> codeload redirect
+                CURLOPT_MAXREDIRS       => 5,
+                CURLOPT_CONNECTTIMEOUT  => 30,
+                CURLOPT_TIMEOUT         => $timeout,
+                CURLOPT_SSL_VERIFYPEER  => true,
+                CURLOPT_USERAGENT       => 'SnapSmack-SC/1.0',
+                CURLOPT_LOW_SPEED_LIMIT => 1024,    // abort a genuinely stalled
+                CURLOPT_LOW_SPEED_TIME  => 60,      // transfer (<1KB/s for 60s)
+            ];
+            if ($extra_headers) $opts[CURLOPT_HTTPHEADER] = $extra_headers;
+            curl_setopt_array($ch, $opts);
+            $ok   = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            fclose($fh);
+            if ($ok === false || $code !== 200) { @unlink($dest); return false; }
+            return true;
+        }
+
+        $ctx = stream_context_create(['http' => [
+            'timeout'         => $timeout,
+            'user_agent'      => 'SnapSmack-SC/1.0',
+            'follow_location' => 1,
+            'max_redirects'   => 5,
+            'header'          => $extra_headers ? implode("\r\n", $extra_headers) : '',
+        ]]);
+        $in = @fopen($url, 'rb', false, $ctx);
+        if ($in === false) { fclose($fh); @unlink($dest); return false; }
+        stream_copy_to_stream($in, $fh);
+        fclose($in);
+        fclose($fh);
+        return filesize($dest) > 0;
+    }
+}
+
 if (!function_exists('sc_github_get')) {
     function sc_github_get(string $endpoint): array|false {
         $headers = ['Accept: application/vnd.github.v3+json', 'User-Agent: SnapSmack-SC/1.0'];
@@ -145,12 +197,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
         if (defined('SNAPSMACK_GITHUB_TOKEN') && SNAPSMACK_GITHUB_TOKEN) {
             $headers[] = 'Authorization: token ' . SNAPSMACK_GITHUB_TOKEN;
         }
-        $zip_bytes = sc_http_raw($zip_url, $headers, 120);
-        if ($zip_bytes === false || strlen($zip_bytes) < 1000) {
-            throw new RuntimeException('Failed to download repo zip from GitHub.');
+        // Stream to disk — the archive is ~220MB and buffering it in memory fatals
+        // a shared host's memory_limit. See sc_download_to_file().
+        if (!sc_download_to_file($zip_url, $tmp_zip, $headers) || filesize($tmp_zip) < 1000) {
+            @unlink($tmp_zip);
+            throw new RuntimeException('Failed to download repo zip from GitHub (~220MB — a shared host may be timing out or low on memory/disk).');
         }
-        file_put_contents($tmp_zip, $zip_bytes);
-        $result_log[] = ['ok', "Downloaded {$latest_tag} zip (" . round(strlen($zip_bytes) / 1024) . ' KB)'];
+        $result_log[] = ['ok', "Downloaded {$latest_tag} zip (" . round(filesize($tmp_zip) / 1024) . ' KB)'];
 
         // 2. Extract ──────────────────────────────────────────────────────────
         mkdir($tmp_dir, 0755, true);

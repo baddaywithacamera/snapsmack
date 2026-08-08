@@ -33,7 +33,7 @@ return [
         ],
         [
             'title' => 'Contact Form',
-            'body'  => 'Show N Tell includes an optional contact form via the [snapsmack_contact] shortcode. Place it on any static page. Fields: name, email, message. Sends email to your admin address via wp_mail. No form submissions are stored in the database — email only. A honeypot field provides basic spam protection. The photographer email address is displayed below the form. The form is a convenience, not a wall between you and clients.',
+            'body'  => 'Show N Tell includes an optional contact form via the [snapsmack_contact] shortcode. Place it on any static page. Fields are name, email and message, delivered to your admin address through Brevo (the same mail path the rest of SnapSmack uses) — from your own verified sender, with the visitor set as Reply-To so your reply reaches them. No form submissions are stored in the database — email only. A hidden honeypot field, a per-IP rate limit, the ban list and the keyword filter all guard against spam. The photographer email address is displayed below the form. The form is a convenience, not a wall between you and clients.',
         ],
         [
             'title' => 'What Show N Tell Is Not',
