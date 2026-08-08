@@ -164,6 +164,7 @@ require_once __DIR__ . '/includes/header.php';
             <ol>
                 <li><span class="idx-date">Aug 7</span><a href="#a042">Desktop Tools &mdash; What "Already Fixed" Was Hiding</a></li>
                 <li><span class="idx-date">Aug 7</span><a href="#a041">Download Links &mdash; Escaping Is Not Validation</a></li>
+                <li><span class="idx-date">Aug 6</span><a href="#a040">FLKR FCKR &mdash; Credentials at Rest, in Transit, and Trusted Paths</a></li>
                 <li><span class="idx-date">Aug 6</span><a href="#a039">GET YOUR SHIT SORTED &mdash; Desktop Trust Boundary &amp; API Key Lifetime</a></li>
                 <li><span class="idx-date">Aug 5</span><a href="#a038">Gallery Skins &mdash; JavaScript Package Boundary</a></li>
                 <li><span class="idx-date">Aug 4</span><a href="#a037">Smack Up Your Backup Desktop &mdash; Credential Vault &amp; Transport</a></li>
@@ -172,6 +173,8 @@ require_once __DIR__ . '/includes/header.php';
                 <li><span class="idx-date">Jul 24</span><a href="#a034">Skin Manifest RCE &amp; Credentials Export — Closure</a></li>
                 <li><span class="idx-date">Jul 15</span><a href="#a033">SMACKVERSE Federation Client — Attack Surface</a></li>
                 <li><span class="idx-date">Jul 4</span><a href="#a032">SMACKVERSE Piggyback Search — Token Isolation</a></li>
+                <li><span class="idx-date">Jun 29</span><a href="#a031">Cloud Backup From the Web Host &mdash; Feature Removed</a></li>
+                <li><span class="idx-date">Jun 28</span><a href="#a030">Skin Manifests Could Run Code &mdash; The Finding</a></li>
                 <li><span class="idx-date">Jun 27</span><a href="#csrf">Cross-Site Request Forgery — Closed Site-Wide</a></li>
                 <li><span class="idx-date">Jun 25</span><a href="#asob">Son of a Batch — Batch Poster Review</a></li>
                 <li><span class="idx-date">Jun 20</span><a href="#a028">Dev-File Leak &amp; SMACKBACK Blind Spot</a></li>
@@ -222,6 +225,17 @@ require_once __DIR__ . '/includes/header.php';
                 <p>All four places &mdash; the two that store the link and the two that display it &mdash; now require it to be an ordinary web address before it is used. The two that display it re-check rather than trusting what is already saved, because links stored before this release are still in the database. If a stored link fails the check, the button quietly falls back to SnapSmack's own internal download instead of disappearing.</p>
                 <p>This was found while reviewing the IndieWeb markup added the same day, which turned out to be sound &mdash; and which had already closed a similar gap on the social dock's profile links on its way past. No exploitation is known: it needs a bad link to have been stored in the first place, and a visitor to click the download button.</p>
                 <a class="report-link" href="secaudits/2026-08-07-041-download-url-scheme-and-indieweb-identity-surface.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a040">
+                <div class="post-meta"><span class="post-date">August 6, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>FLKR FCKR &mdash; Credentials at Rest, in Transit, and Trusted Paths</h2>
+                <p>FLKR FCKR moves a Flickr export into a photo blog. Worth saying plainly, because the name suggests otherwise: it holds no Flickr credentials at all &mdash; it reads the export folder Flickr gave you, off your own disk. What it does hold is the key to <em>your</em> blog. Four findings, all closed.</p>
+                <p>The one that mattered was not in this tool alone. When an action needs more than the tool's ordinary permissions, it asks for your account password and a two-factor code and sends them to your blog. That shared piece of code never checked whether the address was encrypted. If a blog address had been entered as <code>http</code> rather than <code>https</code>, your <strong>password and a live two-factor code</strong> crossed the network in the clear, and a code stays usable for the rest of its short window. It now refuses outright &mdash; not a warning, a refusal &mdash; because unlike an access key, a password cannot simply be cancelled and reissued. Connecting to your own machine for testing is unaffected.</p>
+                <p>Second, the tool's access key was stored on disk with encoding rather than encryption &mdash; reversible by anyone who had the folder. It now uses the same passphrase-locked vault built for Smack Up Your Backup: your passphrase is never written anywhere, so a copy of the folder is no longer enough. Lose the passphrase and nothing is destroyed; paste the key again or issue a new one. The tool must be rebuilt for this to reach you.</p>
+                <p>Two server-side items closed alongside. The blog stored image file paths exactly as the tool sent them, and those same paths are handed to the delete function later when you remove a photograph &mdash; so an unchecked value was a delayed, arbitrary file deletion waiting for an ordinary action to trigger it. Paths must now name a file the upload endpoint itself wrote. And an imported comment's author link was stored without checking it was a real web address, which mattered because that link is later rendered as a clickable link. Both now validated on the way in.</p>
+                <p>One thing deliberately <em>not</em> changed: imported photographs keep their EXIF data, including GPS coordinates, exactly as Flickr held it. An importer's job is to move your archive, not to quietly edit it. That is a settled decision, recorded in the report as such, and not a finding. No exploitation is known; the remaining findings require either local access to your own computer or a valid key and an open authorisation window &mdash; which in normal operation means you.</p>
+                <a class="report-link" href="secaudits/2026-08-06-040-flkr-fckr-credential-transport-and-import-path-trust.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
             </article>
 
             <article class="post" id="a039">
@@ -290,6 +304,26 @@ require_once __DIR__ . '/includes/header.php';
                 <p>SMACKVERSE can borrow a login token you hold on a friendly Fediverse instance so your blog can run authenticated searches out across the network. This review checked how that token is stored and used. The one finding: the key protecting the stored token was falling back to a shared default value instead of a per-site secret. Fixed — every install now generates its own dedicated, random search key, so no two sites share protection.</p>
                 <p>A second item flagged around form security turned out to be a false alarm: every admin form on SnapSmack already carries automatic cross-site-request protection. Everything else passed — the outbound requests are guarded against server-side request forgery, results render without script injection, adding an account is gated behind password + two-factor, and the token is never exposed to the browser. Closed in 0.7.376.</p>
                 <a class="report-link" href="secaudits/2026-07-04-032-smackverse-piggyback-search-audit.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a031">
+                <div class="post-meta"><span class="post-date">June 29, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Cloud Backup From the Web Host &mdash; Feature Removed</h2>
+                <p>SnapSmack used to offer a Cloud Backup feature that pushed your backups from the web server straight to your Google Drive or OneDrive. To do that unattended &mdash; on a schedule, without you present &mdash; it had to keep a long-lived access token and the associated secret <strong>on the web host</strong>, in the site's settings table.</p>
+                <p>That is a poor place for them. Most photographers running this are on inexpensive shared hosting, where you do not control who else is on the machine. A server compromise, a leaked database dump, a backup folder left readable &mdash; any of those hands someone a working token for your cloud storage, and the token keeps working until it is revoked.</p>
+                <p>This was not patched. It was <strong>removed</strong>, in 0.7.324. The right answer was not to guard the credential better but to stop the web host holding it at all. Pushing backups to the cloud now happens from Smack Up Your Backup on your own computer, where the credential lives with you rather than on a rented machine. The Backup page says so plainly where the feature used to be, rather than quietly dropping it.</p>
+                <p>Publishing this one late: the fix shipped in June and the write-up was never put on this page. The record should be complete whether or not anyone was watching.</p>
+                <a class="report-link" href="secaudits/2026-06-29-031-web-cloud-push-removed.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a030">
+                <div class="post-meta"><span class="post-date">June 28, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Skin Manifests Could Run Code &mdash; The Finding</h2>
+                <p>Every skin shipped a settings file that SnapSmack did not read as data &mdash; it <em>executed</em> it, as program code, on public pages and inside the admin panel. That means any skin present on the site could run whatever it liked with the site's own permissions: read or alter the database, take secrets, write files, change settings, or quietly rewrite what the admin screens showed you.</p>
+                <p>The informal worry at the time was &ldquo;a bad skin could change some options&rdquo;. That understated it considerably. It was full remote code execution, limited only by what the web server itself could do &mdash; and skins are exactly the kind of thing people are encouraged to download and try.</p>
+                <p>Remediated in 0.7.440. Skin settings are now read as data and cannot execute. Because the fix changed what a valid skin package looks like, deployment was deliberately gated on rebuilding and re-signing every hosted skin, so no site was left able to install an old-format package.</p>
+                <p>This report is the <strong>finding</strong>, and it is being published now that it has long been closed &mdash; while it was open, publishing a working description of how to run code on someone's photo blog would have been reckless. The closure record went up in July as <a href="#a034">Skin Manifest RCE &amp; Credentials Export &mdash; Closure</a>; this is the other half of the story.</p>
+                <a class="report-link" href="secaudits/2026-06-28-030-skin-manifest-rce.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
             </article>
 
             <article class="post" id="csrf">
