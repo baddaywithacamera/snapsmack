@@ -736,6 +736,11 @@ return [
             'path'         => 'assets/js/ss-engine-overlay.js',
             'has_settings' => false,
         ],
+        'smack-full-monty' => [
+            'label'        => 'FULL MONTY adaptive blurred-photo atmosphere',
+            'path'         => 'assets/js/ss-engine-full-monty.js',
+            'has_settings' => false,
+        ],
         'smack-organized-mayhem' => [
             'label'        => 'Organized Mayhem (infinite pannable tabletop of scattered prints)',
             'path'         => 'assets/js/ss-engine-organized-mayhem.js',

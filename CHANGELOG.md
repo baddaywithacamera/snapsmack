@@ -10,6 +10,17 @@
 
 # SnapSmack Changelog
 
+## 0.7.509 "<codename TBD — Sean>" — 2026-08-08
+
+- **FULL MONTY alpha skin.** A SMACKONEOUT photograph now becomes its own
+  environment: the sharp native frame floats over an adaptive, blurred,
+  full-viewport copy whose exposure is measured per image. The solo view has
+  no persistent chrome; clicking the photograph steps back into a diagonal
+  square archive with navigation and social controls occupying the open
+  corners. A one-time cue teaches the inversion, ambient drift respects
+  reduced-motion preferences, and all executable behaviour lives in the new
+  CMS-owned `smack-full-monty` engine rather than the skin package.
+
 ## 0.7.508 "<codename TBD — Sean>" — 2026-08-08
 
 - **SPL 2.1 corrects the formal AI provenance record.** The Smack Public
