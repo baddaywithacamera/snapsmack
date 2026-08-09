@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "FULL MONTY",
+  "version": "0.1.0",
+  "author": "Sean McCormick & OpenAI Codex",
+  "support": "sean@baddaywithacamera.ca",
+  "status": "alpha",
+  "description": "The photograph becomes the room: a sharp full frame floats over its own adaptive, blurred, full-viewport atmosphere. Click the photograph to step back into a diagonal square archive.",
+  "modes": ["photoblog"],
+  "features": {
+    "supports_wall": false,
+    "has_landing": false,
+    "post_modes": ["image"],
+    "instagram_mode": false,
+    "carousel": false,
+    "community": ["likes", "comments"],
+    "archive_layouts": ["square"]
+  },
+  "require_scripts": ["smack-full-monty", "smack-keyboard", "smack-community"],
+  "social_dock": {"position": "bottom-left", "color_mode": "light", "icon_style": "outline", "shadow": "1", "inline": "0"},
+  "options": {
+    "fm_blur": {"section":"ATMOSPHERE","type":"range","label":"Background Blur","default":"42","min":"18","max":"80","unit":"px","selector":":root","property":"--fm-blur"},
+    "fm_sharp_max": {"section":"PHOTOGRAPH","type":"range","label":"Sharp Image Maximum Width","default":"88","min":"60","max":"96","unit":"vw","selector":":root","property":"--fm-sharp-max"},
+    "fm_corner_radius": {"section":"PHOTOGRAPH","type":"range","label":"Corner Radius","default":"18","min":"0","max":"48","unit":"px","selector":":root","property":"--fm-radius"},
+    "fm_archive_size": {"section":"ARCHIVE","type":"range","label":"Archive Tile Size","default":"180","min":"110","max":"280","unit":"px","selector":":root","property":"--fm-tile"},
+    "fm_archive_gap": {"section":"ARCHIVE","type":"range","label":"Archive Gap","default":"18","min":"4","max":"42","unit":"px","selector":":root","property":"--fm-gap"}
+  }
+}
