@@ -10,18 +10,13 @@
 
 # SnapSmack Changelog
 
-## 0.7.509 "<codename TBD — Sean>" — 2026-08-08
+## 0.7.510 "PHOTO FRIYAY" — 2026-08-08
 
-- **FULL MONTY alpha skin.** A SMACKONEOUT photograph now becomes its own
-  environment: the sharp native frame floats over an adaptive, blurred,
-  full-viewport copy whose exposure is measured per image. The solo view has
-  no persistent chrome; clicking the photograph steps back into a diagonal
-  square archive with navigation and social controls occupying the open
-  corners. A one-time cue teaches the inversion, ambient drift respects
-  reduced-motion preferences, and all executable behaviour lives in the new
-  CMS-owned `smack-full-monty` engine rather than the skin package.
-
-## 0.7.508 "<codename TBD — Sean>" — 2026-08-08
+- **INSTANT CAMERA: the polaroid tile shows the whole print, not just the image
+  window.** The light-table tile aspect was `79/97` — the proportion of the
+  exposed photo aperture alone — so the thumbnail cropped to the image and clipped
+  the Polaroid's white border and caption band. Corrected to `823/1000`, the true
+  proportion of a complete Polaroid print, so the tile renders the full frame.
 
 - **SPL 2.1 corrects the formal AI provenance record.** The Smack Public
   License 2.0 named Claude (Anthropic) and Google Gemini but omitted OpenAI
@@ -39,6 +34,19 @@
   licence copy carries the same record. No usage or redistribution terms
   changed; this version bump exists because authorship provenance must be
   exact and historically auditable.
+
+## 0.7.509 "<codename TBD — Sean>" — 2026-08-08
+
+- **FULL MONTY alpha skin.** A SMACKONEOUT photograph now becomes its own
+  environment: the sharp native frame floats over an adaptive, blurred,
+  full-viewport copy whose exposure is measured per image. The solo view has
+  no persistent chrome; clicking the photograph steps back into a diagonal
+  square archive with navigation and social controls occupying the open
+  corners. A one-time cue teaches the inversion, ambient drift respects
+  reduced-motion preferences, and all executable behaviour lives in the new
+  CMS-owned `smack-full-monty` engine rather than the skin package.
+
+## 0.7.508 "<codename TBD — Sean>" — 2026-08-08
 
 - **Pages editor: IMPORT HTML button.** The static-page editor now has an IMPORT
   HTML button (next to PREVIEW) that loads a local `.html` file straight into the
