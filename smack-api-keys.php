@@ -167,7 +167,17 @@ $keys         = $pdo->query("
     FROM snap_ohsnap_keys
     ORDER BY key_type ASC, created_at DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
-$active_keys  = array_values(array_filter($keys, fn($k) =>  $k['is_active']));
+// An expired key (still is_active but past expires_at) is dead for auth — it
+// must NOT appear under ACTIVE. Bucket it separately so the UI stops calling a
+// dead key "active". is_active stays meaning "manually revoked", so expired and
+// revoked remain distinct — which is what lets the API return a precise error.
+$_key_expired = static function ($k): bool {
+    return !empty($k['expires_at'])
+        && ($_ts = strtotime((string)$k['expires_at'])) !== false
+        && $_ts <= time();
+};
+$active_keys  = array_values(array_filter($keys, fn($k) =>  $k['is_active'] && !$_key_expired($k)));
+$expired_keys = array_values(array_filter($keys, fn($k) =>  $k['is_active'] &&  $_key_expired($k)));
 $revoked_keys = array_values(array_filter($keys, fn($k) => !$k['is_active']));
 
 // Bulk-import authorization window state (set by the panel below).
@@ -366,6 +376,36 @@ include 'core/sidebar.php';
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
+
+            <?php if ($expired_keys): ?>
+            <div class="box mt-20">
+                <h3>EXPIRED KEYS</h3>
+                <p class="dim" style="margin:-4px 0 12px;font-size:12px;">These have passed their expiry and no longer authenticate. Generate a fresh key of the same type above, update the tool that used it, then revoke these.</p>
+                <?php foreach ($expired_keys as $key): ?>
+                    <div class="recent-item">
+                        <div class="item-details">
+                            <div class="item-text">
+                                <strong class="dim"><?php echo htmlspecialchars($key['label']); ?></strong>
+                                <code class="slug-display"><?php echo htmlspecialchars($key['key_type'] ?? 'ohsnap'); ?> &middot; <?php echo htmlspecialchars($key['key_prefix']); ?>…</code>
+                                <div class="item-meta">
+                                    CREATED <?php echo htmlspecialchars($key['created_at']); ?> &middot;
+                                    LAST USED: <?php echo $key['last_used_at'] ? htmlspecialchars($key['last_used_at']) : 'NEVER'; ?> &middot;
+                                    <span class="action-delete">EXPIRED <?php echo htmlspecialchars($key['expires_at']); ?></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="item-actions">
+                            <form method="post" action="smack-api-keys.php" class="form-inline"
+                                  onsubmit="return confirm('REVOKE THIS EXPIRED KEY?');">
+                                <input type="hidden" name="action" value="revoke">
+                                <input type="hidden" name="key_id" value="<?php echo (int)$key['id']; ?>">
+                                <button type="submit" class="btn-reset action-delete">REVOKE</button>
+                            </form>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
 
             <?php if ($revoked_keys): ?>
             <div class="box mt-20">

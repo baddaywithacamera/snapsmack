@@ -178,6 +178,36 @@ class SnapSmackSession:
         except Exception:
             return False
 
+    def _raise_friendly(self, resp) -> None:
+        """Like resp.raise_for_status(), but surface the server's JSON error —
+        and the key_expired code specifically — instead of a bare HTTP status,
+        so the user is told exactly what to do. Use only on the suyb-export.php
+        calls that authenticate with the SUYB key (not the admin login, where a
+        401 means a wrong password)."""
+        if resp.ok:
+            return
+        detail = ""
+        code = ""
+        try:
+            body = resp.json()
+            detail = str(body.get("error", "")).strip()
+            code = str(body.get("code", "")).strip()
+        except (ValueError, TypeError):
+            pass
+        if code == "key_expired" or (resp.status_code in (401, 403) and "expired" in detail.lower()):
+            raise RuntimeError(
+                "API KEY EXPIRED — this site's backup key has expired. Generate a "
+                "new SUYB key in the site's Admin → API Keys, update this "
+                "profile's key (Edit), then run the backup again."
+            )
+        if resp.status_code in (401, 403):
+            raise RuntimeError(
+                "NOT AUTHORIZED (HTTP %d) — the backup key was rejected%s. Check the "
+                "key in this profile (Edit) or generate a fresh one in Admin "
+                "→ API Keys." % (resp.status_code, (": " + detail) if detail else "")
+            )
+        resp.raise_for_status()
+
     def download_sql_dump(self, local_path: str, dump_type: str = "full",
                          on_progress: Optional[Callable] = None) -> None:
         """Download a SQL dump via the suyb-export.php endpoint.
@@ -186,7 +216,7 @@ class SnapSmackSession:
         """
         url = f"{self.site_url}/suyb-export.php?type={dump_type}"
         resp = self.session.get(url, stream=True, timeout=120)
-        resp.raise_for_status()
+        self._raise_friendly(resp)
 
         content_type = resp.headers.get("Content-Type", "")
         if "application/sql" not in content_type and "text/" not in content_type:
@@ -211,7 +241,7 @@ class SnapSmackSession:
         never hashes anything. Fast JSON call, no multi-minute build."""
         url = f"{self.site_url}/suyb-export.php?type=inventory"
         resp = self.session.get(url, timeout=(30, 120))
-        resp.raise_for_status()
+        self._raise_friendly(resp)
         ctype = resp.headers.get("Content-Type", "")
         if "application/json" not in ctype:
             raise RuntimeError(
