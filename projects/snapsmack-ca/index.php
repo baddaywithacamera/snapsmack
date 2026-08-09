@@ -209,6 +209,45 @@ $page_css = <<<'CSS'
 }
 .hero-principles a { font-weight: 700; }
 
+.xkcd-proof {
+    padding: 54px 24px;
+    background: var(--light-grey);
+    border-top: 1px solid #d8d8d8;
+    border-bottom: 1px solid #d8d8d8;
+}
+.xkcd-proof-inner {
+    width: min(100%, 960px);
+    margin: 0 auto;
+}
+.xkcd-proof-kicker {
+    margin: 0 0 18px;
+    color: var(--black);
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-size: clamp(1.25rem, 3vw, 2rem);
+    line-height: 1.15;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+}
+.xkcd-proof figure { margin: 0; }
+.xkcd-proof-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    padding: 12px;
+    border: 2px solid var(--black);
+    background: var(--white);
+}
+.xkcd-proof a:hover .xkcd-proof-image,
+.xkcd-proof a:focus-visible .xkcd-proof-image { border-color: var(--red); }
+.xkcd-proof figcaption {
+    max-width: 100%;
+    margin-top: 12px;
+    color: var(--dark-grey);
+    font-size: 0.8rem;
+    line-height: 1.55;
+}
+.xkcd-proof figcaption a { font-weight: 700; }
+
 .hero-actions {
     display: flex;
     gap: 16px;
@@ -502,7 +541,15 @@ $page_css = <<<'CSS'
     margin-bottom: 18px;
     color: rgba(255,255,255,0.9);
 }
-#federate .fed-lede em { color: var(--red); font-style: normal; }
+#federate .fed-lede em {
+    color: var(--white);
+    font-style: normal;
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-color: #ff4d4d;
+    text-decoration-thickness: 0.15em;
+    text-underline-offset: 0.12em;
+}
 #federate .fed-body {
     font-size: 1.05rem;
     line-height: 1.7;
@@ -1521,6 +1568,22 @@ require_once __DIR__ . '/includes/header.php';
 
 
 <!-- ── WHAT IS IT ──────────────────────────────────────────────────────────── -->
+<aside class="xkcd-proof" aria-labelledby="xkcd-proof-title">
+    <div class="xkcd-proof-inner">
+        <p class="xkcd-proof-kicker" id="xkcd-proof-title">This has been the problem since 2012.</p>
+        <figure>
+            <a href="https://xkcd.com/1150/" target="_blank" rel="noopener">
+                <img class="xkcd-proof-image" src="img/xkcd-instagram.png" width="1480" height="494" loading="lazy" alt="XKCD comic comparing storing your work on a free social platform to leaving your belongings in someone else's garage.">
+            </a>
+            <figcaption>
+                &ldquo;<a href="https://xkcd.com/1150/" target="_blank" rel="noopener">Instagram</a>&rdquo;
+                by Randall Munroe / XKCD, used unmodified under
+                <a href="https://creativecommons.org/licenses/by-nc/2.5/" target="_blank" rel="license noopener">CC BY-NC 2.5</a>.
+            </figcaption>
+        </figure>
+    </div>
+</aside>
+
 <section id="what">
     <div class="wrap">
         <div class="two-col">
@@ -1787,7 +1850,7 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="mode-num">Install Mode 02</div>
                 <h3>GRAMOFSMACK</h3>
                 <div class="mode-tagline">Got Zuck-fucked?</div>
-                <p>The classic Insta 3 across square feed is back. Multiple images per post. Carousel layout. Curated grid. Everything Instagram used to be in 2016 before Reels, before suggested posts, before the app decided your followers should see strangers' content instead of yours.</p>
+                <p>The classic Insta 3 across square feed <a href="https://unzucked.ca/" target="_blank" rel="noopener">is back</a>. Multiple images per post. Carousel layout. Curated grid. Everything Instagram used to be in 2016 before Reels, before suggested posts, before the app decided your followers should see strangers' content instead of yours.</p>
                 <p>Post up to 30 images at a time in carousel rows, panorama layout included. We've added the power toys Zuck denied you to make sharing easy. Your grid, your order, no algorithm between you and your audience. A skinnable Instagram experience, running on your server, owned by you. Do a gram and feel good about it.</p>
             </div>
 

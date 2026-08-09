@@ -12,6 +12,23 @@
 
 ## 0.7.508 "<codename TBD — Sean>" — 2026-08-08
 
+- **SPL 2.1 corrects the formal AI provenance record.** The Smack Public
+  License 2.0 named Claude (Anthropic) and Google Gemini but omitted OpenAI
+  Codex despite Codex's substantial implementation, review, security,
+  recovery, federation, release, and documentation work — an omission that
+  made the mandatory attribution chain incomplete. SPL 2.1 adds OpenAI Codex
+  to the preamble, Section 4.2's required AI co-author attribution, and the
+  closing provenance statement. It also **removes Google Gemini as a
+  co-author**: its early foundation work did not substantially survive into
+  the shipping codebase, so crediting it alongside the authors of the current
+  system overstated its role. The authorship record is now Sean McCormick
+  (human creator, architect, and decision owner) with AI co-authors Claude
+  (Anthropic) and OpenAI Codex. The Hairy Muff page notes the Gemini history
+  plainly rather than erasing it, so the record stays auditable. The public
+  licence copy carries the same record. No usage or redistribution terms
+  changed; this version bump exists because authorship provenance must be
+  exact and historically auditable.
+
 - **Pages editor: IMPORT HTML button.** The static-page editor now has an IMPORT
   HTML button (next to PREVIEW) that loads a local `.html` file straight into the
   body via FileReader — nothing is uploaded, no server round-trip. It strips the
