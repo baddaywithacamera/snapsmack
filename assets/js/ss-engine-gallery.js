@@ -27,6 +27,7 @@
     var total      = 0;
     var loading    = false;
     var selected   = {};         // id → true
+    var selectMode = false;      // Select mode: a plain click toggles selection
     var images     = [];         // current page cache
     var allLoaded  = [];         // all loaded images across pages
     var searchTimer = null;
@@ -48,6 +49,7 @@
     var bulkBar    = document.getElementById('gallery-bulk-bar');
     var selCount   = document.getElementById('gal-sel-count');
     var countLabel = document.getElementById('gallery-count');
+    var selModeBtn = document.getElementById('gal-select-mode');
 
     // Quick edit
     var qePanel    = document.getElementById('gallery-quickedit');
@@ -172,9 +174,10 @@
         info.appendChild(dim);
         card.appendChild(info);
 
-        // Click handlers
+        // Click handlers. Select mode (or a modifier) turns a plain click into a
+        // selection toggle — whole-tile target, no precise ctrl-click needed.
         card.addEventListener('click', function (e) {
-            if (e.ctrlKey || e.metaKey || e.shiftKey) {
+            if (selectMode || e.ctrlKey || e.metaKey || e.shiftKey) {
                 e.preventDefault();
                 toggleSelect(img.id, card);
             } else if (pickerMode) {
@@ -315,6 +318,19 @@
         loadBtn.addEventListener('click', function () {
             page++;
             fetchImages(true);
+        });
+    }
+
+    // ── SELECT MODE TOGGLE ───────────────────────────────────────────────
+    // Flip it on and any plain click selects a tile (whole-tile target), then
+    // Delete in the bulk bar removes them. Leaving select mode clears the set.
+    if (selModeBtn) {
+        selModeBtn.addEventListener('click', function () {
+            selectMode = !selectMode;
+            selModeBtn.classList.toggle('active', selectMode);
+            selModeBtn.textContent = selectMode ? 'Done' : 'Select';
+            if (grid) grid.classList.toggle('gallery-selecting', selectMode);
+            if (!selectMode) deselectAll();
         });
     }
 
@@ -553,61 +569,82 @@
     var upPBar    = document.getElementById('gal-p-bar');
     var upNameLbl = document.getElementById('gal-file-name-display');
 
+    // Files are sent ONE PER REQUEST, sequentially. A single multi-file POST is
+    // silently truncated by PHP's per-request max_file_uploads (default 20) and
+    // post_max_size — that is why a 50-image drop only ever landed ~20 with no
+    // error. One file per request sidesteps both caps entirely, so any batch
+    // size works regardless of server php.ini limits.
     function uploadFiles(fileList) {
         if (!fileList || !fileList.length) return;
 
-        var fd = new FormData();
-        fd.append('action', 'upload');
-        fd.append('status', upStatus ? upStatus.value : 'published');
+        // Keep only images; snapshot into a real array (FileList is live).
+        var files = [];
         for (var i = 0; i < fileList.length; i++) {
             if (fileList[i].type && fileList[i].type.indexOf('image/') !== 0) continue;
-            fd.append('img_file[]', fileList[i]);
+            files.push(fileList[i]);
         }
+        if (!files.length) return;
+
+        var total  = files.length;
+        var done   = 0;
+        var okCount = 0;
+        var failed = [];
 
         if (upNameLbl) {
-            upNameLbl.textContent = fileList.length === 1
-                ? fileList[0].name
-                : fileList.length + ' files selected';
+            upNameLbl.textContent = total === 1 ? files[0].name : total + ' files selected';
         }
-        if (upMsg)   upMsg.textContent = 'Transmitting…';
         if (upPCont) upPCont.style.display = 'block';
         if (upPBar)  upPBar.style.width = '0%';
 
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', 'smack-gallery.php', true);
-        xhr.upload.onprogress = function (e) {
-            if (e.lengthComputable && upPBar) {
-                upPBar.style.width = ((e.loaded / e.total) * 100) + '%';
-            }
-        };
-        xhr.onload = function () {
+        function finish() {
             if (upPCont) upPCont.style.display = 'none';
             if (upPBar)  upPBar.style.width = '0%';
-            var res = null;
-            try { res = JSON.parse(xhr.responseText); } catch (e) { /* ignore */ }
-
-            if (xhr.status === 200 && res && res.ok) {
-                if (upMsg) upMsg.textContent = 'Uploaded ' + res.uploaded + ' image' + (res.uploaded === 1 ? '' : 's') + '.';
-            } else if (res && res.errors && res.errors.length) {
-                if (upMsg) upMsg.textContent = 'Uploaded ' + (res.uploaded || 0) + ', ' + res.errors.length + ' failed: ' + res.errors[0];
-            } else {
-                if (upMsg) upMsg.textContent = 'Upload failed.';
+            if (upMsg) {
+                var msg = 'Uploaded ' + okCount + ' of ' + total + ' image' + (total === 1 ? '' : 's');
+                if (failed.length) msg += ' · ' + failed.length + ' failed: ' + failed[0];
+                else msg += '.';
+                upMsg.textContent = msg;
             }
-
             if (upInput) upInput.value = '';
             if (upNameLbl) upNameLbl.textContent = 'No signal selected... or drag & drop here.';
+            if (okCount > 0) { loadCameras(); fetchImages(false); }
+        }
 
-            // Refresh grid + camera list so new images (and any new cameras) show up.
-            if (res && (res.uploaded || 0) > 0) {
-                loadCameras();
-                fetchImages(false);
-            }
-        };
-        xhr.onerror = function () {
-            if (upPCont) upPCont.style.display = 'none';
-            if (upMsg)   upMsg.textContent = 'Network error during upload.';
-        };
-        xhr.send(fd);
+        function sendNext() {
+            if (done >= total) { finish(); return; }
+            var f  = files[done];
+            var fd = new FormData();
+            fd.append('action', 'upload');
+            fd.append('status', upStatus ? upStatus.value : 'published');
+            fd.append('img_file[]', f);
+
+            if (upMsg) upMsg.textContent = 'Transmitting ' + (done + 1) + ' of ' + total + '…';
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', 'smack-gallery.php', true);
+            xhr.onload = function () {
+                var res = null;
+                try { res = JSON.parse(xhr.responseText); } catch (e) { /* ignore */ }
+                if (xhr.status === 200 && res && res.ok && (res.uploaded || 0) > 0) {
+                    okCount++;
+                } else {
+                    var why = (res && res.errors && res.errors.length) ? ': ' + res.errors[0] : '';
+                    failed.push(f.name + why);
+                }
+                done++;
+                if (upPBar) upPBar.style.width = ((done / total) * 100) + '%';
+                sendNext();
+            };
+            xhr.onerror = function () {
+                failed.push(f.name + ': network error');
+                done++;
+                if (upPBar) upPBar.style.width = ((done / total) * 100) + '%';
+                sendNext();
+            };
+            xhr.send(fd);
+        }
+
+        sendNext();
     }
 
     if (upZone) {

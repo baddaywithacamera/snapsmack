@@ -376,12 +376,14 @@ include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
-<link rel="stylesheet" href="assets/css/ss-engine-gallery.css?v=081L">
+<link rel="stylesheet" href="assets/css/ss-engine-gallery.css?v=082L">
 
 <div class="main">
     <div class="header-row header-row--ruled">
         <h2>MEDIA GALLERY</h2>
         <span class="dim" id="gallery-count"><?php echo number_format($total_images); ?> images</span>
+        <button type="button" class="btn-smack btn-smack--dim gallery-select-toggle" id="gal-select-mode"
+                title="Turn on to select images by clicking them, then delete from the bar below.">Select</button>
     </div>
 
     <!-- ── UPLOAD (INJECT POST IMAGES) ──────────────────────────────────── -->
@@ -534,7 +536,7 @@ include 'core/sidebar.php';
     </div>
 </div>
 
-<script src="assets/js/ss-engine-gallery.js?v=081L"></script>
+<script src="assets/js/ss-engine-gallery.js?v=082L"></script>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
