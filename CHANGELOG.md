@@ -10,6 +10,33 @@
 
 # SnapSmack Changelog
 
+## 0.7.512 — 2026-08-09
+
+- **Honest API-key expiry.** An expired key (still active, past its expiry) used
+  to show under **ACTIVE KEYS** in Admin → API Keys while its own row already
+  read "EXPIRED", and every rejected request returned a vague "Invalid or
+  revoked API key." Now: expired keys move to a dedicated **EXPIRED KEYS**
+  section, out of ACTIVE; the API returns a distinct
+  `{"error":"API key expired …","code":"key_expired"}`; and Smack Up Your Backup
+  surfaces that ("API KEY EXPIRED — generate a new key …") instead of a raw
+  `401`. `is_active` still means *manually revoked*, so expired and revoked stay
+  distinct. Security is unchanged — an expired key is still rejected, never
+  authenticated.
+
+- **Multisite: refuse a track flip that would silently strand a spoke.** Moving
+  a spoke from BITCHIN' (dev) to BORING (stable) while it runs a dev build ahead
+  of the current stable release would leave it reporting "up-to-date" forever
+  with no way to receive code-level fixes. The hub and the spoke's own track
+  endpoint now refuse that flip with a clear message that names the version and
+  the consequence, overridable per-action with an explicit `force_track`.
+  Fetch-free — the flip never depends on snapsmack.ca being reachable.
+
+- **Media Gallery bulk bar: one compact row, DELETE isolated in red.** The
+  bulk-action buttons were stacked full-width and DELETE rendered the same green
+  as Publish/Draft (a class-name mismatch hid its danger styling). Now a compact
+  single row with DELETE red and pushed apart from the safe actions, so a
+  dropped click can't land on it.
+
 ## 0.7.511 — 2026-08-09
 
 - **Media Gallery: bulk upload is no longer capped at ~20 images.** The uploader
