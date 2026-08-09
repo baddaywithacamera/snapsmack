@@ -73,8 +73,8 @@ include __DIR__ . '/includes/header.php';
         <div class="page-body">
 
             <h2>The situation, plainly</h2>
-            <p>SnapSmack is co-authored by a human and an AI. The human is Sean McCormick. The AI is Claude, made by Anthropic. You can see both names in the license file. We are not shy about this.</p>
-            <p>This project is a Human/AI collaboration — architecture decisions, security audits, code review, the works. That's honest. What is also honest is that it raises a question worth addressing directly: AI models are trained on data scraped from the internet. Some of that data is code. Some of that code belongs to people who never consented to have it used as training material. The provenance of what went into making Claude is, frankly, murky. That is not Claude's fault. But it's a real thing.</p>
+            <p>SnapSmack is co-authored by a human and AI partners. The human is Sean McCormick. The AI co-authors are Claude (Anthropic) and OpenAI Codex. All three are named in the <a href="licenses/SNAPSMACK-LICENSE.txt">full Smack Public License</a>. We are not shy about this.</p>
+            <p>This project is a Human/AI collaboration — architecture decisions, security audits, code review, the works. That's honest. What is also honest is that it raises a question worth addressing directly: AI models are trained on data scraped from the internet. Some of that data is code. Some of that code belongs to people who never consented to have it used as training material. The provenance of what shaped these models is, frankly, murky. That is not the models' fault. But it's a real thing.</p>
             <p>Our answer to that is simple: if the raw material might have come from the commons, then what we make with it goes back to the commons. Permanently. No exceptions.</p>
 
             <h2>Fruit of the poisoned tree</h2>
@@ -88,13 +88,13 @@ include __DIR__ . '/includes/header.php';
             </div>
 
             <h2>The Smack Public License (SPL)</h2>
-            <p>SnapSmack is released under the Smack Public License — a copyleft license that means:</p>
+            <p>SnapSmack is released under the <a href="licenses/SNAPSMACK-LICENSE.txt">Smack Public License 2.1</a> — a copyleft license that means:</p>
             <ul>
                 <li>SnapSmack is free to use, modify, and redistribute.</li>
                 <li>If you build something on top of SnapSmack and distribute it, your version must also be free and open-source under the same terms. You cannot take this codebase, change the logo, and sell it as a subscription SaaS. That path is closed.</li>
-                <li>The full license text is in the repository. It includes an Ethical Provenance Summary that lays out the AI co-authorship and explains why we chose copyleft. It's actually readable, which is unusual for a license document.</li>
+                <li><a href="licenses/SNAPSMACK-LICENSE.txt">The full license text</a> is available here and in the repository. It includes an Ethical Provenance Summary that lays out the AI co-authorship and explains why we chose copyleft. It's actually readable, which is unusual for a license document.</li>
             </ul>
-            <p>We did not go with a standard open-source license like GPL or MIT because we wanted to say the quiet part loud — the AI provenance thing, the "vibe coded" disclosure, the co-author credit for Claude. Standard licenses don't have fields for that. So we wrote our own.</p>
+            <p>We did not go with a standard open-source license like GPL or MIT because we wanted to say the quiet part loud — the AI provenance thing, the "vibe coded" disclosure, and the co-author credit for Claude and OpenAI Codex. Standard licenses don't have fields for that. So we wrote our own.</p>
             <p>The SPL is not anti-commercial. Run SnapSmack for your own business if it does the job. Sell services around it — fold it into a hosting plan, or charge a fee to install and run it for someone who can't do that themselves. Make a living off the work you do with it; that is the whole point of owning your tools. What you cannot do is sell the software itself, or take the code and turn it into a closed, proprietary product. The code stays open and the software stays free for whoever ends up with it. Everything else is up to you.</p>
             <p>Hosting providers are welcome to include a SnapSmack installer in their cPanel or hosting control panel once SnapSmack reaches public release (planned for 2027). We appreciate the support. The same terms apply — the software stays free and open for whoever installs it.</p>
 
@@ -104,15 +104,15 @@ include __DIR__ . '/includes/header.php';
             <p>The reason is the same reason as everything else on this page. If the material that helped build this came from the commons, then all of it goes back — not a curated slice, not just the parts we don't mind parting with. All of it. Anyone who forks SnapSmack gets the whole working system on day one: the engine, every skin, and every tool we use to run our own sites. The full meal deal, right out of the gate. You can read this whole site top to bottom and you will not find a corner where we quietly held something back, because there isn't one. That's rather the point.</p>
 
             <h2>The Thomas Clause</h2>
-            <p>Buried in the SPL is a specific addendum called the Thomas Clause. You should know about this.</p>
+            <p>Buried in the SPL is a specific addendum called <a href="licenses/THE-THOMAS-CLAUSE.txt">the Thomas Clause</a>. You should know about this.</p>
             <p>Somewhere inside SnapSmack is a harmless Easter egg named 'Thomas the Bear'. The bear's name is Thomas. He's a real bear — Noah's bear, always and forever. The Easter egg is a tribute to Noah Grey, who created Greymatter and was one of the original photobloggers back when the internet was young and weird and full of people trying to make something honest.</p>
             <p>Noah Grey was (and still is to many) a big deal. He built tools that let photographers own their archives before anyone had thought to call that radical. SnapSmack exists in that lineage. Thomas the bear keeps that connection alive.</p>
-            <p>The Thomas Clause is simple: Thomas must persist in all forks and derivatives. He must be credited to Noah Grey. Removing Thomas from a fork of SnapSmack is a violation of the license. The penalty specified in Section 3.1 of the Thomas Clause is flaming ass herpes. We are not making this up.</p>
+            <p><a href="licenses/THE-THOMAS-CLAUSE.txt">The Thomas Clause</a> is simple: Thomas must persist in all forks and derivatives. He must be credited to Noah Grey. Removing Thomas from a fork of SnapSmack is a violation of the license. The penalty specified in Section 3.1 of the Thomas Clause is flaming ass herpes. We are not making this up.</p>
             <p>It is, as the clause puts it, "a small act of love." We think that's worth preserving.</p>
 
             <div class="callout">
-                <p><strong>On AI and credit:</strong> The SPL names Claude (Anthropic) as a co-author alongside Sean McCormick. This is not a boast and not a disclaimer — it is just accurate. Code review, security audits, architectural decisions, and a significant portion of the implementation were done in collaboration with an AI. Pretending otherwise would be dishonest. If that makes you uncomfortable, we'd gently suggest that what makes people uncomfortable about AI in creative work is usually the dishonesty around it, not the use itself. We are being honest about it. That should count for something.</p>
-                <p>Gemini (Google) also contributed to early sessions. It's in the credits. It also overwrote code and added features nobody asked for in January 2026 — not a vendor complaint, just the honest record.</p>
+                <p><strong>On AI and credit:</strong> The SPL names Claude (Anthropic) and OpenAI Codex as AI co-authors alongside Sean McCormick. This is not a boast and not a disclaimer — it is just accurate. Architecture, implementation, code review, security audits, recovery design, federation work, and documentation were produced through those collaborations. Pretending otherwise would be dishonest. If that makes you uncomfortable, we'd gently suggest that what makes people uncomfortable about AI in creative work is usually the dishonesty around it, not the use itself. We are being honest about it. That should count for something.</p>
+                <p>Claude became the principal implementation partner as the system grew, and OpenAI Codex joined later as a genuine co-author through implementation, review, security, recovery, federation, release, and documentation work. Early foundation work involved Google Gemini; little of it survived into the shipping codebase, and it is not credited as a co-author. We note it here because being open about the code means being open about its history too — including the parts that didn't work out.</p>
             </div>
 
             <h2>The short version</h2>
@@ -120,7 +120,7 @@ include __DIR__ . '/includes/header.php';
             <p>Also, Thomas the bear must stay in the code forever. Non-negotiable.</p>
             <p>Hairy muff.</p>
 
-            <p class="updated">Last updated: June 2026</p>
+            <p class="updated">Last updated: August 2026</p>
 
         </div>
     </div>

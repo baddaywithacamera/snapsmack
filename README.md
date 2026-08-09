@@ -9,7 +9,7 @@
 
 **Home:** [snapsmack.ca](https://snapsmack.ca) · **Live in the wild:** [foreverphotograph.ing](https://foreverphotograph.ing)
 
-**Built by [Sean McCormick](https://github.com/baddaywithacamera), [Claude](https://www.anthropic.com/claude), [Google Gemini](https://gemini.google.com/), and [OpenAI Codex](https://openai.com/codex/) — a photographer and AI co-authors, in genuine partnership.** This isn't autocomplete bolted onto a side project; it's real co-authorship. The [SMACK PUBLIC LICENSE](#license--the-smack-public-license-spl-20) exists in part to keep that credit permanent, not decorative.
+**Built by [Sean McCormick](https://github.com/baddaywithacamera), [Claude](https://www.anthropic.com/claude), and [OpenAI Codex](https://openai.com/codex/) — a photographer and AI co-authors, in genuine partnership.** This isn't autocomplete bolted onto a side project; it's real co-authorship. The [SMACK PUBLIC LICENSE](#license--the-smack-public-license-spl-21) exists in part to keep that credit permanent, not decorative.
 
 ---
 
@@ -59,9 +59,9 @@ Point a PHP/MySQL host at the code and run the setup. Full instructions at **[sn
 
 ---
 
-## License — the SMACK PUBLIC LICENSE (SPL) 2.0
+## License — the SMACK PUBLIC LICENSE (SPL) 2.1
 
-SNAPSMACK is public and free to read, run, and self-host. It's licensed under the **SMACK PUBLIC LICENSE 2.0**, together with **THE THOMAS CLAUSE** — deliberately *not* the GPL.
+SNAPSMACK is public and free to read, run, and self-host. It's licensed under the **SMACK PUBLIC LICENSE 2.1**, together with **THE THOMAS CLAUSE** — deliberately *not* the GPL.
 
 Most licenses govern who may *use* the code. The SPL is pointed at something else: **honesty and historical continuity.** It gives the software to everyone, and it refuses to let anyone hide where it came from or erase the people — and the AI co-authors — who made it.
 
@@ -71,5 +71,5 @@ Full terms: [`licenses/SNAPSMACK-LICENSE.txt`](licenses/SNAPSMACK-LICENSE.txt) a
 
 ## Credits
 
-Conceived, directed, and owned by **Sean McCormick**, built in genuine collaboration with AI co-authors — **Claude** (Anthropic), **Google Gemini**, and **OpenAI Codex**. That partnership isn't incidental to SNAPSMACK. It's the point.
+Conceived, directed, and owned by **Sean McCormick**, built in genuine collaboration with AI co-authors — **Claude** (Anthropic) and **OpenAI Codex**. That partnership isn't incidental to SNAPSMACK. It's the point.
 <!-- ===== SNAPSMACK EOF ===== -->

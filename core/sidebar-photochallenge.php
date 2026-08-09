@@ -17,7 +17,13 @@ $_pc_sections = [
         'smack-fediverse.php', 'smack-dms.php', 'smack-smackverse.php',
         'smack-sv-followers.php', 'smack-sv-tools.php',
     ],
-    'turbo-boost' => ['smack-photochallenge.php', 'smack-skin.php'],
+    'pimp' => [
+        'smack-globalvibe.php', 'smack-masthead.php', 'smack-skin.php',
+        'smack-menu.php', 'smack-social-dock.php', 'smack-css.php',
+        'smack-scripts.php', 'smack-appearance-archive.php',
+        'smack-appearance-solo.php', 'smack-appearance-static.php',
+    ],
+    'turbo-boost' => ['smack-photochallenge.php'],
     'boring' => [
         'smack-settings.php', 'smack-users.php', 'smack-2fa.php',
         'smack-maintenance.php', 'smack-fingerprints.php', 'smack-backup.php',
@@ -70,6 +76,25 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                 </ul>
             </div>
 
+            <div class="nav-section<?php echo $_pc_active === 'pimp' ? ' open' : ''; ?>" data-section="pimp">
+                <button type="button" class="nav-section-toggle">
+                    <span class="nav-section-label">PIMP YOUR RIDE</span>
+                    <span class="nav-section-arrow"></span>
+                </button>
+                <ul class="nav-section-links">
+                    <li class="<?php echo $_pc_active_class('smack-globalvibe.php'); ?>"><a href="smack-globalvibe.php">Global Vibe</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-masthead.php'); ?>"><a href="smack-masthead.php">Masthead Cover</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-skin.php'); ?>"><a href="smack-skin.php">Smooth Your Skin</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-menu.php'); ?>"><a href="smack-menu.php">Menu Manager</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-social-dock.php'); ?>"><a href="smack-social-dock.php">Social Dock</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-css.php'); ?>"><a href="smack-css.php">Smack Your CSS Up!</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-scripts.php'); ?>"><a href="smack-scripts.php">Smack Your Scripts Up!</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-appearance-archive.php'); ?>"><a href="smack-appearance-archive.php">Archive Appearance</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-appearance-solo.php'); ?>"><a href="smack-appearance-solo.php">Solo Image Appearance</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-appearance-static.php'); ?>"><a href="smack-appearance-static.php">Static Page Appearance</a></li>
+                </ul>
+            </div>
+
             <div class="nav-section<?php echo $_pc_active === 'turbo-boost' ? ' open' : ''; ?>" data-section="turbo-boost">
                 <button type="button" class="nav-section-toggle">
                     <span class="nav-section-label">CHALLENGE ME</span>
@@ -77,7 +102,6 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                 </button>
                 <ul class="nav-section-links">
                     <li class="<?php echo $_pc_active_class('smack-photochallenge.php'); ?>"><a href="smack-photochallenge.php">Contest &amp; Feed</a></li>
-                    <li class="<?php echo $_pc_active_class('smack-skin.php'); ?>"><a href="smack-skin.php">Smooth Your Skin</a></li>
                 </ul>
             </div>
 
