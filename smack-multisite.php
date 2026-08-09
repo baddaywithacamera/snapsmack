@@ -415,11 +415,34 @@ if (isset($_POST['set_spoke_track'])) {
             if (!$tn) {
                 $err = 'Spoke not found.';
             } else {
+                // Guard: never let a dev-build spoke be silently stranded on the
+                // stable track. If it runs a dev build (version ends in D) and the
+                // hub is flipping it to BORING (stable), the updater will report
+                // up_to_date forever (stable trails the dev build) and code-level
+                // VAX fixes cannot reach it. Refuse unless the one-shot force_track
+                // override is present. Fetch-free: judged on the spoke's reported
+                // version with no snapsmack.ca round-trip, so the flip never depends
+                // on SC being reachable.
+                // Dev build = version ends in a digit + D (mirrors core updater's
+                // updater_is_dev_version(), inlined deliberately: requiring
+                // core/updater.php here would run its include-time .htaccess
+                // self-heal + pubkey plant on every flip, which a track change
+                // must not trigger).
+                $spoke_ver    = (string)($tn['software_version'] ?? '');
+                $spoke_is_dev = (bool) preg_match('/\d[Dd]$/', trim($spoke_ver));
+                if ($track === 'stable' && $spoke_is_dev && empty($_POST['force_track'])) {
+                    $err = 'Refused: ' . ($tn['site_name'] ?? $tn['site_url']) . ' runs dev build '
+                         . $spoke_ver . ', which is ahead of the current stable release. Moving it to '
+                         . 'the BORING (stable) track would stop all updates AND block code-level VAX '
+                         . 'fixes until a stable release passes ' . $spoke_ver . '. To actually downgrade, '
+                         . 'reinstall a stable build on that spoke. (Re-submit with the force override to '
+                         . 'proceed anyway.)';
+                } else {
                 $ch = curl_init();
                 curl_setopt_array($ch, [
                     CURLOPT_URL            => rtrim($tn['site_url'], '/') . '/api.php?route=multisite/updates/track',
                     CURLOPT_POST           => true,
-                    CURLOPT_POSTFIELDS     => json_encode(['track' => $track]),
+                    CURLOPT_POSTFIELDS     => json_encode(!empty($_POST['force_track']) ? ['track' => $track, 'force_track' => 1] : ['track' => $track]),
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_SSL_VERIFYPEER => true,
                     CURLOPT_TIMEOUT        => 15,
@@ -478,7 +501,7 @@ if (isset($_POST['set_spoke_track'])) {
                         curl_setopt_array($rch, [
                             CURLOPT_URL            => rtrim($tn['site_url'], '/') . '/api.php?route=multisite/updates/track',
                             CURLOPT_POST           => true,
-                            CURLOPT_POSTFIELDS     => json_encode(['track' => $track]),
+                            CURLOPT_POSTFIELDS     => json_encode(!empty($_POST['force_track']) ? ['track' => $track, 'force_track' => 1] : ['track' => $track]),
                             CURLOPT_RETURNTRANSFER => true,
                             CURLOPT_SSL_VERIFYPEER => true,
                             CURLOPT_TIMEOUT        => 15,
@@ -507,6 +530,7 @@ if (isset($_POST['set_spoke_track'])) {
                         ->execute([$track, $spoke_id]);
                     $msg = ($tn['site_name'] ?? $tn['site_url']) . ' is now on the '
                          . ($track === 'dev' ? "BITCHIN'" : 'BORING') . ' track.';
+                }
                 }
             }
         }
