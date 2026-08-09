@@ -376,7 +376,7 @@ include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
-<link rel="stylesheet" href="assets/css/ss-engine-gallery.css?v=082L">
+<link rel="stylesheet" href="assets/css/ss-engine-gallery.css?v=083L">
 
 <div class="main">
     <div class="header-row header-row--ruled">

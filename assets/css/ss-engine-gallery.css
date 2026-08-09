@@ -160,6 +160,35 @@
     font-size: 13px;
     color: var(--text, #ccc);
 }
+/* The global .btn-smack is width:100% / height:52px / margin-top:30px — inside a
+   flex-wrap bar that stacks every action full-width. Override in the bar only so
+   the actions sit in one compact row (big enough to hit, not monster-sized). */
+.gallery-bulk-bar .btn-smack {
+    width: auto;
+    flex: 0 0 auto;
+    height: 34px;
+    margin-top: 0;
+    padding: 0 16px;
+    font-size: 0.72rem;
+    letter-spacing: 0.5px;
+}
+.gallery-bulk-bar .gallery-select--sm {
+    height: 34px;
+    margin-top: 0;
+}
+/* DELETE is destructive. The button's `btn-smack--danger` class never matched
+   the master CSS's `.btn-smack.btn-danger`, so it rendered as a plain green
+   button — indistinguishable from Publish/Draft. Make it unmistakably red and
+   push it to the far right, set apart from the safe actions, so a dropped or
+   mis-aimed click can't land on it. Targeted by data-bulk (reliable). */
+.gallery-bulk-bar [data-bulk="delete"] {
+    margin-left: auto;
+    background-color: #cc4444;
+    color: #fff;
+}
+.gallery-bulk-bar [data-bulk="delete"]:hover {
+    filter: brightness(1.1);
+}
 
 /* ── GALLERY GRID ────────────────────────────────────────────────────── */
 .gallery-grid {
