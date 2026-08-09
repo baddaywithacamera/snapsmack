@@ -35,6 +35,14 @@
   changed; this version bump exists because authorship provenance must be
   exact and historically auditable.
 
+- **Photo-challenge: a DAILY (test) qualifying-window mode.** Contest & Feed now
+  exposes a QUALIFYING WINDOW selector. WEEKLY (default) is the real Photo-Friday
+  cadence — Thursday 10:00 → Saturday 12:00 UTC; DAILY is a test/demo mode, a
+  rolling 24-hour window that is always open, so entries qualify any day without
+  waiting for Friday. It drives the existing `photochallenge_window_mode` setting
+  that `pc_window()` already honoured but which previously had no admin control —
+  so the challenge board could not be tested or demoed outside the live window.
+
 ## 0.7.509 "<codename TBD — Sean>" — 2026-08-08
 
 - **FULL MONTY alpha skin.** A SMACKONEOUT photograph now becomes its own
