@@ -10,6 +10,26 @@
 
 # SnapSmack Changelog
 
+## 0.7.511 — 2026-08-09
+
+- **Media Gallery: bulk upload is no longer capped at ~20 images.** The uploader
+  sent every selected file in a single POST, which PHP silently truncated to
+  `max_file_uploads` (default 20) and `post_max_size` — so a 50-image drop
+  landed ~20 with no error at all. Files are now sent **one request at a time**,
+  sidestepping both caps, so any batch size works regardless of the server's
+  php.ini. Progress reports per file ("Transmitting 7 of 50…", "Uploaded X of
+  Y") and names any failures. Each individual file still obeys
+  `upload_max_filesize` — a per-photo limit, not a per-batch one.
+
+- **Media Gallery: a Select mode for click-to-select and bulk delete.** A new
+  **Select** toggle turns every tile into a whole-tile click target — no
+  ctrl-click, no tiny per-tile checkbox — then Delete in the bulk bar removes
+  the chosen images. **Done** exits select mode and clears the selection.
+
+- **Dropped two unused fjGallery copies.** `fjGallery.js` and
+  `fjGallery.esm.min.js` shipped in every install but were referenced nowhere;
+  only `fjGallery.min.js` is actually loaded. Removed.
+
 ## 0.7.510 "PHOTO FRIYAY" — 2026-08-08
 
 - **Security: removed every server-side skin-upload path. Skins now enter only

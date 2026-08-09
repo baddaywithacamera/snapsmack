@@ -276,6 +276,23 @@
     border: 1px solid rgba(255, 255, 255, 0.38);
 }
 
+/* ── SELECT MODE ───────────────────────────────────────────────────────── */
+.gallery-select-toggle {
+    margin-left: 12px;
+}
+.gallery-select-toggle.active {
+    background: var(--accent, #7aad5a);
+    color: #111;
+}
+/* In select mode the whole tile is the click target — make that obvious. */
+.gallery-grid.gallery-selecting .gallery-card {
+    cursor: pointer;
+}
+.gallery-grid.gallery-selecting .gallery-card:hover {
+    outline: 2px solid var(--accent, #7aad5a);
+    outline-offset: -2px;
+}
+
 /* ── LOAD MORE ───────────────────────────────────────────────────────── */
 .gallery-load-more {
     text-align: center;
