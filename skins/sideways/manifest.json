@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "name": "SIDEWAYS",
+  "version": "0.1.0",
+  "author": "Sean McCormick & OpenAI Codex",
+  "support": "sean@baddaywithacamera.ca",
+  "description": "A quiet wall of fixed 3:2 landscape plates. Four level rows rest for long stretches, then one row glides sideways and stops wherever it pleases.",
+  "status": "alpha",
+  "minimum_published_images": 200,
+  "modes": ["photoblog"],
+  "features": {
+    "supports_wall": true,
+    "has_landing": true,
+    "post_modes": ["image"],
+    "instagram_mode": false,
+    "carousel": false,
+    "community": ["likes", "comments"],
+    "archive_layouts": ["justified"]
+  },
+  "require_scripts": ["smack-footer", "smack-image-fade-load", "smack-lazyload", "smack-sideways", "smack-community", "smack-keyboard", "smack-lightbox"],
+  "community_comments": true,
+  "community_likes": true,
+  "community_reactions": false,
+  "social_dock": {"position":"inline","color_mode":"light","icon_style":"outline","shadow":false},
+  "options": {
+    "sideways_gap": {"section":"SIDEWAYS WALL","type":"range","label":"Space Between Plates","default":"12","min":"0","max":"36","step":"1","selector":":root","property":"--sideways-gap","unit":"px"},
+    "sideways_radius": {"section":"SIDEWAYS WALL","type":"range","label":"Plate Corner Radius","default":"4","min":"0","max":"28","step":"1","selector":":root","property":"--sideways-radius","unit":"px"},
+    "sideways_rest_min": {"section":"MOVEMENT","type":"range","label":"Shortest Rest","hint":"Minimum pause between row movements.","default":"4","min":"2","max":"15","step":"1"},
+    "sideways_rest_max": {"section":"MOVEMENT","type":"range","label":"Longest Rest","hint":"Maximum pause between row movements.","default":"9","min":"4","max":"30","step":"1"},
+    "sideways_background": {"section":"COLOUR","type":"color","label":"Canvas Colour","default":"#f4f2ed","selector":":root","property":"--sideways-bg"},
+    "sideways_overlay_color": {"section":"COLOUR","type":"color","label":"Overlay Text Colour","default":"#171717","selector":":root","property":"--sideways-ink"}
+  }
+}

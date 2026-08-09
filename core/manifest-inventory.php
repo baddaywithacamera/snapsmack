@@ -974,6 +974,11 @@ return [
             'path'         => 'assets/js/ss-engine-glide.js',
             'has_settings' => false,
         ],
+        'smack-sideways' => [
+            'label'        => 'SIDEWAYS intermittent landscape wall (data-sideways-wall / -row)',
+            'path'         => 'assets/js/ss-engine-sideways.js',
+            'has_settings' => false,
+        ],
         // General-purpose film engines — live in the CMS library (/assets/js),
         // not a skin. Originated in Chaplin; any skin may require these handles.
         // (Layer 2 will parameterise the DOM hooks so a skin needn't reproduce

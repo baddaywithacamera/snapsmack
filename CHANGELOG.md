@@ -12,6 +12,15 @@
 
 ## 0.7.510 "PHOTO FRIYAY" — 2026-08-08
 
+- **SIDEWAYS alpha skin.** A SMACKONEOUT-only, full-window wall of fixed 3:2
+  landscape plates runs four dead-level rows with no page scrolling. Long rests
+  dominate; one recency-weighted row at a time travels between one and ten
+  plates, adjacent rows alternate direction, and deliberately imperfect stops
+  leave the composition off-centre. Hover or keyboard focus freezes that row,
+  reduced-motion disables the scheduler, and the shared `smack-sideways` engine
+  lives in core rather than inside the skin package. Its manifest declares a
+  200-published-photograph floor, enforced by both activation paths.
+
 - **INSTANT CAMERA: the polaroid tile shows the whole print, not just the image
   window.** The light-table tile aspect was `79/97` — the proportion of the
   exposed photo aperture alone — so the thumbnail cropped to the image and clipped

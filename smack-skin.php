@@ -171,6 +171,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
             if ($slug === '' || !is_dir($skin_dir) || !is_file($skin_dir . '/manifest.json')) {
                 $gallery_err = 'That skin is not installed.';
             } else {
+                $_man = load_skin_manifest($slug);
+                $_requirement_error = snapsmack_skin_activation_requirement($pdo, $_man);
+                if ($_requirement_error !== '') {
+                    $gallery_err = $_requirement_error;
+                } else {
                 $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
                     ->execute([$slug, $slug]);
                 $gallery_msg = 'Skin "' . $slug . '" is now active.';
@@ -178,7 +183,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
                 // Keep site_mode in lockstep with the activated skin — same rule
                 // as the Customize-tab activation: a single-mode skin whose mode
                 // differs from the current site_mode switches the site to it.
-                $_man   = load_skin_manifest($slug);
                 $_modes = (is_array($_man) && isset($_man['modes']) && is_array($_man['modes']))
                           ? array_values($_man['modes']) : [];
                 if (count($_modes) === 1 && in_array($_modes[0], ['photoblog', 'carousel', 'smacktalk'], true)) {
@@ -195,6 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
                 if (is_file(__DIR__ . '/core/page-cache.php')) {
                     require_once __DIR__ . '/core/page-cache.php';
                     if (function_exists('page_cache_purge_all')) page_cache_purge_all();
+                }
                 }
             }
         }
@@ -494,9 +499,15 @@ if (isset($_POST['save_skin_settings'])) {
             ->execute([$_POST['active_skin_variant'], $_POST['active_skin_variant']]);
     }
 
-    $active_skin = $_POST['active_skin_target'] ?? $target_skin;
-    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
-        ->execute([$active_skin, $active_skin]);
+    $active_skin = preg_replace('/[^a-z0-9_\-]/', '', $_POST['active_skin_target'] ?? $target_skin);
+    $_activation_error = snapsmack_skin_activation_requirement($pdo, load_skin_manifest($active_skin));
+    if ($_activation_error !== '') {
+        $_SESSION['gallery_flash'] = $_activation_error;
+        $active_skin = (string)($settings['active_skin'] ?? $target_skin);
+    } else {
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+            ->execute([$active_skin, $active_skin]);
+    }
 
     // Keep site_mode in lockstep with the activated skin. Each skin declares the
     // mode(s) it's built for in its manifest ('modes'). When a skin supports
