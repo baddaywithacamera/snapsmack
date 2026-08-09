@@ -1178,6 +1178,29 @@ if ($resource === 'updates' && $sub_action === 'track' && $method === 'POST') {
         ms_err('track must be stable or dev', 400);
     }
 
+    // Guard: a spoke must not silently strand itself. If THIS install runs a dev
+    // build (version ends in D) and it is being moved to the stable track, its
+    // updater will report up_to_date forever and code-level VAX fixes cannot
+    // reach it. Refuse unless the one-shot force_track override is in the body.
+    // Fetch-free — judged on this install's own version, no snapsmack.ca call.
+    // Mirrors the hub-side guard in smack-multisite.php: the check belongs where
+    // the state actually changes, not only on the hub path.
+    //
+    // D-suffix test is inlined (byte-identical to core updater's
+    // updater_is_dev_version) deliberately: requiring updater.php here would run
+    // its include-time .htaccess self-heal + pubkey plant on every track-set
+    // request, which a track change must not trigger.
+    $self_is_dev = (bool) preg_match('/\d[Dd]$/', trim(SNAPSMACK_VERSION_SHORT));
+    if ($track === 'stable' && $self_is_dev && empty($body['force_track'])) {
+        ms_err(
+            'Refused: this site runs dev build ' . SNAPSMACK_VERSION_SHORT . ', which is ahead of the '
+            . 'current stable release. Switching to the stable track would stop all updates and block '
+            . 'code-level VAX fixes until a stable release passes ' . SNAPSMACK_VERSION_SHORT
+            . '. To downgrade, reinstall a stable build. Resend with force_track=1 to override.',
+            409
+        );
+    }
+
     $pdo->prepare(
         "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('update_track', ?)
          ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
