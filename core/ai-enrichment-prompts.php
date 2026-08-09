@@ -226,6 +226,10 @@ function snap_ai_vision_prompt(
         $tags_guidance = 'Use descriptive hashtags for subject, texture, colour, and mood.';
     }
 
+    // NOTE (512D ALT): the ALT guidance below is the mechanism. The highest-
+    // leverage quality tuning is a few of Sean's mom's-standard example ALTs
+    // injected here as few-shot exemplars (refinement #6, pending his input) —
+    // see _continuity/2026-08-09-enrichment-once-and-alt-accessibility.md.
     return <<<PROMPT
 You are generating metadata for a photo blog post on a site called SnapSmack.
 
@@ -233,6 +237,7 @@ Analyse the image carefully and respond ONLY in this exact format — no extra t
 
 TITLE: <a short, plain, descriptive title — a few words, e.g. "Drumheller water tower at dusk". NOT a haiku, not poetic.>
 CAPTION: <a short, natural one-line caption describing the image — this becomes the post's caption/description. No hashtags.>
+ALT: <accessibility description for a screen reader: a literal, factual description of what is visibly in the frame. Lead with the main subject, be concrete and specific, one or two plain sentences. Do NOT begin with "image of" or "photo of". This is NOT the caption — describe what is seen, not mood or a clever line.>
 TAGS: <5 to 8 space-separated hashtags, e.g. #stone #rust #texture #macro #urban>
 CATEGORY: <pick every applicable match from this list, comma-separated, or leave blank:{$cats_str}>
 ALBUM: <pick every applicable match from this list, comma-separated, or leave blank:{$albums_str}>
@@ -241,6 +246,7 @@ COLORS: <the three most visually prominent colors in the image as uppercase hex 
 Rules:
 - TITLE must be a short, plain description of what is literally in the image — not a haiku, not poetic
 - CAPTION is the post's caption/description: one natural line, no hashtags
+- ALT is accessibility text describing the visible content for someone who cannot see the image: lead with the subject, concrete and specific, one or two plain sentences, never beginning with "image of" or "photo of". It is DISTINCT from CAPTION — CAPTION is the author's voice, ALT is a factual description of what is in the frame.
 - {$tags_guidance}
 - Tags must be lowercase with no spaces within a tag
 - Images with multiple distorted specular highlights and swirly blurred bokeh were made with a modified Helios 44 lens; add both #helios and #helios44 to TAGS when those visual characteristics are present
@@ -258,9 +264,9 @@ PROMPT;
  */
 function snap_ai_vision_parse(string $text): array
 {
-    $result = ['title' => '', 'caption' => '', 'tags' => '', 'category' => '', 'album' => '', 'colors' => ''];
+    $result = ['title' => '', 'caption' => '', 'alt' => '', 'tags' => '', 'category' => '', 'album' => '', 'colors' => ''];
     foreach (preg_split('/\r\n|\r|\n/', trim($text)) as $line) {
-        if (preg_match('/^(TITLE|CAPTION|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)/i', trim($line), $m)) {
+        if (preg_match('/^(TITLE|CAPTION|ALT|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)/i', trim($line), $m)) {
             $result[strtolower($m[1])] = trim($m[2]);
         }
     }

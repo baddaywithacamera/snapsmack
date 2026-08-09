@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
   `img_title`           varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL,
   `img_slug`            varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL,
   `img_description`     text           COLLATE utf8mb4_unicode_ci,
+  `img_alt`             varchar(500)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                        COMMENT 'Accessibility ALT text: a literal description of what is visibly in the frame, distinct from img_title (the caption). Emitted as the img alt attribute with img_title as fallback when blank. AI-drafted via mode=vision, human-editable. Store raw; escape with ENT_QUOTES on output.',
   `img_film`            varchar(100)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `img_license`         varchar(100)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                         COMMENT 'Rights/licence label (e.g. Flickr import: "All Rights Reserved", CC BY 2.0). Optional; surfaced per-image.',
