@@ -308,138 +308,17 @@ if ($resource === 'skin' && $method === 'GET') {
 }
 
 // =============================================================================
-// ENDPOINT: POST ohsnap/skin/push
-// Upload a skin zip. Oh Snap! sends multipart/form-data with:
-//   skin_zip  — the .zip file
-//   activate  — '1' to make it the active skin after install
+// ENDPOINT: POST ohsnap/skin/push — REMOVED 2026-08-09 (security)
+// A server endpoint that received a ZIP and unpacked it into the live skins/
+// directory is remote-code-execution by design: receiving and unzipping an
+// untrusted archive is itself attack surface (zip-parser and upload-handling
+// zero-days), and a skin contains executable PHP. Skins now enter ONE way —
+// through git, examined locally by the owner first. Oh Snap! saves a .zip /
+// opens the mail client so a submission is reviewed BEFORE it can reach the
+// server. This route is refused unconditionally and reads no request body.
 // =============================================================================
-if ($resource === 'skin' && $sub === 'push' && $method === 'POST') {
-    if (empty($_FILES['skin_zip'])) {
-        os_err('skin_zip file is required');
-    }
-
-    $upload  = $_FILES['skin_zip'];
-    $activate = ($_POST['activate'] ?? '0') === '1';
-
-    if ($upload['error'] !== UPLOAD_ERR_OK) {
-        os_err('Upload error code: ' . $upload['error']);
-    }
-
-    // Validate it's actually a zip
-    $finfo = new finfo(FILEINFO_MIME_TYPE);
-    $mime  = $finfo->file($upload['tmp_name']);
-    if (!in_array($mime, ['application/zip', 'application/x-zip-compressed'], true)) {
-        os_err('Uploaded file is not a zip archive');
-    }
-
-    $skins_dir = dirname(__DIR__) . '/skins/';
-    $tmp_dir   = sys_get_temp_dir() . '/ohsnap_push_' . bin2hex(random_bytes(8)) . '/';
-    mkdir($tmp_dir, 0755, true);
-
-    try {
-        $zip = new ZipArchive();
-        if ($zip->open($upload['tmp_name']) !== true) {
-            os_err('Could not open zip archive');
-        }
-        for ($zi = 0; $zi < $zip->numFiles; $zi++) {
-            $entry = str_replace('\\', '/', (string)$zip->getNameIndex($zi));
-            $parts = explode('/', $entry);
-            if ($entry === '' || str_contains($entry, "\0") || str_starts_with($entry, '/')
-                || preg_match('/^[a-zA-Z]:\//', $entry) || in_array('..', $parts, true)) {
-                $zip->close();
-                os_err('Unsafe path in skin ZIP archive');
-            }
-        }
-        $zip->extractTo($tmp_dir);
-        $zip->close();
-
-        // Expect either a direct skin directory or a single wrapper folder
-        $entries = array_diff(scandir($tmp_dir), ['.', '..']);
-        $skin_dir_candidate = $tmp_dir;
-
-        if (count($entries) === 1 && is_dir($tmp_dir . reset($entries))) {
-            // Single wrapper folder — descend into it
-            $skin_dir_candidate = $tmp_dir . reset($entries) . '/';
-            $entries = array_diff(scandir($skin_dir_candidate), ['.', '..']);
-        }
-
-        // Validate: must contain inert manifest.json and style.css
-        if (!file_exists($skin_dir_candidate . 'manifest.json') || !file_exists($skin_dir_candidate . 'style.css')) {
-            os_err('Invalid skin package: missing manifest.json or style.css');
-        }
-
-        // Read the skin slug from the manifest
-        try {
-            $skin_manifest = json_decode((string)file_get_contents($skin_dir_candidate . 'manifest.json'), true, 64, JSON_THROW_ON_ERROR);
-        } catch (Throwable $e) {
-            os_err('Could not parse skin manifest');
-        }
-
-        $skin_name = $skin_manifest['name'] ?? '';
-        if (!$skin_name) {
-            os_err('Skin manifest is missing a name');
-        }
-
-        $skin_slug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $skin_name));
-        $dest_dir  = $skins_dir . $skin_slug . '/';
-
-        // Install — overwrite if already exists
-        if (is_dir($dest_dir)) {
-            // Wipe existing skin dir
-            $iter = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($dest_dir, FilesystemIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::CHILD_FIRST
-            );
-            foreach ($iter as $f) {
-                $f->isDir() ? rmdir($f->getPathname()) : unlink($f->getPathname());
-            }
-            rmdir($dest_dir);
-        }
-
-        // Copy extracted files into skins dir
-        $copy_iter = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($skin_dir_candidate, FilesystemIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
-        mkdir($dest_dir, 0755, true);
-        foreach ($copy_iter as $item) {
-            $dest_path = $dest_dir . $copy_iter->getSubPathname();
-            if ($item->isDir()) {
-                mkdir($dest_path, 0755, true);
-            } else {
-                copy($item->getPathname(), $dest_path);
-            }
-        }
-
-        // Optionally activate
-        if ($activate) {
-            $pdo->prepare("
-                INSERT INTO snap_settings (setting_key, setting_val)
-                VALUES ('active_skin', ?)
-                ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)
-            ")->execute([$skin_slug]);
-        }
-
-        os_ok([
-            'skin_slug'  => $skin_slug,
-            'skin_name'  => $skin_name,
-            'version'    => $skin_manifest['version'] ?? '',
-            'activated'  => $activate,
-        ]);
-
-    } finally {
-        // Always clean up temp dir
-        if (is_dir($tmp_dir)) {
-            $iter = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($tmp_dir, FilesystemIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::CHILD_FIRST
-            );
-            foreach ($iter as $f) {
-                $f->isDir() ? rmdir($f->getPathname()) : unlink($f->getPathname());
-            }
-            rmdir($tmp_dir);
-        }
-    }
+if ($resource === 'skin' && $sub === 'push') {
+    os_err('Direct skin upload has been permanently removed. Export the skin from Oh Snap! and email it for review; approved skins are installed through the normal git pipeline.', 410);
 }
 
 // =============================================================================

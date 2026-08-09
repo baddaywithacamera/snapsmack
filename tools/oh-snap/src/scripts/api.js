@@ -87,16 +87,11 @@ class SnapSmackAPI {
         return this._get('ohsnap/skin');
     }
 
-    /** Push a skin zip to the site.
-     *  @param {Blob|File} zipBlob  The skin zip.
-     *  @param {boolean}   activate Whether to activate immediately.
-     *  Returns { skin_slug, skin_name, version, activated }. */
-    async pushSkin(zipBlob, activate = false) {
-        const fd = new FormData();
-        fd.append('skin_zip', zipBlob, 'skin.zip');
-        fd.append('activate', activate ? '1' : '0');
-        return this._post('ohsnap/skin/push', fd);
-    }
+    // pushSkin()/ohsnap/skin/push removed 2026-08-09 (security). A skin ZIP is
+    // never uploaded to the server: receiving and unzipping an untrusted archive
+    // server-side is remote-code-execution surface. A finished skin is saved to
+    // disk / emailed for the owner to examine locally, then it enters via git.
+    // (This method was dead wiring — nothing here builds or sends a skin zip.)
 
     /** Push CSS variable overrides to the active skin on the site.
      *  Changes are stored in snap_settings and injected at render time.

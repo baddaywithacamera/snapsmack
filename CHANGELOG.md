@@ -12,6 +12,34 @@
 
 ## 0.7.510 "PHOTO FRIYAY" — 2026-08-08
 
+- **Security: removed every server-side skin-upload path. Skins now enter only
+  through git.** Three routes let a skin ZIP be uploaded to the live server and
+  unpacked — executable PHP and all — into `skins/`: the Oh Snap! desktop app's
+  `POST ohsnap/skin/push` API endpoint, the FEDISTRUCTURE skin-gallery upload
+  form in `smack-skin.php`, and the `skin_registry_install_upload()` installer
+  behind it. Receiving and unzipping an untrusted archive on the production
+  server is remote-code-execution surface by design — the danger is not only a
+  malicious skin but the act of accepting and extracting the archive at all
+  (zip-parser and upload-handling zero-days). All three were **deleted, not
+  gated** — a gate is still a door. The `skin/push` route now refuses
+  unconditionally (HTTP 410) and reads no request body; the gallery upload UI
+  and its handler are gone; the installer function is removed. Skins are
+  installed only from the signed registry (which verifies a detached
+  signature), or they enter the codebase through git, examined locally by the
+  owner first. Oh Snap!'s dead `pushSkin()` client wiring was removed to match.
+
+- **Media Gallery: every image now shows whether it's used in a post.** With
+  dozens of images uploaded for a single post it was hard to tell at a glance
+  which had already been placed and which were still loose. Each tile in the
+  Media Gallery now carries a top-left badge — green **✓ Used** when the image
+  is attached to a post, or **Unused** when it is not yet. "Used" is computed
+  inside the gallery's existing paginated query — an image counts as used when
+  its `post_id` is set (singles, grams, carousels, and longform all set it) or
+  it appears in the `snap_post_images` gram-layout pivot — so there is no extra
+  per-image lookup. The draft/published badge (top-right) is unchanged; the two
+  read independently, so a draft image already placed in a post reads "Draft"
+  and "✓ Used" at once.
+
 - **INSTANT CAMERA: the polaroid tile shows the whole print, not just the image
   window.** The light-table tile aspect was `79/97` — the proportion of the
   exposed photo aperture alone — so the thumbnail cropped to the image and clipped
