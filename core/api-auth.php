@@ -136,12 +136,14 @@ if (is_array($_allowed_types) && $_allowed_types) {
         $_place = implode(',', array_fill(0, count($_allowed_types), '?'));
         $_krow  = false;
         try {
-            // Expiry-aware: NULL expires_at = legacy key (no expiry); a set,
-            // past expiry is rejected (mandatory ≤4-week keys, 0.7.263).
+            // Fetch the key WITHOUT filtering on expiry so we can tell an
+            // EXPIRED key apart from an invalid/revoked one and return a useful,
+            // actionable error. Security is unchanged: an expired key is still
+            // rejected below, never authenticated. (Legacy NULL expires_at = no
+            // expiry; mandatory ≤4-week keys since 0.7.263.)
             $_kst = $pdo->prepare(
-                "SELECT id FROM snap_ohsnap_keys
+                "SELECT id, expires_at FROM snap_ohsnap_keys
                  WHERE key_hash = ? AND is_active = 1 AND key_type IN ($_place)
-                   AND (expires_at IS NULL OR expires_at > NOW())
                  LIMIT 1"
             );
             $_kst->execute(array_merge([$_bhash], array_values($_allowed_types)));
@@ -162,6 +164,21 @@ if (is_array($_allowed_types) && $_allowed_types) {
             }
         }
         if ($_krow) {
+            // Key exists, is active, and is the right type. If it carries a set,
+            // past expiry, reject it with a distinct, actionable message (the
+            // common, fixable case) instead of the generic "invalid" one. Absent
+            // expires_at (a legacy key, or the pre-schema fallback query above)
+            // means no expiry — treat as valid.
+            $_exp = $_krow['expires_at'] ?? null;
+            if ($_exp !== null && $_exp !== '' && ($_ets = strtotime((string)$_exp)) !== false && $_ets <= time()) {
+                http_response_code(401);
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'error' => 'API key expired — generate a new key in Admin → API Keys.',
+                    'code'  => 'key_expired',
+                ]);
+                exit;
+            }
             $pdo->prepare("UPDATE snap_ohsnap_keys SET last_used_at = NOW() WHERE id = ?")
                 ->execute([(int)$_krow['id']]);
             define('SNAP_API_AUTH', true);
@@ -170,10 +187,10 @@ if (is_array($_allowed_types) && $_allowed_types) {
             unset($_allowed_types, $_auth_hdr, $_bm, $_bhash, $_place, $_kst, $_krow);
             return;
         }
-        // Bearer header present but invalid → fail closed (no session fall-through).
+        // Bearer header present but no active key matched → invalid or revoked.
         http_response_code(401);
         header('Content-Type: application/json');
-        echo json_encode(['error' => 'Invalid or revoked API key.']);
+        echo json_encode(['error' => 'Invalid or revoked API key.', 'code' => 'key_invalid']);
         exit;
     }
 }
