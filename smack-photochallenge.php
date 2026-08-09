@@ -41,9 +41,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
             catch (Throwable $e) { $tz = ''; $msg = 'Unknown timezone — left blank (server default is used).'; }
         }
         $bw = (string)max(0, (int)($_POST['pc_boost_weight'] ?? 1));
+        $wm = (($_POST['pc_window_mode'] ?? 'weekly') === 'daily') ? 'daily' : 'weekly';
         sv_set_setting($pdo, $settings, 'photochallenge_tag', $tag);
         sv_set_setting($pdo, $settings, 'photochallenge_tz', $tz);
         sv_set_setting($pdo, $settings, 'photochallenge_boost_weight', $bw);
+        sv_set_setting($pdo, $settings, 'photochallenge_window_mode', $wm);
         sv_set_setting($pdo, $settings, 'photochallenge_enabled', $enabled);   // flip last
         if ($msg === '') $msg = $enabled === '1' ? 'Photo challenge ON. Settings saved.' : 'Settings saved (challenge OFF).';
 
@@ -127,6 +129,18 @@ include 'core/sidebar.php';
                 <input type="text" name="pc_tag" maxlength="60"
                        value="<?php echo $esc(pc_tag($settings)); ?>" autocomplete="off">
                 <p class="dim">Entries must carry <code>#<?php echo $esc(pc_tag($settings)); ?></code>. Letters, numbers, underscore; no leading #.</p>
+            </div>
+
+            <div class="lens-input-wrapper">
+                <label>QUALIFYING WINDOW</label>
+                <?php $pc_wm = ($settings['photochallenge_window_mode'] ?? 'weekly') === 'daily' ? 'daily' : 'weekly'; ?>
+                <select name="pc_window_mode">
+                    <option value="weekly" <?php echo $pc_wm === 'weekly' ? 'selected' : ''; ?>>WEEKLY &mdash; Photo-Friday (Thu 10:00 &rarr; Sat 12:00 UTC)</option>
+                    <option value="daily"  <?php echo $pc_wm === 'daily'  ? 'selected' : ''; ?>>DAILY (TEST) &mdash; rolling 24h, always open</option>
+                </select>
+                <p class="dim"><strong>Weekly</strong> is the real Photo-Friday cadence. <strong>Daily</strong> is a test/demo
+                    mode &mdash; a rolling 24-hour window that is always open, so entries qualify any day. Switch back to
+                    weekly before launch.</p>
             </div>
 
             <div class="lens-input-wrapper">
