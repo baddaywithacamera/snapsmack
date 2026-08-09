@@ -1,0 +1,23 @@
+/* SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */
+@import url('../scroll/style.css');
+
+:root { --sideways-gap: 12px; --sideways-radius: 4px; --sideways-bg: #f4f2ed; --sideways-ink: #171717; }
+html:has(.sideways-page), body:has(.sideways-page) { width:100%; height:100%; overflow:hidden; overscroll-behavior:none; background:var(--sideways-bg); }
+body:has(.sideways-page) { margin:0; }
+.sideways-page { position:fixed; inset:0; overflow:hidden; color:var(--sideways-ink); background:var(--sideways-bg); font-family:"DM Sans",sans-serif; }
+.sideways-viewport { position:absolute; inset:0; overflow:hidden; }
+.sideways-field { position:absolute; inset:0; display:grid; grid-template-rows:repeat(4,1fr); gap:var(--sideways-gap); padding:clamp(54px,7vh,88px) 0 clamp(18px,3vh,34px); }
+.sideways-row { min-height:0; overflow:hidden; cursor:default; }
+.sideways-track { display:flex; width:max-content; height:100%; gap:var(--sideways-gap); will-change:transform; }
+.sideways-tile { display:block; height:100%; aspect-ratio:3/2; flex:0 0 auto; overflow:hidden; border-radius:var(--sideways-radius); background:#d8d5cf; }
+.sideways-tile img { display:block; width:100%; height:100%; object-fit:contain; transition:filter .3s ease; }
+.sideways-row:hover .sideways-track, .sideways-row:focus-within .sideways-track { animation-play-state:paused; }
+.sideways-tile:hover img, .sideways-tile:focus-visible img { filter:brightness(.78); }
+.sideways-tile:focus-visible { outline:2px solid var(--sideways-ink); outline-offset:-4px; }
+.sideways-overlay { position:fixed; z-index:5; inset:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:18px 24px; pointer-events:none; }
+.sideways-overlay a { color:var(--sideways-ink); text-decoration:none; pointer-events:auto; }
+.sideways-name { font-weight:700; letter-spacing:-.035em; font-size:clamp(1rem,1.5vw,1.4rem); }
+.sideways-nav { display:flex; gap:22px; font-size:.74rem; text-transform:uppercase; letter-spacing:.12em; }
+@media (max-width:720px) { .sideways-field { padding-top:58px; grid-template-rows:repeat(4,1fr); } .sideways-overlay { padding:16px; } .sideways-nav { gap:13px; } }
+@media (prefers-reduced-motion:reduce) { .sideways-track { transform:none !important; } .sideways-tile img { transition:none; } }
+/* ===== SNAPSMACK EOF ===== */

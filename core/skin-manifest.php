@@ -97,11 +97,13 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
     $boolean_keys = [
         'community_comments', 'community_likes', 'community_reactions',
     ];
+    $integer_keys = ['minimum_published_images'];
     $known = array_flip(array_merge(
         ['schema_version'],
         $string_keys,
         $array_keys,
-        $boolean_keys
+        $boolean_keys,
+        $integer_keys
     ));
 
     $out = ['schema_version' => SNAPSMACK_MANIFEST_SCHEMA_VERSION];
@@ -128,6 +130,10 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
             }
             continue;
         }
+        if (in_array($key, $integer_keys, true)) {
+            $out[$key] = max(0, min(1000000, (int)$value));
+            continue;
+        }
         if ($key === 'options') {
             $out[$key] = snapsmack_normalize_manifest_options($value, $slug);
             continue;
@@ -149,6 +155,21 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
         if (!isset($out[$key])) $out[$key] = [];
     }
     return manifest_resolve_fonts($out);
+}
+
+/** Return a human-readable activation blocker declared by a skin, or ''. */
+function snapsmack_skin_activation_requirement(PDO $pdo, array $manifest): string {
+    $minimum = max(0, (int)($manifest['minimum_published_images'] ?? 0));
+    if ($minimum === 0) return '';
+    try {
+        $available = (int)$pdo->query(
+            "SELECT COUNT(*) FROM snap_images WHERE img_status = 'published' AND img_date <= NOW()"
+        )->fetchColumn();
+    } catch (Throwable $e) {
+        return 'Could not verify this skin\'s photograph requirement.';
+    }
+    if ($available >= $minimum) return '';
+    return 'This skin needs at least ' . $minimum . ' published photographs; this site currently has ' . $available . '.';
 }
 
 /**
