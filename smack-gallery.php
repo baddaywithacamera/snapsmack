@@ -156,9 +156,15 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     $total = (int)$count_stmt->fetchColumn();
 
     // Fetch page
+    // is_used = the image is attached to a post. post_id is the universal link
+    // (singles, grams, carousels, longform all set it); the snap_post_images
+    // pivot is OR-ed in as belt-and-suspenders for gram layout rows. No extra
+    // per-row query — it resolves inside the existing paginated SELECT.
     $sql = "SELECT i.id, i.img_title, i.img_file, i.img_thumb_square, i.img_thumb_aspect,
                    i.img_date, i.img_status, i.img_width, i.img_height, i.img_exif,
-                   i.img_display_options, i.post_id
+                   i.img_display_options, i.post_id,
+                   (i.post_id IS NOT NULL
+                    OR EXISTS (SELECT 1 FROM snap_post_images pi WHERE pi.image_id = i.id)) AS is_used
             FROM snap_images i
             $where_sql
             ORDER BY i.id DESC
@@ -190,6 +196,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         // Extract palette
         $display = json_decode($img['img_display_options'] ?? '{}', true) ?: [];
         $img['palette'] = $display['palette'] ?? [];
+
+        // Normalise the used-in-post flag to a real boolean for the JSON feed.
+        $img['is_used'] = (bool)$img['is_used'];
 
         // Thumbnail path — prefer square thumb, fall back to aspect, then main file
         $dir = dirname($img['img_file']);
@@ -367,7 +376,7 @@ include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
-<link rel="stylesheet" href="assets/css/ss-engine-gallery.css?v=080L">
+<link rel="stylesheet" href="assets/css/ss-engine-gallery.css?v=081L">
 
 <div class="main">
     <div class="header-row header-row--ruled">
@@ -525,7 +534,7 @@ include 'core/sidebar.php';
     </div>
 </div>
 
-<script src="assets/js/ss-engine-gallery.js?v=080L"></script>
+<script src="assets/js/ss-engine-gallery.js?v=081L"></script>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

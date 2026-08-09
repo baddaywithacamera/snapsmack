@@ -152,6 +152,16 @@
             card.appendChild(badge);
         }
 
+        // Used-in-a-post indicator (top-left). is_used is the server flag;
+        // fall back to post_id for any older cached response.
+        var used = img.is_used || (img.post_id !== null && img.post_id !== undefined
+                                   && img.post_id !== '' && Number(img.post_id) > 0);
+        var uBadge = document.createElement('span');
+        uBadge.className = 'gallery-card-used ' + (used ? 'gallery-card-used--yes' : 'gallery-card-used--no');
+        uBadge.textContent = used ? '✓ Used' : 'Unused';
+        uBadge.title = used ? 'Used in a post' : 'Not used in any post yet';
+        card.appendChild(uBadge);
+
         var info = document.createElement('div');
         info.className = 'gallery-card-info';
         info.textContent = img.img_title || '(untitled)';

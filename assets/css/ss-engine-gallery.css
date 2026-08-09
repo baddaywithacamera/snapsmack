@@ -253,6 +253,29 @@
     color: #111;
 }
 
+/* ── USED-IN-A-POST INDICATOR (top-left; draft badge owns top-right) ────── */
+.gallery-card-used {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    pointer-events: none;
+}
+.gallery-card-used--yes {
+    background: var(--accent, #7aad5a);
+    color: #111;
+}
+.gallery-card-used--no {
+    background: rgba(20, 20, 20, 0.82);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.38);
+}
+
 /* ── LOAD MORE ───────────────────────────────────────────────────────── */
 .gallery-load-more {
     text-align: center;
