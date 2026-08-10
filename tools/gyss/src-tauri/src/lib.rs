@@ -28,6 +28,8 @@ pub fn run() {
             read_file,
             write_file,
             list_dir,
+            download_to,
+            delete_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running GET YOUR SHIT SORTED");
@@ -101,4 +103,57 @@ fn list_dir(app: tauri::AppHandle, path: String) -> Result<Vec<String>, String> 
     }
     files.sort();
     Ok(files)
+}
+
+/// Download a URL's bytes and write them to a jailed path inside the app data
+/// dir. `write_file` is UTF-8-only; this is the binary-safe primitive the offline
+/// library needs to store thumbnail files.
+///
+/// SECURITY: the destination goes through `resolve_in_app_dir` (same jail as the
+/// other fs commands), and only http/https URLs are accepted (no file://, data://
+/// etc.). Native fetch is deliberate — it is NOT bound by the webview's CORS, so
+/// it can pull static /uploads/ thumbnails that a JS fetch() would be blocked on.
+/// A response is capped to guard against a hostile/oversized body.
+#[tauri::command]
+async fn download_to(app: tauri::AppHandle, url: String, path: String) -> Result<(), String> {
+    const MAX_BYTES: usize = 64 * 1024 * 1024; // 64 MiB — a thumb is tens of KB; this is a sanity bound.
+
+    let lower = url.to_ascii_lowercase();
+    if !(lower.starts_with("http://") || lower.starts_with("https://")) {
+        return Err("Refused: only http(s) URLs may be downloaded.".into());
+    }
+    // Resolve + jail the destination BEFORE spending a network round-trip.
+    let dest = resolve_in_app_dir(&app, &path)?;
+
+    let resp = reqwest::get(&url).await.map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err(format!("Download failed: HTTP {}", resp.status()));
+    }
+    if let Some(len) = resp.content_length() {
+        if len as usize > MAX_BYTES {
+            return Err(format!("Refused: response too large ({len} bytes)."));
+        }
+    }
+    let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+    if bytes.len() > MAX_BYTES {
+        return Err(format!("Refused: response too large ({} bytes).", bytes.len()));
+    }
+
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(&dest, &bytes[..]).map_err(|e| e.to_string())
+}
+
+/// Delete a file inside the jailed app data dir — e.g. an orphaned thumbnail
+/// whose image was pruned from the library. A missing file is a no-op, not an
+/// error (idempotent prune).
+#[tauri::command]
+fn delete_file(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    let p = resolve_in_app_dir(&app, &path)?;
+    match std::fs::remove_file(&p) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
 }

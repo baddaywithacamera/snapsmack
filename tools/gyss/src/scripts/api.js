@@ -77,6 +77,20 @@ export class SnapSmackGYSSAPI {
         return this._call('GET', 'meta');
     }
 
+    /**
+     * GET gyss/library — offline-sorter bulk export: image records (all, or only
+     * those changed since a timestamp), the WHOLE category/album lists + membership
+     * maps, and the full current-id list for pruning. This is what the on-disk
+     * library is built and synced from.
+     * @param {string|null} since  the server `synced_at` from the last pull, or
+     *                             null/omitted for a full pull.
+     */
+    async library(since = null) {
+        const params = {};
+        if (since) params.since = since;
+        return this._call('GET', 'library', params);
+    }
+
     /** Read-only scan for published photos with missing enrichment fields. */
     async enrichmentAudit(limit = 1000) {
         return this._call('GET', 'enrichment-audit', { limit });

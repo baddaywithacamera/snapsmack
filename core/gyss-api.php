@@ -320,6 +320,130 @@ if ($resource === 'meta' && $method === 'GET') {
 }
 
 // =============================================================================
+// ENDPOINT: GET gyss/library
+// Offline-sorter bulk export — the per-blog local library GYSS sorts against.
+//
+// Returns, in ONE call:
+//   images       — published image records. Full set, OR (with ?since=) only rows
+//                  changed since that server timestamp.
+//   categories   — full category list (whole; small).
+//   albums       — full album list (whole; small).
+//   cat_map      — [[image_id, category_id], ...]  membership, WHOLE.
+//   album_map    — [[image_id, album_id],   ...]  membership, WHOLE.
+//   current_ids  — every published image id, WHOLE.
+//   synced_at    — the SERVER clock; the client stores THIS as the next ?since.
+//
+// Why maps + current_ids are always whole even in a delta:
+//   * Re-tagging an image mutates snap_image_cat_map, NOT snap_images.modified_at,
+//     so a since-filter on images would miss it. Shipping the whole (tiny, int-
+//     pair) maps lets the client refresh every local image's membership.
+//   * snap_images HARD-deletes (img_status is only published|draft), so a removed
+//     row is simply absent from a since-filter. current_ids lets the client prune
+//     locally-orphaned rows (and their thumbs).
+//
+// Scope: image/category/album data ONLY — never users, keys, or secrets. This is
+// the GYSS trust boundary (SECAUDIT 039); do NOT widen it to a full DB dump.
+// =============================================================================
+if ($resource === 'library' && $method === 'GET') {
+
+    if (($settings['site_mode'] ?? 'photoblog') === 'smacktalk') {
+        gy_err('GYSS does not support SMACKTALK (longform) sites — images live inside essays and are not sortable.', 409);
+    }
+
+    // Parse optional since. Value only ever reaches a prepared param, but we
+    // normalise to a canonical datetime so a garbage string is a clean 400, not a
+    // silent empty delta. Parsed literally (no timezone shift): the client sends
+    // back the exact synced_at string we handed it, which came from NOW().
+    $since_raw = trim((string)($_GET['since'] ?? ''));
+    $since_sql = null;
+    if ($since_raw !== '') {
+        $dt = date_create(str_replace('T', ' ', $since_raw));
+        if ($dt === false) {
+            gy_err('Invalid since parameter — expected an ISO datetime (YYYY-MM-DD HH:MM:SS).', 400);
+        }
+        $since_sql = $dt->format('Y-m-d H:i:s');
+    }
+
+    try {
+        // Server high-water mark, captured BEFORE the reads. The client stores
+        // this as the next ?since (never its own clock — avoids skew). Overlap is
+        // safe: image upserts on the client are idempotent.
+        $synced_at = (string)$pdo->query("SELECT NOW()")->fetchColumn();
+
+        // --- IMAGES (full, or changed-since) ---
+        $img_where  = ["i.img_status = 'published'"];
+        $img_params = [];
+        if ($since_sql !== null) {
+            $img_where[]  = 'i.modified_at >= ?';
+            $img_params[] = $since_sql;
+        }
+        $img_where_sql = implode(' AND ', $img_where);
+        $img_stmt = $pdo->prepare("
+            SELECT i.id, i.img_title AS title, i.img_description AS description,
+                   i.img_alt AS alt, i.sort_order, i.img_file,
+                   i.img_date AS posted_date, i.modified_at,
+                   i.img_width, i.img_height
+            FROM snap_images i
+            WHERE $img_where_sql
+            ORDER BY i.sort_order ASC, i.id DESC
+        ");
+        $img_stmt->execute($img_params);
+        $images = [];
+        foreach ($img_stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $images[] = [
+                'id'          => (int)$row['id'],
+                'title'       => $row['title'],
+                'description' => $row['description'],
+                'alt'         => $row['alt'],
+                'sort_order'  => (int)$row['sort_order'],
+                'filename'    => basename((string)$row['img_file']),
+                'posted_date' => $row['posted_date'],
+                'modified_at' => $row['modified_at'],
+                'width'       => $row['img_width']  !== null ? (int)$row['img_width']  : null,
+                'height'      => $row['img_height'] !== null ? (int)$row['img_height'] : null,
+                'thumb_url'   => gy_thumb_url($row['img_file']),
+            ];
+        }
+
+        // --- CATEGORIES + ALBUMS (whole; small) ---
+        $categories = $pdo->query("SELECT id, cat_name AS name FROM snap_categories ORDER BY cat_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($categories as &$c) { $c['id'] = (int)$c['id']; } unset($c);
+        $albums = $pdo->query("SELECT id, album_name AS name FROM snap_albums ORDER BY album_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($albums as &$a) { $a['id'] = (int)$a['id']; } unset($a);
+
+        // --- MEMBERSHIP MAPS (whole int pairs — catches re-tags on unchanged images) ---
+        $cat_map = [];
+        foreach ($pdo->query("SELECT image_id, category_id FROM snap_image_cat_map")->fetchAll(PDO::FETCH_NUM) as $p) {
+            $cat_map[] = [(int)$p[0], (int)$p[1]];
+        }
+        $album_map = [];
+        foreach ($pdo->query("SELECT image_id, album_id FROM snap_image_album_map")->fetchAll(PDO::FETCH_NUM) as $p) {
+            $album_map[] = [(int)$p[0], (int)$p[1]];
+        }
+
+        // --- CURRENT IDS (whole published set — client prunes orphans / hard deletes) ---
+        $current_ids = array_map('intval',
+            $pdo->query("SELECT id FROM snap_images WHERE img_status = 'published' ORDER BY id ASC")->fetchAll(PDO::FETCH_COLUMN));
+
+    } catch (Exception $e) {
+        gy_err('Database error building library export', 500);
+    }
+
+    gy_ok([
+        'full'        => $since_sql === null,
+        'synced_at'   => $synced_at,
+        'site_mode'   => $settings['site_mode'] ?? 'photoblog',
+        'base_url'    => BASE_URL,
+        'categories'  => $categories,
+        'albums'      => $albums,
+        'cat_map'     => $cat_map,
+        'album_map'   => $album_map,
+        'current_ids' => $current_ids,
+        'images'      => $images,
+    ]);
+}
+
+// =============================================================================
 // ENDPOINT: GET gyss/enrichment-audit
 // Read-only list of published photos with missing metadata. GYSS owns iteration;
 // the server never runs a long batch.

@@ -10,6 +10,17 @@
 
 # SnapSmack Changelog
 
+## 0.7.515 — 2026-08-10
+
+- **GYSS offline library.** New scoped `gyss/library` API endpoint — image / post /
+  category / album data ONLY (never users, keys, or secrets; the GYSS trust
+  boundary). Exports the full archive, or just rows changed since a timestamp,
+  plus the whole category/album membership maps (so re-tags on otherwise-unchanged
+  images are caught) and the full current image-id list (so hard-deletes can be
+  pruned). This is the seed + incremental-sync source for GET YOUR SHIT SORTED's
+  new on-disk per-blog library, which lets the sorter work fully offline. The
+  endpoint is read-only and additive — no change to existing behaviour.
+
 ## 0.7.514 — 2026-08-10
 
 - **TILEZ 0.1.5 renders SMACKTALK mosaics with their required layout CSS.** Its

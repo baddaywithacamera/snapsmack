@@ -11,6 +11,9 @@ import {
     addConflicts, removeConflict,
     saveSession, listSessions, loadSession, deleteSession
 } from './session.js';
+import {
+    syncLibrary, libraryImages, libraryStatus, hostnameFor
+} from './library.js';
 
 // ===== SNAPSMACK EOF =====  (header reference only — JS marker at bottom)
 
@@ -193,6 +196,7 @@ async function activateProfile(profile) {
             state.meta = await state.api.meta();
             populateFilterDropdowns();
             await refreshSessions();
+            await refreshLibraryStatus();
             showTab('filter');
         } else {
             // SMACKTALK (longform) or an unknown mode: GYSS can't sort it. Longform
@@ -321,6 +325,100 @@ function bindFilterTab() {
             setStatus('filter-status', `Pull failed: ${err.message}`, 'error');
         }
     });
+
+    document.getElementById('btn-sync-library')?.addEventListener('click', doSyncLibrary);
+    document.getElementById('btn-browse-library')?.addEventListener('click', browseLibrary);
+}
+
+// ---------------------------------------------------------------------------
+// OFFLINE LIBRARY — sync the per-blog local store, then sort against it offline
+// ---------------------------------------------------------------------------
+
+/** Show whether a local library exists for the active profile, and how fresh. */
+async function refreshLibraryStatus() {
+    if (!state.activeProfile) return;
+    try {
+        const st = await libraryStatus(hostnameFor(state.activeProfile.site_url));
+        setStatus('library-status',
+            st.exists
+                ? `Local library: ${st.count} images · last synced ${fmtDate(st.synced_at)}`
+                : 'No local library yet — SYNC LIBRARY to build it (works offline afterward).',
+            'info');
+    } catch { /* non-fatal — the button still works */ }
+}
+
+/** PULL the blog into the on-disk library (seed or incremental) + download thumbs. */
+async function doSyncLibrary() {
+    if (!state.api || !state.activeProfile) { toast('Connect to a site first.', 'error'); return; }
+    const btn  = document.getElementById('btn-sync-library');
+    const prog = document.getElementById('library-progress');
+    if (btn) btn.disabled = true;
+    setStatus('library-status', 'Syncing library…', 'info');
+    try {
+        const summary = await syncLibrary(state.api, state.activeProfile, {
+            onProgress: (phase, done, total) => {
+                if (!prog) return;
+                prog.hidden = false;
+                prog.textContent =
+                    phase === 'thumbs' ? `Downloading thumbnails… ${done}/${total}` :
+                    phase === 'pull'   ? 'Pulling records…' :
+                    phase === 'done'   ? 'Finalising…' : '';
+            },
+        });
+        if (prog) prog.hidden = true;
+        setStatus('library-status',
+            `Library ${summary.full ? 'seeded' : 'updated'}: ${summary.total} images` +
+            ` · ${summary.upserted} changed · ${summary.pruned} removed` +
+            ` · ${summary.thumbsDownloaded} thumbs` +
+            (summary.thumbsFailed ? ` · ${summary.thumbsFailed} thumb failures (will use remote)` : ''),
+            summary.thumbsFailed ? 'warn' : 'ok');
+    } catch (err) {
+        if (prog) prog.hidden = true;
+        setStatus('library-status', `Sync failed: ${err.message}`, 'error');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+/** Build a normal sort session from the LOCAL library — no blog connection needed. */
+async function browseLibrary() {
+    if (!state.activeProfile) { toast('Connect to a site first.', 'error'); return; }
+    const hostname = hostnameFor(state.activeProfile.site_url);
+    const st = await libraryStatus(hostname);
+    if (!st.exists) { toast('No local library yet — SYNC LIBRARY first.', 'error'); return; }
+
+    const catRaw = document.getElementById('filter-category').value;
+    const albRaw = document.getElementById('filter-album').value;
+    const categoryId = catRaw ? parseInt(catRaw) : null;
+    const albumId    = albRaw ? parseInt(albRaw) : null;
+    const filter = { category_id: categoryId || undefined, album_id: albumId || undefined, offline: true };
+
+    setStatus('filter-status', 'Loading from local library…', 'info');
+    try {
+        const rows = await libraryImages(hostname, { categoryId, albumId });
+        // Map library rows onto the session photo shape. thumb_url is set to the
+        // LOCAL asset URL (thumbSrc already fell back to remote on a cache miss),
+        // so every existing render site shows local thumbs with no other change.
+        const photos = rows.map(r => ({
+            id:               r.id,
+            title:            r.title,
+            description:      r.description,
+            sort_order:       r.sort_order,
+            modified_at:      r.modified_at,
+            category_id:      (r.category_ids || [])[0] ?? null,
+            filename:         r.filename,
+            thumb_url:        r.src,
+            remote_thumb_url: r.thumb_url,
+        }));
+        state.session     = createSession(state.activeProfile, filter, photos);
+        state.sessionPath = await saveSession(state.session);
+        setStatus('filter-status', `Loaded ${photos.length} photos from library (offline).`, 'ok');
+        await refreshSessions();
+        renderSortGrid();
+        showTab('sort');
+    } catch (err) {
+        setStatus('filter-status', `Library load failed: ${err.message}`, 'error');
+    }
 }
 
 // ---------------------------------------------------------------------------
