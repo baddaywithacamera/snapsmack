@@ -92,7 +92,7 @@
     // -------------------------------------------------------------------------
 
     function defaultStyle() {
-        return { size_pct: 100, border_px: 0, border_color: '#000000', bg_color: '#ffffff', shadow: 0 };
+        return { size_pct: 100, border_px: 0, border_color: '#000000', bg_color: '#ffffff', shadow: 0, alt: '' };
     }
 
     function buildNewStylePanel(newIdx) {
@@ -126,6 +126,11 @@
                     '<select class="full-width-select cp-style-input" data-style-field="shadow">' +
                         opt(0,'None',s.shadow)+opt(1,'Soft',s.shadow)+opt(2,'Medium',s.shadow)+opt(3,'Heavy',s.shadow)+
                     '</select></div>' +
+                '<div class="lens-input-wrapper" style="grid-column:1/-1;">' +
+                    '<label>ALT TEXT</label>' +
+                    '<input type="text" class="full-width-select cp-style-input" data-style-field="alt"' +
+                           ' maxlength="500" value="' + (s.alt ? String(s.alt).replace(/"/g,'&quot;') : '') + '"' +
+                           ' placeholder="Accessibility description for screen readers"></div>' +
             '</div>' +
         '</div>';
     }
@@ -567,8 +572,8 @@
                     var field = this.getAttribute('data-style-field');
                     if (!newFileStyles[newIdx]) newFileStyles[newIdx] = defaultStyle();
                     var val = this.value;
-                    if (field === 'border_color' || field === 'bg_color') {
-                        newFileStyles[newIdx][field] = val;
+                    if (field === 'border_color' || field === 'bg_color' || field === 'alt') {
+                        newFileStyles[newIdx][field] = val;   // string fields
                     } else {
                         newFileStyles[newIdx][field] = parseInt(val, 10) || 0;
                     }
@@ -618,6 +623,19 @@
                     });
                 });
             }
+
+            // ALT is accessibility, not a style choice — serialize it for EVERY
+            // new image regardless of the customise level, in newFileStyles order
+            // (aligns with the new-image loop index on the server).
+            form.querySelectorAll('input[name^="new_img_alt"]')
+                .forEach(function (el) { el.parentNode.removeChild(el); });
+            newFileStyles.forEach(function (s) {
+                var inp   = document.createElement('input');
+                inp.type  = 'hidden';
+                inp.name  = 'new_img_alt[]';
+                inp.value = s.alt || '';
+                form.appendChild(inp);
+            });
 
             // Attach new files to the form's file input for the PHP handler.
             // We use a DataTransfer object to populate a hidden <input type="file">.

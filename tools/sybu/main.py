@@ -357,6 +357,18 @@ class EntryRow(tk.Frame):
         self._caption_entry.place(x=246, y=126, width=675, height=20)
         self._caption_var.trace_add("write", lambda *a: setattr(self.entry, 'caption', self._caption_var.get()))
 
+        # ── Inline ALT entry (accessibility → posted to img_alt) ──────
+        tk.Label(self, text="alt", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=190, y=150)
+        self._alt_var = tk.StringVar(value=getattr(self.entry, 'alt', ''))
+        self._alt_entry = tk.Entry(
+            self, textvariable=self._alt_var,
+            bg=BG_MID, fg=FG_MAIN, insertbackground=ACCENT,
+            relief="flat", font=FONT_SMALL, bd=0,
+            highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
+        )
+        self._alt_entry.place(x=246, y=148, width=675, height=18)
+        self._alt_var.trace_add("write", lambda *a: setattr(self.entry, 'alt', self._alt_var.get()))
+
         # ── Status badge ──────────────────────────────────────────────
         self._status_lbl = tk.Label(
             self, text="PENDING", font=("Segoe UI", 7, "bold"),
@@ -385,6 +397,7 @@ class EntryRow(tk.Frame):
         self._title_entry.place(width=max(entry_w, 50))
         self._tags_entry.place(width=max(entry_w, 50))
         self._caption_entry.place(width=max(entry_w - 20, 50))  # caption starts 20px right of the entries
+        self._alt_entry.place(width=max(entry_w - 20, 50))      # alt row mirrors caption width
         self._fname_lbl.place(width=max(fname_w, 50))
         self._status_lbl.place(x=badge_x)
         # -- Metadata row: distribute cat/album/orient/colours across the row width.
@@ -474,12 +487,14 @@ class EntryRow(tk.Frame):
             return FG_MAIN
 
     def fill_from_ai(self, title: str = '', tags: str = '', category: str = '',
-                     album: str = '', colors: str = '', caption: str = ''):
+                     album: str = '', colors: str = '', caption: str = '', alt: str = ''):
         """Push Gemini-generated values into the live fields. Skips blank values."""
         if title:
             self._title_var.set(title)
         if caption:
             self._caption_var.set(caption)
+        if alt:
+            self._alt_var.set(alt)
         if tags:
             self._tags_var.set(tags)
         if category:
@@ -4165,6 +4180,7 @@ class App(tk.Tk):
                             row.fill_from_ai(
                                 title=entry.title,
                                 caption=entry.caption,
+                                alt=getattr(entry, 'alt', ''),
                                 tags=entry.tags,
                                 category=entry.category,
                                 album=entry.album,

@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
   `img_title`           varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL,
   `img_slug`            varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL,
   `img_description`     text           COLLATE utf8mb4_unicode_ci,
+  `img_alt`             varchar(500)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                        COMMENT 'Accessibility ALT text — plain screen-reader description of the image. Distinct from caption/title. Render paths fall back to img_title when NULL/blank. Added 0.7.512.',
   `img_film`            varchar(100)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `img_license`         varchar(100)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                         COMMENT 'Rights/licence label (e.g. Flickr import: "All Rights Reserved", CC BY 2.0). Optional; surfaced per-image.',
@@ -399,6 +401,8 @@ CREATE TABLE IF NOT EXISTS `snap_assets` (
   `id`             int          NOT NULL AUTO_INCREMENT,
   `asset_name`     varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `asset_path`     varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `asset_alt`      varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                   COMMENT 'Accessibility ALT text for inline [img:ID] assets. Falls back to asset_name on render when NULL/blank. Added 0.7.512.',
   `asset_checksum` varchar(64)  COLLATE utf8mb4_unicode_ci DEFAULT NULL
                    COMMENT 'SHA-256 hash for recovery verification',
   `asset_border_width` tinyint unsigned NOT NULL DEFAULT 0

@@ -1274,18 +1274,34 @@ $help_topics['ai-assistant'] = [
     'content'  => <<<'HTML'
 <h3>AI Assistant</h3>
 <p>The AI Assistant powers spell/grammar check, the per-field enrichment buttons
-(<strong>AI TITLE</strong>, <strong>AI CAPTION</strong>, <strong>AI HASHTAGS</strong>), and
-<strong>VISION FILL</strong> beside the title, description, and tags fields when you post or edit an
-image. It uses <strong>your own</strong> API key (Claude, Gemini, or OpenAI) and bills
-<strong>per use</strong>.</p>
+(<strong>AI TITLE</strong>, <strong>AI CAPTION</strong>, <strong>AI ALT</strong>,
+<strong>AI HASHTAGS</strong>), and <strong>VISION FILL</strong> beside the title, description,
+ALT-text, and tags fields when you post or edit an image. It uses <strong>your own</strong> API
+key (Claude, Gemini, or OpenAI) and bills <strong>per use</strong>.</p>
 
-<h4>Vision Fill (from the image)</h4>
-<p><strong>VISION FILL</strong> is the in-app version of the SYBU desktop batch tool. Choose your
-photo, click it, and the AI looks at the actual image and fills the title, caption and hashtags and
-ticks the matching categories and albums in one pass — using the very same prompt SYBU uses, fed your
-own category, album and tag vocabulary. The photo is shrunk in your browser before it's sent (vision
-is billed by image size, and a small copy carries all the detail these fields need). Always review
-what it wrote before publishing.</p>
+<h4>One pull, not three (how billing works now)</h4>
+<p><strong>VISION FILL</strong> analyses the photo <strong>once</strong> and fills the title,
+caption, <strong>ALT text</strong>, and hashtags — and ticks the matching categories and albums —
+in a single call, using the very same prompt (and your own category/album/tag vocabulary) that the
+SYBU desktop tool uses. That one result is then cached in the page: the per-field buttons
+(<strong>AI TITLE / AI CAPTION / AI ALT / AI HASHTAGS</strong>) fill from that cached pull instead
+of each spending a separate request. So a single photo is never billed two or three times for
+different fields. If you haven't run a pull yet, the first field button triggers the one analysis;
+<strong>RE-RUN</strong> discards the cache and analyses again (that does spend another call).</p>
+<p>Fills are <strong>non-destructive</strong> — they only populate empty fields and never overwrite
+what you've typed. This works when posting a <em>new</em> image (it reads the file you chose) and
+when <em>editing</em> an existing one (it reads the already-uploaded photo — no file picker needed).
+The photo is shrunk in your browser before it's sent (vision is billed by image size, and a small
+copy carries all the detail these fields need). Always review what it wrote before publishing.</p>
+
+<h4>ALT text (accessibility)</h4>
+<p><strong>ALT text</strong> is a plain one-sentence description of what's in the photo, read aloud
+by screen readers and used by search engines. Every posting surface now has an ALT field —
+new post, edit, gram, carousel, the Media-Gallery quick-edit, and the Media Library — and SYBU
+writes it on every batch. If you leave ALT blank, the site falls back to the photo's title so an
+image is never left with nothing. To backfill ALT (and any other missing field) across your existing
+library in one pass, use <strong>GYSS &rarr; Repair</strong>, which now includes a "Missing ALT text"
+option and fills every selected missing field for each photo in a single AI call.</p>
 
 <h4>Turning It On</h4>
 <p>Go to <strong>Settings &rarr; AI</strong>. Three things are required before any AI control appears:</p>

@@ -198,9 +198,22 @@ if (!empty($settings['favicon_url'])):
 <?php if (!empty($og_description)): ?>
 <meta property="og:description" content="<?php echo htmlspecialchars($og_description); ?>">
 <?php endif; ?>
+<?php
+// og:image:alt — the accessibility text for the share image. Prefer the photo's
+// ALT, fall back to its title. Only emitted on photo pages where $img is set.
+$og_image_alt = '';
+if (!empty($img) && is_array($img)) {
+    $og_image_alt = trim((string)($img['img_alt'] ?? '')) !== ''
+        ? (string)$img['img_alt']
+        : (string)($img['img_title'] ?? '');
+}
+?>
 <?php if (!empty($og_image)): ?>
 <meta property="og:image" content="<?php echo $og_image; ?>">
 <meta property="og:image:width" content="1200">
+<?php if ($og_image_alt !== ''): ?>
+<meta property="og:image:alt" content="<?php echo htmlspecialchars($og_image_alt, ENT_QUOTES, 'UTF-8'); ?>">
+<?php endif; ?>
 <?php endif; ?>
 
 <meta name="twitter:card" content="<?php echo !empty($og_image) ? 'summary_large_image' : 'summary'; ?>">
@@ -210,6 +223,9 @@ if (!empty($settings['favicon_url'])):
 <?php endif; ?>
 <?php if (!empty($og_image)): ?>
 <meta name="twitter:image" content="<?php echo $og_image; ?>">
+<?php if ($og_image_alt !== ''): ?>
+<meta name="twitter:image:alt" content="<?php echo htmlspecialchars($og_image_alt, ENT_QUOTES, 'UTF-8'); ?>">
+<?php endif; ?>
 <?php endif; ?>
 <?php
 // --- JSON-LD ImageObject (photo pages): the machine-legible form search and AI
@@ -219,6 +235,7 @@ if (!empty($img['id'])):
         '@context'   => 'https://schema.org',
         '@type'      => 'ImageObject',
         'name'       => (string)($img['img_title'] ?? ''),
+        'caption'    => (string)($img['img_alt'] ?? ''),   // accessibility ALT (screen-reader description)
         'description'=> (string)($meta_description ?? ''),
         'contentUrl' => !empty($img['img_file']) ? BASE_URL . ltrim($img['img_file'], '/') : '',
         'url'        => $canonical_url,

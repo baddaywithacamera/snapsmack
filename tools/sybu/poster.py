@@ -378,6 +378,8 @@ class SnapSmackClient:
                 'tags':                 post_tags,
                 'img_status':           'published',
                 'desc':                 post_desc,
+                'alt':                  (getattr(entry, 'alt', '') or '').strip(),  # accessibility ALT → img_alt
+
                 'allow_download':       '1' if drive_url else '0',
                 'download_url':         drive_url,
                 'orientation_override': orient,
@@ -557,6 +559,7 @@ def post_gram(conn: 'GramConnection', entry: ManifestEntry, image_folder: str) -
             'border_px': 0, 'border_color': '#000000', 'bg_color': '#ffffff',
             'shadow': 0, 'focus_x': 50, 'focus_y': 50, 'zoom': 100,
             'is_cover': False, 'sort_position': 0, 'split': False,
+            'alt': (getattr(entry, 'alt', '') or '').strip(),  # accessibility ALT → img_alt
         }
         _caption = (getattr(entry, 'caption', '') or '').strip()
         payload = {

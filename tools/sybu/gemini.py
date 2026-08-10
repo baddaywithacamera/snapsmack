@@ -107,6 +107,7 @@ Analyse the image carefully and respond ONLY in this exact format — no extra t
 
 TITLE: <a short, plain, descriptive title — a few words, e.g. "Drumheller water tower at dusk". NOT a haiku, not poetic.>
 CAPTION: <a short, natural one-line caption describing the image — this becomes the post's caption/description. No hashtags.>
+ALT: <one plain sentence of accessibility ALT text describing what is visibly in the frame for a screen-reader user — lead with the main subject, be concrete and specific, no "image of"/"photo of".>
 TAGS: <5 to 8 space-separated hashtags, e.g. #stone #rust #texture #macro #urban>
 CATEGORY: <pick every applicable match from this list, comma-separated, or leave blank:{cats_str}>
 ALBUM: <pick every applicable match from this list, comma-separated, or leave blank:{albums_str}>
@@ -115,6 +116,7 @@ COLORS: <the three most visually prominent colors in the image as uppercase hex 
 Rules:
 - TITLE must be a short, plain description of what is literally in the image — not a haiku, not poetic
 - CAPTION is the post's caption/description: one natural line, no hashtags
+- ALT is accessibility text for screen readers: one plain sentence, lead with the main subject, describe only what is visibly in the frame, never begin with "image of" or "photo of", and do not just repeat the caption
 - {tags_guidance}
 - Tags must be lowercase with no spaces within a tag
 - Images with multiple distorted specular highlights and swirly blurred bokeh were made with a modified Helios 44 lens; add both #helios and #helios44 to TAGS when those visual characteristics are present
@@ -126,10 +128,10 @@ Rules:
 
 
 def _parse_response(text: str) -> dict:
-    """Extract TITLE/TAGS/CATEGORY/ALBUM/COLORS from the model response."""
-    result = {'title': '', 'caption': '', 'tags': '', 'category': '', 'album': '', 'colors': ''}
+    """Extract TITLE/CAPTION/ALT/TAGS/CATEGORY/ALBUM/COLORS from the model response."""
+    result = {'title': '', 'caption': '', 'alt': '', 'tags': '', 'category': '', 'album': '', 'colors': ''}
     for line in text.strip().splitlines():
-        m = re.match(r'^(TITLE|CAPTION|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)', line.strip(), re.IGNORECASE)
+        m = re.match(r'^(TITLE|CAPTION|ALT|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)', line.strip(), re.IGNORECASE)
         if m:
             key = m.group(1).lower()
             val = m.group(2).strip()
@@ -233,10 +235,10 @@ def enrich_batch(
                 log.info("GEMINI RESPONSE %s (attempt %d):\n%s",
                          entry.file, attempt, response.text)
                 parsed   = _parse_response(response.text)
-                log.info("GEMINI PARSED %s — title=%r tags=%r category=%r album=%r colors=%r",
-                         entry.file, parsed.get('title', ''), parsed.get('tags', ''),
-                         parsed.get('category', ''), parsed.get('album', ''),
-                         parsed.get('colors', ''))
+                log.info("GEMINI PARSED %s — title=%r alt=%r tags=%r category=%r album=%r colors=%r",
+                         entry.file, parsed.get('title', ''), parsed.get('alt', ''),
+                         parsed.get('tags', ''), parsed.get('category', ''),
+                         parsed.get('album', ''), parsed.get('colors', ''))
                 title    = parsed.get('title', '').strip()
                 caption  = parsed.get('caption', '').strip()
 
@@ -253,6 +255,8 @@ def enrich_batch(
                         used_titles.add(title.lower())
                     if parsed.get('caption'):
                         entry.caption = parsed['caption']
+                    if parsed.get('alt'):
+                        entry.alt = parsed['alt']
                     if parsed['tags']:
                         entry.tags = parsed['tags']
                     if parsed['category']:

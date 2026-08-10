@@ -52,7 +52,7 @@ function eatmeclaude_block_sizes(int $total): array {
 
 function eatmeclaude_images(PDO $pdo, string $cutoff, int $offset, int $limit): array {
     $stmt = $pdo->prepare(
-        "SELECT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_aspect,
+        "SELECT i.id, i.img_title, i.img_alt, i.img_slug, i.img_file, i.img_thumb_aspect,
                 i.img_width, i.img_height,
                 COALESCE(pi.img_focus_x, 50) AS img_focus_x,
                 COALESCE(pi.img_focus_y, 50) AS img_focus_y
@@ -74,11 +74,14 @@ function eatmeclaude_images(PDO $pdo, string $cutoff, int $offset, int $limit): 
         $thumb = ltrim((string)($row['img_thumb_aspect'] ?? ''), '/');
         if ($thumb === '') $thumb = $full;
         $title = trim((string)($row['img_title'] ?? ''));
+        $alt   = trim((string)($row['img_alt'] ?? ''));
         $images[] = [
             'src' => BASE_URL . $thumb,
             'full' => BASE_URL . $full,
             'href' => BASE_URL . ltrim((string)($row['img_slug'] ?? ''), '/'),
-            'alt' => $title,
+            // Raw value: emitted as JSON and consumed via img.alt (DOM property) —
+            // the mosaic engine never innerHTMLs it, so no pre-escaping here.
+            'alt' => ($alt !== '' ? $alt : $title),
             'id' => (int)$row['id'],
             'width' => max(1, (int)($row['img_width'] ?? 1)),
             'height' => max(1, (int)($row['img_height'] ?? 1)),

@@ -10,6 +10,42 @@
 
 # SnapSmack Changelog
 
+## 0.7.513 — 2026-08-09
+
+- **ALT text (accessibility) everywhere an image is posted or shown.** `snap_images`
+  and `snap_assets` gained `img_alt` / `asset_alt` (varchar 500). Every posting
+  path now writes it and every public render path emits it, falling back to the
+  title/name when blank so nothing regresses:
+  - **Posting:** new-post (solo), edit-post, gram, carousel (new images),
+    Media-Gallery quick-edit, gallery upload, and the Media Library (per-asset
+    ALT). Longform inherits ALT from the gallery images it embeds.
+  - **SYBU (desktop batch):** ALT is generated at import in the same Gemini pass,
+    editable per image, persisted to recovery, and posted (solo + gram) — so new
+    batches stop accruing accessibility debt.
+  - **Rendering:** archive, single-photo view (50 Shades + New Horizon), profile
+    grid, federated post view, collection, gram search, mosaics, inline `[img:ID]`
+    embeds, and `[random_image]`/`[latest_image]`, plus `og:image:alt`,
+    `twitter:image:alt`, and JSON-LD `caption`.
+- **One AI pull instead of three.** VISION FILL analyses the photo once and fills
+  title + caption + **ALT** + tags + categories/albums in a single call, on both
+  the new-post and edit-post pages (edit reads the already-uploaded image — no
+  file picker needed). The per-field buttons (incl. a new **AI ALT**) now draw
+  from that one cached pull instead of each billing a separate request; **RE-RUN**
+  re-analyses. Fills are non-destructive — they never overwrite what you typed.
+  (This removed the older per-field text-refine + saved-prompt library, which was
+  the source of the repeat billing.)
+- **GYSS ENRICH MISSING now includes ALT.** The audit flags images missing ALT,
+  and a single enrichment call fills every selected missing field (title/caption/
+  **ALT**/tags/…) for each image at once — no re-spend on the same photo.
+- **Security.** ALT is untrusted text (human *and* AI output) → DB → HTML
+  attribute, so it is stored raw via a single audited sanitiser (`core/alt-text.php`:
+  trim, strip control chars, 500-char server cap, parameterised writes) and
+  escaped on output in attribute context with `ENT_QUOTES` on every render path.
+  AI-authored ALT gets the same treatment as stranger-typed input.
+- **Media Gallery:** the SELECT-mode toggle no longer renders as a full-width
+  green "DONE" slab — it inherited the global `.btn-smack` sizing that the
+  bulk-bar fix missed; now a compact inline button.
+
 ## 0.7.512 — 2026-08-09
 
 - **Honest API-key expiry.** An expired key (still active, past its expiry) used

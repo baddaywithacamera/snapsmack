@@ -209,6 +209,7 @@ function snap_exif_inject(string $path, string $app1): void {
  *               or ['ok'=>false,'error'=>string]
  */
 function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts = []): array {
+    require_once __DIR__ . '/alt-text.php';   // snap_sanitize_alt()
     if (!isset($file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) {
         return ['ok' => false, 'error' => 'Upload failed or no file received.'];
     }
@@ -230,6 +231,7 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
         $title = pathinfo($orig_name, PATHINFO_FILENAME) ?: 'Untitled Transmission';
     }
     $desc           = trim($opts['description'] ?? '');
+    $alt            = snap_sanitize_alt($opts['alt'] ?? '');   // accessibility ALT → img_alt
 
     // Caption-from-filename: explicit opt wins, else the site setting. When on,
     // a blank caption (and an auto-derived title) is filled from the tidied file
@@ -466,19 +468,21 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
     // --- DATABASE RECORD CREATION ---
     // Ingest always auto-detects orientation, so the auto-orient flag is 1.
     $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_auto_orient TINYINT(1) NOT NULL DEFAULT 0");
+    $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_alt VARCHAR(500) NULL");
     $stmt = $pdo->prepare("
         INSERT INTO snap_images (
-            img_title, img_slug, img_file, img_description, img_film, img_exif,
+            img_title, img_slug, img_file, img_description, img_alt, img_film, img_exif,
             img_status, img_date, img_orientation, img_auto_orient, img_width, img_height,
             allow_comments, allow_download, download_url,
             img_thumb_square, img_thumb_aspect, img_checksum, img_display_options
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $title,
         $slug,
         $db_path,
         $desc,
+        $alt,
         '',
         $exif_json,
         $status,

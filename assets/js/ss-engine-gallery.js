@@ -57,6 +57,7 @@
     var qeImg      = document.getElementById('qe-img');
     var qeId       = document.getElementById('qe-id');
     var qeTitle    = document.getElementById('qe-title');
+    var qeAlt      = document.getElementById('qe-alt');
     var qeStatus   = document.getElementById('qe-status');
     var qeTags     = document.getElementById('qe-tags');
     var qeCats     = document.getElementById('qe-cats');
@@ -389,6 +390,7 @@
         qeId.value = img.id;
         qeImg.src = img.img_file || img.thumb;
         qeTitle.value = img.img_title || '';
+        if (qeAlt) qeAlt.value = img.img_alt || '';
         qeStatus.value = img.img_status || 'published';
         qeTags.value = (img.tags || []).join(', ');
 
@@ -436,6 +438,7 @@
             fd.append('action', 'quick_edit');
             fd.append('id', qeId.value);
             fd.append('title', qeTitle.value);
+            if (qeAlt) fd.append('alt', qeAlt.value);
             fd.append('status', qeStatus.value);
             fd.append('tags', qeTags.value);
 

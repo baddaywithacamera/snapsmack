@@ -39,7 +39,7 @@ import time
 
 # Fields persisted per item. Mirrors manifest_parser.ManifestEntry (minus file,
 # which is stored separately, and line_num, which is source-only).
-FIELDS = ('title', 'caption', 'tags', 'category', 'album', 'orientation', 'colors')
+FIELDS = ('title', 'caption', 'alt', 'tags', 'category', 'album', 'orientation', 'colors')
 
 
 def _base_dir() -> str:

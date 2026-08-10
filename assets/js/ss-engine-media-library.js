@@ -171,4 +171,29 @@ document.querySelectorAll('.asset-border-control').forEach(function (ctrl) {
     color.addEventListener('change', function () { saveBorder(card); });
 });
 
+/**
+ * Persist a card's ALT text (accessibility). Saves on blur/change.
+ */
+function saveAlt(input) {
+    const card = input.closest('.asset-card');
+    const note = card ? card.querySelector('.alt-saved-note') : null;
+    const formData = new FormData();
+    formData.append('alt_id', input.dataset.assetId);
+    formData.append('asset_alt', input.value);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'smack-media.php', true);
+    xhr.onload = function () {
+        if (note) {
+            note.textContent = (xhr.status === 200) ? 'saved' : 'error';
+            setTimeout(() => { note.textContent = ''; }, 1200);
+        }
+    };
+    xhr.send(formData);
+}
+
+document.querySelectorAll('.asset-alt-input').forEach(function (input) {
+    input.addEventListener('change', function () { saveAlt(input); });
+});
+
 // ===== SNAPSMACK EOF =====

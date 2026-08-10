@@ -108,7 +108,7 @@ function snapsmack_search($pdo, $q, $limit = 60) {
         // ── Image search: title + description + tag slug + colour family ────
         if ($color_family) {
             $img_stmt = $pdo->prepare("
-                SELECT DISTINCT i.id, i.img_title, i.img_slug, i.img_file,
+                SELECT DISTINCT i.id, i.img_title, i.img_alt, i.img_slug, i.img_file,
                        i.img_thumb_square, i.img_thumb_aspect
                 FROM snap_images i
                 LEFT JOIN snap_image_tags it ON it.image_id = i.id
@@ -125,7 +125,7 @@ function snapsmack_search($pdo, $q, $limit = 60) {
             $img_stmt->execute([$now, $search_term, $search_term, $tag_term, $color_family, $search_term, $search_term]);
         } else {
             $img_stmt = $pdo->prepare("
-                SELECT DISTINCT i.id, i.img_title, i.img_slug, i.img_file,
+                SELECT DISTINCT i.id, i.img_title, i.img_alt, i.img_slug, i.img_file,
                        i.img_thumb_square, i.img_thumb_aspect
                 FROM snap_images i
                 LEFT JOIN snap_image_tags it ON it.image_id = i.id

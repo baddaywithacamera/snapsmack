@@ -65,7 +65,7 @@ $pp_tiles = [];
 try {
     $st = $pdo->query(
         "SELECT * FROM (
-            SELECT i.id, i.post_id, i.img_file, i.img_slug,
+            SELECT i.id, i.post_id, i.img_file, i.img_slug, i.img_alt, i.img_title,
                    i.img_thumb_square, i.img_thumb_aspect, i.img_width, i.img_height,
                    pi.img_size_pct, pi.img_border_px, pi.img_border_color,
                    pi.img_bg_color, pi.img_shadow,
@@ -81,7 +81,7 @@ try {
              WHERE p.status = 'published' AND p.created_at <= NOW()
                AND p.post_type IN ('single','carousel','panorama')
             UNION ALL
-            SELECT i.id, i.post_id, i.img_file, i.img_slug,
+            SELECT i.id, i.post_id, i.img_file, i.img_slug, i.img_alt, i.img_title,
                    i.img_thumb_square, i.img_thumb_aspect, i.img_width, i.img_height,
                    NULL AS img_size_pct, NULL AS img_border_px, NULL AS img_border_color,
                    NULL AS img_bg_color, NULL AS img_shadow,
@@ -279,7 +279,7 @@ header('Pragma: no-cache');
               $ago   = pp_timeago($t['created_at'] ?? null);
               ?>
             <a class="pp-tile" href="<?php echo pp_e($link); ?>">
-              <img loading="lazy" src="<?php echo pp_e($thumb); ?>" alt="">
+              <img loading="lazy" src="<?php echo pp_e($thumb); ?>" alt="<?php echo pp_e(($t['img_alt'] ?? '') !== '' ? $t['img_alt'] : ($t['img_title'] ?? '')); ?>">
               <?php if ($multi): ?><span class="pp-multi"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h11a2 2 0 0 1 2 2v11h-2V6H7V4zm-3 4h11a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"/></svg></span><?php endif; ?>
               <?php if ($ago !== ''): ?><span class="pp-badge"><?php echo pp_e($ago); ?></span><?php endif; ?>
             </a>

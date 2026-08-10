@@ -160,7 +160,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     // (singles, grams, carousels, longform all set it); the snap_post_images
     // pivot is OR-ed in as belt-and-suspenders for gram layout rows. No extra
     // per-row query — it resolves inside the existing paginated SELECT.
-    $sql = "SELECT i.id, i.img_title, i.img_file, i.img_thumb_square, i.img_thumb_aspect,
+    $sql = "SELECT i.id, i.img_title, i.img_alt, i.img_file, i.img_thumb_square, i.img_thumb_aspect,
                    i.img_date, i.img_status, i.img_width, i.img_height, i.img_exif,
                    i.img_display_options, i.post_id,
                    (i.post_id IS NOT NULL
@@ -243,9 +243,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'quick
 
     $title  = trim($_POST['title'] ?? '');
     $status = in_array($_POST['status'] ?? '', ['published', 'draft']) ? $_POST['status'] : 'published';
-
-    $pdo->prepare("UPDATE snap_images SET img_title = ?, img_status = ? WHERE id = ?")
-        ->execute([$title, $status, $img_id]);
+    require_once 'core/alt-text.php';
+    $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_alt VARCHAR(500) NULL");
+    // ALT only updated when the field is present in the payload, so a client that
+    // doesn't send it never nulls an existing value.
+    if (array_key_exists('alt', $_POST)) {
+        $alt = snap_sanitize_alt($_POST['alt']);
+        $pdo->prepare("UPDATE snap_images SET img_title = ?, img_status = ?, img_alt = ? WHERE id = ?")
+            ->execute([$title, $status, $alt, $img_id]);
+    } else {
+        $pdo->prepare("UPDATE snap_images SET img_title = ?, img_status = ? WHERE id = ?")
+            ->execute([$title, $status, $img_id]);
+    }
 
     // Update tags
     if (isset($_POST['tags'])) {
@@ -376,7 +385,7 @@ include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
-<link rel="stylesheet" href="assets/css/ss-engine-gallery.css?v=083L">
+<link rel="stylesheet" href="assets/css/ss-engine-gallery.css?v=083M">
 
 <div class="main">
     <div class="header-row header-row--ruled">
@@ -499,6 +508,10 @@ include 'core/sidebar.php';
             <div class="lens-input-wrapper">
                 <label>TITLE</label>
                 <input type="text" id="qe-title" class="gallery-input">
+            </div>
+            <div class="lens-input-wrapper">
+                <label>ALT TEXT <span class="field-tip" data-tip="Accessibility description for screen readers. Falls back to the title if left blank.">ⓘ</span></label>
+                <input type="text" id="qe-alt" class="gallery-input" maxlength="500">
             </div>
             <div class="lens-input-wrapper">
                 <label>STATUS</label>

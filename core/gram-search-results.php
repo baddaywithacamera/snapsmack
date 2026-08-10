@@ -78,10 +78,11 @@ $gsr = ($gsr_q !== '') ? snapsmack_search($pdo, $gsr_q, $gsr_limit)
                 $thumb = $r['img_thumb_square'] ?: ($r['img_thumb_aspect'] ?: $r['img_file']);
                 $url   = BASE_URL . '?s=' . urlencode($r['img_slug'] ?? '');
                 $alt   = htmlspecialchars($r['img_title'] ?? '');
+                $img_alt_attr = htmlspecialchars(($r['img_alt'] ?? '') !== '' ? $r['img_alt'] : ($r['img_title'] ?? ''));
             ?>
             <a class="gram-search-cell" href="<?php echo $url; ?>" title="<?php echo $alt; ?>" aria-label="<?php echo $alt; ?>">
                 <?php if (!empty($thumb)): ?>
-                    <img src="<?php echo htmlspecialchars($thumb); ?>" alt="<?php echo $alt; ?>" loading="lazy">
+                    <img src="<?php echo htmlspecialchars($thumb); ?>" alt="<?php echo $img_alt_attr; ?>" loading="lazy">
                 <?php endif; ?>
             </a>
             <?php endforeach; ?>
