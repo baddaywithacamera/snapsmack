@@ -10,7 +10,7 @@
 
 # SnapSmack Changelog
 
-## Unreleased
+## 0.7.514 — 2026-08-10
 
 - **TILEZ 0.1.5 renders SMACKTALK mosaics with their required layout CSS.** Its
   custom longform document loaded the shared MOSAIC compositor but omitted the
