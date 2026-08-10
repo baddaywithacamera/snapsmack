@@ -178,7 +178,7 @@ include 'core/sidebar.php';
             <div class="box">
                 <!-- SELECTED ASSETS -->
                 <div class="lens-input-wrapper">
-                    <label>SELECTED IMAGES — drag one onto another to swap, × to remove</label>
+                    <label>SELECTED IMAGES — drag to reorder, use arrows to move, × to remove</label>
                     <div id="mosaic-selected" style="display:flex;flex-wrap:wrap;gap:8px;min-height:80px;padding:12px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);margin-top:6px;"></div>
                 </div>
 
@@ -220,7 +220,6 @@ include 'core/sidebar.php';
         var allAssets     = {};   // id → {id, asset_name, asset_path}
         var dragSrcIndex  = null;
         var pickerOpen    = false;
-        var MIN_CROP_KEEP = 0.80; // Destination may crop no more than 20%.
 
         // --- Bootstrap ---
         document.addEventListener('DOMContentLoaded', function () {
@@ -293,6 +292,12 @@ include 'core/sidebar.php';
                       + ' ondragstart="dragStart(event,' + i + ')" ondragend="dragEnd()" ondragover="dragOver(event)" ondrop="dragDrop(event,' + i + ')"'
                       + ' style="position:relative;width:72px;height:72px;border:1px solid var(--border);border-radius:3px;overflow:hidden;cursor:grab;flex-shrink:0;">'
                       + '<img src="' + BASE + a.asset_path + '" style="width:100%;height:100%;object-fit:cover;" loading="lazy">'
+                      + '<div style="position:absolute;left:2px;bottom:2px;display:flex;gap:2px;">'
+                      + '<button type="button" onclick="moveAsset(' + i + ',-1)" title="Move left" aria-label="Move image left"'
+                      + ' style="background:rgba(0,0,0,.72);border:none;color:#fff;cursor:pointer;width:20px;height:20px;padding:0;line-height:1;">&#8249;</button>'
+                      + '<button type="button" onclick="moveAsset(' + i + ',1)" title="Move right" aria-label="Move image right"'
+                      + ' style="background:rgba(0,0,0,.72);border:none;color:#fff;cursor:pointer;width:20px;height:20px;padding:0;line-height:1;">&#8250;</button>'
+                      + '</div>'
                       + '<button type="button" onclick="removeAsset(' + i + ')" title="Remove"'
                       + ' style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.65);border:none;color:#ff5555;cursor:pointer;'
                       + 'width:18px;height:18px;border-radius:50%;font-size:13px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;">×</button>'
@@ -308,6 +313,15 @@ include 'core/sidebar.php';
             updatePreview();
         };
 
+        window.moveAsset = function (index, direction) {
+            var target = index + direction;
+            if (target < 0 || target >= selectedIds.length) return;
+            var moved = selectedIds.splice(index, 1)[0];
+            selectedIds.splice(target, 0, moved);
+            renderSelected();
+            updatePreview();
+        };
+
         // --- Drag reorder ---
         window.dragStart = function (e, i) { dragSrcIndex = i; e.dataTransfer.effectAllowed = 'move'; };
         window.dragEnd   = function () { dragSrcIndex = null; };
@@ -315,83 +329,18 @@ include 'core/sidebar.php';
         window.dragDrop  = function (e, target) {
             e.preventDefault();
             if (dragSrcIndex === null || dragSrcIndex === target) return;
-            var sourceId = selectedIds[dragSrcIndex];
-            var targetId = selectedIds[target];
-            var refusal = swapRefusal(sourceId, targetId);
-            if (refusal) {
-                dragSrcIndex = null;
-                alert('These images cannot trade places. ' + refusal);
-                return;
-            }
-
-            selectedIds[dragSrcIndex] = selectedIds[target];
-            selectedIds[target] = sourceId;
+            var moved = selectedIds.splice(dragSrcIndex, 1)[0];
+            selectedIds.splice(target, 0, moved);
             dragSrcIndex = null;
-            renderPickerGrid();
             renderSelected();
             updatePreview();
         };
-
-        function orientation(width, height) {
-            var ratio = width / height;
-            if (ratio < 0.90) return 'portrait';
-            if (ratio > 1.10) return 'landscape';
-            return 'square';
-        }
 
         function focalValue(value) {
             value = parseFloat(value);
             return isFinite(value) ? Math.max(0, Math.min(100, value)) : 50;
         }
 
-        function previewFrame(id) {
-            var image = document.querySelector('#mosaic-preview img[data-asset-id="' + id + '"]');
-            if (!image || !image.parentElement) return null;
-            return {
-                width: image.parentElement.clientWidth,
-                height: image.parentElement.clientHeight
-            };
-        }
-
-        function canFill(asset, frame) {
-            if (!asset || !frame || !asset.naturalWidth || !asset.naturalHeight) return false;
-
-            // Cropping is acceptable; enlarging an undersized source is not.
-            var fillScale = Math.max(
-                frame.width / asset.naturalWidth,
-                frame.height / asset.naturalHeight
-            );
-            if (fillScale > 1) return false;
-
-            var sourceAspect = asset.naturalWidth / asset.naturalHeight;
-            var frameAspect = frame.width / frame.height;
-            var visibleFraction = Math.min(sourceAspect / frameAspect, frameAspect / sourceAspect);
-            return visibleFraction >= MIN_CROP_KEEP;
-        }
-
-        function swapRefusal(sourceId, targetId) {
-            var source = allAssets[sourceId];
-            var target = allAssets[targetId];
-            var sourceFrame = previewFrame(sourceId);
-            var targetFrame = previewFrame(targetId);
-
-            if (!source || !target || !sourceFrame || !targetFrame
-                    || !source.naturalWidth || !source.naturalHeight
-                    || !target.naturalWidth || !target.naturalHeight) {
-                return 'Wait for the live preview to finish loading, then try again.';
-            }
-
-            if (orientation(source.naturalWidth, source.naturalHeight)
-                    !== orientation(target.naturalWidth, target.naturalHeight)) {
-                return 'They need to have roughly the same orientation.';
-            }
-
-            if (!canFill(source, targetFrame) || !canFill(target, sourceFrame)) {
-                return 'One is too small or would require more than a mild crop in its destination frame.';
-            }
-
-            return '';
-        }
 
         // --- Live preview ---
         function updatePreview() {
