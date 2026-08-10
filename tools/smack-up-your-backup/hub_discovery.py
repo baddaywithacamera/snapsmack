@@ -262,6 +262,86 @@ def build_profiles_from_spokes(
     return profiles
 
 
+def resolve_cloud_config(global_cloud: Optional[Dict],
+                         hub_cloud: Optional[Dict]) -> Dict:
+    """Work out the effective Drive/cloud setup for hub-pull backups, drawing on
+    what is ALREADY configured so a guided setup asks ONLY for what is missing.
+
+    Sean's rule: "enter Drive info once IF NOT PRESENT ALREADY SOMEWHERE." This
+    is the pure-logic core of that — the guided wizard calls it, then prompts for
+    nothing that came back auto-filled.
+
+    Sources, most-trusted first:
+      1. SUYB's own global cloud config (the [cloud] ini section, entered once).
+         Shape: {cloud_provider, cloud_credentials_file, cloud_folder_id}.
+      2. The hub's advertised cloud_config from suyb-data.php. Shape:
+         {provider, folder_id}. The hub NEVER sends the credential — that is a
+         local OAuth file SUYB holds — so it can supply provider + folder only.
+
+    Returns:
+      {
+        'provider':         str,        # effective provider (default google_drive)
+        'credentials_file': str,        # local OAuth file; '' if not set anywhere
+        'folder_id':        str,        # target folder; '' if unknown
+        'source':           {field: 'global'|'hub'|'default'|''},
+        'missing':          [fields the user must still supply, in ask order],
+        'ready':            bool,       # True when nothing is missing
+      }
+
+    'missing' only ever holds fields that cannot be auto-filled:
+      - 'credentials_file' when no local OAuth file is configured (enter once)
+      - 'folder_id' when neither global nor hub advertises a target folder
+    provider is never "missing"; it falls back to google_drive.
+    """
+    gc = global_cloud or {}
+    hc = hub_cloud or {}
+
+    g_provider = (gc.get("cloud_provider") or "").strip()
+    g_creds    = (gc.get("cloud_credentials_file") or "").strip()
+    g_folder   = (gc.get("cloud_folder_id") or "").strip()
+    h_provider = (hc.get("provider") or "").strip()
+    h_folder   = (hc.get("folder_id") or "").strip()
+
+    source = {}
+
+    # provider — global wins, then hub, then a sensible default
+    if g_provider and g_provider != "none":
+        provider, source["provider"] = g_provider, "global"
+    elif h_provider and h_provider != "none":
+        provider, source["provider"] = h_provider, "hub"
+    else:
+        provider, source["provider"] = "google_drive", "default"
+
+    # credentials_file — LOCAL only; the hub cannot supply it
+    if g_creds:
+        credentials_file, source["credentials_file"] = g_creds, "global"
+    else:
+        credentials_file, source["credentials_file"] = "", ""
+
+    # folder_id — global wins, then hub
+    if g_folder:
+        folder_id, source["folder_id"] = g_folder, "global"
+    elif h_folder:
+        folder_id, source["folder_id"] = h_folder, "hub"
+    else:
+        folder_id, source["folder_id"] = "", ""
+
+    missing = []
+    if not credentials_file:
+        missing.append("credentials_file")
+    if not folder_id:
+        missing.append("folder_id")
+
+    return {
+        "provider":         provider,
+        "credentials_file": credentials_file,
+        "folder_id":        folder_id,
+        "source":           source,
+        "missing":          missing,
+        "ready":            not missing,
+    }
+
+
 def _safe_dirname(name: str) -> str:
     """Turn a blog name into a safe directory component."""
     safe = name.replace("/", "_").replace("\\", "_").replace(":", "_").strip()
