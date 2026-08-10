@@ -243,6 +243,7 @@ if ($mode === 'vision') {
         'ok'           => true,
         'title'        => $parsed['title'],
         'caption'      => $parsed['caption'],
+        'alt'          => $parsed['alt'],
         'tags'         => $parsed['tags'],
         'colors'       => $parsed['colors'],
         'category_ids' => $names_to_ids($parsed['category'], $cat_id_by),

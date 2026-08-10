@@ -48,6 +48,11 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
+// ALT sanitize/escape helpers. Required here so snap_alt_attr() is available to
+// every render entry point that loads the parser (archive, index, page,
+// collection, …) without each one re-declaring the include.
+require_once __DIR__ . '/alt-text.php';
+
 
 class SnapSmack {
     private $pdo;
@@ -294,7 +299,7 @@ class SnapSmack {
             // Fetch the Gallery images once, then walk the id list to preserve order.
             $ph   = implode(',', array_fill(0, count($image_ids), '?'));
             $stmt = $this->pdo->prepare(
-                "SELECT id, img_title, img_file, img_thumb_aspect, img_width, img_height
+                "SELECT id, img_title, img_alt, img_file, img_thumb_aspect, img_width, img_height
                  FROM snap_images WHERE id IN ($ph)"
             );
             $stmt->execute(array_map('intval', $image_ids));
@@ -314,7 +319,12 @@ class SnapSmack {
                 $item = [
                     'src'  => $base . $thumb_rel,   // light aspect thumb for the tile
                     'full' => $base . $full_rel,    // full image for the lightbox
-                    'alt'  => (string)($by_id[$iid]['img_title'] ?? ''),
+                    // ALT (accessibility) with img_title fallback when blank. Rides
+                    // JSON → JS → element.alt (DOM property, never innerHTML), so
+                    // json_encode is the correct escaping context here.
+                    'alt'  => (string)(trim((string)($by_id[$iid]['img_alt'] ?? '')) !== ''
+                                ? $by_id[$iid]['img_alt']
+                                : ($by_id[$iid]['img_title'] ?? '')),
                     'id'   => $iid,
                     'focusX' => max(0, min(100, (float)($focus_positions[$iid]['x'] ?? 50))),
                     'focusY' => max(0, min(100, (float)($focus_positions[$iid]['y'] ?? 50))),
@@ -558,14 +568,14 @@ class SnapSmack {
         // --- [random_image] ---
         $content = preg_replace_callback('/\[random_image\]/i', function () use ($base) {
             try {
-                $stmt = $this->pdo->query("SELECT id, img_file, img_title, img_thumb_aspect FROM snap_images WHERE img_status = 'published' ORDER BY RAND() LIMIT 1");
+                $stmt = $this->pdo->query("SELECT id, img_file, img_title, img_alt, img_thumb_aspect FROM snap_images WHERE img_status = 'published' ORDER BY RAND() LIMIT 1");
                 $img = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$img) return '';
                 $src = !empty($img['img_thumb_aspect']) ? $img['img_thumb_aspect'] : $img['img_file'];
                 return sprintf(
                     '<div class="snap-inline-frame align-center"><div class="ip-ascii-frame-inner"><img src="%s" alt="%s" loading="lazy" data-lightbox-src="%s" style="cursor:zoom-in"></div></div>',
                     htmlspecialchars($base . ltrim($src, '/')),
-                    htmlspecialchars($img['img_title'] ?? 'Random image'),
+                    snap_alt_attr($img['img_alt'] ?? null, $img['img_title'] ?? 'Random image'),
                     htmlspecialchars($base . ltrim($img['img_file'], '/'))
                 );
             } catch (PDOException $e) { return ''; }
@@ -574,14 +584,14 @@ class SnapSmack {
         // --- [latest_image] ---
         $content = preg_replace_callback('/\[latest_image\]/i', function () use ($base) {
             try {
-                $stmt = $this->pdo->query("SELECT id, img_file, img_title, img_thumb_aspect FROM snap_images WHERE img_status = 'published' ORDER BY id DESC LIMIT 1");
+                $stmt = $this->pdo->query("SELECT id, img_file, img_title, img_alt, img_thumb_aspect FROM snap_images WHERE img_status = 'published' ORDER BY id DESC LIMIT 1");
                 $img = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$img) return '';
                 $src = !empty($img['img_thumb_aspect']) ? $img['img_thumb_aspect'] : $img['img_file'];
                 return sprintf(
                     '<div class="snap-inline-frame align-center"><div class="ip-ascii-frame-inner"><img src="%s" alt="%s" loading="lazy" data-lightbox-src="%s" style="cursor:zoom-in"></div></div>',
                     htmlspecialchars($base . ltrim($src, '/')),
-                    htmlspecialchars($img['img_title'] ?? 'Latest image'),
+                    snap_alt_attr($img['img_alt'] ?? null, $img['img_title'] ?? 'Latest image'),
                     htmlspecialchars($base . ltrim($img['img_file'], '/'))
                 );
             } catch (PDOException $e) { return ''; }
@@ -654,7 +664,7 @@ class SnapSmack {
                     // tables number from 1, so a plain [img:ID] would resolve the
                     // Library asset of the same id first. snap_images has no border
                     // columns; defaults leave it borderless.
-                    $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name FROM snap_images WHERE id = ? LIMIT 1");
+                    $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name, img_alt as alt FROM snap_images WHERE id = ? LIMIT 1");
                     $stmt->execute([$id]);
                     $asset = $stmt->fetch();
                 } else {
@@ -665,7 +675,7 @@ class SnapSmack {
                     // Fallback SELECT (no border cols) protects blogs where the schema
                     // sync hasn't added the columns yet — avoids an Unknown-column fatal.
                     try {
-                        $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name, asset_border_width as bw, asset_border_color as bc FROM snap_assets WHERE id = ? LIMIT 1");
+                        $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name, asset_alt as alt, asset_border_width as bw, asset_border_color as bc FROM snap_assets WHERE id = ? LIMIT 1");
                         $stmt->execute([$id]);
                         $asset = $stmt->fetch();
                     } catch (\PDOException $e) {
@@ -677,7 +687,7 @@ class SnapSmack {
                     // --- FALLBACK TO SNAP_IMAGES (PRIORITY 2) ---
                     // snap_images has no border columns; defaults leave it borderless.
                     if (!$asset) {
-                        $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name FROM snap_images WHERE id = ? LIMIT 1");
+                        $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name, img_alt as alt FROM snap_images WHERE id = ? LIMIT 1");
                         $stmt->execute([$id]);
                         $asset = $stmt->fetch();
                     }
@@ -718,7 +728,7 @@ class SnapSmack {
                     $align,
                     $full_src,
                     $classes,
-                    htmlspecialchars($asset['name']),
+                    snap_alt_attr($asset['alt'] ?? null, $asset['name'] ?? ''),
                     htmlspecialchars($full_url),
                     $border_css
                 );

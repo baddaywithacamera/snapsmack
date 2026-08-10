@@ -32,6 +32,7 @@ require_once 'core/api-auth.php';
 require_once 'core/palette-extract.php';
 require_once 'core/snap-tags.php';
 require_once 'core/ai-provider.php';
+require_once 'core/alt-text.php';
 
 /**
  * Extract the raw EXIF APP1 segment bytes from a JPEG file.
@@ -227,6 +228,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
 
     $title = trim($_POST['title'] ?? 'Untitled Transmission');
     $desc = trim($_POST['desc'] ?? '');
+    // ALT text (accessibility). Sanitized on store; null when blank so render-time
+    // falls back to img_title. Same treatment for CMS-typed and SYBU/AI-supplied.
+    $alt = snap_sanitize_alt($_POST['alt'] ?? '');
     $status = $_POST['img_status'] ?? 'published';
 
     // HTML5 datetime-local inputs use 'T' separator; convert to SQL-compatible space.
@@ -540,6 +544,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         // Stores image metadata, dimensions, processing flags, and category/album mappings.
         // Belt-and-suspenders: guarantee the auto-orient flag column exists on older installs.
         $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_auto_orient TINYINT(1) NOT NULL DEFAULT 0");
+        $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_alt VARCHAR(500) NULL");
         $stmt = $pdo->prepare("
             INSERT INTO snap_images (
                 img_title,
@@ -547,6 +552,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 img_file,
                 img_source_file,
                 img_description,
+                img_alt,
                 img_film,
                 img_exif,
                 img_status,
@@ -562,7 +568,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 img_thumb_aspect,
                 img_checksum,
                 img_display_options
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -571,6 +577,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             $db_path,
             $source_file ?: null,
             $desc,
+            $alt,
             $film_val,
             $exif_json,
             $status,
@@ -753,7 +760,8 @@ include 'core/sidebar.php';
                                 <span class="sc-sep"></span>
                                 <button type="button" class="sc-btn sc-btn-ai" id="btn-spellcheck" title="Check spelling and grammar with AI">SP/GR</button>
                                 <button type="button" class="sc-btn sc-btn-ai" id="btn-ai-assist" title="AI Writing Assistant">AI ASSIST</button>
-                                <button type="button" class="sc-btn sc-btn-ai" id="btn-ai-vision" title="Analyse the chosen photo and fill title, caption, tags, categories and albums (AI vision — same as SYBU)">VISION FILL</button>
+                                <button type="button" class="sc-btn sc-btn-ai" id="btn-ai-vision" title="Analyse the chosen photo and fill title, caption, ALT text, tags, categories and albums in one call (AI vision — same as SYBU)">VISION FILL</button>
+                                <button type="button" class="sc-btn sc-btn-ai" id="btn-ai-vision-rerun" title="Discard the cached AI result and analyse the photo again (spends one more call)">RE-RUN</button>
                                 <span id="ai-vision-status" class="ss-ai-enrich-status" aria-live="polite"></span>
                                 <?php endif; ?>
                             </div>
@@ -761,6 +769,11 @@ include 'core/sidebar.php';
                         <textarea id="desc" name="desc" placeholder="Plain text. Blank lines become paragraph breaks."></textarea>
 
 
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>ALT TEXT <span class="lens-hint">— accessibility description for screen readers (VISION FILL writes this too)</span></label>
+                        <input type="text" id="alt" name="alt" maxlength="500" placeholder="One plain sentence describing what's in the photo — for screen-reader users.">
                     </div>
 
                     <div class="lens-input-wrapper">

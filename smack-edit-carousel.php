@@ -36,6 +36,7 @@
 require_once 'core/auth-smack.php';
 require_once 'core/palette-extract.php';
 require_once 'core/snap-tags.php';
+require_once 'core/alt-text.php';
 
 // $id is already validated by smack-edit.php before this file is included.
 // Resolve image ID → post ID.
@@ -147,6 +148,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $new_style_bc     = $_POST['new_img_border_color'] ?? [];
     $new_style_bg     = $_POST['new_img_bg_color']     ?? [];
     $new_style_shadow = $_POST['new_img_shadow']       ?? [];
+    $new_style_alt    = $_POST['new_img_alt']          ?? [];   // per-new-image ALT
+
+    // Belt-and-suspenders: ensure the ALT column exists (DDL before any txn).
+    $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_alt VARCHAR(500) NULL");
 
     // --- Update snap_posts ---
     $pdo->prepare("
@@ -503,15 +508,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($orig_w == $orig_h) $auto_orient = 2;
             elseif ($orig_h > $orig_w) $auto_orient = 1;
 
+            $new_img_alt_val = snap_sanitize_alt($new_style_alt[$i] ?? '');   // per-image ALT
             $pdo->prepare("
                 INSERT INTO snap_images
-                    (img_title, img_slug, img_file, img_description, img_film, img_exif,
+                    (img_title, img_slug, img_file, img_description, img_alt, img_film, img_exif,
                      img_status, img_date, img_orientation, img_width, img_height,
                      allow_comments, allow_download, download_url,
                      img_thumb_square, img_thumb_aspect, img_checksum, img_display_options, post_id)
-                VALUES (?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ")->execute([
-                $title, $img_slug, $db_path, $desc, $exif_json,
+                $title, $img_slug, $db_path, $desc, $new_img_alt_val, $exif_json,
                 $status, $post_date, $auto_orient, $orig_w, $orig_h,
                 $allow_cmt, $allow_dl, $dl_url,
                 $db_thumb_square, $db_thumb_aspect, $db_checksum, $palette_json,

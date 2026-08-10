@@ -106,7 +106,7 @@ $_fsog_initial_thumbs = ($_fsog_cur === 'thumbs');
             <a href="<?php echo $link; ?>" class="fsog-archive-item" title="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>">
                 <div class="fsog-thumb<?php echo $ratio < 1 ? ' fsog-thumb-portrait' : ''; ?>" style="aspect-ratio: <?php echo round($ratio, 4); ?>;">
                     <img src="<?php echo $thumb_url; ?>"
-                         alt="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>"
+                         alt="<?php echo htmlspecialchars(($img['img_alt'] ?? '') !== '' ? $img['img_alt'] : ($img['img_title'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                          loading="lazy">
                 </div>
                 <div class="fsog-archive-title"><?php echo htmlspecialchars($img['img_title'] ?? ''); ?></div>
@@ -135,7 +135,7 @@ $_fsog_initial_thumbs = ($_fsog_cur === 'thumbs');
                     <a href="<?php echo $link; ?>" class="justified-item"
                        title="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>"
                        style="flex-grow: <?php echo $flex_grow; ?>; flex-basis: 0; aspect-ratio: <?php echo round($img['_aspect'], 4); ?>;">
-                        <img src="<?php echo $img_url; ?>" alt="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>" loading="lazy">
+                        <img src="<?php echo $img_url; ?>" alt="<?php echo htmlspecialchars(($img['img_alt'] ?? '') !== '' ? $img['img_alt'] : ($img['img_title'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" loading="lazy">
                     </a>
                 <?php endforeach; ?>
             </div>

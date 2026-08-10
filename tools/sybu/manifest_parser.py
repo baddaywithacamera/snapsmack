@@ -37,6 +37,7 @@ class ManifestEntry:
     # Source line number for error reporting
     line_num:    int = 0
     caption:     str = ''       # AI/manual caption → posted as the post description (kept separate from title)
+    alt:         str = ''       # accessibility ALT text → posted to img_alt (screen-reader description, distinct from caption)
 
 
 @dataclass

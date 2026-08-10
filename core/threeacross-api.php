@@ -40,6 +40,7 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/snap-tags.php';
 require_once __DIR__ . '/thumb-generator.php';
 require_once __DIR__ . '/api-input-safety.php';   // stored-path containment — SECAUDIT 040
+require_once __DIR__ . '/alt-text.php';            // ALT sanitize/escape helpers
 
 // Defensive schema guard — table may be absent on installs that predate
 // the Oh Snap! key table; columns key_type and key_prefix may be absent
@@ -399,6 +400,11 @@ if ($sub === 'posts' && $method === 'POST') {
         $tag_string = implode(' ', array_map(fn($t) => '#' . ltrim($t, '#'), $tags));
     }
 
+    // Belt-and-suspenders column guard. MUST run BEFORE beginTransaction() — DDL
+    // (ALTER TABLE) triggers an implicit commit in MySQL and would silently end
+    // the transaction if run inside it.
+    $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_alt VARCHAR(500) NULL");
+
     $pdo->beginTransaction();
     try {
 
@@ -408,6 +414,7 @@ if ($sub === 'posts' && $method === 'POST') {
         $img_path = trim($img_data['path'] ?? '');
         $img_w    = (int)($img_data['width']  ?? 0);
         $img_h    = (int)($img_data['height'] ?? 0);
+        $img_alt  = snap_sanitize_alt($img_data['alt'] ?? '');  // per-image ALT (accessibility)
 
         if ($img_path === '') continue;
 
@@ -480,13 +487,13 @@ if ($sub === 'posts' && $method === 'POST') {
 
         $pdo->prepare("
             INSERT INTO snap_images (
-                img_slug, img_file, img_title, img_description,
+                img_slug, img_file, img_title, img_description, img_alt,
                 img_date, img_width, img_height, img_orientation,
                 img_thumb_square, img_thumb_aspect,
                 img_source_file, img_status, sort_order
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?)
         ")->execute([
-            $img_slug, $img_path, '', $desc,
+            $img_slug, $img_path, '', $desc, $img_alt,
             $post_date, $img_w, $img_h, $img_ori,
             $img_thumb_square, $img_thumb_aspect,
             $img_source ?: null, $sort_order,
@@ -902,17 +909,20 @@ if ($sub === 'gram/post' && $method === 'POST') {
         return is_file($site_root . '/' . $p) ? $p : '';
     };
 
+    // Belt-and-suspenders: DDL before beginTransaction() (ALTER implicit-commits).
+    $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_alt VARCHAR(500) NULL");
+
     $pdo->beginTransaction();
     try {
         // 1) Create every snap_images row, carrying its style for the pivot.
         $img_ins = $pdo->prepare("
             INSERT INTO snap_images (
-                img_slug, img_file, img_title, img_description,
+                img_slug, img_file, img_title, img_description, img_alt,
                 img_date, img_width, img_height, img_orientation,
                 img_thumb_square, img_thumb_aspect,
                 img_source_file, img_status, sort_order,
                 allow_comments, allow_download, download_url
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $built = [];  // each: ['image_id'=>, 'style'=>, 'split'=>bool, 'pos'=>]
@@ -956,9 +966,10 @@ if ($sub === 'gram/post' && $method === 'POST') {
                 }
             }
 
+            $im_alt = snap_sanitize_alt($im['alt'] ?? '');  // per-image ALT (accessibility)
             $img_slug = uz_unique_img_slug($pdo, uz_slug_base('', $post_date, $seq));
             $img_ins->execute([
-                $img_slug, $path, '', $desc,
+                $img_slug, $path, '', $desc, $im_alt,
                 $post_date, $w, $h, $orient,
                 $t_sq ?: null, $t_as ?: null,
                 'sob:' . $img_slug, $status, (int)$seq,

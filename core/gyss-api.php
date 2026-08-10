@@ -51,6 +51,7 @@ require_once __DIR__ . '/constants.php';
 require_once __DIR__ . '/ai-provider.php';
 require_once __DIR__ . '/ai-enrichment-prompts.php';
 require_once __DIR__ . '/snap-tags.php';
+require_once __DIR__ . '/alt-text.php';
 
 // --- CORS: allow GYSS desktop app (tauri:// and file://) ---
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -326,7 +327,7 @@ if ($resource === 'meta' && $method === 'GET') {
 if ($resource === 'enrichment-audit' && $method === 'GET') {
     $limit = min(max((int)($_GET['limit'] ?? 500), 1), 1000);
     $rows = $pdo->query("
-        SELECT i.id, i.img_title, i.img_description, i.img_file, i.img_display_options,
+        SELECT i.id, i.img_title, i.img_description, i.img_alt, i.img_file, i.img_display_options,
                (SELECT COUNT(*) FROM snap_image_tags it WHERE it.image_id = i.id) AS tag_count,
                (SELECT COUNT(*) FROM snap_image_cat_map cm WHERE cm.image_id = i.id) AS cat_count,
                (SELECT COUNT(*) FROM snap_image_album_map am WHERE am.image_id = i.id) AS album_count
@@ -340,6 +341,7 @@ if ($resource === 'enrichment-audit' && $method === 'GET') {
         $missing = [];
         if (trim((string)$row['img_title']) === '')       $missing[] = 'title';
         if (trim((string)$row['img_description']) === '') $missing[] = 'caption';
+        if (trim((string)($row['img_alt'] ?? '')) === '') $missing[] = 'alt';
         if ((int)$row['tag_count'] === 0)                 $missing[] = 'tags';
         if ((int)$row['cat_count'] === 0)                 $missing[] = 'category';
         if ((int)$row['album_count'] === 0)               $missing[] = 'album';
@@ -376,7 +378,7 @@ if ($resource === 'enrich-one' && $method === 'POST') {
         409
     );
 
-    $allowed_fields = ['title', 'caption', 'tags', 'category', 'album', 'colors'];
+    $allowed_fields = ['title', 'caption', 'alt', 'tags', 'category', 'album', 'colors'];
     $fields = array_values(array_intersect(
         $allowed_fields,
         is_array($data['fields'] ?? null) ? $data['fields'] : $allowed_fields
@@ -415,9 +417,9 @@ if ($resource === 'enrich-one' && $method === 'POST') {
     );
     if (!$result['ok']) gy_err($result['error'] ?: 'AI enrichment failed.', 502);
 
-    $parsed = ['title'=>'', 'caption'=>'', 'tags'=>'', 'category'=>'', 'album'=>'', 'colors'=>''];
+    $parsed = ['title'=>'', 'caption'=>'', 'alt'=>'', 'tags'=>'', 'category'=>'', 'album'=>'', 'colors'=>''];
     foreach (preg_split('/\R/', trim($result['text'])) as $line) {
-        if (preg_match('/^(TITLE|CAPTION|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)$/i', trim($line), $m)) {
+        if (preg_match('/^(TITLE|CAPTION|ALT|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)$/i', trim($line), $m)) {
             $parsed[strtolower($m[1])] = trim($m[2]);
         }
     }
@@ -443,6 +445,11 @@ if ($resource === 'enrich-one' && $method === 'POST') {
             $caption = mb_substr($parsed['caption'], 0, 20000);
             $applied[] = 'caption';
         }
+        $alt = (string)($image['img_alt'] ?? '');
+        if (in_array('alt', $fields, true) && ($overwrite || trim($alt) === '') && $parsed['alt'] !== '') {
+            $alt = snap_sanitize_alt($parsed['alt']);   // AI output = untrusted → sanitize
+            $applied[] = 'alt';
+        }
         $display_options = json_decode((string)($image['img_display_options'] ?? ''), true);
         if (!is_array($display_options)) $display_options = [];
         $colors = !empty($display_options['ai_colors'])
@@ -457,8 +464,8 @@ if ($resource === 'enrich-one' && $method === 'POST') {
             }
         }
         $display_json = $display_options ? json_encode($display_options, JSON_UNESCAPED_SLASHES) : null;
-        $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_display_options = ? WHERE id = ?")
-            ->execute([$title, $caption, $display_json, $id]);
+        $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_alt = ?, img_display_options = ? WHERE id = ?")
+            ->execute([$title, $caption, $alt, $display_json, $id]);
 
         $tags_applied = false;
         if (in_array('tags', $fields, true) && ($overwrite || !$has_tags) && $parsed['tags'] !== '') {

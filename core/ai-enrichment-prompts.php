@@ -80,6 +80,7 @@ Analyse the image carefully and respond ONLY in this exact format — no extra t
 
 TITLE: <a short, plain, descriptive title — a few words; not poetic>
 CAPTION: <a short, natural one-line caption describing the image; no hashtags>
+ALT: <one plain sentence of screen-reader ALT text — lead with the main subject, concrete, no "image of"/"photo of">
 TAGS: <5 to 8 space-separated hashtags>
 CATEGORY: <every applicable exact option from the supplied category list, comma-separated, or blank>
 ALBUM: <every applicable exact option from the supplied album list, comma-separated, or blank>
@@ -87,6 +88,7 @@ COLORS: <the three most prominent colours as uppercase #RRGGBB codes, space-sepa
 
 Rules:
 - Describe what is literally visible. Do not invent facts, places, people, categories, or albums.
+- ALT is accessibility text: one plain sentence, lead with the subject, describe only what is visible, never begin with "image of"/"photo of", and do not just repeat the caption.
 - Tags must be lowercase, begin with #, and contain no spaces.
 - Distorted specular highlights with swirly blurred bokeh indicate a modified Helios 44 lens; add #helios and #helios44 when those characteristics are present.
 - Use only exact category and album options supplied with the request.
@@ -233,6 +235,7 @@ Analyse the image carefully and respond ONLY in this exact format — no extra t
 
 TITLE: <a short, plain, descriptive title — a few words, e.g. "Drumheller water tower at dusk". NOT a haiku, not poetic.>
 CAPTION: <a short, natural one-line caption describing the image — this becomes the post's caption/description. No hashtags.>
+ALT: <one plain sentence of accessibility ALT text describing what is visibly in the frame for a screen-reader user — lead with the main subject, be concrete and specific, no "image of"/"photo of".>
 TAGS: <5 to 8 space-separated hashtags, e.g. #stone #rust #texture #macro #urban>
 CATEGORY: <pick every applicable match from this list, comma-separated, or leave blank:{$cats_str}>
 ALBUM: <pick every applicable match from this list, comma-separated, or leave blank:{$albums_str}>
@@ -241,6 +244,7 @@ COLORS: <the three most visually prominent colors in the image as uppercase hex 
 Rules:
 - TITLE must be a short, plain description of what is literally in the image — not a haiku, not poetic
 - CAPTION is the post's caption/description: one natural line, no hashtags
+- ALT is accessibility text for screen readers: one plain sentence, lead with the main subject, describe only what is visibly in the frame, never begin with "image of" or "photo of", and do not just repeat the caption
 - {$tags_guidance}
 - Tags must be lowercase with no spaces within a tag
 - Images with multiple distorted specular highlights and swirly blurred bokeh were made with a modified Helios 44 lens; add both #helios and #helios44 to TAGS when those visual characteristics are present
@@ -254,13 +258,13 @@ PROMPT;
 
 /**
  * Parse a SYBU-format vision response — port of gemini.py::_parse_response().
- * Returns keys: title, caption, tags, category, album, colors.
+ * Returns keys: title, caption, alt, tags, category, album, colors.
  */
 function snap_ai_vision_parse(string $text): array
 {
-    $result = ['title' => '', 'caption' => '', 'tags' => '', 'category' => '', 'album' => '', 'colors' => ''];
+    $result = ['title' => '', 'caption' => '', 'alt' => '', 'tags' => '', 'category' => '', 'album' => '', 'colors' => ''];
     foreach (preg_split('/\r\n|\r|\n/', trim($text)) as $line) {
-        if (preg_match('/^(TITLE|CAPTION|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)/i', trim($line), $m)) {
+        if (preg_match('/^(TITLE|CAPTION|ALT|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)/i', trim($line), $m)) {
             $result[strtolower($m[1])] = trim($m[2]);
         }
     }

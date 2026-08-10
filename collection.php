@@ -92,7 +92,7 @@ if (!$collection) {
 // 'image' items (e.g. the Flickr best-of collections) point straight at an image.
 // Both shapes are unioned and ordered by the curator sort_order (rank).
 $mstmt = $pdo->prepare(
-    "SELECT i.id, i.img_title AS title, i.img_slug AS slug,
+    "SELECT i.id, i.img_title AS title, i.img_alt AS alt, i.img_slug AS slug,
             i.img_thumb_square, i.img_thumb_aspect, i.img_file,
             i.img_date, ci.sort_order AS position, NULL AS caption
      FROM snap_collection_items ci
@@ -102,7 +102,7 @@ $mstmt = $pdo->prepare(
        AND ci.item_type     = 'post'
        AND i.img_status     = 'published'
      UNION ALL
-     SELECT i.id, i.img_title AS title, i.img_slug AS slug,
+     SELECT i.id, i.img_title AS title, i.img_alt AS alt, i.img_slug AS slug,
             i.img_thumb_square, i.img_thumb_aspect, i.img_file,
             i.img_date, ci.sort_order AS position, NULL AS caption
      FROM snap_collection_items ci
@@ -123,7 +123,7 @@ try {
 $featured = null;
 if ($collection['cover_image_id']) {
     $fstmt = $pdo->prepare(
-        "SELECT id, img_title, img_slug, img_thumb_aspect, img_file
+        "SELECT id, img_title, img_alt, img_slug, img_thumb_aspect, img_file
          FROM snap_images WHERE id=? AND img_status='published' LIMIT 1"
     );
     $fstmt->execute([(int)$collection['cover_image_id']]);
@@ -168,7 +168,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                     <div class="collection-hero">
                         <a href="<?php echo BASE_URL . htmlspecialchars($featured['img_slug'] ?? ''); ?>">
                             <img src="<?php echo BASE_URL . htmlspecialchars(ltrim($featured['img_file'] ?? '', '/')); ?>"
-                                 alt="<?php echo htmlspecialchars($featured['img_title'] ?? $collection['title']); ?>"
+                                 alt="<?php echo htmlspecialchars(($featured['img_alt'] ?? '') !== '' ? $featured['img_alt'] : ($featured['img_title'] ?? $collection['title'])); ?>"
                                  class="collection-hero-img">
                         </a>
                     </div>
@@ -184,7 +184,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                         ?>
                             <a class="collection-tile" href="<?php echo $href; ?>">
                                 <img src="<?php echo BASE_URL . htmlspecialchars(ltrim($thumb, '/')); ?>"
-                                     alt="<?php echo htmlspecialchars($m['title'] ?? ''); ?>"
+                                     alt="<?php echo htmlspecialchars(($m['alt'] ?? '') !== '' ? $m['alt'] : ($m['title'] ?? '')); ?>"
                                      loading="lazy">
                                 <span class="collection-tile-title"><?php echo htmlspecialchars($m['title'] ?? ''); ?></span>
                                 <?php if (!empty($m['caption'])): ?>

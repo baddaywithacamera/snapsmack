@@ -28,8 +28,8 @@ require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
             <?php 
             include dirname(__DIR__, 2) . '/core/download-overlay.php'; 
             ?>
-            <img src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>" 
-                 alt="<?php echo htmlspecialchars($img['img_title']); ?>" 
+            <img src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>"
+                 alt="<?php echo htmlspecialchars(($img['img_alt'] ?? '') !== '' ? $img['img_alt'] : ($img['img_title'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                  class="post-image">
             <?php echo $download_button; ?>
         </div>

@@ -15,6 +15,7 @@
 
 
 require_once 'core/auth-smack.php';
+require_once 'core/alt-text.php';
 
 // Ensure media storage directory exists.
 $target_dir = "media_assets/";
@@ -28,6 +29,20 @@ if (!is_dir($target_dir)) {
 // renders, read through the parser's existing asset SELECT (zero extra query).
 $pdo->exec("ALTER TABLE snap_assets ADD COLUMN IF NOT EXISTS asset_border_width TINYINT UNSIGNED NOT NULL DEFAULT 0");
 $pdo->exec("ALTER TABLE snap_assets ADD COLUMN IF NOT EXISTS asset_border_color VARCHAR(7) NOT NULL DEFAULT '#000000'");
+$pdo->exec("ALTER TABLE snap_assets ADD COLUMN IF NOT EXISTS asset_alt VARCHAR(500) DEFAULT NULL");
+
+// --- ALT SAVE (AJAX) ---
+// Persists per-asset accessibility ALT text. Rendered everywhere [img:ID] embeds
+// the asset (parser falls back to asset_name when blank).
+if (isset($_POST['alt_id'])) {
+    $alt_id  = (int)$_POST['alt_id'];
+    $alt_val = snap_sanitize_alt($_POST['asset_alt'] ?? '');
+    $ok = $pdo->prepare("UPDATE snap_assets SET asset_alt = ? WHERE id = ?")
+              ->execute([$alt_val, $alt_id]);
+    header('Content-Type: application/json');
+    echo json_encode(['status' => $ok ? 'success' : 'error']);
+    exit;
+}
 
 // --- BORDER SAVE (AJAX) ---
 // Persists the per-asset global border width (0-50px) and hex colour. Border
@@ -177,7 +192,7 @@ include 'core/sidebar.php';
                 <div class="asset-card" id="asset-<?php echo $a['id']; ?>">
                     <div class="asset-thumb-wrapper">
                         <?php if ($is_web): ?>
-                            <img src="<?php echo htmlspecialchars($a['asset_path']); ?>" alt="<?php echo htmlspecialchars($a['asset_name']); ?>" style="<?php echo $thumb_border; ?>">
+                            <img src="<?php echo htmlspecialchars($a['asset_path']); ?>" alt="<?php echo snap_alt_attr($a['asset_alt'] ?? null, $a['asset_name'] ?? ''); ?>" style="<?php echo $thumb_border; ?>">
                         <?php else: ?>
                             <div class="asset-no-preview">.<?php echo strtoupper($ext); ?></div>
                         <?php endif; ?>
@@ -216,6 +231,17 @@ include 'core/sidebar.php';
                                    data-asset-id="<?php echo $a['id']; ?>"
                                    title="Border colour (applies everywhere this image is used)">
                             <span class="border-saved-note"></span>
+                        </div>
+
+                        <div class="asset-alt-control" style="margin-top:6px;">
+                            <label class="border-label" style="align-items:flex-start;gap:6px;">ALT
+                                <input type="text" class="asset-alt-input" maxlength="500"
+                                       value="<?php echo htmlspecialchars($a['asset_alt'] ?? '', ENT_QUOTES); ?>"
+                                       placeholder="Accessibility description (screen readers)"
+                                       data-asset-id="<?php echo $a['id']; ?>"
+                                       style="flex:1;min-width:0;">
+                            </label>
+                            <span class="alt-saved-note"></span>
                         </div>
 
                         <div class="asset-actions">

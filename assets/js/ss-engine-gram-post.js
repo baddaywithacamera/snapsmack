@@ -183,6 +183,9 @@
                         '<div class="gp-ctl"><span>Shadow</span>' +
                             '<select class="gp-shadow">' + shadowOpts + '</select></div>' +
                     '</div>' +
+                    // ALT applies in both crop modes, so it lives outside .gp-fit.
+                    '<div class="gp-ctl gp-ctl-alt"><span>Alt</span>' +
+                        '<input type="text" class="gp-alt" maxlength="500" placeholder="Describe this photo for screen readers" value="' + escHtml(item.alt || '') + '" style="flex:1;min-width:0;"></div>' +
                 '</div>';
 
             const wrap     = el.querySelector('.cp-thumb-wrap');
@@ -252,6 +255,8 @@
             styleEl.querySelector('.gp-bcol').addEventListener('input', e => { item.bcol = e.target.value; applyPreview(item, wrap, thumbImg); });
             styleEl.querySelector('.gp-bg').addEventListener('input',   e => { item.bg   = e.target.value; applyPreview(item, wrap, thumbImg); });
             styleEl.querySelector('.gp-shadow').addEventListener('change', e => { item.shadow = parseInt(e.target.value); applyPreview(item, wrap, thumbImg); });
+            const altInput = styleEl.querySelector('.gp-alt');
+            if (altInput) altInput.addEventListener('input', e => { item.alt = e.target.value; });
 
             // Zoom (square crop) — always available, independent of fit/fill.
             const zoomR = styleEl.querySelector('.gp-zoom'), zoomV = styleEl.querySelector('.gp-zoom-v');
@@ -436,6 +441,7 @@
             data.append('img_focus_y[]',      Math.round(item.fy != null ? item.fy : 50));
             data.append('img_zoom[]',         item.zoom != null ? item.zoom : 100);
             data.append('img_split[]',        item.split ? 1 : 0);
+            data.append('img_alt[]',          item.alt || '');
         });
 
         const xhr = new XMLHttpRequest();

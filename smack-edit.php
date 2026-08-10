@@ -19,6 +19,8 @@
 require_once 'core/auth-smack.php';
 require_once 'core/snap-tags.php';
 require_once 'core/skin-settings.php';
+require_once 'core/alt-text.php';
+require_once 'core/ai-provider.php';   // snap_ai_active() for the VISION FILL button
 
 // Defensive column adds — harmless if migrations already ran.
 $pdo->exec("ALTER TABLE snap_collection_items ADD COLUMN IF NOT EXISTS `item_type` ENUM('post','album','category') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'post'");
@@ -33,7 +35,8 @@ $pdo->exec("ALTER TABLE snap_collection_items ADD COLUMN IF NOT EXISTS `sort_ord
 try {
     $pdo->exec("ALTER TABLE snap_images
                 ADD COLUMN IF NOT EXISTS is_sensitive    TINYINT(1)   NOT NULL DEFAULT 0,
-                ADD COLUMN IF NOT EXISTS content_warning VARCHAR(255) DEFAULT NULL");
+                ADD COLUMN IF NOT EXISTS content_warning VARCHAR(255) DEFAULT NULL,
+                ADD COLUMN IF NOT EXISTS img_alt         VARCHAR(500) DEFAULT NULL");
 } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
 
 // Load and apply skin-aware settings early so the frame save handler and
@@ -88,6 +91,7 @@ unset($_ss_settings_stmt, $_ss_settings, $_ss_active_skin,
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = $_POST['title'];
     $desc = $_POST['desc'];
+    $alt = snap_sanitize_alt($_POST['alt'] ?? '');   // accessibility ALT → img_alt
     $status = $_POST['img_status'] ?? 'published';
     $orientation = (int)($_POST['img_orientation'] ?? 0);
 
@@ -202,8 +206,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $display_json = !empty($display_opts) ? json_encode($display_opts) : null;
 
     // Update the primary image record with all modified fields.
-    $stmt = $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_film = ?, img_exif = ?, img_status = ?, img_date = ?, img_orientation = ?, allow_comments = ?, allow_download = ?, download_url = ?, img_display_options = ?, is_sensitive = ?, content_warning = ? WHERE id = ?");
-    $stmt->execute([$title, $desc, $film_val, json_encode($updated_exif), $status, $custom_date, $orientation, $allow_comments, $allow_download, $download_url, $display_json, $is_sensitive, $content_warning, $id]);
+    $stmt = $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_alt = ?, img_film = ?, img_exif = ?, img_status = ?, img_date = ?, img_orientation = ?, allow_comments = ?, allow_download = ?, download_url = ?, img_display_options = ?, is_sensitive = ?, content_warning = ? WHERE id = ?");
+    $stmt->execute([$title, $desc, $alt, $film_val, json_encode($updated_exif), $status, $custom_date, $orientation, $allow_comments, $allow_download, $download_url, $display_json, $is_sensitive, $content_warning, $id]);
 
     // Sync hashtags from title + description + manual tags field.
     snap_sync_tags($pdo, $id, $title . ' ' . $desc . ' ' . $manual_tags);
@@ -409,6 +413,24 @@ include 'core/sidebar.php';
                             </div>
                         </div>
                         <textarea id="desc" name="desc" placeholder="Plain text. Blank lines become paragraph breaks."><?php echo htmlspecialchars($post['img_description']); ?></textarea>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>ALT TEXT <span class="lens-hint">— accessibility description for screen readers</span></label>
+                        <input type="text" id="alt" name="alt" maxlength="500"
+                               value="<?php echo htmlspecialchars($post['img_alt'] ?? ''); ?>"
+                               placeholder="One plain sentence describing what's in the photo — for screen-reader users.">
+                        <?php if (snap_ai_active()): ?>
+                        <div class="sc-row" style="margin-top:6px;">
+                            <button type="button" class="sc-btn sc-btn-ai" id="btn-ai-vision"
+                                    data-image-url="<?php echo htmlspecialchars(BASE_URL . ltrim($post['img_file'], '/')); ?>"
+                                    title="Analyse this photo and fill any EMPTY fields (title, caption, ALT, tags) in one AI call — won't overwrite what you've typed">VISION FILL (EMPTY FIELDS)</button>
+                            <button type="button" class="sc-btn sc-btn-ai" id="btn-ai-vision-rerun"
+                                    data-image-url="<?php echo htmlspecialchars(BASE_URL . ltrim($post['img_file'], '/')); ?>"
+                                    title="Discard the cached AI result and analyse the photo again (spends one more call)">RE-RUN</button>
+                            <span id="ai-vision-status" class="ss-ai-enrich-status" aria-live="polite"></span>
+                        </div>
+                        <?php endif; ?>
                     </div>
 
                     <div class="lens-input-wrapper">

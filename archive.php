@@ -816,7 +816,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                                 $flex_grow = round($img['_aspect'] * 100);
                             ?>
                                 <a href="<?php echo $link; ?>" class="justified-item" title="<?php echo htmlspecialchars($img['img_title']); ?>" style="flex-grow: <?php echo $flex_grow; ?>; flex-basis: 0; aspect-ratio: <?php echo round($img['_aspect'], 4); ?>;">
-                                    <img src="<?php echo $img_url; ?>" alt="<?php echo htmlspecialchars($img['img_title']); ?>" loading="lazy">
+                                    <img src="<?php echo $img_url; ?>" alt="<?php echo snap_alt_attr($img['img_alt'] ?? null, $img['img_title'] ?? ''); ?>" loading="lazy">
                                 </a>
                             <?php endforeach; ?>
                         </div>
@@ -850,7 +850,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                                 elseif ($orientation === 2) $orient_class = 'orient-square';
                             ?>
                             <a href="<?php echo $link; ?>" class="thumb-link <?php echo $orient_class; ?>" title="<?php echo htmlspecialchars($img['img_title']); ?>">
-                                <img src="<?php echo $thumb_url; ?>" alt="<?php echo htmlspecialchars($img['img_title']); ?>" loading="lazy">
+                                <img src="<?php echo $thumb_url; ?>" alt="<?php echo snap_alt_attr($img['img_alt'] ?? null, $img['img_title'] ?? ''); ?>" loading="lazy">
                             </a>
                         </div>
                     <?php endforeach; ?>
@@ -877,7 +877,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                                 $thumb_url = BASE_URL . $folder . 'thumbs/t_' . $filename;
                             ?>
                             <a href="<?php echo $link; ?>" class="thumb-link" title="<?php echo htmlspecialchars($img['img_title']); ?>">
-                                <img src="<?php echo $thumb_url; ?>" alt="<?php echo htmlspecialchars($img['img_title']); ?>" loading="lazy">
+                                <img src="<?php echo $thumb_url; ?>" alt="<?php echo snap_alt_attr($img['img_alt'] ?? null, $img['img_title'] ?? ''); ?>" loading="lazy">
                             </a>
                         </div>
                     <?php endforeach; ?>

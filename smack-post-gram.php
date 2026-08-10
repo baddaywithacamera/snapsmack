@@ -25,6 +25,7 @@
 require_once 'core/auth-smack.php';
 require_once 'core/palette-extract.php';
 require_once 'core/snap-tags.php';
+require_once 'core/alt-text.php';
 
 set_time_limit(600);
 ini_set('memory_limit', '512M');
@@ -76,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
     // "Post separately" flag: a flagged image is created as its OWN single post
     // instead of joining the carousel stack.
     $st_split  = $_POST['img_split']        ?? [];
+    $st_alt    = $_POST['img_alt']          ?? [];   // per-image accessibility ALT
 
     $hexok = function ($v, $def) {
         return (is_string($v) && preg_match('/^#[0-9a-fA-F]{6}$/', $v)) ? $v : $def;
@@ -151,6 +153,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
 
     // Cap at 10 images
     $files_count = min($files_count, 10);
+
+    // Belt-and-suspenders: guarantee the ALT column exists on older installs.
+    $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_alt VARCHAR(500) NULL");
 
     for ($i = 0; $i < $files_count; $i++) {
         if ($_FILES['img_files']['error'][$i] !== UPLOAD_ERR_OK) {
@@ -295,16 +300,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         elseif ($orig_h > $orig_w) $auto_orient = 1;
 
         // Insert snap_images record (no EXIF data in gram mode)
+        $img_alt_val = snap_sanitize_alt($st_alt[$i] ?? '');   // per-image ALT
         $img_stmt = $pdo->prepare("
             INSERT INTO snap_images (
-                img_title, img_slug, img_file, img_description,
+                img_title, img_slug, img_file, img_description, img_alt,
                 img_status, img_date, img_orientation, img_width, img_height,
                 allow_comments, allow_download, download_url,
                 img_thumb_square, img_thumb_aspect, img_checksum, img_display_options
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $img_stmt->execute([
-            '', $img_slug, $db_path, $desc,
+            '', $img_slug, $db_path, $desc, $img_alt_val,
             $status, $post_date, $auto_orient, $orig_w, $orig_h,
             $allow_cmt, $allow_dl, $dl_url,
             $db_thumb_square, $db_thumb_aspect, $db_checksum, $palette_json,

@@ -135,7 +135,7 @@ header('Content-Type: text/html; charset=utf-8');
 
     <div class="pk-media">
       <?php foreach ($pk_images as $im): ?>
-        <img class="u-photo" loading="lazy" src="<?php echo pk_e(pk_img_url($im, $pk_base)); ?>" alt="<?php echo pk_e($pk_title); ?>">
+        <img class="u-photo" loading="lazy" src="<?php echo pk_e(pk_img_url($im, $pk_base)); ?>" alt="<?php echo pk_e(($im['img_alt'] ?? '') !== '' ? $im['img_alt'] : (($im['img_title'] ?? '') !== '' ? $im['img_title'] : $pk_title)); ?>">
       <?php endforeach; ?>
     </div>
 
