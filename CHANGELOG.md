@@ -10,6 +10,23 @@
 
 # SnapSmack Changelog
 
+## Unreleased
+
+- **TILEZ 0.1.5 renders SMACKTALK mosaics with their required layout CSS.** Its
+  custom longform document loaded the shared MOSAIC compositor but omitted the
+  matching stylesheet, leaving positioned cells without the public mosaic
+  layout contract. Published `[mosaic:ID]` blocks now load both halves.
+- **The MOSAIC builder now actually reorders photographs.** Dragging performs an
+  unrestricted insertion move instead of a frequently refused orientation-bound
+  swap. Each selected thumbnail also has accessible left/right move buttons for
+  keyboard, touch, and precise one-step ordering; the preview recomposes after
+  every move.
+- **RATIONAL GEO 2.1.8 stops downloading an unused third-party gallery.** Its
+  archive already renders justified rows server-side with the shared core CSS,
+  and its markup never matched the fjGallery initializer. Removed only the
+  `smack-justified-lib` and `smack-justified` script requirements; archive
+  templates, layout behavior, styling, and settings are unchanged.
+
 ## 0.7.513 — 2026-08-09
 
 - **ALT text (accessibility) everywhere an image is posted or shown.** `snap_images`
