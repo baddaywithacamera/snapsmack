@@ -1712,7 +1712,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="status-card">
                 <h3>Light Table</h3>
-                <p>The online sorter. A full-screen drag-and-drop workbench right in your browser — albums, categories, and collections as drop targets, your whole image grid in the centre. Select a handful or a hundred, drag them where they belong, and the assignments stick. Built for organising a thousand-image back catalog without losing your mind. Its offline counterpart, GET YOUR SHIT SORTED, is in the pipeline.</p>
+                <p>The online sorter. A full-screen drag-and-drop workbench right in your browser — albums, categories, and collections as drop targets, your whole image grid in the centre. Select a handful or a hundred, drag them where they belong, and the assignments stick. Built for organising a thousand-image back catalog without losing your mind. Its offline counterpart, GET YOUR SHIT SORTED, is here too.</p>
             </div>
             <div class="status-card">
                 <h3>Community</h3>
@@ -1818,6 +1818,22 @@ require_once __DIR__ . '/includes/header.php';
             <div class="status-card">
                 <h3>Thomas the Bear</h3>
                 <p>He's adorable, he'll make your day, and he lives in every installation of SnapSmack. You can find him and his story if you're clever and determined enough.</p>
+            </div>
+            <div class="status-card">
+                <h3>SMACKTALK</h3>
+                <p>For photographers who write. Longform photo essays, diary entries, personal narratives — writing and images at equal billing, the way the web was supposed to work before everything became a feed. No follower counts. No suggested posts. No algorithm deciding who reads you. Just a blog, a domain you own, and a place to put words and pictures together the way you mean them. Primitive by design, and yours to keep.</p>
+            </div>
+            <div class="status-card">
+                <h3>MOSAIC</h3>
+                <p>A layout engine built into the SMACKTALK post editor. Arrange multiple images into justified panel rows that flow inline with your writing — not below it, not in a separate gallery, but woven into the text as part of the story. Two images side by side. Three in a justified row. A full-width single shot to punctuate a moment. MOSAIC treats your photos as editorial elements, not attachments.</p>
+            </div>
+            <div class="status-card">
+                <h3>GET YOUR SHIT SORTED</h3>
+                <p>The offline companion to the Light Table. GET YOUR SHIT SORTED pulls down your archive's thumbnails and the data needed to organise it, then turns your own machine into the sorting workbench — no live connection, no server load, no waiting on page loads for a ten-thousand-image back catalog. Do the work on a plane, in a basement, wherever you like. When you're done, it resyncs every change back to your site in one pass.</p>
+            </div>
+            <div class="status-card">
+                <h3>PHOTOFRI.DAY</h3>
+                <p>A weekly photo challenge for the whole Fediverse. One theme every Friday; shoot it and post it from your own blog or instance, and photofri.day points the world back to your work — your photo never leaves your site.</p>
             </div>
         </div>
     </div>
@@ -2378,16 +2394,6 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Design your own SnapSmack skin without touching code. Oh Snap! pulls your manifest, exposes every control, and lets you build and preview your skin visually in real time. AI-assisted for those who want a hand. Full CSS editor for those who'd rather just write it themselves. Ships with Beta.</p>
             </div>
             <div class="coming-item">
-                <span class="tag">Install Mode</span>
-                <h3>SMACKTALK</h3>
-                <p>For photographers who write. Longform photo essays, diary entries, personal narratives — writing and images at equal billing, the way the web was supposed to work before everything became a feed. No follower counts. No suggested posts. No algorithm deciding who reads you. Just a blog, a domain you own, and a place to put words and pictures together the way you mean them. Primitive by design, and yours to keep.</p>
-            </div>
-            <div class="coming-item">
-                <span class="tag">Editor Engine</span>
-                <h3>MOSAIC</h3>
-                <p>A layout engine built into the SMACKTALK post editor. Arrange multiple images into justified panel rows that flow inline with your writing — not below it, not in a separate gallery, but woven into the text as part of the story. Two images side by side. Three in a justified row. A full-width single shot to punctuate a moment. MOSAIC treats your photos as editorial elements, not attachments.</p>
-            </div>
-            <div class="coming-item">
                 <span class="tag">Tools</span>
                 <h3>MIDNIGHT MOVE</h3>
                 <p>The fourth desktop tool. MIDNIGHT MOVE rescues your own work off a dying website before it takes your photographs with it — hand-coded HTML, an ancient CMS install, the site you built in 2006 and can't log into anymore — and moves it into SnapSmack. Migration when you still have the keys, rescue when you've lost them. FTP where you can get it, a public spider where you can't, and AI to make sense of whatever schema it finds. Save the work. Move it somewhere you own.</p>
@@ -2396,11 +2402,6 @@ require_once __DIR__ . '/includes/header.php';
                 <span class="tag">Tools</span>
                 <h3>MEMENTO MORI</h3>
                 <p>A sibling to MIDNIGHT MOVE, for the hardest version of the job. Where MIDNIGHT MOVE rescues your own work, MEMENTO MORI helps friends and family preserve a photographer's after they've passed — the photographs, and the words where they survive — so a life's work doesn't quietly go dark. It works from a hard drive, a folder, or whatever of their site is still online. Nothing is selected without you, and nothing is ever deleted. Quiet, patient, and built for the people who've been left to carry it.</p>
-            </div>
-            <div class="coming-item">
-                <span class="tag">Tools</span>
-                <h3>GET YOUR SHIT SORTED</h3>
-                <p>The offline companion to the Light Table. GET YOUR SHIT SORTED pulls down your archive's thumbnails and the data needed to organise it, then turns your own machine into the sorting workbench — no live connection, no server load, no waiting on page loads for a ten-thousand-image back catalog. Do the work on a plane, in a basement, wherever you like. When you're done, it resyncs every change back to your site in one pass.</p>
             </div>
             <div class="coming-item">
                 <span class="tag">Tools</span>
@@ -2413,9 +2414,9 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Absolute data freedom, even for total pussies. Every image and every scrap of portable data gets packed into a complete, understandable copy on your own computer, with readable JSON sidecars, verification, and courtesy import files for other systems. No command line, no heroic server-side ZIP, no begging us for permission to leave. Ownership is bullshit if leaving means starting over. Your work is yours &mdash; including the right to take the whole damn thing somewhere else.</p>
             </div>
             <div class="coming-item">
-                <span class="tag">Network</span>
-                <h3>PHOTOFRI.DAY</h3>
-                <p>A weekly photo challenge for the whole Fediverse. One theme every Friday; shoot it and post it from your own blog or instance, and photofri.day points the world back to your work — your photo never leaves your site. Launching September 2026.</p>
+                <span class="tag">Fediverse</span>
+                <h3>The Challenge Network</h3>
+                <p>A family of Fediverse-native photo challenges in the spirit of the original Mirror Project — no SnapSmack account, no walled garden, just open prompts that put photography front and centre across the Fediverse. <strong>aphotoevery.day</strong> (a photo a day), <strong>mirrorproject.fyi</strong> (the reflection revival), <strong>selfieproject.fyi</strong> (the self-portrait done right), and <strong>365project.fyi</strong> (the year-long project, first up in November 2026). Shoot the theme, post it from wherever you already live online, and the challenge points the world back to your work.</p>
             </div>
             <div class="coming-item">
                 <span class="tag">Network</span>
