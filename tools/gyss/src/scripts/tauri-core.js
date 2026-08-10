@@ -4,4 +4,7 @@
 // (enabled via app.withGlobalTauri = true in tauri.conf.json).
 const { core } = window.__TAURI__;
 export const invoke = (...args) => core.invoke(...args);
+// Turn an absolute filesystem path into a webview-loadable asset URL. Needed by
+// the offline library to render locally-downloaded thumbnails from disk.
+export const convertFileSrc = (...args) => core.convertFileSrc(...args);
 // ===== SNAPSMACK EOF =====

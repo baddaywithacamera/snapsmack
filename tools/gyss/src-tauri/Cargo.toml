@@ -13,12 +13,16 @@ crate-type = ["lib", "cdylib", "staticlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri             = { version = "2", features = [] }
+tauri             = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-fs   = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-shell  = "2"
 serde             = { version = "1", features = ["derive"] }
 serde_json        = "1"
+# Native HTTP for the offline library's thumbnail downloads. rustls-tls avoids a
+# system OpenSSL dependency on Windows. A native request is NOT subject to the
+# webview's CORS, so it can fetch static /uploads/ thumbs the JS fetch() can't.
+reqwest           = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 
 [profile.release]
 panic         = "abort"

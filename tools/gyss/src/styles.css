@@ -220,4 +220,23 @@ textarea.form-input { resize: vertical; min-height: 64px; }
 .photo-card.not-combinable { opacity: 0.82; }
 .photo-card.not-combinable.selected { outline: none; }
 
+/* Offline library block on the FILTER tab — a distinct section under PULL. */
+.library-block {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border, #2a2a2a);
+}
+.library-hint {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-bottom: 10px;
+}
+.library-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+.library-actions .btn-primary,
+.library-actions .btn-secondary { flex: 1; }
+
 /* ===== SNAPSMACK EOF ===== */
