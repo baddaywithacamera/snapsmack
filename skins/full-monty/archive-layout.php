@@ -1,5 +1,14 @@
 <?php
 /** FULL MONTY diagonal square archive. */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 $fm_hero = !empty($images[0]['img_file']) ? BASE_URL . ltrim($images[0]['img_file'], '/') : '';
 ?>
 <main class="fm-stage fm-archive" data-fm-stage data-fm-src="<?php echo htmlspecialchars($fm_hero, ENT_QUOTES); ?>">

@@ -231,6 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
     // ALT text (accessibility). Sanitized on store; null when blank so render-time
     // falls back to img_title. Same treatment for CMS-typed and SYBU/AI-supplied.
     $alt = snap_sanitize_alt($_POST['alt'] ?? '');
+    $color_mode = snap_normalize_color_mode($_POST['color_mode'] ?? '');   // color|bw|'' — search/filter tag → img_color_mode
     $status = $_POST['img_status'] ?? 'published';
 
     // HTML5 datetime-local inputs use 'T' separator; convert to SQL-compatible space.
@@ -545,6 +546,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         // Belt-and-suspenders: guarantee the auto-orient flag column exists on older installs.
         $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_auto_orient TINYINT(1) NOT NULL DEFAULT 0");
         $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_alt VARCHAR(500) NULL");
+        $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_color_mode VARCHAR(10) NOT NULL DEFAULT ''");
         $stmt = $pdo->prepare("
             INSERT INTO snap_images (
                 img_title,
@@ -567,8 +569,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 img_thumb_square,
                 img_thumb_aspect,
                 img_checksum,
-                img_display_options
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                img_display_options,
+                img_color_mode
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -592,7 +595,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             $db_thumb_square ?? null,
             $db_thumb_aspect ?? null,
             $db_checksum ?? null,
-            $display_options_json ?? null
+            $display_options_json ?? null,
+            $color_mode
         ]);
 
         $new_img_id = $pdo->lastInsertId();
@@ -774,6 +778,15 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>ALT TEXT <span class="lens-hint">— accessibility description for screen readers (VISION FILL writes this too)</span></label>
                         <input type="text" id="alt" name="alt" maxlength="500" placeholder="One plain sentence describing what's in the photo — for screen-reader users.">
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>COLOUR / B&amp;W <span class="lens-hint">— classify the image for search &amp; filtering; does NOT change how it displays</span></label>
+                        <select id="color_mode" name="color_mode">
+                            <option value="">— untagged —</option>
+                            <option value="color">Colour</option>
+                            <option value="bw">Black &amp; White</option>
+                        </select>
                     </div>
 
                     <div class="lens-input-wrapper">

@@ -83,11 +83,21 @@ class SiteData:
     album_descriptions: Dict[str, str] = field(default_factory=dict)  # lower_name → description
     tags:            List[str]          = field(default_factory=list)  # existing hashtags
     titles:          List[str]          = field(default_factory=list)  # existing post titles
+    site_mode:       str                = ''   # 'photoblog' (solo) | 'carousel' (gram); '' = server didn't report
 
 
 # ---------------------------------------------------------------------------
 # SnapSmack client
 # ---------------------------------------------------------------------------
+
+class WrongSiteModeError(RuntimeError):
+    """Connect hit a site whose mode SYBU can't post to (the server refused 409).
+    Carries the site's real mode so the UI can react — e.g. send SMACKTALK users
+    to COLD SNAP. NOTE: this is a READ of the refusal; SYBU never changes the mode."""
+    def __init__(self, site_mode: str, message: str = ''):
+        self.site_mode = (site_mode or '').strip().lower()
+        super().__init__(message or f"This site is in '{self.site_mode}' mode.")
+
 
 class SnapSmackClient:
 
@@ -118,6 +128,20 @@ class SnapSmackClient:
             raise RuntimeError("Invalid API key — check Settings and regenerate if needed.")
         if resp.status_code == 403:
             raise RuntimeError("Access denied (403). Check server configuration.")
+        if resp.status_code == 409:
+            # Wrong-mode refusal from api-auth.php. The body carries the site's
+            # real mode (e.g. 'smacktalk'); surface it so the UI can redirect.
+            sm = ''
+            try:
+                sm = str(resp.json().get('site_mode', '') or '').strip().lower()
+            except Exception:
+                pass
+            raise WrongSiteModeError(
+                sm,
+                (f"This is a {sm.upper()} site. " if sm else "This site's mode ")
+                + "SMACK YOUR BATCH UP posts to SOLO (photoblog) and GRAM (carousel) "
+                  "sites only.",
+            )
         resp.raise_for_status()
 
     def keepalive(self) -> bool:
@@ -233,6 +257,7 @@ class SnapSmackClient:
                     data.album_descriptions[key]   = album.get('description', '')
                 data.tags    = payload.get('tags', [])
                 data.titles  = payload.get('titles', [])
+                data.site_mode = str(payload.get('site_mode', '') or '').strip().lower()
                 return data
             why = f"sybu-data.php returned HTTP {api_resp.status_code}"
         except Exception as e:
@@ -379,6 +404,7 @@ class SnapSmackClient:
                 'img_status':           'published',
                 'desc':                 post_desc,
                 'alt':                  (getattr(entry, 'alt', '') or '').strip(),  # accessibility ALT → img_alt
+                'color_mode':           (getattr(entry, 'color_mode', '') or '').strip(),  # color|bw classification → img_color_mode
 
                 'allow_download':       '1' if drive_url else '0',
                 'download_url':         drive_url,
@@ -560,6 +586,7 @@ def post_gram(conn: 'GramConnection', entry: ManifestEntry, image_folder: str) -
             'shadow': 0, 'focus_x': 50, 'focus_y': 50, 'zoom': 100,
             'is_cover': False, 'sort_position': 0, 'split': False,
             'alt': (getattr(entry, 'alt', '') or '').strip(),  # accessibility ALT → img_alt
+            'color_mode': (getattr(entry, 'color_mode', '') or '').strip(),  # color|bw → img_color_mode
         }
         _caption = (getattr(entry, 'caption', '') or '').strip()
         payload = {

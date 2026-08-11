@@ -42,6 +42,7 @@ class SoloMode(tk.Frame):
         self._category = tk.StringVar()
         self._album = tk.StringVar()
         self._orientation = tk.StringVar(value="auto")
+        self._color_mode = tk.StringVar(value="—")   # display label; maps to color|bw|''
         self._download_url = tk.StringVar()
         self._allow_dl = tk.BooleanVar(value=False)
         self._status = tk.StringVar(value="published")
@@ -98,6 +99,12 @@ class SoloMode(tk.Frame):
         ui.field(ebody, "Title", self._title)
         ui.field(ebody, "Tags (space-separated #hashtags)", self._tags)
         self._caption = ui.textarea(ebody, "Caption / description", height=3)
+        self._alt = ui.textarea(ebody, "ALT text (accessibility — one plain sentence for screen readers)", height=2)
+        arow = tk.Frame(ebody, bg=ui.BG_CARD); arow.pack(fill="x", pady=(2, 0))
+        ui.button(arow, "✨ AI Fill (Gemini)", self._ai_fill).pack(side="left")
+        self._ai_status = tk.Label(arow, text="", bg=ui.BG_CARD, fg=ui.FG_DIM,
+                                   font=ui.FONT_SMALL)
+        self._ai_status.pack(side="left", padx=8)
 
         meta = tk.Frame(ebody, bg=ui.BG_CARD); meta.pack(fill="x")
         c1 = tk.Frame(meta, bg=ui.BG_CARD); c1.pack(side="left", fill="x", expand=True, padx=(0, 4))
@@ -113,6 +120,10 @@ class SoloMode(tk.Frame):
         tk.Label(orow, text="Status", bg=ui.BG_CARD, fg=ui.FG_DIM,
                  font=ui.FONT_SMALL).pack(side="left", padx=(12, 0))
         ui.combo(orow, self._status, ["published", "draft"], width=10).pack(side="left", padx=6)
+        tk.Label(orow, text="Colour", bg=ui.BG_CARD, fg=ui.FG_DIM,
+                 font=ui.FONT_SMALL).pack(side="left", padx=(12, 0))
+        # Classification tag for search/filter — NOT a render treatment. → img_color_mode
+        ui.combo(orow, self._color_mode, ["—", "Colour", "B&W"], width=8).pack(side="left", padx=6)
 
         drow = tk.Frame(ebody, bg=ui.BG_CARD); drow.pack(fill="x", pady=(6, 0))
         tk.Checkbutton(drow, text="Allow download", variable=self._allow_dl,
@@ -217,10 +228,12 @@ class SoloMode(tk.Frame):
         self._category.set(draft.category)
         self._album.set(draft.album)
         self._orientation.set(draft.orientation or "auto")
+        self._color_mode.set({"color": "Colour", "bw": "B&W"}.get(draft.color_mode, "—"))
         self._status.set(draft.img_status)
         self._allow_dl.set(draft.allow_download)
         self._download_url.set(draft.download_url)
         self._caption.delete("1.0", "end"); self._caption.insert("1.0", draft.caption)
+        self._alt.delete("1.0", "end"); self._alt.insert("1.0", draft.alt)
         self._show_preview(cover.thumb_square if cover else (cover.local_path if cover else ""))
 
     def _delete(self, draft: O.Draft):
@@ -246,14 +259,89 @@ class SoloMode(tk.Frame):
             self._preview.configure(image=thumb, width=96, height=96)
             self._preview.image = thumb
 
+    # -- AI Fill (shared Gemini engine, offline-catalog aware) ---------------
+    def _shared_mod(self, name):
+        """Import a module from tools/_shared (snap_enrich / snap_library), or None
+        if unavailable — AI Fill then just isn't offered rather than crashing."""
+        try:
+            import sys
+            import config as _cfg
+            sd = os.path.join(_cfg._base_dir(), "..", "_shared")
+            if os.path.isdir(sd) and sd not in sys.path:
+                sys.path.insert(0, sd)
+            return __import__(name)
+        except Exception:
+            return None
+
+    def _ai_fill(self):
+        """Fill caption/ALT/tags (and empty title/category/album) from the image via
+        Gemini. Categories/albums come from the OFFLINE catalog mirror, so this works
+        with no live site. Runs off the UI thread; results marshalled back with after()."""
+        img = self._image_path.get().strip()
+        if not img or not os.path.isfile(img):
+            messagebox.showwarning("No image", "Choose an image first."); return
+        enrich = self._shared_mod("snap_enrich")
+        if not enrich:
+            messagebox.showerror("AI Fill unavailable",
+                                 "The shared enrichment module isn't installed."); return
+        self._ai_status.configure(text="Thinking… (Gemini)")
+        self.update_idletasks()
+
+        def work():
+            try:
+                import config as _cfg
+                data = _cfg.load()
+                site = (data.get("url") or "").strip()
+                lib = self._shared_mod("snap_library")
+                cats = lib.categories(site) if (lib and site) else []
+                albums = lib.albums(site) if (lib and site) else []
+                cat_desc = lib.category_descriptions(site) if (lib and site) else {}
+                alb_desc = lib.album_descriptions(site) if (lib and site) else {}
+                etags = lib.tags(site) if (lib and site) else []
+                meta = enrich.enrich_image(
+                    img, categories=cats, albums=albums,
+                    api_key=data.get("gemini_api_key", ""),
+                    custom_prompt=(data.get("gemini_last_prompt") or "").strip(),
+                    cat_descriptions=cat_desc, album_descriptions=alb_desc,
+                    existing_tags=etags,
+                )
+                self.after(0, lambda: self._apply_ai(meta))
+            except Exception as e:
+                self.after(0, lambda e=e: self._ai_error(e))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _apply_ai(self, meta):
+        # Overwrite the generated fields; preserve anything you already typed for
+        # title/category/album (a dropped click shouldn't wipe your own choices).
+        if meta.get("caption"):
+            self._caption.delete("1.0", "end"); self._caption.insert("1.0", meta["caption"])
+        if meta.get("alt"):
+            self._alt.delete("1.0", "end"); self._alt.insert("1.0", meta["alt"])
+        if meta.get("tags"):
+            self._tags.set(meta["tags"])
+        if meta.get("title") and not self._title.get().strip():
+            self._title.set(meta["title"])
+        if meta.get("category") and not self._category.get().strip():
+            self._category.set(meta["category"])
+        if meta.get("album") and not self._album.get().strip():
+            self._album.set(meta["album"])
+        self._ai_status.configure(text="Filled ✓ — review before posting")
+
+    def _ai_error(self, e):
+        self._ai_status.configure(text="")
+        messagebox.showerror("AI Fill failed", str(e))
+
     def _clear_editor(self):
         self._editing_id = None
         for v in (self._image_path, self._title, self._tags, self._category,
                   self._album, self._download_url):
             v.set("")
         self._orientation.set("auto"); self._status.set("published")
+        self._color_mode.set("—")
         self._allow_dl.set(False)
         self._caption.delete("1.0", "end")
+        self._alt.delete("1.0", "end")
         self._preview.configure(image="", width=12, height=6); self._preview.image = None
 
     def _save_draft(self, ready: bool = False):
@@ -272,9 +360,11 @@ class SoloMode(tk.Frame):
         draft.title = self._title.get().strip()
         draft.tags = self._tags.get().strip()
         draft.caption = self._caption.get("1.0", "end").strip()
+        draft.alt = self._alt.get("1.0", "end").strip()
         draft.category = self._category.get().strip()
         draft.album = self._album.get().strip()
         draft.orientation = self._orientation.get()
+        draft.color_mode = {"Colour": "color", "B&W": "bw"}.get(self._color_mode.get(), "")
         draft.img_status = self._status.get()
         draft.allow_download = bool(self._allow_dl.get())
         draft.download_url = self._download_url.get().strip()

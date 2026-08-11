@@ -156,6 +156,8 @@ class Draft:
     # Post fields (superset; only the ones relevant to `kind` are used on sync).
     title:      str = ""
     caption:    str = ""                  # body / description
+    alt:        str = ""                  # accessibility ALT (screen-reader) -> img_alt
+    color_mode: str = ""                  # 'color' | 'bw' | '' — search/filter tag -> img_color_mode
     tags:       str = ""                  # space-separated #hashtags
     post_date:  str = ""                  # "YYYY-MM-DD HH:MM:SS"; blank => now on sync
     img_status: str = "published"         # published | draft (server-side post status)
@@ -304,6 +306,8 @@ def draft_db_rows(draft: Draft) -> dict:
                 "img_file": im.remote_path or base_name(im),
                 "img_title": draft.title,
                 "img_description": draft.caption,
+                "img_alt": draft.alt,
+                "img_color_mode": draft.color_mode,
                 "img_status": draft.img_status,
                 "img_date": draft.post_date,
                 "img_width": im.width,
@@ -322,6 +326,8 @@ def draft_db_rows(draft: Draft) -> dict:
             "_post_form": {
                 "title": draft.title, "tags": draft.tags,
                 "img_status": draft.img_status, "desc": draft.caption,
+                "alt": draft.alt,
+                "color_mode": draft.color_mode,
                 "allow_download": 1 if draft.allow_download else 0,
                 "download_url": draft.download_url,
                 "orientation_override": draft.orientation,
@@ -339,6 +345,8 @@ def draft_db_rows(draft: Draft) -> dict:
             "img_file": im.remote_path or base_name(im),
             "img_title": "",
             "img_description": draft.caption,
+            "img_alt": draft.alt,
+            "img_color_mode": draft.color_mode,
             "img_date": draft.post_date,
             "img_width": im.width,
             "img_height": im.height,

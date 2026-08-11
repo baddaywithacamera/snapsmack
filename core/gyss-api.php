@@ -378,9 +378,18 @@ if ($resource === 'library' && $method === 'GET') {
             $img_params[] = $since_sql;
         }
         $img_where_sql = implode(' AND ', $img_where);
+        // Read-only path: never mutate schema on a GET. Only SELECT the colour tag
+        // if the column exists yet — the write paths create it on first post; an
+        // install that updated core but hasn't posted since simply reports ''.
+        $has_color = (bool)$pdo->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_images'
+               AND COLUMN_NAME = 'img_color_mode'"
+        )->fetchColumn();
+        $color_select = $has_color ? "i.img_color_mode AS color_mode" : "'' AS color_mode";
         $img_stmt = $pdo->prepare("
             SELECT i.id, i.img_title AS title, i.img_description AS description,
-                   i.img_alt AS alt, i.sort_order, i.img_file,
+                   i.img_alt AS alt, $color_select, i.sort_order, i.img_file,
                    i.img_date AS posted_date, i.modified_at,
                    i.img_width, i.img_height
             FROM snap_images i
@@ -395,6 +404,7 @@ if ($resource === 'library' && $method === 'GET') {
                 'title'       => $row['title'],
                 'description' => $row['description'],
                 'alt'         => $row['alt'],
+                'color_mode'  => $row['color_mode'] ?? '',
                 'sort_order'  => (int)$row['sort_order'],
                 'filename'    => basename((string)$row['img_file']),
                 'posted_date' => $row['posted_date'],
@@ -667,6 +677,7 @@ if ($resource === 'batch-update' && $method === 'POST') {
     if (($settings['site_mode'] ?? 'photoblog') === 'smacktalk') {
         gy_err('GYSS does not support SMACKTALK (longform) sites — images live inside essays and are not sortable. Use SmackPress to manage longform posts.', 409);
     }
+    $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_color_mode VARCHAR(10) NOT NULL DEFAULT ''");
 
     $body = file_get_contents('php://input');
     $data = json_decode($body, true);
@@ -764,6 +775,11 @@ if ($resource === 'batch-update' && $method === 'POST') {
         if (isset($upd['description'])) {
             $set_parts[]  = 'img_description = ?';
             $set_params[] = trim($upd['description']);
+        }
+        // Colour/B&W classification tag (search/filter, not a render change).
+        if (isset($upd['color_mode'])) {
+            $set_parts[]  = 'img_color_mode = ?';
+            $set_params[] = snap_normalize_color_mode($upd['color_mode']);
         }
 
         if ($set_parts) {

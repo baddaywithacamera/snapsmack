@@ -1,3 +1,13 @@
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 :root{--fm-blur:42px;--fm-sharp-max:88vw;--fm-radius:18px;--fm-tile:180px;--fm-gap:18px;--fm-exposure:.42}
 html,body{margin:0;min-height:100%;background:#090909;color:#fff}
 body{overflow-x:hidden}.fm-stage{position:relative;isolation:isolate;min-height:100vh;overflow:hidden;background:#090909}

@@ -101,6 +101,15 @@ $titles_raw = $pdo->query(
 
 $titles = array_values(array_filter(array_map('trim', $titles_raw)));
 
+// ── Site mode ───────────────────────────────────────────────────────────────
+// Surface the site's posting mode so SYBU can warn BEFORE a wrong-mode post
+// (e.g. grams to a photoblog — the mismatch that silently 409s a whole batch,
+// and once flipped a 1,076-post GramOfSmack blog into a photoblog). The mode
+// follows the active skin: photoblog = SMACKONEOUT/solo, carousel = GRAMOFSMACK.
+$site_mode = (string)($pdo->query(
+    "SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1"
+)->fetchColumn() ?: 'photoblog');
+
 // ── Response ──────────────────────────────────────────────────────────────────
 
 echo json_encode([
@@ -108,5 +117,6 @@ echo json_encode([
     'albums'     => $albums,
     'tags'       => $tags,
     'titles'     => $titles,
+    'site_mode'  => $site_mode,
 ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 // ===== SNAPSMACK EOF =====

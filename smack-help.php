@@ -114,6 +114,16 @@ from either place — the dedicated field just makes them visible and easy to ma
 <p>Tags create browsable archive pages on the public site. Visitors can click any tag to
 see all transmissions sharing that tag. Tags also appear in search results.</p>
 
+<h4>ALT Text &amp; Colour Classification</h4>
+<p><strong>ALT text</strong> is a plain one-sentence description of what is visible in the
+photograph, read aloud by screen readers for visitors who cannot see the image. Write it for a
+person: lead with the subject, be concrete, and don't begin with &ldquo;image of&rdquo;. The
+<strong>VISION FILL</strong> button writes it for you from the photo &mdash; review it before posting.</p>
+<p><strong>Colour / B&amp;W</strong> classifies the nature of the image &mdash; Colour or Black &amp;
+White &mdash; for <em>searching and filtering</em>. It is a tag only: it does <strong>not</strong>
+change how the image is displayed. Leave it untagged if you would rather not classify it. The same
+tag can also be set from GET YOUR SHIT SORTED (while sorting) and SMACK YOUR BATCH UP (per batch).</p>
+
 <h4>Publication Settings</h4>
 <ul>
     <li><strong>Status</strong> — Published (visible on the site) or Draft (hidden).</li>
