@@ -591,6 +591,7 @@ function bindSortTab() {
             title:                p.title,
             description:          p.description,
             category_id:          p.category_id,
+            color_mode:           p.color_mode || '',   // Colour/B&W classification (search/filter tag)
             expected_modified_at: p.original_modified_at,
         }));
 

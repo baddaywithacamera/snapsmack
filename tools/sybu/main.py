@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.1.34"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
+BUILD_VERSION = "0.1.36"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -59,7 +59,7 @@ import poster as poster_module
 import profile_manager
 import recovery as recovery_module
 from manifest_parser import ManifestEntry
-from poster import SnapSmackClient, SiteData
+from poster import SnapSmackClient, SiteData, WrongSiteModeError
 
 # Shared transport guard (tools/_shared/snap_stepup.py). SECAUDIT 040 recorded
 # SYBU as covered by the shared fix; SECAUDIT 042 found SYBU imports the module
@@ -1573,6 +1573,7 @@ class App(tk.Tk):
         self._def_cat_var    = tk.StringVar()
         self._def_alb_var    = tk.StringVar()
         self._def_orient_var = tk.StringVar(value='auto')
+        self._def_color_var  = tk.StringVar(value='—')   # batch Colour/B&W tag; maps to color|bw|''
 
         mfst_box  = self._box(cols, "MANIFEST & DEFAULTS")
         mfst_box.grid(row=0, column=1, sticky="nsew", padx=(7, 0))
@@ -1586,6 +1587,7 @@ class App(tk.Tk):
         dm_cols.columnconfigure(0, weight=1)
         dm_cols.columnconfigure(1, weight=1)
         dm_cols.columnconfigure(2, weight=1)
+        dm_cols.columnconfigure(3, weight=1)
 
         cat_cell = tk.Frame(dm_cols, bg=BG_CARD)
         cat_cell.grid(row=0, column=0, sticky="ew", padx=(0, 6))
@@ -1600,13 +1602,24 @@ class App(tk.Tk):
         self._def_alb_cb.pack(fill="x", pady=(2, 0))
 
         orient_cell = tk.Frame(dm_cols, bg=BG_CARD)
-        orient_cell.grid(row=0, column=2, sticky="ew")
+        orient_cell.grid(row=0, column=2, sticky="ew", padx=(0, 6))
         tk.Label(orient_cell, text="ORIENTATION", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
         self._def_orient_cb = ttk.Combobox(
             orient_cell, textvariable=self._def_orient_var, font=FONT_SMALL,
             values=['Auto', 'Landscape', 'Portrait', 'Square'], state="readonly",
         )
         self._def_orient_cb.pack(fill="x", pady=(2, 0))
+
+        # COLOUR/B&W batch tag — a search/filter classification (→ img_color_mode),
+        # NOT a render change. Applied to entries that don't already carry one.
+        color_cell = tk.Frame(dm_cols, bg=BG_CARD)
+        color_cell.grid(row=0, column=3, sticky="ew")
+        tk.Label(color_cell, text="COLOUR", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
+        self._def_color_cb = ttk.Combobox(
+            color_cell, textvariable=self._def_color_var, font=FONT_SMALL,
+            values=['—', 'Colour', 'B&W'], state="readonly",
+        )
+        self._def_color_cb.pack(fill="x", pady=(2, 0))
 
         mfst_btn_row = tk.Frame(mfst_body, bg=BG_CARD)
         mfst_btn_row.pack(anchor="w", fill="x", pady=(6, 0))
@@ -3933,9 +3946,47 @@ class App(tk.Tk):
             self._entry_list.update_combos(cats, albums)
 
             self._conn_dot.configure(fg=LED_OK)
-            self._conn_lbl.configure(text=f"CONNECTED  {len(cats)} CATS  {len(albums)} ALBUMS", fg=LED_OK)
-            self._set_status("Connected. Load a manifest to begin.", FG_OK)
+            # Auto-select the post tab that matches the site's mode, so you never
+            # have to remember which a site needs — the wrong tab 409s a whole
+            # batch. We ONLY ever flip the SYBU tab, NEVER the site's mode:
+            # auto-flipping the SITE is the bug that once turned a 1,076-post gram
+            # blog into a photoblog (removed in api-auth.php). The mode is also
+            # shown on the badge so a wrong site is obvious before you load.
+            _mode      = (getattr(site_data, 'site_mode', '') or '').strip().lower()
+            _mode_tab  = {'photoblog': 'solo', 'carousel': 'gram'}.get(_mode)
+            _mode_name = {'solo': 'SOLO', 'gram': 'GRAM'}.get(_mode_tab, '')
+            _badge     = f"{_mode_name}  " if _mode_name else ""
+            self._conn_lbl.configure(
+                text=f"CONNECTED  {_badge}{len(cats)} CATS  {len(albums)} ALBUMS", fg=LED_OK)
+            if _mode_tab and self._active_tab in ('solo', 'gram') and self._active_tab != _mode_tab:
+                self._switch_tab(_mode_tab)
+                self._set_status(
+                    f"Connected — this is a {_mode_name} site, so I switched you to "
+                    f"the {_mode_name} tab.", FG_OK)
+            else:
+                self._set_status("Connected. Load a manifest to begin.", FG_OK)
             self._save_config()
+
+        except WrongSiteModeError as e:
+            # The site refused SYBU because of its mode (server 409 — SYBU did NOT
+            # change anything). If it's SMACKTALK, send them to COLD SNAP; any other
+            # unusable mode gets a plain wrong-mode message.
+            self._conn_dot.configure(fg=LED_ERR)
+            if e.site_mode == 'smacktalk':
+                self._conn_lbl.configure(text="SMACKTALK SITE — USE COLD SNAP", fg=LED_WARN)
+                self._set_status(
+                    "This is a SMACKTALK site — SYBU can't post here. Launch COLD SNAP "
+                    "for longform.", FG_WARN)
+                messagebox.showwarning(
+                    "SmackTalk site — use COLD SNAP",
+                    f"{url} is a SMACKTALK (longform) site.\n\n"
+                    "SMACK YOUR BATCH UP posts SOLO and GRAM images only — it can't post "
+                    "longform here.\n\nLaunch COLD SNAP to post to this site.",
+                )
+            else:
+                self._conn_lbl.configure(text="WRONG SITE MODE", fg=LED_ERR)
+                self._set_status(str(e), FG_ERR)
+                messagebox.showerror("Wrong site mode", str(e))
 
         except Exception as e:
             self._conn_dot.configure(fg=LED_ERR)
@@ -4446,9 +4497,24 @@ class App(tk.Tk):
                  justify="left", anchor="w", padx=12, pady=8
                  ).pack(fill="x", padx=28, pady=(6, 0))
 
+        _section("SITE MODE (SOLO / GRAM)")
+        _para("On connect, SYBU reads the site's mode and switches itself to the matching tab — "
+              "a GramOfSmack site selects the GRAM tab, a photoblog selects SOLO — and shows the "
+              "mode on the CONNECTED badge. If you're on the wrong tab for the site, posting is "
+              "blocked before anything is sent (a wrong-mode post fails and can scramble a batch). "
+              "A SmackTalk (longform) site is refused with a note to use COLD SNAP instead. "
+              "SYBU only ever moves its OWN tab — it never changes the site's mode.")
+
+        _section("COLOUR / B&W TAG")
+        _para("The COLOUR dropdown in Manifest & Defaults tags the batch as Colour or B&W. This is "
+              "a search / filter classification only — it does NOT change how images display. For "
+              "per-image control, add a COLOR: line to a manifest entry (COLOR: bw or COLOR: colour). "
+              "Leave it on — to skip tagging.")
+
         _section("GEMINI AI")
         _item("API Key", "Paste your Gemini API key in the config panel. Click Test Connection "
-              "to verify it works. The key is saved locally in config.ini next to the exe.")
+              "to verify it works. The key is saved locally and SHARED with the other SnapSmack "
+              "desktop tools (COLD SNAP, etc.), so you only enter it once.")
         _item("Custom Prompt", "Leave the prompt blank to use the built-in default, which "
               "generates haiku-style titles and descriptive hashtags. Write your own prompt "
               "to change the tone, style, or output format.")
@@ -4582,6 +4648,45 @@ class App(tk.Tk):
         except Exception:
             _dest = ''
         _dest = _dest or 'your site'
+
+        # ── WRONG-MODE GUARD ────────────────────────────────────────────────
+        # Block a solo/gram post to a site of the other mode BEFORE it happens.
+        # Posting grams to a photoblog (or solo to a gram site) 409s the whole
+        # batch and once flipped a 1,076-post GramOfSmack blog into a photoblog.
+        # site_mode comes from sybu-data.php: 'photoblog' = SOLO, 'carousel' = GRAM.
+        posting_grams = (self._active_tab == 'gram')
+        want_mode     = 'carousel' if posting_grams else 'photoblog'
+        site_mode     = (getattr(self._site_data, 'site_mode', '') or '').strip().lower()
+        tab_label     = 'GRAM' if posting_grams else 'SOLO'
+        site_label    = {'photoblog': 'SOLO (SmackOneOut photoblog)',
+                         'carousel':  'GRAM (GramOfSmack / The Grid)',
+                         'smacktalk': 'SMACKTALK'}.get(site_mode, site_mode or 'unknown')
+        if site_mode and site_mode == want_mode:
+            pass  # modes match — proceed
+        elif site_mode in ('photoblog', 'carousel', 'smacktalk'):
+            # KNOWN mismatch — hard block, no way to fat-finger past it.
+            messagebox.showerror(
+                "Wrong mode — post blocked",
+                f"You're on the {tab_label} tab, but {_dest} is a {site_label} site.\n\n"
+                f"Posting {tab_label} content here would be rejected (409) and can wreck "
+                f"the batch — so nothing was sent.\n\n"
+                f"Fix: switch to the "
+                f"{'SOLO' if site_mode == 'photoblog' else 'GRAM'} tab, or connect to a "
+                f"{site_label if want_mode != site_mode else ''} site that matches.",
+            )
+            self._set_status(f"POSTING BLOCKED — {tab_label} post to a {site_label} site.", FG_ERR)
+            return
+        else:
+            # Server didn't report a mode (older core). Don't hard-block; warn + confirm.
+            if not messagebox.askyesno(
+                "Can't verify site mode",
+                f"{_dest} didn't report whether it's a SOLO or GRAM site — its SnapSmack "
+                f"core may predate this check.\n\n"
+                f"You're about to post as {tab_label}. Continue only if that matches the site.",
+                default='no',
+            ):
+                return
+
         if not messagebox.askyesno(
             "Confirm post",
             f"Post {count} selected image{'s' if count != 1 else ''}{subset_note} to {_dest}?\n\n"
@@ -4618,6 +4723,16 @@ class App(tk.Tk):
         # Map display label to API value for orientation
         orient_map = {'auto': 'auto', 'landscape': '0', 'portrait': '1', 'square': '2'}
         orient_val = orient_map.get(self._def_orient_var.get().strip().lower(), 'auto')
+
+        # Apply the batch COLOUR/B&W classification (→ img_color_mode) to entries
+        # that don't already carry one (e.g. from a manifest COLOR: key). '—' = leave
+        # untouched. This is a search/filter tag, not a render change.
+        _batch_color = {'colour': 'color', 'b&w': 'bw'}.get(
+            self._def_color_var.get().strip().lower(), '')
+        if _batch_color:
+            for _e in entries:
+                if not (getattr(_e, 'color_mode', '') or '').strip():
+                    _e.color_mode = _batch_color
 
         if post_as_grams:
             # Carousel/GRAMOFSMACK site: post each enriched row as its OWN single

@@ -388,8 +388,9 @@ def migrate_one(rel_path, apply):
         return 'error', f'read error: {e}'
 
     # Pre-flight integrity
-    if data.count(b'\x00') > 0:
-        return 'needs-review', f'{data.count(b"\\x00")} null bytes already present'
+    _null_count = data.count(b'\x00')
+    if _null_count > 0:
+        return 'needs-review', f'{_null_count} null bytes already present'
 
     expected_long = expected_long_marker_bytes(ext, data)
 

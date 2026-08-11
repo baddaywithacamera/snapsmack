@@ -226,13 +226,39 @@ if (empty($sql)) {
     exit("422 Payload contains no SQL.\n");
 }
 
+// ── Pre-injection backup (recovery point) ────────────────────────────────────
+// VAX mutates the DB directly and DDL auto-commits, so a signed-but-wrong payload
+// has no other way back. Dump the whole DB to backups/ BEFORE executing, and
+// ABORT if that dump can't be made — the same rule the updater uses (no backup,
+// no change). Worth the extra seconds on a rare, high-stakes emergency op.
+require_once __DIR__ . '/export-engine.php';
+
+$vax_backup_file = '';
+try {
+    $backup_dir = defined('UPDATER_BACKUP_DIR') ? UPDATER_BACKUP_DIR : dirname(__DIR__) . '/backups';
+    if (!is_dir($backup_dir) && !@mkdir($backup_dir, 0755, true) && !is_dir($backup_dir)) {
+        throw new RuntimeException('backup directory is not writable');
+    }
+    $exporter        = new SnapSmackExport($pdo, dirname(__DIR__));
+    $sql_dump        = $exporter->generateSqlDump('full');
+    $vax_backup_file = $backup_dir . '/vax-' . $pkg . '-' . date('Y-m-d_H-i-s') . '.sql';
+    if (@file_put_contents($vax_backup_file, $sql_dump) === false) {
+        throw new RuntimeException('could not write the backup file');
+    }
+} catch (Throwable $e) {
+    http_response_code(500);
+    exit("500 Aborted: pre-injection backup failed (" . $e->getMessage() . "). No SQL was executed.\n");
+}
+
 // ── Execute ──────────────────────────────────────────────────────────────────
 
 try {
     $pdo->exec($sql);
 } catch (PDOException $e) {
     http_response_code(500);
-    exit("500 SQL execution failed: " . $e->getMessage() . "\n");
+    // The pre-injection dump above is the restore point if the payload half-applied.
+    exit("500 SQL execution failed: " . $e->getMessage()
+        . "\nRestore point: backups/" . basename($vax_backup_file) . "\n");
 }
 
 // ── Commit state ─────────────────────────────────────────────────────────────
@@ -247,5 +273,6 @@ _vax_set($pdo, 'vax_last_pkg',  $pkg);
 _vax_set($pdo, 'vax_last_at',   date('Y-m-d H:i:s'));
 
 echo "VAX OK — pkg={$pkg} injected and consumed.\n";
+echo "Recovery point: backups/" . basename($vax_backup_file) . "\n";
 
 // ===== SNAPSMACK EOF =====

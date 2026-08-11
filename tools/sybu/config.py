@@ -33,6 +33,22 @@ def _prompts_path() -> str:
     return os.path.join(_base_dir(), 'gemini_prompts.json')
 
 
+def _shared_creds():
+    """Import the shared credential store from tools/_shared. Returns the module,
+    or None if it isn't reachable — the tool then just uses its own config.ini.
+    At runtime _shared sits one level up from the tool (the C:/snapsmack/_shared
+    dir); in dev it resolves to tools/_shared. Sharing lets a key entered in ANY
+    tool (Gemini key, Drive creds) fill in here automatically."""
+    try:
+        _sd = os.path.join(_base_dir(), '..', '_shared')
+        if os.path.isdir(_sd) and _sd not in sys.path:
+            sys.path.insert(0, _sd)
+        import snap_creds
+        return snap_creds
+    except Exception:
+        return None
+
+
 # Built-in, generic prompt presets shipped with the tool. ALWAYS available in
 # the preset dropdown (pre-saved) so no one is stuck with a site-specific
 # default. SOLO = plain title + caption + tags + colours; GRAM = caption +
@@ -111,7 +127,7 @@ def load() -> dict:
     except Exception:
         api_key = ''
 
-    return {
+    _data = {
         'url':                cfg.get('site', 'url', fallback='https://foundtextures.ca'),
         'username':           cfg.get('auth', 'username', fallback=''),
         'password':           password,
@@ -138,6 +154,12 @@ def load() -> dict:
         'win_maximized':           cfg.getboolean('ui', 'win_maximized', fallback=False),
         'win_geometry':            cfg.get('ui', 'win_geometry', fallback=''),
     }
+    # Shared store wins when set, else this tool's own config — configure once,
+    # every tool sees it. No-op if _shared is absent (existing installs unaffected).
+    _sc = _shared_creds()
+    if _sc:
+        _sc.apply_shared(_data)
+    return _data
 
 
 def save(data: dict) -> None:
@@ -202,4 +224,10 @@ def save(data: dict) -> None:
 
     with open(_config_path(), 'w') as f:
         cfg.write(f)
+
+    # Propagate the shared secrets so setting the Gemini key / Drive creds in this
+    # tool fills them in for the others too. Never writes empty values.
+    _sc = _shared_creds()
+    if _sc:
+        _sc.push_shared(data)
 # ===== SNAPSMACK EOF =====

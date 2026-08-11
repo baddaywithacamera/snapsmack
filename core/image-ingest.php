@@ -232,6 +232,7 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
     }
     $desc           = trim($opts['description'] ?? '');
     $alt            = snap_sanitize_alt($opts['alt'] ?? '');   // accessibility ALT → img_alt
+    $color_mode     = snap_normalize_color_mode($opts['color_mode'] ?? '');  // color|bw|'' — search/filter tag → img_color_mode
 
     // Caption-from-filename: explicit opt wins, else the site setting. When on,
     // a blank caption (and an auto-derived title) is filled from the tidied file
@@ -469,13 +470,14 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
     // Ingest always auto-detects orientation, so the auto-orient flag is 1.
     $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_auto_orient TINYINT(1) NOT NULL DEFAULT 0");
     $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_alt VARCHAR(500) NULL");
+    $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_color_mode VARCHAR(10) NOT NULL DEFAULT ''");
     $stmt = $pdo->prepare("
         INSERT INTO snap_images (
             img_title, img_slug, img_file, img_description, img_alt, img_film, img_exif,
             img_status, img_date, img_orientation, img_auto_orient, img_width, img_height,
             allow_comments, allow_download, download_url,
-            img_thumb_square, img_thumb_aspect, img_checksum, img_display_options
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            img_thumb_square, img_thumb_aspect, img_checksum, img_display_options, img_color_mode
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $title,
@@ -498,6 +500,7 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
         $db_thumb_aspect,
         $db_checksum,
         $display_options_json,
+        $color_mode,
     ]);
 
     $new_img_id = (int)$pdo->lastInsertId();

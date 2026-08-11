@@ -1,5 +1,14 @@
 <?php
 /** FULL MONTY single photograph: the image is both environment and navigation. */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 $fm_src = BASE_URL . ltrim((string)$img['img_file'], '/');
 ?>

@@ -56,6 +56,27 @@ if (!function_exists('snap_sanitize_alt')) {
     }
 }
 
+if (!function_exists('snap_normalize_color_mode')) {
+    /**
+     * Normalise the per-image colour classification (img_color_mode). This is a
+     * SEARCH / FILTER tag describing the nature of the image — NOT a render
+     * instruction; nothing here changes how the image is displayed. Returns
+     * 'color', 'bw', or '' (untagged). Anything unrecognised becomes '' so a bad
+     * client value can never poison the field.
+     */
+    function snap_normalize_color_mode($raw): string
+    {
+        $v = strtolower(trim((string)$raw));
+        if ($v === 'colour') $v = 'color';                       // British spelling
+        if (in_array($v, ['b&w', 'b/w', 'mono', 'monochrome',
+                          'blackandwhite', 'black-and-white', 'grayscale',
+                          'greyscale'], true)) {
+            $v = 'bw';
+        }
+        return in_array($v, ['color', 'bw'], true) ? $v : '';
+    }
+}
+
 if (!function_exists('snap_alt_attr')) {
     /**
      * Resolve ALT for an alt="" attribute: use $alt when non-blank, otherwise the

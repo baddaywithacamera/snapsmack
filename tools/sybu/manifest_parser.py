@@ -38,6 +38,7 @@ class ManifestEntry:
     line_num:    int = 0
     caption:     str = ''       # AI/manual caption → posted as the post description (kept separate from title)
     alt:         str = ''       # accessibility ALT text → posted to img_alt (screen-reader description, distinct from caption)
+    color_mode:  str = ''       # 'color' | 'bw' | '' — search/filter classification → img_color_mode (NOT a render change)
 
 
 @dataclass
@@ -100,6 +101,13 @@ def parse(manifest_path: str) -> ParseResult:
             current.category = value
         elif key == 'ALBUM':
             current.album = value
+        elif key in ('COLOR', 'COLOUR', 'COLOR_MODE', 'COLORMODE'):
+            v = value.strip().lower()
+            if v == 'colour':
+                v = 'color'
+            if v in ('b&w', 'b/w', 'mono', 'monochrome', 'black-and-white', 'grayscale', 'greyscale'):
+                v = 'bw'
+            current.color_mode = v if v in ('color', 'bw') else ''
 
     # Handle unterminated entry at EOF
     if in_entry and current is not None and current.file:

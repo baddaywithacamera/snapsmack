@@ -1,4 +1,13 @@
 <?php
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 $root = dirname(__DIR__);
 function fm_ok(bool $ok, string $why): void { if (!$ok) { fwrite(STDERR, "FAIL: {$why}\n"); exit(1); } }
 $manifest = json_decode((string)file_get_contents($root . '/skins/full-monty/manifest.json'), true);

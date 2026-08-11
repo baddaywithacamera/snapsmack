@@ -10,6 +10,21 @@
 
 # SnapSmack Changelog
 
+## 0.7.516 — 2026-08-11
+
+- **Site mode reported to SYBU (`sybu-data.php`).** The endpoint now returns
+  `site_mode` (read-only). SMACK YOUR BATCH UP uses it to auto-select the matching
+  SOLO/GRAM tab on connect and to hard-block a wrong-mode post before it 409s — the
+  guard that was missing after the fauxlaroid mode-flip incident. The tool only ever
+  moves its OWN tab; the site's mode is never changed. Additive, read-only.
+- **Per-image Colour / B&W classification (`img_color_mode`).** New per-image tag
+  (`color` | `bw` | untagged) for SEARCH and FILTERING — it does NOT change how an
+  image renders. Column auto-created (`ALTER … IF NOT EXISTS`), accepted by the solo
+  poster and the image ingest path, and read/written by GYSS (`gyss/library` returns
+  it, `gyss/batch-update` saves it). All input runs through a whitelist normaliser
+  (`snap_normalize_color_mode`), stored via prepared statements. Skin filtering UIs
+  build on this later. Additive.
+
 ## 0.7.515 — 2026-08-10
 
 - **GYSS offline library.** New scoped `gyss/library` API endpoint — image / post /

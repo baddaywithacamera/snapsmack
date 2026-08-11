@@ -1,3 +1,12 @@
 /** FULL MONTY adaptive atmosphere. CMS-owned; skins contain no executable JS. */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 (function(){'use strict';var stage=document.querySelector('[data-fm-stage]');if(!stage)return;var src=stage.getAttribute('data-fm-src');var bg=stage.querySelector('.fm-atmosphere');if(src&&bg){var im=new Image();im.onload=function(){try{var c=document.createElement('canvas'),x=c.getContext('2d',{willReadFrequently:true}),w=48,h=Math.max(1,Math.round(48*im.naturalHeight/im.naturalWidth));c.width=w;c.height=h;x.drawImage(im,0,0,w,h);var d=x.getImageData(0,0,w,h).data,sum=0;for(var i=0;i<d.length;i+=4)sum+=(.2126*d[i]+.7152*d[i+1]+.0722*d[i+2]);var lum=sum/(d.length/4)/255;stage.style.setProperty('--fm-exposure',String(Math.max(.28,Math.min(.58,.62-lum*.34))));}catch(e){stage.style.setProperty('--fm-exposure','.42');}};im.src=src;}var cue=stage.querySelector('[data-fm-cue]');if(cue){try{if(sessionStorage.getItem('fm-cue-seen'))cue.remove();else sessionStorage.setItem('fm-cue-seen','1');}catch(e){}}})();
 // ===== SNAPSMACK EOF =====
