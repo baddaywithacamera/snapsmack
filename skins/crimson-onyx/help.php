@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin Help Topics: CRIMSON ONYX
- * CRIMSON ONYX 0.1.3
+ * CRIMSON ONYX 0.1.4
  */
 
 /**
