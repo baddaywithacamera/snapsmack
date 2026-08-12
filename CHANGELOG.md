@@ -10,6 +10,25 @@
 
 # SnapSmack Changelog
 
+## 0.7.517 — 2026-08-11
+
+- **Countdown engine (`assets/js/ss-engine-countdown.js`, script handle
+  `smack-countdown`).** A tiny, dependency-free live counter: any element with
+  class `smack-countdown` and a `data-until` ISO-8601 timestamp ticks down to
+  that moment, filling `[data-cd="d|h|m|s"]` slots each second and swapping in
+  its `data-done` line when the target passes. Display only — the skin owns the
+  look, the engine owns the numbers. Registered in `core/manifest-inventory.php`;
+  skins opt in via `require_scripts`.
+- **PHOTOFRI.DAY front page (CRIMSON ONYX 0.1.1).** The retired
+  "Coming September 2026" badge is replaced by a live-follow line —
+  `@participate@photofri.day` following is now open — and two small launch
+  countdowns: the first prompt's 50-hour window (opens 10:00 UTC Thu 27 Aug
+  2026) and the first submission window (opens 10:00 UTC Thu 3 Sep 2026). A
+  scoped "landing fit" pass tightens the front page's vertical spacing so the
+  whole front door lands inside a desktop viewport. Skin-side only; the page
+  body seed lives in `projects/photofri-day/cms-pages/home.html` and must be
+  re-pasted into Pages → home to go live.
+
 ## 0.7.516 — 2026-08-11
 
 - **Site mode reported to SYBU (`sybu-data.php`).** The endpoint now returns

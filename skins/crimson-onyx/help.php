@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin Help Topics: CRIMSON ONYX
- * CRIMSON ONYX 0.1.0
+ * CRIMSON ONYX 0.1.1
  */
 
 /**
@@ -31,8 +31,10 @@ here.</p>
 
 <h4>What it does not have</h4>
 <ul>
-    <li><strong>No JavaScript.</strong> None. The FAQ accordion is plain
-    <code>&lt;details&gt;</code> markup, exactly as the original site did it.</li>
+    <li><strong>No JavaScript of its own.</strong> The FAQ accordion is plain
+    <code>&lt;details&gt;</code> markup, exactly as the original site did it. The one moving
+    part &mdash; the launch countdowns on the front page &mdash; is a shared core engine the
+    skin loads by name (<code>smack-countdown</code>), not script shipped inside the skin.</li>
     <li><strong>No web fonts.</strong> Arial Black, Georgia and Courier New are all system
     faces. Nothing is fetched, so nothing arrives a beat late and shifts the page.</li>
     <li><strong>No variants.</strong> Other skins ship light/medium/dark. This one is an
@@ -71,6 +73,16 @@ Add a page and it shows up. Reorder them in Pages and the nav reorders.</p>
     rest of the page picks up stray paragraph tags. Use <code>&lt;section&gt;</code> for the
     inner block and it behaves.</li>
 </ul>
+
+<h3>The front-page follow line &amp; launch countdowns</h3>
+<p>Now that following <code>@participate@photofri.day</code> is open, the front page carries a
+live-follow line and two small countdowns &mdash; one to the first prompt's 50-hour window,
+one to the first submission window &mdash; in place of the old &ldquo;Coming soon&rdquo; badge.</p>
+<p>The dates are <strong>not</strong> in the skin. Each countdown is an element in the
+<em>page body</em> carrying a <code>data-until</code> timestamp in UTC (ISO-8601, e.g.
+<code>2026-08-27T10:00:00Z</code>) and a <code>data-done</code> line to show once it passes.
+To move a date, edit that attribute in Pages &rarr; home &mdash; no skin file, no recompile.
+The shared <code>smack-countdown</code> engine does the ticking.</p>
 
 <h3>Ready-made page markup</h3>
 <p>The four photofri.day pages, converted to paste straight into Pages, live in the repo at

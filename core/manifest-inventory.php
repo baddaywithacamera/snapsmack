@@ -655,6 +655,11 @@ return [
             'path'         => 'assets/js/ss-engine-justified.js',
             'has_settings' => false
         ],
+        'smack-countdown' => [
+            'label'        => 'Countdown Engine (live counters to a date via .smack-countdown[data-until])',
+            'path'         => 'assets/js/ss-engine-countdown.js',
+            'has_settings' => false
+        ],
         'fsog-layout-toggle' => [
             'label'        => '50 Shades Archive Layout Toggle',
             'path'         => 'assets/js/ss-engine-fsog-layout-toggle.js',

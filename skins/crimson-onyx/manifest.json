@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "CRIMSON ONYX",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Sean McCormick",
   "support": "sean@baddaywithacamera.ca",
   "status": "alpha",
@@ -27,7 +27,8 @@
     "smack-justified",
     "smack-community",
     "smack-keyboard",
-    "smack-archive-grid-switch"
+    "smack-archive-grid-switch",
+    "smack-countdown"
   ],
 
   "options": {
