@@ -1,5 +1,5 @@
 /*
- * SNAPSMACK — CRIMSON ONYX 0.1.3
+ * SNAPSMACK — CRIMSON ONYX 0.1.4
  * The photofri.day identity as a SnapSmack skin.
  *
  * SNAPSMACK_EOF_HEADER
@@ -556,13 +556,11 @@ body.homepage-static .pfd-lede {
     letter-spacing: 0.04em;
 }
 .pfd-handle {
-    display: inline-block;
-    font-family: var(--pfd-mono);
-    font-size: 0.94em;
-    color: var(--pfd-ink);
-    background: color-mix(in srgb, var(--pfd-red) 16%, transparent);
-    border: 1px solid var(--pfd-red);
-    padding: 2px 9px;
+    /* Match the #share hashtag above: crimson, bold, body serif — not a mono
+       code-box. (It's a <code> element, so font-family must be reset off mono.) */
+    font-family: inherit;
+    font-weight: bold;
+    color: var(--pfd-link);
     white-space: nowrap;
 }
 
@@ -610,13 +608,11 @@ body.homepage-static .pfd-lede {
     min-width: 2.4em;
 }
 .pfd-cd-cell b {
-    /* Tiny5 — the bundled pixel face — turns the counters into a retro digital
-       readout. It renders small for its point size, so it's set a notch larger
-       than an Arial-Black equivalent would be. Arial Black is the fallback until
-       the @font-face lands. */
-    font-family: 'Tiny5', var(--pfd-black);
+    /* Arial Black — the countdown digits looked right this way; Tiny5 belongs on
+       the footer, not here. */
+    font-family: var(--pfd-black);
     font-weight: 900;
-    font-size: clamp(1.7rem, 5vw, 2.2rem);
+    font-size: clamp(1.3rem, 4vw, 1.7rem);
     line-height: 1;
     color: var(--pfd-ink);
     font-variant-numeric: tabular-nums;   /* digits don't jitter as they tick */
@@ -974,11 +970,11 @@ body.homepage-static .pfd-lede {
 
 #system-footer,
 #system-footer .footer-metadata-bar {
-    /* Was Courier New at 0.68rem — too small and too tight to read. A clean sans a
-       touch larger, with lighter tracking and a slightly brighter grey. */
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 0.8rem;
-    letter-spacing: 0.02em;
+    /* Tiny5 — the bundled pixel face — reads cleaner than Courier New at footer
+       size. A touch larger than the old 0.68rem so the pixels resolve. */
+    font-family: 'Tiny5', 'Courier New', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
     color: #9a9a9a;
 }
 
