@@ -1,5 +1,5 @@
 /*
- * SNAPSMACK — CRIMSON ONYX 0.1.1
+ * SNAPSMACK — CRIMSON ONYX 0.1.2
  * The photofri.day identity as a SnapSmack skin.
  *
  * SNAPSMACK_EOF_HEADER
@@ -135,7 +135,7 @@ img { max-width: 100%; height: auto; }
     flex-wrap: wrap;
     max-width: 1280px;
     margin: 0 auto;
-    padding: 18px var(--pfd-gutter);
+    padding: 8px var(--pfd-gutter);   /* slimmer bar — ~20% shorter than the original 18px */
 }
 
 /* Brand. The static site coloured the "." crimson; a site title stored as plain
@@ -189,7 +189,12 @@ img { max-width: 100%; height: auto; }
     color: var(--pfd-ink);
     opacity: 0.68;
     text-decoration: none;
+    /* The active/hover underline hangs 5px below the text (3px pad + 2px border).
+       Mirror that 5px on top so the label sits truly centred in the bar instead of
+       riding high — the vertical-centring fix. The top border stays transparent. */
+    padding-top: 3px;
     padding-bottom: 3px;
+    border-top: 2px solid transparent;
     border-bottom: 2px solid transparent;
 }
 .nav-menu a:hover,
@@ -596,9 +601,13 @@ body.homepage-static .pfd-lede {
     min-width: 2.4em;
 }
 .pfd-cd-cell b {
-    font-family: var(--pfd-black);
+    /* Tiny5 — the bundled pixel face — turns the counters into a retro digital
+       readout. It renders small for its point size, so it's set a notch larger
+       than an Arial-Black equivalent would be. Arial Black is the fallback until
+       the @font-face lands. */
+    font-family: 'Tiny5', var(--pfd-black);
     font-weight: 900;
-    font-size: clamp(1.3rem, 4vw, 1.7rem);
+    font-size: clamp(1.7rem, 5vw, 2.2rem);
     line-height: 1;
     color: var(--pfd-ink);
     font-variant-numeric: tabular-nums;   /* digits don't jitter as they tick */
@@ -956,10 +965,12 @@ body.homepage-static .pfd-lede {
 
 #system-footer,
 #system-footer .footer-metadata-bar {
-    font-family: var(--pfd-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.06em;
-    color: #888;
+    /* Was Courier New at 0.68rem — too small and too tight to read. A clean sans a
+       touch larger, with lighter tracking and a slightly brighter grey. */
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+    color: #9a9a9a;
 }
 
 #system-footer a,
