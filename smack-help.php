@@ -902,8 +902,17 @@ $help_topics['configuration'] = [
 <ul>
     <li><strong>Max Width (Landscape)</strong> — images wider than this are scaled down on upload.</li>
     <li><strong>Max Height (Portrait)</strong> — images taller than this are scaled down.</li>
-    <li><strong>JPEG Quality</strong> — compression level (0–100) for generated images
-    and thumbnails. Higher = better quality, larger files. Default: 85.</li>
+    <li><strong>JPEG Quality</strong> — compression level (0–100) used <em>only when the
+    server actually re-encodes</em> a file (a resize or rotation). Higher = better quality,
+    larger files. Default: 85.</li>
+    <li><strong>Resize Oversized Images</strong> — <em>ON</em> (default) scales anything
+    larger than the Max Width/Height above down to those limits; <em>OFF</em> stores images at
+    their native size (even 4K/8K).</li>
+    <li><strong>Re-compress on Upload</strong> — <em>ON</em> (default) re-encodes every upload
+    at the JPEG Quality above; <em>OFF</em> passes the original through untouched, preserving
+    your own compression and embedded EXIF/GPS. A forced resize or rotation still re-encodes,
+    at maximum quality. <strong>Set both this and Resize to OFF for full pass-through</strong> —
+    the uploaded file is stored exactly as you exported it.</li>
 </ul>
 
 <h4>Homepage Mode</h4>

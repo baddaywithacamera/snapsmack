@@ -23,6 +23,7 @@
  */
 
 require_once 'core/auth-smack.php';
+require_once 'core/app-mode.php';
 require_once 'core/palette-extract.php';
 require_once 'core/snap-tags.php';
 require_once 'core/alt-text.php';
@@ -34,6 +35,8 @@ require_once __DIR__ . '/core/thumb-generator.php';   // t_/a_ + fediverse p_ ba
 
 $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
 $settings      = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+snapsmack_require_app_mode($settings, 'carousel');
+$GLOBALS['SNAPSMACK_APP_COMPOSER'] = true;
 
 $is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
@@ -205,30 +208,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         $palette_json    = null;
 
         if ($src) {
-            // Orientation correction
+            // --- IMAGE-ENGINE TOGGLES ---
+            // Size + compression are the user's to set; either can be turned OFF to pass
+            // the original through untouched. Spec:
+            // _spec/image-pipeline-config-and-hub-push-spec-v0_1.md.
+            $resize_enabled     = (($settings['image_resize_enabled']     ?? '1') !== '0');
+            $recompress_enabled = (($settings['image_recompress_enabled'] ?? '1') !== '0');
+
+            // Orientation — rotate the in-memory copy so thumbnails are upright; only bake
+            // into the file when we already have to encode (resize below).
+            $rotated = false;
             if ($mime === 'image/jpeg' && function_exists('exif_read_data')) {
                 $exif_orient = @exif_read_data($target_path, 'IFD0');
                 $orientation = $exif_orient ? ($exif_orient['Orientation'] ?? 1) : 1;
-                if ($orientation == 3) $src = imagerotate($src, 180, 0);
-                elseif ($orientation == 6) $src = imagerotate($src, -90, 0);
-                elseif ($orientation == 8) $src = imagerotate($src, 90, 0);
-                imagejpeg($src, $target_path, $jpeg_q);
-                imagedestroy($src);
-                $src = imagecreatefromjpeg($target_path);
+                if ($orientation == 3)     { $src = imagerotate($src, 180, 0); $rotated = true; }
+                elseif ($orientation == 6) { $src = imagerotate($src, -90, 0); $rotated = true; }
+                elseif ($orientation == 8) { $src = imagerotate($src, 90, 0);  $rotated = true; }
             }
 
             $orig_w = imagesx($src);
             $orig_h = imagesy($src);
 
-            // Conditional resize
+            // Conditional resize (honours the resize toggle)
             $d_w = $orig_w;
             $d_h = $orig_h;
             $needs_resize = false;
-            if ($orig_w >= $orig_h && $orig_w > $max_w) {
-                $d_w = $max_w; $d_h = round($orig_h * ($max_w / $orig_w)); $needs_resize = true;
-            } elseif ($orig_h > $orig_w && $orig_h > $max_h) {
-                $d_h = $max_h; $d_w = round($orig_w * ($max_h / $orig_h)); $needs_resize = true;
+            if ($resize_enabled) {
+                if ($orig_w >= $orig_h && $orig_w > $max_w) {
+                    $d_w = $max_w; $d_h = round($orig_h * ($max_w / $orig_w)); $needs_resize = true;
+                } elseif ($orig_h > $orig_w && $orig_h > $max_h) {
+                    $d_h = $max_h; $d_w = round($orig_w * ($max_h / $orig_h)); $needs_resize = true;
+                }
             }
+
+            // Encode quality: user's setting, or max quality when recompression is off but a
+            // resize/rotation forces an encode anyway (never refuse).
+            $enc_q = $recompress_enabled ? $jpeg_q : 95;
 
             if ($needs_resize) {
                 $d_img = imagecreatetruecolor($d_w, $d_h);
@@ -237,16 +252,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
                     imagesavealpha($d_img, true);
                 }
                 imagecopyresampled($d_img, $src, 0, 0, 0, 0, $d_w, $d_h, $orig_w, $orig_h);
-                if ($mime === 'image/jpeg') imagejpeg($d_img, $target_path, $jpeg_q);
+                if ($mime === 'image/jpeg') imagejpeg($d_img, $target_path, $enc_q);
                 elseif ($mime === 'image/png') imagepng($d_img, $target_path, 8);
-                else imagewebp($d_img, $target_path, $jpeg_q);
-                imagedestroy($d_img);
+                else imagewebp($d_img, $target_path, $enc_q);
                 imagedestroy($src);
-                if ($mime === 'image/jpeg') $src = imagecreatefromjpeg($target_path);
-                elseif ($mime === 'image/png') $src = imagecreatefrompng($target_path);
-                else $src = imagecreatefromwebp($target_path);
+                $src = $d_img;              // resized copy drives thumbnail generation
                 $orig_w = $d_w; $orig_h = $d_h;
+            } elseif ($rotated) {
+                // No resize, but the pixels were physically rotated → bake it in.
+                if ($mime === 'image/jpeg') imagejpeg($src, $target_path, $enc_q);
+                elseif ($mime === 'image/png') imagepng($src, $target_path, 8);
+                else imagewebp($src, $target_path, $enc_q);
             }
+            // else: pass-through — original bytes untouched.
 
             // Square thumbnail (t_) — focal-point + zoom crop (per-image).
             // Defaults (fx=50,fy=50,zoom=100) reproduce the old centre crop.

@@ -158,9 +158,15 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (!function_exists('snapsmack_login_destination')) {
+    function snapsmack_login_destination(): string {
+        return (($_SESSION['snapsmack_login_return'] ?? '') === 'app') ? 'app' : 'smack-admin.php';
+    }
+}
+
 // --- REDIRECT FOR EXISTING SESSIONS ---
 if (isset($_SESSION['user_login'])) {
-    header("Location: smack-admin.php");
+    header('Location: ' . snapsmack_login_destination());
     exit;
 }
 
@@ -235,7 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         header('Location: smack-change-password.php');
                         exit;
                     }
-                    header('Location: smack-admin.php');
+                    header('Location: ' . snapsmack_login_destination());
                     exit;
                 }
 
@@ -257,7 +263,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
 
-            header("Location: smack-admin.php");
+            header('Location: ' . snapsmack_login_destination());
             exit;
         } else {
             $error = "ACCESS DENIED: Invalid credentials.";

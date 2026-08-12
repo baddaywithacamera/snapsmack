@@ -25,14 +25,23 @@ function ss_nav_link(string $href, string $label, string $key, string $active): 
 }
 
 $_nav = function(string $active): string {
-    return ss_nav_link('index.php',      'GAFF!',           'index',      $active) . "\n" .
-           ss_nav_link('wotcha.php',     'WOTCHA!',         'wotcha',     $active) . "\n" .
-           ss_nav_link('bugger.php',     'BUGGER!',         'bugger',     $active) . "\n" .
-           ss_nav_link('tnb.php',        'TWIG N BERRIES!', 'tnb',        $active) . "\n" .
-           ss_nav_link('hairy-muff.php', 'HAIRY MUFF!',     'hairy-muff',  $active) . "\n" .
-           ss_nav_link('brass-tacks.php','BRASS TACKS!',    'brass-tacks', $active) . "\n" .
-           ss_nav_link('buzzers.php',    'BUZZERS!',        'buzzers',     $active) . "\n" .
-           ss_nav_link('oi.php',         'OI THERE MATE!',  'oi',          $active);
+    $goods_open = str_starts_with($active, 'goods') ? ' active' : '';
+    $rest_open  = in_array($active, ['bugger', 'tnb', 'hairy-muff', 'buzzers', 'oi'], true) ? ' active' : '';
+    return ss_nav_link('index.php',      'GAFF!',        'index',       $active) . "\n" .
+           '            <details class="nav-group' . $goods_open . '"><summary>THE GOODS!</summary><div class="nav-flyout">' .
+           ss_nav_link('features.php',   'THE GOODS!',   'goods',       $active) .
+           ss_nav_link('skins.php',      'GLAD RAGS!',   'goods-skins', $active) .
+           ss_nav_link('tools.php',      'BOX O\' TRICKS!', 'goods-tools', $active) .
+           '</div></details>' . "\n" .
+           ss_nav_link('wotcha.php',     'WOTCHA!',      'wotcha',      $active) . "\n" .
+           ss_nav_link('brass-tacks.php','BRASS TACKS!', 'brass-tacks', $active) . "\n" .
+           '            <details class="nav-group' . $rest_open . '"><summary>MORE BOLLOCKS!</summary><div class="nav-flyout">' .
+           ss_nav_link('bugger.php',     'BUGGER!',         'bugger',    $active) .
+           ss_nav_link('tnb.php',        'TWIG N BERRIES!', 'tnb',       $active) .
+           ss_nav_link('hairy-muff.php', 'HAIRY MUFF!',     'hairy-muff',$active) .
+           ss_nav_link('buzzers.php',    'BUZZERS!',        'buzzers',   $active) .
+           ss_nav_link('oi.php',         'OI THERE MATE!',  'oi',        $active) .
+           '</div></details>';
 };
 
 $_page_css_block = isset($page_css) && $page_css !== '' ? "\n" . $page_css . "\n" : '';
@@ -165,4 +174,9 @@ echo json_encode($_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         </div>
     </div>
 </header>
+
+<aside class="mobile-shame" aria-label="A note for mobile visitors">
+    <strong>WELCOME TO THE ALL-YOU-CAN-EAT BAG OF DICKS.</strong>
+    <span>The site works on phones. Dignity remains a desktop feature.</span>
+</aside>
 <?php // ===== SNAPSMACK EOF =====

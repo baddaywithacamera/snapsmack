@@ -2,7 +2,7 @@
 REM ─────────────────────────────────────────────────────────────────────────
 REM  COLD SNAP — build script
 REM  Requires: Python 3.11+, pip install -r requirements.txt
-REM  Output:   C:\COLDSNAP\coldsnap.exe
+REM  Output:   C:\snapsmack\coldsnap\coldsnap.exe
 REM  UPX is disabled in the spec — builds finish in 2-5 min, not an hour.
 REM ─────────────────────────────────────────────────────────────────────────
 
@@ -50,13 +50,13 @@ pip install -r requirements.txt
 
 echo.
 echo Building %EXE_NAME%...
-if not exist C:\COLDSNAP mkdir C:\COLDSNAP
-pyinstaller --clean %SPEC_FILE% --distpath "C:\COLDSNAP"
+if not exist C:\snapsmack\coldsnap mkdir C:\snapsmack\coldsnap
+pyinstaller --clean %SPEC_FILE% --distpath "C:\snapsmack\coldsnap"
 
 echo.
-if exist "C:\COLDSNAP\%EXE_NAME%" (
-    echo Build successful: C:\COLDSNAP\%EXE_NAME%
-    echo Done. Launch: C:\COLDSNAP\%EXE_NAME%
+if exist "C:\snapsmack\coldsnap\%EXE_NAME%" (
+    echo Build successful: C:\snapsmack\coldsnap\%EXE_NAME%
+    echo Done. Launch: C:\snapsmack\coldsnap\%EXE_NAME%
 ) else (
     echo Build FAILED — check output above for errors.
     pause

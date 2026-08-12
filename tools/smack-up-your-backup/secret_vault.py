@@ -39,6 +39,8 @@ import os
 import sys
 from typing import Optional
 
+import config  # resolve_file() → shared C:\snapsmack layout (vault.meta is not machine-bound; safe to relocate)
+
 # Crypto backend (ships transitively via paramiko → cryptography).
 try:
     from cryptography.fernet import Fernet, InvalidToken
@@ -82,7 +84,7 @@ def _app_dir() -> str:
 
 
 def _meta_path() -> str:
-    return os.path.join(_app_dir(), "vault.meta")
+    return config.resolve_file("vault.meta")
 
 
 # ── Availability ───────────────────────────────────────────────────────────

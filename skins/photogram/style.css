@@ -221,6 +221,9 @@ button {
     color: var(--pg-text);
 }
 
+.pg-nav-create { color: var(--pg-text); }
+.pg-nav-create svg { filter: drop-shadow(0 0 8px color-mix(in srgb, currentColor 25%, transparent)); }
+
 .pg-nav-tab svg {
     display: block;
     transition: fill 0.15s ease, stroke 0.15s ease;

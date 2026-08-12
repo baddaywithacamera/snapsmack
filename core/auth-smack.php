@@ -99,6 +99,11 @@ if (!isset($_SESSION['user_login'])) {
         echo json_encode(['status' => 'session_expired', 'msg' => 'Session expired. Please log in again.']);
         exit;
     }
+    // Preserve the fixed app doorway through password and mandatory 2FA.
+    // The value is server-chosen, never accepted from a request parameter.
+    if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === 'smack-app.php') {
+        $_SESSION['snapsmack_login_return'] = 'app';
+    }
     $login_slug = $pdo->query(
         "SELECT setting_val FROM snap_settings WHERE setting_key = 'login_slug' LIMIT 1"
     )->fetchColumn() ?: 'snap-in';

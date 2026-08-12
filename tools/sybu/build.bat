@@ -2,7 +2,7 @@
 REM ─────────────────────────────────────────────────────────────────────────
 REM  SYBU — build script
 REM  Requires: Python 3.11+, pip install -r requirements.txt
-REM  Output:   C:\SYBU\sybu.exe
+REM  Output:   C:\snapsmack\sybu\sybu.exe
 REM  UPX is disabled in the spec — builds finish in 2-5 min, not an hour.
 REM ─────────────────────────────────────────────────────────────────────────
 
@@ -52,13 +52,13 @@ pip install -r requirements.txt
 
 echo.
 echo Building %EXE_NAME%...
-if not exist C:\SYBU mkdir C:\SYBU
-pyinstaller --clean %SPEC_FILE% --distpath "C:\SYBU"
+if not exist C:\snapsmack\sybu mkdir C:\snapsmack\sybu
+pyinstaller --clean %SPEC_FILE% --distpath "C:\snapsmack\sybu"
 
 echo.
-if exist "C:\SYBU\%EXE_NAME%" (
-    echo Build successful: C:\SYBU\%EXE_NAME%
-    echo Done. Launch: C:\SYBU\%EXE_NAME%
+if exist "C:\snapsmack\sybu\%EXE_NAME%" (
+    echo Build successful: C:\snapsmack\sybu\%EXE_NAME%
+    echo Done. Launch: C:\snapsmack\sybu\%EXE_NAME%
 ) else (
     echo Build FAILED — check output above for errors.
     pause

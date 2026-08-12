@@ -28,6 +28,7 @@ import sys
 from typing import Dict, List, Optional
 
 import secret_vault
+import config  # resolve_dir/resolve_file → shared C:\snapsmack layout
 import config as config_module
 import sync_manager
 
@@ -82,7 +83,7 @@ def _app_dir() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
-PROFILES_DIR = os.path.join(_app_dir(), "profiles")
+PROFILES_DIR = config.resolve_dir("profiles")
 
 
 def _obfuscate(plain: str) -> str:
@@ -235,7 +236,7 @@ def duplicate_profile(name: str, new_name: str) -> Optional[Dict]:
 # state. Each loads all secrets into memory first, then flips the vault, then
 # rewrites — so no profile is left sealed under a key that no longer exists.
 
-_MIGRATION_JOURNAL = os.path.join(_app_dir(), "vault-migration.json")
+_MIGRATION_JOURNAL = config.resolve_file("vault-migration.json")
 
 
 def _atomic_write_bytes(path: str, content: bytes) -> None:

@@ -61,7 +61,7 @@ if (empty($_SESSION['totp_pending_user_id'])) {
 
 // Also block already-authenticated users.
 if (isset($_SESSION['user_login'])) {
-    header("Location: smack-admin.php");
+    header('Location: ' . ((($_SESSION['snapsmack_login_return'] ?? '') === 'app') ? 'app' : 'smack-admin.php'));
     exit;
 }
 
@@ -173,7 +173,7 @@ if (!$user || empty($user['totp_secret'])) {
     $_SESSION['user_role']           = $user['user_role'] ?: 'editor';
     $_SESSION['user_preferred_skin'] = $user['preferred_skin'] ?: null;
     $_SESSION['user_id']             = $user['id'];
-    header("Location: smack-admin.php");
+    header('Location: ' . ((($_SESSION['snapsmack_login_return'] ?? '') === 'app') ? 'app' : 'smack-admin.php'));
     exit;
 }
 
@@ -196,7 +196,7 @@ if (ss_totp_check_trust($pdo, $pending_id)) {
         header("Location: smack-change-password.php");
         exit;
     }
-    header("Location: smack-admin.php");
+    header('Location: ' . ((($_SESSION['snapsmack_login_return'] ?? '') === 'app') ? 'app' : 'smack-admin.php'));
     exit;
 }
 
@@ -241,7 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
 
-            header("Location: smack-admin.php");
+            header('Location: ' . ((($_SESSION['snapsmack_login_return'] ?? '') === 'app') ? 'app' : 'smack-admin.php'));
             exit;
         } else {
             $_SESSION['totp_fail_count']++;

@@ -10,6 +10,42 @@
 
 # SnapSmack Changelog
 
+## 0.7.518 — 2026-08-12
+
+- **Image posting — photographer-controlled size & compression, with true
+  pass-through.** The server no longer silently re-encodes every upload. Two new
+  Global Config → Image Engine controls (`smack-globalvibe.php`): **RESIZE
+  OVERSIZED IMAGES** (`image_resize_enabled`) and **RE-COMPRESS ON UPLOAD**
+  (`image_recompress_enabled`), both default ON (behaviour unchanged for existing
+  sites at defaults, except needless re-encodes are dropped — see below). Turn
+  both OFF to pass the original file through untouched: original bytes, original
+  compression, embedded EXIF/GPS all preserved. The composer pipelines
+  (`smack-post-solo.php`, `smack-post-gram.php`) now rewrite the uploaded file
+  **only when forced** — a resize that is enabled-and-needed, or an actual EXIF
+  rotation. When neither applies, the file is left byte-for-byte as uploaded
+  (solo skips the EXIF re-inject too, so nothing is touched). JPEG_QUALITY applies
+  only inside a forced encode; if RE-COMPRESS is OFF but a resize/rotation forces
+  an encode anyway, it uses **max quality (q95)** rather than refusing. Seeded in
+  `install.php`. Spec: `_spec/image-pipeline-config-and-hub-push-spec-v0_1.md`.
+  (Deferred to next session: hub→spoke image-policy push, and the
+  leave-EXIF-orientation-unbaked refinement — that needs a harness pass to confirm
+  no consumer renders rotated originals sideways, so rotation is still baked for now.)
+- **Folded in pending in-progress work (Codex).** Committed alongside the above so
+  nothing was left uncommitted on `dev`:
+  - **SMACK THAT APP UP** — mobile posting PWA scaffold: `smack-app.php`,
+    `pwa-manifest.php`, `smack-sw.js`, `offline.php`, `core/app-mode.php`,
+    `assets/pwa/`, `assets/js/smack-pwa.js` + `smack-app.js`,
+    `assets/css/smack-app.css`, spec `docs/smack-that-app-up-spec.md`. Skeleton
+    only — styling/responsive pass is next session.
+  - **Install-mode guard** wired into the composers (`snapsmack_require_app_mode`):
+    a direct URL/app session cannot open a composer for a different install mode.
+  - **snapsmack-ca static site** — monolithic `index.php` split into
+    `features.php` / `skins.php` / `tools.php` + `includes/skin-stats.php`, header/
+    footer/SEO updates.
+  - **Desktop tools** — shared-credential + hub plumbing (`tools/_hub/`, gyss
+    `shared-creds.js` / `paths.js`, `tools/_shared/snap_home.py`), plus
+    coldsnap/suyb/gyss config updates.
+
 ## 0.7.517 — 2026-08-11
 
 - **Countdown engine (`assets/js/ss-engine-countdown.js`, script handle

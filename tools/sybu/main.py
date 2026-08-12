@@ -21,12 +21,22 @@ import os
 import sys
 
 def _setup_log() -> str:
-    """Open sybu-debug.log next to the exe (or source file when dev).  Returns path."""
+    """Open the SYBU debug log (stdout/stderr). Prefers the shared
+    C:\\snapsmack\\logs\\sybu_debug_<ts>.log; falls back to sybu-debug.log next to the
+    exe when the shared home isn't reachable. Returns the path."""
     if getattr(sys, 'frozen', False):
         base = os.path.dirname(sys.executable)
     else:
         base = os.path.dirname(os.path.abspath(__file__))
     log_path = os.path.join(base, 'sybu-debug.log')
+    try:
+        _sd = os.path.join(base, '..', '_shared')
+        if os.path.isdir(_sd) and _sd not in sys.path:
+            sys.path.insert(0, _sd)
+        import snap_home
+        log_path = snap_home.log_path('sybu', 'debug')
+    except Exception:
+        pass  # shared home unreachable — keep the next-to-exe path
     try:
         _lf = open(log_path, 'a', encoding='utf-8', buffering=1)
         import datetime
@@ -106,11 +116,16 @@ _SUMNA_IMPORT_ERROR = ""
 import logging
 import logging.handlers
 
-_AUDIT_LOG = os.path.join(os.path.dirname(LOG_PATH), 'sybu.log')
+# Prefer C:\snapsmack\logs\sybu_audit_<ts>.log (one file per run, matching the
+# shared layout); fall back to sybu.log beside the debug log. Per-run files, so a
+# plain FileHandler replaces the old daily rotation.
 try:
-    _audit_handler = logging.handlers.TimedRotatingFileHandler(
-        _AUDIT_LOG, when='D', interval=1, backupCount=7, encoding='utf-8',
-    )
+    import snap_home as _sh_audit          # _shared already on sys.path from _setup_log
+    _AUDIT_LOG = _sh_audit.log_path('sybu', 'audit')
+except Exception:
+    _AUDIT_LOG = os.path.join(os.path.dirname(LOG_PATH), 'sybu.log')
+try:
+    _audit_handler = logging.FileHandler(_AUDIT_LOG, encoding='utf-8')
     _audit_handler.setFormatter(logging.Formatter(
         '%(asctime)s  %(levelname)-8s  %(message)s', datefmt='%Y-%m-%d %H:%M:%S',
     ))

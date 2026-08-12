@@ -14,6 +14,7 @@ import {
 import {
     syncLibrary, libraryImages, libraryStatus, hostnameFor
 } from './library.js';
+import { getCred } from './shared-creds.js';
 
 // ===== SNAPSMACK EOF =====  (header reference only — JS marker at bottom)
 
@@ -36,12 +37,14 @@ let state = {
     siteMode:       'photoblog',  // 'photoblog' (SMACKONEOUT) | 'carousel' (GRAMOFSMACK)
     gram:           null,         // GRAMOFSMACK grid: { posts:[], dirtyOrder:bool }
     gramSelected:   new Set(),    // selected post ids in the GRID tab
+    sharedCreds:    {},           // shared secret store (gemini_api_key, drive_folder_id, google_credentials)
 };
 
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', async () => {
+    await loadSharedCreds();
     await refreshProfiles();
     await refreshSessions();
     showTab('connect');
@@ -52,6 +55,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     bindRepairTab();
     bindConflictModal();
 });
+
+// Load the shared secret store (…/shared_library/auth/shared_creds.json) — the
+// same store COLD SNAP / SYBU read. GYSS's own enrichment runs server-side, so
+// these values are surfaced for parity/future use rather than spent locally; the
+// per-site import key stays per-profile.
+async function loadSharedCreds() {
+    try {
+        state.sharedCreds = {
+            gemini_api_key:     await getCred('gemini_api_key'),
+            drive_folder_id:    await getCred('drive_folder_id'),
+            google_credentials: await getCred('google_credentials'),
+        };
+        if (state.sharedCreds.gemini_api_key) {
+            console.info('[shared-creds] shared Gemini API key is available.');
+        }
+    } catch { state.sharedCreds = {}; }
+}
 
 // ---------------------------------------------------------------------------
 // Tab switching

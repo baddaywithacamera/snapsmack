@@ -108,6 +108,7 @@ require_once __DIR__ . '/includes/header.php';
                 <h3><a href="#general">General</a></h3>
                 <ol>
                     <li><a href="#q-biggest-best">Is SnapSmack the biggest, best photoblogging software out there?</a></li>
+                    <li><a href="#q-the-point">What's the point of SnapSmack?</a></li>
                     <li><a href="#q-where-from">Where did this come from?</a></li>
                     <li><a href="#q-why-now">Why this, why now?</a></li>
                     <li><a href="#q-rude-profane">Why so rude and profane?</a></li>
@@ -139,6 +140,7 @@ require_once __DIR__ . '/includes/header.php';
                 <h3><a href="#fediverse">Fediverse &amp; Discovery</a></h3>
                 <ol>
                     <li><a href="#q-fediverse-what">What is the Fediverse — and why do I want it?</a></li>
+                    <li><a href="#q-posse">What is POSSE?</a></li>
                     <li><a href="#q-photoblogs-fyi">What is photoblogs.fyi?</a></li>
                     <li><a href="#q-photofriday">What is PHOTOFRI.DAY?</a></li>
                     <li><a href="#q-join-photofriday">How do I join PHOTOFRI.DAY?</a></li>
@@ -181,7 +183,12 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="qa" id="q-biggest-best">
                 <h3>Is SnapSmack the biggest, best photoblogging software out there?</h3>
-                <p>It's not the size of your army, it's the fury of its onslaught.</p>
+                <p>Nothing lasts, nothing is finished, and nothing is perfect. We hope to provide the serenity you need to find the authenticity and beauty in your art you deserve.</p>
+            </div>
+
+            <div class="qa" id="q-the-point">
+                <h3>What's the point of SnapSmack?</h3>
+                <p>To take as much load off the photographer as possible, so sharing your work stays about the work. Running a blog should be a thrill for you, not kill you.</p>
             </div>
 
             <div class="qa" id="q-where-from">
@@ -192,7 +199,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>I needed better software, except there is none. WordPress crowded out every single photo blogging product. The remaining blogging CMSes went corporate, chasing publishers and monetization while hobbyist photographers got shoved toward social media. My wife, a teacher who consults on using AI in secondary schooling (plug: jennifermccormick.ca), casually remarked, "it's too bad you can't vibe code it." Pardon me? I asked her to explain what that was. You have to understand when AI first surfaced, my reaction was allergic. Like reach for a six-pack of epi-pen type of allergy. Soil myself by using an AI? NEVAH! Except…</p>
                 <p>Ray would give me shit for having opinions about things I have no experience with (I'm really good at it). I figured I would give AI and this vibe coding thing a try and then I could tell my wife she was wrong, something that rarely happens (spoiler: she's smarter than me).</p>
                 <p>Well.</p>
-                <p>I started out by feeding Gemini the old source code from my favourite deceased photoblogging product, Pixelpost, and asking if it could be updated? No, Gemini said. Too far gone. But it offered to build a new product with identical functionality. It did and it was working by the end of the week. By the end of the second week I had been adding features necessary to my workflow and my own sense of what is required for secure design and Gemini was overwhelmed. It recommended trying Claude AI.</p>
+                <p>I started out by asking Gemini whether my favourite deceased photoblogging product, Pixelpost, could be brought back for the modern web. No, Gemini said. Too far gone. So SnapSmack was developed independently as a new product with the functionality I missed. It was working by the end of the week. By the end of the second week I had been adding features necessary to my workflow and my own sense of what is required for secure design and Gemini was overwhelmed. It recommended trying Claude AI.</p>
                 <p>Well, again.</p>
                 <p>Claude is amazing. I'm still not happy with how AI was trained, but AI has also given me a suite of bespoke tools doing everything I need and then some for pennies on the dollar. More importantly, the thing that I thought would ruin photography for everyone gave mine a big old shot of 'roids in the booty. I was wrong and I'm okay with it. The software you're considering installing right now would not exist without Claude, who was so helpful you'll notice the co-author credit. I'm not someone who is generous with praise (I'm an asshole like Ray was), so believe me when I say that credit is earned.</p>
                 <p>I hope you like the product and find it useful.</p>
@@ -234,9 +241,9 @@ require_once __DIR__ . '/includes/header.php';
             <div class="qa" id="q-reimagining">
                 <h3>A re-imagining of Pixelpost?</h3>
                 <p>Yes. The admin panel says so.</p>
-                <p>The honest origin: I dumped the old Pixelpost source into Google Workspace and asked Gemini if it was fixable. Gemini said it would be easier to rebuild from scratch while keeping the functionality. So that's what happened.</p>
-                <p>The original Gemini-built rebuild was already better than Pixelpost had been. Then I realised something: I blog much harder now than I did when Pixelpost was current. More sites, more workflows, more files, more reasons to want serious tooling. Pixelpost's one-photo-a-day shape was beautiful and sufficient for what blogging used to be. It is not sufficient for what blogging is now, at least not for me.</p>
-                <p>So the rebuild kept growing. Multisite. Companion apps. Security stack. Three install personalities for three different use shapes.</p>
+                <p>The honest origin: I asked Gemini whether Pixelpost could be modernized. The answer was no. So I started over. SnapSmack was built independently from scratch. It doesn't use any Pixelpost code &mdash; nothing was copied, adapted, or carried over. Pixelpost inspired how SnapSmack should feel, but not how it was built. That also means SnapSmack has its own license; it doesn't inherit Pixelpost's.</p>
+                <p>The original Gemini-built implementation was already better suited to the modern web than Pixelpost had been. Then I realised something: I blog much harder now than I did when Pixelpost was current. More sites, more workflows, more files, more reasons to want serious tooling. Pixelpost's one-photo-a-day shape was beautiful and sufficient for what blogging used to be. It is not sufficient for what blogging is now, at least not for me.</p>
+                <p>So the new product kept growing. Multisite. Companion apps. Security stack. Three install personalities for three different use shapes.</p>
                 <p>SnapSmack isn't mission creep. It's mission accomplished.</p>
                 <p>See "SnapSmack vs Pixelpost" below for the operational comparison.</p>
             </div>
@@ -272,18 +279,14 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="qa" id="q-mobile-app">
                 <h3>Will there be a mobile app for posting?</h3>
-                <p>No &mdash; at least not one from us. SnapSmack is throwback software to a time before smartphones; people posted from a computer back in the day (think 2001&ndash;2005). Today you post from a computer, or a large-screen tablet in desktop mode. A phone posting app was never in the vision &mdash; this project has a specific scope and we're keeping it. If someone else wants to build one, good on them; we won't block it.</p>
+                <p>Eventually, yes. A Progressive Web App (PWA) is in the works for open beta.</p>
             </div>
 
             <div class="qa" id="q-companion-apps">
                 <h3>Why companion apps instead of plugins?</h3>
-                <p>CMS plugins are the biggest scam in open source software. They promise functionality, deliver half of it, break on every update, charge you for the rest, and hold your workflow hostage to a developer who may or may not still care.</p>
-                <p>I paid for Softaculous for a year, had to spend $200 in hosting package upgrades to get it to run properly and after that it still never ran properly. Their software is shit and no one should spend a dime on it and I'll swear to that in court. Come at me, you pricks.</p>
-                <p>SnapSmack ships with dedicated companion apps instead. Each one does one job well, runs on your machine, touches your files directly, and just gets the job done. No plugin marketplace. No subscription tier. No "pro version" of a feature that should have been free. And many of them now pack optional AI assist — suggested captions and hashtags — to take the sting out of posting large batches of images.</p>
-                <p>Moving the heavy lifting off the server matters too. Batch importing 15 GB of images, running backups, sorting and organizing your archive — none of that belongs on a shared hosting environment that's already doing its job serving your site. The companion apps handle it on your machine, where it belongs. Better still, large imports can be scheduled for off-peak hours and spread over days or weeks if necessary, so you never upset your hosting provider with a sudden spike. No commercial CMS we're aware of offers this — they all assume chonky hardware and phat bandwidth. We don't.</p>
-                <p>There's also a practical reality worth acknowledging: not everyone has reliable home internet. If you're working from a library or a coffee shop, you should be able to organize your content, write posts, and queue up work offline, then sync when you have a connection. The companion apps are built with that in mind. Your photography practice shouldn't depend on your ISP.</p>
-                <p>And they're native desktop apps, not browser tabs, on purpose. Direct filesystem access with no upload round-trip. Background tray daemons that keep working while you don't. Batch operations on thousands of files at native speed. Cloud sync run by code that lives on your machine, not a tab you have to leave open. The industry forgot for a while that not everything needs to be a web app. The industry was wrong.</p>
-                <p>If you've been burned by plugins before: same. That's why these exist.</p>
+                <p>The desktop tools started with one backup app. It worked so well that I built another for batch posting, then realized I preferred working that way altogether. They're faster, easier, and let my own computer do the heavy lifting.</p>
+                <p>That matters on shared hosting. Ask a modest web server to process backups, chew through large batches of photographs, and run every other demanding job, and the whole site starts to chug. Even worse, you may crash the server and find yourself pushed onto a more expensive hosting plan. Moving that work offline reduces the friction of blogging for me and leaves the CMS free to do what it does best: serve photographs, handle comments, and keep the site secure.</p>
+                <p>So I'm moving as much of the workflow to desktop tools as I can. Not because desktop apps are fashionable&mdash;they absolutely are not&mdash;but because they make blogging faster, easier, and less dependent on how much horsepower your hosting company has decided to give you.</p>
             </div>
 
             <div class="qa" id="q-no-apple">
@@ -332,7 +335,7 @@ require_once __DIR__ . '/includes/header.php';
                 <h3>Why are you ripping off Instagram?</h3>
                 <p>We're not ripping them off, we're taking back what's ours. Greymatter, Pixelpost, Movable Type — those were blogging 1.0. When Instagram arrived it sort of became blogging 2.0, in a manner of speaking. No hosting costs or headaches. No setting up a server or learning CSS. You could just SHARE your images and the audience was there waiting. Yeah, it was boring looking, but the appeal was obvious, so a lot of blogs were abandoned for Instagram. Photogs found hacks like splitting an image across 3, 6, or 9 tiles to punch Insta up visually, and they were happy, even as enshittification crept into the platform.</p>
                 <p>Then in 2025 Meta threw photographers under the bus. They yoinked the three-across grid, destroying so many years of careful work by photographers who curated their feeds, in favour of creepy preteen influencer videos. It sucked.</p>
-                <p>And these days we CAN do something about the social aspect, too &mdash; SMACKVERSE. Now you host your own images and retain control while feeding them into the Fediverse, a more ethical alternative to Insta. As for the look you loved, that's the easy part. GRAMOFSMACK is the classic-Instagram install — the curated three-across feed, square tiles, cover spreads, and carousel posts up to ten deep, the way it looked when Instagram was still about photographs. Leave it stock and period-correct, or bolt on the modern flourishes — the animated carousel skins, AURORA and PARADE — spinning rims on a Model T, if that's your thing. The Grid is the default skin; on phones it serves Photogram automatically.</p>
+                <p>And these days we CAN do something about the social aspect, too &mdash; SMACKVERSE. Now you host your own images and retain control while feeding them into the Fediverse, a more ethical alternative to Insta. As for the look you loved, that's the easy part. GRAMOFSMACK is the classic-Instagram install — the curated three-across feed, square tiles, cover spreads, and carousel posts up to ten deep, the way it looked when Instagram was still about photographs. Leave it stock and period-correct with The Grid, put it under AURORA's night sky, or fly one of PARADE's twelve LGBT+ identity flags behind it. On phones it serves PHOTOGRAM automatically.</p>
             </div>
 
             <div class="qa" id="q-content-locked">
@@ -384,6 +387,12 @@ require_once __DIR__ . '/includes/header.php';
                 <p>New to all this and not sure where to start? <a href="https://fediverse.info" target="_blank" rel="noopener">fediverse.info</a> is the friendly front door — it explains the whole thing in plain language and, more to the point, helps you <em>find real people to follow</em> so you don't land in an empty feed. (That "find real people" idea is exactly what we're building <a href="#q-photoblogs-fyi">photoblogs.fyi</a> around, scoped to photographers.)</p>
                 <p>And here's the part most "social" quietly skips: with SnapSmack you get all of that without handing over a single thing. Your photos, your captions, your comments, your DMs, your data — they stay on <strong>your</strong> server, under your domain. SnapSmack federates by pointing the world at your work, not by uploading it to some stranger's box to host, mine and monetize. You're a peer on the network, not a tenant in someone's silo. Flip it on, flip it off — either way it's yours.</p>
                 <p>Why you need it: it's simply how people find your work now. A blog nobody can stumble onto is a lonely blog. Federation is the reach of social — without becoming the product.</p>
+            </div>
+
+            <div class="qa" id="q-posse">
+                <h3>What is POSSE?</h3>
+                <p>POSSE stands for <strong>Publish on your Own Site, Syndicate Elsewhere</strong> — or, blunter and closer to how we mean it, <strong>Put On Server, Syndicate Elsewhere</strong>. Your photographs live on a server you control. Copies go out to the networks where the people are. The original never leaves home.</p>
+                <p>And it runs both ways. The likes, replies, and boosts your syndicated copies pick up out there don't stay stranded on someone else's server — they feed back to the post they belong to, on your site. Syndicate out, gather the conversation back. Your work and its audience end up in the same place: yours. (POSSE is the <em>publishing</em> principle; <a href="#q-fediverse-what">ActivityPub</a> is one of the roads your copies travel.)</p>
             </div>
 
             <div class="qa" id="q-photoblogs-fyi">

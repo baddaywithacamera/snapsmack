@@ -155,6 +155,11 @@ $keywords_str = implode(', ', $page_keywords);
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="SnapSmack<?php echo defined('SNAPSMACK_VERSION_SHORT') ? ' ' . htmlspecialchars(SNAPSMACK_VERSION_SHORT) : ''; ?>">
+<meta name="theme-color" content="#0b0c0d">
+<link rel="manifest" href="<?php echo BASE_URL; ?>pwa-manifest.php">
+<link rel="apple-touch-icon" href="<?php echo BASE_URL; ?>assets/pwa/apple-touch-icon.png">
+<script>window.SNAP_BASE_URL=<?php echo json_encode(BASE_URL); ?>;</script>
+<script src="<?php echo BASE_URL; ?>assets/js/smack-pwa.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 <?php
 // --- AI TRAINING META DIRECTIVE ---
 // Belt-and-suspenders alongside robots.txt. Tells AI crawlers that respect

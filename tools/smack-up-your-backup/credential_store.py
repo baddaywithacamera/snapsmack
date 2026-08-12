@@ -24,6 +24,8 @@ import os
 import sys
 from typing import List, Optional
 
+import config  # sibling module — resolve_file() puts state under the shared C:\snapsmack layout
+
 
 def _app_dir() -> str:
     # Portable app: credential library rides next to the executable, never in %APPDATA%.
@@ -32,7 +34,7 @@ def _app_dir() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
-STORE_FILE = os.path.join(_app_dir(), "credentials.json")
+STORE_FILE = config.resolve_file("credentials.json")
 
 
 def load() -> List[dict]:

@@ -24,12 +24,22 @@ import os
 import sys
 
 def _setup_log() -> str:
-    """Open coldsnap-debug.log next to the exe (or source file when dev).  Returns path."""
+    """Open the COLD SNAP debug log (stdout/stderr). Prefers the shared
+    C:\\snapsmack\\logs\\coldsnap_debug_<ts>.log; falls back to coldsnap-debug.log next
+    to the exe when the shared home isn't reachable. Returns the path."""
     if getattr(sys, 'frozen', False):
         base = os.path.dirname(sys.executable)
     else:
         base = os.path.dirname(os.path.abspath(__file__))
     log_path = os.path.join(base, 'coldsnap-debug.log')
+    try:
+        _sd = os.path.join(base, '..', '_shared')
+        if os.path.isdir(_sd) and _sd not in sys.path:
+            sys.path.insert(0, _sd)
+        import snap_home
+        log_path = snap_home.log_path('coldsnap', 'debug')
+    except Exception:
+        pass  # shared home unreachable — keep the next-to-exe path
     try:
         _lf = open(log_path, 'a', encoding='utf-8', buffering=1)
         import datetime

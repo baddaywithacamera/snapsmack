@@ -18,7 +18,7 @@
 <!-- Kept with the footer markup so a stale shared stylesheet cannot break it. -->
 <style>
 .site-discovery {
-    background: #f4f1eb;
+    background: var(--black);
     border-top: 3px solid var(--red);
     padding: 48px 0 52px;
 }
@@ -31,7 +31,7 @@
 }
 .site-discovery h2 {
     margin: 0 0 28px;
-    color: var(--black);
+    color: var(--white);
     font: 900 clamp(1.7rem, 3vw, 2.4rem)/1.05 Arial, sans-serif;
     letter-spacing: -0.035em;
 }
@@ -40,8 +40,8 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0;
     margin: 0;
-    border-top: 1px solid #c9c4ba;
-    border-left: 1px solid #c9c4ba;
+    border-top: 1px solid #3b3b3b;
+    border-left: 1px solid #3b3b3b;
     font: inherit;
     letter-spacing: normal;
     text-transform: none;
@@ -49,10 +49,10 @@
 .site-discovery .footer-discovery a {
     min-height: 108px;
     padding: 20px 22px;
-    color: var(--black);
-    background: #fff;
-    border-right: 1px solid #c9c4ba;
-    border-bottom: 1px solid #c9c4ba;
+    color: var(--white);
+    background: #181818;
+    border-right: 1px solid #3b3b3b;
+    border-bottom: 1px solid #3b3b3b;
     text-decoration: none;
     transition: background 120ms ease, color 120ms ease;
 }
@@ -67,17 +67,17 @@
 }
 .site-discovery .footer-discovery span {
     display: block;
-    color: #555;
+    color: #aaa;
     font: 0.84rem/1.45 Georgia, serif;
 }
 .site-discovery .footer-discovery a:hover,
 .site-discovery .footer-discovery a:focus-visible {
-    color: var(--black);
-    background: #fff8f6;
+    color: var(--white);
+    background: #242424;
     box-shadow: inset 0 -3px 0 var(--red);
 }
 .site-discovery .footer-discovery a:hover span,
-.site-discovery .footer-discovery a:focus-visible span { color: #555; }
+.site-discovery .footer-discovery a:focus-visible span { color: #ddd; }
 #site-footer {
     background: var(--black);
     border-top: 0;
@@ -123,6 +123,104 @@ new IntersectionObserver(
     ([entry]) => miniHeader.classList.toggle('visible', !entry.isIntersecting),
     { threshold: 0 }
 ).observe(mainHeader);
+
+// Native <details> elements do not dismiss themselves like menus. Make the
+// navigation behave like one: one flyout at a time, click-away dismissal, and
+// Escape support for keyboard users.
+const navGroups = Array.from(document.querySelectorAll('.nav-group'));
+function closeNavGroups(except) {
+    navGroups.forEach(group => {
+        if (group !== except) group.removeAttribute('open');
+    });
+}
+navGroups.forEach(group => {
+    group.addEventListener('toggle', () => {
+        if (group.open) closeNavGroups(group);
+    });
+});
+document.addEventListener('click', event => {
+    if (!event.target.closest('.nav-group')) closeNavGroups();
+});
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+        closeNavGroups();
+        document.querySelectorAll('.nav-toggle:checked').forEach(toggle => {
+            toggle.checked = false;
+        });
+    }
+});
+
+// Live production statistics for every showcased skin.
+(function () {
+    const cards = Array.from(document.querySelectorAll('[data-stats]'));
+    if (!cards.length) return;
+
+    const fmt = value => {
+        if (value == null) return '\u2014';
+        if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+        if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+        return String(value);
+    };
+
+    const tip = document.createElement('div');
+    tip.id = 'skin-stats-tooltip';
+    tip.setAttribute('role', 'tooltip');
+    // The page body is scaled. Keeping the fixed tooltip outside it prevents
+    // pointer coordinates and rendered position from drifting apart.
+    document.documentElement.appendChild(tip);
+
+    let mouseX = 0;
+    let mouseY = 0;
+
+    function positionTip() {
+        const gap = 30;
+        const bounds = tip.getBoundingClientRect();
+        tip.style.left = Math.max(gap, Math.min(mouseX + gap, window.innerWidth - bounds.width - gap)) + 'px';
+        tip.style.top = Math.max(gap, Math.min(mouseY + gap, window.innerHeight - bounds.height - gap)) + 'px';
+    }
+
+    function content(card) {
+        let stats = null;
+        try { stats = JSON.parse(card.dataset.stats || 'null'); } catch (error) {}
+        if (!stats || stats.error) return '<div class="stt-unavailable">Stats unavailable</div>';
+
+        const site = stats.site_name || card.querySelector('strong, h2')?.textContent || '';
+        return '<div class="stt-site">' + site + '</div>' +
+            '<div class="stt-grid">' +
+                '<div><span class="stt-stat-val">' + fmt(stats.posts) + '</span><span class="stt-stat-label">Photos</span></div>' +
+                '<div><span class="stt-stat-val">' + fmt(stats.views_all || stats.views_30d) + '</span><span class="stt-stat-label">Views</span></div>' +
+                '<div><span class="stt-stat-val">' + fmt(stats.unique_all || stats.unique_30d) + '</span><span class="stt-stat-label">Visitors</span></div>' +
+                '<div><span class="stt-stat-val">' + (stats.version || '\u2014') + '</span><span class="stt-stat-label">Version</span></div>' +
+            '</div>' +
+            (stats.active_since ? '<div class="stt-since">Since ' + String(stats.active_since).slice(0, 4) + '</div>' : '');
+    }
+
+    function show(card, event) {
+        if (event && event.clientX) {
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        } else {
+            const bounds = card.getBoundingClientRect();
+            mouseX = bounds.left + Math.min(bounds.width, 40);
+            mouseY = bounds.top + 20;
+        }
+        tip.innerHTML = content(card);
+        tip.classList.add('visible');
+        positionTip();
+    }
+
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', event => show(card, event));
+        card.addEventListener('mousemove', event => {
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+            positionTip();
+        });
+        card.addEventListener('mouseleave', () => tip.classList.remove('visible'));
+        card.addEventListener('focusin', event => show(card, event));
+        card.addEventListener('focusout', () => tip.classList.remove('visible'));
+    });
+})();
 </script>
 </body>
 </html>
