@@ -1,5 +1,5 @@
 /*
- * SNAPSMACK — CRIMSON ONYX 0.1.2
+ * SNAPSMACK — CRIMSON ONYX 0.1.3
  * The photofri.day identity as a SnapSmack skin.
  *
  * SNAPSMACK_EOF_HEADER
@@ -266,6 +266,15 @@ img { max-width: 100%; height: auto; }
 }
 :where(.static-content .description a:hover),
 :where(.static-content .description a:focus-visible) { color: #fff; }
+
+/* Content links read crimson. The rule above uses :where() (zero specificity) so
+   components can restyle freely — but that also let a core content rule win and
+   paint FAQ-answer links in body ink (they were rendering #f4f4f4, not red). This
+   real-specificity rule puts the red back on every link inside a page body, the
+   FAQ accordion answers included. */
+.static-content .description a { color: var(--pfd-link); }
+.static-content .description a:hover,
+.static-content .description a:focus-visible { color: #fff; }
 
 .static-content .description code {
     font-family: var(--pfd-mono);
