@@ -1,11 +1,13 @@
 // SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 // GET YOUR SHIT SORTED — Session manager
 // A session is a snapshot of a filtered photo batch.
-// Persisted to %APPDATA%\GetYourShitSorted\sessions\ as JSON.
-// Sessions survive app restarts — resume mid-sort after close.
+// Persisted under the shared root: config_files\gyss\sessions\ as JSON
+// (snap_home's config_dir('gyss') contract). Sessions survive app restarts —
+// resume mid-sort after close.
 
 import { invoke } from '@tauri-apps/api/core';
-import { appDataDir, join } from '@tauri-apps/api/path';
+import { join } from '@tauri-apps/api/path';
+import { sharedHome } from './paths.js';
 
 // ===== SNAPSMACK EOF =====  (header reference only — JS marker at bottom)
 
@@ -13,8 +15,7 @@ let _sessionsDir = null;
 
 async function sessionsDir() {
     if (!_sessionsDir) {
-        const appData = await appDataDir();
-        _sessionsDir  = await join(appData, 'GetYourShitSorted', 'sessions');
+        _sessionsDir = await join(await sharedHome(), 'config_files', 'gyss', 'sessions');
     }
     return _sessionsDir;
 }

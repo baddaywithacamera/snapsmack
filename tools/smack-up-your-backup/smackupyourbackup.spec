@@ -10,9 +10,19 @@ sys.setrecursionlimit(sys.getrecursionlimit() * 5)
 _src = SPECPATH
 _ver = os.environ.get('SUYB_BUILD_VER', 'dev')
 
+# Bundle the shared tools/_shared modules (snap_home, snap_paths, …) that config.py
+# imports dynamically by bare name after a sys.path insert. PyInstaller can't follow
+# that, so include them explicitly — flat next to the exe modules — or the C:\snapsmack
+# layout silently falls back to next-to-exe on the frozen build.
+import glob as _glob
+_shared_dir   = os.path.normpath(os.path.join(_src, '..', '_shared'))
+_shared_files = _glob.glob(os.path.join(_shared_dir, '*.py'))
+_shared_data  = [(f, '.') for f in _shared_files]
+_shared_mods  = [os.path.splitext(os.path.basename(f))[0] for f in _shared_files]
+
 a = Analysis(
     ['main.py'],
-    pathex=[_src],
+    pathex=[_src, _shared_dir],
     binaries=[],
     # Explicitly bundle every local .py file so PyInstaller cannot miss them.
     datas=[
@@ -40,8 +50,8 @@ a = Analysis(
         (os.path.join(_src, 'scheduler.py'),          '.'),
         (os.path.join(_src, 'sync_manager.py'),       '.'),
         (os.path.join(_src, 'sync_manifest.py'),      '.'),
-    ],
-    hiddenimports=[
+    ] + _shared_data,
+    hiddenimports=_shared_mods + [
         # UI
         'tkinter', 'tkinter.ttk', 'tkinter.filedialog', 'tkinter.messagebox',
         # Network

@@ -1,11 +1,14 @@
 // SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 // GET YOUR SHIT SORTED — Profile manager
-// One JSON file per site in %APPDATA%\GetYourShitSorted\profiles\
-// API key is base64-obfuscated (not encrypted — just keeps it off plaintext).
+// One JSON file per site under the shared root: config_files\gyss\profiles\
+// (snap_home's config_dir('gyss') contract — a tool's own config in the shared
+// root). The per-site import API key is base64-obfuscated (not encrypted — just
+// keeps it off plaintext) and stays PER-PROFILE; it is NOT a shared secret.
 // Same obfuscation convention as SYBU.
 
 import { invoke } from '@tauri-apps/api/core';
-import { appDataDir, join } from '@tauri-apps/api/path';
+import { join } from '@tauri-apps/api/path';
+import { sharedHome } from './paths.js';
 
 // ===== SNAPSMACK EOF =====  (header reference only — JS marker at bottom)
 
@@ -13,8 +16,7 @@ let _profilesDir = null;
 
 async function profilesDir() {
     if (!_profilesDir) {
-        const appData = await appDataDir();
-        _profilesDir  = await join(appData, 'GetYourShitSorted', 'profiles');
+        _profilesDir = await join(await sharedHome(), 'config_files', 'gyss', 'profiles');
     }
     return _profilesDir;
 }

@@ -100,6 +100,14 @@ $profile_url = $show_about ? BASE_URL . 'page.php?slug=' . rawurlencode($_pg_abo
     <?php endif; ?>
 
     <!-- About / Profile — hidden when no page is configured -->
+    <!-- Owner create doorway. Authentication, 2FA and mode selection happen
+         server-side at /app; public visitors never receive a composer. -->
+    <a href="<?php echo BASE_URL; ?>app" class="pg-nav-tab pg-nav-create" aria-label="Create a post">
+        <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round">
+            <rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 7v10M7 12h10"/>
+        </svg>
+    </a>
+
     <?php if ($show_about): ?>
     <a href="<?php echo $profile_url; ?>" class="pg-nav-tab<?php echo $active_tab === 'about' ? ' active' : ''; ?>" aria-label="About">
         <!-- Outline -->

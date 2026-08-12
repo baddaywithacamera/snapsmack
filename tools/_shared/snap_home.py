@@ -4,16 +4,27 @@ SNAPSMACK — snap_home.py  (shared on-disk layout for the desktop tool family)
 The single directory contract every SnapSmack tool shares. One root — default
 C:\\snapsmack, overridable with the SNAPSMACK_HOME env var — under which:
 
+    <tool>/                  each tool INSTALLS here (e.g. C:\\snapsmack\\sybu). The
+                             .exe and its bundled assets live here.
     shared_library/
         auth/                ONE shared credential vault (snap_vault) — configure
                              the hub key / Gemini key / Drive creds ONCE, every
                              tool reads them here instead of each being set up.
         <site>/db/           SQLite content mirror (manifest + post/asset rows)
         <site>/thumbs/       downloaded thumbs, shared so tools don't re-fetch
+    config_files/
+        <tool>/              each tool's own config (config.ini etc.), moved off
+                             next-to-exe into one shared, backed-up-together place.
+    logs/
+        <tool>_<logname>_YYYY-MM-DD-HH-MM.log    per-run log files, all in one place.
     <app>/out/               per-tool FINISHED output (e.g. coldsnap/out)
 
-Only SHARED data + credentials live here. Each tool's own config.ini still lives
-next to its exe, unchanged — this module does not touch that.
+LAYOUT HISTORY. Tools used to keep config.ini next to their exe (SUYB was a
+portable thumb-drive tool that NEVER wrote to fixed locations). As of the
+C:\\snapsmack consolidation that is retired family-wide: config + logs live under
+the shared root. On first run each tool MIGRATES its old next-to-exe config into
+config_files/ via adopt_legacy() so nobody loses their settings. Shared data +
+credentials already lived here; this extends the contract to config and logs.
 
 <site> folders are derived from a site URL/hostname. A hostname is data, and data
 is untrusted: a crafted value like '..\\..\\Windows' must never escape the root.
@@ -34,6 +45,7 @@ Usage:
 
 import os
 import re
+import shutil
 from urllib.parse import urlparse
 
 # snap_paths is a sibling in tools/_shared/. Tools put _shared on sys.path before
@@ -117,4 +129,85 @@ def app_out_dir(app_name: str) -> str:
     if not name:
         raise ValueError(f"app_name yields no usable folder name: {app_name!r}")
     return _ensure(os.path.join(contained_local_path(home(), name), "out"))
+
+
+# ── Tool name → safe folder segment ──────────────────────────────────────────
+def _tool_key(tool: str) -> str:
+    """Normalise a tool name to a safe, lowercase single folder segment.
+    'COLDSNAP' -> 'coldsnap'. Raises on input that yields nothing usable."""
+    name = re.sub(r"[^A-Za-z0-9_.-]", "-", (tool or "").strip()).strip(".-").lower()
+    name = re.sub(r"-{2,}", "-", name)
+    if not name:
+        raise ValueError(f"tool yields no usable folder name: {tool!r}")
+    return name
+
+
+# ── Install dir (where a tool's exe lives) ───────────────────────────────────
+def install_dir(tool: str) -> str:
+    """C:\\snapsmack\\<tool> — where a tool installs (exe + bundled assets)."""
+    return _ensure(contained_local_path(home(), _tool_key(tool)))
+
+
+# ── Config files (shared config location) ────────────────────────────────────
+def config_dir(tool: str = None) -> str:
+    """C:\\snapsmack\\config_files[\\<tool>] — configs moved off next-to-exe. With no
+    tool, the parent bucket; with a tool, that tool's own contained subfolder."""
+    base = _ensure(os.path.join(home(), "config_files"))
+    if tool is None:
+        return base
+    return _ensure(contained_local_path(base, _tool_key(tool)))
+
+
+def config_path(tool: str, name: str = "config.ini") -> str:
+    """Full path to one of a tool's config files under config_files/<tool>/.
+    `name` is code-supplied but contained anyway."""
+    return contained_local_path(config_dir(tool), name)
+
+
+# ── Logs (shared, one file per run) ──────────────────────────────────────────
+def logs_dir() -> str:
+    """C:\\snapsmack\\logs — every tool's run logs in one place."""
+    return _ensure(os.path.join(home(), "logs"))
+
+
+def log_path(tool: str, logname: str = "run", when=None) -> str:
+    """C:\\snapsmack\\logs\\<tool>_<logname>_YYYY-MM-DD-HH-MM.log for this run.
+    Pass `when` (a datetime) in tests for a deterministic name; defaults to now."""
+    from datetime import datetime
+    stamp = (when or datetime.now()).strftime("%Y-%m-%d-%H-%M")
+    seg = re.sub(r"[^A-Za-z0-9_.-]", "-", (logname or "run").strip()).strip(".-").lower() or "run"
+    return os.path.join(logs_dir(), f"{_tool_key(tool)}_{seg}_{stamp}.log")
+
+
+# ── First-run migration ──────────────────────────────────────────────────────
+def adopt_legacy(old_path: str, new_path: str) -> bool:
+    """Migrate a legacy next-to-exe file into the new shared location: if `new_path`
+    does not yet exist but `old_path` does, copy old -> new (preserving the old file
+    so a downgrade still finds it). Returns True iff a copy happened. Never raises."""
+    try:
+        if old_path and os.path.isfile(old_path) and not os.path.exists(new_path):
+            os.makedirs(os.path.dirname(new_path), exist_ok=True)
+            shutil.copy2(old_path, new_path)
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def adopt_legacy_tree(old_dir: str, new_dir: str) -> bool:
+    """Directory form of adopt_legacy: if `new_dir` does not yet exist (or is empty)
+    but `old_dir` exists with contents, copy the whole tree old -> new, preserving the
+    old dir. Returns True iff a copy happened. Never raises."""
+    try:
+        if not old_dir or not os.path.isdir(old_dir):
+            return False
+        if not os.listdir(old_dir):
+            return False
+        if os.path.isdir(new_dir) and os.listdir(new_dir):
+            return False  # new location already populated — don't clobber
+        shutil.copytree(old_dir, new_dir, dirs_exist_ok=True)
+        return True
+    except Exception:
+        pass
+    return False
 # ===== SNAPSMACK EOF =====

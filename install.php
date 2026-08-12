@@ -1311,6 +1311,8 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'jpeg_quality'              => '85',
                 'max_width_landscape'       => '2500',
                 'max_height_portrait'       => '1850',
+                'image_resize_enabled'      => '1',
+                'image_recompress_enabled'  => '1',
                 'exif_artist'               => '',
                 'exif_copyright'            => '',
                 'footer_slot_copyright'         => 'on',

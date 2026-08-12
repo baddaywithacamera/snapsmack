@@ -1,0 +1,50 @@
+/* SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */
+
+body.smack-app-composer { --app-lime:#c8ff00; --app-coral:#ff5364; --app-ink:#0b0c0d; }
+.smack-app-badge { display:none; }
+
+@media (max-width: 1024px) {
+    html { overflow-x:hidden; }
+    body.smack-app-composer { min-width:0; padding-bottom:calc(82px + env(safe-area-inset-bottom)); overflow-x:hidden; }
+    body.smack-app-composer .sidebar,
+    body.smack-app-composer .sidebar-toggle,
+    body.smack-app-composer .sidebar-overlay,
+    body.smack-app-composer #admin-universal-footer { display:none !important; }
+    body.smack-app-composer .main-content,
+    body.smack-app-composer .admin-content,
+    body.smack-app-composer .content-area,
+    body.smack-app-composer .main,
+    body.smack-app-composer .container { width:100% !important; max-width:none !important; min-width:0 !important; margin:0 !important; padding:12px !important; }
+    body.smack-app-composer form { width:100%; max-width:none; min-width:0; }
+    body.smack-app-composer input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
+    body.smack-app-composer select,
+    body.smack-app-composer textarea { width:100%; max-width:100%; min-height:48px; font-size:16px; }
+    body.smack-app-composer textarea { min-height:120px; }
+    body.smack-app-composer button,
+    body.smack-app-composer .sc-btn { min-height:44px; touch-action:manipulation; }
+    body.smack-app-composer img,
+    body.smack-app-composer canvas,
+    body.smack-app-composer video { max-width:100%; height:auto; }
+    body.smack-app-composer table { display:block; max-width:100%; overflow-x:auto; }
+    body.smack-app-composer .post-layout-grid,
+    body.smack-app-composer .meta-grid { display:grid !important; grid-template-columns:minmax(0,1fr) !important; gap:12px !important; }
+    body.smack-app-composer .sc-toolbar,
+    body.smack-app-composer .sc-row { max-width:100%; flex-wrap:wrap; }
+    body.smack-app-composer .box { min-width:0; padding:14px !important; }
+    body.smack-app-composer .cp-strip-item { width:100% !important; flex-basis:100% !important; }
+    .smack-app-badge { position:sticky; top:0; z-index:1000; display:flex; align-items:center; justify-content:space-between; min-height:52px; padding:8px 14px; padding-top:max(8px,env(safe-area-inset-top)); background:rgba(11,12,13,.96); color:#f4f0e8; border-bottom:1px solid #2d3033; backdrop-filter:blur(14px); }
+    .smack-app-badge strong { color:var(--app-lime); font-size:.78rem; letter-spacing:.12em; }
+    .smack-app-badge a { color:#f4f0e8; text-decoration:none; font-weight:800; min-height:40px; display:grid; place-items:center; padding:0 10px; }
+    .smack-app-status { position:fixed; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom)); z-index:4000; display:none; gap:10px; align-items:center; padding:12px 14px; border-radius:14px; background:#151719; color:#f4f0e8; box-shadow:0 12px 40px #0009; }
+    .smack-app-status.is-visible { display:flex; }
+    .smack-app-status progress { width:100%; accent-color:var(--app-lime); }
+    .smack-app-draft { border:1px solid #3b3f42; background:#151719; color:#f4f0e8; border-radius:12px; padding:10px 12px; margin:10px 0; }
+}
+
+@media (min-width: 700px) and (max-width: 1024px) and (orientation: landscape) {
+    body.smack-app-composer .post-layout-grid,
+    body.smack-app-composer .meta-grid { grid-template-columns:minmax(0,1fr) minmax(300px,.8fr) !important; gap:18px !important; }
+    body.smack-app-composer .main { padding:18px !important; }
+}
+
+/* ===== SNAPSMACK EOF ===== */

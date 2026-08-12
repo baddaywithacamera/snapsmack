@@ -29,6 +29,17 @@
 $GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu'];
 $GLOBALS['SNAP_API_REQUIRE_MODE'] = 'photoblog';
 require_once 'core/api-auth.php';
+require_once 'core/app-mode.php';
+
+// Browser and app sessions obey the same immutable install-mode boundary as
+// typed tool keys. A direct URL cannot open the solo composer on another mode.
+if (!defined('SNAP_API_AUTH')) {
+    $_app_mode_settings = $pdo->query('SELECT setting_key, setting_val FROM snap_settings')
+        ->fetchAll(PDO::FETCH_KEY_PAIR);
+    snapsmack_require_app_mode($_app_mode_settings, 'photoblog');
+    unset($_app_mode_settings);
+    $GLOBALS['SNAPSMACK_APP_COMPOSER'] = true;
+}
 require_once 'core/palette-extract.php';
 require_once 'core/snap-tags.php';
 require_once 'core/ai-provider.php';
@@ -352,9 +363,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         elseif ($mime == 'image/webp') { $src = imagecreatefromwebp($target_path); }
 
         if ($src) {
+            // --- IMAGE-ENGINE TOGGLES ---
+            // Size + compression are the photographer's to set. Either can be turned
+            // OFF; with both off the original file passes through untouched (original
+            // bytes + embedded metadata preserved — no silent GD re-encode).
+            // Spec: _spec/image-pipeline-config-and-hub-push-spec-v0_1.md.
+            $resize_enabled     = (($settings['image_resize_enabled']     ?? '1') !== '0');
+            $recompress_enabled = (($settings['image_recompress_enabled'] ?? '1') !== '0');
+
             // --- EXIF ORIENTATION CORRECTION ---
-            // GD library drops EXIF rotation on save. Detect and apply rotation
-            // before any resizing to ensure pixel data matches original orientation.
+            // GD drops EXIF rotation on save. Rotate the in-memory copy so thumbnails are
+            // upright; the file itself is only re-baked when we already have to encode.
             $exif_orientation = 1;
             if ($mime == 'image/jpeg' && function_exists('exif_read_data')) {
                 $exif_orient = @exif_read_data($target_path, 'IFD0');
@@ -363,50 +382,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 }
             }
 
-            if ($exif_orientation == 3) {
-                $src = imagerotate($src, 180, 0);
-            } elseif ($exif_orientation == 6) {
-                $src = imagerotate($src, -90, 0);
-            } elseif ($exif_orientation == 8) {
-                $src = imagerotate($src, 90, 0);
-            }
+            $rotated = false;
+            if ($exif_orientation == 3)     { $src = imagerotate($src, 180, 0); $rotated = true; }
+            elseif ($exif_orientation == 6) { $src = imagerotate($src, -90, 0); $rotated = true; }
+            elseif ($exif_orientation == 8) { $src = imagerotate($src, 90, 0);  $rotated = true; }
 
-            // Recalculate dimensions after rotation.
+            // Dimensions after any rotation.
             $orig_w = imagesx($src);
             $orig_h = imagesy($src);
 
-            // Persist the corrected orientation by saving the GD resource.
-            if ($mime === 'image/jpeg') { imagejpeg($src, $target_path, $jpeg_q); }
-            elseif ($mime === 'image/png') { imagepng($src, $target_path, 8); }
-            else { imagewebp($src, $target_path, $jpeg_q); }
-
-            // Reload the corrected file.
-            imagedestroy($src);
-            if ($mime == 'image/jpeg') { $src = imagecreatefromjpeg($target_path); }
-            elseif ($mime == 'image/png') { $src = imagecreatefrompng($target_path); }
-            else { $src = imagecreatefromwebp($target_path); }
-
             $thumb_dir = $thumb_full . '/';
 
-            // --- CONDITIONAL RESIZE ---
-            // If the image exceeds config limits, scale it down while preserving aspect ratio.
+            // --- CONDITIONAL RESIZE (honours the resize toggle) ---
+            // Downscale only when the image exceeds config limits AND resize is enabled.
             $needs_resize = false;
             $d_w = $orig_w;
             $d_h = $orig_h;
 
-            if ($orig_w >= $orig_h) {
-                if ($orig_w > $max_w) {
-                    $d_w = $max_w;
-                    $d_h = round($orig_h * ($max_w / $orig_w));
-                    $needs_resize = true;
-                }
-            } else {
-                if ($orig_h > $max_h) {
-                    $d_h = $max_h;
-                    $d_w = round($orig_w * ($max_h / $orig_h));
-                    $needs_resize = true;
+            if ($resize_enabled) {
+                if ($orig_w >= $orig_h) {
+                    if ($orig_w > $max_w) {
+                        $d_w = $max_w;
+                        $d_h = round($orig_h * ($max_w / $orig_w));
+                        $needs_resize = true;
+                    }
+                } else {
+                    if ($orig_h > $max_h) {
+                        $d_h = $max_h;
+                        $d_w = round($orig_w * ($max_h / $orig_h));
+                        $needs_resize = true;
+                    }
                 }
             }
+
+            // Encode quality: the user's setting, unless recompression is disabled AND a
+            // resize/rotation forces an encode anyway — then max quality (never refuse).
+            $enc_q = $recompress_enabled ? $jpeg_q : 95;
 
             if ($needs_resize) {
                 $d_img = imagecreatetruecolor($d_w, $d_h);
@@ -417,27 +428,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 imagecopyresampled($d_img, $src, 0, 0, 0, 0, $d_w, $d_h, $orig_w, $orig_h);
 
                 // Replace original with resized version.
-                if ($mime === 'image/jpeg') { imagejpeg($d_img, $target_path, $jpeg_q); }
+                if ($mime === 'image/jpeg') { imagejpeg($d_img, $target_path, $enc_q); }
                 elseif ($mime === 'image/png') { imagepng($d_img, $target_path, 8); }
-                else { imagewebp($d_img, $target_path, $jpeg_q); }
-                imagedestroy($d_img);
-
-                // Reload for thumbnail generation.
+                else { imagewebp($d_img, $target_path, $enc_q); }
                 imagedestroy($src);
-                if ($mime == 'image/jpeg') { $src = imagecreatefromjpeg($target_path); }
-                elseif ($mime == 'image/png') { $src = imagecreatefrompng($target_path); }
-                else { $src = imagecreatefromwebp($target_path); }
-
+                $src = $d_img;              // resized copy drives thumbnail generation
                 $orig_w = $d_w;
                 $orig_h = $d_h;
+            } elseif ($rotated) {
+                // No resize, but the pixels were physically rotated → bake it in.
+                if ($mime === 'image/jpeg') { imagejpeg($src, $target_path, $enc_q); }
+                elseif ($mime === 'image/png') { imagepng($src, $target_path, 8); }
+                else { imagewebp($src, $target_path, $enc_q); }
             }
+            // else: pass-through — original file bytes untouched.
 
             // Restore EXIF that GD stripped during orientation correction / resize.
             // If copyright embedding is configured, write Artist and Copyright tags
-            // into the preserved APP1 before injecting it back.
-            if ($preserved_exif !== null) {
-                $exif_artist    = trim($settings['exif_artist']    ?? '');
-                $exif_copyright = trim($settings['exif_copyright'] ?? '');
+            // into the preserved APP1 before injecting it back. On a pass-through
+            // (no encode) with no copyright to embed, we touch nothing — the file
+            // stays byte-identical to what the photographer uploaded.
+            $exif_artist    = trim($settings['exif_artist']    ?? '');
+            $exif_copyright = trim($settings['exif_copyright'] ?? '');
+            $did_encode     = ($needs_resize || $rotated);
+            if ($preserved_exif !== null && ($did_encode || $exif_artist !== '' || $exif_copyright !== '')) {
                 if ($exif_artist !== '' || $exif_copyright !== '') {
                     $preserved_exif = snap_exif_write_copyright($preserved_exif, $exif_artist, $exif_copyright);
                 }

@@ -16,11 +16,14 @@
 
 
 require_once 'core/auth-smack.php';
+require_once 'core/app-mode.php';
 require_once 'core/snap-tags.php';
 
 if (!isset($settings)) {
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 }
+snapsmack_require_app_mode($settings, 'smacktalk');
+$GLOBALS['SNAPSMACK_APP_COMPOSER'] = true;
 if (!defined('BASE_URL')) {
     define('BASE_URL', rtrim($settings['site_url'] ?? '/', '/') . '/');
 }

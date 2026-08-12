@@ -9,32 +9,41 @@
 //           the current-id list, download missing/updated thumbs.
 //   PUSH  — gyss/batch-update (unchanged; still handled by session.js).
 //
-// Storage (reuses the existing UTF-8 read_file/write_file + the new binary
-// download_to / delete_file Rust commands — no SQLite plugin, no new schema):
-//   %APPDATA%\GetYourShitSorted\library\<hostname>\
+// Storage (reuses the existing UTF-8 read_file/write_file + the binary
+// download_to / delete_file Rust commands, plus catalog_sync for the shared
+// SQLite vocab). GYSS is on the shared SnapSmack foundation now, so the per-site
+// store lives under the shared root beside COLD SNAP / SYBU:
+//   <root>\shared_library\<site_key>\
 //       index.json         { images: { <id>: record } }
 //       meta.json          { hostname, site_url, synced_at, site_mode, categories, albums, counts }
-//       thumbs\<id>.<ext>  downloaded thumbnail files
+//       thumbs\<id>.<ext>  downloaded thumbnail files (shared across tools)
+//       db\catalog.sqlite  the shared vocab catalog (categories/albums/tags/titles)
 //
-// Paths are built exactly like session.js (appDataDir() + 'GetYourShitSorted' + …)
-// so they land inside the Rust fs jail (resolve_in_app_dir) that guards every
-// file command.
+// <site_key> comes from siteKey() — the SAME algorithm as snap_home.site_key().
+// Paths are built under sharedHome() so they land inside the Rust fs jail
+// (resolve_in_root) that guards every file command.
 
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
-import { appDataDir, join } from '@tauri-apps/api/path';
+import { join } from '@tauri-apps/api/path';
+import { sharedHome, siteKey } from './paths.js';
 
 // ===== SNAPSMACK EOF =====  (header reference only — JS marker at bottom)
 
 // ── Paths ────────────────────────────────────────────────────────────────────
 
-/** hostname key for a site URL, e.g. https://foreverphotograph.ing/ → foreverphotograph.ing */
+/**
+ * Shared-library folder key for a site URL. Kept named hostnameFor for its
+ * callers, but it now returns snap_home.site_key() so GYSS shares one folder per
+ * blog with the Python tools, e.g. https://foreverphotograph.ing/ →
+ * foreverphotograph.ing.
+ */
 export function hostnameFor(siteUrl) {
-    try { return new URL(siteUrl).hostname; }
-    catch { return String(siteUrl || '').replace(/^https?:\/\//, '').replace(/\/.*$/, ''); }
+    try { return siteKey(siteUrl); }
+    catch { return String(siteUrl || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').toLowerCase(); }
 }
 
 async function libraryDir(hostname) {
-    return join(await appDataDir(), 'GetYourShitSorted', 'library', hostname);
+    return join(await sharedHome(), 'shared_library', hostname);
 }
 async function thumbsDir(hostname) { return join(await libraryDir(hostname), 'thumbs'); }
 async function indexPath(hostname) { return join(await libraryDir(hostname), 'index.json'); }
@@ -195,6 +204,27 @@ export async function syncLibrary(api, profile, opts = {}) {
     meta.counts     = { images: Object.keys(index.images).length };
 
     await saveLibrary(hostname, index, meta);
+
+    // 6. Mirror the vocab into the SHARED SQLite catalog — the same
+    //    …/shared_library/<site_key>/db/catalog.sqlite that COLD SNAP / SYBU read
+    //    (snap_library.py). Best-effort: a catalog hiccup never fails a good pull.
+    //    (gyss/library ships categories/albums/site_mode; it does not ship a tags
+    //    or titles vocabulary, so those land empty.)
+    try {
+        const dbPath = await join(await libraryDir(hostname), 'db', 'catalog.sqlite');
+        await invoke('catalog_sync', {
+            path: dbPath,
+            payload: {
+                site_url:   profile.site_url,
+                site_mode:  resp.site_mode || meta.site_mode || '',
+                categories: resp.categories || [],
+                albums:     resp.albums || [],
+                tags:       resp.tags || [],
+                titles:     resp.titles || [],
+            },
+        });
+    } catch { /* catalog mirror is best-effort */ }
+
     onProgress('done', 1, 1);
 
     return {

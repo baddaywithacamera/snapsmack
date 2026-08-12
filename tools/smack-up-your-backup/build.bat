@@ -2,7 +2,7 @@
 REM ─────────────────────────────────────────────────────────────────────────
 REM  Smack Up Your Backup — build script
 REM  Requires: Python 3.11+, pip install -r requirements.txt
-REM  Output:   C:\suyb\smackupyourbackup-{version}.exe
+REM  Output:   C:\snapsmack\suyb\smackupyourbackup-{version}.exe
 REM  Portable app: the exe + its config.ini live together in this stable folder,
 REM  so settings persist across rebuilds. Never deploy into %APPDATA%.
 REM ─────────────────────────────────────────────────────────────────────────
@@ -42,10 +42,10 @@ echo.
 if exist dist\%EXE_NAME% (
     echo Build successful: dist\%EXE_NAME%
     echo.
-    echo Deploying to C:\suyb...
-    if not exist C:\suyb mkdir C:\suyb
-    copy /Y dist\%EXE_NAME% C:\suyb\%EXE_NAME%
-    echo Done. Launch: C:\suyb\%EXE_NAME%
+    echo Deploying to C:\snapsmack\suyb...
+    if not exist C:\snapsmack\suyb mkdir C:\snapsmack\suyb
+    copy /Y dist\%EXE_NAME% C:\snapsmack\suyb\%EXE_NAME%
+    echo Done. Launch: C:\snapsmack\suyb\%EXE_NAME%
 ) else (
     echo Build FAILED. Check output above for errors.
 )

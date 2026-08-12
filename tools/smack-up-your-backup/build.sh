@@ -61,7 +61,11 @@ pyinstaller \
     main.py
 
 echo ""
-DEPLOY_DIR="/c/suyb"
+# NOTE: this Linux/mac path builds from raw pyinstaller flags, NOT smackupyourbackup.spec,
+# so it does NOT yet bundle tools/_shared (snap_home). Until it is switched to build from
+# the spec (as build.bat does), a build.sh exe falls back to next-to-exe config instead of
+# the C:\snapsmack shared layout. Windows (build.bat) is the current path; Linux is "next".
+DEPLOY_DIR="/c/snapsmack/suyb"
 if [ -f "dist/${EXE_NAME}" ]; then
     echo "Build successful: dist/${EXE_NAME}"
     echo ""

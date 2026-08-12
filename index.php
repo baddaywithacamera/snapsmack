@@ -90,8 +90,19 @@ try {
     // decoding here prevents the double-encode that showed the raw &#039;.
     $site_name = html_entity_decode((string)($settings['site_name'] ?? $site_name), ENT_QUOTES | ENT_HTML5);
 
-    // Force Pocket Rocket on mobile devices (phones only, not tablets)
-    if (snapsmack_is_mobile() && SNAPSMACK_MOBILE_SKIN !== '' && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
+    // Installed PWAs start with ?source=pwa. Remember the shell selection so
+    // tablets retain PHOTOGRAM while navigating inside the installed app.
+    if (($_GET['source'] ?? '') === 'pwa') {
+        setcookie('snapsmack_pwa', '1', [
+            'expires' => time() + 31536000, 'path' => '/',
+            'secure' => snap_is_https(), 'httponly' => true, 'samesite' => 'Lax',
+        ]);
+        $_COOKIE['snapsmack_pwa'] = '1';
+    }
+    $_snapsmack_pwa_shell = (($_COOKIE['snapsmack_pwa'] ?? '') === '1');
+
+    // Force PHOTOGRAM on phones and in the installed phone/tablet shell.
+    if ((snapsmack_is_mobile() || $_snapsmack_pwa_shell) && SNAPSMACK_MOBILE_SKIN !== '' && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
         $active_skin = SNAPSMACK_MOBILE_SKIN;
     }
 
@@ -142,7 +153,7 @@ try {
     // an Instagram-style mobile feed never shows a static front page. Force
     // latest_post whenever the mobile skin is active so the scroll is never
     // intercepted by a configured landing page.
-    if ($active_skin === SNAPSMACK_MOBILE_SKIN && snapsmack_is_mobile()) {
+    if ($active_skin === SNAPSMACK_MOBILE_SKIN && (snapsmack_is_mobile() || !empty($_snapsmack_pwa_shell))) {
         $homepage_mode = 'latest_post';
     }
     $blog_slug        = trim($settings['blog_slug'] ?? 'blog', '/');

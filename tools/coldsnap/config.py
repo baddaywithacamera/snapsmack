@@ -23,26 +23,66 @@ def _base_dir() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
+# This tool's folder key in the shared C:\snapsmack layout (config_files/<tool>,
+# logs/<tool>_*, C:\snapsmack\<tool>). One place to change the name.
+_TOOL = 'coldsnap'
+
+
+def _add_shared_to_path() -> None:
+    """Put tools/_shared (C:\\snapsmack\\_shared at runtime) on sys.path. No-op if
+    already present or unreachable."""
+    try:
+        _sd = os.path.join(_base_dir(), '..', '_shared')
+        if os.path.isdir(_sd) and _sd not in sys.path:
+            sys.path.insert(0, _sd)
+    except Exception:
+        pass
+
+
+def _shared_home():
+    """Import snap_home (the C:\\snapsmack directory contract). None if unreachable —
+    the tool then falls back to its old next-to-exe files, so old installs still run."""
+    _add_shared_to_path()
+    try:
+        import snap_home
+        return snap_home
+    except Exception:
+        return None
+
+
+def _resolve(name: str) -> str:
+    """Path to one of this tool's config files. Prefers the shared
+    C:\\snapsmack\\config_files\\<tool>\\<name>, migrating the legacy next-to-exe copy
+    in on first run (adopt_legacy). Falls back to next-to-exe if the shared home
+    isn't reachable, so existing installs are never left without their settings."""
+    legacy = os.path.join(_base_dir(), name)
+    h = _shared_home()
+    if not h:
+        return legacy
+    try:
+        new_path = h.config_path(_TOOL, name)
+        h.adopt_legacy(legacy, new_path)
+        return new_path
+    except Exception:
+        return legacy
+
+
 def _config_path() -> str:
-    """Return the path to config.ini next to the exe (or script in dev)."""
-    return os.path.join(_base_dir(), 'config.ini')
+    """config.ini under the shared config_files/<tool> (migrated from next-to-exe)."""
+    return _resolve('config.ini')
 
 
 def _prompts_path() -> str:
-    """Return the path to gemini_prompts.json next to the exe."""
-    return os.path.join(_base_dir(), 'gemini_prompts.json')
+    """gemini_prompts.json under the shared config_files/<tool>."""
+    return _resolve('gemini_prompts.json')
 
 
 def _shared_creds():
     """Import the shared credential store from tools/_shared. Returns the module,
     or None if it isn't reachable — the tool then just uses its own config.ini.
-    At runtime _shared sits one level up from the tool (the C:/snapsmack/_shared
-    dir); in dev it resolves to tools/_shared. Sharing lets a key entered in ANY
-    tool (Gemini key, Drive creds) fill in here automatically."""
+    Sharing lets a key entered in ANY tool (Gemini key, Drive creds) fill in here."""
+    _add_shared_to_path()
     try:
-        _sd = os.path.join(_base_dir(), '..', '_shared')
-        if os.path.isdir(_sd) and _sd not in sys.path:
-            sys.path.insert(0, _sd)
         import snap_creds
         return snap_creds
     except Exception:

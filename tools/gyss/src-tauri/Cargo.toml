@@ -1,6 +1,6 @@
 [package]
 name = "get-your-shit-sorted"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 description = "GET YOUR SHIT SORTED — SnapSmack desktop photo sorting tool"
 license = "GPL-3.0"
@@ -23,6 +23,10 @@ serde_json        = "1"
 # system OpenSSL dependency on Windows. A native request is NOT subject to the
 # webview's CORS, so it can fetch static /uploads/ thumbs the JS fetch() can't.
 reqwest           = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+# Shared SQLite catalog (…/shared_library/<site>/db/catalog.sqlite) — the same
+# on-disk format the Python tools open via snap_library.py. `bundled` compiles
+# SQLite in-tree (MSVC C toolchain), so there is no system SQLite dependency.
+rusqlite          = { version = "0.32", features = ["bundled"] }
 
 [profile.release]
 panic         = "abort"

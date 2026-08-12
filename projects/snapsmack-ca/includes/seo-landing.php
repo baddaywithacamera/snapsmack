@@ -29,7 +29,7 @@ $page_css = <<<'CSS'
 }
 .seo-hero h1 {
     max-width: 900px;
-    font: 900 clamp(2.5rem, 7vw, 5.8rem)/.98 Arial Black, Arial, sans-serif;
+    font: 900 clamp(2.4rem, 5vw, 4rem)/1 Arial Black, Arial, sans-serif;
     letter-spacing: -.045em; color: var(--white);
     margin-bottom: 24px;
 }

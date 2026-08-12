@@ -18,6 +18,7 @@ import sys
 from typing import Dict, List, Optional
 
 import secret_vault
+import config  # resolve_dir() → shared C:\snapsmack layout
 
 _SECRET_FIELDS = ("source_b2_key_id", "source_b2_app_key",
                   "dest_b2_key_id", "dest_b2_app_key")
@@ -30,7 +31,7 @@ def _app_dir() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
-SYNC_JOBS_DIR = os.path.join(_app_dir(), "sync_jobs")
+SYNC_JOBS_DIR = config.resolve_dir("sync_jobs")
 
 
 def _job_path(name: str) -> str:

@@ -96,8 +96,17 @@ ob_start();
 
     <link rel="stylesheet" href="assets/css/admin-theme-geometry-master.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
     <link rel="stylesheet" href="<?php echo $active_skin_path; ?>?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+    <?php if (!empty($GLOBALS['SNAPSMACK_APP_COMPOSER'])): ?>
+    <link rel="manifest" href="pwa-manifest.php">
+    <meta name="theme-color" content="#0b0c0d">
+    <link rel="apple-touch-icon" href="assets/pwa/apple-touch-icon.png">
+    <link rel="stylesheet" href="assets/css/smack-app.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+    <?php endif; ?>
 </head>
-<body class="admin-body">
+<body class="admin-body<?php echo !empty($GLOBALS['SNAPSMACK_APP_COMPOSER']) ? ' smack-app-composer' : ''; ?>">
+<?php if (!empty($GLOBALS['SNAPSMACK_APP_COMPOSER'])): ?>
+<nav class="smack-app-badge" aria-label="App"><a href="./" aria-label="Back to Photogram">&larr;</a><strong>SMACK THAT APP UP</strong><a href="?logout=1" data-app-logout>OUT</a></nav>
+<?php endif; ?>
 <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open');">&#9776;</button>
 <div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('open'); this.classList.remove('open');"></div>
 <?php if (!empty($GLOBALS['_smackback_alert_breach'])): ?>

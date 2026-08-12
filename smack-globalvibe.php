@@ -376,8 +376,20 @@ include 'core/sidebar.php';
                         <label>PORTRAIT MAX HEIGHT (PX)</label>
                         <input type="number" name="settings[max_height_portrait]" value="<?php echo htmlspecialchars($settings['max_height_portrait'] ?? 1850); ?>">
 
-                        <label>JPEG COMPRESSION (1-100)</label>
+                        <label>JPEG COMPRESSION (1-100) <span class="field-tip" data-tip="Only applied when the server actually re-encodes (a resize or rotation). With RE-COMPRESS off, this is used only when a resize forces an encode — otherwise your file's own compression is kept.">ⓘ</span></label>
                         <input type="number" name="settings[jpeg_quality]" value="<?php echo htmlspecialchars($settings['jpeg_quality'] ?? 85); ?>">
+
+                        <label>RESIZE OVERSIZED IMAGES <span class="field-tip" data-tip="ON: downscale anything larger than the max width/height above. OFF: store at native size (even 4K/8K).">ⓘ</span></label>
+                        <select name="settings[image_resize_enabled]">
+                            <option value="1" <?php echo (($settings['image_resize_enabled'] ?? '1') === '0') ? '' : 'selected'; ?>>ON (DOWNSCALE TO LIMITS)</option>
+                            <option value="0" <?php echo (($settings['image_resize_enabled'] ?? '1') === '0') ? 'selected' : ''; ?>>OFF (KEEP NATIVE SIZE)</option>
+                        </select>
+
+                        <label>RE-COMPRESS ON UPLOAD <span class="field-tip" data-tip="ON: re-encode every upload at the JPEG COMPRESSION above. OFF: pass the original through untouched — your bytes and metadata are preserved (a forced resize/rotation still re-encodes, at max quality). Set BOTH this and RESIZE to OFF for full pass-through.">ⓘ</span></label>
+                        <select name="settings[image_recompress_enabled]">
+                            <option value="1" <?php echo (($settings['image_recompress_enabled'] ?? '1') === '0') ? '' : 'selected'; ?>>ON (RE-ENCODE AT SET QUALITY)</option>
+                            <option value="0" <?php echo (($settings['image_recompress_enabled'] ?? '1') === '0') ? 'selected' : ''; ?>>OFF (PASS ORIGINALS THROUGH)</option>
+                        </select>
 
                         <?php if (($settings['site_mode'] ?? 'photoblog') === 'photoblog'): /* EXIF tags are SMACKONEOUT-only — GramOfSmack & SmackTalk don't write EXIF (IG strips it) */ ?>
                         <label>EXIF ARTIST TAG <span class="field-tip" data-tip="Written into the Artist field of every JPEG upload. Leave blank to skip.">ⓘ</span></label>

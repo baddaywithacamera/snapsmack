@@ -17,15 +17,63 @@ import sys
 
 
 def _app_dir() -> str:
-    """Persistent app directory — next to the .exe when frozen, source dir otherwise.
-    SUYB is a PORTABLE thumb-drive utility: the ini and all state ride next to the
-    executable. Never write to %APPDATA%, the registry, or anywhere else in Windows."""
+    """The tool's own directory — next to the .exe when frozen, source dir otherwise.
+    Historically SUYB was a portable thumb-drive tool that kept ALL state here; as of
+    the C:\\snapsmack consolidation, config.ini moves to the shared config_files/ (see
+    _config_file() below). Remaining state files still resolve from here pending their
+    own migration pass."""
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))
 
 
-CONFIG_FILE = os.path.join(_app_dir(), "config.ini")
+def _shared_home():
+    """Import snap_home (the C:\\snapsmack directory contract). None if unreachable —
+    callers then fall back to next-to-exe so old installs keep working."""
+    try:
+        _sd = os.path.join(_app_dir(), '..', '_shared')
+        if os.path.isdir(_sd) and _sd not in sys.path:
+            sys.path.insert(0, _sd)
+        import snap_home
+        return snap_home
+    except Exception:
+        return None
+
+
+def resolve_file(name: str) -> str:
+    """Path to a SUYB config/state FILE under C:\\snapsmack\\config_files\\suyb,
+    migrating the legacy next-to-exe copy in on first run (adopt_legacy). Falls back
+    to next-to-exe if the shared home isn't reachable. Shared by the sibling modules
+    (credential_store, profile_manager, secret_vault) so all of SUYB's state lands in
+    one place."""
+    legacy = os.path.join(_app_dir(), name)
+    h = _shared_home()
+    if not h:
+        return legacy
+    try:
+        new_path = h.config_path('suyb', name)
+        h.adopt_legacy(legacy, new_path)
+        return new_path
+    except Exception:
+        return legacy
+
+
+def resolve_dir(name: str) -> str:
+    """Directory form of resolve_file (profiles/, sync_jobs/) — migrates the whole
+    tree on first run (adopt_legacy_tree). Falls back to next-to-exe."""
+    legacy = os.path.join(_app_dir(), name)
+    h = _shared_home()
+    if not h:
+        return legacy
+    try:
+        new_dir = os.path.join(h.config_dir('suyb'), name)
+        h.adopt_legacy_tree(legacy, new_dir)
+        return new_dir
+    except Exception:
+        return legacy
+
+
+CONFIG_FILE = resolve_file("config.ini")
 
 DEFAULTS = {
     "window": {

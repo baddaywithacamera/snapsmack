@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['totp_enrol_required'] = true;
             header("Location: smack-2fa.php?enrol=required&from=break-glass");
         } else {
-            header("Location: smack-dashboard.php?msg=password_changed");
+            header('Location: ' . ((($_SESSION['snapsmack_login_return'] ?? '') === 'app') ? 'app' : 'smack-dashboard.php?msg=password_changed'));
         }
         exit;
     }
