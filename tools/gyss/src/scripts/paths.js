@@ -29,11 +29,16 @@ export async function sharedHome() {
 export function siteKey(site) {
     const raw = String(site || '').trim();
     if (!raw) throw new Error('site is empty');
-    let host = '';
-    try {
-        const u = new URL(raw.includes('://') ? raw : 'https://' + raw);
-        host = (u.hostname || '').toLowerCase();
-    } catch { host = ''; }
+    // Match Python snap_home.site_key() EXACTLY. It uses urlparse().hostname, which
+    // keeps the raw unicode host — it does NOT apply IDNA/punycode. new URL().hostname
+    // WOULD punycode an internationalized host (münchen.de -> xn--mnchen-3ya.de) and
+    // so compute a different profile filename than the Python tools for the same blog.
+    // Parse the host by hand to stay byte-identical with the Python peer.
+    let host = raw.replace(/^[a-z][a-z0-9+.-]*:\/\//i, ''); // strip scheme
+    host = host.split(/[/?#]/)[0];                          // drop path/query/fragment
+    host = host.split('@').pop();                           // drop userinfo
+    host = host.replace(/:\d+$/, '');                       // drop :port
+    host = host.toLowerCase();
     if (!host) host = raw.toLowerCase();
     let key = host.replace(/[^a-z0-9.-]/g, '-').replace(/^[.-]+|[.-]+$/g, '');
     key = key.replace(/-{2,}/g, '-');

@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.1.36"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
+BUILD_VERSION = "0.1.43"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -4137,10 +4137,28 @@ class App(tk.Tk):
         name = self._gem_preset_cb.get()
         if not name or name not in self._gem_prompts:
             return
-        if not messagebox.askyesno("Delete Preset", f"Delete preset \"{name}\"?"):
+        # Built-ins are re-seeded by load_prompts() and are never stored, so a pure
+        # built-in cannot be deleted — pretending otherwise gives false feedback (it
+        # reappears next launch). Refuse it. An OVERRIDDEN built-in (user saved custom
+        # text under a built-in name) CAN be removed — that resets it to the shipped
+        # text rather than deleting the name.
+        is_builtin  = name in cfg_module.DEFAULT_PROMPTS
+        is_override = is_builtin and self._gem_prompts.get(name) != cfg_module.DEFAULT_PROMPTS.get(name)
+        if is_builtin and not is_override:
+            messagebox.showinfo(
+                "Built-in preset",
+                f"\"{name}\" is a built-in preset and can't be deleted.\n\n"
+                "Edit it and Save under a new name to make your own.")
+            return
+        prompt = (f"Reset your changes to built-in preset \"{name}\"?" if is_override
+                  else f"Delete preset \"{name}\"?")
+        if not messagebox.askyesno("Delete Preset", prompt):
             return
         del self._gem_prompts[name]
         cfg_module.save_prompts(self._gem_prompts)
+        # Reload so an overridden built-in reverts to its shipped text (rather than
+        # vanishing) and the dropdown reflects the true persisted state.
+        self._gem_prompts = cfg_module.load_prompts()
         self._refresh_preset_dropdown()
 
     def _on_gemini_test(self):
