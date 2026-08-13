@@ -1862,13 +1862,10 @@ class App(tk.Tk):
         self._build_settings_ui()
         self._build_sumna_modes()
 
-        # Phase-1 launch dedication (Richard Dimitri). Deferred so it draws over
-        # the window; fully self-guarded so it can never block startup.
-        try:
-            import dedication
-            self.after(400, lambda: dedication.maybe_show(self))
-        except Exception:
-            pass
+        # Launch dedication splash removed — the tool is no longer "SUMNABATCH",
+        # so the old-name splash was deprecated. dedication.py is retained on disk
+        # as the tribute text (not shown on launch); relocate it under the new
+        # name if it should live on somewhere.
 
     # ------------------------------------------------------------------
     # SUMNABATCH — mount the offline posting mode panels
