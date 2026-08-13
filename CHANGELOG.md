@@ -10,43 +10,58 @@
 
 # SnapSmack Changelog
 
-## 0.7.519 — 2026-08-13
+## 0.7.518 — 2026-08-13
 
-- **THE HUB read-side — "Discover Fleet" now pays off across the desktop suite.**
-  The Hub already wrote the shared stores (`snap_creds` vault + `snap_profiles`);
-  until now only SYBU read them, so discovering a fleet did nothing in the other
-  tools. Closed the read side: **GYSS (0.1.5-alpha)** now reads/writes the shared
-  cross-tool profile store (`shared_library/profiles/<site_key>.json`, the canonical
-  `snap_profiles` shape) instead of its old private `config_files/gyss/profiles/`,
-  with a marker-guarded, per-file-idempotent, non-destructive migration of its old
-  profiles (extras from another tool are preserved on save). GYSS `siteKey()` was
-  aligned byte-for-byte with Python `snap_home.site_key()` (manual host parse — no
-  IDNA/punycode divergence), and proven interoperable both directions incl. UTF-8
-  keys. Net: set a blog up in any tool — or hit Discover Fleet — and it shows up
-  everywhere.
+### Desktop suite — THE HUB and the shared-everything foundation
+
+- **THE HUB v1 — one door, set the fleet up once (`tools/hub/`, `C:\snapsmack\hub\hub.exe`).**
+  A single desktop front end that LAUNCHES every offline tool and does the whole
+  fleet's setup in one place. Enter your hub URL + key, hit **Discover Fleet**, and
+  the shared discovery engine (`tools/_shared/snap_discovery.py`) fills the shared
+  credential vault (`snap_creds`) and the shared connection-profile store
+  (`snap_profiles`) once — so every tool inherits every site and every shared secret.
+  No per-tool setup. (v1 defers fetching *missing* tools over the network — the
+  distribution question in `tools/_hub/HUB-SPEC.md`.)
+- **Shared cross-tool connection profiles — a blog set up in one tool is used by the
+  next.** `tools/_shared/snap_profiles.py` is the ONE store: one JSON per site at
+  `shared_library/profiles/<site_key>.json`, keyed by hostname so every tool computes
+  the same path. **SYBU** was rewritten onto it (thin adapter, public API unchanged,
+  one-time migration of its old `sybu\profiles\`), and **GYSS (0.1.5-alpha)** now
+  reads/writes the same store instead of its old private `config_files/gyss/profiles/`
+  — with a marker-guarded, per-file-idempotent, non-destructive migration (extras from
+  another tool are preserved on save). GYSS `siteKey()` was aligned byte-for-byte with
+  Python `snap_home.site_key()` (manual host parse — no IDNA/punycode divergence) and
+  proven interoperable both directions incl. UTF-8 keys. Net: set a blog up anywhere —
+  or hit Discover Fleet — and it shows up in every tool. (SUYB shared-profile wiring is
+  deliberately deferred: its vault/backup-scoped keys make a naive port a security +
+  correctness regression — see `tools/_hub/HUB-SPEC.md`.)
 - **Shared Gemini prompt presets (SYBU 0.1.44 + COLD SNAP 0.1.5).** New
   `tools/_shared/snap_prompts.py` + `snap_home.prompts_dir()`: one shared
-  `shared_library/prompts/gemini_prompts.json` of user presets (built-ins still
-  ship per-tool, merged under). A prompt written in one Gemini tool now shows in the
-  other **and survives a reinstall** — fixing the lost-presets-on-move bug. Saves are
-  a read-modify-write delta against the on-disk store, so a concurrently-running
-  sibling tool's just-added presets are never clobbered; an unreadable store is
-  preserved as `.corrupt` rather than wiped; SYBU's built-in-delete is now honest
-  (refuse a pure built-in; "reset to shipped text" for an overridden one).
+  `shared_library/prompts/gemini_prompts.json` of user presets (built-ins still ship
+  per-tool, merged under). A prompt written in one Gemini tool now shows in the other
+  **and survives a reinstall** — fixing the lost-presets-on-move bug. Saves are a
+  read-modify-write delta against the on-disk store, so a concurrently-running sibling
+  tool's just-added presets are never clobbered; an unreadable store is preserved as
+  `.corrupt` rather than wiped; SYBU's built-in-delete is now honest (refuse a pure
+  built-in; "reset to shipped text" for an overridden one).
 - **THE HUB launcher (0.1.2).** `_find_exe` finds versioned exe names (e.g.
-  `smackupyourbackup-0.7.20.exe`) so SYBU / GYSS / COLD SNAP / SUYB all launch from
-  the Hub (OH SNAP shows not-installed — only a dev build exists). SUYB shared-profile
-  wiring was deliberately deferred (its vault/backup-scoped keys make a naive port a
-  security + correctness regression — see `tools/_hub/HUB-SPEC.md`).
-- **Security:** `SECAUDIT 044` (`secaudits/2026-08-13-044-…`). An independent
+  `smackupyourbackup-0.7.20.exe`) so SYBU / GYSS / COLD SNAP / SUYB all launch from the
+  Hub (OH SNAP shows not-installed — only a dev build exists).
+- **GYSS 0.1.3 — real profile delete.** `deleteProfile` now removes the file via the
+  fs-jailed Rust `delete_file` instead of writing a `{_deleted:true}` tombstone that
+  the list never skipped (the nameless tombstone then threw in the `.name` sort and
+  took the whole profile list down).
+- **Security — `SECAUDIT 044`** (`secaudits/2026-08-13-044-…`). An independent
   adversarial pass caught a **MEDIUM** in the first launcher cut — it globbed `*.exe`
   from inside `C:\snapsmack`, which is the GYSS write-jail root, so a compromised GYSS
   webview (or weak-ACL local user) could plant an exe there and have the Hub run it.
-  **Fixed** (0.1.2): wildcard candidates are refused inside the jailed root and the
+  **Fixed** (Hub 0.1.2): wildcard candidates are refused inside the jailed root and the
   roster lists only exact real installs there. One MEDIUM-residual (tool exes sharing
   the jail root) is documented for a follow-up jail-narrowing; two LOWs fixed (prompts
   migration now per-file-stamped like GYSS; `.corrupt` backup no longer overwritten).
   Desktop tools ship by building from the checkout, not the core updater.
+
+### Core
 
 - **Mode 4 (FEDISTRUCTURE) now sees only its own Onyx skins.** The service-skin
   filter (`snapsmack_skin_allowed_distribution`) was one-directional: it kept
@@ -63,9 +78,6 @@
   `tests/mode4-onyx-only-visibility.php` (the fedistructure direction); the
   ordinary-direction regression (`tests/service-skin-visibility-regression.php`) is
   unchanged and still green.
-
-## 0.7.518 — 2026-08-12
-
 - **Image posting — photographer-controlled size & compression, with true
   pass-through.** The server no longer silently re-encodes every upload. Two new
   Global Config → Image Engine controls (`smack-globalvibe.php`): **RESIZE
@@ -99,6 +111,15 @@
   - **Desktop tools** — shared-credential + hub plumbing (`tools/_hub/`, gyss
     `shared-creds.js` / `paths.js`, `tools/_shared/snap_home.py`), plus
     coldsnap/suyb/gyss config updates.
+
+### Skins
+
+- **CRIMSON ONYX 0.1.2 → 0.1.5 (photofri.day).** Iterated the launch skin and folded
+  the live Custom-CSS overrides back into it so the site no longer depends on
+  pasted-in CSS: slim/centred header, legible sans footer (Verdana small-caps), Tiny5
+  countdown digits/labels with Arial-Black elsewhere, crimson content links (excluding
+  pills/@handle), full pill borders, empty-paragraph collapse, and `@handle` matching
+  `#share`. Nav-hide hacks were deliberately left out (they belong in Menu Manager).
 
 ## 0.7.517 — 2026-08-11
 
