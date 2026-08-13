@@ -6,7 +6,7 @@
  * Returns cloud backup config, multisite node list, and site metadata
  * so SUYB can auto-populate profile fields.
  *
- * Authentication: a 'suyb' scoped key (Authorization: Bearer) or admin session cookie.
+ * Authentication: a 'suyb' or 'hub' scoped key (Authorization: Bearer) or admin session cookie.
  * Method: GET
  * Response: application/json
  */
@@ -26,10 +26,13 @@ require_once __DIR__ . '/core/csrf.php';
 csrf_exempt();
 
 // SUYB holds a least-privilege 'suyb' scoped key (snap_ohsnap_keys, key_type).
-// Declared before api-auth so its typed-Bearer branch accepts it; a 'suyb' key
-// cannot act on 'sybu'/importer endpoints. Legacy X-Snap-Key + admin session
-// still work (additive) until tool_api_key is retired.
-$GLOBALS['SNAP_API_KEY_TYPES'] = ['suyb'];
+// THE HUB holds an even narrower 'hub' key that unlocks ONLY this discovery
+// endpoint — never suyb-export.php / suyb-complete.php — so one-time fleet setup
+// can read the node list without being able to touch backup data. Declared before
+// api-auth so its typed-Bearer branch accepts both; neither can act on
+// 'sybu'/importer endpoints. Legacy X-Snap-Key + admin session still work
+// (additive) until tool_api_key is retired.
+$GLOBALS['SNAP_API_KEY_TYPES'] = ['suyb', 'hub'];
 require_once 'core/api-auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
