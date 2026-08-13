@@ -21,7 +21,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-BUILD_VERSION = "0.1.1"
+BUILD_VERSION = "0.1.2"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -52,33 +52,48 @@ FIELD   = "#1c1c1c"
 BORDER  = "#2a2a2a"
 
 # ── the tools the Hub fronts, and where they install ────────────────────────
+# The SnapSmack shared root. This is ALSO the GYSS file-jail root (SECAUDIT 039): a
+# compromised GYSS webview is permitted to write ANYWHERE under it. So it must never
+# be a source of WILDCARD-matched launch targets — see _find_exe and SECAUDIT 044.
+def _shared_root():
+    return os.path.abspath((os.environ.get("SNAPSMACK_HOME") or "").strip() or r"C:\snapsmack")
+
+
 # Candidate exe locations per tool, most-preferred first. A candidate may contain a
-# glob (`*`) so a versioned exe name (e.g. smackupyourbackup-0.7.20.exe) is still
-# found. The shared-layout path (C:\snapsmack\<tool>) comes first so a freshly-built
-# tool is launched in preference to an older copy at a legacy location.
+# glob (`*`) ONLY for install dirs OUTSIDE the shared root (e.g. C:\SUYB holds a
+# versioned smackupyourbackup-x.y.z.exe). Inside the shared root we list ONLY exact,
+# real install paths (SYBU + COLD SNAP ship there) — never a wildcard, and never a
+# speculative name — because that tree is GYSS-writable (SECAUDIT 044, Finding 1).
 ROSTER = [
     ("SMACK YOUR BATCH UP", "batch poster",        [r"C:\snapsmack\sybu\sybu.exe"]),
-    ("GET YOUR SHIT SORTED", "offline sorter",     [r"C:\GYSS\GET YOUR SHIT SORTED.exe",
-                                                    r"C:\snapsmack\gyss\GET YOUR SHIT SORTED.exe"]),
+    ("GET YOUR SHIT SORTED", "offline sorter",     [r"C:\GYSS\GET YOUR SHIT SORTED.exe"]),
     ("COLD SNAP",           "offline poster",      [r"C:\snapsmack\coldsnap\coldsnap.exe",
                                                     r"C:\COLDSNAP\coldsnap.exe"]),
-    ("SMACK UP YOUR BACKUP", "backup",             [r"C:\snapsmack\suyb\suyb.exe",
-                                                    r"C:\snapsmack\suyb\smackupyourbackup*.exe",
-                                                    r"C:\SmackUpYourBackup\smackupyourbackup*.exe",
+    ("SMACK UP YOUR BACKUP", "backup",             [r"C:\SmackUpYourBackup\smackupyourbackup*.exe",
                                                     r"C:\SmackUpYourBackup\suyb.exe",
                                                     r"C:\SUYB\smackupyourbackup*.exe",
                                                     r"C:\SUYB\suyb*.exe"]),
     ("OH SNAP",             "skin designer",       [r"C:\OHSNAP\OH SNAP.exe",
-                                                    r"C:\OhSnap\oh-snap.exe",
-                                                    r"C:\snapsmack\ohsnap\*.exe"]),
+                                                    r"C:\OhSnap\oh-snap.exe"]),
 ]
 
 
 def _find_exe(paths):
     """First existing exe among the candidates. A candidate may be a glob (for a
-    versioned exe name); when it matches, the most-recently-modified file wins."""
+    versioned exe name); when it matches, the most-recently-modified file wins.
+
+    SECURITY (SECAUDIT 044, Finding 1): a WILDCARD candidate is REFUSED when it
+    resolves inside the shared root, because that tree is the GYSS write-jail — a
+    compromised webview (or a weak-ACL local user) could plant an arbitrary
+    `<name>.exe` there and this launcher would execute it. Wildcards are therefore
+    honoured only for out-of-jail legacy install dirs; inside the jail only the
+    exact roster paths above are eligible."""
+    root = _shared_root()
     for p in paths:
         if any(ch in p for ch in "*?["):
+            base = os.path.dirname(os.path.abspath(p))
+            if base == root or base.startswith(root + os.sep):
+                continue  # never glob for an exe inside the GYSS-writable shared root
             matches = [m for m in glob.glob(p) if os.path.isfile(m)]
             if matches:
                 return max(matches, key=os.path.getmtime)
