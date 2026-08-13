@@ -158,21 +158,31 @@ def _user_presets(all_prompts: dict) -> dict:
 
 def _migrate_prompts_once(sp) -> None:
     """Fold this tool's legacy per-tool gemini_prompts.json into the shared store
-    ONCE. Marker-guarded so a preset the user later deletes never resurrects, and
-    the legacy file is left in place as a backup."""
-    marker = os.path.join(os.path.dirname(_prompts_path()), _PROMPTS_MIGRATION_MARKER)
-    if os.path.exists(marker):
+    ONCE. Guarded by a DURABLE per-file `<legacy>.migrated` stamp in ADDITION to the
+    dir-level marker (whose write is best-effort/swallowed) — so if the marker write
+    ever fails, a preset the user later deletes from the shared store is still not
+    re-folded on the next launch. Same hardening GYSS's profile migration uses. The
+    legacy file itself is left in place as a backup."""
+    legacy_path = _prompts_path()
+    per_file_done = legacy_path + '.migrated'
+    marker = os.path.join(os.path.dirname(legacy_path), _PROMPTS_MIGRATION_MARKER)
+    if os.path.exists(per_file_done) or os.path.exists(marker):
         return
     try:
-        legacy_path = _prompts_path()
         if os.path.isfile(legacy_path):
             with open(legacy_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             if isinstance(data, dict):
                 sp.migrate_in(_user_presets(data), overwrite=False)
-        os.makedirs(os.path.dirname(marker), exist_ok=True)
-        with open(marker, 'w', encoding='utf-8') as f:
-            f.write('gemini prompts migrated to shared_library/prompts\n')
+        # Durable per-file stamp first, then the dir-level marker; either alone
+        # prevents re-migration.
+        for stamp in (per_file_done, marker):
+            try:
+                os.makedirs(os.path.dirname(stamp), exist_ok=True)
+                with open(stamp, 'w', encoding='utf-8') as f:
+                    f.write('gemini prompts migrated to shared_library/prompts\n')
+            except Exception:
+                pass
     except Exception:
         pass
 

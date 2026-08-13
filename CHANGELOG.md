@@ -24,7 +24,7 @@
   IDNA/punycode divergence), and proven interoperable both directions incl. UTF-8
   keys. Net: set a blog up in any tool — or hit Discover Fleet — and it shows up
   everywhere.
-- **Shared Gemini prompt presets (SYBU 0.1.43 + COLD SNAP 0.1.4).** New
+- **Shared Gemini prompt presets (SYBU 0.1.44 + COLD SNAP 0.1.5).** New
   `tools/_shared/snap_prompts.py` + `snap_home.prompts_dir()`: one shared
   `shared_library/prompts/gemini_prompts.json` of user presets (built-ins still
   ship per-tool, merged under). A prompt written in one Gemini tool now shows in the
@@ -33,15 +33,20 @@
   sibling tool's just-added presets are never clobbered; an unreadable store is
   preserved as `.corrupt` rather than wiped; SYBU's built-in-delete is now honest
   (refuse a pure built-in; "reset to shipped text" for an overridden one).
-- **THE HUB launcher (0.1.1).** `_find_exe` now accepts glob candidates (so a
-  versioned exe name like `smackupyourbackup-0.7.20.exe` is found) and prefers the
-  shared-layout path, so SYBU / GYSS / COLD SNAP / SUYB all launch from the Hub
-  (OH SNAP shows not-installed — only a dev build exists). SUYB shared-profile wiring
-  was deliberately deferred (its vault/backup-scoped keys make a naive port a
+- **THE HUB launcher (0.1.2).** `_find_exe` finds versioned exe names (e.g.
+  `smackupyourbackup-0.7.20.exe`) so SYBU / GYSS / COLD SNAP / SUYB all launch from
+  the Hub (OH SNAP shows not-installed — only a dev build exists). SUYB shared-profile
+  wiring was deliberately deferred (its vault/backup-scoped keys make a naive port a
   security + correctness regression — see `tools/_hub/HUB-SPEC.md`).
-- **Security:** `SECAUDIT 044` (`secaudits/2026-08-13-044-…`) covers the above —
-  no HIGH/MEDIUM findings; two accepted LOW items under the existing local-trust
-  model. Desktop tools ship by building from the checkout, not the core updater.
+- **Security:** `SECAUDIT 044` (`secaudits/2026-08-13-044-…`). An independent
+  adversarial pass caught a **MEDIUM** in the first launcher cut — it globbed `*.exe`
+  from inside `C:\snapsmack`, which is the GYSS write-jail root, so a compromised GYSS
+  webview (or weak-ACL local user) could plant an exe there and have the Hub run it.
+  **Fixed** (0.1.2): wildcard candidates are refused inside the jailed root and the
+  roster lists only exact real installs there. One MEDIUM-residual (tool exes sharing
+  the jail root) is documented for a follow-up jail-narrowing; two LOWs fixed (prompts
+  migration now per-file-stamped like GYSS; `.corrupt` backup no longer overwritten).
+  Desktop tools ship by building from the checkout, not the core updater.
 
 - **Mode 4 (FEDISTRUCTURE) now sees only its own Onyx skins.** The service-skin
   filter (`snapsmack_skin_allowed_distribution`) was one-directional: it kept

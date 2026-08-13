@@ -5,151 +5,143 @@
 | Field | Value |
 |---|---|
 | Date | 2026-08-13 |
-| Scope | The Hub read-side wiring committed in `577f6440`: GYSS shared-profile store (`tools/gyss/src/scripts/profiles.js`, `paths.js` `siteKey()`); shared Gemini prompts (`tools/_shared/snap_prompts.py`, `snap_home.prompts_dir()`, `tools/sybu/config.py` + `tools/coldsnap/config.py` load/save + migration); THE HUB launcher exe-discovery (`tools/hub/main.py` `_find_exe`/`ROSTER`, v0.1.1). |
-| Baseline | `dev` @ `577f6440` (this work is COMMITTED, not uncommitted). |
-| Status | **No HIGH/MEDIUM findings. Two LOW items, both accepted + documented. Source-level release gate: satisfied for these desktop tools.** |
-| Positive controls | All FS writes atomic (`os.replace`/tmp); an unreadable prompts store is preserved as `.corrupt` before overwrite (never silently wiped); profile/prompt filenames pass through `site_key()`/`siteKey()` which reduce to `[a-z0-9.-]`, strip leading/trailing `.-`, and throw on empty (fail-closed, no traversal); GYSS FS ops additionally go through the Rust `resolve_in_root` jail; the launcher runs exes with list-form `subprocess.Popen([path])` (no shell); migrations are marker-guarded, idempotent, and never delete legacy data; no SQL, no `eval`, no network endpoints are introduced by this diff. |
-| Disclosure | No exploitation known. This surface is OFFLINE desktop tooling running as the owner on the owner's machine against the owner's own `C:\snapsmack\shared_library`. The only adversary in scope is another LOCAL process/account able to write into `shared_library` or a tool's install dir — which per SECAUDIT 037 already holds the credentials those folders contain, so it is a post-compromise position, not a remote one. |
+| Scope | The Hub read-side wiring: GYSS shared-profile store (`tools/gyss/src/scripts/profiles.js`, `paths.js` `siteKey()`); shared Gemini prompts (`tools/_shared/snap_prompts.py`, `snap_home.prompts_dir()`, `tools/sybu/config.py` + `tools/coldsnap/config.py`); THE HUB launcher exe-discovery (`tools/hub/main.py` `_find_exe`/`ROSTER`). |
+| Baseline | `dev` @ `577f6440`; fixes below applied on top (THE HUB 0.1.1→0.1.2, SYBU 0.1.43→0.1.44, COLD SNAP 0.1.4→0.1.5). |
+| Status | **One MEDIUM found (by an independent adversarial pass) and FIXED. One MEDIUM-residual documented (architectural — tool exes sharing the GYSS jail root). Four LOW: two fixed, two documented.** |
+| Method | Author self-audit, then an INDEPENDENT adversarial reviewer tasked to *refute* the self-audit's "no HIGH/MEDIUM" claim. It did — Finding 1 below was under-rated as LOW in the first pass and is corrected here. That correction is why the independent pass was run. |
+| Positive controls | Atomic writes (`os.replace`/tmp); unreadable prompts store preserved as `.corrupt` (and no longer overwritten on a second corruption); profile/prompt filenames pass `site_key()`/`siteKey()` → `[a-z0-9.-]`, strip leading/trailing `.-`, throw on empty (fail-closed, verified non-traversable both languages); GYSS FS additionally jailed by the Rust `resolve_in_root` (verified sound against `..`/UNC/`\\?\`/sibling-prefix); launcher uses list-form `subprocess.Popen([path])` (no shell/arg injection); migrations marker-guarded + now per-file-stamped, idempotent, never delete legacy data; no SQL, no `eval`, no new network endpoints. |
+| Disclosure | No exploitation known. Surface is offline desktop tooling running as the owner. The sharp finding (1) needs either a GYSS webview compromise (a threat the project already treats as reachable, `src-tauri/src/lib.rs:82-84`) OR a weak-ACL local user able to write under `C:\snapsmack`. |
 
 ## 1. Executive result
 
-This change moves GYSS off its private profile folder onto the SHARED cross-tool
-store, adds a SHARED Gemini-prompt store used by SYBU + COLD SNAP, and broadens
-THE HUB's launcher so it can find versioned/relocated tool exes. It is
-low-risk: it introduces no network surface, no auth boundary, no SQL, and no
-shell. Everything it does is local JSON read/modify/write inside one
-owner-owned directory tree, plus launching the owner's own installed exes.
+The data-plane of this change (shared profile store, shared prompt store,
+migrations) is sound: no traversal, atomic + recoverable writes, graceful
+handling of hostile/corrupt local files, and no new network/SQL/shell. The
+independent pass confirmed the traversal jail and credential handling hold and
+that GYSS's profile migration is well-hardened.
 
-The design holds the two properties that matter for a local store: writes are
-atomic and never truncate on failure, and a hostile/corrupt local file degrades
-gracefully (skipped, or preserved as `.corrupt`) rather than crashing the tool
-or being executed. Filenames derived from a site URL cannot traverse out of the
-store. Nothing here weakens the existing credential posture — the genuinely
-secret material still lives in the `shared_library/auth` vault, unchanged.
-
-Two items are recorded as LOW and accepted: the launcher will run whatever
-matches a wildcard in a known install dir (Finding A), and GYSS now trusts a
-locally-stored profile's `site_url`+`api_key` it did not itself author (Finding
-B). Both require local write access to owner-only directories — the same
-"local write == game over" boundary SECAUDIT 037 already established for these
-tools — and neither is made materially worse than the pre-existing single-tool
-behaviour.
+The real issue is in **THE HUB launcher**, not the stores. The first (author)
+pass rated it LOW; the independent pass correctly escalated it to **MEDIUM**:
+the launcher was globbing `*.exe` from directories INSIDE `C:\snapsmack`, which
+is the GYSS write-jail root. The jail's entire safety argument (SECAUDIT 039) is
+that a compromised GYSS webview may write anywhere under the root but cannot
+reach an executable that something will run. Placing auto-launched exe locations
+inside that root breaks that conclusion. **Fixed** (§3). A narrower, partly
+pre-existing residual remains and is documented as an architectural follow-up
+(§4).
 
 ## 2. Trust-boundary map
 
 ```text
-owner, at the keyboard, on the owner's Windows machine
-  -> THE HUB               globs known install dirs, launches an exe (list-form, no shell)
-  -> SYBU / COLD SNAP      read/modify/write shared_library/prompts/gemini_prompts.json
-  -> GYSS / SYBU           read/modify/write shared_library/profiles/<site_key>.json
-                           (GYSS FS also passes the Rust resolve_in_root jail)
+owner at the keyboard (owner's Windows machine)
+  -> THE HUB            picks an exe from ROSTER candidates, launches it (list-form, no shell)
+  -> SYBU / COLD SNAP   read/modify/write shared_library/prompts/gemini_prompts.json
+  -> GYSS / SYBU        read/modify/write shared_library/profiles/<site_key>.json  (GYSS FS jailed)
 
-local same-machine writer of shared_library/* or C:\<tool>\*   (POST-COMPROMISE ONLY)
-  -> can plant a profile/prompt file or a wildcard-matching exe   (Findings A, B)
+compromised GYSS webview  (reachable per lib.rs:82-84; app fs commands are ungated)
+  -> download_to / write_file  can write ANY bytes to ANY path under C:\snapsmack
+       => before fix: plant C:\snapsmack\ohsnap\evil.exe -> Hub shows OH SNAP "installed" -> click -> RCE
+       => after fix:  wildcard candidates inside the root are refused (Finding 1)
+       => residual:   can still OVERWRITE an exact real target (C:\snapsmack\{sybu,coldsnap}\*.exe)  (Finding 2)
 
-network
-  -> NONE introduced by this diff. The api_key still travels only via each tool's
-     pre-existing HTTPS API client to the owner-entered site_url (out of scope).
+low-priv local user (only where C:\snapsmack\* dirs inherit user-writable ACLs)
+  -> same plant/overwrite without any webview compromise (local priv-esc)
+
+network -> NONE introduced by this diff.
 ```
 
-The shared stores are per-blog CONNECTION data + prompt text, not the secret
-vault. `api_key_enc` is base64 (obfuscation, not encryption) — the deliberate,
-pre-existing family convention (see `snap_profiles.py` docblock and SECAUDIT
-037/039); this diff writes to the SAME store the Python tools already used and
-changes that posture in no direction.
+## 3. Finding 1 - launcher auto-ran a wildcard-matched exe from inside the GYSS write-jail (MEDIUM, FIXED)
 
-## 3. Finding A - launcher runs the newest wildcard-matching exe in a known install dir (LOW, ACCEPTED)
+`tools/hub/main.py` added wildcard ROSTER candidates rooted under `C:\snapsmack`
+(`C:\snapsmack\ohsnap\*.exe`, `C:\snapsmack\suyb\smackupyourbackup*.exe`) and made
+`_find_exe` return the newest match. `C:\snapsmack` is the GYSS jail root
+(`shared_root()`), and GYSS's own fs commands (`download_to`, `write_file`) are
+ungated and permit writing arbitrary bytes anywhere under it.
 
-`tools/hub/main.py` `_find_exe()` now accepts glob candidates and returns the
-most-recently-modified match:
+Exploit chain: a compromised GYSS webview calls `download_to` with
+`path="C:\\snapsmack\\ohsnap\\payload.exe"` (jail allows it, even `create_dir_all`s
+the folder). OH SNAP is not really installed, so that planted file becomes its ONLY
+match — the Hub then displays OH SNAP as installed/enabled and one click runs the
+payload as the user. For SUYB, newest-mtime-wins means a planted
+`smackupyourbackup-evil.exe` even beats a legitimately-installed versioned exe. A
+webview compromise is not required in the weak-ACL local-user variant.
 
-```python
-if any(ch in p for ch in "*?["):
-    matches = [m for m in glob.glob(p) if os.path.isfile(m)]
-    if matches:
-        return max(matches, key=os.path.getmtime)
-```
+**Fix (applied, THE HUB 0.1.2):**
+- Removed every wildcard candidate that resolves inside `C:\snapsmack`
+  (`ohsnap\*.exe`, `suyb\smackupyourbackup*.exe`) and every speculative inside-root
+  path (`snapsmack\gyss\…`, `snapsmack\suyb\suyb.exe`). Inside the root the roster now
+  lists ONLY the two real shared-layout installs as EXACT paths (SYBU, COLD SNAP).
+  Wildcards remain only for out-of-jail legacy dirs (`C:\SUYB`, `C:\SmackUpYourBackup`).
+- Added a defense-in-depth guard in `_find_exe`: a wildcard candidate whose directory
+  resolves inside `_shared_root()` is refused outright, so a future roster edit cannot
+  reintroduce the class.
+- Verified: real tools still resolve (SYBU/GYSS/COLD SNAP/SUYB); a planted
+  `C:\snapsmack\ohsnap\payload.exe` yields `None`; out-of-jail `C:\SUYB\*.exe` still resolves.
 
-For SUYB and OH SNAP the roster includes wildcards (`C:\SUYB\smackupyourbackup*.exe`,
-`C:\snapsmack\ohsnap\*.exe`) because SUYB installs under a versioned filename. If
-a local attacker can write into one of those dirs, dropping a newer
-`smackupyourbackup-evil.exe` would cause the Hub to launch it (newest mtime wins).
+## 4. Finding 2 - exact-path tool exes still live inside the GYSS jail root (MEDIUM-residual, DOCUMENTED / architectural)
 
-Why LOW/accepted: (1) launching the owner's installed tools from owner-controlled
-install dirs IS the launcher's purpose; (2) it requires local write to those dirs,
-i.e. a pre-existing compromise; (3) the exact-path entries (SYBU, GYSS, COLD SNAP,
-and the first SUYB/OH SNAP candidates) are unaffected — only the wildcard tail
-has this breadth; (4) invocation is list-form `subprocess.Popen([path], cwd=...)`,
-so there is no argument/shell injection, only the choice of which existing exe
-runs. Guard to keep: never extend a wildcard candidate to a writable/temp/shared
-location (`%TEMP%`, `Downloads`, a network share). Prefer, later, pinning SUYB to a
-single canonical install path so the wildcard can be dropped.
+Even after Finding 1, the two exact launch targets `C:\snapsmack\sybu\sybu.exe` and
+`C:\snapsmack\coldsnap\coldsnap.exe` sit inside the GYSS-writable root. A compromised
+webview could OVERWRITE one of them (when not locked) with a payload; the Hub would
+then launch it. This is narrower than Finding 1 (the attacker must target the exact
+exe of a tool the owner will actually launch, and a running tool's exe is locked), and
+it is PARTLY PRE-EXISTING — the Hub shipped launching `C:\snapsmack\sybu\sybu.exe` in
+v0.1.0; this diff only added COLD SNAP's equivalent by installing it under the shared
+layout.
 
-## 4. Finding B - GYSS trusts a locally-stored profile it did not author (LOW, ACCEPTED)
+Root cause is architectural: the `C:\snapsmack\<tool>` shared install layout collides
+with the GYSS jail root, so "tool exes" and "GYSS-writable data" share a tree.
 
-After this change GYSS reads profiles from the shared store that another tool
-(or the Hub's Discover Fleet) wrote. A profile file supplies BOTH the `site_url`
-GYSS will connect to and the Bearer `api_key` it will send. A local writer of
-`shared_library/profiles/<site_key>.json` could therefore repoint GYSS's Bearer
-key at an attacker URL (credential redirection).
+**Recommended fix (NOT done tonight — needs its own reviewed change):** narrow the GYSS
+jail from `C:\snapsmack` to only what GYSS actually writes — `C:\snapsmack\shared_library`
++ `C:\snapsmack\config_files` (all GYSS write paths live under those) — so the tool exe
+dirs are no longer webview-writable. Alternatively (or additionally) have the Hub verify
+an Authenticode signature / known publisher before `Popen`. Both touch code Codex is also
+working in (GYSS Rust / the launcher) and warrant a dedicated change + rebuild, so they
+are flagged here rather than rushed. Tracked for Sean/Codex.
 
-Why LOW/accepted: (1) it requires local write to `shared_library/profiles` —
-already secret-equivalent per SECAUDIT 037, so a post-compromise position; (2)
-this is inherent to ANY shared local store and is the same trust GYSS already
-placed in its own private profile files; (3) GYSS still warns before using a
-non-`https://` target (`confirmInsecureUrl`, SECAUDIT 039), which blunts the
-plainest exfil-to-http variant. No code change is required; recorded so the
-"shared_library lives on an owner-only path" assumption stays explicit.
+## 5. LOW findings
 
-## 5. Positive controls verified (not findings)
-
-- **No path traversal.** `siteKey()` (JS) and `snap_home.site_key()` (Py) are
-  byte-identical, reduce to `[a-z0-9.-]`, strip leading/trailing `.-`, collapse
-  repeats, and RAISE on empty — a crafted `site_url` cannot yield `..`, an
-  absolute path, or an empty name. GYSS FS additionally passes `resolve_in_root`.
-  Verified with a JS/Py parity harness over the fleet + `user:pw@host:port` +
-  IDN (`münchen.de`) + traversal-ish inputs.
-- **Atomic, non-destructive writes.** `snap_prompts.save()` and
-  `snap_profiles.save()` write `*.tmp` then `os.replace`; GYSS uses the jailed
-  `write_file`. `snap_prompts.save()` moves an unreadable existing store to
-  `.corrupt` BEFORE overwriting, so a single bad read cannot wipe presets.
-- **Graceful handling of hostile/corrupt local data.** `listProfiles`/`readProfile`
-  skip non-profile / malformed JSON; base64/`atob` failures are caught → `''`;
-  `load()` returns `{}` on unreadable. No crash, no execution.
-- **Migrations are safe.** Legacy→shared migrations (GYSS profiles; SYBU/COLD SNAP
-  prompts) are marker-guarded (global + per-file for GYSS), idempotent, never
-  delete or overwrite legacy files, and never resurrect a user-deleted item — the
-  latter proven including the marker-write-failure case.
-- **Prompt delta-merge cannot silently lose data.** `config.save_prompts` applies
-  only this process's delta onto the fresh on-disk store, so a concurrently-running
-  sibling tool's added presets survive; deletions only remove an entry whose
-  on-disk value still matches what this process loaded.
-- **No injection primitives.** No SQL, no `os.system`/`shell=True`, no `eval`, no
-  templating, no new network endpoints in this diff.
+- **L1 - prompts migration could resurrect a deleted preset (FIXED).** `config.py`
+  `_migrate_prompts_once` guarded only with a single best-effort dir marker; if that
+  write failed, a later launch re-folded the legacy `gemini_prompts.json`, re-adding
+  presets deleted from the shared store. Fixed by adding a DURABLE per-file
+  `<legacy>.migrated` stamp (mirroring GYSS's profile-migration hardening), checked and
+  written in both SYBU and COLD SNAP.
+- **L2 - `.corrupt` backup was single-slot (FIXED).** `snap_prompts.save` overwrote an
+  existing `.corrupt` on a second corruption. Now it preserves the first backup
+  (`os.replace` only when `.corrupt` is absent).
+- **L3 - `siteKey()` vs `site_key()` diverge on contrived inputs (DOCUMENTED, negligible).**
+  E.g. a non-numeric port `example.com:abc`. Confirmed by the independent pass to be an
+  interop mismatch only — NOT a traversal — and unreachable for real site URLs (numeric
+  port / none), which were verified identical incl. IDN. Left as-is to avoid an IPv6
+  handling regression for a non-exploitable contrived case.
+- **L4 - GYSS Rust `write_file` is non-atomic (DOCUMENTED, pre-existing, out of diff).**
+  `lib.rs:121-128` does a direct `std::fs::write` (no tmp+rename) unlike the Python peer,
+  so a crash mid-write can leave a torn profile (readers skip it). `lib.rs` is NOT part of
+  this diff; noted for a future GYSS pass.
 
 ## 6. Verification performed
 
-- Executable harnesses (all green): GYSS↔Python profile interop (bidirectional,
-  UTF-8 + IDN keys, siteKey parity); GYSS migration incl. deleted-profile
-  resurrection cases; prompt concurrency (stale sibling add not clobbered) +
-  corrupt-store recovery; user-override vs built-in preset semantics.
-- `node --check` on the changed JS; `py_compile` on the changed Python; EOF-marker
-  check on every changed file.
-- Adversarial multi-agent functional review of the whole diff: 5 findings, all
-  fixed and re-verified (2 were data-loss class: concurrent prompt clobber and
-  corrupt-store wipe — both closed and re-tested here).
-- No multi-user / hostile-local-writer environment was exercised; Findings A and B
-  are reasoned from the code and the SECAUDIT 037 local-trust model, not reproduced.
+- Executable harnesses (all green, re-run after fixes): GYSS↔Python profile interop
+  (UTF-8 + IDN, siteKey parity); GYSS migration incl. deleted-profile resurrection cases;
+  prompt concurrency (stale-sibling add not clobbered) + corrupt-store recovery;
+  built-in vs user-override preset semantics.
+- Hardened launcher tested against the real machine (all real tools resolve) AND against a
+  planted `C:\snapsmack\ohsnap\payload.exe` (refused → None).
+- `node --check` on the JS; `py_compile` on the Python; EOF markers on all changed files.
+- Two independent agent reviews: a functional pass (5 findings, all fixed earlier) and this
+  security pass (Finding 1 escalation + the LOW set).
+- Not exercised: a real multi-user/weak-ACL host, or an actual GYSS webview compromise;
+  Findings 1/2 are reasoned from the code + the SECAUDIT 039 jail model.
 
 ## 7. Release gate
 
-These are DESKTOP tools: they ship by building from the checkout into
-`C:\snapsmack\<tool>` (and `C:\GYSS`), NOT through the core `0.7.x` updater, so
-there is no fleet-facing rollout tied to this audit. Source-level gate is
-satisfied — no HIGH/MEDIUM findings; Findings A and B are LOW and accepted under
-the existing local-trust model. Operational note for the owner: keep
-`C:\snapsmack\shared_library` and the tool install dirs on an owner-only path
-(not a shared/multi-user or sync-shared location), which is the assumption both
-LOW items rest on.
+Desktop tools ship by building from the checkout (`C:\snapsmack\<tool>`, `C:\GYSS`), not the
+core updater, so no fleet rollout is tied to this audit. Source-level gate: **satisfied** —
+Finding 1 (MEDIUM) is fixed; Finding 2 is a documented residual with a recommended
+architectural fix; LOWs are fixed or documented. Operational note for the owner: keep
+`C:\snapsmack` on an owner-only path (not multi-user / not a synced share), and prioritise
+the Finding 2 jail-narrowing before GYSS is exposed to untrusted remote site content at scale.
 
 <!-- ===== SNAPSMACK EOF ===== -->

@@ -58,8 +58,12 @@ def save(prompts: dict) -> None:
         except Exception:
             readable = False
         if not readable:
+            # Preserve the FIRST corrupt copy — a second corruption must not overwrite
+            # the backup that most likely holds the recoverable data.
+            backup = path + ".corrupt"
             try:
-                os.replace(path, path + ".corrupt")
+                if not os.path.exists(backup):
+                    os.replace(path, backup)
             except Exception:
                 pass
     tmp = path + ".tmp"
