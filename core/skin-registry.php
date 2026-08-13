@@ -77,23 +77,34 @@ define('SKINS_DIR', dirname(__DIR__) . '/skins');
  * hide half the gallery.
  *
  * So this is the same mechanism Photogram already uses to stay out of the
- * gallery: one feature flag, one filter. Mode 4.0 stays on the table as its own
- * piece of work rather than being smuggled in behind a skin.
+ * gallery: one feature flag, one filter — but applied in BOTH directions. On an
+ * ordinary install the flag hides service skins; on a FEDISTRUCTURE install it
+ * hides everything BUT them, so mode 4 shows only its own Onyx skins. That is the
+ * whole of "mode 4 sees only Onyx", delivered through the flag rather than a
+ * fourth site_mode — which stays off the table precisely because site_mode is
+ * load-bearing in the 32 files and three-mode allowlists named above.
  *
  * @param array $manifest  A skin manifest, or a registry entry (same shape).
  */
 if (!function_exists('snapsmack_skin_allowed_distribution')) {
 function snapsmack_skin_allowed_distribution($manifest): bool {
     if (!is_array($manifest)) return true;
-    if (empty($manifest['features']['fedistructure_only'])) return true;
-    return defined('SNAPSMACK_DISTRIBUTION')
-        && SNAPSMACK_DISTRIBUTION === 'fedistructure';
+    $is_fedistructure = defined('SNAPSMACK_DISTRIBUTION')
+                     && SNAPSMACK_DISTRIBUTION === 'fedistructure';
+    $skin_is_service  = !empty($manifest['features']['fedistructure_only']);
+    // Symmetric split. A FEDISTRUCTURE (mode 4) install is the Onyx product and
+    // shows ONLY service skins — the ordinary blog skins are hidden from it
+    // entirely. An ordinary install is the mirror image: every non-service skin,
+    // never a service one. A malformed manifest (handled above) always stays
+    // visible so a parse slip can never blank a gallery.
+    return $is_fedistructure ? $skin_is_service : !$skin_is_service;
 }
 }
 
 /**
- * Drop service skins from a slug-keyed list (registry entries or local skins).
- * Returns the list unchanged on a FEDISTRUCTURE install.
+ * Filter a slug-keyed list (registry entries or local skins) for THIS install.
+ * On an ordinary install this drops the service skins; on a FEDISTRUCTURE install
+ * it drops the ordinary blog skins and keeps only the service (Onyx) ones.
  */
 if (!function_exists('snapsmack_skins_for_distribution')) {
 function snapsmack_skins_for_distribution(array $skins): array {
