@@ -89,6 +89,16 @@ def profiles_dir() -> str:
     return _ensure(os.path.join(shared_library(), "profiles"))
 
 
+def prompts_dir() -> str:
+    """…/shared_library/prompts — the ONE cross-tool Gemini prompt-preset store.
+
+    A single gemini_prompts.json of user-saved presets, shared so a prompt written
+    in SYBU shows up in COLD SNAP and survives a tool reinstall (the old per-tool
+    config_files/<tool>/gemini_prompts.json was lost when an install moved). See
+    snap_prompts.py for the format."""
+    return _ensure(os.path.join(shared_library(), "prompts"))
+
+
 # ── Per-site ─────────────────────────────────────────────────────────────────
 def site_key(site: str) -> str:
     """Normalise a site URL or hostname to a safe single folder name.

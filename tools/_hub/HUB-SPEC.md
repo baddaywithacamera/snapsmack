@@ -13,7 +13,14 @@
 **Version:** 0.1 draft
 **Date:** 2026-08-11
 **Platform:** Windows first, Linux second
-**Status:** SPEC ONLY — not built. Parked, expected off the shelf soon.
+**Status:** v1 BUILT (2026-08-13). `tools/hub/{main.py,hub.spec,build.bat}` →
+`C:\snapsmack\hub\hub.exe`: launches installed tools + one-place HUB SETUP →
+Discover Fleet writes the shared vault (snap_creds) + shared profiles (snap_profiles)
+via `tools/_shared/snap_discovery.py`. The READ side that makes discovery pay off is
+now wired across the fleet: SYBU + GYSS read shared profiles; SYBU + COLD SNAP share
+Gemini prompts (snap_prompts). v1 DEFERS fetching MISSING tools (the "distribution"
+open decision below is still open). SUYB profile-sharing is deliberately NOT wired —
+see the note under "The Roster".
 **Working title:** "THE HUB" is a placeholder — needs a real SnapSmack-voice name.
 
 ---
@@ -70,6 +77,27 @@ Windows version ships first; Linux follows.
 | Importers (unzucker / flkr-fckr) | Manage | Flickr / Instagram export importers — confirm inclusion |
 
 The authoritative list lives in the **Util Manifest** (below), not hardcoded here.
+
+### Shared-profile participation (read side)
+
+Discover Fleet writes `snap_profiles`; a tool "pays off" only once it READS that store.
+Status per tool:
+
+- **SYBU** — reads shared profiles (thin adapter over `snap_profiles`). ✅
+- **GYSS** — reads/writes shared profiles as of 0.1.5-alpha (`src/scripts/profiles.js`),
+  byte-compatible with the Python peer; migrates its old private profiles once. ✅
+- **COLD SNAP / SYBU** — share Gemini prompt presets via `snap_prompts`. ✅
+- **SUYB — deliberately NOT wired, and it is NOT a mechanical port.** SUYB profiles
+  are not the same object as the others': they carry FTP/SFTP/admin passwords inside a
+  real encryption **vault** (`secret_vault`, SECAUDIT 037), and their `api_key` is often
+  a least-privilege **backup-scoped** key valid only on `multisite/backup/*` — NOT a
+  general posting/import key. Pushing those into the base64 shared store would be a
+  security regression (faking at-rest protection) AND would poison the shared `api_key`
+  with keys that can't post/import in SYBU/GYSS. Correct design (needs Sean's call):
+  SUYB CONSUMES the shared store for the site LIST + a general key when present, keeps
+  its FTP/vault secrets local, and never writes backup-scoped keys back as the shared
+  key. SUYB already has its own hub discovery, so it is not "broken" today — just not
+  unified. Do this as a designed consume-side, not a copy of SYBU's adapter.
 
 ---
 

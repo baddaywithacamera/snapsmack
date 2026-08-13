@@ -14,13 +14,14 @@ the network (the spec's hard "distribution" question) is deliberately out of v1.
 # Last non-empty line of this file MUST match the line above.
 """
 
+import glob
 import os
 import subprocess
 import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-BUILD_VERSION = "0.1.0"
+BUILD_VERSION = "0.1.1"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -51,20 +52,37 @@ FIELD   = "#1c1c1c"
 BORDER  = "#2a2a2a"
 
 # ── the tools the Hub fronts, and where they install ────────────────────────
+# Candidate exe locations per tool, most-preferred first. A candidate may contain a
+# glob (`*`) so a versioned exe name (e.g. smackupyourbackup-0.7.20.exe) is still
+# found. The shared-layout path (C:\snapsmack\<tool>) comes first so a freshly-built
+# tool is launched in preference to an older copy at a legacy location.
 ROSTER = [
     ("SMACK YOUR BATCH UP", "batch poster",        [r"C:\snapsmack\sybu\sybu.exe"]),
-    ("GET YOUR SHIT SORTED", "offline sorter",     [r"C:\GYSS\GET YOUR SHIT SORTED.exe"]),
-    ("COLD SNAP",           "offline poster",      [r"C:\COLDSNAP\coldsnap.exe"]),
-    ("SMACK UP YOUR BACKUP", "backup",             [r"C:\SmackUpYourBackup\smackupyourbackup.exe",
-                                                    r"C:\SmackUpYourBackup\suyb.exe"]),
+    ("GET YOUR SHIT SORTED", "offline sorter",     [r"C:\GYSS\GET YOUR SHIT SORTED.exe",
+                                                    r"C:\snapsmack\gyss\GET YOUR SHIT SORTED.exe"]),
+    ("COLD SNAP",           "offline poster",      [r"C:\snapsmack\coldsnap\coldsnap.exe",
+                                                    r"C:\COLDSNAP\coldsnap.exe"]),
+    ("SMACK UP YOUR BACKUP", "backup",             [r"C:\snapsmack\suyb\suyb.exe",
+                                                    r"C:\snapsmack\suyb\smackupyourbackup*.exe",
+                                                    r"C:\SmackUpYourBackup\smackupyourbackup*.exe",
+                                                    r"C:\SmackUpYourBackup\suyb.exe",
+                                                    r"C:\SUYB\smackupyourbackup*.exe",
+                                                    r"C:\SUYB\suyb*.exe"]),
     ("OH SNAP",             "skin designer",       [r"C:\OHSNAP\OH SNAP.exe",
-                                                    r"C:\OhSnap\oh-snap.exe"]),
+                                                    r"C:\OhSnap\oh-snap.exe",
+                                                    r"C:\snapsmack\ohsnap\*.exe"]),
 ]
 
 
 def _find_exe(paths):
+    """First existing exe among the candidates. A candidate may be a glob (for a
+    versioned exe name); when it matches, the most-recently-modified file wins."""
     for p in paths:
-        if os.path.isfile(p):
+        if any(ch in p for ch in "*?["):
+            matches = [m for m in glob.glob(p) if os.path.isfile(m)]
+            if matches:
+                return max(matches, key=os.path.getmtime)
+        elif os.path.isfile(p):
             return p
     return None
 

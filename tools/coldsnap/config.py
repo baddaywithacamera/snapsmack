@@ -127,11 +127,71 @@ Rules:
 }
 
 
+def _shared_prompts():
+    """The shared snap_prompts store (shared_library/prompts), or None if the
+    shared home is unreachable — the tool then falls back to its own per-tool
+    gemini_prompts.json so a stray standalone copy still runs."""
+    _add_shared_to_path()
+    try:
+        import snap_prompts
+        return snap_prompts
+    except Exception:
+        return None
+
+
+_PROMPTS_MIGRATION_MARKER = '.prompts_migrated_to_shared'
+
+# The user-preset snapshot this process last read from the SHARED store. save_prompts
+# applies only this process's delta against it onto the FRESH on-disk store, so a
+# sibling tool (SYBU) running at the same time can't have its just-added presets
+# clobbered by our stale in-memory copy (the old last-writer-wins would lose them).
+_last_shared_user = {}
+
+
+def _user_presets(all_prompts: dict) -> dict:
+    """The subset of a prompts dict that is genuinely user-owned — anything that
+    isn't a verbatim built-in. Keeps user overrides of a built-in name, drops the
+    untouched built-ins so the shared store never fills up with shipped defaults."""
+    return {k: v for k, v in (all_prompts or {}).items()
+            if not (k in DEFAULT_PROMPTS and DEFAULT_PROMPTS[k] == v)}
+
+
+def _migrate_prompts_once(sp) -> None:
+    """Fold this tool's legacy per-tool gemini_prompts.json into the shared store
+    ONCE. Marker-guarded so a preset the user later deletes never resurrects, and
+    the legacy file is left in place as a backup."""
+    marker = os.path.join(os.path.dirname(_prompts_path()), _PROMPTS_MIGRATION_MARKER)
+    if os.path.exists(marker):
+        return
+    try:
+        legacy_path = _prompts_path()
+        if os.path.isfile(legacy_path):
+            with open(legacy_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                sp.migrate_in(_user_presets(data), overwrite=False)
+        os.makedirs(os.path.dirname(marker), exist_ok=True)
+        with open(marker, 'w', encoding='utf-8') as f:
+            f.write('gemini prompts migrated to shared_library/prompts\n')
+    except Exception:
+        pass
+
+
 def load_prompts() -> dict:
     """Gemini prompt presets: the built-in generic SOLO + GRAM presets, with any
-    user-saved presets from gemini_prompts.json merged on top (a user preset of
-    the same name overrides the built-in)."""
+    user-saved presets merged on top (a user preset of the same name overrides the
+    built-in). User presets live in the SHARED store (shared_library/prompts) so a
+    prompt written in any Gemini tool shows up here and survives a reinstall; a
+    tool with no shared home falls back to its own per-tool file."""
     out = dict(DEFAULT_PROMPTS)
+    sp = _shared_prompts()
+    if sp:
+        _migrate_prompts_once(sp)
+        shared = sp.load()
+        global _last_shared_user
+        _last_shared_user = dict(shared)
+        out.update(shared)
+        return out
     path = _prompts_path()
     if os.path.isfile(path):
         try:
@@ -145,7 +205,33 @@ def load_prompts() -> dict:
 
 
 def save_prompts(prompts: dict) -> None:
-    """Persist the full prompts dict to disk."""
+    """Persist the user presets. Writes to the SHARED store when reachable (so every
+    Gemini tool sees them), stripping the untouched built-ins so the store stays
+    user-owned; falls back to the per-tool file otherwise.
+
+    Shared writes are a read-modify-write against the CURRENT on-disk store, applying
+    only this process's delta vs what it last loaded — so a sibling tool's presets
+    added since we loaded are preserved instead of clobbered."""
+    sp = _shared_prompts()
+    if sp:
+        _migrate_prompts_once(sp)
+        user = _user_presets(prompts)
+        global _last_shared_user
+        disk = sp.load()
+        base = _last_shared_user
+        merged = dict(disk)
+        # Deletions: names this process had at load but dropped now — only remove
+        # when the on-disk value still matches what we loaded (don't stomp a change
+        # another tool made to that name in the meantime).
+        for k in list(base.keys()):
+            if k not in user and merged.get(k) == base.get(k):
+                del merged[k]
+        # Additions / edits from this process.
+        for k, v in user.items():
+            merged[k] = v
+        sp.save(merged)
+        _last_shared_user = dict(user)
+        return
     with open(_prompts_path(), 'w', encoding='utf-8') as f:
         json.dump(prompts, f, indent=2, ensure_ascii=False)
 
