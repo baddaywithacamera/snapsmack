@@ -13,11 +13,19 @@ per-blog local library (records + downloaded thumb files) is not a cache bolted
 onto an online app — it **is** the app's working data. Everything renders and
 reorders from disk.
 
-**Status: FOUNDATIONAL, NOT BUILT — and the shipped architecture is inverted.**
-The current app is online-FIRST: it renders thumbs from live remote URLs and
-hits the API on every action, with an ephemeral session JSON as a snapshot. For
-an offline sorter that is backwards. This is the original design decision that
-kept getting dropped because it was never written down. It is written down now.
+**Status: BUILT — shipped in GYSS 0.1.3-alpha (the offline-library rebuild landed
+in core 0.7.518D).** The online-first architecture described below as "the problem"
+is exactly what this rebuild REPLACED: GYSS now keeps a persistent per-blog local
+library on disk and syncs it in two bounded steps (PULL on connect, PUSH on
+reconnect). The design sections below are the spec it was built to — kept as
+rationale and history, not a to-do. If you are here to "build the offline library,"
+it already exists; read `src/scripts/library.js` + `paths.js` and `src-tauri/src/lib.rs`.
+
+**PATHS HAVE MOVED.** The `%APPDATA%\GetYourShitSorted\…` locations named further
+down are superseded. The shipped build uses the shared SnapSmack root (default
+`C:\snapsmack`, env `SNAPSMACK_HOME`): profiles + sessions under `config_files\gyss\`,
+and the per-blog library (index/meta/thumbs + `db\catalog.sqlite`) under
+`shared_library\<site_key>\`, shared with COLD SNAP and SYBU.
 
 ## Correct architecture (local-first)
 
