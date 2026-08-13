@@ -10,7 +10,38 @@
 
 # SnapSmack Changelog
 
-## 0.7.519 — 2026-08-12
+## 0.7.519 — 2026-08-13
+
+- **THE HUB read-side — "Discover Fleet" now pays off across the desktop suite.**
+  The Hub already wrote the shared stores (`snap_creds` vault + `snap_profiles`);
+  until now only SYBU read them, so discovering a fleet did nothing in the other
+  tools. Closed the read side: **GYSS (0.1.5-alpha)** now reads/writes the shared
+  cross-tool profile store (`shared_library/profiles/<site_key>.json`, the canonical
+  `snap_profiles` shape) instead of its old private `config_files/gyss/profiles/`,
+  with a marker-guarded, per-file-idempotent, non-destructive migration of its old
+  profiles (extras from another tool are preserved on save). GYSS `siteKey()` was
+  aligned byte-for-byte with Python `snap_home.site_key()` (manual host parse — no
+  IDNA/punycode divergence), and proven interoperable both directions incl. UTF-8
+  keys. Net: set a blog up in any tool — or hit Discover Fleet — and it shows up
+  everywhere.
+- **Shared Gemini prompt presets (SYBU 0.1.43 + COLD SNAP 0.1.4).** New
+  `tools/_shared/snap_prompts.py` + `snap_home.prompts_dir()`: one shared
+  `shared_library/prompts/gemini_prompts.json` of user presets (built-ins still
+  ship per-tool, merged under). A prompt written in one Gemini tool now shows in the
+  other **and survives a reinstall** — fixing the lost-presets-on-move bug. Saves are
+  a read-modify-write delta against the on-disk store, so a concurrently-running
+  sibling tool's just-added presets are never clobbered; an unreadable store is
+  preserved as `.corrupt` rather than wiped; SYBU's built-in-delete is now honest
+  (refuse a pure built-in; "reset to shipped text" for an overridden one).
+- **THE HUB launcher (0.1.1).** `_find_exe` now accepts glob candidates (so a
+  versioned exe name like `smackupyourbackup-0.7.20.exe` is found) and prefers the
+  shared-layout path, so SYBU / GYSS / COLD SNAP / SUYB all launch from the Hub
+  (OH SNAP shows not-installed — only a dev build exists). SUYB shared-profile wiring
+  was deliberately deferred (its vault/backup-scoped keys make a naive port a
+  security + correctness regression — see `tools/_hub/HUB-SPEC.md`).
+- **Security:** `SECAUDIT 044` (`secaudits/2026-08-13-044-…`) covers the above —
+  no HIGH/MEDIUM findings; two accepted LOW items under the existing local-trust
+  model. Desktop tools ship by building from the checkout, not the core updater.
 
 - **Mode 4 (FEDISTRUCTURE) now sees only its own Onyx skins.** The service-skin
   filter (`snapsmack_skin_allowed_distribution`) was one-directional: it kept
