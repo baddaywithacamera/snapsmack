@@ -1008,6 +1008,11 @@ immediately — any tool using it loses access at once. Generate a fresh key to 
 <p>Each key has a type that restricts which API endpoints it can reach. Choose the right
 type for the tool you are setting up:</p>
 <ul>
+    <li><strong>THE HUB</strong> — for THE HUB fleet launcher. Generate this on your
+    <em>hub</em> (multisite parent) site, paste it into THE HUB&rsquo;s setup card, and hit
+    Discover Fleet: it reads your whole fleet and every shared secret in one shot, then
+    fills every other tool automatically. Discovery-only &mdash; it cannot read or write
+    your backups, so it is safe to keep on the machine that launches your tools.</li>
     <li><strong>Oh Snap!</strong> — for the Oh Snap! skin designer desktop app</li>
     <li><strong>SMACKPRESS</strong> — for the SMACKPRESS WordPress migration workbench</li>
     <li><strong>FLKR FCKR Import</strong> — for the FLKR FCKR Flickr import tool. Revoke
@@ -1026,6 +1031,10 @@ with a plain-English warning telling you exactly which mode to set. Every automa
 written to the server log.</p>
 
 <h4>Pasting Into a Tool</h4>
+<p>In THE HUB: HUB Setup card &rarr; <em>Hub Site URL</em> + <em>Hub API Key</em> fields.
+Paste your hub key, click <strong>Save Shared Credentials</strong>, then <strong>Discover
+Fleet</strong> &mdash; every other tool inherits the whole fleet from there, so this is the
+only key you paste by hand.</p>
 <p>In SYBU: Settings tab &rarr; API Key field. Paste the key and save. SYBU will use it
 for all subsequent requests instead of prompting for a username and password.</p>
 <p>In FLKR FCKR: paste into the <em>API Key</em> field in the settings bar at the top of

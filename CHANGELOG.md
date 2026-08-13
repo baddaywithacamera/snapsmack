@@ -10,6 +10,23 @@
 
 # SnapSmack Changelog
 
+## 0.7.519 — 2026-08-13
+
+### THE HUB — a first-class fleet-setup API key (stop guessing "pick SUYB")
+
+- **New `hub` API key type — Admin &rarr; API Keys.** THE HUB now has its own entry at
+  the TOP of the key-type dropdown — `THE HUB (FLEET SETUP — SETS UP EVERY TOOL)` — instead
+  of expecting people to know they must generate a SUYB key for it. It is standing
+  infrastructure (you re-run Discover Fleet whenever the fleet changes), so it gets the
+  same 3-month expiry as the other standing keys and defaults to it.
+- **Least-privilege by design.** A `hub` key unlocks ONLY fleet discovery
+  (`suyb-data.php`). Unlike a real SUYB key it cannot reach the backup-data endpoints
+  (`suyb-export.php`, `suyb-complete.php`), and it is independently revocable — revoking
+  the hub key can't take down a backup, and vice-versa.
+- **Backward compatible.** `suyb-data.php` now accepts `['suyb','hub']`, so every
+  existing SUYB key keeps working for discovery. THE HUB desktop app needs no rebuild —
+  it already sends the key as an `Authorization: Bearer` token.
+
 ## 0.7.518 — 2026-08-13
 
 ### Desktop suite — THE HUB and the shared-everything foundation
@@ -56,8 +73,9 @@
   from inside `C:\snapsmack`, which is the GYSS write-jail root, so a compromised GYSS
   webview (or weak-ACL local user) could plant an exe there and have the Hub run it.
   **Fixed** (Hub 0.1.2): wildcard candidates are refused inside the jailed root and the
-  roster lists only exact real installs there. One MEDIUM-residual (tool exes sharing
-  the jail root) is documented for a follow-up jail-narrowing; two LOWs fixed (prompts
+  roster lists only exact real installs there. The MEDIUM exact-path residual is also
+  closed: GYSS file commands are jailed to `shared_library` and `config_files\gyss`,
+  excluding sibling tool executables; two LOWs fixed (prompts
   migration now per-file-stamped like GYSS; `.corrupt` backup no longer overwritten).
   Desktop tools ship by building from the checkout, not the core updater.
 

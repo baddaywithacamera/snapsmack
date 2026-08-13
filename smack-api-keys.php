@@ -43,8 +43,9 @@ try { $pdo->query("SELECT user_id FROM snap_ohsnap_keys LIMIT 0");
 // --- GENERATE ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate') {
     $label    = trim($_POST['label'] ?? '');
-    $key_type = in_array($_POST['key_type'] ?? '', ['ohsnap','smackpress','flkrfckr','gyss','unzucker','suyb','sybu','tyswy']) ? $_POST['key_type'] : 'ohsnap';
+    $key_type = in_array($_POST['key_type'] ?? '', ['hub','ohsnap','smackpress','flkrfckr','gyss','unzucker','suyb','sybu','tyswy']) ? $_POST['key_type'] : 'ohsnap';
     if (!$label) $label = match($key_type) {
+        'hub'        => 'THE HUB — Fleet Setup',
         'smackpress' => 'SmackPress Key',
         'flkrfckr'   => 'FLKR FCKR Import',
         'gyss'       => 'GET YOUR SHIT SORTED',
@@ -61,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
 
     // Mandatory expiry — no "never" option. Import keys (flkrfckr/unzucker/gyss/
     // ohsnap/smackpress) are one-shot migrations and stay capped at 4 weeks (0.7.263).
-    // Backup keys (suyb/sybu) are standing infrastructure, not a migration: a 4-week
+    // Backup keys (suyb/sybu) + the hub fleet-setup key are standing infrastructure, not a migration: a 4-week
     // fuse meant every key in a fleet expired on the same day and backups stopped
     // silently. Those get 3 months and default to it. Server-side is authoritative —
     // '3m' only exists in the map for backup types, so it cannot be forced by POST.
@@ -70,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
     // 4-week fuse would expire it between exports. Recommended validity is 3 months
     // (TYSWY spec section 5). Read-only, so a longer life is a smaller risk than an
     // import key with the same lifetime.
-    $backup_key = in_array($key_type, ['suyb', 'sybu', 'tyswy'], true);
+    $backup_key = in_array($key_type, ['suyb', 'sybu', 'tyswy', 'hub'], true);
     $expiry_map = ['1d' => '+1 day', '1w' => '+1 week', '2w' => '+2 weeks', '4w' => '+4 weeks'];
     if ($backup_key) $expiry_map['3m'] = '+3 months';
     $expiry_sel = (string)($_POST['expiry'] ?? '');
@@ -161,6 +162,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'disab
     exit;
 }
 
+// Disconnect a native Pixelfed client. Revocation only reduces access, so it
+// needs CSRF (provided globally) but no password/2FA step-up.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'revoke_pixelix') {
+    $app_id = (int)($_POST['app_id'] ?? 0);
+    if ($app_id > 0) {
+        try {
+            $pdo->prepare('UPDATE snap_oauth_tokens SET revoked_at=NOW() WHERE app_id=? AND revoked_at IS NULL')->execute([$app_id]);
+        } catch (PDOException $e) { /* client API has never been initialized */ }
+    }
+    header('Location: smack-api-keys.php?msg=Pixelix+connection+revoked');
+    exit;
+}
+
 // --- FETCH ---
 $keys         = $pdo->query("
     SELECT id, label, key_type, key_prefix, is_active, created_at, last_used_at, expires_at
@@ -186,6 +200,16 @@ $import_auth_active = $import_auth_until > time();
 
 // Offline-posting (SMACK YOUR BATCH UP) consent state.
 $gram_authoring_on = ((string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='gram_authoring_enabled' LIMIT 1")->fetchColumn() ?: '0')) === '1';
+$api_site_mode = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog');
+$pixelix_apps = [];
+if ($api_site_mode === 'carousel') {
+    try {
+        $pixelix_apps = $pdo->query("SELECT a.id,a.name,a.created_at,MAX(t.created_at) connected_at,MAX(t.refresh_expires_at) refresh_expires_at,
+            SUM(CASE WHEN t.revoked_at IS NULL AND t.token_hash IS NOT NULL THEN 1 ELSE 0 END) active_tokens
+            FROM snap_oauth_apps a LEFT JOIN snap_oauth_tokens t ON t.app_id=a.id
+            GROUP BY a.id,a.name,a.created_at ORDER BY connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) { $pixelix_apps = []; }
+}
 
 include 'core/admin-header.php';
 include 'core/sidebar.php';
@@ -256,9 +280,13 @@ include 'core/sidebar.php';
 
     <!-- OFFLINE POSTING (SMACK YOUR BATCH UP) consent gate -->
     <div class="box mb-20">
-        <h3>OFFLINE POSTING (SMACK YOUR BATCH UP)</h3>
+        <h3>OFFLINE POSTING (SMACK YOUR BATCH UP<?php echo $api_site_mode === 'carousel' ? ' + PIXELIX' : ''; ?>)</h3>
         <p class="dim mb-20">
-            This tool writes new posts to this site via the API. On a site that already holds
+            <?php if ($api_site_mode === 'carousel'): ?>This enables both SMACK YOUR BATCH UP and native posting
+            from the Pixelix Pixelfed client. Add this site's address as an account in Pixelix;
+            SnapSmack handles its OAuth connection automatically.<?php else: ?>This enables the compatible offline tools
+            for this install mode. Pixelix posting is available only in GRAMOFSMACK.<?php endif; ?> These tools write new posts
+            via the API. On a site that already holds
             content, posting stays blocked until you enable it here — a one-time opt-in
             (no per-session re-authorizing). Enabling requires your password (and 2FA code if
             enabled). The server also caps offline posting at 300 images/hour regardless.
@@ -286,6 +314,24 @@ include 'core/sidebar.php';
                 <button type="submit" class="master-update-btn">ENABLE OFFLINE POSTING</button>
             </form>
         <?php endif; ?>
+        <?php if ($api_site_mode === 'carousel' && $pixelix_apps): ?>
+            <div class="mt-20" style="border-top:1px solid var(--border-color,#333);padding-top:18px;">
+                <h4 style="margin:0 0 10px;">CONNECTED PIXELIX CLIENTS</h4>
+                <?php foreach ($pixelix_apps as $app): ?>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0;">
+                        <div><strong><?php echo htmlspecialchars($app['name']); ?></strong><br>
+                            <span class="dim"><?php echo (int)$app['active_tokens'] > 0 ? 'Connected' : 'Revoked'; ?>
+                            &middot; <?php echo htmlspecialchars((string)($app['connected_at'] ?: $app['created_at'])); ?>
+                            <?php if ((int)$app['active_tokens'] > 0 && $app['refresh_expires_at']): ?>&middot; Reconnect after <?php echo htmlspecialchars((string)$app['refresh_expires_at']); ?><?php endif; ?></span></div>
+                        <?php if ((int)$app['active_tokens'] > 0): ?><form method="post" action="smack-api-keys.php">
+                            <input type="hidden" name="action" value="revoke_pixelix">
+                            <input type="hidden" name="app_id" value="<?php echo (int)$app['id']; ?>">
+                            <button type="submit" class="btn-smack">DISCONNECT</button>
+                        </form><?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </div>
 
     <div class="post-layout-grid">
@@ -301,6 +347,7 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>KEY TYPE</label>
                         <select name="key_type">
+                            <option value="hub">THE HUB (FLEET SETUP &mdash; SETS UP EVERY TOOL)</option>
                             <option value="ohsnap">OH SNAP! (SKIN DESIGNER)</option>
                             <option value="smackpress">SMACKPRESS (WP MIGRATION)</option>
                             <option value="flkrfckr">FLKR FCKR (FLICKR IMPORT)</option>
@@ -328,7 +375,7 @@ include 'core/sidebar.php';
                             <option value="4w" selected>4 weeks (max for import keys)</option>
                             <option value="3m">3 months (backup keys only)</option>
                         </select>
-                        <p class="field-hint">Import keys are one-shot &mdash; 4 weeks max. Backup keys (SMACK UP YOUR BACKUP / SMACK YOUR BATCH UP) get 3 months and default to it; choosing 3 months on any other key type falls back to 4 weeks.</p>
+                        <p class="field-hint">Import keys are one-shot &mdash; 4 weeks max. Backup &amp; standing keys (THE HUB / SMACK UP YOUR BACKUP / SMACK YOUR BATCH UP) get 3 months and default to it; choosing 3 months on any other key type falls back to 4 weeks.</p>
                     </div>
 
                     <div class="lens-input-wrapper mt-20">
