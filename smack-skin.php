@@ -200,6 +200,9 @@ if (empty($available_skins)) {
         if (file_exists($dir . '/manifest.json')) {
             $temp = snapsmack_load_manifest($dir . '/manifest.json');
             if (($temp['status'] ?? 'stable') === 'development') continue;
+            // Even the mode-filter-empty fallback honours the distribution split,
+            // so a FEDISTRUCTURE install never falls back to listing blog skins.
+            if (!snapsmack_skin_allowed_distribution($temp)) continue;
             $available_skins[$slug] = $temp['name'] ?? ucfirst($slug);
         }
     }

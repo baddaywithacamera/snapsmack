@@ -10,6 +10,24 @@
 
 # SnapSmack Changelog
 
+## 0.7.519 — 2026-08-12
+
+- **Mode 4 (FEDISTRUCTURE) now sees only its own Onyx skins.** The service-skin
+  filter (`snapsmack_skin_allowed_distribution`) was one-directional: it kept
+  `features.fedistructure_only` skins OUT of ordinary galleries, but a FEDISTRUCTURE
+  install still saw every ordinary blog skin too — so "mode 4 sees only Onyx" was
+  never actually true. It is now **symmetric**: on a FEDISTRUCTURE install the
+  gallery, the download list and the local skin picker show ONLY service (Onyx)
+  skins; on an ordinary install, only the non-service ones, exactly as before.
+  Delivered through the existing feature flag, **not** a fourth `site_mode` — which
+  stays off the table because `site_mode` is load-bearing across 32 files and the
+  hardcoded three-mode allowlists (`core/mode-guard.php`, `snap_api_enforce_mode()`).
+  The empty-mode-filter fallback in `smack-skin.php` now honours the split too, so a
+  FEDISTRUCTURE install can never fall back to listing blog skins. New test:
+  `tests/mode4-onyx-only-visibility.php` (the fedistructure direction); the
+  ordinary-direction regression (`tests/service-skin-visibility-regression.php`) is
+  unchanged and still green.
+
 ## 0.7.518 — 2026-08-12
 
 - **Image posting — photographer-controlled size & compression, with true
