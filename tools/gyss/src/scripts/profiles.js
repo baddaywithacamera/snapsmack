@@ -78,13 +78,12 @@ export async function saveProfile(profile) {
 
 /** Delete a profile by path. */
 export async function deleteProfile(path) {
-    // Write empty string then let OS clean up — or use shell rm via invoke.
-    // Simple approach: overwrite with a tombstone marker, then the list skips it.
-    // Actually: use tauri-plugin-fs remove command if available.
-    // For now, write a deleted marker so listProfiles skips it.
-    try {
-        await invoke('write_file', { path, content: JSON.stringify({ _deleted: true }) });
-    } catch { /* ignore */ }
+    // Actually remove the file via the fs-jailed Rust `delete_file` command.
+    // The previous build wrote a {_deleted:true} tombstone and trusted
+    // listProfiles to skip it — but listProfiles never skipped it, and a
+    // nameless tombstone then threw in the `.name` sort, taking the whole
+    // profile list down. A real delete leaves nothing for the list to trip on.
+    await invoke('delete_file', { path });
 }
 
 /** Touch last_connected timestamp on a profile. */
