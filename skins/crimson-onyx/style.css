@@ -1,5 +1,5 @@
 /*
- * SNAPSMACK — CRIMSON ONYX 0.1.4
+ * SNAPSMACK — CRIMSON ONYX 0.1.5
  * The photofri.day identity as a SnapSmack skin.
  *
  * SNAPSMACK_EOF_HEADER
@@ -271,10 +271,13 @@ img { max-width: 100%; height: auto; }
    components can restyle freely — but that also let a core content rule win and
    paint FAQ-answer links in body ink (they were rendering #f4f4f4, not red). This
    real-specificity rule puts the red back on every link inside a page body, the
-   FAQ accordion answers included. */
-.static-content .description a { color: var(--pfd-link); }
-.static-content .description a:hover,
-.static-content .description a:focus-visible { color: #fff; }
+   FAQ accordion answers included.
+   The :not() guards keep the participation pills and the @handle out of it — both
+   are anchors inside .description, and at 0-3-0 this selector would otherwise beat
+   their own single-class colour and paint the pill text and the handle crimson. */
+.static-content .description a:not(.pfd-pill):not(.pfd-handle) { color: var(--pfd-link); }
+.static-content .description a:not(.pfd-pill):not(.pfd-handle):hover,
+.static-content .description a:not(.pfd-pill):not(.pfd-handle):focus-visible { color: #fff; }
 
 .static-content .description code {
     font-family: var(--pfd-mono);
@@ -285,6 +288,10 @@ img { max-width: 100%; height: auto; }
 }
 
 .static-content .description strong { color: var(--pfd-ink); }
+
+/* The content parser injects empty <p> elements between blocks; left visible they
+   open stray gaps and pad the page height. Collapse them. */
+.static-content .description p:empty { display: none; }
 
 /* Page hero image, when a page has one. */
 .page-hero { margin: 26px 0; }
@@ -327,6 +334,10 @@ body.homepage-static .static-page-title {
     white-space: nowrap;
 }
 body.homepage-static .static-page-title::after { content: none; }
+
+/* The parser drops empty/unclassed <p> around the wordmark; collapse them so the
+   tagline sits tight under PHOTOFRI.DAY instead of floating on a stray line. */
+body.homepage-static .description > p:not([class]) { margin: 0; line-height: 0; }
 
 .pfd-wordmark {
     margin: 0;
@@ -372,7 +383,7 @@ body.homepage-static .pfd-rule       { margin: 13px auto; }
 body.homepage-static .pfd-lede       { margin-top: 12px; }
 body.homepage-static .pfd-sub        { margin-top: 12px; margin-bottom: 0; }
 body.homepage-static .pfd-participate         { margin-top: 20px; }
-body.homepage-static .pfd-participate .pfd-label { margin-bottom: 14px; line-height: 1.5; }
+body.homepage-static .pfd-participate .pfd-label { margin-bottom: 14px; line-height: 1.4; }
 body.homepage-static .pfd-pill       { padding: 11px 16px; }
 body.homepage-static .pfd-follow     { margin-top: 18px; }
 body.homepage-static .pfd-countdowns { margin-top: 16px; }
@@ -430,6 +441,10 @@ body.homepage-static .pfd-lede {
     color: var(--pfd-ink);
     max-width: 34em;
 }
+/* On interior pages a core `.static-content .description p` rule (0-3-0) outranks
+   the single-class .pfd-lede (0-1-0) and was anchoring the lede to the left. Re-centre
+   at matching specificity. */
+.static-content .description .pfd-lede { margin-left: auto; margin-right: auto; }
 
 .pfd-sub {
     margin-top: 16px;
@@ -458,13 +473,16 @@ body.homepage-static .pfd-lede {
 }
 
 .pfd-participate .pfd-label {
-    font-family: var(--pfd-mono);
+    /* Bold white Arial — the label is a header, not a caption. It reads as a
+       directive above the pills rather than dissolving into muted mono. */
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.2em;
     font-size: 0.72rem;
-    color: var(--pfd-muted);
+    color: var(--pfd-ink);
     margin: 0 0 30px;
-    line-height: 1.7;
+    line-height: 1.4;
     text-align: center;
 }
 
@@ -496,6 +514,10 @@ body.homepage-static .pfd-lede {
     transform: translateX(3px);
     outline: none;
 }
+
+/* A core content rule was collapsing the pill's bottom border to 0. The more
+   specific .pfd-links descendant selector restores the full 2px crimson frame. */
+.pfd-links .pfd-pill { border: 2px solid var(--pfd-red); }
 
 .pfd-pill-main {
     display: flex;
@@ -557,11 +579,15 @@ body.homepage-static .pfd-lede {
 }
 .pfd-handle {
     /* Match the #share hashtag above: crimson, bold, body serif — not a mono
-       code-box. (It's a <code> element, so font-family must be reset off mono.) */
+       code-box. (It's a <code> element, so the mono font, background and border
+       all have to be reset off it.) */
     font-family: inherit;
     font-weight: bold;
     color: var(--pfd-link);
     white-space: nowrap;
+    background: none;
+    border: none;
+    padding: 0;
 }
 
 /* --- launch countdowns --------------------------------------------------
@@ -587,10 +613,12 @@ body.homepage-static .pfd-lede {
 
 .pfd-cd-caption {
     display: block;
-    font-family: var(--pfd-mono);
+    /* Tiny5 (the bundled pixel face) reads cleaner than Courier at this size on the
+       small countdown labels — the digits stay Arial Black below. */
+    font-family: 'Tiny5', 'Courier New', monospace;
     text-transform: uppercase;
     letter-spacing: 0.14em;
-    font-size: 0.62rem;
+    font-size: 0.6rem;
     color: var(--pfd-muted);
     margin-bottom: 9px;
 }
@@ -618,11 +646,11 @@ body.homepage-static .pfd-lede {
     font-variant-numeric: tabular-nums;   /* digits don't jitter as they tick */
 }
 .pfd-cd-cell i {
-    font-family: var(--pfd-mono);
+    font-family: 'Tiny5', 'Courier New', monospace;
     font-style: normal;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    font-size: 0.55rem;
+    font-size: 0.58rem;
     color: var(--pfd-red);
     margin-top: 6px;
 }
@@ -957,8 +985,8 @@ body.homepage-static .pfd-lede {
 #system-footer {
     position: relative;
     z-index: 1;
-    border-top: 3px solid var(--pfd-red);
-    padding: 22px var(--pfd-gutter);
+    border-top: 1px solid var(--pfd-red);
+    padding: 2px var(--pfd-gutter);
     text-align: center;
     margin-top: auto;
 }
@@ -970,11 +998,15 @@ body.homepage-static .pfd-lede {
 
 #system-footer,
 #system-footer .footer-metadata-bar {
-    /* Tiny5 — the bundled pixel face — reads cleaner than Courier New at footer
-       size. A touch larger than the old 0.68rem so the pixels resolve. */
-    font-family: 'Tiny5', 'Courier New', monospace;
-    font-size: 0.85rem;
-    letter-spacing: 0.04em;
+    /* Verdana small-caps reads quieter and more legible than the pixel face at
+       footer size. Lowercased first so font-variant:small-caps has lowercase
+       letters to raise into caps. */
+    font-family: Verdana, Geneva, sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+    line-height: 1.15;
+    text-transform: lowercase;
+    font-variant: small-caps;
     color: #9a9a9a;
 }
 
