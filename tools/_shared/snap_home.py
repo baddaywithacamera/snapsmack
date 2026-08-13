@@ -80,6 +80,15 @@ def auth_dir() -> str:
     return _ensure(os.path.join(shared_library(), "auth"))
 
 
+def profiles_dir() -> str:
+    """…/shared_library/profiles — the ONE cross-tool connection-profile store.
+
+    One JSON file per site, named by site_key(), so every tool computes the same
+    filename for the same blog and therefore sees what another tool saved. Set a
+    blog up in one tool; the rest find it. See snap_profiles.py for the format."""
+    return _ensure(os.path.join(shared_library(), "profiles"))
+
+
 # ── Per-site ─────────────────────────────────────────────────────────────────
 def site_key(site: str) -> str:
     """Normalise a site URL or hostname to a safe single folder name.
