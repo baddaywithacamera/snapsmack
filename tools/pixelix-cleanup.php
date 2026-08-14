@@ -1,5 +1,11 @@
 <?php
-/** Pixelix lifecycle cleanup report/dry-run utility. */
+/**
+ * Pixelix lifecycle cleanup report/dry-run utility.
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ */
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once dirname(__DIR__) . '/core/db.php';
 require_once dirname(__DIR__) . '/core/pixelix-lifecycle.php';

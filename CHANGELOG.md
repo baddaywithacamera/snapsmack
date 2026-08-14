@@ -10,6 +10,22 @@
 
 # SnapSmack Changelog
 
+## 0.7.522 — 2026-08-14
+
+### Pixelix reconnect and public permalink repair
+
+- Pixelix timelines now honour exclusive `max_id` pagination and the requested page size. Exhausted timelines return an empty JSON array instead of repeating the final post until the native client enters a request loop and crashes.
+- GRAMOFSMACK status objects now link to the cover photograph's real public permalink rather than the post layer's internal, unroutable authoring slug.
+- Pixelix discovery, OAuth, profiles and native-content timelines now connect across SMACKONEOUT, GRAMOFSMACK and SMACKTALK. Each mode serializes its real local content shape; the existing upload/publish writer remains explicitly GRAM-only until the other native authoring contracts are mapped.
+
+### Install-mode lockout prevention
+
+- Both skin activation paths now consult the existing content-shape guard before changing `active_skin` or `site_mode`. A populated GRAMOFSMACK, SMACKONEOUT or SMACKTALK site refuses a skin from an incompatible install mode instead of changing its content architecture and hiding the correct skins from its owner.
+
+### HEURISTIC memory field
+
+- The red logic-memory tiles remain visible in both wide-screen gutters, and the central readability mask now follows the actual 1080px panel instead of swallowing an arbitrary 64% of the viewport.
+
 ## 0.7.521 — 2026-08-13
 
 ### Pixelix live-test remediation — SECAUDIT 045 closed

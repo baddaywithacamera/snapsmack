@@ -195,7 +195,7 @@ $api = file_get_contents(__DIR__ . '/../api.php');
 t_ok(str_contains($api, "strpos(\$route, 'tyswy') === 0"), 'api.php does not route tyswy');
 $keys = file_get_contents(__DIR__ . '/../smack-api-keys.php');
 t_ok(str_contains($keys, "'tyswy'"), 'smack-api-keys.php cannot mint a tyswy key');
-t_ok(preg_match("/\\\$backup_key = in_array\\(\\\$key_type, \\['suyb', 'sybu', 'tyswy'\\]/", $keys) === 1,
+t_ok(preg_match("/\\\$backup_key = in_array\\(\\\$key_type, \\['suyb', 'sybu', 'tyswy', 'hub'\\]/", $keys) === 1,
      'tyswy is not on the 3-month standing-utility expiry tier');
 
 if ($failures) {

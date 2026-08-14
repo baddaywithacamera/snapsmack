@@ -25,6 +25,7 @@
 require_once 'core/auth-smack.php';
 require_once 'core/skin-registry.php';
 require_once 'core/skin-settings.php';
+require_once 'core/mode-guard.php';
 
 // --- SETTINGS BOOTSTRAP ---
 // Must load BEFORE skin discovery so active_skin is available.
@@ -103,6 +104,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
             if ($slug === '' || !is_dir($skin_dir) || !is_file($skin_dir . '/manifest.json')) {
                 $gallery_err = 'That skin is not installed.';
             } else {
+                $_candidate = load_skin_manifest($slug);
+                $_candidate_modes = is_array($_candidate['modes'] ?? null) ? array_values($_candidate['modes']) : [];
+                $_current_mode = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog');
+                $_candidate_mode = count($_candidate_modes) === 1 && in_array($_candidate_modes[0], ['photoblog', 'carousel', 'smacktalk'], true)
+                    ? $_candidate_modes[0] : null;
+                $_activation_conflict = $_candidate_mode !== null && $_candidate_mode !== $_current_mode
+                    ? snap_mode_conflict($pdo, $_candidate_mode) : null;
+                if ($_activation_conflict !== null) {
+                    $gallery_err = $_activation_conflict['message'] . ' Choose a ' . snap_mode_label($_current_mode) . '-compatible skin instead.';
+                } else {
                 $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
                     ->execute([$slug, $slug]);
                 $gallery_msg = 'Skin "' . $slug . '" is now active.';
@@ -127,6 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
                 if (is_file(__DIR__ . '/core/page-cache.php')) {
                     require_once __DIR__ . '/core/page-cache.php';
                     if (function_exists('page_cache_purge_all')) page_cache_purge_all();
+                }
                 }
             }
         }
@@ -347,6 +359,25 @@ if (isset($_POST['reset_pa_bg'])) {
 }
 
 if (isset($_POST['save_skin_settings'])) {
+
+    // An established site's install mode is content architecture, not a skin
+    // preference. Refuse an incompatible target before persisting any options.
+    $_requested_skin = preg_replace('/[^a-z0-9_\-]/', '', $_POST['active_skin_target'] ?? $target_skin);
+    $_requested_manifest = __DIR__ . '/skins/' . $_requested_skin . '/manifest.json';
+    if (is_file($_requested_manifest)) {
+        $_requested_data = snapsmack_load_manifest($_requested_manifest);
+        $_requested_modes = is_array($_requested_data['modes'] ?? null) ? array_values($_requested_data['modes']) : [];
+        $_current_mode = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog');
+        if (count($_requested_modes) === 1 && in_array($_requested_modes[0], ['photoblog', 'carousel', 'smacktalk'], true)
+            && $_requested_modes[0] !== $_current_mode) {
+            $_save_conflict = snap_mode_conflict($pdo, $_requested_modes[0]);
+            if ($_save_conflict !== null) {
+                $_SESSION['gallery_flash'] = $_save_conflict['message'] . ' No skin or mode setting was changed.';
+                header('Location: smack-skin.php?s=' . urlencode((string)($settings['active_skin'] ?? '')));
+                exit;
+            }
+        }
+    }
 
     // 4a. Persistence: Save individual skin and engine control values.
     //     Skin option keys are stored with a skin prefix (e.g. "galleria__htbs_wall_color")

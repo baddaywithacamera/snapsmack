@@ -138,7 +138,7 @@ require_once __DIR__ . '/includes/header.php';
             <ol>
                 <li>
                     <span class="idx-date">Aug 13</span>
-                    <a href="#pixelix-live">GRAMOFSMACK Posts from Pixelix</a>
+                    <a href="#pixelix-live">Pixelix Comes Through the Front Door</a>
                 </li>
                 <li>
                     <span class="idx-date">Aug 13</span>
@@ -304,10 +304,12 @@ require_once __DIR__ . '/includes/header.php';
                     <span class="post-date">August 13, 2026</span>
                     <span class="post-tag">Compatibility</span>
                 </div>
-                <h2><a href="#pixelix-live">GRAMOFSMACK Posts from Pixelix</a></h2>
-                <p>Native phone posting is live. Pixelix can now connect directly to a GRAMOFSMACK site, register through OAuth, pass through the owner&rsquo;s normal login and two-factor authentication, upload a photograph as a private CMS draft, attach ALT text, and publish the finished post. The first real-device test on ALLINTHEWRIST completed that entire path and the post appeared in both SNAPSMACK and Pixelix without an error.</p>
-                <p>This is a deliberately narrow compatibility surface, not an attempt to impersonate a complete Pixelfed server. It is available only to GRAMOFSMACK installs with Offline Posting enabled. Unsupported Pixelfed features such as Stories, Groups, and Pixelix&rsquo;s separate Collections system are advertised as unavailable; optional location lookup returns no invented place data. The photographs, drafts, posts, authentication, and federation remain SNAPSMACK&rsquo;s.</p>
-                <p>That gives GRAMOFSMACK two credible phone workflows: its own installable PWA composer and Pixelix as a native Fediverse client. Use the interface that feels right; both publish into the same owner-controlled archive.</p>
+                <h2><a href="#pixelix-live">Pixelix Comes Through the Front Door</a></h2>
+                <p>Native phone posting is live first on GRAMOFSMACK. Pixelix can connect directly, register through OAuth, pass through the owner&rsquo;s normal login and two-factor authentication, upload a photograph as a private CMS draft, attach ALT text, and publish the finished post. The first real-device test on ALLINTHEWRIST completed that entire path and the post appeared in both SNAPSMACK and Pixelix.</p>
+                <p>GRAMOFSMACK was the first posting contract, not the boundary of the client. SMACKONEOUT, GRAMOFSMACK and SMACKTALK are all Fediverse servers, so Pixelix must be able to connect to all three, read their native content, and participate in the same reciprocal social system. The mode changes the shape of a local post; it does not demote the owner to a content cannon pointed at everybody else.</p>
+                <p>Full Pixelfed compatibility is now the target. SNAPSMACK&rsquo;s real Collections are being mapped into Pixelix, and Groups are being built as moderated community accounts that boost submitted original posts. The photograph stays canonical on its owner&rsquo;s server; the group curates and amplifies it instead of taking custody.</p>
+                <p>Stories are the exception. We are not building disappearing photographs with a countdown clock and calling data loss a feature. Count Binface could run against Stories and win on a platform of letting Tuesday&rsquo;s photographs survive until Wednesday.</p>
+                <p>The photographs, drafts, posts, authentication, collections, group submissions and federation remain SNAPSMACK&rsquo;s. Pixelix is the native client, not the landlord.</p>
                 <p><a href="features.php#working-now"><strong>See what is working now &rarr;</strong></a> &nbsp; <a href="buzzers.php#a043"><strong>Read the Pixelix/OAuth security record &rarr;</strong></a></p>
             </article>
 

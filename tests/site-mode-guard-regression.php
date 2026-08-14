@@ -28,6 +28,7 @@ function m_ok(bool $ok, string $msg): void {
 }
 
 $src = file_get_contents(__DIR__ . '/../core/api-auth.php');
+$skin = file_get_contents(__DIR__ . '/../smack-skin.php');
 
 // ── The auto-flip must be gated on the site being empty ─────────────────────
 m_ok(str_contains($src, '$has_content'),
@@ -51,6 +52,13 @@ m_ok(str_contains($src, 'how_to_change'),
      'the refusal no longer tells the owner how to change the mode');
 m_ok(str_contains($src, 'follows the active skin'),
      'the refusal no longer explains that the mode follows the skin');
+
+m_ok(substr_count($skin, 'snap_mode_conflict($pdo,') >= 2,
+     'one of the two skin activation paths can still switch an established site mode');
+m_ok(str_contains($skin, "require_once 'core/mode-guard.php'"),
+     'skin administration no longer loads the content-shape guard');
+m_ok(str_contains($skin, 'No skin or mode setting was changed.'),
+     'Customize refusal no longer confirms that the save was safely aborted');
 
 // ── The client half: SYBU must not reach a photoblog endpoint by accident ───
 $poster = file_get_contents(__DIR__ . '/../tools/sybu/poster.py');
