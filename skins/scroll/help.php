@@ -46,10 +46,11 @@ HTML
         'icon' => '&#x25A6;',
         'content' => <<<'HTML'
 <h3>The Photo Wall</h3>
-<p>The landing wall is a set of equal columns — choose <strong>Columns Across</strong>
-(3–6, default 4) in the SCROLL settings. Every photograph is shown at its own shape and
-never cropped, so in equal columns a tall portrait naturally covers more area than a wide
-landscape — that is what makes portraits read as the big pictures.</p>
+<p>The landing wall offers four layouts. <strong>Columns</strong> preserves every photograph&rsquo;s
+shape and lets portraits stand tallest. <strong>Rows</strong> preserves shape while landscapes
+lead. <strong>Asymmetric</strong> builds a MOSAIC quilt. <strong>Square</strong> crops photographs
+into an even grid; choose 3&ndash;5 squares across and SCROLL divides the usable wall width after
+tile gaps and borders are accounted for.</p>
 <p>The wall <strong>loads as you scroll</strong> rather than all at once.
 <strong>Images Loaded Per Scroll</strong> sets how many photographs each page adds; new
 pages flow into the existing columns with no gap or jump. <strong>Wall Width (% of window)</strong>

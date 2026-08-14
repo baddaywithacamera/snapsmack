@@ -250,7 +250,9 @@
      * have no ragged join, so appended pages flow in seamlessly. */
     function initInfiniteScroll() {
         var sentinel = document.querySelector('.scroll-wall-sentinel');
-        var grid = document.querySelector('.ss-masonry');
+        // Square mode uses native CSS Grid for geometry but shares this bounded
+        // paging transport with Columns. It needs no JS relayout after append.
+        var grid = document.querySelector('.ss-masonry, .ss-square-wall');
         if (!sentinel || !grid) return;
 
         var loading = false, fails = 0, MAX_FAILS = 4;
@@ -277,7 +279,7 @@
                     sentinel.setAttribute('data-has-more', data.has_more ? '1' : '0');
                     // Hand the new tiles to the shared lazy loader, then relayout.
                     if (window.ssLazyScan) window.ssLazyScan(grid);
-                    relayout(grid);
+                    if (grid.matches('.ss-masonry')) relayout(grid);
                     if (exhausted() && io) io.disconnect();
                 })
                 .catch(function () {

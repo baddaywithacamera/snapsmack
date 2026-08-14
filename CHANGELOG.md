@@ -12,6 +12,10 @@
 
 ## 0.7.523 — 2026-08-14
 
+### SCROLL 0.1.48 — Square wall
+
+- SCROLL adds a fourth landing-wall layout: **Square**. A dedicated **Squares Across** control selects 3, 4, or 5 cropped square photographs per row. CSS Grid divides the configured wall width after gaps and border-box chrome, so every row lands exactly on both container edges while the existing paged loader continues the grid down the page. Columns, Rows, and Asymmetric are unchanged. Repackage SCROLL through the Skin Packager to publish 0.1.48.
+
 ### SMACK YOUR MOUTH — fleet comment moderation, server side
 
 - `multisite/comments/action` now accepts a `spam` verb alongside `approve`/`delete`, backed by a new non-destructive `snap_comments.is_spam` column. Spam flags a comment without deleting it, and is reversible — approving a comment clears the flag. The column is added idempotently on any spoke that has not run it, and the pending queue degrades cleanly rather than 500-ing if a spoke cannot upgrade.
