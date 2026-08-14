@@ -1,4 +1,11 @@
 <?php
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
 /** SLIDERS skin help. */
 ?>
 <h2>SLIDERS</h2>
