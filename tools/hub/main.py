@@ -21,7 +21,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-BUILD_VERSION = "0.1.2"
+BUILD_VERSION = "0.1.3"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -178,11 +178,17 @@ class Hub(tk.Tk):
             messagebox.showerror("Launch failed", f"{name}\n\n{err}", parent=self)
 
     # ── shared setup ─────────────────────────────────────────────────────────
-    def _field(self, parent, label, key, show=None, browse=False):
+    def _field(self, parent, label, key, show=None, browse=False, test=None):
         row = tk.Frame(parent, bg=CARD)
         row.pack(fill="x", padx=14, pady=(0, 8))
-        tk.Label(row, text=label, bg=CARD, fg=DIM,
-                 font=("Segoe UI", 8)).pack(anchor="w")
+        head = tk.Frame(row, bg=CARD)
+        head.pack(fill="x")
+        tk.Label(head, text=label, bg=CARD, fg=DIM,
+                 font=("Segoe UI", 8)).pack(side="left", anchor="w")
+        status = None
+        if test is not None:
+            status = tk.Label(head, text="", bg=CARD, fg=DIM, font=("Segoe UI", 8))
+            status.pack(side="right")
         line = tk.Frame(row, bg=CARD)
         line.pack(fill="x")
         var = tk.StringVar()
@@ -193,7 +199,73 @@ class Hub(tk.Tk):
         if browse:
             tk.Button(line, text="…", bg=FIELD, fg=INK, relief="flat",
                       command=lambda v=var: self._browse(v)).pack(side="left", padx=(6, 0))
+        if test is not None:
+            # Big, clearly-labelled target next to the field it checks.
+            tk.Button(line, text="Test", bg=FIELD, fg=INK, relief="flat",
+                      activebackground=ACCENT, activeforeground=BG,
+                      font=("Segoe UI", 8, "bold"), cursor="hand2",
+                      command=lambda s=status: test(s)).pack(side="left", padx=(6, 0),
+                                                             ipadx=8, ipady=3)
         return var
+
+    def _set_status(self, label, ok, msg):
+        if label is not None:
+            label.configure(text=("✓ " if ok else "✗ ") + msg,
+                            fg=ACCENT if ok else "#ff5555")
+
+    def _testing(self, label):
+        if label is not None:
+            label.configure(text="testing…", fg=DIM)
+            self.update_idletasks()
+
+    def _test_hub(self, status):
+        url = self._creds_vars["hub_url"].get().strip()
+        key = self._creds_vars["hub_key"].get().strip()
+        if not url:
+            self._set_status(status, False, "enter the hub URL first"); return
+        self._testing(status)
+        try:
+            data = snap_discovery.discover(url, api_key=key)
+            n = len((data or {}).get("spokes", []) or [])
+            self._set_status(status, True, f"connected — {n} site(s)")
+        except Exception as e:
+            self._set_status(status, False, str(e)[:70])
+
+    def _test_gemini(self, status):
+        key = self._creds_vars["gemini_api_key"].get().strip()
+        if not key:
+            self._set_status(status, False, "enter a key first"); return
+        self._testing(status)
+        try:
+            import requests
+            r = requests.get("https://generativelanguage.googleapis.com/v1beta/models",
+                             params={"key": key}, timeout=15)
+            self._set_status(status, r.status_code == 200,
+                             "key valid" if r.status_code == 200
+                             else f"rejected (HTTP {r.status_code})")
+        except Exception as e:
+            self._set_status(status, False, str(e)[:70])
+
+    def _test_drive(self, status):
+        import json, os
+        path = self._creds_vars["google_credentials"].get().strip()
+        folder = self._creds_vars["drive_folder_id"].get().strip()
+        if not path:
+            self._set_status(status, False, "choose a credentials JSON first"); return
+        if not os.path.isfile(path):
+            self._set_status(status, False, "file not found"); return
+        try:
+            data = json.load(open(path, encoding="utf-8"))
+        except Exception:
+            self._set_status(status, False, "not valid JSON"); return
+        looks_ok = isinstance(data, dict) and (
+            "installed" in data or "web" in data or "client_email" in data)
+        if not looks_ok:
+            self._set_status(status, False, "doesn't look like Google creds"); return
+        if not folder:
+            self._set_status(status, True, "creds look valid — add a backup folder ID")
+        else:
+            self._set_status(status, True, "creds + folder set — SUYB proves the live link")
 
     def _browse(self, var):
         p = filedialog.askopenfilename(parent=self, title="Choose credentials JSON",
@@ -204,10 +276,10 @@ class Hub(tk.Tk):
     def _build_setup(self, parent):
         card = self._card(parent, "HUB SETUP  ·  set once, every tool has it")
         self._field(card, "HUB SITE URL",   "hub_url")
-        self._field(card, "HUB API KEY",    "hub_key", show="•")
-        self._field(card, "GEMINI API KEY", "gemini_api_key", show="•")
-        self._field(card, "GOOGLE DRIVE CREDENTIALS (json)", "google_credentials", browse=True)
-        self._field(card, "DRIVE FOLDER ID", "drive_folder_id")
+        self._field(card, "HUB API KEY",    "hub_key", show="•", test=self._test_hub)
+        self._field(card, "GEMINI API KEY", "gemini_api_key", show="•", test=self._test_gemini)
+        self._field(card, "GOOGLE DRIVE CREDENTIALS (json)", "google_credentials", browse=True, test=self._test_drive)
+        self._field(card, "BACKUP FOLDER ID", "drive_folder_id")
         bar = tk.Frame(card, bg=CARD)
         bar.pack(fill="x", padx=14, pady=(4, 12))
         tk.Button(bar, text="SAVE SHARED CREDENTIALS", bg=FIELD, fg=INK,
