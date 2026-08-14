@@ -1,5 +1,12 @@
 <?php
-/** Static regression guard for the GRAMOFSMACK-only Pixelix adapter. */
+/**
+ * Static regression guard for the GRAMOFSMACK-only Pixelix adapter.
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
 $root = dirname(__DIR__);
 $api = file_get_contents($root . '/pixelfed-api.php');
 $ht  = file_get_contents($root . '/core/htaccess-template');
