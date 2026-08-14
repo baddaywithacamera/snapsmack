@@ -1,3 +1,6 @@
+<!-- SNAPSMACK_EOF_HEADER -->
+<!-- Last non-empty line of this file MUST be the SNAPSMACK EOF marker below. -->
+
 # CRONOMETER — fleet cron / job-health console
 
 **Status:** desktop tool, first cut shipped at `0.1.0` (tools/cronometer/).

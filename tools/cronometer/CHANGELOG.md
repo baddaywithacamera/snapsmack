@@ -1,3 +1,6 @@
+<!-- SNAPSMACK_EOF_HEADER -->
+<!-- Last non-empty line of this file MUST be the SNAPSMACK EOF marker below. -->
+
 # CRONOMETER — changelog
 
 CRONOMETER (a cron + chronometer pun) is the fleet cron / job-health console: one
