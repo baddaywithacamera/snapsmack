@@ -61,7 +61,8 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 
     <section>
-        <div class="wrap feature-groups">
+        <div class="wrap">
+            <div class="feature-groups">
             <article class="feature-group">
                 <h2>Publish your way</h2>
                 <ul>
@@ -109,6 +110,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>No subscription, premium tier, advertising network, or hostage situation. The CMS, skins, and companion tools are free.</p>
                 <p><a href="brass-tacks.php"><strong>Read the FAQ &rarr;</strong></a></p>
             </article>
+            </div>
         </div>
     </section>
 
