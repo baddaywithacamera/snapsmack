@@ -27,20 +27,59 @@
     var rest = number(host.dataset.rest, 16) * 1000 * (tablet ? 1.7 : 1);
     var pulses = Math.max(0, Math.min(3, number(host.dataset.pulses, 3)));
     var classic = [
-        ['ATM', 'ATMOSPHERIC CONTROL', 'fault'],
-        ['COM', 'COMMUNICATIONS', 'violet'],
-        ['CNT', 'CONTENTS', 'calm'],
-        ['DMG', 'DAMAGE ASSESSMENT', 'fault'],
-        ['GDE', 'GUIDANCE SYSTEM', 'blue'],
-        ['HIB', 'HIBERNATION CONTROL', 'blue'],
-        ['NAV', 'NAVIGATION', 'violet'],
-        ['NUC', 'NUCLEAR SYSTEMS', 'blue'],
-        ['VEH', 'VEHICLE STATUS', 'calm']
+        ['AE35', 'ANTENNA UNIT', 'fault', 'FAULT'],
+        ['ATM', 'ATMOSPHERIC CONTROL', 'calm', 'NOMINAL'],
+        ['CAM', 'CAMERA ARRAY', 'violet', 'ACTIVE'],
+        ['COM', 'COMMUNICATIONS', 'violet', 'LINK 4'],
+        ['CNT', 'CONTENTS', 'calm', 'INDEX'],
+        ['DMG', 'DAMAGE ASSESSMENT', 'fault', 'CLEAR'],
+        ['DSK', 'DISK STORAGE', 'blue', 'ONLINE'],
+        ['EVA', 'EXTRAVEHICULAR', 'violet', 'READY'],
+        ['GDE', 'GUIDANCE SYSTEM', 'blue', 'LOCKED'],
+        ['HIB', 'HIBERNATION CONTROL', 'blue', 'STANDBY'],
+        ['LIF', 'LIFE SUPPORT', 'calm', 'GREEN'],
+        ['MEM', 'LOGIC MEMORY', 'violet', 'BANK 6'],
+        ['NAV', 'NAVIGATION', 'violet', 'SOL 193'],
+        ['NUC', 'NUCLEAR SYSTEMS', 'blue', 'SAFE'],
+        ['OPT', 'OPTICAL ARRAY', 'calm', 'TRACKING'],
+        ['PWR', 'POWER DISTRIBUTION', 'fault', '98%'],
+        ['RDR', 'RADAR SYSTEM', 'blue', 'CLEAR'],
+        ['SYS', 'SYSTEM DIAGNOSTIC', 'calm', 'PASS'],
+        ['TLM', 'TELEMETRY', 'violet', 'SYNC'],
+        ['VEH', 'VEHICLE STATUS', 'calm', 'NOMINAL']
     ];
+    var classicDeck = [];
+    var lastClassicIndex = -1;
+    var lastTile = null;
 
     function number(value, fallback) {
         var parsed = parseInt(value, 10);
         return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    function refillClassicDeck() {
+        var i;
+        var j;
+        var swap;
+        classicDeck = [];
+        for (i = 0; i < classic.length; i++) classicDeck.push(i);
+        for (i = classicDeck.length - 1; i > 0; i--) {
+            j = Math.floor(Math.random() * (i + 1));
+            swap = classicDeck[i];
+            classicDeck[i] = classicDeck[j];
+            classicDeck[j] = swap;
+        }
+        if (classicDeck.length > 1 && classicDeck[0] === lastClassicIndex) {
+            swap = classicDeck[0];
+            classicDeck[0] = classicDeck[1];
+            classicDeck[1] = swap;
+        }
+    }
+
+    function nextClassicScreen() {
+        if (!classicDeck.length) refillClassicDeck();
+        lastClassicIndex = classicDeck.shift();
+        return classic[lastClassicIndex].slice();
     }
 
     function visibleTiles() {
@@ -56,10 +95,7 @@
             return [code, tile.dataset.heLabel || 'HEURISTIC ANALYSIS', tile.dataset.heColour || 'calm', tile.dataset.heValue || ''];
         }
         if (!classicFallback) return null;
-        var seed = number(tile.dataset.hePost, 0) + number(tile.dataset.row, 0) * 3 + number(tile.dataset.col, 0);
-        var item = classic[Math.abs(seed) % classic.length].slice();
-        item.push('');
-        return item;
+        return nextClassicScreen();
     }
 
     function buildOverlay(tile, screen) {
@@ -95,7 +131,9 @@
             return !tile.matches(':hover') && !tile.contains(document.activeElement);
         });
         if (!tiles.length) return schedule(rest);
-        var tile = tiles[Math.floor(Math.random() * tiles.length)];
+        var choices = tiles.length > 1 ? tiles.filter(function (candidate) { return candidate !== lastTile; }) : tiles;
+        var tile = choices[Math.floor(Math.random() * choices.length)];
+        lastTile = tile;
         var screen = screenFor(tile);
         if (!screen) return schedule(rest);
         var overlay = buildOverlay(tile, screen);
