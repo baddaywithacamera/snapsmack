@@ -7,7 +7,7 @@
  * Last non-empty line of this file MUST match the line above.
  * Missing or different = truncated/corrupted. Restore before saving.
  */
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/thumb-generator.php';
 require_once __DIR__ . '/core/alt-text.php';
 require_once __DIR__ . '/core/gram-client-authoring.php';
