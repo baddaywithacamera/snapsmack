@@ -28,9 +28,12 @@ Offline fleet comment moderation + replies. The inbound twin of COLD SNAP.
   sync state.
 
 ### Notes
-- Reply, spam, and read-back-by-id are not yet server routes; the client calls
-  them behind graceful fallbacks and reports the gap plainly. See
-  `docs/smack-your-mouth-spec.md` → "Server API" for the exact MUST-ADD routes.
+- Reply, mark-spam, read-back-by-id, and the approved+pending history list
+  landed server-side in core **0.7.523** (`core/multisite-api.php`): the
+  `comments/reply`, `comments/get`, `comments/list` routes and the `spam` verb on
+  `comments/action`, backed by a new non-destructive `snap_comments.is_spam`
+  column. The client keeps its graceful fallbacks, so it still degrades cleanly
+  against an older spoke. See `docs/smack-your-mouth-spec.md` → "Server API".
 
 ---
 

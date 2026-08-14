@@ -44,6 +44,9 @@ $peers = $pdo->query("
 
 if (empty($peers)) {
     $log('No peers with RSS feeds. Exiting.');
+    // CRONOMETER: still a healthy run — there was simply nothing to fetch.
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('rss_last_run', ?) ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute([date('Y-m-d H:i:s')]);
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('rss_last_status', 'ok') ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute();
     exit(0);
 }
 
@@ -138,4 +141,10 @@ foreach ($peers as $peer) {
 }
 
 $log('RSS fetch completed.');
+
+// CRONOMETER: record a fleet-level run marker so the job board can light the
+// rss_fetch row. Per-peer snap_blogroll.rss_last_fetched already existed, but
+// there was no job-level "the sweep ran" signal until now.
+$pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('rss_last_run', ?) ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute([date('Y-m-d H:i:s')]);
+$pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('rss_last_status', 'ok') ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute();
 // ===== SNAPSMACK EOF =====

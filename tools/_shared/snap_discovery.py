@@ -177,8 +177,15 @@ def save_to_shared(hub_info, spokes, hub_api_key="") -> dict:
         prof = _profile_for(node, fallback_key=hub_api_key)
         if not prof["site_url"]:
             continue
-        # Have the spoke mint a real sybu posting key for the fleet (set-up-once).
         akl = (node.get("api_key_local") or "").strip()
+        # The full node key (role='hub' on the spoke). Hub-role tools like SMACK
+        # YOUR MOUTH authenticate with THIS, not the sybu posting key — so persist
+        # it in extras to give them the moderation credential per site. The hub's
+        # own row carries no api_key_local; its full key is the hub key itself.
+        akl_for_extras = akl or ((hub_api_key or "").strip() if node is hub_node else "")
+        if akl_for_extras:
+            prof.setdefault("extras", {})["api_key_local"] = akl_for_extras
+        # Have the spoke mint a real sybu posting key for the fleet (set-up-once).
         if akl:
             minted = _provision_spoke_key(prof["site_url"], akl, "sybu")
             if minted:

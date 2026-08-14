@@ -92,12 +92,39 @@ function snapsmack_skin_allowed_distribution($manifest): bool {
     $is_fedistructure = defined('SNAPSMACK_DISTRIBUTION')
                      && SNAPSMACK_DISTRIBUTION === 'fedistructure';
     $skin_is_service  = !empty($manifest['features']['fedistructure_only']);
-    // Symmetric split. A FEDISTRUCTURE (mode 4) install is the Onyx product and
-    // shows ONLY service skins — the ordinary blog skins are hidden from it
-    // entirely. An ordinary install is the mirror image: every non-service skin,
-    // never a service one. A malformed manifest (handled above) always stays
-    // visible so a parse slip can never blank a gallery.
-    return $is_fedistructure ? $skin_is_service : !$skin_is_service;
+    // Ordinary install: every skin EXCEPT a service one.
+    if (!$is_fedistructure) return !$skin_is_service;
+    // FEDISTRUCTURE (mode 4) install: normally shows ONLY service skins. But if
+    // this install ships NO service skin at all, filtering to "service only"
+    // would leave the skin picker EMPTY — a site with nothing to choose. In that
+    // case fall back to showing the ordinary skins so the picker is never blank.
+    // (Onyx shipped as an ordinary skin from 0.7.5xx, so with no service skin
+    // installed this is the live path, not a corner case.)
+    if (!snapsmack_any_service_skin_installed()) return true;
+    return $skin_is_service;
+}
+}
+
+/**
+ * Does THIS install actually ship a service (fedistructure_only) skin?
+ *
+ * Used only to keep a FEDISTRUCTURE install's skin picker from going empty when
+ * no service skin is present (see snapsmack_skin_allowed_distribution). Scans the
+ * installed manifests once per request and caches the answer.
+ */
+if (!function_exists('snapsmack_any_service_skin_installed')) {
+function snapsmack_any_service_skin_installed(): bool {
+    static $cached = null;
+    if ($cached !== null) return $cached;
+    $cached = false;
+    foreach (glob(SKINS_DIR . '/*/manifest.json') ?: [] as $mf) {
+        $d = json_decode((string)@file_get_contents($mf), true);
+        if (is_array($d) && !empty($d['features']['fedistructure_only'])) {
+            $cached = true;
+            break;
+        }
+    }
+    return $cached;
 }
 }
 

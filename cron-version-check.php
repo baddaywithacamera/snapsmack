@@ -124,6 +124,14 @@ try {
     );
     $stmt->execute([date('Y-m-d H:i:s')]);
 
+    // CRONOMETER: record this run's health so the fleet job board can light the
+    // version_check row. Previously only last_update_check was written, and only
+    // on success, so a failed run left a stale-green row.
+    $pdo->prepare(
+        "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('version_check_last_status', 'ok')
+         ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+    )->execute();
+
     // --- SMACKBACK: file integrity verification ---
     require_once "{$root}/core/smackback.php";
     $smack_settings = $pdo->query(
@@ -165,6 +173,19 @@ try {
     echo $msg . "\n";
 
 } catch (PDOException $e) {
+    // CRONOMETER: best-effort record the failure so the fleet board shows a
+    // recent FAILED run instead of a stale-green version_check row. If the DB
+    // itself is the problem there is nothing more we can do — swallow and exit.
+    try {
+        $pdo->prepare(
+            "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('version_check_last_status', 'failed')
+             ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+        )->execute();
+        $pdo->prepare(
+            "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('last_update_check', ?)
+             ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+        )->execute([date('Y-m-d H:i:s')]);
+    } catch (\Throwable $ignore) { /* DB unavailable — leave it */ }
     fwrite(STDERR, "Failed to store update check result: " . $e->getMessage() . "\n");
     exit(1);
 }

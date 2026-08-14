@@ -16,7 +16,7 @@
   },
   "default_variant": "crimson",
   "features": {
-    "fedistructure_only": true,
+    "fedistructure_only": false,
     "supports_wall": false,
     "has_landing": false,
     "post_modes": [
