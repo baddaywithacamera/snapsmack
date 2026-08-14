@@ -37,6 +37,10 @@ $checks = [
     'Pixelix instance stats'   => "'stats'=>",
     'Pixelix video limit'      => "'video_size_limit'=>0",
     'separate ALT update'      => "method==='PUT'",
+    'Pixelix settings'         => "'hide_collections'=>true",
+    'Pixelix account alias'    => "api/pixelfed/v1/accounts/1",
+    'location search fallback' => "api/v1.1/compose/search/location",
+    'collections fallback'     => "api/v1\\.1/collections/accounts/1",
 ];
 foreach ($checks as $name => $needle) {
     if (strpos($api, $needle) === false) { fwrite(STDERR, "Missing: {$name}\n"); exit(1); }
@@ -44,7 +48,9 @@ foreach ($checks as $name => $needle) {
 if (strpos($api, 'function px_schema') !== false || strpos($api, 'CREATE TABLE') !== false || strpos($api, 'ALTER TABLE') !== false) { fwrite(STDERR, "Runtime schema mutation returned\n"); exit(1); }
 if (strpos($authoring, 'FOR UPDATE') === false || strpos($authoring, '300 images/hour') === false) { fwrite(STDERR, "Missing atomic authoring budget\n"); exit(1); }
 if (strpos($ht, 'pixelfed-api.php?route=api/v$1/$2') === false) { fwrite(STDERR, "Missing client API rewrite\n"); exit(1); }
+if (strpos($ht, 'pixelfed-api.php?route=api/v1.1/$1') === false || strpos($ht, 'pixelfed-api.php?route=api/pixelfed/v1/$1') === false) { fwrite(STDERR, "Missing Pixelix extension rewrites\n"); exit(1); }
 if (strpos($installer, 'pixelfed-api.php?route=api/v$1/$2') === false || strpos($installer, 'pixelfed-api.php?route=oauth/$1') === false) { fwrite(STDERR, "Installer-generated .htaccess is missing client routes\n"); exit(1); }
+if (strpos($installer, 'pixelfed-api.php?route=api/v1.1/$1') === false || strpos($installer, 'pixelfed-api.php?route=api/pixelfed/v1/$1') === false) { fwrite(STDERR, "Installer-generated .htaccess is missing Pixelix extension routes\n"); exit(1); }
 if (strpos($release, 'Tagged source is missing required Pixelix runtime file') === false || strpos($release, 'Tagged htaccess template is missing required Pixelix API/OAuth routes') === false) { fwrite(STDERR, "Release builder does not reject incomplete Pixelix tags\n"); exit(1); }
 if (strpos($ui, 'ss-gram-pwa-composer.css') === false) { fwrite(STDERR, "Missing GRAM composer stylesheet\n"); exit(1); }
 if (strpos($ui, 'gram-composer-form') === false || strpos($ui, 'gram-advanced') === false) { fwrite(STDERR, "Missing structured PWA composer\n"); exit(1); }
