@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "name": "SLIDERS",
+  "version": "0.1.0",
+  "author": "Sean McCormick, OpenAI Codex",
+  "support": "sean@baddaywithacamera.ca",
+  "description": "A GRAMOFSMACK grid with normal square tiles over GLIDE's moving wall of your own photographs. A configurable opacity layer keeps the foreground readable.",
+  "status": "beta",
+  "modes": ["carousel"],
+  "post_page": "gram",
+  "edit_page": "carousel",
+  "features": {
+    "supports_wall": false,
+    "masonry_supported": false,
+    "archive_layouts": ["square"],
+    "supports_slider": false,
+    "has_landing": true,
+    "post_modes": ["image"],
+    "instagram_mode": true,
+    "carousel": true,
+    "community": ["likes", "comments"]
+  },
+  "require_scripts": [
+    "smack-keyboard", "smack-community", "smack-slider", "smack-carousel-view",
+    "smack-grid-nav", "smack-grid-modal", "smack-grid-lightbox", "smack-glide",
+    "smack-progressive-reveal", "smack-tag-infinite", "smack-image-fade-load",
+    "smack-lightbox", "smack-gram-search"
+  ],
+  "community_comments": true,
+  "community_likes": true,
+  "community_reactions": false,
+  "options": {
+    "sl_opacity": {
+      "section": "SLIDERS BACKGROUND", "type": "range_numeric", "label": "Opacity Layer",
+      "default": "68", "min": "0", "max": "95", "step": "5", "unit": "%",
+      "hint": "0 shows the moving wall clearly. 95 leaves only a quiet trace behind the normal grid."
+    },
+    "sl_layer_color": {
+      "section": "SLIDERS BACKGROUND", "type": "color", "label": "Opacity Layer Colour", "default": "#f4f1eb"
+    },
+    "sl_wall_opacity": {
+      "section": "SLIDERS BACKGROUND", "type": "range_numeric", "label": "Moving Photo Opacity",
+      "default": "72", "min": "15", "max": "100", "step": "5", "unit": "%"
+    },
+    "sl_blur": {
+      "section": "SLIDERS BACKGROUND", "type": "range_numeric", "label": "Background Blur",
+      "default": "1", "min": "0", "max": "12", "step": "1", "unit": "px",
+      "selector": ":root", "property": "--sl-blur"
+    },
+    "sl_flow_axis": {
+      "section": "SLIDERS BACKGROUND", "type": "select", "label": "Flow Orientation", "default": "diagonal_up",
+      "options": {"horizontal":"Left / Right","vertical":"Up / Down","diagonal_down":"Top Left / Bottom Right","diagonal_up":"Bottom Left / Top Right"}
+    },
+    "sl_angle": {
+      "section": "SLIDERS BACKGROUND", "type": "range_numeric", "label": "Fine Angle Adjustment",
+      "default": "-7", "min": "-18", "max": "18", "step": "1", "unit": "deg",
+      "selector": ":root", "property": "--sl-angle"
+    },
+    "sl_travel": {
+      "section": "SLIDERS BACKGROUND", "type": "range_numeric", "label": "Wheel / Drag Sensitivity",
+      "default": "0.55", "min": "0.2", "max": "1.5", "step": "0.05", "unit": ""
+    },
+    "ic_carousel_indicator": {
+      "section": "GRID", "type": "select", "label": "Carousel Indicator", "default": "icon",
+      "options": {"icon":"Layered squares icon","count":"Image count badge","none":"No indicator"}
+    },
+    "ic_hover_overlay": {
+      "section": "GRID", "type": "select", "label": "Hover Overlay", "default": "dark",
+      "options": {"dark":"Darken only","title":"Show post title","count":"Show image count","none":"No overlay"}
+    },
+    "ic_gap": {
+      "section": "GRID", "type": "range_numeric", "label": "Space Between Tiles",
+      "default": "6", "min": "0", "max": "40", "step": "1", "unit": "px",
+      "selector": ":root", "property": "--grid-gap"
+    },
+    "ic_profile_header": {
+      "section": "PROFILE", "type": "select", "label": "Profile Header", "default": "1",
+      "options": {"1":"Show","0":"Hide"}
+    },
+    "ic_show_tagline": {
+      "section": "PROFILE", "type": "select", "label": "Tagline", "default": "1",
+      "options": {"1":"Show","0":"Hide"}
+    },
+    "ic_panel_color": {
+      "section": "READABILITY", "type": "color", "label": "Content Panel Colour", "default": "#ffffff"
+    },
+    "ic_panel_opacity": {
+      "section": "READABILITY", "type": "range_numeric", "label": "Content Panel Opacity",
+      "default": "0", "min": "0", "max": "100", "step": "5", "unit": "%"
+    },
+    "ic_nav_color": {
+      "section": "READABILITY", "type": "color", "label": "Navigation Colour", "default": "#ffffff"
+    },
+    "ic_nav_opacity": {
+      "section": "READABILITY", "type": "range_numeric", "label": "Navigation Opacity",
+      "default": "0", "min": "0", "max": "100", "step": "5", "unit": "%"
+    },
+    "ic_bg_primary": {
+      "section": "COLOURS", "type": "color", "label": "Grid Surface", "default": "#ffffff",
+      "selector": ":root", "property": "--bg-primary"
+    },
+    "ic_text_primary": {
+      "section": "COLOURS", "type": "color", "label": "Primary Text", "default": "#262626",
+      "selector": ":root", "property": "--text-primary"
+    },
+    "ic_text_secondary": {
+      "section": "COLOURS", "type": "color", "label": "Secondary Text", "default": "#777777",
+      "selector": ":root", "property": "--text-secondary"
+    },
+    "ic_accent": {
+      "section": "COLOURS", "type": "color", "label": "Accent", "default": "#0095f6",
+      "selector": ":root", "property": "--accent-color"
+    },
+    "ic_max_width": {
+      "section": "LAYOUT", "type": "range_numeric", "label": "Grid Max Width",
+      "default": "935", "min": "600", "max": "1600", "step": "5", "unit": "px",
+      "selector": ":root", "property": "--grid-max-width"
+    },
+    "ic_gutter": {
+      "section": "LAYOUT", "type": "range_numeric", "label": "Side Gutter",
+      "default": "24", "min": "0", "max": "400", "step": "4", "unit": "px",
+      "selector": ":root", "property": "--grid-gutter"
+    }
+  }
+}
