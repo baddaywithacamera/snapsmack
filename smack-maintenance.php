@@ -924,8 +924,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'Proxy-aware HTTPS'      => 'X-Forwarded-Proto',
                     'Clean URL router'       => 'RewriteRule ^([a-zA-Z0-9_-]+)$ index.php',
                     'snap-in named route'    => 'RewriteRule ^snap-in$',
-                    'SMACKVERSE webfinger'   => 'well-known/webfinger',
-                    'SMACKVERSE AP routes'   => 'smackverse.php?appath=',
+                    'Fediverse webfinger'    => 'well-known/webfinger',
+                    'Fediverse AP routes'    => 'smackverse.php?appath=',
                     'Security headers'       => 'X-Frame-Options',
                     'Sensitive files'        => 'FilesMatch "(^\\.ht',
                     'Core PHP blocking'      => 'FilesMatch "^(db|auth|constants',
@@ -1136,7 +1136,7 @@ include 'core/sidebar.php';
 
         <div class="box box-flex">
             <h3>REGENERATE ALL THUMBNAILS</h3>
-            <p class="skin-desc-text">Force-regenerates square and aspect thumbnails plus the SMACKVERSE fediverse bake for every image, overwriting existing ones. Honours each image's saved focal point, zoom, and frame styling. Use after changing thumbnail settings or to backfill bakes for posts made before SMACKVERSE.</p>
+            <p class="skin-desc-text">Force-regenerates square and aspect thumbnails plus the Fediverse bake for every image, overwriting existing ones. Honours each image's saved focal point, zoom, and frame styling. Use after changing thumbnail settings or to backfill bakes for posts made before Fediverse.</p>
             <?php if (!empty($regen_thumbs_has_more)): ?>
                 <form method="POST">
                     <input type="hidden" name="action" value="regen_thumbs">

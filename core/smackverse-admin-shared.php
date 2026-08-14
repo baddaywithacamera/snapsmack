@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'enabl
         sv_kick_delivery();
         $sv_cron_note = $cok ? ' Delivery runs every 10 minutes.'
                              : ' NOTE: could not auto-schedule delivery on this host — see the checklist.';
-        header('Location: ' . $sv_self . '?msg=' . urlencode('SMACKVERSE ENABLED — the blog now answers as @' . sv_handle($sv_settings) . '@' . sv_domain($sv_settings) . '.' . $sv_wf_note . $sv_cron_note));
+        header('Location: ' . $sv_self . '?msg=' . urlencode('FEDIVERSE ENABLED — the blog now answers as @' . sv_handle($sv_settings) . '@' . sv_domain($sv_settings) . '.' . $sv_wf_note . $sv_cron_note));
         exit;
     }
 }
@@ -109,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'disab
     // Pull the delivery cron — no point running a sweep that self-exits.
     require_once 'core/cron-register.php';
     cron_remove_job('# snapsmack-smackverse');
-    header('Location: ' . $sv_self . '?msg=' . urlencode('SMACKVERSE disabled — all federation endpoints now 404, delivery task removed. Followers are kept and resume if you re-enable.'));
+    header('Location: ' . $sv_self . '?msg=' . urlencode('Fediverse disabled — all federation endpoints now 404, delivery task removed. Followers are kept and resume if you re-enable.'));
     exit;
 }
 
@@ -230,7 +230,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'conve
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resync') {
     if (!sv_enabled($sv_settings)) {
-        header('Location: ' . $sv_self . '?msg=' . urlencode('SMACKVERSE is off — nothing to resync.'));
+        header('Location: ' . $sv_self . '?msg=' . urlencode('Fediverse is off — nothing to resync.'));
         exit;
     }
     $rs_count = isset($_POST['resync_count']) ? max(1, min(500, (int)$_POST['resync_count'])) : null;
@@ -273,7 +273,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resyn
 // clean. The only lever that reaches an already-poisoned follower.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reimprint') {
     if (!sv_enabled($sv_settings)) {
-        header('Location: ' . $sv_self . '?msg=' . urlencode('SMACKVERSE is off — nothing to re-imprint.'));
+        header('Location: ' . $sv_self . '?msg=' . urlencode('Fediverse is off — nothing to re-imprint.'));
         exit;
     }
     $ri_count = isset($_POST['reimprint_count']) ? max(1, min(1000, (int)$_POST['reimprint_count'])) : null;
@@ -302,7 +302,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regis
 // JOIN / LEAVE the SMACKVERSE network relay.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'relay_join') {
     if (!sv_enabled($sv_settings)) {
-        header('Location: ' . $sv_self . '?msg=' . urlencode('Enable SMACKVERSE first.'));
+        header('Location: ' . $sv_self . '?msg=' . urlencode('Enable Fediverse first.'));
     } else {
         list(, $rmsg) = sv_relay_join($pdo, $sv_settings);
         header('Location: ' . $sv_self . '?msg=' . urlencode($rmsg));

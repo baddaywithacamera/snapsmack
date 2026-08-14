@@ -34,9 +34,35 @@ function snapsmack_gram_authoring_budget(PDO $pdo, int $add): void {
 }
 
 /**
+ * Ensure snap_posts carries the per-post federation + sensitivity columns that
+ * snapsmack_gram_create_post() writes (fedi_enabled etc., added 0.7.367/0.7.393).
+ * These are normally created by sv_ensure_tables when SMACKVERSE first runs, but a
+ * site that has never run it drifts, and every gram/Pixelfed post then dies with
+ * "Unknown column 'fedi_enabled' in 'INSERT INTO'".
+ *
+ * MUST be called BEFORE the caller opens its transaction: an ALTER implicit-commits
+ * in MySQL/MariaDB, so running it inside a live transaction would sever it. Mirrors
+ * the snap_posts block of core/smackverse.php sv_ensure_tables().
+ */
+function snapsmack_gram_ensure_post_columns(PDO $pdo): void {
+    foreach ([
+        "fedi_enabled tinyint(1) NOT NULL DEFAULT 1",
+        "fedi_pushed_at datetime DEFAULT NULL",
+        "fedi_published_at datetime DEFAULT NULL",
+        "is_pinned tinyint(1) NOT NULL DEFAULT 0",
+        "is_sensitive tinyint(1) NOT NULL DEFAULT 0",
+        "content_warning varchar(255) DEFAULT NULL",
+    ] as $_col) {
+        try { $pdo->exec("ALTER TABLE snap_posts ADD COLUMN IF NOT EXISTS {$_col}"); }
+        catch (Exception $e) { /* older MySQL without IF NOT EXISTS — ignore dup */ }
+    }
+}
+
+/**
  * Create one GRAM post around already-created image rows.
  * $members: [['image_id'=>int,'style'=>optional pivot style], ...]
- * Caller owns the surrounding transaction.
+ * Caller owns the surrounding transaction. Call snapsmack_gram_ensure_post_columns()
+ * BEFORE opening that transaction so a drifted snap_posts can't fail the INSERT.
  */
 function snapsmack_gram_create_post(PDO $pdo, array $members, array $o=[]): int {
     if(!$members||count($members)>30)throw new InvalidArgumentException('A GRAM post needs between 1 and 30 images.');
@@ -50,8 +76,13 @@ function snapsmack_gram_create_post(PDO $pdo, array $members, array $o=[]): int 
     $pi=$pdo->prepare("INSERT INTO snap_post_images(post_id,image_id,sort_position,is_cover,img_size_pct,img_border_px,img_border_color,img_bg_color,img_shadow,img_crop_mode,img_focus_x,img_focus_y,img_zoom) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)");
     $link=$pdo->prepare('UPDATE snap_images SET post_id=? WHERE id=?');
     foreach(array_values($members)as$pos=>$m){$s=(array)($m['style']??[]);$iid=(int)($m['image_id']??0);if($iid<1)throw new InvalidArgumentException('Invalid GRAM image id.');$crop=($s['crop']??'fit')==='fill'?'fill':'fit';$pi->execute([$pid,$iid,$pos,$pos===0?1:0,max(10,min(100,(int)($s['size']??100))),max(0,min(50,(int)($s['bpx']??0))),(string)($s['bcol']??'#000000'),(string)($s['bg']??'#ffffff'),max(0,min(3,(int)($s['shadow']??0))),$crop,max(0,min(100,(int)($s['fx']??50))),max(0,min(100,(int)($s['fy']??50))),max(100,min(300,(int)($s['zoom']??100)))]);$link->execute([$pid,$iid]);}
-    $pdo->prepare('UPDATE snap_posts SET sort_order=sort_order+1 WHERE id<>? AND sort_order>0')->execute([$pid]);
-    $pdo->prepare('UPDATE snap_posts SET sort_order=1 WHERE id=?')->execute([$pid]);
+    // A fresh post is left at sort_order=0 ON PURPOSE. The canonical feed order
+    // (parade landing.php, the light table, smack-lt-gram — the 0.7.349 model) is
+    // "sort_order=0 group first, newest id first; sort_order>0 is the manually
+    // curated band BELOW it." Seating a new post at sort_order=1 (added Aug 2026 in
+    // the Pixelix front-door commit 3bb44d5d) therefore buried every new post under
+    // the whole 0-backlog — the "new posts not at top of feed" regression. Leaving
+    // it at 0 puts it back at the top by recency, matching every reader.
     return $pid;
 }
 

@@ -216,6 +216,7 @@ if (preg_match('#^api/v1/media/(\d+)$#',$route,$m) && $method==='PUT') {
 }
 if ($route==='api/v1/statuses' && $method==='POST') {
     px_gram_authoring_gate($pdo);px_offline_gate($pdo);px_require_scope($token,'write');$input=$_POST;$ctype=(string)($_SERVER['CONTENT_TYPE']??'');if(stripos($ctype,'application/json')!==false){$decoded=json_decode(file_get_contents('php://input'),true);if(is_array($decoded))$input=$decoded;}$ids=$input['media_ids']??[];if(!is_array($ids))$ids=[$ids];$ids=array_values(array_unique(array_map('intval',$ids)));if(!$ids||count($ids)>10)px_json(['error'=>'Attach between 1 and 10 images'],422);
+    snapsmack_gram_ensure_post_columns($pdo); // heal a drifted snap_posts BEFORE the txn (ALTER implicit-commits)
     $pdo->beginTransaction();$place=implode(',',array_fill(0,count($ids),'?'));$q=$pdo->prepare("SELECT i.id FROM snap_images i JOIN snap_oauth_media om ON om.image_id=i.id WHERE i.id IN ($place) AND i.post_id IS NULL AND om.token_id=? FOR UPDATE");$q->execute([...$ids,(int)$token['id']]);$valid=array_map('intval',$q->fetchAll(PDO::FETCH_COLUMN));if(count($valid)!==count($ids)){$pdo->rollBack();px_json(['error'=>'One or more media IDs are invalid'],422);}
     $status=trim((string)($input['status']??''));$allowComments=empty($input['comments_disabled'])?1:0;
     try {

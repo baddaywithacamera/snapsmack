@@ -98,9 +98,9 @@ include 'core/sidebar.php';
 
     <?php if (!$fed_on): ?>
         <div class="alert alert-warn">
-            &gt; SMACKVERSE federation is <strong>OFF</strong>. The challenge can be configured here, but
+            &gt; Fediverse federation is <strong>OFF</strong>. The challenge can be configured here, but
             follow-to-join and the board only come alive once you enable federation on the
-            <a href="smack-smackverse.php">SMACKVERSE &rarr; FEDERATION</a> page.
+            <a href="smack-smackverse.php">FEDIVERSE &rarr; FEDERATION</a> page.
         </div>
     <?php endif; ?>
 

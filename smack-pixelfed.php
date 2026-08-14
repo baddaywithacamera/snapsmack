@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sspf_action'])) {
     $act = (string)$_POST['sspf_action'];
 
     if (!$sv_on) {
-        echo json_encode(['ok' => false, 'msg' => 'SMACKVERSE is off — flip it on in Federation first.']);
+        echo json_encode(['ok' => false, 'msg' => 'Fediverse is off — flip it on in Federation first.']);
         exit;
     }
 
@@ -351,7 +351,7 @@ try {
 
 $sv_unread = ($sv_on && $sv_gram) ? sv_unread_count($pdo) : 0;
 
-$page_title = "SMACKVERSE — Pixelfed";
+$page_title = "Fediverse — Pixelfed";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -359,7 +359,7 @@ include 'core/sidebar.php';
 
 <div class="main">
     <div class="header-row">
-        <h2>SMACKVERSE</h2>
+        <h2>FEDIVERSE</h2>
         <div class="header-actions">
             <div class="status-pill <?php echo $sv_on ? 'status-online' : 'status-offline'; ?>">
                 <?php echo $sv_on ? 'FEDERATING' : 'OFF'; ?>
@@ -369,14 +369,14 @@ include 'core/sidebar.php';
 
     <?php if (!$sv_on): ?>
         <div class="box">
-            <p>SMACKVERSE is switched off — nothing federates in or out until you flip it on in
+            <p>Fediverse is switched off — nothing federates in or out until you flip it on in
                <a href="smack-smackverse.php">Federation</a>. The client below still loads, but stays quiet.</p>
         </div>
     <?php endif; ?>
 
     <?php if (!$sv_gram): ?>
         <div class="box">
-            <p>The SMACKVERSE client is <strong>GRAMOFSMACK-only</strong> for now while we prove it out — your
+            <p>The Fediverse client is <strong>GRAMOFSMACK-only</strong> for now while we prove it out — your
                install mode is <strong><?php echo htmlspecialchars($sv_mode); ?></strong>. Federation itself works
                in every mode from <a href="smack-smackverse.php">Federation</a>; the interactive client widens to
                the other install modes soon.</p>
@@ -389,7 +389,7 @@ include 'core/sidebar.php';
          data-default-panel="home">
 
         <div class="sspf-topbar">
-            <span class="sspf-logo">SMACKVERSE</span>
+            <span class="sspf-logo">FEDIVERSE</span>
             <div class="sspf-search">
                 <input type="text" placeholder="@user@host  ·  #hashtag" aria-label="Search the fediverse by handle or hashtag">
             </div>
@@ -414,7 +414,7 @@ include 'core/sidebar.php';
                 <section class="sspf-panel active" data-panel="home">
                     <h3 class="sspf-panel-title">Home</h3>
                     <div class="sspf-panel-body">
-                        <div class="sspf-note">Loading the latest photos from accounts <strong>SMACKVERSE follows</strong>…</div>
+                        <div class="sspf-note">Loading the latest photos from accounts <strong>Fediverse follows</strong>…</div>
                     </div>
                 </section>
 
