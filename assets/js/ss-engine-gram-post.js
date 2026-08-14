@@ -21,6 +21,7 @@
     const strip        = document.getElementById('gp-strip');
     const fileCount    = document.getElementById('gp-file-count');
     const submitBtn    = document.getElementById('gp-submit');
+    const publishHint  = document.querySelector('.gram-publish-copy span');
     const progressWrap = document.getElementById('gp-progress-wrap');
     const progressBar  = document.getElementById('gp-progress-bar');
     const errorDiv     = document.getElementById('gp-error');
@@ -137,6 +138,9 @@
         strip.innerHTML = '';
         fileCount.textContent = fileList.length + ' / ' + MAX_IMAGES + ' images';
         submitBtn.disabled = fileList.length === 0;
+        if (publishHint) publishHint.textContent = fileList.length === 0
+            ? 'Add at least one photograph to publish.'
+            : (fileList.length === 1 ? 'One photograph ready.' : fileList.length + ' photographs ready as a carousel.');
 
         fileList.forEach((item, idx) => {
             const el = document.createElement('div');
@@ -158,8 +162,10 @@
                         ' style="position:absolute;top:6px;left:6px;width:24px;height:24px;border:0;border-radius:4px;color:#fff;font-size:13px;line-height:1;cursor:pointer;background:' + (item.split ? '#0a8a5f' : 'rgba(0,0,0,0.55)') + ';">↗</button>' +
                 '</div>' +
                 '<div class="cp-rot-row">' +
+                    '<button type="button" class="cp-order-btn" data-move="-1" title="Move earlier"' + (idx === 0 ? ' disabled' : '') + '>&larr;</button>' +
                     '<button type="button" class="cp-rot-btn" data-rot="-90" title="Rotate left 90°">&#8634;</button>' +
                     '<button type="button" class="cp-rot-btn" data-rot="90" title="Rotate right 90°">&#8635;</button>' +
+                    '<button type="button" class="cp-order-btn" data-move="1" title="Move later"' + (idx === fileList.length - 1 ? ' disabled' : '') + '>&rarr;</button>' +
                 '</div>' +
                 '<div class="cp-item-label">' + escHtml(item.file.name) + '</div>' +
                 '<div class="gp-style">' +
@@ -227,6 +233,18 @@
 
             // Per-image style wiring — updates the item in place (no re-render, so
             // focus/value survive). stopPropagation keeps clicks off drag-reorder.
+            el.querySelectorAll('.cp-order-btn').forEach(btn => {
+                btn.addEventListener('mousedown', e => e.stopPropagation());
+                btn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const target = idx + parseInt(btn.dataset.move, 10);
+                    if (target < 0 || target >= fileList.length) return;
+                    const moved = fileList.splice(idx, 1)[0];
+                    fileList.splice(target, 0, moved);
+                    renderStrip();
+                });
+            });
+
             const styleEl = el.querySelector('.gp-style');
             const cropCb  = styleEl.querySelector('.gp-crop');
             const fitBox  = styleEl.querySelector('.gp-fit');

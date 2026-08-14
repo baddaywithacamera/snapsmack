@@ -103,6 +103,16 @@ if (!isset($_SESSION['user_login'])) {
     // The value is server-chosen, never accepted from a request parameter.
     if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === 'smack-app.php') {
         $_SESSION['snapsmack_login_return'] = 'app';
+    } elseif (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === 'pixelfed-api.php'
+              && (string)($_GET['route'] ?? '') === 'oauth/authorize') {
+        // Native clients open consent in a fresh browser that may not have an
+        // admin session yet. Preserve only this server-owned, relative consent
+        // URL through password + 2FA; never accept an arbitrary return target.
+        $oauth_return = (string)($_SERVER['REQUEST_URI'] ?? '');
+        if (preg_match('#^/oauth/authorize(?:\?|$)#', $oauth_return)) {
+            $_SESSION['snapsmack_login_return'] = 'oauth';
+            $_SESSION['snapsmack_oauth_return'] = $oauth_return;
+        }
     }
     $login_slug = $pdo->query(
         "SELECT setting_val FROM snap_settings WHERE setting_key = 'login_slug' LIMIT 1"

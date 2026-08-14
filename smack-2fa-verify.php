@@ -41,6 +41,14 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+function snapsmack_2fa_destination(): string {
+    if (($_SESSION['snapsmack_login_return'] ?? '') === 'app') return 'app';
+    $oauth = (string)($_SESSION['snapsmack_oauth_return'] ?? '');
+    if (($_SESSION['snapsmack_login_return'] ?? '') === 'oauth'
+        && preg_match('#^/oauth/authorize(?:\?|$)#', $oauth)) return $oauth;
+    return 'smack-admin.php';
+}
+
 // --- LOGIN SLUG ---
 // Logins ALWAYS route through the configured pretty slug (default /snap-in),
 // NEVER the raw snap-in.php file. snap-in.php 403s any direct hit on the .php
@@ -61,7 +69,7 @@ if (empty($_SESSION['totp_pending_user_id'])) {
 
 // Also block already-authenticated users.
 if (isset($_SESSION['user_login'])) {
-    header('Location: ' . ((($_SESSION['snapsmack_login_return'] ?? '') === 'app') ? 'app' : 'smack-admin.php'));
+    header('Location: ' . snapsmack_2fa_destination());
     exit;
 }
 
@@ -173,7 +181,7 @@ if (!$user || empty($user['totp_secret'])) {
     $_SESSION['user_role']           = $user['user_role'] ?: 'editor';
     $_SESSION['user_preferred_skin'] = $user['preferred_skin'] ?: null;
     $_SESSION['user_id']             = $user['id'];
-    header('Location: ' . ((($_SESSION['snapsmack_login_return'] ?? '') === 'app') ? 'app' : 'smack-admin.php'));
+    header('Location: ' . snapsmack_2fa_destination());
     exit;
 }
 
@@ -196,7 +204,7 @@ if (ss_totp_check_trust($pdo, $pending_id)) {
         header("Location: smack-change-password.php");
         exit;
     }
-    header('Location: ' . ((($_SESSION['snapsmack_login_return'] ?? '') === 'app') ? 'app' : 'smack-admin.php'));
+    header('Location: ' . snapsmack_2fa_destination());
     exit;
 }
 
@@ -241,7 +249,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
 
-            header('Location: ' . ((($_SESSION['snapsmack_login_return'] ?? '') === 'app') ? 'app' : 'smack-admin.php'));
+            header('Location: ' . snapsmack_2fa_destination());
             exit;
         } else {
             $_SESSION['totp_fail_count']++;

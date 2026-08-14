@@ -160,7 +160,11 @@ if (session_status() === PHP_SESSION_NONE) {
 
 if (!function_exists('snapsmack_login_destination')) {
     function snapsmack_login_destination(): string {
-        return (($_SESSION['snapsmack_login_return'] ?? '') === 'app') ? 'app' : 'smack-admin.php';
+        if (($_SESSION['snapsmack_login_return'] ?? '') === 'app') return 'app';
+        $oauth = (string)($_SESSION['snapsmack_oauth_return'] ?? '');
+        if (($_SESSION['snapsmack_login_return'] ?? '') === 'oauth'
+            && preg_match('#^/oauth/authorize(?:\?|$)#', $oauth)) return $oauth;
+        return 'smack-admin.php';
     }
 }
 
