@@ -35,7 +35,7 @@ $landing_sections = [
     [
         'heading' => 'Social can point home',
         'body' => [
-            'SnapSmack can federate your public work through SMACKVERSE. People on compatible Fediverse services can discover, follow, like, boost, and reply while the canonical photograph stays on your site.',
+            'SnapSmack can federate your public work across the Fediverse. People on compatible services can discover, follow, like, boost, and reply while the canonical photograph stays on your site.',
             'Read how <a href="fediverse-photography.php">Fediverse photography works</a>, or see how to <a href="export-your-photos.php">take your complete archive with you</a>.',
         ],
     ],

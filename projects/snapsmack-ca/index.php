@@ -196,16 +196,16 @@ require_once __DIR__ . '/includes/header.php';
 
     <section id="federate">
         <div class="wrap">
-            <p class="fed-eyebrow">SMACKVERSE &mdash; the Blogoverse meets the Fediverse</p>
+            <p class="fed-eyebrow">Your blog, on the Fediverse</p>
             <h2 class="fed-head">The ship has sailed on the lonely blog.</h2>
             <p class="fed-lede">Discoverability isn't optional anymore. You need social. But you need the <em>right</em> social&mdash;the kind where you own your art and set the terms. Welcome to the Fediverse.</p>
             <p class="fed-body">ActivityPub is built into SnapSmack's core rather than bolted on as a plugin. Turn it on and people across Mastodon, Pixelfed, and the rest of the Fediverse can discover, follow, boost, and reply to your work. Leave it off and your site remains entirely its own thing.</p>
             <p class="fed-body">The protocol is only half the job. Federation also means consent, attribution, content warnings, local norms, and participation in communities other people built. SnapSmack treats that culture as part of the feature, not an obstacle to growth-hacking around.</p>
 
             <div class="fed-shots">
-                <figure><img src="img/smackverse-blog-view.png" alt="A photography profile on its own SnapSmack blog" width="1920" height="1080" loading="lazy"><figcaption>Your blog</figcaption></figure>
-                <figure><img src="img/smackverse-home-view.png" alt="The same photography profile inside SMACKVERSE" width="1920" height="1080" loading="lazy"><figcaption>In SMACKVERSE</figcaption></figure>
-                <figure><img src="img/smackverse-pixelfed-ca-view.png" alt="The same photography profile seen from Pixelfed" width="1920" height="1080" loading="lazy"><figcaption>Seen from Pixelfed</figcaption></figure>
+                <figure><img src="img/fediverse-blog-view.png" alt="A photography profile on its own SnapSmack blog" width="1920" height="1080" loading="lazy"><figcaption>Your blog</figcaption></figure>
+                <figure><img src="img/fediverse-home-view.png" alt="The same photography profile on the Fediverse" width="1920" height="1080" loading="lazy"><figcaption>On the Fediverse</figcaption></figure>
+                <figure><img src="img/fediverse-pixelfed-ca-view.png" alt="The same photography profile seen from Pixelfed" width="1920" height="1080" loading="lazy"><figcaption>Seen from Pixelfed</figcaption></figure>
             </div>
 
             <div class="fed-split">
