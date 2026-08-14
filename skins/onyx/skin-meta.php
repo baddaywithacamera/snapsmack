@@ -28,8 +28,7 @@ $onyx_variant  = $settings['active_skin_variant'] ?? 'crimson';
 if (!in_array($onyx_variant, $onyx_variants, true)) { $onyx_variant = 'crimson'; }
 ?>
 <link rel="stylesheet" href="<?php echo $onyx_skin_url; ?>variant-<?php echo $onyx_variant; ?>.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
-<link rel="icon" type="image/png" sizes="32x32" href="<?php echo $onyx_skin_url; ?>img/favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="<?php echo $onyx_skin_url; ?>img/favicon-16.png">
-<link rel="icon" href="<?php echo $onyx_skin_url; ?>img/favicon.ico" sizes="any">
-<link rel="apple-touch-icon" sizes="180x180" href="<?php echo $onyx_skin_url; ?>img/apple-touch-icon.png">
+<?php // Favicons are deliberately NOT hardcoded here. core/meta.php (included above)
+      // emits them from the per-install favicon_url setting (Admin -> Global Vibe),
+      // so a generic skin never stamps one site's brand icon onto every install. ?>
 <?php // ===== SNAPSMACK EOF =====
