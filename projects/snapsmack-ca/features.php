@@ -65,7 +65,7 @@ require_once __DIR__ . '/includes/header.php';
                 <h2>Publish your way</h2>
                 <ul>
                     <li><strong>SMACKONEOUT</strong> for a single photograph with room to breathe.</li>
-                    <li><strong>GRAMOFSMACK</strong> for multi-image posts, carousels, panoramas, a curated grid, and working phone publishing through either its installable PWA or Pixelix.</li>
+                    <li><strong>GRAMOFSMACK</strong> for multi-image posts, carousels, panoramas, a curated grid, and working phone publishing through either its installable PWA or <a href="https://github.com/Daniebeler/pixelix" target="_blank" rel="noopener">Pixelix</a>, a native Pixelfed client.</li>
                     <li><strong>SMACKTALK</strong> for longform writing with photographs inside the story.</li>
                     <li>Albums, collections, static pages, categories, tags, EXIF, captions, and high-resolution download links.</li>
                 </ul>
