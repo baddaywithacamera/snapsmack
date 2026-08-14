@@ -132,9 +132,11 @@ def _profile_for(node, fallback_key="") -> dict:
     return {
         "name":     node.get("site_name") or node.get("name") or site,
         "site_url": site,
-        # A node rarely ships its own posting key; fall back to the hub key so the
-        # profile is usable, and the user can override per-site later.
-        "api_key":  (node.get("api_key") or node.get("key") or fallback_key or "").strip(),
+        # Each spoke ships its per-site key from the multisite config. api_key_local
+        # (the hub->spoke FULL key) is posting-capable, so PREFER it. Only fall back
+        # to the hub key when a node genuinely has none — that fallback cannot post.
+        "api_key":  (node.get("api_key_local") or node.get("api_key")
+                     or node.get("key") or fallback_key or "").strip(),
         "extras":   {},
     }
 
