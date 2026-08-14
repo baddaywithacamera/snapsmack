@@ -319,6 +319,24 @@ a { color: inherit; }
     display: block;
     width: 100%;
 }
+.ss-square-wall {
+    --ss-square-cols: 4;
+    display: grid;
+    grid-template-columns: repeat(var(--ss-square-cols), minmax(0, 1fr));
+    gap: var(--ss-gap, 6px);
+    width: 100%;
+}
+.ss-square-wall .ss-masonry-item {
+    box-sizing: border-box;
+    aspect-ratio: 1 / 1;
+    min-width: 0;
+    margin: 0;
+}
+.ss-square-wall .ss-masonry-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
 .ss-masonry-item {
     position: relative;
     display: block;

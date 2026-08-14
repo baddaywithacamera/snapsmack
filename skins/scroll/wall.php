@@ -30,11 +30,12 @@ $page_size = is_numeric($_ss_ps) ? max(12, min(60, (int)$_ss_ps)) : 50;
 
 // Production wall controls (stored-value selects, read from $settings).
 $_ss_wall_layout = (string)($settings['scroll_wall_layout'] ?? 'columns');
-if (!in_array($_ss_wall_layout, ['columns', 'rows', 'mosaic'], true)) $_ss_wall_layout = 'columns';
+if (!in_array($_ss_wall_layout, ['columns', 'rows', 'square', 'mosaic'], true)) $_ss_wall_layout = 'columns';
 $_ss_wall_emph = (string)($settings['scroll_mosaic_emphasis'] ?? 'landscape');
 if (!in_array($_ss_wall_emph, ['natural', 'balanced', 'landscape', 'portrait'], true)) $_ss_wall_emph = 'landscape';
 $_is_mosaic = ($_ss_wall_layout === 'mosaic');
 $_is_rows   = ($_ss_wall_layout === 'rows');
+$_is_square = ($_ss_wall_layout === 'square');
 $is_json   = (($_GET['format'] ?? '') === 'json') && (($_GET['pg'] ?? '') === 'wall');
 
 // ?c= chunk index — meaningful only on the JSON path; the HTML page is always
@@ -347,7 +348,7 @@ try {
         <?php // ROWS uses .ss-scroll-wall (driven by ss-engine-rows.js) so the global
               // columns engine ignores it; COLUMNS uses .ss-masonry (ss-engine-columns.js).
               // Same .ss-masonry-item tiles + same ?pg=wall feed either way. ?>
-        <div class="<?php echo $_is_rows ? 'ss-scroll-wall' : 'ss-masonry'; ?>">
+        <div class="<?php echo $_is_rows ? 'ss-scroll-wall' : ($_is_square ? 'ss-square-wall' : 'ss-masonry'); ?>">
             <?php if (!empty($images)): ?>
                 <?php foreach ($images as $img) echo scroll_wall_tile($img); ?>
             <?php else: ?>

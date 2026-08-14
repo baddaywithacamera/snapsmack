@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SCROLL",
-    "version": "0.1.47",
+    "version": "0.1.48",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
     "status": "stable",
@@ -262,13 +262,30 @@
             "section": "PHOTO WALL",
             "type": "select",
             "label": "Wall Layout",
-            "hint": "Columns favours portraits, Rows favours landscapes, and Asymmetric builds a MOSAIC quilt.",
+            "hint": "Columns favours portraits, Rows favours landscapes, Square makes an even cropped grid, and Asymmetric builds a MOSAIC quilt.",
             "default": "columns",
             "options": {
                 "columns": "Columns (portraits stand tallest)",
                 "rows": "Rows (landscapes lead)",
+                "square": "Square (even cropped grid)",
                 "mosaic": "Asymmetric (MOSAIC quilt)"
             }
+        },
+        "scroll_square_cols": {
+            "section": "PHOTO WALL",
+            "type": "range",
+            "label": "Squares Across",
+            "hint": "Choose 3–5 square photographs per row. Tiles divide the available wall width after gaps and borders are accounted for.",
+            "enable_when": {
+                "scroll_wall_layout": "square"
+            },
+            "default": "4",
+            "min": "3",
+            "max": "5",
+            "step": "1",
+            "selector": ".ss-square-wall",
+            "property": "--ss-square-cols",
+            "unit": ""
         },
         "scroll_mosaic_emphasis": {
             "section": "PHOTO WALL",
