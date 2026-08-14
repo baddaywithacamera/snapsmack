@@ -21,7 +21,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-BUILD_VERSION = "0.1.6"
+BUILD_VERSION = "0.1.7"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -75,6 +75,9 @@ ROSTER = [
                                                     r"C:\SUYB\suyb*.exe"]),
     ("OH SNAP",             "skin designer",       [r"C:\OHSNAP\OH SNAP.exe",
                                                     r"C:\OhSnap\oh-snap.exe"]),
+    ("SMACK YOUR MOUTH",    "comments: mod + reply", [r"C:\snapsmack\smack-your-mouth\smackmouth.exe"]),
+    ("SHOTS FIRED",         "schedule board",      [r"C:\snapsmack\shots-fired\shots-fired.exe"]),
+    ("CRONOMETER",          "fleet cron health",   [r"C:\snapsmack\cronometer\cronometer.exe"]),
 ]
 
 
