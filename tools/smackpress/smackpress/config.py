@@ -78,7 +78,7 @@ _DEFAULTS = {
     "wp_app_password":  "",
     "snap_url":         "",
     "snap_api_key":     "",
-    "ai_provider":      "none",   # none | gemini | openai | anthropic
+    "ai_provider":      "none",   # none | gemini | openai | anthropic | deepseek | kimi
     "ai_model":         "",
     "ai_api_key":       "",
     "ai_system_prompt": (

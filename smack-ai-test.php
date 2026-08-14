@@ -29,7 +29,7 @@ if (!isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
 $post_provider = trim($_POST['provider'] ?? '');
 $post_api_key  = trim($_POST['api_key']  ?? '');
 
-$valid_providers = ['claude', 'gemini', 'openai'];
+$valid_providers = ['claude', 'gemini', 'openai', 'deepseek', 'kimi'];
 
 if ($post_provider && in_array($post_provider, $valid_providers, true) && $post_api_key !== '') {
     // Test with the form values directly — no save required
@@ -37,8 +37,10 @@ if ($post_provider && in_array($post_provider, $valid_providers, true) && $post_
         'claude' => _snap_ai_claude($post_api_key, 'You are a connection test. Respond with exactly: OK', 'Connection test — reply with OK only.', 16),
         'gemini' => _snap_ai_gemini($post_api_key, 'You are a connection test. Respond with exactly: OK', 'Connection test — reply with OK only.', 256),
         'openai' => _snap_ai_openai($post_api_key, 'You are a connection test. Respond with exactly: OK', 'Connection test — reply with OK only.', 16),
+        'deepseek' => _snap_ai_deepseek($post_api_key, 'You are a connection test. Respond with exactly: OK', 'Connection test — reply with OK only.', 16),
+        'kimi' => _snap_ai_kimi($post_api_key, 'You are a connection test. Respond with exactly: OK', 'Connection test — reply with OK only.', 16),
     };
-    $provider_labels = ['claude' => 'Claude', 'gemini' => 'Gemini', 'openai' => 'ChatGPT'];
+    $provider_labels = ['claude' => 'Claude', 'gemini' => 'Gemini', 'openai' => 'ChatGPT', 'deepseek' => 'DeepSeek', 'kimi' => 'Kimi (Moonshot)'];
     $label = $provider_labels[$post_provider] ?? $post_provider;
 } else {
     // Fall back to DB-saved values
@@ -51,7 +53,7 @@ if ($post_provider && in_array($post_provider, $valid_providers, true) && $post_
         'Connection test — reply with OK only.',
         256
     );
-    $provider_labels = ['claude' => 'Claude', 'gemini' => 'Gemini', 'openai' => 'ChatGPT'];
+    $provider_labels = ['claude' => 'Claude', 'gemini' => 'Gemini', 'openai' => 'ChatGPT', 'deepseek' => 'DeepSeek', 'kimi' => 'Kimi (Moonshot)'];
     $label = $provider_labels[snap_ai_provider()] ?? snap_ai_provider();
 }
 

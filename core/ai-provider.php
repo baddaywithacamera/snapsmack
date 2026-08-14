@@ -2,7 +2,8 @@
 /**
  * SNAPSMACK - AI Provider
  *
- * Thin abstraction over Claude, Gemini, and OpenAI chat APIs.
+ * Thin abstraction over Claude, Gemini, OpenAI, DeepSeek, and Kimi chat APIs.
+ * (DeepSeek and Kimi speak the OpenAI chat-completions shape.)
  * Routes a prompt to whichever provider is configured in snap_settings
  * and returns a plain text response.
  *
@@ -54,9 +55,11 @@ function snap_ai_api_key(): string {
     global $pdo;
     $provider = snap_ai_provider();
     $key_map  = [
-        'claude'  => 'ai_key_claude',
-        'gemini'  => 'ai_key_gemini',
-        'openai'  => 'ai_key_openai',
+        'claude'   => 'ai_key_claude',
+        'gemini'   => 'ai_key_gemini',
+        'openai'   => 'ai_key_openai',
+        'deepseek' => 'ai_key_deepseek',
+        'kimi'     => 'ai_key_kimi',
     ];
     $setting = $key_map[$provider] ?? null;
     if (!$setting) return '';
@@ -89,6 +92,33 @@ function snap_ai_openai_model(): string {
         $m = '';
     }
     return in_array($m, $allowed, true) ? $m : 'gpt-5.4-mini';
+}
+
+function snap_ai_deepseek_model(): string {
+    // Selectable in Settings → AI. DeepSeek's chat API is OpenAI-shaped.
+    global $pdo;
+    $allowed = ['deepseek-chat', 'deepseek-reasoner'];
+    try {
+        $row = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'ai_deepseek_model' LIMIT 1")->fetch();
+        $m   = $row ? trim($row['setting_val']) : '';
+    } catch (Throwable $e) {
+        $m = '';
+    }
+    return in_array($m, $allowed, true) ? $m : 'deepseek-chat';
+}
+
+function snap_ai_kimi_model(): string {
+    // Selectable in Settings → AI. Kimi (Moonshot) is OpenAI-shaped; kimi-latest
+    // is the auto-updating alias.
+    global $pdo;
+    $allowed = ['kimi-latest', 'moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'];
+    try {
+        $row = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'ai_kimi_model' LIMIT 1")->fetch();
+        $m   = $row ? trim($row['setting_val']) : '';
+    } catch (Throwable $e) {
+        $m = '';
+    }
+    return in_array($m, $allowed, true) ? $m : 'kimi-latest';
 }
 
 function snap_ai_configured(): bool {
@@ -186,10 +216,12 @@ function snap_ai_complete(string $system, string $user, int $max_tokens = 1024):
     }
 
     return match ($provider) {
-        'claude' => _snap_ai_claude($api_key, $system, $user, $max_tokens),
-        'gemini' => _snap_ai_gemini($api_key, $system, $user, $max_tokens),
-        'openai' => _snap_ai_openai($api_key, $system, $user, $max_tokens),
-        default  => ['ok' => false, 'text' => '', 'error' => "Unknown provider: {$provider}"],
+        'claude'   => _snap_ai_claude($api_key, $system, $user, $max_tokens),
+        'gemini'   => _snap_ai_gemini($api_key, $system, $user, $max_tokens),
+        'openai'   => _snap_ai_openai($api_key, $system, $user, $max_tokens),
+        'deepseek' => _snap_ai_deepseek($api_key, $system, $user, $max_tokens),
+        'kimi'     => _snap_ai_kimi($api_key, $system, $user, $max_tokens),
+        default    => ['ok' => false, 'text' => '', 'error' => "Unknown provider: {$provider}"],
     };
 }
 
@@ -293,6 +325,41 @@ function _snap_ai_openai(string $key, string $system, string $user, int $max_tok
     return ['ok' => true, 'text' => $text, 'error' => ''];
 }
 
+/**
+ * Shared OpenAI-compatible chat call. DeepSeek and Kimi both speak the exact
+ * OpenAI /chat/completions shape, but with the STANDARD `max_tokens` field (only
+ * the GPT-5 series needs `max_completion_tokens`, which is why OpenAI has its own
+ * function above). Any other service that speaks the same shape can reuse this.
+ */
+function _snap_ai_openai_compatible(string $url, string $model, string $key, string $system, string $user, int $max_tokens, string $label): array {
+    $payload = json_encode([
+        'model'      => $model,
+        'max_tokens' => $max_tokens,
+        'messages'   => [
+            ['role' => 'system', 'content' => $system],
+            ['role' => 'user',   'content' => $user],
+        ],
+    ]);
+    $response = _snap_ai_post($url, $payload, [
+        'Authorization: Bearer ' . $key,
+        'content-type: application/json',
+    ]);
+    if (!$response['ok']) return $response;
+    $text = json_decode($response['body'], true)['choices'][0]['message']['content'] ?? '';
+    if ($text === '') return ['ok' => false, 'text' => '', 'error' => "Empty response from {$label}."];
+    return ['ok' => true, 'text' => $text, 'error' => ''];
+}
+
+function _snap_ai_deepseek(string $key, string $system, string $user, int $max_tokens): array {
+    return _snap_ai_openai_compatible('https://api.deepseek.com/v1/chat/completions',
+        snap_ai_deepseek_model(), $key, $system, $user, $max_tokens, 'DeepSeek');
+}
+
+function _snap_ai_kimi(string $key, string $system, string $user, int $max_tokens): array {
+    return _snap_ai_openai_compatible('https://api.moonshot.ai/v1/chat/completions',
+        snap_ai_kimi_model(), $key, $system, $user, $max_tokens, 'Kimi');
+}
+
 // ── Vision completion (prompt + images) ─────────────────────────────────────
 
 /**
@@ -320,10 +387,14 @@ function snap_ai_vision(string $system, string $user, array $images, int $max_to
         return ['ok' => false, 'text' => '', 'error' => 'No images supplied for vision request.'];
     }
     return match ($provider) {
-        'claude' => _snap_ai_claude_vision($api_key, $system, $user, $images, $max_tokens),
-        'gemini' => _snap_ai_gemini_vision($api_key, $system, $user, $images, $max_tokens),
-        'openai' => _snap_ai_openai_vision($api_key, $system, $user, $images, $max_tokens),
-        default  => ['ok' => false, 'text' => '', 'error' => "Unknown provider: {$provider}"],
+        'claude'   => _snap_ai_claude_vision($api_key, $system, $user, $images, $max_tokens),
+        'gemini'   => _snap_ai_gemini_vision($api_key, $system, $user, $images, $max_tokens),
+        'openai'   => _snap_ai_openai_vision($api_key, $system, $user, $images, $max_tokens),
+        'kimi'     => _snap_ai_kimi_vision($api_key, $system, $user, $images, $max_tokens),
+        // DeepSeek's chat API is text-only — there is no image model on the same
+        // endpoint. Say so plainly instead of firing a call that will 400.
+        'deepseek' => ['ok' => false, 'text' => '', 'error' => 'DeepSeek does not support image analysis. Use DeepSeek for text, or choose Kimi, Gemini, or Claude for vision (ALT text, VISION FILL).'],
+        default    => ['ok' => false, 'text' => '', 'error' => "Unknown provider: {$provider}"],
     };
 }
 
@@ -390,6 +461,29 @@ function _snap_ai_openai_vision(string $key, string $system, string $user, array
     if (!$response['ok']) return $response;
     $text = json_decode($response['body'], true)['choices'][0]['message']['content'] ?? '';
     return $text === '' ? ['ok' => false, 'text' => '', 'error' => 'Empty response from OpenAI.']
+                        : ['ok' => true, 'text' => $text, 'error' => ''];
+}
+
+/** Kimi (Moonshot) vision — OpenAI-compatible image_url payload, standard max_tokens. */
+function _snap_ai_kimi_vision(string $key, string $system, string $user, array $images, int $max_tokens): array {
+    $content = [['type' => 'text', 'text' => $user]];
+    foreach ($images as $im) {
+        $content[] = ['type' => 'image_url', 'image_url' => ['url' => 'data:' . $im['mime'] . ';base64,' . $im['data']]];
+    }
+    $messages = [];
+    if ($system !== '') $messages[] = ['role' => 'system', 'content' => $system];  // omit empty
+    $messages[] = ['role' => 'user', 'content' => $content];
+    $payload = json_encode([
+        'model'      => snap_ai_kimi_model(),
+        'max_tokens' => $max_tokens,
+        'messages'   => $messages,
+    ]);
+    $response = _snap_ai_post('https://api.moonshot.ai/v1/chat/completions', $payload, [
+        'Authorization: Bearer ' . $key, 'content-type: application/json',
+    ]);
+    if (!$response['ok']) return $response;
+    $text = json_decode($response['body'], true)['choices'][0]['message']['content'] ?? '';
+    return $text === '' ? ['ok' => false, 'text' => '', 'error' => 'Empty response from Kimi.']
                         : ['ok' => true, 'text' => $text, 'error' => ''];
 }
 

@@ -21,7 +21,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-BUILD_VERSION = "0.1.7"
+BUILD_VERSION = "0.1.8"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -153,6 +153,21 @@ class Hub(tk.Tk):
                  font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
         return inner
 
+    def _hoverize(self, btn, hover_bg=ACCENT, hover_fg=BG):
+        """Green-on-hover for any button. Tk's activebackground only shows while a
+        button is pressed on Windows, not on mouse-over, so bind Enter/Leave
+        explicitly and restore the button's own colours on leave. A disabled
+        button never lights up. Returns the button so callers can chain."""
+        base_bg, base_fg = btn.cget("bg"), btn.cget("fg")
+        def on_enter(_e):
+            if str(btn.cget("state")) != "disabled":
+                btn.configure(bg=hover_bg, fg=hover_fg)
+        def on_leave(_e):
+            btn.configure(bg=base_bg, fg=base_fg)
+        btn.bind("<Enter>", on_enter)
+        btn.bind("<Leave>", on_leave)
+        return btn
+
     # ── launcher ────────────────────────────────────────────────────────────
     def _build_launcher(self, parent):
         card = self._card(parent, "LAUNCH")
@@ -172,6 +187,7 @@ class Hub(tk.Tk):
                             cursor="hand2" if exe else "arrow",
                             command=(lambda p=exe, n=name: self._on_launch(p, n)))
             btn.pack(fill="x")
+            self._hoverize(btn)
             tk.Label(cell, text=(sub if exe else "not installed"),
                      bg=CARD, fg=DIM, font=("Segoe UI", 8)).pack(anchor="w", pady=(2, 0))
 
@@ -200,15 +216,18 @@ class Hub(tk.Tk):
                        insertbackground=INK, relief="flat", font=("Consolas", 10))
         ent.pack(side="left", fill="x", expand=True, ipady=5)
         if browse:
-            tk.Button(line, text="…", bg=FIELD, fg=INK, relief="flat",
-                      command=lambda v=var: self._browse(v)).pack(side="left", padx=(6, 0))
+            bb = tk.Button(line, text="…", bg=FIELD, fg=INK, relief="flat",
+                           command=lambda v=var: self._browse(v))
+            bb.pack(side="left", padx=(6, 0))
+            self._hoverize(bb)
         if test is not None:
             # Big, clearly-labelled target next to the field it checks.
-            tk.Button(line, text="Test", bg=FIELD, fg=INK, relief="flat",
-                      activebackground=ACCENT, activeforeground=BG,
-                      font=("Segoe UI", 8, "bold"), cursor="hand2",
-                      command=lambda s=status: test(s)).pack(side="left", padx=(6, 0),
-                                                             ipadx=8, ipady=3)
+            tb = tk.Button(line, text="Test", bg=FIELD, fg=INK, relief="flat",
+                           activebackground=ACCENT, activeforeground=BG,
+                           font=("Segoe UI", 8, "bold"), cursor="hand2",
+                           command=lambda s=status: test(s))
+            tb.pack(side="left", padx=(6, 0), ipadx=8, ipady=3)
+            self._hoverize(tb)
         return var
 
     def _set_status(self, label, ok, msg):
@@ -285,14 +304,18 @@ class Hub(tk.Tk):
         self._field(card, "BACKUP FOLDER ID", "drive_folder_id")
         bar = tk.Frame(card, bg=CARD)
         bar.pack(fill="x", padx=14, pady=(4, 12))
-        tk.Button(bar, text="SAVE SHARED CREDENTIALS", bg=INK, fg=BG,
-                  activebackground=ACCENT, activeforeground=BG, relief="flat",
-                  font=("Segoe UI", 9, "bold"), cursor="hand2",
-                  command=self._on_save_creds).pack(side="left", ipadx=8, ipady=4)
-        tk.Button(bar, text="⟳  DISCOVER FLEET", bg=ACCENT, fg=BG,
-                  activebackground="#2ecc10", relief="flat",
-                  font=("Segoe UI", 9, "bold"), cursor="hand2",
-                  command=self._on_discover).pack(side="left", padx=(10, 0), ipadx=8, ipady=4)
+        save_b = tk.Button(bar, text="SAVE SHARED CREDENTIALS", bg=INK, fg=BG,
+                           activebackground=ACCENT, activeforeground=BG, relief="flat",
+                           font=("Segoe UI", 9, "bold"), cursor="hand2",
+                           command=self._on_save_creds)
+        save_b.pack(side="left", ipadx=8, ipady=4)
+        self._hoverize(save_b)
+        disc_b = tk.Button(bar, text="⟳  DISCOVER FLEET", bg=ACCENT, fg=BG,
+                           activebackground="#2ecc10", relief="flat",
+                           font=("Segoe UI", 9, "bold"), cursor="hand2",
+                           command=self._on_discover)
+        disc_b.pack(side="left", padx=(10, 0), ipadx=8, ipady=4)
+        self._hoverize(disc_b, hover_bg="#2ecc10")
         self._setup_status = tk.Label(bar, text="", bg=CARD, fg=DIM,
                                       font=("Segoe UI", 9))
         self._setup_status.pack(side="left", padx=12)

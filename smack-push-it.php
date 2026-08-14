@@ -42,11 +42,12 @@ $spokes = $pdo->query("
 
 $push_group_keys = [
     'timezone'  => ['timezone', 'date_format',          'hub_controls_timezone'],
+    'imagesize' => ['max_width_landscape', 'max_height_portrait', 'hub_controls_imagesize'],
     'akismet'   => ['akismet_key',                       'hub_controls_akismet'],
     // BILLABLE: provider + API keys + cost-acceptance (arms paid enrichment on the
     // spoke). Kept deliberately separate from the free crawler policy below so a
     // push meant to open the crawler door can NEVER silently start billing.
-    'ai'        => ['ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_gemini_model', 'ai_openai_model', 'ai_cost_accepted', 'hub_controls_ai'],
+    'ai'        => ['ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_key_deepseek', 'ai_key_kimi', 'ai_gemini_model', 'ai_openai_model', 'ai_deepseek_model', 'ai_kimi_model', 'ai_cost_accepted', 'hub_controls_ai'],
     // FREE: the AI-crawler directive only (meta tag + robots.txt). No keys, no cost.
     'aicrawl'   => ['ai_training_policy', 'hub_controls_aicrawl'],
     'smackback' => ['smackback_enabled', 'smackback_mode', 'hub_controls_smackback'],
@@ -285,6 +286,31 @@ include 'core/sidebar.php';
                 </div>
             </div>
             <?php $render_result('timezone'); ?>
+        </div>
+
+        <!-- ── MAXIMUM IMAGE SIZE ───────────────────────────────────────── -->
+        <div class="box">
+            <h3>MAXIMUM IMAGE SIZE</h3>
+            <div class="dash-grid" style="margin-bottom:16px;">
+                <div class="lens-input-wrapper">
+                    <label>MAX WIDTH (LANDSCAPE)</label>
+                    <div class="read-only-display"><?php echo htmlspecialchars($settings['max_width_landscape'] ?? '2500'); ?> px</div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>MAX HEIGHT (PORTRAIT)</label>
+                    <div class="read-only-display"><?php echo htmlspecialchars($settings['max_height_portrait'] ?? '1850'); ?> px</div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>HUB CONTROLS THIS SETTING</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" name="hub_controls[imagesize]" value="1"
+                               <?php echo ($settings['hub_controls_imagesize'] ?? '0') === '1' ? 'checked' : ''; ?>>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their maximum image dimensions — the whole fleet resizes uploads to the same caps.</span>
+                </div>
+            </div>
+            <?php $render_result('imagesize'); ?>
         </div>
 
         <!-- ── SPAM PROTECTION ──────────────────────────────────────────── -->
