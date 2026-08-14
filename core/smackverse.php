@@ -235,6 +235,11 @@ function sv_ensure_tables(PDO $pdo): void {
         // longform post has NO image row, so it attaches by post_id instead of
         // img_id. Nullable — existing image-keyed comments leave it NULL.
         "post_id int DEFAULT NULL",
+        // SMACK YOUR MOUTH moderation: mark a comment as spam without deleting
+        // it. Non-destructive — a mis-flag is reversible (approve clears it),
+        // unlike a hard delete. Distinct from is_approved so the three states
+        // (pending / approved / spam) are unambiguous.
+        "is_spam tinyint(1) NOT NULL DEFAULT 0",
     ] as $_col) {
         try { $pdo->exec("ALTER TABLE snap_comments ADD COLUMN IF NOT EXISTS {$_col}"); }
         catch (Exception $e) { /* older MySQL without IF NOT EXISTS — ignore dup */ }
@@ -319,6 +324,7 @@ function sv_ensure_tables(PDO $pdo): void {
         `actor_handle` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `content`      mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `media_json`   mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `media_video_json` mediumtext COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `url`          varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `in_reply_to`  varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `is_boost`     tinyint(1)   NOT NULL DEFAULT '0',
@@ -330,6 +336,20 @@ function sv_ensure_tables(PDO $pdo): void {
         UNIQUE KEY `uq_ap_tl` (`object_id`(191)),
         KEY `idx_ap_tl_src` (`source`, `published`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // Inbound federated VIDEO (consume-not-produce, 0.7.523). Existing installs
+    // already have snap_ap_timeline, so CREATE IF NOT EXISTS above cannot add the
+    // column — add it via information_schema (reliable on every MySQL, unlike
+    // ADD COLUMN IF NOT EXISTS). Nullable; image ingest is untouched.
+    try {
+        $hasVid = $pdo->query(
+            "SELECT 1 FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_ap_timeline'
+                AND COLUMN_NAME = 'media_video_json' LIMIT 1"
+        )->fetchColumn();
+        if (!$hasVid) {
+            $pdo->exec("ALTER TABLE snap_ap_timeline ADD COLUMN media_video_json mediumtext DEFAULT NULL");
+        }
+    } catch (Exception $e) { /* non-fatal: ingest falls back to images-only */ }
     $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_outbound_replies` (
         `id`           int unsigned NOT NULL AUTO_INCREMENT,
         `token`        varchar(40)  COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1450,7 +1470,21 @@ function sv_capture_dm(PDO $pdo, array $settings, array $obj, string $actor_id, 
     } catch (Exception $e) { /* table may lag on a fresh install */ }
 }
 
-/** Ingest a remote Note into the home timeline (image posts only, de-duped). */
+/** Does snap_ap_timeline carry the inbound-video column yet? Cached per request. */
+function sv_timeline_has_video_col(PDO $pdo): bool {
+    static $has = null;
+    if ($has !== null) return $has;
+    try {
+        $has = (bool)$pdo->query(
+            "SELECT 1 FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_ap_timeline'
+                AND COLUMN_NAME = 'media_video_json' LIMIT 1"
+        )->fetchColumn();
+    } catch (Exception $e) { $has = false; }
+    return $has;
+}
+
+/** Ingest a remote Note into the home timeline (image + video posts, de-duped). */
 function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $handle = '',
                             bool $is_boost = false, ?string $boosted_by = null): void {
     $otype = $obj['type'] ?? '';
@@ -1459,15 +1493,26 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
     if ($object_id === '') return;
 
     $images = [];
+    $videos = [];
     foreach (($obj['attachment'] ?? []) as $att) {
         if (!is_array($att)) continue;
         $mt = (string)($att['mediaType'] ?? '');
-        if ($mt !== '' && stripos($mt, 'image/') !== 0) continue;
-        $u = $att['url'] ?? '';
+        $u  = $att['url'] ?? '';
         if (is_array($u)) $u = $u['href'] ?? ($u[0]['href'] ?? '');
-        if ((string)$u !== '') $images[] = (string)$u;
+        $u  = (string)$u;
+        if ($u === '') continue;
+        if (stripos($mt, 'video/') === 0) {
+            // Inbound federated video (consume-not-produce): capture URL + type;
+            // the client renders it click-to-play. We never re-publish it.
+            $videos[] = ['url' => $u, 'type' => $mt];
+        } elseif ($mt === '' || stripos($mt, 'image/') === 0) {
+            $images[] = $u;
+        }
     }
-    if (!$images) return;   // photo client — skip text-only
+    $has_vid_col = sv_timeline_has_video_col($pdo);
+    // Nothing renderable → skip (text-only, or video-only on a spoke whose schema
+    // has no video column yet — exactly the pre-video behaviour, no regression).
+    if (!$images && !($videos && $has_vid_col)) return;
 
     $tags = [];
     foreach (($obj['tag'] ?? []) as $tag) {
@@ -1479,22 +1524,35 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
     $tags = array_values(array_unique($tags));
 
     $pub = isset($obj['published']) ? date('Y-m-d H:i:s', strtotime((string)$obj['published'])) : null;
+
+    // Build the column list dynamically so a spoke without the video column still
+    // ingests images exactly as before (no schema dependency, no silent drop).
+    $cols = ['object_id', 'actor_url', 'actor_handle', 'content', 'media_json'];
+    $vals = [
+        substr($object_id, 0, 500), substr($actor_url, 0, 500), substr($handle, 0, 190),
+        mb_substr(trim(strip_tags((string)($obj['content'] ?? ''))), 0, 4000),
+        json_encode($images, JSON_UNESCAPED_SLASHES),
+    ];
+    $dupe = "content=VALUES(content), media_json=VALUES(media_json), "
+          . "tags_json=VALUES(tags_json), fetched_at=NOW()";
+    if ($has_vid_col) {
+        $cols[] = 'media_video_json';
+        $vals[] = json_encode($videos, JSON_UNESCAPED_SLASHES);
+        $dupe  .= ", media_video_json=VALUES(media_video_json)";
+    }
+    $cols = array_merge($cols, ['tags_json', 'url', 'in_reply_to', 'is_boost', 'boosted_by', 'source', 'published']);
+    $vals = array_merge($vals, [
+        json_encode($tags, JSON_UNESCAPED_SLASHES),
+        substr((string)($obj['url'] ?? $object_id), 0, 600),
+        isset($obj['inReplyTo']) && is_string($obj['inReplyTo']) ? substr($obj['inReplyTo'], 0, 500) : null,
+        $is_boost ? 1 : 0, $boosted_by ? substr($boosted_by, 0, 500) : null, 'home', $pub,
+    ]);
+    $ph = implode(',', array_fill(0, count($cols), '?'));
     try {
         $pdo->prepare(
-            "INSERT INTO snap_ap_timeline
-                (object_id, actor_url, actor_handle, content, media_json, tags_json, url, in_reply_to, is_boost, boosted_by, source, published)
-             VALUES (?,?,?,?,?,?,?,?,?,?,'home',?)
-             ON DUPLICATE KEY UPDATE content=VALUES(content), media_json=VALUES(media_json),
-                                     tags_json=VALUES(tags_json), fetched_at=NOW()"
-        )->execute([
-            substr($object_id, 0, 500), substr($actor_url, 0, 500), substr($handle, 0, 190),
-            mb_substr(trim(strip_tags((string)($obj['content'] ?? ''))), 0, 4000),
-            json_encode($images, JSON_UNESCAPED_SLASHES),
-            json_encode($tags, JSON_UNESCAPED_SLASHES),
-            substr((string)($obj['url'] ?? $object_id), 0, 600),
-            isset($obj['inReplyTo']) && is_string($obj['inReplyTo']) ? substr($obj['inReplyTo'], 0, 500) : null,
-            $is_boost ? 1 : 0, $boosted_by ? substr($boosted_by, 0, 500) : null, $pub,
-        ]);
+            "INSERT INTO snap_ap_timeline (" . implode(',', $cols) . ") VALUES ($ph)
+             ON DUPLICATE KEY UPDATE {$dupe}"
+        )->execute($vals);
     } catch (Exception $e) { /* table may lag on a fresh install */ }
 }
 
@@ -3022,10 +3080,15 @@ function sv_home_timeline(PDO $pdo, int $limit = 60): array {
     $out = [];
     foreach ($rows as $r) {
         $imgs = json_decode((string)$r['media_json'], true);
-        if (!is_array($imgs) || !$imgs) continue;
+        if (!is_array($imgs)) $imgs = [];
+        // Inbound video (consume-not-produce). Present only when the column exists.
+        $vids = array_key_exists('media_video_json', $r)
+              ? json_decode((string)$r['media_video_json'], true) : [];
+        if (!is_array($vids)) $vids = [];
+        if (!$imgs && !$vids) continue;
         $out[] = [
             'id' => $r['object_id'], 'url' => $r['url'], 'published' => $r['published'],
-            'text' => $r['content'], 'images' => $imgs, 'count' => count($imgs),
+            'text' => $r['content'], 'images' => $imgs, 'videos' => $vids, 'count' => count($imgs),
             'is_boost' => (int)$r['is_boost'],
             'author' => [
                 'handle' => $r['actor_handle'], 'name' => $r['actor_name'] ?: $r['actor_handle'],

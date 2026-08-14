@@ -10,6 +10,33 @@
 
 # SnapSmack Changelog
 
+## 0.7.523 — 2026-08-14
+
+### SMACK YOUR MOUTH — fleet comment moderation, server side
+
+- `multisite/comments/action` now accepts a `spam` verb alongside `approve`/`delete`, backed by a new non-destructive `snap_comments.is_spam` column. Spam flags a comment without deleting it, and is reversible — approving a comment clears the flag. The column is added idempotently on any spoke that has not run it, and the pending queue degrades cleanly rather than 500-ing if a spoke cannot upgrade.
+- Approving a comment from the fleet now federates the newly-approved local comment out to followers on a real pending→approved transition, matching the CMS approval path (never re-queued, never boomeranging a fediverse comment).
+- New `multisite/comments/reply` posts a local admin reply, threaded under the parent's fediverse Note id and federated out via the existing single-actor comment path.
+- New `multisite/comments/get` (read-back with a `replies` array) and `multisite/comments/list` (approved + pending history) give the client positive verification and resumable sessions.
+- THE HUB's discovery now persists each site's `api_key_local` (the hub-role moderation credential) into the shared connection profile, so SMACK YOUR MOUTH authenticates per site.
+
+### Inbound federated video — consume, not produce
+
+- The home-timeline ingest now captures video attachments on federated posts (previously dropped) into a new nullable `snap_ap_timeline.media_video_json`, and video-only posts surface instead of being skipped. Image ingest is untouched, and a spoke whose schema lacks the column falls back to exactly the prior images-only behaviour.
+- The reader renders inbound video click-to-play: never autoplayed, scheme-checked, and `preload="none"` so it costs no bandwidth until the reader hits play. Outbound remains photo-only.
+
+### TAKE YOUR SHIT WITH YOU — the fediverse event log is now portable
+
+- The portable NDJSON export gained the ActivityPub event history that previously lived only in the full SQL backup: inbound engagement notifications, the inbound-POST log, and the outbound reply/like ledgers. Dedup/identity tokens stay excluded; third-party actor URLs are reference-only, consistent with the existing follows/following streams.
+
+### CRONOMETER — fleet job-health board
+
+- `multisite/heartbeat` now returns a per-job `jobs` block (`fediverse`, `rss_fetch`, `version_check`, `backup`, `smackback`) with each job's last run and status. The version-check cron records success *and* failure (previously success only), and the RSS cron records a job-level run marker, so a failed or never-run job shows red instead of stale-green.
+
+### ONYX becomes an ordinary skin
+
+- ONYX no longer carries `fedistructure_only`; it is offered on every install like any other blog skin. The service-skin mechanism stays in place for a future service skin, and a FEDISTRUCTURE install that ships no service skin now falls back to showing the ordinary skins instead of an empty picker.
+
 ## 0.7.522 — 2026-08-14
 
 ### Pixelix reconnect and public permalink repair

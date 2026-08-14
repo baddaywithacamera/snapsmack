@@ -349,7 +349,7 @@ function tyswy_types(): array {
             // comment_ip and fp_hash are excluded - raw IPs and browser
             // fingerprints are named exclusions in spec section 9.
             'cols'  => ['id','img_id','post_id','comment_author','comment_url','comment_email',
-                        'comment_text','comment_date','is_approved',
+                        'comment_text','comment_date','is_approved','is_spam',
                         'ap_source','ap_actor_url','ap_object_id','ap_note_id','ap_in_reply_to'],
         ],
         'reactions' => [
@@ -391,6 +391,34 @@ function tyswy_types(): array {
             // this many views" (spec section 9).
             'cols'  => ['id','stat_date','total_views','unique_visitors','bot_views',
                         'top_image_id','top_referrer'],
+        ],
+        // ── Fediverse event log ─────────────────────────────────────────────
+        // The raw ActivityPub event history: inbound engagement (notifications),
+        // the inbound-POST diagnostic ring (inbox_log), and the outbound events
+        // we federated (replies, likes). Until now these lived ONLY in the full
+        // SQL backup and never in the portable NDJSON export — the one
+        // backup-audit gap. Dedup/identity tokens are excluded (spec section 9);
+        // third-party actor URLs are reference-only, exactly as in the
+        // follows/following streams above.
+        'fedi_notifications' => [
+            'table' => 'snap_ap_notifications', 'id' => 'id',
+            'cols'  => ['id','ntype','actor_url','actor_handle','object_id',
+                        'target_url','content','is_read','created_at'],
+        ],
+        'fedi_inbox_log' => [
+            'table' => 'snap_ap_inbox_log', 'id' => 'id',
+            'cols'  => ['id','received_at','verb','actor_url','object_ref','outcome'],
+        ],
+        'fedi_outbound_replies' => [
+            'table' => 'snap_ap_outbound_replies', 'id' => 'id',
+            // 'token' is the reply's dedup/identity token — a named exclusion
+            // (spec section 9). The portable event is who we replied to, with
+            // what, and when.
+            'cols'  => ['id','in_reply_to','to_actor_url','to_handle','content','published'],
+        ],
+        'fedi_outbound_likes' => [
+            'table' => 'snap_ap_outbound_likes', 'id' => 'id',
+            'cols'  => ['id','object_id','like_id','created_at'],
         ],
     ];
 }

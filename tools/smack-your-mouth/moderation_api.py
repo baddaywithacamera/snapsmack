@@ -9,14 +9,15 @@ already speaks to every spoke via core/multisite-api.php:
     GET  api.php?route=multisite/comments/pending  — pull unapproved comments       (EXISTS)
     POST api.php?route=multisite/comments/action   — approve | delete a comment     (EXISTS)
 
-Three operations this tool needs do NOT yet exist on the server; the client
-calls them behind graceful fallbacks and degrades to a clear message instead of
-a crash, so the moment the server adds them the tool lights up (see
-docs/smack-your-mouth-spec.md, "Server API"):
+These operations landed server-side in core 0.7.523 (core/multisite-api.php).
+The client still calls them behind graceful fallbacks, so it also works against
+an older spoke that predates them, degrading to a clear message instead of a
+crash (see docs/smack-your-mouth-spec.md, "Server API"):
 
-    POST api.php?route=multisite/comments/reply    — write an admin reply          (MUST-ADD)
-    action=spam on multisite/comments/action       — mark a comment as spam         (MUST-ADD)
-    GET  api.php?route=multisite/comments/get       — read one comment back by id   (MUST-ADD)
+    POST api.php?route=multisite/comments/reply    — write an admin reply          (EXISTS 0.7.523)
+    action=spam on multisite/comments/action       — mark a comment as spam         (EXISTS 0.7.523)
+    GET  api.php?route=multisite/comments/get       — read one comment back by id   (EXISTS 0.7.523)
+    GET  api.php?route=multisite/comments/list      — approved + pending history     (EXISTS 0.7.523)
 
 Auth: the same Bearer key the hub presents to a spoke (the per-node
 api_key_local). It is stored locally in the shared connection profile and never

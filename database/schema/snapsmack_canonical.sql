@@ -374,6 +374,8 @@ CREATE TABLE IF NOT EXISTS `snap_comments` (
   `comment_ip`     varchar(45)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `fp_hash`        varchar(64)  COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'SHA-256 browser fingerprint',
   `is_approved`    tinyint(1)   DEFAULT '0',
+  `is_spam`        tinyint(1)   NOT NULL DEFAULT '0'
+                   COMMENT 'SMACK YOUR MOUTH: non-destructive spam flag; approve clears it.',
   `ap_source`      enum('local','fediverse') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'local'
                    COMMENT 'SMACKVERSE (0.7.344): local blog comment vs a federated reply.',
   `ap_actor_url`   varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
@@ -1104,6 +1106,8 @@ CREATE TABLE IF NOT EXISTS `snap_ap_timeline` (
   `content`      mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `media_json`   mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                  COMMENT 'JSON array of image URLs',
+  `media_video_json` mediumtext COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                 COMMENT 'Inbound federated video: JSON array of {url,type} (consume-not-produce, 0.7.523)',
   `tags_json`    mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                  COMMENT 'JSON array of normalized ActivityPub Hashtag names',
   `url`          varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,

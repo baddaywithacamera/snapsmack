@@ -177,7 +177,14 @@
   function feedCard(p) {
     var a = p.author || {};
     var img0 = (p.images && p.images[0]) || "";
+    var vid0 = (p.videos && p.videos[0] && p.videos[0].url) || "";
     var multi = (p.count || (p.images ? p.images.length : 0)) > 1;
+    // Prefer the image; a video-only post gets a click-to-play player. We never
+    // autoplay an untrusted remote file — scheme-checked, and preload="none" so it
+    // costs no bandwidth until the reader hits play (consume-not-produce).
+    var mediaInner = img0
+      ? '<img src="' + esc(img0) + '" alt="" loading="lazy">'
+      : (vid0 ? '<video src="' + esc(safeUrl(vid0)) + '" controls preload="none" playsinline></video>' : "");
     var card = node('<article class="sx-card"></article>');
     card.innerHTML =
       '<div class="sx-card-head">' +
@@ -189,7 +196,7 @@
         '<a class="sx-ch-menu" href="' + esc(safeUrl(p.url)) + '" target="_blank" rel="noopener">' + DOTS + "</a>" +
       "</div>" +
       (p.is_boost ? '<div class="sx-boostline">' + BOOST + " Boosted</div>" : "") +
-      '<div class="sx-media' + (multi ? " sx-multi" : "") + '"><img src="' + esc(img0) + '" alt="" loading="lazy"></div>' +
+      '<div class="sx-media' + (multi ? " sx-multi" : "") + '">' + mediaInner + "</div>" +
       '<div class="sx-actions">' +
         '<button class="sx-act sx-like"><span class="sx-ic">' + HEART + "</span> Like</button>" +
         '<button class="sx-act sx-comment"><span class="sx-ic">' + CHAT + "</span> Comment</button>" +
@@ -287,7 +294,13 @@
   /* ---- profile ----------------------------------------------------------- */
   function tile(p) {
     var img0 = (p.images && p.images[0]) || "";
-    var t = node('<a class="sx-tile" href="#"><img src="' + esc(img0) + '" alt="" loading="lazy">' +
+    var hasVid = !!(p.videos && p.videos.length);
+    // Video-only post: a play-badge placeholder, not a broken <img>. The tile
+    // still opens the post (where the click-to-play player lives).
+    var face = img0
+      ? '<img src="' + esc(img0) + '" alt="" loading="lazy">'
+      : (hasVid ? '<span class="sx-tile-video">&#9654;</span>' : '<img src="' + esc(img0) + '" alt="" loading="lazy">');
+    var t = node('<a class="sx-tile" href="#">' + face +
       ((p.count || 1) > 1 ? '<span class="sx-tile-multi">&#9636;</span>' : "") +
       '<span class="sx-tile-time">' + esc(timeago(p.published)) + "</span></a>");
     t.addEventListener("click", function (e) { e.preventDefault(); openPost(p); });   // → post view (not straight to the image)

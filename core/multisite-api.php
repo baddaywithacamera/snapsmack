@@ -453,6 +453,26 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         foreach ($iter as $f) { $disk_bytes += $f->getSize(); }
     }
 
+    // CRONOMETER: per-job health for the fleet cron/job board. The client
+    // (tools/cronometer) reads this optional 'jobs' block keyed by job name,
+    // each { last_run, status }. Keys MUST match the client's JOB_SPECS —
+    // fediverse, rss_fetch, version_check, backup, smackback — or the row stays
+    // grey. Every value is a plain snap_settings row written by the matching
+    // cron; a missing last_run leaves that job 'unknown' (age-based on the
+    // client), never a false green.
+    $job_state = static function ($last_run, $status) {
+        $last_run = ($last_run ?? '') !== '' ? (string)$last_run : null;
+        $status   = ($status   ?? '') !== '' ? (string)$status   : ($last_run !== null ? 'ok' : 'unknown');
+        return ['last_run' => $last_run, 'status' => $status];
+    };
+    $jobs = [
+        'fediverse'     => $job_state($settings['smackverse_cron_last_run']   ?? null, $settings['smackverse_cron_last_status'] ?? null),
+        'rss_fetch'     => $job_state($settings['rss_last_run']                ?? null, $settings['rss_last_status']              ?? null),
+        'version_check' => $job_state($settings['last_update_check']           ?? null, $settings['version_check_last_status']    ?? null),
+        'backup'        => $job_state($settings['last_backup_at']              ?? null, $settings['last_backup_status']           ?? null),
+        'smackback'     => $job_state($settings['smackback_last_full_verify']  ?? null, $settings['smackback_status']             ?? null),
+    ];
+
     ms_ok([
         'version'            => SNAPSMACK_VERSION_SHORT,
         'update_track'       => $settings['update_track'] ?? 'stable',
@@ -477,15 +497,37 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         'smackverse_likes'     => $sv_likes_hb,
         'smackverse_boosts'    => $sv_boosts_hb,
         'smackverse_replies'   => $sv_replies_hb,
+        'jobs'               => $jobs,
         'timestamp'          => date('c'),
     ]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SMACK YOUR MOUTH: the moderation routes below read/write snap_comments.is_spam.
+// Add it idempotently so a spoke that has not yet run sv_ensure_tables can still
+// be moderated. SHOW COLUMNS works on every MySQL (no IF NOT EXISTS dependency).
+// If the ALTER cannot run the routes degrade gracefully rather than 500 — a
+// working /pending must never regress because a spoke could not upgrade.
+// ─────────────────────────────────────────────────────────────────────────────
+$has_spam_col = false;
+if ($resource === 'comments') {
+    try {
+        $has_spam_col = (bool)$pdo->query("SHOW COLUMNS FROM snap_comments LIKE 'is_spam'")->fetchColumn();
+        if (!$has_spam_col) {
+            $pdo->exec("ALTER TABLE snap_comments ADD COLUMN is_spam tinyint(1) NOT NULL DEFAULT 0");
+            $has_spam_col = true;
+        }
+    } catch (Throwable $e) { /* leave $has_spam_col false; routes tolerate its absence */ }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: GET multisite/comments/pending
-// Returns unapproved comments with the image title they're attached to.
+// Returns comments awaiting moderation (unapproved and not flagged spam) with
+// the image title they're attached to.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'comments' && $sub_action === 'pending' && $method === 'GET') {
+    $spam_select = $has_spam_col ? 'c.is_spam,' : '';
+    $spam_where  = $has_spam_col ? 'AND c.is_spam = 0' : '';
     $rows = $pdo->query("
         SELECT
             c.id,
@@ -495,11 +537,13 @@ if ($resource === 'comments' && $sub_action === 'pending' && $method === 'GET') 
             c.comment_text,
             c.comment_date,
             c.comment_ip,
+            c.is_approved,
+            {$spam_select}
             i.img_title,
             i.img_slug
         FROM snap_comments c
         LEFT JOIN snap_images i ON i.id = c.img_id
-        WHERE c.is_approved = 0
+        WHERE c.is_approved = 0 {$spam_where}
         ORDER BY c.comment_date DESC
         LIMIT 100
     ")->fetchAll(PDO::FETCH_ASSOC);
@@ -508,31 +552,197 @@ if ($resource === 'comments' && $sub_action === 'pending' && $method === 'GET') 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: GET multisite/comments/list?status=&limit=&since=
+// Approved + pending history for resumable sessions. status = all | approved |
+// pending; optional numeric `since` cursor returns only rows newer than that id.
+// Spam is excluded from 'all' and 'pending'. Purely additive — an old spoke that
+// lacks this route makes the client fall back to /pending.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'comments' && $sub_action === 'list' && $method === 'GET') {
+    if ($node['role'] !== 'hub') ms_err('Only a hub may read comments on this spoke', 403);
+    $status = (string)($_GET['status'] ?? 'all');
+    $limit  = max(1, min(200, (int)($_GET['limit'] ?? 100)));
+    $since  = (int)($_GET['since'] ?? 0);
+    $spam_select = $has_spam_col ? 'c.is_spam,' : '';
+    $where = [];
+    if ($status === 'pending')      { $where[] = 'c.is_approved = 0'; if ($has_spam_col) $where[] = 'c.is_spam = 0'; }
+    elseif ($status === 'approved') { $where[] = 'c.is_approved = 1'; }
+    else /* all */                  { if ($has_spam_col) $where[] = 'c.is_spam = 0'; }
+    if ($since > 0) $where[] = 'c.id > ' . (int)$since;
+    $where_sql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+    $rows = $pdo->query("
+        SELECT
+            c.id, c.img_id, c.comment_author, c.comment_email, c.comment_text,
+            c.comment_date, c.comment_ip, c.is_approved, {$spam_select}
+            i.img_title, i.img_slug
+        FROM snap_comments c
+        LEFT JOIN snap_images i ON i.id = c.img_id
+        {$where_sql}
+        ORDER BY c.id DESC
+        LIMIT {$limit}
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    ms_ok(['comments' => $rows, 'count' => count($rows)]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: POST multisite/comments/action
-// Approve or delete a comment by ID.
+// Approve, delete, or mark-spam a comment by ID.
+//   approve → publish it AND clear any spam flag (approve is "not spam"),
+//             then federate the now-approved LOCAL comment out to followers.
+//   spam    → non-destructive flag + unpublish (reversible via approve).
+//   delete  → hard delete (unchanged).
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'comments' && $sub_action === 'action' && $method === 'POST') {
     if ($node['role'] !== 'hub') ms_err('Only a hub may moderate comments on this spoke', 403);
     $comment_id  = (int)($_POST['comment_id'] ?? 0);
     $action_type = $_POST['action'] ?? '';
 
-    if (!$comment_id || !in_array($action_type, ['approve', 'delete'], true)) {
-        ms_err('comment_id and action (approve|delete) required');
+    if (!$comment_id || !in_array($action_type, ['approve', 'delete', 'spam'], true)) {
+        ms_err('comment_id and action (approve|delete|spam) required');
     }
 
-    $exists = $pdo->prepare("SELECT id FROM snap_comments WHERE id = ?");
-    $exists->execute([$comment_id]);
-    if (!$exists->fetchColumn()) {
+    $cur = $pdo->prepare("SELECT is_approved, ap_source FROM snap_comments WHERE id = ?");
+    $cur->execute([$comment_id]);
+    $cur = $cur->fetch(PDO::FETCH_ASSOC);
+    if (!$cur) {
         ms_err('Comment not found', 404);
     }
 
     if ($action_type === 'approve') {
-        $pdo->prepare("UPDATE snap_comments SET is_approved = 1 WHERE id = ?")->execute([$comment_id]);
-    } else {
+        if ($has_spam_col) {
+            $pdo->prepare("UPDATE snap_comments SET is_approved = 1, is_spam = 0 WHERE id = ?")->execute([$comment_id]);
+        } else {
+            $pdo->prepare("UPDATE snap_comments SET is_approved = 1 WHERE id = ?")->execute([$comment_id]);
+        }
+        // Federate ONLY on a real 0→1 transition of a LOCAL comment, mirroring
+        // the CMS approval path — never re-queue an already-approved comment, and
+        // never boomerang a fediverse comment. Best-effort: delivery lag must not
+        // fail the moderation call.
+        if ((int)($cur['is_approved'] ?? 0) !== 1 && ($cur['ap_source'] ?? 'local') !== 'fediverse') {
+            try {
+                require_once __DIR__ . '/smackverse.php';
+                if (function_exists('sv_federate_comment')) sv_federate_comment($pdo, $comment_id, $settings);
+            } catch (Throwable $e) { error_log('SMACK YOUR MOUTH approve-federate failed: ' . $e->getMessage()); }
+        }
+    } elseif ($action_type === 'spam') {
+        if (!$has_spam_col) {
+            // No is_spam column and the ensure could not add it. The honest,
+            // non-destructive fallback is to leave it unapproved rather than
+            // silently delete — report so the hub can retry after the upgrade.
+            ms_err('Spam flag unavailable on this spoke (schema not upgraded yet)', 409);
+        }
+        $pdo->prepare("UPDATE snap_comments SET is_spam = 1, is_approved = 0 WHERE id = ?")->execute([$comment_id]);
+    } else { // delete
         $pdo->prepare("DELETE FROM snap_comments WHERE id = ?")->execute([$comment_id]);
     }
 
     ms_ok(['comment_id' => $comment_id, 'action' => $action_type]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: GET multisite/comments/get?comment_id=
+// Read a single comment's moderation state — the positive-verification read-back
+// SMACK YOUR MOUTH uses to confirm an approve/spam/reply actually landed.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'comments' && $sub_action === 'get' && $method === 'GET') {
+    if ($node['role'] !== 'hub') ms_err('Only a hub may read moderation state on this spoke', 403);
+    $comment_id = (int)($_GET['comment_id'] ?? 0);
+    if (!$comment_id) ms_err('comment_id required');
+    $spam_select = $has_spam_col ? 'c.is_spam,' : '';
+    $q = $pdo->prepare("
+        SELECT
+            c.id, c.img_id, c.post_id, c.comment_author, c.comment_email,
+            c.comment_text, c.comment_date, c.is_approved, {$spam_select}
+            c.ap_source, c.ap_in_reply_to, c.ap_note_id, c.ap_object_id,
+            i.img_title, i.img_slug
+        FROM snap_comments c
+        LEFT JOIN snap_images i ON i.id = c.img_id
+        WHERE c.id = ? LIMIT 1
+    ");
+    $q->execute([$comment_id]);
+    $row = $q->fetch(PDO::FETCH_ASSOC);
+    if (!$row) ms_err('Comment not found', 404);
+    if (!$has_spam_col) $row['is_spam'] = null; // report the field even when the column is absent
+
+    // Replies threaded under this comment — the client uses these to positively
+    // verify a posted reply. A comment's own Note id is ap_note_id (a local
+    // comment, once federated) or ap_object_id (a fediverse comment); replies
+    // carry it in ap_in_reply_to. Best-effort: an empty array simply makes the
+    // client fall back to trusting the reply_id the reply route returned.
+    $self_note = trim((string)($row['ap_note_id'] ?? '')) ?: trim((string)($row['ap_object_id'] ?? ''));
+    $row['replies'] = [];
+    if ($self_note !== '') {
+        $rq = $pdo->prepare("SELECT id, comment_author, comment_text, comment_date, is_approved, ap_source
+                             FROM snap_comments WHERE ap_in_reply_to = ? ORDER BY id ASC LIMIT 50");
+        $rq->execute([$self_note]);
+        $row['replies'] = $rq->fetchAll(PDO::FETCH_ASSOC);
+    }
+    ms_ok(['comment' => $row]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/comments/reply
+// Post a LOCAL admin reply to a comment, threaded under it and (if SMACKVERSE is
+// on) federated out. Single-actor rule: the reply is authored by the blog. The
+// parent's fediverse Note id is what makes the reply thread on other servers.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'comments' && $sub_action === 'reply' && $method === 'POST') {
+    if ($node['role'] !== 'hub') ms_err('Only a hub may reply to comments on this spoke', 403);
+    $parent_id = (int)($_POST['comment_id'] ?? 0);
+    // Client (moderation_api.py) sends 'reply_text' + optional 'author'; accept
+    // 'text' as a fallback so a hand-rolled caller still works.
+    $text      = trim((string)($_POST['reply_text'] ?? $_POST['text'] ?? ''));
+    if (!$parent_id || $text === '') ms_err('comment_id and reply_text required');
+
+    $ps = $pdo->prepare("SELECT id, img_id, post_id, ap_source, ap_object_id, ap_note_id
+                         FROM snap_comments WHERE id = ? LIMIT 1");
+    $ps->execute([$parent_id]);
+    $parent = $ps->fetch(PDO::FETCH_ASSOC);
+    if (!$parent) ms_err('Parent comment not found', 404);
+
+    require_once __DIR__ . '/smackverse.php';
+    // Guarantee the AP columns this route writes (ap_source, ap_in_reply_to,
+    // post_id, …) exist even on a spoke that has not run this yet. Idempotent.
+    if (function_exists('sv_ensure_tables')) { try { sv_ensure_tables($pdo); } catch (Throwable $e) { /* non-fatal */ } }
+    $base = function_exists('sv_base') ? sv_base($settings) : BASE_URL;
+
+    // The Note the reply threads under: a fediverse parent is identified by its
+    // remote Note id (ap_object_id); a local parent by the Note id we assigned it
+    // (ap_note_id), or the deterministic id it WOULD get on federation. Empty
+    // falls back to the content's own Note inside sv_note_for_comment().
+    $parent_note = trim((string)($parent['ap_object_id'] ?? ''));
+    if ($parent_note === '') $parent_note = trim((string)($parent['ap_note_id'] ?? ''));
+    if ($parent_note === '' && ($parent['ap_source'] ?? 'local') === 'local') {
+        $parent_note = $base . 'ap/note/c/' . (int)$parent['id'];
+    }
+
+    // The reply is authored by the blog (single-actor rule). The operator's
+    // chosen display name arrives as 'author'; fall back to the site's identity.
+    $author = trim((string)($_POST['author'] ?? '')) ?: ($settings['smackverse_display_name'] ?? ($settings['site_name'] ?? 'Editor'));
+    $ins = $pdo->prepare(
+        "INSERT INTO snap_comments
+            (img_id, post_id, comment_author, comment_text, comment_date,
+             is_approved, ap_source, ap_in_reply_to)
+         VALUES (?, ?, ?, ?, NOW(), 1, 'local', ?)"
+    );
+    $ins->execute([
+        $parent['img_id'] !== null ? (int)$parent['img_id'] : null,
+        $parent['post_id'] !== null ? (int)$parent['post_id'] : null,
+        substr((string)$author, 0, 100),
+        $text,
+        $parent_note,
+    ]);
+    $reply_id = (int)$pdo->lastInsertId();
+
+    // Federate it out — mints + persists the reply's own Note id and threads it
+    // under the parent. Best-effort: the local reply stands even if delivery lags.
+    $federated = false;
+    try {
+        if (function_exists('sv_federate_comment')) { sv_federate_comment($pdo, $reply_id, $settings); $federated = true; }
+    } catch (Throwable $e) { error_log('SMACK YOUR MOUTH reply-federate failed: ' . $e->getMessage()); }
+
+    // 'reply_id' is what the client reads back (moderation_api.py post_reply).
+    ms_ok(['reply_id' => $reply_id, 'comment_id' => $reply_id, 'in_reply_to' => $parent_id, 'federated' => $federated]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
