@@ -174,6 +174,60 @@ function sc_github_get(string $endpoint): array|false {
     return is_array($data) ? $data : false;
 }
 
+/** Resolve a tag to the exact commit GitHub will archive. */
+function sc_tag_commit(string $tag): string {
+    $ref = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/git/ref/tags/' . rawurlencode($tag));
+    if (!is_array($ref) || !is_array($ref['object'] ?? null)) return '';
+    $object = $ref['object'];
+    if (($object['type'] ?? '') === 'commit') return (string)($object['sha'] ?? '');
+    if (($object['type'] ?? '') === 'tag' && !empty($object['sha'])) {
+        $tag_object = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/git/tags/' . rawurlencode((string)$object['sha']));
+        if (is_array($tag_object) && ($tag_object['object']['type'] ?? '') === 'commit') {
+            return (string)($tag_object['object']['sha'] ?? '');
+        }
+    }
+    return '';
+}
+
+/**
+ * Permanent on-disk release ledger. Deleting a zip/history row must never make
+ * a public identifier reusable.
+ */
+function sc_release_ledger(): array {
+    $path = rtrim(RELEASES_DIR, '/') . '/release-identifiers.json';
+    if (!is_file($path)) return [];
+    $decoded = json_decode((string)file_get_contents($path), true);
+    return is_array($decoded) ? $decoded : [];
+}
+
+function sc_release_identifier_used(string $version): bool {
+    if (isset(sc_release_ledger()[$version])) return true;
+    $zip = rtrim(RELEASES_DIR, '/') . '/snapsmack-' . preg_replace('/[^a-zA-Z0-9._\-]/', '', $version) . '.zip';
+    if (is_file($zip)) return true;
+    try {
+        if (preg_match('/D$/i', $version)) {
+            $s=sc_db()->prepare('SELECT COUNT(*) FROM sc_dev_builds WHERE version=?');$s->execute([$version]);
+        } else {
+            $s=sc_db()->prepare('SELECT COUNT(*) FROM sc_releases WHERE version=?');$s->execute([$version]);
+        }
+        return (int)$s->fetchColumn() > 0;
+    } catch (Throwable $e) { return false; }
+}
+
+function sc_record_release_identifier(string $track, string $version, string $tag, string $commit,
+                                      string $checksum, string $signature): bool {
+    $path = rtrim(RELEASES_DIR, '/') . '/release-identifiers.json';
+    $ledger = sc_release_ledger();
+    if (isset($ledger[$version])) return false;
+    $ledger[$version] = ['track'=>$track,'tag'=>$tag,'source_commit'=>$commit,
+        'checksum_sha256'=>$checksum,'signature'=>$signature,'published_at'=>gmdate('c')];
+    $tmp = $path . '.tmp-' . bin2hex(random_bytes(8));
+    $json = json_encode($ledger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    if (!is_string($json) || file_put_contents($tmp,$json,LOCK_EX)===false) return false;
+    if (!@rename($tmp,$path)) { @unlink($tmp); return false; }
+    return true;
+}
+
 // ── Helper: list tags from GitHub (sorted newest-first by version) ────────────
 // Only returns tags in the current three-segment numeric semver format
 // (e.g. v0.7.17). Old letter-suffix tags (v0.7.9P) and companion-tool
@@ -649,7 +703,7 @@ function sc_build_fedistructure_release(string $tag, string $version, string $ve
                                         string $codename, string $released,
                                         string $requires_php, string $requires_mysql,
                                         array $changelog, string $signing_pubkey,
-                                        string $track = 'stable'): array {
+                                        string $track = 'stable', string $source_commit = ''): array {
     $zip_name = 'snapsmack-fedistructure-' . preg_replace('/[^a-zA-Z0-9._\-]/', '', $version) . '.zip';
     $zip_dest = rtrim(RELEASES_DIR, '/') . '/' . $zip_name;
     $built = sc_build_release_zip($tag, $zip_dest, [], 'fedistructure');
@@ -753,6 +807,7 @@ function sc_build_fedistructure_release(string $tag, string $version, string $ve
         'download_size'   => filesize($zip_dest),
         'profiles'        => ['photo-challenge', 'daily-photo', 'smackcast'],
         'track'           => $track,
+        'source_commit'   => $source_commit,
     ];
     $manifest_name = $track === 'dev'
         ? 'latest-fedistructure-dev.json'
@@ -1004,8 +1059,17 @@ if ($action === 'build' && $preflight_ok) {
         $build_error = 'Stable tag and version do not match.';
     } elseif ($version === '' || $version_full === '') {
         $build_error = 'Version and Version Full are required.';
+    } elseif (sc_release_identifier_used($version)) {
+        $build_error = 'Release identifier already published. Published versions are immutable; use the next version.';
     } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $released)) {
         $build_error = 'Invalid release date.';
+    }
+
+    if (!$build_error) {
+        $source_commit = sc_tag_commit($tag);
+        if (!preg_match('/^[0-9a-f]{40}$/i',$source_commit)) {
+            $build_error = 'Could not resolve the selected tag to one source commit.';
+        }
     }
 
     if (!$build_error) {
@@ -1097,13 +1161,20 @@ if ($action === 'build' && $preflight_ok) {
                 $build_error = 'Signing failed: ' . $e->getMessage();
             }
 
+            // Burn the identifier before either distribution publishes. A failed
+            // build receives a new version rather than making this label mutable.
+            if (!$build_error && !sc_record_release_identifier('stable',$version,$tag,$source_commit,$checksum,$sig_hex)) {
+                $build_error = 'Could not write immutable release ledger; manifest was not published.';
+                @unlink($zip_dest);
+            }
+
             // Build the sibling service distribution before publishing either
             // manifest. Both artifacts therefore always originate at one tag.
             if (!$build_error) {
                 $fed_result = sc_build_fedistructure_release(
                     $tag, $version, $version_full, $codename, $released,
                     $requires_php, $requires_mysql, $changelog,
-                    (string)$sc_derived_pubkey
+                    (string)$sc_derived_pubkey, 'stable', $source_commit
                 );
                 $build_log[] = '→ ' . $fed_result['msg'];
                 if (!$fed_result['ok']) $build_error = $fed_result['msg'];
@@ -1203,6 +1274,7 @@ if ($action === 'build' && $preflight_ok) {
                     'download_size'      => $file_size,
                     'canonical_schema_url' => $canonical_url,
                     'canonical_schema_sig' => $canonical_sig,
+                    'source_commit'       => $source_commit,
                 ];
                 $json_path = rtrim(RELEASES_DIR, '/') . '/latest.json';
                 file_put_contents($json_path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
@@ -1334,8 +1406,17 @@ if ($action === 'build_dev' && $preflight_ok) {
         $dev_build_error = 'Dev tag and version do not match.';
     } elseif ($version === '' || $version_full === '') {
         $dev_build_error = 'Version and Version Full are required.';
+    } elseif (sc_release_identifier_used($version)) {
+        $dev_build_error = 'Release identifier already published. Published versions are immutable; use the next version.';
     } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $released)) {
         $dev_build_error = 'Invalid release date.';
+    }
+
+    if (!$dev_build_error) {
+        $source_commit = sc_tag_commit($tag);
+        if (!preg_match('/^[0-9a-f]{40}$/i',$source_commit)) {
+            $dev_build_error = 'Could not resolve the selected tag to one source commit.';
+        }
     }
 
     if (!$dev_build_error) {
@@ -1406,13 +1487,20 @@ if ($action === 'build_dev' && $preflight_ok) {
                 $dev_build_error = 'Signing failed: ' . $e->getMessage();
             }
 
+            // Burn the identifier before either distribution publishes. A failed
+            // build receives a new version rather than making this label mutable.
+            if (!$dev_build_error && !sc_record_release_identifier('dev',$version,$tag,$source_commit,$dev_checksum,$dev_sig_hex)) {
+                $dev_build_error = 'Could not write immutable release ledger; manifest was not published.';
+                @unlink($zip_dest);
+            }
+
             // FEDISTRUCTURE follows the same beta channel. Its dev manifest is
             // separate, so a BITCHIN' build can never replace the stable feed.
             if (!$dev_build_error) {
                 $fed_dev_result = sc_build_fedistructure_release(
                     $tag, $version, $version_full, $codename, $released,
                     $requires_php, $requires_mysql, $changelog,
-                    (string)$sc_derived_pubkey, 'dev'
+                    (string)$sc_derived_pubkey, 'dev', $source_commit
                 );
                 $dev_build_log[] = '→ ' . $fed_dev_result['msg'];
                 if (!$fed_dev_result['ok']) $dev_build_error = $fed_dev_result['msg'];
@@ -1472,6 +1560,7 @@ if ($action === 'build_dev' && $preflight_ok) {
                     'track'                => 'dev',
                     'canonical_schema_url' => $dev_canonical_url,
                     'canonical_schema_sig' => $dev_canonical_sig,
+                    'source_commit'         => $source_commit,
                 ];
                 $dev_json_path = rtrim(RELEASES_DIR, '/') . '/latest-dev.json';
                 file_put_contents($dev_json_path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));

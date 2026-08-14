@@ -7,10 +7,11 @@
  * Last non-empty line of this file MUST match the line above.
  * Missing or different = truncated/corrupted. Restore before saving.
  */
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/thumb-generator.php';
 require_once __DIR__ . '/core/alt-text.php';
 require_once __DIR__ . '/core/gram-client-authoring.php';
+require_once __DIR__ . '/core/pixelix-lifecycle.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -57,7 +58,7 @@ function px_bearer(PDO $pdo): array {
     if (!$h && function_exists('getallheaders')) { $a=getallheaders(); $h=$a['Authorization']??$a['authorization']??''; }
     if (!preg_match('/^Bearer\s+(\S+)$/i',$h,$m)) px_json(['error'=>'The access token is invalid'],401);
     $s=$pdo->prepare("SELECT t.*,a.client_id FROM snap_oauth_tokens t JOIN snap_oauth_apps a ON a.id=t.app_id
-      WHERE t.token_hash=? AND t.revoked_at IS NULL AND (t.token_expires_at IS NULL OR t.token_expires_at>NOW()) LIMIT 1");
+      WHERE t.token_hash=? AND t.revoked_at IS NULL AND t.token_expires_at>NOW() LIMIT 1");
     $s->execute([hash('sha256',$m[1])]); $row=$s->fetch(PDO::FETCH_ASSOC);
     if (!$row) px_json(['error'=>'The access token is invalid'],401); return $row;
 }
@@ -79,7 +80,7 @@ function px_media(PDO $pdo, int $id): ?array {
       'description'=>(string)($i['img_alt']??''),'blurhash'=>null,'license'=>null];
 }
 function px_status(PDO $pdo, int $id): ?array {
-    $s=$pdo->prepare('SELECT * FROM snap_posts WHERE id=? LIMIT 1'); $s->execute([$id]); $p=$s->fetch(PDO::FETCH_ASSOC); if(!$p)return null;
+    $s=$pdo->prepare("SELECT * FROM snap_posts WHERE id=? AND status='published' LIMIT 1"); $s->execute([$id]); $p=$s->fetch(PDO::FETCH_ASSOC); if(!$p)return null;
     $q=$pdo->prepare('SELECT image_id FROM snap_post_images WHERE post_id=? ORDER BY sort_position ASC LIMIT 10'); $q->execute([$id]);
     $media=[]; foreach($q->fetchAll(PDO::FETCH_COLUMN) as $iid){$m=px_media($pdo,(int)$iid);if($m)$media[]=$m;}
     $content=nl2br(htmlspecialchars((string)$p['description'],ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'));
@@ -93,6 +94,8 @@ function px_status(PDO $pdo, int $id): ?array {
 
 px_mode_gate($pdo);
 $route=trim((string)($_GET['route']??''),'/'); $method=$_SERVER['REQUEST_METHOD']??'GET'; $base=px_base();
+try { snap_pixelix_lifecycle_maintenance($pdo,__DIR__,false,10); }
+catch (Throwable $e) { error_log('Pixelix lifecycle maintenance failed: '.$e->getMessage()); }
 
 if ($route==='api/v1/apps' && $method==='POST') {
     px_offline_gate($pdo);
@@ -116,10 +119,22 @@ if ($route==='oauth/authorize') {
 }
 if ($route==='oauth/token' && $method==='POST') {
     $cid=(string)($_POST['client_id']??'');$secret=(string)($_POST['client_secret']??'');$code=(string)($_POST['code']??'');$redirect=(string)($_POST['redirect_uri']??'');
-    if(($_POST['grant_type']??'')==='refresh_token'){$refresh=(string)($_POST['refresh_token']??'');$s=$pdo->prepare("SELECT t.*,a.client_secret_hash FROM snap_oauth_tokens t JOIN snap_oauth_apps a ON a.id=t.app_id WHERE a.client_id=? AND t.refresh_token_hash=? AND t.revoked_at IS NULL AND t.refresh_expires_at>NOW() LIMIT 1");$s->execute([$cid,hash('sha256',$refresh)]);$row=$s->fetch(PDO::FETCH_ASSOC);if(!$row||!hash_equals($row['client_secret_hash'],hash('sha256',$secret)))px_json(['error'=>'invalid_grant'],400);$token=bin2hex(random_bytes(32));$newRefresh=bin2hex(random_bytes(32));$pdo->prepare('UPDATE snap_oauth_tokens SET token_hash=?,refresh_token_hash=?,token_expires_at=DATE_ADD(NOW(),INTERVAL 30 DAY) WHERE id=?')->execute([hash('sha256',$token),hash('sha256',$newRefresh),$row['id']]);px_json(['access_token'=>$token,'refresh_token'=>$newRefresh,'token_type'=>'Bearer','scope'=>$row['scopes'],'created_at'=>(string)time()]);}
-    $s=$pdo->prepare("SELECT t.*,a.client_secret_hash FROM snap_oauth_tokens t JOIN snap_oauth_apps a ON a.id=t.app_id WHERE a.client_id=? AND t.authorization_code_hash=? AND t.redirect_uri=? AND t.code_expires_at>NOW() AND t.token_hash IS NULL LIMIT 1");$s->execute([$cid,hash('sha256',$code),$redirect]);$row=$s->fetch(PDO::FETCH_ASSOC);
-    if(!$row || !hash_equals($row['client_secret_hash'],hash('sha256',$secret))) px_json(['error'=>'invalid_grant'],400);
-    $token=bin2hex(random_bytes(32));$refresh=bin2hex(random_bytes(32));$pdo->prepare('UPDATE snap_oauth_tokens SET token_hash=?,refresh_token_hash=?,authorization_code_hash=NULL,token_expires_at=DATE_ADD(NOW(),INTERVAL 30 DAY),refresh_expires_at=DATE_ADD(NOW(),INTERVAL 90 DAY) WHERE id=?')->execute([hash('sha256',$token),hash('sha256',$refresh),$row['id']]);
+    if(($_POST['grant_type']??'')==='refresh_token'){
+        $refresh=(string)($_POST['refresh_token']??'');$oldHash=hash('sha256',$refresh);$token=bin2hex(random_bytes(32));$newRefresh=bin2hex(random_bytes(32));
+        $pdo->beginTransaction();
+        try{$s=$pdo->prepare("SELECT t.*,a.client_secret_hash FROM snap_oauth_tokens t JOIN snap_oauth_apps a ON a.id=t.app_id WHERE a.client_id=? AND t.refresh_token_hash=? AND t.revoked_at IS NULL AND t.refresh_expires_at>NOW() LIMIT 1 FOR UPDATE");$s->execute([$cid,$oldHash]);$row=$s->fetch(PDO::FETCH_ASSOC);
+            if(!$row||!hash_equals($row['client_secret_hash'],hash('sha256',$secret))){$pdo->rollBack();px_json(['error'=>'invalid_grant'],400);}
+            $u=$pdo->prepare('UPDATE snap_oauth_tokens SET token_hash=?,refresh_token_hash=?,token_expires_at=DATE_ADD(NOW(),INTERVAL 30 DAY) WHERE id=? AND refresh_token_hash=? AND revoked_at IS NULL AND refresh_expires_at>NOW()');$u->execute([hash('sha256',$token),hash('sha256',$newRefresh),$row['id'],$oldHash]);
+            if($u->rowCount()!==1){$pdo->rollBack();px_json(['error'=>'invalid_grant'],400);}$pdo->commit();
+        }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();px_json(['error'=>'invalid_grant'],400);}
+        px_json(['access_token'=>$token,'refresh_token'=>$newRefresh,'token_type'=>'Bearer','scope'=>$row['scopes'],'created_at'=>(string)time()]);
+    }
+    $codeHash=hash('sha256',$code);$token=bin2hex(random_bytes(32));$refresh=bin2hex(random_bytes(32));$pdo->beginTransaction();
+    try{$s=$pdo->prepare("SELECT t.*,a.client_secret_hash FROM snap_oauth_tokens t JOIN snap_oauth_apps a ON a.id=t.app_id WHERE a.client_id=? AND t.authorization_code_hash=? AND t.redirect_uri=? AND t.code_expires_at>NOW() AND t.token_hash IS NULL LIMIT 1 FOR UPDATE");$s->execute([$cid,$codeHash,$redirect]);$row=$s->fetch(PDO::FETCH_ASSOC);
+        if(!$row || !hash_equals($row['client_secret_hash'],hash('sha256',$secret))){$pdo->rollBack();px_json(['error'=>'invalid_grant'],400);}
+        $u=$pdo->prepare('UPDATE snap_oauth_tokens SET token_hash=?,refresh_token_hash=?,authorization_code_hash=NULL,token_expires_at=DATE_ADD(NOW(),INTERVAL 30 DAY),refresh_expires_at=DATE_ADD(NOW(),INTERVAL 90 DAY) WHERE id=? AND authorization_code_hash=? AND token_hash IS NULL AND revoked_at IS NULL AND code_expires_at>NOW()');$u->execute([hash('sha256',$token),hash('sha256',$refresh),$row['id'],$codeHash]);
+        if($u->rowCount()!==1){$pdo->rollBack();px_json(['error'=>'invalid_grant'],400);}$pdo->commit();
+    }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();px_json(['error'=>'invalid_grant'],400);}
     px_json(['access_token'=>$token,'refresh_token'=>$refresh,'token_type'=>'Bearer','scope'=>$row['scopes'],'created_at'=>(string)time()]);
 }
 if ($route==='oauth/revoke' && $method==='POST') { $token=(string)($_POST['token']??'');$pdo->prepare('UPDATE snap_oauth_tokens SET revoked_at=NOW() WHERE token_hash=?')->execute([hash('sha256',$token)]);px_json([]); }
@@ -129,6 +144,22 @@ if (($route==='api/v1/instance'||$route==='api/v2/instance') && $method==='GET')
 }
 $token=px_bearer($pdo);
 if ($route==='api/v1/accounts/verify_credentials' || $route==='api/v1/accounts/1') { px_require_scope($token,'read');px_json(px_actor($pdo)); }
+if ($route==='api/pixelfed/v1/accounts/1') { px_require_scope($token,'read');px_json(px_actor($pdo)); }
+if ($route==='api/pixelfed/v1/web/settings') {
+    px_require_scope($token,'read');
+    px_json(['enable_reblogs'=>false,'hide_collections'=>true,'hide_groups'=>true,'hide_stories'=>true]);
+}
+if ($route==='api/v1.1/compose/search/location' && $method==='GET') {
+    // SNAPSMACK does not maintain a canonical places database. An empty JSON
+    // result keeps Pixelix's optional city field harmless and avoids inventing
+    // location metadata that cannot be persisted faithfully.
+    px_require_scope($token,'read');px_json([]);
+}
+if (preg_match('#^api/v1\.1/collections/accounts/1$#',$route) && $method==='GET') {
+    // Collections are advertised as hidden above; retain an empty fallback for
+    // clients that already opened the screen before refreshing capabilities.
+    px_require_scope($token,'read');px_json([]);
+}
 if (($route==='api/v1/media'||$route==='api/v2/media') && $method==='POST') {
     px_offline_gate($pdo);px_require_scope($token,'write');if(empty($_FILES['file'])||$_FILES['file']['error']!==UPLOAD_ERR_OK)px_json(['error'=>'file is required'],422);
     $mime=(new finfo(FILEINFO_MIME_TYPE))->file($_FILES['file']['tmp_name']);$ext=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'][$mime]??'';if(!$ext)px_json(['error'=>'Unsupported media type'],422);

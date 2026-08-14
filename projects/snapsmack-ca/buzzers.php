@@ -162,6 +162,9 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Aug 13</span><a href="#a045">Pixelix Live Test &amp; Release Lifecycle</a></li>
+                <li><span class="idx-date">Aug 13</span><a href="#a044">THE HUB Shared Stores &amp; Launcher Boundary</a></li>
+                <li><span class="idx-date">Aug 13</span><a href="#a043">Pixelix Posting &amp; OAuth for GRAMOFSMACK</a></li>
                 <li><span class="idx-date">Aug 7</span><a href="#a042">Desktop Tools &mdash; What "Already Fixed" Was Hiding</a></li>
                 <li><span class="idx-date">Aug 7</span><a href="#a041">Download Links &mdash; Escaping Is Not Validation</a></li>
                 <li><span class="idx-date">Aug 7</span><a href="#a004c">Smack Up Your Backup&rsquo;s First Review &mdash; Closed at Last</a></li>
@@ -208,6 +211,31 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a045">
+                <div class="post-meta"><span class="post-date">August 13, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Pixelix Live Test &amp; Release Lifecycle</h2>
+                <p>The real-device contract now works: Pixelix registered, passed through the normal password and two-factor login, received owner consent, staged a photograph as a private draft, updated its ALT text, published it, refreshed the profile, and loaded the resulting thumbnail. The final compatibility patch also stopped optional settings, account, city-search and collections calls from falling through to HTML errors.</p>
+                <p>The successful post did not make the first pass clean. It found five follow-up items: abandoned media and OAuth records had no expiry cleanup; a read token could request an unpublished post by numeric ID; bearer rows with a missing access-token deadline failed open; code redemption and refresh rotation were not atomic under concurrency; and the same public 520D tag had been moved repeatedly after deployment.</p>
+                <p>All five are closed. A bounded seven-day draft-media lifecycle removes abandoned files and OAuth residue safely; client status reads are published-only; null-expiry bearers are rejected and legacy rows revoked; token redemption and rotation use locked, conditional single-winner updates; and Smack Central now burns every release identifier into a permanent ledger before publication while recording its source commit, checksum and signature. The 520D history cannot be made immutable retroactively, but that identifier is retired and the packaging path now refuses reuse.</p>
+                <a class="report-link" href="secaudits/2026-08-13-045-pixelix-live-interoperability-and-release-lifecycle.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a044">
+                <div class="post-meta"><span class="post-date">August 13, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>THE HUB &mdash; Shared Profiles, Prompts, and the Launcher Boundary</h2>
+                <p>The shared profile and Gemini-prompt stores held up: filenames are confined, writes are atomic and recoverable, migrations are repeatable, and no new network or shell surface was introduced. An independent adversarial pass did, however, overturn the first review&rsquo;s low-risk rating on the launcher. THE HUB searched for wildcard-matched programs inside the same folder tree GYSS is allowed to write. A compromised GYSS window could plant a program there and make it appear installed. Hub 0.1.2 removes and defensively rejects those in-jail wildcard searches.</p>
+                <p>The follow-up closes the architectural remainder too. GYSS&rsquo;s privileged file commands can now reach only <code>shared_library</code> and its own <code>config_files\gyss</code> data. The sibling SYBU and COLD SNAP executable directories are outside that allowlist, including when addressed by exact path. A Rust regression test pins the legitimate data paths and rejects executable, lookalike-directory and traversal paths.</p>
+                <a class="report-link" href="secaudits/2026-08-13-044-hub-readside-shared-profiles-and-prompts.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a043">
+                <div class="post-meta"><span class="post-date">August 13, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Pixelix Posting &amp; OAuth &mdash; GRAMOFSMACK Only</h2>
+                <p>GRAMOFSMACK can now accept photo and carousel posts from Pixelix through a deliberately narrow Pixelfed-compatible API. The connection uses owner-approved OAuth, expiring access and refresh credentials, explicit read/write scopes, administrative disconnect, and the existing owner switch for offline posting. Other SnapSmack install modes fail closed.</p>
+                <p>The first security pass found six issues before release: one authorized client could claim another client&rsquo;s staged media; public client registration lacked a throttle; public discovery attempted database schema changes; concurrent uploads could race the hourly posting cap; refresh credentials had no hard lifetime; and recorded scopes were not enforced. All six are remediated. Media is bound to its originating OAuth connection, registration and posting limits are serialized, schema work stays in the updater, refresh credentials expire after 90 days, and every bearer route checks its required scope. Targeted syntax and regression gates pass; a real Pixelix device and live-database concurrency run remain rollout checks.</p>
+                <a class="report-link" href="secaudits/2026-08-13-043-pixelix-oauth-and-gram-client-posting.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a042">
                 <div class="post-meta"><span class="post-date">August 7, 2026</span><span class="post-tag">Closed</span></div>

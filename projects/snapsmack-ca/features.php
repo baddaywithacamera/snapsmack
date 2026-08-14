@@ -23,6 +23,10 @@ $page_css = <<<'CSS'
 .feature-proof { background: var(--black); color: #ddd; }
 .feature-proof h2 { color: var(--white); }
 .feature-proof strong { color: var(--white); }
+.architecture-story { border-top: 1px solid var(--border); }
+.architecture-story .story-copy { max-width: 820px; }
+.architecture-story .story-copy > p { max-width: 72ch; margin-bottom: 1.35em; }
+.architecture-story .story-copy > p:last-child { margin-bottom: 0; }
 .working-now { background: var(--light-grey); border-top: 1px solid var(--border); }
 .working-head { max-width: 800px; margin-bottom: 34px; }
 .working-head h2 { margin-bottom: 12px; }
@@ -61,7 +65,7 @@ require_once __DIR__ . '/includes/header.php';
                 <h2>Publish your way</h2>
                 <ul>
                     <li><strong>SMACKONEOUT</strong> for a single photograph with room to breathe.</li>
-                    <li><strong>GRAMOFSMACK</strong> for multi-image posts, carousels, panoramas, and a curated grid.</li>
+                    <li><strong>GRAMOFSMACK</strong> for multi-image posts, carousels, panoramas, a curated grid, and working phone publishing through either its installable PWA or Pixelix.</li>
                     <li><strong>SMACKTALK</strong> for longform writing with photographs inside the story.</li>
                     <li>Albums, collections, static pages, categories, tags, EXIF, captions, and high-resolution download links.</li>
                 </ul>
@@ -89,6 +93,7 @@ require_once __DIR__ . '/includes/header.php';
                 <ul>
                     <li>Guided installation, updates, maintenance mode, and built-in help.</li>
                     <li>Multisite management, fleet updates, comment moderation, and privacy-first statistics.</li>
+                    <li>THE HUB launches the desktop suite from one place, with shared local profiles, protected credentials, libraries, and prompts.</li>
                     <li>Desktop batch posting, migration, backup, audit, and recovery tools.</li>
                     <li>Optional AI writing and metadata assistance, disclosed and under your control.</li>
                 </ul>
@@ -106,6 +111,24 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
+    <section class="architecture-story" id="why-built-this-way">
+        <div class="wrap">
+            <div class="story-copy">
+                <p class="site-discovery-kicker">BUILT ON A HISTORY WORTH PRESERVING</p>
+                <h2>Architecture that refuses the usual answer</h2>
+                <p>SNAPSMACK did not appear from nowhere. It follows a trail broken by earlier photoblogging projects and the people who sustained them, often with too little help or recognition. Preserving that history means acknowledging their work, learning from what they endured, and carrying the best of their ideas forward.</p>
+                <p><strong><a href="https://bsky.app/profile/thatnoahgrey.bsky.social" target="_blank" rel="noopener">Noah Grey</a> comes first.</strong> He inspired me as a photographer, a creator, and a person. He is senpai. I am kohai. SnapSmack is the kohai&rsquo;s offering. His photographs and his work on <a href="https://en.wikipedia.org/wiki/Greymatter_(software)" target="_blank" rel="noopener">Greymatter</a> showed me that publishing software could be personal, independent, generous, strange, and unmistakably human.</p>
+                <p><strong>No arbitrary plugins.</strong> Executable behaviour stays in the reviewed CMS library. Skins declare the approved engines and options they need through manifests, allowing dramatic visual changes without turning every skin into a miniature software distribution. The idea owes a debt to b2evolution's resistance to plugin hell; SNAPSMACK takes the boundary further.</p>
+                <p><strong>Support without a public forum surface.</strong> The support forum lives inside authenticated SNAPSMACK administration. Operators can ask for help from the software itself, while the usual public registration, login, and posting endpoints are not left outside for bots and drive-by spammers.</p>
+                <p>This decision owes something to <a href="https://github.com/pixelpost/pixelpost/wiki">Jay Williams' candid account of the attempted Pixelpost rewrite</a>. Jay deserves enormous credit: he wrote most of the code that moved Pixelpost from version 1.5 to 1.6, contributed substantially to the rewrite, and spent countless hours helping its users. He deserves far more recognition for that work than he received. SNAPSMACK stands in the shadow of that work.</p>
+                <p>As Pixelpost's last active developer and moderator, Jay described automatic spam across the forum and blog as nearly impossible for one person to clean up. He was equally clear that the rewrite was put on hold for broader reasons: too few developers, too little available time, and the difficulty of maintaining the site and finishing the software without the collaboration the project needed. That was not a failure of effort. SNAPSMACK's internal forum applies one practical lesson from his experience: public support infrastructure should not be allowed to consume the limited time available to maintain the software itself.</p>
+                <p><strong>A deliberately layered security system.</strong> Authentication, authorization, abuse prevention, signed distribution, integrity monitoring, breach containment, recovery, fleet intelligence, and public audit closure reinforce one another rather than operating as isolated features. GOBSMACKED adds local stylometric ban-evasion detection to the privacy-preserving federated troll-reputation system.</p>
+                <p>None of those ingredients is being claimed as an invention. What is unusual is the approach: putting all the fixings on the burger and bringing the coordinated architecture and security depth of paid software to freeware built for a small community.</p>
+                <p><a href="index.php#security"><strong>See the eight-layer security stack &rarr;</strong></a> &nbsp; <a href="buzzers.php"><strong>Read the closed security audits &rarr;</strong></a></p>
+            </div>
+        </div>
+    </section>
+
     <section class="working-now" id="working-now">
         <div class="wrap">
             <header class="working-head">
@@ -115,7 +138,7 @@ require_once __DIR__ . '/includes/header.php';
             </header>
             <div class="working-grid">
                 <article class="working-card"><h3>SMACKONEOUT</h3><p>One photograph per post, chronological navigation, drafts, scheduling, EXIF, tags, categories, albums, collections, and downloads.</p></article>
-                <article class="working-card"><h3>GRAMOFSMACK</h3><p>Classic three-across publishing with ordered grids, multi-image carousels, cover selection, panorama rows, and PHOTOGRAM on phones.</p></article>
+                <article class="working-card"><h3>GRAMOFSMACK</h3><p>Classic three-across publishing with ordered grids, multi-image carousels, cover selection, panorama rows, a touch-friendly installable PWA, and tested direct Pixelix posting through owner-approved OAuth and the normal two-factor login.</p></article>
                 <article class="working-card"><h3>SMACKTALK + MOSAIC</h3><p>Longform photo essays with headings, inline Gallery images, covers, captions, and justified MOSAIC panels woven through the writing.</p></article>
                 <article class="working-card"><h3>Light Table</h3><p>A full-screen browser workbench for sorting photographs into albums, categories, and collections by drag and drop.</p></article>
 
@@ -134,7 +157,10 @@ require_once __DIR__ . '/includes/header.php';
                 <article class="working-card"><h3>Installer, Updates + Help</h3><p>Guided installation, canonical schema synchronization, cryptographically verified updates, rollback support, maintenance mode, and contextual built-in help.</p></article>
                 <article class="working-card"><h3>SEO + Crawler Policy</h3><p>Sitemaps, Open Graph, structured metadata, IndieWeb links, configurable robots and AI-training policy, <code>llms.txt</code>, and <code>security.txt</code>.</p></article>
 
-                <article class="working-card"><h3>Desktop Workflow</h3><p><strong>Smack Your Batch Up</strong> handles batch posting, <strong>Smack Up Your Backup</strong> protects the archive, and <strong>The Unzucker</strong> and <strong>FLKR FCKR</strong> bring Instagram and Flickr collections home. The full app catalogue lives in BOX O' TRICKS.</p></article>
+                <article class="working-card"><h3>SMACK YOUR BATCH UP</h3><p>Batch-process photographs, preserve their metadata, and publish complete posts to SNAPSMACK from the desktop.</p></article>
+                <article class="working-card"><h3>SMACK UP YOUR BACKUP</h3><p>Build complete recovery archives and move them offsite, with support for multiple sites and fleet discovery.</p></article>
+                <article class="working-card"><h3>THE UNZUCKER</h3><p>Bring an Instagram export home with original dates, captions, hashtags, carousels, and grid order intact.</p></article>
+                <article class="working-card"><h3>FLKR FCKR</h3><p>Import a Flickr archive with its photographs, titles, descriptions, tags, and original upload dates preserved.</p></article>
             </div>
             <p style="margin-top:28px;"><a href="tools.php"><strong>See the desktop tools &rarr;</strong></a> &nbsp; <a href="buzzers.php"><strong>See the security layers &rarr;</strong></a></p>
         </div>
