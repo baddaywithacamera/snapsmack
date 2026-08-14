@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.1.44"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
+BUILD_VERSION = "0.1.45"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -2840,9 +2840,14 @@ class App(tk.Tk):
             return
         self._url_var.set(p.get('url', ''))
         self._api_key_var.set(p.get('api_key', ''))
-        self._goog_creds_var.set(p.get('google_credentials', ''))
-        self._drive_folder_var.set(p.get('drive_folder_id', ''))
-        self._gemini_key_var.set(p.get('gemini_api_key', ''))
+        # Google creds, Drive folder and the Gemini key are GLOBAL/shared — set once
+        # in THE HUB for the whole fleet, not per-site. A discovered profile has none,
+        # so blanking the field on load wiped the shared key (Enrich then cried
+        # "No API Key" even though Test had just passed). Inherit the shared/config
+        # value when the profile doesn't carry its own.
+        self._goog_creds_var.set(p.get('google_credentials') or self._config.get('google_credentials', ''))
+        self._drive_folder_var.set(p.get('drive_folder_id') or self._config.get('drive_folder_id', ''))
+        self._gemini_key_var.set(p.get('gemini_api_key') or self._config.get('gemini_api_key', ''))
         self._copyright_var.set(p.get('copyright_text', ''))
         self._def_cat_var.set(p.get('default_category', ''))
         self._def_alb_var.set(p.get('default_album', ''))
