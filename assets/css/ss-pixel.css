@@ -119,8 +119,9 @@ button{ font-family:inherit; cursor:pointer; }
 /* left profile card */
 .sx-idcard{ border:1px solid var(--line); border-radius:var(--radius); padding:14px; background:var(--card); display:flex; gap:12px; align-items:center; }
 .sx-idcard .sx-av{ width:56px; height:56px; border-radius:999px; object-fit:cover; background:var(--pill); }
+.sx-idcard > div{ min-width:0; }
 .sx-idcard .sx-name{ font-weight:800; font-size:.98rem; line-height:1.15; }
-.sx-idcard .sx-handle{ color:var(--accent); font-size:.86rem; }
+.sx-idcard .sx-handle{ max-width:100%; color:var(--accent); font-size:.86rem; line-height:1.25; overflow-wrap:anywhere; word-break:break-word; }
 .sx-idcard .sx-counts{ color:var(--muted-2); font-size:.8rem; margin-top:3px; }
 .sx-idcard .sx-counts b{ color:var(--fg); }
 

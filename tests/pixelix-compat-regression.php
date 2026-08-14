@@ -14,6 +14,7 @@ $ui  = file_get_contents($root . '/smack-post-gram.php');
 $js  = file_get_contents($root . '/assets/js/ss-engine-gram-post.js');
 $auth = file_get_contents($root . '/core/auth-smack.php');
 $authoring = file_get_contents($root . '/core/gram-client-authoring.php');
+$lifecycle = file_get_contents($root . '/core/pixelix-lifecycle.php');
 $installer = file_get_contents($root . '/install.php');
 $release = file_get_contents($root . '/smack-central/sc-release.php');
 
@@ -37,14 +38,30 @@ $checks = [
     'Pixelix instance stats'   => "'stats'=>",
     'Pixelix video limit'      => "'video_size_limit'=>0",
     'separate ALT update'      => "method==='PUT'",
+    'Pixelix settings'         => "'hide_collections'=>true",
+    'Pixelix account alias'    => "api/pixelfed/v1/accounts/1",
+    'location search fallback' => "api/v1.1/compose/search/location",
+    'collections fallback'     => "api/v1\\.1/collections/accounts/1",
+    'published-only status'    => "status='published'",
+    'fail-closed token expiry' => "t.token_expires_at>NOW()",
+    'locked code redemption'   => "LIMIT 1 FOR UPDATE",
+    'conditional code redeem'  => "authorization_code_hash=? AND token_hash IS NULL",
+    'conditional refresh'      => "refresh_token_hash=? AND revoked_at IS NULL",
+    'single-winner exchange'   => "rowCount()!==1",
 ];
 foreach ($checks as $name => $needle) {
     if (strpos($api, $needle) === false) { fwrite(STDERR, "Missing: {$name}\n"); exit(1); }
 }
 if (strpos($api, 'function px_schema') !== false || strpos($api, 'CREATE TABLE') !== false || strpos($api, 'ALTER TABLE') !== false) { fwrite(STDERR, "Runtime schema mutation returned\n"); exit(1); }
+if (strpos($api, 'token_expires_at IS NULL') !== false) { fwrite(STDERR, "Null-expiry bearer still fails open\n"); exit(1); }
+foreach (["SNAP_PIXELIX_DRAFT_RETENTION_DAYS = 7", "FOR UPDATE", "post_id IS NULL", "snap_api_safe_upload_path", "dry_run"] as $needle) {
+    if (strpos($lifecycle, $needle) === false) { fwrite(STDERR, "Missing lifecycle control: {$needle}\n"); exit(1); }
+}
 if (strpos($authoring, 'FOR UPDATE') === false || strpos($authoring, '300 images/hour') === false) { fwrite(STDERR, "Missing atomic authoring budget\n"); exit(1); }
 if (strpos($ht, 'pixelfed-api.php?route=api/v$1/$2') === false) { fwrite(STDERR, "Missing client API rewrite\n"); exit(1); }
+if (strpos($ht, 'pixelfed-api.php?route=api/v1.1/$1') === false || strpos($ht, 'pixelfed-api.php?route=api/pixelfed/v1/$1') === false) { fwrite(STDERR, "Missing Pixelix extension rewrites\n"); exit(1); }
 if (strpos($installer, 'pixelfed-api.php?route=api/v$1/$2') === false || strpos($installer, 'pixelfed-api.php?route=oauth/$1') === false) { fwrite(STDERR, "Installer-generated .htaccess is missing client routes\n"); exit(1); }
+if (strpos($installer, 'pixelfed-api.php?route=api/v1.1/$1') === false || strpos($installer, 'pixelfed-api.php?route=api/pixelfed/v1/$1') === false) { fwrite(STDERR, "Installer-generated .htaccess is missing Pixelix extension routes\n"); exit(1); }
 if (strpos($release, 'Tagged source is missing required Pixelix runtime file') === false || strpos($release, 'Tagged htaccess template is missing required Pixelix API/OAuth routes') === false) { fwrite(STDERR, "Release builder does not reject incomplete Pixelix tags\n"); exit(1); }
 if (strpos($ui, 'ss-gram-pwa-composer.css') === false) { fwrite(STDERR, "Missing GRAM composer stylesheet\n"); exit(1); }
 if (strpos($ui, 'gram-composer-form') === false || strpos($ui, 'gram-advanced') === false) { fwrite(STDERR, "Missing structured PWA composer\n"); exit(1); }

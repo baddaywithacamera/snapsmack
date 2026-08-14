@@ -137,6 +137,14 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Aug 13</span>
+                    <a href="#pixelix-live">GRAMOFSMACK Posts from Pixelix</a>
+                </li>
+                <li>
+                    <span class="idx-date">Aug 13</span>
+                    <a href="#one-door">One Door for the Whole Desktop</a>
+                </li>
+                <li>
                     <span class="idx-date">Aug 7</span>
                     <a href="#indieweb-plumbing">The Open Web Can Read the Labels Now</a>
                 </li>
@@ -290,6 +298,32 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="pixelix-live">
+                <div class="post-meta">
+                    <span class="post-date">August 13, 2026</span>
+                    <span class="post-tag">Compatibility</span>
+                </div>
+                <h2><a href="#pixelix-live">GRAMOFSMACK Posts from Pixelix</a></h2>
+                <p>Native phone posting is live. Pixelix can now connect directly to a GRAMOFSMACK site, register through OAuth, pass through the owner&rsquo;s normal login and two-factor authentication, upload a photograph as a private CMS draft, attach ALT text, and publish the finished post. The first real-device test on ALLINTHEWRIST completed that entire path and the post appeared in both SNAPSMACK and Pixelix without an error.</p>
+                <p>This is a deliberately narrow compatibility surface, not an attempt to impersonate a complete Pixelfed server. It is available only to GRAMOFSMACK installs with Offline Posting enabled. Unsupported Pixelfed features such as Stories, Groups, and Pixelix&rsquo;s separate Collections system are advertised as unavailable; optional location lookup returns no invented place data. The photographs, drafts, posts, authentication, and federation remain SNAPSMACK&rsquo;s.</p>
+                <p>That gives GRAMOFSMACK two credible phone workflows: its own installable PWA composer and Pixelix as a native Fediverse client. Use the interface that feels right; both publish into the same owner-controlled archive.</p>
+                <p><a href="features.php#working-now"><strong>See what is working now &rarr;</strong></a> &nbsp; <a href="buzzers.php#a043"><strong>Read the Pixelix/OAuth security record &rarr;</strong></a></p>
+            </article>
+
+            <article class="post" id="one-door">
+                <div class="post-meta">
+                    <span class="post-date">August 13, 2026</span>
+                    <span class="post-tag">Roundup</span>
+                </div>
+                <h2>One Door for the Whole Desktop</h2>
+                <p>SnapSmack&rsquo;s desktop tools have spent long enough behaving like cousins who only meet at weddings. <strong>THE HUB</strong> gives them one front door. Set up your SnapSmack fleet once, discover the sites you run, and launch the tool you need from one place. Connection profiles, protected credentials, the local photo library and Gemini prompt presets now live in shared stores, so moving from sorting to posting to backup no longer means entering the same site and account details all over again.</p>
+                <p>Call it single sign-on in the human sense: one setup, one protected source of connection details, and every compatible desktop tool inherits what it needs. It is not a new cloud identity provider and your credentials are not being shipped off to us. They stay on your computer. The launcher and the shared stores have been through an adversarial security review as well; GYSS is now fenced into its actual data folders and cannot reach the neighbouring desktop programs.</p>
+                <p>The next step is packaging. A unified Windows installer is being prepared for the closed beta, so the first twenty do not have to assemble the suite one executable at a time. THE HUB will remain honest about what is installed, launch what is present, and make the missing-tool installation path the next part of the beta.</p>
+                <p>The web side caught up too. GRAMOFSMACK&rsquo;s installable PWA now has a proper touch-friendly posting workspace, with clearer image ordering and the controls tucked where they belong. And if you prefer a native phone client, GRAMOFSMACK now speaks the narrow slice of the Pixelfed/Mastodon API that <strong>Pixelix</strong> uses for OAuth login, photo upload, ALT text and carousel publishing. That compatibility is deliberately GRAMOFSMACK-only and guarded by the owner&rsquo;s offline-posting switch.</p>
+                <p>A note on names: Pixelix is supported now. The official Pixelfed app is a separate client with additional Pixelfed-specific API calls, so we are not stamping &ldquo;compatible&rdquo; on it without a real-device contract test. The common OAuth, media and status APIs give us a useful head start; official-app support is the sensible next compatibility target, not a promise smuggled into a roundup.</p>
+                <p><a href="buzzers.php#a043"><strong>Read the Pixelix/OAuth security record &rarr;</strong></a> &nbsp; <a href="buzzers.php#a044"><strong>Read THE HUB security record &rarr;</strong></a></p>
+            </article>
 
             <article class="post" id="indieweb-plumbing">
                 <div class="post-meta">

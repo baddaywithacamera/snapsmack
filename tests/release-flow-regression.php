@@ -44,6 +44,14 @@ rel_expect(str_contains($guard, "if (\$command === 'push-dev')"),
     'release guard must provide ordinary dev pushes');
 rel_expect(str_contains($guard, "if (\$command === 'promote-stable')"),
     'release guard must provide guarded stable promotion');
+rel_expect(str_contains($packager, 'sc_release_identifier_used'),
+    'packager must refuse an already-published release identifier');
+rel_expect(str_contains($packager, 'release-identifiers.json'),
+    'packager must retain an immutable release ledger');
+rel_expect(str_contains($packager, "'source_commit'"),
+    'published manifests must record the exact source commit');
+rel_expect(str_contains($packager, 'sc_record_release_identifier'),
+    'packager must record checksum and signature before publication');
 if (preg_match("/SNAPSMACK_VERSION_SHORT',\\s*'([^']+)'/", $constants, $version_match)) {
     rel_expect(str_contains($changelog, '## ' . $version_match[1] . ' '),
         'the source version must have a versioned changelog section before tagging');

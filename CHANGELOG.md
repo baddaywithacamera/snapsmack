@@ -12,6 +12,14 @@
 
 ## 0.7.521 — 2026-08-13
 
+### Pixelix live-test remediation — SECAUDIT 045 closed
+
+- Added bounded Pixelix lifecycle maintenance: abandoned client drafts expire after seven days, stale OAuth registrations/codes/credentials and limiter buckets are pruned, and upload deletion is locked and path-contained. A dry-run/report utility is included.
+- Pixelix status detail is published-only; missing access-token expiry now fails closed and legacy null-expiry bearers are revoked.
+- Authorization-code redemption and refresh rotation now use locked transactions and conditional, exactly-one-row updates, so concurrent reuse loses with `invalid_grant`.
+- Smack Central permanently burns published identifiers into an immutable ledger and records the exact source commit, artifact SHA-256 and signature in release metadata. Rebuilding a used identifier is refused even after archive or history cleanup.
+- SECAUDIT 045 is closed and its remediated PDF is published on BUZZERS.
+
 ### ONYX skin — one skin, a colour-palette dropdown (was CRIMSON ONYX)
 
 - Collapsed CRIMSON ONYX into a generic **ONYX** skin: `style.css` = geometry, `variant-<name>.css` = accent palettes (crimson default / sapphire / emerald); the manifest `variants` block auto-spawns the SKIN PALETTE dropdown. Per-colour pickers removed. Same native variant system as 50-shades / alfred.
