@@ -1,0 +1,16 @@
+/**
+ * SNAPSMACK - ONYX skin · Sapphire palette
+ * A cool blue accent on the same onyx.
+ * Only the accent + link colours change per palette; the onyx neutrals
+ * (canvas, ink, muted, hairline) live in style.css and stay constant.
+ *
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line MUST be the CSS EOF marker below.
+ */
+
+:root {
+    --pfd-red:  #1E6FE0;   /* accent: rules, borders, numerals, the dot, the glow */
+    --pfd-link: #4A9BFF;   /* links & hover — a step brighter than the accent */
+}
+
+/* ===== SNAPSMACK EOF ===== */

@@ -53,7 +53,7 @@ $mode_defaults = [
 // better a working generic skin than a 503 because somebody added a profile
 // before its skin was packaged.
 $profile_defaults = [
-    'photo-challenge' => 'crimson-onyx',
+    'photo-challenge' => 'onyx',
 ];
 
 $default_skin = ($profile !== '' && isset($profile_defaults[$profile]))

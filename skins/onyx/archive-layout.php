@@ -1,7 +1,7 @@
 <?php
 /**
- * SNAPSMACK - CRIMSON ONYX Archive Layout
- * CRIMSON ONYX 0.1.0
+ * SNAPSMACK - ONYX Archive Layout
+ * ONYX 0.1.0
  *
  * Two-mode toggle: natural-aspect cropped grid / justified (Flickr-style) rows.
  * Visitor preference persists via localStorage (consent-gated).

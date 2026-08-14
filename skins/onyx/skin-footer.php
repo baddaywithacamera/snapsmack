@@ -1,7 +1,7 @@
 <?php
 /**
- * SNAPSMACK - Footer for the crimson-onyx skin
- * CRIMSON ONYX 0.1.0
+ * SNAPSMACK - Footer for the onyx skin
+ * ONYX 0.1.0
  *
  * Injects skin-specific JavaScript libraries and closes the document.
  */

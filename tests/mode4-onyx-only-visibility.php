@@ -46,17 +46,17 @@ s_ok(snapsmack_skin_allowed_distribution($bare) === false,
 s_ok(snapsmack_skin_allowed_distribution('not an array') === true,
      'a malformed manifest must never be hidden by accident, on any install');
 
-$list = ['crimson-onyx' => $service, 'new-horizon' => $normal, 'plain' => $bare];
+$list = ['onyx' => $service, 'new-horizon' => $normal, 'plain' => $bare];
 $filtered = snapsmack_skins_for_distribution($list);
-s_ok(isset($filtered['crimson-onyx']), 'the list filter dropped the Onyx skin on mode 4');
+s_ok(isset($filtered['onyx']), 'the list filter dropped the Onyx skin on mode 4');
 s_ok(!isset($filtered['new-horizon']) && !isset($filtered['plain']),
      'the list filter kept ordinary skins on mode 4');
 s_ok(count($filtered) === 1, 'mode 4 should have left exactly the one Onyx skin');
 
 // The real shipped skin resolves visible on its own product.
-$m = json_decode((string)file_get_contents(__DIR__ . '/../skins/crimson-onyx/manifest.json'), true);
+$m = json_decode((string)file_get_contents(__DIR__ . '/../skins/onyx/manifest.json'), true);
 s_ok(is_array($m) && snapsmack_skin_allowed_distribution($m) === true,
-     'CRIMSON ONYX is not visible on its own FEDISTRUCTURE install');
+     'ONYX is not visible on its own FEDISTRUCTURE install');
 
 if ($failures) {
     fwrite(STDERR, "FAIL\n- " . implode("\n- ", $failures) . "\n");

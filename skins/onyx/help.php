@@ -1,7 +1,7 @@
 <?php
 /**
- * SNAPSMACK - Skin Help Topics: CRIMSON ONYX
- * CRIMSON ONYX 0.1.4
+ * SNAPSMACK - Skin Help Topics: ONYX
+ * ONYX 0.1.4
  */
 
 /**
@@ -13,12 +13,12 @@
 
 return [
 
-    'crimson-onyx-overview' => [
-        'section'  => 'Active Skin: CRIMSON ONYX',
+    'onyx-overview' => [
+        'section'  => 'Active Skin: ONYX',
         'title'    => 'Skin Overview',
         'icon'     => '&#x25CF;',
         'content'  => <<<'HTML'
-<h3>CRIMSON ONYX</h3>
+<h3>ONYX</h3>
 <p>The photofri.day identity, as a skin. Crimson on near-black, an Arial Black wordmark,
 hairline rules, and a faint red glow behind the canvas so the black never reads as a flat
 slab. It is a straight port of the photofri.day static site &mdash; the colours, sizes and
@@ -44,8 +44,8 @@ here.</p>
 HTML
     ],
 
-    'crimson-onyx-pages' => [
-        'section'  => 'Active Skin: CRIMSON ONYX',
+    'onyx-pages' => [
+        'section'  => 'Active Skin: ONYX',
         'title'    => 'The Front Page & Nav',
         'icon'     => '&#x25A0;',
         'content'  => <<<'HTML'
@@ -91,8 +91,8 @@ order.</p>
 HTML
     ],
 
-    'crimson-onyx-branding' => [
-        'section'  => 'Active Skin: CRIMSON ONYX',
+    'onyx-branding' => [
+        'section'  => 'Active Skin: ONYX',
         'title'    => 'Logo, Avatar & Colour',
         'icon'     => '&#x25C6;',
         'content'  => <<<'HTML'

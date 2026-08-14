@@ -1,7 +1,7 @@
 <?php
 /**
- * SNAPSMACK - Skin header for the CRIMSON ONYX skin
- * CRIMSON ONYX 0.1.0
+ * SNAPSMACK - Skin header for the ONYX skin
+ * ONYX 0.1.0
  *
  * The photofri.day top bar: brand on the left, page links on the right, hairline
  * rule underneath. The links are NOT hardcoded — core/header.php builds the nav
