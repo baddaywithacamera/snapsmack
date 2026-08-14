@@ -32,6 +32,7 @@ $page_css = <<<'CSS'
 .working-head h2 { margin-bottom: 12px; }
 .working-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
 .working-card { min-width: 0; padding: 22px; background: var(--white); }
+.working-card--full { grid-column: 1 / -1; }
 .working-card h3 { margin-bottom: 9px; font-size: .93rem; }
 .working-card p { margin: 0; color: var(--mid-grey); font-size: .83rem; line-height: 1.55; }
 .working-card strong { color: var(--black); }
@@ -161,6 +162,7 @@ require_once __DIR__ . '/includes/header.php';
                 <article class="working-card"><h3>SMACK UP YOUR BACKUP</h3><p>Build complete recovery archives and move them offsite, with support for multiple sites and fleet discovery.</p></article>
                 <article class="working-card"><h3>THE UNZUCKER</h3><p>Bring an Instagram export home with original dates, captions, hashtags, carousels, and grid order intact.</p></article>
                 <article class="working-card"><h3>FLKR FCKR</h3><p>Import a Flickr archive with its photographs, titles, descriptions, tags, and original upload dates preserved.</p></article>
+                <article class="working-card working-card--full"><h3>GET YOUR SHIT SORTED</h3><p>Sort and edit a SNAPSMACK photograph library from the desktop, work from a synchronized offline copy, repair missing titles, captions, ALT text, tags, categories, albums and colour metadata, reorder SMACKONEOUT or GRAMOFSMACK feeds, and assemble GRAMOFSMACK carousels without wrestling the archive through a browser.</p></article>
             </div>
             <p style="margin-top:28px;"><a href="tools.php"><strong>See the desktop tools &rarr;</strong></a> &nbsp; <a href="buzzers.php"><strong>See the security layers &rarr;</strong></a></p>
         </div>
