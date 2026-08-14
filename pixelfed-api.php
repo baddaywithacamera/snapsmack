@@ -129,6 +129,22 @@ if (($route==='api/v1/instance'||$route==='api/v2/instance') && $method==='GET')
 }
 $token=px_bearer($pdo);
 if ($route==='api/v1/accounts/verify_credentials' || $route==='api/v1/accounts/1') { px_require_scope($token,'read');px_json(px_actor($pdo)); }
+if ($route==='api/pixelfed/v1/accounts/1') { px_require_scope($token,'read');px_json(px_actor($pdo)); }
+if ($route==='api/pixelfed/v1/web/settings') {
+    px_require_scope($token,'read');
+    px_json(['enable_reblogs'=>false,'hide_collections'=>true,'hide_groups'=>true,'hide_stories'=>true]);
+}
+if ($route==='api/v1.1/compose/search/location' && $method==='GET') {
+    // SNAPSMACK does not maintain a canonical places database. An empty JSON
+    // result keeps Pixelix's optional city field harmless and avoids inventing
+    // location metadata that cannot be persisted faithfully.
+    px_require_scope($token,'read');px_json([]);
+}
+if (preg_match('#^api/v1\.1/collections/accounts/1$#',$route) && $method==='GET') {
+    // Collections are advertised as hidden above; retain an empty fallback for
+    // clients that already opened the screen before refreshing capabilities.
+    px_require_scope($token,'read');px_json([]);
+}
 if (($route==='api/v1/media'||$route==='api/v2/media') && $method==='POST') {
     px_offline_gate($pdo);px_require_scope($token,'write');if(empty($_FILES['file'])||$_FILES['file']['error']!==UPLOAD_ERR_OK)px_json(['error'=>'file is required'],422);
     $mime=(new finfo(FILEINFO_MIME_TYPE))->file($_FILES['file']['tmp_name']);$ext=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'][$mime]??'';if(!$ext)px_json(['error'=>'Unsupported media type'],422);
