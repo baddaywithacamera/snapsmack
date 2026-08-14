@@ -21,7 +21,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-BUILD_VERSION = "0.1.3"
+BUILD_VERSION = "0.1.4"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -282,7 +282,7 @@ class Hub(tk.Tk):
         self._field(card, "BACKUP FOLDER ID", "drive_folder_id")
         bar = tk.Frame(card, bg=CARD)
         bar.pack(fill="x", padx=14, pady=(4, 12))
-        tk.Button(bar, text="SAVE SHARED CREDENTIALS", bg=FIELD, fg=INK,
+        tk.Button(bar, text="SAVE SHARED CREDENTIALS", bg=FIELD, fg=ACCENT,
                   activebackground=ACCENT, activeforeground=BG, relief="flat",
                   font=("Segoe UI", 9, "bold"), cursor="hand2",
                   command=self._on_save_creds).pack(side="left", ipadx=8, ipady=4)
@@ -303,15 +303,21 @@ class Hub(tk.Tk):
             except Exception:
                 pass
 
+    def _save_typed_creds(self):
+        """Persist locally-typed secrets to the shared vault. Returns the count."""
+        n = 0
+        for key, var in self._creds_vars.items():
+            if key == "hub_url":
+                continue
+            val = var.get().strip()
+            if val:
+                snap_creds.set(key, val); n += 1
+        return n
+
     def _on_save_creds(self):
         try:
-            for key, var in self._creds_vars.items():
-                if key == "hub_url":
-                    continue
-                val = var.get().strip()
-                if val:
-                    snap_creds.set(key, val)
-            self._setup_status.configure(text="✓ saved to shared vault", fg=ACCENT)
+            n = self._save_typed_creds()
+            self._setup_status.configure(text=f"✓ {n} credential(s) saved to shared vault", fg=ACCENT)
         except Exception as e:
             self._setup_status.configure(text=f"save failed: {e}", fg="#ff5555")
 
@@ -322,7 +328,13 @@ class Hub(tk.Tk):
             messagebox.showwarning("Hub URL required",
                                    "Enter your hub site URL first.", parent=self)
             return
-        self._setup_status.configure(text="discovering…", fg=DIM)
+        # Save whatever is typed FIRST, so a user who never clicks Save never
+        # loses their Gemini/Drive keys. Discover both saves and pulls.
+        try:
+            self._save_typed_creds()
+        except Exception:
+            pass
+        self._setup_status.configure(text="saving + discovering…", fg=DIM)
         self.update_idletasks()
         try:
             summary = snap_discovery.discover_and_save(hub_url, api_key=hub_key)
@@ -333,7 +345,7 @@ class Hub(tk.Tk):
         self._load_creds()
         self._refresh_profiles()
         n = summary.get("count", 0)
-        self._setup_status.configure(text=f"✓ {n} site(s) into the shared store", fg=ACCENT)
+        self._setup_status.configure(text=f"✓ saved + {n} site(s) into the shared store", fg=ACCENT)
 
     # ── shared profiles list ─────────────────────────────────────────────────
     def _build_profiles(self, parent):
