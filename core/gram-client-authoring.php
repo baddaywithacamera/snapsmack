@@ -1,5 +1,12 @@
 <?php
-/** Shared GRAMOFSMACK authoring primitives for web-adjacent/native clients. */
+/**
+ * Shared GRAMOFSMACK authoring primitives for web-adjacent/native clients.
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
 
 function snapsmack_gram_unique_post_slug(PDO $pdo, string $prefix): string {
     $base = trim($prefix, '-') . '-' . date('Ymd-His') . '-' . bin2hex(random_bytes(2));

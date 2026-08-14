@@ -1,4 +1,12 @@
-/* GRAMOFSMACK phone/tablet composer. Loaded by the carousel composer only. */
+/*
+ * GRAMOFSMACK phone/tablet composer. Loaded by the carousel composer only.
+ *
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
 .gram-composer{--gp-radius:20px;--gp-gap:clamp(16px,3vw,30px);padding-bottom:30px}
 .gram-composer .header-row{align-items:end;margin-bottom:var(--gp-gap)}
 .gram-composer .header-row h2{margin:0;font-size:clamp(1.5rem,4vw,2.45rem);letter-spacing:-.045em}
@@ -37,3 +45,4 @@
 }
 @media(max-width:430px){.gram-section-heading--split{align-items:flex-start;flex-wrap:wrap}.gram-section-heading--split #gp-file-count{margin-left:48px}.gram-composer .gram-advanced-grid{grid-template-columns:1fr}.gram-composer .post-col-right .lens-input-wrapper:last-child{grid-column:auto}}
 @media(prefers-reduced-motion:reduce){.gram-composer *{scroll-behavior:auto!important;transition:none!important}}
+/* ===== SNAPSMACK EOF ===== */
