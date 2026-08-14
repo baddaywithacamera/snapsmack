@@ -14,7 +14,7 @@ require_once 'core/auth-smack.php';
 require_once 'core/smackverse.php';
 require_once 'core/smackverse-admin-shared.php';
 
-$page_title = 'SMACKVERSE - Push & Tools';
+$page_title = 'Fediverse - Push & Tools';
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -22,7 +22,7 @@ include 'core/sidebar.php';
 <div class="main">
 
     <div class="header-row header-row--ruled">
-        <h2>SMACKVERSE &mdash; PUSH &amp; TOOLS</h2>
+        <h2>FEDIVERSE &mdash; PUSH &amp; TOOLS</h2>
     </div>
 
     <?php if (isset($_GET['msg'])): ?>

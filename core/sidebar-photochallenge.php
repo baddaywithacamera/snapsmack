@@ -62,7 +62,7 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
 
             <div class="nav-section<?php echo $_pc_active === 'smackverse' ? ' open' : ''; ?>" data-section="smackverse">
                 <button type="button" class="nav-section-toggle">
-                    <span class="nav-section-label">SMACKVERSE</span>
+                    <span class="nav-section-label">FEDIVERSE</span>
                     <span class="nav-section-arrow"></span>
                 </button>
                 <ul class="nav-section-links">

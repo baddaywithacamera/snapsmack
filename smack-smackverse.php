@@ -14,7 +14,7 @@ require_once 'core/auth-smack.php';
 require_once 'core/smackverse.php';
 require_once 'core/smackverse-admin-shared.php';
 
-$page_title = 'SMACKVERSE - Federation';
+$page_title = 'Fediverse - Portal';
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -22,7 +22,7 @@ include 'core/sidebar.php';
 <div class="main">
 
     <div class="header-row header-row--ruled">
-        <h2>SMACKVERSE &mdash; FEDERATION</h2>
+        <h2>FEDIVERSE &mdash; PORTAL</h2>
     </div>
 
     <?php if (isset($_GET['msg'])): ?>
@@ -36,7 +36,7 @@ include 'core/sidebar.php';
     <div class="box mb-20">
         <h3>FEDERATION SWITCH</h3>
         <?php if ($sv_on): ?>
-            <div class="alert alert-success">&#10003; SMACKVERSE is ON. The blog is discoverable and followable at <code><?php echo htmlspecialchars($sv_address); ?></code>.</div>
+            <div class="alert alert-success">&#10003; Fediverse is ON. The blog is discoverable and followable at <code><?php echo htmlspecialchars($sv_address); ?></code>.</div>
             <form method="post" action="">
                 <input type="hidden" name="action" value="disable_smackverse">
                 <button type="submit" class="btn-smack">DISABLE FEDERATION</button>
@@ -77,7 +77,7 @@ include 'core/sidebar.php';
                         </span>
                     </label>
                 </div>
-                <button type="submit" class="master-update-btn">ENABLE SMACKVERSE</button>
+                <button type="submit" class="master-update-btn">ENABLE FEDIVERSE</button>
             </form>
         <?php endif; ?>
     </div>
@@ -155,7 +155,7 @@ include 'core/sidebar.php';
             you flip, never a default we flip.
         </p>
         <?php if (!$sv_on): ?>
-            <p class="dim">Enable SMACKVERSE above first.</p>
+            <p class="dim">Enable Fediverse above first.</p>
         <?php else: ?>
             <form method="post" action="">
                 <input type="hidden" name="action" value="rollcall_save">
@@ -187,17 +187,17 @@ include 'core/sidebar.php';
 
     <!-- NETWORK RELAY -->
     <div class="box mb-20">
-        <h3>SMACKVERSE NETWORK</h3>
+        <h3>FEDIVERSE NETWORK</h3>
         <?php
             $relay_joined = ($sv_settings['smackverse_relay_joined'] ?? '0') === '1';
             $relay_host   = parse_url(sv_relay_actor_url($sv_settings), PHP_URL_HOST) ?: 'smackverse.snapsmack.ca';
         ?>
         <p class="dim mb-20">Join the SnapSmack network relay and this blog's home reader fills with public posts from every participating SnapSmack site — no following each one by hand. No images are stored on the relay (photos load from the origin blog), and you keep federating directly regardless, so the relay is never a single point of failure.</p>
         <?php if (!$sv_on): ?>
-            <p class="dim">Enable SMACKVERSE above first.</p>
+            <p class="dim">Enable Fediverse above first.</p>
         <?php elseif ($relay_joined): ?>
             <p>Connected to <code><?php echo htmlspecialchars($relay_host); ?></code>.</p>
-            <form method="POST" onsubmit="return confirm('Leave the SMACKVERSE network relay?');">
+            <form method="POST" onsubmit="return confirm('Leave the Fediverse network relay?');">
                 <input type="hidden" name="action" value="relay_leave">
                 <button type="submit" class="btn-smack btn-danger">LEAVE NETWORK</button>
             </form>

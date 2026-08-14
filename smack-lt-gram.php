@@ -436,6 +436,20 @@ if (isset($_POST['action']) && $_POST['action'] === 'imprint_fedi') {
     exit;
 }
 
+// ── Un-bury batch posts ─────────────────────────────────────────────────────
+// A past bug (gram-client-authoring 3bb44d5d, Aug 2026) seated every SYBU/Pixelix
+// post at sort_order=1 instead of leaving it at 0, which the feed's "0 = newest
+// group first" order buries below the whole backlog. Reset ONLY those auto-posted
+// slugs back to 0 — hand-arranged posts (any other slug) keep their sort_order and
+// their exact order, so this never undoes manual sorting.
+if (isset($_POST['action']) && $_POST['action'] === 'unbury_batch') {
+    $st = $pdo->prepare("UPDATE snap_posts SET sort_order = 0
+                          WHERE sort_order > 0 AND (slug LIKE 'sob-%' OR slug LIKE 'pixelix-%')");
+    $st->execute();
+    header('Location: smack-lt-gram.php?unburied=' . (int)$st->rowCount());
+    exit;
+}
+
 // Feed Randomize + Restore-chronological now live in smack-maintenance.php,
 // behind step-up auth (password + 2FA) so they can't be hit by accident.
 
@@ -538,6 +552,11 @@ include 'core/sidebar.php';
                     <button type="submit" class="btn btn--sm" title="Stamp fediverse post dates to match this grid order — top = newest">&#128424; IMPRINT ORDER FOR FEDIVERSE</button>
                 </form>
             <?php endif; ?>
+            <?php if (isset($_GET['unburied'])): ?><span style="color:#4ade80; font-size:.85rem;">&#10003; Sent <?php echo (int)$_GET['unburied']; ?> batch post(s) to the top</span><?php endif; ?>
+            <form method="post" style="display:inline;" onsubmit="return confirm('Send SYBU / Pixelix batch-posted photos to the top of the feed (newest-first)?\n\nYour hand-arranged posts are NOT changed — only auto-posted photos move.');">
+                <input type="hidden" name="action" value="unbury_batch">
+                <button type="submit" class="btn btn--sm" title="Fixes batch photos a past bug buried below your feed. Only auto-posted (SYBU/Pixelix) photos move to the top; manual ordering is left untouched.">&#8593; BATCH POSTS TO TOP</button>
+            </form>
             <label class="ltg-col-label" title="3-across: hold a lone trailing post as queued until two more complete its row. Creating a trigram turns this on automatically.">
                 <input type="checkbox" id="ltgThreeAcross" <?php echo $three_on ? 'checked' : ''; ?>> 3-across
             </label>

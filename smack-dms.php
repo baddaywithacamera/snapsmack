@@ -30,7 +30,7 @@ $sv_on = sv_enabled($sv_settings);
 // New message (POST): compose to a fresh recipient.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send') {
     if (!$sv_on) {
-        $msg = 'SMACKVERSE is off — enable federation before messaging anyone.';
+        $msg = 'Fediverse is off — enable federation before messaging anyone.';
     } else {
         $dm_media = trim((string)($_POST['dm_media'] ?? '')) ?: null;
         list($ok, $m) = sv_send_dm($pdo, $sv_settings,
@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reply
     $to   = (string)($_POST['thread_actor'] ?? '');
     $body = (string)($_POST['reply_body'] ?? '');
     if (!$sv_on) {
-        $msg = 'SMACKVERSE is off — enable federation to reply.';
+        $msg = 'Fediverse is off — enable federation to reply.';
     } elseif ($to !== '' && trim($body) !== '') {
         // Thread the reply under the most recent INBOUND note from this actor.
         $ps = $pdo->prepare(
@@ -117,7 +117,7 @@ include 'core/sidebar.php';
         <h2>MESSAGES</h2>
         <div class="header-actions">
             <div class="status-pill <?php echo $sv_on ? 'status-online' : 'status-offline'; ?>">
-                SMACKVERSE: <?php echo $sv_on ? 'FEDERATING' : 'OFF'; ?>
+                FEDIVERSE: <?php echo $sv_on ? 'FEDERATING' : 'OFF'; ?>
             </div>
         </div>
     </div>
@@ -128,8 +128,8 @@ include 'core/sidebar.php';
 
     <?php if (!$sv_on): ?>
         <div class="box">
-            <p>SMACKVERSE is switched off — nothing sends or arrives until you flip it on in
-               <a href="smack-smackverse.php">SMACKVERSE Federation</a>. Anything below is history.</p>
+            <p>Fediverse is switched off — nothing sends or arrives until you flip it on in
+               <a href="smack-smackverse.php">Fediverse Federation</a>. Anything below is history.</p>
         </div>
     <?php endif; ?>
 

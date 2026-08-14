@@ -130,8 +130,8 @@ include 'core/sidebar.php';
                     ?>
                     <label style="margin-top:8px;display:block;<?php echo $_fedi_on ? '' : 'opacity:.55;'; ?>">
                         <input type="checkbox" name="social_dock_own_fedi" value="1" <?php echo ($settings['social_dock_own_fedi'] ?? '0') === '1' ? 'checked' : ''; ?> <?php echo $_fedi_on ? '' : 'disabled'; ?>>
-                        SHOW MY OWN FEDIVERSE PAGE <span class="field-tip" data-tip="Adds a <?php echo $_fedi_kind; ?> icon to the dock linking to THIS site's public fediverse profile, so visitors can follow you. Requires SMACKVERSE federation to be turned on.">ⓘ</span>
-                        <?php if (!$_fedi_on): ?><em style="font-size:.8em;">(turn on SMACKVERSE federation first)</em><?php endif; ?>
+                        SHOW MY OWN FEDIVERSE PAGE <span class="field-tip" data-tip="Adds a <?php echo $_fedi_kind; ?> icon to the dock linking to THIS site's public fediverse profile, so visitors can follow you. Requires Fediverse federation to be turned on.">ⓘ</span>
+                        <?php if (!$_fedi_on): ?><em style="font-size:.8em;">(turn on Fediverse federation first)</em><?php endif; ?>
                     </label>
                 </div>
 

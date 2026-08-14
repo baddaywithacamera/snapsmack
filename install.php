@@ -2379,7 +2379,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                         <div class="install-mode-version">HUB</div>
                         <div class="install-mode-body">
                             <div class="install-mode-name">SMACKCAST</div>
-                            <div class="install-mode-desc">The dedicated SMACKVERSE relay service. Public-only fan-out, paced delivery, and relay administration on the shared FEDISTRUCTURE foundation.</div>
+                            <div class="install-mode-desc">The dedicated Fediverse relay service. Public-only fan-out, paced delivery, and relay administration on the shared FEDISTRUCTURE foundation.</div>
                         </div>
                     </div>
                 </label>

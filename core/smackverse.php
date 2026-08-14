@@ -2528,7 +2528,7 @@ function sv_relay_join(PDO $pdo, array $settings): array {
 
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackverse_relay_joined','1') ON DUPLICATE KEY UPDATE setting_val='1'")->execute();
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackverse_relay_url',?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$relay]);
-    return [true, 'Joined the SMACKVERSE network relay (' . (parse_url($relay, PHP_URL_HOST) ?: $relay) . '). Pending its Accept — usually seconds. Posts from across the network will start landing in your reader.'];
+    return [true, 'Joined the Fediverse network relay (' . (parse_url($relay, PHP_URL_HOST) ?: $relay) . '). Pending its Accept — usually seconds. Posts from across the network will start landing in your reader.'];
 }
 
 /** Leave the relay: Undo the relay-follow, drop the row. @return [bool ok, msg] */
@@ -2559,7 +2559,7 @@ function sv_relay_leave(PDO $pdo, array $settings): array {
     }
     $pdo->prepare("DELETE FROM snap_ap_following WHERE actor_url = ?")->execute([$relay]);
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackverse_relay_joined','0') ON DUPLICATE KEY UPDATE setting_val='0'")->execute();
-    return [true, 'Left the SMACKVERSE network relay.'];
+    return [true, 'Left the Fediverse network relay.'];
 }
 
 /**

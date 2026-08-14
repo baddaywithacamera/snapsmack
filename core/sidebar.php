@@ -190,10 +190,10 @@ foreach ($_section_map as $sec => $_sec_pages) {
                 </ul>
             </div>
 
-            <!-- SECTION: SMACKVERSE -->
+            <!-- SECTION: FEDIVERSE (internal key stays 'smackverse' for JS/state) -->
             <div class="nav-section<?php echo ($_active_section === 'smackverse') ? ' open' : ''; ?>" data-section="smackverse">
                 <button type="button" class="nav-section-toggle">
-                    <span class="nav-section-label">SMACKVERSE</span>
+                    <span class="nav-section-label">Fediverse</span>
                     <span class="nav-section-arrow"></span>
                 </button>
                 <ul class="nav-section-links">
@@ -210,7 +210,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                         <a href="pixel.php?panel=notifications" target="_blank" rel="noopener">Notifications &#8599;</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-smackverse.php') ? 'active' : ''; ?>">
-                        <a href="smack-smackverse.php">Federation</a>
+                        <a href="smack-smackverse.php">Portal</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-sv-followers.php') ? 'active' : ''; ?>">
                         <a href="smack-sv-followers.php">Followers</a>

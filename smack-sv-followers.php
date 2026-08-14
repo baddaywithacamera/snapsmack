@@ -14,7 +14,7 @@ require_once 'core/auth-smack.php';
 require_once 'core/smackverse.php';
 require_once 'core/smackverse-admin-shared.php';
 
-$page_title = 'SMACKVERSE - Followers & Delivery';
+$page_title = 'Fediverse - Followers & Delivery';
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -22,7 +22,7 @@ include 'core/sidebar.php';
 <div class="main">
 
     <div class="header-row header-row--ruled">
-        <h2>SMACKVERSE &mdash; FOLLOWERS &amp; DELIVERY</h2>
+        <h2>FEDIVERSE &mdash; FOLLOWERS &amp; DELIVERY</h2>
     </div>
 
     <?php if (isset($_GET['msg'])): ?>
@@ -36,7 +36,7 @@ include 'core/sidebar.php';
     <div class="box mb-20">
         <h3>THIS BLOG IN THE FEDIVERSE</h3>
         <p class="dim mb-20">
-            SMACKVERSE makes this blog ONE citizen of the fediverse: people on Mastodon,
+            Fediverse makes this blog ONE citizen of the fediverse: people on Mastodon,
             Pixelfed, and friends can search the address below, follow it, and get new posts
             in their timeline. The blog stays home base — federation is syndication, not
             migration. Everyone who posts here posts as the blog: one site, one voice, one address.
@@ -59,7 +59,7 @@ include 'core/sidebar.php';
                 <td>AP path routes (.htaccess)</td>
                 <td><?php echo $sv_aproute_ok
                     ? '&#10003; found'
-                    : '&#10007; missing — add: <code>RewriteRule ^ap/(.+)$ smackverse.php?appath=$1 [L,QSA]</code> (re-toggle SMACKVERSE or run REPAIR .htaccess)'; ?></td>
+                    : '&#10007; missing — add: <code>RewriteRule ^ap/(.+)$ smackverse.php?appath=$1 [L,QSA]</code> (re-toggle Fediverse or run REPAIR .htaccess)'; ?></td>
             </tr>
             <tr>
                 <td>Signing key</td>

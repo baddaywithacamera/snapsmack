@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reply
                     $msg = "Reply saved, but federation hiccuped: " . htmlspecialchars($e->getMessage());
                 }
             } else {
-                $msg = "Reply saved. SMACKVERSE is off, so it stays local until federation is enabled.";
+                $msg = "Reply saved. Fediverse is off, so it stays local until federation is enabled.";
             }
         }
     }
@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reply
 // FOLLOW someone as the blog (POST): resolve, send Follow, record pending.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'follow') {
     if (!$sv_on) {
-        $msg = 'SMACKVERSE is off — enable federation before following anyone.';
+        $msg = 'Fediverse is off — enable federation before following anyone.';
     } else {
         list($f_ok, $f_msg) = sv_follow_actor($pdo, $sv_settings, (string)($_POST['follow_target'] ?? ''));
         $msg = htmlspecialchars($f_msg);
@@ -194,7 +194,7 @@ include 'core/sidebar.php';
         <h2>FEDIVERSE</h2>
         <div class="header-actions">
             <div class="status-pill <?php echo $sv_on ? 'status-online' : 'status-offline'; ?>">
-                SMACKVERSE: <?php echo $sv_on ? 'FEDERATING' : 'OFF'; ?>
+                FEDIVERSE: <?php echo $sv_on ? 'FEDERATING' : 'OFF'; ?>
             </div>
         </div>
     </div>
@@ -205,8 +205,8 @@ include 'core/sidebar.php';
 
     <?php if (!$sv_on): ?>
         <div class="box">
-            <p>SMACKVERSE is switched off — nothing federates in or out until you flip it on in
-               <a href="smack-smackverse.php">SMACKVERSE Federation</a>. Anything below is history.</p>
+            <p>Fediverse is switched off — nothing federates in or out until you flip it on in
+               <a href="smack-smackverse.php">Fediverse Federation</a>. Anything below is history.</p>
         </div>
     <?php endif; ?>
 

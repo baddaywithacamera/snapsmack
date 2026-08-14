@@ -32,7 +32,7 @@ $sv_on = sv_enabled($sv_settings);
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sspf_action'])) {
     header('Content-Type: application/json; charset=utf-8');
     $act = (string)$_POST['sspf_action'];
-    if (!$sv_on) { echo json_encode(['ok' => false, 'msg' => 'SMACKVERSE is off — flip it on in Federation first.']); exit; }
+    if (!$sv_on) { echo json_encode(['ok' => false, 'msg' => 'Fediverse is off — flip it on in Federation first.']); exit; }
 
     $ok = false; $msg = 'Unknown action.'; $extra = [];
     switch ($act) {
@@ -211,7 +211,7 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SMACKVERSE — Pixelfed</title>
+<title>Fediverse — Pixelfed</title>
 <?php if (function_exists('csrf_meta_tag')) csrf_meta_tag(); ?>
 <script>try{var _t=localStorage.getItem('pixel-theme')||'dark';document.documentElement.setAttribute('data-theme',_t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
 <link rel="stylesheet" href="assets/css/ss-pixel.css?v=<?php echo px_e($ver); ?>">
@@ -220,7 +220,7 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
 
 <header class="sx-top">
   <div class="sx-top-in">
-    <a class="sx-brand" href="pixel.php"><span class="sx-mark"></span> SMACKVERSE</a>
+    <a class="sx-brand" href="pixel.php"><span class="sx-mark"></span> FEDIVERSE</a>
     <div class="sx-search"><span class="sx-mag">&#128269;</span>
       <input type="text" placeholder="@user@host  ·  #hashtag" aria-label="Search the fediverse">
     </div>
@@ -280,7 +280,7 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
 
     <div class="sx-foot">
       <a href="index.php">Back to blog</a><a href="#">Help</a><a href="#">Privacy</a><a href="#">Terms</a>
-      <span>SMACKVERSE</span>
+      <span>FEDIVERSE</span>
     </div>
   </aside>
 

@@ -10,6 +10,20 @@
 
 # SnapSmack Changelog
 
+## 0.7.525 — 2026-08-14
+
+### Batch posting — new posts land at the top of the feed again
+
+- A fresh SYBU/Pixelix post is now left at `sort_order = 0` so it sits in the newest-first group at the top of the feed, reverting a change that seated new posts into the manually-curated band and buried them below the whole backlog. A new **"Batch posts to top"** button in the Grid Lighttable un-buries posts a site already caught by the bug — it only moves auto-posted (SYBU/Pixelix) photos and never disturbs hand-arranged ordering.
+
+### Batch posting — self-heals a drifted schema
+
+- Gram/Pixelix posting now ensures the per-post federation columns (`fedi_enabled` and friends) exist before it posts, fixing the "Unknown column 'fedi_enabled'" 500 that failed whole batches on a site that had never run the fediverse setup. A failed post is also logged server-side with its real reason.
+
+### Fediverse — renamed from SMACKVERSE
+
+- The federated-network features are labelled **Fediverse** throughout the admin now, in the fediverse's and Pixelfed's own vocabulary rather than a SnapSmack brand name. The sidebar section is "Fediverse" and its hub page is "Portal". Only display text changed — every setting, key, and internal name is untouched, so nothing needs reconfiguring.
+
 ## 0.7.524 — 2026-08-14
 
 ### DeepSeek and Kimi join the AI providers

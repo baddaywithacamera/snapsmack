@@ -695,7 +695,7 @@ your public profile at your site address, which a fediverse app resolves to a
 follow button and a browser opens as your profile page.</p>
 <p>The icon matches your install type automatically — a <strong>Pixelfed</strong> icon on
 photoblog and carousel installs, a <strong>Mastodon</strong> icon on a SmackTalk (text)
-install. The option only works when <strong>SMACKVERSE federation is turned on</strong>;
+install. The option only works when <strong>Fediverse federation is turned on</strong>;
 until then the checkbox is disabled.</p>
 HTML
 ];
@@ -3577,13 +3577,13 @@ HTML
 // =========================================================================
 
 $help_topics['smackverse-pixelfed'] = [
-    'section'  => 'SMACKVERSE',
+    'section'  => 'FEDIVERSE',
     'title'    => 'Pixelfed Client',
     'icon'     => '&#x1F310;',
     'role'     => 'admin',
     'content'  => <<<'HTML'
-<h3>SMACKVERSE &mdash; Pixelfed Client</h3>
-<p>SMACKVERSE is SnapSmack's two-way fediverse layer. Your blog already federates
+<h3>Fediverse &mdash; Pixelfed Client</h3>
+<p>Fediverse is SnapSmack's two-way fediverse layer. Your blog already federates
 <em>out</em> as an ActivityPub actor &mdash; every photo you publish reaches followers on
 Pixelfed, Mastodon and the wider fediverse. The <strong>Pixelfed client</strong> is the
 other half: a standalone page (<code>pixel.php</code>) that lets you interact with that
@@ -3598,7 +3598,7 @@ your own blog's fediverse identity.</p>
 <p>Browse to <code>pixel.php</code> on your site (for example
 <code>https://yourblog.tld/pixel.php</code>). It is <strong>owner-only</strong> &mdash; you
 must be logged into the admin; there is no public access. The page renders standalone, with
-none of the admin chrome, so it reads as a clean Pixelfed client. It requires SMACKVERSE to be
+none of the admin chrome, so it reads as a clean Pixelfed client. It requires Fediverse to be
 switched on in <strong>Federation</strong> first; if it is off, the client still loads but
 stays quiet until you enable it.</p>
 
@@ -3653,14 +3653,14 @@ interacts exactly the way a carousel blog does.</p>
     SnapSmack bug &mdash; your follow was accepted.</li>
     <li>Some instances gate hashtag and account search behind a login; where a public lookup
     returns nothing, search falls back gracefully rather than erroring.</li>
-    <li>Interactions need SMACKVERSE enabled. If it is off, the buttons will tell you to switch
+    <li>Interactions need Fediverse enabled. If it is off, the buttons will tell you to switch
     it on in Federation.</li>
 </ul>
 HTML
 ];
 
 $help_topics['smackverse-rollcall'] = [
-    'section'  => 'SMACKVERSE',
+    'section'  => 'FEDIVERSE',
     'title'    => 'Roll Call — fediverse.info listing',
     'icon'     => '&#x1F4E3;',
     'role'     => 'admin',
@@ -3675,7 +3675,7 @@ removing the tag delists you.</p>
 
 <h4>Turning it on</h4>
 <ol>
-    <li>SMACKVERSE &rarr; Federation must be ON (ROLL CALL rides your fediverse profile).</li>
+    <li>Fediverse &rarr; Federation must be ON (ROLL CALL rides your fediverse profile).</li>
     <li>In <strong>ROLL CALL</strong> on the Federation page, tick the checkbox and set your
     topics (comma-separated; <code>photography</code> is the default and is always sensible to
     keep). SnapSmack sanitises them into valid hashtags.</li>

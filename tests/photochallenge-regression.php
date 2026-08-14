@@ -61,7 +61,7 @@ pc_test(str_contains($photo, 'sv_boost_remote(')
     'qualified original entries are not automatically boosted');
 pc_test(str_contains($admin, 'Thursday 10:00 UTC through Saturday 12:00 UTC'),
     'admin describes a non-canonical challenge window');
-foreach (['THE GOOD SHIT', 'SMACKVERSE', 'CHALLENGE ME', 'THE BORING SHIT'] as $heading) {
+foreach (['THE GOOD SHIT', 'FEDIVERSE', 'CHALLENGE ME', 'THE BORING SHIT'] as $heading) {
     pc_test(str_contains($sidebar, $heading), "photo challenge sidebar is missing {$heading}");
 }
 foreach (['Categories', 'Albums', 'Collections', 'Blogroll', 'User Manual',
