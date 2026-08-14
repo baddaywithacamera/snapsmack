@@ -20,6 +20,11 @@
 - Smack Central permanently burns published identifiers into an immutable ledger and records the exact source commit, artifact SHA-256 and signature in release metadata. Rebuilding a used identifier is refused even after archive or history cleanup.
 - SECAUDIT 045 is closed and its remediated PDF is published on BUZZERS.
 
+### Fleet setup — THE HUB provisions per-site posting keys itself
+
+- New `POST api/multisite/provision-key` (core/multisite-api.php), FULL hub-key (api_key_local) auth only: the hub asks each spoke to mint a least-privilege `sybu` tool key on its behalf and hands it back. Idempotent by rotation (revokes the prior hub-provisioned key of that type, mints one fresh; 1-year expiry).
+- Discovery (tools/_shared/snap_discovery.py) calls it per spoke and stores the minted key as each site's posting key — so THE HUB is genuinely set-up-once and the operator never hand-makes a per-site SYBU key. Every spoke must be on this release FIRST (they need the route); then re-run Discover Fleet.
+
 ### ONYX skin — one skin, a colour-palette dropdown (was CRIMSON ONYX)
 
 - Collapsed CRIMSON ONYX into a generic **ONYX** skin: `style.css` = geometry, `variant-<name>.css` = accent palettes (crimson default / sapphire / emerald); the manifest `variants` block auto-spawns the SKIN PALETTE dropdown. Per-colour pickers removed. Same native variant system as 50-shades / alfred.

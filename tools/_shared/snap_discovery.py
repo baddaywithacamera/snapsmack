@@ -141,6 +141,30 @@ def _profile_for(node, fallback_key="") -> dict:
     }
 
 
+def _provision_spoke_key(site_url, api_key_local, key_type="sybu", timeout=20):
+    """Ask a spoke to mint a proper TOOL key for the fleet, using the hub's FULL
+    key (api_key_local). Returns the raw key, or "" if the spoke is on an older
+    build without the route — the caller then falls back to the discovered key."""
+    if not (site_url and api_key_local):
+        return ""
+    try:
+        r = requests.post(
+            site_url.rstrip("/") + "/api.php",
+            params={"route": "multisite/provision-key"},
+            json={"key_type": key_type},
+            headers={"Authorization": "Bearer " + api_key_local.strip(),
+                     "User-Agent": "SnapSmackHub/1.0"},
+            timeout=timeout,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            if data.get("ok") and data.get("api_key"):
+                return str(data["api_key"]).strip()
+    except Exception:
+        pass
+    return ""
+
+
 def save_to_shared(hub_info, spokes, hub_api_key="") -> dict:
     """Write a discovered fleet into the shared stores. Returns a summary dict."""
     vault_keys = _save_cloud_to_vault(hub_info.get("site_url", ""), hub_api_key,
@@ -153,6 +177,12 @@ def save_to_shared(hub_info, spokes, hub_api_key="") -> dict:
         prof = _profile_for(node, fallback_key=hub_api_key)
         if not prof["site_url"]:
             continue
+        # Have the spoke mint a real sybu posting key for the fleet (set-up-once).
+        akl = (node.get("api_key_local") or "").strip()
+        if akl:
+            minted = _provision_spoke_key(prof["site_url"], akl, "sybu")
+            if minted:
+                prof["api_key"] = minted
         try:
             snap_profiles.save(prof)
             saved_sites.append(prof["site_url"])

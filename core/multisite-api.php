@@ -346,6 +346,54 @@ $node_id = $node['id'];
 $pdo->prepare("UPDATE snap_multisite_nodes SET last_seen_at = NOW() WHERE id = ?")->execute([$node_id]);
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/provision-key
+// FULL (api_key_local) auth ONLY. The hub asks this spoke to mint a
+// least-privilege TOOL key (default 'sybu') on the operator's behalf, so the
+// desktop fleet is genuinely set-up-once — no per-site posting key made by hand.
+// A backup-scoped key is already 403'd above; belt-and-braces re-checks 'full'.
+// Idempotent by rotation: any prior HUB-provisioned key of the same type is
+// revoked, then exactly one fresh key is minted, so re-running Discover never
+// piles keys up. This grants nothing api_key_local cannot already do.
+// Body: {"key_type":"sybu"}   Returns: {ok, api_key, key_type, key_prefix, expires_at}
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'provision-key' && $method === 'POST') {
+    if ($ms_key_scope !== 'full') {
+        ms_err('A full hub key is required to provision tool keys', 403);
+    }
+    $pv_body = json_decode(file_get_contents('php://input') ?: '', true);
+    $pv_type = is_array($pv_body) ? strtolower(trim((string)($pv_body['key_type'] ?? 'sybu'))) : 'sybu';
+    // Only genuine per-site TOOL keys may be minted this way — never 'hub'.
+    if (!in_array($pv_type, ['sybu', 'suyb', 'gyss', 'ohsnap', 'tyswy'], true)) {
+        ms_err('key_type not provisionable', 400);
+    }
+    try {
+        // A spoke that never opened Admin -> API Keys may lack the newer columns.
+        foreach ([
+            "ALTER TABLE snap_ohsnap_keys ADD COLUMN key_type VARCHAR(20) NOT NULL DEFAULT 'ohsnap' AFTER label",
+            "ALTER TABLE snap_ohsnap_keys ADD COLUMN key_prefix VARCHAR(8) NOT NULL DEFAULT '' AFTER key_hash",
+            "ALTER TABLE snap_ohsnap_keys ADD COLUMN expires_at DATETIME DEFAULT NULL AFTER last_used_at",
+        ] as $pv_alter) {
+            try { $pdo->exec($pv_alter); } catch (\PDOException $e) { /* column already present */ }
+        }
+        $pv_label = 'HUB auto-provisioned (' . $pv_type . ')';
+        // Retire prior hub-provisioned keys of this type so they never accumulate.
+        $pdo->prepare("UPDATE snap_ohsnap_keys SET is_active = 0 WHERE key_type = ? AND label = ?")
+            ->execute([$pv_type, $pv_label]);
+        $pv_raw     = bin2hex(random_bytes(32));
+        $pv_hash    = hash('sha256', $pv_raw);
+        $pv_prefix  = substr($pv_raw, 0, 8);
+        $pv_expires = date('Y-m-d H:i:s', strtotime('+1 year'));
+        $pdo->prepare("INSERT INTO snap_ohsnap_keys (label, key_type, key_hash, key_prefix, expires_at, user_id)
+                       VALUES (?, ?, ?, ?, ?, NULL)")
+            ->execute([$pv_label, $pv_type, $pv_hash, $pv_prefix, $pv_expires]);
+        ms_ok(['api_key' => $pv_raw, 'key_type' => $pv_type,
+               'key_prefix' => $pv_prefix, 'expires_at' => $pv_expires]);
+    } catch (\Throwable $e) {
+        ms_err('Provisioning failed', 500);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: GET multisite/heartbeat
 // Returns site vitals: version, counts, backup state.
 // ─────────────────────────────────────────────────────────────────────────────
