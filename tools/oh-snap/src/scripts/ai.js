@@ -13,6 +13,8 @@
  *   claude  — Anthropic Messages API (claude-sonnet-4-6)
  *   gemini  — Google Generative Language API (gemini-2.0-flash)
  *   openai  — OpenAI Chat Completions (gpt-4o)
+ *   deepseek — DeepSeek Chat Completions (deepseek-chat)
+ *   kimi    — Moonshot Kimi Chat Completions (kimi-latest)
  *   ollama  — Local Ollama generate endpoint (configurable model)
  */
 
@@ -70,6 +72,8 @@ Available CSS variables for this skin:
             case 'claude':  return _callClaude(s, systemPrompt, userMessage);
             case 'gemini':  return _callGemini(s, systemPrompt, userMessage);
             case 'openai':  return _callOpenAI(s, systemPrompt, userMessage);
+            case 'deepseek': return _callDeepSeek(s, systemPrompt, userMessage);
+            case 'kimi':    return _callKimi(s, systemPrompt, userMessage);
             case 'ollama':  return _callOllama(s, systemPrompt, userMessage);
             default: throw new Error(`Unknown provider: ${provider}`);
         }
@@ -146,6 +150,58 @@ Available CSS variables for this skin:
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error?.message || `OpenAI error ${res.status}`);
+
+        const text = data.choices?.[0]?.message?.content || '{}';
+        return _parseOverrides(text);
+    }
+
+    async function _callDeepSeek(s, system, userMsg) {
+        if (!s.deepseek_key) throw new Error('DeepSeek API key not set. Open Settings.');
+
+        const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type':  'application/json',
+                'Authorization': `Bearer ${s.deepseek_key}`,
+            },
+            body: JSON.stringify({
+                model:      'deepseek-chat',
+                max_tokens: 512,
+                messages: [
+                    { role: 'system', content: system },
+                    { role: 'user',   content: userMsg },
+                ],
+            }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || `DeepSeek error ${res.status}`);
+
+        const text = data.choices?.[0]?.message?.content || '{}';
+        return _parseOverrides(text);
+    }
+
+    async function _callKimi(s, system, userMsg) {
+        if (!s.kimi_key) throw new Error('Kimi API key not set. Open Settings.');
+
+        const res = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type':  'application/json',
+                'Authorization': `Bearer ${s.kimi_key}`,
+            },
+            body: JSON.stringify({
+                model:      'kimi-latest',
+                max_tokens: 512,
+                messages: [
+                    { role: 'system', content: system },
+                    { role: 'user',   content: userMsg },
+                ],
+            }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || `Kimi error ${res.status}`);
 
         const text = data.choices?.[0]?.message?.content || '{}';
         return _parseOverrides(text);

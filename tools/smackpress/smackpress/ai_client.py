@@ -47,6 +47,10 @@ def rewrite(original_content: str, title: str = "") -> str:
         return _openai(system_prompt, user_message)
     elif provider == "anthropic":
         return _anthropic(system_prompt, user_message)
+    elif provider == "deepseek":
+        return _deepseek(system_prompt, user_message)
+    elif provider == "kimi":
+        return _kimi(system_prompt, user_message)
     else:
         raise AIError(f"Unknown AI provider: {provider}")
 
@@ -109,6 +113,54 @@ def _openai(system_prompt: str, user_message: str) -> str:
         return result["choices"][0]["message"]["content"].strip()
     except (KeyError, IndexError) as e:
         raise AIError(f"Unexpected OpenAI response: {result}") from e
+
+
+def _deepseek(system_prompt: str, user_message: str) -> str:
+    model   = config.get("ai_model") or "deepseek-chat"
+    api_key = config.get("ai_api_key")
+    body    = {
+        "model": model,
+        "messages": [
+            {"role": "system",  "content": system_prompt},
+            {"role": "user",    "content": user_message},
+        ],
+        "temperature": 0.7,
+        "max_tokens": 4096,
+    }
+    result = _post_json(
+        "https://api.deepseek.com/v1/chat/completions",
+        {"Content-Type": "application/json",
+         "Authorization": f"Bearer {api_key}"},
+        body,
+    )
+    try:
+        return result["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError) as e:
+        raise AIError(f"Unexpected DeepSeek response: {result}") from e
+
+
+def _kimi(system_prompt: str, user_message: str) -> str:
+    model   = config.get("ai_model") or "kimi-latest"
+    api_key = config.get("ai_api_key")
+    body    = {
+        "model": model,
+        "messages": [
+            {"role": "system",  "content": system_prompt},
+            {"role": "user",    "content": user_message},
+        ],
+        "temperature": 0.7,
+        "max_tokens": 4096,
+    }
+    result = _post_json(
+        "https://api.moonshot.ai/v1/chat/completions",
+        {"Content-Type": "application/json",
+         "Authorization": f"Bearer {api_key}"},
+        body,
+    )
+    try:
+        return result["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError) as e:
+        raise AIError(f"Unexpected Kimi response: {result}") from e
 
 
 def _anthropic(system_prompt: str, user_message: str) -> str:

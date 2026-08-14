@@ -9,6 +9,8 @@
  *   claude   — Anthropic Claude (claude-sonnet-4-6)
  *   gemini   — Google Gemini (gemini-2.0-flash)
  *   openai   — OpenAI (gpt-4o)
+ *   deepseek — DeepSeek (deepseek-chat)
+ *   kimi     — Moonshot Kimi (kimi-latest)
  *   ollama   — Local Ollama (configurable endpoint)
  */
 
@@ -29,6 +31,8 @@ const OhSnapSettings = (() => {
         claude_key:     '',
         gemini_key:     '',
         openai_key:     '',
+        deepseek_key:   '',
+        kimi_key:       '',
         ollama_endpoint: 'http://localhost:11434',
         ollama_model:   'llama3',
     };
@@ -92,6 +96,8 @@ const OhSnapSettings = (() => {
                     <option value="claude">Claude (Anthropic) — Recommended</option>
                     <option value="gemini">Gemini (Google)</option>
                     <option value="openai">ChatGPT (OpenAI)</option>
+                    <option value="deepseek">DeepSeek</option>
+                    <option value="kimi">Kimi (Moonshot)</option>
                     <option value="ollama">Ollama (Local)</option>
                     <option value="none">None — Disable AI</option>
                 </select>
@@ -134,6 +140,32 @@ const OhSnapSettings = (() => {
                     <button type="button" class="key-toggle" data-target="s-openai-key">&#x1F441;</button>
                 </div>
                 <p class="field-hint">Get yours at <a href="https://platform.openai.com" target="_blank">platform.openai.com</a></p>
+            </div>
+        </section>
+
+        <section class="settings-section" id="s-section-deepseek">
+            <h3 class="settings-section-title">DeepSeek API Key</h3>
+            <div class="field">
+                <label for="s-deepseek-key">API Key</label>
+                <div class="input-with-toggle">
+                    <input type="password" id="s-deepseek-key" class="settings-input"
+                           placeholder="sk-..." autocomplete="off" spellcheck="false">
+                    <button type="button" class="key-toggle" data-target="s-deepseek-key">&#x1F441;</button>
+                </div>
+                <p class="field-hint">Get yours at <a href="https://platform.deepseek.com" target="_blank">platform.deepseek.com</a></p>
+            </div>
+        </section>
+
+        <section class="settings-section" id="s-section-kimi">
+            <h3 class="settings-section-title">Kimi API Key</h3>
+            <div class="field">
+                <label for="s-kimi-key">API Key</label>
+                <div class="input-with-toggle">
+                    <input type="password" id="s-kimi-key" class="settings-input"
+                           placeholder="sk-..." autocomplete="off" spellcheck="false">
+                    <button type="button" class="key-toggle" data-target="s-kimi-key">&#x1F441;</button>
+                </div>
+                <p class="field-hint">Get yours at <a href="https://platform.moonshot.ai" target="_blank">platform.moonshot.ai</a></p>
             </div>
         </section>
 
@@ -187,6 +219,8 @@ const OhSnapSettings = (() => {
         modal.querySelector('#s-claude-key').value     = s.claude_key;
         modal.querySelector('#s-gemini-key').value     = s.gemini_key;
         modal.querySelector('#s-openai-key').value     = s.openai_key;
+        modal.querySelector('#s-deepseek-key').value   = s.deepseek_key;
+        modal.querySelector('#s-kimi-key').value       = s.kimi_key;
         modal.querySelector('#s-ollama-endpoint').value = s.ollama_endpoint;
         modal.querySelector('#s-ollama-model').value   = s.ollama_model;
         _updateProviderVisibility(modal);
@@ -194,7 +228,7 @@ const OhSnapSettings = (() => {
 
     function _updateProviderVisibility(modal) {
         const provider = modal.querySelector('#s-ai-provider').value;
-        ['claude', 'gemini', 'openai', 'ollama'].forEach(p => {
+        ['claude', 'gemini', 'openai', 'deepseek', 'kimi', 'ollama'].forEach(p => {
             const sec = modal.querySelector(`#s-section-${p}`);
             if (sec) sec.style.display = (provider === p) ? '' : 'none';
         });
@@ -207,6 +241,8 @@ const OhSnapSettings = (() => {
             claude_key:      modal.querySelector('#s-claude-key').value.trim(),
             gemini_key:      modal.querySelector('#s-gemini-key').value.trim(),
             openai_key:      modal.querySelector('#s-openai-key').value.trim(),
+            deepseek_key:    modal.querySelector('#s-deepseek-key').value.trim(),
+            kimi_key:        modal.querySelector('#s-kimi-key').value.trim(),
             ollama_endpoint: modal.querySelector('#s-ollama-endpoint').value.trim(),
             ollama_model:    modal.querySelector('#s-ollama-model').value.trim(),
         });

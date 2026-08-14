@@ -885,6 +885,77 @@ CREATE TABLE IF NOT EXISTS `snap_collection_items` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
+-- ─── GROUPS (self-hosted, Flickr-style) ───────────────────────────────────────
+-- Reborn Flickr Groups: members (snap_community_users), a shared photo pool
+-- (the snap_collections pattern), and local discussion (the snap_community_comments
+-- pattern — NOT the remote forum). A federated Group actor is a later phase.
+
+CREATE TABLE IF NOT EXISTS `snap_groups` (
+  `id`             int unsigned NOT NULL AUTO_INCREMENT,
+  `name`           varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug`           varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description`    text         COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `rules`          text         COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `cover_image_id` int unsigned DEFAULT NULL COMMENT 'snap_images.id — group hero',
+  `privacy`        enum('public','members','invite') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'public',
+  `join_policy`    enum('open','approval','closed')  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'open',
+  `pool_policy`    enum('members','moderated')       COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'members'
+                   COMMENT 'members = any member adds live; moderated = adds queue as pending',
+  `created_by`     int unsigned DEFAULT NULL COMMENT 'snap_community_users.id (owner)',
+  `member_count`   int unsigned NOT NULL DEFAULT 0 COMMENT 'denormalized active-member count',
+  `published`      tinyint(1)   NOT NULL DEFAULT 0 COMMENT '0=hidden, 1=live',
+  `created_at`     datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`     datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_group_slug` (`slug`),
+  KEY `idx_group_pub` (`published`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_group_members` (
+  `id`        int unsigned NOT NULL AUTO_INCREMENT,
+  `group_id`  int unsigned NOT NULL,
+  `user_id`   int unsigned NOT NULL COMMENT 'snap_community_users.id',
+  `role`      enum('member','moderator','admin') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'member',
+  `status`    enum('active','pending','banned')  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+  `joined_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_group_user` (`group_id`, `user_id`),
+  KEY `idx_gm_user` (`user_id`),
+  KEY `idx_gm_group_status` (`group_id`, `status`),
+  CONSTRAINT `fk_gm_group` FOREIGN KEY (`group_id`) REFERENCES `snap_groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_group_pool` (
+  `id`         int unsigned NOT NULL AUTO_INCREMENT,
+  `group_id`   int unsigned NOT NULL,
+  `image_id`   int unsigned NOT NULL COMMENT 'snap_images.id',
+  `added_by`   int unsigned DEFAULT NULL COMMENT 'snap_community_users.id',
+  `status`     enum('live','pending','removed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'live',
+  `sort_order` int  NOT NULL DEFAULT 0,
+  `caption`    text COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `added_at`   datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_group_image` (`group_id`, `image_id`),
+  KEY `idx_gp_group` (`group_id`, `status`, `sort_order`),
+  CONSTRAINT `fk_gp_group` FOREIGN KEY (`group_id`) REFERENCES `snap_groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_group_discussion` (
+  `id`         int unsigned NOT NULL AUTO_INCREMENT,
+  `group_id`   int unsigned NOT NULL,
+  `thread_id`  int unsigned DEFAULT NULL COMMENT 'NULL = a topic; else the topic id this reply belongs to',
+  `user_id`    int unsigned DEFAULT NULL COMMENT 'snap_community_users.id (author)',
+  `title`      varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'topics only',
+  `body`       text         COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status`     enum('visible','hidden','deleted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'visible',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `edited_at`  datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_gd_group_thread` (`group_id`, `thread_id`, `created_at`),
+  CONSTRAINT `fk_gd_group` FOREIGN KEY (`group_id`) REFERENCES `snap_groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 -- ─── SKIN PRESETS ─────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS `snap_skin_presets` (

@@ -605,7 +605,12 @@ def post_gram(conn: 'GramConnection', entry: ManifestEntry, image_folder: str) -
         r = conn.session.post(conn._api('threeacross/gram/post'), json=payload, timeout=120)
         if r.status_code in (401, 403, 429):
             return PostResult(entry, False, _resp_msg(r, 'Post create rejected (key scope / consent / rate limit).'))
-        r.raise_for_status()
+        if r.status_code >= 400:
+            # The server returns the REAL reason as JSON {"message": "Gram post
+            # failed: ..."} even on a 500 — surface it instead of a bare status
+            # line, so a failed batch says WHY (a DB/schema error, a missing
+            # column, etc.), not just "500 Server Error".
+            return PostResult(entry, False, _resp_msg(r, f'Server error (HTTP {r.status_code}).'))
         data = r.json()
     except requests.RequestException as e:
         log.error("GRAM NETWORK ERROR %s: %s", entry.file, e)

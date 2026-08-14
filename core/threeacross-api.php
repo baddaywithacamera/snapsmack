@@ -1025,6 +1025,9 @@ if ($sub === 'gram/post' && $method === 'POST') {
         $pdo->commit();
     } catch (Throwable $e) {
         $pdo->rollBack();
+        // Also log server-side so the reason is in the PHP error log, not only in
+        // the JSON body a client might discard (SYBU used to swallow it on a 500).
+        error_log('threeacross gram/post failed: ' . $e->getMessage());
         uz_error(500, 'Gram post failed: ' . $e->getMessage());
     }
 

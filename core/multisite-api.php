@@ -1351,7 +1351,7 @@ if ($resource === 'disconnect' && $method === 'POST') {
          ON DUPLICATE KEY UPDATE setting_val = '0'"
     );
     foreach ([
-        'hub_controls_timezone', 'hub_controls_akismet', 'hub_controls_ai', 'hub_controls_aicrawl',
+        'hub_controls_timezone', 'hub_controls_imagesize', 'hub_controls_akismet', 'hub_controls_ai', 'hub_controls_aicrawl',
         'hub_controls_smackback', 'hub_controls_comments', 'hub_controls_email', 'hub_controls_footer',
         'hub_controls_netalert',
     ] as $_ctrl_key) {
@@ -1784,14 +1784,15 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
     // Explicit allowlist — keep this narrow.
     $allowed_keys = [
         'timezone', 'date_format',
+        'max_width_landscape', 'max_height_portrait',
         'akismet_key',
-        'ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_gemini_model', 'ai_openai_model', 'ai_training_policy', 'ai_cost_accepted',
+        'ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_key_deepseek', 'ai_key_kimi', 'ai_gemini_model', 'ai_openai_model', 'ai_deepseek_model', 'ai_kimi_model', 'ai_training_policy', 'ai_cost_accepted',
         'smackback_enabled', 'smackback_mode',
         'global_comments_enabled',
         'site_email', 'admin_email', 'email_from', 'email_from_name', 'brevo_api_key',
         'footer_slot_copyright', 'footer_slot_copyright_custom', 'footer_slot_theme', 'footer_slot_theme_custom',
         'download_link_required', 'download_default_mode',
-        'hub_controls_timezone', 'hub_controls_akismet', 'hub_controls_ai', 'hub_controls_aicrawl',
+        'hub_controls_timezone', 'hub_controls_imagesize', 'hub_controls_akismet', 'hub_controls_ai', 'hub_controls_aicrawl',
         'hub_controls_smackback', 'hub_controls_comments', 'hub_controls_email', 'hub_controls_footer',
         'network_alert_receive', 'network_alert_send',
         'hub_controls_netalert',

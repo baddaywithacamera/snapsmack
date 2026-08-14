@@ -186,7 +186,7 @@ if (($_POST['action'] ?? '') === 'ai_spendcap') {
     header('Content-Type: application/json');
     $sc_prov   = preg_replace('/[^a-z0-9_]/', '', strtolower((string)($_POST['provider'] ?? '')));
     $sc_choice = (string)($_POST['choice'] ?? '');
-    if ($sc_prov === '' || !in_array($sc_prov, ['claude', 'gemini', 'openai'], true)) {
+    if ($sc_prov === '' || !in_array($sc_prov, ['claude', 'gemini', 'openai', 'deepseek', 'kimi'], true)) {
         echo json_encode(['ok' => false, 'error' => 'bad provider']);
         exit;
     }
@@ -768,7 +768,7 @@ include 'core/sidebar.php';
                 <div class="lens-input-wrapper">
                     <label>PROVIDER</label>
                     <div class="read-only-display"><?php
-                        $ai_prov_labels = ['claude' => 'Claude (Anthropic)', 'gemini' => 'Gemini (Google)', 'openai' => 'ChatGPT (OpenAI)', 'none' => 'None (disabled)'];
+                        $ai_prov_labels = ['claude' => 'Claude (Anthropic)', 'gemini' => 'Gemini (Google)', 'openai' => 'ChatGPT (OpenAI)', 'deepseek' => 'DeepSeek', 'kimi' => 'Kimi (Moonshot)', 'none' => 'None (disabled)'];
                         echo htmlspecialchars($ai_prov_labels[$settings['ai_provider'] ?? 'none'] ?? 'None');
                     ?></div>
                 </div>
@@ -847,10 +847,12 @@ include 'core/sidebar.php';
                         <?php
                         $ai_provider = $settings['ai_provider'] ?? 'none';
                         $ai_providers = [
-                            'none'   => 'None (disabled)',
-                            'claude' => 'Claude (Anthropic)',
-                            'gemini' => 'Gemini (Google)',
-                            'openai' => 'ChatGPT (OpenAI)',
+                            'none'     => 'None (disabled)',
+                            'claude'   => 'Claude (Anthropic)',
+                            'gemini'   => 'Gemini (Google)',
+                            'openai'   => 'ChatGPT (OpenAI)',
+                            'deepseek' => 'DeepSeek',
+                            'kimi'     => 'Kimi (Moonshot)',
                         ];
                         foreach ($ai_providers as $val => $label):
                             $sel = $ai_provider === $val ? 'selected' : '';
@@ -908,6 +910,50 @@ include 'core/sidebar.php';
                         ];
                         foreach ($oai_models as $mv => $ml):
                             $msel = $oai_model === $mv ? 'selected' : '';
+                        ?>
+                        <option value="<?php echo $mv; ?>" <?php echo $msel; ?>><?php echo htmlspecialchars($ml); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="lens-input-wrapper ai-key-field" data-provider="deepseek" <?php echo ($ai_provider !== 'deepseek') ? 'style="display:none;"' : ''; ?>>
+                    <label>DEEPSEEK API KEY</label>
+                    <input type="password" id="ai_key_deepseek_input" name="settings[ai_key_deepseek]"
+                           value="<?php echo htmlspecialchars($settings['ai_key_deepseek'] ?? ''); ?>"
+                           placeholder="sk-…" autocomplete="off">
+                    <span class="field-hint">Get yours at <a href="https://platform.deepseek.com/api_keys" target="_blank">platform.deepseek.com</a></span>
+                    <label style="margin-top:10px;">DEEPSEEK MODEL</label>
+                    <select name="settings[ai_deepseek_model]">
+                        <?php
+                        $ds_model  = $settings['ai_deepseek_model'] ?? 'deepseek-chat';
+                        $ds_models = [
+                            'deepseek-chat'     => 'DeepSeek Chat — recommended (fast, cost-effective)',
+                            'deepseek-reasoner' => 'DeepSeek Reasoner — deeper reasoning',
+                        ];
+                        foreach ($ds_models as $mv => $ml):
+                            $msel = $ds_model === $mv ? 'selected' : '';
+                        ?>
+                        <option value="<?php echo $mv; ?>" <?php echo $msel; ?>><?php echo htmlspecialchars($ml); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="lens-input-wrapper ai-key-field" data-provider="kimi" <?php echo ($ai_provider !== 'kimi') ? 'style="display:none;"' : ''; ?>>
+                    <label>KIMI API KEY</label>
+                    <input type="password" id="ai_key_kimi_input" name="settings[ai_key_kimi]"
+                           value="<?php echo htmlspecialchars($settings['ai_key_kimi'] ?? ''); ?>"
+                           placeholder="sk-…" autocomplete="off">
+                    <span class="field-hint">Get yours at <a href="https://platform.moonshot.ai/console/api-keys" target="_blank">platform.moonshot.ai</a></span>
+                    <label style="margin-top:10px;">KIMI MODEL</label>
+                    <select name="settings[ai_kimi_model]">
+                        <?php
+                        $kimi_model  = $settings['ai_kimi_model'] ?? 'kimi-latest';
+                        $kimi_models = [
+                            'kimi-latest'     => 'Kimi Latest — recommended',
+                            'moonshot-v1-8k'   => 'Moonshot v1 8K — short context',
+                            'moonshot-v1-32k'  => 'Moonshot v1 32K — medium context',
+                            'moonshot-v1-128k' => 'Moonshot v1 128K — long context',
+                        ];
+                        foreach ($kimi_models as $mv => $ml):
+                            $msel = $kimi_model === $mv ? 'selected' : '';
                         ?>
                         <option value="<?php echo $mv; ?>" <?php echo $msel; ?>><?php echo htmlspecialchars($ml); ?></option>
                         <?php endforeach; ?>
@@ -1063,18 +1109,20 @@ include 'core/sidebar.php';
 // confirmed (or a 1-week defer has lapsed). State lives in snap_settings:
 // ai_spendcap_ack_<prov> = '1' | ai_spendcap_defer_<prov> = <unix expiry>.
 $_sc_provider = $settings['ai_provider'] ?? 'none';
-$_sc_keymap   = ['claude' => 'ai_key_claude', 'gemini' => 'ai_key_gemini', 'openai' => 'ai_key_openai'];
+$_sc_keymap   = ['claude' => 'ai_key_claude', 'gemini' => 'ai_key_gemini', 'openai' => 'ai_key_openai', 'deepseek' => 'ai_key_deepseek', 'kimi' => 'ai_key_kimi'];
 $_sc_keyname  = $_sc_keymap[$_sc_provider] ?? '';
 $_sc_haskey   = $_sc_keyname !== '' && trim((string)($settings[$_sc_keyname] ?? '')) !== '';
 $_sc_acked    = (string)($settings['ai_spendcap_ack_' . $_sc_provider] ?? '') === '1';
 $_sc_deferred = (int)($settings['ai_spendcap_defer_' . $_sc_provider] ?? 0) > time();
 $_sc_accepted = ($settings['ai_cost_accepted'] ?? '') === '1';
 $ai_spendcap_prompt = $_sc_accepted && ($_sc_provider !== 'none') && $_sc_haskey && !$_sc_acked && !$_sc_deferred;
-$_sc_labels   = ['claude' => 'Anthropic (Claude)', 'gemini' => 'Google (Gemini)', 'openai' => 'OpenAI'];
+$_sc_labels   = ['claude' => 'Anthropic (Claude)', 'gemini' => 'Google (Gemini)', 'openai' => 'OpenAI', 'deepseek' => 'DeepSeek', 'kimi' => 'Kimi (Moonshot)'];
 $_sc_caps     = [
     'claude' => 'https://console.anthropic.com/settings/limits',
     'gemini' => 'https://console.cloud.google.com/billing/budgets',
     'openai' => 'https://platform.openai.com/settings/organization/limits',
+    'deepseek' => 'https://platform.deepseek.com/usage',
+    'kimi' => 'https://platform.moonshot.ai/console/account',
 ];
 $_sc_label    = $_sc_labels[$_sc_provider] ?? 'your AI provider';
 $_sc_capurl   = $_sc_caps[$_sc_provider] ?? '';
@@ -1196,7 +1244,7 @@ if (archiveLayout) {
 
             // Gather current form values so the test works before saving
             var provider   = sel.value;
-            var keyFieldId = { claude: 'ai_key_claude_input', gemini: 'ai_key_gemini_input', openai: 'ai_key_openai_input' }[provider] || '';
+            var keyFieldId = { claude: 'ai_key_claude_input', gemini: 'ai_key_gemini_input', openai: 'ai_key_openai_input', deepseek: 'ai_key_deepseek_input', kimi: 'ai_key_kimi_input' }[provider] || '';
             var keyField   = keyFieldId ? document.getElementById(keyFieldId) : null;
             var apiKey     = keyField ? keyField.value.trim() : '';
 

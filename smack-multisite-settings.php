@@ -99,7 +99,7 @@ $push_groups = [
     // SECURITY (2026-08-02): ai_training_policy (FREE crawler directive) removed from
     // this billable bundle so pushing AI config can't ride the free crawler policy —
     // and vice-versa. Crawler policy pushes via smack-push-it.php's 'aicrawl' group.
-    'push_ai'        => ['ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_gemini_model', 'ai_openai_model'],
+    'push_ai'        => ['ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_key_deepseek', 'ai_key_kimi', 'ai_gemini_model', 'ai_openai_model', 'ai_deepseek_model', 'ai_kimi_model'],
     'push_smackback' => ['smackback_enabled', 'smackback_mode'],
     'push_comments'  => ['global_comments_enabled'],
     'push_email'     => ['site_email'],

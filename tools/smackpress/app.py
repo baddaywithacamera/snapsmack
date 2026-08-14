@@ -108,7 +108,7 @@ class SettingsDialog(ctk.CTkToplevel):
             ("snap_url",        "SnapSmack site URL"),
             ("snap_api_key",    "SMACKPRESS API key"),
             ("AI (optional)", None),
-            ("ai_provider",     "Provider (none | gemini | openai | anthropic)"),
+            ("ai_provider",     "Provider (none | gemini | openai | anthropic | deepseek | kimi)"),
             ("ai_model",        "Model (leave blank for default)"),
             ("ai_api_key",      "AI API key"),
         ]

@@ -10,6 +10,24 @@
 
 # SnapSmack Changelog
 
+## 0.7.524 — 2026-08-14
+
+### DeepSeek and Kimi join the AI providers
+
+- DeepSeek and Kimi (Moonshot) are selectable everywhere Claude/Gemini/OpenAI are: Settings → AI (provider, per-provider key, model, connection test, spend-cap), and they can be pushed hub → spoke like any other AI setting. Both speak the OpenAI chat shape. Kimi does vision (ALT text / VISION FILL); DeepSeek is text-only and says so plainly instead of failing a vision call. (The desktop OH SNAP and SmackPress tools gained them too.)
+
+### Maximum image size is now a fleet setting
+
+- The hub can push a site's maximum image dimensions (landscape width / portrait height) to every spoke, with a hub-control lock, from Network Settings Push.
+
+### Groups (v0.1 foundation)
+
+- The start of self-hosted, Flickr-style groups: a Groups admin page (create / list / publish / delete) on four new tables (members, a shared photo pool, and local discussion), gated behind a new Groups toggle in Settings → Interaction (off by default; requires the community system). Members/pool/discussion management, public group pages, and a federated Group actor are the next phases.
+
+### SMACK YOUR BATCH UP — failures now say why
+
+- A failed gram post used to report a bare "500 Server Error". The server already returned the real reason in the response body; SYBU now surfaces it (and the server logs it too), so a failed batch names the actual cause instead of a status code.
+
 ## 0.7.523 — 2026-08-14
 
 ### SCROLL 0.1.48 — Square wall
