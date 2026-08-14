@@ -1,7 +1,7 @@
 <?php
 /**
- * SNAPSMACK - Main layout template for the crimson-onyx skin
- * CRIMSON ONYX 0.1.0
+ * SNAPSMACK - Main layout template for the onyx skin
+ * ONYX 0.1.0
  *
  * Renders the photo display, navigation, metadata, and comments sections.
  */

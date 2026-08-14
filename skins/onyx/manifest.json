@@ -1,24 +1,39 @@
 {
   "schema_version": 1,
-  "name": "CRIMSON ONYX",
-  "version": "0.1.5",
+  "name": "ONYX",
+  "version": "0.1.6",
   "author": "Sean McCormick",
   "support": "sean@baddaywithacamera.ca",
   "status": "alpha",
-  "description": "The photofri.day identity. Crimson on onyx, Arial Black wordmark, hairline rules, and a faint red glow behind the black. Built for the PHOTOFRI.DAY challenge install: a static-page front door with the blog behind it. Ships zero JavaScript of its own.",
-  "modes": ["photoblog"],
-
+  "description": "A minimal dark editorial skin: an onyx canvas, Arial Black wordmark, hairline rules, and a faint accent glow behind the black. Geometry lives in style.css; colour is a swappable palette chosen from the SKIN PALETTE dropdown. Lean for photoblog and longform reading. Ships zero JavaScript of its own.",
+  "modes": [
+    "photoblog"
+  ],
+  "variants": {
+    "crimson": "Crimson",
+    "sapphire": "Sapphire",
+    "emerald": "Emerald"
+  },
+  "default_variant": "crimson",
   "features": {
     "fedistructure_only": true,
     "supports_wall": false,
     "has_landing": false,
-    "post_modes": ["image"],
+    "post_modes": [
+      "image"
+    ],
     "instagram_mode": false,
     "carousel": false,
-    "community": ["likes", "comments"],
-    "archive_layouts": ["square", "cropped", "masonry"]
+    "community": [
+      "likes",
+      "comments"
+    ],
+    "archive_layouts": [
+      "square",
+      "cropped",
+      "masonry"
+    ]
   },
-
   "require_scripts": [
     "smack-footer",
     "smack-image-fade-load",
@@ -30,7 +45,6 @@
     "smack-archive-grid-switch",
     "smack-countdown"
   ],
-
   "options": {
     "pfd_canvas_width": {
       "section": "CANVAS LAYOUT",
@@ -78,56 +92,6 @@
       "property": "max-height",
       "hint": "Only applies when a header logo image is uploaded. img/logo-pf-white.png ships with this skin — upload it as the header logo to get the original crimson-dot wordmark exactly."
     },
-
-    "pfd_accent": {
-      "section": "COLOURS",
-      "type": "color",
-      "label": "Accent (rules, borders, numerals)",
-      "default": "#D40000",
-      "selector": ":root",
-      "property": "--pfd-red",
-      "hint": "One control. It drives every rule, border, step numeral, the footer bar and the glow behind the page."
-    },
-    "pfd_link": {
-      "section": "COLOURS",
-      "type": "color",
-      "label": "Links & Hover",
-      "default": "#F50A0A",
-      "selector": ":root",
-      "property": "--pfd-link"
-    },
-    "pfd_canvas_color": {
-      "section": "COLOURS",
-      "type": "color",
-      "label": "Canvas (the onyx)",
-      "default": "#111111",
-      "selector": ":root",
-      "property": "--pfd-canvas"
-    },
-    "pfd_ink": {
-      "section": "COLOURS",
-      "type": "color",
-      "label": "Body Text",
-      "default": "#f4f4f4",
-      "selector": ":root",
-      "property": "--pfd-ink"
-    },
-    "pfd_muted": {
-      "section": "COLOURS",
-      "type": "color",
-      "label": "Secondary Text",
-      "default": "#9a9a9a",
-      "selector": ":root",
-      "property": "--pfd-muted"
-    },
-    "pfd_hairline": {
-      "section": "COLOURS",
-      "type": "color",
-      "label": "Hairlines (nav underline, FAQ dividers)",
-      "default": "#2a2a2a",
-      "selector": ":root",
-      "property": "--pfd-hairline"
-    },
     "pfd_vignette": {
       "section": "COLOURS",
       "type": "range",
@@ -140,7 +104,6 @@
       "property": "--pfd-vignette",
       "hint": "The soft accent-coloured glow behind the canvas that stops the black reading as a flat slab. 0 turns it off."
     },
-
     "pfd_display_font": {
       "section": "TYPOGRAPHY",
       "type": "select",
@@ -223,7 +186,6 @@
       "selector": ":root",
       "property": "--pfd-body-size"
     },
-
     "skin_avatar": {
       "section": "PROFILE HEADER",
       "type": "image",

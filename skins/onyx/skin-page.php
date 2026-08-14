@@ -1,9 +1,9 @@
 <?php
 /**
- * SNAPSMACK - CRIMSON ONYX static page template
- * CRIMSON ONYX 0.1.0
+ * SNAPSMACK - ONYX static page template
+ * ONYX 0.1.0
  *
- * Renders static pages (page.php) inside the CRIMSON ONYX shell.
+ * Renders static pages (page.php) inside the ONYX shell.
  * Hero image sits inside .static-content so it is constrained to the
  * same column width as the text, not stretched full-bleed.
  */

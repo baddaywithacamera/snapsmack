@@ -1,0 +1,16 @@
+/**
+ * SNAPSMACK - ONYX skin · Crimson palette
+ * The original photofri.day accent: crimson on onyx.
+ * Only the accent + link colours change per palette; the onyx neutrals
+ * (canvas, ink, muted, hairline) live in style.css and stay constant.
+ *
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line MUST be the CSS EOF marker below.
+ */
+
+:root {
+    --pfd-red:  #D40000;   /* accent: rules, borders, numerals, the dot, the glow */
+    --pfd-link: #F50A0A;   /* links & hover — a step brighter than the accent */
+}
+
+/* ===== SNAPSMACK EOF ===== */

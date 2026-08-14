@@ -50,21 +50,21 @@ s_ok(snapsmack_skin_allowed_distribution('not an array') === true,
 s_ok(snapsmack_skin_allowed_distribution(['features' => ['fedistructure_only' => false]]) === true,
      'an explicit false was treated as true');
 
-$list = ['crimson-onyx' => $service, 'new-horizon' => $normal, 'plain' => $bare];
+$list = ['onyx' => $service, 'new-horizon' => $normal, 'plain' => $bare];
 $filtered = snapsmack_skins_for_distribution($list);
-s_ok(!isset($filtered['crimson-onyx']), 'the list filter kept a service skin');
+s_ok(!isset($filtered['onyx']), 'the list filter kept a service skin');
 s_ok(isset($filtered['new-horizon']) && isset($filtered['plain']),
      'the list filter dropped an ordinary skin');
 s_ok(count($filtered) === 2, 'the list filter changed the count unexpectedly');
 s_ok(snapsmack_skins_for_distribution([]) === [], 'the list filter breaks on an empty list');
 
 // ── The flag is actually ON the skin it was built for ───────────────────────
-$m = json_decode((string)file_get_contents(__DIR__ . '/../skins/crimson-onyx/manifest.json'), true);
-s_ok(is_array($m), 'crimson-onyx manifest does not parse');
+$m = json_decode((string)file_get_contents(__DIR__ . '/../skins/onyx/manifest.json'), true);
+s_ok(is_array($m), 'onyx manifest does not parse');
 s_ok(!empty($m['features']['fedistructure_only']),
-     'CRIMSON ONYX lost its fedistructure_only flag — it would appear in every gallery');
+     'ONYX lost its fedistructure_only flag — it would appear in every gallery');
 s_ok(snapsmack_skin_allowed_distribution($m) === false,
-     'CRIMSON ONYX is visible on an ordinary install');
+     'ONYX is visible on an ordinary install');
 
 // No OTHER shipped skin should carry the flag by accident — a stray copy/paste
 // here silently removes a skin from every ordinary gallery.
@@ -75,7 +75,7 @@ foreach (glob(__DIR__ . '/../skins/*/manifest.json') as $mf) {
         $flagged[] = basename(dirname($mf));
     }
 }
-s_ok($flagged === ['crimson-onyx'],
+s_ok($flagged === ['onyx'],
      'unexpected skins carry fedistructure_only: ' . implode(', ', $flagged));
 
 // ── Both enforcement points still call the filter ───────────────────────────
