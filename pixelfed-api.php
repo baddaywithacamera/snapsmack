@@ -112,6 +112,30 @@ function px_timeline(PDO $pdo): array {
     $sql.=' ORDER BY id DESC LIMIT '.(int)$limit;$q=$pdo->prepare($sql);$q->execute($params);
     $out=[];foreach($q->fetchAll(PDO::FETCH_COLUMN) as$id){$s=px_status($pdo,(int)$id);if($s)$out[]=$s;}return $out;
 }
+function px_remote_account(string $actorUrl, string $handle): array {
+    $handle=ltrim(trim($handle),'@');$parts=explode('@',$handle,2);$username=$parts[0]?:'unknown';$acct=count($parts)>1?$handle:$username.'@'.(parse_url($actorUrl,PHP_URL_HOST)?:'remote');
+    return ['id'=>'remote-'.substr(hash('sha256',$actorUrl),0,24),'username'=>$username,'acct'=>$acct,'display_name'=>$username,
+      'locked'=>false,'bot'=>false,'discoverable'=>true,'group'=>false,'created_at'=>'2020-01-01T00:00:00.000Z','note'=>'','url'=>$actorUrl,
+      'avatar'=>'','avatar_static'=>'','header'=>'','header_static'=>'','followers_count'=>0,'following_count'=>0,'statuses_count'=>0,
+      'last_status_at'=>null,'emojis'=>[],'fields'=>[]];
+}
+function px_dm_status(PDO $pdo, array $dm): array {
+    $remote=px_remote_account((string)$dm['remote_actor_url'],(string)($dm['remote_handle']??''));$mine=$dm['direction']==='out';$author=$mine?px_actor($pdo):$remote;$mentioned=$mine?$remote:px_actor($pdo);
+    $plain=(string)($dm['body']??'');$media=[];if(!empty($dm['media_url'])){$url=(string)$dm['media_url'];$media[]=['id'=>'dm-'.(string)$dm['id'].'-media','type'=>'image','url'=>$url,'preview_url'=>$url,'remote_url'=>$url,'text_url'=>null,'meta'=>[],'description'=>null,'blurhash'=>null];}
+    return ['id'=>'dm-'.(string)$dm['id'],'created_at'=>gmdate('Y-m-d\TH:i:s.000\Z',strtotime((string)$dm['created_at'])),'in_reply_to_id'=>$dm['in_reply_to']?:null,
+      'in_reply_to_account_id'=>$mentioned['id'],'sensitive'=>false,'spoiler_text'=>'','visibility'=>'direct','language'=>null,'uri'=>(string)$dm['note_id'],'url'=>null,
+      'replies_count'=>0,'reblogs_count'=>0,'favourites_count'=>0,'favourited'=>false,'reblogged'=>false,'muted'=>false,'bookmarked'=>false,
+      'content'=>nl2br(htmlspecialchars($plain,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8')),'content_text'=>$plain,'reblog'=>null,'application'=>['name'=>'SnapSmack','website'=>'https://snapsmack.ca/'],
+      'account'=>$author,'media_attachments'=>$media,'mentions'=>[['id'=>$mentioned['id'],'username'=>$mentioned['username'],'url'=>$mentioned['url'],'acct'=>$mentioned['acct']]],'tags'=>[],'emojis'=>[],'card'=>null,'poll'=>null];
+}
+function px_conversation_id(string $actorUrl): string { return substr(hash('sha256',$actorUrl),0,24); }
+function px_conversations(PDO $pdo): array {
+    $limit=max(1,min(40,(int)($_GET['limit']??20)));$q=$pdo->query("SELECT remote_actor_url,MAX(id) latest_id,MAX(CASE WHEN direction='in' AND is_read=0 THEN 1 ELSE 0 END) unread FROM snap_ap_dms WHERE is_deleted=0 GROUP BY remote_actor_url ORDER BY latest_id DESC LIMIT ".(int)$limit);
+    $out=[];foreach($q->fetchAll(PDO::FETCH_ASSOC) as$thread){$s=$pdo->prepare('SELECT * FROM snap_ap_dms WHERE id=? AND is_deleted=0 LIMIT 1');$s->execute([(int)$thread['latest_id']]);$last=$s->fetch(PDO::FETCH_ASSOC);if(!$last)continue;$remote=px_remote_account((string)$last['remote_actor_url'],(string)($last['remote_handle']??''));$out[]=['id'=>px_conversation_id((string)$last['remote_actor_url']),'unread'=>(bool)$thread['unread'],'accounts'=>[$remote],'last_status'=>px_dm_status($pdo,$last)];}return $out;
+}
+function px_conversation_actor(PDO $pdo, string $conversationId): ?string {
+    $q=$pdo->query('SELECT DISTINCT remote_actor_url FROM snap_ap_dms WHERE is_deleted=0');foreach($q->fetchAll(PDO::FETCH_COLUMN) as$actor){if(hash_equals(px_conversation_id((string)$actor),$conversationId))return (string)$actor;}return null;
+}
 
 $route=trim((string)($_GET['route']??''),'/'); $method=$_SERVER['REQUEST_METHOD']??'GET'; $base=px_base();
 try { snap_pixelix_lifecycle_maintenance($pdo,__DIR__,false,10); }
@@ -205,6 +229,11 @@ if ($route==='api/v1/statuses' && $method==='POST') {
 if (preg_match('#^api/v1/statuses/(\d+)$#',$route,$m) && $method==='GET') { px_require_scope($token,'read');$s=px_status($pdo,(int)$m[1]);if(!$s)px_json(['error'=>'Record not found'],404);px_json($s); }
 if (preg_match('#^api/v1/statuses/(\d+)/context$#',$route) && $method==='GET') { px_require_scope($token,'read');px_json(['ancestors'=>[],'descendants'=>[]]); }
 if (($route==='api/v1/timelines/home'||preg_match('#^api/v1/accounts/1/statuses$#',$route)) && $method==='GET') { px_require_scope($token,'read');px_json(px_timeline($pdo)); }
+if ($route==='api/v1/conversations' && $method==='GET') { px_require_scope($token,'read');px_json(px_conversations($pdo)); }
+if (preg_match('#^api/v1/conversations/([a-f0-9]{24})/read$#',$route,$m) && $method==='POST') {
+    px_require_scope($token,'write');$actor=px_conversation_actor($pdo,$m[1]);if($actor===null)px_json(['error'=>'Record not found'],404);
+    $pdo->prepare("UPDATE snap_ap_dms SET is_read=1 WHERE remote_actor_url=? AND direction='in' AND is_deleted=0")->execute([$actor]);px_json([]);
+}
 if ($method==='GET' && in_array($route,['api/v1/notifications','api/v1/favourites','api/v1/bookmarks','api/v1/follow_requests','api/v1/mutes','api/v1/blocks'],true)) { px_require_scope($token,'read');px_json([]); }
 if ($route==='api/v1/timelines/public' && $method==='GET') { px_require_scope($token,'read');px_json(px_timeline($pdo)); }
 px_json(['error'=>'This Pixelix operation is not supported by GRAMOFSMACK.'],501);
