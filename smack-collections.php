@@ -3,7 +3,7 @@
  * SNAPSMACK - Collections management (v0.2 — image-only print folios)
  *
  * v0.2 (0.7.79+): a collection is a hand-curated set of individual images,
- * capped at 30. No more albums-as-members or categories-as-members. Members
+ * capped at 100. No more albums-as-members or categories-as-members. Members
  * are snapshots, not live-resolved. Per-collection visibility toggle gates
  * public exposure. See _spec/collections-v0_2.md.
  *
@@ -11,7 +11,7 @@
  *         snap_collection_items.image_id references snap_images.id.
  *         
  *
- * Hard cap: 30 members per collection, enforced server-side here AND at
+ * Hard cap: 100 members per collection, enforced server-side here AND at
  * the DB layer (UNIQUE KEY prevents dups; ENUM rejects non-'image').
  */
 
@@ -89,7 +89,7 @@ if ($is_ajax && !empty($_POST['action'])) {
         exit;
     }
 
-    // Add image to collection (v0.2 — image-only, hard cap 30)
+    // Add image to collection (v0.2 — image-only, hard cap 100)
     if ($_POST['action'] === 'add_item') {
         $coll_id   = (int)$_POST['collection_id'];
         $item_id   = (int)$_POST['image_id'];
@@ -99,14 +99,14 @@ if ($is_ajax && !empty($_POST['action'])) {
             exit;
         }
 
-        // Hard cap: 30 images per collection. Reject the 31st add.
+        // Hard cap: 100 images per collection. Reject the 101st add.
         $count = $pdo->prepare("SELECT COUNT(*) FROM snap_collection_items WHERE collection_id=?");
         $count->execute([$coll_id]);
         $current = (int)$count->fetchColumn();
-        if ($current >= 30) {
+        if ($current >= 100) {
             echo json_encode([
                 'ok' => false,
-                'error' => 'Collection is full (30/30). Remove an image before adding another.',
+                'error' => 'Collection is full (100/100). Remove an image before adding another.',
                 'cap_reached' => true,
             ]);
             exit;
@@ -130,7 +130,7 @@ if ($is_ajax && !empty($_POST['action'])) {
             "INSERT IGNORE INTO snap_collection_items (collection_id, item_type, item_id, sort_order) VALUES (?,'image',?,?)"
         )->execute([$coll_id, $item_id, $next]);
 
-        echo json_encode(['ok' => true, 'count' => $current + 1, 'cap' => 30]);
+        echo json_encode(['ok' => true, 'count' => $current + 1, 'cap' => 100]);
         exit;
     }
 
@@ -432,12 +432,12 @@ include 'core/sidebar.php';
                     <h3>MEMBERS <span class="dim" style="font-weight:400;font-size:12px;">— drag to reorder</span></h3>
 
                     <div class="collection-cap-counter" style="margin-bottom:10px;font-size:12px;font-family:monospace;">
-                        <span id="member-count"><?php echo count($edit_items); ?></span> / 30 IMAGES
+                        <span id="member-count"><?php echo count($edit_items); ?></span> / 100 IMAGES
                     </div>
 
                     <div id="member-list" style="min-height:60px;">
                         <?php if (empty($edit_items)): ?>
-                            <p class="dim empty-notice" id="member-empty">No images yet. Pick from the search panel below — up to 30 per collection.</p>
+                            <p class="dim empty-notice" id="member-empty">No images yet. Pick from the search panel below — up to 100 per collection.</p>
                         <?php else: ?>
                             <?php foreach ($edit_items as $item): ?>
                             <div class="recent-item member-row"
