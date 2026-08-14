@@ -10,6 +10,19 @@
 
 # SnapSmack Changelog
 
+## 0.7.521 — 2026-08-13
+
+### ONYX skin — one skin, a colour-palette dropdown (was CRIMSON ONYX)
+
+- Collapsed CRIMSON ONYX into a generic **ONYX** skin: `style.css` = geometry, `variant-<name>.css` = accent palettes (crimson default / sapphire / emerald); the manifest `variants` block auto-spawns the SKIN PALETTE dropdown. Per-colour pickers removed. Same native variant system as 50-shades / alfred.
+- Favicon no longer hardcoded in the skin — served per-install from `favicon_url` (Global Vibe).
+- Skin help rewritten generic and corrected (it wrongly claimed "no variants" and pointed at a removed Accent control).
+- Renamed slug `crimson-onyx` → `onyx`; updated the photo-challenge install manifest + the two skin-visibility tests. Migration: installs on the old slug re-select ONYX + the Crimson palette, then re-save skin settings.
+
+### Desktop tools
+
+- Added the **SMACK YOUR MOUTH** spec (`docs/smack-your-mouth-spec.md`): offline, batched fleet comment moderation **and replies**, on COLD SNAP's store-and-forward engine.
+
 ## 0.7.520 — 2026-08-13
 
 ### Pixelix front door — corrected release packaging
