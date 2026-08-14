@@ -3,7 +3,7 @@
  *
  * Handles desktop detection, left-rail slide-in, accordion expand/collapse,
  * fjGallery grid, multi-select, drag-and-drop, drop handlers, visual feedback,
- * membership badges, collection cap (30), swap modal, filters, context menu,
+ * membership badges, collection cap (100), swap modal, filters, context menu,
  * and auto-scroll.
  *
  * SNAPSMACK_EOF_HEADER
@@ -18,7 +18,7 @@
     // -----------------------------------------------------------------------
     // Constants
     // -----------------------------------------------------------------------
-    var COL_CAP = 30;
+    var COL_CAP = 100;
     var PER_PAGE = 60;
     var AJAX_URL = 'smack-lighttable.php';
 

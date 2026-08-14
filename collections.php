@@ -134,7 +134,7 @@ $sort_labels = [
 ];
 
 // Spell out member counts for the series list ("TWELVE IMAGES"), a nod to the
-// Noah Grey Series Collections layout. Collections cap at 30; digits past 99.
+// Noah Grey Series Collections layout. Collections cap at 100; digits past 99.
 if (!function_exists('snap_number_to_words')) {
     function snap_number_to_words(int $n): string {
         if ($n < 0) return (string)$n;
