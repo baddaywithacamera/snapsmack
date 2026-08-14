@@ -15,7 +15,7 @@ $landing_sections = [
     [
         'heading' => 'Publish on your site first',
         'body' => [
-            'The canonical photograph, caption, date, and archive URL live on your domain. SMACKVERSE can syndicate public work to compatible Fediverse services and point interaction back toward that source.',
+            'The canonical photograph, caption, date, and archive URL live on your domain. SnapSmack can syndicate public work across the Fediverse and point interaction back toward that source.',
             'This is not a claim that SnapSmack replaces a person\'s Fediverse home. It is a way for a photography website to participate without moving its centre of gravity somewhere else.',
         ],
     ],

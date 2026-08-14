@@ -150,7 +150,7 @@ require_once __DIR__ . '/includes/header.php';
                 <article class="working-card"><h3>Albums, Collections + Pages</h3><p>Date archives, curated albums and collections, static pages, blogrolls, shortcodes, slideshows, RSS, and downloadable originals.</p></article>
                 <article class="working-card"><h3>Traffic Stats + SCROLL TIME</h3><p>Cookie-free visits, per-image views, referrers, bot filtering, local country resolution, feed engagement, and fleet-wide rollups.</p></article>
 
-                <article class="working-card"><h3>SMACKVERSE</h3><p>Two-way ActivityPub: Pixelfed-compatible profiles, follows, likes, boosts, replies, discovery, and interaction from the SnapSmack admin.</p></article>
+                <article class="working-card"><h3>The Fediverse</h3><p>Two-way ActivityPub: Pixelfed-compatible profiles, follows, likes, boosts, replies, discovery, and interaction from the SnapSmack admin.</p></article>
                 <article class="working-card"><h3>Local Community</h3><p>Accounts, comments, reactions, follows, direct messages, moderation queues, keyword controls, and anti-spam filtering.</p></article>
                 <article class="working-card"><h3>Multisite</h3><p>Hub-and-spoke monitoring, SSO drill-through, aggregated statistics and comments, cross-posting, fleet backups, fleet updates, and automatic <strong>My Blogs</strong> blogrolls.</p></article>
                 <article class="working-card"><h3>Support Forum</h3><p>Support built inside authenticated SnapSmack admin rather than exposed at a public URL for bots and drive-by spam.</p></article>
