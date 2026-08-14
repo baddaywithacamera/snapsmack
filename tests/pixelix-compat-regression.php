@@ -19,7 +19,10 @@ $installer = file_get_contents($root . '/install.php');
 $release = file_get_contents($root . '/smack-central/sc-release.php');
 
 $checks = [
-    'carousel mode gate'       => "px_setting(\$pdo,'site_mode','photoblog') !== 'carousel'",
+    'all-mode connection'      => "function px_mode(PDO \$pdo)",
+    'GRAM write boundary'      => "function px_gram_authoring_gate(PDO \$pdo)",
+    'SMACKONEOUT timeline'     => "SELECT id FROM snap_images WHERE img_status='published'",
+    'SMACKTALK timeline'       => "post_type='longform'",
     'owner offline gate'       => "px_setting(\$pdo,'gram_authoring_enabled','0') !== '1'",
     'OAuth client registration'=> "route==='api/v1/apps'",
     'media upload'             => "route==='api/v1/media'",
@@ -34,6 +37,8 @@ $checks = [
     'media ownership'          => "JOIN snap_oauth_media",
     'scope enforcement'        => "px_require_scope",
     'Pixelix optimized media'  => "'optimized_url'",
+    'public cover permalink'   => "\$publicUrl",
+    'exclusive max-id paging' => "if(\$maxId>0){\$sql.=' AND id<?'",
     'Pixelix media licence'    => "'license'=>null",
     'Pixelix instance stats'   => "'stats'=>",
     'Pixelix video limit'      => "'video_size_limit'=>0",

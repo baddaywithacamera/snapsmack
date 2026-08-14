@@ -155,12 +155,23 @@
                 cells.forEach(function (cell) {
                     if (animate && Math.random() < .018) cell.energy = .55 + Math.random() * .45;
                     cell.energy *= animate ? .91 : 1;
-                    var alpha = .12 + cell.energy * .78;
+                    // Keep the logic-memory tiles legible in BOTH outside
+                    // gutters even when this cell's random pulse is resting.
+                    // The symmetric edge lift prevents one side of a wide
+                    // screen from reading as an accidental solid-black field.
+                    var centre = cell.x + cell.w / 2;
+                    var edge = Math.min(1, Math.abs(centre - window.innerWidth / 2) / Math.max(1, window.innerWidth / 2));
+                    var alpha = .12 + edge * .12 + cell.energy * .66;
                     ctx.fillStyle = 'rgba(222,20,52,' + alpha.toFixed(3) + ')';
                     ctx.fillRect(cell.x, cell.y, cell.w, cell.h);
                 });
+                // Match the CSS readability panel. The old 18%/64% mask grew
+                // wider than the content on large displays and swallowed much
+                // of both decorative tile gutters.
+                var panelWidth = Math.min(1080, window.innerWidth);
+                var panelLeft = (window.innerWidth - panelWidth) / 2;
                 ctx.fillStyle = 'rgba(0,0,0,.62)';
-                ctx.fillRect(window.innerWidth * .18, 0, window.innerWidth * .64, window.innerHeight);
+                ctx.fillRect(panelLeft, 0, panelWidth, window.innerHeight);
             }
             if (animate) requestAnimationFrame(draw);
         }
