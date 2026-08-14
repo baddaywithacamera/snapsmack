@@ -203,9 +203,9 @@ require_once __DIR__ . '/includes/header.php';
             <p class="fed-body">The protocol is only half the job. Federation also means consent, attribution, content warnings, local norms, and participation in communities other people built. SnapSmack treats that culture as part of the feature, not an obstacle to growth-hacking around.</p>
 
             <div class="fed-shots">
-                <figure><img src="img/fediverse-blog-view.png" alt="A photography profile on its own SnapSmack blog" width="1920" height="1080" loading="lazy"><figcaption>Your blog</figcaption></figure>
-                <figure><img src="img/fediverse-home-view.png" alt="The same photography profile on the Fediverse" width="1920" height="1080" loading="lazy"><figcaption>On the Fediverse</figcaption></figure>
-                <figure><img src="img/fediverse-pixelfed-ca-view.png" alt="The same photography profile seen from Pixelfed" width="1920" height="1080" loading="lazy"><figcaption>Seen from Pixelfed</figcaption></figure>
+                <figure><img src="img/fediverse-blog-view.png?v=20260814" alt="A photography profile on its own SnapSmack blog" width="1920" height="1080" loading="lazy"><figcaption>Your blog</figcaption></figure>
+                <figure><img src="img/fediverse-home-view.png?v=20260814" alt="The same photography profile on the Fediverse" width="1920" height="1080" loading="lazy"><figcaption>On the Fediverse</figcaption></figure>
+                <figure><img src="img/fediverse-pixelfed-ca-view.png?v=20260814" alt="The same photography profile seen from Pixelfed" width="1920" height="1080" loading="lazy"><figcaption>Seen from Pixelfed</figcaption></figure>
             </div>
 
             <div class="fed-split">
