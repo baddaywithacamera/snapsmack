@@ -1,0 +1,39 @@
+/* GRAMOFSMACK phone/tablet composer. Loaded by the carousel composer only. */
+.gram-composer{--gp-radius:20px;--gp-gap:clamp(16px,3vw,30px);padding-bottom:30px}
+.gram-composer .header-row{align-items:end;margin-bottom:var(--gp-gap)}
+.gram-composer .header-row h2{margin:0;font-size:clamp(1.5rem,4vw,2.45rem);letter-spacing:-.045em}
+.gram-composer-kicker{display:block;margin-bottom:7px;font-size:10px;font-weight:850;letter-spacing:.18em;opacity:.62}
+.gram-composer-lede{max-width:620px;margin:8px 0 0;line-height:1.45;opacity:.7}
+.gram-composer-form{display:flex;flex-direction:column}
+.gram-composer-card{border:1px solid color-mix(in srgb,var(--border-color,#555) 75%,transparent);border-radius:var(--gp-radius);overflow:hidden;box-shadow:0 20px 55px rgba(0,0,0,.14)}
+.gram-composer-card--media{order:1;margin-top:0!important}
+.gram-composer-card--details{order:2;margin-top:var(--gp-gap)}
+.gram-composer .progress-container{order:3}.gram-composer .form-action-row{order:4}
+.gram-section-heading{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.gram-section-heading--split #gp-file-count{flex:none;margin-left:auto}
+.gram-section-heading h3{margin:0;font-size:14px;letter-spacing:.065em}.gram-section-heading p{margin:4px 0 0;font-size:12px;opacity:.65}
+.gram-step{display:grid;flex:0 0 36px;width:36px;height:36px;place-items:center;border-radius:50%;color:#111;background:var(--accent,#b6ff1a);font:850 14px/1 system-ui}
+.gram-composer .post-layout-grid{gap:var(--gp-gap)}
+.gram-composer textarea,.gram-composer input[type=text],.gram-composer input[type=datetime-local],.gram-composer select{min-height:48px;border-radius:11px}
+.gram-composer textarea{min-height:210px;padding:16px;line-height:1.55;resize:vertical}
+.gram-composer label{display:block;margin-bottom:7px;font-size:11px;font-weight:800;letter-spacing:.11em}
+.gram-composer .cp-drop-zone{min-height:108px;border-radius:15px;background:linear-gradient(135deg,rgba(127,127,127,.07),rgba(127,127,127,.015));transition:transform .16s,border-color .16s,background .16s}
+.gram-composer .cp-drop-zone:hover{transform:translateY(-1px)}
+.gram-composer .cp-drop-icon{display:grid;width:42px;height:42px;place-items:center;border:1px solid currentColor;border-radius:50%;font-size:25px;opacity:.75}
+.gram-composer .cp-drop-label{font-size:14px}.gram-composer .cp-drop-label span{font-weight:400;opacity:.65;text-transform:none}
+.gram-composer .cp-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))!important}
+.gram-composer .cp-strip-item{width:auto!important;max-width:none!important;min-width:0}
+.gram-composer .cp-order-btn{width:38px;height:30px;padding:0;border:1px solid rgba(127,127,127,.4);border-radius:7px;background:rgba(127,127,127,.12);color:inherit;cursor:pointer}.gram-composer .cp-order-btn:disabled{cursor:default;opacity:.25}
+.gram-order-hint{text-align:center;opacity:.65}
+.gram-advanced{align-self:start;border:1px solid rgba(127,127,127,.28);border-radius:13px;overflow:hidden}
+.gram-advanced summary{display:flex;flex-direction:column;gap:4px;padding:15px 16px;cursor:pointer;list-style:none}.gram-advanced summary::-webkit-details-marker{display:none}
+.gram-advanced summary span{font-size:11px;font-weight:850;letter-spacing:.1em}.gram-advanced summary small{opacity:.62}.gram-advanced[open] summary{border-bottom:1px solid rgba(127,127,127,.22)}
+.gram-advanced-grid{padding:16px}
+.gram-composer .form-action-row{position:sticky;display:flex;align-items:center;gap:20px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:20;width:min(100%,760px);margin:22px auto 0;padding:10px 12px 10px 18px;border:1px solid rgba(127,127,127,.32);border-radius:18px;background:color-mix(in srgb,var(--bg-color,#111) 88%,transparent);box-shadow:0 14px 44px rgba(0,0,0,.3);backdrop-filter:blur(18px)}
+.gram-publish-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px}.gram-publish-copy strong{font-size:10px;letter-spacing:.12em}.gram-publish-copy span{overflow:hidden;font-size:11px;opacity:.65;text-overflow:ellipsis;white-space:nowrap}
+.gram-composer #gp-submit{flex:0 0 auto;min-width:190px;min-height:48px;border-radius:12px;box-shadow:none}
+@media(max-width:720px),(display-mode:standalone){
+ .gram-composer{padding-bottom:calc(86px + env(safe-area-inset-bottom))}.gram-composer .header-actions{display:none}.gram-composer-card{padding:16px;border-radius:17px}.gram-composer .post-layout-grid{display:block}.gram-composer .post-col-right{margin-top:18px}.gram-composer .gram-advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.gram-composer .post-col-right .lens-input-wrapper{margin:0}.gram-composer .post-col-right .lens-input-wrapper:last-child{grid-column:1/-1}.gram-composer .cp-drop-zone{flex-direction:column;gap:7px;padding:22px 12px}.gram-composer .cp-strip{grid-template-columns:1fr!important;gap:14px}.gram-composer .cp-remove-btn{width:34px;height:34px;line-height:32px;opacity:1}.gram-composer .form-action-row{bottom:calc(7px + env(safe-area-inset-bottom));border-radius:14px}.gram-publish-copy{display:none}.gram-composer #gp-submit{width:100%;min-width:0}
+}
+@media(max-width:430px){.gram-section-heading--split{align-items:flex-start;flex-wrap:wrap}.gram-section-heading--split #gp-file-count{margin-left:48px}.gram-composer .gram-advanced-grid{grid-template-columns:1fr}.gram-composer .post-col-right .lens-input-wrapper:last-child{grid-column:auto}}
+@media(prefers-reduced-motion:reduce){.gram-composer *{scroll-behavior:auto!important;transition:none!important}}

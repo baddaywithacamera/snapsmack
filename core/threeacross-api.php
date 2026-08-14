@@ -39,6 +39,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/snap-tags.php';
 require_once __DIR__ . '/thumb-generator.php';
+require_once __DIR__ . '/gram-client-authoring.php';
 require_once __DIR__ . '/api-input-safety.php';   // stored-path containment — SECAUDIT 040
 require_once __DIR__ . '/alt-text.php';            // ALT sanitize/escape helpers
 
@@ -137,20 +138,8 @@ function uz_ok(array $data): void {
 // client cap is only a UI nicety). Generous enough for legit field batches,
 // low enough to stop a runaway client or a leaked key. Exits 429 on exceed.
 function uz_authoring_budget(PDO $pdo, int $add): void {
-    $cap    = 300;   // images per rolling hour across gram/upload + gram/post
-    $window = 3600;
-    $now    = time();
-    $start  = (int)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='gram_authoring_win_start' LIMIT 1")->fetchColumn() ?: 0);
-    $count  = (int)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='gram_authoring_win_count' LIMIT 1")->fetchColumn() ?: 0);
-    if ($now - $start > $window) { $start = $now; $count = 0; }
-    if ($count + $add > $cap) {
-        uz_error(429, "Offline-posting rate limit reached ({$cap} images/hour). Try again shortly.");
-    }
-    $count += $add;
-    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('gram_authoring_win_start', ?)
-                   ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute([(string)$start]);
-    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('gram_authoring_win_count', ?)
-                   ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute([(string)$count]);
+    try { snapsmack_gram_authoring_budget($pdo,$add); }
+    catch (RuntimeException $e) { uz_error($e->getCode()===429?429:500,$e->getMessage()); }
 }
 
 // ---------------------------------------------------------------------------
@@ -1006,30 +995,20 @@ if ($sub === 'gram/post' && $method === 'POST') {
         $make_post = function (array $members, string $ptype, int $rows)
                 use ($pdo, $post_ins, $pi_ins, $title, $desc, $status, $post_date,
                      $allow_cmt, $allow_dl, $dl_url, $p_size, $p_bpx, $p_bcol, $p_bg, $p_shad): int {
-            $slug = uz_unique_post_slug($pdo, 'sob-' . date('Ymd-His', strtotime($post_date)) . '-' . bin2hex(random_bytes(2)));
-            $post_ins->execute([
-                $title, $slug, $desc, $ptype, $status, $post_date,
-                $allow_cmt, $allow_dl, $dl_url, $rows,
-                $p_size, $p_bpx, $p_bcol, $p_bg, $p_shad,
+            return snapsmack_gram_create_post($pdo,$members,[
+                'slug_prefix'=>'sob','title'=>$title,'description'=>$desc,'post_type'=>$ptype,
+                'status'=>$status,'created_at'=>$post_date,'allow_comments'=>$allow_cmt,
+                'allow_download'=>$allow_dl,'download_url'=>$dl_url,'panorama_rows'=>$rows,
+                'post_img_size_pct'=>$p_size,'post_border_px'=>$p_bpx,
+                'post_border_color'=>$p_bcol,'post_bg_color'=>$p_bg,'post_shadow'=>$p_shad,
             ]);
-            $pid = (int)$pdo->lastInsertId();
-            foreach ($members as $pos => $b) {
-                $s = $b['style'];
-                $pi_ins->execute([
-                    $pid, $b['image_id'], $pos, ($pos === 0 ? 1 : 0),
-                    $s['size'], $s['bpx'], $s['bcol'], $s['bg'], $s['shadow'],
-                    $s['crop'], $s['fx'], $s['fy'], $s['zoom'],
-                ]);
-                $pdo->prepare("UPDATE snap_images SET post_id = ? WHERE id = ?")->execute([$pid, $b['image_id']]);
-            }
+            /* Legacy inline implementation retained below for one release as a
+               readable rollback reference; it is unreachable by design. */
             // Newest posts go to the TOP of the feed (Instagram-style). Seat this
             // post at sort_order=1 and shift the rest of the published feed down,
             // instead of leaving it at the default 0 — which the gram feed query
             // demotes to the BOTTOM. Without this every SMACK YOUR BATCH UP batch landed at
             // the end of the feed.
-            $pdo->prepare("UPDATE snap_posts SET sort_order = sort_order + 1 WHERE sort_order > 0")->execute();
-            $pdo->prepare("UPDATE snap_posts SET sort_order = 1 WHERE id = ?")->execute([$pid]);
-            return $pid;
         };
 
         $main_post_id  = 0;

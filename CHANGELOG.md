@@ -10,6 +10,18 @@
 
 # SnapSmack Changelog
 
+## 0.7.520 — 2026-08-13
+
+### Pixelix front door — corrected release packaging
+
+- **The compatibility adapter now ships in the tagged release.** The 0.7.519D artifact
+  came from a GitHub tag that did not contain the locally-untracked Pixelix entry point,
+  shared authoring helper, stylesheet, tests, or API/OAuth rewrite rules. Pixelix therefore
+  received an Apache HTML 404 at `POST /api/v1/apps` before SNAPSMACK or OAuth could run.
+- **Smack Central refuses incomplete Pixelix tags.** Blog-package creation now verifies
+  the adapter, authoring helper, and both API/OAuth routes in the downloaded tagged source
+  before it will build or sign a release.
+
 ## 0.7.519 — 2026-08-13
 
 ### THE HUB — a first-class fleet-setup API key (stop guessing "pick SUYB")
@@ -26,6 +38,24 @@
 - **Backward compatible.** `suyb-data.php` now accepts `['suyb','hub']`, so every
   existing SUYB key keeps working for discovery. THE HUB desktop app needs no rebuild —
   it already sends the key as an `Authorization: Bearer` token.
+
+### GRAMOFSMACK — PWA composer and Pixelix posting
+
+- **Pixelix can connect directly to a GRAMOFSMACK site and publish.** A narrow
+  Pixelfed/Mastodon-compatible client surface provides OAuth app registration and owner
+  consent, credential verification, image upload, per-image ALT text, timelines, and
+  one-photo or ten-image carousel posting. Every route fails closed outside
+  GRAMOFSMACK, and the existing owner-controlled Offline Posting switch gates writes.
+- **OAuth and staging are bounded.** Access credentials expire after 30 days; rotating
+  refresh credentials have a hard 90-day lifetime; scopes are enforced; registrations
+  are throttled; and staged images are bound to the OAuth connection that uploaded them.
+  SECAUDIT 043 records the six pre-release findings and their remediation.
+- **Fresh-install routing included.** The installer emits the same `/api/v1`, `/api/v2`,
+  and `/oauth` routes as the canonical template, and the Pixelix regression gate checks
+  both route sources.
+- **The installable posting interface has been rebuilt for phones.** Clear composer
+  sections, touch/keyboard image ordering, stronger hierarchy, and folded advanced
+  controls make the GRAMOFSMACK PWA usable as a primary posting surface.
 
 ## 0.7.518 — 2026-08-13
 

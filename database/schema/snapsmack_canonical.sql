@@ -3,6 +3,48 @@
 -- Last non-empty line of this file MUST match the line above.
 -- Missing or different = truncated/corrupted. Restore before saving.
 
+CREATE TABLE IF NOT EXISTS `snap_oauth_apps` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `client_id` char(64) NOT NULL,
+  `client_secret_hash` char(64) NOT NULL,
+  `name` varchar(150) NOT NULL,
+  `redirect_uri` varchar(1000) NOT NULL,
+  `scopes` varchar(255) NOT NULL DEFAULT 'read write',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`), UNIQUE KEY `uq_client_id` (`client_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_oauth_tokens` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `app_id` int unsigned NOT NULL,
+  `user_id` int unsigned DEFAULT NULL,
+  `token_hash` char(64) DEFAULT NULL,
+  `refresh_token_hash` char(64) DEFAULT NULL,
+  `authorization_code_hash` char(64) DEFAULT NULL,
+  `redirect_uri` varchar(1000) NOT NULL,
+  `scopes` varchar(255) NOT NULL DEFAULT 'read write',
+  `code_expires_at` datetime DEFAULT NULL,
+  `token_expires_at` datetime DEFAULT NULL,
+  `refresh_expires_at` datetime DEFAULT NULL,
+  `revoked_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`), KEY `idx_token` (`token_hash`), KEY `idx_refresh` (`refresh_token_hash`), KEY `idx_code` (`authorization_code_hash`), KEY `idx_app` (`app_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_oauth_media` (
+  `image_id` int NOT NULL,
+  `token_id` int unsigned NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`image_id`), KEY `idx_oauth_media_token` (`token_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_oauth_rate_limits` (
+  `bucket_key` char(64) NOT NULL,
+  `window_started_at` datetime NOT NULL,
+  `request_count` int unsigned NOT NULL DEFAULT 0,
+  PRIMARY KEY (`bucket_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- SNAPSMACK — Canonical Schema

@@ -461,10 +461,15 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
     }
 }
 ?>
+<link rel="stylesheet" href="assets/css/ss-gram-pwa-composer.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 
-<div class="main">
+<div class="main gram-composer">
     <div class="header-row header-row--ruled">
-        <h2>NEW TRANSMISSION</h2>
+        <div>
+            <span class="gram-composer-kicker">GRAMOFSMACK COMPOSER</span>
+            <h2>MAKE A NEW POST</h2>
+            <p class="gram-composer-lede">Choose up to ten photographs, set the order, then add the words.</p>
+        </div>
         <div class="header-actions">
             <span class="dim" style="font-size:12px; letter-spacing:1px;">GRAMOFSMACK</span>
         </div>
@@ -578,13 +583,17 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     </style>
 
-    <form id="gp-form" method="POST" enctype="multipart/form-data"
+    <form id="gp-form" class="gram-composer-form" method="POST" enctype="multipart/form-data"
           data-ic-aspect="<?php echo htmlspecialchars($ic_aspect); ?>">
 
         <!-- =====================================================================
              SECTION 1: POST METADATA
              ===================================================================== -->
-        <div class="box">
+        <div class="box gram-composer-card gram-composer-card--details">
+            <div class="gram-section-heading">
+                <span class="gram-step">2</span>
+                <div><h3>FINISH THE POST</h3><p>Caption it, then choose how it goes live.</p></div>
+            </div>
             <div class="post-layout-grid">
 
                 <div class="post-col-left">
@@ -607,7 +616,9 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
                     </div>
                 </div>
 
-                <div class="post-col-right">
+                <details class="post-col-right gram-advanced">
+                    <summary><span>POST OPTIONS</span><small>Status, date, signals, downloads and federation</small></summary>
+                    <div class="gram-advanced-grid">
                     <div class="lens-input-wrapper">
                         <label>STATUS</label>
                         <select name="img_status" class="full-width-select">
@@ -652,16 +663,18 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
                         <input type="text" name="download_url"
                                placeholder="Google Drive, Dropbox, etc.">
                     </div>
-                </div>
+                    </div>
+                </details>
             </div>
         </div>
 
         <!-- =====================================================================
              SECTION 2: IMAGE DROP ZONE + PREVIEW STRIP
              ===================================================================== -->
-        <div class="box mt-30">
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
-                <h3 style="margin:0;">IMAGES</h3>
+        <div class="box mt-30 gram-composer-card gram-composer-card--media">
+            <div class="gram-section-heading gram-section-heading--split">
+                <span class="gram-step">1</span>
+                <div><h3>CHOOSE THE PHOTOS</h3><p>First photo becomes the grid cover. Drag to reorder.</p></div>
                 <span id="gp-file-count" class="dim" style="font-size:12px; letter-spacing:1px;">
                     0 / 10 images
                 </span>
@@ -671,13 +684,13 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
                 <input type="file" id="gp-file-input" accept="image/jpeg,image/png,image/webp"
                        multiple style="display:none;">
                 <div class="cp-drop-icon">⊕</div>
-                <p class="cp-drop-label">DROP IMAGES HERE or click to browse</p>
+                <p class="cp-drop-label">CHOOSE PHOTOS <span>or drop them here</span></p>
                 <p class="cp-drop-sub dim">JPG · PNG · WebP &nbsp;·&nbsp; Up to 10 images per post</p>
             </div>
 
             <div id="gp-strip" class="cp-strip"></div>
 
-            <p class="skin-desc-text" style="margin-top:12px;">
+            <p class="skin-desc-text gram-order-hint" style="margin-top:12px;">
                 Drag thumbnails to reorder. First image is the cover shown on the grid.
             </p>
         </div>
@@ -690,8 +703,9 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
         </div>
 
         <div class="form-action-row">
+            <div class="gram-publish-copy"><strong>READY WHEN YOU ARE</strong><span>Add at least one photograph to publish.</span></div>
             <button type="submit" id="gp-submit" class="master-update-btn" disabled>
-                SMACK THAT @#$% UP!
+                PUBLISH POST
             </button>
         </div>
 

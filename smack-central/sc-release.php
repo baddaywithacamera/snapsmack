@@ -371,6 +371,31 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         }
     }
 
+    // GRAMOFSMACK native-client authoring is a core capability. Refuse to
+    // publish a tag whose Pixelix front door exists only in a local worktree.
+    if ($distribution === 'blog') {
+        $pixelix_required = [
+            'pixelfed-api.php',
+            'core/gram-client-authoring.php',
+            'core/htaccess-template',
+        ];
+        foreach ($pixelix_required as $required) {
+            if ($src->locateName($prefix . $required) === false) {
+                $src->close();
+                @unlink($tmp_src);
+                return ['ok' => false, 'msg' => 'Tagged source is missing required Pixelix runtime file: ' . $required];
+            }
+        }
+        $pixelix_htaccess = $src->getFromName($prefix . 'core/htaccess-template');
+        if ($pixelix_htaccess === false
+            || !str_contains($pixelix_htaccess, 'pixelfed-api.php?route=api/v$1/$2')
+            || !str_contains($pixelix_htaccess, 'pixelfed-api.php?route=oauth/$1')) {
+            $src->close();
+            @unlink($tmp_src);
+            return ['ok' => false, 'msg' => 'Tagged htaccess template is missing required Pixelix API/OAuth routes.'];
+        }
+    }
+
     $dst = new ZipArchive();
     if ($dst->open($zip_dest, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
         $src->close();
