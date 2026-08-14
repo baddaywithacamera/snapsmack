@@ -21,7 +21,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-BUILD_VERSION = "0.1.5"
+BUILD_VERSION = "0.1.6"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -282,7 +282,7 @@ class Hub(tk.Tk):
         self._field(card, "BACKUP FOLDER ID", "drive_folder_id")
         bar = tk.Frame(card, bg=CARD)
         bar.pack(fill="x", padx=14, pady=(4, 12))
-        tk.Button(bar, text="SAVE SHARED CREDENTIALS", bg=FIELD, fg=ACCENT,
+        tk.Button(bar, text="SAVE SHARED CREDENTIALS", bg=INK, fg=BG,
                   activebackground=ACCENT, activeforeground=BG, relief="flat",
                   font=("Segoe UI", 9, "bold"), cursor="hand2",
                   command=self._on_save_creds).pack(side="left", ipadx=8, ipady=4)
@@ -296,8 +296,6 @@ class Hub(tk.Tk):
 
     def _load_creds(self):
         for key, var in self._creds_vars.items():
-            if key == "hub_url":
-                continue  # hub_url is not a secret; kept only for discovery input
             try:
                 var.set(snap_creds.get(key, ""))
             except Exception:
@@ -307,8 +305,6 @@ class Hub(tk.Tk):
         """Persist locally-typed secrets to the shared vault. Returns the count."""
         n = 0
         for key, var in self._creds_vars.items():
-            if key == "hub_url":
-                continue
             val = var.get().strip()
             if val:
                 snap_creds.set(key, val); n += 1
