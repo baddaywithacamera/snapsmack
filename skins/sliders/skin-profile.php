@@ -1,0 +1,392 @@
+<?php
+/**
+ * SNAPSMACK - The Grid shared profile + sticky nav header
+ *
+ * Self-contained partial: renders the profile block (avatar, name/tagline,
+ * post count, bio) and the sticky nav identically on the landing grid,
+ * static pages, and the blogroll. Requires $pdo and $settings in scope.
+ *
+ * Pulling this into one place keeps the header identical across every Grid
+ * page; previously it lived inline in landing.php only.
+ */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+$show_profile = ($settings['ic_profile_header'] ?? '1') === '1';
+$show_tagline = ($settings['ic_show_tagline']   ?? '1') === '1';
+
+// ── Static pages for nav ───────────────────────────────────────────────────
+try {
+    $nav_pages = $pdo->query(
+        "SELECT title, slug FROM snap_pages WHERE is_active = 1 ORDER BY menu_order ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $nav_pages = [];
+}
+
+// ── Post count ─────────────────────────────────────────────────────────────
+try {
+    $_tg_count = $pdo->prepare(
+        "SELECT COUNT(*) FROM snap_posts WHERE status = 'published' AND created_at <= ?"
+    );
+    $_tg_count->execute([date('Y-m-d H:i:s')]);
+    $post_count = (int)$_tg_count->fetchColumn();
+} catch (PDOException $e) {
+    $post_count = 0;
+}
+
+// ── Avatar ─────────────────────────────────────────────────────────────────
+$avatar_path     = $settings['skin_avatar'] ?? '';
+$avatar_exists   = $avatar_path && file_exists(dirname(__DIR__, 2) . '/' . $avatar_path);
+$avatar_initials = strtoupper(substr($settings['site_name'] ?? 'S', 0, 1));
+$avatar_url      = $avatar_exists ? BASE_URL . htmlspecialchars($avatar_path) : '';
+
+$tagline = trim($settings['site_tagline'] ?? '');
+$bio     = trim($settings['site_description'] ?? '');
+
+// ── Active-link detection ──────────────────────────────────────────────────
+$_tg_script      = basename($_SERVER['SCRIPT_NAME'] ?? '');
+$_tg_active_slug = $_GET['slug'] ?? null;
+$_tg_on_blogroll = ($_tg_script === 'blogroll.php');
+$_tg_on_home     = ($_tg_script === 'index.php' && !isset($_GET['s']) && $_tg_active_slug === null);
+
+// ── Background treatment (skin admin → Treatment) ──────────────────────────
+// Emitted on every Grid page. The full-screen layers sit behind the centred
+// content card; CSS (:has(.tg-treatment-bg)) turns the card on only when present.
+$_tg_treat_mode  = $settings['ic_treatment_mode']     ?? 'none';
+$_tg_treat_img   = trim($settings['ic_treatment_image'] ?? '');
+$_tg_treat_color = trim($settings['ic_treatment_color'] ?? '');
+$_tg_treat_pos   = $settings['ic_treatment_position'] ?? 'center';
+$_tg_treat_ov    = (int)($settings['ic_treatment_overlay'] ?? 0); // -100 dark .. +100 light
+$_tg_has_treat   = ($_tg_treat_mode === 'image' && $_tg_treat_img !== '')
+                || ($_tg_treat_mode === 'color' && $_tg_treat_color !== '');
+
+$_tg_bg_style = '';
+$_tg_ov_style = '';
+if ($_tg_has_treat) {
+    if ($_tg_treat_mode === 'image' && $_tg_treat_img !== '') {
+        $_tg_treat_pos_css = ($_tg_treat_pos === 'top')    ? 'center top'
+                           : (($_tg_treat_pos === 'bottom') ? 'center bottom' : 'center center');
+        $_tg_bg_style = "background-image:url('" . BASE_URL . htmlspecialchars($_tg_treat_img) . "');"
+                      . 'background-position:' . $_tg_treat_pos_css . ';';
+    } elseif ($_tg_treat_mode === 'color' && $_tg_treat_color !== '') {
+        $_tg_bg_style = 'background-color:' . htmlspecialchars($_tg_treat_color) . ';';
+    }
+    if ($_tg_treat_ov < 0) {
+        $_tg_ov_style = 'background-color:rgba(0,0,0,' . round(min(100, -$_tg_treat_ov) / 100, 2) . ');';
+    } elseif ($_tg_treat_ov > 0) {
+        $_tg_ov_style = 'background-color:rgba(255,255,255,' . round(min(100, $_tg_treat_ov) / 100, 2) . ');';
+    }
+}
+
+// SLIDERS: normal square foreground tiles over one GLIDE background.
+$_ic_aspect = '1 / 1';
+$_ic_scrim  = max(0, min(95, (int)($settings['sl_opacity'] ?? 68))) / 100;
+$_ic_bgmode = 'sliders';
+$_sl_layer_color = trim((string)($settings['sl_layer_color'] ?? '#f4f1eb'));
+if (!preg_match('/^#[0-9a-f]{6}$/i',$_sl_layer_color)) $_sl_layer_color='#f4f1eb';
+
+// ── Text glow (readability over the drifting tabletop) — ported from AURORA ──
+// Profile title / tagline / bio halo. A subtle dark floor keeps text legible
+// even with no custom glow set; the Text Glow controls override it.
+$_ic_glow_hex = trim($settings['ic_glow_color'] ?? '#000000');
+$_ic_glow_sz  = max(0, min(40,  (int)($settings['ic_glow_size']    ?? 0)));
+$_ic_glow_op  = max(0, min(100, (int)($settings['ic_glow_opacity'] ?? 0)));
+$_ic_glow_css = 'none';  // no forced floor — Text Glow sliders at 0 = truly off
+if ($_ic_glow_sz > 0 && $_ic_glow_op > 0) {
+    $_gc = ltrim($_ic_glow_hex, '#');
+    if (strlen($_gc) === 3) $_gc = $_gc[0].$_gc[0].$_gc[1].$_gc[1].$_gc[2].$_gc[2];
+    $_gr = hexdec(substr($_gc, 0, 2)); $_gg = hexdec(substr($_gc, 2, 2)); $_gb = hexdec(substr($_gc, 4, 2));
+    $_ic_glow_css = sprintf(
+        '0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_ic_glow_sz, $_gr, $_gg, $_gb, number_format($_ic_glow_op / 100, 2),
+        $_ic_glow_sz * 2, $_gr, $_gg, $_gb, number_format($_ic_glow_op / 200, 2)
+    );
+}
+
+// ── Bio glow — independent halo for the bio line ONLY (its own control), so the
+// title/tagline can glow while the bio stays clean, or vice-versa. ───────────
+$_ic_bioglow_hex = trim($settings['ic_bio_glow_color'] ?? '#000000');
+$_ic_bioglow_sz  = max(0, min(40,  (int)($settings['ic_bio_glow_size']    ?? 0)));
+$_ic_bioglow_op  = max(0, min(100, (int)($settings['ic_bio_glow_opacity'] ?? 0)));
+$_ic_bioglow_css = 'none';
+if ($_ic_bioglow_sz > 0 && $_ic_bioglow_op > 0) {
+    $_bgc = ltrim($_ic_bioglow_hex, '#');
+    if (strlen($_bgc) === 3) $_bgc = $_bgc[0].$_bgc[0].$_bgc[1].$_bgc[1].$_bgc[2].$_bgc[2];
+    $_bgr = hexdec(substr($_bgc, 0, 2)); $_bgg = hexdec(substr($_bgc, 2, 2)); $_bgb = hexdec(substr($_bgc, 4, 2));
+    $_ic_bioglow_css = sprintf(
+        '0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_ic_bioglow_sz, $_bgr, $_bgg, $_bgb, number_format($_ic_bioglow_op / 100, 2),
+        $_ic_bioglow_sz * 2, $_bgr, $_bgg, $_bgb, number_format($_ic_bioglow_op / 200, 2)
+    );
+}
+
+// ── Nav glow — ported from AURORA. Outer halo behind the menu links. ─────────
+$_ic_navglow_hex    = trim($settings['ic_nav_glow_color'] ?? '#000000');
+$_ic_navglow_sz     = max(0, min(40,  (int)($settings['ic_nav_glow_size']    ?? 0)));
+$_ic_navglow_op     = max(0, min(100, (int)($settings['ic_nav_glow_opacity'] ?? 45)));
+$_ic_navglow_css    = 'none';
+$_ic_navglow_strong = 'none';
+if ($_ic_navglow_sz > 0 && $_ic_navglow_op > 0) {
+    $_ngc = ltrim($_ic_navglow_hex, '#');
+    if (strlen($_ngc) === 3) $_ngc = $_ngc[0].$_ngc[0].$_ngc[1].$_ngc[1].$_ngc[2].$_ngc[2];
+    $_ngr = hexdec(substr($_ngc, 0, 2)); $_ngg = hexdec(substr($_ngc, 2, 2)); $_ngb = hexdec(substr($_ngc, 4, 2));
+    $_nga = number_format($_ic_navglow_op / 100, 2);
+    $_ic_navglow_css = sprintf(
+        '0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_ic_navglow_sz, $_ngr, $_ngg, $_ngb, $_nga,
+        $_ic_navglow_sz * 2, $_ngr, $_ngg, $_ngb, number_format($_ic_navglow_op / 200, 2)
+    );
+    $_ic_navglow_strong = sprintf(
+        '0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_ic_navglow_sz + 2, $_ngr, $_ngg, $_ngb, number_format(min(1, $_ic_navglow_op / 100 * 1.5), 2),
+        ($_ic_navglow_sz + 2) * 2, $_ngr, $_ngg, $_ngb, $_nga
+    );
+}
+
+// ── Panel (all pages) — ONE tinted backing behind the content column on every
+// page (landing, About/static, archive, hashtag) so text + prints stay legible
+// over the animated background. Full content width, reaches the top, bleeds out
+// by Extend (side gutters) each side. Colour + opacity + extend admin-tunable.
+$_ic_panel_hex    = trim($settings['ic_panel_color'] ?? '#ffffff');
+$_ic_panel_op     = max(0, min(100, (int)($settings['ic_panel_opacity'] ?? 0)));
+$_ic_panel_extend = max(0, min(100, (int)($settings['ic_panel_extend'] ?? 0)));
+$_ic_panel_bg     = 'transparent';
+if ($_ic_panel_op > 0) {
+    $_pc = ltrim($_ic_panel_hex, '#');
+    if (strlen($_pc) === 3) $_pc = $_pc[0].$_pc[0].$_pc[1].$_pc[1].$_pc[2].$_pc[2];
+    $_ic_panel_bg = sprintf('rgba(%d,%d,%d,%s)',
+        hexdec(substr($_pc, 0, 2)), hexdec(substr($_pc, 2, 2)), hexdec(substr($_pc, 4, 2)),
+        number_format($_ic_panel_op / 100, 2));
+}
+
+// ── Sticky navbar background — transparent by default (tabletop shows through);
+// admin can dial colour + opacity to make it solid. ────────────────────────
+$_ic_nav_hex = trim($settings['ic_nav_color'] ?? '#ffffff');
+// Split navbar opacity: landing wants the hero/background to show through;
+// content pages usually want the bar more solid for readability. The inner
+// value falls back to the landing value when left blank, so existing installs
+// look identical until the admin sets Other Pages separately.
+$_ic_nav_op_landing = max(0, min(100, (int)($settings['ic_nav_opacity'] ?? 0)));
+$_ic_nav_op_inner   = ($settings['ic_nav_opacity_inner'] ?? '') !== ''
+    ? max(0, min(100, (int)$settings['ic_nav_opacity_inner']))
+    : $_ic_nav_op_landing;
+$_ic_nav_op  = $_tg_on_home ? $_ic_nav_op_landing : $_ic_nav_op_inner;
+$_ic_nav_bg  = 'transparent';
+if ($_ic_nav_op > 0) {
+    $_nc = ltrim($_ic_nav_hex, '#');
+    if (strlen($_nc) === 3) $_nc = $_nc[0].$_nc[0].$_nc[1].$_nc[1].$_nc[2].$_nc[2];
+    $_ic_nav_bg = sprintf('rgba(%d,%d,%d,%s)',
+        hexdec(substr($_nc, 0, 2)), hexdec(substr($_nc, 2, 2)), hexdec(substr($_nc, 4, 2)),
+        number_format($_ic_nav_op / 100, 2));
+}
+
+// ── "Posts" label colour + glow ─────────────────────────────────────────────
+$_ic_posts_color = trim($settings['ic_posts_color'] ?? '#777777');
+$_ic_pg_hex = trim($settings['ic_posts_glow_color'] ?? '#000000');
+$_ic_pg_sz  = max(0, min(40,  (int)($settings['ic_posts_glow_size']    ?? 0)));
+$_ic_pg_op  = max(0, min(100, (int)($settings['ic_posts_glow_opacity'] ?? 0)));
+$_ic_posts_glow = 'none';
+if ($_ic_pg_sz > 0 && $_ic_pg_op > 0) {
+    $_c = ltrim($_ic_pg_hex, '#');
+    if (strlen($_c) === 3) $_c = $_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
+    $_pgr = hexdec(substr($_c,0,2)); $_pgg = hexdec(substr($_c,2,2)); $_pgb = hexdec(substr($_c,4,2));
+    $_ic_posts_glow = sprintf('0 0 %dpx rgba(%d,%d,%d,%s),0 0 %dpx rgba(%d,%d,%d,%s)',
+        $_ic_pg_sz, $_pgr, $_pgg, $_pgb, number_format($_ic_pg_op/100,2),
+        $_ic_pg_sz*2, $_pgr, $_pgg, $_pgb, number_format($_ic_pg_op/200,2));
+}
+
+// ── Nav divider line colour + (capped, down-right) drop shadow ───────────────
+$_ic_navline_color = trim($settings['ic_navline_color'] ?? '#e0e0e0');
+$_ic_navline_op    = max(0, min(100, (int)($settings['ic_navline_opacity'] ?? 100)));
+$_ic_nls_hex = trim($settings['ic_navline_shadow_color'] ?? '#000000');
+$_ic_nls_sz  = max(0, min(3,   (int)($settings['ic_navline_shadow_size']    ?? 0)));
+$_ic_nls_op  = max(0, min(100, (int)($settings['ic_navline_shadow_opacity'] ?? 40)));
+$_ic_navline_shadow = 'none';
+if ($_ic_nls_sz > 0 && $_ic_nls_op > 0) {
+    $_c = ltrim($_ic_nls_hex, '#');
+    if (strlen($_c) === 3) $_c = $_c[0].$_c[0].$_c[1].$_c[1].$_c[2].$_c[2];
+    // Shadow under the TOP and BOTTOM divider lines ONLY — never the left/right
+    // ends. No horizontal offset, and the negative spread (-n) cancels the blur
+    // horizontally so nothing shows on the sides. Outset = below the bottom
+    // line; inset = below the top line. Capped at 3px.
+    $_nr = hexdec(substr($_c,0,2)); $_ng = hexdec(substr($_c,2,2)); $_nb = hexdec(substr($_c,4,2));
+    $_na = number_format($_ic_nls_op/100,2); $_n = $_ic_nls_sz;
+    $_ic_navline_shadow = sprintf(
+        '0 %1$dpx %1$dpx -%1$dpx rgba(%2$d,%3$d,%4$d,%5$s),inset 0 %1$dpx %1$dpx -%1$dpx rgba(%2$d,%3$d,%4$d,%5$s)',
+        $_n, $_nr, $_ng, $_nb, $_na);
+}
+
+// ── Solo page backdrop — colour + opacity behind the print on the single-post
+// view. 100% = solid; lower it to let the Organized Mayhem tabletop show
+// through behind the photo. ─────────────────────────────────────────────────
+$_ic_solo_hex = trim($settings['ic_solo_bg_color'] ?? '#000000');
+$_ic_solo_op  = max(0, min(100, (int)($settings['ic_solo_bg_opacity'] ?? 100)));
+$_sc = ltrim($_ic_solo_hex, '#');
+if (strlen($_sc) === 3) $_sc = $_sc[0].$_sc[0].$_sc[1].$_sc[1].$_sc[2].$_sc[2];
+$_ic_solo_bg = sprintf('rgba(%d,%d,%d,%s)',
+    hexdec(substr($_sc, 0, 2)), hexdec(substr($_sc, 2, 2)), hexdec(substr($_sc, 4, 2)),
+    number_format($_ic_solo_op / 100, 2));
+
+// Organized Mayhem ambient background needs its shared data endpoint.
+if ($_ic_bgmode === 'mayhem') {
+    require_once dirname(__DIR__, 2) . '/core/mayhem-data.php';
+}
+
+// RACETRACK reuses the shared MAYHEM photo endpoint (BASE_URL?ajax=mayhem,
+// routed globally in index.php) — same generated photos, Frogger drift. No
+// palette/trail resolution needed; the prints carry their own colour.
+?>
+
+<!-- SLIDERS vars: fixed square tiles and the configurable opacity layer. -->
+<style id="sliders-vars">:root{--sl-layer-color:<?php echo htmlspecialchars($_sl_layer_color); ?>;}</style>
+<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--bio-text-glow:<?php echo htmlspecialchars($_ic_bioglow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;--panel-bg:<?php echo htmlspecialchars($_ic_panel_bg); ?>;--panel-extend:<?php echo (int)$_ic_panel_extend; ?>px;--ic-nav-bg:<?php echo htmlspecialchars($_ic_nav_bg); ?>;--posts-color:<?php echo htmlspecialchars($_ic_posts_color); ?>;--posts-glow:<?php echo htmlspecialchars($_ic_posts_glow); ?>;--ic-navline-color:<?php echo htmlspecialchars($_ic_navline_color); ?>;--ic-navline-opacity:<?php echo (int)$_ic_navline_op; ?>;--ic-navline-shadow:<?php echo htmlspecialchars($_ic_navline_shadow); ?>;--post-bg:<?php echo htmlspecialchars($_ic_solo_bg); ?>;}</style>
+
+<?php
+// SLIDERS background: GLIDE's moving wall, fed by published photographs.
+$_sl_axis=(string)($settings['sl_flow_axis']??'diagonal_up');
+if(!in_array($_sl_axis,['horizontal','vertical','diagonal_down','diagonal_up'],true))$_sl_axis='diagonal_up';
+$_sl_travel=max(0.2,min(1.5,(float)($settings['sl_travel']??0.55)));
+$_sl_wall_opacity=max(15,min(100,(int)($settings['sl_wall_opacity']??72)))/100;
+$_sl_stmt=$pdo->prepare("SELECT img_file,img_thumb_aspect,img_width,img_height FROM snap_images WHERE img_status='published' AND img_date<=NOW() ORDER BY sort_order ASC,id DESC LIMIT 72");
+$_sl_stmt->execute();$_sl_images=$_sl_stmt->fetchAll(PDO::FETCH_ASSOC);$_sl_rows=array_fill(0,9,[]);
+foreach($_sl_images as $_sl_i=>$_sl_image)$_sl_rows[$_sl_i%9][]=$_sl_image;
+?>
+<?php if($_sl_images): ?>
+<div class="ic-bg sl-glide-bg" data-glide-wall data-flow-axis="<?php echo htmlspecialchars($_sl_axis); ?>" data-travel="<?php echo htmlspecialchars((string)$_sl_travel); ?>" style="opacity:<?php echo number_format($_sl_wall_opacity,2); ?>" aria-hidden="true">
+ <div class="sl-glide-field">
+ <?php foreach($_sl_rows as $_sl_row):if(!$_sl_row)continue; ?><div class="glide-row" data-glide-row><div class="glide-track">
+ <?php foreach(array_merge($_sl_row,$_sl_row,$_sl_row,$_sl_row) as $_sl_image):$_sl_thumb=trim((string)($_sl_image['img_thumb_aspect']??''));$_sl_src=BASE_URL.ltrim($_sl_thumb!==''?$_sl_thumb:(string)$_sl_image['img_file'],'/');$_sl_w=max(1,(int)($_sl_image['img_width']??3));$_sl_h=max(1,(int)($_sl_image['img_height']??2)); ?>
+ <span class="glide-tile" style="--glide-aspect:<?php echo $_sl_w.'/'.$_sl_h; ?>"><img src="<?php echo htmlspecialchars($_sl_src); ?>" alt="" loading="lazy"></span>
+ <?php endforeach; ?></div></div><?php endforeach; ?>
+ </div>
+</div>
+<?php endif; ?>
+<?php
+// Background carrier(s). Single modes emit exactly one carrier (unchanged).
+// Cycle mode emits every available background inside #ic-bg-cycle and the
+// crossfade engine (smack-bg-cycle) rotates them on a timer. The static image
+// is a cycle stop only when a Treatment image is set.
+$_ic_cycle       = ($_ic_bgmode === 'cycle');
+$_ic_cycle_secs  = max(5, min(60, (int)($settings['ic_cycle_secs'] ?? 15)));
+$_cl             = $_ic_cycle ? ' ic-bg-cyclelayer' : '';
+$_show_mayhem    = ($_ic_bgmode === 'mayhem'    || $_ic_cycle);
+$_show_racetrack = ($_ic_bgmode === 'racetrack' || $_ic_cycle);
+$_show_rainfall  = ($_ic_bgmode === 'rainfall'  || $_ic_cycle);
+$_show_static    = (($_ic_bgmode === 'static'   || $_ic_cycle) && $_tg_treat_img !== '');
+?>
+<?php if ($_ic_cycle): ?><div id="ic-bg-cycle" data-secs="<?php echo (int)$_ic_cycle_secs; ?>"><?php endif; ?>
+<?php if ($_show_mayhem): ?>
+<!-- Background: Organized Mayhem ambient tabletop (data-pan=0 data-ambient=1) behind the scrim. -->
+<div class="ic-bg ic-bg-mayhem<?php echo $_cl; ?>" aria-hidden="true"
+     data-mayhem
+     data-api-url="<?php echo BASE_URL; ?>?ajax=mayhem"
+     data-pan="0" data-ambient="1"
+     data-initial-count="<?php echo (int)($settings['mayhem_initial_count'] ?? 90); ?>"
+     data-max-width="<?php echo (int)($settings['mayhem_max_width'] ?? 260); ?>"
+     data-loading-label="Developing"></div>
+<?php endif; ?>
+<?php if ($_show_racetrack): ?>
+<!-- Background: RACETRACK — MAYHEM's photos gliding past each other (Frogger drift). -->
+<div class="ic-bg ic-bg-racetrack<?php echo $_cl; ?>" aria-hidden="true" data-racetrack
+     data-api-url="<?php echo BASE_URL; ?>?ajax=mayhem"
+     data-rt-speed="<?php echo max(1, min(100, (int)($settings['ic_rt_speed'] ?? 40))); ?>"
+     data-rt-count="<?php echo max(20, min(150, (int)($settings['ic_rt_count'] ?? 55))); ?>"
+     data-rt-size="<?php echo max(60, min(400, (int)($settings['ic_rt_size'] ?? 180))); ?>"
+     data-rt-opacity="<?php echo max(5, min(100, (int)($settings['ic_rt_opacity'] ?? 100))); ?>"></div>
+<?php endif; ?>
+<?php if ($_show_rainfall): ?>
+<!-- Background: RAINFALL — rain streaks down the window behind the scrim. -->
+<div class="ic-bg ic-bg-rainfall<?php echo $_cl; ?>" aria-hidden="true" data-rainfall
+     data-rf-density="<?php echo max(1, min(100, (int)($settings['ic_rf_density'] ?? 45))); ?>"
+     data-rf-speed="<?php echo max(1, min(100, (int)($settings['ic_rf_speed'] ?? 50))); ?>"
+     data-rf-angle="<?php echo max(-45, min(45, (int)($settings['ic_rf_angle'] ?? -12))); ?>"
+     data-rf-thickness="<?php echo max(1, min(8, (int)($settings['ic_rf_thickness'] ?? 2))); ?>"
+     data-rf-color="<?php echo htmlspecialchars(trim($settings['ic_rf_color'] ?? '#6fa8dc')); ?>"
+     data-rf-opacity="<?php echo max(5, min(100, (int)($settings['ic_rf_opacity'] ?? 50))); ?>"></div>
+<?php endif; ?>
+<?php if ($_show_static): ?>
+<div class="ic-bg ic-bg-static<?php echo $_cl; ?>" aria-hidden="true"
+     style="background-image:url('<?php echo BASE_URL . htmlspecialchars($_tg_treat_img); ?>');"></div>
+<?php endif; ?>
+<?php if ($_ic_cycle): ?></div><?php endif; ?>
+<!-- White scrim between background and grid (primary legibility control). -->
+<div class="ic-scrim" aria-hidden="true"></div>
+<!-- Readability panel: centred translucent column behind the content, full
+     viewport height — reaches the top AND runs behind the footer — on every
+     page (landing, static, archive, hashtag, blogroll). Width + tint + side
+     gutters are admin-tunable. -->
+<div class="ic-panel" aria-hidden="true"></div>
+
+<?php if ($_tg_has_treat): ?>
+<div class="tg-treatment-bg" style="<?php echo $_tg_bg_style; ?>" aria-hidden="true"></div>
+<?php if ($_tg_ov_style !== ''): ?>
+<div class="tg-treatment-overlay" style="<?php echo $_tg_ov_style; ?>" aria-hidden="true"></div>
+<?php endif; ?>
+<?php endif; ?>
+
+<?php if ($show_profile): ?>
+<!-- ── Profile Header (shared across all Grid pages) ───────────────────────── -->
+<section class="tg-profile">
+    <div class="tg-profile-avatar<?php echo $avatar_exists ? ' tg-profile-avatar--zoom' : ''; ?>"
+         <?php if ($avatar_exists): ?>role="button" tabindex="0"
+         aria-label="View profile photo"
+         data-tg-lightbox="<?php echo $avatar_url; ?>"<?php endif; ?>>
+        <?php if ($avatar_exists): ?>
+            <img src="<?php echo $avatar_url; ?>" alt="Profile avatar">
+        <?php else: ?>
+            <span class="tg-profile-avatar-initials"><?php echo htmlspecialchars($avatar_initials); ?></span>
+        <?php endif; ?>
+    </div>
+
+    <div class="tg-profile-info">
+        <div class="tg-profile-nameline">
+            <h1 class="tg-profile-username"><?php echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack'); ?></h1>
+            <?php if ($show_tagline && $tagline): ?>
+            <span class="tg-profile-tagline-sep">/</span>
+            <p class="tg-profile-tagline"><?php echo htmlspecialchars($tagline); ?></p>
+            <?php endif; ?>
+        </div>
+
+        <div class="tg-profile-stats">
+            <div class="tg-profile-stat">
+                <span class="tg-profile-stat-num"><?php echo number_format($post_count); ?></span>
+                <span class="tg-profile-stat-label">post<?php echo $post_count !== 1 ? 's' : ''; ?></span>
+            </div>
+        </div>
+
+        <?php if ($bio): ?>
+        <p class="tg-profile-bio"><?php echo nl2br(htmlspecialchars($bio)); ?></p>
+        <?php endif; ?>
+    </div>
+</section>
+<?php endif; ?>
+
+<!-- ── Sticky Nav ──────────────────────────────────────────────────────────── -->
+<nav class="tg-sticky-nav" aria-label="Site navigation">
+    <div class="tg-sticky-nav-inner">
+        <?php if ($avatar_exists): ?>
+            <img class="tg-sticky-avatar" src="<?php echo $avatar_url; ?>"
+                 alt="<?php echo htmlspecialchars($settings['site_name'] ?? ''); ?>" aria-hidden="true">
+        <?php else: ?>
+            <span class="tg-sticky-avatar-initials" aria-hidden="true"><?php echo htmlspecialchars($avatar_initials); ?></span>
+        <?php endif; ?>
+
+        <ul class="tg-sticky-nav-links">
+            <?php
+            // Nav order is driven by the Menu Manager (nav_menu_json) via the
+            // shared partial, falling back to Home + Blogroll + pages when no
+            // menu has been saved. $_tg_on_home / $_tg_on_blogroll /
+            // $_tg_active_slug / $nav_pages / $settings / $pdo are in scope.
+            include dirname(__DIR__, 2) . '/core/gram-nav-links.php';
+            ?>
+        </ul>
+    </div>
+</nav>
+<?php // ===== SNAPSMACK EOF =====
