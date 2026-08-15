@@ -92,7 +92,11 @@ if ($step === 'request' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $u = $pdo->prepare("SELECT username FROM snap_users WHERE LOWER(email) = ?");
                 $u->execute([$email]);
                 $username = $u->fetchColumn() ?: 'User';
-                snapsmack_send_reset_email($email, $username, $reset_token, $site_name, $site_url);
+                // Defer the actual send until AFTER the response is flushed (see
+                // end of file). Sending mail inline made the "email exists" path
+                // measurably slower than the "no such user" path — a timing
+                // oracle for account enumeration. Deferring equalises the two.
+                $pending_reset_email = [$email, $username, $reset_token, $site_name, $site_url];
             }
         }
     }
@@ -176,4 +180,15 @@ button:hover { background: #444; }
 </div>
 </body>
 </html>
-<?php // ===== SNAPSMACK EOF =====
+<?php
+// Deferred reset-email send: flush the full response to the client first so the
+// SMTP handoff latency is not part of the measured request time (anti timing
+// oracle). Falls back to a plain send if the SAPI can't finish the request early.
+if (!empty($pending_reset_email)) {
+    if (function_exists('fastcgi_finish_request')) {
+        @ob_flush(); @flush();
+        fastcgi_finish_request();
+    }
+    snapsmack_send_reset_email(...$pending_reset_email);
+}
+// ===== SNAPSMACK EOF =====

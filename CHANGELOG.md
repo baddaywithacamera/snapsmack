@@ -33,6 +33,8 @@ Security hardening release from a full multi-agent code audit. **Multisite (hub/
 - **2FA online brute-force** now feeds the IP-ban gate (`smack-2fa-verify.php`), so repeated code guesses across re-logins get the attacker blocked.
 - **Stored/blocked XSS** fixes: blogroll peer URLs are scheme-filtered on render and on save; RSS feed titles/descriptions are escaped inside CDATA.
 - **Information disclosure**: the public comment endpoint no longer echoes raw database/error detail to visitors.
+- **Password-reset timing oracle** closed: the reset email is now sent after the response is flushed, so response time no longer reveals whether an email address has an account.
+- **`.gitignore` credential leak** closed: desktop-tool config is now ignored by wildcard (`tools/*/*.ini`) instead of per-filename, so tools that write `unzucker.ini` / `gobsmacked-scanner.ini` / etc. can no longer leak site/FTP/DB passwords into the repo.
 
 ### Notes
 - Not yet addressed (require infrastructure/product decisions): update-package signing is still advisory-by-default (needs a real release public key provisioned), skin-signature verification is still fail-open until signing goes live, and full multisite key hygiene (separate inbound/outbound keys instead of the shared `api_key_local`) is a larger follow-up. The role checks above close the exploitable takeover paths in the meantime.
