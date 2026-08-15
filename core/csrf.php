@@ -95,6 +95,48 @@ function csrf_check(): void
     }
 }
 
+/**
+ * SECAUDIT 047 — method-agnostic CSRF enforcement.
+ *
+ * csrf_check() intentionally only guards POST. Several admin actions are
+ * triggered by GET links ("delete", "approve", "ban", etc.); those bypass
+ * csrf_check() entirely, so a crafted <img>/link in an email could fire them
+ * under a logged-in admin's cookies. Call csrf_verify() at the top of any
+ * state-changing GET branch. It accepts the token from the query string
+ * (?t=…), a POST field, or the X-CSRF-Token header, and fails closed.
+ *
+ * Emit the matching links with csrf_url(): csrf_url('smack-users.php?delete=5').
+ */
+function csrf_verify(): void
+{
+    if (defined('SNAPSMACK_CSRF_EXEMPT') && SNAPSMACK_CSRF_EXEMPT) return;
+    if (session_status() === PHP_SESSION_NONE) {
+        http_response_code(403);
+        header('Content-Type: text/plain; charset=utf-8');
+        die('CSRF check failed — no session.');
+    }
+    $supplied = $_GET['t']
+             ?? $_POST['csrf_token']
+             ?? $_SERVER['HTTP_X_CSRF_TOKEN']
+             ?? '';
+    $expected = $_SESSION['csrf_token'] ?? '';
+    if ($expected === '' || $supplied === '' || !hash_equals($expected, (string)$supplied)) {
+        http_response_code(403);
+        header('Content-Type: text/plain; charset=utf-8');
+        die('CSRF token mismatch. Reload the page and try again.');
+    }
+}
+
+/**
+ * Append the session CSRF token to an admin action URL as ?t=…/&t=… so the
+ * GET handler's csrf_verify() passes for genuine same-site clicks.
+ */
+function csrf_url(string $url): string
+{
+    $sep = (strpos($url, '?') === false) ? '?' : '&';
+    return $url . $sep . 't=' . urlencode(csrf_token());
+}
+
 // Auto-rotate the token on logout — clears it from the session so the
 // next login mints a fresh value. Other code (logout handlers) can call
 // csrf_rotate() explicitly if they want to invalidate during a session.

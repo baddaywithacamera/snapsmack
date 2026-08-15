@@ -17,6 +17,11 @@
 require_once 'core/auth-smack.php';
 require_once 'core/auth-recovery.php';
 
+// SECAUDIT 047: editing accounts (role, email, password) is administrator-only.
+// Defense-in-depth alongside the central gate in auth-smack.php — an editor
+// must never reach this page and rewrite any user's role/credentials.
+smack_require_admin();
+
 // --- REQUEST VALIDATION ---
 // Requires a user ID parameter to load the correct record.
 $uid = $_GET['id'] ?? null;

@@ -1333,7 +1333,11 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'skin_registry_url'         => 'https://snapsmack.ca/releases/skins/registry.json',
                 'site_description'          => '',
                 'albums_link_enabled'       => '0',
-                'community_enabled'         => '1',
+                // Community accounts (visitor sign-ups for likes/reactions/comments)
+                // ship OFF: the fediverse already provides logged-in interaction and
+                // guest comments cover everyone else, so a new site isn't running the
+                // extra account/login surface unless the owner turns it on.
+                'community_enabled'         => '0',
                 'community_likes_enabled'   => '1',
                 'community_reactions_enabled' => '0',
                 'community_comments_enabled' => '1',
@@ -1371,6 +1375,11 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'ai_cost_accepted'             => $sec_ai_cost,
                 // Install timestamp — starts the 30-day Force-2FA grace clock (spec #1).
                 'installed_at'                 => date('Y-m-d H:i:s'),
+                // SECAUDIT 047: per-install secret salt. Keys FTP-password at-rest
+                // encryption and the HMAC download tokens. MUST be unique per site —
+                // never ship a shared default (the old code fell back to a public
+                // constant, letting anyone forge download tokens).
+                'download_salt'                => bin2hex(random_bytes(32)),
             ];
 
             $stmt = $pdo->prepare("INSERT INTO `{$prefix}settings` (setting_key, setting_val) VALUES (?, ?)");

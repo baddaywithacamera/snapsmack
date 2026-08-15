@@ -111,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // --- DELETION ---
 if (isset($_GET['delete'])) {
+    csrf_verify(); // SECAUDIT 047 — GET deletion must carry the CSRF token
     $id = (int)$_GET['delete'];
     $pdo->prepare("DELETE FROM snap_image_album_map WHERE album_id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_albums WHERE id = ?")->execute([$id]);
@@ -235,7 +236,7 @@ include 'core/sidebar.php';
                                 </div>
                                 <div class="item-actions">
                                     <a href="?edit=<?php echo $a['id']; ?>" class="action-edit">EDIT</a>
-                                    <a href="?delete=<?php echo $a['id']; ?>" class="action-delete"
+                                    <a href="?delete=<?php echo $a['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-delete"
                                        onclick="return confirm('PURGE MISSION?')">DELETE</a>
                                 </div>
                             </div>

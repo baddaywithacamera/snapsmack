@@ -364,6 +364,18 @@ if (isset($_POST['save_skin_settings'])) {
     // preference. Refuse an incompatible target before persisting any options.
     $_requested_skin = preg_replace('/[^a-z0-9_\-]/', '', $_POST['active_skin_target'] ?? $target_skin);
     $_requested_manifest = __DIR__ . '/skins/' . $_requested_skin . '/manifest.json';
+
+    // SECAUDIT 047: the active skin becomes a filesystem path (skins/<slug>/...)
+    // included by every public page, and is persisted to the public active_skin
+    // setting. Refuse anything that isn't a real installed skin so a crafted
+    // active_skin_target can't traverse (e.g. ../../x) or point the whole site
+    // at a non-existent skin. From here on use only the sanitized slug.
+    if (!is_file($_requested_manifest)) {
+        $_SESSION['gallery_flash'] = 'That skin is not installed. No skin or setting was changed.';
+        header('Location: smack-skin.php?s=' . urlencode((string)($settings['active_skin'] ?? '')));
+        exit;
+    }
+
     if (is_file($_requested_manifest)) {
         $_requested_data = snapsmack_load_manifest($_requested_manifest);
         $_requested_modes = is_array($_requested_data['modes'] ?? null) ? array_values($_requested_data['modes']) : [];
@@ -383,7 +395,7 @@ if (isset($_POST['save_skin_settings'])) {
     //     Skin option keys are stored with a skin prefix (e.g. "galleria__htbs_wall_color")
     //     so each skin retains its own customizations independently.
     //     Engine control keys (non-htbs_) are saved bare — they're global.
-    $save_skin = $_POST['active_skin_target'] ?? $target_skin;
+    $save_skin = $_requested_skin; // SECAUDIT 047 — sanitized, validated slug only
     if (isset($_POST['skin_opt'])) {
         foreach ($_POST['skin_opt'] as $s_key => $s_val) {
             $scoped_key = $save_skin . '__' . $s_key;
@@ -460,7 +472,7 @@ if (isset($_POST['save_skin_settings'])) {
             ->execute([$_POST['active_skin_variant'], $_POST['active_skin_variant']]);
     }
 
-    $active_skin = $_POST['active_skin_target'] ?? $target_skin;
+    $active_skin = $_requested_skin; // SECAUDIT 047 — sanitized, validated slug only
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
         ->execute([$active_skin, $active_skin]);
 

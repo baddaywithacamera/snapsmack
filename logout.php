@@ -14,6 +14,17 @@
  */
 
 
+// SECAUDIT 047: ignore forged cross-site background logout requests (e.g. an
+// <img src="logout.php"> on an attacker's page). Genuine logout is a same-origin
+// click or a real navigation; only a cross-site no-cors fetch is dropped.
+// Browsers that don't send Sec-Fetch-* are unaffected.
+$_sfs = $_SERVER['HTTP_SEC_FETCH_SITE'] ?? '';
+$_sfm = $_SERVER['HTTP_SEC_FETCH_MODE'] ?? '';
+if ($_sfs === 'cross-site' && $_sfm !== '' && $_sfm !== 'navigate') {
+    header("Location: ./");
+    exit;
+}
+
 // --- SESSION INITIALIZATION ---
 // Start session to access and destroy it
 session_start();

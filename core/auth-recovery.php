@@ -92,11 +92,14 @@ function snapsmack_generate_reset_token(PDO $pdo, string $email): string|false {
     // Clear stale tokens for this email
     $pdo->prepare("DELETE FROM snap_password_resets WHERE email = ?")->execute([$email]);
 
-    $token  = bin2hex(random_bytes(32)); // 64 hex chars
+    $token  = bin2hex(random_bytes(32)); // 64 hex chars — emailed raw
     $expiry = date('Y-m-d H:i:s', time() + 3600); // 1 hour
 
+    // SECAUDIT 047: store only the SHA-256 of the token, never the token itself.
+    // A DB-read exposure (leaked dump / pre-update .sql / a separate read bug)
+    // then can't be replayed to reset a password inside the 1-hour window.
     $pdo->prepare("INSERT INTO snap_password_resets (email, token, expiry) VALUES (?, ?, ?)")
-        ->execute([$email, $token, $expiry]);
+        ->execute([$email, hash('sha256', $token), $expiry]);
 
     return $token;
 }
@@ -111,7 +114,7 @@ function snapsmack_validate_reset_token(PDO $pdo, string $token): array|false {
          JOIN snap_users u ON LOWER(u.email) = LOWER(r.email)
          WHERE r.token = ? AND r.expiry > NOW()"
     );
-    $stmt->execute([trim($token)]);
+    $stmt->execute([hash('sha256', trim($token))]); // SECAUDIT 047 — tokens stored hashed
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     return $user ?: false;
 }
@@ -120,7 +123,7 @@ function snapsmack_validate_reset_token(PDO $pdo, string $token): array|false {
  * Consume a reset token — delete it so it can't be reused.
  */
 function snapsmack_consume_reset_token(PDO $pdo, string $token): void {
-    $pdo->prepare("DELETE FROM snap_password_resets WHERE token = ?")->execute([trim($token)]);
+    $pdo->prepare("DELETE FROM snap_password_resets WHERE token = ?")->execute([hash('sha256', trim($token))]); // SECAUDIT 047
 }
 
 // ─── EMAIL SENDERS ───────────────────────────────────────────────────────────

@@ -178,6 +178,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'reorder') {
 // snap_collection_items.image_id — a column dropped when collections went
 // polymorphic — which 500'd every delete.)
 if (isset($_GET['delete'])) {
+    csrf_verify(); // SECAUDIT 047 — GET deletion must carry the CSRF token
     snap_manage_delete_by_image($pdo, (int)$_GET['delete']);
     header("Location: smack-manage.php?msg=deleted");
     exit;
@@ -536,7 +537,7 @@ include 'core/sidebar.php';
                             <?php if (!$is_draft && !$is_scheduled): ?>
                             <a href="<?php echo BASE_URL . htmlspecialchars($p['img_slug'] ?? '', ENT_QUOTES); ?>" class="action-view" target="_blank" rel="noopener">VIEW</a>
                             <?php endif; ?>
-                            <a href="?delete=<?php echo $p['id']; ?>" class="action-delete" onclick="return confirm('PERMANENTLY PURGE this transmission?')">DELETE</a>
+                            <a href="?delete=<?php echo $p['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-delete" onclick="return confirm('PERMANENTLY PURGE this transmission?')">DELETE</a>
                         </div>
                     </div>
                 <?php endforeach; ?>

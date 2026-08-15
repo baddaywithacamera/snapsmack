@@ -70,6 +70,41 @@ require_once 'db.php';
 // authentication-bootstrap dependency instead of relying on include order.
 require_once __DIR__ . '/skin-manifest.php';
 
+// --- ROLE HELPERS (SECAUDIT 047) ---
+// SnapSmack ships a two-tier model: 'admin' (Full Access) and 'editor'
+// (Content Only). Before SECAUDIT 047 the role was displayed but enforced on
+// exactly one page, so any logged-in editor could open the settings, user,
+// system, multisite, and federation tools — and self-promote to admin via
+// smack-users.php / smack-edit-user.php. These helpers are the single
+// enforcement point. 'administrator' and 'owner' are legacy synonyms for
+// 'admin' (see install.php / break-glass.php).
+if (!function_exists('smack_is_admin')) {
+    function smack_is_admin() {
+        return in_array((string)($_SESSION['user_role'] ?? ''), ['admin', 'administrator', 'owner'], true);
+    }
+}
+if (!function_exists('smack_require_admin')) {
+    function smack_require_admin() {
+        if (smack_is_admin()) return;
+        http_response_code(403);
+        $is_xhr = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+               && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        if ($is_xhr) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'forbidden', 'msg' => 'Administrator access required.']);
+        } else {
+            $back = htmlspecialchars(BASE_URL, ENT_QUOTES) . 'smack-admin.php';
+            echo '<!doctype html><meta charset="utf-8"><title>Administrator access required</title>'
+               . '<div style="font:16px/1.55 system-ui,sans-serif;max-width:34rem;margin:16vh auto;padding:0 1.5rem;color:#222">'
+               . '<h1 style="font-size:1.4rem;margin:0 0 .6rem">Administrator access required</h1>'
+               . '<p>This tool changes site-wide settings, accounts, or system state, so only administrator '
+               . 'accounts can open it. Your account is signed in as an editor (content only).</p>'
+               . '<p><a href="' . $back . '">Back to the dashboard</a></p></div>';
+        }
+        exit;
+    }
+}
+
 // --- CSRF AUTOVALIDATE ---
 // Pages that legitimately POST without a CSRF token (login form, public
 // API endpoints, multisite hub-spoke traffic) call csrf_exempt() before
@@ -80,10 +115,20 @@ csrf_check();
 // --- LOGOUT HANDLER ---
 // If the user clicks logout, destroy the session and redirect to login.
 if (isset($_GET['logout'])) {
-    session_unset();
-    session_destroy();
-    header("Location: " . BASE_URL . "smack-admin.php");
-    exit;
+    // SECAUDIT 047: ignore forged cross-site background logout requests (e.g. an
+    // <img src="...?logout=1"> in an attacker's page). A genuine logout is a
+    // same-origin click or a real top-level navigation; only a cross-site
+    // no-cors fetch is blocked. Browsers that don't send Sec-Fetch-* still work.
+    $_sfs = $_SERVER['HTTP_SEC_FETCH_SITE'] ?? '';
+    $_sfm = $_SERVER['HTTP_SEC_FETCH_MODE'] ?? '';
+    if ($_sfs === 'cross-site' && $_sfm !== '' && $_sfm !== 'navigate') {
+        // Not a real logout — drop it and let the page load normally.
+    } else {
+        session_unset();
+        session_destroy();
+        header("Location: " . BASE_URL . "smack-admin.php");
+        exit;
+    }
 }
 
 // --- LOGIN GATE ---
@@ -248,6 +293,44 @@ if (isset($_SESSION['user_login'])) {
         unset($_installed_at, $_inst_ts);
     }
     unset($_2fa_current, $_2fa_exempt);
+}
+
+// --- ADMIN-ONLY PAGE GATE (SECAUDIT 047) ---
+// Central enforcement of the admin/editor boundary. Editors keep every content
+// tool (posting, media, galleries, albums, categories, comments, pages, DMs,
+// groups, help, their own password/2FA). Everything that changes site-wide
+// configuration, accounts, secrets, system/data state, the fleet, or federation
+// is administrator-only. Denylist by design: a new *content* page is editor-
+// reachable by default; a new *config/system* page must be added here.
+if (isset($_SESSION['user_login']) && !smack_is_admin()) {
+    $_admin_only = [
+        // Accounts & security
+        'smack-users.php', 'smack-edit-user.php', 'smack-community-users.php',
+        'smack-api-keys.php', 'smack-fingerprints.php', 'smack-privacy.php',
+        'smack-break-glass.php', 'smack-verify.php', 'smack-preflight.php',
+        // Settings & site-wide configuration
+        'smack-settings.php', 'smack-globalvibe.php', 'smack-community-settings.php',
+        'smack-maintenance.php', 'smack-schema.php', 'smack-tools.php',
+        'smack-scripts.php', 'smack-css.php', 'smack-shortcodes.php', 'smack-menu.php',
+        'smack-social-dock.php', 'smack-sticky-header.php', 'smack-masthead.php',
+        'smack-skin.php', 'smack-appearance-archive.php', 'smack-appearance-solo.php',
+        'smack-appearance-static.php', 'smack-ai-test.php',
+        // Data, backup, recovery, updates, transport
+        'smack-backup.php', 'smack-multisite-backup.php', 'smack-disaster.php',
+        'smack-back.php', 'smack-smackback.php', 'smack-update.php', 'smack-ftp.php',
+        'smack-push-it.php',
+        // Multisite / fleet
+        'smack-multisite.php', 'smack-multisite-blogroll.php', 'smack-multisite-comments.php',
+        'smack-multisite-crosspost.php', 'smack-multisite-posts.php',
+        'smack-multisite-settings.php', 'smack-multisite-sso.php', 'smack-multisite-stats.php',
+        // Federation control
+        'smack-fediverse.php', 'smack-smackverse.php', 'smack-sv-tools.php',
+        'smack-sv-followers.php', 'smack-pixelfed.php', 'smack-photochallenge.php',
+    ];
+    if (in_array(basename($_SERVER['SCRIPT_FILENAME'] ?? ''), $_admin_only, true)) {
+        smack_require_admin();
+    }
+    unset($_admin_only);
 }
 
 // --- SMACKBACK BREACH GATE ---

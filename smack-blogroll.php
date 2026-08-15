@@ -78,6 +78,7 @@ if (isset($_POST['save_peer'])) {
 
 // --- REMOVAL HANDLER ---
 if (isset($_GET['delete'])) {
+    csrf_verify(); // SECAUDIT 047 — GET deletion must carry the CSRF token
     $pdo->prepare("DELETE FROM snap_blogroll WHERE id=?")->execute([$_GET['delete']]);
     header("Location: smack-blogroll.php?msg=deleted");
     exit;
@@ -218,7 +219,7 @@ include 'core/sidebar.php';
                             </div>
                             <div class="item-actions">
                                 <a href="?edit=<?php echo $p['id']; ?>" class="action-edit">EDIT</a>
-                                <a href="?delete=<?php echo $p['id']; ?>" class="action-delete" onclick="return confirm('Remove peer?');">DEL</a>
+                                <a href="?delete=<?php echo $p['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-delete" onclick="return confirm('Remove peer?');">DEL</a>
                             </div>
                         </div>
                     <?php endforeach; ?>

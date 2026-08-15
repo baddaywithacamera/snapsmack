@@ -170,7 +170,9 @@ $title   = 'PHOTO FRIDAY — ' . $win['label'];
             $rank = (int)($r['rank'] ?? 0);
             $rankClass = $rank === 1 ? 'gold' : ($rank === 2 ? 'silver' : ($rank === 3 ? 'bronze' : ''));
         ?>
-          <a class="card" href="<?php echo $esc($r['url']); ?>" rel="canonical noopener" target="_blank"
+          <?php /* SECAUDIT 047: scheme-guard federation URL — only http(s) becomes a live href */
+                $__u = (string)($r['url'] ?? ''); $__safe = preg_match('#^https?://#i', $__u) ? $__u : ''; ?>
+          <a class="card" href="<?php echo $__safe !== '' ? $esc($__safe) : '#'; ?>" rel="canonical noopener" target="_blank"
              title="<?php echo $esc($r['excerpt']); ?>">
             <?php if (($r['thumb'] ?? '') !== ''): ?>
               <img class="thumb" loading="lazy" src="<?php echo $esc($r['thumb']); ?>" alt="Photo by <?php echo $esc($r['handle']); ?>">

@@ -989,6 +989,27 @@ function sv_verify_signature(string $raw_body): ?array {
     $owner = $actor['publicKey']['owner'] ?? ($actor['id'] ?? '');
     if ($owner !== ($actor['id'] ?? '')) { $reject('publicKey.owner != actor.id'); return null; }
 
+    // SECAUDIT 047 — bind the signing key to the actor it claims to be.
+    // Without this, an attacker hosts an actor document at evil.example whose
+    // "id" claims to be https://good.instance/users/alice, signs the request
+    // with their OWN key, and sv_handle_inbox() (which only checks
+    // activity.actor === actor.id, both attacker-set) then treats the activity
+    // as coming from alice@good.instance => full actor spoofing / federation
+    // takeover. Require the fetched keyId and the actor id to share an origin,
+    // and — when the actor declares a key id — require it to equal the keyId
+    // the signature was made with. In standard ActivityPub an actor and its key
+    // always live on the same origin, so this rejects only the spoofing case.
+    $actor_id   = (string)($actor['id'] ?? '');
+    $key_id     = (string)($actor['publicKey']['id'] ?? '');
+    $key_host   = strtolower((string)parse_url($actor_url, PHP_URL_HOST));
+    $actor_host = strtolower((string)parse_url($actor_id, PHP_URL_HOST));
+    if ($actor_id === '' || $key_host === '' || $actor_host === '' || $key_host !== $actor_host) {
+        $reject('keyId origin does not match actor id origin'); return null;
+    }
+    if ($key_id !== '' && $key_id !== (string)$sig['keyid']) {
+        $reject('actor publicKey.id != signature keyId'); return null;
+    }
+
     $pubkey = openssl_pkey_get_public($pem);
     if ($pubkey === false) { $reject('openssl could not parse publicKeyPem'); return null; }
     $sig_bytes = base64_decode($sig['signature']);
@@ -1540,10 +1561,16 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
         $vals[] = json_encode($videos, JSON_UNESCAPED_SLASHES);
         $dupe  .= ", media_video_json=VALUES(media_video_json)";
     }
+    // SECAUDIT 047 — store only http(s) permalinks. A remote Note's `url` is
+    // attacker-controlled; a `javascript:` value here becomes stored XSS on the
+    // public Photo Challenge board/Hall of Fame when a visitor clicks the entry.
+    $raw_url  = trim((string)($obj['url'] ?? $object_id));
+    $url_sch  = strtolower((string)parse_url($raw_url, PHP_URL_SCHEME));
+    $safe_url = ($url_sch === 'http' || $url_sch === 'https') ? substr($raw_url, 0, 600) : '';
     $cols = array_merge($cols, ['tags_json', 'url', 'in_reply_to', 'is_boost', 'boosted_by', 'source', 'published']);
     $vals = array_merge($vals, [
         json_encode($tags, JSON_UNESCAPED_SLASHES),
-        substr((string)($obj['url'] ?? $object_id), 0, 600),
+        $safe_url,
         isset($obj['inReplyTo']) && is_string($obj['inReplyTo']) ? substr($obj['inReplyTo'], 0, 500) : null,
         $is_boost ? 1 : 0, $boosted_by ? substr($boosted_by, 0, 500) : null, 'home', $pub,
     ]);
@@ -1801,7 +1828,8 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                                     (post_id, comment_author, comment_url, comment_text, comment_date,
                                      is_approved, ap_source, ap_actor_url, ap_object_id, ap_in_reply_to)
                                  VALUES (?, ?, ?, ?, NOW(), ?, 'fediverse', ?, ?, ?)
-                                 ON DUPLICATE KEY UPDATE comment_text = VALUES(comment_text)"
+                                 ON DUPLICATE KEY UPDATE comment_text =
+                                     IF(ap_actor_url = VALUES(ap_actor_url), VALUES(comment_text), comment_text)"
                             )->execute([$lf_post_id, substr($handle, 0, 100), $actor_id, $text, $approved, $actor_id, $note_id, $in_reply]);
                         } else {
                             $pdo->prepare(
@@ -1809,7 +1837,8 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                                     (img_id, comment_author, comment_url, comment_text, comment_date,
                                      is_approved, ap_source, ap_actor_url, ap_object_id, ap_in_reply_to)
                                  VALUES (?, ?, ?, ?, NOW(), ?, 'fediverse', ?, ?, ?)
-                                 ON DUPLICATE KEY UPDATE comment_text = VALUES(comment_text)"
+                                 ON DUPLICATE KEY UPDATE comment_text =
+                                     IF(ap_actor_url = VALUES(ap_actor_url), VALUES(comment_text), comment_text)"
                             )->execute([$img_id, substr($handle, 0, 100), $actor_id, $text, $approved, $actor_id, $note_id, $in_reply]);
                         }
                     } catch (Exception $e) { /* dup or column lag — ignore */ }
@@ -1864,8 +1893,11 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 $text = trim(html_entity_decode(strip_tags((string)($obj['content'] ?? '')), ENT_QUOTES, 'UTF-8'));
                 if (mb_strlen($text) > 5000) $text = mb_substr($text, 0, 5000);
                 try {
-                    $pdo->prepare("UPDATE snap_comments SET comment_text = ? WHERE ap_object_id = ? AND ap_source = 'fediverse'")
-                        ->execute([$text, $oid]);
+                    // SECAUDIT 047 — bind to the acting actor. ap_object_id is a
+                    // public Note id; without ap_actor_url any signed remote actor
+                    // could rewrite a DIFFERENT actor's federated comment.
+                    $pdo->prepare("UPDATE snap_comments SET comment_text = ? WHERE ap_object_id = ? AND ap_source = 'fediverse' AND ap_actor_url = ?")
+                        ->execute([$text, $oid, $actor_id]);
                 } catch (Exception $e) { /* column lag */ }
                 if (sv_is_following($pdo, $actor_id)) {
                     $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
@@ -1886,8 +1918,10 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 ->execute([$actor_id]);
         } elseif (is_string($obj) && $obj !== '') {
             try {
-                $pdo->prepare("DELETE FROM snap_comments WHERE ap_object_id = ? AND ap_source = 'fediverse'")
-                    ->execute([$obj]);
+                // SECAUDIT 047 — bind to the acting actor so a remote actor can
+                // only delete its OWN federated comment, not anyone else's.
+                $pdo->prepare("DELETE FROM snap_comments WHERE ap_object_id = ? AND ap_source = 'fediverse' AND ap_actor_url = ?")
+                    ->execute([$obj, $actor_id]);
             } catch (Exception $e) { /* ignore */ }
             // Remote unsend of a DM they sent us → mark the thread row deleted.
             try {
@@ -2186,7 +2220,16 @@ function sv_remote_follow_url(string $visitor_handle, array $settings): ?string 
     if (!is_array($doc)) return null;
     foreach (($doc['links'] ?? []) as $l) {
         if (($l['rel'] ?? '') === 'http://ostatus.org/schema/1.0/subscribe' && !empty($l['template'])) {
-            return str_replace('{uri}', rawurlencode(sv_actor_url($settings)), (string)$l['template']);
+            $url = str_replace('{uri}', rawurlencode(sv_actor_url($settings)), (string)$l['template']);
+            // SECAUDIT 047: the subscribe template comes from the visitor-supplied
+            // instance; only redirect to an https URL on that SAME instance, so a
+            // hostile webfinger can't turn our Follow button into an open redirect.
+            $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+            $host   = strtolower((string)parse_url($url, PHP_URL_HOST));
+            if ($scheme === 'https' && $host === strtolower($m[2])) {
+                return $url;
+            }
+            return null;
         }
     }
     return null;

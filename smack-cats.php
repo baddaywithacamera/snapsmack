@@ -96,6 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // --- DELETION ---
 if (isset($_GET['delete'])) {
+    csrf_verify(); // SECAUDIT 047 — GET deletion must carry the CSRF token
     $id = (int)$_GET['delete'];
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE cat_id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_categories WHERE id = ?")->execute([$id]);
@@ -228,7 +229,7 @@ include 'core/sidebar.php';
                                 </div>
                                 <div class="item-actions">
                                     <a href="?edit=<?php echo $c['id']; ?>" class="action-edit">EDIT</a>
-                                    <a href="?delete=<?php echo $c['id']; ?>" class="action-delete"
+                                    <a href="?delete=<?php echo $c['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-delete"
                                        onclick="return confirm('PURGE CATEGORY? Images will be uncategorized but not deleted.')">DELETE</a>
                                 </div>
                             </div>

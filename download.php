@@ -16,6 +16,7 @@
 
 
 require_once __DIR__ . '/core/db.php';
+require_once __DIR__ . '/core/secret-store.php'; // SECAUDIT 047
 
 // --- REQUEST VALIDATION ---
 // Token and image ID are required parameters
@@ -50,7 +51,7 @@ if (!$img) {
 
 // --- TOKEN VERIFICATION ---
 // HMAC-SHA256 of image ID against stored salt prevents direct URL guessing
-$salt = $settings['download_salt'] ?? 'snapsmack-default-salt-change-me';
+$salt = snap_ensure_download_salt($pdo ?? null); // SECAUDIT 047
 $expected_token = hash_hmac('sha256', (string)$img_id, $salt);
 
 if (!hash_equals($expected_token, $token)) {

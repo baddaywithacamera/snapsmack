@@ -34,6 +34,35 @@ $log = function(string $msg) {
 
 $log('RSS fetch started.');
 
+// SECAUDIT 047: SSRF guard for peer feed URLs. peer_rss is set by an admin or
+// pushed by the hub; without this a feed URL pointed at an internal address
+// (localhost, 169.254.169.254, a LAN box) would make this server fetch it.
+// Require http(s) and refuse any host that resolves to a private/reserved IP.
+function rss_url_is_safe(string $url): bool {
+    $p = @parse_url($url);
+    if (!$p || empty($p['scheme']) || empty($p['host'])) return false;
+    $scheme = strtolower($p['scheme']);
+    if ($scheme !== 'http' && $scheme !== 'https') return false;
+    $host = $p['host'];
+    $ips  = [];
+    if (filter_var($host, FILTER_VALIDATE_IP)) {
+        $ips[] = $host;
+    } else {
+        foreach (@dns_get_record($host, DNS_A | DNS_AAAA) ?: [] as $r) {
+            if (!empty($r['ip']))   $ips[] = $r['ip'];
+            if (!empty($r['ipv6'])) $ips[] = $r['ipv6'];
+        }
+        if (!$ips) { $h = @gethostbyname($host); if ($h && $h !== $host) $ips[] = $h; }
+    }
+    if (!$ips) return false; // unresolvable → don't fetch
+    foreach ($ips as $ip) {
+        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return false; // private / reserved / loopback / link-local
+        }
+    }
+    return true;
+}
+
 // --- PEER IDENTIFICATION ---
 // Load all blogroll entries that have associated RSS/Atom feed URLs
 $peers = $pdo->query("
@@ -65,19 +94,26 @@ $update_stmt = $pdo->prepare("
 foreach ($peers as $peer) {
     $log("Fetching: {$peer['peer_name']} — {$peer['peer_rss']}");
 
+    // SECAUDIT 047: refuse feed URLs that resolve to internal/private addresses.
+    if (!rss_url_is_safe((string)$peer['peer_rss'])) {
+        $log("  SKIP: feed URL blocked (not http(s) or resolves to a private/internal address).");
+        continue;
+    }
+
     try {
         // --- HTTP REQUEST SETUP ---
-        // Configures 10-second timeout and allows varied SSL configurations
-        // to handle different peer server setups
+        // 10-second timeout; cap redirects so a public URL can't bounce to an
+        // internal one; verify TLS certificates (SECAUDIT 047).
         $ctx = stream_context_create([
             'http' => [
-                'timeout'     => 10,
-                'user_agent'  => 'SnapSmack RSS Reader/1.0',
+                'timeout'       => 10,
+                'user_agent'    => 'SnapSmack RSS Reader/1.0',
                 'ignore_errors' => true,
+                'max_redirects' => 1,
             ],
             'ssl' => [
-                'verify_peer'      => false,
-                'verify_peer_name' => false,
+                'verify_peer'      => true,
+                'verify_peer_name' => true,
             ]
         ]);
 

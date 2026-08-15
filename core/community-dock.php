@@ -31,6 +31,7 @@ if (($settings['community_likes_enabled'] ?? '1') !== '1') return;
 if (empty($img['id']))                                      return;
 
 require_once __DIR__ . '/community-session.php';
+require_once __DIR__ . '/secret-store.php'; // SECAUDIT 047
 
 // --- GUARD: Bail silently if community migration hasn't been run yet ---
 if (!snap_community_ready()) return;
@@ -66,7 +67,7 @@ if ($community_user) {
 } else {
     // Anonymous like check via hashed IP (no PII stored)
     try {
-        $_like_salt  = $settings['download_salt'] ?? 'snapsmack-default-salt-change-me';
+        $_like_salt  = snap_ensure_download_salt($pdo ?? null); // SECAUDIT 047
         $_guest_hash = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0') . $_like_salt);
         $ul_stmt = $pdo->prepare("SELECT id FROM snap_likes WHERE post_id = ? AND guest_hash = ? LIMIT 1");
         $ul_stmt->execute([$post_id, $_guest_hash]);

@@ -176,7 +176,7 @@ if ($ai_policy === 'disallow'): ?>
 <meta name="keywords" content="<?php echo htmlspecialchars($keywords_str); ?>">
 <?php endif; ?>
 
-<link rel="canonical" href="<?php echo $canonical_url; ?>">
+<link rel="canonical" href="<?php echo htmlspecialchars($canonical_url, ENT_QUOTES); /* SECAUDIT 047 */ ?>">
 <link rel="alternate" type="application/rss+xml" title="<?php echo $site_name; ?> RSS Feed" href="<?php echo BASE_URL; ?>rss.php" />
 <?php snapsmack_indieweb_head_links($settings); ?>
 
@@ -199,7 +199,7 @@ if (!empty($settings['favicon_url'])):
 <meta property="og:site_name" content="<?php echo $site_name; ?>">
 <meta property="og:title" content="<?php echo $og_title; ?>">
 <meta property="og:type" content="<?php echo $og_type; ?>">
-<meta property="og:url" content="<?php echo $canonical_url; ?>">
+<meta property="og:url" content="<?php echo htmlspecialchars($canonical_url, ENT_QUOTES); /* SECAUDIT 047 */ ?>">
 <?php if (!empty($og_description)): ?>
 <meta property="og:description" content="<?php echo htmlspecialchars($og_description); ?>">
 <?php endif; ?>

@@ -1,3 +1,5 @@
+<!-- SNAPSMACK_EOF_HEADER: the last non-empty line must be the canonical HTML EOF marker. -->
+
 # Security Audit 046 — 524→525 release-delta review + full-audit consolidation
 
 - **Date:** 2026-08-14

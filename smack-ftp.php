@@ -21,17 +21,25 @@ require_once 'core/ftp-engine.php';
 // Load all settings
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 
+// SECAUDIT 047: heal the per-install download_salt before touching FTP creds.
+// The heal re-encrypts any stored ftp_pass under the new salt, so re-read the
+// settings snapshot afterwards to pick up the fresh ciphertext + real salt.
+require_once 'core/secret-store.php';
+$ftp_salt = snap_ensure_download_salt($pdo);
+$settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+
 // --- AJAX ENDPOINTS (processed before HTML output) ---
 
 // TEST FTP CONNECTION
 if (isset($_GET['action']) && $_GET['action'] === 'test_connection') {
+    csrf_verify(); // SECAUDIT 047 — GET action must carry the CSRF token
     header('Content-Type: application/json');
 
     $config = [
         'host'       => $settings['ftp_host'] ?? '',
         'port'       => (int)($settings['ftp_port'] ?? 21),
         'user'       => $settings['ftp_user'] ?? '',
-        'pass'       => !empty($settings['ftp_pass']) ? SnapSmackFTP::decryptPassword($settings['ftp_pass'], $settings['download_salt'] ?? '') : '',
+        'pass'       => !empty($settings['ftp_pass']) ? SnapSmackFTP::decryptPassword($settings['ftp_pass'], $ftp_salt) : '', // SECAUDIT 047
         'remote_dir' => $settings['ftp_remote_dir'] ?? '/',
         'use_ssl'    => (bool)($settings['ftp_use_ssl'] ?? false),
         'passive'    => (bool)($settings['ftp_passive'] ?? true),
@@ -46,6 +54,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'test_connection') {
 
 // PUSH TO REMOTE (recovery kit, images, or full)
 if (isset($_GET['action']) && $_GET['action'] === 'push_now') {
+    csrf_verify(); // SECAUDIT 047 — GET action must carry the CSRF token
     header('Content-Type: text/plain; charset=utf-8');
 
     // Get scope from query parameter
@@ -60,7 +69,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'push_now') {
         'host'       => $settings['ftp_host'] ?? '',
         'port'       => (int)($settings['ftp_port'] ?? 21),
         'user'       => $settings['ftp_user'] ?? '',
-        'pass'       => !empty($settings['ftp_pass']) ? SnapSmackFTP::decryptPassword($settings['ftp_pass'], $settings['download_salt'] ?? '') : '',
+        'pass'       => !empty($settings['ftp_pass']) ? SnapSmackFTP::decryptPassword($settings['ftp_pass'], $ftp_salt) : '', // SECAUDIT 047
         'remote_dir' => $settings['ftp_remote_dir'] ?? '/',
         'use_ssl'    => (bool)($settings['ftp_use_ssl'] ?? false),
         'passive'    => (bool)($settings['ftp_passive'] ?? true),
@@ -167,7 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_ftp_settings']))
 
     // Encrypt password if provided
     if (!empty($ftp_pass)) {
-        $ftp_pass = SnapSmackFTP::encryptPassword($ftp_pass, $settings['download_salt'] ?? '');
+        $ftp_pass = SnapSmackFTP::encryptPassword($ftp_pass, $ftp_salt); // SECAUDIT 047 — real per-install salt
     } else {
         // If password is empty, check if there's an existing one
         $ftp_pass = $settings['ftp_pass'] ?? '';
@@ -338,7 +347,7 @@ document.getElementById('test-connection-btn').addEventListener('click', functio
     btn.disabled = true;
     resultDiv.innerHTML = '<p class="dim">Testing connection...</p>';
 
-    fetch('smack-ftp.php?action=test_connection')
+    fetch('smack-ftp.php?action=test_connection&t=<?php echo urlencode(csrf_token()); ?>')
         .then(r => r.json())
         .then(data => {
             if (data.success) {
@@ -373,7 +382,7 @@ document.querySelectorAll('.push-btn').forEach(btn => {
         progressDiv.innerHTML = '<pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; font-size: 12px; overflow-x: auto; max-height: 400px; line-height: 1.5;"></pre>';
         const preEl = progressDiv.querySelector('pre');
 
-        const url = 'smack-ftp.php?action=push_now&scope=' + encodeURIComponent(scope);
+        const url = 'smack-ftp.php?action=push_now&scope=' + encodeURIComponent(scope) + '&t=<?php echo urlencode(csrf_token()); ?>';
 
         fetch(url)
             .then(response => response.body.getReader())
