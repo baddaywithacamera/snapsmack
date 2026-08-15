@@ -654,6 +654,11 @@ if ($resource === 'backup' && $sub_action === 'config' && $method === 'GET') {
 //   ?dump=full    — schema + data (default)
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'backup' && $sub_action === 'export' && $method === 'GET') {
+    // Only a hub may pull this spoke's database export. Without this guard any
+    // holder of api_key_local (which every spoke knows — it is symmetric and
+    // distributed in the mesh roster) could siphon the full DB: password
+    // hashes, cloud OAuth tokens, and every sibling node's keys.
+    if ($node['role'] !== 'hub') ms_err('Only a hub may export this site', 403);
     require_once __DIR__ . '/export-engine.php';
 
     $dump_type = $_GET['dump'] ?? 'full';
@@ -683,6 +688,8 @@ if ($resource === 'backup' && $sub_action === 'export' && $method === 'GET') {
 // This spoke fetches the image, saves it locally, and creates the record.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
+    // Only a hub may cross-post into this spoke.
+    if ($node['role'] !== 'hub') ms_err('Only a hub may create posts on this site', 403);
     $title      = trim($_POST['title']      ?? '');
     $img_url    = trim($_POST['img_url']    ?? '');
     $img_ext    = strtolower(trim($_POST['img_ext'] ?? 'jpg'));
@@ -694,18 +701,32 @@ if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
     if (!$title) ms_err('title is required');
     if (!$img_url || !filter_var($img_url, FILTER_VALIDATE_URL)) ms_err('valid img_url is required');
 
+    // SSRF guard: refuse non-HTTP(S) schemes and any URL that resolves to a
+    // private/reserved/loopback address before we let the server fetch it.
+    $u_scheme = strtolower((string)parse_url($img_url, PHP_URL_SCHEME));
+    if (!in_array($u_scheme, ['http', 'https'], true)) ms_err('img_url must be http(s)');
+    $u_host = parse_url($img_url, PHP_URL_HOST);
+    if (!$u_host) ms_err('img_url has no host');
+    if (in_array(strtolower($u_host), ['localhost', 'ip6-localhost', 'ip6-loopback', '::1', '0.0.0.0'], true)) {
+        ms_err('img_url resolves to a blocked address');
+    }
+    $u_ip = gethostbyname($u_host);
+    if ($u_ip !== $u_host && filter_var($u_ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+        ms_err('img_url resolves to a private or reserved address');
+    }
+
     $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'];
     if (!in_array($img_ext, $allowed_exts)) ms_err('unsupported image format');
 
-    // Fetch the image from the hub
+    // Fetch the image from the hub. FOLLOWLOCATION is disabled so a public
+    // redirect cannot bounce the fetch to an internal target past the guard above.
     $fetch_ch = curl_init();
     curl_setopt_array($fetch_ch, [
         CURLOPT_URL            => $img_url,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_FOLLOWLOCATION => false,
         CURLOPT_TIMEOUT        => 30,
         CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_MAXREDIRS      => 3,
     ]);
     $img_binary = curl_exec($fetch_ch);
     $fetch_code = curl_getinfo($fetch_ch, CURLINFO_HTTP_CODE);
@@ -792,6 +813,11 @@ if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
 // Token is single-use and expires in 5 minutes.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'auth' && $sub_action === 'sso-token' && $method === 'POST') {
+    // Only a hub may mint an SSO session on this spoke. Without this guard any
+    // node presenting api_key_local (symmetric, mesh-distributed) could mint a
+    // one-time token and trade it at sso.php for a full admin session — the
+    // cross-site takeover path.
+    if ($node['role'] !== 'hub') ms_err('Only a hub may request an SSO token', 403);
     $token   = bin2hex(random_bytes(32));   // 64-char hex
     $expires = time() + 300;               // 5 minutes
 

@@ -53,9 +53,38 @@ if (!file_exists(__DIR__ . '/core/parser.php') || !is_dir(__DIR__ . '/core')) {
 $recovery_mode = ($_GET['mode'] ?? $_POST['mode'] ?? '') === 'recovery';
 $has_existing_db = false;
 
+/**
+ * Robustly remove a bootstrap file (install.php / setup.php).
+ *
+ * Plain @unlink() needs WRITE permission on the *directory*, which the PHP
+ * user often lacks on shared hosting — so it silently fails and the installer
+ * lingers. This tries unlink first, then falls back to overwriting the file
+ * with an inert 410 stub (which needs write permission on the *file* — a
+ * different, frequently-available permission). Returns:
+ *   'deleted'     — file is gone
+ *   'neutralized' — file remains but is now harmless (returns HTTP 410)
+ *   'failed'      — could not delete or neutralize (host file-manager needed)
+ */
+function snap_self_destruct(string $path): string {
+    if (!file_exists($path)) return 'deleted';
+    clearstatcache(false, $path);
+    if (@unlink($path)) return 'deleted';
+    // Fallback: neutralize in place. Safe even for the currently-executing
+    // file — PHP already compiled this request; future requests hit the stub.
+    $inert = "<?php http_response_code(410); header('Content-Type: text/plain');"
+           . " exit('SnapSmack installer removed after setup. Delete this file via your host file manager.');\n";
+    if (@file_put_contents($path, $inert) !== false) {
+        @chmod($path, 0644);
+        @unlink($path); // opportunistic second attempt now that it's tiny
+        return file_exists($path) ? 'neutralized' : 'deleted';
+    }
+    return 'failed';
+}
+
 // --- SAFETY LOCK ---
 // If SnapSmack is already installed, refuse to run (unless recovery mode or patch action).
-$patch_action = ($_GET['action'] ?? '') === 'patch_schema';
+$patch_action  = ($_GET['action'] ?? '') === 'patch_schema';
+$remove_action = ($_GET['action'] ?? '') === 'remove_installer';
 
 if (file_exists(__DIR__ . '/core/db.php')) {
     try {
@@ -63,6 +92,31 @@ if (file_exists(__DIR__ . '/core/db.php')) {
         $check = $pdo->query("SELECT COUNT(*) FROM snap_settings")->fetchColumn();
         if ($check > 0) {
             $has_existing_db = true;
+
+            // --- REMOVE-INSTALLER ACTION ---
+            // No-FTP cleanup: lets the owner delete/neutralize the stranded
+            // install.php + setup.php straight from the browser. Only ever
+            // REMOVES the bootstrap files (never touches site data), so it is
+            // safe to run unauthenticated on an already-installed site.
+            if ($remove_action) {
+                $r_install = snap_self_destruct(__FILE__);
+                $r_setup   = snap_self_destruct(__DIR__ . '/setup.php');
+                $label = ['deleted' => 'deleted', 'neutralized' => 'neutralized (now returns HTTP 410 — harmless)', 'failed' => 'COULD NOT be removed'];
+                $all_clear = ($r_install !== 'failed' && $r_setup !== 'failed');
+                echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SnapSmack</title>'
+                   . '<style>body{background:#0e0e0e;color:#d0d0d0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}.wrap{max-width:560px}h1{font-size:1.4rem;color:#a0ff90;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px}li{margin:6px 0}.ok{color:#a0ff90}.bad{color:#ff6b6b}.box{padding:14px 18px;margin:18px 0;border-radius:3px}.box-ok{background:#0d2b0d;border:1px solid #a0ff90;color:#a0ff90}.box-bad{background:#2a0a0a;border:1px solid #ff6b6b;color:#ff9999}a{color:#a0ff90}</style>'
+                   . '</head><body><div class="wrap"><h1>SNAPSMACK — Installer Cleanup</h1><ul>'
+                   . '<li class="' . ($r_install === 'failed' ? 'bad' : 'ok') . '">install.php: ' . $label[$r_install] . '</li>'
+                   . '<li class="' . ($r_setup   === 'failed' ? 'bad' : 'ok') . '">setup.php: '   . $label[$r_setup]   . '</li></ul>';
+                if ($all_clear) {
+                    echo '<div class="box box-ok">Installer files are no longer a security risk. You can close this page.</div>';
+                } else {
+                    echo '<div class="box box-bad">One or more files could not be removed by PHP (the web user lacks write permission). '
+                       . 'Delete them using your hosting control panel\'s <strong>File Manager</strong> (this does not require FTP).</div>';
+                }
+                echo '<a href="login.php">Go to Log In</a></div></body></html>';
+                exit;
+            }
 
             // --- SCHEMA PATCH ACTION ---
             // Adds columns that were missing from older fresh-install schemas.
@@ -130,7 +184,10 @@ if (file_exists(__DIR__ . '/core/db.php')) {
                   . '<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0e0e0e;color:#d0d0d0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}.wrap{width:100%;max-width:560px}h1{font-size:1.4rem;color:#a0ff90;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}h1 span{color:#555;font-weight:300}.sub{color:#555;font-size:.8rem;letter-spacing:1px;margin-bottom:32px}p{color:#999;margin-bottom:20px}a{color:#a0ff90}.btn{display:inline-block;padding:10px 24px;background:#1a1a1a;color:#a0ff90;border:1px solid #333;font-size:.88rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;cursor:pointer;border-radius:3px;text-decoration:none;margin-right:12px;margin-bottom:10px}.btn:hover{border-color:#a0ff90}</style>'
                   . '</head><body><div class="wrap">'
                   . '<h1>SNAPSMACK <span>INSTALLER</span></h1><p class="sub">Already installed</p>'
-                  . '<p>SnapSmack is already running on this server.</p>'
+                  . '<p>SnapSmack is already running on this server. For security, this installer and <code>setup.php</code> should be removed.</p>'
+                  . '<p><a href="install.php?action=remove_installer" class="btn" style="background:#a0ff90;color:#0e0e0e;border-color:#a0ff90">Remove Installer Files</a></p>'
+                  . '<p style="font-size:.8rem;color:#777">Recommended. Deletes <code>install.php</code> and <code>setup.php</code> from your server (no FTP needed). If PHP lacks permission, it neutralizes them so they cannot be abused.</p>'
+                  . '<hr style="border:none;border-top:1px solid #2a2a2a;margin:24px 0">'
                   . '<p><a href="install.php?action=patch_schema" class="btn">Patch Schema</a>'
                   . '<a href="install.php?mode=recovery" class="btn">Recovery Mode</a></p>'
                   . '<p style="font-size:.8rem;color:#555">Patch Schema adds any missing database columns from newer versions — safe to run on any install, does not touch existing data.</p>'
@@ -1195,6 +1252,11 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'privacy_policy_content'    => '',
                 // --- TOOL API KEY ---
                 'tool_api_key'              => bin2hex(random_bytes(32)),
+                // --- CRYPTO SALT ---
+                // Per-site secret keying at-rest FTP/cloud credential encryption
+                // and download/like tokens. MUST be unique per install — never a
+                // shipped constant. (Admin pages also self-heal this if absent.)
+                'download_salt'             => bin2hex(random_bytes(32)),
             ];
 
             $stmt = $pdo->prepare("INSERT INTO `{$prefix}settings` (setting_key, setting_val) VALUES (?, ?)");
@@ -1339,9 +1401,16 @@ HTACCESS;
     }
 
     // --- SELF-DELETE ---
-    $self_deleted = false;
+    // Remove BOTH bootstrap files. setup.php normally deletes itself before
+    // handing off, but if its unlink failed (dir not writable) we clean it up
+    // here too. snap_self_destruct falls back to neutralizing in place.
+    $self_deleted   = false;
+    $self_status    = 'failed';
+    $setup_status   = 'deleted';
     if (empty($errors)) {
-        $self_deleted = @unlink(__FILE__);
+        $setup_status = snap_self_destruct(__DIR__ . '/setup.php');
+        $self_status  = snap_self_destruct(__FILE__);
+        $self_deleted = ($self_status !== 'failed'); // deleted OR neutralized = safe
     }
 
     // If we got here with no errors, we're done
@@ -2112,13 +2181,20 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                 <div class="warn-box"><?php echo $skin_warning; ?></div>
             <?php endif; ?>
 
-            <?php if (!$self_deleted): ?>
+            <?php if ($self_status === 'failed' || $setup_status === 'failed'): ?>
                 <div class="warn-box">
-                    <strong>Security Warning:</strong> Could not delete install.php automatically.
-                    Delete this file from your server manually before doing anything else.
+                    <strong>Security Warning:</strong> PHP could not remove the installer files
+                    (the web user lacks write permission).
+                    Delete <code>install.php</code><?php echo $setup_status === 'failed' ? ' and <code>setup.php</code>' : ''; ?>
+                    using your hosting control panel's <strong>File Manager</strong> before doing anything else (no FTP required).
+                </div>
+            <?php elseif ($self_status === 'neutralized' || $setup_status === 'neutralized'): ?>
+                <div class="success-box">
+                    Installer files neutralized (they now return HTTP 410 and cannot be abused).
+                    You may still delete <code>install.php</code>/<code>setup.php</code> via your host File Manager for tidiness.
                 </div>
             <?php else: ?>
-                <div class="success-box">install.php has been deleted automatically.</div>
+                <div class="success-box">install.php and setup.php have been deleted automatically.</div>
             <?php endif; ?>
 
             <a href="login.php">Log In</a>

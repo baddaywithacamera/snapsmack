@@ -12,6 +12,31 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.125 — "La-Z-Boy" (2026-08-14)
+
+Security hardening release from a full multi-agent code audit. **Multisite (hub/spoke) operators and anyone running FTP/cloud backups should update.**
+
+### Security — Critical
+- **Multisite federation takeover closed**: the `multisite/auth/sso-token`, `multisite/backup/export`, and `multisite/posts/create` API endpoints now require the caller to be a **hub** (`core/multisite-api.php`). Previously any spoke — which already holds the symmetric `api_key_local` — could mint an admin SSO session on, or download the entire database (password hashes, cloud OAuth tokens, every peer's keys) from, its hub or a sibling. This was the highest-impact finding.
+- **User-management privilege escalation closed**: `smack-users.php`, `smack-edit-user.php`, and community-user moderation now require an Administrator role (new `core/authz.php`). Previously an "editor" (content-only) account could promote itself to admin or reset the primary admin's password, because no page enforced the role.
+
+### Security — High
+- **Admin login brute-force closed**: `login.php` now enforces the same bot filter, IP-ban gate, and 5-fail/7-day auto-ban as `snap-in.php` (new shared `core/login-protection.php`). It was previously an unthrottled credential-stuffing door that also bypassed the lockout.
+- **Remote code execution via media upload closed**: `smack-media.php` now allows only real image types (extension allowlist + `getimagesize` verification), writes a PHP-deny `.htaccess` into `media_assets/`, and no longer treats SVG as a web format. Previously a `.php` file could be uploaded and executed.
+- **FTP/cloud credential encryption fixed**: `download_salt` (the key for at-rest credential encryption) is now a strong per-site random value — seeded at install and self-healed on existing sites (`core/admin-header.php`) — instead of a public constant shipped in the source. Existing stored credentials still decrypt via a legacy-key fallback (`core/ftp-engine.php`) and are re-encrypted under the new key on next save.
+- **CSRF on destructive admin actions closed**: delete/suspend links in `smack-users.php`, `smack-manage.php`, `smack-media.php`, and `smack-community-users.php` now carry and verify a CSRF token (`csrf_require_get()` in `core/csrf.php`); previously they were token-less GET requests firable cross-site.
+
+### Security — Medium / Low
+- **Installer no longer strands itself**: `install.php`/`setup.php` self-delete is now robust — it falls back to neutralizing the file in place when the host blocks deletion, reports accurately, and the already-installed screen offers a no-FTP "Remove Installer Files" button.
+- **SSRF guard** added to `multisite/posts/create` (blocks private/reserved addresses, disables redirect-following).
+- **Zip-slip** guard in `setup.php` rewritten to reject `..` traversal properly.
+- **2FA online brute-force** now feeds the IP-ban gate (`smack-2fa-verify.php`), so repeated code guesses across re-logins get the attacker blocked.
+- **Stored/blocked XSS** fixes: blogroll peer URLs are scheme-filtered on render and on save; RSS feed titles/descriptions are escaped inside CDATA.
+- **Information disclosure**: the public comment endpoint no longer echoes raw database/error detail to visitors.
+
+### Notes
+- Not yet addressed (require infrastructure/product decisions): update-package signing is still advisory-by-default (needs a real release public key provisioned), skin-signature verification is still fail-open until signing goes live, and full multisite key hygiene (separate inbound/outbound keys instead of the shared `api_key_local`) is a larger follow-up. The role checks above close the exploitable takeover paths in the meantime.
+
 ## 0.7.124 — "La-Z-Boy" (2026-05-14)
 
 ### Fixed
@@ -2090,4 +2115,16 @@ _Internal bump. See 0.7.5b for the full feature set._
 - Removed Picasa Web Albums skin.
 
 ### Fixed
-- Preflight security holes in custom JPG handling (found in audits b
+- Preflight security holes in custom JPG handling (found in audits by Claude and Gemini).
+- Google Drive share links auto-converted to direct downloads.
+- Various skin display bugs in New Horizon Dark and 50 Shades of Grey.
+
+---
+
+## 0.5.0 and earlier
+
+Initial development. Admin interface, theme system, per-skin settings scoping,
+sidebar redesign, admin theme CSS consolidation, comment controls, footer
+configuration, and foundational CMS architecture.
+
+<!-- ===== SNAPSMACK EOF ===== -->

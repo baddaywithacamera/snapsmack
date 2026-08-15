@@ -29,6 +29,24 @@ if (!isset($settings)) {
     $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 }
 
+// --- SELF-HEAL: per-site cryptographic salt ---
+// download_salt keys the at-rest encryption of FTP/cloud credentials AND the
+// download/like tokens. It was historically never generated, so every reader
+// fell back to a public constant shipped in the source — making the "encryption"
+// decorative. Generate a strong per-site random value once; every reader picks
+// it up via its existing `$settings['download_salt'] ?? ...` fallback. Existing
+// FTP creds still decrypt via the legacy fallback in SnapSmackFTP::decryptPassword.
+if (empty($settings['download_salt']) || $settings['download_salt'] === 'snapsmack-default-salt-change-me') {
+    try {
+        $new_salt = bin2hex(random_bytes(32));
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('download_salt', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = ?")->execute([$new_salt, $new_salt]);
+        $settings['download_salt'] = $new_salt;
+    } catch (\PDOException $e) {
+        // Non-fatal: if the write fails the readers keep using their fallback.
+    }
+}
+
 // --- CRON CAPABILITY DETECTION ---
 // Check if the server supports cron and PHP CLI for scheduled task runner
 $cron_supported  = false;

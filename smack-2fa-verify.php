@@ -17,6 +17,7 @@
 
 require_once 'core/db.php';
 require_once 'core/totp.php';
+require_once 'core/login-protection.php';
 
 // --- SESSION INITIALIZATION ---
 // Must match the session config in snap-in.php and core/auth.php exactly.
@@ -61,6 +62,22 @@ if (isset($_SESSION['user_login'])) {
 if (!isset($_SESSION['totp_fail_count'])) {
     $_SESSION['totp_fail_count'] = 0;
 }
+
+// The per-session counter above resets whenever the attacker re-authenticates
+// with the (already-known) password to mint a fresh pending session. Back it
+// with the IP-level ban so repeated 2FA failures across sessions still get the
+// attacker blocked. Refuse outright if this IP is already banned.
+$_2fa_ip = snap_client_ip();
+try {
+    $_2fa_ban = $pdo->prepare("SELECT expires_at FROM snap_ip_bans WHERE ip = ? AND expires_at > NOW() LIMIT 1");
+    $_2fa_ban->execute([$_2fa_ip]);
+    if ($_2fa_ban->fetchColumn()) {
+        session_unset();
+        session_destroy();
+        header("Location: snap-in.php?err=2fa_locked");
+        exit;
+    }
+} catch (PDOException $e) { /* table may not exist on old installs — fail open */ }
 
 if ($_SESSION['totp_fail_count'] >= 5) {
     // Too many failures — wipe the pending session and force a fresh login.
@@ -141,6 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         } else {
             $_SESSION['totp_fail_count']++;
+            try { snap_record_login_failure($pdo, $_2fa_ip); } catch (PDOException $e) {}
             $error      = 'Incorrect code. Check your authenticator app and try again.';
             $active_tab = 'totp';
         }
@@ -172,6 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         } else {
             $_SESSION['totp_fail_count']++;
+            try { snap_record_login_failure($pdo, $_2fa_ip); } catch (PDOException $e) {}
             $error = 'Invalid recovery code.';
         }
     }

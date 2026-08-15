@@ -152,15 +152,21 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                             <h2 class="blogroll-category-heading"><?php echo htmlspecialchars(strtoupper($cat_name)); ?></h2>
                         <?php endif; ?>
                         <div class="blogroll-grid">
-                            <?php foreach ($cat_peers as $p): ?>
+                            <?php foreach ($cat_peers as $p):
+                                // Only allow http/https in the href. htmlspecialchars alone does
+                                // NOT neutralize a javascript:/data: scheme, so a poisoned peer_url
+                                // (admin- or hub-supplied) could otherwise be a clickable XSS.
+                                $peer_scheme = strtolower((string)parse_url(trim($p['peer_url']), PHP_URL_SCHEME));
+                                $peer_href   = in_array($peer_scheme, ['http', 'https'], true) ? trim($p['peer_url']) : '';
+                            ?>
                                 <div class="blogroll-peer">
                                     <div class="blogroll-peer-name">
-                                        <a href="<?php echo htmlspecialchars($p['peer_url']); ?>" target="_blank" rel="noopener noreferrer">
+                                        <a href="<?php echo htmlspecialchars($peer_href); ?>" target="_blank" rel="noopener noreferrer">
                                             <?php echo htmlspecialchars($p['peer_name']); ?>
                                         </a>
                                     </div>
                                     <p class="blogroll-peer-desc"><?php echo htmlspecialchars($p['peer_desc']); ?></p>
-                                    <a class="blogroll-peer-url dim" href="<?php echo htmlspecialchars($p['peer_url']); ?>" target="_blank" rel="noopener noreferrer"><?php echo htmlspecialchars($p['peer_url']); ?></a>
+                                    <a class="blogroll-peer-url dim" href="<?php echo htmlspecialchars($peer_href); ?>" target="_blank" rel="noopener noreferrer"><?php echo htmlspecialchars($p['peer_url']); ?></a>
                                 </div>
                             <?php endforeach; ?>
                         </div>

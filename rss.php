@@ -54,11 +54,16 @@ echo '<?xml version="1.0" encoding="UTF-8" ?>';
 
         // Output individual items. Image HTML is wrapped in CDATA to prevent XML parsing errors.
         echo "<item>\n";
-        echo "    <title>" . htmlspecialchars($row['img_title']) . "</title>\n";
+        // Escape user-authored fields even inside CDATA: htmlspecialchars neutralizes
+        // any embedded HTML/script AND encodes '>' so a literal ]]> cannot break out
+        // of the CDATA block and inject arbitrary markup into the feed.
+        $rss_title = htmlspecialchars($row['img_title'], ENT_QUOTES);
+        $rss_desc  = htmlspecialchars($row['img_description'] ?? '', ENT_QUOTES);
+        echo "    <title>" . $rss_title . "</title>\n";
         echo "    <link>" . $item_link . "</link>\n";
         echo "    <guid isPermaLink=\"true\">" . $item_link . "</guid>\n";
         echo "    <pubDate>" . $pub_date . "</pubDate>\n";
-        echo "    <description><![CDATA[<img src=\"{$img_url}\" alt=\"{$row['img_title']}\" /><br />" . ($row['img_description'] ?? '') . "]]></description>\n";
+        echo "    <description><![CDATA[<img src=\"{$img_url}\" alt=\"{$rss_title}\" /><br />{$rss_desc}]]></description>\n";
         echo "</item>\n";
     }
     ?>

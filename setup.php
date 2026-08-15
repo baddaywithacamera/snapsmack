@@ -154,9 +154,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
                 $safe = true;
                 for ($i = 0; $i < $zip->numFiles; $i++) {
                     $entry = $zip->getNameIndex($i);
-                    $dest  = realpath($target_dir) . DIRECTORY_SEPARATOR . $entry;
-                    // Reject any entry that would land outside the target directory
-                    if (strpos($dest, $real_target) !== 0) {
+                    // Reject traversal by inspecting the entry path itself. The old
+                    // check concatenated the raw entry onto the base dir without
+                    // normalizing, so "../../x" still began with the base prefix and
+                    // passed — a zip-slip. Reject absolute paths, Windows drive
+                    // paths, and any ".." path segment outright.
+                    $norm = str_replace('\\', '/', (string)$entry);
+                    if ($norm === ''
+                        || $norm[0] === '/'
+                        || preg_match('#^[A-Za-z]:#', $norm)
+                        || preg_match('#(^|/)\.\.(/|$)#', $norm)) {
                         $safe  = false;
                         $error = 'Package failed security check: path traversal detected in zip entry "' . htmlspecialchars($entry) . '". Installation aborted.';
                         break;
@@ -213,7 +220,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
     }
 
     if ($success) {
-        @unlink(__FILE__);
+        // Robust self-removal: @unlink() needs write permission on the
+        // DIRECTORY, which the PHP user often lacks on shared hosting (the
+        // silent failure that leaves setup.php stranded). Fall back to
+        // neutralizing the file in place — that needs write on the FILE, a
+        // different and frequently-available permission. install.php also
+        // cleans up setup.php as a backstop once DB setup finishes.
+        if (!@unlink(__FILE__)) {
+            @file_put_contents(__FILE__, "<?php http_response_code(410); header('Content-Type: text/plain'); exit('SnapSmack setup removed after deploy. Delete this file via your host file manager.');\n");
+            @chmod(__FILE__, 0644);
+            @unlink(__FILE__);
+        }
         header('Location: install.php');
         exit;
     }

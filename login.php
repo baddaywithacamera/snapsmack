@@ -18,6 +18,13 @@
 require_once 'core/db.php';
 require_once 'core/auth-recovery.php';
 require_once 'core/totp.php';
+require_once 'core/login-protection.php';
+
+// --- BRUTE-FORCE / BOT / IP-BAN GATE ---
+// Same protection snap-in.php enforces. Without this, login.php was an
+// unthrottled credential-stuffing door into admin accounts that also bypassed
+// the shared 5-fail/7-day auto-ban.
+$_snap_ip = snap_login_guard($pdo);
 
 // --- SESSION INITIALIZATION ---
 // Must use the same session save path as auth.php so the session file
@@ -126,6 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         } else {
             $error = "ACCESS DENIED: Invalid credentials.";
+            try { snap_record_login_failure($pdo, $_snap_ip); } catch (PDOException $e) {}
         }
 
     // ── Recovery code login ──────────────────────────────────────────────────
@@ -150,6 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         } else {
             $error = "ACCESS DENIED: Invalid username or recovery code.";
+            try { snap_record_login_failure($pdo, $_snap_ip); } catch (PDOException $e) {}
         }
     }
 }

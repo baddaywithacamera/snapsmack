@@ -14,8 +14,11 @@
  */
 
 
+// This is a public, unauthenticated endpoint — never render PHP/DB errors to
+// the client (they leak table/column names and filesystem paths). Log instead.
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 
 // --- DEPENDENCY LOADING ---
 // Establish absolute paths to ensure reliable inclusion regardless of calling context
@@ -23,7 +26,9 @@ $db_path = __DIR__ . '/core/db.php';
 $spam_path = __DIR__ . '/core/spam-check.php';
 
 if (!file_exists($db_path)) {
-    die("FATAL ERROR: System cannot find DB connection at: " . $db_path);
+    error_log('process-comment.php: DB connection file missing at ' . $db_path);
+    http_response_code(500);
+    die("Service temporarily unavailable.");
 }
 
 require_once $db_path;
@@ -124,7 +129,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
 
     } catch (PDOException $e) {
-        die("DATABASE ERROR: " . $e->getMessage());
+        // Log the detail server-side; show the visitor a generic message only.
+        error_log('process-comment.php DB error: ' . $e->getMessage());
+        http_response_code(500);
+        die("Sorry — your comment could not be saved right now. Please try again later.");
     }
 } else {
     die("FORBIDDEN: Direct access to this frequency is not permitted.");

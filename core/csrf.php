@@ -95,6 +95,32 @@ function csrf_check(): void
     }
 }
 
+/**
+ * Verify a supplied token against the session token. Works for ANY request
+ * method (unlike csrf_check, which only guards POST). Returns bool.
+ */
+function csrf_verify(?string $supplied): bool
+{
+    if (session_status() === PHP_SESSION_NONE) return false;
+    $expected = $_SESSION['csrf_token'] ?? '';
+    return $expected !== '' && is_string($supplied) && $supplied !== ''
+        && hash_equals($expected, $supplied);
+}
+
+/**
+ * Enforce a CSRF token on a state-changing GET action (e.g. ?delete= / ?action=
+ * links). The link must carry &csrf=<csrf_token()>. Bails with 403 on mismatch.
+ * Use this because csrf_check() intentionally ignores non-POST requests.
+ */
+function csrf_require_get(): void
+{
+    if (!csrf_verify($_GET['csrf'] ?? '')) {
+        http_response_code(403);
+        header('Content-Type: text/plain; charset=utf-8');
+        die('CSRF token missing or invalid. Reload the page and try again.');
+    }
+}
+
 // Auto-rotate the token on logout — clears it from the session so the
 // next login mints a fresh value. Other code (logout handlers) can call
 // csrf_rotate() explicitly if they want to invalidate during a session.
