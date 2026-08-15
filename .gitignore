@@ -73,9 +73,13 @@ core/community-key.php
 # Service account keys / credentials — NEVER commit
 *-drive-key*.json
 tools/*/config.json
+tools/*/credentials.json
 
-# Desktop tool runtime config (contains key paths, folder IDs)
-tools/*/config.ini
+# Desktop tool runtime config (contains site/FTP/DB passwords + API keys).
+# MUST be a wildcard, never per-filename: tools write config under their own
+# names (unzucker.ini, gobsmacked-scanner.ini, sybu.ini, …) and a per-filename
+# rule silently fails to match them, leaking creds into the repo. Recurring bug.
+tools/*/*.ini
 tools/*/profiles/
 
 # PyInstaller build artifacts — all tools
