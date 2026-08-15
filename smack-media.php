@@ -21,12 +21,48 @@ $target_dir = "media_assets/";
 if (!is_dir($target_dir)) {
     mkdir($target_dir, 0755, true);
 }
+// Defense-in-depth: deny PHP/script execution from the upload folder, the same
+// way install.php guards img_uploads/. Self-heals on every request so installs
+// created before this guard existed get protected too.
+$media_htaccess = $target_dir . '.htaccess';
+if (!is_file($media_htaccess)) {
+    @file_put_contents($media_htaccess, "<FilesMatch \"\\.(php|php3|php4|php5|php7|phtml|pht|phar)$\">\n    Deny from all\n</FilesMatch>\n");
+}
+
+// Raster image formats accepted for upload. Deliberately excludes .php/.svg/etc:
+// the extension is taken from the client filename, so without this allowlist an
+// attacker could upload shell.php into the web root and execute it (RCE).
+$allowed_upload_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'ico'];
+
+/**
+ * Validate an uploaded file is a real image of an allowed type BEFORE it is
+ * written anywhere. Returns '' on success or an error string.
+ */
+function smack_media_reject_reason(array $file, array $allowed): string {
+    $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+    if (!in_array($ext, $allowed, true)) {
+        return 'Unsupported file type. Allowed: ' . implode(', ', $allowed);
+    }
+    // Content check: the bytes must actually be an image.
+    if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name']) || @getimagesize($file['tmp_name']) === false) {
+        return 'File is not a valid image.';
+    }
+    return '';
+}
 
 // --- ASSET SWAP ---
 // Replaces an existing asset's file while preserving its ID and all shortcode
 // references ([img:ID|size|align] embeds in pages remain valid automatically).
 if (isset($_POST['swap_id']) && isset($_FILES['file'])) {
     $swap_id = (int)$_POST['swap_id'];
+
+    // Reject non-image / disallowed uploads before touching the existing file.
+    $reject = smack_media_reject_reason($_FILES['file'], $allowed_upload_exts);
+    if ($reject !== '') {
+        header('HTTP/1.1 400 Bad Request');
+        echo json_encode(['status' => 'error', 'msg' => $reject]);
+        exit;
+    }
 
     $stmt = $pdo->prepare("SELECT asset_path FROM snap_assets WHERE id = ?");
     $stmt->execute([$swap_id]);
@@ -44,7 +80,7 @@ if (isset($_POST['swap_id']) && isset($_FILES['file'])) {
     }
 
     // Store the replacement under a new filename.
-    $file_ext   = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+    $file_ext   = strtolower(pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION));
     $file_name  = time() . '_' . uniqid() . '.' . $file_ext;
     $target_file = $target_dir . $file_name;
 
@@ -63,7 +99,14 @@ if (isset($_POST['swap_id']) && isset($_FILES['file'])) {
 // --- AJAX FILE UPLOAD HANDLER ---
 // Processes asynchronous file uploads and returns JSON response.
 if (isset($_FILES['file'])) {
-    $file_ext = pathinfo($_FILES["file"]["name"], PATHINFO_EXTENSION);
+    // Reject non-image / disallowed uploads before anything is written to disk.
+    $reject = smack_media_reject_reason($_FILES['file'], $allowed_upload_exts);
+    if ($reject !== '') {
+        header('HTTP/1.1 400 Bad Request');
+        echo json_encode(['status' => 'error', 'msg' => $reject]);
+        exit;
+    }
+    $file_ext = strtolower(pathinfo($_FILES["file"]["name"], PATHINFO_EXTENSION));
     $file_name = time() . '_' . uniqid() . '.' . $file_ext;
     $target_file = $target_dir . $file_name;
 
@@ -82,6 +125,7 @@ if (isset($_FILES['file'])) {
 // --- ASSET DELETION ---
 // Removes asset file from disk and deletes its database record.
 if (isset($_GET['delete'])) {
+    csrf_require_get();
     $stmt = $pdo->prepare("SELECT asset_path FROM snap_assets WHERE id = ?");
     $stmt->execute([$_GET['delete']]);
     $path = $stmt->fetchColumn();
@@ -101,8 +145,9 @@ if (isset($_GET['delete'])) {
 $assets = $pdo->query("SELECT * FROM snap_assets ORDER BY created_at DESC")->fetchAll();
 $page_title = "Media Library";
 
-// Formats browsers can actually render as <img>.
-$web_formats = ['jpg','jpeg','png','gif','webp','svg','avif','bmp','ico'];
+// Formats browsers can actually render as <img>. SVG is intentionally excluded:
+// an SVG can carry <script> and execute in this origin when opened directly.
+$web_formats = ['jpg','jpeg','png','gif','webp','avif','bmp','ico'];
 
 
 include 'core/admin-header.php';
@@ -173,7 +218,7 @@ include 'core/sidebar.php';
                             <button type="button"
                                     class="action-edit"
                                     onclick="document.getElementById('swap-input-<?php echo $a['id']; ?>').click()">SWAP</button>
-                            <a href="?delete=<?php echo $a['id']; ?>" class="action-delete-link" onclick="return confirm('Purge asset #<?php echo $a['id']; ?>? Any [img:<?php echo $a['id']; ?>] shortcodes will break.')">PURGE</a>
+                            <a href="?delete=<?php echo $a['id']; ?>&csrf=<?php echo urlencode(csrf_token()); ?>" class="action-delete-link" onclick="return confirm('Purge asset #<?php echo $a['id']; ?>? Any [img:<?php echo $a['id']; ?>] shortcodes will break.')">PURGE</a>
                         </div>
                     </div>
                 </div>

@@ -63,6 +63,20 @@ if (isset($_POST['save_peer'])) {
     $rss    = trim($_POST['peer_rss']);
     $desc   = trim($_POST['peer_desc']);
 
+    // Store-side scheme guard (the <input type="url"> is client-only and
+    // trivially bypassed). Reject anything that isn't a plain http(s) URL so a
+    // javascript:/data: peer_url can never be persisted. Defence-in-depth on top
+    // of the render-side filtering in blogroll.php.
+    $url_scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+    if ($url !== '' && !in_array($url_scheme, ['http', 'https'], true)) {
+        header("Location: smack-blogroll.php?msg=bad_url");
+        exit;
+    }
+    $rss_scheme = strtolower((string)parse_url($rss, PHP_URL_SCHEME));
+    if ($rss !== '' && !in_array($rss_scheme, ['http', 'https'], true)) {
+        $rss = '';
+    }
+
     if ($id) {
         $stmt = $pdo->prepare("UPDATE snap_blogroll SET peer_name=?, peer_url=?, cat_id=?, peer_rss=?, peer_desc=? WHERE id=?");
         $stmt->execute([$name, $url, $cat_id, $rss, $desc, $id]);

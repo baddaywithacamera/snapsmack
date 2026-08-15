@@ -287,8 +287,25 @@ class SnapSmackFTP {
 
     /**
      * Decrypt a password from snap_settings.
+     *
+     * Tries the supplied (per-site) salt first, then falls back to the historic
+     * constant keys (empty string / shipped placeholder) so that rotating
+     * download_salt from its old public-constant value to a real random secret
+     * does NOT brick credentials that were stored under the old key. Recovered
+     * creds are re-encrypted under the new salt the next time they are saved.
      */
     public static function decryptPassword(string $ciphertext, string $salt): string {
+        $out = self::rawDecrypt($ciphertext, $salt);
+        if ($out !== '') return $out;
+        foreach (['', 'snapsmack-default-salt-change-me'] as $legacy) {
+            if ($legacy === $salt) continue;
+            $out = self::rawDecrypt($ciphertext, $legacy);
+            if ($out !== '') return $out;
+        }
+        return '';
+    }
+
+    private static function rawDecrypt(string $ciphertext, string $salt): string {
         $key = hash('sha256', $salt, true);
         $data = base64_decode($ciphertext);
         if ($data === false || strlen($data) < 17) return '';

@@ -94,6 +94,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'reorder') {
 // --- DELETION HANDLER ---
 // Removes a post, its image files, and all associated database records.
 if (isset($_GET['delete'])) {
+    csrf_require_get();
     $id = (int)$_GET['delete'];
     $stmt = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ?");
     $stmt->execute([$id]);
@@ -360,7 +361,7 @@ include 'core/sidebar.php';
                             <?php if (!$is_draft && !$is_scheduled): ?>
                             <a href="<?php echo BASE_URL . htmlspecialchars($p['img_slug'] ?? '', ENT_QUOTES); ?>" class="action-view" target="_blank" rel="noopener">VIEW</a>
                             <?php endif; ?>
-                            <a href="?delete=<?php echo $p['id']; ?>" class="action-delete" onclick="return confirm('PERMANENTLY PURGE this transmission?')">DELETE</a>
+                            <a href="?delete=<?php echo $p['id']; ?>&csrf=<?php echo urlencode(csrf_token()); ?>" class="action-delete" onclick="return confirm('PERMANENTLY PURGE this transmission?')">DELETE</a>
                         </div>
                     </div>
                 <?php endforeach; ?>

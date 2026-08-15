@@ -16,9 +16,15 @@
 
 
 require_once 'core/auth.php';
+require_once 'core/authz.php';
 
 // --- ACTIONS ---
 if (isset($_GET['action']) && isset($_GET['id'])) {
+    // Suspending / deleting community members is an account-management action,
+    // not content work: require Administrator, and a CSRF token (these are GET
+    // links, which csrf_check() does not cover).
+    snap_require_admin();
+    csrf_require_get();
     $uid = (int)$_GET['id'];
     switch ($_GET['action']) {
         case 'suspend':
@@ -177,18 +183,18 @@ include 'core/sidebar.php';
 
                             <div class="item-actions">
                                 <?php if ($u['status'] === 'active' || $u['status'] === 'unverified'): ?>
-                                    <a href="?action=suspend&id=<?php echo $u['id']; ?>&status=<?php echo urlencode($status_filter); ?>&s=<?php echo urlencode($search); ?>&p=<?php echo $page; ?>"
+                                    <a href="?action=suspend&id=<?php echo $u['id']; ?>&status=<?php echo urlencode($status_filter); ?>&s=<?php echo urlencode($search); ?>&p=<?php echo $page; ?>&csrf=<?php echo urlencode(csrf_token()); ?>"
                                        class="action-delete"
                                        onclick="return confirm('Suspend <?php echo htmlspecialchars($u['username']); ?>?');">
                                         SUSPEND
                                     </a>
                                 <?php elseif ($u['status'] === 'suspended'): ?>
-                                    <a href="?action=unsuspend&id=<?php echo $u['id']; ?>&status=<?php echo urlencode($status_filter); ?>&s=<?php echo urlencode($search); ?>&p=<?php echo $page; ?>"
+                                    <a href="?action=unsuspend&id=<?php echo $u['id']; ?>&status=<?php echo urlencode($status_filter); ?>&s=<?php echo urlencode($search); ?>&p=<?php echo $page; ?>&csrf=<?php echo urlencode(csrf_token()); ?>"
                                        class="action-authorize">
                                         REINSTATE
                                     </a>
                                 <?php endif; ?>
-                                <a href="?action=delete&id=<?php echo $u['id']; ?>&status=<?php echo urlencode($status_filter); ?>&s=<?php echo urlencode($search); ?>&p=<?php echo $page; ?>"
+                                <a href="?action=delete&id=<?php echo $u['id']; ?>&status=<?php echo urlencode($status_filter); ?>&s=<?php echo urlencode($search); ?>&p=<?php echo $page; ?>&csrf=<?php echo urlencode(csrf_token()); ?>"
                                    class="action-delete"
                                    onclick="return confirm('Permanently delete <?php echo htmlspecialchars($u['username']); ?> and all their data?');">
                                     DELETE

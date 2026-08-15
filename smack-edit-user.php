@@ -15,7 +15,13 @@
 
 
 require_once 'core/auth.php';
+require_once 'core/authz.php';
 require_once 'core/auth-recovery.php';
+
+// User account management is Administrator-only. Without this, an 'editor'
+// (content-only) session could load any account and rewrite its role/password
+// — including promoting itself or taking over the primary admin.
+snap_require_admin();
 
 // --- REQUEST VALIDATION ---
 // Requires a user ID parameter to load the correct record.
