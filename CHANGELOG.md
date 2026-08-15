@@ -10,6 +10,17 @@
 
 # SnapSmack Changelog
 
+## 0.7.526 — 2026-08-14
+
+### Removed
+- **Groups (v0.1 foundation) pulled from the interface**: the Groups admin page (`smack-groups.php`), its sidebar link, and its Settings → Interaction toggle are removed. Groups was a local-only foundation — creating groups on your own site — with no working fediverse side (joining from Pixelfed/Mastodon was only a written plan, not built), so it should not have been surfaced as a usable feature. The (empty) `snap_group*` database tables are left untouched and are harmless.
+
+### Fixed
+- **Database Schema page layout broken on all sites**: `smack-schema.php` wrapped its content in `<div class="main-content">`, a class that has no CSS rule, so the page never got the `margin-left` that clears the fixed admin sidebar — the left ~240px of content (the table-name column) was hidden behind the sidebar. Switched to the standard `<div class="main">` wrapper used by every other admin page.
+
+### Security
+- **Security audit 046** (`secaudits/2026-08-14-046-…md`): reviewed the full 524→525 code delta — no findings (the delta is a SMACKVERSE→"Fediverse" rename plus safe DB self-heal and feed-order fixes). Report also consolidates and quarantines an earlier full audit that had been run against a stale 0.7.124 lineage, as a re-verification backlog against dev.
+
 ## 0.7.525 — 2026-08-14
 
 ### Batch posting — new posts land at the top of the feed again
