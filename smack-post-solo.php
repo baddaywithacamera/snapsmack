@@ -294,7 +294,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         mkdir($thumb_full, 0755, true);
     }
 
-    $file_ext = strtolower(pathinfo($_FILES['img_file']['name'], PATHINFO_EXTENSION));
+    // SECAUDIT 046: derive the stored extension from the real MIME type, never
+    // the client filename — otherwise an uploaded "shell.php" would be written
+    // verbatim into the web-served img_uploads/ dir. Accept raster images only.
+    $_solo_mime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['img_file']['tmp_name'] ?? '') ?: '';
+    $_solo_map  = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif'];
+    if (!isset($_solo_map[$_solo_mime])) {
+        $post_error = "That file isn't a supported image (JPEG, PNG, WebP or GIF).";
+        goto render_form;
+    }
+    $file_ext = $_solo_map[$_solo_mime];
     $_slug_base = strtolower(preg_replace('/[^A-Za-z0-9-]+/', '-', $title));
     $_slug_base = preg_replace('/-{2,}/', '-', $_slug_base); // collapse runs of hyphens
     $_slug_base = trim($_slug_base, '-');                     // strip leading/trailing hyphens

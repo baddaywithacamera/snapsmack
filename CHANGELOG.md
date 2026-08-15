@@ -10,6 +10,54 @@
 
 # SnapSmack Changelog
 
+## 0.7.526 — 2026-08-14
+
+### Security hardening (full audit — SECAUDIT 046)
+
+A top-to-bottom security review of the live code found and this release fixes a
+set of holes. In plain terms, what each one means for your site:
+
+- **Editors can no longer become admins.** A "content-only" editor account could
+  open the user, settings, and system pages and quietly promote itself to full
+  administrator — or delete every other admin. Editors are now blocked from all
+  settings/system/account/fleet/federation tools; they keep every content tool
+  (posting, media, galleries, pages, comments). Admin-only is enforced in one
+  place so nothing slips through.
+- **A booby-trapped "recovery kit" can no longer take over the server.** The
+  disaster-recovery import used to write files anywhere a kit told it to — a
+  malicious kit could drop a program into your site and run it. Imports now
+  refuse to write program files or anywhere outside your site folder, and a
+  browser import must carry the security token.
+- **Nobody can impersonate someone else on the fediverse.** The federation
+  signature check now ties the signing key to the account it claims to be, so a
+  hostile server can't post comments or hijack followers pretending to be
+  another person. A remote user can also no longer edit or delete other people's
+  federated comments on your blog.
+- **Every "delete/approve/ban" link now needs the security token.** A booby-
+  trapped link or image in an email could previously make your logged-in browser
+  delete posts, media, pages, users, or approve/terminate federated comments.
+  All of those actions are now protected.
+- **The hub login now locks out password guessing.** Smack Central (which runs
+  your whole fleet) had no limit on wrong-password attempts; it now locks an
+  address out after repeated failures, like the site login already did.
+- **The download key is now unique per site.** Every install used to share one
+  built-in secret, which let anyone forge links to your full-size originals and
+  exposed a stored FTP password. Each site now generates its own secret (and
+  quietly re-secures a saved FTP password when it does).
+- **Media uploads only accept real images now.** The media library accepted any
+  file type by its name, so a program file could be uploaded and run. It now
+  checks the actual file and stores it in a folder that can't run code.
+- **Malicious captions/links can't run scripts.** A `javascript:` link coming in
+  from the fediverse could run in a visitor's browser on the public Photo
+  Challenge board; those links are now neutralised.
+- Plus smaller fixes: the "active skin" setting can't be pointed outside the
+  skins folder; password-reset tokens are stored scrambled; the single sign-on
+  cookie is marked secure behind a proxy; the login no longer reveals which
+  usernames exist; and the fediverse Follow button can't be turned into an
+  open redirect.
+
+Full findings and remediation notes are in `secaudits/2026-08-14-046-full-multidimension-audit-0.7.525.md`.
+
 ## 0.7.525 — 2026-08-14
 
 ### Batch posting — new posts land at the top of the feed again
