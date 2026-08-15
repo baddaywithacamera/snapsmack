@@ -10,6 +10,59 @@
 
 # SnapSmack Changelog
 
+## 0.7.527 — 2026-08-15
+
+### Security hardening — full audit remediation (SECAUDIT 047)
+
+The full multi-dimension security audit (flagged as backlog in 0.7.526) was
+re-run against the live 0.7.525 code and this release fixes what it found. In
+plain terms, what each one means for your site:
+
+- **Editors can no longer become admins.** A "content-only" editor account could
+  open the user, settings, and system pages and quietly promote itself to full
+  administrator — or delete every other admin. Editors are now blocked from all
+  settings/system/account/fleet/federation tools; they keep every content tool
+  (posting, media, galleries, pages, comments), enforced in one central place.
+- **A booby-trapped "recovery kit" can no longer take over the server.** The
+  disaster-recovery import refused nothing — a malicious kit could drop a program
+  into your site and run it. Imports now reject program files or anything outside
+  your site folder, and a browser import must carry the security token.
+- **Nobody can impersonate someone else on the fediverse.** The federation
+  signature check now ties the signing key to the account it claims to be, so a
+  hostile server can't post comments or hijack followers as another person, and a
+  remote user can't edit or delete other people's federated comments on your blog.
+- **Every "delete/approve/ban" link now needs the security token**, so a trap
+  link or image in an email can't make your logged-in browser delete posts,
+  media, pages, users, or approve/terminate federated comments.
+- **The hub login now locks out password guessing** (Smack Central had none).
+- **The download key is now unique per site** — every install used to share one
+  built-in secret that let anyone forge links to your originals and exposed a
+  stored FTP password. Each site now generates its own (and re-secures a saved
+  FTP password when it does).
+- **Media uploads only accept real images now** (a program file could be uploaded
+  and run); it checks the actual file and stores it where code can't run.
+- **Malicious fediverse links can't run scripts** on the public Photo Challenge board.
+- Plus: skin setting can't escape its folder, reset tokens stored scrambled, SSO
+  cookie secured behind a proxy, login won't reveal usernames, Follow button can't
+  be turned into an open redirect, RSS feeds can't be pointed at internal
+  addresses, and a trap link can't force-log-you-out.
+
+Full findings and remediation: `secaudits/2026-08-14-047-full-multidimension-audit-0.7.525.md`.
+
+### Changed
+- **Community accounts ship OFF for new installs.** Visitor sign-ups (for likes,
+  reactions, and account-required comments) are off by default — the fediverse
+  already provides logged-in interaction and guest comments cover everyone else,
+  so a new site doesn't run the extra account/login surface unless the owner turns
+  it on. Existing sites are unchanged.
+
+### Fixed
+- **Single-image post blocked when downloads are disabled.** Publishing a solo
+  post with Allow Download off (and a blank Download URL) failed with a "MISSION
+  FAILURE" dump. The required-download-link rule now applies only when that post
+  actually offers a download, and the composer's AJAX response is robust to hosts
+  that strip the `X-Requested-With` header.
+
 ## 0.7.526 — 2026-08-14
 
 ### Removed

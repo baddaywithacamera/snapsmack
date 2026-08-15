@@ -31,35 +31,108 @@ if (!empty($_SESSION['sc_admin_id'])) {
     exit;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SECAUDIT 047 — BRUTE-FORCE LOCKOUT FOR THE HUB LOGIN
+// The hub (Smack Central) controls the whole fleet, so an unthrottled
+// password-guessing endpoint here is a fleet-wide compromise risk — exactly the
+// protection the CMS login already has, applied to the higher-value target.
+// Self-contained on the hub DB, keyed by REMOTE_ADDR (the hub is reached
+// directly, so X-Forwarded-For is not trusted — matches sc-network-api.php).
+// 5 failures / 15-minute window → 15-minute lockout.
+// ─────────────────────────────────────────────────────────────────────────────
+function sc_login_ip(): string {
+    return substr((string)($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'), 0, 45);
+}
+function sc_login_ensure_table(PDO $db): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+        $db->exec(
+            "CREATE TABLE IF NOT EXISTS sc_login_attempts (
+                ip VARCHAR(45) NOT NULL PRIMARY KEY,
+                attempts INT UNSIGNED NOT NULL DEFAULT 0,
+                window_start DATETIME NOT NULL,
+                locked_until DATETIME NULL
+             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        );
+    } catch (\Throwable $e) { /* best-effort — never block login on a DDL hiccup */ }
+}
+function sc_login_is_locked(PDO $db, string $ip): bool {
+    sc_login_ensure_table($db);
+    try {
+        $s = $db->prepare("SELECT locked_until FROM sc_login_attempts WHERE ip = ? LIMIT 1");
+        $s->execute([$ip]);
+        $lu = $s->fetchColumn();
+        return $lu && strtotime((string)$lu) > time();
+    } catch (\Throwable $e) { return false; }
+}
+function sc_login_record_failure(PDO $db, string $ip): void {
+    sc_login_ensure_table($db);
+    try {
+        $db->prepare(
+            "INSERT INTO sc_login_attempts (ip, attempts, window_start)
+             VALUES (?, 1, NOW())
+             ON DUPLICATE KEY UPDATE
+               attempts     = IF(window_start < DATE_SUB(NOW(), INTERVAL 15 MINUTE), 1, attempts + 1),
+               window_start = IF(window_start < DATE_SUB(NOW(), INTERVAL 15 MINUTE), NOW(), window_start)"
+        )->execute([$ip]);
+        $db->prepare(
+            "UPDATE sc_login_attempts
+                SET locked_until = DATE_ADD(NOW(), INTERVAL 15 MINUTE)
+              WHERE ip = ? AND attempts >= 5"
+        )->execute([$ip]);
+    } catch (\Throwable $e) { /* best-effort */ }
+}
+function sc_login_clear(PDO $db, string $ip): void {
+    try { $db->prepare("DELETE FROM sc_login_attempts WHERE ip = ?")->execute([$ip]); }
+    catch (\Throwable $e) { /* best-effort */ }
+}
+
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
-    $password = $_POST['password'] ?? '';
+    $_sc_ip = sc_login_ip();
+    if (sc_login_is_locked(sc_db(), $_sc_ip)) {
+        $error = 'Too many failed attempts. Please wait a few minutes and try again.';
+    } else {
+        $username = trim($_POST['username'] ?? '');
+        $password = $_POST['password'] ?? '';
 
-    if ($username && $password) {
-        $stmt = sc_db()->prepare("SELECT id, password_hash FROM sc_admin_users WHERE username = ? LIMIT 1");
-        $stmt->execute([$username]);
-        $user = $stmt->fetch();
+        $ok = false;
+        if ($username && $password) {
+            $stmt = sc_db()->prepare("SELECT id, password_hash FROM sc_admin_users WHERE username = ? LIMIT 1");
+            $stmt->execute([$username]);
+            $user = $stmt->fetch();
 
-        if ($user && password_verify($password, $user['password_hash'])) {
-            session_regenerate_id(true);
-            $_SESSION['sc_admin_id']   = $user['id'];
-            $_SESSION['sc_admin_name'] = $username;
+            if ($user && password_verify($password, $user['password_hash'])) {
+                $ok = true;
+                sc_login_clear(sc_db(), $_sc_ip);
+                session_regenerate_id(true);
+                $_SESSION['sc_admin_id']   = $user['id'];
+                $_SESSION['sc_admin_name'] = $username;
 
-            sc_db()->prepare("UPDATE sc_admin_users SET last_login_at = NOW() WHERE id = ?")
-                   ->execute([$user['id']]);
+                sc_db()->prepare("UPDATE sc_admin_users SET last_login_at = NOW() WHERE id = ?")
+                       ->execute([$user['id']]);
 
-            $next = $_GET['next'] ?? 'sc-dashboard.php';
-            // Sanitise the redirect to prevent open redirect.
-            if (!preg_match('/^sc-[a-z\-]+\.php/', ltrim(urldecode($next), '/'))) {
-                $next = 'sc-dashboard.php';
+                $next = $_GET['next'] ?? 'sc-dashboard.php';
+                // Sanitise the redirect to prevent open redirect.
+                if (!preg_match('/^sc-[a-z\-]+\.php/', ltrim(urldecode($next), '/'))) {
+                    $next = 'sc-dashboard.php';
+                }
+                header('Location: ' . $next);
+                exit;
+            } else {
+                // Constant-ish time even when the username is unknown, so the hub
+                // login doesn't leak which usernames exist.
+                if (!$user) { password_verify($password, '$2y$10$usesomesillystringforsalt0000000000000000000000000000000e'); }
             }
-            header('Location: ' . $next);
-            exit;
+        }
+        if (!$ok) {
+            sc_login_record_failure(sc_db(), $_sc_ip);
+            $error = 'Invalid credentials.';
         }
     }
-    $error = 'Invalid credentials.';
 }
 ?>
 <!DOCTYPE html>

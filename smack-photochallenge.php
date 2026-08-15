@@ -200,8 +200,10 @@ include 'core/sidebar.php';
                         <strong><?php echo $esc($r['handle']); ?></strong>
                         <span class="dim">&mdash; score <?php echo (int)$r['score']; ?>
                             (<?php echo (int)$r['likes']; ?> likes, <?php echo (int)$r['boosts']; ?> boosts)</span>
-                        <?php if (($r['url'] ?? '') !== ''): ?>
-                            &middot; <a href="<?php echo $esc($r['url']); ?>" target="_blank" rel="noopener">entry</a>
+                        <?php /* SECAUDIT 047: scheme-guard federation URL */
+                              $__u = (string)($r['url'] ?? ''); $__safe = preg_match('#^https?://#i', $__u) ? $__u : ''; ?>
+                        <?php if ($__safe !== ''): ?>
+                            &middot; <a href="<?php echo $esc($__safe); ?>" target="_blank" rel="noopener">entry</a>
                         <?php endif; ?>
                     </li>
                 <?php endforeach; ?>
@@ -233,8 +235,10 @@ include 'core/sidebar.php';
                         </td>
                         <td style="padding:8px 6px;">
                             <strong><?php echo $esc($h['handle']); ?></strong>
-                            <?php if (($h['post_url'] ?? '') !== ''): ?>
-                                &middot; <a href="<?php echo $esc($h['post_url']); ?>" target="_blank" rel="noopener">post</a>
+                            <?php /* SECAUDIT 047: scheme-guard federation URL */
+                                  $__pu = (string)($h['post_url'] ?? ''); $__psafe = preg_match('#^https?://#i', $__pu) ? $__pu : ''; ?>
+                            <?php if ($__psafe !== ''): ?>
+                                &middot; <a href="<?php echo $esc($__psafe); ?>" target="_blank" rel="noopener">post</a>
                             <?php endif; ?>
                         </td>
                         <td style="padding:8px 6px; text-align:right; white-space:nowrap;">

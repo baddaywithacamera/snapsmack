@@ -214,6 +214,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$user_input]);
         $user = $stmt->fetch();
 
+        // SECAUDIT 047: when the username doesn't exist, still run one bcrypt
+        // verify against a fixed dummy hash so the response time doesn't reveal
+        // which usernames are valid (timing-based user enumeration).
+        if (!$user) {
+            password_verify($pass_input, '$2y$10$usesomesillystringforsalt0000000000000000000000000000000e');
+        }
+
         if ($user && password_verify($pass_input, $user['password_hash'])) {
             if (!empty($user['totp_enabled']) && !empty($user['totp_secret'])) {
                 // Check for a valid long-lived TOTP trust cookie before sending

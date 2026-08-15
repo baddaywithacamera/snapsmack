@@ -151,8 +151,10 @@ foreach ($hof as $h) {
               <li class="row">
                 <span class="place <?php echo $plClass; ?>"><?php echo $pl; ?></span>
                 <span class="who">
-                  <?php if (($e['post_url'] ?? '') !== ''): ?>
-                    <a href="<?php echo $esc($e['post_url']); ?>" rel="noopener" target="_blank"><?php echo $esc($e['handle']); ?></a>
+                  <?php /* SECAUDIT 047: scheme-guard federation URL */
+                        $__pu = (string)($e['post_url'] ?? ''); $__psafe = preg_match('#^https?://#i', $__pu) ? $__pu : ''; ?>
+                  <?php if ($__psafe !== ''): ?>
+                    <a href="<?php echo $esc($__psafe); ?>" rel="noopener" target="_blank"><?php echo $esc($e['handle']); ?></a>
                   <?php else: ?>
                     <?php echo $esc($e['handle']); ?>
                   <?php endif; ?>

@@ -32,6 +32,7 @@ $system = $_GET['system'] ?? 'legacy';
 
 // --- MODERATION ACTIONS ---
 if (isset($_GET['action']) && isset($_GET['id'])) {
+    csrf_verify(); // SECAUDIT 047 — moderation/ban/approve/delete via GET must carry the token
     $id = (int)$_GET['id'];
 
     // ── Ban actions (work regardless of system tab) ───────────────────────────
@@ -412,7 +413,7 @@ include 'core/sidebar.php';
                                 <?php endif; ?>
                             </div>
                             <div class="item-actions">
-                                <a href="?system=bans&action=unban&id=<?php echo $b['id']; ?>"
+                                <a href="?system=bans&action=unban&id=<?php echo $b['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>"
                                    class="action-authorize"
                                    onclick="return confirm('Remove this ban?');">UNBAN</a>
                             </div>
@@ -476,7 +477,8 @@ include 'core/sidebar.php';
                                           . '&view='   . urlencode($view_mode)
                                           . '&id='     . $c['id']
                                           . '&s='      . urlencode($search)
-                                          . '&p='      . $page;
+                                          . '&p='      . $page
+                                          . '&t='      . urlencode(csrf_token()); // SECAUDIT 047
                                     if ($system === 'community') {
                                         if ($view_mode === 'visible') {
                                             echo '<a href="' . $base . '&action=hide"    class="action-hide">HIDE</a>';

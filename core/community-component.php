@@ -47,6 +47,7 @@ if (empty($img['id'])) {
 }
 
 require_once __DIR__ . '/community-session.php';
+require_once __DIR__ . '/secret-store.php'; // SECAUDIT 047
 
 // --- GUARD: Bail silently if community migration hasn't been run yet ---
 if (!snap_community_ready()) return;
@@ -125,7 +126,7 @@ if ($show_likes || $show_reactions) {
     } else {
         // Anonymous like check via hashed IP
         try {
-            $_like_salt  = $settings['download_salt'] ?? 'snapsmack-default-salt-change-me';
+            $_like_salt  = snap_ensure_download_salt($pdo ?? null); // SECAUDIT 047
             $_guest_hash = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0') . $_like_salt);
             $ul_stmt = $pdo->prepare("SELECT id FROM snap_likes WHERE post_id = ? AND guest_hash = ? LIMIT 1");
             $ul_stmt->execute([$post_id, $_guest_hash]);
@@ -148,7 +149,7 @@ if ($show_reactions) {
         $user_reaction = $ur_stmt->fetchColumn() ?: null;
     } else {
         try {
-            $_rx_salt  = $settings['download_salt'] ?? 'snapsmack-default-salt-change-me';
+            $_rx_salt  = snap_ensure_download_salt($pdo ?? null); // SECAUDIT 047
             $_rx_hash  = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0') . $_rx_salt);
             $ur_stmt = $pdo->prepare("SELECT reaction_code FROM snap_reactions WHERE post_id = ? AND guest_hash = ? LIMIT 1");
             $ur_stmt->execute([$post_id, $_rx_hash]);

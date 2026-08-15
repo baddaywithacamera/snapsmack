@@ -24,6 +24,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/community-session.php';
+require_once __DIR__ . '/core/secret-store.php'; // SECAUDIT 047
 
 // --- METHOD ---
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -70,7 +71,7 @@ $guest_hash = null;
 if (!$user) {
     // Generate a deterministic hash from IP + salt. The salt prevents
     // rainbow-table reversal of the IP.
-    $like_salt  = $settings['download_salt'] ?? 'snapsmack-default-salt-change-me';
+    $like_salt  = snap_ensure_download_salt($pdo ?? null); // SECAUDIT 047
     $ip         = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
     $guest_hash = hash('sha256', $ip . $like_salt);
 }

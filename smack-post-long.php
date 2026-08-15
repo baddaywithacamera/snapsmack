@@ -146,6 +146,7 @@ if (!empty($_GET['ajax']) && $_GET['ajax'] === 'posts') {
 
 // --- DELETE ---
 if (isset($_GET['delete'])) {
+    csrf_verify(); // SECAUDIT 047 — GET deletion must carry the CSRF token
     $del_id = (int)$_GET['delete'];
     $pdo->prepare("DELETE FROM snap_post_cat_map WHERE post_id = ?")->execute([$del_id]);
     $pdo->prepare("DELETE FROM snap_post_album_map WHERE post_id = ?")->execute([$del_id]);
@@ -586,7 +587,7 @@ include 'core/sidebar.php';
                             <a href="smack-post-long.php" class="btn-reset btn-cancel-block">NEW TRANSMISSION</a>
                         </div>
                         <div class="lens-input-wrapper mt-10">
-                            <a href="?delete=<?php echo (int)$edit_post['id']; ?>"
+                            <a href="?delete=<?php echo (int)$edit_post['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>"
                                class="btn-reset btn-cancel-block"
                                style="color:var(--danger, #cc4444);border-color:var(--danger, #cc4444);"
                                onclick="return confirm('PURGE THIS TRANSMISSION? This cannot be undone.')">PURGE</a>

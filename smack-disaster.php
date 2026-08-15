@@ -52,6 +52,12 @@ if (isset($_POST['action']) && $_POST['action'] === 'export') {
 
 // --- RECOVERY KIT IMPORT ---
 if (isset($_POST['action']) && $_POST['action'] === 'import_recovery') {
+    // SECAUDIT 047: this page is csrf_exempt() only so the API-key (SUYB) export
+    // path works without a session token. A browser/session admin importing a
+    // kit MUST carry the CSRF token — otherwise any page the admin visits could
+    // cross-post a crafted kit. (The recovery engine now also blocks executable/
+    // traversal restore targets, so a forged import can no longer reach RCE.)
+    if (!defined('SNAP_API_AUTH')) csrf_verify();
     if (!empty($_FILES['recovery_file']['tmp_name'])) {
         require_once 'core/recovery-engine.php';
         try {

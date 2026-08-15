@@ -17,6 +17,11 @@
 require_once 'core/auth-smack.php';
 require_once 'core/auth-recovery.php';
 
+// SECAUDIT 047: creating/deleting accounts and assigning roles is
+// administrator-only. Defense-in-depth alongside the central gate in
+// auth-smack.php.
+smack_require_admin();
+
 $new_recovery_code      = null; // plaintext code to display once after generation
 $new_recovery_username  = null;
 
@@ -85,6 +90,7 @@ if (isset($_POST['gen_code_for_user'])) {
 // --- USER DELETION ---
 // Removes a user account with safeguard against deleting the logged-in user.
 if (isset($_GET['delete'])) {
+    csrf_verify(); // SECAUDIT 047 — GET deletion must carry the CSRF token
     $uid = (int)$_GET['delete'];
     if (isset($_SESSION['user_login'])) {
         $stmt = $pdo->prepare("SELECT username FROM snap_users WHERE id = ?");
@@ -216,7 +222,7 @@ include 'core/sidebar.php';
                     </form>
 
                     <?php if($u['username'] !== $_SESSION['user_login']): ?>
-                        <a href="?delete=<?php echo $u['id']; ?>"
+                        <a href="<?php echo htmlspecialchars(csrf_url('?delete=' . $u['id']), ENT_QUOTES); ?>"
                            class="action-delete"
                            onclick="return confirm('Confirm permanent deletion of this user?')">DELETE</a>
                     <?php else: ?>

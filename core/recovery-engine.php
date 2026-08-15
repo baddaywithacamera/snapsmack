@@ -514,8 +514,49 @@ class SnapSmackRecovery {
                 continue;
             }
 
+            // --- SECAUDIT 047: constrain the restore target ---
+            // A recovery kit's manifest is fully attacker-controllable, and the
+            // only file a legitimate kit bundles is database.sql (handled above).
+            // Without this guard a crafted kit could set restores_to to "pwn.php"
+            // (or "../../x") and drop executable code into the web root => RCE.
+            // Block traversal, absolute/drive paths, NUL, executable extensions,
+            // and dotfiles; then confine the resolved parent under baseDir.
+            $relTarget = str_replace('\\', '/', (string)$restoreTo);
+            $relSource = str_replace('\\', '/', (string)$manifestKey);
+            $baseName  = strtolower(basename($relTarget));
+            $blockedExt = ['php','php3','php4','php5','php7','php8','phtml','pht',
+                           'phar','phps','cgi','pl','asp','aspx','jsp','sh','htaccess'];
+            // Inspect EVERY dot-separated token, not just the final extension:
+            // Apache's AddHandler matches ".php" anywhere in the name, so a
+            // double extension like "shell.php.jpg" would otherwise execute.
+            $nameTokens = explode('.', $baseName);
+            if ($relTarget === '' || $relSource === ''
+                || strpos($relTarget, "\0") !== false || strpos($relSource, "\0") !== false
+                || strpos($relTarget, '..') !== false || strpos($relSource, '..') !== false
+                || $relTarget[0] === '/' || preg_match('#^[a-zA-Z]:#', $relTarget)
+                || strpos($relSource, '/') === 0
+                || array_intersect($nameTokens, $blockedExt)
+                || $baseName === '' || $baseName[0] === '.') {
+                $result['errors'][] = "Rejected unsafe restore target: {$restoreTo}";
+                $this->streamProgress("BLOCKED unsafe restore target: {$restoreTo}", 'warn');
+                continue;
+            }
+
             $sourcePath = $kitRoot . '/' . $manifestKey;
             $targetPath = $this->baseDir . '/' . $restoreTo;
+
+            // Defense-in-depth: the resolved target directory must stay under
+            // baseDir (catches symlink tricks that the string checks miss).
+            $baseReal = realpath($this->baseDir);
+            $parentReal = realpath(dirname($targetPath));
+            if ($baseReal !== false && $parentReal !== false) {
+                $needle = rtrim($baseReal, '/\\') . DIRECTORY_SEPARATOR;
+                if (strncmp($parentReal . DIRECTORY_SEPARATOR, $needle, strlen($needle)) !== 0) {
+                    $result['errors'][] = "Restore target escapes base dir: {$restoreTo}";
+                    $this->streamProgress("BLOCKED path escape: {$restoreTo}", 'warn');
+                    continue;
+                }
+            }
 
             if (!file_exists($sourcePath)) {
                 $result['missing']++;

@@ -320,8 +320,10 @@ function pc_board_html(PDO $pdo, array $settings): string {
         $thumb = $r['thumb'] !== ''
             ? '<img loading="lazy" src="' . $esc($r['thumb']) . '" alt="">'
             : '';
+        /* SECAUDIT 047: scheme-guard federation URL — non-http(s) can never be a live href */
+        $__u = (string)($r['url'] ?? ''); $__safe = preg_match('#^https?://#i', $__u) ? $__u : '';
         $out .= '<li class="pc-card">'
-              . '<a href="' . $esc($r['url']) . '" rel="canonical noopener" target="_blank">'
+              . '<a href="' . ($__safe !== '' ? $esc($__safe) : '#') . '" rel="canonical noopener" target="_blank">'
               . $thumb
               . '<span class="pc-by">' . $esc($r['handle']) . $badge . '</span>'
               . '</a></li>';

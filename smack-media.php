@@ -23,6 +23,44 @@ if (!is_dir($target_dir)) {
     mkdir($target_dir, 0755, true);
 }
 
+// SECAUDIT 047: defence-in-depth — deny script execution inside media_assets/.
+// media_assets/ is web-served and (unlike img_uploads/) was NOT covered by any
+// PHP-deny rule, so an uploaded .php would run. Drop a deny-all handler rule so
+// even if a bad file lands here it can never execute. Apache-only, harmless on
+// nginx (which is configured separately).
+$__media_htaccess = $target_dir . '.htaccess';
+if (!file_exists($__media_htaccess)) {
+    @file_put_contents(
+        $__media_htaccess,
+        "# SECAUDIT 047 — media assets are data, never executable code.\n"
+        . "php_flag engine off\n"
+        . "RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .phar .pht\n"
+        . "RemoveType .php .phtml .php3 .php4 .php5 .php7 .php8 .phar .pht\n"
+        . "<FilesMatch \"\\.(php|phtml|php3|php4|php5|php7|php8|phar|pht|cgi|pl)$\">\n"
+        . "  SetHandler none\n"
+        . "  Require all denied\n"
+        . "</FilesMatch>\n"
+    );
+}
+
+// SECAUDIT 047: never trust the client-supplied file extension. Derive the
+// stored extension from the real MIME type and accept only raster images.
+// Returns a safe extension, or null for anything that isn't an allowed image
+// (blocks .php/.svg/.html webshell and XSS uploads). Mirrors pixelfed-api.php.
+if (!function_exists('snap_media_safe_ext')) {
+    function snap_media_safe_ext(string $tmp_path): ?string {
+        if ($tmp_path === '' || !is_file($tmp_path)) return null;
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($tmp_path) ?: '';
+        $map = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/webp' => 'webp',
+            'image/gif'  => 'gif',
+        ];
+        return $map[$mime] ?? null;
+    }
+}
+
 // --- DEFENSIVE SCHEMA (belt-and-suspenders; canonical is source of truth) ---
 // Per-asset global border controls. Pure structural add — no migration file
 // needed (see CLAUDE.md new-column checklist). Applied everywhere [img:ID]
@@ -91,8 +129,14 @@ if (isset($_POST['swap_id']) && isset($_FILES['file'])) {
         unlink($old_path);
     }
 
-    // Store the replacement under a new filename.
-    $file_ext   = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+    // Store the replacement under a new filename. SECAUDIT 047: extension comes
+    // from the real MIME type, never the client filename.
+    $file_ext = snap_media_safe_ext($_FILES['file']['tmp_name'] ?? '');
+    if ($file_ext === null) {
+        header('HTTP/1.1 415 Unsupported Media Type');
+        echo json_encode(['status' => 'error', 'msg' => 'Only JPEG, PNG, WebP or GIF images are allowed.']);
+        exit;
+    }
     $file_name  = time() . '_' . uniqid() . '.' . $file_ext;
     $target_file = $target_dir . $file_name;
 
@@ -111,7 +155,13 @@ if (isset($_POST['swap_id']) && isset($_FILES['file'])) {
 // --- AJAX FILE UPLOAD HANDLER ---
 // Processes asynchronous file uploads and returns JSON response.
 if (isset($_FILES['file'])) {
-    $file_ext = pathinfo($_FILES["file"]["name"], PATHINFO_EXTENSION);
+    // SECAUDIT 047: extension from real MIME, never the client filename.
+    $file_ext = snap_media_safe_ext($_FILES["file"]["tmp_name"] ?? '');
+    if ($file_ext === null) {
+        header('HTTP/1.1 415 Unsupported Media Type');
+        echo json_encode(['status' => 'error', 'msg' => 'Only JPEG, PNG, WebP or GIF images are allowed.']);
+        exit;
+    }
     $file_name = time() . '_' . uniqid() . '.' . $file_ext;
     $target_file = $target_dir . $file_name;
 
@@ -130,6 +180,7 @@ if (isset($_FILES['file'])) {
 // --- ASSET DELETION ---
 // Removes asset file from disk and deletes its database record.
 if (isset($_GET['delete'])) {
+    csrf_verify(); // SECAUDIT 047 — GET deletion must carry the CSRF token
     $stmt = $pdo->prepare("SELECT asset_path FROM snap_assets WHERE id = ?");
     $stmt->execute([$_GET['delete']]);
     $path = $stmt->fetchColumn();
@@ -253,7 +304,7 @@ include 'core/sidebar.php';
                             <button type="button"
                                     class="action-edit"
                                     onclick="document.getElementById('swap-input-<?php echo $a['id']; ?>').click()">SWAP</button>
-                            <a href="?delete=<?php echo $a['id']; ?>" class="action-delete-link" onclick="return confirm('Purge asset #<?php echo $a['id']; ?>? Any [img:<?php echo $a['id']; ?>] shortcodes will break.')">PURGE</a>
+                            <a href="?delete=<?php echo $a['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-delete-link" onclick="return confirm('Purge asset #<?php echo $a['id']; ?>? Any [img:<?php echo $a['id']; ?>] shortcodes will break.')">PURGE</a>
                         </div>
                     </div>
                 </div>

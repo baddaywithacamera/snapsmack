@@ -102,6 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'unfol
 
 // Approve / terminate (GET, house style).
 if (isset($_GET['action'], $_GET['id'])) {
+    csrf_verify(); // SECAUDIT 047 — approve/terminate via GET must carry the token
     $id = (int)$_GET['id'];
     if ($_GET['action'] === 'approve') {
         $pdo->prepare("UPDATE snap_comments SET is_approved = 1 WHERE id = ? AND ap_source = 'fediverse'")
@@ -225,7 +226,9 @@ include 'core/sidebar.php';
                             <?php endif; ?>
                             <div class="item-text">
                                 <div class="signal-sender">
-                                    <a href="<?php echo htmlspecialchars($c['ap_actor_url'] ?? '#'); ?>" target="_blank" rel="noopener">
+                                    <?php /* SECAUDIT 047: scheme-guard federation actor URL */
+                                          $__au = (string)($c['ap_actor_url'] ?? ''); $__asafe = preg_match('#^https?://#i', $__au) ? $__au : '#'; ?>
+                                    <a href="<?php echo htmlspecialchars($__asafe); ?>" target="_blank" rel="noopener">
                                         <?php echo htmlspecialchars($fedi_handle($c['ap_actor_url'] ?? '', $c['comment_author'] ?? '')); ?>
                                     </a>
                                 </div>
@@ -235,8 +238,8 @@ include 'core/sidebar.php';
                                     | <?php echo htmlspecialchars($c['comment_date'] ?? ''); ?>
                                 </div>
                                 <div class="item-actions">
-                                    <a href="?action=approve&id=<?php echo (int)$c['id']; ?>" class="action-authorize">AUTHORIZE</a>
-                                    <a href="?action=terminate&id=<?php echo (int)$c['id']; ?>" class="action-delete"
+                                    <a href="?action=approve&id=<?php echo (int)$c['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-authorize">AUTHORIZE</a>
+                                    <a href="?action=terminate&id=<?php echo (int)$c['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-delete"
                                        onclick="return confirm('Terminate this transmission?');">TERMINATE</a>
                                 </div>
                             </div>
@@ -262,7 +265,9 @@ include 'core/sidebar.php';
                             <?php endif; ?>
                             <div class="item-text">
                                 <div class="signal-sender">
-                                    <a href="<?php echo htmlspecialchars($c['ap_actor_url'] ?? '#'); ?>" target="_blank" rel="noopener">
+                                    <?php /* SECAUDIT 047: scheme-guard federation actor URL */
+                                          $__au = (string)($c['ap_actor_url'] ?? ''); $__asafe = preg_match('#^https?://#i', $__au) ? $__au : '#'; ?>
+                                    <a href="<?php echo htmlspecialchars($__asafe); ?>" target="_blank" rel="noopener">
                                         <?php echo htmlspecialchars($fedi_handle($c['ap_actor_url'] ?? '', $c['comment_author'] ?? '')); ?>
                                     </a>
                                 </div>
@@ -291,7 +296,7 @@ include 'core/sidebar.php';
                                 </details>
 
                                 <div class="item-actions">
-                                    <a href="?action=terminate&id=<?php echo (int)$c['id']; ?>" class="action-delete"
+                                    <a href="?action=terminate&id=<?php echo (int)$c['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-delete"
                                        onclick="return confirm('Terminate this transmission? Any replies stay on the post.');">TERMINATE</a>
                                 </div>
                             </div>

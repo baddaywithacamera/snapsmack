@@ -47,6 +47,7 @@ $wants_json = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
 
 // RESTORE SINGLE FILE
 if ($action === 'restore' && isset($_GET['restore'])) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') csrf_verify(); // SECAUDIT 047 — GET restore must carry the token
     $path   = trim($_GET['restore']);
     $result = smackback_restore_file($path);
 
@@ -69,6 +70,7 @@ if ($action === 'restore' && isset($_GET['restore'])) {
 
 // RESTORE ALL
 if ($action === 'restore_all' || isset($_GET['restore_all'])) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') csrf_verify(); // SECAUDIT 047 — GET restore-all must carry the token
     $result = smackback_restore_all_breached();
 
     if ($wants_json) {
@@ -509,7 +511,7 @@ include 'core/sidebar.php';
             <span style="color:<?php echo $bcol; ?>;font-weight:700;"><?php echo $bst; ?></span>
             <div style="display:flex;gap:6px;justify-content:flex-end;">
                 <?php if (!$is_unexpected): ?>
-                <a href="smack-back.php?action=restore&restore=<?php echo urlencode($entry['path'] ?? ''); ?>"
+                <a href="smack-back.php?action=restore&restore=<?php echo urlencode($entry['path'] ?? ''); ?>&t=<?php echo urlencode(csrf_token()); ?>"
                    class="btn-smack btn-warning" style="margin-top:0;"
                    onclick="return confirm('Restore <?php echo $bp; ?> from update server?');">RESTORE</a>
                 <?php endif; ?>
@@ -530,7 +532,7 @@ include 'core/sidebar.php';
         <?php endforeach; ?>
 
         <div class="form-action-row" style="margin-top:16px;">
-            <a href="smack-back.php?restore_all=1"
+            <a href="smack-back.php?restore_all=1&t=<?php echo urlencode(csrf_token()); ?>"
                class="btn-smack btn-danger"
                onclick="return confirm('Restore all tampered files from the update server?');">
                 RESTORE ALL TAMPERED FILES

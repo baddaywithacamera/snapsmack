@@ -46,22 +46,106 @@ if (!function_exists('secret_decrypt')) {
         return false;
     }
 
-    /** Site encryption salt (download_salt), resolved once per request. */
+    /** The public placeholder salt that shipped in source before SECAUDIT 047. */
+    if (!defined('SNAPSMACK_DEFAULT_SALT')) {
+        define('SNAPSMACK_DEFAULT_SALT', 'snapsmack-default-salt-change-me');
+    }
+
+    /**
+     * SECAUDIT 047 — resolve the site's real download_salt, generating and
+     * persisting a per-install random value the first time (self-heal).
+     *
+     * Before 046 the salt was never generated: install.php didn't create it and
+     * every consumer fell back to the hardcoded, GitHub-public string
+     * 'snapsmack-default-salt-change-me'. That defeated FTP-password at-rest
+     * encryption (key = sha256 of a public constant) AND let anyone forge the
+     * HMAC download tokens that gate original-file downloads. This heals it:
+     * if the stored salt is absent or the public default, mint 32 random bytes,
+     * re-encrypt the one at-rest secret keyed off it (the FTP password) so it
+     * survives rotation, then persist. Cached per request; best-effort on any
+     * DB error (never fatal on a public endpoint).
+     */
+    function snap_ensure_download_salt(?PDO $pdo = null): string {
+        static $ensured = null;
+        if ($ensured !== null) return $ensured;
+        if (!($pdo instanceof PDO)) { $pdo = $GLOBALS['pdo'] ?? null; }
+        if (!($pdo instanceof PDO)) return SNAPSMACK_DEFAULT_SALT;
+
+        try {
+            $cur = (string)($pdo->query(
+                "SELECT setting_val FROM snap_settings WHERE setting_key='download_salt' LIMIT 1"
+            )->fetchColumn() ?: '');
+        } catch (\Throwable $e) {
+            return SNAPSMACK_DEFAULT_SALT; // schema not ready — don't crash the request
+        }
+
+        // Already a real, per-install salt → use it.
+        if ($cur !== '' && $cur !== SNAPSMACK_DEFAULT_SALT && strlen($cur) >= 16) {
+            return $ensured = $cur;
+        }
+
+        // SECAUDIT 047: serialize the one-time heal. Without this, two concurrent
+        // first-boot requests could each mint a different salt and re-encrypt the
+        // FTP password under their own, orphaning the loser's ciphertext. Take a
+        // short advisory lock, then RE-READ under it — if a peer already healed,
+        // use their value instead of minting a second salt.
+        $gotLock = false;
+        try {
+            $gotLock = (bool)$pdo->query("SELECT GET_LOCK('snap_download_salt_heal', 5)")->fetchColumn();
+            if ($gotLock) {
+                $cur = (string)($pdo->query(
+                    "SELECT setting_val FROM snap_settings WHERE setting_key='download_salt' LIMIT 1"
+                )->fetchColumn() ?: '');
+                if ($cur !== '' && $cur !== SNAPSMACK_DEFAULT_SALT && strlen($cur) >= 16) {
+                    $pdo->query("SELECT RELEASE_LOCK('snap_download_salt_heal')");
+                    return $ensured = $cur;
+                }
+            }
+        } catch (\Throwable $e) { $gotLock = false; /* advisory lock unsupported — proceed best-effort */ }
+
+        // Need to heal. Everything encrypted so far used the effective old salt.
+        $old = ($cur !== '') ? $cur : SNAPSMACK_DEFAULT_SALT;
+        try {
+            $new = bin2hex(random_bytes(32));
+        } catch (\Throwable $e) {
+            return $ensured = $old; // no CSPRNG — keep behaviour consistent, don't half-rotate
+        }
+
+        // Migrate the one at-rest secret keyed off the salt: the FTP password.
+        try {
+            $ftp = (string)($pdo->query(
+                "SELECT setting_val FROM snap_settings WHERE setting_key='ftp_pass' LIMIT 1"
+            )->fetchColumn() ?: '');
+            if ($ftp !== '' && class_exists('SnapSmackFTP')) {
+                $plain = SnapSmackFTP::decryptPassword($ftp, $old);
+                if ($plain !== '') {
+                    $re = SnapSmackFTP::encryptPassword($plain, $new);
+                    $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = 'ftp_pass'")
+                        ->execute([$re]);
+                }
+            }
+        } catch (\Throwable $e) { /* FTP creds can be re-entered; never block the heal */ }
+
+        $persisted = true;
+        try {
+            $pdo->prepare(
+                "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('download_salt', ?)
+                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+            )->execute([$new]);
+        } catch (\Throwable $e) {
+            $persisted = false; // couldn't persist — stay on old so tokens/creds remain consistent
+        }
+        if ($gotLock) {
+            try { $pdo->query("SELECT RELEASE_LOCK('snap_download_salt_heal')"); } catch (\Throwable $e) {}
+        }
+        return $ensured = ($persisted ? $new : $old);
+    }
+
+    /** Site encryption salt (download_salt), resolved + self-healed once per request. */
     function snap_secret_salt(): string {
         static $salt = null;
         if ($salt !== null) return $salt;
-        global $pdo;
-        $salt = '';
-        try {
-            if ($pdo instanceof PDO) {
-                $salt = (string)($pdo->query(
-                    "SELECT setting_val FROM snap_settings WHERE setting_key='download_salt' LIMIT 1"
-                )->fetchColumn() ?: '');
-            }
-        } catch (\Throwable $e) {
-            $salt = '';
-        }
-        return $salt;
+        return $salt = snap_ensure_download_salt($GLOBALS['pdo'] ?? null);
     }
 
     function snap_secret_is_encrypted(string $value): bool {

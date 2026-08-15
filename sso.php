@@ -43,7 +43,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
         'lifetime' => 86400,
         'path'     => '/',
-        'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+        // SECAUDIT 047: honour the reverse-proxy TLS header too. On the common
+        // cPanel/shared-host setup PHP sees plain HTTP behind a TLS-terminating
+        // proxy, so the old check left the admin session cookie without Secure.
+        'secure'   => (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
+                   || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https'),
         'httponly' => true,
         'samesite' => 'Lax',
     ]);

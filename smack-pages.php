@@ -128,6 +128,7 @@ if (isset($_POST['save_page'])) {
 // --- DELETION HANDLER ---
 // Removes a page record from the database.
 if (isset($_GET['delete'])) {
+    csrf_verify(); // SECAUDIT 047 — GET deletion must carry the CSRF token
     $stmt = $pdo->prepare("DELETE FROM snap_pages WHERE id = ?");
     $stmt->execute([$_GET['delete']]);
     header("Location: smack-pages.php");
@@ -287,7 +288,7 @@ include 'core/sidebar.php';
                 <div class="item-actions">
                     <a href="<?php echo BASE_URL . 'page.php?slug=' . urlencode($p['slug']); ?>" class="action-view" target="_blank" rel="noopener">VIEW</a>
                     <a href="?edit=<?php echo $p['id']; ?>" class="action-edit">EDIT</a>
-                    <a href="?delete=<?php echo $p['id']; ?>" class="action-delete" onclick="return confirm('Purge this transmission?')">DELETE</a>
+                    <a href="?delete=<?php echo $p['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-delete" onclick="return confirm('Purge this transmission?')">DELETE</a>
                 </div>
             </div>
         <?php endforeach; ?>

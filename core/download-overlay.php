@@ -26,6 +26,8 @@
  */
 
 
+require_once __DIR__ . '/secret-store.php'; // SECAUDIT 047
+
 $download_button = '';
 $_snap_download_url = '';    // consumed by social-dock.php
 
@@ -67,7 +69,7 @@ if ($global_downloads) {
         // --- INTERNAL DOWNLOAD ---
         // Generate a secure token so the download endpoint can verify requests
         // without exposing file paths directly
-        $salt = $settings['download_salt'] ?? 'snapsmack-default-salt-change-me';
+        $salt = snap_ensure_download_salt($pdo ?? null); // SECAUDIT 047
         $token = hash_hmac('sha256', (string)$img['id'], $salt);
         $download_url = BASE_URL . 'download.php?id=' . $img['id'] . '&t=' . $token;
         $target = '';
