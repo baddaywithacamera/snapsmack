@@ -468,7 +468,7 @@ require 'core/sidebar.php';
 .schema-apply-note { font-size: 0.78rem; opacity: 0.6; }
 </style>
 
-<div class="main-content">
+<div class="main">
 <div class="schema-wrap">
 
 <h2 class="page-heading">Database Schema</h2>
@@ -734,7 +734,7 @@ $drift_total  = count($drift_tables) + $drift_col_n;
 <?php endif; // end parse_error check ?>
 
 </div><!-- /.schema-wrap -->
-</div><!-- /.main-content -->
+</div><!-- /.main -->
 
 <?php require_once 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
