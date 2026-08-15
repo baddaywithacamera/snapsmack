@@ -12,6 +12,9 @@
 
 ## 0.7.526 — 2026-08-14
 
+### Removed
+- **Groups (v0.1 foundation) pulled from the interface**: the Groups admin page (`smack-groups.php`), its sidebar link, and its Settings → Interaction toggle are removed. Groups was a local-only foundation — creating groups on your own site — with no working fediverse side (joining from Pixelfed/Mastodon was only a written plan, not built), so it should not have been surfaced as a usable feature. The (empty) `snap_group*` database tables are left untouched and are harmless.
+
 ### Fixed
 - **Database Schema page layout broken on all sites**: `smack-schema.php` wrapped its content in `<div class="main-content">`, a class that has no CSS rule, so the page never got the `margin-left` that clears the fixed admin sidebar — the left ~240px of content (the table-name column) was hidden behind the sidebar. Switched to the standard `<div class="main">` wrapper used by every other admin page.
 

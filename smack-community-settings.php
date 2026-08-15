@@ -49,7 +49,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_community'])) {
         // Global toggles
         'community_enabled'           => ($_POST['community_enabled']           ?? '0') === '1' ? '1' : '0',
         'community_comments_enabled'  => ($_POST['community_comments_enabled']  ?? '0') === '1' ? '1' : '0',
-        'community_groups_enabled'    => ($_POST['community_groups_enabled']    ?? '0') === '1' ? '1' : '0',
         'community_likes_enabled'     => ($_POST['community_likes_enabled']     ?? '0') === '1' ? '1' : '0',
         'community_reactions_enabled' => ($_POST['community_reactions_enabled'] ?? '0') === '1' ? '1' : '0',
         'community_allow_dislike'     => ($_POST['community_allow_dislike']     ?? '0') === '1' ? '1' : '0',
@@ -179,14 +178,6 @@ include 'core/sidebar.php';
                 <input type="hidden"   name="community_comments_enabled" value="0">
                 <input type="checkbox" name="community_comments_enabled" value="1"
                     <?php echo ($settings['community_comments_enabled'] ?? '1') === '1' ? 'checked' : ''; ?>>
-            </label>
-
-            <label class="toggle-row">
-                <span class="toggle-label">GROUPS</span>
-                <span class="toggle-desc">Self-hosted Flickr-style groups: members, a shared photo pool, and discussion. Manage them under <a href="smack-groups.php">Groups</a>.</span>
-                <input type="hidden"   name="community_groups_enabled" value="0">
-                <input type="checkbox" name="community_groups_enabled" value="1"
-                    <?php echo ($settings['community_groups_enabled'] ?? '0') === '1' ? 'checked' : ''; ?>>
             </label>
 
             <div class="field-row identity-row">
