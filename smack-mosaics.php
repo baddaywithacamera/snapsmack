@@ -50,6 +50,14 @@ try {
     if (!$emph_col) {
         $pdo->exec("ALTER TABLE snap_mosaics ADD COLUMN emphasis VARCHAR(12) NOT NULL DEFAULT 'natural' AFTER gap");
     }
+    // LAYOUT. The same four the SCROLL wall offers, driven by the same four
+    // shipped engines — asymmetric via ss-engine-mosaic.js, columns and square
+    // via ss-engine-columns.js, rows via ss-engine-rows.js. 'asymmetric' keeps
+    // the pre-0.7.532 behaviour, so nothing already published moves.
+    $layout_col = $pdo->query("SHOW COLUMNS FROM snap_mosaics LIKE 'layout'")->fetch(PDO::FETCH_ASSOC);
+    if (!$layout_col) {
+        $pdo->exec("ALTER TABLE snap_mosaics ADD COLUMN layout VARCHAR(12) NOT NULL DEFAULT 'asymmetric' AFTER emphasis");
+    }
 } catch (PDOException $e) {
     // Canonical schema sync remains authoritative if this defensive add fails.
 }
@@ -91,6 +99,10 @@ if ($is_ajax && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action']
         if (!in_array($emphasis, ['natural', 'balanced', 'landscape', 'portrait'], true)) {
             $emphasis = 'natural';
         }
+        $layout    = (string)($_POST['layout'] ?? 'asymmetric');
+        if (!in_array($layout, ['asymmetric', 'columns', 'rows', 'square'], true)) {
+            $layout = 'asymmetric';
+        }
 
         if (empty($asset_ids)) {
             echo json_encode(['ok' => false, 'error' => 'Select at least one image.']);
@@ -101,11 +113,11 @@ if ($is_ajax && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action']
         $json_focus = json_encode(is_array($focus) ? $focus : new stdClass());
 
         if ($id > 0) {
-            $pdo->prepare("UPDATE snap_mosaics SET title = ?, asset_ids = ?, focus_positions = ?, gap = ?, emphasis = ? WHERE id = ?")
-                ->execute([$title, $json_ids, $json_focus, $gap, $emphasis, $id]);
+            $pdo->prepare("UPDATE snap_mosaics SET title = ?, asset_ids = ?, focus_positions = ?, gap = ?, emphasis = ?, layout = ? WHERE id = ?")
+                ->execute([$title, $json_ids, $json_focus, $gap, $emphasis, $layout, $id]);
         } else {
-            $pdo->prepare("INSERT INTO snap_mosaics (title, asset_ids, focus_positions, gap, emphasis) VALUES (?, ?, ?, ?, ?)")
-                ->execute([$title, $json_ids, $json_focus, $gap, $emphasis]);
+            $pdo->prepare("INSERT INTO snap_mosaics (title, asset_ids, focus_positions, gap, emphasis, layout) VALUES (?, ?, ?, ?, ?, ?)")
+                ->execute([$title, $json_ids, $json_focus, $gap, $emphasis, $layout]);
             $id = (int)$pdo->lastInsertId();
         }
 
