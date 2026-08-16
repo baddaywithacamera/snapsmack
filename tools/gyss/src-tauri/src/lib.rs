@@ -71,8 +71,8 @@ fn shared_root() -> PathBuf {
     PathBuf::from(root)
 }
 
-/// SECURITY (SECAUDIT 039): confine every file command to the shared SnapSmack
-/// root.
+/// SECURITY (SECAUDIT 039/044): confine every file command to GYSS's two data
+/// roots: shared_library and config_files/gyss.
 ///
 /// These commands are registered on `invoke_handler`, and app-defined commands
 /// are NOT gated by the capability system — so anything running in the webview
@@ -83,24 +83,46 @@ fn shared_root() -> PathBuf {
 /// from a user-supplied site URL, so that is a reachable path, not a theoretical
 /// one.
 ///
-/// The root widened from app_data_dir() to the shared SnapSmack root when GYSS
-/// joined the shared foundation, but the guard is unchanged: reject any `..`
-/// component, then require the path to sit inside the root. `Path::starts_with`
-/// compares whole components, so a sibling directory sharing a name prefix cannot
-/// slip through.
+/// GYSS briefly allowed the whole shared root when it joined the shared
+/// foundation. That included sibling tool-install directories and meant a
+/// compromised webview could overwrite an executable later launched by THE HUB.
+/// Keep the shared root available to JS for path construction, but authorize only
+/// the data subtrees GYSS actually uses. `Path::starts_with` compares whole
+/// components, so a sibling directory sharing a name prefix cannot slip through.
 /// Residual risk: a symlink planted INSIDE the root could still point out. That
 /// needs local filesystem access to arrange, which is already past the boundary
 /// this guard defends.
-fn resolve_in_root(path: &str) -> Result<PathBuf, String> {
-    let base = shared_root();
+fn resolve_in_data_roots(base: &Path, path: &str) -> Result<PathBuf, String> {
     let p = PathBuf::from(path);
     if p.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
         return Err("Refused: path traversal ('..') is not allowed.".into());
     }
-    if !p.starts_with(&base) {
-        return Err("Refused: path is outside the SnapSmack root.".into());
+    let shared_library = base.join("shared_library");
+    let gyss_config = base.join("config_files").join("gyss");
+    if !p.starts_with(&shared_library) && !p.starts_with(&gyss_config) {
+        return Err("Refused: path is outside the GYSS data roots.".into());
     }
     Ok(p)
+}
+
+fn resolve_in_root(path: &str) -> Result<PathBuf, String> {
+    resolve_in_data_roots(&shared_root(), path)
+}
+
+#[cfg(test)]
+mod data_jail_tests {
+    use super::*;
+
+    #[test]
+    fn permits_only_shared_library_and_gyss_config() {
+        let root = PathBuf::from(r"C:\snapsmack");
+        assert!(resolve_in_data_roots(&root, r"C:\snapsmack\shared_library\profiles\site.json").is_ok());
+        assert!(resolve_in_data_roots(&root, r"C:\snapsmack\config_files\gyss\sessions\site.json").is_ok());
+        assert!(resolve_in_data_roots(&root, r"C:\snapsmack\sybu\sybu.exe").is_err());
+        assert!(resolve_in_data_roots(&root, r"C:\snapsmack\coldsnap\coldsnap.exe").is_err());
+        assert!(resolve_in_data_roots(&root, r"C:\snapsmack\shared_library-evil\payload.exe").is_err());
+        assert!(resolve_in_data_roots(&root, r"C:\snapsmack\shared_library\..\sybu\sybu.exe").is_err());
+    }
 }
 
 /// Return the resolved shared root as a string so JS can build paths under it

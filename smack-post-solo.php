@@ -237,6 +237,13 @@ $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 // and stores the image record with metadata in the database.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
 
+    // Some reverse proxies/shared hosts strip X-Requested-With. The composer
+    // also sends an explicit marker so AJAX uploads always receive the compact
+    // response contract instead of a rendered admin page (or a followed 302).
+    $is_ajax_request = ($_POST['_snapsmack_ajax'] ?? '') === '1'
+        || (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+            && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+
     $title = trim($_POST['title'] ?? 'Untitled Transmission');
     $desc = trim($_POST['desc'] ?? '');
     // ALT text (accessibility). Sanitized on store; null when blank so render-time
@@ -254,19 +261,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
     $download_url   = trim($_POST['download_url'] ?? '');
     $source_file    = trim($_POST['source_file'] ?? '');
 
-    // Validate: if require_download_link is on, any published post must have a URL.
-    // The previous check gated on $allow_download, which meant batch-poster posts
-    // (allow_download=0, download_url='') could slip through even with the setting on.
+    // A required download link applies only when this specific post offers a
+    // download. Posts with downloads disabled do not need a download target.
     if (($settings['download_link_required'] ?? '0') === '1'
         && $status === 'published'
+        && $allow_download === 1
         && empty($download_url)) {
-        $is_xhr = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
-                  strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
-        if ($is_xhr) {
-            echo "A download URL is required for published posts on this site.";
+        if ($is_ajax_request) {
+            http_response_code(422);
+            header('Content-Type: text/plain; charset=UTF-8');
+            echo "A download URL is required when downloads are enabled for a published post.";
             exit;
         }
-        $post_error = "A download URL is required for published posts on this site.";
+        $post_error = "A download URL is required when downloads are enabled for a published post.";
     }
     $selected_cats        = $_POST['cat_ids']        ?? [];
     $selected_albums      = $_POST['album_ids']      ?? [];
@@ -644,7 +651,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             sv_kick_delivery();
         }
 
-        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        if ($is_ajax_request) {
+            header('Content-Type: text/plain; charset=UTF-8');
             echo "success";
             exit;
         }
@@ -853,7 +861,7 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>DOWNLOAD URL (EXTERNAL)<?php if (($settings['download_link_required'] ?? '0') === '1'): ?> <span style="color:var(--danger, #cc4444);">*</span><?php endif; ?></label>
+                        <label>DOWNLOAD URL (EXTERNAL)<?php if (($settings['download_link_required'] ?? '0') === '1'): ?> <span class="lens-hint">â€” required only when downloads are enabled</span><?php endif; ?></label>
                         <input type="text" name="download_url" id="download-url-input" placeholder="Google Drive, Dropbox, etc. Leave blank for local file."
                                <?php if (($settings['download_link_required'] ?? '0') === '1'): ?>data-required="1"<?php endif; ?>>
                     </div>
