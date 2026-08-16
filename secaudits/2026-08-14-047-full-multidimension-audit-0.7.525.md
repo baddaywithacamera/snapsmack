@@ -82,4 +82,41 @@ Two adversarial verifiers re-checked the fixes against the patched tree. Authz +
 
 Re-verified: all four re-fixes pass `php -l`, EOF markers intact.
 
+## Plain-English detail — what each finding actually meant
+
+This was a **code review** (reading the source and confirming each hole was reachable), not a live attack test — that came later in SECAUDIT 048. Here is each finding in plain terms: what could have gone wrong, and what the fix does.
+
+### Critical (site takeover / code execution)
+1. **Editor promotes itself to admin** — the "edit my account" page let an editor set their own role. Any editor could make themselves a full admin. *Fix:* the role field is now admin-only; editors can't change roles.
+2. **Editor creates/deletes admins** — the user-management page wasn't locked to admins, so an editor could open it and mint or delete admin accounts. *Fix:* the page is admin-only, and account writes check role.
+3. **Recovery kit = code execution** — restoring a backup/recovery archive didn't check where files landed, so a crafted archive could drop a PHP file into the site and run attacker code (including disguised names like `shell.php.jpg`). *Fix:* restore refuses paths outside the site, absolute paths, and any executable/disguised extension; browser imports need a CSRF token.
+4. **Fediverse impersonation** — when another server sent a signed message, the code didn't check that the signing key belonged to the same server as the claimed author. A remote server could impersonate any account and overwrite its posts/comments. *Fix:* the key's origin is now bound to the author's origin, on create, update, and delete.
+
+### High (serious, but needs a condition or is narrower than takeover)
+5. **Admin pages were role-blind** — the root cause of #1/#2: there was no central "is this person an admin?" gate; each page had to remember on its own, and most didn't. *Fix:* one central admin-only gate for every config/account/system page.
+6. **Hub login had no lockout** — the Smack Central hub login let someone guess passwords forever with no rate limit. *Fix:* a self-contained lockout after repeated failures.
+7. **Download links used a public default secret** — download links are signed with a per-site secret, but that secret was never generated, so every install shared the same hardcoded default — meaning anyone could forge a valid download link. *Fix:* each site now generates its own random secret (and self-heals if missing).
+8. **Trap-links could act as you (CSRF via GET)** — delete, ban, approve, and moderation actions were plain links, so a booby-trapped link (or an image tag in an email) could perform them silently while you were logged in. *Fix:* every such action now requires a one-time token in the link.
+9. **Media library accepted a webshell** — the media uploader took any file extension, so you could upload a `.php` and run it. *Fix:* uploads are restricted to real image types by content, and the upload folder refuses to run PHP.
+10. **Remote user could edit others' comments** — a federated update/delete wasn't tied to the original author. *Fix:* edits/deletes must come from the same actor that made the comment.
+11. **Script injection on the Photo Challenge board** — a `javascript:` link in submitted content could run code for visitors. *Fix:* only http(s) links are accepted, at both save and display.
+
+### Medium
+12. **Trap-links for backup restore / FTP push (CSRF via GET)** — same class as #8, on backup-restore and FTP actions. *Fix:* token required.
+13. **Skin path traversal** — the active-skin setting could point outside the skins folder. *Fix:* only installed skins with sanitized names are accepted.
+14. **Script injection in the admin fediverse panel** — a `javascript:` link could run in the admin view. *Fix:* neutralized by #4 plus link-scheme guards.
+
+### Low (defense-in-depth / narrow)
+15. **Reset tokens stored in plain text** — a database peek could reuse a live reset token. *Fix:* tokens stored hashed.
+16. **SSO cookie missing "Secure" behind a proxy** — the cookie could travel over plain HTTP. *Fix:* honors the forwarded-HTTPS header.
+17. **Username guessing via login timing** — the login answered faster for unknown usernames. *Fix:* a dummy password check evens out the timing.
+18. **Updater fail-open** — *deferred on purpose.* In a rare state the updater could skip a signature check. Left untouched because the updater is the only way fixes reach sites, and a mistake there could lock every site out of all future updates. Documented, to be revisited deliberately.
+19. **Open redirect on remote-follow** — the follow link could bounce to any site. *Fix:* redirect restricted to the same instance over HTTPS.
+20. **RSS fetcher could be pointed inward (SSRF)** — feed fetching had no guard against internal addresses and TLS was off. *Fix:* refuses private/reserved IPs, limits redirects, verifies TLS.
+21. **Logout via GET (logout CSRF)** — a background request could log you out. *Fix:* cross-site background logout requests are dropped.
+22. **Reflected page URL unescaped** — the canonical/OpenGraph URL echoed the address unescaped. *Fix:* escaped. (The related JSON-LD sink was missed here and is fixed in 0.7.528 / SECAUDIT 048.)
+
+## Follow-through in SECAUDIT 048 (live test, 0.7.528)
+The live penetration test that followed confirmed the upload, CSRF, and download-link fixes above **hold against real attacks**, and found two things this code review missed: the leftover **installer** was an unauthenticated recovery/patch console, and the **JSON-LD** block still had the XSS that #22 only half-closed. Both fixed in 0.7.528. See `2026-08-15-048-live-penetration-test-0.7.527.md`.
+
 <!-- ===== SNAPSMACK EOF ===== -->
