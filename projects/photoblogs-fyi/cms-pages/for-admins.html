@@ -1,0 +1,166 @@
+<!--
+  PHOTOBLOGS.FYI — "For server administrators" page body
+  (CMS page: title "For server administrators", slug "for-admins").
+  Styling lives in cms-pages/custom.css (paste into Appearance -> Custom CSS).
+  Do NOT nest a div inside a div — the page parser breaks on it.
+  Placeholders still to fill are marked <span class="pbf-todo">…</span>.
+  SNAPSMACK_EOF_HEADER — last non-empty line must be the HTML EOF marker.
+-->
+
+<p class="pbf-kicker">photoblogs.fyi</p>
+
+<p class="pbf-lede">If one of our actors has turned up in your inbox and you'd like to know what it is before you decide about it &mdash; this page is the whole answer. It's written for you, not for our users.</p>
+
+<h2>The short version</h2>
+
+<ul class="pbf-facts">
+  <li><b>Who runs it</b> Sean McCormick, one person. <a href="mailto:sean@photoblogs.fyi">sean@photoblogs.fyi</a></li>
+  <li><b>Software</b> SnapSmack, open source &mdash; <a href="https://github.com/baddaywithacamera/snapsmack">github.com/baddaywithacamera/snapsmack</a></li>
+  <li><b>Actors here</b> <code>@relay@photoblogs.fyi</code> &middot; <code>@curator@photoblogs.fyi</code></li>
+  <li><b>Who can join</b> SnapSmack photoblogs only, by explicit opt-in</li>
+  <li><b>What we send</b> Mostly <code>Announce</code>. No unsolicited mentions, no DMs</li>
+  <li><b>Images</b> Never stored. Media always loads from the origin server</li>
+  <li><b>Automated follows</b> None. We never follow first and never mass-follow</li>
+  <li><b>Report something</b> <a href="mailto:abuse@photoblogs.fyi">abuse@photoblogs.fyi</a> &mdash; pulled first, discussed after</li>
+  <li><b>Make it stop</b> Unfollow, or block the domain. Both are honoured immediately</li>
+</ul>
+
+<h2>What this service is</h2>
+
+<p>photoblogs.fyi is a small piece of shared infrastructure for photoblogs running <strong>SnapSmack</strong> &mdash; self-hosted, single-author photography sites. Each of those blogs is its own tiny fediverse server with exactly one account on it, which makes them lonely: no local timeline, no neighbours, no way to find one another. This service is the missing middle.</p>
+
+<p>It is deliberately <strong>additive</strong>. If photoblogs.fyi disappeared tomorrow, every member blog would carry on publishing and federating exactly as before. Nothing routes through us that has to.</p>
+
+<h2>The two actors, and what each does</h2>
+
+<h3><code>@relay@photoblogs.fyi</code> &mdash; inward</h3>
+
+<p>A conventional fan-out relay for member blogs. A blog publishes to <em>its own</em> outbox first &mdash; that always happens and is the canonical act &mdash; and then notifies the relay on a best-effort basis that never blocks or delays the author's own publishing. The relay passes it to other members who subscribed.</p>
+
+<p>Membership is opt-in, requires the blog owner to re-authenticate with password and a time-based code, and is currently <strong>manually approved</strong>. You will not see this actor unless one of your users follows it directly.</p>
+
+<h3><code>@curator@photoblogs.fyi</code> &mdash; outward</h3>
+
+<p>This is the one you're more likely to meet. It faces the wider fediverse and shares photography from member blogs. It is named <em>curator</em> rather than anything louder because that is the design: it selects, it does not spray.</p>
+
+<p>It works almost entirely by <code>Announce</code> of the photographer's original post, so the photograph stays on their server, the credit stays on their name, and any follow it earns goes to <em>them</em> and not to us. That is the explicit goal. We are a signpost, not a gallery.</p>
+
+<h2>How much traffic to expect</h2>
+
+<ul>
+  <li><strong>Volume:</strong> a handful of posts a day at most from <code>@curator</code>. It is curated by a human, not a firehose.</li>
+  <li><strong>Pacing:</strong> outbound deliveries are paced with a deliberate gap between sends rather than dispatched in a burst.</li>
+  <li><strong>Retries:</strong> failures back off exponentially and give up after eight attempts. We will not hammer a server that is down.</li>
+  <li><strong>Fetches:</strong> we dereference actors and objects we've been sent, and we cache what we fetch. We also read a small number of public hashtag timelines on a schedule &mdash; see <a href="#fetching">what we fetch</a> below, which is written out in full rather than buried.</li>
+</ul>
+
+<h2 id="fetching">What we fetch &mdash; yes, we read some hashtag timelines</h2>
+
+<p>We do a small amount of scheduled fetching, and we would rather tell you about it here than have you find it in your access log. It is how a photography directory finds photographers who have never heard of us.</p>
+
+<ul>
+  <li><strong>What:</strong> the public timelines for a named, fixed set of photography hashtags &mdash; <span class="pbf-todo">[[LIST THE TAGS: #photography, #photoblog, &hellip;]]</span> &mdash; and nothing else. We do not read your local or federated timeline, your user list, or anything not published under one of those tags.</li>
+  <li><strong>Where:</strong> a small number of instances, not the whole network.</li>
+  <li><strong>How often:</strong> <span class="pbf-todo">[[EVERY N HOURS]]</span>, spread out and rate-limited. Never a sweep, never continuous, never parallel.</li>
+  <li><strong>What we keep:</strong> the post id, its text, its tags, and a referenced preview URL. <strong>Never the image.</strong> Nothing is re-hosted.</li>
+  <li><strong>What we never do:</strong> post into a hashtag, follow anyone we found this way, or message them. Finding someone is not permission to contact them.</li>
+</ul>
+
+<h3>How to stop us reading your instance</h3>
+
+<p>Three ways, all of which work and none of which require our agreement:</p>
+
+<ul>
+  <li><strong><code>robots.txt</code></strong> &mdash; we honour it for our user-agent, including <code>Crawl-delay</code>. Disallow us and we stop, no email needed.</li>
+  <li><strong>Per-account opt-out</strong> &mdash; we respect Mastodon's <code>indexable</code> and <code>discoverable</code> flags. Anyone who has set themselves undiscoverable is skipped, and we treat those flags as the answer rather than as a suggestion.</li>
+  <li><strong>Ask</strong> &mdash; mail <a href="mailto:abuse@photoblogs.fyi">abuse@photoblogs.fyi</a> and we'll add your domain to a permanent do-not-read list.</li>
+</ul>
+
+<p>Our requests identify themselves, so you can rate-limit or block us at your end without guessing what we are:</p>
+
+<p><code>User-Agent: SnapSmack/<span class="pbf-todo">[[VERSION]]</span> (+https://photoblogs.fyi/for-admins)</code></p>
+
+<p class="pbf-note">Consent is the whole basis of the directory: nobody is <em>listed</em> because we read their post. Listing is opt-in and always begins with the photographer, on their own site. Fetching only tells us who exists &mdash; it never puts anyone on a page.</p>
+
+<h2>What we honour</h2>
+
+<ul>
+  <li><strong>Delete and Tombstone</strong>, from anywhere, immediately &mdash; not on a nightly sweep. If an author removes a post, our listing of it goes at once.</li>
+  <li><strong>Public addressing only.</strong> We never boost or list anything that isn't addressed to the public. Followers-only and direct posts are ignored even when we can see them.</li>
+  <li><strong>Content warnings and the <code>sensitive</code> flag</strong> are carried through intact and never stripped.</li>
+  <li><strong>Undo</strong> &mdash; of a Follow, a Like, an Announce. Acted on, not just acknowledged.</li>
+  <li><strong>HTTP Signatures</strong> on every inbound request. Anything that fails verification changes nothing here and is refused.</li>
+  <li><strong>Your blocks.</strong> If your server or your user blocks us, we stop. We do not route around it.</li>
+</ul>
+
+<h2>Two things we do differently &mdash; disclosed on purpose</h2>
+
+<h3>1 &middot; The welcome archive</h3>
+
+<p>When someone new follows a SnapSmack blog, that blog may send them a limited selection of its <em>existing</em> posts rather than only future ones. If you see a new follow followed by a run of older material, that is what you are looking at, and it is deliberate.</p>
+
+<p>The reason is that photography behaves differently from conversation. Someone who follows a photographer is asking to <em>see their work</em>, and a follow that produces an empty timeline until the next time they happen to post is a poor introduction to a body of work built over years. So the blog offers a sample of the archive.</p>
+
+<p>No images are re-sent &mdash; the media loads from the origin exactly as it always would. No old conversations are replayed, no threads are resurrected, and no notifications are generated for anyone but the new follower. It happens once per follower, never on a re-follow, and it is capped and paced.</p>
+
+<p class="pbf-note">We are aware this is unusual, which is precisely why it's written down here rather than left for you to discover in your logs.</p>
+
+<h3>2 &middot; Signing key rotation</h3>
+
+<p><span class="pbf-todo">[[NOT YET AUTOMATED &mdash; do not publish this section until key rotation actually ships. Wording below is ready for when it does.]]</span></p>
+
+<p>Our signing key is rotated on a schedule rather than left in place forever. When it changes, the outgoing key signs an actor <code>Update</code> carrying the new public key, so your server can verify the handover against the key it already trusts before anything is signed with the new one. Servers that miss the update re-fetch on the first signature failure and heal on their own.</p>
+
+<p>A key change is therefore an expected, announced event here &mdash; not a sign of compromise. Every key we have used is listed below with its fingerprint and dates, so you can check what you're seeing against a public record.</p>
+
+<ul class="pbf-facts">
+  <li><b>Current key</b> <code>SHA-256 <span class="pbf-todo">[[FINGERPRINT]]</span></code> &mdash; in use since <span class="pbf-todo">[[DATE]]</span></li>
+</ul>
+
+<h2>Images</h2>
+
+<p>We never store photographs. Not the originals, not copies, not re-hosted thumbnails. Every image on this site is referenced from the server that already has it, and every click goes to the photographer's own post on their own instance &mdash; their page, their bandwidth, their follow button.</p>
+
+<p>Where we cache a small derived thumbnail for a directory listing, it is reduced, temporary, and cleared on rotation; an origin delete clears it at once rather than at the next sweep.</p>
+
+<h2>We will not outrank you</h2>
+
+<p>Every page here that surfaces someone's post carries <code>rel="canonical"</code> pointing at the origin. That is not a nicety &mdash; without it a directory can quietly rank above the photographers it is supposed to be promoting, which would invert the entire point of the thing. If you ever find a page here that omits it, that is a bug and we would like to know.</p>
+
+<h2>Moderation</h2>
+
+<p>Moderation is based on <strong>behaviour, not beliefs</strong>. Spam, harassment, abuse and deliberate disruption are moderated. Ordinary disagreement is not.</p>
+
+<p>Membership is small, opt-in, and gated: a photographer must deliberately enable their listing and re-authenticate to do it, because joining a community reflects on everyone else in it. New members' first entries are reviewed by a human before they go anywhere.</p>
+
+<p>We subscribe to and respect widely-used community blocklists, and we maintain our own domain-level list. A report from another administrator gets the listing pulled first and discussed afterwards &mdash; we would rather be wrong in your favour and sort it out over email.</p>
+
+<p>There is one administrator, and it is a person, not a rota. Replies may take a day; they will not take a fortnight.</p>
+
+<h2>What we will never do</h2>
+
+<ul>
+  <li>Follow you, or your users, without being followed first.</li>
+  <li>Mass-follow, follow-back farm, or plant accounts on other instances to inflate our own reach.</li>
+  <li>Post into hashtags to farm attention.</li>
+  <li>Send unsolicited direct messages, or any automated message more than once.</li>
+  <li>Re-host anyone's photographs.</li>
+  <li>List anyone who has not asked to be listed. Reading a public tag is not consent to appear anywhere &mdash; listing starts with the photographer, on their own site.</li>
+  <li>Ignore <code>robots.txt</code>, or the <code>indexable</code> and <code>discoverable</code> flags, or a request to stop reading your instance.</li>
+</ul>
+
+<div class="pbf-stop">
+  <h2>How to make it stop</h2>
+  <p><strong>Unfollow</strong> and the fan-out ends immediately. <strong>Block the domain</strong> and we stop entirely &mdash; we do not route around blocks, retry through alternates, or come back under another name.</p>
+  <p>If you'd rather not block outright but something needs fixing, please write to <a href="mailto:abuse@photoblogs.fyi">abuse@photoblogs.fyi</a> first. A blocklist entry is permanent in practice and an email usually isn't. We would much rather hear from you.</p>
+</div>
+
+<h2>Why bother writing this at all</h2>
+
+<p>Because you have no reasonable way to find out what an unfamiliar actor does except by watching what it does to your server, and that is a bad way to meet anyone. The fediverse works on the assumption that operators will behave decently toward each other, and part of behaving decently is being legible.</p>
+
+<p>Unusual implementation decisions get documented here because transparency is a courtesy owed to other administrators. If something we do looks wrong to you, we would genuinely like to be told.</p>
+
+<p class="pbf-updated">photoblogs.fyi &middot; Last updated <span class="pbf-todo">[[DATE]]</span><br>Contact <a href="mailto:sean@photoblogs.fyi">sean@photoblogs.fyi</a></p>
+
+<!-- ===== SNAPSMACK EOF ===== -->
