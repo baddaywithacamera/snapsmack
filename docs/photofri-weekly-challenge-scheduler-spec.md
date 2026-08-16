@@ -1,3 +1,10 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical .md EOF marker:
+  an HTML comment containing five equals, space, 'SNAPSMACK EOF', space, five equals.
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+
 # PhotoFri Weekly Challenge Scheduler - Specification
 
 **Status:** Proposed  
@@ -220,3 +227,5 @@ Use a dedicated challenge-management scope or an explicitly expanded SYBU scope.
 6. Decorate and validate PhotoFri items in SHOTS FIRED.
 7. Enforce the FEDISTRUCTURE single-image rule in the prompt composer, schedule-link API, and participant-entry qualification.
 8. Run controlled federation tests with dedicated accounts before the public submission window.
+
+<!-- ===== SNAPSMACK EOF ===== -->
