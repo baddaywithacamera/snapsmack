@@ -7,6 +7,11 @@
  * Nothing in this file depends on a particular skin.
  *
  * If a skin is chosen later, this can move into that skin's style.css unchanged.
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST be the canonical CSS EOF marker.
+ * Missing or different = truncated/corrupted. Restore before saving.
  */
 
 /* ---------------------------------------------------------------- palette */
