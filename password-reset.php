@@ -19,6 +19,7 @@
 require_once 'core/db.php';
 require_once 'core/auth-recovery.php';
 require_once 'core/client-ip.php';
+require_once 'core/csrf.php'; // SECAUDIT 048
 
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $site_name = $settings['site_name'] ?? 'SnapSmack';
@@ -58,6 +59,7 @@ if ($step === 'reset' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ─── STEP 1: Request reset link ──────────────────────────────────────────────
 if ($step === 'request' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_verify(); // SECAUDIT 048 — reset request must carry the session CSRF token
     // Rate limit: max 5 admin reset requests per IP per hour.
     $rl_ip     = snap_trusted_client_ip($pdo);
     $rl_action = 'admin_password_reset';
@@ -167,6 +169,7 @@ button:hover { background: #444; }
 
     <?php else: ?>
         <form method="POST">
+            <?php csrf_field(); // SECAUDIT 048 ?>
             <label>Email Address</label>
             <input type="email" name="email" required autofocus
                    value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">

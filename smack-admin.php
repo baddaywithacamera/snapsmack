@@ -445,6 +445,7 @@ include 'core/sidebar.php';
             <a href="smack-comments.php"><button class="btn-smack master-update-btn mt-25">MANAGE SIGNALS</button></a>
         </div>
 
+        <?php if (smack_is_admin()): // SECAUDIT 048: infra details are admin-only (don't leak PHP/server/host to editors) ?>
         <div class="box">
             <h3>ENVIRONMENT</h3>
             <label>SERVER SOFTWARE</label>
@@ -454,6 +455,7 @@ include 'core/sidebar.php';
             <label class="mt-30">MEMORY LIMIT</label>
             <div class="read-only-display"><?php echo $mem_limit; ?></div>
         </div>
+        <?php endif; ?>
 
         <div class="box">
             <h3>NETWORK STATUS</h3>
@@ -481,6 +483,7 @@ include 'core/sidebar.php';
         </div>
     </div>
 
+    <?php if (smack_is_admin()): // SECAUDIT 048: system vitals + cron (disk, load, CLI path) are admin-only ?>
     <div class="post-layout-grid mt-30">
         <div class="box">
             <h3>SYSTEM VITALS</h3>
@@ -520,6 +523,7 @@ include 'core/sidebar.php';
             <?php endif; ?>
         </div>
     </div>
+    <?php endif; // SECAUDIT 048: end admin-only system vitals/cron ?>
 </div>
 
 <?php include 'core/admin-footer.php'; ?>

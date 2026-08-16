@@ -51,6 +51,25 @@ endpoints, and the **Traffic Stats** page. Each can write to your site settings 
 archive with no admin check, so a logged-in editor could reach them. They're now
 admin-only. Your backup tool is unaffected — it signs in as an admin.
 
+### Security fix — editor dashboard no longer leaks server info
+
+The dashboard's ENVIRONMENT, SYSTEM VITALS and CRON panels (PHP version, server
+software, disk usage, cron path) are now **admin-only**. An editor no longer sees
+your server's internals.
+
+### Security hardening — password-reset form now has a CSRF token
+
+The "forgot password" request form carries a one-time token, so it can't be
+auto-submitted from another site.
+
+### Fix — GRAMOFSMACK posting screen: clean, square, no overlap
+
+The carousel post screen had picked up a **mobile/PWA** style by mistake: a
+floating rounded bar that sat on top of the caption box and buttons, plus rounded
+fields you didn't ask for. On desktop it's back to clean, square, non-overlapping
+fields with the PUBLISH button sitting properly below the form. (The mobile/PWA
+composer keeps its own layout.) Verified live before shipping.
+
 ### Security hardening — stronger browser headers
 
 - **HSTS**: once a browser has loaded your site over HTTPS, it will refuse to

@@ -581,6 +581,36 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
 
     .cp-item-label { margin-top:6px; font-size:11px; opacity:.7;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    /* ---------------------------------------------------------------------
+       0.7.528 DESKTOP COMPOSER FIX — ss-gram-pwa-composer.css (a mobile/PWA
+       stylesheet) styles `.gram-composer .form-action-row` as a STICKY, rounded,
+       translucent floating bar. On the DESKTOP admin page that bar floated over
+       the caption box + AI buttons and squeezed the status copy to zero width,
+       and the fields picked up rounded corners nobody asked for. Restore the
+       clean, square, inline desktop layout. Scoped to desktop widths (>=768px)
+       so the mobile/PWA composer keeps its sticky bar. !important is required
+       because the PWA rules (and the #gp-submit id) otherwise win the cascade.
+       Verified live on smackmeup before shipping.
+       --------------------------------------------------------------------- */
+    @media (min-width: 768px) {
+        .gram-composer .form-action-row {
+            position: static !important; display: block !important;
+            width: 100% !important; margin: 30px 0 0 !important; padding: 0 !important;
+            background: none !important; border: none !important; border-radius: 0 !important;
+            box-shadow: none !important; backdrop-filter: none !important;
+        }
+        .gram-composer .form-action-row .master-update-btn,
+        .gram-composer #gp-submit { width: 100% !important; border-radius: 0 !important; }
+        .gram-composer .gram-publish-copy {
+            display: block !important; width: auto !important;
+            margin-bottom: 10px !important; opacity: .7 !important;
+        }
+        .gram-composer textarea,
+        .gram-composer input[type="text"],
+        .gram-composer input[type="datetime-local"],
+        .gram-composer select { border-radius: 0 !important; }
+    }
     </style>
 
     <form id="gp-form" class="gram-composer-form" method="POST" enctype="multipart/form-data"
