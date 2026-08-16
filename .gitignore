@@ -205,7 +205,15 @@ _to_delete/
 # PDF page-renders). Untracked so they stop bloating history.
 .codex-temp/
 .codex-tmp/
+.codex-docs/
+.codex-worktrees/
+tempwork/
 tmp/
+
+# Working documents kept beside the repo but not part of it — same reasoning as
+# the named .docx specs above. Binary, they churn, and they are not source.
+SNAPSMACK-AI-Class-Case-Study.docx
+SNAPSMACK-By-The-Numbers-August-2026.docx
 
 # Offline layout harnesses. Generated from real templates + real CSS to check
 # a skin before it ships (the standing rule: never ship layout on reasoning

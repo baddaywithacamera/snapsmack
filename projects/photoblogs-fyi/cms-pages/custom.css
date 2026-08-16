@@ -1,0 +1,250 @@
+/**
+ * PHOTOBLOGS.FYI — Custom CSS for the two CMS pages.
+ * Paste the whole file into Appearance -> Custom CSS on the photoblogs.fyi install.
+ *
+ * The look is lifted out of projects/photoblogs-fyi/index.html and
+ * for-admins.html so the words live in the database and the design lives here.
+ * Nothing in this file depends on a particular skin.
+ *
+ * If a skin is chosen later, this can move into that skin's style.css unchanged.
+ */
+
+/* ---------------------------------------------------------------- palette */
+
+:root {
+  --pbf-red:   #D40000;
+  --pbf-link:  #F50A0A;
+  --pbf-black: #111111;
+  --pbf-panel: #141414;
+  --pbf-line:  #282828;
+  --pbf-ink:   #f4f4f4;
+  --pbf-muted: #9a9a9a;
+}
+
+/* ------------------------------------------------- page shell (all pages) */
+/* NOTE: this styles EVERY static page on the install. That is fine while the
+   only static pages are these two. Add a page-specific hook before adding a
+   third page in a different look. */
+
+body.static-transmission {
+  background: var(--pbf-black);
+  color: var(--pbf-ink);
+  font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The CMS prints the page title above the body. Both pages carry their own
+   heading in the content, so the automatic one is hidden. Delete this rule if
+   you would rather use the built-in title. */
+body.static-transmission .static-page-title { display: none; }
+
+body.static-transmission .static-content {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 3rem 1.25rem 5rem;
+}
+
+body.static-transmission .description a {
+  color: var(--pbf-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--pbf-red);
+}
+body.static-transmission .description a:hover,
+body.static-transmission .description a:focus { color: var(--pbf-red); }
+
+body.static-transmission .description p { margin: 0 0 1rem; }
+
+body.static-transmission .description code {
+  font: 0.85em/1.4 ui-monospace, Menlo, Consolas, monospace;
+  background: #1c1c1c;
+  padding: .12em .38em;
+  border-radius: 2px;
+}
+
+body.static-transmission .description h2 {
+  font: 700 .78rem/1.3 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--pbf-red);
+  margin: 3rem 0 .9rem;
+}
+
+body.static-transmission .description h3 {
+  font: 700 1rem/1.3 'Helvetica Neue', Arial, sans-serif;
+  margin: 1.8rem 0 .4rem;
+}
+
+body.static-transmission .description ul { margin: 0 0 1rem; padding-left: 1.15rem; }
+body.static-transmission .description li { margin: 0 0 .5rem; }
+
+/* ------------------------------------------------------- shared type bits */
+
+.pbf-kicker {
+  font: 700 .72rem/1 'Courier New', monospace;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--pbf-red);
+  margin: 0 0 1.4rem;
+}
+
+.pbf-lede {
+  font-size: clamp(1.05rem, 2.6vw, 1.3rem);
+  line-height: 1.6;
+  color: var(--pbf-ink);
+}
+.pbf-lede strong { color: var(--pbf-link); font-weight: bold; }
+
+.pbf-sub {
+  font-size: .98rem;
+  line-height: 1.7;
+  color: var(--pbf-muted);
+}
+.pbf-sub strong {
+  color: var(--pbf-ink);
+  font-weight: normal;
+  border-bottom: 1px solid var(--pbf-red);
+}
+
+.pbf-rule {
+  width: 64px;
+  height: 4px;
+  background: var(--pbf-red);
+  border: 0;
+  margin: 1.4rem 0;
+}
+
+.pbf-note {
+  border-left: 3px solid var(--pbf-red);
+  padding: .1rem 0 .1rem 1.1rem;
+  color: var(--pbf-muted);
+  margin: 1.5rem 0;
+}
+
+/* Unfilled placeholders. Deliberately loud so they cannot ship unnoticed. */
+.pbf-todo {
+  background: var(--pbf-red);
+  color: #fff;
+  padding: 0 .3em;
+  font-weight: bold;
+}
+
+/* --------------------------------------------------------- the home page */
+
+.pbf-wordmark {
+  font: 900 clamp(2.3rem, 9vw, 5.2rem)/0.92 'Arial Black', Arial, sans-serif;
+  letter-spacing: -.02em;
+  text-transform: uppercase;
+  color: var(--pbf-ink);
+  margin: 0;
+}
+.pbf-wordmark .pbf-dot { color: var(--pbf-red); }
+
+.pbf-mean {
+  font: .8rem/1.5 'Courier New', monospace;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--pbf-muted);
+  margin: .75rem 0 0;
+}
+.pbf-mean .pbf-abbr { color: var(--pbf-red); }
+.pbf-mean strong { color: var(--pbf-ink); font-weight: bold; }
+
+.pbf-tagline {
+  font: clamp(1rem, 3.4vw, 1.5rem)/1.2 'Arial Black', Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  color: var(--pbf-ink);
+  margin: .9rem 0 0;
+}
+
+/* The three numbered steps. A list, not nested divs — the page parser breaks
+   on a div inside a div. */
+.pbf-how {
+  list-style: none;
+  margin: 2.4rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 620px) { .pbf-how { grid-template-columns: 1fr; } }
+
+.pbf-how li {
+  border-left: 3px solid var(--pbf-red);
+  padding: 4px 0 4px 16px;
+  margin: 0;
+}
+.pbf-how .pbf-n {
+  display: block;
+  font: .72rem/1 'Courier New', monospace;
+  color: var(--pbf-red);
+  letter-spacing: .2em;
+}
+.pbf-how h3 {
+  font: 900 .92rem/1.2 'Arial Black', Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  margin: 5px 0 7px;
+  color: var(--pbf-ink);
+}
+.pbf-how p { font-size: .9rem; line-height: 1.55; color: var(--pbf-muted); margin: 0; }
+
+.pbf-badge-line { margin: 2.75rem 0 0; }
+.pbf-badge {
+  display: inline-block;
+  font: 900 .74rem/1 'Arial Black', Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: var(--pbf-ink);
+  background: var(--pbf-red);
+  padding: 11px 20px;
+}
+
+/* ---------------------------------------------------- the for-admins page */
+
+/* The fact rows. Was a <dl>; the page parser does not protect <dl>, so it is a
+   list with a bold label. Do not change it back. */
+.pbf-facts {
+  list-style: none;
+  border: 1px solid var(--pbf-line);
+  background: var(--pbf-panel);
+  padding: 1.4rem 1.5rem;
+  margin: 2rem 0 0;
+  border-radius: 2px;
+}
+.pbf-facts li {
+  display: grid;
+  grid-template-columns: 11rem 1fr;
+  gap: .55rem 1.2rem;
+  margin: 0 0 .55rem;
+}
+.pbf-facts li:last-child { margin-bottom: 0; }
+.pbf-facts b {
+  font: 700 .72rem/1.5 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--pbf-muted);
+}
+@media (max-width: 34rem) {
+  .pbf-facts li { grid-template-columns: 1fr; gap: .15rem; }
+  .pbf-facts b { margin-top: .7rem; }
+}
+
+.pbf-stop {
+  border: 1px solid var(--pbf-red);
+  padding: 1.3rem 1.5rem;
+  border-radius: 2px;
+  margin: 1.5rem 0;
+}
+.pbf-stop h2 { margin-top: 0; }
+
+.pbf-updated {
+  margin-top: 4rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--pbf-line);
+  color: var(--pbf-muted);
+  font-size: .85rem;
+}
+
+/* ===== SNAPSMACK EOF ===== */
