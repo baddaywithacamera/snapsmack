@@ -61,7 +61,7 @@ pc_test(str_contains($photo, 'sv_boost_remote(')
     'qualified original entries are not automatically boosted');
 pc_test(str_contains($admin, 'Thursday 10:00 UTC through Saturday 12:00 UTC'),
     'admin describes a non-canonical challenge window');
-foreach (['THE GOOD SHIT', 'FEDIVERSE', 'CHALLENGE ME', 'THE BORING SHIT'] as $heading) {
+foreach (['THE GOOD SHIT', 'FEDIVERSE', 'CHALLENGE ME', 'BORING ASS STUFF'] as $heading) {
     pc_test(str_contains($sidebar, $heading), "photo challenge sidebar is missing {$heading}");
 }
 foreach (['Categories', 'Albums', 'Collections', 'Blogroll', 'User Manual',
@@ -69,9 +69,15 @@ foreach (['Categories', 'Albums', 'Collections', 'Blogroll', 'User Manual',
     pc_test(!str_contains($sidebar, $excluded), "photo challenge sidebar exposes {$excluded}");
 }
 pc_test(str_contains($sidebar, 'Static Pages'), 'photo challenge sidebar is missing static pages');
-pc_test(str_contains($admin_header, "\$_admin_is_photochallenge")
-    && str_contains($admin_header, "? 'midnight-lime'"),
-    'photo challenge admin does not force the Midnight Lime theme');
+// The Midnight Lime lock is deliberately gone: a challenge node keeps per-user
+// theme selection like every other install. Assert the preference is read
+// unconditionally, so the lock cannot be reintroduced unnoticed.
+pc_test(str_contains($admin_header, "\$active_theme = \$_SESSION['user_preferred_skin']"),
+    'photo challenge admin forces a fixed theme instead of the user preference');
+foreach (['smack-stats.php', 'smack-multisite.php'] as $required) {
+    pc_test(str_contains($sidebar, $required),
+        "photo challenge sidebar is missing {$required}");
+}
 pc_test(str_contains($installer, "'photo-challenge', 'daily-photo', 'smackcast'"),
     'FEDISTRUCTURE installer profiles are missing');
 pc_test(str_contains($fedup, 'latest-fedistructure.json')

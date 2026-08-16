@@ -41,6 +41,15 @@ try {
     if (!$focus_col) {
         $pdo->exec("ALTER TABLE snap_mosaics ADD COLUMN focus_positions LONGTEXT NULL AFTER asset_ids");
     }
+    // ARRANGEMENT (emphasis). ss-engine-mosaic.js has always been able to build
+    // asymmetric blocks — it reads data-emphasis and defaults to 'natural', the
+    // flattest of the four. SCROLL's wall passes it; the longform [mosaic:ID]
+    // path never did, so every essay mosaic silently got the do-nothing default.
+    // Stored per mosaic so one essay can lean portrait and the next landscape.
+    $emph_col = $pdo->query("SHOW COLUMNS FROM snap_mosaics LIKE 'emphasis'")->fetch(PDO::FETCH_ASSOC);
+    if (!$emph_col) {
+        $pdo->exec("ALTER TABLE snap_mosaics ADD COLUMN emphasis VARCHAR(12) NOT NULL DEFAULT 'natural' AFTER gap");
+    }
 } catch (PDOException $e) {
     // Canonical schema sync remains authoritative if this defensive add fails.
 }
@@ -76,6 +85,12 @@ if ($is_ajax && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action']
         $asset_ids = json_decode($_POST['asset_ids'] ?? '[]', true);
         $focus      = json_decode($_POST['focus_positions'] ?? '{}', true);
         $gap       = max(0, min(20, (int)($_POST['gap'] ?? 4)));
+        // Must match ss-engine-mosaic.js's accepted set; anything else collapses
+        // to 'natural' there anyway, so reject it here rather than store junk.
+        $emphasis  = (string)($_POST['emphasis'] ?? 'natural');
+        if (!in_array($emphasis, ['natural', 'balanced', 'landscape', 'portrait'], true)) {
+            $emphasis = 'natural';
+        }
 
         if (empty($asset_ids)) {
             echo json_encode(['ok' => false, 'error' => 'Select at least one image.']);
@@ -86,11 +101,11 @@ if ($is_ajax && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action']
         $json_focus = json_encode(is_array($focus) ? $focus : new stdClass());
 
         if ($id > 0) {
-            $pdo->prepare("UPDATE snap_mosaics SET title = ?, asset_ids = ?, focus_positions = ?, gap = ? WHERE id = ?")
-                ->execute([$title, $json_ids, $json_focus, $gap, $id]);
+            $pdo->prepare("UPDATE snap_mosaics SET title = ?, asset_ids = ?, focus_positions = ?, gap = ?, emphasis = ? WHERE id = ?")
+                ->execute([$title, $json_ids, $json_focus, $gap, $emphasis, $id]);
         } else {
-            $pdo->prepare("INSERT INTO snap_mosaics (title, asset_ids, focus_positions, gap) VALUES (?, ?, ?, ?)")
-                ->execute([$title, $json_ids, $json_focus, $gap]);
+            $pdo->prepare("INSERT INTO snap_mosaics (title, asset_ids, focus_positions, gap, emphasis) VALUES (?, ?, ?, ?, ?)")
+                ->execute([$title, $json_ids, $json_focus, $gap, $emphasis]);
             $id = (int)$pdo->lastInsertId();
         }
 
@@ -134,6 +149,8 @@ include 'core/sidebar.php';
     $mosaic_ids   = $editing ? (json_decode($editing['asset_ids'], true) ?: []) : [];
     $mosaic_focus = $editing ? (json_decode($editing['focus_positions'] ?? '{}', true) ?: []) : [];
     $mosaic_gap   = (int)($editing['gap']    ?? 4);
+    $mosaic_emph  = (string)($editing['emphasis'] ?? 'natural');
+    if (!in_array($mosaic_emph, ['natural', 'balanced', 'landscape', 'portrait'], true)) $mosaic_emph = 'natural';
     ?>
 
     <div class="header-row header-row--ruled">
@@ -153,6 +170,19 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper" style="flex:0 0 auto;margin-top:0;">
                         <label>GAP (PX)</label>
                         <input type="number" id="mosaic-gap" value="<?php echo $mosaic_gap; ?>" min="0" max="20" style="width:80px;">
+                    </div>
+                    <div class="lens-input-wrapper" style="flex:0 0 auto;margin-top:0;">
+                        <label>ARRANGEMENT</label>
+                        <select id="mosaic-emphasis" style="width:150px;" title="How the blocks are shaped. NATURAL keeps every photo near its own size — the flattest result. BALANCED mixes tall and wide evenly. LANDSCAPE and PORTRAIT each pick a hero of that shape and build the block around it, which is what gives you the asymmetric look.">
+                            <?php foreach ([
+                                'natural'   => 'NATURAL (flat)',
+                                'balanced'  => 'BALANCED',
+                                'landscape' => 'LANDSCAPE HERO',
+                                'portrait'  => 'PORTRAIT HERO',
+                            ] as $_e_val => $_e_label): ?>
+                            <option value="<?php echo $_e_val; ?>" <?php echo $mosaic_emph === $_e_val ? 'selected' : ''; ?>><?php echo $_e_label; ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div style="flex:1;">
                         <label style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);display:block;margin-bottom:6px;">SHORTCODE</label>
@@ -195,15 +225,23 @@ include 'core/sidebar.php';
                     <div id="asset-picker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;max-height:360px;overflow-y:auto;"></div>
                 </div>
 
-                <!-- LIVE PREVIEW -->
-                <div class="lens-input-wrapper mt-20">
-                    <label>LIVE PREVIEW</label>
-                    <div class="gp-pan-hint" style="font:10px/1.3 monospace;opacity:.55;margin:5px 0 0;">drag a cropped photo to reposition it before saving</div>
-                    <div class="mosaic-preview-wrap" id="mosaic-preview-wrap">
-                        <div id="mosaic-preview" class="snap-mosaic">
-                            <p class="dim" style="text-align:center;padding:20px 0;margin:0;">Add images to see preview.</p>
-                        </div>
-                    </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LIVE PREVIEW — full width, deliberately OUTSIDE .post-layout-grid.
+         A mosaic spans the post's content container, and the packer groups the
+         photos to fit whatever width it is handed. Sitting in a half-width grid
+         column it solved for ~50% of the page and produced a DIFFERENT layout to
+         the published one — not a smaller preview, a wrong one. Do not move it
+         back inside the two-column grid. -->
+    <div class="box mt-20">
+        <div class="lens-input-wrapper">
+            <label>LIVE PREVIEW</label>
+            <div class="gp-pan-hint" style="font:10px/1.3 monospace;opacity:.55;margin:5px 0 0;">drag a cropped photo to reposition it before saving</div>
+            <div class="mosaic-preview-wrap" id="mosaic-preview-wrap">
+                <div id="mosaic-preview" class="snap-mosaic">
+                    <p class="dim" style="text-align:center;padding:20px 0;margin:0;">Add images to see preview.</p>
                 </div>
             </div>
         </div>
@@ -225,6 +263,7 @@ include 'core/sidebar.php';
         document.addEventListener('DOMContentLoaded', function () {
             loadAssets();
             document.getElementById('mosaic-gap').addEventListener('input', updatePreview);
+            document.getElementById('mosaic-emphasis').addEventListener('change', updatePreview);
         });
 
         function loadAssets() {
@@ -387,8 +426,12 @@ include 'core/sidebar.php';
         }
 
         function renderWithData(images, gap, container) {
+            var emphSel = document.getElementById('mosaic-emphasis');
             container.setAttribute('data-mosaic', JSON.stringify(images));
             container.setAttribute('data-gap',    gap);
+            // The preview must pass the SAME arrangement the published block will
+            // carry, or it previews a layout the essay will never render.
+            container.setAttribute('data-emphasis', emphSel ? emphSel.value : 'natural');
             if (window.SnapMosaic) {
                 window.SnapMosaic.renderMosaic(container);
                 bindCropPanning(container);
@@ -457,7 +500,8 @@ include 'core/sidebar.php';
                 title:     title,
                 asset_ids: JSON.stringify(selectedIds),
                 focus_positions: JSON.stringify(focusPositions),
-                gap:       gap
+                gap:       gap,
+                emphasis:  (document.getElementById('mosaic-emphasis') || {}).value || 'natural'
             }, function (resp) {
                 if (resp.ok) {
                     mosaicId = resp.id;
