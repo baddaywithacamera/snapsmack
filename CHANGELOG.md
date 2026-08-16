@@ -10,6 +10,29 @@
 
 # SnapSmack Changelog
 
+## 0.7.530 — 2026-08-15
+
+### Security fix — HSTS/CSP headers now actually reach upgraded sites
+
+SECAUDIT 048 follow-up. The HSTS and Content-Security-Policy headers added in
+0.7.528 were placed in `core/constants.php`, which is a **protected updater path**
+— so the code shipped in the source but never reached upgraded installs. Live
+528D checks confirmed neither header was being sent.
+
+What changed, in plain terms:
+
+- The security headers now live in a new shipping file, `core/http-security-headers.php`,
+  pulled in through `core/skin-manifest.php` (which every page loads and which the
+  updater **does** deliver). So the headers reach existing sites on the next update.
+- `core/constants.php` is **no longer protected** (it holds no per-install data;
+  the packager already stamps and ships it). This was a stale rule from 0.7.159
+  that had been silently blocking every constants.php change. Per-install database
+  credentials live in `core/db.php`, which stays protected.
+
+After deploying 0.7.530 and updating, the live response headers should include
+HSTS and CSP. (The serious 0.7.528 fixes — locked installer, JSON-LD XSS,
+editor→admin boundary — were already verified live.)
+
 ## 0.7.529 — 2026-08-15
 
 ### Security audit reports (SECAUDIT 047 + 048)

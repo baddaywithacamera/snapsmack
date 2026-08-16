@@ -599,9 +599,12 @@ function updater_load_protected_paths(): array {
         // Sensible defaults if the file is missing.
         // Note: skins/ is intentionally NOT protected — stock skins must be
         // updatable. Non-stock skins are safe because they're never in the zip.
+        // NOTE: core/constants.php is intentionally NOT protected (SECAUDIT 048
+        // follow-up, 2026-08-15). It holds no per-install data; protecting it
+        // blocked every constants.php code change from reaching upgraded installs.
+        // Per-install DB creds live in core/db.php, which stays protected.
         return [
             'core/db.php',
-            'core/constants.php',
             'protected_paths.json',
             'img_uploads/',
             'media_assets/',

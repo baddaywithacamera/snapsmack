@@ -61,24 +61,14 @@ if (PHP_SAPI !== 'cli' && !defined('SNAPSMACK_IS_UPDATER')) {
 }
 
 // --- SECURITY HEADERS ---
-// Sent on every request before any output. Skipped on CLI (e.g. migrations).
-if (PHP_SAPI !== 'cli' && !headers_sent()) {
-    header('X-Content-Type-Options: nosniff');
-    header('X-Frame-Options: SAMEORIGIN');
-    header('Referrer-Policy: strict-origin-when-cross-origin');
-    // SECAUDIT 2026-08-15: keep browsers on HTTPS once they've seen us over TLS.
-    // Harmless over plain HTTP — browsers ignore HSTS on non-secure responses.
-    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
-    // Conservative CSP: blocks plugin/object embeds, <base> tag hijacking, and
-    // framing by other sites — none of which SnapSmack uses — WITHOUT restricting
-    // img/script/form sources, so federated remote images, inline config scripts,
-    // and remote-follow forms keep working. A stricter script-src/img-src policy
-    // needs live testing against federated content before it can be enforced.
-    header("Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
-}
+// Emitted by core/http-security-headers.php, which is required from
+// core/skin-manifest.php (loaded below on every request). That indirection is
+// deliberate: skin-manifest.php is a SHIPPING file, so header changes reach
+// UPGRADED installs even where this constants.php is frozen. SECAUDIT 048
+// follow-up (2026-08-15) — do not re-inline header() calls here.
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.529');
-define('SNAPSMACK_VERSION_SHORT', '0.7.529');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.530');
+define('SNAPSMACK_VERSION_SHORT', '0.7.530');
 define('SNAPSMACK_VERSION_CODENAME', 'PHOTO FRIYAY');
 
 // --- THUMBNAIL DIMENSIONS (single source of truth) ---

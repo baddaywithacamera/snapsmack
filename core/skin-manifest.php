@@ -13,6 +13,13 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
+// SECAUDIT 048 follow-up (2026-08-15): emit HTTP security headers from here.
+// skin-manifest.php is a SHIPPING file (not in protected_paths.json) that
+// core/constants.php require_once's on every request, so this reliably reaches
+// upgraded installs even when their protected/frozen constants.php cannot carry
+// header changes. Kept at the top so headers are set before any output.
+require_once __DIR__ . '/http-security-headers.php';
+
 const SNAPSMACK_MANIFEST_SCHEMA_VERSION = 1;
 
 /**
