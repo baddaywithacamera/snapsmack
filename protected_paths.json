@@ -3,10 +3,10 @@
     "_format": "Each entry is a path relative to the SnapSmack root directory. Directories should end with /.",
     "_note_skins": "skins/ is intentionally NOT protected. Stock skins ship in every full release zip and must be kept current. Non-stock / boutique skins are never included in the release zip so they are naturally untouched.",
     "_note_fonts": "assets/fonts/ is intentionally NOT protected. Fonts are excluded at zip-build time so they never appear in a release zip — protecting them here is redundant.",
+    "_note_constants": "core/constants.php is intentionally NOT protected (unprotected 2026-08-15, SECAUDIT 048 follow-up). It holds NO per-install data — the release packager stamps and ships it every release (sc-release.php) and the updater rewrites its version lines post-extract. Protecting it (a stale rule from 0.7.159) silently blocked every constants.php code change from reaching upgraded installs, including SECAUDIT 048's HSTS/CSP headers. Per-install DB creds live in core/db.php, which STAYS protected. Do not re-add core/constants.php here.",
 
     "protected": [
         "core/db.php",
-        "core/constants.php",
         "protected_paths.json",
         "img_uploads/",
         "media_assets/",
