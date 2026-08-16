@@ -10,6 +10,57 @@
 
 # SnapSmack Changelog
 
+## 0.7.528 — 2026-08-15
+
+### Security fix — the leftover installer is now locked (live pen-test finding)
+
+A real live attack test of a GRAMOFSMACK site turned up a hole the code review
+(SECAUDIT 047) missed: `install.php` and `setup.php` were reachable by anyone,
+with no login. On an already-installed site, visiting `install.php?mode=recovery`
+opened the recovery/file-restore console, and `install.php?action=patch_schema`
+ran database changes — both to a total stranger, no password needed.
+
+What this release does, in plain terms:
+
+- **The installer is now dead once your site is set up.** `install.php` refuses
+  everything — no recovery, no schema patch — and points you to the admin
+  Disaster page (which requires you to be logged in) for real recovery.
+- **`setup.php` won't re-deploy over a live site.** It now bows out whenever the
+  code is already present — and, unlike before, deleting `install.php` no longer
+  re-arms it. (The old check needed both files, so removing one re-opened the door.)
+- Genuine "rebuild on a blank server from a backup" still works, because that
+  path only runs when there is no site there yet.
+
+After updating, you can safely delete `install.php` and `setup.php` from your
+server. This fix does not touch any of your data or settings.
+
+### Security fix — script injection through the page's data block
+
+The hidden "info for search engines" block (JSON-LD) on photo pages was copying
+your post's title, caption, tags and the web address into the page **without
+making them safe**. A booby-trapped post or link could have run someone else's
+code in a visitor's browser. Now those characters are escaped so nothing can
+break out of that block. (The rest of the page was already safe — this was the
+one spot that got missed.)
+
+### Security fix — editors could change three site settings/repair pages
+
+The admin/editor split works from a list of admin-only pages, and three had been
+left off it: the backup tool's **Audit** and **Drive-Link Backfill** repair
+endpoints, and the **Traffic Stats** page. Each can write to your site settings or
+archive with no admin check, so a logged-in editor could reach them. They're now
+admin-only. Your backup tool is unaffected — it signs in as an admin.
+
+### Security hardening — stronger browser headers
+
+- **HSTS**: once a browser has loaded your site over HTTPS, it will refuse to
+  fall back to insecure HTTP.
+- **Content-Security-Policy** (conservative): blocks plugin embeds, `<base>` tag
+  hijacking, and other sites putting your pages in a frame — none of which
+  SnapSmack uses. Deliberately does **not** restrict images/scripts/forms yet, so
+  federated remote images and remote-follow still work; a tighter policy will come
+  after live testing against federated content.
+
 ## 0.7.527 — 2026-08-15
 
 ### Security hardening — full audit remediation (SECAUDIT 047)

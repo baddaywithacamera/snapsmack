@@ -319,6 +319,11 @@ if (isset($_SESSION['user_login']) && !smack_is_admin()) {
         'smack-backup.php', 'smack-multisite-backup.php', 'smack-disaster.php',
         'smack-back.php', 'smack-smackback.php', 'smack-update.php', 'smack-ftp.php',
         'smack-push-it.php',
+        // Repair / analytics APIs that write site settings or archive data — consumed
+        // by the admin backup tool (SYBU), never needed by a content editor. SECAUDIT
+        // 2026-08-15: these were editor-reachable (missing from denylist) and each
+        // writes snap_settings and/or snap_images with no internal admin check.
+        'smack-audit.php', 'smack-backfill.php', 'smack-stats.php',
         // Multisite / fleet
         'smack-multisite.php', 'smack-multisite-blogroll.php', 'smack-multisite-comments.php',
         'smack-multisite-crosspost.php', 'smack-multisite-posts.php',

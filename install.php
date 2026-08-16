@@ -102,10 +102,16 @@ if (file_exists(__DIR__ . '/core/db.php')) {
         if ($check > 0) {
             $has_existing_db = true;
 
-            // --- SCHEMA PATCH ACTION ---
-            // Adds columns that were missing from older fresh-install schemas.
-            // Safe to run on any version — all statements use ADD COLUMN IF NOT EXISTS.
-            if ($patch_action) {
+            // ===== SECAUDIT 2026-08-15: INSTALLER KILL-SWITCH =====
+            // install.php was reachable unauthenticated, and ?mode=recovery /
+            // ?action=patch_schema bypassed this "already installed" lock — handing
+            // ANY anonymous visitor the recovery/file-restore console and unauth
+            // database DDL. Once a site is installed, the installer now refuses
+            // EVERYTHING. Real recovery is admin-only via smack-disaster.php (which
+            // requires a logged-in admin). Both bypass guards below are forced off
+            // so these back doors can never open again on an installed site.
+            // --- SCHEMA PATCH ACTION (DISABLED on installed sites) ---
+            if (false) { // patch_schema via installer permanently disabled — see kill-switch above
                 $patch_results = [];
                 $patch_errors  = [];
 
@@ -163,15 +169,15 @@ if (file_exists(__DIR__ . '/core/db.php')) {
                 exit;
             }
 
-            if (!$recovery_mode) {
+            if (true) { // installed = always locked; recovery_mode bypass removed (kill-switch above)
                 die('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SnapSmack</title>'
                   . '<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0e0e0e;color:#d0d0d0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}.wrap{width:100%;max-width:560px}h1{font-size:1.4rem;color:#a0ff90;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}h1 span{color:#555;font-weight:300}.sub{color:#555;font-size:.8rem;letter-spacing:1px;margin-bottom:32px}p{color:#999;margin-bottom:20px}a{color:#a0ff90}.btn{display:inline-block;padding:10px 24px;background:#1a1a1a;color:#a0ff90;border:1px solid #333;font-size:.88rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;cursor:pointer;border-radius:3px;text-decoration:none;margin-right:12px;margin-bottom:10px}.btn:hover{border-color:#a0ff90}</style>'
                   . '</head><body><div class="wrap">'
-                  . '<h1>SNAPSMACK <span>INSTALLER</span></h1><p class="sub">Already installed</p>'
-                  . '<p>SnapSmack is already running on this server.</p>'
-                  . '<p><a href="install.php?action=patch_schema" class="btn">Patch Schema</a>'
-                  . '<a href="install.php?mode=recovery" class="btn">Recovery Mode</a></p>'
-                  . '<p style="font-size:.8rem;color:#555">Patch Schema adds any missing database columns from newer versions — safe to run on any install, does not touch existing data.</p>'
+                  . '<h1>SNAPSMACK <span>INSTALLER</span></h1><p class="sub">Locked — already installed</p>'
+                  . '<p>SnapSmack is already running on this server. This installer is locked and will not run recovery or schema patches.</p>'
+                  . '<p>To recover a broken site, log in and use the <strong>Disaster</strong> page in the admin (Boring Ass Stuff &rarr; Disaster).</p>'
+                  . '<p><a href="smack-disaster.php" class="btn">Go to Disaster Recovery</a></p>'
+                  . '<p style="font-size:.8rem;color:#555">For security, install.php no longer opens recovery or runs database changes once a site is set up. You can safely delete install.php and setup.php.</p>'
                   . '</div></body></html>');
             }
         }

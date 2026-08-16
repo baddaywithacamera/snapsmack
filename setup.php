@@ -27,10 +27,23 @@ $target_dir = __DIR__;
 // If the installed key ever differs, smack-update.php has a repair tool.
 define('SETUP_RELEASE_PUBKEY', 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2');
 
-// --- SAFETY CHECK ---
-if (file_exists($target_dir . '/install.php') && file_exists($target_dir . '/core/parser.php')) {
-    header('Location: install.php');
-    exit;
+// --- SAFETY CHECK (SECAUDIT 2026-08-15: installer kill-switch) ---
+// setup.php only deploys code into an EMPTY directory. If SnapSmack is already
+// present — the code (core/parser.php) OR a live DB config (core/db.php) — refuse
+// outright. Never redeploy or hand off to the installer on a live site: that path
+// could resurrect a fresh, unauthenticated install.php. The old check required
+// BOTH install.php AND parser.php, so deleting install.php re-armed the deployer.
+// Real recovery is admin-only via the Disaster page (login required).
+if (is_dir($target_dir . '/core')
+    && (file_exists($target_dir . '/core/parser.php') || file_exists($target_dir . '/core/db.php'))) {
+    http_response_code(403);
+    die('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SnapSmack</title>'
+      . '<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0e0e0e;color:#d0d0d0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}.wrap{width:100%;max-width:560px}h1{font-size:1.4rem;color:#a0ff90;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}h1 span{color:#555;font-weight:300}.sub{color:#555;font-size:.8rem;letter-spacing:1px;margin-bottom:32px}p{color:#999;margin-bottom:20px}a{color:#a0ff90}.btn{display:inline-block;padding:10px 24px;background:#1a1a1a;color:#a0ff90;border:1px solid #333;font-size:.88rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;cursor:pointer;border-radius:3px;text-decoration:none;margin-right:12px;margin-bottom:10px}.btn:hover{border-color:#a0ff90}</style>'
+      . '</head><body><div class="wrap">'
+      . '<h1>SNAPSMACK <span>SETUP</span></h1><p class="sub">Locked — already deployed</p>'
+      . '<p>SnapSmack is already installed on this server. The bootstrap deployer will not run on a live site.</p>'
+      . '<p>To recover a broken site, log in and use the <strong>Disaster</strong> page in the admin (Boring Ass Stuff &rarr; Disaster). You can safely delete setup.php and install.php.</p>'
+      . '</div></body></html>');
 }
 
 // --- DETECT CAPABILITIES ---

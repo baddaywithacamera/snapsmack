@@ -248,7 +248,11 @@ if (!empty($img['id'])):
     if (!empty($page_keywords)) $_ld['keywords'] = $page_keywords;
     $_ld = array_filter($_ld, static function ($v) { return $v !== '' && $v !== null && $v !== []; });
 ?>
-<script type="application/ld+json"><?php echo json_encode($_ld, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?></script>
+<script type="application/ld+json"><?php /* SECAUDIT 2026-08-15: JSON-LD carries user content (title/caption/tags) + the
+    request URL. Must hex-escape < > & ' " so a literal </script> in any field can't
+    break out of this inline <script> block (reflected + stored XSS). JSON_HEX_TAG is
+    the load-bearing flag; slashes are left escaped (dropped JSON_UNESCAPED_SLASHES). */
+    echo json_encode($_ld, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?></script>
 <?php endif; ?>
 
 <style id="snapsmack-core-vars">
@@ -481,7 +485,7 @@ $_smack_js_config['calendar'] = [
 
 if (!empty($_smack_js_config)):
 ?>
-<script>window.SMACK_CONFIG = <?php echo json_encode($_smack_js_config, JSON_UNESCAPED_UNICODE); ?>;</script>
+<script>window.SMACK_CONFIG = <?php echo json_encode($_smack_js_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); /* SECAUDIT 2026-08-15: tag-escape inline JSON so settings-derived strings can't break out of <script> */ ?>;</script>
 <?php endif; ?>
 
 <?php if (!empty($settings['nav_menu_json']) && $settings['nav_menu_json'] !== '[]'): ?>
