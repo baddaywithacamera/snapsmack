@@ -10,6 +10,23 @@
 
 # SnapSmack Changelog
 
+## 0.7.531 — 2026-08-16
+
+### Mosaic builder — drag to reorder actually behaves like it works
+
+- Dropping a photo anywhere except squarely on another tile gave the no-entry cursor and silently refused, because only the tiles accepted drops and never the space around them. Dropping on open space in the strip now means **move to the end**.
+- The photo inside each tile is no longer draggable in its own right — the browser was starting a picture drag instead of a tile drag depending on where you grabbed, which looked exactly like drag being broken.
+- A dragged tile now dims and the tile it will land on is outlined, so a working drag no longer looks identical to a failed one.
+
+### You can see a photo's shape before you pick it
+
+- Thumbnails in the picker and the selected strip were cropped to squares, so a portrait, a landscape and a square all looked the same — unhelpful when the whole HERO EMPHASIS setting is about which shape leads. Both now show the photo fitted inside the tile, so its real shape is obvious at a glance.
+
+### Mosaic arrangement uses SCROLL's names
+
+- The setting added in 0.7.530 is the same one SCROLL's wall has, so it now uses SCROLL's wording rather than a second set of names for the same thing: **HERO EMPHASIS** with *Follow Library Order*, *Balance Portraits & Landscapes*, *Favor Landscapes* and *Favor Portraits*. Stored values are unchanged, so existing mosaics are unaffected.
+- A **new** mosaic now starts on *Favor Landscapes*, matching SCROLL's default, instead of the flattest option. Existing mosaics keep whatever they were saved with.
+
 ## 0.7.530 — 2026-08-16
 
 ### Longform mosaics can be arranged again
