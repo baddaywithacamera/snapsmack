@@ -838,6 +838,8 @@ CREATE TABLE IF NOT EXISTS `snap_mosaics` (
                COMMENT 'JSON object keyed by image id: per-mosaic crop focal x/y percentages',
   `gap`        TINYINT       NOT NULL DEFAULT 4
                COMMENT 'Gap in pixels between mosaic cells (0–20)',
+  `emphasis`   VARCHAR(12)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'natural'
+               COMMENT 'Block arrangement, sent to ss-engine-mosaic.js as data-emphasis: natural|balanced|landscape|portrait',
   `created_at` TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)

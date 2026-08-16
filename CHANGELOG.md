@@ -10,6 +10,22 @@
 
 # SnapSmack Changelog
 
+## 0.7.530 — 2026-08-16
+
+### Longform mosaics can be arranged again
+
+- The mosaic builder has a new **ARRANGEMENT** setting: **NATURAL**, **BALANCED**, **LANDSCAPE HERO** or **PORTRAIT HERO**. The hero settings build each block around a wide or a tall photograph, stacking the smaller ones beside it — the asymmetric look the SCROLL wall has always had. The layout engine could always do this; nothing ever told it which way to lean, so every essay mosaic quietly used the flattest option. The choice is saved per mosaic, so one essay can lean portrait and the next landscape. **Existing mosaics are unchanged** — they stay on NATURAL until you open one and pick something else.
+
+### The mosaic preview shows the layout you will actually get
+
+- The live preview sat in a half-width column. The compositor groups photos to fit the width it is handed, so it was solving for half a page and producing a genuinely *different* arrangement to the published one — not a smaller preview, a wrong one. The preview now spans the full width and carries the same ARRANGEMENT setting the published block will, so what you frame is what the essay renders.
+
+### Photo-challenge sites get their admin back
+
+- **Traffic Stats** and **Multisite Management** are in the menu again on photo-challenge installs. Both had been cut from that profile's reduced menu, which left a challenge site unable to reach the page it needs to join its hub. Neither page was ever actually removed — only the links to them — so hiding them bought no security while costing real access.
+- The admin section is called **BORING ASS STUFF** again, matching every other install.
+- Photo-challenge sites are no longer pinned to the Midnight Lime admin theme and keep per-user theme selection like everywhere else.
+
 ## 0.7.529 — 2026-08-15
 
 ### Security fix — HSTS/CSP headers now actually reach upgraded sites

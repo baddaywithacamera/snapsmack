@@ -273,7 +273,7 @@ class SnapSmack {
             $id = (int)$m[1];
 
             try {
-                $stmt = $this->pdo->prepare("SELECT asset_ids, focus_positions, gap FROM snap_mosaics WHERE id = ? LIMIT 1");
+                $stmt = $this->pdo->prepare("SELECT asset_ids, focus_positions, gap, emphasis FROM snap_mosaics WHERE id = ? LIMIT 1");
                 $stmt->execute([$id]);
                 $mosaic = $stmt->fetch(\PDO::FETCH_ASSOC);
             } catch (\PDOException $e) {
@@ -293,6 +293,15 @@ class SnapSmack {
             $focus_positions = json_decode($mosaic['focus_positions'] ?? '{}', true);
             if (!is_array($focus_positions)) $focus_positions = [];
             $gap = max(0, min(20, (int)($mosaic['gap'] ?? 4)));
+            // ARRANGEMENT. ss-engine-mosaic.js reads data-emphasis and falls back
+            // to 'natural' (the flattest block shape) when it is absent — which is
+            // what every essay mosaic silently got before this attribute existed.
+            // The older 3-column SELECT above omits it, so an install mid-schema-sync
+            // simply keeps the old behaviour rather than erroring.
+            $emphasis = (string)($mosaic['emphasis'] ?? 'natural');
+            if (!in_array($emphasis, ['natural', 'balanced', 'landscape', 'portrait'], true)) {
+                $emphasis = 'natural';
+            }
 
             $base = defined('BASE_URL') ? BASE_URL : (rtrim($this->config['site_url'] ?? '/', '/') . '/');
 
@@ -338,7 +347,7 @@ class SnapSmack {
 
             return '<div class="snap-mosaic" data-mosaic="'
                 . htmlspecialchars(json_encode($images), ENT_QUOTES)
-                . '" data-gap="' . $gap . '"></div>';
+                . '" data-gap="' . $gap . '" data-emphasis="' . htmlspecialchars($emphasis, ENT_QUOTES) . '"></div>';
         }, $content);
     }
 
