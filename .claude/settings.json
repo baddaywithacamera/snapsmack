@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "statusMessage": "Checking the checkout is current...",
+            "timeout": 30,
+            "command": "cd /c/dev/snapsmack 2>/dev/null || exit 0; git fetch Github --quiet 2>/dev/null; B=$(git rev-list --count dev..Github/dev 2>/dev/null); [ -n \"$B\" ] && [ \"$B\" -gt 0 ] && echo \"{\\\"systemMessage\\\":\\\"snapsmack: local dev is $B commits behind Github/dev - refresh before reading code or cutting a release\\\",\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"SessionStart\\\",\\\"additionalContext\\\":\\\"WARNING: the C:/dev/snapsmack checkout is $B commits BEHIND Github/dev. Releases get built in side worktrees and pushed, and this folder is not pulled forward automatically. Do NOT reason about local source, audit code, or cut a release tag until it has been fast-forwarded - a release built from a stale tree silently reverts shipped fixes. Commit any in-progress work to a wip/ branch first (the tree often holds Sean's or Codex's uncommitted work - never reset or stash it away), then fast-forward.\\\"}}\"; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
