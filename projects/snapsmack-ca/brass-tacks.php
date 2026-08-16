@@ -112,6 +112,7 @@ require_once __DIR__ . '/includes/header.php';
                     <li><a href="#q-where-from">Where did this come from?</a></li>
                     <li><a href="#q-why-now">Why this, why now?</a></li>
                     <li><a href="#q-rude-profane">Why so rude and profane?</a></li>
+                    <li><a href="#q-weird-names">Why do you give everything weird names? Your site menu is a nightmare.</a></li>
                     <li><a href="#q-ai">AI? AIIIIIIEEEEE!!!</a></li>
                     <li><a href="#q-catch">What's the catch?</a></li>
                     <li><a href="#q-monetization">Where are the monetization options?</a></li>
@@ -215,6 +216,11 @@ require_once __DIR__ . '/includes/header.php';
             <div class="qa" id="q-rude-profane">
                 <h3>Why so rude and profane?</h3>
                 <p>First, I'm a peach. Second, I'm ebullient. Are we good?</p>
+            </div>
+
+            <div class="qa" id="q-weird-names">
+                <h3>Why do you give everything weird names? Your site menu is a nightmare.</h3>
+                <p>Heh. Wait until you see the SnapSmack admin interface. My post editor literally has <strong>FIX UP YOUR @#$% UP</strong> as the submit-post button. As Dr. Emmett Brown said, &ldquo;If you&rsquo;re going to build a time machine into a car, why not do it with some style?&rdquo; Now, grab the plutonium and let&rsquo;s roll.</p>
             </div>
 
             <div class="qa" id="q-ai">

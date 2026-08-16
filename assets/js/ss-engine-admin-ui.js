@@ -206,7 +206,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+            const downloadUrl = form.querySelector('#download-url-input[data-required="1"]');
+            const statusField = form.querySelector('[name="img_status"]');
+            const allowDownload = form.querySelector('[name="allow_download"]');
+            if (downloadUrl && statusField && allowDownload && statusField.value === "published" && allowDownload.value === "1" && !downloadUrl.value.trim()) {
+                alert("A download URL is required when downloads are enabled for a published post.");
+                downloadUrl.focus();
+                return;
+            }
+
             const formData = new FormData(form);
+            // Do not rely solely on X-Requested-With: some shared-host/proxy
+            // configurations strip that header before PHP receives it.
+            formData.set("_snapsmack_ajax", "1");
             const xhr = new XMLHttpRequest();
             const pCont = document.getElementById("progress-container");
             const pBar = document.getElementById("progress-bar");

@@ -162,6 +162,9 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Aug 15</span><a href="#a048">Live Penetration Test &mdash; Installer, Bootstrap, JSON-LD &amp; Editor Boundary</a></li>
+                <li><span class="idx-date">Aug 14</span><a href="#a047">Full Multi-Dimension Audit &mdash; Authentication, Recovery, Federation &amp; Uploads</a></li>
+                <li><span class="idx-date">Aug 14</span><a href="#a046">Audit Process Correction &mdash; Stale-Branch Simulation &amp; Clean Release Delta</a></li>
                 <li><span class="idx-date">Aug 13</span><a href="#a045">Pixelix Live Test &amp; Release Lifecycle</a></li>
                 <li><span class="idx-date">Aug 13</span><a href="#a044">THE HUB Shared Stores &amp; Launcher Boundary</a></li>
                 <li><span class="idx-date">Aug 13</span><a href="#a043">Pixelix Posting &amp; OAuth for GRAMOFSMACK</a></li>
@@ -211,6 +214,30 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a048">
+                <div class="post-meta"><span class="post-date">August 15, 2026</span><span class="post-tag">Serious Findings Closed</span></div>
+                <h2>Live Penetration Test &mdash; Installer, Bootstrap, JSON-LD &amp; Editor Boundary</h2>
+                <p>SnapSmack&rsquo;s first live penetration test attacked a disposable 0.7.527D installation as both an unauthenticated visitor and a compromised content-only editor. It confirmed two critical installation-state failures, one high-severity JSON-LD script-injection flaw, and one medium-severity editor-boundary gap. The test also exercised the major controls added after SECAUDIT 047 and confirmed that upload restrictions, signed downloads, sensitive-file blocking, traversal protection, session handling, login behaviour, reset throttling, and destructive-action security tokens held up.</p>
+                <p>The critical installer and bootstrap exposures, the script-injection path, and the missing editor restrictions were corrected in 0.7.528D and verified on the upgraded live site. Two additional LOW findings were also closed there. The report transparently records that HSTS and Content-Security-Policy did not reach upgraded installations through the original protected-file delivery path; their shipping correction is tracked separately and remains subject to live response-header verification.</p>
+                <a class="report-link" href="secaudits/2026-08-15-048-live-penetration-test-0.7.527.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a047">
+                <div class="post-meta"><span class="post-date">August 14, 2026</span><span class="post-tag">Closed</span></div>
+                <h2>Full Multi-Dimension Audit &mdash; Authentication, Recovery, Federation &amp; Uploads</h2>
+                <p>Nine focused reviewers examined the live 0.7.525 development code across authentication, authorization, SQL injection, path handling, uploads and code execution, federation and server-side requests, cross-site request forgery, secrets and updates, and cross-site scripting. The review found four critical, seven high, three medium, and nine low issues. The most serious included editor accounts reaching administrator powers, recovery kits writing executable files, federated actors claiming another server&rsquo;s identity, media uploads accepting executable content, and destructive admin actions reachable without a security token.</p>
+                <p>The remediation established a central administrator boundary, confined recovery imports, bound federation signatures and comment changes to their real actors, protected mutation links with security tokens, restricted uploads to verified images, generated unique per-site download secrets, hardened the Hub login, and closed the identified script-injection and server-side request paths. An adversarial follow-up found four sibling and race-condition gaps; those were closed as well. The narrow updater fail-open edge case remains documented as a deferred low-risk item because changing the fleet&rsquo;s sole repair path requires a separate deliberate review.</p>
+                <a class="report-link" href="secaudits/2026-08-14-047-full-multidimension-audit-0.7.525.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a046">
+                <div class="post-meta"><span class="post-date">August 14, 2026</span><span class="post-tag">Process Corrected</span></div>
+                <h2>Audit Process Correction &mdash; Stale-Branch Simulation &amp; Clean Release Delta</h2>
+                <p>Claude was asked to perform a live penetration test. What it initially delivered was a simulated multi-agent source review, not attacks against a running installation, and the review targeted code roughly 400 versions behind the release under examination. That output could not support claims about the live product. Its findings were invalidated, its stale patches were not released, and its hypotheses were retained only as a checklist for a proper review against current code.</p>
+                <p>A separate line-by-line review of the real 0.7.524D-to-0.7.525D shipping delta remained valid and found no security defects. The broad current-code review was rerun as SECAUDIT 047, and the genuine live penetration test followed as SECAUDIT 048. We are publishing 046 because mistakes in the audit process belong in the security record too; removing the number or quietly relabelling the simulation would be less honest than showing what failed and how it was corrected.</p>
+                <a class="report-link" href="secaudits/2026-08-14-046-release-524-525-delta-and-full-audit-consolidation.pdf" target="_blank" rel="noopener">Read the full process record &rarr;</a>
+            </article>
 
             <article class="post" id="a045">
                 <div class="post-meta"><span class="post-date">August 13, 2026</span><span class="post-tag">Closed</span></div>

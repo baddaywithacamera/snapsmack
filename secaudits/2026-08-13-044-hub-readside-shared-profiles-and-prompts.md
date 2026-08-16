@@ -7,7 +7,7 @@
 | Date | 2026-08-13 |
 | Scope | The Hub read-side wiring: GYSS shared-profile store (`tools/gyss/src/scripts/profiles.js`, `paths.js` `siteKey()`); shared Gemini prompts (`tools/_shared/snap_prompts.py`, `snap_home.prompts_dir()`, `tools/sybu/config.py` + `tools/coldsnap/config.py`); THE HUB launcher exe-discovery (`tools/hub/main.py` `_find_exe`/`ROSTER`). |
 | Baseline | `dev` @ `577f6440`; fixes below applied on top (THE HUB 0.1.1→0.1.2, SYBU 0.1.43→0.1.44, COLD SNAP 0.1.4→0.1.5). |
-| Status | **One MEDIUM found (by an independent adversarial pass) and FIXED. One MEDIUM-residual documented (architectural — tool exes sharing the GYSS jail root). Four LOW: two fixed, two documented.** |
+| Status | **Two MEDIUM findings FIXED, including the architectural jail-root residual. Four LOW: two fixed, two documented as negligible/pre-existing. Source-level release gate satisfied.** |
 | Method | Author self-audit, then an INDEPENDENT adversarial reviewer tasked to *refute* the self-audit's "no HIGH/MEDIUM" claim. It did — Finding 1 below was under-rated as LOW in the first pass and is corrected here. That correction is why the independent pass was run. |
 | Positive controls | Atomic writes (`os.replace`/tmp); unreadable prompts store preserved as `.corrupt` (and no longer overwritten on a second corruption); profile/prompt filenames pass `site_key()`/`siteKey()` → `[a-z0-9.-]`, strip leading/trailing `.-`, throw on empty (fail-closed, verified non-traversable both languages); GYSS FS additionally jailed by the Rust `resolve_in_root` (verified sound against `..`/UNC/`\\?\`/sibling-prefix); launcher uses list-form `subprocess.Popen([path])` (no shell/arg injection); migrations marker-guarded + now per-file-stamped, idempotent, never delete legacy data; no SQL, no `eval`, no new network endpoints. |
 | Disclosure | No exploitation known. Surface is offline desktop tooling running as the owner. The sharp finding (1) needs either a GYSS webview compromise (a threat the project already treats as reachable, `src-tauri/src/lib.rs:82-84`) OR a weak-ACL local user able to write under `C:\snapsmack`. |
@@ -20,15 +20,15 @@ handling of hostile/corrupt local files, and no new network/SQL/shell. The
 independent pass confirmed the traversal jail and credential handling hold and
 that GYSS's profile migration is well-hardened.
 
-The real issue is in **THE HUB launcher**, not the stores. The first (author)
+The real issue was in **THE HUB launcher**, not the stores. The first (author)
 pass rated it LOW; the independent pass correctly escalated it to **MEDIUM**:
 the launcher was globbing `*.exe` from directories INSIDE `C:\snapsmack`, which
 is the GYSS write-jail root. The jail's entire safety argument (SECAUDIT 039) is
 that a compromised GYSS webview may write anywhere under the root but cannot
 reach an executable that something will run. Placing auto-launched exe locations
-inside that root breaks that conclusion. **Fixed** (§3). A narrower, partly
-pre-existing residual remains and is documented as an architectural follow-up
-(§4).
+inside that root breaks that conclusion. **Fixed** (§3). The narrower,
+partly pre-existing exact-path residual was then closed by restricting every
+GYSS file command to its two actual data roots (§4).
 
 ## 2. Trust-boundary map
 
@@ -42,7 +42,7 @@ compromised GYSS webview  (reachable per lib.rs:82-84; app fs commands are ungat
   -> download_to / write_file  can write ANY bytes to ANY path under C:\snapsmack
        => before fix: plant C:\snapsmack\ohsnap\evil.exe -> Hub shows OH SNAP "installed" -> click -> RCE
        => after fix:  wildcard candidates inside the root are refused (Finding 1)
-       => residual:   can still OVERWRITE an exact real target (C:\snapsmack\{sybu,coldsnap}\*.exe)  (Finding 2)
+       => after closure: exact tool targets are outside the GYSS data-root allowlist (Finding 2)
 
 low-priv local user (only where C:\snapsmack\* dirs inherit user-writable ACLs)
   -> same plant/overwrite without any webview compromise (local priv-esc)
@@ -78,7 +78,7 @@ webview compromise is not required in the weak-ACL local-user variant.
 - Verified: real tools still resolve (SYBU/GYSS/COLD SNAP/SUYB); a planted
   `C:\snapsmack\ohsnap\payload.exe` yields `None`; out-of-jail `C:\SUYB\*.exe` still resolves.
 
-## 4. Finding 2 - exact-path tool exes still live inside the GYSS jail root (MEDIUM-residual, DOCUMENTED / architectural)
+## 4. Finding 2 - exact-path tool exes shared the broad GYSS jail root (MEDIUM, FIXED)
 
 Even after Finding 1, the two exact launch targets `C:\snapsmack\sybu\sybu.exe` and
 `C:\snapsmack\coldsnap\coldsnap.exe` sit inside the GYSS-writable root. A compromised
@@ -92,13 +92,14 @@ layout.
 Root cause is architectural: the `C:\snapsmack\<tool>` shared install layout collides
 with the GYSS jail root, so "tool exes" and "GYSS-writable data" share a tree.
 
-**Recommended fix (NOT done tonight — needs its own reviewed change):** narrow the GYSS
-jail from `C:\snapsmack` to only what GYSS actually writes — `C:\snapsmack\shared_library`
-+ `C:\snapsmack\config_files` (all GYSS write paths live under those) — so the tool exe
-dirs are no longer webview-writable. Alternatively (or additionally) have the Hub verify
-an Authenticode signature / known publisher before `Popen`. Both touch code Codex is also
-working in (GYSS Rust / the launcher) and warrant a dedicated change + rebuild, so they
-are flagged here rather than rushed. Tracked for Sean/Codex.
+**Fix (applied):** `resolve_in_root` now authorizes only paths beneath
+`C:\snapsmack\shared_library` and `C:\snapsmack\config_files\gyss`, while
+`shared_home` continues to return the common root for correct UI path construction.
+The restriction covers read, write, list, download, delete, and catalog commands.
+Component-aware path checks and the existing `..` rejection prevent sibling-prefix
+or traversal bypass. A Rust regression test proves both legitimate data roots work
+and rejects SYBU/COLD SNAP executables, a lookalike `shared_library-evil` directory,
+and a traversal attempt. `cargo test --lib` passes.
 
 ## 5. LOW findings
 
@@ -116,10 +117,11 @@ are flagged here rather than rushed. Tracked for Sean/Codex.
   interop mismatch only — NOT a traversal — and unreachable for real site URLs (numeric
   port / none), which were verified identical incl. IDN. Left as-is to avoid an IPv6
   handling regression for a non-exploitable contrived case.
-- **L4 - GYSS Rust `write_file` is non-atomic (DOCUMENTED, pre-existing, out of diff).**
+- **L4 - GYSS Rust `write_file` is non-atomic (DOCUMENTED, pre-existing).**
   `lib.rs:121-128` does a direct `std::fs::write` (no tmp+rename) unlike the Python peer,
-  so a crash mid-write can leave a torn profile (readers skip it). `lib.rs` is NOT part of
-  this diff; noted for a future GYSS pass.
+  so a crash mid-write can leave a torn profile (readers skip it). This remediation
+  changes only the authorization boundary in `lib.rs`; atomic-write work remains a
+  separately scoped reliability improvement.
 
 ## 6. Verification performed
 
@@ -130,6 +132,8 @@ are flagged here rather than rushed. Tracked for Sean/Codex.
 - Hardened launcher tested against the real machine (all real tools resolve) AND against a
   planted `C:\snapsmack\ohsnap\payload.exe` (refused → None).
 - `node --check` on the JS; `py_compile` on the Python; EOF markers on all changed files.
+- GYSS Rust unit test for the narrowed data-root jail: one test passed, including
+  positive data paths and negative executable, sibling-prefix and traversal paths.
 - Two independent agent reviews: a functional pass (5 findings, all fixed earlier) and this
   security pass (Finding 1 escalation + the LOW set).
 - Not exercised: a real multi-user/weak-ACL host, or an actual GYSS webview compromise;
@@ -139,9 +143,9 @@ are flagged here rather than rushed. Tracked for Sean/Codex.
 
 Desktop tools ship by building from the checkout (`C:\snapsmack\<tool>`, `C:\GYSS`), not the
 core updater, so no fleet rollout is tied to this audit. Source-level gate: **satisfied** —
-Finding 1 (MEDIUM) is fixed; Finding 2 is a documented residual with a recommended
-architectural fix; LOWs are fixed or documented. Operational note for the owner: keep
-`C:\snapsmack` on an owner-only path (not multi-user / not a synced share), and prioritise
-the Finding 2 jail-narrowing before GYSS is exposed to untrusted remote site content at scale.
+Findings 1 and 2 (MEDIUM) are fixed; LOWs are fixed or documented. The launcher
+cannot discover wildcard executables inside the shared root, and GYSS file commands
+cannot access the sibling tool-install directories even by exact path. The
+source-level release gate is satisfied.
 
 <!-- ===== SNAPSMACK EOF ===== -->

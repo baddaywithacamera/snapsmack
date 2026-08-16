@@ -27,8 +27,9 @@ $_pc_sections = [
     'boring' => [
         'smack-settings.php', 'smack-users.php', 'smack-2fa.php',
         'smack-maintenance.php', 'smack-fingerprints.php', 'smack-backup.php',
-        'smack-disaster.php', 'smack-break-glass.php', 'smack-update.php',
-        'smack-schema.php', 'smack-api-keys.php', 'smack-back.php',
+        'smack-disaster.php', 'smack-break-glass.php', 'smack-stats.php',
+        'smack-update.php', 'smack-schema.php', 'smack-api-keys.php',
+        'smack-back.php', 'smack-multisite.php',
     ],
 ];
 $_pc_active = 'good-shit';
@@ -107,7 +108,7 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
 
             <div class="nav-section<?php echo $_pc_active === 'boring' ? ' open' : ''; ?>" data-section="boring">
                 <button type="button" class="nav-section-toggle">
-                    <span class="nav-section-label">THE BORING SHIT</span>
+                    <span class="nav-section-label">BORING ASS STUFF</span>
                     <span class="nav-section-arrow"></span>
                 </button>
                 <ul class="nav-section-links">
@@ -119,10 +120,12 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                     <li class="<?php echo $_pc_active_class('smack-backup.php'); ?>"><a href="smack-backup.php">Backup &amp; Recovery</a></li>
                     <li class="<?php echo $_pc_active_class('smack-disaster.php'); ?>"><a href="smack-disaster.php">Disaster Recovery</a></li>
                     <li class="<?php echo $_pc_active_class('smack-break-glass.php'); ?>"><a href="smack-break-glass.php">Break the Glass</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-stats.php'); ?>"><a href="smack-stats.php">Traffic Stats</a></li>
                     <li class="<?php echo $_pc_active_class('smack-update.php'); ?>"><a href="smack-update.php">System Updates</a></li>
                     <li class="<?php echo $_pc_active_class('smack-schema.php'); ?>"><a href="smack-schema.php">Database Schema</a></li>
                     <li class="<?php echo $_pc_active_class('smack-back.php'); ?>"><a href="smack-back.php">SMACKBACK Security</a></li>
                     <li class="<?php echo $_pc_active_class('smack-api-keys.php'); ?>"><a href="smack-api-keys.php">API Keys</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-multisite.php'); ?>"><a href="smack-multisite.php">Multisite Management</a></li>
                 </ul>
             </div>
         </nav>
