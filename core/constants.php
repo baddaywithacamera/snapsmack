@@ -66,10 +66,19 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: SAMEORIGIN');
     header('Referrer-Policy: strict-origin-when-cross-origin');
+    // SECAUDIT 2026-08-15: keep browsers on HTTPS once they've seen us over TLS.
+    // Harmless over plain HTTP — browsers ignore HSTS on non-secure responses.
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+    // Conservative CSP: blocks plugin/object embeds, <base> tag hijacking, and
+    // framing by other sites — none of which SnapSmack uses — WITHOUT restricting
+    // img/script/form sources, so federated remote images, inline config scripts,
+    // and remote-follow forms keep working. A stricter script-src/img-src policy
+    // needs live testing against federated content before it can be enforced.
+    header("Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.527');
-define('SNAPSMACK_VERSION_SHORT', '0.7.527');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.528');
+define('SNAPSMACK_VERSION_SHORT', '0.7.528');
 define('SNAPSMACK_VERSION_CODENAME', 'PHOTO FRIYAY');
 
 // --- THUMBNAIL DIMENSIONS (single source of truth) ---
