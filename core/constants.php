@@ -77,8 +77,8 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header("Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.528');
-define('SNAPSMACK_VERSION_SHORT', '0.7.528');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.529');
+define('SNAPSMACK_VERSION_SHORT', '0.7.529');
 define('SNAPSMACK_VERSION_CODENAME', 'PHOTO FRIYAY');
 
 // --- THUMBNAIL DIMENSIONS (single source of truth) ---

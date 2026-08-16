@@ -10,6 +10,21 @@
 
 # SnapSmack Changelog
 
+## 0.7.529 — 2026-08-15
+
+### Security audit reports (SECAUDIT 047 + 048)
+
+Adds the two audit reports as PDFs under `secaudits/` (never shipped to installs —
+that folder is excluded from the release package):
+
+- **SECAUDIT 047** — full source-level audit of 0.7.525, rewritten to full report
+  quality (executive summary, scope & method, findings-at-a-glance, per-finding
+  detail, adversarial re-audit, defenses that held, limits, verification).
+- **SECAUDIT 048** — the live penetration test of 0.7.527 (the fixes shipped in
+  0.7.528). Embargoed until 0.7.528D deployment is verified on the tested site.
+
+No code change; documentation only.
+
 ## 0.7.528 — 2026-08-15
 
 ### Security fix — the leftover installer is now locked (live pen-test finding)
