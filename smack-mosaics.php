@@ -149,7 +149,11 @@ include 'core/sidebar.php';
     $mosaic_ids   = $editing ? (json_decode($editing['asset_ids'], true) ?: []) : [];
     $mosaic_focus = $editing ? (json_decode($editing['focus_positions'] ?? '{}', true) ?: []) : [];
     $mosaic_gap   = (int)($editing['gap']    ?? 4);
-    $mosaic_emph  = (string)($editing['emphasis'] ?? 'natural');
+    // A NEW mosaic defaults to 'landscape', matching SCROLL's wall (its
+    // scroll_mosaic_emphasis default). 'natural' is the flattest option, so
+    // defaulting new mosaics to it meant every one started looking like the old
+    // pre-0.7.530 behaviour. An EXISTING mosaic keeps whatever it was saved with.
+    $mosaic_emph  = (string)($editing['emphasis'] ?? ($editing ? 'natural' : 'landscape'));
     if (!in_array($mosaic_emph, ['natural', 'balanced', 'landscape', 'portrait'], true)) $mosaic_emph = 'natural';
     ?>
 
@@ -172,13 +176,17 @@ include 'core/sidebar.php';
                         <input type="number" id="mosaic-gap" value="<?php echo $mosaic_gap; ?>" min="0" max="20" style="width:80px;">
                     </div>
                     <div class="lens-input-wrapper" style="flex:0 0 auto;margin-top:0;">
-                        <label>ARRANGEMENT</label>
-                        <select id="mosaic-emphasis" style="width:150px;" title="How the blocks are shaped. NATURAL keeps every photo near its own size — the flattest result. BALANCED mixes tall and wide evenly. LANDSCAPE and PORTRAIT each pick a hero of that shape and build the block around it, which is what gives you the asymmetric look.">
+                        <label>HERO EMPHASIS</label>
+                        <?php /* Wording matches SCROLL's "MOSAIC Hero Emphasis" control
+                                 (skins/scroll/manifest.json) so the same setting is not
+                                 called two different things in two places. The stored
+                                 values are identical either way. */ ?>
+                        <select id="mosaic-emphasis" style="width:230px;" title="Which shape leads each block. Follow Library Order keeps every photo near its own size — the flattest result. The Favor settings pick a hero of that shape and build the block around it, which is what gives you the asymmetric quilt.">
                             <?php foreach ([
-                                'natural'   => 'NATURAL (flat)',
-                                'balanced'  => 'BALANCED',
-                                'landscape' => 'LANDSCAPE HERO',
-                                'portrait'  => 'PORTRAIT HERO',
+                                'natural'   => 'Follow Library Order',
+                                'balanced'  => 'Balance Portraits &amp; Landscapes',
+                                'landscape' => 'Favor Landscapes',
+                                'portrait'  => 'Favor Portraits',
                             ] as $_e_val => $_e_label): ?>
                             <option value="<?php echo $_e_val; ?>" <?php echo $mosaic_emph === $_e_val ? 'selected' : ''; ?>><?php echo $_e_label; ?></option>
                             <?php endforeach; ?>
@@ -209,7 +217,12 @@ include 'core/sidebar.php';
                 <!-- SELECTED ASSETS -->
                 <div class="lens-input-wrapper">
                     <label>SELECTED IMAGES — drag to reorder, use arrows to move, × to remove</label>
-                    <div id="mosaic-selected" style="display:flex;flex-wrap:wrap;gap:8px;min-height:80px;padding:12px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);margin-top:6px;"></div>
+                    <?php /* The CONTAINER accepts drops too, not just the tiles. Dropping in
+                             the gaps or past the last tile used to hit an element with no
+                             dragover handler, so the browser showed the no-entry cursor and
+                             refused — indistinguishable from "drag is broken". Dropping on
+                             open space now means "move to the end". */ ?>
+                    <div id="mosaic-selected" ondragover="dragOver(event)" ondrop="dragDropEnd(event)" style="display:flex;flex-wrap:wrap;gap:8px;min-height:80px;padding:12px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);margin-top:6px;"></div>
                 </div>
 
                 <div class="lens-input-wrapper mt-16">
@@ -294,7 +307,10 @@ include 'core/sidebar.php';
                 html += '<div onclick="toggleAsset(' + id + ')" style="cursor:pointer;position:relative;aspect-ratio:1;'
                       + 'border:2px solid ' + (sel ? 'var(--accent)' : 'transparent') + ';border-radius:3px;overflow:hidden;background:#111;">';
                 if (webExts.indexOf(ext) !== -1) {
-                    html += '<img src="' + BASE + a.asset_path + '" style="width:100%;height:100%;object-fit:cover;" loading="lazy">';
+                    // contain, not cover: a cropped square makes a portrait, a landscape
+                    // and a square look identical — useless when you are picking photos
+                    // for an arrangement that is entirely about their shape.
+                    html += '<img src="' + BASE + a.asset_path + '" title="' + (a.asset_path.split('/').pop() || '') + '" style="width:100%;height:100%;object-fit:contain;" loading="lazy">';
                 } else {
                     html += '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--dim);font-size:10px;">' + ext.toUpperCase() + '</div>';
                 }
@@ -328,9 +344,14 @@ include 'core/sidebar.php';
                 var a = allAssets[id];
                 if (!a) return;
                 html += '<div class="mosaic-thumb-wrap" draggable="true" data-index="' + i + '"'
-                      + ' ondragstart="dragStart(event,' + i + ')" ondragend="dragEnd()" ondragover="dragOver(event)" ondrop="dragDrop(event,' + i + ')"'
-                      + ' style="position:relative;width:72px;height:72px;border:1px solid var(--border);border-radius:3px;overflow:hidden;cursor:grab;flex-shrink:0;">'
-                      + '<img src="' + BASE + a.asset_path + '" style="width:100%;height:100%;object-fit:cover;" loading="lazy">'
+                      + ' ondragstart="dragStart(event,' + i + ')" ondragend="dragEnd()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,' + i + ')"'
+                      + ' style="position:relative;width:72px;height:72px;border:1px solid var(--border);border-radius:3px;overflow:hidden;cursor:grab;flex-shrink:0;background:#111;">'
+                      // draggable=false: without it the browser starts dragging the PHOTO
+                      // instead of the tile, which is the classic "drag does nothing".
+                      // object-fit:contain (not cover): a cropped square hides whether the
+                      // photo is portrait, landscape or square — the one thing that matters
+                      // when the arrangement setting is about exactly that.
+                      + '<img src="' + BASE + a.asset_path + '" draggable="false" style="width:100%;height:100%;object-fit:contain;pointer-events:none;" loading="lazy">'
                       + '<div style="position:absolute;left:2px;bottom:2px;display:flex;gap:2px;">'
                       + '<button type="button" onclick="moveAsset(' + i + ',-1)" title="Move left" aria-label="Move image left"'
                       + ' style="background:rgba(0,0,0,.72);border:none;color:#fff;cursor:pointer;width:20px;height:20px;padding:0;line-height:1;">&#8249;</button>'
@@ -362,12 +383,52 @@ include 'core/sidebar.php';
         };
 
         // --- Drag reorder ---
-        window.dragStart = function (e, i) { dragSrcIndex = i; e.dataTransfer.effectAllowed = 'move'; };
-        window.dragEnd   = function () { dragSrcIndex = null; };
-        window.dragOver  = function (e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+        // Drag feedback. Previously the reorder worked but looked identical to a
+        // failed drag: nothing dimmed, nothing marked where the tile would land.
+        function clearDropMarks() {
+            var t = document.querySelectorAll('.mosaic-thumb-wrap');
+            for (var i = 0; i < t.length; i++) {
+                t[i].style.outline = '';
+                t[i].style.opacity = '';
+            }
+        }
+        window.dragStart = function (e, i) {
+            dragSrcIndex = i;
+            e.dataTransfer.effectAllowed = 'move';
+            try { e.dataTransfer.setData('text/plain', String(i)); } catch (err) {}
+            var src = document.querySelector('.mosaic-thumb-wrap[data-index="' + i + '"]');
+            if (src) src.style.opacity = '.35';
+        };
+        window.dragEnd   = function () { dragSrcIndex = null; clearDropMarks(); };
+        window.dragOver  = function (e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            var tile = e.target && e.target.closest ? e.target.closest('.mosaic-thumb-wrap') : null;
+            if (tile && String(tile.getAttribute('data-index')) !== String(dragSrcIndex)) {
+                tile.style.outline = '2px solid var(--accent)';
+            }
+        };
+        window.dragLeave = function (e) {
+            var tile = e.target && e.target.closest ? e.target.closest('.mosaic-thumb-wrap') : null;
+            if (tile) tile.style.outline = '';
+        };
+        // Drop on empty space in the strip = move to the end.
+        window.dragDropEnd = function (e) {
+            if (e.target && e.target.closest && e.target.closest('.mosaic-thumb-wrap')) return;
+            e.preventDefault();
+            if (dragSrcIndex === null) return;
+            var moved = selectedIds.splice(dragSrcIndex, 1)[0];
+            selectedIds.push(moved);
+            dragSrcIndex = null;
+            clearDropMarks();
+            renderSelected();
+            updatePreview();
+        };
         window.dragDrop  = function (e, target) {
             e.preventDefault();
-            if (dragSrcIndex === null || dragSrcIndex === target) return;
+            e.stopPropagation();   // don't also fire the container's "move to end"
+            clearDropMarks();
+            if (dragSrcIndex === null || dragSrcIndex === target) { dragSrcIndex = null; return; }
             var moved = selectedIds.splice(dragSrcIndex, 1)[0];
             selectedIds.splice(target, 0, moved);
             dragSrcIndex = null;
