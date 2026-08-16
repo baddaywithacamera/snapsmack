@@ -10,7 +10,7 @@
 
 # SnapSmack Changelog
 
-## 0.7.530 — 2026-08-15
+## 0.7.529 — 2026-08-15
 
 ### Security fix — HSTS/CSP headers now actually reach upgraded sites
 
@@ -29,11 +29,9 @@ What changed, in plain terms:
   that had been silently blocking every constants.php change. Per-install database
   credentials live in `core/db.php`, which stays protected.
 
-After deploying 0.7.530 and updating, the live response headers should include
+After deploying 0.7.529 and updating, the live response headers should include
 HSTS and CSP. (The serious 0.7.528 fixes — locked installer, JSON-LD XSS,
 editor→admin boundary — were already verified live.)
-
-## 0.7.529 — 2026-08-15
 
 ### Security audit reports (SECAUDIT 047 + 048)
 
