@@ -840,6 +840,8 @@ CREATE TABLE IF NOT EXISTS `snap_mosaics` (
                COMMENT 'Gap in pixels between mosaic cells (0–20)',
   `emphasis`   VARCHAR(12)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'natural'
                COMMENT 'Block arrangement, sent to ss-engine-mosaic.js as data-emphasis: natural|balanced|landscape|portrait',
+  `layout`     VARCHAR(12)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'asymmetric'
+               COMMENT 'Which engine renders the block: asymmetric (ss-engine-mosaic) | columns, square (ss-engine-columns) | rows (ss-engine-rows). emphasis applies to asymmetric only',
   `created_at` TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)

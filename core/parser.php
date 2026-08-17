@@ -273,7 +273,7 @@ class SnapSmack {
             $id = (int)$m[1];
 
             try {
-                $stmt = $this->pdo->prepare("SELECT asset_ids, focus_positions, gap, emphasis FROM snap_mosaics WHERE id = ? LIMIT 1");
+                $stmt = $this->pdo->prepare("SELECT asset_ids, focus_positions, gap, emphasis, layout FROM snap_mosaics WHERE id = ? LIMIT 1");
                 $stmt->execute([$id]);
                 $mosaic = $stmt->fetch(\PDO::FETCH_ASSOC);
             } catch (\PDOException $e) {
@@ -301,6 +301,16 @@ class SnapSmack {
             $emphasis = (string)($mosaic['emphasis'] ?? 'natural');
             if (!in_array($emphasis, ['natural', 'balanced', 'landscape', 'portrait'], true)) {
                 $emphasis = 'natural';
+            }
+            // LAYOUT. 'asymmetric' is the original block and stays the default, so a
+            // pre-0.7.532 mosaic renders exactly as before. The other three reuse the
+            // SCROLL wall's shipped engines rather than new code: columns and square
+            // via ss-engine-columns.js, rows via ss-engine-rows.js. Container class is
+            // what each engine binds to; the item class is '.ss-masonry-item' for all
+            // three. Square needs no JS at all — it is native CSS Grid.
+            $layout = (string)($mosaic['layout'] ?? 'asymmetric');
+            if (!in_array($layout, ['asymmetric', 'columns', 'rows', 'square'], true)) {
+                $layout = 'asymmetric';
             }
 
             $base = defined('BASE_URL') ? BASE_URL : (rtrim($this->config['site_url'] ?? '/', '/') . '/');
@@ -345,9 +355,35 @@ class SnapSmack {
             }
             if (empty($images)) return '';
 
-            return '<div class="snap-mosaic" data-mosaic="'
-                . htmlspecialchars(json_encode($images), ENT_QUOTES)
-                . '" data-gap="' . $gap . '" data-emphasis="' . htmlspecialchars($emphasis, ENT_QUOTES) . '"></div>';
+            if ($layout === 'asymmetric') {
+                return '<div class="snap-mosaic" data-mosaic="'
+                    . htmlspecialchars(json_encode($images), ENT_QUOTES)
+                    . '" data-gap="' . $gap . '" data-emphasis="' . htmlspecialchars($emphasis, ENT_QUOTES) . '"></div>';
+            }
+
+            // Wall layouts. The engines read --ss-gap (and --ss-cols for columns)
+            // off the container, and read each tile's SHAPE from data-w / data-h —
+            // never from the loaded image, because a lazy tile is a 1x1 placeholder
+            // until it arrives. Emitting both attributes is what keeps lazy loading
+            // and the layout correct at the same time.
+            $container = $layout === 'rows'   ? 'ss-scroll-wall'
+                       : ($layout === 'square' ? 'ss-square-wall' : 'ss-masonry');
+            $style = '--ss-gap:' . $gap . 'px;';
+
+            $tiles = '';
+            foreach ($images as $im) {
+                $dims = '';
+                if (!empty($im['width']) && !empty($im['height'])) {
+                    $dims = ' data-w="' . (int)$im['width'] . '" data-h="' . (int)$im['height'] . '"';
+                }
+                $tiles .= '<a class="ss-masonry-item" href="' . htmlspecialchars($im['full'], ENT_QUOTES) . '">'
+                        . '<img src="' . htmlspecialchars($im['src'], ENT_QUOTES) . '"'
+                        . ' alt="' . htmlspecialchars((string)$im['alt'], ENT_QUOTES) . '"'
+                        . $dims . ' loading="lazy"></a>';
+            }
+
+            return '<div class="' . $container . ' snap-mosaic-wall" style="' . $style . '">'
+                . $tiles . '</div>';
         }, $content);
     }
 

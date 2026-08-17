@@ -167,6 +167,8 @@ include 'core/sidebar.php';
     // pre-0.7.530 behaviour. An EXISTING mosaic keeps whatever it was saved with.
     $mosaic_emph  = (string)($editing['emphasis'] ?? ($editing ? 'natural' : 'landscape'));
     if (!in_array($mosaic_emph, ['natural', 'balanced', 'landscape', 'portrait'], true)) $mosaic_emph = 'natural';
+    $mosaic_layout = (string)($editing['layout'] ?? 'asymmetric');
+    if (!in_array($mosaic_layout, ['asymmetric', 'columns', 'rows', 'square'], true)) $mosaic_layout = 'asymmetric';
     ?>
 
     <div class="header-row header-row--ruled">
@@ -188,6 +190,22 @@ include 'core/sidebar.php';
                         <input type="number" id="mosaic-gap" value="<?php echo $mosaic_gap; ?>" min="0" max="20" style="width:80px;">
                     </div>
                     <div class="lens-input-wrapper" style="flex:0 0 auto;margin-top:0;">
+                        <label>LAYOUT</label>
+                        <?php /* The same four the SCROLL wall offers, same wording. HERO
+                                 EMPHASIS below only affects Asymmetric, so the JS hides it
+                                 for the other three rather than leaving a dead control. */ ?>
+                        <select id="mosaic-layout" style="width:230px;">
+                            <?php foreach ([
+                                'columns'    => 'Columns (portraits stand tallest)',
+                                'rows'       => 'Rows (landscapes lead)',
+                                'square'     => 'Square (even cropped grid)',
+                                'asymmetric' => 'Asymmetric (MOSAIC quilt)',
+                            ] as $_l_val => $_l_label): ?>
+                            <option value="<?php echo $_l_val; ?>" <?php echo $mosaic_layout === $_l_val ? 'selected' : ''; ?>><?php echo $_l_label; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="lens-input-wrapper" id="emphasis-wrap" style="flex:0 0 auto;margin-top:0;">
                         <label>HERO EMPHASIS</label>
                         <?php /* Wording matches SCROLL's "MOSAIC Hero Emphasis" control
                                  (skins/scroll/manifest.json) so the same setting is not
@@ -274,6 +292,12 @@ include 'core/sidebar.php';
 
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-mosaic.css">
     <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js" defer></script>
+    <?php /* The preview offers all four layouts, so it needs the same engines and
+             chrome the published essay gets. ss-engine-scroll-wall.css is chrome
+             only (borders, hover) — the engines write geometry inline. */ ?>
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-scroll-wall.css">
+    <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-columns.js" defer></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-rows.js" defer></script>
     <script>
     (function () {
         var BASE          = <?php echo json_encode(BASE_URL); ?>;
@@ -289,6 +313,11 @@ include 'core/sidebar.php';
             loadAssets();
             document.getElementById('mosaic-gap').addEventListener('input', updatePreview);
             document.getElementById('mosaic-emphasis').addEventListener('change', updatePreview);
+            document.getElementById('mosaic-layout').addEventListener('change', function () {
+                syncLayoutControls();
+                updatePreview();
+            });
+            syncLayoutControls();
         });
 
         function loadAssets() {
@@ -498,17 +527,60 @@ include 'core/sidebar.php';
             });
         }
 
+        function currentLayout() {
+            var s = document.getElementById('mosaic-layout');
+            return s ? s.value : 'asymmetric';
+        }
+
         function renderWithData(images, gap, container) {
             var emphSel = document.getElementById('mosaic-emphasis');
-            container.setAttribute('data-mosaic', JSON.stringify(images));
-            container.setAttribute('data-gap',    gap);
-            // The preview must pass the SAME arrangement the published block will
-            // carry, or it previews a layout the essay will never render.
-            container.setAttribute('data-emphasis', emphSel ? emphSel.value : 'natural');
-            if (window.SnapMosaic) {
-                window.SnapMosaic.renderMosaic(container);
-                bindCropPanning(container);
+            var layout  = currentLayout();
+
+            // Reset anything the previous layout left behind, or a switch leaves a
+            // half-rendered block from the old engine underneath the new one.
+            container.removeAttribute('style');
+            container.className = (layout === 'asymmetric') ? 'snap-mosaic'
+                                : (layout === 'rows')   ? 'ss-scroll-wall snap-mosaic-wall'
+                                : (layout === 'square') ? 'ss-square-wall snap-mosaic-wall'
+                                                        : 'ss-masonry snap-mosaic-wall';
+
+            if (layout === 'asymmetric') {
+                container.innerHTML = '';
+                container.setAttribute('data-mosaic', JSON.stringify(images));
+                container.setAttribute('data-gap',    gap);
+                // The preview must pass the SAME arrangement the published block will
+                // carry, or it previews a layout the essay will never render.
+                container.setAttribute('data-emphasis', emphSel ? emphSel.value : 'natural');
+                if (window.SnapMosaic) {
+                    window.SnapMosaic.renderMosaic(container);
+                    bindCropPanning(container);
+                }
+                return;
             }
+
+            // Wall layouts: same markup core/parser.php emits, so the preview and the
+            // published essay hand the engines identical input. Shape comes from
+            // data-w/data-h, never the loaded image.
+            container.removeAttribute('data-mosaic');
+            container.removeAttribute('data-emphasis');
+            container.style.setProperty('--ss-gap', gap + 'px');
+            var html = '';
+            images.forEach(function (im) {
+                var dims = (im.width && im.height)
+                    ? ' data-w="' + im.width + '" data-h="' + im.height + '"' : '';
+                html += '<a class="ss-masonry-item" href="' + im.full + '">'
+                      + '<img src="' + im.src + '" alt=""' + dims + ' loading="lazy"></a>';
+            });
+            container.innerHTML = html;
+
+            // Square is native CSS Grid — no engine call. The other two relayout.
+            if (layout === 'columns' && window.SSColumns) window.SSColumns.init(container);
+            if (layout === 'rows'    && window.SSRows)    window.SSRows.init(container);
+        }
+
+        function syncLayoutControls() {
+            var wrap = document.getElementById('emphasis-wrap');
+            if (wrap) wrap.style.display = (currentLayout() === 'asymmetric') ? '' : 'none';
         }
 
         // Same focal-point drag model used by the GRAMOFSMACK square crop.
@@ -574,7 +646,8 @@ include 'core/sidebar.php';
                 asset_ids: JSON.stringify(selectedIds),
                 focus_positions: JSON.stringify(focusPositions),
                 gap:       gap,
-                emphasis:  (document.getElementById('mosaic-emphasis') || {}).value || 'natural'
+                emphasis:  (document.getElementById('mosaic-emphasis') || {}).value || 'natural',
+                layout:    (document.getElementById('mosaic-layout') || {}).value || 'asymmetric'
             }, function (resp) {
                 if (resp.ok) {
                     mosaicId = resp.id;
