@@ -308,6 +308,15 @@ if (in_array($_snap_page, ['page', 'blog', 'index'])): ?>
 if (in_array($_snap_page, ['page', 'blog'], true)): ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-mosaic.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
+<?php // A [mosaic:ID] block can now be Columns, Rows or Square as well as Asymmetric,
+      // reusing the SCROLL wall's shipped engines rather than new code. Same page gate.
+      // The CSS is chrome only (the engines write geometry inline), the engines bind to
+      // EVERY matching container so several blocks in one essay are fine, and their
+      // infinite-scroll self-disables without a .scroll-wall-sentinel — which a post
+      // body never has. ?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-scroll-wall.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-columns.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-rows.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 <?php endif; ?>
 
 <?php
