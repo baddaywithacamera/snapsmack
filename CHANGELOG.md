@@ -10,6 +10,33 @@
 
 # SnapSmack Changelog
 
+## 0.7.532 — 2026-08-17
+
+### Buckets — a post can now hold the photos it is built from
+
+Choosing photos for a mosaic meant scrolling your entire gallery every time, so the only way to work was to pre-sort photos into folders on the desktop first. A post can now carry its own set of photos, and the mosaic picker can show just those.
+
+- **New BUCKET panel in the longform editor.** Pick the photos this post is written from, once. It sits under the writing area and has its own SAVE BUCKET button, so it works on a draft you are still writing without saving and reloading the whole post.
+- A bucket belongs to a post, so it appears once the post has been saved — **saving as a Draft is enough**. Before that the panel says so plainly instead of showing a picker that would quietly throw your choices away.
+- **BUILD A MOSAIC FROM THIS BUCKET** opens the mosaic builder already narrowed to that post's photos. The mosaic builder's own "Build a new mosaic" links carry the post across too.
+- The mosaic builder gained a **SHOWING** control: that post's bucket, any other post's bucket, or all gallery photos. Opened from a post it starts on that post's bucket; opened cold from the sidebar it still offers every post that has one.
+- Nothing in a bucket is published, and nothing is placed in the essay until you place it. It is a working set, not a Collection.
+
+### The mosaic picker can hide photos you have already used
+
+- New **hide photos already used in another mosaic** tick box. Left unticked, used photos stay visible but greyed with the mosaic they belong to written across them, so you can still reuse one deliberately — a photo can legitimately appear in two arrangements. Ticked, they go, and the picker tells you how many it hid.
+- A photo already in the mosaic you are editing is never treated as "used elsewhere", so you can always deselect it.
+
+### The picker no longer hides photos from you without saying so
+
+- The picker only ever loaded your 500 newest gallery photos and gave no sign there were more, so on a library past that size photos were simply unreachable. It now prints exactly what it is showing — *"Showing the 500 newest of 3,214 matching photos"* — and a **search by name** box narrows the search on the server, so everything is reachable.
+- A bucket shows in full and in the order you arranged it, rather than newest-first.
+
+### Mosaics can use any of SCROLL's four layouts
+
+- A `[mosaic:ID]` block can now render as **Columns**, **Rows**, **Square** or **Asymmetric**, the same four the SCROLL wall offers, driven by the same shipped engines. Asymmetric stays the default, so every mosaic already published looks exactly as it did.
+- HERO EMPHASIS only affects Asymmetric, so the builder hides it for the other three instead of leaving a control that does nothing.
+
 ## 0.7.531 — 2026-08-16
 
 ### Mosaic builder — drag to reorder actually behaves like it works
