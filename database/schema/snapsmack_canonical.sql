@@ -889,6 +889,35 @@ CREATE TABLE IF NOT EXISTS `snap_collection_items` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
+-- ─── BUCKETS ──────────────────────────────────────────────────────────────────
+-- A post's working set of Gallery photos: "these are the photos I am writing
+-- this essay from". Private and editorial — nothing here is published on its
+-- own, which is what separates it from snap_collections (a public folio).
+--
+-- It exists so the MOSAIC picker has something to narrow by. Without it the
+-- picker can only offer the whole Gallery in one endless scroll, and the only
+-- way to work was to pre-sort photos into folders on the desktop first.
+--
+-- Deliberately NOT snap_post_images: that table's UNIQUE KEY is on image_id
+-- alone, so a photo may belong to exactly one post forever. A bucket photo has
+-- to be reusable across posts (a motif that recurs, a cover used twice), so the
+-- uniqueness here is the PAIR.
+CREATE TABLE IF NOT EXISTS `snap_bucket_items` (
+  `id`       INT       NOT NULL AUTO_INCREMENT,
+  `post_id`  INT       NOT NULL,
+  `image_id` INT       NOT NULL
+             COMMENT 'FK to snap_images.id — Gallery photo, same pile the mosaic picker reads',
+  `position` INT       NOT NULL DEFAULT 0,
+  `added_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_bucket_post_image` (`post_id`, `image_id`),
+  KEY `idx_bucket_post_position` (`post_id`, `position`),
+  CONSTRAINT `fk_bucket_post`
+      FOREIGN KEY (`post_id`) REFERENCES `snap_posts` (`id`)
+      ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 -- ─── GROUPS (self-hosted, Flickr-style) ───────────────────────────────────────
 -- Reborn Flickr Groups: members (snap_community_users), a shared photo pool
 -- (the snap_collections pattern), and local discussion (the snap_community_comments

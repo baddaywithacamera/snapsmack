@@ -16,6 +16,7 @@
 
 
 require_once 'core/auth-smack.php';
+require_once 'core/bucket.php';
 
 if (!isset($settings)) {
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -62,6 +63,8 @@ try {
     // Canonical schema sync remains authoritative if this defensive add fails.
 }
 
+snap_bucket_ensure($pdo);
+
 // --- AJAX HANDLERS ---
 $is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
         && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
@@ -75,15 +78,101 @@ if ($is_ajax && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action']
         // asset_path so the existing picker/preview JS reads them unchanged; the
         // saved ids are Gallery image ids, which core/parser.php resolves against
         // snap_images. Prefer the light aspect thumb for the picker/preview tile.
-        $assets = $pdo->query(
+        $scope   = ($_POST['scope'] ?? 'all') === 'bucket' ? 'bucket' : 'all';
+        $post_id = (int)($_POST['post_id'] ?? 0);
+        $q       = trim((string)($_POST['q'] ?? ''));
+
+        // Scoping to a post's BUCKET is the whole point of the picker knowing
+        // which post it was opened from: a dozen tiles instead of the entire
+        // Gallery in one endless scroll.
+        $bucket_ids = ($scope === 'bucket') ? snap_bucket_ids($pdo, $post_id) : [];
+        if ($scope === 'bucket' && !$bucket_ids) {
+            echo json_encode([
+                'images' => [], 'total' => 0, 'shown' => 0, 'capped' => false,
+                'used' => (object)[], 'scope' => 'bucket',
+            ]);
+            exit;
+        }
+
+        $where  = ["img_status = 'published'"];
+        $params = [];
+        if ($scope === 'bucket') {
+            $where[] = 'id IN (' . implode(',', array_fill(0, count($bucket_ids), '?')) . ')';
+            $params  = array_merge($params, $bucket_ids);
+        }
+        if ($q !== '') {
+            $where[]  = '(img_title LIKE ? OR img_file LIKE ?)';
+            $params[] = '%' . $q . '%';
+            $params[] = '%' . $q . '%';
+        }
+        $where_sql = 'WHERE ' . implode(' AND ', $where);
+
+        // How many actually match, BEFORE the cap. The picker prints this so a
+        // truncated list can never masquerade as "that is all the photos you
+        // have" — which is exactly what the old bare LIMIT 500 did silently.
+        $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_images $where_sql");
+        $count_stmt->execute($params);
+        $total = (int)$count_stmt->fetchColumn();
+
+        // A bucket is small and hand-picked, so show all of it. The whole
+        // Gallery still needs a ceiling or the grid renders thousands of tiles;
+        // search narrows server-side, so nothing is unreachable.
+        $cap = ($scope === 'bucket') ? 2000 : 500;
+
+        $stmt = $pdo->prepare(
             "SELECT id,
                     img_title AS asset_name,
                     COALESCE(NULLIF(img_thumb_aspect, ''), img_file) AS asset_path
              FROM snap_images
-             WHERE img_status = 'published'
-             ORDER BY id DESC LIMIT 500"
-        )->fetchAll(PDO::FETCH_ASSOC);
-        echo json_encode($assets);
+             $where_sql
+             ORDER BY id DESC
+             LIMIT $cap"
+        );
+        $stmt->execute($params);
+        $assets = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // ALWAYS fetch the photos this mosaic already contains, whatever the
+        // scope, the search or the cap. Without this, a mosaic holding a photo
+        // older than the newest 500 renders a gap in its own strip and preview —
+        // the photo is still saved, but it looks like it was lost.
+        //
+        // Returned SEPARATELY from the scoped list so the "showing X of Y" line
+        // stays true to the scope, and the grid keeps showing what was asked for.
+        $keep = json_decode($_POST['keep'] ?? '[]', true);
+        $keep = is_array($keep) ? array_values(array_unique(array_map('intval', $keep))) : [];
+        $have = array_map(function ($a) { return (int)$a['id']; }, $assets);
+        $missing = array_values(array_diff($keep, $have));
+        $extra_rows = [];
+        if ($missing) {
+            $ph = implode(',', array_fill(0, count($missing), '?'));
+            $extra = $pdo->prepare(
+                "SELECT id,
+                        img_title AS asset_name,
+                        COALESCE(NULLIF(img_thumb_aspect, ''), img_file) AS asset_path
+                 FROM snap_images WHERE id IN ($ph)"
+            );
+            $extra->execute($missing);
+            $extra_rows = $extra->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        // Bucket order is the order the photos were arranged in the post, not
+        // newest-first — the sequence is editorial, so honour it.
+        if ($scope === 'bucket') {
+            $rank = array_flip($bucket_ids);
+            usort($assets, function ($a, $b) use ($rank) {
+                return ($rank[(int)$a['id']] ?? PHP_INT_MAX) <=> ($rank[(int)$b['id']] ?? PHP_INT_MAX);
+            });
+        }
+
+        echo json_encode([
+            'images' => $assets,
+            'extra'  => $extra_rows,
+            'total'  => $total,
+            'shown'  => count($assets),
+            'capped' => $total > count($assets),
+            'used'   => (object)snap_bucket_mosaic_usage($pdo),
+            'scope'  => $scope,
+        ]);
         exit;
     }
 
@@ -148,6 +237,26 @@ if (!empty($_GET['edit'])) {
     $editing = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 
+// Which post's BUCKET this builder was opened against, if any. The longform
+// editor's "build a mosaic" link carries ?post=ID so the picker can open already
+// narrowed to that essay's photos instead of the whole Gallery.
+$bucket_post_id    = (int)($_GET['post'] ?? 0);
+$bucket_post_title = '';
+$bucket_count      = 0;
+if ($bucket_post_id > 0) {
+    $stmt = $pdo->prepare("SELECT title FROM snap_posts WHERE id = ?");
+    $stmt->execute([$bucket_post_id]);
+    $bucket_post_title = (string)($stmt->fetchColumn() ?: '');
+    if ($bucket_post_title === '') {
+        $bucket_post_id = 0;              // stale or deleted post — fall back to the whole Gallery
+    } else {
+        $bucket_count = count(snap_bucket_ids($pdo, $bucket_post_id));
+    }
+}
+// Posts that HAVE a bucket, so a builder opened cold from the sidebar can still
+// pick one rather than only ever offering the whole Gallery.
+$bucket_posts = snap_bucket_posts($pdo);
+
 $page_title = 'Mosaics';
 include 'core/admin-header.php';
 include 'core/sidebar.php';
@@ -173,8 +282,29 @@ include 'core/sidebar.php';
 
     <div class="header-row header-row--ruled">
         <h2><?php echo $mosaic_id ? 'EDIT MOSAIC #' . $mosaic_id : 'NEW MOSAIC'; ?></h2>
-        <a href="smack-mosaics.php" class="btn-secondary">← BACK TO LIST</a>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <?php /* Built from a post, the way back is to THAT POST, not a mosaic
+                     list — you came here to make something to drop into an essay,
+                     and the shortcode is no use until you are back in it. */ ?>
+            <?php if ($bucket_post_id): ?>
+            <a href="smack-post-long.php?edit=<?php echo $bucket_post_id; ?>" class="btn-secondary">← BACK TO “<?php echo htmlspecialchars($bucket_post_title); ?>”</a>
+            <?php endif; ?>
+            <a href="smack-mosaics.php" class="btn-secondary">← BACK TO LIST</a>
+        </div>
     </div>
+
+    <?php if ($bucket_post_id): ?>
+    <div class="box" style="margin-bottom:14px;border-left:3px solid var(--accent);">
+        <p style="margin:0;font-size:12px;">
+            Building for <strong><?php echo htmlspecialchars($bucket_post_title); ?></strong> —
+            the picker opens showing that post's bucket
+            (<?php echo $bucket_count; ?> photo<?php echo $bucket_count === 1 ? '' : 's'; ?>).
+            <?php if ($bucket_count === 0): ?>
+            <span class="dim">That bucket is empty — fill it in the post editor, or switch the picker to All gallery photos.</span>
+            <?php endif; ?>
+        </p>
+    </div>
+    <?php endif; ?>
 
     <div class="post-layout-grid">
         <div class="post-col-left">
@@ -262,9 +392,53 @@ include 'core/sidebar.php';
                 <!-- ASSET PICKER (hidden) -->
                 <div id="asset-picker" style="display:none;margin-top:12px;border:1px solid var(--border);border-radius:3px;padding:12px;background:var(--card-bg);">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                        <span style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);">MEDIA GALLERY</span>
+                        <span style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);">CHOOSE PHOTOS</span>
                         <button type="button" onclick="togglePicker()" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:18px;line-height:1;">×</button>
                     </div>
+
+                    <?php /* SCOPE is the answer to "one endless scroll". Narrowing to a
+                             post's BUCKET turns the whole Gallery into the dozen photos
+                             that essay is actually built from. */ ?>
+                    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px;">
+                        <div class="lens-input-wrapper" style="flex:0 0 auto;margin-top:0;">
+                            <label>SHOWING</label>
+                            <select id="picker-scope" style="width:280px;">
+                                <option value="all" <?php echo $bucket_post_id ? '' : 'selected'; ?>>All gallery photos</option>
+                                <?php /* Opened from a post, that post's bucket leads and is
+                                         preselected. Opened cold from the sidebar, every post
+                                         that HAS a bucket is still offered, so the narrowing
+                                         is not something only one entry point can reach. */ ?>
+                                <?php
+                                $listed = [];
+                                if ($bucket_post_id) {
+                                    $listed[$bucket_post_id] = true;
+                                    ?>
+                                    <option value="bucket:<?php echo $bucket_post_id; ?>" selected>Bucket — <?php echo htmlspecialchars($bucket_post_title); ?> (<?php echo $bucket_count; ?>)</option>
+                                    <?php
+                                }
+                                foreach ($bucket_posts as $bp):
+                                    if (isset($listed[(int)$bp['id']])) continue;
+                                ?>
+                                <option value="bucket:<?php echo (int)$bp['id']; ?>">Bucket — <?php echo htmlspecialchars($bp['title']); ?> (<?php echo (int)$bp['bucket_count']; ?>)</option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="lens-input-wrapper" style="flex:1;min-width:180px;margin-top:0;">
+                            <label>SEARCH BY NAME</label>
+                            <input type="text" id="picker-search" placeholder="Type part of a filename or title" style="width:100%;">
+                        </div>
+                    </div>
+
+                    <?php /* Greyed and labelled, never hidden. A photo can legitimately
+                             belong to two mosaics (a recurring motif, a reused cover), so
+                             removing it from the picker outright would be a wall with no
+                             door — and a vanished photo reads as a bug, not a rule. */ ?>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);margin-bottom:10px;cursor:pointer;">
+                        <input type="checkbox" id="picker-hide-used" style="width:16px;height:16px;">
+                        Hide photos already used in another mosaic
+                    </label>
+
+                    <div id="picker-count" style="font-size:11px;color:var(--dim);margin-bottom:8px;"></div>
                     <div id="asset-picker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;max-height:360px;overflow-y:auto;"></div>
                 </div>
 
@@ -305,6 +479,9 @@ include 'core/sidebar.php';
         var selectedIds   = <?php echo json_encode($mosaic_ids); ?>;
         var focusPositions = <?php echo json_encode($mosaic_focus); ?>;
         var allAssets     = {};   // id → {id, asset_name, asset_path}
+        var pickerOrder   = [];   // ids in the order the server returned them
+        var usedInMosaic  = {};   // id → "Mosaic title (#7)" for photos already placed
+        var searchTimer   = null;
         var dragSrcIndex  = null;
         var pickerOpen    = false;
 
@@ -318,15 +495,62 @@ include 'core/sidebar.php';
                 updatePreview();
             });
             syncLayoutControls();
+
+            document.getElementById('picker-scope').addEventListener('change', loadAssets);
+            document.getElementById('picker-hide-used').addEventListener('change', renderPickerGrid);
+            // Debounced: the search runs server-side so it can reach past the
+            // display cap, but not on every keystroke.
+            document.getElementById('picker-search').addEventListener('input', function () {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(loadAssets, 250);
+            });
         });
 
         function loadAssets() {
-            ajax('list_assets', {}, function (assets) {
-                assets.forEach(function (a) { allAssets[a.id] = a; });
+            // "all", or "bucket:<postId>" — the post is carried in the value so
+            // the dropdown can offer any post's bucket, not only the one this
+            // builder happened to be opened from.
+            var raw    = document.getElementById('picker-scope').value;
+            var isBkt  = raw.indexOf('bucket:') === 0;
+            var scope  = isBkt ? 'bucket' : 'all';
+            var postId = isBkt ? parseInt(raw.split(':')[1], 10) : 0;
+            var q      = document.getElementById('picker-search').value.trim();
+
+            // keep: the photos already in this mosaic. The server returns them
+            // whatever the scope or cap, so narrowing the picker can never blank
+            // the tiles of photos this mosaic actually contains.
+            ajax('list_assets', { scope: scope, post_id: postId, q: q, keep: JSON.stringify(selectedIds) }, function (resp) {
+                pickerOrder  = [];
+                usedInMosaic = resp.used || {};
+                (resp.images || []).forEach(function (a) {
+                    allAssets[a.id] = a;
+                    pickerOrder.push(parseInt(a.id, 10));
+                });
+                // Known, so the strip and preview can draw them — but deliberately
+                // NOT in pickerOrder, so the grid still shows only what the scope
+                // and search asked for.
+                (resp.extra || []).forEach(function (a) { allAssets[a.id] = a; });
+                renderPickerCount(resp);
                 renderPickerGrid();
                 renderSelected();
                 updatePreview();
             });
+        }
+
+        function renderPickerCount(resp) {
+            var el = document.getElementById('picker-count');
+            if (!el) return;
+            var total = resp.total || 0;
+            if (total === 0) {
+                el.textContent = resp.scope === 'bucket'
+                    ? 'This post has no photos in its bucket yet. Add them in the post editor, or switch to All gallery photos.'
+                    : 'No photos match.';
+                return;
+            }
+            // Never let a capped list look like the whole list.
+            el.textContent = resp.capped
+                ? 'Showing the ' + resp.shown + ' newest of ' + total + ' matching photos — search by name to reach the rest.'
+                : 'Showing all ' + total + ' photo' + (total === 1 ? '' : 's') + '.';
         }
 
         // --- Picker toggle ---
@@ -338,20 +562,36 @@ include 'core/sidebar.php';
 
         // --- Picker grid ---
         function renderPickerGrid() {
-            var grid = document.getElementById('asset-picker-grid');
-            var html = '';
-            var webExts = ['jpg','jpeg','png','gif','webp','avif','svg','bmp'];
-            Object.keys(allAssets).forEach(function (id) {
-                var a   = allAssets[id];
-                var ext = (a.asset_path.split('.').pop() || '').toLowerCase();
-                var sel = selectedIds.indexOf(parseInt(id, 10)) !== -1;
-                html += '<div onclick="toggleAsset(' + id + ')" style="cursor:pointer;position:relative;aspect-ratio:1;'
+            var grid     = document.getElementById('asset-picker-grid');
+            var hideUsed = document.getElementById('picker-hide-used').checked;
+            var html     = '';
+            var hidden   = 0;
+            var webExts  = ['jpg','jpeg','png','gif','webp','avif','svg','bmp'];
+
+            // pickerOrder, not Object.keys(allAssets): allAssets accumulates every
+            // photo ever loaded this session so selected tiles survive a scope
+            // change, but the GRID must only show the current scope's photos.
+            pickerOrder.forEach(function (idNum) {
+                var a = allAssets[idNum];
+                if (!a) return;
+                var id   = idNum;
+                var ext  = (a.asset_path.split('.').pop() || '').toLowerCase();
+                var sel  = selectedIds.indexOf(id) !== -1;
+                var used = usedInMosaic[id];
+
+                // A photo already in THIS mosaic is not "used elsewhere" — hiding
+                // it would make deselecting it impossible.
+                if (used && !sel && hideUsed) { hidden++; return; }
+
+                var dim = (used && !sel) ? 'opacity:.42;' : '';
+                html += '<div onclick="toggleAsset(' + id + ')" title="' + (used && !sel ? 'Already in ' + esc(used) : (a.asset_path.split('/').pop() || ''))
+                      + '" style="cursor:pointer;position:relative;aspect-ratio:1;' + dim
                       + 'border:2px solid ' + (sel ? 'var(--accent)' : 'transparent') + ';border-radius:3px;overflow:hidden;background:#111;">';
                 if (webExts.indexOf(ext) !== -1) {
                     // contain, not cover: a cropped square makes a portrait, a landscape
                     // and a square look identical — useless when you are picking photos
                     // for an arrangement that is entirely about their shape.
-                    html += '<img src="' + BASE + a.asset_path + '" title="' + (a.asset_path.split('/').pop() || '') + '" style="width:100%;height:100%;object-fit:contain;" loading="lazy">';
+                    html += '<img src="' + BASE + a.asset_path + '" style="width:100%;height:100%;object-fit:contain;" loading="lazy">';
                 } else {
                     html += '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--dim);font-size:10px;">' + ext.toUpperCase() + '</div>';
                 }
@@ -359,9 +599,32 @@ include 'core/sidebar.php';
                     html += '<div style="position:absolute;top:3px;right:3px;background:var(--accent);color:#111;'
                           + 'border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">✓</div>';
                 }
+                // Say WHY it is greyed out. A dimmed tile with no reason on it is
+                // indistinguishable from a broken thumbnail.
+                if (used && !sel) {
+                    html += '<div style="position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.72);color:#fff;'
+                          + 'font-size:9px;line-height:1.25;padding:2px 3px;text-align:center;">IN ' + esc(used) + '</div>';
+                }
                 html += '</div>';
             });
-            grid.innerHTML = html || '<p style="color:var(--dim);font-size:12px;grid-column:1/-1;">No media found.</p>';
+
+            if (!html) {
+                grid.innerHTML = '<p style="color:var(--dim);font-size:12px;grid-column:1/-1;">'
+                               + (hidden ? 'All ' + hidden + ' photo' + (hidden === 1 ? ' is' : 's are') + ' already used in another mosaic. Untick the box above to see them.'
+                                         : 'No photos found.')
+                               + '</p>';
+                return;
+            }
+            if (hidden) {
+                html += '<p style="color:var(--dim);font-size:11px;grid-column:1/-1;margin:6px 0 0;">'
+                      + hidden + ' photo' + (hidden === 1 ? '' : 's') + ' hidden — already used in another mosaic.</p>';
+            }
+            grid.innerHTML = html;
+        }
+
+        function esc(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
         window.toggleAsset = function (id) {

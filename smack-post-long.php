@@ -18,6 +18,7 @@
 require_once 'core/auth-smack.php';
 require_once 'core/app-mode.php';
 require_once 'core/snap-tags.php';
+require_once 'core/bucket.php';
 
 if (!isset($settings)) {
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -113,6 +114,95 @@ function smack_reverse_autop_long(string $text): string {
 function long_slugify(string $title): string {
     $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9]+/', '-', $title), '-'));
     return $slug ?: 'post';
+}
+
+// --- AJAX: the BUCKET — this post's working set of Gallery photos ---
+// Filling the bucket is deliberately its own save, not part of the post form:
+// it has to work on a draft you are still writing, without forcing a full post
+// save (and a page reload) every time you add a photo.
+if (!empty($_GET['ajax']) && $_GET['ajax'] === 'bucket') {
+    header('Content-Type: application/json');
+    snap_bucket_ensure($pdo);
+
+    $post_id = (int)($_GET['post_id'] ?? 0);
+    $q       = trim((string)($_GET['q'] ?? ''));
+
+    $where  = ["img_status = 'published'"];
+    $params = [];
+    if ($q !== '') {
+        $where[]  = '(img_title LIKE ? OR img_file LIKE ?)';
+        $params[] = '%' . $q . '%';
+        $params[] = '%' . $q . '%';
+    }
+    $where_sql = 'WHERE ' . implode(' AND ', $where);
+
+    $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_images $where_sql");
+    $count_stmt->execute($params);
+    $total = (int)$count_stmt->fetchColumn();
+
+    // Same honesty rule as the mosaic picker: a capped list says so.
+    $stmt = $pdo->prepare(
+        "SELECT id,
+                img_title AS name,
+                COALESCE(NULLIF(img_thumb_aspect, ''), img_file) AS path
+         FROM snap_images
+         $where_sql
+         ORDER BY id DESC
+         LIMIT 500"
+    );
+    $stmt->execute($params);
+    $images = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // The bucket's OWN photos always come back, whatever the search or the cap.
+    // A bucket photo older than the newest 500 would otherwise leave a hole in
+    // the strip — still saved, but looking as though it had been dropped.
+    // Returned separately so the "showing X of Y" line stays true to the search.
+    $bucket = snap_bucket_ids($pdo, $post_id);
+    $have    = array_map(function ($im) { return (int)$im['id']; }, $images);
+    $missing = array_values(array_diff($bucket, $have));
+    $extra   = [];
+    if ($missing) {
+        $ph   = implode(',', array_fill(0, count($missing), '?'));
+        $xstm = $pdo->prepare(
+            "SELECT id,
+                    img_title AS name,
+                    COALESCE(NULLIF(img_thumb_aspect, ''), img_file) AS path
+             FROM snap_images WHERE id IN ($ph)"
+        );
+        $xstm->execute($missing);
+        $extra = $xstm->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    echo json_encode([
+        'images' => $images,
+        'extra'  => $extra,
+        'bucket' => $bucket,
+        'total'  => $total,
+        'shown'  => count($images),
+        'capped' => $total > count($images),
+    ]);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_bucket') {
+    // CSRF is already enforced: core/auth-smack.php runs csrf_check() on every
+    // POST, and assets/js/ss-engine-admin-csrf.js puts the token on every admin
+    // XHR. Nothing to add here — and nothing to skip either.
+    header('Content-Type: application/json');
+    $post_id = (int)($_POST['post_id'] ?? 0);
+    if ($post_id <= 0) {
+        echo json_encode(['ok' => false, 'error' => 'Save this post as a draft first, then fill its bucket.']);
+        exit;
+    }
+    $ids = json_decode($_POST['image_ids'] ?? '[]', true);
+    if (!is_array($ids)) $ids = [];
+    try {
+        $n = snap_bucket_save($pdo, $post_id, $ids);
+        echo json_encode(['ok' => true, 'count' => $n]);
+    } catch (PDOException $e) {
+        echo json_encode(['ok' => false, 'error' => 'Could not save the bucket. Nothing was changed.']);
+    }
+    exit;
 }
 
 // --- AJAX: list mosaics for insert picker ---
@@ -406,6 +496,65 @@ include 'core/sidebar.php';
                       placeholder="Write something worth saying. Blank lines become paragraph breaks. Embed image shortcodes and MOSAIC panels inline."><?php echo htmlspecialchars($edit_content ?? ($edit_post['content'] ?? '')); ?></textarea>
         </div>
 
+        <?php /* ── BUCKET ──────────────────────────────────────────────────────
+                 This post's working set of Gallery photos. Private and editorial:
+                 nothing here publishes on its own, and nothing here is placed in
+                 the essay until you put it there. Its whole job is to give the
+                 MOSAIC picker something to narrow by, so choosing photos for an
+                 arrangement is a dozen tiles instead of the entire Gallery.
+
+                 Saved on its own button, NOT with the post form, so it works
+                 while a draft is still being written without a reload. */ ?>
+        <div class="box" id="bucket-panel" style="border-radius:0;border-top:none;">
+            <div class="header-row" style="margin-bottom:10px;">
+                <h3 style="margin:0;font-size:13px;letter-spacing:.8px;">
+                    BUCKET
+                    <span class="field-tip" data-tip="The photos this post is built from. Pick them once here, then the MOSAIC picker opens showing only these instead of your whole gallery. Nothing here is published or placed in the essay on its own.">ⓘ</span>
+                </h3>
+                <span id="bucket-status" class="dim" style="font-size:11px;"></span>
+            </div>
+
+            <?php $bucket_post_id_form = $edit_post ? (int)$edit_post['id'] : 0; ?>
+            <?php if (!$bucket_post_id_form): ?>
+                <?php /* A bucket belongs to a post, and a post that has never been
+                         saved has no id to belong to. Say so plainly rather than
+                         showing a picker that silently discards what you choose. */ ?>
+                <p class="dim" style="font-size:12px;margin:0;">
+                    Save this post once — as a <strong>Draft</strong> is fine — and the bucket appears here.
+                    Then pick the photos you are writing from, and the mosaic builder will show only those.
+                </p>
+            <?php else: ?>
+                <div id="bucket-selected"
+                     style="display:flex;flex-wrap:wrap;gap:8px;min-height:76px;padding:12px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);"></div>
+
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                    <button type="button" id="bucket-add-btn" class="btn-secondary" style="flex:1;min-width:200px;">+ ADD PHOTOS TO BUCKET</button>
+                    <?php /* Big, distinct, and next to the thing it saves — the bucket
+                             has its own save because it is not part of the post form. */ ?>
+                    <button type="button" id="bucket-save-btn" class="master-update-btn" style="flex:1;min-width:200px;">SAVE BUCKET</button>
+                </div>
+
+                <div style="margin-top:10px;">
+                    <a id="bucket-mosaic-link" href="smack-mosaics.php?new=1&amp;post=<?php echo $bucket_post_id_form; ?>"
+                       target="_blank" class="btn-secondary" style="display:inline-block;font-size:11px;">
+                        BUILD A MOSAIC FROM THIS BUCKET →
+                    </a>
+                    <span class="dim" style="font-size:11px;margin-left:8px;">Save the bucket first, or the builder will not see your latest picks.</span>
+                </div>
+
+                <!-- BUCKET PICKER (hidden until asked for) -->
+                <div id="bucket-picker" style="display:none;margin-top:12px;border:1px solid var(--border);border-radius:3px;padding:12px;background:var(--card-bg);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;">
+                        <span style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);">MEDIA GALLERY</span>
+                        <input type="text" id="bucket-search" placeholder="Search by name" style="flex:1;max-width:280px;">
+                        <button type="button" id="bucket-picker-close" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:18px;line-height:1;">×</button>
+                    </div>
+                    <div id="bucket-count" style="font-size:11px;color:var(--dim);margin-bottom:8px;"></div>
+                    <div id="bucket-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;max-height:340px;overflow-y:auto;"></div>
+                </div>
+            <?php endif; ?>
+        </div>
+
         <!-- META SIDEBAR ROW -->
         <div class="box" style="border-radius:0 0 4px 4px;border-top:none;">
             <div class="post-layout-grid">
@@ -642,7 +791,10 @@ include 'core/sidebar.php';
             <p class="dim" style="font-size:12px;padding:10px;">Loading mosaics…</p>
         </div>
         <p style="font-size:11px;color:var(--dim);margin-top:12px;">
-            Don't see the one you want? <a href="smack-mosaics.php" target="_blank" style="color:var(--link);">Build a new mosaic →</a>
+            <?php /* Carries ?post= so the builder opens narrowed to THIS post's
+                     bucket. Without it the builder has no idea which essay you
+                     came from and can only offer the whole Gallery. */ ?>
+            Don't see the one you want? <a href="smack-mosaics.php?new=1<?php echo $edit_post ? '&amp;post=' . (int)$edit_post['id'] : ''; ?>" target="_blank" style="color:var(--link);">Build a new mosaic →</a>
         </p>
     </div>
 </div>
@@ -723,7 +875,7 @@ function openMosaicModal() {
         }
         var mosaics = JSON.parse(xhr.responseText);
         if (!mosaics.length) {
-            list.innerHTML = '<p class="dim" style="font-size:12px;padding:10px;">No mosaics yet. <a href="smack-mosaics.php" target="_blank" style="color:var(--link);">Build one →</a></p>';
+            list.innerHTML = '<p class="dim" style="font-size:12px;padding:10px;">No mosaics yet. <a href="smack-mosaics.php?new=1<?php echo $edit_post ? '&amp;post=' . (int)$edit_post['id'] : ''; ?>" target="_blank" style="color:var(--link);">Build one →</a></p>';
             return;
         }
         var html = '';
@@ -762,6 +914,207 @@ document.getElementById('mosaic-insert-btn').addEventListener('click', openMosai
 document.getElementById('mosaic-modal').addEventListener('click', function (e) {
     if (e.target === this) closeMosaicModal();
 });
+
+// --- BUCKET: this post's working set of Gallery photos ---
+// Whole block is inert on an unsaved post — there is no post id for a bucket to
+// belong to, so the panel renders an explanation instead of these controls.
+(function () {
+    var panel = document.getElementById('bucket-panel');
+    var strip = document.getElementById('bucket-selected');
+    if (!panel || !strip) return;
+
+    var POST_ID    = <?php echo $edit_post ? (int)$edit_post['id'] : 0; ?>;
+    var BASE       = <?php echo json_encode(BASE_URL); ?>;
+    var bucketIds  = [];      // ordered image ids in the bucket
+    var known      = {};      // id → {id, name, path} for everything seen this session
+    var gridOrder  = [];      // ids currently listed in the picker
+    var dirty      = false;   // unsaved changes?
+    var searchTimer = null;
+
+    var statusEl = document.getElementById('bucket-status');
+    var picker   = document.getElementById('bucket-picker');
+    var grid     = document.getElementById('bucket-grid');
+    var countEl  = document.getElementById('bucket-count');
+    var searchEl = document.getElementById('bucket-search');
+
+    function esc(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function setStatus(msg, warn) {
+        statusEl.textContent = msg;
+        statusEl.style.color = warn ? 'var(--accent)' : 'var(--dim)';
+    }
+
+    function markDirty() {
+        dirty = true;
+        setStatus(bucketIds.length + ' photo' + (bucketIds.length === 1 ? '' : 's') + ' — NOT SAVED YET', true);
+    }
+
+    function load(q) {
+        var url = 'smack-post-long.php?ajax=bucket&post_id=' + POST_ID
+                + (q ? '&q=' + encodeURIComponent(q) : '');
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.onload = function () {
+            if (xhr.status !== 200) { setStatus('Could not load the gallery.', true); return; }
+            var resp;
+            try { resp = JSON.parse(xhr.responseText); }
+            catch (e) { setStatus('Could not load the gallery.', true); return; }
+
+            gridOrder = [];
+            (resp.images || []).forEach(function (im) {
+                known[im.id] = im;
+                gridOrder.push(parseInt(im.id, 10));
+            });
+            // Known so the strip can draw them, but NOT in gridOrder — the grid
+            // shows what the search asked for, the strip shows the bucket.
+            (resp.extra || []).forEach(function (im) { known[im.id] = im; });
+            // Only adopt the SAVED bucket on the first load. Re-reading it after
+            // a search would throw away picks not yet saved.
+            if (!dirty) {
+                bucketIds = (resp.bucket || []).map(function (n) { return parseInt(n, 10); });
+                setStatus(bucketIds.length ? bucketIds.length + ' photo' + (bucketIds.length === 1 ? '' : 's') + ' saved' : 'Empty');
+            }
+            // A capped list must never look like the whole list.
+            countEl.textContent = resp.capped
+                ? 'Showing the ' + resp.shown + ' newest of ' + resp.total + ' photos — search by name to reach the rest.'
+                : 'Showing all ' + resp.total + ' photo' + (resp.total === 1 ? '' : 's') + '.';
+            renderGrid();
+            renderStrip();
+        };
+        xhr.send();
+    }
+
+    function renderStrip() {
+        if (!bucketIds.length) {
+            strip.innerHTML = '<p class="dim" style="padding:10px;margin:0;font-size:12px;">'
+                            + 'Nothing in the bucket yet. Add the photos this post is built from.</p>';
+            return;
+        }
+        var html = '';
+        bucketIds.forEach(function (id) {
+            var im = known[id];
+            if (!im) return;
+            // object-fit:contain — the shape of a photo is the thing that matters
+            // when these are headed for an arrangement.
+            html += '<div style="position:relative;width:72px;height:72px;border:1px solid var(--border);'
+                  + 'border-radius:3px;overflow:hidden;flex-shrink:0;background:#111;" title="' + esc(im.name || '') + '">'
+                  + '<img src="' + BASE + im.path + '" style="width:100%;height:100%;object-fit:contain;" loading="lazy" alt="">'
+                  + '<button type="button" data-remove="' + id + '" title="Remove from bucket" aria-label="Remove from bucket"'
+                  + ' style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);border:none;color:#ff5555;'
+                  + 'cursor:pointer;width:20px;height:20px;border-radius:50%;font-size:13px;line-height:1;padding:0;'
+                  + 'display:flex;align-items:center;justify-content:center;">×</button>'
+                  + '</div>';
+        });
+        strip.innerHTML = html;
+    }
+
+    function renderGrid() {
+        var html = '';
+        gridOrder.forEach(function (id) {
+            var im = known[id];
+            if (!im) return;
+            var inBucket = bucketIds.indexOf(id) !== -1;
+            html += '<div data-pick="' + id + '" title="' + esc(im.name || '') + '"'
+                  + ' style="cursor:pointer;position:relative;aspect-ratio:1;border:2px solid '
+                  + (inBucket ? 'var(--accent)' : 'transparent') + ';border-radius:3px;overflow:hidden;background:#111;">'
+                  + '<img src="' + BASE + im.path + '" style="width:100%;height:100%;object-fit:contain;" loading="lazy" alt="">';
+            if (inBucket) {
+                html += '<div style="position:absolute;top:3px;right:3px;background:var(--accent);color:#111;'
+                      + 'border-radius:50%;width:18px;height:18px;display:flex;align-items:center;'
+                      + 'justify-content:center;font-size:11px;font-weight:700;">&#10003;</div>';
+            }
+            html += '</div>';
+        });
+        grid.innerHTML = html || '<p style="color:var(--dim);font-size:12px;grid-column:1/-1;">No photos match.</p>';
+    }
+
+    // Delegated clicks: the grid and strip are re-rendered constantly, so
+    // per-tile handlers would be rebound on every keystroke of a search.
+    grid.addEventListener('click', function (e) {
+        var tile = e.target.closest('[data-pick]');
+        if (!tile) return;
+        var id = parseInt(tile.getAttribute('data-pick'), 10);
+        var i  = bucketIds.indexOf(id);
+        if (i === -1) bucketIds.push(id); else bucketIds.splice(i, 1);
+        markDirty();
+        renderGrid();
+        renderStrip();
+    });
+
+    strip.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-remove]');
+        if (!btn) return;
+        var id = parseInt(btn.getAttribute('data-remove'), 10);
+        var i  = bucketIds.indexOf(id);
+        if (i !== -1) {
+            bucketIds.splice(i, 1);
+            markDirty();
+            renderGrid();
+            renderStrip();
+        }
+    });
+
+    document.getElementById('bucket-add-btn').addEventListener('click', function () {
+        var open = picker.style.display !== 'none';
+        picker.style.display = open ? 'none' : 'block';
+        if (!open && !gridOrder.length) load('');
+    });
+    document.getElementById('bucket-picker-close').addEventListener('click', function () {
+        picker.style.display = 'none';
+    });
+
+    searchEl.addEventListener('input', function () {
+        clearTimeout(searchTimer);
+        var q = searchEl.value.trim();
+        searchTimer = setTimeout(function () { load(q); }, 250);
+    });
+
+    document.getElementById('bucket-save-btn').addEventListener('click', function () {
+        var btn = this;
+        btn.disabled = true;
+        setStatus('Saving…');
+        var body = 'action=save_bucket&post_id=' + POST_ID
+                 + '&image_ids=' + encodeURIComponent(JSON.stringify(bucketIds));
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'smack-post-long.php', true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.onload = function () {
+            btn.disabled = false;
+            var resp;
+            try { resp = JSON.parse(xhr.responseText); }
+            catch (e) {
+                // A 403 from the CSRF guard arrives as plain text, not JSON.
+                setStatus('Could not save — reload the page and try again.', true);
+                return;
+            }
+            if (resp.ok) {
+                dirty = false;
+                setStatus(resp.count + ' photo' + (resp.count === 1 ? '' : 's') + ' saved');
+            } else {
+                setStatus(resp.error || 'Could not save the bucket.', true);
+            }
+        };
+        xhr.onerror = function () {
+            btn.disabled = false;
+            setStatus('Could not save — check your connection and try again.', true);
+        };
+        xhr.send(body);
+    });
+
+    // Leaving with unsaved picks loses them, and the mosaic builder would then
+    // show a bucket that does not match what is on screen.
+    window.addEventListener('beforeunload', function (e) {
+        if (!dirty) return;
+        e.preventDefault();
+        e.returnValue = '';
+    });
+
+    load('');
+}());
 
 </script>
 <?php // ===== SNAPSMACK EOF =====

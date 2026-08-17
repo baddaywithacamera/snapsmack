@@ -262,9 +262,35 @@ bin-packing layout that arranges images into clean rows of equal height, similar
 Jetpack justified gallery for WordPress.</p>
 
 <h4>Building a Mosaic</h4>
-<p>In the Mosaics admin page, give the mosaic a title, choose images from the media library,
-set the gap (0–20px), and save. Each saved mosaic gets a shortcode like
+<p>In the Mosaics admin page, give the mosaic a title, choose images from the gallery,
+set the gap (0–20px), pick a LAYOUT, and save. Each saved mosaic gets a shortcode like
 <code>[mosaic:3]</code>.</p>
+
+<h4>Layouts</h4>
+<p>A mosaic renders as one of the same four layouts the SCROLL wall offers:
+<strong>Columns</strong> (portraits stand tallest), <strong>Rows</strong> (landscapes lead),
+<strong>Square</strong> (even cropped grid), or <strong>Asymmetric</strong> (the MOSAIC quilt,
+and the default). HERO EMPHASIS only changes Asymmetric, so it is hidden for the other three.</p>
+
+<h4>Working From a Bucket</h4>
+<p>A <strong>bucket</strong> is a post's own set of photos — the ones that post is built from.
+Fill it in the BUCKET panel of the longform editor, then the mosaic picker can show just those
+instead of your whole gallery. This is what stops mosaic-building being one endless scroll.</p>
+<p>Use the <strong>SHOWING</strong> control at the top of the picker to switch between a post's
+bucket and all gallery photos. Opening the builder from a post's
+<em>BUILD A MOSAIC FROM THIS BUCKET</em> link starts it on that post's bucket automatically.</p>
+
+<h4>Photos Already Used</h4>
+<p>Tick <strong>hide photos already used in another mosaic</strong> to take them out of the
+picker. Left unticked they stay visible but greyed, with the mosaic they belong to written
+across them — a photo is allowed in more than one mosaic, so this is a warning, not a block.
+A photo already in the mosaic you are editing is never greyed, so you can always deselect it.</p>
+
+<h4>Finding a Photo</h4>
+<p>The picker shows a limited number of photos at once and says exactly how many of how many
+it is showing. If what you want is not listed, type part of its name into
+<strong>SEARCH BY NAME</strong> — the search runs across your whole gallery, not just the
+photos currently on screen.</p>
 
 <h4>Inserting Into a Post</h4>
 <p>In the SMACKTALK longform editor, click the MOSAIC button in the toolbar to open the mosaic
@@ -295,6 +321,21 @@ length or the number of embedded panels.</p>
 <p>Select a hero image from the media library. This image is used as the post thumbnail
 in archive and collection views. It is separate from the images embedded via shortcodes
 in the body.</p>
+
+<h4>The Bucket</h4>
+<p>Under the writing area is the <strong>BUCKET</strong> — this post's own set of photos, the
+ones you are writing from. Pick them once, and the mosaic picker can then show just those
+instead of your whole gallery.</p>
+<p>The bucket has its own <strong>SAVE BUCKET</strong> button and is saved separately from the
+post, so you can add photos while a draft is still open without saving and reloading. If you
+leave the page with unsaved picks you will be warned.</p>
+<p>A bucket belongs to a post, so it appears once the post has been saved at least once —
+saving as a <strong>Draft</strong> is enough. Start a draft, fill the bucket, then write.</p>
+<p>Nothing in a bucket is published and nothing is placed in the essay until you place it. It
+is a private working set, which is what makes it different from a Collection. A photo may sit
+in as many buckets as you like.</p>
+<p><strong>BUILD A MOSAIC FROM THIS BUCKET</strong> opens the mosaic builder already showing
+only this post's photos. Save the bucket first, or the builder will not see your latest picks.</p>
 
 <h4>Categories and Albums</h4>
 <p>Longform posts are assigned to categories and albums using the same multi-select dropdowns
