@@ -326,7 +326,8 @@ in the body.</p>
 <p>Under the writing area is the <strong>BUCKET</strong> — this post's own set of photos, the
 ones you are writing from. Pick them once, and the mosaic picker can then show just those
 instead of your whole gallery.</p>
-<p>The bucket has its own <strong>SAVE BUCKET</strong> button and is saved separately from the
+<p>The bucket has its own <strong>Save bucket</strong> button, which lights up when you have
+unsaved picks, and is saved separately from the
 post, so you can add photos while a draft is still open without saving and reloading. If you
 leave the page with unsaved picks you will be warned.</p>
 <p>A bucket belongs to a post, so it appears once the post has been saved at least once —

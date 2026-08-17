@@ -505,6 +505,34 @@ include 'core/sidebar.php';
 
                  Saved on its own button, NOT with the post form, so it works
                  while a draft is still being written without a reload. */ ?>
+        <?php /* Scoped to #bucket-panel so it matches the form's compact button
+                 idiom (sc-btn / AI-fill buttons) without touching any global
+                 style. Accent is the theme's --lens-accent, so it tracks the
+                 skin rather than a hardcoded green. */ ?>
+        <style>
+        #bucket-panel .bkt-actions { display:flex; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap; }
+        #bucket-panel .bkt-btn {
+            height:38px; padding:0 18px; font-size:.72rem; font-weight:700;
+            letter-spacing:.06em; text-transform:uppercase; border-radius:4px;
+            border:1px solid var(--border,#333); background:transparent;
+            color:var(--text-primary,#ddd); cursor:pointer;
+            transition:border-color .15s, color .15s, background-color .15s;
+        }
+        #bucket-panel .bkt-btn:hover { border-color:var(--lens-accent,#39FF14); color:var(--lens-accent,#39FF14); }
+        #bucket-panel .bkt-save { margin-left:auto; }
+        #bucket-panel .bkt-save[disabled] { opacity:.4; cursor:default; }
+        #bucket-panel .bkt-save.is-dirty {
+            background:var(--lens-accent,#39FF14); border-color:var(--lens-accent,#39FF14);
+            color:var(--lens-bg,#141414); opacity:1; cursor:pointer;
+        }
+        #bucket-panel .bkt-link {
+            display:inline-block; margin-top:12px; font-size:.72rem; letter-spacing:.04em;
+            text-transform:uppercase; color:var(--lens-accent,#39FF14);
+            text-decoration:none; border-bottom:1px solid transparent;
+        }
+        #bucket-panel .bkt-link:hover { border-bottom-color:currentColor; }
+        #bucket-panel .bkt-hint { font-size:11px; color:var(--dim,#888); margin-left:10px; }
+        </style>
         <div class="box" id="bucket-panel" style="border-radius:0;border-top:none;">
             <div class="header-row" style="margin-bottom:10px;">
                 <h3 style="margin:0;font-size:13px;letter-spacing:.8px;">
@@ -527,19 +555,21 @@ include 'core/sidebar.php';
                 <div id="bucket-selected"
                      style="display:flex;flex-wrap:wrap;gap:8px;min-height:76px;padding:12px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);"></div>
 
-                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                    <button type="button" id="bucket-add-btn" class="btn-secondary" style="flex:1;min-width:200px;">+ ADD PHOTOS TO BUCKET</button>
-                    <?php /* Big, distinct, and next to the thing it saves — the bucket
-                             has its own save because it is not part of the post form. */ ?>
-                    <button type="button" id="bucket-save-btn" class="master-update-btn" style="flex:1;min-width:200px;">SAVE BUCKET</button>
+                <?php /* Two quiet controls in the form's own compact idiom, NOT two
+                         full-width slabs. ADD sits left; SAVE sits right, apart from
+                         it (Parkinson's — no adjacent mis-hit targets), and stays
+                         calm until there is something to save, when it lights accent
+                         and enables. So it is a clear target exactly when it matters
+                         and silent the rest of the time. */ ?>
+                <div class="bkt-actions">
+                    <button type="button" id="bucket-add-btn" class="bkt-btn">+ Add photos</button>
+                    <button type="button" id="bucket-save-btn" class="bkt-btn bkt-save" disabled>Save bucket</button>
                 </div>
 
-                <div style="margin-top:10px;">
+                <div>
                     <a id="bucket-mosaic-link" href="smack-mosaics.php?new=1&amp;post=<?php echo $bucket_post_id_form; ?>"
-                       target="_blank" class="btn-secondary" style="display:inline-block;font-size:11px;">
-                        BUILD A MOSAIC FROM THIS BUCKET →
-                    </a>
-                    <span class="dim" style="font-size:11px;margin-left:8px;">Save the bucket first, or the builder will not see your latest picks.</span>
+                       target="_blank" class="bkt-link">Build a mosaic from this bucket →</a>
+                    <span class="bkt-hint">save first, or the builder won't see your latest picks</span>
                 </div>
 
                 <!-- BUCKET PICKER (hidden until asked for) -->
@@ -549,8 +579,11 @@ include 'core/sidebar.php';
                         <input type="text" id="bucket-search" placeholder="Search by name" style="flex:1;max-width:280px;">
                         <button type="button" id="bucket-picker-close" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:18px;line-height:1;">×</button>
                     </div>
-                    <div id="bucket-count" style="font-size:11px;color:var(--dim);margin-bottom:8px;"></div>
-                    <div id="bucket-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;max-height:340px;overflow-y:auto;"></div>
+                    <div id="bucket-count" style="font-size:11px;color:var(--dim);margin-bottom:2px;"></div>
+                    <div style="font-size:11px;color:var(--dim);margin-bottom:8px;">Click a photo to pick it. <strong>Shift-click</strong> to grab everything between it and your last pick.</div>
+                    <?php /* user-select:none — shift-click otherwise highlights the run of
+                             tiles as text instead of selecting photos. */ ?>
+                    <div id="bucket-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;max-height:340px;overflow-y:auto;user-select:none;"></div>
                 </div>
             <?php endif; ?>
         </div>
@@ -928,6 +961,7 @@ document.getElementById('mosaic-modal').addEventListener('click', function (e) {
     var bucketIds  = [];      // ordered image ids in the bucket
     var known      = {};      // id → {id, name, path} for everything seen this session
     var gridOrder  = [];      // ids currently listed in the picker
+    var lastPickIndex = null; // anchor for shift-click range selection
     var dirty      = false;   // unsaved changes?
     var searchTimer = null;
 
@@ -942,14 +976,24 @@ document.getElementById('mosaic-modal').addEventListener('click', function (e) {
                         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    function setStatus(msg, warn) {
+    var saveBtn = document.getElementById('bucket-save-btn');
+
+    function setStatus(msg) {
         statusEl.textContent = msg;
-        statusEl.style.color = warn ? 'var(--accent)' : 'var(--dim)';
+    }
+
+    // Clean: quiet count, save disabled (nothing to save). Dirty: save lights
+    // accent and enables, so the signal to save lives on the button you press.
+    function setClean(count) {
+        dirty = false;
+        setStatus(count ? count + ' photo' + (count === 1 ? '' : 's') + ' saved' : 'Empty');
+        if (saveBtn) { saveBtn.classList.remove('is-dirty'); saveBtn.disabled = true; }
     }
 
     function markDirty() {
         dirty = true;
-        setStatus(bucketIds.length + ' photo' + (bucketIds.length === 1 ? '' : 's') + ' — NOT SAVED YET', true);
+        setStatus(bucketIds.length + ' photo' + (bucketIds.length === 1 ? '' : 's') + ' — unsaved');
+        if (saveBtn) { saveBtn.classList.add('is-dirty'); saveBtn.disabled = false; }
     }
 
     function load(q) {
@@ -964,6 +1008,7 @@ document.getElementById('mosaic-modal').addEventListener('click', function (e) {
             catch (e) { setStatus('Could not load the gallery.', true); return; }
 
             gridOrder = [];
+            lastPickIndex = null;   // grid order just changed; the old anchor is meaningless
             (resp.images || []).forEach(function (im) {
                 known[im.id] = im;
                 gridOrder.push(parseInt(im.id, 10));
@@ -975,7 +1020,7 @@ document.getElementById('mosaic-modal').addEventListener('click', function (e) {
             // a search would throw away picks not yet saved.
             if (!dirty) {
                 bucketIds = (resp.bucket || []).map(function (n) { return parseInt(n, 10); });
-                setStatus(bucketIds.length ? bucketIds.length + ' photo' + (bucketIds.length === 1 ? '' : 's') + ' saved' : 'Empty');
+                setClean(bucketIds.length);
             }
             // A capped list must never look like the whole list.
             countEl.textContent = resp.capped
@@ -1033,12 +1078,28 @@ document.getElementById('mosaic-modal').addEventListener('click', function (e) {
 
     // Delegated clicks: the grid and strip are re-rendered constantly, so
     // per-tile handlers would be rebound on every keystroke of a search.
+    // lastPickIndex is the anchor for shift-click range selection; reset on
+    // every load() because the grid order changes with search/scope.
     grid.addEventListener('click', function (e) {
         var tile = e.target.closest('[data-pick]');
         if (!tile) return;
-        var id = parseInt(tile.getAttribute('data-pick'), 10);
-        var i  = bucketIds.indexOf(id);
-        if (i === -1) bucketIds.push(id); else bucketIds.splice(i, 1);
+        var id  = parseInt(tile.getAttribute('data-pick'), 10);
+        var idx = gridOrder.indexOf(id);
+
+        if (e.shiftKey && lastPickIndex !== null && idx !== -1) {
+            // Shift-click grabs the whole run between the last photo you clicked
+            // and this one — and ADDS them (never toggles off), so dragging a
+            // range can only ever build the selection, not silently gut it.
+            var lo = Math.min(lastPickIndex, idx), hi = Math.max(lastPickIndex, idx);
+            for (var k = lo; k <= hi; k++) {
+                var rid = gridOrder[k];
+                if (bucketIds.indexOf(rid) === -1) bucketIds.push(rid);
+            }
+        } else {
+            var i = bucketIds.indexOf(id);
+            if (i === -1) bucketIds.push(id); else bucketIds.splice(i, 1);
+        }
+        lastPickIndex = idx;
         markDirty();
         renderGrid();
         renderStrip();
@@ -1092,10 +1153,9 @@ document.getElementById('mosaic-modal').addEventListener('click', function (e) {
                 return;
             }
             if (resp.ok) {
-                dirty = false;
-                setStatus(resp.count + ' photo' + (resp.count === 1 ? '' : 's') + ' saved');
+                setClean(resp.count);           // disables save, drops the accent
             } else {
-                setStatus(resp.error || 'Could not save the bucket.', true);
+                setStatus(resp.error || 'Could not save the bucket.');
             }
         };
         xhr.onerror = function () {
@@ -1106,7 +1166,13 @@ document.getElementById('mosaic-modal').addEventListener('click', function (e) {
     });
 
     // Leaving with unsaved picks loses them, and the mosaic builder would then
-    // show a bucket that does not match what is on screen.
+    // show a bucket that does not match what is on screen. BUT submitting the
+    // post itself (UPDATE TRANSMISSION / TRANSMIT) is a save, not a "leave" —
+    // it must never trigger the warning. Same for the mosaic link, which opens
+    // in a new tab. So the guard only fires on a genuine navigation away.
+    var postForm = document.getElementById('long-post-form');
+    if (postForm) postForm.addEventListener('submit', function () { dirty = false; });
+
     window.addEventListener('beforeunload', function (e) {
         if (!dirty) return;
         e.preventDefault();
