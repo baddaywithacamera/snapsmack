@@ -10,6 +10,14 @@
 
 # SnapSmack Changelog
 
+## 0.7.533 — 2026-08-17
+
+### Buckets — pick a run of photos at once, and a quieter panel
+
+- **Shift-click selects a range.** Click one photo, then shift-click another, and everything between them is added in one go — the same as picking files in a folder. Works in both the post's BUCKET picker and the mosaic builder's picker. No more clicking thirty photos one at a time.
+- **The bucket buttons no longer shout.** The two full-width slabs are gone. ADD and SAVE are now compact controls in the form's own style, set apart from each other, and **Save bucket stays quiet until you actually have unsaved picks** — then it lights up. Calm when there's nothing to do, obvious when there is.
+- **Fixed:** pressing UPDATE TRANSMISSION on a post could pop a browser "Leave site? Changes may not be saved" dialog. Saving the post is not leaving it, so that warning no longer appears on save — only if you genuinely navigate away with unsaved bucket picks.
+
 ## 0.7.532 — 2026-08-17
 
 ### Buckets — a post can now hold the photos it is built from

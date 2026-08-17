@@ -438,8 +438,11 @@ include 'core/sidebar.php';
                         Hide photos already used in another mosaic
                     </label>
 
-                    <div id="picker-count" style="font-size:11px;color:var(--dim);margin-bottom:8px;"></div>
-                    <div id="asset-picker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;max-height:360px;overflow-y:auto;"></div>
+                    <div id="picker-count" style="font-size:11px;color:var(--dim);margin-bottom:2px;"></div>
+                    <div style="font-size:11px;color:var(--dim);margin-bottom:8px;">Click a photo to pick it. <strong>Shift-click</strong> to grab everything between it and your last pick.</div>
+                    <?php /* user-select:none — shift-click otherwise highlights the run of
+                             tiles as text instead of selecting photos. */ ?>
+                    <div id="asset-picker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;max-height:360px;overflow-y:auto;user-select:none;"></div>
                 </div>
 
             </div>
@@ -480,6 +483,7 @@ include 'core/sidebar.php';
         var focusPositions = <?php echo json_encode($mosaic_focus); ?>;
         var allAssets     = {};   // id → {id, asset_name, asset_path}
         var pickerOrder   = [];   // ids in the order the server returned them
+        var lastPickIndex = null; // anchor for shift-click range selection
         var usedInMosaic  = {};   // id → "Mosaic title (#7)" for photos already placed
         var searchTimer   = null;
         var dragSrcIndex  = null;
@@ -521,6 +525,7 @@ include 'core/sidebar.php';
             // the tiles of photos this mosaic actually contains.
             ajax('list_assets', { scope: scope, post_id: postId, q: q, keep: JSON.stringify(selectedIds) }, function (resp) {
                 pickerOrder  = [];
+                lastPickIndex = null;   // grid order just changed; old anchor is meaningless
                 usedInMosaic = resp.used || {};
                 (resp.images || []).forEach(function (a) {
                     allAssets[a.id] = a;
@@ -584,7 +589,7 @@ include 'core/sidebar.php';
                 if (used && !sel && hideUsed) { hidden++; return; }
 
                 var dim = (used && !sel) ? 'opacity:.42;' : '';
-                html += '<div onclick="toggleAsset(' + id + ')" title="' + (used && !sel ? 'Already in ' + esc(used) : (a.asset_path.split('/').pop() || ''))
+                html += '<div onclick="toggleAsset(event,' + id + ')" title="' + (used && !sel ? 'Already in ' + esc(used) : (a.asset_path.split('/').pop() || ''))
                       + '" style="cursor:pointer;position:relative;aspect-ratio:1;' + dim
                       + 'border:2px solid ' + (sel ? 'var(--accent)' : 'transparent') + ';border-radius:3px;overflow:hidden;background:#111;">';
                 if (webExts.indexOf(ext) !== -1) {
@@ -627,10 +632,24 @@ include 'core/sidebar.php';
                             .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
-        window.toggleAsset = function (id) {
+        window.toggleAsset = function (evt, id) {
             id = parseInt(id, 10);
-            var i = selectedIds.indexOf(id);
-            if (i === -1) selectedIds.push(id); else selectedIds.splice(i, 1);
+            var idx = pickerOrder.indexOf(id);
+
+            if (evt && evt.shiftKey && lastPickIndex !== null && idx !== -1) {
+                // Shift-click grabs the whole run between your last pick and this
+                // one, and only ADDS — a range drag can build the selection but
+                // never silently strip it.
+                var lo = Math.min(lastPickIndex, idx), hi = Math.max(lastPickIndex, idx);
+                for (var k = lo; k <= hi; k++) {
+                    var rid = pickerOrder[k];
+                    if (selectedIds.indexOf(rid) === -1) selectedIds.push(rid);
+                }
+            } else {
+                var i = selectedIds.indexOf(id);
+                if (i === -1) selectedIds.push(id); else selectedIds.splice(i, 1);
+            }
+            lastPickIndex = idx;
             renderPickerGrid();
             renderSelected();
             updatePreview();
