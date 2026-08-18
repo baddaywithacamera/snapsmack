@@ -3784,12 +3784,25 @@ if (!empty($settings['active_skin'])) {
                     ];
                 }
             } else {
-                // Shape B: flat map of slug => topic-array. Merge only well-formed
-                // entries (an array carrying a 'section').
+                // Shape B: flat map of slug => topic-array. Merge every well-formed
+                // entry (an array with a title); default a missing 'section' to the
+                // skin slug so skins that ship topics without one still show up.
+                // (Previously the isset('section') gate SILENTLY DROPPED the help
+                //  from chaplin/heuristic/rational-geo/slickr/sliders — ARCH-04.)
+                $_n = 0;
                 foreach ($skin_help as $_k => $_t) {
-                    if (is_array($_t) && isset($_t['section'])) {
-                        $help_topics[$_k] = $_t;
-                    }
+                    if (!is_array($_t) || empty($_t['title'])) continue;
+                    // Normalise to the canonical topic shape (same as Shape A):
+                    // default the section to the skin slug and map body -> content,
+                    // so skins that ship topics without a 'section' or using 'body'
+                    // are no longer silently dropped or rendered blank (ARCH-04).
+                    $help_topics[$_help_skin_slug . '-b-' . (++$_n)] = [
+                        'section' => (string)($_t['section'] ?? $_help_skin_slug),
+                        'title'   => $_t['title'],
+                        'icon'    => $_t['icon']    ?? '',
+                        'role'    => $_t['role']    ?? '',
+                        'content' => $_t['content'] ?? $_t['body'] ?? '',
+                    ];
                 }
             }
         }
