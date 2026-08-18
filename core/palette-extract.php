@@ -9,6 +9,7 @@
  *   $palette = snapsmack_extract_palette('/path/to/image.jpg', 5);
  *   // Returns: ['#2c2017', '#f5f0eb', '#8b4513', '#d4a574', '#1a1a2e']
  */
+require_once __DIR__ . '/image-upload-policy.php';
 
 /**
  * SNAPSMACK_EOF_HEADER
@@ -30,6 +31,7 @@ function snapsmack_extract_palette(string $image_path, int $count = 5): array {
     if (!file_exists($image_path) || !is_readable($image_path)) {
         return [];
     }
+    if (!snapsmack_local_image_within_4k($image_path, $dimension_error)) return [];
 
     // Check if GD is available
     if (!extension_loaded('gd')) {

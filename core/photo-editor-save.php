@@ -16,6 +16,7 @@
 
 
 require_once __DIR__ . '/auth-smack.php';
+require_once __DIR__ . '/image-upload-policy.php';
 
 header('Content-Type: application/json');
 
@@ -52,6 +53,11 @@ $thumb_dir = $dir . '/thumbs';
 
 // ── SAVE WEB COPY ────────────────────────────────────────────────────────
 $tmp = $_FILES['image']['tmp_name'];
+if (!snapsmack_local_image_within_4k($tmp, $dimension_error)) {
+    http_response_code(413);
+    echo json_encode(['ok' => false, 'error' => $dimension_error]);
+    exit;
+}
 $src = imagecreatefromstring(file_get_contents($tmp));
 
 if (!$src) {

@@ -1163,6 +1163,13 @@ if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
     if (!$img_info_pre) {
         ms_err('Fetched content is not a valid image');
     }
+    $remote_width = (int)($img_info_pre[0] ?? 0);
+    $remote_height = (int)($img_info_pre[1] ?? 0);
+    if (max($remote_width, $remote_height) > 3840
+        || min($remote_width, $remote_height) > 2160
+        || ($remote_width * $remote_height) > 8294400) {
+        ms_err('Fetched image exceeds the local 3840 x 2160 (4K) limit; use an external download link', 413);
+    }
 
     // Save the image
     $rel_dir  = 'img_uploads/' . date('Y') . '/' . date('m');

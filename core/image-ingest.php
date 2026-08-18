@@ -19,6 +19,7 @@
  */
 
 require_once __DIR__ . '/palette-extract.php';
+require_once __DIR__ . '/image-upload-policy.php';
 
 /**
  * Extract the raw EXIF APP1 segment bytes from a JPEG file.
@@ -223,6 +224,9 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
     $allowed   = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
     if (!in_array($file_ext, $allowed, true)) {
         return ['ok' => false, 'error' => 'Unsupported file type: .' . $file_ext];
+    }
+    if (!snapsmack_local_image_within_4k($file['tmp_name'], $dimension_error)) {
+        return ['ok' => false, 'error' => $dimension_error];
     }
 
     $explicit_title = trim($opts['title'] ?? '');

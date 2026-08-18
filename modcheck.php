@@ -70,18 +70,49 @@ function pm_row(&$rows, string $label, $res, string $meaning, bool $flagIfNonZer
 $has_images  = pm_table_exists($pdo, 'snap_images');
 $has_posts   = pm_table_exists($pdo, 'snap_posts');
 $has_pivot   = pm_table_exists($pdo, 'snap_post_images');
+$has_buckets = pm_table_exists($pdo, 'snap_bucket_items');
+$site_mode   = 'photoblog';
+try {
+    $mode_stmt = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1");
+    $site_mode = (string)($mode_stmt->fetchColumn() ?: 'photoblog');
+} catch (Throwable $e) {
+    // Older installs without the setting use the historical photoblog model.
+}
 
 /* ===== SECTION 1 — the shape of your content ===== */
 if ($has_images) {
     pm_row($rows, 'Total images', pm_num($pdo, "SELECT COUNT(*) FROM snap_images"),
         'Every media row on the site.');
-    pm_row($rows, 'Published solo photos (bare image, no post)',
-        pm_num($pdo, "SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND post_id IS NULL"),
-        'These are the entries stored the OLD way — a photo that is its own unit.');
+    if ($site_mode === 'smacktalk') {
+        if ($has_buckets) {
+            pm_row($rows, 'Images in longform post buckets (expected editorial working set)',
+                pm_num($pdo, "SELECT COUNT(DISTINCT b.image_id)
+                                FROM snap_bucket_items b
+                                JOIN snap_images i ON i.id = b.image_id
+                                JOIN snap_posts p ON p.id = b.post_id AND p.post_type = 'longform'"),
+                'These photos belong to a draft or published essay bucket. A bucket is private editorial state, not a list of image-posts.');
+            pm_row($rows, 'Library images not currently in a post bucket',
+                pm_num($pdo, "SELECT COUNT(*) FROM snap_images i
+                               WHERE i.post_id IS NULL
+                                 AND NOT EXISTS (SELECT 1 FROM snap_bucket_items b WHERE b.image_id = i.id)"),
+                'Reusable Gallery media that is not currently selected for an essay. It is still not a post.');
+        } else {
+            pm_row($rows, 'Unattached media-library images (expected in longform mode)',
+                pm_num($pdo, "SELECT COUNT(*) FROM snap_images WHERE post_id IS NULL"),
+                'SMACKTALK images are reusable media embedded in essays or mosaics; they are not posts and must not be converted.');
+        }
+    } else {
+        pm_row($rows, 'Published solo photos (bare image, no post)',
+            pm_num($pdo, "SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND post_id IS NULL"),
+            $site_mode === 'photoblog'
+                ? 'These are entries stored in the legacy SMACKONEOUT shape — a photo that is its own unit.'
+                : 'Published bare images are unexpected in GRAMOFSMACK; draft rows may be normal upload staging.',
+            $site_mode !== 'photoblog');
+    }
     pm_row($rows, 'Images that ARE attached to a post (post_id set)',
         pm_num($pdo, "SELECT COUNT(*) FROM snap_images WHERE post_id IS NOT NULL"),
         'Already post-backed via the direct post_id column.');
-    if (pm_col_exists($pdo, 'snap_images', 'img_date')) {
+    if ($site_mode === 'photoblog' && pm_col_exists($pdo, 'snap_images', 'img_date')) {
         pm_row($rows, 'Scheduled (published but future-dated)',
             pm_num($pdo, "SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date > NOW() AND post_id IS NULL"),
             'SHOTS FIRED pending — these "fire" on the image clock. Pause before any migration.', true);
@@ -91,6 +122,14 @@ if ($has_posts) {
     pm_row($rows, 'snap_posts rows (published)',
         pm_num($pdo, "SELECT COUNT(*) FROM snap_posts WHERE status='published'"),
         'Real post rows — the target model.');
+}
+if ($has_buckets) {
+    pm_row($rows, 'Orphan bucket rows (post is missing)',
+        pm_num($pdo, "SELECT COUNT(*) FROM snap_bucket_items b LEFT JOIN snap_posts p ON p.id=b.post_id WHERE p.id IS NULL"),
+        'Bucket selections whose owning essay no longer exists.', true);
+    pm_row($rows, 'Orphan bucket rows (image is missing)',
+        pm_num($pdo, "SELECT COUNT(*) FROM snap_bucket_items b LEFT JOIN snap_images i ON i.id=b.image_id WHERE i.id IS NULL"),
+        'Bucket selections whose Gallery image no longer exists.', true);
 }
 
 /* ===== SECTION 2 — dual ownership (the double-emit trap) ===== */
@@ -204,7 +243,7 @@ $ver = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : (defined('
   code{background:#20242c;padding:1px 5px;border-radius:4px}
 </style></head><body><div class="wrap">
 <h1>Post-Model Health Check</h1>
-<p class="sub"><?= htmlspecialchars($site ?: 'this site') ?> · SnapSmack <?= htmlspecialchars($ver) ?> · Audit 049 §5.3 preflight</p>
+<p class="sub"><?= htmlspecialchars($site ?: 'this site') ?> · SnapSmack <?= htmlspecialchars($ver) ?> · <?= htmlspecialchars(strtoupper($site_mode)) ?> mode · Audit 049 §5.3 preflight</p>
 <span class="safe">✓ Read-only — this page changed nothing. It only counted rows.</span>
 <table>
   <thead><tr><th>Check</th><th>Count</th><th>What it means</th></tr></thead>
@@ -219,7 +258,7 @@ $ver = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : (defined('
   </tbody>
 </table>
 <footer>
-  Amber numbers are things the post-model fix will need to clean up; they are <b>not</b> live breakage.<br>
+  <?php if ($site_mode === 'photoblog'): ?>Amber numbers are things the SMACKONEOUT post-model fix may need to clean up; they are <b>not</b> live breakage.<br><?php else: ?>This mode does not use the SMACKONEOUT photo-to-post conversion. Unattached library or staging images are not automatically defects.<br><?php endif; ?>
   Rows marked “skipped” mean that table/column isn’t present on this install — expected, not an error.<br>
   This is a <b>diagnostic</b>. It performs no migration and makes no changes. Delete the file when done, or leave it — it stays admin-only.
 </footer>

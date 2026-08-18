@@ -30,6 +30,7 @@ $GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu'];
 $GLOBALS['SNAP_API_REQUIRE_MODE'] = 'photoblog';
 require_once 'core/api-auth.php';
 require_once 'core/app-mode.php';
+require_once __DIR__ . '/core/image-upload-policy.php';
 
 // Browser and app sessions obey the same immutable install-mode boundary as
 // typed tool keys. A direct URL cannot open the solo composer on another mode.
@@ -308,6 +309,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
     $_solo_map  = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif'];
     if (!isset($_solo_map[$_solo_mime])) {
         $post_error = "That file isn't a supported image (JPEG, PNG, WebP or GIF).";
+        goto render_form;
+    }
+    if (!snapsmack_local_image_within_4k($_FILES['img_file']['tmp_name'], $_solo_dimension_error)) {
+        $post_error = $_solo_dimension_error;
         goto render_form;
     }
     $file_ext = $_solo_map[$_solo_mime];

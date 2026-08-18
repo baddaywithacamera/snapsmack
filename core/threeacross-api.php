@@ -39,6 +39,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/snap-tags.php';
 require_once __DIR__ . '/thumb-generator.php';
+require_once __DIR__ . '/image-upload-policy.php';
 require_once __DIR__ . '/gram-client-authoring.php';
 require_once __DIR__ . '/api-input-safety.php';   // stored-path containment — SECAUDIT 040
 require_once __DIR__ . '/alt-text.php';            // ALT sanitize/escape helpers
@@ -582,6 +583,9 @@ if ($sub === 'upload' && $method === 'POST') {
     if ($file['size'] > 20 * 1024 * 1024) {
         uz_error(400, 'File too large (max 20 MB).');
     }
+    if (!snapsmack_local_image_within_4k($file['tmp_name'], $dimension_error)) {
+        uz_error(413, $dimension_error);
+    }
 
     // Sanitise client filename — keep only safe chars
     $client_name = preg_replace('/[^a-z0-9_.-]/', '', strtolower(basename($file['name'])));
@@ -752,6 +756,9 @@ if ($sub === 'gram/upload' && $method === 'POST') {
         if ($file['size'] > 20 * 1024 * 1024) {
             uz_error(400, 'File too large (max 20 MB).');
         }
+        if (!snapsmack_local_image_within_4k($file['tmp_name'], $dimension_error)) {
+            uz_error(413, $dimension_error);
+        }
         $dest = $dest_dir . '/' . $name;
         if (!move_uploaded_file($file['tmp_name'], $dest)) {
             uz_error(500, 'Failed to save ' . $name . '. Check img_uploads/ permissions.');
@@ -770,6 +777,9 @@ if ($sub === 'gram/upload' && $method === 'POST') {
     }
     if ($_FILES['image']['size'] > 20 * 1024 * 1024) {
         uz_error(400, 'File too large (max 20 MB).');
+    }
+    if (!snapsmack_local_image_within_4k($_FILES['image']['tmp_name'], $dimension_error)) {
+        uz_error(413, $dimension_error);
     }
     $orig_ext = $IMG_MIME_EXT[$orig_mime];
 

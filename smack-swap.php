@@ -16,6 +16,7 @@
 
 require_once 'core/auth-smack.php';
 require_once 'core/fix-exif.php';
+require_once __DIR__ . '/core/image-upload-policy.php';
 
 // --- SETTINGS ---
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -33,6 +34,11 @@ if (!$img) {
 // --- SWAP EXECUTION ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['new_image'])) {
     if ($_FILES['new_image']['error'] === UPLOAD_ERR_OK) {
+        if (!snapsmack_local_image_within_4k($_FILES['new_image']['tmp_name'], $dimension_error)) {
+            http_response_code(413);
+            echo $dimension_error;
+            exit;
+        }
         $tmp = $_FILES['new_image']['tmp_name'];
         $mime = mime_content_type($tmp);
 

@@ -26,6 +26,7 @@
 // update), instead of a fatal "Undefined constant" 500.
 if (!defined('SNAPSMACK_THUMB_SQUARE'))      define('SNAPSMACK_THUMB_SQUARE', 400);
 if (!defined('SNAPSMACK_THUMB_ASPECT_LONG')) define('SNAPSMACK_THUMB_ASPECT_LONG', 900);
+require_once __DIR__ . '/image-upload-policy.php';
 
 
 /**
@@ -67,6 +68,7 @@ function snapsmack_generate_thumbs(
     if (!file_exists($full) || !is_readable($full)) {
         return false;
     }
+    if (!snapsmack_local_image_within_4k($full, $dimension_error)) return false;
 
     // Load source — support JPEG, PNG, WebP
     $info = @getimagesize($full);
@@ -166,6 +168,7 @@ function snapsmack_generate_fedi_bake(
     $rel  = ltrim($img_file, '/');
     $full = rtrim($base_dir, '/') . '/' . $rel;
     if (!file_exists($full) || !is_readable($full)) return false;
+    if (!snapsmack_local_image_within_4k($full, $dimension_error)) return false;
 
     $info = @getimagesize($full);
     if (!$info) return false;

@@ -30,6 +30,7 @@
 require_once 'core/auth-smack.php';
 require_once 'core/trigram-slicer.php';
 require_once 'core/palette-extract.php';
+require_once __DIR__ . '/core/image-upload-policy.php';
 
 set_time_limit(600);
 ini_set('memory_limit', '512M');
@@ -80,6 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['source']['tmp_name'
 
         if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'])) {
             $msg = 'UNSUPPORTED_TYPE: ' . $mime;
+        } elseif (!snapsmack_local_image_within_4k($tmp_name, $dimension_error)) {
+            $msg = 'SIZE_LIMIT: ' . $dimension_error;
         } else {
             // Persist the source into the month's upload tree (under sources/) so
             // the engine has a stable path and we keep provenance for re-slicing.

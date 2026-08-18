@@ -14,6 +14,7 @@
  * Algorithm follows the reference Blurhash (Wolt): sRGB<->linear + a small DCT.
  * Kept cheap by encoding a 32x32 downsample, not the full image.
  */
+require_once __DIR__ . '/image-upload-policy.php';
 
 if (!function_exists('snapsmack_bh_srgb_to_linear')) {
 
@@ -120,11 +121,8 @@ function snapsmack_ensure_image_blurhash(PDO $pdo, array $img): string {
     $path = dirname(__DIR__) . '/' . ltrim($file, '/');
     if (!is_file($path)) return '';
 
-    // Guard against OOM: decoded size is width*height*4 bytes regardless of the
-    // compressed file size, so skip very large images (getimagesize is cheap and
-    // does not decode). 30 MP ceiling. A skipped image simply gets no blurhash.
-    $dim = @getimagesize($path);
-    if (is_array($dim) && ($dim[0] * $dim[1]) > 30000000) return '';
+    // Apply the same pre-decode ceiling as every other local image path.
+    if (!snapsmack_local_image_within_4k($path, $dimension_error)) return '';
 
     try {
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));

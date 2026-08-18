@@ -7,7 +7,7 @@
 
 **Date:** 2026-08-17 (night) · **Target:** `dev` / v0.7.533 · **Method:** mechanical `git grep`
 across the tracked tree by five parallel readers, each covering one consumer domain.
-**Status:** review-state evidence for the architectural-assessment gate. NOT a sign-off.
+**Status:** COMPLETE repository-derived consumer inventory for Audit 049. This is evidence for, but not completion of, the architectural-assessment gate. The comparative architecture assessment is SECAUDIT 050.
 **Authority doc:** `_continuity/2026-08-17-post-model-postmortem-and-assessment-gate.md`.
 
 > **Honesty caveat (VERIFY-LIVE-FIRST):** this is a static read of `dev` source, not a
