@@ -1,3 +1,8 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line must be the canonical SNAPSMACK EOF HTML comment.
+-->
+
 # SnapSmack Minimum Compliance Standard (SMCS) — v1.0
 
 **Companion to Audit 049 · 2026-08-17**
@@ -140,4 +145,4 @@ or luck · LOW = hardening / defense-in-depth.
 
 *Living standard — bump the version and date when requirements change.*
 
-<!-- SNAPSMACK EOF -->
+<!-- ===== SNAPSMACK EOF ===== -->

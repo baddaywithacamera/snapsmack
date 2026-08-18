@@ -1,3 +1,8 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line must be the canonical SNAPSMACK EOF HTML comment.
+-->
+
 # Post-Model Consumer Inventory — the complete map (Audit 049 §5.2 deliverable)
 
 **Date:** 2026-08-17 (night) · **Target:** `dev` / v0.7.533 · **Method:** mechanical `git grep`
@@ -215,4 +220,4 @@ Ordered per the postmortem §6, with web-Claude's evening corrections folded in:
 **Gate reminder:** convergence on this plan is not the gate clearing. The §5 assessment
 still runs and **Codex + Sean still sign off** before any build resumes.
 
-SNAPSMACK EOF
+<!-- ===== SNAPSMACK EOF ===== -->

@@ -10,6 +10,15 @@
 
 # SnapSmack Changelog
 
+## 0.7.535 — 2026-08-18
+
+### A safe repair button for old-style solo photos
+
+- **Maintenance now has CONVERT PHOTOS TO POSTS.** It wraps every old-style bare solo photograph in the canonical post structure while preserving the photograph's public address, description, publication date, feed order, comment/download settings, Fediverse date label, sensitivity flag, and content warning. The photograph row remains in place so visitors and temporary image-based readers continue to see the same content during the readers-first transition.
+- **All-or-nothing and safe to repeat.** The complete conversion runs in one database transaction and rolls back every change if any photograph fails. It only selects photographs that have neither a post nor an existing post-image link, so running it again cleanly reports zero conversions.
+- **Sensitive action protection.** The repair requires the logged-in full administrator's password and 2FA code, plus a final plain-English confirmation. Existing likes, reactions, and community comments are deliberately not remapped yet; changing them now would hide live engagement from the current readers.
+- **Audit 049 integrity housekeeping.** The four tracked Audit 049 Markdown records now carry the repository's standard beginning/end truncation sentinels. Their audit content is unchanged.
+
 ## 0.7.534 — 2026-08-17
 
 ### A read-only health check for the posts rework

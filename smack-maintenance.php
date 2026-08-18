@@ -66,6 +66,116 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // POST-MODEL REPAIR (Audit 049) — wrap every legacy bare solo photo in
+    // one canonical snap_posts row + one cover pivot. The old image status,
+    // date and engagement rows intentionally remain untouched during the
+    // readers-first transition. One transaction makes this all-or-nothing;
+    // the selection predicate makes it safe to run repeatedly.
+    if ($action === 'postmodel_repair') {
+        set_time_limit(300);
+        require_once __DIR__ . '/core/reauth.php';
+        $ra = reauth_verify(
+            $pdo,
+            (string)($_POST['reauth_password'] ?? ''),
+            (string)($_POST['reauth_totp'] ?? '')
+        );
+        if (!$ra['ok']) {
+            $log[] = 'ERROR: ' . htmlspecialchars($ra['error']);
+        } elseif (!in_array((string)($ra['role'] ?? ''), ['admin', 'administrator', 'owner'], true)) {
+            $log[] = 'ERROR: Only a full administrator can run the post-model repair.';
+        } else {
+            try {
+                $pdo->beginTransaction();
+
+                $bare = $pdo->query(
+                    "SELECT i.id, i.img_slug, i.img_description, i.img_status, i.img_date,
+                            COALESCE(i.allow_comments, 1) AS allow_comments,
+                            COALESCE(i.allow_download, 1) AS allow_download,
+                            COALESCE(i.download_url, '') AS download_url,
+                            COALESCE(i.sort_order, 0) AS sort_order,
+                            i.fedi_published_at,
+                            COALESCE(i.is_sensitive, 0) AS is_sensitive,
+                            i.content_warning
+                       FROM snap_images i
+                      WHERE i.post_id IS NULL
+                        AND NOT EXISTS (
+                            SELECT 1 FROM snap_post_images spi WHERE spi.image_id = i.id
+                        )
+                      ORDER BY i.id ASC
+                      FOR UPDATE"
+                )->fetchAll(PDO::FETCH_ASSOC);
+
+                $slug_exists = $pdo->prepare('SELECT 1 FROM snap_posts WHERE slug = ? LIMIT 1');
+                $insert_post = $pdo->prepare(
+                    "INSERT INTO snap_posts
+                        (title, slug, description, post_type, status, created_at,
+                         allow_comments, allow_download, download_url, panorama_rows,
+                         post_img_size_pct, post_border_px, post_border_color,
+                         post_bg_color, post_shadow, fedi_enabled, sort_order,
+                         fedi_published_at, is_sensitive, content_warning)
+                     VALUES
+                        ('', ?, ?, 'single', ?, ?, ?, ?, ?, 1,
+                         100, 0, '#000000', '#ffffff', 0, 1, ?, ?, ?, ?)"
+                );
+                $insert_pivot = $pdo->prepare(
+                    "INSERT INTO snap_post_images
+                        (post_id, image_id, sort_position, is_cover,
+                         img_size_pct, img_border_px, img_border_color, img_bg_color,
+                         img_shadow, img_crop_mode, img_focus_x, img_focus_y, img_zoom)
+                     VALUES (?, ?, 0, 1, 100, 0, '#000000', '#ffffff', 0, 'fit', 50, 50, 100)"
+                );
+                $attach_image = $pdo->prepare('UPDATE snap_images SET post_id = ? WHERE id = ? AND post_id IS NULL');
+
+                $converted = 0;
+                foreach ($bare as $image) {
+                    $image_id = (int)$image['id'];
+                    $base_slug = trim((string)($image['img_slug'] ?? ''));
+                    if ($base_slug === '') $base_slug = 'post-' . $image_id;
+
+                    $slug = $base_slug;
+                    $slug_exists->execute([$slug]);
+                    if ($slug_exists->fetchColumn()) {
+                        $slug = $base_slug . '-p' . $image_id;
+                        $suffix = 2;
+                        do {
+                            $slug_exists->execute([$slug]);
+                            $taken = (bool)$slug_exists->fetchColumn();
+                            if ($taken) $slug = $base_slug . '-p' . $image_id . '-' . $suffix++;
+                        } while ($taken);
+                    }
+
+                    $insert_post->execute([
+                        $slug,
+                        $image['img_description'],
+                        (string)$image['img_status'],
+                        $image['img_date'],
+                        (int)$image['allow_comments'],
+                        (int)$image['allow_download'],
+                        (string)$image['download_url'],
+                        (int)$image['sort_order'],
+                        $image['fedi_published_at'],
+                        (int)$image['is_sensitive'],
+                        $image['content_warning'],
+                    ]);
+                    $post_id = (int)$pdo->lastInsertId();
+                    $insert_pivot->execute([$post_id, $image_id]);
+                    $attach_image->execute([$post_id, $image_id]);
+                    if ($attach_image->rowCount() !== 1) {
+                        throw new RuntimeException('Photo ' . $image_id . ' changed during repair.');
+                    }
+                    $converted++;
+                }
+
+                $pdo->commit();
+                $log[] = "SUCCESS: Post-model repair — converted {$converted} photo(s) into posts in one transaction.";
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                $log[] = 'ERROR: Post-model repair rolled back — nothing changed. '
+                    . htmlspecialchars($e->getMessage()) . '.';
+            }
+        }
+    }
+
     // VAX INJECTOR
     // Applies a signed VAX database package sent by SnapSmack support. The package
     // code + one-time token ARE the credential: core/smack-vax.php fetches the
@@ -1060,6 +1170,19 @@ include 'core/sidebar.php';
             <form method="POST">
                 <input type="hidden" name="action" value="recompute_covers">
                 <button type="submit" class="btn-smack btn-block">FIX COVERS</button>
+            </form>
+        </div>
+
+        <div class="box box-flex">
+            <h3>CONVERT OLD-STYLE PHOTOS</h3>
+            <p class="skin-desc-text">Converts every bare old-style photo into a proper post while keeping its web address, title, date, download and comment settings. Visitors should see no change. Existing likes and comments stay attached exactly as they are for now; Fediverse links move from <code>/i/</code> to <code>/p/</code>. The whole repair runs as one transaction, rolls back completely on error, and is safe to run again.</p>
+            <form method="POST" onsubmit="return confirm('Convert every old-style photo into a post? Runs in one transaction and rolls back on any error. Back up first.');">
+                <input type="hidden" name="action" value="postmodel_repair">
+                <div class="reauth-row" style="display:flex; gap:10px; margin:8px 0;">
+                    <label style="flex:1;">PASSWORD<br><input type="password" name="reauth_password" autocomplete="off" style="width:100%;"></label>
+                    <label style="flex:0 0 120px;">2FA CODE<br><input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" style="width:100%;"></label>
+                </div>
+                <button type="submit" class="btn-smack btn-block">CONVERT PHOTOS TO POSTS</button>
             </form>
         </div>
 
