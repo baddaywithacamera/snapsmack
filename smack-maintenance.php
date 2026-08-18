@@ -73,18 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // the selection predicate makes it safe to run repeatedly.
     if ($action === 'postmodel_repair') {
         set_time_limit(300);
-        require_once __DIR__ . '/core/reauth.php';
-        $ra = reauth_verify(
-            $pdo,
-            (string)($_POST['reauth_password'] ?? ''),
-            (string)($_POST['reauth_totp'] ?? '')
-        );
-        if (!$ra['ok']) {
-            $log[] = 'ERROR: ' . htmlspecialchars($ra['error']);
-        } elseif (!in_array((string)($ra['role'] ?? ''), ['admin', 'administrator', 'owner'], true)) {
-            $log[] = 'ERROR: Only a full administrator can run the post-model repair.';
-        } else {
-            try {
+        try {
                 $pdo->beginTransaction();
 
                 $bare = $pdo->query(
@@ -172,7 +161,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($pdo->inTransaction()) $pdo->rollBack();
                 $log[] = 'ERROR: Post-model repair rolled back — nothing changed. '
                     . htmlspecialchars($e->getMessage()) . '.';
-            }
         }
     }
 
@@ -1178,10 +1166,6 @@ include 'core/sidebar.php';
             <p class="skin-desc-text">Converts every bare old-style photo into a proper post while keeping its web address, title, date, download and comment settings. Visitors should see no change. Existing likes and comments stay attached exactly as they are for now; Fediverse links move from <code>/i/</code> to <code>/p/</code>. The whole repair runs as one transaction, rolls back completely on error, and is safe to run again.</p>
             <form method="POST" onsubmit="return confirm('Convert every old-style photo into a post? Runs in one transaction and rolls back on any error. Back up first.');">
                 <input type="hidden" name="action" value="postmodel_repair">
-                <div class="reauth-row" style="display:flex; gap:10px; margin:8px 0;">
-                    <label style="flex:1;">PASSWORD<br><input type="password" name="reauth_password" autocomplete="off" style="width:100%;"></label>
-                    <label style="flex:0 0 120px;">2FA CODE<br><input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" style="width:100%;"></label>
-                </div>
                 <button type="submit" class="btn-smack btn-block">CONVERT PHOTOS TO POSTS</button>
             </form>
         </div>

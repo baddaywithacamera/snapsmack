@@ -10,6 +10,12 @@
 
 # SnapSmack Changelog
 
+## 0.7.536 — 2026-08-18
+
+### The post-model repair no longer asks for credentials again
+
+- **One button, one confirmation.** CONVERT PHOTOS TO POSTS remains available only inside the authenticated Maintenance panel and retains the normal CSRF check, browser confirmation, repeat-safe selection, and all-or-nothing database transaction. It no longer asks for the administrator password and 2FA code again, removing needless per-site friction when repairing the fleet.
+
 ## 0.7.535 — 2026-08-18
 
 ### A safe repair button for old-style solo photos

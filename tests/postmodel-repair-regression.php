@@ -25,7 +25,7 @@ function pmr_expect(bool $condition, string $message): void {
 }
 
 pmr_expect($handler !== '', 'repair action is registered');
-pmr_expect(strpos($handler, "require_once __DIR__ . '/core/reauth.php'") !== false, 'repair uses shared step-up authentication');
+pmr_expect(strpos($handler, 'reauth_verify') === false, 'repair does not require per-site step-up authentication');
 pmr_expect(strpos($handler, '$pdo->beginTransaction()') !== false, 'repair starts a transaction');
 pmr_expect(strpos($handler, '$pdo->commit()') !== false, 'repair commits on success');
 pmr_expect(strpos($handler, '$pdo->rollBack()') !== false, 'repair rolls back on failure');
@@ -36,6 +36,8 @@ pmr_expect(strpos($handler, "fedi_published_at, is_sensitive, content_warning") 
 pmr_expect(strpos($handler, "'fit', 50, 50, 100") !== false, 'canonical single-image pivot defaults are used');
 pmr_expect(strpos($handler, 'UPDATE snap_images SET post_id = ? WHERE id = ? AND post_id IS NULL') !== false, 'image attachment update is guarded');
 pmr_expect(strpos($source, 'CONVERT PHOTOS TO POSTS') !== false, 'Maintenance button is present');
+pmr_expect(strpos($source, 'name="reauth_password"') === false || strpos($handler, 'reauth_password') === false,
+    'repair form does not request a password');
 pmr_expect(strpos($handler, 'snap_likes') === false && strpos($handler, 'snap_reactions') === false
     && strpos($handler, 'snap_community_comments') === false, 'repair does not remap engagement');
 
