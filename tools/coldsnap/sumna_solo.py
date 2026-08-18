@@ -184,7 +184,12 @@ class SoloMode(tk.Frame):
         try:
             self.session = O.import_session(src, self.store)
         except Exception as e:
-            messagebox.showerror("Import failed", str(e)); return
+            try:
+                import snap_errors
+                snap_errors.show_error("Import failed", e)
+            except Exception:
+                messagebox.showerror("Import failed", str(e))
+            return
         self._refresh_sessions()
 
     # -- drafts -------------------------------------------------------------
@@ -330,7 +335,11 @@ class SoloMode(tk.Frame):
 
     def _ai_error(self, e):
         self._ai_status.configure(text="")
-        messagebox.showerror("AI Fill failed", str(e))
+        try:
+            import snap_errors
+            snap_errors.show_error("AI Fill failed", e)
+        except Exception:
+            messagebox.showerror("AI Fill failed", str(e))
 
     def _clear_editor(self):
         self._editing_id = None

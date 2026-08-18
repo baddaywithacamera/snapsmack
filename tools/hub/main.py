@@ -21,7 +21,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-BUILD_VERSION = "0.1.8"
+BUILD_VERSION = "0.1.9"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -362,7 +362,11 @@ class Hub(tk.Tk):
             summary = snap_discovery.discover_and_save(hub_url, api_key=hub_key)
         except Exception as e:
             self._setup_status.configure(text="", fg=DIM)
-            messagebox.showerror("Discovery failed", str(e), parent=self)
+            try:
+                import snap_errors
+                snap_errors.show_error("Discovery failed", e, parent=self)
+            except Exception:
+                messagebox.showerror("Discovery failed", str(e), parent=self)
             return
         self._load_creds()
         self._refresh_profiles()
