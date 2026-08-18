@@ -144,7 +144,7 @@ include 'core/sidebar.php';
 
 <div class="main">
     <div class="header-row">
-        <h2>INTERACTION</h2>
+        <h2>COMMUNITY</h2>
         <div class="header-actions">
             <a href="smack-community-users.php" class="btn-smack">MANAGE MEMBERS</a>
         </div>

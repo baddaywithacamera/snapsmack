@@ -683,7 +683,7 @@ include 'core/sidebar.php';
 
 <div class="main">
     <div class="header-row header-row--ruled">
-        <h2>INITIALIZE NEW TRANSMISSION</h2>
+        <h2>NEW POST</h2>
     </div>
 
     <?php if (!empty($post_error)): ?>
@@ -700,11 +700,11 @@ include 'core/sidebar.php';
                 <div class="post-col-left">
                     <div class="lens-input-wrapper">
                         <label>IMAGE TITLE</label>
-                        <input type="text" name="title" placeholder="Transmission Identifier..." required autofocus>
+                        <input type="text" name="title" placeholder="Title…" required autofocus>
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>REGISTRY (CATEGORIES)</label>
+                        <label>CATEGORIES</label>
                         <div class="custom-multiselect">
                             <div class="select-box" onclick="toggleDropdown('cat-items')">
                                 <span id="cat-label">Select Categories...</span><span class="arrow">▼</span>
@@ -724,7 +724,7 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>MISSIONS (ALBUMS)</label>
+                        <label>ALBUMS</label>
                         <div class="custom-multiselect">
                             <div class="select-box" onclick="toggleDropdown('album-items')">
                                 <span id="album-label">Select Albums...</span><span class="arrow">▼</span>
@@ -853,7 +853,7 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>ALLOW PUBLIC SIGNALS?</label>
+                        <label>ALLOW PUBLIC COMMENTS?</label>
                         <select name="allow_comments" class="full-width-select">
                             <option value="1">ENABLED</option>
                             <option value="0">DISABLED</option>

@@ -159,7 +159,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <?php endif; ?>
 
                     <li class="<?php echo ($current_page == 'smack-comments.php') ? 'active' : ''; ?>">
-                        <a href="smack-comments.php">Signals</a>
+                        <a href="smack-comments.php">Comments</a>
                     </li>
 
                     <?php if ($_ui_pimpmobile): ?>
@@ -167,7 +167,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                         <a href="smack-blogroll.php">Blogroll</a>
                     </li>
                     <li class="<?php echo in_array($current_page, ['smack-community-settings.php','smack-community-users.php']) ? 'active' : ''; ?>">
-                        <a href="smack-community-settings.php">Interaction</a>
+                        <a href="smack-community-settings.php">Community</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-pages.php') ? 'active' : ''; ?>">
                         <a href="smack-pages.php">Static Pages</a>

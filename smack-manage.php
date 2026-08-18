@@ -381,7 +381,7 @@ include 'core/sidebar.php';
         <form method="GET" class="manage-filter-bar">
             <div class="filter-col-main">
                 <div class="lens-input-wrapper">
-                    <label>TECHNICAL SEARCH</label>
+                    <label>SEARCH</label>
                     <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Keywords...">
                 </div>
             </div>
@@ -421,7 +421,7 @@ include 'core/sidebar.php';
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>REGISTRY (CAT)</label>
+                    <label>CATEGORY</label>
                     <select name="cat_id">
                         <option value="">ALL CATEGORIES</option>
                         <?php foreach($cats as $c): ?>

@@ -276,7 +276,7 @@ include 'core/sidebar.php';
     </form>
 
     <div class="box">
-        <h3>STORED TRANSMISSIONS</h3>
+        <h3>STORED PAGES</h3>
         <?php foreach ($pages as $p): ?>
             <div class="recent-item">
                 <div class="item-text">

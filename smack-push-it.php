@@ -213,7 +213,7 @@ include 'core/sidebar.php';
     <div class="signal-control-header" style="margin:16px 0 24px;">
         <div class="signal-nav-group">
             <a href="smack-multisite.php"           class="btn-clear">DASHBOARD</a>
-            <a href="smack-multisite-comments.php"  class="btn-clear">SIGNALS</a>
+            <a href="smack-multisite-comments.php"  class="btn-clear">COMMENTS</a>
             <a href="smack-multisite-posts.php"     class="btn-clear">POSTS</a>
             <a href="smack-multisite-backup.php"    class="btn-clear">BACKUP DOCK</a>
             <a href="smack-multisite-stats.php"     class="btn-clear">STATS</a>
