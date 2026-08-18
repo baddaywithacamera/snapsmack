@@ -1,3 +1,8 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line must be the canonical SNAPSMACK EOF HTML comment.
+-->
+
 # SnapSmack Security Audit 049 — CMS compliance & image handling
 
 **Target:** `dev` branch, **v0.7.533** ("PHOTO FRIYAY") · **Date:** 2026-08-17
@@ -224,4 +229,4 @@ and the established sites never re-saved since the header code landed. Confirm b
 *Companion: `2026-08-17-049-cms-compliance-standard.md` (the reusable yardstick).
 Local review; live header sweep is real, other [confirm live] items still pending.*
 
-<!-- SNAPSMACK EOF -->
+<!-- ===== SNAPSMACK EOF ===== -->

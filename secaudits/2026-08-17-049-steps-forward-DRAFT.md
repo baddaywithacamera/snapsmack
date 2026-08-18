@@ -1,3 +1,8 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line must be the canonical SNAPSMACK EOF HTML comment.
+-->
+
 # Secaudit 049 — Steps Forward (DRAFT for review)
 
 **Status:** DRAFT v0.2 — reconciled by Claude Code (terminal) + web-Claude. Awaiting
@@ -170,4 +175,4 @@ Mesh keys are plaintext by design (presented outbound) — leave those.
   two self-corrections. Awaiting Codex + Sean.
 - **Codex:** _pending — please review the two corrected 049 files directly._
 
-<!-- SNAPSMACK EOF -->
+<!-- ===== SNAPSMACK EOF ===== -->
