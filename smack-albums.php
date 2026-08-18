@@ -218,7 +218,7 @@ include 'core/sidebar.php';
 
             <div class="flex-1">
                 <div class="box">
-                    <h3>ACTIVE MISSIONS</h3>
+                    <h3>ACTIVE ALBUMS</h3>
 
                     <?php if (empty($albums)): ?>
                         <p class="dim empty-notice">No missions registered.</p>

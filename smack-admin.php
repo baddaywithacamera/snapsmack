@@ -434,15 +434,15 @@ include 'core/sidebar.php';
 
     <div class="dash-grid mt-30">
         <div class="box">
-            <h3>LIBRARY & TRANSMISSIONS</h3>
+            <h3>LIBRARY & POSTS</h3>
             <label>PHOTOGRAPHY</label>
             <div class="stat-row"><span class="label">PUBLISHED:</span><span class="value"><?php echo $count_pub; ?></span></div>
             <div class="stat-row"><span class="label">PENDING:</span><span class="value"><?php echo $count_pending; ?></span></div>
             <div class="stat-row"><span class="label">DRAFTS:</span><span class="value"><?php echo $count_drafts; ?></span></div>
-            <label class="mt-20">SIGNALS (COMMENTS)</label>
+            <label class="mt-20">COMMENTS</label>
             <div class="stat-row"><span class="label">INCOMING:</span><span class="value highlight-green"><?php echo $pending_count; ?></span></div>
             <div class="stat-row"><span class="label">BROADCASTING:</span><span class="value"><?php echo $live_count; ?></span></div>
-            <a href="smack-comments.php"><button class="btn-smack master-update-btn mt-25">MANAGE SIGNALS</button></a>
+            <a href="smack-comments.php"><button class="btn-smack master-update-btn mt-25">MANAGE COMMENTS</button></a>
         </div>
 
         <?php if (smack_is_admin()): // SECAUDIT 048: infra details are admin-only (don't leak PHP/server/host to editors) ?>

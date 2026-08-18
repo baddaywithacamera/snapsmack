@@ -316,7 +316,7 @@ include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <h2>GLOBAL ENGINE CONFIGURATION</h2>
+    <h2>CONFIGURATION</h2>
     
     <?php if(isset($msg)): ?>
         <div class="alert">> <?php echo $msg; ?></div>
@@ -1092,7 +1092,7 @@ include 'core/sidebar.php';
             </div>
         </div>
 
-        <button type="submit" name="save_settings" class="master-update-btn">SAVE GLOBAL ENGINE CONFIGURATION</button>
+        <button type="submit" name="save_settings" class="master-update-btn">SAVE CONFIGURATION</button>
 
     </form>
 
