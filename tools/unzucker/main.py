@@ -14,7 +14,7 @@ creates posts through the SnapSmack admin API. No FTP required.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.39"  # captions verified: single-post media[].title fallback (ig_parser.py) confirmed against the tsohn export
+BUILD_VERSION = "0.7.40"  # ARCH-03: confirm dialog now names the real destination site, not "SnapSmack"
 
 import logging
 import logging.handlers
@@ -1859,9 +1859,14 @@ class App(tk.Tk):
 
         count = len(active)
         tg_note = f"\n\n{len(remapped_groups)} trigram group{'s' if len(remapped_groups) != 1 else ''} will be linked." if remapped_groups else ""
+        # Name the ACTUAL destination site, not a generic "SnapSmack" (ARCH-03) —
+        # so a dropped-click migration always shows which blog it's about to hit.
+        from urllib.parse import urlparse as _urlparse
+        _u = self._url_var.get().strip()
+        _dest = _urlparse(_u if "://" in _u else "https://" + _u).netloc or _u or "your site"
         if not messagebox.askyesno(
             "Confirm migration",
-            f"Transfer & post {count} post{'s' if count != 1 else ''} to SnapSmack?\n\n"
+            f"Transfer & post {count} post{'s' if count != 1 else ''} to {_dest}?\n\n"
             f"Images will be uploaded via HTTPS and posts created via the API.{tg_note}",
         ):
             return

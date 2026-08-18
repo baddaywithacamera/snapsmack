@@ -22,7 +22,7 @@ queue with per-comment moderate + reply controls, and a SYNC button. The engine
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.1.0"
+BUILD_VERSION = "0.1.1"
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to the shared log before any other import,
@@ -607,6 +607,34 @@ class App(tk.Tk):
         if not todo:
             self._set_status("Nothing to sync — decide or reply on a comment first.",
                              ui.FG_WARN)
+            return
+        # Parkinson's-forgiving guard (ARCH-03): SMACK YOUR MOUTH used to push
+        # every decision — INCLUDING permanent deletes — with no confirmation.
+        # Name the destination site(s) and call out destructive deletes first.
+        _del = sum(1 for it in todo if it.action == mo.ACT_DELETE)
+        _iword = "decision" if len(todo) == 1 else "decisions"
+        _headline = f"Apply {len(todo)} {_iword}"
+        if _del:
+            _headline += f" ({_del} {'delete' if _del == 1 else 'deletes'})"
+        _headline += "?"
+        _danger = (f"{_del} comment{'' if _del == 1 else 's'} will be permanently DELETED."
+                   if _del else "")
+        try:
+            import snap_confirm
+            _ok = snap_confirm.confirm_targets(
+                [it.site_url for it in todo],
+                headline=_headline, danger=_danger, parent=self, title="Confirm sync")
+        except Exception:
+            _sites = sorted({it.site_url for it in todo})
+            _where = _sites[0] if len(_sites) == 1 else f"{len(_sites)} sites"
+            _msg = f"{_headline}\n\nDestination: {_where}"
+            if _danger:
+                _msg += f"\n\n⚠  {_danger}"
+            _ok = messagebox.askyesno("Confirm sync", _msg,
+                                      icon=("warning" if _del else "info"),
+                                      default=("no" if _del else "yes"))
+        if not _ok:
+            self._set_status("Sync cancelled.", ui.FG_WARN)
             return
         self._set_status(f"Syncing {len(todo)} item(s)…", ui.FG_WARN)
 

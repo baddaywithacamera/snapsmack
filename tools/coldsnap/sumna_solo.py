@@ -184,7 +184,12 @@ class SoloMode(tk.Frame):
         try:
             self.session = O.import_session(src, self.store)
         except Exception as e:
-            messagebox.showerror("Import failed", str(e)); return
+            try:
+                import snap_errors
+                snap_errors.show_error("Import failed", e)
+            except Exception:
+                messagebox.showerror("Import failed", str(e))
+            return
         self._refresh_sessions()
 
     # -- drafts -------------------------------------------------------------
@@ -330,7 +335,11 @@ class SoloMode(tk.Frame):
 
     def _ai_error(self, e):
         self._ai_status.configure(text="")
-        messagebox.showerror("AI Fill failed", str(e))
+        try:
+            import snap_errors
+            snap_errors.show_error("AI Fill failed", e)
+        except Exception:
+            messagebox.showerror("AI Fill failed", str(e))
 
     def _clear_editor(self):
         self._editing_id = None
@@ -408,6 +417,23 @@ class SoloMode(tk.Frame):
         ready = [d for d in self.session.list_drafts() if d.status == O.ST_READY]
         if not ready:
             self._sync_status.configure(text="Nothing marked OFFLINE POST yet — compose and commit first.")
+            return
+        # Parkinson's-forgiving guard (ARCH-03): never publish to a LIVE site
+        # without a confirm that NAMES the site. COLD SNAP used to fire _sync
+        # with no gate at all. Shared helper, with an inline fallback so the
+        # gate can never silently disappear if _shared isn't importable.
+        _url = (getattr(self.app, "_config", {}) or {}).get("url", "")
+        try:
+            import snap_confirm
+            _ok = snap_confirm.confirm_post(_url, len(ready), item="photo",
+                                            action="Publish", parent=self)
+        except Exception:
+            from urllib.parse import urlparse
+            _dest = urlparse(_url if "://" in _url else "https://" + _url).netloc or _url or "your site"
+            _ok = messagebox.askyesno("Confirm publish",
+                                      f"Publish {len(ready)} photo(s) to {_dest}?")
+        if not _ok:
+            self._sync_status.configure(text="Publish cancelled.")
             return
         self._sync_status.configure(text=f"Syncing {len(ready)} draft(s)…", fg=ui.FG_WARN)
         poster = SoloPoster(conn, site_data=getattr(self.app, "_site_data", None))

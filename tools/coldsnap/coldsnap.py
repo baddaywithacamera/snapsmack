@@ -14,7 +14,7 @@ host App that supplies `_config` (url / api_key) and `_site_data` to them.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.1.5"
+BUILD_VERSION = "0.1.7"
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to coldsnap-debug.log next to the exe.
@@ -192,6 +192,7 @@ class App(tk.Tk):
         btn_row = tk.Frame(body, bg=ui.BG_CARD)
         btn_row.pack(fill="x", pady=(8, 0))
         ui.button(btn_row, "SAVE / APPLY", self._on_save, kind="primary").pack(side="right")
+        ui.button(btn_row, "?  HELP", self._show_help).pack(side="right", padx=(0, 8))
 
         self._conn_status = tk.Label(btn_row, text="", bg=ui.BG_CARD,
                                      fg=ui.FG_DIM, font=ui.FONT_SMALL)
@@ -218,6 +219,91 @@ class App(tk.Tk):
         self._slapped_frame = tk.Frame(self, bg=ui.BG_DEEP)
         self._gram_frame    = tk.Frame(self, bg=ui.BG_DEEP)
         self._build_modes()
+
+    def _show_help(self):
+        """Scrolling in-app help. COLD SNAP shipped with none (ARCH-04); this is
+        SYBU's help-window pattern adapted to COLD SNAP's offline compose -> sync
+        flow, using this tool's own style constants."""
+        win = tk.Toplevel(self)
+        win.title("COLD SNAP — Help")
+        win.configure(bg=ui.BG_DEEP)
+        win.geometry("680x620")
+        win.transient(self)
+
+        bottom = tk.Frame(win, bg=ui.BG_DEEP)
+        bottom.pack(side="bottom", fill="x")
+
+        canvas = tk.Canvas(win, bg=ui.BG_DEEP, highlightthickness=0)
+        sb = ttk.Scrollbar(win, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        body = tk.Frame(canvas, bg=ui.BG_DEEP)
+        body_id = canvas.create_window((0, 0), window=body, anchor="nw")
+        canvas.bind("<Configure>", lambda e: canvas.itemconfig(body_id, width=e.width))
+        body.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+        def _wheel(e):
+            canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+        canvas.bind_all("<MouseWheel>", _wheel)
+
+        def _close():
+            canvas.unbind_all("<MouseWheel>")
+            win.destroy()
+        win.protocol("WM_DELETE_WINDOW", _close)
+        ui.button(bottom, "CLOSE", _close, kind="primary").pack(side="right", padx=12, pady=8)
+
+        def _section(title):
+            tk.Frame(body, bg=ui.BG_HOVER, height=1).pack(fill="x", padx=20, pady=(18, 0))
+            tk.Label(body, text=title, bg=ui.BG_DEEP, fg=ui.ACCENT,
+                     font=ui.FONT_BOLD, anchor="w").pack(fill="x", padx=20, pady=(6, 2))
+
+        def _para(text):
+            tk.Label(body, text=text, bg=ui.BG_DEEP, fg=ui.FG_MAIN, font=ui.FONT_UI,
+                     wraplength=600, justify="left", anchor="w").pack(fill="x", padx=20, pady=(2, 0))
+
+        def _item(label, detail):
+            row = tk.Frame(body, bg=ui.BG_DEEP)
+            row.pack(fill="x", padx=28, pady=(3, 0))
+            tk.Label(row, text=f"▸  {label}", bg=ui.BG_DEEP, fg=ui.FG_OK, font=ui.FONT_BOLD,
+                     anchor="nw", width=18).pack(side="left", anchor="n")
+            tk.Label(row, text=detail, bg=ui.BG_DEEP, fg=ui.FG_MAIN, font=ui.FONT_UI,
+                     wraplength=430, justify="left", anchor="w").pack(side="left", fill="x", expand=True)
+
+        tk.Label(body, text="", bg=ui.BG_DEEP).pack()  # top padding
+
+        _section("WHAT COLD SNAP IS")
+        _para("COLD SNAP builds posts completely offline, then publishes them to your "
+              "SnapSmack site when you have a connection. Compose now — on a plane, a couch, "
+              "or a dead zone — and sync later.")
+
+        _section("THE TWO TABS")
+        _item("COLD ONE",   "One photo per post — for SOLO (SmackOneOut) photoblog sites.")
+        _item("COLD STACK", "A stack of photos as one carousel — for GRAM (GramOfSmack) sites.")
+        _para("Connect to a site that matches the tab you're posting from.")
+
+        _section("CONNECTING")
+        _para("Pick a saved profile, or type your Site URL and API Key (generate the key in "
+              "SnapSmack Admin → Settings → API Access) and click SAVE / APPLY. You "
+              "do NOT need to be connected to compose — only to sync.")
+
+        _section("THE WORKFLOW")
+        _item("1. Compose", "Add your photo(s), caption and options in COLD ONE or COLD STACK. No network needed.")
+        _item("2. Mark OFFLINE POST", "Commits a draft as ready to go. Compose as many as you like.")
+        _item("3. SYNC", "When you're online, click SYNC. COLD SNAP asks you to confirm — naming the site — then publishes each ready post and verifies it landed.")
+
+        _section("AI CAPTIONS")
+        _para("If a Gemini key is set, COLD SNAP can suggest a caption for a photo. Treat it "
+              "as a starting point and edit it to your own voice before posting.")
+
+        _section("YOUR DRAFTS ARE SAFE")
+        _para("Drafts are saved on this computer and survive closing COLD SNAP, so you can "
+              "work across several sittings. A failed sync leaves the post marked so you can "
+              "retry — nothing is lost. If a sync can't reach the site, check your URL, key "
+              "and connection.")
+
+        tk.Label(body, text="", bg=ui.BG_DEEP).pack(pady=6)  # bottom padding
 
     def _build_modes(self):
         """Mount COLD ONE + COLD STACK. A panel error shows a label
