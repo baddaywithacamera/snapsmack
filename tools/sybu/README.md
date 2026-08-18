@@ -9,25 +9,35 @@
 -->
 
 
-# ft-batch-poster
+# Smack Your Batch Up (SYBU)
 
-Batch posting tool for foundtextures.ca (SnapSmack). Takes a folder of images
-and an AI-generated manifest `.txt` file and posts them all to SnapSmack with
-correct titles, tags, categories, and albums.
+Desktop batch poster for SnapSmack. Point it at a folder of photos, let Gemini
+fill in the titles, captions, tags, categories and albums, review the queue, and
+post the whole batch to your site in one go. Works with both SOLO (SmackOneOut)
+and GRAM (GramOfSmack) sites.
 
 ## Usage
 
-1. Generate image metadata using the AI prompt in `found-textures-ai-prompt.md`
-2. Add `CATEGORY` and `ALBUM` to the manifest (or leave blank for defaults)
-3. Run `ft-batch-poster.exe`
-4. Fill in your site URL and credentials
-5. Select your image folder and manifest file
-6. Click **Validate Manifest** to catch any issues first
-7. Click **Post Batch**
+1. **Connect** — enter your site URL and API Key (generated in SnapSmack Admin →
+   Settings → API Access) and click Connect. SYBU logs in and loads your
+   categories and albums.
+2. **Set image folder** — click `…` next to Image Folder and pick the folder of
+   images.
+3. **Scan Folder** — loads every JPG / PNG / WebP in the folder into the queue,
+   applying your default category, album and orientation to each row.
+4. **Enrich with Gemini** — Gemini looks at each image and fills in a title,
+   tags, category and album. Rows that already have a title are skipped, and you
+   can edit any field directly.
+5. **Post Batch** — validates, then posts every item in the queue. Progress
+   shows row by row; failed posts stay red so you can retry.
+
+Loading a pre-written `.txt` manifest instead of scanning is still supported as
+an advanced option. In-app **Help** ("?") covers Google Drive uploads, the
+COLOUR / B&W tag, sessions, and settings.
 
 ## Building from source
 
-Requirements: Python 3.11+, `exiftool.exe` (download from https://exiftool.org)
+Requirements: Python 3.11+, `exiftool.exe` (download from https://exiftool.org).
 
 ```
 pip install -r requirements.txt
@@ -35,7 +45,8 @@ pip install -r requirements.txt
 build.bat
 ```
 
-Output: `dist\ft-batch-poster.exe` — single file, no install required.
+Output: `sybu.exe` — single file, no install required. `build.bat` auto-bumps
+`BUILD_VERSION` in `main.py` each build (skip with `build.bat norev`).
 
 ## Files
 
@@ -43,9 +54,13 @@ Output: `dist\ft-batch-poster.exe` — single file, no install required.
 |---|---|
 | `main.py` | tkinter UI, entry point |
 | `poster.py` | SnapSmack login, category/album lookup, image posting |
-| `manifest_parser.py` | Parses and validates the `.txt` manifest format |
+| `gemini.py` | Gemini vision enrichment (titles, tags, categories, albums) |
+| `drive.py` | optional Google Drive upload for hosted originals |
 | `exif_writer.py` | ExifTool wrapper — embeds copyright into a temp copy |
-| `config.py` | Reads/writes `config.ini` |
+| `manifest_parser.py` | parses/validates the advanced `.txt` manifest format |
+| `profile_manager.py` | per-site connection profiles |
+| `recovery.py` | resume / crash recovery for an interrupted batch |
+| `config.py` | reads/writes `config.ini` |
 | `build.bat` | PyInstaller build script |
 | `requirements.txt` | Python dependencies |
 <!-- ===== SNAPSMACK EOF ===== -->
