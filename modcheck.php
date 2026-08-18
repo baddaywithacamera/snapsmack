@@ -10,7 +10,7 @@
  *
  * SAFE: this file only ever runs SELECT / information_schema queries. It
  * writes NOTHING to the database and changes no data. Admin-login gated.
- * Drop it in the web root and open /smack-postmodel-check.php while logged in.
+ * Drop it in the web root and open /modcheck.php while logged in.
  */
 
 /**

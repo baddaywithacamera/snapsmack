@@ -10,6 +10,12 @@
 
 # SnapSmack Changelog
 
+## 0.7.534 — 2026-08-17
+
+### A read-only health check for the posts rework
+
+- **New admin tool: `modcheck.php`.** Open `/modcheck.php` while logged in and it prints a plain table of your site's real numbers behind the coming posts fix — how many photos are stored the old way, how many likes and comments are attached to the wrong kind of id, and a few other tidy-up counts. It **only reads and counts — it changes nothing** on your site, and only a logged-in admin can see it. This is the first step of the posts rework: measuring, before anything is touched.
+
 ## 0.7.533 — 2026-08-17
 
 ### Buckets — pick a run of photos at once, and a quieter panel
