@@ -5,6 +5,16 @@
 
 Offline fleet comment moderation + replies. The inbound twin of COLD SNAP.
 
+## 0.1.1 — 2026-08-18
+
+### Added
+- **Sync now confirms before it commits (Parkinson's-forgiving, ARCH-03).**
+  Applying decisions used to push everything — including permanent deletes —
+  with no confirmation. Sync now shows a dialog that names the destination
+  site(s) and counts the decisions, and when any comment will be DELETED it
+  defaults to "No" with a warning icon so a stray click can't confirm a delete.
+  Uses the shared `_shared/snap_confirm.py` guard (the same one COLD SNAP uses).
+
 ## 0.1.0 — 2026-08-14
 
 ### Added

@@ -409,6 +409,23 @@ class SoloMode(tk.Frame):
         if not ready:
             self._sync_status.configure(text="Nothing marked OFFLINE POST yet — compose and commit first.")
             return
+        # Parkinson's-forgiving guard (ARCH-03): never publish to a LIVE site
+        # without a confirm that NAMES the site. COLD SNAP used to fire _sync
+        # with no gate at all. Shared helper, with an inline fallback so the
+        # gate can never silently disappear if _shared isn't importable.
+        _url = (getattr(self.app, "_config", {}) or {}).get("url", "")
+        try:
+            import snap_confirm
+            _ok = snap_confirm.confirm_post(_url, len(ready), item="photo",
+                                            action="Publish", parent=self)
+        except Exception:
+            from urllib.parse import urlparse
+            _dest = urlparse(_url if "://" in _url else "https://" + _url).netloc or _url or "your site"
+            _ok = messagebox.askyesno("Confirm publish",
+                                      f"Publish {len(ready)} photo(s) to {_dest}?")
+        if not _ok:
+            self._sync_status.configure(text="Publish cancelled.")
+            return
         self._sync_status.configure(text=f"Syncing {len(ready)} draft(s)…", fg=ui.FG_WARN)
         poster = SoloPoster(conn, site_data=getattr(self.app, "_site_data", None))
 
