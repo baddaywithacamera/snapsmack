@@ -10,6 +10,21 @@
 
 # SnapSmack Changelog
 
+## 0.7.537 — 2026-08-18
+
+### Clearer admin, more readable, and help that actually shows up
+
+- **Plain names for the controls that hid behind jargon.** The admin now says what it means: **Post** (not "Transmission"), **Comments** (not "Signals"), **Categories** (not "Registry"), **Albums** (not "Missions"), **Configuration** (not "Global Engine Configuration") and **Search** (not "Technical Search"). The playful section names and posting buttons are untouched — this only clarifies the labels that told you the wrong thing or hid what a control does.
+- **Community, not "Interaction".** The community-settings menu item is renamed so it no longer looks identical to the fediverse "Interactions" item next to it.
+- **Faint text is readable now.** The dim grey labels, hints and counts across every admin colour theme were below the contrast floor; they're raised to a readable level. No theme's colours or your accents changed.
+- **The little ⓘ help dots are bigger, less faint, and keyboard-reachable.**
+- **Skin help that was silently missing now appears.** Six skins shipped help the manual quietly dropped (Chaplin, Heuristic, Rational-Geo, Slickr, Sliders, Full Monty) — all fixed. And **Sudden Impact** was showing The Grid's help word-for-word; it now has its own.
+
+### Companion desktop tools
+
+- **Cold Snap and Smack Your Mouth now confirm before they touch a live site** — naming the exact site, and defaulting to "No" with a warning when anything will be deleted. (Unzucker's confirm now names the real site too.)
+- **Cold Snap has an in-app Help window** (it had none), and the tools now show a plain "here's what to do" line on common failures instead of a raw error dump.
+
 ## 0.7.536 — 2026-08-18
 
 ### The post-model repair no longer asks for credentials again
