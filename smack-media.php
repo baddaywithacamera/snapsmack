@@ -16,6 +16,8 @@
 
 require_once 'core/auth-smack.php';
 require_once 'core/alt-text.php';
+require_once __DIR__ . '/core/upload-execution-guard.php';
+require_once __DIR__ . '/core/image-upload-policy.php';
 
 // Ensure media storage directory exists.
 $target_dir = "media_assets/";
@@ -23,25 +25,8 @@ if (!is_dir($target_dir)) {
     mkdir($target_dir, 0755, true);
 }
 
-// SECAUDIT 047: defence-in-depth — deny script execution inside media_assets/.
-// media_assets/ is web-served and (unlike img_uploads/) was NOT covered by any
-// PHP-deny rule, so an uploaded .php would run. Drop a deny-all handler rule so
-// even if a bad file lands here it can never execute. Apache-only, harmless on
-// nginx (which is configured separately).
-$__media_htaccess = $target_dir . '.htaccess';
-if (!file_exists($__media_htaccess)) {
-    @file_put_contents(
-        $__media_htaccess,
-        "# SECAUDIT 047 — media assets are data, never executable code.\n"
-        . "php_flag engine off\n"
-        . "RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .phar .pht\n"
-        . "RemoveType .php .phtml .php3 .php4 .php5 .php7 .php8 .phar .pht\n"
-        . "<FilesMatch \"\\.(php|phtml|php3|php4|php5|php7|php8|phar|pht|cgi|pl)$\">\n"
-        . "  SetHandler none\n"
-        . "  Require all denied\n"
-        . "</FilesMatch>\n"
-    );
-}
+// Web-served uploads are data, never server-side programs.
+snapsmack_write_upload_execution_guard($target_dir);
 
 // SECAUDIT 047: never trust the client-supplied file extension. Derive the
 // stored extension from the real MIME type and accept only raster images.
@@ -137,6 +122,11 @@ if (isset($_POST['swap_id']) && isset($_FILES['file'])) {
         echo json_encode(['status' => 'error', 'msg' => 'Only JPEG, PNG, WebP or GIF images are allowed.']);
         exit;
     }
+    if (!snapsmack_local_image_within_4k($_FILES['file']['tmp_name'], $dimension_error)) {
+        http_response_code(413);
+        echo json_encode(['status' => 'error', 'msg' => $dimension_error]);
+        exit;
+    }
     $file_name  = time() . '_' . uniqid() . '.' . $file_ext;
     $target_file = $target_dir . $file_name;
 
@@ -160,6 +150,11 @@ if (isset($_FILES['file'])) {
     if ($file_ext === null) {
         header('HTTP/1.1 415 Unsupported Media Type');
         echo json_encode(['status' => 'error', 'msg' => 'Only JPEG, PNG, WebP or GIF images are allowed.']);
+        exit;
+    }
+    if (!snapsmack_local_image_within_4k($_FILES['file']['tmp_name'], $dimension_error)) {
+        http_response_code(413);
+        echo json_encode(['status' => 'error', 'msg' => $dimension_error]);
         exit;
     }
     $file_name = time() . '_' . uniqid() . '.' . $file_ext;

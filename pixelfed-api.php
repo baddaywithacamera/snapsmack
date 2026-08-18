@@ -12,6 +12,7 @@ require_once __DIR__ . '/core/thumb-generator.php';
 require_once __DIR__ . '/core/alt-text.php';
 require_once __DIR__ . '/core/gram-client-authoring.php';
 require_once __DIR__ . '/core/pixelix-lifecycle.php';
+require_once __DIR__ . '/core/image-upload-policy.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -206,6 +207,7 @@ if (($route==='api/v1/media'||$route==='api/v2/media') && $method==='POST') {
     px_gram_authoring_gate($pdo);px_offline_gate($pdo);px_require_scope($token,'write');if(empty($_FILES['file'])||$_FILES['file']['error']!==UPLOAD_ERR_OK)px_json(['error'=>'file is required'],422);
     $mime=(new finfo(FILEINFO_MIME_TYPE))->file($_FILES['file']['tmp_name']);$ext=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'][$mime]??'';if(!$ext)px_json(['error'=>'Unsupported media type'],422);
     if($_FILES['file']['size']>64*1024*1024)px_json(['error'=>'File is too large'],413);
+    if(!snapsmack_local_image_within_4k($_FILES['file']['tmp_name'],$dimension_error))px_json(['error'=>$dimension_error],413);
     px_budget($pdo);
     $ym=date('Y/m');$dir=__DIR__.'/img_uploads/'.$ym;if(!is_dir($dir))mkdir($dir,0755,true);$name='pixelix-'.date('Ymd-His').'-'.bin2hex(random_bytes(3)).'.'.$ext;$path=$dir.'/'.$name;if(!move_uploaded_file($_FILES['file']['tmp_name'],$path))px_json(['error'=>'Could not save media'],500);
     $dim=@getimagesize($path);$rel='img_uploads/'.$ym.'/'.$name;$thumbs=snapsmack_generate_thumbs($rel,__DIR__,SNAPSMACK_THUMB_SQUARE,SNAPSMACK_THUMB_ASPECT_LONG);

@@ -27,6 +27,7 @@ require_once 'core/app-mode.php';
 require_once 'core/palette-extract.php';
 require_once 'core/snap-tags.php';
 require_once 'core/alt-text.php';
+require_once __DIR__ . '/core/image-upload-policy.php';
 
 set_time_limit(600);
 ini_set('memory_limit', '512M');
@@ -172,6 +173,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
 
         if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'])) {
             $errors[] = 'File ' . ($i + 1) . ': unsupported type ' . $mime;
+            continue;
+        }
+        if (!snapsmack_local_image_within_4k($tmp_name, $dimension_error)) {
+            $errors[] = 'File ' . ($i + 1) . ': ' . $dimension_error;
             continue;
         }
 

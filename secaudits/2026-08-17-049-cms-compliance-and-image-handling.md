@@ -1,232 +1,142 @@
-<!--
-  SNAPSMACK_EOF_HEADER
-  Last non-empty line must be the canonical SNAPSMACK EOF HTML comment.
--->
+# SnapSmack Security Audit 049 - CMS compliance, image handling, and post-model discovery
 
-# SnapSmack Security Audit 049 — CMS compliance & image handling
+**Assessment target:** `dev` at 0.7.533, with disposition reviewed through 0.7.536D
+**Review opened:** 2026-08-17
+**Review closed:** 2026-08-18
+**Status:** CLOSED AS AN ASSESSMENT RECORD. Remediation status is stated per finding below.
+**Reviewers:** Claude Code, web-Claude, OpenAI Codex, with product and live-fleet facts supplied by Sean McCormick.
 
-**Target:** `dev` branch, **v0.7.533** ("PHOTO FRIYAY") · **Date:** 2026-08-17
-**Method:** local static review by three parallel reviewers (image pipeline · web-app
-primitives · infrastructure), scored against a written minimum-requirements standard
-(companion file `2026-08-17-049-cms-compliance-standard.md`).
+## Executive conclusion
 
----
+Audit 049 found two different classes of problem:
 
-## Read this first
+1. A conventional CMS and image-handling security review found strong controls around SQL parameters, escaping, CSRF, authentication, signed updates, secret generation, upload naming, and raster derivative generation. It also found several real gaps, chiefly public error disclosure, inconsistent HTTP-security-header delivery, no universal pre-decode pixel budget, and uneven upload-directory execution guards.
+2. A separate post-model investigation exposed a foundational architectural defect: SnapSmack did not have one enforced definition of a publishable content unit. A photograph could be both a media asset and the post itself, while newer features used `snap_posts`. Publication state, dates, ownership, engagement identifiers, collections, and federation identity consequently developed competing meanings.
 
-- This is a **local code review of current dev (0.7.533)** — the live-current code, not
-  a stale branch. Items that depend on server config (Apache vs nginx, php.ini) are
-  marked **[confirm live]**.
-- **Nothing was changed.** Audit only.
-- **Headline:** the code itself is in good shape. Audits 035/039/040/**047/048** clearly
-  did their job — SQL injection, XSS, CSRF, login/session, admin permissions, update
-  signing, secret handling, and upload safety all **pass** on dev. The single biggest
-  problem this audit found is **not in the code at all — it's in delivery** (Finding 1).
+The second finding should have been identified earlier when the CMS architecture was questioned. Audit 049 maps the defect and records the canonical direction, but it is not a complete comparative architecture assessment. That work is assigned to SECAUDIT 050.
 
----
+## Important correction: the stable track is intentionally dormant
 
-## The one that matters most
+An earlier draft treated the old stable build as a patch-delivery failure. That conclusion was wrong.
 
-### Finding 1 · Stable track frozen — DOWNGRADED to LOW / process-risk (fleet confirmed on dev) · [Sean-confirmed 2026-08-17]
+- Sean deliberately stopped publishing to stable.
+- No production SnapSmack installation runs on stable.
+- The production fleet runs on the development/live track.
+- A stale, unused track is therefore not an exposed fleet and is not a security finding.
 
-> **CORRECTED (Sean, 2026-08-17) — my first read was wrong.** Sean runs **26 live
-> production sites, all on the dev track.** "All on dev" does NOT mean "safe." It means:
-> (a) delivery is not guaranteed — the live header check below proves it, foundtextures.ca
-> sends no HSTS/CSP while photofri.day does; and (b) every finding that IS delivered on dev
-> is **live across all 26 production sites right now** — chiefly the `display_errors` + raw
-> error leak (Finding 2, delivered inline so it runs fleet-wide), the pixel-bomb (Finding
-> 3), and per-site header gaps. So the real exposure is NOT the abandoned stable track
-> (moot — nobody's on it); it's that **26 production sites ride the fast-moving, unvetted
-> dev track and carry the delivered findings fleet-wide, delivery proven uneven.** This is
-> an ACTIVE posture, not a process footnote. Actions: (1) sweep security headers across all
-> 26 sites; (2) ship the safe fixes — the error leak first — to the whole fleet; (3) decide
-> the posture: 26 production sites on the unvetted dev track is itself a risk (add a
-> stabilize-and-verify gate before fleet rollout, or accept dev-as-prod with tight
-> finding-closure). The frozen `stable`/`main` build (77 versions behind) remains a
-> separate buildable landmine — guard against building/checking-out from it.
+The legitimate operational question is narrower: does each active site receive the live-track build completely, and can the fleet prove the deployed version and required controls? The 2026-08-17 header sweep showed uneven results and remains valid evidence of a delivery-verification problem. It does not revive the abandoned stable track as a risk.
 
-- **Dev track** (`latest-dev.json`): **0.7.533D**, today.
-- **Stable track** (`latest.json` / "BORING"): **0.7.456**, from **2026-07-30**.
+## Scope and method
 
-Every hardening fix from audits 046/047/048 — the editor→admin lockout, the
-`download_salt` fix that protects saved FTP passwords, enforced update signing, the
-HSTS/CSP headers, the `media_assets` execution guard — shipped as **dev (D) builds
-only**. They publish to `latest-dev.json`. A site on the **stable** track only sees
-`latest.json`, which is frozen at 0.7.456 (July 30) — so it has received **none** of
-it, while its updater truthfully reports "up to date."
+The review combined:
 
-**Why this is the top finding:** a fix that never reaches the install is not a fix. In
-compliance terms this is a broken **patch-delivery pipeline** — the most-hardened code
-in the world doesn't matter if production runs a 77-version-old build. If any
-internet-facing install is on the stable track, it is currently exposed to
-already-fixed CRITICAL issues (editor escalation, plaintext-recoverable FTP creds).
+- Static inspection of current source at 0.7.533.
+- A written minimum compliance standard covering CMS controls, image handling, and delivery.
+- Mechanical repository searches for every major reader and writer of `snap_images`, `snap_posts`, `snap_post_images`, `post_id`, `img_slug`, `img_status`, and `img_date`.
+- A live response-header sweep across 26 named sites.
+- Independent review of the corrected report by Codex.
 
-**What to confirm live:** which real installs are on `stable` vs `dev`
-(`update_track`). If any live/public site is on stable → this is **CRITICAL** for that
-site. If everything real is already on dev → it drops to a process risk.
+It did not include a restored-database row audit, full live penetration test, exhaustive architecture comparison with mature CMS products, or fleet-wide post-remediation verification. Those limitations are material.
 
-**The fix is an operational decision, not code — and it defers to Sean's standing call to
-retire dual-track and keep the whole fleet on the single live (dev) track.** So the remedy
-is NOT a permanent both-tracks policy (an earlier draft said that; corrected). Instead:
-(a) confirm whether every real install is already on dev; (b) if any spoke is stuck on the
-abandoned stable track, bring it onto the live one with a **single bridge build**, then
-retire the stale track. The compliance principle is track-agnostic: *no install may
-silently run unpatched code under a green "up to date" light.* Severity gates on the live
-fact — if the whole fleet is already on dev, this collapses to a process risk.
-*(Correction credited to web-Claude's 049 review: my first draft baked a both-tracks
-mandate into standard C1, which reversed Sean's documented decision.)*
+## Corrected scorecard
 
----
+The standard contains **24 requirements**, not 23: A1-A13 (13), B1-B10 (10), and C1 (1).
 
-## Scorecard — 23 minimum requirements
+| ID | Requirement | Verdict at close | Disposition |
+|---|---|---|---|
+| A1 | Bound database parameters | MEETS | Retain regression coverage |
+| A2 | Output escaping | MEETS | Retain regression coverage |
+| A3 | CSRF on state changes | MEETS | Central POST and state-changing GET guards remain authoritative |
+| A4 | Authentication and capability checks | MEETS | Central administrator boundary retained |
+| A5 | Modern login handling | MEETS | bcrypt, session rotation, throttling, and expiring reset tokens verified in source |
+| A6 | Per-install secrets | MEETS | Random per-install secrets and self-heal path present |
+| A7 | Signed updates | MEETS | Ed25519 verification fails closed |
+| A8 | No public error disclosure | MEETS IN CURRENT SOURCE | Fixed after 0.7.536D; seven public entry points now log details and return generic errors. Release/live verification pending |
+| A9 | Direct-access guards on includes | GAP | TRANSFERRED to 050 trust-boundary inventory; direct endpoints must be distinguished from include-only files |
+| A10 | Security headers delivered live | FAILS | OPEN verification; 9/26 passed and 17/26 failed the 2026-08-17 sweep despite header code existing |
+| A11 | No dangerous functions on request data | MEETS | Offline/build shell use excluded from web request paths |
+| A12 | Protected updater paths | MEETS | Delivery caveat retained: protected files cannot carry fixes to existing installs |
+| A13 | Security-event logging | MEETS | Login, ban, and selected administrative events recorded |
+| B1 | Content-based image type checking | MEETS | Primary ingest paths inspect bytes/dimensions |
+| B2 | Image type allowlist | MEETS | Raster allowlists present |
+| B3 | No execution in upload directories | MEETS IN CURRENT SOURCE | One canonical Apache 2.4/2.2-compatible guard now covers `img_uploads`, `media_assets`, and `assets/img` from install, recovery, media management, and Maintenance repair. Release/live and nginx verification pending |
+| B4 | Filename sanitisation and traversal prevention | MEETS | Server-generated stored names and confined paths |
+| B5 | Pre-decode byte and pixel limits | MEETS IN CURRENT SOURCE | Local images must fit inside 3840 x 2160 in either orientation and remain at or below 8,294,400 pixels; upload and shared GD paths check dimensions before decode. Release/live verification pending |
+| B6 | SVG rejection or sanitisation | MEETS IN CURRENT SOURCE | Administrator-uploaded branding SVG is parsed without network access and accepted only through a strict element, attribute, and internal-reference allowlist. Release/live verification pending |
+| B7 | Correct serving type and `nosniff` | MEETS | Download path and global header code present |
+| B8 | ImageMagick policy | N/A | SnapSmack uses GD |
+| B9 | EXIF/GPS policy is deliberate | MEETS | Preservation is an explicit photographer-first decision, not a defect |
+| B10 | Safe derivative generation | MEETS | Raster derivatives are re-encoded through GD |
+| C1 | Fixes reach active installs and are verified | GAP | Stable is irrelevant; active-fleet delivery and post-update verification remain the requirement |
 
-Verdict: **MEETS** ✅ · **GAP** ⚠️ · **FAILS** ❌ · **N/A**. Full definitions in the
-companion standard.
+**Corrected 0.7.533 tally:** 16 MEETS, 4 GAPS, 3 FAILS, 1 N/A. Current-source remediation changes the A8 disposition but does not rewrite the historical score.
 
-| ID  | Requirement                        | Sev | Verdict | Note (dev 0.7.533) |
-|-----|------------------------------------|-----|---------|--------------------|
-| A1  | Bound DB parameters                | CRIT | ✅ MEETS | Real prepared stmts, `EMULATE_PREPARES=false`; no concatenated user SQL |
-| A2  | Output escaping / XSS              | HIGH | ✅ MEETS | Comments/forum/meta all escaped; canonical URL fixed in 047 |
-| A3  | CSRF on state changes              | HIGH | ✅ MEETS | Strong engine; GET-variant added (047); 3 exempt callers all justified (Bearer APIs) |
-| A4  | Auth + capability on admin pages   | CRIT | ✅ MEETS | Two-layer gate: central denylist + `smack_require_admin()` (047). Editor can't escalate |
-| A5  | Modern login handling              | CRIT | ✅ MEETS | bcrypt-12, `session_regenerate_id`, 5/10min→7-day ban, hashed single-use reset tokens |
-| A6  | Per-install secrets                | HIGH | ✅ MEETS | `download_salt` randomly minted + self-heal migration (047); no hardcoded secrets |
-| A7  | Signed updates                     | CRIT | ✅ MEETS | Ed25519 enforced, fails closed; HTTPS w/ peer verify; key-rotation root-signed |
-| A8  | No error info disclosure           | MED  | ❌ FAILS | Public pages force `display_errors` on AND echo `$e->getMessage()` (Finding 2) |
-| A9  | Direct-access guards on includes   | MED  | ⚠️ GAP  | Only `smackback.php` has a PHP guard; rest rely on `.htaccess` allowlist (Finding 6) |
-| A10 | Security headers (+HSTS +CSP)      | MED  | ❌ FAILS fleet-wide (swept 26 sites 2026-08-17) | **Only 9/26 sites send HSTS+CSP; 17/26 send NEITHER** — including the hub (foundtextures.ca) and photoblogs.fyi. Code exists but header delivery (skin-routed) is patchy — the 048 delivery-defect class, now measured. Fix: HSTS via Cloudflare edge (fast, fleet-wide); CSP app/skin-side (find why 9 emit it and 17 don't). Full table in appendix |
-| A11 | No dangerous funcs on user input   | CRIT | ✅ MEETS | No eval/system/unserialize/extract on request data; shell only in offline build tools |
-| A12 | Protected-paths list               | HIGH | ✅ MEETS | Present; new controls routed via skin-manifest to reach frozen paths |
-| A13 | Security event logging             | LOW  | ✅ MEETS | Login fails, bans, admin actions logged |
-| B1  | Content-based type check           | CRIT | ✅ MEETS | finfo/getimagesize on primary paths; one path uses ext-allowlist (Finding 5, mitigated) |
-| B2  | Type allowlist                     | HIGH | ✅ MEETS | Raster-only allowlists everywhere |
-| B3  | No execution in upload dirs        | CRIT | ⚠️ GAP  | Guards exist but coverage uneven + legacy Apache-2.2 syntax (Finding 4) |
-| B4  | Filename sanitise / no traversal   | HIGH | ✅ MEETS | Names regenerated from MIME; no client path used; no double-extension |
-| B5  | Pre-decode size/dimension limits   | HIGH | ❌ FAILS | Byte-size capped but **no pixel-count cap** before GD decode (Finding 3) |
-| B6  | SVG rejected or sanitised          | HIGH | ⚠️ GAP  | SVG logo/favicon stored unsanitised (admin-only) (Finding 5) |
-| B7  | Correct serve type + nosniff       | MED  | ✅ MEETS | `download.php` sets real type + nosniff + attachment; global nosniff |
-| B8  | ImageMagick policy (if used)       | MED  | ✅ N/A   | GD only — no ImageMagick anywhere |
-| B9  | EXIF preservation = by design      | N/A  | ✅ MEETS | Deliberate; re-encode paths explicitly preserve it — correct, not a defect |
-| B10 | Safe derivative generation         | LOW  | ✅ MEETS | Thumbnails re-encoded through GD (polyglot-defence) |
+## Finding dispositions
 
-**Tally: 17 MEETS · 3 GAP · 1 [confirm live] · 2 FAILS · (1 N/A).** Plus the delivery gap
-(Finding 1), which sits outside the code scorecard but is the most important item.
-*(A10 moved MEETS → [confirm live] after web-Claude's review — see A10 note.)*
+### 1. Public error disclosure - FIXED IN CURRENT SOURCE, MEDIUM
 
----
+Seven public entry points forced PHP error display, and several returned raw exceptions. Current source now disables visitor error display, keeps full reporting in server logs, returns HTTP 500, and shows only a generic message. A regression test covers all seven entry points. The fix still requires a numbered release and live verification before the fleet disposition becomes VERIFIED.
 
-## Findings (code) — worst first
+### 2. Uneven live HSTS/CSP delivery - OPEN VERIFICATION, MEDIUM
 
-### Finding 2 · Public pages leak errors to visitors — MEDIUM
-Every public entry point forces `display_errors` on and then prints the raw exception
-in its catch block:
-`index.php:21-22` + `:485` (`die("GATEWAY_HALT: ".$e->getMessage())`); `archive.php:17-18`+`:531`;
-`albums.php:27-28`+`:161`; `blogroll.php:17-18`+`:103`; `page.php:17-18`+`:84`;
-`privacy-policy.php:18-19`+`:56`; `process-comment.php:17-18`+`:127`.
-A DB hiccup or malformed request shows a stranger raw SQL, table names, and absolute
-server paths — reconnaissance. **Not closed by 046–048.** Fix: default `display_errors`
-off (gate behind a debug flag), and return a generic message instead of `getMessage()`.
+The 2026-08-17 sweep found HSTS and CSP on 9 of 26 sites and neither header on 17. Source contains a shipping header module, but source presence is not proof of live delivery. Re-sweep the active fleet after deployment and record named-site results. The intentional dormant stable track is unrelated.
 
-### Finding 3 · No decompression-bomb / pixel limit before decode — MEDIUM
-No path checks width×height against a pixel budget before `imagecreatefrom*`. A ~1 MB
-30000×30000 PNG passes the byte-size gate, then GD allocates gigabytes → worker crash
-(one-request DoS). `core/image-ingest.php:305` (and it raises `memory_limit` to 512M at
-:219), `smack-post-solo.php:362`, `core/photo-editor-save.php:55`, `pixelfed-api.php:211`,
-`smack-swap.php:91`, `core/thumb-generator.php:76`, `backfill-thumbs.php:92`.
-Broadest reach: the **pixelfed-api media endpoint** (any write-scoped OAuth token) and
-`smackpress-api.php:268` — the rest are admin-only. Fix: after `getimagesize`, reject
-`w*h > ~40MP` before decoding. **Set the cap high enough for your real files** (medium-
-format 100MP+ exists) — agree the number rather than guessing.
+### 3. No universal pre-decode pixel budget - FIXED IN CURRENT SOURCE, MEDIUM
 
-### Finding 4 · Upload-dir execution guards are uneven — LOW · [confirm live]
-Defense-in-depth only (no path writes a `.php` name anymore, so low risk):
-- `media_assets/.htaccess` is written only by `smack-media.php` on page load — the
-  installer, Maintenance→Repair, and recovery-engine write only `img_uploads/.htaccess`.
-  Fresh install = `media_assets/` unguarded until the Media Library is first opened.
-- `img_uploads/` guard uses legacy Apache-2.2 syntax (`Order Deny,Allow`), ineffective
-  on Apache 2.4 without `mod_access_compat`. `smack-media.php` uses modern `Require all
-  denied` + `php_flag engine off` — standardize on that.
-- `assets/img/` is never guarded. All guards are Apache-only (nginx ignores `.htaccess`).
+Current source establishes one explicit local-hosting policy: an image must fit inside a 3840 x 2160 display in either orientation and remain at or below 8,294,400 pixels. Upload entry points, remote image intake, thumbnail generation, palette extraction, blurhash work, editing, slicing, swapping, media-library intake, and desktop-client APIs enforce the limit before GD decode. Higher-resolution originals belong behind an external download link rather than consuming shared-host memory. Regression coverage verifies landscape and portrait 4K boundaries and rejects oversized wide and square images. A numbered release and live verification remain required.
 
-### Finding 5 · SVG logo/favicon stored unsanitised — LOW/MEDIUM · [confirm live]
-`smack-globalvibe.php:117-155` accepts `.svg` for favicon + masthead, stores verbatim in
-`assets/img/`, no sanitisation. Rendered safely in `<img>`/`<link>`, but the file is
-directly reachable — navigating to `/assets/img/logo.svg` runs any embedded `<script>`
-(stored XSS). Admin-only uploader, so it's effectively admin self-XSS, but an admin
-could plant a link that fires in another admin's session. CSP doesn't set `script-src`,
-so it wouldn't block this. Fix: sanitise SVG on upload, or serve it with
-`Content-Disposition: attachment` / a restrictive CSP, or convert to PNG.
-*(Related, minor: `core/image-ingest.php:222` gates on client extension not content —
-mitigated by re-encode + safe stored name; align with its finfo-using siblings.)*
+### 4. Upload-directory execution guards - FIXED IN CURRENT SOURCE, LOW
 
-### Finding 6 · Core includes rely on `.htaccess`, not a PHP guard — LOW · [confirm live]
-Only `core/smackback.php` has a `defined('SNAPSMACK')` guard; the rest depend on the
-`.htaccess` deny-by-name list. On nginx or any host ignoring `.htaccess`, that list
-evaporates. Real exposure is low (`db.php` doesn't echo), but it's a defense-in-depth
-gap. Long-standing architecture choice, not a regression.
+Current source now uses one extension-scoped execution guard across `img_uploads`, `media_assets`, and `assets/img`. Installer, media management, recovery, and Maintenance diagnosis/repair all use the same writer. The rule supports both Apache 2.4 and the scoped Apache 2.2 fallback, avoids `php_flag` incompatibility under PHP-FPM, and still allows legitimate images to be served. A regression test verifies the rule and directory coverage. A numbered release, live Apache verification, and equivalent nginx server configuration remain delivery work rather than source-code findings.
 
-### Finding 7 · Some tokens stored plaintext at rest — LOW
-Community session tokens (`core/community-session.php:129`) and multisite mesh keys
-(`core/multisite-api.php:133`) are stored plaintext, unlike the (hashed) admin reset
-and TOTP-trust tokens. Mesh keys are plaintext by design (presented outbound). A
-DB-read would expose live community sessions — consider hashing those at rest.
+### 5. Administrator-uploaded SVG - FIXED IN CURRENT SOURCE, LOW/MEDIUM
 
-### Info notes
-- `smack-edit-user.php:67` writes `$_POST['user_role']` with no `['admin','editor']`
-  whitelist — admin-gated so not an escalation, just a robustness nit.
-- `pixelfed-api.php`/`smack-media.php`/`smack-swap.php` store raw original bytes (only
-  thumbnails re-encoded) — non-executable given forced extension + PHP-deny; EXIF/GPS
-  preservation here is deliberate and correct.
+Administrator-uploaded logo and favicon SVG files now pass through a strict sanitiser. Parsing disables network access and rejects document types, entities, external stylesheets, scripts, foreign content, event handlers, executable or external URLs, unapproved elements and attributes, and non-fragment `url()` references. Accepted files remain vector; anything the sanitiser cannot prove safe is rejected. Regression coverage includes a valid branding SVG and a script-bearing rejection case. A numbered release and live verification remain required.
 
----
+### 6. Include-only direct access and community-token storage - TRANSFERRED TO 050
 
-## What passes (protect it)
-SQL injection (real prepared statements), output escaping, CSRF (engine + GET variant +
-justified exemptions), login/session (bcrypt-12, regen, brute-force ban, hashed
-single-use reset tokens), admin authorization (two-layer gate — **editor→admin is
-blocked**), API keys (SHA-256 hashed, scoped, expiring), update signing (Ed25519
-enforced, fails closed, HTTPS-verified), `download_salt` (minted + self-healing),
-security-header *code* present (HSTS + CSP — but delivered-and-live is UNCONFIRMED, see
-A10), no dangerous functions on user input, filename
-sanitisation, content-based type checks, GD re-encode polyglot defence, recovery-kit
-path guard, correct serving headers. Clear evidence of the 047/048 hardening throughout.
+These are architecture and trust-boundary questions rather than isolated patch lines. Audit 050 must distinguish executable endpoints from libraries and document which credentials must be recoverable versus one-way hashed.
 
----
+## Post-model finding
 
-## Fix order (revised — fleet is on dev; 26 live sites)
-1. **Header gap (A10) — measured, fleet-wide:** 17/26 sites send no HSTS/CSP. HSTS =
-   fast Cloudflare-edge fix across all zones; CSP = find why 9 sites emit it and 17 don't
-   (likely a skin recompile / re-save — the header emission is skin-routed and the 17 are
-   mostly older, high-post sites on skins compiled before the header code landed).
-2. **Finding 2 (error leak):** live on all 26. `display_errors` off by default + generic
-   error messages on the 7 public pages. Small, safe, high value — ship to the fleet.
-3. **Finding 3 (pixel cap):** cap before decode — agree the megapixel limit first.
-4. **Findings 4–7:** defense-in-depth — standardize upload-dir guards (modern syntax,
-   written by installer/repair/recovery, cover `media_assets/` + `assets/img/`), sanitise
-   SVG, add PHP guards to core includes, hash community session tokens.
-5. **Delivery posture:** decide whether 26 production sites should ride the unvetted dev
-   track, and add a version-drift guard against the frozen `stable`/`main` landmine.
+### What failed
 
----
+SnapSmack had no database-enforced content invariant. Legacy solo publishing treated `snap_images` as the publishable object; newer group and longform publishing treated `snap_posts` as the object. Both models survived simultaneously.
 
-## Appendix — live header sweep, all 26 sites (2026-08-17, from curl)
-All returned HTTP 200. `YES` = header present in the live response.
+Consequences include:
 
-**HSTS + CSP PRESENT (9):** allinthewrist.photoblogs.fyi, dithering.pixhellated.ca,
-iswa.ca, crapshoot.photoblogs.fyi, squared.pixhellated.ca, someshitifound.photoblogs.fyi,
-swirlybokeh.photoblogs.fyi, usedcarparts.photoblogs.fyi, photofri.day.
+- Two publication-status and publication-time authorities.
+- Two image-to-post ownership representations.
+- Engagement columns named `post_id` that can contain image IDs.
+- Collection rows labelled `post` while pointing at images.
+- Federation identities split between `/ap/note/i/` and `/ap/note/p/`.
+- Readers and writers that can omit, duplicate, or misidentify the same photograph.
 
-**HSTS + CSP MISSING (17):** foundtextures.ca (hub), acolourlesslife.ca,
-baddaywithacamera.ca, craptasti.ca, foreverphotograph.ing, hekeepsdroningon.ca,
-hockneyjoiner.com, fauxlaroid.fyi, lightafterdark.ca, photowalk.ing, pixhellated.ca,
-squaredstraight.ca, strathmore.pics, theschoolofhardnocks.ca, unzucked.ca,
-wateronthebrain.ca, photoblogs.fyi (static/unfinished — treat separately).
+This was an obvious architectural limitation in hindsight and should have been raised during earlier “anything structurally wrong?” reviews. Component-level correctness was repeatedly assessed without first defining system-level invariants.
 
-*Observation:* the 9 present skew toward newer/empty (0-post) sites; the 17 missing skew
-toward older, high-post sites — consistent with the header emission being **skin-compiled**
-and the established sites never re-saved since the header code landed. Confirm before fix.
+### What 0.7.534D-0.7.536D added
 
-*Companion: `2026-08-17-049-cms-compliance-standard.md` (the reusable yardstick).
-Local review; live header sweep is real, other [confirm live] items still pending.*
+- `modcheck.php` provides a read-only, per-site inventory of old-shape content and ambiguous references.
+- Maintenance gained a transactional, repeat-safe CONVERT PHOTOS TO POSTS action.
+- The repair creates one `snap_posts` row and one cover pivot per bare image, attaches the image, preserves the human permalink and lifecycle metadata, and rolls the whole run back on any failure.
+- Existing likes, reactions, and community comments deliberately remain unchanged during the readers-first transition.
+
+### What remains
+
+The repair button is not architectural closure. Readers, writers, scheduling, imports, federation, engagement, collections, deletion, schema constraints, migration receipts, and fleet verification still require coordinated convergence. Historical ActivityPub image identity is intentionally not preserved because SnapSmack remains alpha; authored photographs and human-facing permalinks must be preserved.
+
+The initial diagnostic and repair also overgeneralised the SMACKONEOUT rule to every install mode. In SMACKTALK, `snap_bucket_items` is a private editorial working set for a saved draft or published essay; its `snap_images` members remain reusable Gallery media and are not independent posts. In GRAMOFSMACK, unattached drafts can likewise be upload staging. Current source makes `modcheck.php` mode-aware, reports bucketed and genuinely unassigned longform media separately, checks for orphan bucket references, and refuses the photo-to-post conversion outside SMACKONEOUT. This correction prevents valid longform post buckets and media libraries from being converted into fake posts and is additional evidence that the complete domain model belongs in Audit 050.
+
+## Why Audit 050 exists
+
+Audit 049 was primarily a security/image-handling review that discovered and mapped an architecture failure. It did not compare the complete CMS design against mature implementations or prove system invariants across every lifecycle.
+
+SECAUDIT 050 is therefore the dedicated CMS architecture assessment. It must evaluate the whole product against documented patterns from established CMS, publishing, media-library, and federated systems; produce an invariant catalogue and domain model; test the schema and transaction boundaries; trace every reader and writer; and issue explicit PASS, DEBT, or BLOCKER findings with evidence.
+
+## Closure statement
+
+SECAUDIT 049 is closed as a corrected and independently reviewed assessment record. The dormant stable-track claim is withdrawn, the scorecard is corrected, the architecture limitation is explicitly acknowledged, and every unresolved finding has a named disposition rather than being erased.
+
+This closure does **not** certify the CMS architecture, close the post-model migration, or erase the remaining open and transferred security/hardening items. Those claims require evidence from their remediation releases and the SECAUDIT 050 architecture assessment.
 
 <!-- ===== SNAPSMACK EOF ===== -->

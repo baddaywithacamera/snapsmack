@@ -18,7 +18,8 @@
  */
 
 
-ini_set('display_errors', 1);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/core/db.php';
@@ -482,7 +483,9 @@ try {
         $comment_count = $c_stmt->fetchColumn();
     }
 } catch (Exception $e) {
-    die("GATEWAY_HALT: " . $e->getMessage());
+    error_log('SnapSmack public index failed: ' . $e->getMessage());
+    http_response_code(500);
+    die('The site could not load this page. Please try again later.');
 }
 
 $skin_path = 'skins/' . $active_skin;

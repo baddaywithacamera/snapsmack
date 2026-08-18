@@ -15,7 +15,8 @@
 
 
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 
 // --- DEPENDENCY LOADING ---
 // Establish absolute paths to ensure reliable inclusion regardless of calling context
@@ -124,7 +125,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
 
     } catch (PDOException $e) {
-        die("DATABASE ERROR: " . $e->getMessage());
+        error_log('SnapSmack public comment submission failed: ' . $e->getMessage());
+        http_response_code(500);
+        die('Your comment could not be saved. Please try again later.');
     }
 } else {
     die("FORBIDDEN: Direct access to this frequency is not permitted.");

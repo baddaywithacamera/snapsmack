@@ -26,6 +26,7 @@ require_once 'core/auth-smack.php';
 require_once 'core/skin-registry.php';
 require_once 'core/skin-settings.php';
 require_once 'core/mode-guard.php';
+require_once __DIR__ . '/core/image-upload-policy.php';
 
 // --- SETTINGS BOOTSTRAP ---
 // Must load BEFORE skin discovery so active_skin is available.
@@ -269,6 +270,11 @@ if (isset($_POST['save_mobile_avatar'])) {
         if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
         $ext = strtolower(pathinfo($_FILES['mobile_avatar']['name'], PATHINFO_EXTENSION));
         if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+            if (!snapsmack_local_image_within_4k($_FILES['mobile_avatar']['tmp_name'], $dimension_error)) {
+                $_SESSION['gallery_flash'] = $dimension_error;
+                header('Location: smack-skin.php?tab=mobile');
+                exit;
+            }
             $filename = $_mob_slug . '--skin_avatar.' . $ext;
             if (move_uploaded_file($_FILES['mobile_avatar']['tmp_name'], $upload_dir . $filename)) {
                 $rel = 'uploads/skin-avatars/' . $filename;
@@ -437,6 +443,10 @@ if (isset($_POST['save_skin_settings'])) {
             if (!$img_key_clean) continue;
             $ext = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
             if (!in_array($ext, $allowed_exts)) continue;
+            if (!snapsmack_local_image_within_4k($_FILES['skin_img_opt']['tmp_name'][$img_key], $dimension_error)) {
+                $_img_rejects[] = ($_img_opts[$img_key]['label'] ?? $img_key) . ': ' . $dimension_error;
+                continue;
+            }
 
             // Enforce minimum dimensions when the manifest declares them.
             $min_w = (int)($_img_opts[$img_key]['min_width']  ?? 0);

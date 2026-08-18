@@ -22,6 +22,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/snap-tags.php';
 require_once __DIR__ . '/thumb-generator.php';
+require_once __DIR__ . '/image-upload-policy.php';
 require_once __DIR__ . '/totp.php';   // totp_verify() for the step-up authorize endpoint
 require_once __DIR__ . '/client-ip.php';   // mandatory security boundary — SECAUDIT 035
 require_once __DIR__ . '/api-input-safety.php';   // stored-path + link containment — SECAUDIT 040
@@ -651,6 +652,9 @@ if ($sub === 'upload' && $method === 'POST') {
     if ($file['size'] > 25 * 1024 * 1024) {
         flkrfckr_error(400, 'File too large (max 25 MB).');
     }
+    if (!snapsmack_local_image_within_4k($file['tmp_name'], $dimension_error)) {
+        flkrfckr_error(413, $dimension_error);
+    }
 
     // Sanitise the client filename — keep only safe chars; extension must match
     // the detected type.
@@ -706,10 +710,12 @@ if ($sub === 'upload' && $method === 'POST') {
         $finfo_t = new finfo(FILEINFO_MIME_TYPE);
         $sq_ok = ($tsq['error'] === UPLOAD_ERR_OK)
               && $tsq['size'] > 0 && $tsq['size'] <= 5 * 1024 * 1024
-              && $finfo_t->file($tsq['tmp_name']) === 'image/jpeg';
+              && $finfo_t->file($tsq['tmp_name']) === 'image/jpeg'
+              && snapsmack_local_image_within_4k($tsq['tmp_name'], $thumb_dimension_error);
         $as_ok = ($tas['error'] === UPLOAD_ERR_OK)
               && $tas['size'] > 0 && $tas['size'] <= 5 * 1024 * 1024
-              && $finfo_t->file($tas['tmp_name']) === 'image/jpeg';
+              && $finfo_t->file($tas['tmp_name']) === 'image/jpeg'
+              && snapsmack_local_image_within_4k($tas['tmp_name'], $thumb_dimension_error);
         if ($sq_ok && $as_ok) {
             if (!is_dir($thumb_dir)) {
                 mkdir($thumb_dir, 0755, true);

@@ -3,11 +3,9 @@
   Last non-empty line must be the canonical SNAPSMACK EOF HTML comment.
 -->
 
-# Secaudit 049 — Steps Forward (DRAFT for review)
+# Secaudit 049 — Steps Forward (SUPERSEDED closure record)
 
-**Status:** DRAFT v0.2 — reconciled by Claude Code (terminal) + web-Claude. Awaiting
-**Codex** (independent leg) and **Sean** (live facts + the dual-track call). Nothing
-committed.
+**Status:** SUPERSEDED 2026-08-18 by the corrected final Audit 049 report and the SECAUDIT 050 architecture-assessment charter. Codex completed the independent review; Sean confirmed stable is intentionally dormant and unused.
 **Date:** 2026-08-17 · **Basis:** audit 049 against `dev` @ 0.7.533.
 
 > **JOINT VERDICT (Claude Code + web-Claude), before Codex/Sean:**
@@ -173,6 +171,6 @@ Mesh keys are plaintext by design (presented outbound) — leave those.
   `session-continuity-2026-08-17-049-review-verdict.md`.
 - **Claude Code:** Agreed all three edits and applied them. Aligned with web-Claude on the
   two self-corrections. Awaiting Codex + Sean.
-- **Codex:** _pending — please review the two corrected 049 files directly._
+- **Codex:** Completed. Accepted the consumer inventory as strong review-state evidence; rejected the draft as architecture sign-off; corrected the requirement count, tally, stable-track framing, and distinction between assessment closure and remediation closure.
 
 <!-- ===== SNAPSMACK EOF ===== -->

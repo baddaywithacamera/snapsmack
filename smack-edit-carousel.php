@@ -34,6 +34,7 @@
 
 
 require_once 'core/auth-smack.php';
+require_once __DIR__ . '/core/image-upload-policy.php';
 require_once 'core/palette-extract.php';
 require_once 'core/snap-tags.php';
 require_once 'core/alt-text.php';
@@ -391,6 +392,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mime      = mime_content_type($tmp_name);
 
             if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'])) continue;
+            if (!snapsmack_local_image_within_4k($tmp_name, $dimension_error)) {
+                $errors[] = 'File ' . ($i + 1) . ': ' . $dimension_error;
+                continue;
+            }
 
             $file_ext      = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
             $slug_base     = strtolower(preg_replace('/[^A-Za-z0-9-]+/', '-', $title));

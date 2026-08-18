@@ -3,7 +3,7 @@
   Last non-empty line must be the canonical SNAPSMACK EOF HTML comment.
 -->
 
-# SnapSmack Minimum Compliance Standard (SMCS) — v1.0
+# SnapSmack Minimum Compliance Standard (SMCS) — v1.1
 
 **Companion to Audit 049 · 2026-08-17**
 
@@ -114,7 +114,7 @@ or luck · LOW = hardening / defense-in-depth.
 
 ---
 
-## Scoring template (copy per release)
+## Scoring template (24 requirements; copy per release)
 
 | ID | Requirement | Sev | Verdict | Notes |
 |----|-------------|-----|---------|-------|

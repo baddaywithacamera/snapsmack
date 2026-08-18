@@ -15,6 +15,7 @@
 
 
 require_once 'core/auth-smack.php';
+require_once __DIR__ . '/core/upload-execution-guard.php';
 
 $log = [];
 
@@ -74,6 +75,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'postmodel_repair') {
         set_time_limit(300);
         try {
+                $repair_site_mode = (string)$pdo->query(
+                    "SELECT setting_val FROM snap_settings WHERE setting_key = 'site_mode' LIMIT 1"
+                )->fetchColumn();
+                if ($repair_site_mode !== 'photoblog') {
+                    throw new RuntimeException(
+                        'Photo-to-post conversion is only valid for SMACKONEOUT sites. '
+                      . 'Unattached images in GRAMOFSMACK or SMACKTALK can be media-library or staging assets.'
+                    );
+                }
                 $pdo->beginTransaction();
 
                 $bare = $pdo->query(
@@ -1000,11 +1010,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // HTACCESS REPAIR
-    // Checks root .htaccess and img_uploads/.htaccess, reports issues, repairs on demand.
+    // Checks root rules and every web-served upload directory guard.
     if ($action === 'htaccess_check' || $action === 'htaccess_repair') {
         $htaccess_path   = __DIR__ . '/.htaccess';
-        $uploads_htaccess = __DIR__ . '/img_uploads/.htaccess';
         $htaccess_marker = '# SNAPSMACK-HTACCESS-RULES';
+        $guarded_upload_dirs = ['img_uploads', 'media_assets', 'assets/img'];
         $issues = [];
 
         // --- Diagnose root .htaccess ---
@@ -1041,15 +1051,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // --- Diagnose img_uploads/.htaccess ---
-        if (!is_dir(__DIR__ . '/img_uploads')) {
-            // Not an issue — directory may not exist yet
-        } elseif (!file_exists($uploads_htaccess)) {
-            $issues[] = "Upload directory PHP execution block is <strong>missing</strong> (img_uploads/.htaccess).";
-        } else {
-            $upl_content = file_get_contents($uploads_htaccess);
-            if (strpos($upl_content, 'Deny from all') === false) {
-                $issues[] = "Upload directory .htaccess exists but <strong>PHP blocking rule is missing</strong>.";
+        // --- Diagnose execution guards on all web-served upload directories ---
+        foreach ($guarded_upload_dirs as $relative_dir) {
+            $absolute_dir = __DIR__ . '/' . $relative_dir;
+            if (is_dir($absolute_dir)
+                && !snapsmack_upload_execution_guard_is_current($absolute_dir)) {
+                $issues[] = "Upload execution guard is <strong>missing or stale</strong> ("
+                          . htmlspecialchars($relative_dir . '/.htaccess') . ").";
             }
         }
 
@@ -1098,11 +1106,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             @file_put_contents($htaccess_path, $existing . $snapsmack_rules, LOCK_EX);
             $repaired[] = "Root .htaccess SnapSmack rules regenerated";
 
-            // Rebuild img_uploads/.htaccess
-            if (is_dir(__DIR__ . '/img_uploads')) {
-                $upload_block = "<FilesMatch \"\\.php$\">\n    Order Deny,Allow\n    Deny from all\n</FilesMatch>\n";
-                @file_put_contents($uploads_htaccess, $upload_block, LOCK_EX);
-                $repaired[] = "Upload directory PHP execution block restored";
+            // Rebuild every upload-directory execution guard.
+            foreach ($guarded_upload_dirs as $relative_dir) {
+                $absolute_dir = __DIR__ . '/' . $relative_dir;
+                if (is_dir($absolute_dir)
+                    && snapsmack_write_upload_execution_guard($absolute_dir)) {
+                    $repaired[] = $relative_dir . "/.htaccess execution guard restored";
+                }
             }
 
             $log[] = "SUCCESS: " . implode(". ", $repaired) . ".";
@@ -1163,10 +1173,13 @@ include 'core/sidebar.php';
 
         <div class="box box-flex">
             <h3>CONVERT OLD-STYLE PHOTOS</h3>
-            <p class="skin-desc-text">Converts every bare old-style photo into a proper post while keeping its web address, title, date, download and comment settings. Visitors should see no change. Existing likes and comments stay attached exactly as they are for now; Fediverse links move from <code>/i/</code> to <code>/p/</code>. The whole repair runs as one transaction, rolls back completely on error, and is safe to run again.</p>
+            <?php $postmodel_site_mode = (string)($settings['site_mode'] ?? 'photoblog'); ?>
+            <p class="skin-desc-text"><?php echo $postmodel_site_mode === 'photoblog'
+                ? 'Converts every bare old-style photo into a proper post while keeping its web address, title, date, download and comment settings. Visitors should see no change. Existing likes and comments stay attached exactly as they are for now; Fediverse links move from <code>/i/</code> to <code>/p/</code>. The whole repair runs as one transaction, rolls back completely on error, and is safe to run again.'
+                : 'Not applicable to this install mode. Unattached images in GRAMOFSMACK and SMACKTALK can be staging or reusable media-library assets; converting them would create fake posts.'; ?></p>
             <form method="POST" onsubmit="return confirm('Convert every old-style photo into a post? Runs in one transaction and rolls back on any error. Back up first.');">
                 <input type="hidden" name="action" value="postmodel_repair">
-                <button type="submit" class="btn-smack btn-block">CONVERT PHOTOS TO POSTS</button>
+                <button type="submit" class="btn-smack btn-block" <?php echo $postmodel_site_mode !== 'photoblog' ? 'disabled title="Only valid for SMACKONEOUT sites"' : ''; ?>>CONVERT PHOTOS TO POSTS</button>
             </form>
         </div>
 

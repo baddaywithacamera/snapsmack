@@ -15,8 +15,9 @@
  *     // ===== SNAPSMACK EOF =====
  * Last non-empty line of this file MUST match the line above.
  * Missing or different = truncated/corrupted. Restore before saving.
- */
+*/
 
+require_once __DIR__ . '/upload-execution-guard.php';
 
 class SnapSmackRecovery {
 
@@ -413,10 +414,9 @@ class SnapSmackRecovery {
             }
         }
 
-        // Block PHP execution in uploads
-        $htaccess = $this->baseDir . '/img_uploads/.htaccess';
-        if (!file_exists($htaccess)) {
-            @file_put_contents($htaccess, "<FilesMatch \"\\.php$\">\n    Order Deny,Allow\n    Deny from all\n</FilesMatch>\n");
+        // Restores can recreate directories, so restore their execution guards too.
+        foreach ($dirs as $dir) {
+            snapsmack_write_upload_execution_guard($dir);
         }
     }
 

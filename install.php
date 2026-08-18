@@ -29,6 +29,7 @@ if (defined('SNAPSMACK_VERSION_SHORT')) {
     $installer_version       = SNAPSMACK_VERSION_SHORT;
     $installer_version_label = SNAPSMACK_VERSION;
 }
+require_once __DIR__ . '/core/upload-execution-guard.php';
 
 // The Release Packager injects this marker only into the separately signed
 // FEDISTRUCTURE artifact. Normal setup.php installs never see service profiles.
@@ -1426,9 +1427,10 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
             }
         }
 
-        // Block PHP execution inside the uploads directory
-        $htaccess_content = "<FilesMatch \"\\.php$\">\n    Order Deny,Allow\n    Deny from all\n</FilesMatch>\n";
-        @file_put_contents(__DIR__ . '/img_uploads/.htaccess', $htaccess_content);
+        // Block server-side execution in every web-served upload directory.
+        foreach (['img_uploads', 'media_assets', 'assets/img'] as $upload_dir) {
+            snapsmack_write_upload_execution_guard(__DIR__ . '/' . $upload_dir);
+        }
 
         // Generate or append SnapSmack rules to root .htaccess
         // Uses a marker comment so we can detect if our rules are already present
