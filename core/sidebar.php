@@ -159,7 +159,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <?php endif; ?>
 
                     <li class="<?php echo ($current_page == 'smack-comments.php') ? 'active' : ''; ?>">
-                        <a href="smack-comments.php">Signals</a>
+                        <a href="smack-comments.php">Comments</a>
                     </li>
 
                     <?php if ($_ui_pimpmobile): ?>
