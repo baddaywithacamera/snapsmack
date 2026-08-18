@@ -407,7 +407,7 @@ include 'core/sidebar.php';
 
 <div class="main">
     <div class="header-row header-row--ruled">
-        <h2>SMACKTALK — LONGFORM TRANSMISSION</h2>
+        <h2>SMACKTALK — LONGFORM POST</h2>
     </div>
 
     <?php if (isset($_GET['msg'])): ?>
@@ -429,7 +429,7 @@ include 'core/sidebar.php';
             <div class="post-layout-grid">
                 <div class="flex-2">
                     <div class="lens-input-wrapper">
-                        <label>TRANSMISSION TITLE</label>
+                        <label>POST TITLE</label>
                         <input type="text" name="title" id="long-title"
                                value="<?php echo htmlspecialchars($edit_post['title'] ?? ''); ?>"
                                placeholder="The thing you're writing about..." required autofocus>
@@ -597,7 +597,7 @@ include 'core/sidebar.php';
                     <div class="post-layout-grid">
                         <div class="flex-1">
                             <div class="lens-input-wrapper">
-                                <label>REGISTRY (CATEGORIES)</label>
+                                <label>CATEGORIES</label>
                                 <div class="custom-multiselect">
                                     <div class="select-box" onclick="toggleDropdown('long-cat-items')">
                                         <span id="long-cat-label">
@@ -633,7 +633,7 @@ include 'core/sidebar.php';
                         </div>
                         <div class="flex-1">
                             <div class="lens-input-wrapper">
-                                <label>MISSIONS (ALBUMS)</label>
+                                <label>ALBUMS</label>
                                 <div class="custom-multiselect">
                                     <div class="select-box" onclick="toggleDropdown('long-album-items')">
                                         <span id="long-album-label">
@@ -766,7 +766,7 @@ include 'core/sidebar.php';
 
                     <?php if ($edit_post): ?>
                         <div class="lens-input-wrapper mt-10">
-                            <a href="smack-post-long.php" class="btn-reset btn-cancel-block">NEW TRANSMISSION</a>
+                            <a href="smack-post-long.php" class="btn-reset btn-cancel-block">NEW POST</a>
                         </div>
                         <div class="lens-input-wrapper mt-10">
                             <a href="?delete=<?php echo (int)$edit_post['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>"
@@ -785,7 +785,7 @@ include 'core/sidebar.php';
     <!-- EXISTING LONGFORM POSTS LIST -->
     <?php if (!empty($all_posts)): ?>
     <div class="box" style="margin-top:20px;">
-        <h3>LONGFORM TRANSMISSIONS</h3>
+        <h3>LONGFORM POSTS</h3>
         <?php foreach ($all_posts as $lp): ?>
             <div class="recent-item">
                 <div class="item-details">

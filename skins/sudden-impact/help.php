@@ -1,10 +1,14 @@
 <?php
 /**
- * SNAPSMACK - The Grid Help Topics
- * Alpha v0.7.9
+ * SNAPSMACK - Sudden Impact Help Topics
  *
- * Returns help content for the The Grid skin.
- * Consumed by core/sidebar.php to render the F1 help modal.
+ * Returns help content for the Sudden Impact skin. Consumed by smack-help.php
+ * and rendered as topics in the User Manual.
+ *
+ * ARCH-04: this file previously shipped The Grid's help verbatim (skin_name and
+ * all). Sudden Impact IS The Grid's 3-column carousel feed re-skinned as a
+ * dot-matrix printout, so the functional topics below are shared with The Grid;
+ * the identity topic and the aesthetic notes are Sudden Impact's own.
  */
 
 /**
@@ -16,11 +20,11 @@
 
 
 return [
-    'skin_name' => 'The Grid',
+    'skin_name' => 'Sudden Impact',
     'topics' => [
         [
-            'title' => 'Three-Column Grid Layout',
-            'body'  => 'The Grid presents your photographs in a clean, square-tile 3-column layout — the same format that made Instagram the de-facto portfolio platform for photographers. Every post occupies one tile on the landing page, regardless of how many images it contains. Tap or click any tile to view the full post.',
+            'title' => 'Instagram in Dot Matrix',
+            'body'  => 'Sudden Impact is The Grid\'s 3-column carousel feed rendered as a 1985 Okidata 192 thermal printout — DotMatrix type throughout, dithered halftone photographs on plain continuous-feed paper, and dashed dot-matrix double-rule nav and footer. It is an abomination, on purpose. It runs in GramOfSmack mode: every post occupies one tile on the landing page regardless of how many images it holds. Tap or click any tile to view the full post.',
         ],
         [
             'title' => 'Carousel Posts (Multi-Image)',
@@ -40,7 +44,7 @@ return [
         ],
         [
             'title' => 'Profile Header',
-            'body'  => 'An optional profile header can be enabled in Skin Admin under LAYOUT. When on, it shows your site name, avatar initials (or a custom avatar image), total post count, and site description as a bio — displayed above the grid on the landing page. Toggle it off for a pure-grid look.',
+            'body'  => 'An optional profile header can be enabled in Skin Admin. When on, it shows your site name, avatar initials (or a custom avatar image), total post count, and site description as a bio — displayed above the grid on the landing page. Toggle it off for a pure-printout look.',
         ],
         [
             'title' => 'Categories and Albums',
@@ -48,11 +52,11 @@ return [
         ],
         [
             'title' => 'Tile Appearance',
-            'body'  => 'Tile gap (0–5 px), corner radius (0–8 px), and hover overlay style (title, image count, or none) are all configurable in Skin Admin under GRID. The overall content max-width can be set to 735 px, 935 px, or 1080 px to suit your preferred density.',
+            'body'  => 'Image gap, tile border radius, hover overlay style, and the grid background / gap colour are all configurable in Skin Admin, alongside the dot-matrix background treatment (treatment image, colour, anchor, and a left-darkens / right-lightens overlay) that gives Sudden Impact its thermal-paper character.',
         ],
         [
             'title' => 'Image Frame Customisation',
-            'body'  => 'The Grid lets you composite your photographs into custom frames — the kind of careful presentation photographers used to do in Photoshop actions or Instasize before the platforms stripped it out. In Skin Admin under IMAGE FRAME, set the customisation mode: Per Grid applies one style to every tile; Per Carousel lets each post define its own look; Per Image gives every individual photo its own treatment. Style controls per image: size within the square (75–100% in 5% increments), border width (0–20 px), border colour, background colour, and drop shadow intensity (none, soft, medium, heavy). When a frame is applied, the tile switches from full-bleed cover crop to a flex-centred contained image over a coloured background.',
+            'body'  => 'Sudden Impact lets you composite your photographs into custom frames — the kind of careful presentation photographers used to do in Photoshop actions or Instasize before the platforms stripped it out. In Skin Admin, set the Customisation Level, then control image size within the tile, border thickness and colour, frame background colour, and drop shadow. When a frame is applied, the tile switches from full-bleed cover crop to a centred, contained image over a coloured background.',
         ],
         [
             'title' => 'Likes, Reactions & Comments',

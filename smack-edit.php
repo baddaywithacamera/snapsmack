@@ -323,7 +323,7 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>REGISTRY (CATEGORIES)</label>
+                        <label>CATEGORIES</label>
                         <div class="custom-multiselect">
                             <div class="select-box" onclick="toggleDropdown('cat-items')">
                                 <span id="cat-label">Select Categories...</span><span class="arrow">▼</span>
@@ -343,7 +343,7 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>MISSIONS (ALBUMS)</label>
+                        <label>ALBUMS</label>
                         <div class="custom-multiselect">
                             <div class="select-box" onclick="toggleDropdown('album-items')">
                                 <span id="album-label">Select Albums...</span><span class="arrow">▼</span>
@@ -485,7 +485,7 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>ALLOW PUBLIC SIGNALS?</label>
+                        <label>ALLOW PUBLIC COMMENTS?</label>
                         <select name="allow_comments" class="full-width-select">
                             <option value="1" <?php echo ($post['allow_comments'] == 1) ? 'selected' : ''; ?>>Oh hell yes!</option>
                             <option value="0" <?php echo ($post['allow_comments'] == 0) ? 'selected' : ''; ?>>Nope nope nope!</option>

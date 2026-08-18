@@ -144,7 +144,7 @@ include 'core/sidebar.php';
 
 <div class="main">
     <div class="header-row header-row--ruled">
-        <h2>REGISTRY (CATEGORIES)</h2>
+        <h2>CATEGORIES</h2>
     </div>
 
     <?php if (isset($_GET['msg'])): ?>
