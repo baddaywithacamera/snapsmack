@@ -665,7 +665,7 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>ALLOW SIGNALS?</label>
+                        <label>ALLOW COMMENTS?</label>
                         <select name="allow_comments" class="full-width-select">
                             <option value="1">ENABLED</option>
                             <option value="0">DISABLED</option>

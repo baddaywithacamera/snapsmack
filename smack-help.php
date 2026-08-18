@@ -1212,7 +1212,7 @@ after the cursor are transmitted on each cycle, so the payload stays small even 
 ban lists.</p>
 
 <h4>Enabling Ban Sync</h4>
-<p>Ban sync is disabled by default. To enable it: go to <strong>Interaction</strong> in the admin sidebar,
+<p>Ban sync is disabled by default. To enable it: go to <strong>Community</strong> in the admin sidebar,
 scroll to the <strong>Shield — Ban Sync</strong> section, and toggle it on. The section also shows the
 last sync timestamp per spoke so you can confirm the sweep is running.</p>
 
