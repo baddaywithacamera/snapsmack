@@ -631,6 +631,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
 
         $new_img_id = $pdo->lastInsertId();
 
+        // --- POST-MODEL PLUG (0.7.539) ---
+        // Every solo photo is born POST-BACKED — a real snap_posts row + pivot, with
+        // snap_images.post_id set — exactly like a GRAMOFSMACK single (smack-post-gram.php
+        // $make_post) and exactly like smack-maintenance.php postmodel_repair's output.
+        // This is the fix that stops the drift: without it a new photo arrives "bare"
+        // (no post) and the repair has to be re-run forever. Because post_id is set and a
+        // pivot exists, the repair now treats this photo as already-done (idempotent).
+        // NEVER touches img_slug — that is the federation identity and must stay stable.
+        $post_slug = $slug;
+        $slug_chk  = $pdo->prepare('SELECT 1 FROM snap_posts WHERE slug = ? LIMIT 1');
+        $slug_chk->execute([$post_slug]);
+        if ($slug_chk->fetchColumn()) {
+            $post_slug = $slug . '-p' . (int)$new_img_id; // snap_posts.slug is UNIQUE
+        }
+        $pdo->prepare(
+            "INSERT INTO snap_posts
+                (title, slug, description, post_type, status, created_at,
+                 allow_comments, allow_download, download_url, panorama_rows,
+                 post_img_size_pct, post_border_px, post_border_color,
+                 post_bg_color, post_shadow, fedi_enabled)
+             VALUES ('', ?, ?, 'single', ?, ?, ?, ?, ?, 1, 100, 0, '#000000', '#ffffff', 0, 1)"
+        )->execute([$post_slug, $desc, $status, $custom_date,
+                    (int)$allow_comments, (int)$allow_download, $download_url]);
+        $new_post_id = (int)$pdo->lastInsertId();
+        $pdo->prepare(
+            "INSERT INTO snap_post_images
+                (post_id, image_id, sort_position, is_cover,
+                 img_size_pct, img_border_px, img_border_color, img_bg_color,
+                 img_shadow, img_crop_mode, img_focus_x, img_focus_y, img_zoom)
+             VALUES (?, ?, 0, 1, 100, 0, '#000000', '#ffffff', 0, 'fit', 50, 50, 100)"
+        )->execute([$new_post_id, (int)$new_img_id]);
+        $pdo->prepare('UPDATE snap_images SET post_id = ? WHERE id = ?')
+            ->execute([$new_post_id, (int)$new_img_id]);
+
         // Associate image with selected categories.
         foreach ($selected_cats as $cid) {
             $pdo->prepare("INSERT INTO snap_image_cat_map (image_id, cat_id) VALUES (?, ?)")->execute([$new_img_id, (int)$cid]);
