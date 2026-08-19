@@ -143,7 +143,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="hero-inner">
             <p class="hero-kicker">SnapSmack lets you smack your snaps online for others to enjoy.</p>
             <h1 class="hero-headline">Retro Photo Blogging.<br><span>Modern Technology.</span></h1>
-            <p class="hero-sub">SnapSmack is free, self-hosted photography publishing for people who want to own their photographs, website, audience, domain, and archive.</p>
+            <p class="hero-sub">SnapSmack is free, self-hosted photography publishing for people who want to own their photographs, website, audience, domain, and archive. The joy of the old web. Without the old software.</p>
             <p class="hero-principles"><strong>Publish the original on your own site.</strong> Share it elsewhere through <a href="brass-tacks.php#q-posse">POSSE</a> and <a href="brass-tacks.php#q-fediverse-what">ActivityPub</a>. Keep the archive at home, where an algorithm, acquisition, or policy change cannot quietly take it away.</p>
             <div class="hero-actions">
                 <a href="features.php" class="btn btn-secondary">See What It Does</a>
