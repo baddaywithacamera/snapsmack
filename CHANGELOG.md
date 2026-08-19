@@ -22,6 +22,11 @@
 
 - **Uploaded logo/favicon SVGs are now cleaned before they're ever served.** Admin branding SVGs are stripped of scripts, embedded document types, external references and unsafe attributes; anything that can't be made safe is rejected with a clear message instead of being stored raw.
 - **Every upload folder now carries a strong "never run this as a program" lock.** The photo folder gets it automatically as photos are uploaded, and System Maintenance → Repair .htaccess now applies the same hardened lock to the photo, media-library and branding folders (previously only the photo folder, with a weaker rule).
+- **Visitors no longer see raw PHP error details.** The public pages (home, archive, albums, blogroll, pages, privacy, comments) had developer error output switched on, which could leak file paths and database detail; errors are now logged on the server and visitors get a plain, friendly message instead.
+
+### You choose the stored photo resolution
+
+- **New MAX RESOLUTION control** in Global Appearance → Image Engine, with one-click **Full HD (1920)** and **4K (3840)** presets, plus **Custom** to keep using your own width/height. Oversized uploads are always scaled down to fit — never rejected — so your camera files keep posting exactly as before, just at the quality you pick.
 
 ## 0.7.537 — 2026-08-18
 

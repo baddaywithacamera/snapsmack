@@ -18,7 +18,10 @@
  */
 
 
-ini_set('display_errors', 1);
+// Public front controller: never render PHP errors to visitors — they leak file
+// paths, SQL and stack detail. Log them server-side instead. (SECAUDIT 049)
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/core/db.php';
@@ -482,7 +485,10 @@ try {
         $comment_count = $c_stmt->fetchColumn();
     }
 } catch (Exception $e) {
-    die("GATEWAY_HALT: " . $e->getMessage());
+    // Log the real detail server-side; never show it to the visitor. (SECAUDIT 049)
+    error_log('GATEWAY_HALT: ' . $e->getMessage());
+    http_response_code(500);
+    die('Sorry — something went wrong loading this page. Please try again shortly.');
 }
 
 $skin_path = 'skins/' . $active_skin;
