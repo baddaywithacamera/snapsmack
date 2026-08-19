@@ -261,6 +261,14 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
     if (!is_dir($full_dir))   { @mkdir($full_dir, 0755, true); }
     if (!is_dir($thumb_full)) { @mkdir($thumb_full, 0755, true); }
 
+    // Keep the upload root self-protecting: an uploaded file must never be runnable
+    // as a program. Cheap idempotent check writes the guard only when missing/stale.
+    require_once __DIR__ . '/upload-execution-guard.php';
+    $uploads_root = dirname(__DIR__) . '/img_uploads';
+    if (is_dir($uploads_root) && !snapsmack_upload_execution_guard_is_current($uploads_root)) {
+        snapsmack_write_upload_execution_guard($uploads_root);
+    }
+
     $_slug_base = strtolower(preg_replace('/[^A-Za-z0-9-]+/', '-', $title));
     $_slug_base = preg_replace('/-{2,}/', '-', $_slug_base);
     $_slug_base = trim($_slug_base, '-');

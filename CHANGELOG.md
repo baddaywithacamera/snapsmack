@@ -18,6 +18,11 @@
 - **EDIT, VIEW and DELETE act on the whole post** in those modes: EDIT opens the right composer (the longform editor for essays, the photo/carousel editor for grams), and DELETE removes the post and its links cleanly rather than picking off a single image.
 - Longform posts with no cover image show a small text-tile placeholder instead of a broken thumbnail. The image-only filters (Needs Work, Orientation) and drag-reordering are hidden in these modes, where they don't apply.
 
+### Upload security hardening
+
+- **Uploaded logo/favicon SVGs are now cleaned before they're ever served.** Admin branding SVGs are stripped of scripts, embedded document types, external references and unsafe attributes; anything that can't be made safe is rejected with a clear message instead of being stored raw.
+- **Every upload folder now carries a strong "never run this as a program" lock.** The photo folder gets it automatically as photos are uploaded, and System Maintenance → Repair .htaccess now applies the same hardened lock to the photo, media-library and branding folders (previously only the photo folder, with a weaker rule).
+
 ## 0.7.537 — 2026-08-18
 
 ### Clearer admin, more readable, and help that actually shows up
