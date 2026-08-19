@@ -23,6 +23,7 @@
 - **Uploaded logo/favicon SVGs are now cleaned before they're ever served.** Admin branding SVGs are stripped of scripts, embedded document types, external references and unsafe attributes; anything that can't be made safe is rejected with a clear message instead of being stored raw.
 - **Every upload folder now carries a strong "never run this as a program" lock.** The photo folder gets it automatically as photos are uploaded, and System Maintenance → Repair .htaccess now applies the same hardened lock to the photo, media-library and branding folders (previously only the photo folder, with a weaker rule).
 - **Visitors no longer see raw PHP error details.** The public pages (home, archive, albums, blogroll, pages, privacy, comments) had developer error output switched on, which could leak file paths and database detail; errors are now logged on the server and visitors get a plain, friendly message instead.
+- **The post-model repair tool now refuses to run on the wrong kind of site.** Photo-to-post repair only makes sense on a photoblog (SMACKONEOUT); on a GRAMOFSMACK or SMACKTALK site it would have turned editorial/working images into junk posts. It now stops with a clear message and changes nothing, and the health check reads longform sites correctly (their images are editorial material, not posts).
 
 ### You choose the stored photo resolution
 

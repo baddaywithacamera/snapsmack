@@ -71,6 +71,12 @@ $has_images  = pm_table_exists($pdo, 'snap_images');
 $has_posts   = pm_table_exists($pdo, 'snap_posts');
 $has_pivot   = pm_table_exists($pdo, 'snap_post_images');
 
+/* Site mode governs how these numbers must be READ. Photo-to-post conversion is a
+   SMACKONEOUT (photoblog) concept only. */
+$site_mode = 'photoblog';
+try { $site_mode = (string) ($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog'); }
+catch (Throwable $e) {}
+
 /* ===== SECTION 1 — the shape of your content ===== */
 if ($has_images) {
     pm_row($rows, 'Total images', pm_num($pdo, "SELECT COUNT(*) FROM snap_images"),
@@ -91,6 +97,25 @@ if ($has_posts) {
     pm_row($rows, 'snap_posts rows (published)',
         pm_num($pdo, "SELECT COUNT(*) FROM snap_posts WHERE status='published'"),
         'Real post rows — the target model.');
+}
+
+/* SMACKTALK reads Section 1 differently. A longform site does not use the
+   SMACKONEOUT photo-to-post conversion at all — its images are editorial material
+   for essays, never image-posts. Reframe the bare-image counts so nobody mistakes
+   them for conversion candidates. */
+if ($has_images && $site_mode === 'smacktalk') {
+    if ($has_pivot) {
+        pm_row($rows, 'Images in longform post buckets (expected editorial working set)',
+            pm_num($pdo, "SELECT COUNT(*) FROM snap_images i
+                          WHERE EXISTS (SELECT 1 FROM snap_post_images spi WHERE spi.image_id = i.id)"),
+            'A bucket is private editorial state, not a list of image-posts — they are not posts and must not be converted.');
+    }
+    pm_row($rows, 'Library images not currently in a post bucket',
+        pm_num($pdo, "SELECT COUNT(*) FROM snap_images i
+                      WHERE i.post_id IS NULL
+                        AND NOT EXISTS (SELECT 1 FROM snap_post_images spi WHERE spi.image_id = i.id)"),
+        'On SMACKTALK these are unused library photos — they are not posts and must not be converted. '
+        . 'This site does not use the SMACKONEOUT photo-to-post conversion.');
 }
 
 /* ===== SECTION 2 — dual ownership (the double-emit trap) ===== */
