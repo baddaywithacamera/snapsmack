@@ -328,9 +328,11 @@ try {
     // Timezone is configured globally in core/db.php.
     // Filters by publication status and timestamp to respect scheduled posts.
     $now_local = date('Y-m-d H:i:s');
+    require_once __DIR__ . '/core/published-units.php';
 
     $sql = "SELECT DISTINCT i.* FROM snap_images i ";
-    $where_clauses = ["i.img_status = 'published'", "i.img_date <= ?"];
+    // Published filter from the single shared source (was two inline clauses here).
+    $where_clauses = [snap_published_photo_where('i')];
     $params = [$now_local];
 
     // snap_images.user_id (per-user author attribution) is only guaranteed on
