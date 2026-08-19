@@ -89,9 +89,17 @@ function snap_manage_delete_by_image(PDO $pdo, int $image_id): void {
 // Routes each selected tile through the post-aware cascade so nothing is orphaned.
 if (isset($_POST['action']) && $_POST['action'] === 'batch_delete') {
     $ids = array_filter(array_map('intval', $_POST['ids'] ?? []));
+    // In GRAM/LONGFORM the tiles ARE posts (ids are snap_posts ids), so delete the
+    // post directly. In photoblog the tiles are images — route through the
+    // image→post cascade as before. The form declares which via del_mode.
+    $del_by_post = (($_POST['del_mode'] ?? '') === 'post');
     $deleted = 0;
     foreach ($ids as $id) {
-        snap_manage_delete_by_image($pdo, $id);
+        if ($del_by_post) {
+            snap_manage_delete_post($pdo, $id);
+        } else {
+            snap_manage_delete_by_image($pdo, $id);
+        }
         $deleted++;
     }
     header("Location: smack-manage.php?msg=batch_deleted&count=$deleted");
@@ -184,6 +192,14 @@ if (isset($_GET['delete'])) {
     exit;
 }
 
+// Post-keyed delete: GRAM/LONGFORM tiles are snap_posts rows, not images.
+if (isset($_GET['delete_post'])) {
+    csrf_verify(); // GET deletion must carry the CSRF token
+    snap_manage_delete_post($pdo, (int)$_GET['delete_post']);
+    header("Location: smack-manage.php?msg=deleted");
+    exit;
+}
+
 // --- FILTER PARAMETERS ---
 $search            = $_GET['search']        ?? '';
 $cat_filter        = $_GET['cat_id']        ?? '';
@@ -269,39 +285,139 @@ if (isset($orient_map[$orient_filter])) {
 $where_sql = $where_clauses ? " WHERE " . implode(" AND ", $where_clauses) : "";
 
 // --- DATA RETRIEVAL ---
-$count_stmt = $pdo->prepare("SELECT COUNT(i.id) FROM snap_images i $where_sql");
-$count_stmt->execute($params);
-$total_rows = $count_stmt->fetchColumn();
+// Site mode decides WHAT "a post" is. Photoblog: the image row IS the post, so
+// the manager lists snap_images. GRAMOFSMACK (carousel) and SMACKTALK (longform):
+// a post is a real snap_posts row, so the manager must list THOSE — never the raw
+// images that belong to a post. Post-images are managed in the Media Gallery;
+// page-images in the Media Library. (0.7.538 — stop listing images as posts.)
+$mng_site_mode = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog';
+$is_post_mode  = in_array($mng_site_mode, ['carousel', 'smacktalk'], true);
+
+if (!$is_post_mode) {
+    // ---- PHOTOBLOG: the image IS the post (unchanged) ----
+    $count_stmt = $pdo->prepare("SELECT COUNT(i.id) FROM snap_images i $where_sql");
+    $count_stmt->execute($params);
+    $total_rows = $count_stmt->fetchColumn();
+
+    $sql = "SELECT i.*,
+            (SELECT GROUP_CONCAT(c.cat_name ORDER BY c.cat_name ASC SEPARATOR ', ')
+             FROM snap_categories c
+             JOIN snap_image_cat_map m ON c.id = m.cat_id
+             WHERE m.image_id = i.id) as category_list,
+            (SELECT GROUP_CONCAT(a.album_name ORDER BY a.album_name ASC SEPARATOR ', ')
+             FROM snap_albums a
+             JOIN snap_image_album_map am ON a.id = am.album_id
+             WHERE am.image_id = i.id) as album_list,
+            (SELECT GROUP_CONCAT(sc.title ORDER BY sc.title ASC SEPARATOR ', ')
+             FROM snap_collections sc
+             JOIN snap_collection_items sci ON sc.id = sci.collection_id
+             WHERE sci.item_type = 'post' AND sci.item_id = i.id) as collection_list,
+            (SELECT COUNT(*) FROM snap_comments WHERE img_id = i.id) as comment_count,
+            (SELECT COUNT(*) FROM snap_likes WHERE post_id = i.id) as like_count
+            FROM snap_images i
+            $where_sql
+            ORDER BY i.sort_order ASC, i.id DESC
+            LIMIT $per_page OFFSET $offset";
+
+    $posts = $pdo->prepare($sql);
+    $posts->execute($params);
+    $post_list = $posts->fetchAll();
+} else {
+    // ---- GRAM / LONGFORM: list real posts (snap_posts) ----
+    // Columns are aliased to the img_* names the grid template already reads, so
+    // rendering stays shared. Image-only filters (needs/orientation) don't apply
+    // to posts and are hidden in the filter bar for these modes.
+    $ptypes = ($mng_site_mode === 'smacktalk')
+        ? ['longform']
+        : ['single', 'carousel', 'panorama'];
+    $ph       = implode(',', array_fill(0, count($ptypes), '?'));
+    $p_where  = ["p.post_type IN ($ph)"];
+    $p_params = $ptypes;
+
+    if ($search) {
+        $p_where[]  = "(p.title LIKE ? OR p.slug LIKE ? OR p.description LIKE ?)";
+        $p_params[] = "%$search%";
+        $p_params[] = "%$search%";
+        $p_params[] = "%$search%";
+    }
+    if ($status_filter === 'draft') {
+        $p_where[] = "p.status = 'draft'";
+    } elseif ($status_filter === 'scheduled') {
+        $p_where[]  = "p.status = 'published' AND p.created_at > ?";
+        $p_params[] = $now_local;
+    } elseif ($status_filter === 'live') {
+        $p_where[]  = "p.status = 'published' AND p.created_at <= ?";
+        $p_params[] = $now_local;
+    }
+    if ($cat_filter) {
+        $p_where[]  = "p.id IN (SELECT post_id FROM snap_post_cat_map WHERE cat_id = ?)";
+        $p_params[] = $cat_filter;
+    }
+    if ($album_filter) {
+        $p_where[]  = "p.id IN (SELECT post_id FROM snap_post_album_map WHERE album_id = ?)";
+        $p_params[] = $album_filter;
+    }
+    if ($collection_filter) {
+        $p_where[]  = "p.id IN (SELECT item_id FROM snap_collection_items WHERE item_type = 'post' AND collection_id = ?)";
+        $p_params[] = $collection_filter;
+    }
+    $p_where_sql = " WHERE " . implode(" AND ", $p_where);
+
+    $count_stmt = $pdo->prepare("SELECT COUNT(p.id) FROM snap_posts p $p_where_sql");
+    $count_stmt->execute($p_params);
+    $total_rows = $count_stmt->fetchColumn();
+
+    // Cover thumbnail: GRAM uses the flagged cover in snap_post_images; LONGFORM
+    // uses its featured image (may be NULL → the row shows a text tile instead).
+    if ($mng_site_mode === 'smacktalk') {
+        $cover_file_sql = "(SELECT img_file FROM snap_images WHERE id = p.featured_image_id)";
+        $cover_id_sql   = "p.featured_image_id";
+    } else {
+        $cover_file_sql = "(SELECT ci.img_file FROM snap_post_images pi
+                             JOIN snap_images ci ON ci.id = pi.image_id
+                             WHERE pi.post_id = p.id
+                             ORDER BY pi.is_cover DESC, pi.sort_position ASC LIMIT 1)";
+        $cover_id_sql   = "(SELECT pi.image_id FROM snap_post_images pi
+                             WHERE pi.post_id = p.id
+                             ORDER BY pi.is_cover DESC, pi.sort_position ASC LIMIT 1)";
+    }
+
+    $sql = "SELECT p.id,
+            p.title          AS img_title,
+            p.slug           AS img_slug,
+            p.status         AS img_status,
+            p.created_at     AS img_date,
+            p.download_count AS img_download_count,
+            $cover_file_sql  AS img_file,
+            $cover_id_sql    AS cover_img_id,
+            (SELECT GROUP_CONCAT(c.cat_name ORDER BY c.cat_name ASC SEPARATOR ', ')
+             FROM snap_categories c
+             JOIN snap_post_cat_map m ON c.id = m.cat_id
+             WHERE m.post_id = p.id) as category_list,
+            (SELECT GROUP_CONCAT(a.album_name ORDER BY a.album_name ASC SEPARATOR ', ')
+             FROM snap_albums a
+             JOIN snap_post_album_map am ON a.id = am.album_id
+             WHERE am.post_id = p.id) as album_list,
+            (SELECT GROUP_CONCAT(sc.title ORDER BY sc.title ASC SEPARATOR ', ')
+             FROM snap_collections sc
+             JOIN snap_collection_items sci ON sc.id = sci.collection_id
+             WHERE sci.item_type = 'post' AND sci.item_id = p.id) as collection_list,
+            (SELECT COUNT(*) FROM snap_comments WHERE post_id = p.id) as comment_count,
+            (SELECT COUNT(*) FROM snap_likes    WHERE post_id = p.id) as like_count
+            FROM snap_posts p
+            $p_where_sql
+            ORDER BY p.created_at DESC, p.id DESC
+            LIMIT $per_page OFFSET $offset";
+
+    $posts = $pdo->prepare($sql);
+    $posts->execute($p_params);
+    $post_list = $posts->fetchAll();
+}
 $total_pages = ceil($total_rows / $per_page);
 
-$sql = "SELECT i.*,
-        (SELECT GROUP_CONCAT(c.cat_name ORDER BY c.cat_name ASC SEPARATOR ', ')
-         FROM snap_categories c
-         JOIN snap_image_cat_map m ON c.id = m.cat_id
-         WHERE m.image_id = i.id) as category_list,
-        (SELECT GROUP_CONCAT(a.album_name ORDER BY a.album_name ASC SEPARATOR ', ')
-         FROM snap_albums a
-         JOIN snap_image_album_map am ON a.id = am.album_id
-         WHERE am.image_id = i.id) as album_list,
-        (SELECT GROUP_CONCAT(sc.title ORDER BY sc.title ASC SEPARATOR ', ')
-         FROM snap_collections sc
-         JOIN snap_collection_items sci ON sc.id = sci.collection_id
-         WHERE sci.item_type = 'post' AND sci.item_id = i.id) as collection_list,
-        (SELECT COUNT(*) FROM snap_comments WHERE img_id = i.id) as comment_count,
-        (SELECT COUNT(*) FROM snap_likes WHERE post_id = i.id) as like_count
-        FROM snap_images i
-        $where_sql
-        ORDER BY i.sort_order ASC, i.id DESC
-        LIMIT $per_page OFFSET $offset";
-
-$posts = $pdo->prepare($sql);
-$posts->execute($params);
-$post_list = $posts->fetchAll();
-
-// Site mode drives which post actions apply. In GramOfSmack (carousel) the
-// standalone SWAP page is hidden — image replacement belongs in the carousel
-// editor, not a single-image swap. Solo/smacktalk keep SWAP.
-$mng_site_mode = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog';
+// Drag-reorder writes snap_images.sort_order, so it only makes sense in photoblog
+// mode and only with no filters applied.
+$reorder_enabled = (!$is_post_mode && !$filters_active);
 
 $cats        = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $albums      = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
@@ -397,6 +513,7 @@ include 'core/sidebar.php';
                     </select>
                 </div>
 
+                <?php if (!$is_post_mode): /* NEEDS WORK + ORIENTATION are image-only filters */ ?>
                 <div class="lens-input-wrapper">
                     <label>NEEDS WORK</label>
                     <select name="needs">
@@ -419,6 +536,7 @@ include 'core/sidebar.php';
                         <option value="square"    <?php echo ($orient_filter == 'square')    ? 'selected' : ''; ?>>SQUARE</option>
                     </select>
                 </div>
+                <?php endif; ?>
 
                 <div class="lens-input-wrapper">
                     <label>CATEGORY</label>
@@ -461,7 +579,7 @@ include 'core/sidebar.php';
     </div>
 
     <div class="box">
-        <?php if ($filters_active): ?>
+        <?php if (!$is_post_mode && $filters_active): ?>
             <p class="dim manage-reorder-note">Clear filters to enable drag reordering.</p>
         <?php endif; ?>
 
@@ -471,6 +589,7 @@ include 'core/sidebar.php';
 
             <form method="POST" id="batch-form" onsubmit="return confirmBatchDelete()">
                 <input type="hidden" name="action" value="batch_delete">
+                <?php if ($is_post_mode): ?><input type="hidden" name="del_mode" value="post"><?php endif; ?>
 
                 <!-- Batch action bar — visible only when items are checked -->
                 <div class="batch-bar" id="batch-bar">
@@ -481,7 +600,7 @@ include 'core/sidebar.php';
                     <button type="submit" class="btn-smack batch-delete-btn" id="batch-delete-btn" disabled>DELETE SELECTED</button>
                 </div>
 
-                <div id="sortable-list" class="<?php echo $filters_active ? 'reorder-disabled' : ''; ?>">
+                <div id="sortable-list" class="<?php echo $reorder_enabled ? '' : 'reorder-disabled'; ?>">
                 <?php foreach ($post_list as $p):
                     $is_draft = ($p['img_status'] === 'draft');
                     $is_scheduled = ($p['img_status'] === 'published' && strtotime($p['img_date']) > time());
@@ -491,12 +610,12 @@ include 'core/sidebar.php';
                             <input type="checkbox" name="ids[]" value="<?php echo $p['id']; ?>" class="batch-cb">
                         </label>
 
-                        <?php if (!$filters_active): ?>
+                        <?php if ($reorder_enabled): ?>
                         <div class="drag-handle" title="Drag to reorder">⠿</div>
                         <?php endif; ?>
 
                         <div class="item-details">
-                            <?php
+                            <?php if (!empty($p['img_file'])):
                                 $_af  = $p['img_file'];
                                 $_api = pathinfo($_af);
                                 $_tpath = $_api['dirname'] . '/thumbs/t_' . $_api['basename'];
@@ -505,6 +624,10 @@ include 'core/sidebar.php';
                                     : '/' . ltrim($_af, '/');
                             ?>
                             <img src="<?php echo htmlspecialchars($_src); ?>" class="archive-thumb">
+                            <?php else: ?>
+                            <div class="archive-thumb archive-thumb--text" title="Text post — no cover image"
+                                 style="display:flex;align-items:center;justify-content:center;font-size:1.4rem;opacity:0.55;">✎</div>
+                            <?php endif; ?>
 
                             <div class="item-text">
                                 <strong>
@@ -530,14 +653,29 @@ include 'core/sidebar.php';
                         </div>
 
                         <div class="item-actions">
-                            <a href="smack-edit.php?id=<?php echo $p['id']; ?>" class="action-edit">EDIT</a>
-                            <?php if ($mng_site_mode !== 'carousel'): ?>
+                            <?php
+                                // EDIT routes to the right editor for the mode:
+                                //  photoblog → single-image editor (keyed by image id)
+                                //  carousel  → same editor, dispatched by the cover image id
+                                //  smacktalk → the longform composer (keyed by post id)
+                                if ($mng_site_mode === 'smacktalk') {
+                                    $edit_href = 'smack-post-long.php?edit=' . (int)$p['id'];
+                                } elseif ($mng_site_mode === 'carousel') {
+                                    $edit_href = 'smack-edit.php?id=' . (int)($p['cover_img_id'] ?? 0);
+                                } else {
+                                    $edit_href = 'smack-edit.php?id=' . (int)$p['id'];
+                                }
+                                $del_key = $is_post_mode ? 'delete_post' : 'delete';
+                                $del_noun = $is_post_mode ? 'post' : 'transmission';
+                            ?>
+                            <a href="<?php echo htmlspecialchars($edit_href, ENT_QUOTES); ?>" class="action-edit">EDIT</a>
+                            <?php if (!$is_post_mode): ?>
                             <a href="smack-swap.php?id=<?php echo $p['id']; ?>" class="action-swap">SWAP</a>
                             <?php endif; ?>
                             <?php if (!$is_draft && !$is_scheduled): ?>
                             <a href="<?php echo BASE_URL . htmlspecialchars($p['img_slug'] ?? '', ENT_QUOTES); ?>" class="action-view" target="_blank" rel="noopener">VIEW</a>
                             <?php endif; ?>
-                            <a href="?delete=<?php echo $p['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-delete" onclick="return confirm('PERMANENTLY PURGE this transmission?')">DELETE</a>
+                            <a href="?<?php echo $del_key; ?>=<?php echo $p['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-delete" onclick="return confirm('PERMANENTLY PURGE this <?php echo $del_noun; ?>?')">DELETE</a>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -640,7 +778,7 @@ function confirmBatchDelete() {
 </script>
 <?php endif; ?>
 
-<?php if (!$filters_active && !empty($post_list)): ?>
+<?php if ($reorder_enabled && !empty($post_list)): ?>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script>
 (function () {
