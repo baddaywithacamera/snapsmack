@@ -26,6 +26,7 @@ $page_css = <<<'CSS'
 .hero-headline { max-width: 900px; }
 .hero-kicker { font: 700 .8rem/1.3 'Courier New', monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--mid-grey); }
 .hero-sub { max-width: 780px; font-size: 1.23rem; color: #444; }
+.hero-tagline { max-width: 780px; margin: 12px 0 4px; font-weight: 800; font-size: 1.5rem; line-height: 1.35; color: #111; }
 .hero-principles { max-width: 780px; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
 .btn { display: inline-block; padding: 13px 20px; border: 2px solid var(--black); color: var(--black); font: 900 .78rem/1 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: .03em; }
@@ -143,6 +144,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="hero-inner">
             <p class="hero-kicker">The joy of the old web. Without the old software.</p>
             <h1 class="hero-headline">Retro Photo Blogging.<br><span>Modern Technology.</span></h1>
+            <p class="hero-tagline">SNAPSMACK lets you smack your snaps online for others to enjoy.</p>
             <p class="hero-sub">SnapSmack is free, self-hosted photography publishing for people who want to own their photographs, website, audience, domain, and archive.</p>
             <p class="hero-principles"><strong>Publish the original on your own site.</strong> Share it elsewhere through <a href="brass-tacks.php#q-posse">POSSE</a> and <a href="brass-tacks.php#q-fediverse-what">ActivityPub</a>. Keep the archive at home, where an algorithm, acquisition, or policy change cannot quietly take it away.</p>
             <div class="hero-actions">
