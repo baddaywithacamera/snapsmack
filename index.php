@@ -364,11 +364,14 @@ try {
 
     // --- REQUEST ROUTING (LATEST POST MODE) ---
     // --- IMAGE LOOKUP ---
+    // img_date <= NOW() = the scheduling gate: a photo scheduled for the future is
+    // 'published' but must not be publicly served (by slug OR as "latest") until its
+    // time. Matches the outbox / nav / pixelfed guards. (SECAUDIT 049 sibling)
     if ($requested_slug) {
-        $stmt = $pdo->prepare("SELECT * FROM snap_images WHERE img_slug = ? AND img_status = 'published' LIMIT 1");
+        $stmt = $pdo->prepare("SELECT * FROM snap_images WHERE img_slug = ? AND img_status = 'published' AND img_date <= NOW() LIMIT 1");
         $stmt->execute([$requested_slug]);
     } else {
-        $stmt = $pdo->query("SELECT * FROM snap_images WHERE img_status = 'published' ORDER BY sort_order ASC, id DESC LIMIT 1");
+        $stmt = $pdo->query("SELECT * FROM snap_images WHERE img_status = 'published' AND img_date <= NOW() ORDER BY sort_order ASC, id DESC LIMIT 1");
     }
     $img = $stmt->fetch(PDO::FETCH_ASSOC);
 

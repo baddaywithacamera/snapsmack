@@ -20,6 +20,7 @@
 ### Security
 
 - **The public Pixelfed/Mastodon feed no longer leaks scheduled photos early.** The public API was missing the "not before its posting time" check that the fediverse outbox already has, so a photo (or post) scheduled for the future could be fetched before it went live. Added the guard on the photoblog, gram, and longform paths.
+- **The photoblog front page no longer shows a scheduled photo early.** On a SMACKONEOUT (photoblog) site, the "latest photo" on the home page and the direct photo-by-address lookup were missing the same "not before its posting time" check, so a photo scheduled for the future could appear on the front page (or at its own web address) before its time. Same guard added.
 
 ## 0.7.538 — 2026-08-18
 
