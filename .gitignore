@@ -1,6 +1,13 @@
 # One-time recovery scripts — never commit these
 recover-*.php
 
+# Security-audit WORKING documents (ARCH maps, assessment charters, per-site
+# compliance write-ups). They map holes that are NOT yet fixed, so they must
+# never reach the repo — only FIXED-hole disclosures (the numbered PDFs) are
+# published, and only after the fix ships. Kept beside the repo, local-only.
+secaudits/*.md
+projects/*/secaudits/*-cms-compliance-*.pdf
+
 # Local one-click ship helper — personal dev tool, not shipped
 ship.sh
 
