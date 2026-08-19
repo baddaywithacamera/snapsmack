@@ -10,6 +10,14 @@
 
 # SnapSmack Changelog
 
+## 0.7.538 — 2026-08-18
+
+### Manage Archive now lists posts, not loose images
+
+- **On GRAMOFSMACK and SMACKTALK sites, "Manage Archive" shows your actual posts** — one row per carousel and one row per longform essay — instead of dumping out every individual image that belongs to those posts. Photoblog sites are unchanged (there a photo *is* the post). Post-images stay in the Media Gallery; page-images stay in the Media Library.
+- **EDIT, VIEW and DELETE act on the whole post** in those modes: EDIT opens the right composer (the longform editor for essays, the photo/carousel editor for grams), and DELETE removes the post and its links cleanly rather than picking off a single image.
+- Longform posts with no cover image show a small text-tile placeholder instead of a broken thumbnail. The image-only filters (Needs Work, Orientation) and drag-reordering are hidden in these modes, where they don't apply.
+
 ## 0.7.537 — 2026-08-18
 
 ### Clearer admin, more readable, and help that actually shows up
