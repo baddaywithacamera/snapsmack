@@ -314,6 +314,12 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
     $mime   = mime_content_type($target_path);
     $max_w  = (int)($settings['max_width_landscape'] ?? 2500);
     $max_h  = (int)($settings['max_height_portrait'] ?? 1850);
+    // Resolution preset (owner's choice): Full HD or 4K set the long edge for both
+    // orientations; 'custom'/unset keeps the width/height fields above. Oversized
+    // uploads are scaled down to fit — never rejected.
+    $res_preset = strtolower(trim((string)($settings['image_max_resolution'] ?? '')));
+    if ($res_preset === 'fullhd')  { $max_w = 1920; $max_h = 1920; }
+    elseif ($res_preset === '4k')  { $max_w = 3840; $max_h = 3840; }
     $jpeg_q = (int)($settings['jpeg_quality'] ?? 85);
 
     $src = null;

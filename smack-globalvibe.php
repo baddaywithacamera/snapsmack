@@ -400,6 +400,14 @@ include 'core/sidebar.php';
                 <h3>IMAGE ENGINE (SERVER-SIDE PROCESSING)</h3>
                 <div class="post-layout-grid">
                     <div class="post-col-left">
+                        <?php $res_pick = strtolower(trim((string)($settings['image_max_resolution'] ?? 'custom'))); ?>
+                        <label>MAX RESOLUTION <span class="field-tip" data-tip="How large photos are stored. Full HD and 4K set the longest edge for you; Custom uses the width/height fields below. Bigger uploads are always scaled down to fit — never rejected.">ⓘ</span></label>
+                        <select name="settings[image_max_resolution]">
+                            <option value="fullhd" <?php echo $res_pick === 'fullhd' ? 'selected' : ''; ?>>FULL HD (1920 PX LONG EDGE)</option>
+                            <option value="4k"     <?php echo $res_pick === '4k'     ? 'selected' : ''; ?>>4K (3840 PX LONG EDGE)</option>
+                            <option value="custom" <?php echo ($res_pick !== 'fullhd' && $res_pick !== '4k') ? 'selected' : ''; ?>>CUSTOM (USE WIDTH / HEIGHT BELOW)</option>
+                        </select>
+
                         <label>LANDSCAPE MAX WIDTH (PX)</label>
                         <input type="number" name="settings[max_width_landscape]" value="<?php echo htmlspecialchars($settings['max_width_landscape'] ?? 2500); ?>">
 
