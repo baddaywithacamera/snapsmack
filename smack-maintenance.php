@@ -73,6 +73,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // the selection predicate makes it safe to run repeatedly.
     if ($action === 'postmodel_repair') {
         set_time_limit(300);
+        // MODE BOUNDARY. Photo-to-post conversion turns one bare image into one
+        // single-image post. That is only meaningful on a photoblog (SMACKONEOUT),
+        // where one image IS one post. On GRAMOFSMACK bare images may be carousel
+        // working material, and on SMACKTALK they are editorial images living inside
+        // longform buckets — converting either into single image-posts would
+        // fabricate junk posts and corrupt the site.
+        $repair_site_mode = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog';
+        if ($repair_site_mode !== 'photoblog') {
+            $log[] = 'SKIPPED: Photo-to-post conversion is only valid for SMACKONEOUT sites. '
+                . 'This site is "' . htmlspecialchars($repair_site_mode) . '" — its bare images are '
+                . 'editorial working material, not posts. Only valid for SMACKONEOUT sites; nothing was changed.';
+        } else {
         try {
                 $pdo->beginTransaction();
 
@@ -161,6 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($pdo->inTransaction()) $pdo->rollBack();
                 $log[] = 'ERROR: Post-model repair rolled back — nothing changed. '
                     . htmlspecialchars($e->getMessage()) . '.';
+            }
         }
     }
 
