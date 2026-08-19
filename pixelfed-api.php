@@ -69,7 +69,7 @@ function px_actor(PDO $pdo): array {
     $base=px_base(); $user=px_setting($pdo,'smackverse_username','snapsmack');
     $name=px_setting($pdo,'smackverse_display_name',px_setting($pdo,'site_name','GRAMOFSMACK'));
     $avatar=px_setting($pdo,'smackverse_avatar',''); if ($avatar && !preg_match('#^https?://#',$avatar)) $avatar=$base.ltrim($avatar,'/');
-    $mode=px_mode($pdo);$countSql=$mode==='photoblog'?"SELECT COUNT(*) FROM snap_images WHERE img_status='published'":($mode==='smacktalk'?"SELECT COUNT(*) FROM snap_posts WHERE status='published' AND post_type='longform'":"SELECT COUNT(*) FROM snap_posts WHERE status='published' AND post_type IN ('single','carousel','panorama')");
+    $mode=px_mode($pdo);$countSql=$mode==='photoblog'?"SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date<=NOW()":($mode==='smacktalk'?"SELECT COUNT(*) FROM snap_posts WHERE status='published' AND created_at<=NOW() AND post_type='longform'":"SELECT COUNT(*) FROM snap_posts WHERE status='published' AND created_at<=NOW() AND post_type IN ('single','carousel','panorama')");
     return ['id'=>'1','username'=>$user,'acct'=>$user,'display_name'=>$name,'locked'=>false,'bot'=>false,
       'discoverable'=>true,'group'=>false,'created_at'=>'2020-01-01T00:00:00.000Z','note'=>px_setting($pdo,'site_description',''),
       'url'=>$base.'ap/actor','avatar'=>$avatar,'avatar_static'=>$avatar,'header'=>'','header_static'=>'',
@@ -85,11 +85,11 @@ function px_media(PDO $pdo, int $id): ?array {
 }
 function px_status(PDO $pdo, int $id): ?array {
     if(px_mode($pdo)==='photoblog'){
-        $s=$pdo->prepare("SELECT * FROM snap_images WHERE id=? AND img_status='published' LIMIT 1");$s->execute([$id]);$i=$s->fetch(PDO::FETCH_ASSOC);if(!$i)return null;
+        $s=$pdo->prepare("SELECT * FROM snap_images WHERE id=? AND img_status='published' AND img_date<=NOW() LIMIT 1");$s->execute([$id]);$i=$s->fetch(PDO::FETCH_ASSOC);if(!$i)return null;
         $media=px_media($pdo,$id);$caption=(string)($i['img_description']??'');$created=(string)($i['img_date']??'now');$url=px_base().ltrim((string)$i['img_slug'],'/');
         return ['id'=>(string)$id,'created_at'=>gmdate('Y-m-d\TH:i:s.000\Z',strtotime($created)),'in_reply_to_id'=>null,'in_reply_to_account_id'=>null,'sensitive'=>(bool)($i['is_sensitive']??false),'spoiler_text'=>(string)($i['content_warning']??''),'visibility'=>'public','language'=>null,'uri'=>px_base().'ap/note/i'.$id,'url'=>$url,'replies_count'=>0,'reblogs_count'=>0,'favourites_count'=>0,'favourited'=>false,'reblogged'=>false,'muted'=>false,'bookmarked'=>false,'content'=>nl2br(htmlspecialchars($caption,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8')),'content_text'=>$caption,'liked_by'=>null,'place'=>null,'reblog'=>null,'application'=>['name'=>'SnapSmack','website'=>'https://snapsmack.ca/'],'account'=>px_actor($pdo),'media_attachments'=>$media?[$media]:[],'mentions'=>[],'tags'=>[],'emojis'=>[],'card'=>null,'poll'=>null,'comments_disabled'=>!(bool)($i['allow_comments']??true)];
     }
-    $s=$pdo->prepare("SELECT * FROM snap_posts WHERE id=? AND status='published' LIMIT 1"); $s->execute([$id]); $p=$s->fetch(PDO::FETCH_ASSOC); if(!$p)return null;
+    $s=$pdo->prepare("SELECT * FROM snap_posts WHERE id=? AND status='published' AND created_at<=NOW() LIMIT 1"); $s->execute([$id]); $p=$s->fetch(PDO::FETCH_ASSOC); if(!$p)return null;
     $q=$pdo->prepare('SELECT pi.image_id,i.img_slug FROM snap_post_images pi JOIN snap_images i ON i.id=pi.image_id WHERE pi.post_id=? ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 10'); $q->execute([$id]);
     $images=$q->fetchAll(PDO::FETCH_ASSOC);$media=[];foreach($images as$image){$m=px_media($pdo,(int)$image['image_id']);if($m)$media[]=$m;}
     // GRAMOFSMACK renders a post at its cover photograph's public slug. The
@@ -105,7 +105,7 @@ function px_status(PDO $pdo, int $id): ?array {
 }
 function px_timeline(PDO $pdo): array {
     $limit=max(1,min(40,(int)($_GET['limit']??20)));$maxId=max(0,(int)($_GET['max_id']??0));
-    $mode=px_mode($pdo);$sql=$mode==='photoblog'?"SELECT id FROM snap_images WHERE img_status='published'":($mode==='smacktalk'?"SELECT id FROM snap_posts WHERE status='published' AND post_type='longform'":"SELECT id FROM snap_posts WHERE status='published' AND post_type IN ('single','carousel','panorama')");$params=[];
+    $mode=px_mode($pdo);$sql=$mode==='photoblog'?"SELECT id FROM snap_images WHERE img_status='published' AND img_date<=NOW()":($mode==='smacktalk'?"SELECT id FROM snap_posts WHERE status='published' AND created_at<=NOW() AND post_type='longform'":"SELECT id FROM snap_posts WHERE status='published' AND created_at<=NOW() AND post_type IN ('single','carousel','panorama')");$params=[];
     // Mastodon/Pixelfed pagination is exclusive: max_id=N means records older
     // than N. Returning N again traps Pixelix in an endless refresh loop.
     if($maxId>0){$sql.=' AND id<?';$params[]=$maxId;}

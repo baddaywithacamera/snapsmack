@@ -10,6 +10,17 @@
 
 # SnapSmack Changelog
 
+## 0.7.539 — 2026-08-19
+
+### Photos are born as posts (the real post-model fix)
+
+- **New photos on a photoblog (SMACKONEOUT) site now create a real post the moment you post them** — automatically, in the background. Until now a new photo was saved as a "loose image" with no post behind it, which is why the CONVERT PHOTOS TO POSTS repair kept being needed and sites drifted back after you ran it. Now they don't drift: post once, and the post exists. It's built to match exactly what the repair and the GRAMOFSMACK poster already produce, so nothing else in the site can tell the difference. Your web addresses (slugs) are never changed — federation stays stable.
+- **The repair (CONVERT PHOTOS TO POSTS) is now a one-time cleanup for old photos**, not a thing you re-run forever. After this ships, one final repair pass catches everything from before; new photos take care of themselves.
+
+### Security
+
+- **The public Pixelfed/Mastodon feed no longer leaks scheduled photos early.** The public API was missing the "not before its posting time" check that the fediverse outbox already has, so a photo (or post) scheduled for the future could be fetched before it went live. Added the guard on the photoblog, gram, and longform paths.
+
 ## 0.7.538 — 2026-08-18
 
 ### Manage Archive now lists posts, not loose images
