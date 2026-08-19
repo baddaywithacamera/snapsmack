@@ -457,11 +457,14 @@ try {
     // img_date <= now check is the scheduling gate, not a sort.
     // Timezone is configured globally in core/db.php.
     $now_local = date('Y-m-d H:i:s');
-    $where_live = "WHERE img_status = 'published' AND img_date <= '$now_local'";
+    require_once __DIR__ . '/core/published-units.php';
 
     // One ordered id => slug map, newest-position first (canonical order).
-    $nav_map = $pdo->query("SELECT id, img_slug FROM snap_images $where_live ORDER BY sort_order ASC, id DESC")
-                   ->fetchAll(PDO::FETCH_KEY_PAIR);
+    // Published filter now comes from the single shared source (was inline here);
+    // bound as a '?' param — same value, same rows, no interpolation.
+    $nav_map_stmt = $pdo->prepare("SELECT id, img_slug FROM snap_images WHERE " . snap_published_photo_where() . " ORDER BY sort_order ASC, id DESC");
+    $nav_map_stmt->execute([$now_local]);
+    $nav_map = $nav_map_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     $nav_ids = array_keys($nav_map);
     $nav_n   = count($nav_ids);
 
