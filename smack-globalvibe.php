@@ -15,6 +15,7 @@
 
 
 require_once 'core/auth-smack.php';
+require_once 'core/svg-sanitizer.php';   // sanitize admin-uploaded SVG branding
 
 // --- THEME DISCOVERY ---
 // Scans available skins and admin themes, populating selector dropdowns.
@@ -121,7 +122,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearanc
             $fav_mime = finfo_file($finfo, $_FILES['favicon_upload']['tmp_name']);
             finfo_close($finfo);
             if (in_array($fav_ext, $fav_allowed_ext) && in_array($fav_mime, $fav_allowed_mime)) {
-                if (move_uploaded_file($_FILES['favicon_upload']['tmp_name'], $target_dir . 'favicon.' . $fav_ext)) {
+                $fav_target = $target_dir . 'favicon.' . $fav_ext;
+                if ($fav_ext === 'svg' || $fav_mime === 'image/svg+xml') {
+                    // Never serve a raw admin SVG — strip scripts/entities/externals first.
+                    $fav_clean = snapsmack_sanitize_branding_svg($_FILES['favicon_upload']['tmp_name'], $svg_err);
+                    if ($fav_clean === null) {
+                        $branding_err = 'Favicon rejected: ' . $svg_err;
+                    } elseif (@file_put_contents($fav_target, $fav_clean, LOCK_EX) !== false) {
+                        $v_settings['favicon_url'] = '/assets/img/favicon.' . $fav_ext;
+                    }
+                } elseif (move_uploaded_file($_FILES['favicon_upload']['tmp_name'], $fav_target)) {
                     $v_settings['favicon_url'] = '/assets/img/favicon.' . $fav_ext;
                 }
             }
@@ -142,7 +152,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearanc
             if (in_array($mast_ext, $mast_allowed_ext) && in_array($mast_mime, $mast_allowed_mime)) {
                 $file_name   = preg_replace("/[^a-zA-Z0-9\._-]/", "", basename($_FILES['site_logo_file']['name']));
                 $target_file = $upload_dir . time() . '_' . $file_name;
-                if (move_uploaded_file($_FILES['site_logo_file']['tmp_name'], $target_file)) {
+                $logo_saved  = false;
+                if ($mast_ext === 'svg' || $mast_mime === 'image/svg+xml') {
+                    // Never serve a raw admin SVG — strip scripts/entities/externals first.
+                    $logo_clean = snapsmack_sanitize_branding_svg($_FILES['site_logo_file']['tmp_name'], $svg_err);
+                    if ($logo_clean === null) {
+                        $branding_err = 'Logo rejected: ' . $svg_err;
+                    } else {
+                        $logo_saved = (@file_put_contents($target_file, $logo_clean, LOCK_EX) !== false);
+                    }
+                } else {
+                    $logo_saved = move_uploaded_file($_FILES['site_logo_file']['tmp_name'], $target_file);
+                }
+                if ($logo_saved) {
                     $v_settings['site_logo'] = $target_file;
                     // Single source of truth for the logo: this is now the ONLY logo
                     // uploader (the duplicate Image Engine "HEADER LOGO ASSET" box is
@@ -176,6 +198,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearanc
         $sh_stmt->execute(['sticky_header_blur', $sh_blur, $sh_blur]);
     }
 
+    if (!empty($branding_err)) {
+        header("Location: smack-globalvibe.php?msg=" . rawurlencode($branding_err));
+        exit;
+    }
     header("Location: smack-globalvibe.php?msg=CALIBRATED");
     exit;
 }
@@ -224,7 +250,11 @@ include 'core/sidebar.php';
     </div>
 
     <?php if (isset($_GET['msg'])): ?>
-        <div class="alert alert-success">> SYSTEM APPEARANCE CALIBRATED</div>
+        <?php if ($_GET['msg'] === 'CALIBRATED'): ?>
+            <div class="alert alert-success">> SYSTEM APPEARANCE CALIBRATED</div>
+        <?php else: ?>
+            <div class="alert alert-error">> <?php echo htmlspecialchars($_GET['msg']); ?></div>
+        <?php endif; ?>
     <?php endif; ?>
 
     <form method="POST" enctype="multipart/form-data">

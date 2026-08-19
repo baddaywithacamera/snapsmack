@@ -1041,15 +1041,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // --- Diagnose img_uploads/.htaccess ---
-        if (!is_dir(__DIR__ . '/img_uploads')) {
-            // Not an issue — directory may not exist yet
-        } elseif (!file_exists($uploads_htaccess)) {
-            $issues[] = "Upload directory PHP execution block is <strong>missing</strong> (img_uploads/.htaccess).";
-        } else {
-            $upl_content = file_get_contents($uploads_htaccess);
-            if (strpos($upl_content, 'Deny from all') === false) {
-                $issues[] = "Upload directory .htaccess exists but <strong>PHP blocking rule is missing</strong>.";
+        // --- Diagnose upload-directory execution guards ---
+        // Every web-served upload directory needs the shared execution guard so an
+        // uploaded file can never be run as a program. Covers img_uploads (photos),
+        // media_assets (SmackPress/library), and assets/img (branding).
+        require_once __DIR__ . '/core/upload-execution-guard.php';
+        $upload_guard_dirs = ['img_uploads', 'media_assets', 'assets/img'];
+        foreach ($upload_guard_dirs as $guard_rel) {
+            $guard_abs = __DIR__ . '/' . $guard_rel;
+            if (!is_dir($guard_abs)) {
+                continue; // directory may not exist yet on this install
+            }
+            if (!snapsmack_upload_execution_guard_is_current($guard_abs)) {
+                $issues[] = "Upload directory execution guard is <strong>missing or outdated</strong> ({$guard_rel}/.htaccess).";
             }
         }
 
@@ -1098,11 +1102,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             @file_put_contents($htaccess_path, $existing . $snapsmack_rules, LOCK_EX);
             $repaired[] = "Root .htaccess SnapSmack rules regenerated";
 
-            // Rebuild img_uploads/.htaccess
-            if (is_dir(__DIR__ . '/img_uploads')) {
-                $upload_block = "<FilesMatch \"\\.php$\">\n    Order Deny,Allow\n    Deny from all\n</FilesMatch>\n";
-                @file_put_contents($uploads_htaccess, $upload_block, LOCK_EX);
-                $repaired[] = "Upload directory PHP execution block restored";
+            // Rebuild the execution guard in every web-served upload directory,
+            // using the shared canonical guard (img_uploads, media_assets, assets/img).
+            foreach ($upload_guard_dirs as $guard_rel) {
+                $guard_abs = __DIR__ . '/' . $guard_rel;
+                if (is_dir($guard_abs) && snapsmack_write_upload_execution_guard($guard_abs)) {
+                    $repaired[] = "Execution guard restored in {$guard_rel}/";
+                }
             }
 
             $log[] = "SUCCESS: " . implode(". ", $repaired) . ".";
