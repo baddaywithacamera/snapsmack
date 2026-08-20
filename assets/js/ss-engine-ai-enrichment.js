@@ -228,12 +228,9 @@
     }
 
     function buildRow(type, field) {
-        var row = document.createElement('div');
-        row.className = 'ss-ai-enrich-row';
-
         var button = document.createElement('button');
         button.type = 'button';
-        button.className = 'sc-btn sc-btn-ai ss-ai-enrich-button';
+        button.className = 'sc-btn-ai ss-ai-enrich-button';
         button.textContent = fieldMap[type].label;
         button.title = 'Fill this field from the photo — reuses the single AI vision pull, no extra charge';
 
@@ -241,9 +238,27 @@
         status.className = 'ss-ai-enrich-status';
         status.setAttribute('aria-live', 'polite');
 
-        row.appendChild(button);
-        row.appendChild(status);
-        field.insertAdjacentElement('afterend', row);
+        // Integrate into the field's LABEL ROW when there is one, so the control
+        // reads as part of the field (a quiet control tucked to the right of the
+        // label) instead of a slab bolted on beneath it. Falls back to the old
+        // after-field row for any field without a <label> wrapper.
+        var wrap  = field.closest('.lens-input-wrapper') || field.parentElement;
+        var label = wrap ? wrap.querySelector('label') : null;
+        var row;
+        if (label) {
+            label.classList.add('ss-ai-labelled');
+            label.appendChild(button);
+            row = document.createElement('div');
+            row.className = 'ss-ai-enrich-status-row';
+            row.appendChild(status);
+            field.insertAdjacentElement('afterend', row);
+        } else {
+            row = document.createElement('div');
+            row.className = 'ss-ai-enrich-row';
+            row.appendChild(button);
+            row.appendChild(status);
+            field.insertAdjacentElement('afterend', row);
+        }
 
         var item = {
             type: type,

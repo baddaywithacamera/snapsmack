@@ -50,16 +50,45 @@
     cursor: wait;
 }
 
-.ss-ai-enrich-button {
-    /* Match the admin scheme: dark button with the accent as an OUTLINE, not a
-       neon slab. Fills the accent only on hover to signal the AI action. */
-    border: 1px solid var(--lens-accent, #39ff14);
-    background: var(--bg-primary, #141414);
-    color: var(--text-primary, #ddd);
+/* Integrated per-field AI control: a QUIET control tucked to the right of the
+   field's own label, not a neon slab bolted on below the field. Muted until
+   hover/focus, when it takes the accent. A small accent spark marks it as AI. */
+label.ss-ai-labelled {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
 }
-.ss-ai-enrich-button:hover {
-    background: var(--lens-accent, #39ff14);
-    color: var(--lens-bg, #141414);
+
+.ss-ai-enrich-button {
+    min-height: 0;
+    padding: 1px 4px;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted, #888);
+    font-size: .6rem;
+    font-weight: 600;
+    opacity: .8;
+}
+.ss-ai-enrich-button::before {
+    content: "\2726\00a0";
+    color: var(--lens-accent, #39ff14);
+}
+.ss-ai-enrich-button:hover,
+.ss-ai-enrich-button:focus-visible {
+    background: transparent;
+    color: var(--lens-accent, #39ff14);
+    opacity: 1;
+}
+
+/* Quiet per-field status line, tucked under the field (only shows when active). */
+.ss-ai-enrich-status-row {
+    min-height: 0;
+    margin-top: 3px;
+}
+.ss-ai-enrich-status-row:empty,
+.ss-ai-enrich-status-row .ss-ai-enrich-status:empty {
+    margin: 0;
 }
 
 .ss-ai-prompts-button,
