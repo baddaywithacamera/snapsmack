@@ -19,6 +19,27 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.21 — 2026-08-19
+
+### Fixed — hub credentials now pull from The Hub (backups were falling behind)
+
+The **Discover from Hub** dialog used to pre-fill the Hub URL and Hub API key only
+from the currently-selected SUYB profile. The credentials you set once in **THE HUB
+app** (its shared credential store, filled on *Discover Fleet*) never reached SUYB,
+so the dialog opened blank and discovery — and therefore the fleet backups — stalled.
+
+SUYB now reads `hub_url` and `hub_key` from The Hub's shared store first, falling
+back to the current profile only when the shared store is empty (old / portable
+installs still work). This honours the standing rule: **every tool that needs a
+login pulls its credentials from The Hub, never its own private store.**
+
+- **`config.shared_cred(key, default)`** — new reader for The Hub's shared
+  credential store (`snap_creds`), path-safe and returns the default when the
+  shared home isn't present.
+- **`HubDiscoveryDialog`** — pre-fills Hub URL + API key from the shared store,
+  profile as fallback. Discovery then authenticates by Bearer key (no admin
+  password needed), pulls every spoke, and points them at the Global Cloud Config.
+
 ## 0.7.19 — 2026-08-04
 
 ### Security (SECAUDIT 037, Finding A — credential encryption at rest)

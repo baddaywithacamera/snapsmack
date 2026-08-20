@@ -13,7 +13,7 @@ Same visual family as Smack Your Batch Up.
 
 
 
-BUILD_VERSION = "0.7.20"
+BUILD_VERSION = "0.7.21"
 
 import os
 import queue
@@ -1008,11 +1008,18 @@ class HubDiscoveryDialog(tk.Toplevel):
                 row=row, column=1, sticky="ew", pady=3)
             self._vars[key] = var
 
-        # Pre-fill from current profile if available
+        # Pull the hub URL + key from The Hub's shared store first (filled once in
+        # THE HUB app's Discover Fleet). Fall back to the current profile only if the
+        # shared store is empty. All auth pulls from The Hub — see config.shared_cred.
+        hub_url = cfg_module.shared_cred("hub_url")
+        hub_key = cfg_module.shared_cred("hub_key")
         cp = self._app._current_profile
-        if cp:
-            self._vars["site_url"].set(cp.get("site_url", ""))
-            self._vars["api_key"].set(cp.get("api_key", ""))
+        if not hub_url and cp:
+            hub_url = cp.get("site_url", "")
+        if not hub_key and cp:
+            hub_key = cp.get("api_key", "")
+        self._vars["site_url"].set(hub_url)
+        self._vars["api_key"].set(hub_key)
 
         # Backup directory for new profiles
         tk.Label(f, text="Backup base dir", bg=BG_MID, fg=FG_DIM,

@@ -40,6 +40,23 @@ def _shared_home():
         return None
 
 
+def shared_cred(key: str, default: str = "") -> str:
+    """Read one value from The Hub's shared credential store (snap_creds, the same
+    box THE HUB app fills on Discover Fleet). This is how SUYB honours the rule that
+    every tool needing a login pulls from The Hub, not its own private store.
+    Returns `default` if the shared store isn't reachable (old / portable installs),
+    so nothing breaks where the shared home doesn't exist yet."""
+    try:
+        _sd = os.path.join(_app_dir(), '..', '_shared')
+        if os.path.isdir(_sd) and _sd not in sys.path:
+            sys.path.insert(0, _sd)
+        import snap_creds
+        val = snap_creds.get(key, default)
+        return val if val else default
+    except Exception:
+        return default
+
+
 def resolve_file(name: str) -> str:
     """Path to a SUYB config/state FILE under C:\\snapsmack\\config_files\\suyb,
     migrating the legacy next-to-exe copy in on first run (adopt_legacy). Falls back
