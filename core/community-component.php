@@ -95,7 +95,17 @@ $comment_identity = $settings['comment_identity'] ?? 'open';
 
 // --- CURRENT USER ---
 $community_user = community_current_user();
-$post_id        = (int)$img['id'];
+
+// Community engagement (comments/likes/reactions) is keyed by the post_id column. Historically that
+// column has held the IMAGE id (pre-post-model behaviour), and this component read/wrote by image id.
+// The per-site `comments_post_keyed` setting flips it to the real POST id once that site's engagement
+// data has been migrated. ONE switch drives both what we READ (queries below) and what new
+// comments/likes WRITE (via data-post-id in the markup), so they always agree — flip the flag off and
+// everything reverts to image-keyed with no data change (the image-keyed rows are the reversible
+// fallback). TRANSITIONAL: remove this flag once the whole fleet is post-keyed.
+$comments_post_keyed = (($settings['comments_post_keyed'] ?? '0') === '1') && !empty($img['post_id']);
+$post_id             = $comments_post_keyed ? (int)$img['post_id'] : (int)$img['id'];
+$image_id            = (int)$img['id'];   // always the image itself — for AP image-target like folding
 $auth_url       = '/community-auth.php?action=login&redirect=' . urlencode($_SERVER['REQUEST_URI'] ?? '/');
 
 // --- LIKE COUNT AND STATE ---
@@ -113,7 +123,7 @@ if ($show_likes || $show_reactions) {
     // dock — image-target likes on this image, post-target likes if grouped).
     if (($settings['smackverse_enabled'] ?? '0') === '1' && is_file(__DIR__ . '/smackverse.php')) {
         require_once __DIR__ . '/smackverse.php';
-        $like_count = sv_combined_like_count($pdo, 'image', $post_id, $like_count);
+        $like_count = sv_combined_like_count($pdo, 'image', $image_id, $like_count);
         if (!empty($img['post_id'])) {
             $like_count = sv_combined_like_count($pdo, 'post', (int)$img['post_id'], $like_count);
         }
