@@ -7,6 +7,8 @@
  *
  * Route structure: gyss/{resource}
  *   GET  gyss/ping           — connection test, returns site vitals (incl. site_mode)
+ *   GET  gyss/prompt         — this site's whole-post AI prompt (for fleet sync)
+ *   POST gyss/prompt         — set this site's whole-post AI prompt
  *   GET  gyss/photos         — filtered photo export with metadata + modified_at
  *   GET  gyss/meta           — categories and albums for filter/edit dropdowns
  *   POST gyss/batch-update   — push a diff of sorted/edited records back to the blog
@@ -168,6 +170,60 @@ if ($resource === 'ping' && $method === 'GET') {
         // site_mode drives which GYSS mode the client offers: 'photoblog' =
         // SMACKONEOUT (photo sorter), 'carousel' = GRAMOFSMACK (grid/carousel).
         'site_mode' => $settings['site_mode'] ?? 'photoblog',
+    ]);
+}
+
+
+// =============================================================================
+// ENDPOINT: GET gyss/prompt
+// This site's WHOLE-POST AI prompt — the single-call prompt that fills every
+// field (caption/ALT/tags/colours) in ONE request. First-class get so the fleet
+// prompt-sync can pull it into the shared pool without piggy-backing on the
+// enrich-list. `is_default` = true when no custom prompt is saved (the built-in
+// is being used).
+// =============================================================================
+if ($resource === 'prompt' && $method === 'GET') {
+    $gp_saved = '';
+    try {
+        $gp_stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'ai_post_enrichment_prompt' LIMIT 1");
+        $gp_stmt->execute();
+        $gp_saved = trim((string)($gp_stmt->fetchColumn() ?: ''));
+    } catch (Throwable $e) { $gp_saved = ''; }
+    gy_ok([
+        'prompt'     => snap_ai_post_enrichment_prompt($pdo),  // saved, or the built-in default
+        'is_default' => $gp_saved === '',
+    ]);
+}
+
+// =============================================================================
+// ENDPOINT: POST gyss/prompt   Body: {"prompt": "..."}
+// Set this site's WHOLE-POST AI prompt. An empty prompt CLEARS the custom one
+// (the site falls back to the built-in default) — it never stores a blank. Same
+// setting the enrich flow persists, exposed on its own so the fleet sync can
+// push a prompt to a site without running an enrichment.
+// =============================================================================
+if ($resource === 'prompt' && $method === 'POST') {
+    $gp_body = json_decode((string)file_get_contents('php://input'), true);
+    if (!is_array($gp_body) || !array_key_exists('prompt', $gp_body)) {
+        gy_err('Body must be JSON with a "prompt" string');
+    }
+    $gp_new = mb_substr(trim((string)$gp_body['prompt']), 0, 12000);
+    try {
+        if ($gp_new === '') {
+            $pdo->prepare("DELETE FROM snap_settings WHERE setting_key = 'ai_post_enrichment_prompt'")->execute();
+        } else {
+            $pdo->prepare(
+                "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ai_post_enrichment_prompt', ?)
+                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+            )->execute([$gp_new]);
+        }
+    } catch (Throwable $e) {
+        gy_err('Could not save the prompt: ' . $e->getMessage(), 500);
+    }
+    gy_ok([
+        'prompt'     => snap_ai_post_enrichment_prompt($pdo),
+        'is_default' => $gp_new === '',
+        'saved'      => $gp_new !== '',
     ]);
 }
 
