@@ -18,12 +18,12 @@
 ### Admin & tool scripts (smack-*) — the CMS back office
 
 - **`smack-admin-2fa.js`** — 2FA setup page JS Handles the "Copy All Codes" button on the recovery codes section of smack-2fa.php.
-- **`smack-app.js`** — NEEDS-DESCRIPTION (no purpose line in the file header)
+- **`smack-app.js`** — SMACK THAT APP UP composer client behaviour.
 - **`smack-asset-picker.js`** — Asset Picker Visual media library picker shared between the static-page hero field (smack-pages.php) and the shortcode toolbar image button.
 - **`smack-login.js`** — Login page tab switcher Handles the tab strip on login.php and smack-2fa-verify.php.
 - **`smack-longform-gallery-picker.js`** — Longform Gallery pickers Drives two controls on smack-post-long.php, both sourcing POST images from the Media Gallery (snap_images) via the smack-gallery.php?ajax=1 endpoint: 1.
 - **`smack-passphrase.js`** — Passphrase Generator Generates memorable 6-word passphrases.
-- **`smack-pwa.js`** — NEEDS-DESCRIPTION (no purpose line in the file header)
+- **`smack-pwa.js`** — SMACK THAT APP UP service-worker registration.
 - **`smack-sc-forum.js`** — SMACK CENTRAL — Forum JS Shared utilities for sc-forum.php: emoji insertion and inline install name editing.
 
 ### Shared front-end helpers (ss-*)
@@ -50,14 +50,14 @@
 - **`ss-engine-aurora-wave.js`** — Grid-family Tile Border Wave (Layer 2, shared engine) Conic-gradient ring border, ported from _spec/aurora-prototype.html.
 - **`ss-engine-beatbox-bg.js`** — BEATBOX background collage (Layer 3): ORGANIZED MAYHEM BEATBOX A beat-reactive fork of ORGANIZED MAYHEM's image model.
 - **`ss-engine-beatbox-viz.js`** — BEATBOX visualiser engine (Layer 1 + Layer 2) Consumes the shared data bus (window.SnapBeatbox) owned by ss-engine-beatbox.js.
-- **`ss-engine-beatbox.js`** — NEEDS-DESCRIPTION (no purpose line in the file header)
+- **`ss-engine-beatbox.js`** — BEATBOX shared audio engine (Layer 0 / data bus) The GRAMOFSMACK BEATBOX skin's audio core (spec: _spec/beatbox-skin-spec-v0_3.docx).
 - **`ss-engine-bg-cycle.js`** — Background cycle crossfader () For INSTANT CAMERA's "Cycle all" background mode.
 - **`ss-engine-calendar.js`** — Archive Calendar Engine Archive-integrated sliding calendar panel.
 - **`ss-engine-carousel-edit.js`** — SnapSmack Carousel Edit Engine Manages the image strip UI on smack-edit-carousel.php.
 - **`ss-engine-carousel-post.js`** — Carousel Post Engine JavaScript engine for the multi-image carousel posting page (smack-post-carousel.php).
 - **`ss-engine-carousel-view.js`** — Carousel View Controller Initialises SnapSlider on the single-post carousel view and updates the EXIF panel when slides change.
 - **`ss-engine-cinema-overlay.js`** — Chaplin Overlay Controller + Film Engine Init Loaded via manifest (smack-chaplin-overlay).
-- **`ss-engine-columns.js`** — NEEDS-DESCRIPTION (no purpose line in the file header)
+- **`ss-engine-columns.js`** — SS-COLUMNS: fixed-column photo wall.
 - **`ss-engine-comms.js`** — Hotkey Engine Keyboard navigation and shortcuts.
 - **`ss-engine-community.js`** — Community Engine Handles all client-side behaviour for the community system: - Like button toggle (AJAX, optimistic UI) — both inline bar and floating dock - Reaction picker open/close and reacti...
 - **`ss-engine-consent.js`** — Storage Consent Engine Manages user consent for browser storage (localStorage, sessionStorage) under EU ePrivacy Directive / GDPR.
@@ -76,7 +76,7 @@
 - **`ss-engine-full-monty.js`** — FULL MONTY adaptive atmosphere.
 - **`ss-engine-fullscreen.js`** — Fullscreen Engine True browser fullscreen (requestFullscreen API) for distraction-free image viewing.
 - **`ss-engine-gallery.js`** — Media Gallery Engine AJAX-driven image grid with lazy loading, search, filtering, bulk operations, rubber-band selection, and quick-edit panel.
-- **`ss-engine-glide.js`** — NEEDS-DESCRIPTION (no purpose line in the file header)
+- **`ss-engine-glide.js`** — GLIDE Engine. A kinetic photo wall whose rows drag and slide along a chosen axis (horizontal, vertical or diagonal), with pointer-drag plus momentum, and it honours prefers-reduced-motion.
 - **`ss-engine-glitch.js`** — Glitch Engine Random chaos effects on page elements.
 - **`ss-engine-gram-post.js`** — GramOfSmack Post Composer engine Drop zone, large live-preview strip (each 1:1 tile renders as it will publish), drag-reorder, per-image styling, XHR upload.
 - **`ss-engine-gram-search.js`** — Floating Search Dock engine Drives the bottom-left magnifier dock (core/gram-search-dock.php): - Desktop: CSS :hover expands the box; clicking the magnifier with text submits, clicking empty focuse...
@@ -86,7 +86,7 @@
 - **`ss-engine-heuristic.js`** — HEURISTIC logic memory centre and infomatic engine One background canvas, one temporary overlay at a time.
 - **`ss-engine-image-fade-load.js`** — Image Fade Load Engine Gracefully fades in images as they load, preventing layout jumps and font resets on pages where image dimensions aren't predetermined.
 - **`ss-engine-jive-border.js`** — JIVE TURKEY tile-border engine (Layer 2): INSIDE COLOUR RING, WIDTH-PULSE
-- **`ss-engine-jive-turkey.js`** — NEEDS-DESCRIPTION (no purpose line in the file header)
+- **`ss-engine-jive-turkey.js`** — JIVE TURKEY background engine (Layer 1) The 70s background for the GRAMOFSMACK JIVE TURKEY skin.
 - **`ss-engine-justified.js`** — Justified Grid Engine Wrapper for fjGallery (Flickr's justified gallery library).
 - **`ss-engine-lazyload.js`** — Lazy Loading Engine Progressive image loading via IntersectionObserver.
 - **`ss-engine-lightbox.js`** — Lightbox Engine (navigable gallery) Full-screen image viewer with fade-in overlay and PREV/NEXT navigation across every lightboxable image in scope.
@@ -101,7 +101,7 @@
 - **`ss-engine-mosaic-feed.js`** — Incremental MOSAIC block feed.
 - **`ss-engine-mosaic.js`** — Mosaic Layout Engine Renders inline image mosaics from [mosaic:ID] shortcodes.
 - **`ss-engine-nav-dropdown.js`** — SnapSmack public navigation dropdown engine.
-- **`ss-engine-organized-mayhem.js`** — NEEDS-DESCRIPTION (no purpose line in the file header)
+- **`ss-engine-organized-mayhem.js`** — Organized Mayhem Tabletop Background FX Engine (spec: _spec/organized-mayhem-spec-v0.1.docx).
 - **`ss-engine-other-side.js`** — THE OTHER SIDE engine A deliberately small state engine for dual-reality skins.
 - **`ss-engine-overlay.js`** — Center Overlay Controller Shared overlay engine for skins that use the HTBS-style center-expand info/comments panel (Galleria, Hip to be Square).
 - **`ss-engine-page-import.js`** — Page HTML Import (admin editor helper) Loads a local .html file straight into the page-content textarea, entirely client-side (FileReader — nothing is uploaded, no server round-trip, no stored file).
@@ -113,10 +113,10 @@
 - **`ss-engine-public-help.js`** — Public help modal (0.7.80) F1 (or click the footer "?" link) opens a modal listing exactly the keyboard shortcuts and controls available on the current page.
 - **`ss-engine-racetrack.js`** — RACETRACK ambient background (photos, opposing-lane drift) Reuses the ORGANIZED MAYHEM photo pool — the SAME generated photos, moved a different way, and deliberately NOT Mayhem's rotated tabletop.
 - **`ss-engine-rainfall.js`** — RAINFALL ambient background (canvas) Rain on the window: falling streaks with wind angle, three parallax depth layers (nearer drops run faster, thicker, brighter), and subtle splash ticks where dro...
-- **`ss-engine-rows.js`** — NEEDS-DESCRIPTION (no purpose line in the file header)
+- **`ss-engine-rows.js`** — SS-ROWS: justified-row photo wall.
 - **`ss-engine-scan-align.js`** — Scan Align Posting-interface tool (spec: _spec/instant-camera-spec-v0.2.docx §4).
 - **`ss-engine-scan-upload.js`** — Instant Camera scan-upload UX
-- **`ss-engine-scroll-feed.js`** — NEEDS-DESCRIPTION (no purpose line in the file header)
+- **`ss-engine-scroll-feed.js`** — SCROLL feed engine. CMS-owned and loaded through manifest-inventory.php.
 - **`ss-engine-scroll-top.js`** — Scroll-to-Top Engine Injects a floating back-to-top button that appears after scrolling past a configurable threshold.
 - **`ss-engine-scrolltime.js`** — Scroll Time engine () Measures ENGAGED active dwell time on GRAMOFSMACK landing feeds and SMACKONEOUT archive pages — the read for visitors who browse tiles without clicking through.
 - **`ss-engine-sidebar.js`** — Sidebar Accordion Engine Pure accordion behaviour for the admin sidebar navigation.
@@ -149,7 +149,7 @@
 
 - **`admin-theme-geometry-master.css`** — Admin theme master geometry file Pure geometry and layout.
 - **`columns.css`** — SNAPSMACK — Multi-Column Layout Shortcode: [columns=N] ...
-- **`fjGallery.css`** — NEEDS-DESCRIPTION (no purpose line in the file header)
+- **`fjGallery.css`** — fjGallery layout stylesheet, the CSS half of the Flickr Justified Gallery engine (fjGallery.min.js).
 - **`formatting-toolbar.css`** — SNAPSMACK — Formatting Toolbar Styles Follows admin-theme-geometry-master conventions.
 - **`page-archive.css`** — Archive Page Styles Loaded only on archive.php.
 - **`page-blogroll.css`** — Blogroll Page Styles Loaded only on blogroll.php.
@@ -160,7 +160,7 @@
 - **`public-download-overlay.css`** — Download overlay with fixed button Provides a fixed download button overlaid on media content.
 - **`public-facing.css`** — Public-facing CSS (DEPRECATION SHIM, 0.7.81) This file used to be the single global stylesheet for the public side.
 - **`shortcodes.css`** — Shortcode Base Styles
-- **`smack-app.css`** — NEEDS-DESCRIPTION (no purpose line in the file header)
+- **`smack-app.css`** — SMACK THAT APP UP composer styling.
 - **`ss-community.css`** — Community Component + Dock Styles Two distinct blocks: 1.
 - **`ss-engine-52-pickup.css`** — SNAPSMACK ===== — 52 PICKUP interaction layer base styles.
 - **`ss-engine-ai-enrichment.css`** — AI metadata enrichment controls Shared geometry for title, caption/body, and hashtag enrichment.
@@ -185,7 +185,7 @@
 - **`ss-engine-updater.css`** — Update Manager Modal
 - **`ss-engine-wall.css`** — Floating Gallery Engine 3D perspective gallery with zoom, smooth physics, and metadata display.
 - **`ss-gram-pwa-composer.css`** — GRAMOFSMACK phone/tablet composer.
-- **`ss-pixel.css`** — NEEDS-DESCRIPTION (no purpose line in the file header)
+- **`ss-pixel.css`** — SNAPSMACK — SMACKVERSE : Standalone Pixelfed-compatible client () ORIGINAL code.
 - **`ss-pixelfed-client.css`** — SMACKVERSE Pixelfed Client (faithful pixelfed.ca look)
 
 <!-- generated; edit the source assets' headers, not this file -->

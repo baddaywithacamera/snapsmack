@@ -27,6 +27,7 @@
  * sessionStorage — see ss-engine-organized-mayhem.js. Degrades gracefully:
  * if the API/storage is unavailable, ESC still returns (engine just recenters).
  */
+/* Requires: ss-engine-organized-mayhem.js */
 
 /**
  * SNAPSMACK_EOF_HEADER
