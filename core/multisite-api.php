@@ -13,6 +13,8 @@
  *   multisite/comments/action
  *   multisite/posts/recent
  *   multisite/posts/create
+ *   multisite/prompts            (GET  — export this spoke's enrichment prompts)
+ *   multisite/prompts/import     (POST — merge shared prompts into this spoke)
  *   multisite/stats/daily
  *   multisite/updates/status
  *   multisite/backup/status
@@ -344,6 +346,92 @@ $node_id = $node['id'];
 
 // Touch last_seen
 $pdo->prepare("UPDATE snap_multisite_nodes SET last_seen_at = NOW() WHERE id = ?")->execute([$node_id]);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: GET multisite/prompts
+// FULL (api_key_local) auth ONLY. Returns this spoke's saved enrichment prompt
+// library so the hub can pull it into the fleet-wide shared pool. Read-only.
+// Shape: {ok, prompts:[{id,type,name,prompt,builtin}], preferred:{title,caption,hashtags}}
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'prompts' && $sub_action === '' && $method === 'GET') {
+    if ($ms_key_scope !== 'full') {
+        ms_err('A full hub key is required for prompt sync', 403);
+    }
+    require_once __DIR__ . '/ai-enrichment-prompts.php';
+    $lib = snap_ai_enrichment_library($pdo);
+    ms_ok([
+        'prompts'   => $lib['prompts']   ?? [],
+        'preferred' => $lib['preferred'] ?? [],
+    ]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/prompts/import
+// FULL (api_key_local) auth ONLY. The hub pushes the shared pool back to this
+// spoke. Merges USER prompts by (type, name): update the text if one already
+// exists, append if new. NEVER touches builtins. Idempotent — re-pushing the
+// same pool changes nothing. Body: {"prompts":[{"type","name","prompt"}, ...]}
+// Returns the merged library so the hub can confirm.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'prompts' && $sub_action === 'import' && $method === 'POST') {
+    if ($ms_key_scope !== 'full') {
+        ms_err('A full hub key is required for prompt sync', 403);
+    }
+    require_once __DIR__ . '/ai-enrichment-prompts.php';
+
+    $pi_body = json_decode(file_get_contents('php://input') ?: '', true);
+    $incoming = (is_array($pi_body) && isset($pi_body['prompts']) && is_array($pi_body['prompts']))
+        ? $pi_body['prompts'] : null;
+    if ($incoming === null) {
+        ms_err('Body must be JSON with a "prompts" array');
+    }
+
+    $valid_types = ['title', 'caption', 'hashtags'];
+    $library = snap_ai_enrichment_library($pdo);
+    $added = 0; $updated = 0; $skipped = 0;
+
+    foreach ($incoming as $p) {
+        if (!is_array($p)) { $skipped++; continue; }
+        $type = trim((string)($p['type'] ?? ''));
+        $name = mb_substr(trim((string)($p['name'] ?? '')), 0, 80);
+        $text = mb_substr(trim((string)($p['prompt'] ?? '')), 0, 4000);
+        if (!in_array($type, $valid_types, true) || $name === '' || $text === '') { $skipped++; continue; }
+
+        // Match an existing USER prompt of the same type + name (case-insensitive).
+        $matched = false;
+        foreach ($library['prompts'] as &$existing) {
+            if (!empty($existing['builtin'])) continue;            // never touch builtins
+            if (($existing['type'] ?? '') !== $type) continue;
+            if (mb_strtolower((string)($existing['name'] ?? '')) !== mb_strtolower($name)) continue;
+            if (($existing['prompt'] ?? '') !== $text) { $existing['prompt'] = $text; $updated++; }
+            $existing['name'] = $name;                             // normalise stored casing
+            $matched = true;
+            break;
+        }
+        unset($existing);
+
+        if (!$matched) {
+            $library['prompts'][] = [
+                'id'      => 'custom-' . bin2hex(random_bytes(8)),
+                'type'    => $type,
+                'name'    => $name,
+                'prompt'  => $text,
+                'builtin' => false,
+            ];
+            $added++;
+        }
+    }
+
+    snap_ai_enrichment_save_library($pdo, $library);
+    $merged = snap_ai_enrichment_library($pdo);
+    ms_ok([
+        'added'     => $added,
+        'updated'   => $updated,
+        'skipped'   => $skipped,
+        'prompts'   => $merged['prompts']   ?? [],
+        'preferred' => $merged['preferred'] ?? [],
+    ]);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: POST multisite/provision-key
