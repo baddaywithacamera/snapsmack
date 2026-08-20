@@ -23,6 +23,7 @@
  * Last non-empty line of this file MUST match the line above.
  * Missing or different = truncated/corrupted. Restore before saving.
  */
+/* Requires: ss-engine-beatbox.js */
 
 (function () {
     'use strict';

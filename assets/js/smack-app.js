@@ -1,4 +1,10 @@
 /** SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */
+/**
+ * SMACK THAT APP UP composer client behaviour. Autosaves a draft of the app post
+ * form to localStorage as you type, shows an upload-progress status bar, and
+ * clears saved drafts on logout. Loaded by the CMS on the composer page; not a
+ * skin asset.
+ */
 (function () {
     'use strict';
     var form = document.querySelector('body.smack-app-composer form[method="POST" i]');

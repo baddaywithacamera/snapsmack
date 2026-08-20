@@ -52,38 +52,55 @@ $js_dir    = $root . '/assets/js';
 $css_dir   = $root . '/assets/css';
 $fonts_dir = $root . '/assets/fonts';
 
-/** Pull the human "purpose" out of a file's leading comment block. */
-function inv_describe(string $path): array {
-    $raw = (string) @file_get_contents($path, false, null, 0, 2000);
-    if ($raw === '') return ['vendor' => false, 'desc' => ''];
-
-    // Third-party minified libraries announce themselves with /*! ... !*/.
-    $vendor = (bool) preg_match('/\.min\.js$/', $path) || str_starts_with(ltrim($raw), '/*!');
-
-    $text = '';
-    if (preg_match('~/\*(.*?)\*/~s', $raw, $m)) {          // /* ... */ block
-        $text = $m[1];
-    } elseif (preg_match('~^(?:\s*//.*\n)+~m', $raw, $m)) {  // // line run
-        $text = preg_replace('~^\s*//~m', '', $m[0]);
-    }
-    // Tidy: drop comment stars, the EOF header boilerplate, collapse whitespace.
+/** Tidy one raw comment block down to a single "purpose" sentence ('' if none). */
+function inv_tidy(string $text, string $base): string {
+    // Drop the EOF-marker boilerplate (both the header note and the closing
+    // "===== SNAPSMACK EOF =====" sentinel), comment punctuation, collapse space.
     $text = preg_replace('~SNAPSMACK_EOF_HEADER.*$~s', '', $text);
-    $text = preg_replace('~^[\s*!]+~m', '', $text);
+    $text = preg_replace('~=+\s*SNAPSMACK\s+EOF\s*=+~i', '', $text);
+    $text = preg_replace('~^[\s*!/#]+~m', '', $text);
     $text = trim(preg_replace('~\s+~', ' ', $text));
     $text = preg_replace('~^SNAPSMACK\s*[-–—:]\s*~i', '', $text);
     // Drop a redundant filename echo and any leading emoji/punctuation bytes.
-    $base = basename($path);
     if ($base !== '') $text = trim(str_replace($base, '', $text));
     while ($text !== '' && !ctype_alnum($text[0])) $text = substr($text, 1);
     $text = trim(preg_replace('~\s+~', ' ', $text));
-
     // First sentence / first ~200 chars is the purpose.
     if ($text !== '' && preg_match('~^(.{20,200}?[.!])\s~s', $text . ' ', $mm)) {
         $text = $mm[1];
     } elseif (strlen($text) > 200) {
         $text = substr($text, 0, 197) . '...';
     }
-    return ['vendor' => $vendor, 'desc' => $text];
+    return $text;
+}
+
+/**
+ * Pull the human "purpose" out of a file's leading comment(s).
+ * Reads a generous window (headers can be long) and walks the comment blocks in
+ * document order, returning the FIRST that yields a real sentence — so a file
+ * whose first block is only the EOF-marker boilerplate still gets the real
+ * description from the block below it.
+ */
+function inv_describe(string $path): array {
+    $raw = (string) @file_get_contents($path, false, null, 0, 16000);
+    if ($raw === '') return ['vendor' => false, 'desc' => ''];
+
+    // Third-party minified libraries announce themselves with /*! ... !*/.
+    $vendor = (bool) preg_match('/\.min\.js$/', $path) || str_starts_with(ltrim($raw), '/*!');
+    $base   = basename($path);
+
+    $blocks = [];
+    if (preg_match_all('~/\*(.*?)\*/~s', $raw, $m)) {          // every /* ... */ block
+        foreach ($m[1] as $b) $blocks[] = $b;
+    }
+    if (preg_match('~^(?:\s*//.*\n)+~m', $raw, $m)) {           // a leading // line run
+        $blocks[] = preg_replace('~^\s*//~m', '', $m[0]);
+    }
+    foreach ($blocks as $b) {
+        $desc = inv_tidy($b, $base);
+        if ($desc !== '') return ['vendor' => $vendor, 'desc' => $desc];
+    }
+    return ['vendor' => $vendor, 'desc' => ''];
 }
 
 /**
@@ -94,7 +111,7 @@ function inv_describe(string $path): array {
  * validated; the structured line is the source of truth. Step 1 fills these.)
  */
 function inv_requires(string $path): array {
-    $raw = (string) @file_get_contents($path, false, null, 0, 2000);
+    $raw = (string) @file_get_contents($path, false, null, 0, 16000);
     if ($raw === '') return [];
     if (!preg_match('~^[\s*/#]*Requires?\s*:\s*(.+)$~mi', $raw, $m)) return [];
     $out = [];
@@ -235,4 +252,12 @@ foreach ($catalog['css'] as $e)        $deps += count($e['requires']);
 echo "Asset inventory written (schema " . INV_SCHEMA_VERSION . "):\n  assets/ASSET-INVENTORY.json\n  assets/ASSET-INVENTORY.md\n";
 echo "JS: " . count($catalog['javascript']) . " · Fonts: " . count($catalog['fonts']) . " · CSS: " . count($catalog['css']) . " · declared dependencies: {$deps}\n";
 echo "All assets complete (fail-loud gate passed).\n";
+
+// Non-fatal: font licences are NOT gated (a licence gap doesn't make the AI
+// design blind), but don't let them pass silently either.
+$lic_gaps = [];
+foreach ($catalog['fonts'] as $e) if (str_starts_with($e['license'], 'NEEDS')) $lic_gaps[] = $e['family'];
+if ($lic_gaps) {
+    fwrite(STDERR, "WARNING: " . count($lic_gaps) . " font(s) have no licence file (not gated, but check them): " . implode(', ', $lic_gaps) . "\n");
+}
 // ===== SNAPSMACK EOF =====

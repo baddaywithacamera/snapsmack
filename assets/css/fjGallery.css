@@ -6,6 +6,12 @@
  * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
  * Missing or different = truncated/corrupted. Restore before saving.
  */
+/*
+ * fjGallery layout stylesheet, the CSS half of the Flickr Justified Gallery
+ * engine (fjGallery.min.js). Lays out a justified, gap-filled photo grid whose
+ * rows are each scaled to a common height. Third-party (MIT); pair it with the
+ * fjGallery script when a skin wants a justified gallery.
+ */
 
 
 .fj-gallery {

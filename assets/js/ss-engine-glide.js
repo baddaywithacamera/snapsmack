@@ -1,4 +1,11 @@
 // SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
+/**
+ * GLIDE Engine. A kinetic photo wall whose rows drag and slide along a chosen
+ * axis (horizontal, vertical or diagonal), with pointer-drag plus momentum, and
+ * it honours prefers-reduced-motion. Reach for it when a skin wants a playful,
+ * motion-led gallery instead of a static grid. Declared in a skin manifest via
+ * require_scripts (data hooks: [data-glide-wall], [data-glide-row]).
+ */
 (function () {
     'use strict';
     var wall = document.querySelector('[data-glide-wall]');
