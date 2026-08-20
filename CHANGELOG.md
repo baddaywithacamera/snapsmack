@@ -10,6 +10,23 @@
 
 # SnapSmack Changelog
 
+## 0.7.542 — 2026-08-20 "HOMECOMING"
+
+### Community comments can now belong to the post, not the photo file — safely, one site at a time
+- Community comments (and the likes and reactions that share their key) have always been attached to
+  the **image** rather than the **post** behind it. This adds a per-site switch, **`comments_post_keyed`**,
+  that moves them onto the post. It ships **off**, so nothing changes until a site is deliberately flipped.
+  One switch controls both what the page **shows** and where new comments are **saved**, so the two can
+  never disagree, and flipping it back reverts instantly with no change to your data (the old rows stay put
+  as a safety net). This is the first half of finally putting community engagement on the post model; the
+  data migration and clean-up run per site after the switch is verified live. (`core/community-component.php`,
+  `process-community-comment.php`.)
+- **FLKR FCKR comment import fixed.** It used to write the image id into the post_id column, which detached
+  imported comments from any post; and it was not idempotent, so a second import run doubled every comment.
+  It now stores the correct key for the site (post or image, matching the switch above) and **skips a comment
+  that already exists** instead of inserting a duplicate — a re-import can no longer double anything.
+  (`core/flkrfckr-api.php`.)
+
 ## 0.7.541 — 2026-08-20
 
 ### One AI prompt per blog, shared across your fleet
