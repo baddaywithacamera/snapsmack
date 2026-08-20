@@ -152,7 +152,7 @@ foreach (glob($js_dir . '/*.js') ?: [] as $f) {
 foreach (glob($fonts_dir . '/*', GLOB_ONLYDIR) ?: [] as $d) {
     $fam  = basename($d);
     $files = array_map('basename', glob($d . '/*.{ttf,otf,woff,woff2}', GLOB_BRACE) ?: []);
-    $lic  = glob($d . '/*{LICENSE,license,OFL,ofl}*', GLOB_BRACE) ?: [];
+    $lic  = glob($d . '/*{LICENSE,license,LICENCE,licence,OFL,ofl,EULA,eula,COPYING,copying,README,readme}*', GLOB_BRACE) ?: [];
     $catalog['fonts'][] = [
         'family'  => $fam,
         'dir'     => 'assets/fonts/' . $fam,

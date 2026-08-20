@@ -134,9 +134,9 @@
 
 - **American Stencil** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: OFL.txt)
 - **BlackCasper** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: blackcasper.regular-license.txt)
-- **Cold Night for Alligators** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: NEEDS-CHECK (no licence file in the folder))
+- **Cold Night for Alligators** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: 1001fonts-cold-night-for-alligators-eula.txt)
 - **DotMatrix** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: DotMatrix-license.txt)
-- **Even Badder Mofo** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: NEEDS-CHECK (no licence file in the folder))
+- **Even Badder Mofo** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: 1001fonts-even-badder-mofo-eula.txt)
 - **FlottFlott** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: FlottFlott-license.txt)
 - **KeyBinds** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: keybinds-license.txt)
 - **LinuxBiolinum** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: linux-biolinum-license.txt)

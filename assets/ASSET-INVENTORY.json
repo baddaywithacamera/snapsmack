@@ -924,7 +924,7 @@
             "files": [
                 "coldnightforalligators.ttf"
             ],
-            "license": "NEEDS-CHECK (no licence file in the folder)",
+            "license": "1001fonts-cold-night-for-alligators-eula.txt",
             "purpose": "Display/branding typeface. Skins reference it by family name in @font-face / CSS."
         },
         {
@@ -1005,7 +1005,7 @@
             "files": [
                 "Even Badder Mofo.ttf"
             ],
-            "license": "NEEDS-CHECK (no licence file in the folder)",
+            "license": "1001fonts-even-badder-mofo-eula.txt",
             "purpose": "Display/branding typeface. Skins reference it by family name in @font-face / CSS."
         },
         {
