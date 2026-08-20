@@ -10,6 +10,25 @@
 
 # SnapSmack Changelog
 
+## 0.7.543 — 2026-08-20 "BOOKKEEPING"
+
+### Comment counter, mode guard, and solo-poster correctness (with regression tests)
+- **The photo-page comment counter now counts the real comments.** It was reading `snap_comments` — a
+  separate legacy table that is empty on post-model sites — so it showed **0** while the comments were
+  visible right below. It now counts `snap_community_comments`, keyed the same way the list displays
+  (post or image, per the `comments_post_keyed` switch), so the number can't disagree with the list.
+  (`index.php`.)
+- **The solo poster no longer disguises an image id as a post id in Collections.** A `item_type='post'`
+  Collection row must carry the real post id; storing the image id there re-created the Audit 049
+  "dishonest discriminator" defect. Now fixed and covered by a regression test. (`smack-post-solo.php`.)
+- **The site-mode guard trusts an established install's saved mode instead of guessing.** Since 0.7.539
+  both SMACKONEOUT and GRAMOFSMACK legitimately store post-backed single images, so the shared post/pivot
+  tables can no longer reveal which authoring mode created a row. Guessing from them manufactured false
+  confidence (the class of bug that once flipped a site's mode); the guard now trusts the saved
+  `site_mode`. (`core/mode-guard.php`, `modcheck.php`.)
+- **New regression tests:** post-model mode boundaries, solo poster born post-backed, and the site-mode
+  guard (17 checks). (`tests/`.)
+
 ## 0.7.542 — 2026-08-20 "HOMECOMING"
 
 ### Community comments can now belong to the post, not the photo file — safely, one site at a time

@@ -482,9 +482,17 @@ try {
             if ($pos > 0)          $next_slug = BASE_URL . $nav_map[$nav_ids[$pos - 1]];
         }
 
-        // Count approved comments for display
-        $c_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_comments WHERE img_id = ? AND is_approved = 1");
-        $c_stmt->execute([$img['id']]);
+        // Count the comments actually shown on the page: community comments
+        // (snap_community_comments, status 'visible') — the exact set
+        // core/community-component.php renders. The old query counted snap_comments
+        // (img_id/is_approved), a separate legacy table that is empty on post-model
+        // sites, so the nav read 0 while the comments were visible below. Keyed to
+        // match the site's comments_post_keyed switch (post id vs image id), exactly
+        // like the display, so the count can't disagree with the list.
+        $_cc_key = (($settings['comments_post_keyed'] ?? '0') === '1') && !empty($img['post_id'])
+                 ? (int)$img['post_id'] : (int)$img['id'];
+        $c_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_community_comments WHERE post_id = ? AND status = 'visible'");
+        $c_stmt->execute([$_cc_key]);
         $comment_count = $c_stmt->fetchColumn();
     }
 } catch (Exception $e) {
