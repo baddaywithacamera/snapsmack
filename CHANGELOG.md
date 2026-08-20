@@ -10,7 +10,13 @@
 
 # SnapSmack Changelog
 
-## 0.7.540 — 2026-08-19
+## 0.7.541 — 2026-08-20
+
+### One AI prompt per blog, shared across your fleet
+
+- **Each blog now has a first-class way to hand its whole-post AI prompt to the desktop tools.** New endpoints `GET gyss/prompt` (read this blog's prompt) and `POST gyss/prompt` (set it) expose the single prompt that fills a photo's caption, ALT text, tags and colours in one AI call. Reading an unset blog returns its built-in default; saving an empty prompt clears back to that default. This is what lets THE HUB's new "Prompt Sync" pull every blog's prompt into one shared place and push an edited prompt back — so you set a prompt once and reuse it everywhere, instead of retyping it per site. (Pairs with THE HUB 0.1.10.)
+
+
 
 ### OH SNAP can finally see what's in the shared library
 

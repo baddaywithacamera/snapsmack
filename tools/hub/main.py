@@ -21,7 +21,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-BUILD_VERSION = "0.1.9"
+BUILD_VERSION = "0.1.10"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -37,6 +37,8 @@ try:
     import snap_creds
     import snap_profiles
     import snap_discovery
+    import snap_prompts
+    import snap_prompt_sync
     _SHARED_OK = True
 except Exception as _e:                      # pragma: no cover
     _SHARED_OK = False
@@ -129,11 +131,14 @@ class Hub(tk.Tk):
             return
         body = tk.Frame(self, bg=BG)
         body.pack(fill="both", expand=True, padx=18, pady=(0, 14))
+        self._gyss_keys = {}          # site_url -> minted gyss key (cached per run)
         self._build_launcher(body)
         self._build_setup(body)
         self._build_profiles(body)
+        self._build_prompts(body)
         self._load_creds()
         self._refresh_profiles()
+        self._refresh_prompt_sites()
 
     # ── header ──────────────────────────────────────────────────────────────
     def _build_header(self):
@@ -398,6 +403,268 @@ class Hub(tk.Tk):
             name = p.get("name", "")
             url = p.get("site_url", "")
             self._prof_list.insert("end", f"  {name:<28}  {url}")
+
+    # ── prompt sync ──────────────────────────────────────────────────────────
+    # One WHOLE-POST AI prompt per blog (the single-call prompt that fills
+    # caption / ALT / tags / colours in ONE request). It lives in two places —
+    # the CMS setting on each blog (GET|POST gyss/prompt) and the shared desktop
+    # pool (snap_prompts). This card syncs them: PULL brings every blog's prompt
+    # into the pool so you see them all in one place; PUSH sends the edited
+    # prompt back to a blog. Non-destructive: a blog whose live prompt differs
+    # from your local pool is reported, never silently overwritten.
+    def _build_prompts(self, parent):
+        card = self._card(parent, "PROMPT SYNC  ·  one AI prompt per blog, shared across the fleet")
+        wrap = tk.Frame(card, bg=CARD)
+        wrap.pack(fill="both", expand=True, padx=14, pady=(0, 12))
+
+        top = tk.Frame(wrap, bg=CARD)
+        top.pack(fill="x", pady=(0, 6))
+        tk.Label(top, text="SITE", bg=CARD, fg=DIM, font=("Segoe UI", 9)).pack(side="left")
+        self._psite = tk.StringVar()
+        self._psite_menu = tk.OptionMenu(top, self._psite, "")
+        self._psite_menu.configure(bg=FIELD, fg=INK, activebackground=ACCENT,
+                                   activeforeground=BG, relief="flat", highlightthickness=0,
+                                   font=("Consolas", 10), width=30, anchor="w")
+        self._psite_menu["menu"].configure(bg=FIELD, fg=INK)
+        self._psite_menu.pack(side="left", padx=(8, 0))
+        pull_all = tk.Button(top, text="⟳  PULL ALL FROM FLEET", bg=ACCENT, fg=BG,
+                             activebackground="#2ecc10", relief="flat", cursor="hand2",
+                             font=("Segoe UI", 9, "bold"), command=self._on_pull_all)
+        pull_all.pack(side="right", ipadx=8, ipady=4)
+        self._hoverize(pull_all, hover_bg="#2ecc10")
+
+        self._ptext = tk.Text(wrap, height=6, bg=FIELD, fg=INK, relief="flat",
+                              insertbackground=INK, wrap="word", font=("Consolas", 10),
+                              highlightthickness=1, highlightbackground=BORDER, bd=0)
+        self._ptext.pack(fill="both", expand=True, pady=(0, 6))
+
+        bot = tk.Frame(wrap, bg=CARD)
+        bot.pack(fill="x")
+        copy_b = tk.Button(bot, text="COPY FROM…", bg=FIELD, fg=INK, relief="flat",
+                           cursor="hand2", font=("Segoe UI", 9), command=self._on_copy_from)
+        copy_b.pack(side="left", ipadx=6, ipady=3)
+        pull_one = tk.Button(bot, text="⬇  PULL THIS SITE", bg=FIELD, fg=INK, relief="flat",
+                             cursor="hand2", font=("Segoe UI", 9), command=self._on_pull_one)
+        pull_one.pack(side="left", padx=(8, 0), ipadx=6, ipady=3)
+        push_b = tk.Button(bot, text="⬆  PUSH TO THIS SITE", bg=INK, fg=BG,
+                           activebackground=ACCENT, activeforeground=BG, relief="flat",
+                           cursor="hand2", font=("Segoe UI", 9, "bold"), command=self._on_push_one)
+        push_b.pack(side="right", ipadx=8, ipady=4)
+        self._hoverize(push_b)
+        self._psync_status = tk.Label(bot, text="", bg=CARD, fg=DIM, font=("Segoe UI", 9))
+        self._psync_status.pack(side="right", padx=12)
+        self._pprofiles = {}
+        self._psite.trace_add("write", lambda *_: self._on_site_selected())
+
+    def _prompt_profiles(self):
+        try:
+            return [p for p in snap_profiles.list_profiles() if p.get("site_url")]
+        except Exception:
+            return []
+
+    def _refresh_prompt_sites(self):
+        profs = self._prompt_profiles()
+        self._pprofiles = {snap_prompt_sync.site_key(p): p for p in profs}
+        menu = self._psite_menu["menu"]
+        menu.delete(0, "end")
+        keys = sorted(self._pprofiles.keys())
+        for k in keys:
+            menu.add_command(label=k, command=lambda v=k: self._psite.set(v))
+        if keys:
+            if self._psite.get() in self._pprofiles:
+                self._on_site_selected()
+            else:
+                self._psite.set(keys[0])
+        else:
+            self._psite.set("")
+
+    def _current_profile(self):
+        p = self._pprofiles.get(self._psite.get())
+        if not p:
+            messagebox.showwarning("Pick a site", "Choose a site first "
+                                   "(Discover Fleet fills the list).", parent=self)
+        return p
+
+    def _on_site_selected(self):
+        key = self._psite.get()
+        if not key:
+            return
+        try:
+            pool = snap_prompts.load()
+        except Exception:
+            pool = {}
+        self._ptext.delete("1.0", "end")
+        self._ptext.insert("1.0", str(pool.get(key, "")))
+        self._psync_status.configure(text="", fg=DIM)
+
+    def _psync_err(self, title, e):
+        try:
+            import snap_errors
+            snap_errors.show_error(title, e, parent=self)
+        except Exception:
+            messagebox.showerror(title, str(e), parent=self)
+
+    def _gyss_key_for(self, profile):
+        """A gyss-type Bearer key for this site. gyss/prompt requires key_type
+        'gyss'; the stored api_key is the sybu posting key, so mint a gyss key
+        from the full hub->spoke key (extras.api_key_local), cached per run."""
+        site = (profile.get("site_url") or "").rstrip("/")
+        if self._gyss_keys.get(site):
+            return self._gyss_keys[site]
+        akl = ((profile.get("extras") or {}).get("api_key_local") or "").strip()
+        key = ""
+        if akl:
+            try:
+                key = snap_discovery._provision_spoke_key(site, akl, "gyss")
+            except Exception:
+                key = ""
+        self._gyss_keys[site] = key
+        return key
+
+    def _prompt_fetch(self, profile):
+        import requests
+        site = (profile.get("site_url") or "").rstrip("/")
+        key = self._gyss_key_for(profile)
+        if not key:
+            raise RuntimeError("no GYSS key for this site — run Discover Fleet")
+        r = requests.get(site + "/api.php", params={"route": "gyss/prompt"},
+                         headers={"Authorization": "Bearer " + key,
+                                  "User-Agent": "SnapSmackHub/1.0"}, timeout=25)
+        if r.status_code != 200:
+            raise RuntimeError(f"HTTP {r.status_code}")
+        data = r.json() if r.content else {}
+        if not data.get("ok", False):
+            raise RuntimeError(data.get("error", "unexpected response"))
+        return data.get("prompt", "")
+
+    def _prompt_push(self, profile, text):
+        import requests
+        site = (profile.get("site_url") or "").rstrip("/")
+        key = self._gyss_key_for(profile)
+        if not key:
+            return False
+        r = requests.post(site + "/api.php", params={"route": "gyss/prompt"},
+                          json={"prompt": text},
+                          headers={"Authorization": "Bearer " + key,
+                                   "User-Agent": "SnapSmackHub/1.0"}, timeout=25)
+        if r.status_code != 200:
+            return False
+        try:
+            return bool((r.json() or {}).get("ok", False))
+        except Exception:
+            return False
+
+    def _on_pull_all(self):
+        profs = self._prompt_profiles()
+        if not profs:
+            messagebox.showwarning("No sites", "Run Discover Fleet first.", parent=self)
+            return
+        self._psync_status.configure(text="pulling from the fleet…", fg=DIM)
+        self.update_idletasks()
+        try:
+            report = snap_prompt_sync.pull(profs, self._prompt_fetch)
+        except Exception as e:
+            self._psync_status.configure(text="", fg=DIM)
+            self._psync_err("Pull failed", e)
+            return
+        self._refresh_prompt_sites()
+        added = report.get("added", [])
+        unchanged = report.get("unchanged", [])
+        differs = report.get("differs", [])
+        failed = report.get("failed", [])
+        msg = (f"Pulled {len(added) + len(unchanged)} blog(s) into the shared pool.\n\n"
+               f"• {len(added)} new prompt(s) added\n"
+               f"• {len(unchanged)} already matched\n")
+        if differs:
+            msg += ("• " + str(len(differs)) + " differ from your local pool (left untouched): "
+                    + ", ".join(d["site"] for d in differs)
+                    + "\n   Select one, then PULL THIS SITE to see the live copy, or PUSH to overwrite it.\n")
+        if failed:
+            msg += ("• " + str(len(failed)) + " could not be reached: "
+                    + ", ".join(f'{f["site"]} ({f["error"]})' for f in failed) + "\n")
+        self._psync_status.configure(
+            text=f"✓ {len(added)} added · {len(differs)} differ · {len(failed)} failed",
+            fg=ACCENT if not failed else "#e0a020")
+        messagebox.showinfo("Prompt sync", msg, parent=self)
+
+    def _on_pull_one(self):
+        p = self._current_profile()
+        if not p:
+            return
+        self._psync_status.configure(text="fetching this site's live prompt…", fg=DIM)
+        self.update_idletasks()
+        try:
+            remote = self._prompt_fetch(p)
+        except Exception as e:
+            self._psync_status.configure(text="", fg=DIM)
+            self._psync_err("Fetch failed", e)
+            return
+        self._ptext.delete("1.0", "end")
+        self._ptext.insert("1.0", str(remote or ""))
+        self._psync_status.configure(text="✓ showing the live prompt — PUSH to keep it, or edit first", fg=ACCENT)
+
+    def _on_push_one(self):
+        p = self._current_profile()
+        if not p:
+            return
+        key = self._psite.get()
+        text = self._ptext.get("1.0", "end").strip()
+        if not messagebox.askyesno(
+                "Push prompt to " + key,
+                f"Send this prompt to {key}?\n\nIt becomes the prompt that blog's one-call AI fill "
+                f"uses for every new image. An empty prompt resets that blog to its built-in default.",
+                parent=self):
+            return
+        self._psync_status.configure(text="pushing…", fg=DIM)
+        self.update_idletasks()
+        try:
+            ok = snap_prompt_sync.push(p, text, self._prompt_push)
+        except Exception as e:
+            self._psync_status.configure(text="", fg=DIM)
+            self._psync_err("Push failed", e)
+            return
+        if ok:
+            self._psync_status.configure(text=f"✓ pushed to {key} and saved to the shared pool", fg=ACCENT)
+        else:
+            self._psync_status.configure(
+                text="push rejected — check the site key (re-run Discover Fleet)", fg="#ff5555")
+
+    def _on_copy_from(self):
+        keys = sorted(self._pprofiles.keys())
+        others = [k for k in keys if k != self._psite.get()]
+        if not others:
+            messagebox.showinfo("Copy from", "No other blog to copy from yet.", parent=self)
+            return
+        win = tk.Toplevel(self)
+        win.title("Copy prompt from…")
+        win.configure(bg=CARD)
+        win.transient(self)
+        tk.Label(win, text="Use which blog's prompt as a starting point?", bg=CARD, fg=INK,
+                 font=("Segoe UI", 10)).pack(padx=16, pady=(14, 8))
+        lb = tk.Listbox(win, bg=FIELD, fg=INK, relief="flat", font=("Consolas", 10),
+                        height=min(10, len(others)), selectbackground=ACCENT,
+                        selectforeground=BG, highlightthickness=0, width=42)
+        for k in others:
+            lb.insert("end", k)
+        lb.pack(fill="both", expand=True, padx=16, pady=(0, 8))
+
+        def _do():
+            sel = lb.curselection()
+            if sel:
+                src = others[sel[0]]
+                try:
+                    pool = snap_prompts.load()
+                except Exception:
+                    pool = {}
+                self._ptext.delete("1.0", "end")
+                self._ptext.insert("1.0", str(pool.get(src, "")))
+                self._psync_status.configure(
+                    text=f"copied {src}'s prompt into the editor — review, then PUSH", fg=ACCENT)
+            win.destroy()
+
+        use_b = tk.Button(win, text="USE THIS", bg=ACCENT, fg=BG, relief="flat",
+                          font=("Segoe UI", 9, "bold"), cursor="hand2", command=_do)
+        use_b.pack(pady=(0, 14), ipadx=10, ipady=4)
 
 
 if __name__ == "__main__":
