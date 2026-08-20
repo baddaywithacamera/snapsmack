@@ -747,10 +747,12 @@ if ($sub === 'upload' && $method === 'POST') {
     ]);
 }
 
-// POST flkrfckr/comments — import a single Flickr comment onto an existing post.
+// POST flkrfckr/comments — import a single Flickr comment onto its photo.
 // Inserts into snap_community_comments as a guest comment (status=visible, auto-approved).
-// Expects JSON body: { flickr_id, author_name, author_url, comment_text, comment_date }
-// where flickr_id is the SnapSmack image_id returned from flkrfckr/images.
+// Expects JSON body: { image_id, author_name, author_url, comment_text, comment_date }
+// where image_id is the SnapSmack image_id returned from flkrfckr/images. The comment is keyed to
+// match the site's `comments_post_keyed` setting (real post id vs image id), and re-import is
+// IDEMPOTENT — an identical comment already on that key is returned, never duplicated.
 if ($method === 'POST' && $sub === 'comments') {
     $body         = json_decode(file_get_contents('php://input'), true) ?? [];
     $image_id     = (int)($body['image_id']     ?? 0);
@@ -762,13 +764,38 @@ if ($method === 'POST' && $sub === 'comments') {
     if ($image_id <= 0)         flkrfckr_error(400, 'image_id is required.');
     if ($comment_text === '')   flkrfckr_error(400, 'comment_text is required.');
 
-    // Validate image exists
-    $img_chk = $pdo->prepare("SELECT id FROM snap_images WHERE id = ? LIMIT 1");
+    // Resolve the image, then pick the key the site actually reads (see community-component.php):
+    // a post-keyed site stores the real post_id, a legacy image-keyed site stores the image id.
+    // Storing the wrong one is exactly what orphaned the old Flickr comments.
+    $img_chk = $pdo->prepare("SELECT post_id FROM snap_images WHERE id = ? LIMIT 1");
     $img_chk->execute([$image_id]);
-    if (!$img_chk->fetch()) flkrfckr_error(404, 'image_id not found.');
+    $img_row = $img_chk->fetch(PDO::FETCH_ASSOC);
+    if ($img_row === false) flkrfckr_error(404, 'image_id not found.');
+
+    $post_keyed = ($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='comments_post_keyed' LIMIT 1")->fetchColumn() === '1');
+    $target_id  = $image_id;
+    if ($post_keyed) {
+        $target_id = (int)($img_row['post_id'] ?? 0);
+        if ($target_id <= 0) flkrfckr_error(409, 'image has no backing post — convert to posts before importing comments.');
+    }
 
     // Validate date or default to now
-    $dt = $comment_date ? date('Y-m-d H:i:s', strtotime($comment_date)) : date('Y-m-d H:i:s');
+    $dt     = $comment_date ? date('Y-m-d H:i:s', strtotime($comment_date)) : date('Y-m-d H:i:s');
+    $author = $author_name ?: 'Anonymous';
+
+    // Idempotent: a re-import must never create a second copy. If an identical comment already
+    // exists on this key, return it instead of inserting a duplicate — this is what stops a repeat
+    // import run from doubling every comment (the dual-import damage we cleaned up).
+    $dup = $pdo->prepare("
+        SELECT id FROM snap_community_comments
+        WHERE post_id = ? AND guest_name = ? AND comment_text = ? AND created_at = ?
+        LIMIT 1
+    ");
+    $dup->execute([$target_id, $author, $comment_text, $dt]);
+    $existing = $dup->fetch(PDO::FETCH_ASSOC);
+    if ($existing !== false) {
+        flkrfckr_ok(['comment_id' => (int)$existing['id'], 'deduped' => true]);
+    }
 
     $stmt = $pdo->prepare("
         INSERT INTO snap_community_comments
@@ -776,8 +803,8 @@ if ($method === 'POST' && $sub === 'comments') {
         VALUES (?, ?, ?, ?, 'visible', ?)
     ");
     $stmt->execute([
-        $image_id,
-        $author_name ?: 'Anonymous',
+        $target_id,
+        $author,
         // SECAUDIT 040 finding D — guest_url is rendered as a link href. Only a
         // plain http(s) URL is stored; anything else (javascript:, data:, junk)
         // becomes NULL and the name renders unlinked.
@@ -785,9 +812,8 @@ if ($method === 'POST' && $sub === 'comments') {
         $comment_text,
         $dt,
     ]);
-    $comment_id = (int)$pdo->lastInsertId();
 
-    flkrfckr_ok(['comment_id' => $comment_id]);
+    flkrfckr_ok(['comment_id' => (int)$pdo->lastInsertId()]);
 }
 
 // POST flkrfckr/collections — create (or rebuild) a "best of" collection from a

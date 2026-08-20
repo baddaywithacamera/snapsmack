@@ -174,10 +174,20 @@ if (!$is_guest && $user && !$user['email_verified']) {
     exit;
 }
 
-// --- VERIFY POST EXISTS AND ALLOWS COMMENTS ---
+// --- VERIFY TARGET EXISTS AND ALLOWS COMMENTS ---
+// The comment key follows the site's `comments_post_keyed` setting (see community-component.php):
+// it is either a snap_images.id (image-keyed, legacy) OR a snap_posts.id (post-keyed). Accept
+// whichever it matches, check allow_comments there, and store it as-is so it lines up with how the
+// display reads. (The form always sends the same key the display used, so this just validates it.)
 $post_stmt = $pdo->prepare("SELECT id, allow_comments FROM snap_images WHERE id = ? LIMIT 1");
 $post_stmt->execute([$post_id]);
 $post_row = $post_stmt->fetch();
+
+if (!$post_row) {
+    $post_stmt = $pdo->prepare("SELECT id, allow_comments FROM snap_posts WHERE id = ? LIMIT 1");
+    $post_stmt->execute([$post_id]);
+    $post_row = $post_stmt->fetch();
+}
 
 if (!$post_row) {
     http_response_code(404);
