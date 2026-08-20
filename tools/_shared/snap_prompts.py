@@ -33,11 +33,40 @@ def _store_path() -> str:
 
 
 def load() -> dict:
-    """User presets as {name: text}. {} when unset or unreadable."""
+    """User presets as {name: text} — the flat shape every Gemini tool expects.
+
+    Entries may be stored either flat ("name": "text") or TYPED
+    ("name": {"type": "title|caption|hashtags|general", "text": "..."}) so the
+    same pool can round-trip with the CMS, which keeps prompts per field. Typed
+    entries are flattened to their text here, so SYBU / COLD SNAP keep working
+    unchanged. {} when unset or unreadable."""
     try:
         with open(_store_path(), encoding="utf-8") as f:
             data = json.load(f)
-        return data if isinstance(data, dict) else {}
+        if not isinstance(data, dict):
+            return {}
+        return {name: (val.get("text", "") if isinstance(val, dict) else val)
+                for name, val in data.items()}
+    except Exception:
+        return {}
+
+
+def load_typed() -> dict:
+    """User presets as {name: {"type": ..., "text": ...}} — for cross-store sync
+    with the CMS. A plain-string entry reads as {"type": "general", "text": ...}."""
+    try:
+        with open(_store_path(), encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            return {}
+        out = {}
+        for name, val in data.items():
+            if isinstance(val, dict):
+                out[name] = {"type": val.get("type", "general") or "general",
+                             "text": val.get("text", "")}
+            else:
+                out[name] = {"type": "general", "text": val}
+        return out
     except Exception:
         return {}
 
@@ -51,10 +80,14 @@ def save(prompts: dict) -> None:
     that merges onto load()'s {} would otherwise write an empty store over good data."""
     os.makedirs(prompts_dir(), exist_ok=True)
     path = _store_path()
+    existing = {}
     if os.path.isfile(path):
         try:
             with open(path, encoding="utf-8") as f:
-                readable = isinstance(json.load(f), dict)
+                loaded = json.load(f)
+            readable = isinstance(loaded, dict)
+            if readable:
+                existing = loaded
         except Exception:
             readable = False
         if not readable:
@@ -66,10 +99,26 @@ def save(prompts: dict) -> None:
                     os.replace(path, backup)
             except Exception:
                 pass
+
+    # Type-preserving write: a caller (e.g. SYBU / COLD SNAP) that only sees flat
+    # text via load() and saves it back must NOT strip the field types other
+    # stores rely on. A value passed as a string keeps its previously-stored type;
+    # a value passed as a dict {type,text} is stored as-is.
+    src = prompts if isinstance(prompts, dict) else {}
+    out = {}
+    for name, val in src.items():
+        if isinstance(val, dict):
+            out[name] = val
+        else:
+            prev = existing.get(name)
+            if isinstance(prev, dict) and prev.get("type"):
+                out[name] = {"type": prev["type"], "text": val}
+            else:
+                out[name] = val
+
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(prompts if isinstance(prompts, dict) else {}, f,
-                  indent=2, ensure_ascii=False)
+        json.dump(out, f, indent=2, ensure_ascii=False)
     os.replace(tmp, path)
 
 
