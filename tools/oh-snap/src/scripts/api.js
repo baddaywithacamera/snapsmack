@@ -87,6 +87,70 @@ class SnapSmackAPI {
         return this._get('ohsnap/skin');
     }
 
+    /**
+     * Shared resources library (the asset inventory the whole tool suite reads).
+     * This is the ONE fetch for the library — it does NOT use _get()/throw,
+     * because the four outcomes must stay distinguishable so the caller can act
+     * oppositely on each (the manifest schema is a cross-tool contract).
+     *
+     * Returns one of:
+     *   { state: 'present',     schemaVersion, library, counts }
+     *   { state: 'incomplete',  message, problems }   // partial manifest — fail closed
+     *   { state: 'unsupported', message, schemaVersion } // schema major we don't know
+     *   { state: 'failed',      message, httpStatus }  // missing / unreachable / bad JSON
+     */
+    async library() {
+        // The client understands this manifest MAJOR. A newer major means the
+        // site shipped a breaking schema change this build predates — refuse it
+        // rather than mis-read it. A newer MINOR is forward-compatible (we just
+        // ignore fields we don't know).
+        const KNOWN_SCHEMA_MAJOR = 1;
+
+        let res, body;
+        try {
+            res  = await fetch(this._endpoint('ohsnap/library'), {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Accept': 'application/json' },
+            });
+            body = await res.json();
+        } catch (err) {
+            return { state: 'failed', message: err.message || 'Could not reach the shared library.', httpStatus: 0 };
+        }
+
+        // Incomplete manifest: the server validated it and refused (409), or said so.
+        if (res.status === 409 || body?.incomplete) {
+            return {
+                state: 'incomplete',
+                message: body?.error || 'The site served an incomplete shared library.',
+                problems: Array.isArray(body?.problems) ? body.problems : [],
+            };
+        }
+
+        // Anything else that isn't a clean success is a failure (404 missing,
+        // 500 bad JSON, 401 auth, older site with no library route, …).
+        if (!res.ok || !body?.ok) {
+            return { state: 'failed', message: body?.error || `HTTP ${res.status}`, httpStatus: res.status };
+        }
+
+        const schemaVersion = String(body.schema_version || '');
+        const major = parseInt(schemaVersion.split('.')[0], 10);
+        if (!Number.isFinite(major) || major !== KNOWN_SCHEMA_MAJOR) {
+            return {
+                state: 'unsupported',
+                message: `This site's shared library is schema ${schemaVersion || '(unknown)'}, which this version of Oh Snap! doesn't understand. Update Oh Snap!.`,
+                schemaVersion,
+            };
+        }
+
+        return {
+            state: 'present',
+            schemaVersion,
+            engines: Array.isArray(body.engines) ? body.engines : [], // curated skin-facing list, with handles
+            library: body.library || {},                              // full asset inventory (incl. CSS)
+            counts: body.counts || {},
+        };
+    }
+
     // pushSkin()/ohsnap/skin/push removed 2026-08-09 (security). A skin ZIP is
     // never uploaded to the server: receiving and unzipping an untrusted archive
     // server-side is remote-code-execution surface. A finished skin is saved to

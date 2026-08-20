@@ -56,9 +56,15 @@ Available CSS variables for this skin:
      * Send a user message and return parsed CSS variable overrides.
      * @param {string} userMessage   The user's chat message
      * @param {Object} variables     The skin's css_variables map (for context)
+     * @param {Object} [library]     The shared resources library (asset inventory),
+     *                               or null when it isn't cleanly available. When
+     *                               given, the model is told what shared engines /
+     *                               CSS / fonts exist and how a skin declares them,
+     *                               so it stops designing blind. Absent = it is told
+     *                               plainly it only has this skin's own variables.
      * @returns {Promise<Object>}    CSS variable overrides { '--var': 'val' }
      */
-    async function send(userMessage, variables) {
+    async function send(userMessage, variables, library) {
         const s        = OhSnapSettings.load();
         const provider = s.ai_provider;
 
@@ -66,7 +72,8 @@ Available CSS variables for this skin:
             throw new Error('No AI provider configured. Open Settings to add an API key.');
         }
 
-        const systemPrompt = _systemPromptBase + _formatVariableList(variables);
+        const systemPrompt = _systemPromptBase + _formatVariableList(variables)
+                           + '\n\n' + _formatLibrary(library);
 
         switch (provider) {
             case 'claude':  return _callClaude(s, systemPrompt, userMessage);
@@ -276,6 +283,55 @@ Available CSS variables for this skin:
             });
         });
         return lines.join('\n');
+    }
+
+    /**
+     * Render the shared resources library into a compact, decision-support block
+     * for the system prompt: for each skin-facing engine/helper — what it is, how
+     * a skin declares it, and what it depends on — plus the shared CSS and fonts.
+     * This is what stops the model designing blind. When the library isn't
+     * available it says so plainly, so the model doesn't invent engines it can't see.
+     */
+    function _formatLibrary(library) {
+        if (!library || typeof library !== 'object') {
+            return `Shared resources library: NOT AVAILABLE for this site. Do not reference or invent shared engines, fonts or CSS blocks — work only with the CSS variables listed above.`;
+        }
+
+        // `engines` is the CURATED skin-facing registry from the server
+        // (core/manifest-inventory.php) — only the engines a skin can actually
+        // turn on, each with the exact handle it declares in require_scripts. No
+        // back-office noise, no guessing the token.
+        const engines   = Array.isArray(library.engines) ? library.engines : [];
+        const inventory = library.inventory || {};
+
+        const out = ['Shared resources library available on this site (CONTEXT — you still output ONLY the CSS-variable JSON):'];
+
+        if (engines.length) {
+            out.push('Skin engines a skin can turn on (declare the HANDLE shown in the skin manifest "require_scripts"):');
+            engines.forEach((e) => {
+                const dep      = (e.requires && e.requires.length) ? `  [also needs: ${e.requires.join(', ')}]` : '';
+                const settings = e.has_settings ? '  [has adjustable settings]' : '';
+                out.push(`  - ${e.handle} — ${e.label || e.purpose}${dep}${settings}`);
+            });
+        }
+
+        const css = inventory.css || [];
+        if (css.length) {
+            out.push('Shared CSS blocks:');
+            css.forEach((e) => out.push(`  - ${_baseName(e.file)} — ${e.purpose}`));
+        }
+
+        const fonts = inventory.fonts || [];
+        if (fonts.length) {
+            out.push('Fonts (referenced by family name in @font-face / CSS):');
+            fonts.forEach((e) => out.push(`  - ${e.family}`));
+        }
+
+        return out.join('\n');
+    }
+
+    function _baseName(path) {
+        return String(path || '').split('/').pop();
     }
 
     return { send };

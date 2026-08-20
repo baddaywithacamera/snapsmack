@@ -443,10 +443,53 @@ if ($resource === 'library' && $method === 'GET') {
         ], 409);
     }
 
+    // The curated, skin-FACING engine registry — core/manifest-inventory.php is
+    // the single source of truth for what a skin can actually turn on, and,
+    // crucially, THE HANDLE it declares in require_scripts (e.g. "smack-columns",
+    // NOT the filename). The raw asset inventory above lists every file including
+    // CMS back-office; only these are declarable in a skin. We merge the registry
+    // (handle, label, controls) with the inventory (purpose, requires) by path, so
+    // Oh Snap! gets everything it needs to declare an engine correctly instead of
+    // guessing the token.
+    $engines = [];
+    $by_path = [];
+    foreach (($manifest['javascript'] ?? []) as $e) if (!empty($e['file'])) $by_path[$e['file']] = $e;
+    $registry = @include __DIR__ . '/manifest-inventory.php';
+    if (is_array($registry) && !empty($registry['scripts'])) {
+        // filename -> declaration handle, so a dependency can be expressed as the
+        // token a skin actually declares (smack-organized-mayhem), not a filename.
+        $file_to_handle = [];
+        foreach ($registry['scripts'] as $h => $m) {
+            if (!empty($m['path'])) $file_to_handle[basename($m['path'])] = $h;
+        }
+        foreach ($registry['scripts'] as $handle => $meta) {
+            $path = $meta['path'] ?? '';
+            // Skip a stale registry entry whose file isn't actually present.
+            if ($path === '' || !isset($by_path[$path])) continue;
+            $inv = $by_path[$path];
+            // Translate each dependency filename to its handle where it is itself a
+            // declarable engine; keep the filename for non-engine deps (e.g. a CSS).
+            $needs = [];
+            foreach (($inv['requires'] ?? []) as $dep) {
+                $needs[] = $file_to_handle[$dep] ?? $dep;
+            }
+            $engines[] = [
+                'handle'       => $handle,          // the require_scripts token
+                'label'        => $meta['label'] ?? '',
+                'path'         => $path,
+                'purpose'      => $inv['purpose'] ?? '',
+                'requires'     => $needs,
+                'has_settings' => !empty($meta['has_settings']),
+            ];
+        }
+    }
+
     os_ok([
         'schema_version' => $manifest['schema_version'],
-        'library'        => $manifest,
+        'engines'        => $engines,   // curated skin-facing list, with handles
+        'library'        => $manifest,  // full asset inventory (everything, incl. CSS)
         'counts'         => [
+            'engines'    => count($engines),
             'javascript' => count($manifest['javascript'] ?? []),
             'fonts'      => count($manifest['fonts'] ?? []),
             'css'        => count($manifest['css'] ?? []),

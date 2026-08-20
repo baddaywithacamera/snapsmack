@@ -32,6 +32,8 @@ let api           = null;   // Active SnapSmackAPI instance
 let activeProfile = null;
 let skinData      = null;   // Last response from api.skin()
 let postsData     = null;   // Last response from api.posts()
+let libraryData   = null;   // Shared resources library (only when state === 'present')
+let libraryState  = 'unknown'; // present | incomplete | unsupported | failed | unknown
 let _dirty        = false;
 
 // Auto-save draft every 30 seconds when dirty
@@ -237,6 +239,46 @@ async function enterApp(pingData) {
     } catch (err) {
         console.error('Failed to load skin/posts:', err);
     }
+
+    // Pull the shared resources library (never throws — returns a state object).
+    // Kept separate from skin/posts so a library problem can't block the editor,
+    // and a skin/posts problem can't hide the library state.
+    try {
+        applyLibraryState(await api.library());
+    } catch (err) {
+        applyLibraryState({ state: 'failed', message: err.message || 'Library fetch failed.' });
+    }
+}
+
+/**
+ * Record the library state and tell the user plainly what it means. Fail CLOSED:
+ * when the library isn't cleanly present, the AI is NOT handed a library it can't
+ * trust — it stays in active-skin-only mode — rather than silently designing blind.
+ */
+function applyLibraryState(lib) {
+    libraryState = lib.state;
+    libraryData  = (lib.state === 'present')
+        ? { engines: lib.engines || [], inventory: lib.library || {} }
+        : null;
+
+    if (lib.state === 'present') {
+        const c = lib.counts || {};
+        appendAiMessage(
+            `Shared library loaded (schema ${lib.schemaVersion}): ${c.engines || 0} skin engines, ${c.css || 0} CSS blocks, ${c.fonts || 0} fonts. I can design against the shared library.`,
+            'assistant'
+        );
+        return;
+    }
+
+    // Not present — say why, and be explicit that we are NOT building blind.
+    let why;
+    if (lib.state === 'incomplete')       why = "the site served an incomplete library, so I won't design against a half-built list";
+    else if (lib.state === 'unsupported') why = lib.message;
+    else                                  why = "this site didn't provide the shared library (an older install, or it's unreachable)";
+    appendAiMessage(
+        `Heads up: I couldn't load the shared engine/CSS library — ${why}. I'll still help with this skin's own colour/spacing controls, but I won't invent shared engines I can't see.`,
+        'assistant'
+    );
 }
 
 // Editable project name in toolbar
@@ -264,6 +306,7 @@ $('btn-open-browser')?.addEventListener('click', () => {
 
 $('btn-site-switch')?.addEventListener('click', () => {
     api = null; activeProfile = null; skinData = null; postsData = null;
+    libraryData = null; libraryState = 'unknown';
     showScreen('connect');
     renderProfiles();
 });
@@ -314,7 +357,7 @@ async function sendAiMessage() {
     btnAiSend.disabled = true;
 
     try {
-        const overrides = await OhSnapAI.send(text, skinData?.css_variables || {});
+        const overrides = await OhSnapAI.send(text, skinData?.css_variables || {}, libraryData);
 
         if (!overrides || !Object.keys(overrides).length) {
             appendAiMessage("I didn't find any CSS variables to change for that request. Try being more specific about colors, fonts, or spacing.", 'assistant');
