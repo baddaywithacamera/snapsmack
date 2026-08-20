@@ -26,6 +26,21 @@ foreach ([
     if (strpos($solo, $needle) === false) $failures[] = $why;
 }
 
+// A Collection row labelled "post" must contain the new post id. 539D's first
+// implementation created the post correctly, then persisted the old image id
+// here and silently recreated Audit 049's dishonest discriminator.
+$collectionStart = strpos($solo, 'INSERT IGNORE INTO snap_collection_items');
+$collectionEnd = strpos($solo, '// Sync hashtags', $collectionStart ?: 0);
+$collectionBlock = ($collectionStart !== false && $collectionEnd !== false)
+    ? substr($solo, $collectionStart, $collectionEnd - $collectionStart)
+    : '';
+if (strpos($collectionBlock, '->execute([(int)$cid, $new_post_id,') === false) {
+    $failures[] = "solo poster does not store the real post id in item_type='post' Collection rows";
+}
+if (strpos($collectionBlock, '->execute([(int)$cid, $new_img_id,') !== false) {
+    $failures[] = "solo poster still disguises an image id as a post id in Collections";
+}
+
 // The federation identity (img_slug) must NEVER be rewritten by the poster.
 if (preg_match('/UPDATE\s+snap_images\s+SET\s+img_slug/i', $solo)) {
     $failures[] = 'solo poster rewrites img_slug — that is the federation identity and must stay stable';

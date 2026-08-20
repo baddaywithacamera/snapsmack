@@ -21,11 +21,11 @@
 // browser admin page is unaffected.
 //
 // SYBU WRITE SCOPE — LOCKED (0.7.261, Sean-confirmed): the 'sybu' key's entire
-// write surface on this endpoint is ADDITIVE — it INSERTs ONE new snap_images
-// row plus its category / album / collection map rows (snap_image_cat_map,
-// snap_image_album_map, snap_collection_items). It performs NO UPDATE of an
-// existing image and NO DELETE. Do not widen this surface (no UPDATE/DELETE of
-// existing content) without re-confirming the tool's least-privilege scope.
+// write surface on this endpoint is ADDITIVE — it INSERTs one snap_images row,
+// its snap_posts container and snap_post_images pivot, plus category / album /
+// collection map rows. The only UPDATE stamps post_id on the image created by
+// this same request. It performs NO UPDATE of pre-existing content and NO DELETE.
+// Do not widen this surface without re-confirming the tool's least-privilege scope.
 $GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu'];
 $GLOBALS['SNAP_API_REQUIRE_MODE'] = 'photoblog';
 require_once 'core/api-auth.php';
@@ -675,12 +675,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             $pdo->prepare("INSERT INTO snap_image_album_map (image_id, album_id) VALUES (?, ?)")->execute([$new_img_id, (int)$aid]);
         }
 
-        // Associate image with selected collections (item_type='post').
+        // Collections contain posts. Since this solo image is now born with a
+        // real post container, store that post id — never disguise an image id
+        // as item_type='post' (the split-model defect covered by Audit 049).
         foreach ($selected_collections as $cid) {
             $max = $pdo->prepare("SELECT COALESCE(MAX(sort_order),0)+1 FROM snap_collection_items WHERE collection_id=?");
             $max->execute([(int)$cid]);
             $pdo->prepare("INSERT IGNORE INTO snap_collection_items (collection_id, item_type, item_id, sort_order) VALUES (?, 'post', ?, ?)")
-                ->execute([(int)$cid, $new_img_id, (int)$max->fetchColumn()]);
+                ->execute([(int)$cid, $new_post_id, (int)$max->fetchColumn()]);
         }
 
         // Sync hashtags from title + description + manual tags field.

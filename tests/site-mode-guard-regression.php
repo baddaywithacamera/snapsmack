@@ -29,6 +29,7 @@ function m_ok(bool $ok, string $msg): void {
 
 $src = file_get_contents(__DIR__ . '/../core/api-auth.php');
 $skin = file_get_contents(__DIR__ . '/../smack-skin.php');
+$guard = file_get_contents(__DIR__ . '/../core/mode-guard.php');
 
 // ── The auto-flip must be gated on the site being empty ─────────────────────
 m_ok(str_contains($src, '$has_content'),
@@ -59,6 +60,16 @@ m_ok(str_contains($skin, "require_once 'core/mode-guard.php'"),
      'skin administration no longer loads the content-shape guard');
 m_ok(str_contains($skin, 'No skin or mode setting was changed.'),
      'Customize refusal no longer confirms that the save was safely aborted');
+
+// Since 539D, SMACKONEOUT and GRAMOFSMACK both create post-backed single-image
+// rows. The guard must trust an established install's saved mode instead of
+// pretending the shared post/pivot shape proves which authoring mode made it.
+m_ok(str_contains($guard, "setting_key = 'site_mode'"),
+     'mode guard no longer reads the established install mode');
+m_ok(str_contains($guard, "in_array(\$saved_mode, ['photoblog', 'carousel', 'smacktalk'], true)"),
+     'mode guard no longer validates the saved mode before trusting it');
+m_ok(str_contains($guard, 'unified post tables cannot safely infer'),
+     'mode guard again claims ambiguous single-image rows reveal their authoring mode');
 
 // ── The client half: SYBU must not reach a photoblog endpoint by accident ───
 $poster = file_get_contents(__DIR__ . '/../tools/sybu/poster.py');

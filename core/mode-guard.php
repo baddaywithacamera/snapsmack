@@ -16,10 +16,11 @@
  * Used by install.php (recovery mode) today; intended to back the mode-migration
  * tool when that gets built. Read-only — never writes.
  *
- * Content signals (confirmed columns):
- *   smacktalk → snap_posts.post_type = 'longform'
- *   carousel  → snap_post_images rows (only the gram authoring/import path writes these)
- *   photoblog → snap_images with post_id IS NULL (solo images, not wrapped in a post)
+ * Content-shape inference is a last-resort fallback only. Since 0.7.539 both
+ * SMACKONEOUT and GRAMOFSMACK can legitimately store post-backed single images,
+ * those rows do not reveal which authoring mode created them. On an established
+ * install the saved site_mode is therefore the authority; guessing from shared
+ * tables would manufacture confidence the data does not contain.
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -53,10 +54,25 @@ if (!function_exists('snap_detect_content')) {
             catch (Throwable $e) { return 0; }
         };
 
+        $longform_posts = $count("SELECT COUNT(*) FROM snap_posts WHERE post_type = 'longform'");
+        $bucket_images  = $count("SELECT COUNT(DISTINCT b.image_id)
+                                  FROM snap_bucket_items b
+                                  JOIN snap_posts p ON p.id = b.post_id
+                                  WHERE p.post_type = 'longform'");
+        $bare_images    = $count("SELECT COUNT(*) FROM snap_images WHERE post_id IS NULL");
+        $multi_posts    = $count("SELECT COUNT(*) FROM (
+                                    SELECT post_id FROM snap_post_images
+                                    GROUP BY post_id HAVING COUNT(*) > 1
+                                  ) multi");
+
         $counts = [
-            'smacktalk' => $count("SELECT COUNT(*) FROM snap_posts WHERE post_type = 'longform'"),
-            'carousel'  => $count("SELECT COUNT(DISTINCT post_id) FROM snap_post_images"),
-            'photoblog' => $count("SELECT COUNT(*) FROM snap_images WHERE post_id IS NULL"),
+            // Bucket photos are evidence of longform editorial work, not bare
+            // photoblog entries. Weight them here and subtract them below.
+            'smacktalk' => $longform_posts + $bucket_images,
+            // A one-image pivot is now shared by photoblog and gram; only a
+            // multi-image post is unambiguous carousel evidence.
+            'carousel'  => $multi_posts,
+            'photoblog' => max(0, $bare_images - $bucket_images),
         ];
 
         $dominant = null;
@@ -83,6 +99,37 @@ if (!function_exists('snap_mode_conflict')) {
      * @return array{existing_mode:string, existing_count:int, target_mode:string, message:string}|null
      */
     function snap_mode_conflict(PDO $pdo, string $target_mode, int $threshold = 5): ?array {
+        // Prefer the install's explicit mode whenever it has real content. The
+        // unified post model deliberately makes single-image photoblog and gram
+        // posts structurally identical, so content-shape inference cannot safely
+        // distinguish them.
+        try {
+            $saved_mode = (string)$pdo->query(
+                "SELECT setting_val FROM snap_settings WHERE setting_key = 'site_mode' LIMIT 1"
+            )->fetchColumn();
+            $content_count = (int)$pdo->query(
+                "SELECT (SELECT COUNT(*) FROM snap_posts) + (SELECT COUNT(*) FROM snap_images)"
+            )->fetchColumn();
+            if (in_array($saved_mode, ['photoblog', 'carousel', 'smacktalk'], true)
+                && $content_count > $threshold) {
+                if ($saved_mode === $target_mode) return null;
+                return [
+                    'existing_mode'  => $saved_mode,
+                    'existing_count' => $content_count,
+                    'target_mode'    => $target_mode,
+                    'message'        => sprintf(
+                        'This established database is configured as %s, but you are setting it to %s mode. '
+                      . 'The unified post tables cannot safely infer a different origin for single-image posts. '
+                      . 'Aborting — migrate the content deliberately before changing modes.',
+                        snap_mode_label($saved_mode),
+                        snap_mode_label($target_mode)
+                    ),
+                ];
+            }
+        } catch (Throwable $e) {
+            // Missing/partial recovery schema: fall back to conservative shape probes below.
+        }
+
         $info = snap_detect_content($pdo);
         $dominant = $info['dominant'];
         if ($dominant === null) return null;                 // empty DB
