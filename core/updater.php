@@ -1,4 +1,12 @@
 <?php
+// SECAUDIT 050-B — direct-access guard: backend include, never a URL entry point.
+// Refuse a direct HTTP request regardless of web server (the Apache deny-list is
+// Apache-only and drifts). CLI and normal includes pass through untouched.
+if (PHP_SAPI !== 'cli' && !empty($_SERVER['SCRIPT_FILENAME'])
+    && @realpath($_SERVER['SCRIPT_FILENAME']) === @realpath(__FILE__)) {
+    http_response_code(404);
+    exit;
+}
 /**
  * SNAPSMACK - Core Updater Engine
  *
