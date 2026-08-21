@@ -23,6 +23,8 @@ Well-known keys (conventional, not enforced):
   google_credentials  path to the Google OAuth client-secret json (Drive)
   drive_folder_id     default Drive folder id
   hub_key             SnapSmack hub key (future hub-authoritative auth)
+  backup_hub_key      ONE fleet backup key (546D): provisioned to every site as a
+                      revocable row; SUYB authenticates every blog's backup with it
 
 Usage:
     import snap_creds
