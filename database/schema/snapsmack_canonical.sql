@@ -1113,13 +1113,31 @@ CREATE TABLE IF NOT EXISTS `snap_ap_deliveries` (
   `id`            int unsigned  NOT NULL AUTO_INCREMENT,
   `inbox_url`     varchar(500)  COLLATE utf8mb4_unicode_ci NOT NULL,
   `activity_json` mediumtext    COLLATE utf8mb4_unicode_ci NOT NULL,
+  `dedupe_key`    varchar(191)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `attempts`      int unsigned  NOT NULL DEFAULT '0',
   `next_try_at`   datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `status`        enum('queued','failed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'queued',
   `last_error`    varchar(500)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at`    datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ap_delivery_dedupe` (`dedupe_key`),
   KEY `idx_ap_due` (`status`, `next_try_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_ap_replays` (
+  `fingerprint` char(64) COLLATE ascii_bin NOT NULL,
+  `seen_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `expires_at` datetime NOT NULL,
+  PRIMARY KEY (`fingerprint`),
+  KEY `idx_ap_replay_expiry` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin;
+
+CREATE TABLE IF NOT EXISTS `snap_ap_blocks` (
+  `kind` enum('actor','domain') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reason` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_ap_block` (`kind`,`value`(190))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Federated likes (0.7.344). Kept separate from snap_likes because a remote
@@ -1216,6 +1234,7 @@ CREATE TABLE IF NOT EXISTS `snap_ap_timeline` (
                  COMMENT 'JSON array of normalized ActivityPub Hashtag names',
   `url`          varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `in_reply_to`  varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sensitive`    tinyint(1)   NOT NULL DEFAULT '0',
   `is_boost`     tinyint(1)   NOT NULL DEFAULT '0',
   `boosted_by`   varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `source`       enum('home','local','global') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'home',
@@ -1224,6 +1243,77 @@ CREATE TABLE IF NOT EXISTS `snap_ap_timeline` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_ap_tl` (`object_id`(191)),
   KEY `idx_ap_tl_src` (`source`, `published`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- One cached object may belong to more than one reader feed. This normalized
+-- membership is authoritative for 0.7.545D+; source remains compatibility data.
+CREATE TABLE IF NOT EXISTS `snap_ap_timeline_membership` (
+  `timeline_id`          int unsigned NOT NULL,
+  `feed`                 enum('home','local','global') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `discovered_via_actor` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `first_seen_at`        datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`timeline_id`, `feed`),
+  KEY `idx_ap_membership_feed` (`feed`, `first_seen_at`),
+  CONSTRAINT `fk_ap_membership_timeline` FOREIGN KEY (`timeline_id`)
+    REFERENCES `snap_ap_timeline` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- SMACKCAST HUB membership and moderation. Soft leave preserves audit identity.
+CREATE TABLE IF NOT EXISTS `snap_relay_subscribers` (
+  `id`               bigint unsigned NOT NULL AUTO_INCREMENT,
+  `actor_url`        varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `domain`           varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `inbox_url`        varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `shared_inbox_url` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `follow_id`        varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `state`            enum('pending','active','blocked','left') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `subscribed_at`    datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_seen_at`     datetime DEFAULT NULL,
+  `last_outbox_check_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_relay_sub_actor` (`actor_url`(191)),
+  KEY `idx_relay_sub_state` (`state`),
+  KEY `idx_relay_sub_domain` (`domain`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_relay_allowlist` (
+  `domain` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `note` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `added_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`domain`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_relay_blocklist` (
+  `domain` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reason` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `blocked_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`domain`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_relay_intake` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `activity_id` varchar(600) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `object_id` varchar(600) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `origin_actor_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `accepted_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_relay_activity` (`activity_id`(191)),
+  UNIQUE KEY `uq_relay_object` (`object_id`(191))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Receiver-side object fetch is separate from hub outbound delivery retry.
+CREATE TABLE IF NOT EXISTS `snap_relay_ingest_jobs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `relay_actor_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `object_id` varchar(600) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `attempts` int unsigned NOT NULL DEFAULT 0,
+  `status` enum('queued','shelved') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'queued',
+  `next_try_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_error` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_relay_ingest` (`relay_actor_url`(150), `object_id`(191)),
+  KEY `idx_relay_ingest_due` (`status`, `next_try_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Durable outbound replies to REMOTE objects: gives each reply a permalinked,
@@ -1295,6 +1385,7 @@ CREATE TABLE IF NOT EXISTS `pc_hall_of_fame` (
   `week_key` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,
   `place` tinyint unsigned NOT NULL,
   `actor_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `object_id` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `handle` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `post_url` varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `caption` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1302,6 +1393,43 @@ CREATE TABLE IF NOT EXISTS `pc_hall_of_fame` (
   `active` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_pc_hof_place` (`week_key`,`place`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pc_admissions` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `week_key` varchar(12) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `actor_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `object_id` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `admission_number` tinyint unsigned NOT NULL,
+  `status` enum('active','withdrawn','deleted','moderated') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+  `horsconcours` tinyint(1) NOT NULL DEFAULT 0,
+  `boost_state` enum('pending','sent','undone','failed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `boost_activity_id` varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `admitted_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_checked_at` datetime DEFAULT NULL,
+  `check_failures` tinyint unsigned NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_pc_admission_object` (`object_id`(191)),
+  UNIQUE KEY `uq_pc_admission_slot` (`week_key`,`actor_url`(170),`admission_number`),
+  UNIQUE KEY `uq_pc_boost_activity` (`boost_activity_id`(191)),
+  KEY `idx_pc_admission_board` (`week_key`,`status`,`admitted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pc_rounds` (
+  `week_key` varchar(12) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `window_start` datetime NOT NULL,
+  `window_end` datetime NOT NULL,
+  `finalized_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`week_key`),
+  KEY `idx_pc_round_finalize` (`finalized_at`,`window_end`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pc_blocklist` (
+  `kind` enum('actor','domain') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reason` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `blocked_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_pc_block` (`kind`,`value`(190))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `pc_engagement` (

@@ -1,4 +1,5 @@
 """
+SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 snap_errors — one friendly error dialog for the SnapSmack desktop tools.
 
 Instead of dumping a raw Python exception ("HTTPSConnectionPool ... Max retries

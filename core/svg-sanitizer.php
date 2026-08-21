@@ -1,5 +1,8 @@
 <?php
-/** Strict sanitizer for administrator-uploaded SVG branding. */
+/**
+ * SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
+ * Strict sanitizer for administrator-uploaded SVG branding.
+ */
 
 function snapsmack_sanitize_branding_svg(string $path, ?string &$error = null): ?string {
     $error = null;
@@ -64,3 +67,4 @@ function snapsmack_sanitize_branding_svg(string $path, ?string &$error = null): 
     return $dom->saveXML($dom->documentElement) ?: null;
 }
 
+// ===== SNAPSMACK EOF =====

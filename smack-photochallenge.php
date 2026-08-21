@@ -63,6 +63,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
     } elseif ($action === 'horsconcours') {
         pc_set_horsconcours($pdo, (string)($_POST['actor_url'] ?? ''), (string)($_POST['to'] ?? '') === '1');
         $msg = 'Participant updated.';
+    } elseif ($action === 'participant_state') {
+        require_once 'core/reauth.php';
+        $ra = reauth_verify($pdo,(string)($_POST['reauth_password'] ?? ''),(string)($_POST['reauth_totp'] ?? ''));
+        if (!$ra['ok']) $msg = 'Participant unchanged — ' . $ra['error'];
+        else {
+            pc_set_participant_state($pdo,$settings,(string)($_POST['actor_url'] ?? ''),(string)($_POST['state'] ?? 'left'));
+            $msg = 'Participant state updated.';
+        }
+    } elseif ($action === 'block_domain') {
+        require_once 'core/reauth.php';
+        $ra = reauth_verify($pdo,(string)($_POST['reauth_password'] ?? ''),(string)($_POST['reauth_totp'] ?? ''));
+        if (!$ra['ok']) $msg = 'Domain unchanged — ' . $ra['error'];
+        else {
+            pc_block($pdo,$settings,'domain',(string)($_POST['domain'] ?? ''),(string)($_POST['reason'] ?? ''));
+            $msg = 'Domain blocked and matching participants withdrawn.';
+        }
     }
 
     // Re-read settings so the render below reflects the write.
@@ -261,6 +277,14 @@ include 'core/sidebar.php';
     <!-- ROSTER -->
     <div class="box">
         <h3>PARTICIPANTS</h3>
+        <form method="post" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;">
+            <input type="hidden" name="action" value="block_domain">
+            <input type="text" name="domain" placeholder="example.social" required>
+            <input type="text" name="reason" placeholder="Reason">
+            <input type="password" name="reauth_password" placeholder="Password" required>
+            <input type="text" name="reauth_totp" placeholder="2FA">
+            <button class="btn-smack" type="submit">BLOCK DOMAIN</button>
+        </form>
         <?php if (!$roster): ?>
             <p class="dim">No participants yet. They join by following this blog once the challenge is ON.</p>
         <?php else: ?>
@@ -272,6 +296,16 @@ include 'core/sidebar.php';
                             <?php if ($hc): ?><span class="dim" title="hors concours — shown, never ranked"> · hc</span><?php endif; ?>
                         </td>
                         <td style="padding:8px 6px;"><span class="dim"><?php echo $esc($p['state']); ?></span></td>
+                        <td style="padding:8px 6px;">
+                            <form method="post" style="display:flex;gap:5px;flex-wrap:wrap;">
+                                <input type="hidden" name="action" value="participant_state">
+                                <input type="hidden" name="actor_url" value="<?php echo $esc($p['actor_url']); ?>">
+                                <select name="state"><option value="active">Active</option><option value="blocked">Block</option><option value="left">Remove</option></select>
+                                <input type="password" name="reauth_password" placeholder="Password" required style="width:100px;">
+                                <input type="text" name="reauth_totp" placeholder="2FA" style="width:70px;">
+                                <button class="btn-smack" type="submit">APPLY</button>
+                            </form>
+                        </td>
                         <td style="padding:8px 6px; text-align:right; white-space:nowrap;">
                             <form method="post" action="" style="display:inline;">
                                 <?php csrf_field(); ?>

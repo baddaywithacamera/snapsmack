@@ -193,6 +193,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-trigram-type.sql',
     'migrate-posts-title-text.sql',
     'migrate-drop-pimpotron.sql',
+    'migrate-ap-timeline-membership.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────

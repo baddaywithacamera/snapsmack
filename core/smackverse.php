@@ -34,6 +34,7 @@
 
 /** Is federation switched on for this install? Absent setting = OFF. */
 if (is_file(__DIR__ . '/photochallenge.php')) require_once __DIR__ . '/photochallenge.php';  // FEDISTRUCTURE photo-challenge profile — inert unless enabled
+if (is_file(__DIR__ . '/smackcast-relay.php')) require_once __DIR__ . '/smackcast-relay.php'; // FEDISTRUCTURE 4.0 hub policy — inert unless explicitly enabled
 require_once __DIR__ . '/client-ip.php';  // mandatory security boundary — SECAUDIT 035
 
 function sv_enabled(array $settings): bool {
@@ -122,14 +123,41 @@ function sv_ensure_tables(PDO $pdo): void {
         `id`            int unsigned  NOT NULL AUTO_INCREMENT,
         `inbox_url`     varchar(500)  COLLATE utf8mb4_unicode_ci NOT NULL,
         `activity_json` mediumtext    COLLATE utf8mb4_unicode_ci NOT NULL,
+        `dedupe_key`    varchar(191)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `attempts`      int unsigned  NOT NULL DEFAULT '0',
         `next_try_at`   datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `status`        enum('queued','failed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'queued',
         `last_error`    varchar(500)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `created_at`    datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_ap_delivery_dedupe` (`dedupe_key`),
         KEY `idx_ap_due` (`status`, `next_try_at`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_replays` (
+        `fingerprint` char(64) COLLATE ascii_bin NOT NULL,
+        `seen_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `expires_at` datetime NOT NULL,
+        PRIMARY KEY (`fingerprint`),
+        KEY `idx_ap_replay_expiry` (`expires_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_blocks` (
+        `kind` enum('actor','domain') COLLATE utf8mb4_unicode_ci NOT NULL,
+        `value` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `reason` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY `uq_ap_block` (`kind`,`value`(190))
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // Updated installs may already have the queue table. Canonical sync should
+    // add this column; keep the first writer safe if an edge-case sync lagged.
+    try {
+        $has_delivery_key = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='snap_ap_deliveries'
+              AND COLUMN_NAME='dedupe_key' LIMIT 1")->fetchColumn();
+        if (!$has_delivery_key) {
+            $pdo->exec("ALTER TABLE snap_ap_deliveries ADD COLUMN dedupe_key varchar(191)
+                COLLATE utf8mb4_unicode_ci DEFAULT NULL, ADD UNIQUE KEY uq_ap_delivery_dedupe (dedupe_key)");
+        }
+    } catch (Throwable $e) { /* canonical sync remains authoritative */ }
     // First-follow backfill jobs: a new/reactivated follower's catalogue backfill
     // is recorded here by the inbox Follow handler. A detached CLI worker builds
     // and paces it when available; a post-response FPM tail is the no-exec fallback.
@@ -327,6 +355,7 @@ function sv_ensure_tables(PDO $pdo): void {
         `media_video_json` mediumtext COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `url`          varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `in_reply_to`  varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `sensitive`    tinyint(1)   NOT NULL DEFAULT '0',
         `is_boost`     tinyint(1)   NOT NULL DEFAULT '0',
         `boosted_by`   varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `source`       enum('home','local','global') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'home',
@@ -336,6 +365,14 @@ function sv_ensure_tables(PDO $pdo): void {
         UNIQUE KEY `uq_ap_tl` (`object_id`(191)),
         KEY `idx_ap_tl_src` (`source`, `published`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    try {
+        $has_sensitive = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='snap_ap_timeline'
+              AND COLUMN_NAME='sensitive' LIMIT 1")->fetchColumn();
+        if (!$has_sensitive) {
+            $pdo->exec("ALTER TABLE snap_ap_timeline ADD COLUMN sensitive tinyint(1) NOT NULL DEFAULT 0 AFTER in_reply_to");
+        }
+    } catch (Throwable $e) { /* canonical sync remains authoritative */ }
     // Inbound federated VIDEO (consume-not-produce, 0.7.523). Existing installs
     // already have snap_ap_timeline, so CREATE IF NOT EXISTS above cannot add the
     // column — add it via information_schema (reliable on every MySQL, unlike
@@ -488,6 +525,40 @@ function sv_resolve_public(string $url): ?array {
 /** Boolean convenience wrapper over sv_resolve_public() for validation-only checks. */
 function sv_url_is_public(string $url): bool {
     return sv_resolve_public($url) !== null;
+}
+
+/** Signed same-origin URL for privacy-proxying already admitted remote media. */
+function sv_media_proxy_url(string $url, ?array $settings = null, int $ttl = 86400): string {
+    if ($url === '' || stripos($url, 'https://') !== 0) return $url;
+    $cfg = $settings ?? ($GLOBALS['sv_settings'] ?? $GLOBALS['settings'] ?? []);
+    $private = is_array($cfg) ? (string)($cfg['smackverse_private_key'] ?? '') : '';
+    if ($private === '') return $url;
+    $expires = time() + max(300, min(604800, $ttl));
+    $encoded = rtrim(strtr(base64_encode($url), '+/', '-_'), '=');
+    $secret = hash('sha256', "snapsmack-media-proxy\n" . $private, true);
+    $sig = hash_hmac('sha256', $encoded . "\n" . $expires, $secret);
+    return sv_base(is_array($cfg) ? $cfg : []) . 'smack-media-proxy.php?u=' . rawurlencode($encoded)
+        . '&e=' . $expires . '&s=' . $sig;
+}
+
+/**
+ * Suppress an already-verified inbox request. A duplicate is acknowledged but
+ * never processed twice. The fingerprint contains no private material.
+ */
+function sv_inbox_replay_first_seen(PDO $pdo, string $raw_body): bool {
+    $sig = sv_request_header('signature');
+    $digest = sv_request_header('digest');
+    $fp = hash('sha256', $sig . "\n" . $digest . "\n" . $raw_body);
+    try {
+        $pdo->prepare("DELETE FROM snap_ap_replays WHERE expires_at < NOW() LIMIT 200")->execute();
+        $s = $pdo->prepare("INSERT IGNORE INTO snap_ap_replays (fingerprint,expires_at)
+            VALUES (?,DATE_ADD(NOW(),INTERVAL 2 HOUR))");
+        $s->execute([$fp]);
+        return $s->rowCount() === 1;
+    } catch (Throwable $e) {
+        // The signed Date requirement still bounds replay if schema sync lags.
+        return true;
+    }
 }
 
 /**
@@ -935,12 +1006,14 @@ function sv_verify_signature(string $raw_body): ?array {
     if ($ts === false || abs(time() - $ts) > 3600) { $reject('Date outside ±1h window'); return null; }
 
     // Rebuild the signing string from the signed-header list. Require the
-    // security-critical pair (request-target)+digest; date is standard but not
-    // all signers include it, so we don't hard-fail on it (the ±1h window above
-    // already limits replay).
+    // Require the timestamp itself to be signed. Merely checking an unsigned
+    // Date lets an attacker replay a captured request forever while replacing
+    // Date with a fresh value.
     $signed_names = preg_split('/\s+/', strtolower(trim($sig['headers'])));
-    if (!in_array('(request-target)', $signed_names, true) || !in_array('digest', $signed_names, true)) {
-        $reject('signed headers missing (request-target) or digest: ' . implode(' ', $signed_names)); return null;
+    if (!in_array('(request-target)', $signed_names, true)
+        || !in_array('digest', $signed_names, true)
+        || !in_array('date', $signed_names, true)) {
+        $reject('signed headers missing (request-target), digest, or date: ' . implode(' ', $signed_names)); return null;
     }
     // Assemble the signed header lines. (request-target) is deferred: it has two
     // legitimate constructions (below) and we resolve it per candidate.
@@ -1146,9 +1219,9 @@ function sv_deliver(array $settings, string $inbox_url, string $activity_json): 
 // ─── Delivery queue ──────────────────────────────────────────────────────────
 
 /** Queue one activity JSON for a remote inbox and return its queue id. */
-function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json): int {
-    $pdo->prepare("INSERT INTO snap_ap_deliveries (inbox_url, activity_json) VALUES (?, ?)")
-        ->execute([$inbox_url, $activity_json]);
+function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json, ?string $dedupe_key = null): int {
+    $pdo->prepare("INSERT IGNORE INTO snap_ap_deliveries (inbox_url, activity_json, dedupe_key) VALUES (?, ?, ?)")
+        ->execute([$inbox_url, $activity_json, $dedupe_key]);
     return (int)$pdo->lastInsertId();
 }
 
@@ -1507,7 +1580,8 @@ function sv_timeline_has_video_col(PDO $pdo): bool {
 
 /** Ingest a remote Note into the home timeline (image + video posts, de-duped). */
 function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $handle = '',
-                            bool $is_boost = false, ?string $boosted_by = null): void {
+                            bool $is_boost = false, ?string $boosted_by = null,
+                            string $feed = 'home', ?string $discovered_via = null): void {
     $otype = $obj['type'] ?? '';
     if ($otype !== 'Note' && $otype !== 'Image') return;
     $object_id = (string)($obj['id'] ?? '');
@@ -1554,8 +1628,8 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
         mb_substr(trim(strip_tags((string)($obj['content'] ?? ''))), 0, 4000),
         json_encode($images, JSON_UNESCAPED_SLASHES),
     ];
-    $dupe = "content=VALUES(content), media_json=VALUES(media_json), "
-          . "tags_json=VALUES(tags_json), fetched_at=NOW()";
+    $dupe = "content=VALUES(content), media_json=VALUES(media_json), tags_json=VALUES(tags_json), "
+          . "url=VALUES(url), in_reply_to=VALUES(in_reply_to), sensitive=VALUES(sensitive), fetched_at=NOW()";
     if ($has_vid_col) {
         $cols[] = 'media_video_json';
         $vals[] = json_encode($videos, JSON_UNESCAPED_SLASHES);
@@ -1567,12 +1641,13 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
     $raw_url  = trim((string)($obj['url'] ?? $object_id));
     $url_sch  = strtolower((string)parse_url($raw_url, PHP_URL_SCHEME));
     $safe_url = ($url_sch === 'http' || $url_sch === 'https') ? substr($raw_url, 0, 600) : '';
-    $cols = array_merge($cols, ['tags_json', 'url', 'in_reply_to', 'is_boost', 'boosted_by', 'source', 'published']);
+    $cols = array_merge($cols, ['tags_json', 'url', 'in_reply_to', 'sensitive', 'is_boost', 'boosted_by', 'source', 'published']);
     $vals = array_merge($vals, [
         json_encode($tags, JSON_UNESCAPED_SLASHES),
         $safe_url,
         isset($obj['inReplyTo']) && is_string($obj['inReplyTo']) ? substr($obj['inReplyTo'], 0, 500) : null,
-        $is_boost ? 1 : 0, $boosted_by ? substr($boosted_by, 0, 500) : null, 'home', $pub,
+        !empty($obj['sensitive']) ? 1 : 0, $is_boost ? 1 : 0, $boosted_by ? substr($boosted_by, 0, 500) : null,
+        in_array($feed, ['home','local','global'], true) ? $feed : 'home', $pub,
     ]);
     $ph = implode(',', array_fill(0, count($cols), '?'));
     try {
@@ -1580,6 +1655,9 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
             "INSERT INTO snap_ap_timeline (" . implode(',', $cols) . ") VALUES ($ph)
              ON DUPLICATE KEY UPDATE {$dupe}"
         )->execute($vals);
+        if (function_exists('sc_relay_add_membership')) {
+            sc_relay_add_membership($pdo, $object_id, $feed, $discovered_via ?? $actor_url);
+        }
     } catch (Exception $e) { /* table may lag on a fresh install */ }
 }
 
@@ -1590,6 +1668,29 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
     if ($actor_id === '' || $act_actor !== $actor_id) return 401;
 
     $type = $activity['type'] ?? '';
+
+    // SMACKCAST HUB JOIN is a Follow of as:Public, not a follow of the hub actor.
+    if ($type === 'Follow' && function_exists('sc_relay_is_hub')
+        && sc_relay_is_hub($settings) && sc_relay_follow_is_join($activity)) {
+        $pdo->beginTransaction();
+        try {
+            $state = sc_relay_join($pdo, $settings, $activity, $actor_doc);
+            if ($state === 'active') {
+                $inbox = (string)($actor_doc['inbox'] ?? '');
+                $follow_id = (string)($activity['id'] ?? '');
+                $accept = ['@context'=>'https://www.w3.org/ns/activitystreams',
+                    'id'=>sv_actor_url($settings).'#relay-accept-'.hash('sha256',$follow_id),
+                    'type'=>'Accept','actor'=>sv_actor_url($settings),'object'=>$activity];
+                sv_queue_delivery($pdo, $inbox, json_encode($accept, JSON_UNESCAPED_SLASHES),
+                    'relay-accept:'.hash('sha256',$actor_id."\n".$follow_id));
+            }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
+        return 202;
+    }
 
     if ($type === 'Follow') {
         $object = is_array($activity['object'] ?? null)
@@ -1706,7 +1807,15 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
     if ($type === 'Undo') {
         $obj   = $activity['object'] ?? [];
         $otype = is_array($obj) ? ($obj['type'] ?? '') : '';
-        if ($otype === 'Follow') {
+        if ($otype === 'Announce' && function_exists('sc_relay_remove_membership')
+            && $actor_id === sv_relay_actor_url($settings) && sv_is_following($pdo, $actor_id)) {
+            $relayed = is_array($obj['object'] ?? null)
+                ? (string)($obj['object']['id'] ?? '') : (string)($obj['object'] ?? '');
+            if ($relayed !== '') sc_relay_remove_membership($pdo, $relayed, 'local');
+        } elseif ($otype === 'Follow') {
+            if (function_exists('sc_relay_is_hub') && sc_relay_is_hub($settings)) {
+                sc_relay_leave($pdo, $actor_id);
+            }
             $pdo->prepare("UPDATE snap_ap_followers SET is_active = 0 WHERE actor_url = ?")
                 ->execute([$actor_id]);
             if (function_exists('pc_on_leave')) {
@@ -1789,6 +1898,10 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
     if ($type === 'Create') {
         $obj = $activity['object'] ?? [];
         if (!is_array($obj) || (($obj['type'] ?? '') !== 'Note' && ($obj['type'] ?? '') !== 'Image')) return 202;
+        if (function_exists('sc_relay_is_hub') && sc_relay_is_hub($settings)) {
+            sc_relay_fanout($pdo, $settings, $activity, $actor_id);
+            return 202;
+        }
         $handle   = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
         $note_id  = (string)($obj['id'] ?? '');
         $in_reply = is_string($obj['inReplyTo'] ?? null) ? (string)$obj['inReplyTo'] : '';
@@ -1878,6 +1991,11 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
     if ($type === 'Update') {
         $obj   = $activity['object'] ?? [];
         $otype = is_array($obj) ? (string)($obj['type'] ?? '') : '';
+        if (function_exists('sc_relay_is_hub') && sc_relay_is_hub($settings)
+            && ($otype === 'Note' || $otype === 'Image')) {
+            sc_relay_refresh($pdo, $settings, $activity, $actor_id);
+            return 202;
+        }
         // Remote edited their PROFILE → refresh our cached actor so their name,
         // avatar and handle update everywhere we render them. (0.7.404)
         if ($otype === 'Person' && (string)($obj['id'] ?? '') === $actor_id) {
@@ -1902,6 +2020,9 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 if (sv_is_following($pdo, $actor_id)) {
                     $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
                     sv_ingest_timeline($pdo, $obj, $actor_id, $handle);
+                    if (function_exists('pc_reconcile_object')) {
+                        try { pc_reconcile_object($pdo, $settings, $oid); } catch (Throwable $e) {}
+                    }
                 }
             }
         }
@@ -1913,6 +2034,21 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         // remove the federated comment it produced.
         $obj = is_array($activity['object'] ?? null)
             ? ($activity['object']['id'] ?? '') : ($activity['object'] ?? '');
+        if (function_exists('sc_relay_is_hub') && sc_relay_is_hub($settings)) {
+            if ($obj === $actor_id) {
+                $q = $pdo->prepare("SELECT object_id FROM snap_relay_intake WHERE origin_actor_url=? LIMIT 500");
+                $q->execute([$actor_id]);
+                foreach ($q->fetchAll(PDO::FETCH_COLUMN) as $known_object) {
+                    sc_relay_retract($pdo, $settings, $actor_id, (string)$known_object,
+                        (string)($activity['id'] ?? $actor_id));
+                }
+                sc_relay_leave($pdo, $actor_id);
+            } elseif (is_string($obj) && $obj !== '') {
+                sc_relay_retract($pdo, $settings, $actor_id, $obj,
+                    (string)($activity['id'] ?? $obj));
+            }
+            return 202;
+        }
         if ($obj === $actor_id) {
             $pdo->prepare("UPDATE snap_ap_followers SET is_active = 0 WHERE actor_url = ?")
                 ->execute([$actor_id]);
@@ -1930,6 +2066,9 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             } catch (Exception $e) { /* table may lag */ }
             // Deleted remote post → drop it from the reader timeline too. (0.7.404)
             try {
+                if (function_exists('pc_withdraw_object')) {
+                    try { pc_withdraw_object($pdo, $settings, $obj, 'deleted'); } catch (Throwable $e) {}
+                }
                 $pdo->prepare("DELETE FROM snap_ap_timeline WHERE object_id = ? AND actor_url = ?")
                     ->execute([$obj, $actor_id]);
             } catch (Exception $e) { /* table may lag */ }
@@ -1942,6 +2081,10 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         $obj    = $activity['object'] ?? '';
         $obj_id = is_array($obj) ? (string)($obj['id'] ?? '') : (string)$obj;
         if ($obj_id !== '') {
+            if (function_exists('sc_relay_receive_announce')
+                && sc_relay_receive_announce($pdo, $settings, $actor_id, $obj_id)) {
+                return 202;
+            }
             $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
             // Boost of OUR post → notification.
             $t = sv_resolve_target($obj_id, $pdo);
@@ -2537,7 +2680,7 @@ function sv_unsend_dm(PDO $pdo, array $settings, int $dm_id): array {
 
 function sv_relay_actor_url(array $settings): string {
     $u = trim($settings['smackverse_relay_url'] ?? '');
-    return $u !== '' ? $u : 'https://smackverse.snapsmack.ca/actor';
+    return $u !== '' ? $u : 'https://photoblogs.fyi/actor';
 }
 
 /** Join the SMACKVERSE network relay. Idempotent. @return [bool ok, string msg] */
@@ -2941,7 +3084,7 @@ function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
 
     return [true, $author_inbox !== ''
         ? 'Boosted — sent to the post author and your followers.'
-        : 'Boosted to your followers.'];
+        : 'Boosted to your followers.', (string)$announce['id']];
 }
 
 /**
@@ -2953,7 +3096,7 @@ function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
  *
  * @return array [bool ok, string message]
  */
-function sv_unboost_remote(PDO $pdo, array $settings, string $object_id): array {
+function sv_unboost_remote(PDO $pdo, array $settings, string $object_id, string $announce_id = ''): array {
     $object_id = trim($object_id);
     if ($object_id === '' || stripos($object_id, 'https://') !== 0) return [false, 'That post has no usable id.'];
 
@@ -2998,6 +3141,7 @@ function sv_unboost_remote(PDO $pdo, array $settings, string $object_id): array 
             'object' => $object_id,
         ],
     ];
+    if ($announce_id !== '') $undo['object']['id'] = $announce_id;
     $json = json_encode($undo, JSON_UNESCAPED_SLASHES);
     foreach ($targets as $inbox) sv_queue_delivery($pdo, $inbox, $json);
     sv_process_deliveries($pdo, $settings, 20);
@@ -3107,19 +3251,29 @@ function sv_mark_notifications_read(PDO $pdo): void {
     catch (Exception $e) { /* table may lag */ }
 }
 
-/** Home reader from the ingested timeline, newest first (client post shape). */
-function sv_home_timeline(PDO $pdo, int $limit = 60): array {
+/** Reader feed from normalized membership, newest first (client post shape). */
+function sv_reader_timeline(PDO $pdo, string $feed = 'home', int $limit = 60): array {
+    $feed = in_array($feed, ['home','local','global'], true) ? $feed : 'home';
     try {
         $s = $pdo->prepare(
             "SELECT t.*, a.name AS actor_name, a.avatar_url
              FROM snap_ap_timeline t
+             JOIN snap_ap_timeline_membership m ON m.timeline_id=t.id AND m.feed=?
              LEFT JOIN snap_ap_actors a ON a.actor_url = t.actor_url
-             WHERE t.source = 'home'
              ORDER BY COALESCE(t.published, t.fetched_at) DESC LIMIT " . (int)$limit
         );
-        $s->execute();
+        $s->execute([$feed]);
         $rows = $s->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    } catch (Exception $e) { return []; }
+    } catch (Exception $e) {
+        // Upgrade-safe fallback until canonical sync + backfill migration land.
+        try {
+            $s = $pdo->prepare("SELECT t.*,a.name AS actor_name,a.avatar_url
+                FROM snap_ap_timeline t LEFT JOIN snap_ap_actors a ON a.actor_url=t.actor_url
+                WHERE t.source=? ORDER BY COALESCE(t.published,t.fetched_at) DESC LIMIT " . (int)$limit);
+            $s->execute([$feed]);
+            $rows = $s->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Exception $ignored) { return []; }
+    }
     $out = [];
     foreach ($rows as $r) {
         $imgs = json_decode((string)$r['media_json'], true);
@@ -3131,16 +3285,45 @@ function sv_home_timeline(PDO $pdo, int $limit = 60): array {
         if (!$imgs && !$vids) continue;
         $out[] = [
             'id' => $r['object_id'], 'url' => $r['url'], 'published' => $r['published'],
-            'text' => $r['content'], 'images' => $imgs, 'videos' => $vids, 'count' => count($imgs),
+            'text' => $r['content'],
+            'images' => array_map(fn($u) => sv_media_proxy_url((string)$u), $imgs),
+            'videos' => $vids, 'count' => count($imgs),
             'is_boost' => (int)$r['is_boost'],
             'author' => [
                 'handle' => $r['actor_handle'], 'name' => $r['actor_name'] ?: $r['actor_handle'],
-                'avatar' => $r['avatar_url'], 'id' => $r['actor_url'],
+                'avatar' => sv_media_proxy_url((string)$r['avatar_url'], null, 604800), 'id' => $r['actor_url'],
                 'host'   => parse_url((string)$r['actor_url'], PHP_URL_HOST) ?: '',
             ],
         ];
     }
     return $out;
+}
+
+function sv_home_timeline(PDO $pdo, int $limit = 60): array {
+    return sv_reader_timeline($pdo, 'home', $limit);
+}
+
+function sv_local_timeline(PDO $pdo, int $limit = 60): array {
+    return sv_reader_timeline($pdo, 'local', $limit);
+}
+
+function sv_global_timeline(PDO $pdo, int $limit = 60): array {
+    return sv_reader_timeline($pdo, 'global', $limit);
+}
+
+/** Apply the privacy proxy to normalized client rows returned by remote APIs. */
+function sv_proxy_client_items(array $items): array {
+    foreach ($items as &$item) {
+        if (!is_array($item)) continue;
+        if (isset($item['images']) && is_array($item['images'])) {
+            $item['images'] = array_map(fn($u) => sv_media_proxy_url((string)$u), $item['images']);
+        }
+        if (isset($item['author']['avatar'])) {
+            $item['author']['avatar'] = sv_media_proxy_url((string)$item['author']['avatar'], null, 604800);
+        }
+    }
+    unset($item);
+    return $items;
 }
 
 /** Local/Global discovery: a chosen instance's public timeline via REST. */
@@ -5211,13 +5394,25 @@ function sv_sweep_new_posts(PDO $pdo, array &$settings): array {
     $post_marker_id = (int)($settings['smackverse_last_post_federated_id'] ?? 0);
 
     $inboxes = sv_follower_inboxes($pdo);
+    $relay_inbox = '';
+    if (($settings['smackverse_relay_joined'] ?? '0') === '1') {
+        $rs = $pdo->prepare("SELECT inbox_url FROM snap_ap_following WHERE actor_url=? AND state='accepted' LIMIT 1");
+        $rs->execute([sv_relay_actor_url($settings)]);
+        $relay_inbox = (string)($rs->fetchColumn() ?: '');
+    }
     $units = 0; $queued = 0;
 
-    $fanout = function (?array $note) use ($pdo, $settings, $inboxes, &$queued) {
-        if ($note === null || !$inboxes) return;
+    $fanout = function (?array $note) use ($pdo, $settings, $inboxes, $relay_inbox, &$queued) {
+        if ($note === null) return;
         $create = json_encode(sv_create_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
         foreach ($inboxes as $inbox) {
             sv_queue_delivery($pdo, $inbox, $create);
+            $queued++;
+        }
+        // Best-effort relay notify is queued only after the native Note exists;
+        // relay availability never delays or rolls back publishing.
+        if ($relay_inbox !== '' && !in_array($relay_inbox, $inboxes, true)) {
+            sv_queue_delivery($pdo, $relay_inbox, $create);
             $queued++;
         }
     };

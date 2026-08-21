@@ -1,0 +1,54 @@
+<?php
+/**
+ * SMACKCAST 0.7.545D relay architecture regression.
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ */
+
+$root = dirname(__DIR__);
+$relay = file_get_contents($root . '/core/smackcast-relay.php');
+$sv = file_get_contents($root . '/core/smackverse.php');
+$schema = file_get_contents($root . '/database/schema/snapsmack_canonical.sql');
+$installer = file_get_contents($root . '/install.php');
+$cron = file_get_contents($root . '/cron-smackverse.php');
+$admin = file_get_contents($root . '/core/smackverse-admin-shared.php');
+$fail = 0;
+function sc_test(bool $ok, string $message): void {
+    global $fail;
+    echo ($ok ? "PASS " : "FAIL ") . $message . "\n";
+    if (!$ok) $fail++;
+}
+
+sc_test(str_contains($installer, "\$_SESSION['site_mode'] = 'fedistructure'"), 'FEDISTRUCTURE is durable install mode 4.0');
+sc_test(str_contains($relay, "\$settings['site_mode'] ?? '') === 'fedistructure'"), 'hub policy is install-mode gated');
+sc_test(str_contains($relay, "\$settings['node_role'] ?? '') === 'hub'"), 'hub policy is role gated');
+sc_test(str_contains($relay, "\$settings['smackcast_relay_enabled'] ?? '0') === '1'"), 'relay defaults fail closed');
+sc_test(str_contains($schema, 'snap_ap_timeline_membership'), 'normalized feed membership schema exists');
+sc_test(str_contains($schema, 'PRIMARY KEY (`timeline_id`, `feed`)'), 'one object can have HOME and LOCAL exactly once');
+sc_test(str_contains($sv, "sc_relay_add_membership(\$pdo, \$object_id, \$feed"), 'timeline ingestion records membership independent of source enum');
+sc_test(str_contains($sv, "sc_relay_receive_announce(\$pdo, \$settings, \$actor_id, \$obj_id)"), 'relay Announce has a distinct receiver path');
+sc_test(str_contains($relay, 'snap_relay_ingest_jobs'), 'origin fetch failure is durable receiver work');
+sc_test(str_contains($relay, "\$shelve ? 'shelved' : 'queued'"), 'bounded retry has an observable shelved terminal state');
+sc_test(str_contains($schema, 'snap_relay_intake'), 'hub intake has durable object/activity deduplication');
+sc_test(str_contains($schema, 'uq_ap_delivery_dedupe'), 'fan-out delivery is durable and destination-idempotent');
+sc_test(str_contains($relay, "WHERE state='active'"), 'fan-out targets active subscribers only');
+sc_test(str_contains($relay, "=== \$origin_actor) continue"), 'fan-out excludes the origin actor');
+sc_test(str_contains($relay, 'sc_relay_is_discoverable'), 'unlisted cc:Public posts are excluded from discovery relay');
+sc_test(str_contains($relay, 'sc_relay_refresh'), 'verified origin Updates refresh relayed objects');
+sc_test(str_contains($relay, 'sc_relay_retract'), 'verified origin Deletes retract prior Announces');
+sc_test(str_contains($relay, 'sc_relay_actor_blocked'), 'receiver-local actor/domain blocks gate relay ingestion');
+sc_test(str_contains($relay, "(string)(\$object['id'] ?? '') !== \$object_id"), 'dereferenced object id must equal announced id');
+sc_test(str_contains($relay, 'sc_relay_actor_owns_object'), 'origin actor and relayed object ownership are bound');
+sc_test(str_contains($sv, "in_array('date', \$signed_names, true)"), 'inbox Date must be cryptographically signed');
+sc_test(str_contains($sv, 'sv_inbox_replay_first_seen'), 'verified inbox requests have durable replay suppression');
+sc_test(str_contains($sv, "if (\$relay_inbox !== ''"), 'publisher queues a separate best-effort relay notify');
+sc_test(str_contains($cron, 'sc_relay_process_ingest_jobs'), 'cron recovers receiver-side origin fetch failures');
+sc_test(str_contains($cron, 'sc_relay_recover_member_outboxes'), 'cron separately recovers hub-missed publication notifications');
+sc_test(str_contains($relay, 'time() - 604800'), 'hub outbox recovery is bounded to seven days');
+sc_test(str_contains($admin, "['smackcast_toggle','smackcast_member']"), 'CMS-native hub controls exist');
+sc_test(str_contains($admin, 'reauth_verify'), 'hub consequential controls require password/TOTP step-up');
+sc_test(str_contains($admin, "if (\$state === 'active')"), 'manual approval atomically queues its Accept');
+sc_test(!str_contains($relay, 'notes_index') && !str_contains($relay, 'search_observation'), 'search is absent from relay slice');
+
+exit($fail === 0 ? 0 : 1);
+// ===== SNAPSMACK EOF =====

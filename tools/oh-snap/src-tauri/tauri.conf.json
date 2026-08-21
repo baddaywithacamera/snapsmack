@@ -1,12 +1,15 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Oh Snap!",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "ca.snapsmack.ohsnap",
   "build": {
+    "beforeDevCommand": "npm run contract",
+    "beforeBuildCommand": "npm run contract",
     "frontendDist": "../src"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "Oh Snap!",
@@ -20,12 +23,12 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self' customprotocol: asset:; img-src 'self' asset: data: blob: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; script-src 'self'; frame-src 'self' blob: data:"
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
     "icon": [
       "icons/icon.png",
       "icons/icon.ico"

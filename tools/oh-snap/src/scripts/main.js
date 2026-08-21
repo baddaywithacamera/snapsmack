@@ -13,8 +13,8 @@
  *   ai.js        — OhSnapAI
  *   project.js   — OhSnapProject
  *
- * Profiles are stored in localStorage so they survive app restarts.
- * Each profile: { name, url, key, connectedAt }
+ * Non-secret profile labels/URLs are stored locally. API and AI keys are
+ * session-only until an operating-system credential vault is available.
  * The active connection and skin data are held in memory only.
  */
 
@@ -81,9 +81,9 @@ const btnAiToggle  = $('btn-ai-toggle');
 // --- DIRTY STATE ---
 
 function markDirty() {
-    if (_dirty) return;
     _dirty = true;
     toolbarDirty?.classList.remove('hidden');
+    OhSnapProject?.recordCheckpoint?.('Design changed');
 
     // Auto-save draft 30 s after last change
     clearTimeout(_autoSaveTimer);
@@ -100,6 +100,16 @@ function clearDirty() {
 
 // Expose markDirty globally so controls.js can call it
 window.markDirty = markDirty;
+window.clearDirty = clearDirty;
+window.showStatus = function showStatus(message, isError = false) {
+    document.querySelector('.status-toast')?.remove();
+    const toast = document.createElement('div');
+    toast.className = 'status-toast';
+    if (isError) toast.style.borderColor = '#d96868';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4500);
+};
 
 // --- SCREEN TRANSITIONS ---
 
@@ -138,15 +148,16 @@ function renderProfiles() {
             </div>
             <button class="profile-remove" data-index="${i}" title="Remove">✕</button>`;
 
-        item.addEventListener('click', e => {
+        item.addEventListener('click', async e => {
             if (e.target.classList.contains('profile-remove')) return;
             inputUrl.value     = p.url;
-            inputKey.value     = p.key;
+            inputKey.value     = p.vault_account ? (await OhSnapVault.get(p.vault_account).catch(() => null) || '') : '';
             inputProfile.value = p.name;
         });
 
-        item.querySelector('.profile-remove').addEventListener('click', () => {
+        item.querySelector('.profile-remove').addEventListener('click', async () => {
             const updated = loadProfiles();
+            if (updated[i]?.vault_account) await OhSnapVault.remove(updated[i].vault_account).catch(() => {});
             updated.splice(i, 1);
             saveProfiles(updated);
             renderProfiles();
@@ -181,14 +192,16 @@ async function connectToSite() {
         const name    = inputProfile.value.trim() || ping.site_name || url;
         const profiles = loadProfiles();
         const existing = profiles.findIndex(p => p.url === url);
-        const profile  = { name, url, key, connectedAt: new Date().toISOString() };
+        const vaultAccount = `site:${btoa(unescape(encodeURIComponent(url))).replace(/=+$/,'')}`;
+        const stored = await OhSnapVault.set(vaultAccount, key).catch(() => false);
+        const profile  = { name, url, vault_account: stored ? vaultAccount : null, connectedAt: new Date().toISOString() };
 
         if (existing >= 0) profiles[existing] = profile;
         else               profiles.unshift(profile);
 
         saveProfiles(profiles);
         api           = client;
-        activeProfile = profile;
+        activeProfile = { ...profile, key };
         await enterApp(ping);
 
     } catch (err) {
@@ -218,36 +231,67 @@ function hideConnectError() {
 async function enterApp(pingData) {
     toolbarSiteName.textContent = pingData.site_name || activeProfile.url;
     showScreen('app');
+    $('btn-open-browser').disabled = false;
 
     try {
-        // Fetch skin data and recent posts in parallel
-        [skinData, postsData] = await Promise.all([api.skin(), api.posts()]);
+        const [catalog, recent] = await Promise.all([api.skins(), api.posts()]);
+        postsData = recent;
+        const picker = $('skin-picker');
+        picker.innerHTML = '';
+        catalog.skins.forEach(skin => {
+            const option = document.createElement('option'); option.value = skin.slug;
+            option.textContent = `${skin.name}${skin.locked ? ' — locked' : (!skin.oh_snap_ready ? ' — not OH SNAP-ready' : '')}`;
+            option.disabled = skin.locked || !skin.compatible; option.selected = skin.slug === catalog.active_skin; picker.appendChild(option);
+        });
+        const initialSkin = catalog.skins.find(s => s.active && !s.locked && s.compatible)
+            || catalog.skins.find(s => !s.locked && s.compatible && s.oh_snap_ready);
+        if (!initialSkin) throw new Error('No editable OH SNAP-ready skin is installed. Locked skins remain read-only.');
+        picker.value = initialSkin.slug;
+        picker.classList.remove('hidden');
+        await loadConnectedSkin(initialSkin.slug, pingData);
 
-        // Init controls panel
-        controlsInit(skinData);
+        picker.onchange = () => loadConnectedSkin(picker.value, pingData).catch(err => alert(err.message));
 
-        // Init srcdoc preview
-        OhSnapPreview.init(previewFrame, skinData, postsData, pingData.base_url || activeProfile.url);
-
-        // Set project context (restores draft if one exists)
-        OhSnapProject.setContext(skinData.skin_slug || '');
-
-        // Update project name in toolbar
         const nameEl = $('toolbar-project-name');
         if (nameEl) nameEl.contentEditable = 'true';
 
     } catch (err) {
         console.error('Failed to load skin/posts:', err);
+        showStatus(`Could not load connected skins: ${err.message}`, true);
     }
 
-    // Pull the shared resources library (never throws — returns a state object).
-    // Kept separate from skin/posts so a library problem can't block the editor,
-    // and a skin/posts problem can't hide the library state.
     try {
         applyLibraryState(await api.library());
     } catch (err) {
         applyLibraryState({ state: 'failed', message: err.message || 'Library fetch failed.' });
     }
+}
+
+async function loadConnectedSkin(slug, pingData) {
+        skinData = await api.skin(slug);
+        $('btn-push').disabled = skinData.oh_snap_ready !== true;
+        $('btn-push').title = skinData.oh_snap_ready === true
+            ? `Push variable overrides to ${skinData.skin_slug}`
+            : 'This skin has not declared OH SNAP compatibility';
+
+        controlsInit(skinData);
+        OhSnapPreview.init(previewFrame, skinData, postsData, pingData.base_url || activeProfile.url);
+        OhSnapProject.setContext(skinData.skin_slug || '', {
+            source: 'connected',
+            base_css: skinData.style_css || '',
+            preview_content: {
+                site_name: pingData.site_name || 'Preview Site',
+                tagline: pingData.tagline || '',
+                posts: postsData.posts || [],
+            },
+            connected_source: {
+                url: activeProfile.url,
+                site_name: pingData.site_name || activeProfile.url,
+                skin_slug: skinData.skin_slug || '',
+                skin_version: skinData.manifest?.version || '',
+                oh_snap_ready: skinData.oh_snap_ready === true,
+            },
+        });
 }
 
 /**
@@ -295,11 +339,58 @@ $('toolbar-project-name')?.addEventListener('keydown', e => {
 // --- TOOLBAR BUTTONS ---
 
 $('btn-save')?.addEventListener('click', () => OhSnapProject.save());
+$('btn-open')?.addEventListener('click', async () => {
+    const loaded = await OhSnapProject.load();
+    if (loaded) enterOfflineProject(loaded, false);
+});
 $('btn-export')?.addEventListener('click', () => OhSnapProject.exportCss());
+$('btn-export-package')?.addEventListener('click', () => OhSnapProject.exportPackage());
 $('btn-push')?.addEventListener('click', () => OhSnapProject.pushToSite(api));
 $('btn-settings')?.addEventListener('click', () => OhSnapSettings.openModal());
 $('btn-open-browser')?.addEventListener('click', () => {
     if (activeProfile?.url) window.open(activeProfile.url, '_blank');
+});
+$('btn-undo')?.addEventListener('click', () => OhSnapProject.undo());
+$('btn-redo')?.addEventListener('click', () => OhSnapProject.redo());
+$('btn-apply-fixture')?.addEventListener('click', () => {
+    OhSnapProject.updatePreviewContent({ site_name: $('fixture-site-name').value.trim() || 'Preview Site', lead_title: $('fixture-post-title').value.trim(), lead_caption: $('fixture-caption').value.trim() }, Number($('fixture-count').value));
+});
+$('btn-validate')?.addEventListener('click', () => OhSnapProject.validateProject());
+window.addEventListener('ohsnap-validation', event => {
+    const out = $('diagnostics-list'), { errors = [], warnings = [] } = event.detail || {};
+    out.innerHTML = '';
+    const title = document.createElement('strong'); title.textContent = errors.length ? `${errors.length} blocking error(s)` : 'Validation passed'; out.appendChild(title);
+    [...errors.map(x => `ERROR — ${x}`), ...warnings.map(x => `WARNING — ${x}`)].forEach(text => { const row = document.createElement('div'); row.className = 'history-entry'; row.textContent = text; out.appendChild(row); });
+});
+
+function offlineSkin(modeName) {
+    const contract = window.OH_SNAP_CONTRACT;
+    const mode = contract?.modes?.[modeName];
+    if (!mode) throw new Error(`The bundled skin contract does not support ${modeName}.`);
+    return { skin_slug: `ohsnap-${mode.profile}`, oh_snap_ready: true, manifest: { name: mode.label, version: contract.contract_schema, oh_snap_ready: true }, style_css: mode.shell_css, css_variables: mode.variables, contract_mode: mode };
+}
+
+function enterOfflineProject(existing = null, create = true) {
+    const modeName = existing?.mode || $('offline-mode')?.value || 'SMACKONEOUT';
+    const kit = offlineSkin(modeName);
+    api = null; activeProfile = null; skinData = kit; postsData = null;
+    showScreen('app'); toolbarSiteName.innerHTML = '<span class="offline-badge">Offline project</span>';
+    $('skin-picker').classList.add('hidden');
+    controlsInit(kit);
+    const project = create ? OhSnapProject.newProject({ mode: modeName, skin_slug: kit.skin_slug, base_css: kit.style_css, contract: { schema_version: window.OH_SNAP_CONTRACT.contract_schema, inventory_schema: window.OH_SNAP_CONTRACT.source_inventory_schema, source: 'bundled-server-contract' } }) : existing;
+    controlsApplyExternal(project.overrides || {});
+    OhSnapPreview.initOffline(previewFrame, project);
+    toolbarProjectName.contentEditable = 'true';
+    $('btn-push').disabled = true;
+    $('btn-open-browser').disabled = true;
+    appendAiMessage('Offline kit loaded. Manual controls, preview, save, open, history, and CSS export are available without a connection.', 'assistant');
+}
+
+$('btn-new-offline')?.addEventListener('click', () => enterOfflineProject());
+$('btn-open-project')?.addEventListener('click', async () => {
+    controlsInit(offlineSkin($('offline-mode')?.value || 'SMACKONEOUT'));
+    const loaded = await OhSnapProject.load();
+    if (loaded) enterOfflineProject(loaded, false);
 });
 
 // --- SITE SWITCH ---
@@ -357,20 +448,25 @@ async function sendAiMessage() {
     btnAiSend.disabled = true;
 
     try {
-        const overrides = await OhSnapAI.send(text, skinData?.css_variables || {}, libraryData);
+        const reference = await readReferenceImage($('ai-reference')?.files?.[0]);
+        const result = await OhSnapAI.send(text, skinData?.css_variables || {}, libraryData || { engines: window.OH_SNAP_CONTRACT?.asset_inventory?.javascript || [], inventory: window.OH_SNAP_CONTRACT?.asset_inventory || {} }, reference);
+        const overrides = result?.overrides || {};
 
-        if (!overrides || !Object.keys(overrides).length) {
+        if (!Object.keys(overrides).length && !result?.user_css && !result?.required_scripts?.length && !result?.required_styles?.length) {
             appendAiMessage("I didn't find any CSS variables to change for that request. Try being more specific about colors, fonts, or spacing.", 'assistant');
         } else {
-            // Apply the overrides from AI
-            controlsApplyExternal(overrides);
-            markDirty();
+            const changeSummary = `${Object.keys(overrides).length} variables, ${result.user_css ? 'custom CSS, ' : ''}${(result.required_scripts?.length || 0) + (result.required_styles?.length || 0)} dependencies`;
+            if (!confirm(`Review AI proposal\n\n${result.summary || 'Design change'}\n${changeSummary}\n\nApply this as an undoable checkpoint?`)) {
+                appendAiMessage('Proposal discarded; the project was not changed.', 'assistant');
+                return;
+            }
+            const validation = OhSnapProject.applyGeneration(result);
 
             const count  = Object.keys(overrides).length;
             const sample = Object.entries(overrides).slice(0, 3)
                 .map(([k, v]) => `${k}: ${v}`).join(', ');
             appendAiMessage(
-                `Applied ${count} change${count !== 1 ? 's' : ''}: ${sample}${count > 3 ? '…' : ''}`,
+                `Applied ${result.summary || `${count} change${count !== 1 ? 's' : ''}`}: ${sample}${count > 3 ? '…' : ''}${validation.errors.length ? ` — ${validation.errors.length} validation error(s) remain.` : ''}`,
                 'assistant'
             );
         }
@@ -382,6 +478,13 @@ async function sendAiMessage() {
         btnAiSend.disabled = false;
         aiInput.focus();
     }
+}
+
+function readReferenceImage(file) {
+    if (!file) return Promise.resolve(null);
+    if (!['image/jpeg','image/png','image/webp'].includes(file.type)) return Promise.reject(new Error('Reference image must be JPEG, PNG, or WebP.'));
+    if (file.size > 5_000_000) return Promise.reject(new Error('Reference image must be 5 MB or smaller.'));
+    return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve({ type:file.type, base64:String(reader.result).split(',')[1] }); reader.onerror = () => reject(new Error('Could not read reference image.')); reader.readAsDataURL(file); });
 }
 
 function appendAiMessage(text, role) {
@@ -414,6 +517,7 @@ document.addEventListener('keydown', e => {
 // --- INIT ---
 
 renderProfiles();
+OhSnapSettings.hydrateVault().catch(err => console.warn('Credential vault unavailable:', err));
 showScreen('connect');
 
 // --- UTILS ---

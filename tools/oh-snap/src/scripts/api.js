@@ -82,9 +82,12 @@ class SnapSmackAPI {
         return this._get('ohsnap/media');
     }
 
+    /** Installed skin picker metadata. */
+    async skins() { return this._get('ohsnap/skins'); }
+
     /** Active skin files. Returns { skin_slug, manifest, style_css, css_variables, oh_snap_ready }. */
-    async skin() {
-        return this._get('ohsnap/skin');
+    async skin(slug = '') {
+        return this._get(`ohsnap/skin${slug ? `&slug=${encodeURIComponent(slug)}` : ''}`);
     }
 
     /**
@@ -161,7 +164,7 @@ class SnapSmackAPI {
      *  Changes are stored in snap_settings and injected at render time.
      *  @param {Object} vars  { '--css-var-name': 'value', ... }
      *  Returns { skin_slug, vars_count, stored_key }. */
-    async pushVars(vars) {
+    async pushVars(skinSlug, vars) {
         const res = await fetch(this._endpoint('ohsnap/skin/vars'), {
             method: 'POST',
             headers: {
@@ -169,7 +172,7 @@ class SnapSmackAPI {
                 'Content-Type':  'application/json',
                 'Accept':        'application/json',
             },
-            body: JSON.stringify({ vars }),
+            body: JSON.stringify({ skin_slug: skinSlug, vars }),
         });
         const body = await res.json();
         if (!res.ok || !body.ok) {

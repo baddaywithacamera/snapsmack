@@ -37,7 +37,7 @@ function pc_tag(array $settings): string {
     return $t !== '' ? $t : 'photofri';
 }
 
-/** Display timezone retained for admin copy; qualification uses global UTC. */
+/** Display timezone retained for admin copy; qualification uses the shared global UTC window. */
 function pc_tz(array $settings): DateTimeZone {
     $tz = trim((string)($settings['photochallenge_tz'] ?? ''));
     try { return $tz !== '' ? new DateTimeZone($tz) : new DateTimeZone(date_default_timezone_get()); }
@@ -45,7 +45,7 @@ function pc_tz(array $settings): DateTimeZone {
 }
 
 /**
- * The 50-hour sliding Photo-Friday window for a given moment.
+ * The shared 50-hour global Photo-Friday window for a given moment.
  * Opens Thursday 10:00 UTC (Friday 00:00 in UTC+14) and closes Saturday
  * 12:00 UTC (Friday 24:00 in UTC-12).
  *
@@ -98,6 +98,7 @@ function pc_ensure_tables(PDO $pdo): void {
             week_key    varchar(12)  NOT NULL,
             place       tinyint      NOT NULL DEFAULT 1,
             actor_url   varchar(500) NOT NULL,
+            object_id   varchar(500) DEFAULT NULL,
             handle      varchar(190) NOT NULL DEFAULT '',
             post_url    varchar(600) NOT NULL,
             caption     varchar(500) NOT NULL DEFAULT '',
@@ -107,6 +108,11 @@ function pc_ensure_tables(PDO $pdo): void {
             UNIQUE KEY uq_week_place (week_key, place)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
+    try {
+        $has_hof_object = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pc_hall_of_fame' AND COLUMN_NAME='object_id' LIMIT 1")->fetchColumn();
+        if (!$has_hof_object) $pdo->exec("ALTER TABLE pc_hall_of_fame ADD COLUMN object_id varchar(500) DEFAULT NULL AFTER actor_url");
+    } catch (Throwable $e) {}
     // Durable per-entry engagement tally. The CMS inbox log (snap_ap_inbox_log)
     // is a 500-row diagnostic RING — it cannot be trusted to survive a busy
     // Friday, so ranking gets its own append-only, dedup-per-actor table. One
@@ -134,6 +140,61 @@ function pc_ensure_tables(PDO $pdo): void {
             KEY idx_pc_boost_state (state)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS pc_admissions (
+            id bigint unsigned NOT NULL AUTO_INCREMENT,
+            week_key varchar(12) NOT NULL, actor_url varchar(500) NOT NULL,
+            object_id varchar(500) NOT NULL, admission_number tinyint unsigned NOT NULL,
+            status enum('active','withdrawn','deleted','moderated') NOT NULL DEFAULT 'active',
+            horsconcours tinyint(1) NOT NULL DEFAULT 0,
+            boost_state enum('pending','sent','undone','failed') NOT NULL DEFAULT 'pending',
+            boost_activity_id varchar(600) DEFAULT NULL,
+            admitted_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_checked_at datetime DEFAULT NULL, check_failures tinyint unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY(id), UNIQUE KEY uq_pc_admission_object(object_id(191)),
+            UNIQUE KEY uq_pc_admission_slot(week_key,actor_url(170),admission_number),
+            UNIQUE KEY uq_pc_boost_activity(boost_activity_id(191)),
+            KEY idx_pc_admission_board(week_key,status,admitted_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS pc_rounds (
+            week_key varchar(12) NOT NULL, window_start datetime NOT NULL, window_end datetime NOT NULL,
+            finalized_at datetime DEFAULT NULL, PRIMARY KEY(week_key),
+            KEY idx_pc_round_finalize(finalized_at,window_end)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
+    try {
+        $has_boost_id = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pc_admissions' AND COLUMN_NAME='boost_activity_id' LIMIT 1")->fetchColumn();
+        if (!$has_boost_id) $pdo->exec("ALTER TABLE pc_admissions ADD COLUMN boost_activity_id varchar(600) DEFAULT NULL AFTER boost_state, ADD UNIQUE KEY uq_pc_boost_activity(boost_activity_id(191))");
+    } catch (Throwable $e) {}
+    $pdo->exec("CREATE TABLE IF NOT EXISTS pc_blocklist (
+        kind enum('actor','domain') NOT NULL,value varchar(500) NOT NULL,reason varchar(255) DEFAULT NULL,
+        blocked_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY uq_pc_block(kind,value(190))
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+}
+
+function pc_is_blocked(PDO $pdo, string $actor_url): bool {
+    $domain = strtolower((string)(parse_url($actor_url,PHP_URL_HOST) ?: ''));
+    $q = $pdo->prepare("SELECT 1 FROM pc_blocklist WHERE (kind='actor' AND value=?) OR (kind='domain' AND value=?) LIMIT 1");
+    $q->execute([$actor_url,$domain]);
+    return (bool)$q->fetchColumn();
+}
+
+function pc_block(PDO $pdo, array $settings, string $kind, string $value, string $reason = ''): void {
+    if (!in_array($kind,['actor','domain'],true)) return;
+    $value = $kind === 'domain' ? strtolower(trim($value)) : trim($value);
+    if ($value === '') return;
+    $pdo->prepare("INSERT INTO pc_blocklist(kind,value,reason) VALUES(?,?,?)
+        ON DUPLICATE KEY UPDATE reason=VALUES(reason),blocked_at=NOW()")
+        ->execute([$kind,$value,substr($reason,0,255)]);
+    if ($kind === 'actor') pc_set_participant_state($pdo,$settings,$value,'blocked');
+    else {
+        $q = $pdo->prepare("SELECT actor_url FROM pc_participants WHERE LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(actor_url,'/',3),'/',-1))=?");
+        $q->execute([$value]);
+        foreach ($q->fetchAll(PDO::FETCH_COLUMN) as $actor) pc_set_participant_state($pdo,$settings,(string)$actor,'blocked');
+    }
 }
 
 /**
@@ -147,6 +208,7 @@ function pc_on_follow(PDO $pdo, array $settings, array $actor_doc): void {
     $actor_id = (string)($actor_doc['id'] ?? '');
     if ($actor_id === '') return;
     pc_ensure_tables($pdo);
+    if (pc_is_blocked($pdo,$actor_id)) return;
 
     $handle = ($actor_doc['preferredUsername'] ?? '')
             . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
@@ -172,7 +234,19 @@ function pc_on_leave(PDO $pdo, array $settings, string $actor_url): void {
     try {
         $pdo->prepare("UPDATE pc_participants SET state='left' WHERE actor_url = ?")
             ->execute([$actor_url]);
+        pc_withdraw_actor_admissions($pdo, $settings, $actor_url, 'withdrawn');
+        if (function_exists('sv_unfollow_actor')) {
+            $f = $pdo->prepare("SELECT id FROM snap_ap_following WHERE actor_url=? LIMIT 1");
+            $f->execute([$actor_url]); $fid = (int)$f->fetchColumn();
+            if ($fid > 0) sv_unfollow_actor($pdo, $settings, $fid);
+        }
     } catch (Throwable $e) {}
+}
+
+function pc_set_participant_state(PDO $pdo, array $settings, string $actor_url, string $state): void {
+    if (!in_array($state, ['active','blocked','left'], true) || $actor_url === '') return;
+    $pdo->prepare("UPDATE pc_participants SET state=? WHERE actor_url=?")->execute([$state,$actor_url]);
+    if ($state !== 'active') pc_withdraw_actor_admissions($pdo,$settings,$actor_url,$state === 'blocked' ? 'moderated' : 'withdrawn');
 }
 
 /** Set/clear a participant's #horsconcours opt-out (show on board, never ranked). */
@@ -181,6 +255,168 @@ function pc_set_horsconcours(PDO $pdo, string $actor_url, bool $on): void {
         $pdo->prepare("UPDATE pc_participants SET horsconcours = ? WHERE actor_url = ?")
             ->execute([$on ? 1 : 0, $actor_url]);
     } catch (Throwable $e) {}
+}
+
+/** Allocate one immutable weekly slot under the participant-row lock. */
+function pc_admit_object(PDO $pdo, array $settings, string $object_id): ?array {
+    $win = pc_window($settings);
+    if (!$win['open']) return null;
+    $tag = pc_tag($settings);
+    $q = $pdo->prepare(
+        "SELECT t.*,p.state AS participant_state,p.horsconcours AS participant_hc
+           FROM snap_ap_timeline t JOIN pc_participants p ON p.actor_url=t.actor_url
+          WHERE t.object_id=? LIMIT 1"
+    );
+    $q->execute([$object_id]);
+    $row = $q->fetch(PDO::FETCH_ASSOC);
+    if (!$row || ($row['participant_state'] ?? '') !== 'active' || (int)$row['is_boost'] !== 0
+        || pc_is_blocked($pdo,(string)($row['actor_url'] ?? ''))
+        || !empty($row['in_reply_to']) || (int)($row['sensitive'] ?? 0) !== 0) return null;
+    $published = (string)($row['published'] ?? '');
+    if ($published < $win['start'] || $published >= $win['end']) return null;
+    $tags = json_decode((string)($row['tags_json'] ?? '[]'), true) ?: [];
+    if (!in_array($tag, $tags, true)) return null;
+    $media = json_decode((string)($row['media_json'] ?? '[]'), true) ?: [];
+    $videos = json_decode((string)($row['media_video_json'] ?? '[]'), true) ?: [];
+    if (count($media) !== 1 || $videos || !is_string($media[0]) || trim($media[0]) === '') return null;
+    $actor = (string)$row['actor_url'];
+    $hc = ((int)($row['participant_hc'] ?? 0) === 1 || in_array('horsconcours', $tags, true)) ? 1 : 0;
+
+    $pdo->beginTransaction();
+    try {
+        $lock = $pdo->prepare("SELECT state FROM pc_participants WHERE actor_url=? FOR UPDATE");
+        $lock->execute([$actor]);
+        if ($lock->fetchColumn() !== 'active') { $pdo->rollBack(); return null; }
+        $oldq = $pdo->prepare("SELECT * FROM pc_admissions WHERE object_id=? LIMIT 1 FOR UPDATE");
+        $oldq->execute([$object_id]);
+        $old = $oldq->fetch(PDO::FETCH_ASSOC);
+        if ($old) {
+            if (($old['week_key'] ?? '') === $win['week_key'] && ($old['status'] ?? '') === 'withdrawn') {
+                $pdo->prepare("UPDATE pc_admissions SET status='active',horsconcours=?,boost_state=IF(boost_state='undone','pending',boost_state) WHERE id=?")
+                    ->execute([$hc, $old['id']]);
+                $old['status'] = 'active'; $old['horsconcours'] = $hc;
+            }
+            $pdo->commit(); return $old;
+        }
+        $countq = $pdo->prepare("SELECT COALESCE(MAX(admission_number),0) FROM pc_admissions WHERE week_key=? AND actor_url=? FOR UPDATE");
+        $countq->execute([$win['week_key'], $actor]);
+        $slot = (int)$countq->fetchColumn() + 1;
+        if ($slot > 5) { $pdo->commit(); return null; }
+        $pdo->prepare("INSERT INTO pc_admissions
+            (week_key,actor_url,object_id,admission_number,horsconcours,boost_state)
+            VALUES (?,?,?,?,?,'pending')")->execute([$win['week_key'],$actor,$object_id,$slot,$hc]);
+        $pdo->prepare("INSERT INTO pc_rounds(week_key,window_start,window_end) VALUES(?,?,?)
+            ON DUPLICATE KEY UPDATE window_start=VALUES(window_start),window_end=VALUES(window_end)")
+            ->execute([$win['week_key'],$win['start'],$win['end']]);
+        $id = (int)$pdo->lastInsertId();
+        $pdo->commit();
+        return ['id'=>$id,'week_key'=>$win['week_key'],'actor_url'=>$actor,'object_id'=>$object_id,
+            'admission_number'=>$slot,'status'=>'active','horsconcours'=>$hc,'boost_state'=>'pending'];
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+}
+
+/** Withdraw current admissions without freeing their immutable slot. */
+function pc_withdraw_actor_admissions(PDO $pdo, array $settings, string $actor_url, string $status = 'withdrawn'): void {
+    if (!in_array($status, ['withdrawn','moderated'], true)) $status = 'withdrawn';
+    $q = $pdo->prepare("SELECT object_id,boost_state,boost_activity_id FROM pc_admissions WHERE actor_url=? AND status='active'");
+    $q->execute([$actor_url]);
+    foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $entry) {
+        if (($entry['boost_state'] ?? '') === 'sent' && function_exists('sv_unboost_remote')) {
+            try { sv_unboost_remote($pdo,$settings,(string)$entry['object_id'],(string)($entry['boost_activity_id'] ?? '')); } catch (Throwable $e) {}
+        }
+        $pdo->prepare("UPDATE pc_admissions SET status=?,boost_state=IF(boost_state='sent','undone',boost_state) WHERE object_id=?")
+            ->execute([$status, $entry['object_id']]);
+    }
+}
+
+function pc_withdraw_object(PDO $pdo, array $settings, string $object_id, string $status = 'withdrawn'): void {
+    if (!in_array($status, ['withdrawn','deleted','moderated'], true)) $status = 'withdrawn';
+    $q = $pdo->prepare("SELECT boost_state,boost_activity_id FROM pc_admissions WHERE object_id=? AND status='active' LIMIT 1");
+    $q->execute([$object_id]);
+    $boost = $q->fetch(PDO::FETCH_ASSOC);
+    if (!$boost) return;
+    if (($boost['boost_state'] ?? '') === 'sent' && function_exists('sv_unboost_remote')) {
+        try { sv_unboost_remote($pdo,$settings,$object_id,(string)($boost['boost_activity_id'] ?? '')); } catch (Throwable $e) {}
+    }
+    $pdo->prepare("UPDATE pc_admissions SET status=?,boost_state=IF(boost_state='sent','undone',boost_state) WHERE object_id=?")
+        ->execute([$status, $object_id]);
+    if (in_array($status, ['deleted','moderated'], true)) {
+        $pdo->prepare("UPDATE pc_hall_of_fame SET active=0 WHERE object_id=?")->execute([$object_id]);
+    }
+}
+
+/** Apply Update/tag/CW lifecycle without reallocating the consumed slot. */
+function pc_reconcile_object(PDO $pdo, array $settings, string $object_id): void {
+    if (!pc_enabled($settings) || $object_id === '') return;
+    pc_ensure_tables($pdo);
+    $q = $pdo->prepare("SELECT t.*,a.id admission_id,a.status admission_status,a.week_key
+        FROM snap_ap_timeline t LEFT JOIN pc_admissions a ON a.object_id=t.object_id
+        WHERE t.object_id=? LIMIT 1");
+    $q->execute([$object_id]);
+    $row = $q->fetch(PDO::FETCH_ASSOC);
+    if (!$row) return;
+    $tags = json_decode((string)($row['tags_json'] ?? '[]'), true) ?: [];
+    $media = json_decode((string)($row['media_json'] ?? '[]'), true) ?: [];
+    $videos = json_decode((string)($row['media_video_json'] ?? '[]'), true) ?: [];
+    $valid = in_array(pc_tag($settings), $tags, true) && count($media) === 1 && !$videos
+        && empty($row['in_reply_to']) && (int)($row['sensitive'] ?? 0) === 0 && (int)$row['is_boost'] === 0;
+    if (!$row['admission_id']) {
+        if ($valid) pc_maybe_boost_entry($pdo, $settings, $object_id);
+        return;
+    }
+    if (!$valid) { pc_withdraw_object($pdo, $settings, $object_id, (int)($row['sensitive'] ?? 0) ? 'moderated' : 'withdrawn'); return; }
+    $round = $pdo->prepare("SELECT finalized_at FROM pc_rounds WHERE week_key=? LIMIT 1");
+    $round->execute([$row['week_key']]);
+    $finalized = (string)($round->fetchColumn() ?: '');
+    $hc = in_array('horsconcours', $tags, true) ? 1 : 0;
+    if ($hc || $finalized === '') {
+        $pdo->prepare("UPDATE pc_admissions SET horsconcours=? WHERE id=?")->execute([$hc, $row['admission_id']]);
+    }
+    if (($row['admission_status'] ?? '') === 'withdrawn' && $finalized === '') {
+        $win = pc_window($settings);
+        if ($win['open'] && $win['week_key'] === $row['week_key']) pc_maybe_boost_entry($pdo, $settings, $object_id);
+    }
+}
+
+/** Garden pointers, retry boosts, and finalize ended rounds. */
+function pc_cron_maintain(PDO $pdo, array &$settings, int $limit = 25): array {
+    if (!pc_enabled($settings)) return [0,0,0];
+    pc_ensure_tables($pdo);
+    $finalized = 0; $checked = 0; $withdrawn = 0;
+    $rounds = $pdo->query("SELECT * FROM pc_rounds WHERE finalized_at IS NULL AND window_end<=NOW() ORDER BY window_end LIMIT 4")
+        ->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rounds as $round) {
+        $win = ['start'=>$round['window_start'],'end'=>$round['window_end'],'open'=>false,
+            'week_key'=>$round['week_key'],'label'=>$round['week_key']];
+        pc_finalize_week($pdo, $settings, $win, 3);
+        $pdo->prepare("UPDATE pc_rounds SET finalized_at=NOW() WHERE week_key=? AND finalized_at IS NULL")
+            ->execute([$round['week_key']]);
+        $finalized++;
+    }
+    $limit = max(1, min(100, $limit));
+    $rows = $pdo->query("SELECT * FROM pc_admissions WHERE status='active'
+        ORDER BY COALESCE(last_checked_at,'1970-01-01'),id LIMIT {$limit}")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as $admission) {
+        $object = function_exists('sv_fetch_ap') ? sv_fetch_ap((string)$admission['object_id'], $settings) : null;
+        if (!is_array($object)) {
+            $failures = (int)$admission['check_failures'] + 1;
+            $pdo->prepare("UPDATE pc_admissions SET last_checked_at=NOW(),check_failures=? WHERE id=?")
+                ->execute([$failures,$admission['id']]);
+            if ($failures >= 3) { pc_withdraw_object($pdo,$settings,(string)$admission['object_id'],'deleted'); $withdrawn++; }
+            $checked++; continue;
+        }
+        $attr = is_array($object['attributedTo'] ?? null) ? (string)($object['attributedTo']['id'] ?? '') : (string)($object['attributedTo'] ?? '');
+        if ($attr !== $admission['actor_url']) { pc_withdraw_object($pdo,$settings,(string)$admission['object_id'],'moderated'); $withdrawn++; $checked++; continue; }
+        sv_ingest_timeline($pdo,$object,$attr,'');
+        $pdo->prepare("UPDATE pc_admissions SET last_checked_at=NOW(),check_failures=0 WHERE id=?")->execute([$admission['id']]);
+        pc_reconcile_object($pdo,$settings,(string)$admission['object_id']);
+        if (($admission['boost_state'] ?? '') === 'failed') pc_maybe_boost_entry($pdo,$settings,(string)$admission['object_id']);
+        $checked++;
+    }
+    return [$finalized,$checked,$withdrawn];
 }
 
 /**
@@ -199,31 +435,21 @@ function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit =
     $rows = [];
     try {
         $st = $pdo->prepare(
-            "SELECT t.object_id, t.actor_url, t.actor_handle, t.content, t.media_json, t.tags_json, t.url,
-                    t.published, t.is_boost,
-                    p.horsconcours, p.state AS pstate
-               FROM snap_ap_timeline t
-               JOIN pc_participants p ON p.actor_url = t.actor_url
-                                     AND p.state = 'active'
-              WHERE t.published >= :start AND t.published < :end
-                AND t.is_boost = 0
-           ORDER BY t.published ASC
-              LIMIT " . min(1000, max($limit * 5, $limit))
+            "SELECT t.object_id,t.actor_url,t.actor_handle,t.content,t.media_json,t.tags_json,t.url,
+                    t.published,t.is_boost,a.horsconcours,p.state AS pstate
+               FROM pc_admissions a
+               JOIN snap_ap_timeline t ON t.object_id=a.object_id
+               JOIN pc_participants p ON p.actor_url=a.actor_url AND p.state='active'
+              WHERE a.week_key=:week_key AND a.status='active'
+           ORDER BY a.admission_number ASC,a.admitted_at ASC LIMIT " . min(1000, max($limit, 1))
         );
-        $st->execute([
-            ':start' => $win['start'],
-            ':end'   => $win['end'],
-        ]);
-        $per_actor = [];
+        $st->execute([':week_key' => $win['week_key']]);
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
             if (($r['pstate'] ?? '') !== 'active') continue;
             $tags = json_decode((string)($r['tags_json'] ?? '[]'), true) ?: [];
             if (!in_array($tag, $tags, true)) continue;
             $media = json_decode((string)($r['media_json'] ?? '[]'), true) ?: [];
             if (count($media) !== 1 || !is_string($media[0]) || trim($media[0]) === '') continue;
-            $actor = (string)($r['actor_url'] ?? '');
-            $per_actor[$actor] = ($per_actor[$actor] ?? 0) + 1;
-            if ($per_actor[$actor] > 5) continue;
             $rows[] = [
                 'object_id'    => (string)($r['object_id'] ?? ''),   // AP object id (engagement key)
                 'handle'       => (string)($r['actor_handle'] ?? ''),
@@ -233,8 +459,7 @@ function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit =
                 'excerpt'      => mb_substr((string)($r['content'] ?? ''), 0, 240),
                 'published'    => (string)($r['published'] ?? ''),
                 'is_boost'     => ((int)($r['is_boost'] ?? 0)) === 1,
-                'horsconcours' => ((int)($r['horsconcours'] ?? 0)) === 1
-                                  || in_array('horsconcours', $tags, true),
+                'horsconcours' => ((int)($r['horsconcours'] ?? 0)) === 1,
             ];
         }
     } catch (Throwable $e) { /* fresh install: table may lag */ }
@@ -248,7 +473,9 @@ function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit =
  * Inbound Announce activities never reach this function: only an original Note
  * ingested from an actor we follow is eligible. pc_board() supplies the complete
  * qualification policy (active participant, real hashtag, current window,
- * exactly one image, original-not-boost, first five for that author).
+ * exactly one image, original-not-boost, first five for that author). The
+ * first-five allowance is intentionally not reopened by deleting/de-tagging an
+ * earlier entry; durable admission enforcement is required before launch.
  */
 function pc_maybe_boost_entry(PDO $pdo, array $settings, string $object_id): bool {
     if (!pc_enabled($settings)
@@ -256,46 +483,25 @@ function pc_maybe_boost_entry(PDO $pdo, array $settings, string $object_id): boo
         || $object_id === ''
         || !function_exists('sv_boost_remote')) return false;
 
-    $qualified = false;
-    foreach (pc_board($pdo, $settings, null, 1000) as $entry) {
-        if (($entry['object_id'] ?? '') === $object_id) {
-            $qualified = true;
-            break;
-        }
-    }
-    if (!$qualified) return false;
-
     pc_ensure_tables($pdo);
-    $actor_url = '';
     try {
-        $actor = $pdo->prepare("SELECT actor_url FROM snap_ap_timeline WHERE object_id = ? LIMIT 1");
-        $actor->execute([$object_id]);
-        $actor_url = (string)($actor->fetchColumn() ?: '');
-        $claim = $pdo->prepare(
-            "INSERT IGNORE INTO pc_outbound_boosts (object_id, actor_url, state)
-             VALUES (?, ?, 'pending')"
-        );
-        $claim->execute([$object_id, $actor_url]);
-        if ($claim->rowCount() !== 1) return false;
+        $admission = pc_admit_object($pdo, $settings, $object_id);
+        if (!$admission || ($admission['status'] ?? '') !== 'active'
+            || ($admission['boost_state'] ?? '') === 'sent') return false;
 
-        [$ok, $message] = sv_boost_remote($pdo, $settings, $object_id);
+        $boost_result = sv_boost_remote($pdo, $settings, $object_id);
+        $ok = (bool)($boost_result[0] ?? false);
+        $boost_id = (string)($boost_result[2] ?? '');
         if ($ok) {
             $pdo->prepare(
-                "UPDATE pc_outbound_boosts
-                    SET state='sent', boosted_at=NOW(), last_error=''
-                  WHERE object_id=?"
-            )->execute([$object_id]);
+                "UPDATE pc_admissions SET boost_state='sent',boost_activity_id=? WHERE object_id=?"
+            )->execute([(string)$boost_id,$object_id]);
             return true;
         }
-        // A transient remote failure must be retryable on a later delivery or
-        // explicit retry job; do not permanently consume the unique claim.
-        $pdo->prepare("DELETE FROM pc_outbound_boosts WHERE object_id=?")->execute([$object_id]);
+        $pdo->prepare("UPDATE pc_admissions SET boost_state='failed' WHERE object_id=?")
+            ->execute([$object_id]);
         return false;
     } catch (Throwable $e) {
-        try {
-            $pdo->prepare("DELETE FROM pc_outbound_boosts WHERE object_id=? AND state='pending'")
-                ->execute([$object_id]);
-        } catch (Throwable $ignored) {}
         return false;
     }
 }
@@ -347,14 +553,14 @@ function pc_hof_list(PDO $pdo, int $limit = 100): array {
 
 /** Record a Hall-of-Fame winner (idempotent per week+place). */
 function pc_hof_record(PDO $pdo, string $week_key, int $place, string $actor_url,
-                       string $handle, string $post_url, string $caption = ''): void {
+                       string $handle, string $post_url, string $caption = '', string $object_id = ''): void {
     pc_ensure_tables($pdo);
     $pdo->prepare(
-        "INSERT INTO pc_hall_of_fame (week_key, place, actor_url, handle, post_url, caption)
-         VALUES (?,?,?,?,?,?)
+        "INSERT INTO pc_hall_of_fame (week_key, place, actor_url, object_id, handle, post_url, caption)
+         VALUES (?,?,?,?,?,?,?)
          ON DUPLICATE KEY UPDATE actor_url=VALUES(actor_url), handle=VALUES(handle),
-                                 post_url=VALUES(post_url), caption=VALUES(caption), active=1"
-    )->execute([$week_key, $place, $actor_url, substr($handle, 0, 190),
+                                 object_id=VALUES(object_id),post_url=VALUES(post_url),caption=VALUES(caption),active=1"
+    )->execute([$week_key,$place,$actor_url,substr($object_id,0,500),substr($handle,0,190),
                 substr($post_url, 0, 600), substr($caption, 0, 500)]);
 }
 
@@ -373,6 +579,8 @@ function pc_hof_record(PDO $pdo, string $week_key, int $place, string $actor_url
 function pc_record_like(PDO $pdo, array $settings, string $object_id, string $actor_url): void {
     if (!pc_enabled($settings) || $object_id === '' || $actor_url === '') return;
     try {
+        $object_id = pc_entry_object_id($pdo,$object_id) ?? '';
+        if ($object_id === '') return;
         $pdo->prepare(
             "INSERT IGNORE INTO pc_engagement (object_id, actor_url, kind)
              VALUES (?, ?, 'like')"
@@ -384,6 +592,8 @@ function pc_record_like(PDO $pdo, array $settings, string $object_id, string $ac
 function pc_record_boost(PDO $pdo, array $settings, string $object_id, string $actor_url): void {
     if (!pc_enabled($settings) || $object_id === '' || $actor_url === '') return;
     try {
+        $object_id = pc_entry_object_id($pdo,$object_id) ?? '';
+        if ($object_id === '') return;
         $pdo->prepare(
             "INSERT IGNORE INTO pc_engagement (object_id, actor_url, kind)
              VALUES (?, ?, 'boost')"
@@ -405,14 +615,18 @@ function pc_remove_engagement(PDO $pdo, array $settings, string $object_id, stri
 function pc_has_entry(PDO $pdo, array $settings, string $object_id): bool {
     if (!pc_enabled($settings) || $object_id === '') return false;
     try {
-        $st = $pdo->prepare(
-            "SELECT 1 FROM snap_ap_timeline t
-               JOIN pc_participants p ON p.actor_url = t.actor_url AND p.state = 'active'
-              WHERE t.object_id = ? LIMIT 1"
-        );
-        $st->execute([$object_id]);
-        return (bool)$st->fetchColumn();
+        return pc_entry_object_id($pdo,$object_id) !== null;
     } catch (Throwable $e) { return false; }
+}
+
+/** Normalize engagement aimed at our Announce back to the admitted origin id. */
+function pc_entry_object_id(PDO $pdo, string $target_id): ?string {
+    $st = $pdo->prepare("SELECT a.object_id FROM pc_admissions a
+        JOIN pc_participants p ON p.actor_url=a.actor_url AND p.state='active'
+        WHERE (a.object_id=? OR a.boost_activity_id=?) AND a.status='active' LIMIT 1");
+    $st->execute([$target_id,$target_id]);
+    $id = $st->fetchColumn();
+    return $id === false ? null : (string)$id;
 }
 
 /** The weight a boost carries relative to a like when scoring (setting, default 1). */
@@ -526,7 +740,7 @@ function pc_finalize_week(PDO $pdo, array $settings, ?array $window = null, int 
         pc_hof_record(
             $pdo, (string)$win['week_key'], $place,
             (string)$w['actor_url'], (string)$w['handle'],
-            (string)$w['url'], (string)$w['excerpt']
+            (string)$w['url'], (string)$w['excerpt'], (string)$w['object_id']
         );
     }
     return $place;

@@ -270,6 +270,10 @@ switch ($ap) {
             if (function_exists('sv_inbox_log')) sv_inbox_log($pdo, $log_verb, $log_actor, $log_obj, 'REJECTED: signature verify failed');
             http_response_code(401); exit;
         }
+        if (!sv_inbox_replay_first_seen($pdo, $raw)) {
+            // A valid delivery retry/replay is idempotently acknowledged.
+            http_response_code(202); exit;
+        }
         try {
             sv_ensure_tables($pdo);
             $code = sv_handle_inbox($pdo, $settings, $activity, $actor_doc);

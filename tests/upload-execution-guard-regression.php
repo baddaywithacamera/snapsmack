@@ -1,5 +1,8 @@
 <?php
-/** Regression coverage for the shared upload-directory execution guard. */
+/**
+ * SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
+ * Regression coverage for the shared upload-directory execution guard.
+ */
 
 require_once __DIR__ . '/../core/upload-execution-guard.php';
 
@@ -58,3 +61,4 @@ if ($failures) {
 
 echo "PASS: upload execution guards are canonical and cover all web-served upload directories.\n";
 
+// ===== SNAPSMACK EOF =====

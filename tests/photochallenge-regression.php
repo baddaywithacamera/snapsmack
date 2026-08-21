@@ -49,12 +49,28 @@ foreach (['pc_on_follow', 'pc_on_leave', 'pc_record_like', 'pc_record_boost', 'p
 pc_test(str_contains($photo, 'SELECT id, week_key'), 'Hall of Fame rows omit the admin toggle id');
 pc_test(str_contains($photo, 'tags_json'), 'board does not require structured ActivityPub hashtags');
 pc_test(str_contains($photo, '> 5'), 'per-author five-entry cap is missing');
-pc_test(str_contains($photo, 'ORDER BY t.published ASC'),
-    'entry cap must retain an author\'s first five valid entries');
-pc_test(str_contains($photo, "JOIN pc_participants p ON p.actor_url = t.actor_url")
-    && str_contains($photo, "p.state = 'active'"),
+pc_test(str_contains($photo, '$slot > 5')
+    && str_contains($photo, 'MAX(admission_number)')
+    && str_contains($photo, 'uq_pc_admission_slot'),
+    'entry cap must durably retain admission slots 1-5 and stop later boosts');
+pc_test(str_contains($photo, "JOIN pc_participants p ON p.actor_url=t.actor_url")
+    && str_contains($photo, "p.state='active'"),
     'board admission is not restricted to active participants');
-pc_test(str_contains($photo, 'AND t.is_boost = 0'), 'board admits boosted posts as entries');
+pc_test(str_contains($photo, "(int)\$row['is_boost'] !== 0"), 'admission permits boosted posts as entries');
+pc_test(str_contains($photo, 'pc_admissions') && str_contains($photo, "a.status='active'"),
+    'board is not driven by the durable admission ledger');
+pc_test(str_contains($photo, 'pc_cron_maintain') && str_contains($photo, 'finalized_at IS NULL'),
+    'ended rounds are not finalized automatically');
+pc_test(str_contains($photo, 'check_failures') && str_contains($photo, '$failures >= 3'),
+    'link gardening does not distinguish a transient origin failure from deletion');
+pc_test(str_contains($photo, "(int)(\$row['sensitive'] ?? 0) !== 0"),
+    'sensitive/CW entries are not rejected');
+pc_test(str_contains($photo, 'pc_withdraw_actor_admissions') && str_contains($photo, 'sv_unboost_remote'),
+    'leave/block does not withdraw entries and undo challenge boosts');
+pc_test(str_contains($photo, 'boost_activity_id') && str_contains($photo, 'pc_entry_object_id'),
+    'engagement on the challenge Announce is not normalized to the admitted object');
+pc_test(str_contains($photo, 'pc_blocklist') && str_contains($photo, 'pc_is_blocked'),
+    'actor/domain moderation blocklist is not enforced at admission');
 pc_test(str_contains($photo, 'count($media) !== 1'), 'board does not enforce exactly one image');
 pc_test(str_contains($photo, 'sv_boost_remote(')
     && str_contains($sv, 'pc_maybe_boost_entry'),

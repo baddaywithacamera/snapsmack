@@ -1,4 +1,5 @@
 <?php
+/** SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */
 require_once __DIR__ . '/../core/image-upload-policy.php';
 require_once __DIR__ . '/../core/svg-sanitizer.php';
 
@@ -39,3 +40,4 @@ if ($failures) {
 }
 echo "PASS: 4K image ceiling and SVG sanitizer policy.\n";
 
+// ===== SNAPSMACK EOF =====

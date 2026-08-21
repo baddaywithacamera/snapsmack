@@ -1,5 +1,6 @@
 <?php
 /**
+ * SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
  * Canonical Apache execution guard for every web-served upload directory.
  *
  * The rule is deliberately scoped to executable extensions. A blanket deny
@@ -47,3 +48,5 @@ function snapsmack_upload_execution_guard_is_current(string $directory): bool {
         hash_file('sha256', $path)
     );
 }
+
+// ===== SNAPSMACK EOF =====
