@@ -41,6 +41,7 @@ import checkpoint as checkpoint_module
 import ftp_client as ftp_module
 import transport
 import manifest_reader
+import config as config_module
 from path_safety import contained_local_path
 
 # Shared transport guard (tools/_shared/snap_stepup.py). SECAUDIT 037 deferred
@@ -658,8 +659,10 @@ class BackupEngine:
             if self._cancelled:
                 return result
             self._progress("stage1", "Connecting to site…", 0.02)
+            # 546D hub-key model: authenticate with the ONE fleet backup key from
+            # The Hub when it's set, else the profile's own key (non-breaking).
             http = SnapSmackSession(self.profile["site_url"],
-                                    self.profile.get("api_key", ""),
+                                    config_module.effective_backup_key(self.profile),
                                     self.profile.get("login_slug", "snap-in"))
             try:
                 http.login(
