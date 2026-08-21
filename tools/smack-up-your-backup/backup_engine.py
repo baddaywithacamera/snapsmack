@@ -612,7 +612,11 @@ class BackupEngine:
             "errors":           [],
         }
 
-        backup_dir = self.profile.get("backup_dir", "")
+        # Default staging root: C:\snapsmack\staging (honours SNAPSMACK_HOME for the
+        # thumb-drive layout). A one-time default — inherited by every profile, still
+        # overridable per profile — so the backup directory is never entered 24×.
+        backup_dir = self.profile.get("backup_dir", "") or os.path.join(
+            (os.environ.get("SNAPSMACK_HOME") or "").strip() or r"C:\snapsmack", "staging")
         if not backup_dir:
             result["errors"].append("No backup directory configured.")
             return result
@@ -1153,7 +1157,13 @@ class BackupEngine:
 
         # A full SQL dump failure is FATAL: the backup cannot restore the database.
         sql_ok = not result.get("sql_full_failed")
-        if verify_ok and sql_ok:
+        # Missing media is ALSO fatal to "clean": a backup that silently dropped photos
+        # is worse than none — you find out at restore. This matters most for the HTTP
+        # media transport, which has NO FTP fallback, so a failed pull means the file is
+        # simply absent. Never mark a run clean with media missing. (Web-Claude review,
+        # 2026-08-21.)
+        media_ok = (result.get("files_failed", 0) == 0)
+        if verify_ok and sql_ok and media_ok:
             result["success"] = True
             self._progress("done", f"Backup complete — {result['files_downloaded']} downloaded, {result['files_skipped']} skipped.", 1.0)
             self._log("Backup successful.")
@@ -1163,6 +1173,10 @@ class BackupEngine:
             result["success"] = False
             self._progress("done", "Backup FAILED — full SQL dump failed; the database is NOT in this backup.", 1.0)
             self._log("✗ Backup FAILED: the full SQL dump did not complete, so this backup has NO database data and is NOT restorable. Server-side cause: suyb-export.php?type=full builds the entire dump in memory and 500s (OOM) on large sites — stream it instead. Checkpoint kept so a re-run can resume.")
+        elif not media_ok:
+            result["success"] = False
+            self._progress("done", f"Backup INCOMPLETE — {result.get('files_failed', 0)} media file(s) failed; photos are MISSING. NOT marked clean.", 1.0)
+            self._log(f"✗ Backup INCOMPLETE: {result.get('files_failed', 0)} media file(s) failed to download — this backup is missing photos and is NOT safe to restore from. Checkpoint kept for a re-run.")
         else:
             result["success"] = False
             self._progress("done", "Backup completed with errors — check the log file.", 1.0)
@@ -1171,7 +1185,7 @@ class BackupEngine:
         # ── Report completion to the site (Multisite dashboard freshness) ─────
         # Best-effort: never let a reporting hiccup fail an otherwise-good backup.
         try:
-            status_str = "clean" if (verify_ok and sql_ok) else ("failed" if not sql_ok else "partial")
+            status_str = "clean" if (verify_ok and sql_ok and media_ok) else ("failed" if not sql_ok else "partial")
             size_b = os.path.getsize(zip_path) if (zip_path and os.path.exists(zip_path)) else 0
             dest = (self.profile.get("cloud_provider", "") or "cloud") if (cloud and cloud_id) else "local"
             # Reuse the session that already authenticated for the whole backup

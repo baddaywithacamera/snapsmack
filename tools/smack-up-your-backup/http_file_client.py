@@ -83,14 +83,21 @@ class HttpFileClient:
                         except Exception:
                             pass
                     return False, f"HTTP {resp.status_code}{reason}"
-                # A JSON body on a 200 means an auth bounce or an older site without
-                # type=file — never write that to disk as if it were the media file.
-                if "application/json" in ctype:
-                    try:
-                        err = resp.json().get("error", "unexpected JSON response")
-                    except Exception:
-                        err = "unexpected JSON response (older site without type=file?)"
-                    return False, err
+                # Integrity gate: this endpoint serves application/octet-stream. Anything
+                # else — an HTML/plain error page, a login redirect, a JSON error — must
+                # NOT be written to disk as if it were a photo. Fail loud so the engine
+                # counts it a failure (which now blocks a "clean" run). (Web-Claude
+                # review 2026-08-21.)
+                if "application/octet-stream" not in ctype.lower():
+                    reason = ""
+                    if "application/json" in ctype:
+                        try:
+                            reason = " — " + str(resp.json().get("error", ""))
+                        except Exception:
+                            pass
+                    return False, (f"unexpected content-type '{ctype or 'none'}'{reason} "
+                                   "(auth bounce, or a site without type=file)")
+                expected = resp.headers.get("Content-Length")
                 total = 0
                 with open(local_path, "wb") as fh:
                     for chunk in resp.iter_content(chunk_size=262144):
@@ -102,6 +109,19 @@ class HttpFileClient:
                                     on_progress(os.path.basename(local_path), total, 0, 0)
                                 except Exception:
                                     pass
+                # Truncation check: a short read (server memory_limit, dropped connection)
+                # leaves a partial file. If the server advertised a length, bytes must match.
+                if expected is not None:
+                    try:
+                        exp = int(expected)
+                    except ValueError:
+                        exp = -1
+                    if exp >= 0 and exp != total:
+                        try:
+                            os.remove(local_path)
+                        except Exception:
+                            pass
+                        return False, f"truncated download ({total} of {exp} bytes)"
             if self._delay:
                 time.sleep(self._delay)
             return True, ""

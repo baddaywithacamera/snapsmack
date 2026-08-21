@@ -1025,7 +1025,8 @@ class HubDiscoveryDialog(tk.Toplevel):
         tk.Label(f, text="Backup base dir", bg=BG_MID, fg=FG_DIM,
                  font=FONT_SMALL, anchor="w").grid(
             row=5, column=0, sticky="w", padx=(0, 12), pady=3)
-        self._dir_var = tk.StringVar()
+        self._dir_var = tk.StringVar(value=os.path.join(
+            (os.environ.get("SNAPSMACK_HOME") or "").strip() or r"C:\snapsmack", "staging"))
         dir_row = tk.Frame(f, bg=BG_MID)
         dir_row.grid(row=5, column=1, sticky="ew", pady=3)
         tk.Entry(dir_row, textvariable=self._dir_var, bg=BG_INPUT, fg=FG_MAIN,
