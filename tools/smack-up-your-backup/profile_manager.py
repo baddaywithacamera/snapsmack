@@ -213,7 +213,7 @@ def new_profile_template() -> Dict:
         "cloud_provider":        "google_drive", # "google_drive" | "none" — GDrive is the default cloud target
         "cloud_credentials_file":"",
         "cloud_folder_id":       "",
-        "backup_dir":            "",
+        "backup_dir":            os.path.join((os.environ.get("SNAPSMACK_HOME") or "").strip() or r"C:\snapsmack", "staging"),
         "last_backup_date":      "",
         "pacing_delay":          0,              # Full Send — FTP download doesn't strain a server; throttle per-profile only for fragile shared hosts
         "batch_size":            0,
