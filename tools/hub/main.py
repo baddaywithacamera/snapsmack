@@ -21,7 +21,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-BUILD_VERSION = "0.1.10"
+BUILD_VERSION = "0.1.11"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -61,25 +61,25 @@ def _shared_root():
     return os.path.abspath((os.environ.get("SNAPSMACK_HOME") or "").strip() or r"C:\snapsmack")
 
 
-# Candidate exe locations per tool, most-preferred first. A candidate may contain a
-# glob (`*`) ONLY for install dirs OUTSIDE the shared root (e.g. C:\SUYB holds a
-# versioned smackupyourbackup-x.y.z.exe). Inside the shared root we list ONLY exact,
-# real install paths (SYBU + COLD SNAP ship there) — never a wildcard, and never a
-# speculative name — because that tree is GYSS-writable (SECAUDIT 044, Finding 1).
+# Candidate exe locations per tool. THUMB-DRIVE PORTABLE (2026-08-21): every path is
+# now built from _shared_root() (honours SNAPSMACK_HOME), so the whole kit runs from
+# one folder on any drive/letter — Sean's "all utils in one place" requirement. Each
+# path is EXACT and inside the shared root; NO wildcards anywhere, which keeps the
+# SECAUDIT 044 rule satisfied (a wildcard inside the GYSS-writable root would let a
+# compromised webview plant an arbitrary <name>.exe for the launcher to run). Tools
+# with version-named exes (SUYB) are placed under a fixed name (suyb.exe) so they can
+# be listed exactly rather than globbed. _find_exe's wildcard-in-root refusal is kept
+# as defence in depth even though nothing globs now.
+_R = _shared_root()
 ROSTER = [
-    ("SMACK YOUR BATCH UP", "batch poster",        [r"C:\snapsmack\sybu\sybu.exe"]),
-    ("GET YOUR SHIT SORTED", "offline sorter",     [r"C:\GYSS\GET YOUR SHIT SORTED.exe"]),
-    ("COLD SNAP",           "offline poster",      [r"C:\snapsmack\coldsnap\coldsnap.exe",
-                                                    r"C:\COLDSNAP\coldsnap.exe"]),
-    ("SMACK UP YOUR BACKUP", "backup",             [r"C:\SmackUpYourBackup\smackupyourbackup*.exe",
-                                                    r"C:\SmackUpYourBackup\suyb.exe",
-                                                    r"C:\SUYB\smackupyourbackup*.exe",
-                                                    r"C:\SUYB\suyb*.exe"]),
-    ("OH SNAP",             "skin designer",       [r"C:\OHSNAP\OH SNAP.exe",
-                                                    r"C:\OhSnap\oh-snap.exe"]),
-    ("SMACK YOUR MOUTH",    "comments: mod + reply", [r"C:\snapsmack\smack-your-mouth\smackmouth.exe"]),
-    ("SHOTS FIRED",         "schedule board",      [r"C:\snapsmack\shots-fired\shots-fired.exe"]),
-    ("CRONOMETER",          "fleet cron health",   [r"C:\snapsmack\cronometer\cronometer.exe"]),
+    ("SMACK YOUR BATCH UP", "batch poster",         [os.path.join(_R, "sybu", "sybu.exe")]),
+    ("GET YOUR SHIT SORTED", "offline sorter",      [os.path.join(_R, "gyss", "GET YOUR SHIT SORTED.exe")]),
+    ("COLD SNAP",           "offline poster",       [os.path.join(_R, "coldsnap", "coldsnap.exe")]),
+    ("SMACK UP YOUR BACKUP", "backup",              [os.path.join(_R, "suyb", "suyb.exe")]),
+    ("OH SNAP",             "skin designer",        [os.path.join(_R, "ohsnap", "oh-snap.exe")]),
+    ("SMACK YOUR MOUTH",    "comments: mod + reply", [os.path.join(_R, "smack-your-mouth", "smackmouth.exe")]),
+    ("SHOTS FIRED",         "schedule board",       [os.path.join(_R, "shots-fired", "shots-fired.exe")]),
+    ("CRONOMETER",          "fleet cron health",    [os.path.join(_R, "cronometer", "cronometer.exe")]),
 ]
 
 
