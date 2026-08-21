@@ -162,6 +162,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Aug 18</span><a href="#a049">CMS Compliance, Image Handling &amp; the Missing Content Invariant</a></li>
                 <li><span class="idx-date">Aug 15</span><a href="#a048">Live Penetration Test &mdash; Installer, Bootstrap, JSON-LD &amp; Editor Boundary</a></li>
                 <li><span class="idx-date">Aug 14</span><a href="#a047">Full Multi-Dimension Audit &mdash; Authentication, Recovery, Federation &amp; Uploads</a></li>
                 <li><span class="idx-date">Aug 14</span><a href="#a046">Audit Process Correction &mdash; Stale-Branch Simulation &amp; Clean Release Delta</a></li>
@@ -214,6 +215,15 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a049">
+                <div class="post-meta"><span class="post-date">August 18, 2026</span><span class="post-tag">Assessment Closed &mdash; Architecture Escalated</span></div>
+                <h2>CMS Compliance, Image Handling &amp; the Missing Content Invariant</h2>
+                <p>SECAUDIT 049 began as a conventional CMS and image-handling review. It confirmed strong controls around database parameters, escaping, security tokens, authentication, signed updates, upload naming, raster validation, and derivative generation. It also found real hardening gaps: public error disclosure, inconsistent live security-header delivery, no universal pre-decode pixel budget, uneven upload-directory execution guards, and no safe policy for administrator-uploaded SVG branding. Current source closes the code findings: visitor errors are generic, upload directories share one execution guard, local images have a pre-decode 4K ceiling, and branding SVG is strictly sanitised or rejected. Deployment and active-fleet verification remain recorded rather than being quietly marked complete.</p>
+                <p>The more important finding was architectural and should have been caught sooner. SnapSmack had no single enforced definition of a publishable content unit: legacy solo publishing could treat a photograph as both media and the post itself, while newer group and longform features used a separate post record. That allowed publication state, dates, ownership, engagement identifiers, collections, and federation identity to acquire competing meanings. Releases 0.7.534D through 0.7.536D added inventory and transactional conversion tooling, but the first diagnostic then made the opposite mistake: it treated valid images selected in a draft longform post bucket as old-style posts. Current source reports bucketed and unassigned longform media separately and prohibits photo-to-post conversion outside SMACKONEOUT. The repair is not being misrepresented as proof that the architecture is finished.</p>
+                <p>The first draft also wrongly described the intentionally dormant stable track as a fleet-delivery failure. No production installation runs on that track, so the claim was withdrawn. The legitimate delivery question is whether every active development/live installation receives and demonstrates the required controls. The corrected scorecard, the architectural limitation, the remaining verification work, and the limits of this review are all preserved in the report. SECAUDIT 050 is the dedicated comparative assessment of the complete CMS architecture against established publishing, media-library, database, security, recovery, and federation patterns.</p>
+                <a class="report-link" href="secaudits/2026-08-17-049-cms-compliance-and-image-handling.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a048">
                 <div class="post-meta"><span class="post-date">August 15, 2026</span><span class="post-tag">Serious Findings Closed</span></div>

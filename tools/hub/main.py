@@ -252,8 +252,8 @@ class Hub(tk.Tk):
             self._set_status(status, False, "enter the hub URL first"); return
         self._testing(status)
         try:
-            data = snap_discovery.discover(url, api_key=key)
-            n = len((data or {}).get("spokes", []) or [])
+            _hub_info, spokes = snap_discovery.discover(url, api_key=key)
+            n = len(spokes or [])
             self._set_status(status, True, f"connected — {n} site(s)")
         except Exception as e:
             self._set_status(status, False, str(e)[:70])
