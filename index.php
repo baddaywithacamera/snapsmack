@@ -493,7 +493,27 @@ try {
                  ? (int)$img['post_id'] : (int)$img['id'];
         $c_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_community_comments WHERE post_id = ? AND status = 'visible'");
         $c_stmt->execute([$_cc_key]);
-        $comment_count = $c_stmt->fetchColumn();
+        $comment_count = (int)$c_stmt->fetchColumn();
+
+        // COMMENT UNIFICATION (Phase 1): when the per-site `comments_unified_display` flag is ON,
+        // the thread also shows the legacy box (inbound fediverse replies + legacy anon + admin
+        // replies), so the counter must include them or it disagrees with the visible thread again.
+        // Same parity filters (is_approved = 1 AND is_spam = 0) and dual key (img_id / post_id) as
+        // core/community-component.php. Flag OFF (default) leaves the new-box-only value above.
+        if (($settings['comments_unified_display'] ?? '0') === '1') {
+            try {
+                $_lg_where  = "img_id = ?" . (!empty($img['post_id']) ? " OR post_id = ?" : "");
+                $_lg_params = [(int)$img['id']];
+                if (!empty($img['post_id'])) { $_lg_params[] = (int)$img['post_id']; }
+                $_lg_stmt = $pdo->prepare(
+                    "SELECT COUNT(*) FROM snap_comments WHERE is_approved = 1 AND is_spam = 0 AND ({$_lg_where})"
+                );
+                $_lg_stmt->execute($_lg_params);
+                $comment_count += (int)$_lg_stmt->fetchColumn();
+            } catch (PDOException $e) {
+                // Legacy box/column lags the canonical schema — keep the new-box count, never fatal.
+            }
+        }
     }
 } catch (Exception $e) {
     // Log the real detail server-side; never show it to the visitor. (SECAUDIT 049)
