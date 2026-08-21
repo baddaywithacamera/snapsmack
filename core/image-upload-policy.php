@@ -1,5 +1,8 @@
 <?php
-/** Shared pre-decode policy for locally hosted photographs. */
+/**
+ * SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
+ * Shared pre-decode policy for locally hosted photographs.
+ */
 
 const SNAPSMACK_LOCAL_IMAGE_LONG_EDGE = 3840;
 const SNAPSMACK_LOCAL_IMAGE_SHORT_EDGE = 2160;
@@ -37,3 +40,4 @@ function snapsmack_local_image_within_4k(string $path, ?string &$error = null): 
     return true;
 }
 
+// ===== SNAPSMACK EOF =====

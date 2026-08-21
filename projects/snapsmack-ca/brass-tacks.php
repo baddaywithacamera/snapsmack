@@ -129,6 +129,7 @@ require_once __DIR__ . '/includes/header.php';
                     <li><a href="#q-install-modes">Why can't I switch install modes?</a></li>
                     <li><a href="#q-classic-ig">Why are you ripping off Instagram?</a></li>
                     <li><a href="#q-content-locked">I've got content locked in elsewhere — do I have to abandon it?</a></li>
+                    <li><a href="#q-snapsmack-lock-in">Does SnapSmack lock in my content?</a></li>
                     <li><a href="#q-skins">How do skins work?</a></li>
                     <li><a href="#q-business">Can I use SnapSmack to run my business website?</a></li>
                     <li><a href="#q-business-photoblog">I'm a business owner — can I use SnapSmack as a photoblog for my work?</a></li>
@@ -140,6 +141,7 @@ require_once __DIR__ . '/includes/header.php';
                 <h3><a href="#fediverse">Fediverse &amp; Discovery</a></h3>
                 <ol>
                     <li><a href="#q-fediverse-what">What is the Fediverse — and why do I want it?</a></li>
+                    <li><a href="#q-fediverse-ethics">Why did you build SnapSmack on the Fediverse?</a></li>
                     <li><a href="#q-posse">What is POSSE?</a></li>
                     <li><a href="#q-photoblogs-fyi">What is photoblogs.fyi?</a></li>
                     <li><a href="#q-photofriday">What is PHOTOFRI.DAY?</a></li>
@@ -344,6 +346,14 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Oh, and that beautifully curated three-across Instagram feed you had, the one the new scroll broke? It's still there, and we can give it back to you. Really. Go look <a href="https://unzucked.ca" target="_blank" rel="noopener">HERE</a> to see what we mean.</p>
             </div>
 
+            <div class="qa" id="q-snapsmack-lock-in">
+                <h3>Does SnapSmack lock in my content?</h3>
+                <p>No. Your photographs and writing remain on your server. SnapSmack backups preserve the complete site for recovery, and we are building a standard exit package into every backup containing your media, readable metadata, and import material that conforms to the latest published specifications for WordPress, Ghost, and the Fediverse.</p>
+                <p>That basic exit cannot depend on SnapSmack's continued existence, our servers, an AI service, or any person involved in the project. Where another platform cannot preserve something faithfully, the export will say so plainly.</p>
+                <p>For destinations beyond the formats included with the backup — or when WordPress or Ghost refuses to cooperate — <strong>TAKE YOUR SHIT WITH YOU</strong> provides optional AI-assisted conversion and troubleshooting. It can help adapt your content to another CMS, diagnose failed imports, and reduce the manual cleanup involved in moving.</p>
+                <p>The AI assistance makes leaving easier; it is never required to leave. Making departure as painless as we reasonably can is simply good manners.</p>
+            </div>
+
             <div class="qa" id="q-skins">
                 <h3>How do skins work?</h3>
                 <p>SnapSmack ships with a skin gallery. You pick one, apply it, configure it. There are skins for traditional photoblog layouts, Instagram-style grids, gallery walls, newspaper-style typography, art-deco black-and-white, and several others. New skins are added over time.</p>
@@ -389,6 +399,13 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Why you need it: it's simply how people find your work now. A blog nobody can stumble onto is a lonely blog. Federation is the reach of social — without becoming the product.</p>
             </div>
 
+            <div class="qa" id="q-fediverse-ethics">
+                <h3>Why did you build SnapSmack on the Fediverse?</h3>
+                <p>Because we believe social software should serve the people using it, not capture them. The Fediverse gives photographers control over their identities, work, relationships, and choice of platform.</p>
+                <p>SnapSmack is for photographers who want their own domain and their own place on the web while still participating in a larger community. Your blog remains the source of your work. Follows and interactions use established Fediverse standards, credit and traffic point back to the original posts, and people remain free to use whichever compatible software suits them.</p>
+                <p>SnapSmack is not trying to replace Pixelfed, Mastodon, Vernissage, or the rest of the Fediverse. It is another door into the same network, built for a particular kind of independent photography blog. We want to strengthen photography culture across the Fediverse, not trap it inside one platform.</p>
+            </div>
+
             <div class="qa" id="q-posse">
                 <h3>What is POSSE?</h3>
                 <p>POSSE stands for <strong>Publish on your Own Site, Syndicate Elsewhere</strong> — or, blunter and closer to how we mean it, <strong>Put On Server, Syndicate Elsewhere</strong>. Your photographs live on a server you control. Copies go out to the networks where the people are. The original never leaves home.</p>
@@ -405,7 +422,7 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="qa" id="q-photofriday">
                 <h3>What is PHOTOFRI.DAY?</h3>
-                <p>Want to connect with other photographers across the Fediverse? Join the PHOTOFRI.DAY challenge. One theme a week, no entry limit — PHOTOFRI.DAY surfaces your five most recent. Photographers from across the Fediverse enter. They'll see you. You'll see them. You'll find more friends together and hilarity will ensue. Best of all, people will stop calling you Jethro behind your back.</p>
+                <p>Want to connect with other photographers across the Fediverse? Join the PHOTOFRI.DAY challenge. One theme a week, with up to five posts a week. Photographers from across the Fediverse enter. They'll see you. You'll see them. You'll find more friends together and hilarity will ensue. Best of all, people will stop calling you Jethro behind your back.</p>
                 <p>Discoverability across server instances. And it's fun. You're welcome.</p>
             </div>
 

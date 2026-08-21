@@ -192,7 +192,7 @@ include 'core/sidebar.php';
             $relay_joined = ($sv_settings['smackverse_relay_joined'] ?? '0') === '1';
             $relay_host   = parse_url(sv_relay_actor_url($sv_settings), PHP_URL_HOST) ?: 'smackverse.snapsmack.ca';
         ?>
-        <p class="dim mb-20">Join the SnapSmack network relay and this blog's home reader fills with public posts from every participating SnapSmack site — no following each one by hand. No images are stored on the relay (photos load from the origin blog), and you keep federating directly regardless, so the relay is never a single point of failure.</p>
+        <p class="dim mb-20">Join the SnapSmack network relay and this blog's LOCAL reader fills with public posts from every participating SnapSmack site — no following each one by hand. HOME remains the people this blog follows directly. No images are stored on the relay (photos load from the origin blog), and you keep federating directly regardless, so the relay is never a single point of failure.</p>
         <?php if (!$sv_on): ?>
             <p class="dim">Enable Fediverse above first.</p>
         <?php elseif ($relay_joined): ?>
@@ -208,6 +208,36 @@ include 'core/sidebar.php';
             </form>
         <?php endif; ?>
     </div>
+
+    <?php if ($sc_is_hub_install): ?>
+    <div class="box mb-20">
+        <h3>SMACKCAST HUB</h3>
+        <p class="dim">Relay and seven-day missed-notification recovery are
+            <strong><?php echo (($sv_settings['smackcast_relay_enabled'] ?? '0') === '1') ? 'ENABLED' : 'DISABLED'; ?></strong>.
+            Enabling is deliberate; admission remains allowlist/pending by default.</p>
+        <form method="POST">
+            <input type="hidden" name="action" value="smackcast_toggle">
+            <input type="hidden" name="enabled" value="<?php echo (($sv_settings['smackcast_relay_enabled'] ?? '0') === '1') ? '0' : '1'; ?>">
+            <input type="password" name="reauth_password" placeholder="Password" autocomplete="off" required>
+            <input type="text" name="reauth_totp" placeholder="2FA code" inputmode="numeric" autocomplete="off">
+            <button type="submit" class="btn-smack"><?php echo (($sv_settings['smackcast_relay_enabled'] ?? '0') === '1') ? 'DISABLE RELAY' : 'ENABLE RELAY'; ?></button>
+        </form>
+        <h4 style="margin-top:18px;">MEMBERS</h4>
+        <?php if (!$sc_subscribers): ?><p class="dim">No relay members yet.</p><?php endif; ?>
+        <?php foreach ($sc_subscribers as $member): ?>
+            <form method="POST" style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap;">
+                <input type="hidden" name="action" value="smackcast_member">
+                <input type="hidden" name="subscriber_id" value="<?php echo (int)$member['id']; ?>">
+                <code><?php echo htmlspecialchars($member['actor_url']); ?></code>
+                <strong><?php echo htmlspecialchars(strtoupper($member['state'])); ?></strong>
+                <select name="member_state"><option value="active">Approve</option><option value="blocked">Block</option><option value="left">Remove</option></select>
+                <input type="password" name="reauth_password" placeholder="Password" autocomplete="off" required>
+                <input type="text" name="reauth_totp" placeholder="2FA" inputmode="numeric" autocomplete="off">
+                <button type="submit" class="btn-smack">APPLY</button>
+            </form>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
 
     <div class="box">
         <h3>PIGGYBACK SEARCH ACCOUNTS</h3>

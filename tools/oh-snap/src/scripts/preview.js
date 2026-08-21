@@ -33,6 +33,7 @@ const OhSnapPreview = (() => {
     let _baseUrl      = '';     // Connected site base URL
     let _currentView  = 'post'; // 'post' | 'archive' | 'landing'
     let _ready        = false;
+    let _project      = null;
 
     // --- PUBLIC ---
 
@@ -58,6 +59,26 @@ const OhSnapPreview = (() => {
             // Ensure the overrides style block exists
             _ensureOverrideBlock();
         }, { once: true });
+    }
+
+    function initOffline(frame, project) {
+        _project = project;
+        _frame = frame;
+        _skinData = { skin_slug: project.skin_slug, manifest: { name: project.name }, style_css: project.base_css || _offlineShellCss(), css_variables: {} };
+        _postsData = { posts: project.preview_content?.posts || [] };
+        _baseUrl = '';
+        _currentView = 'post';
+        _ready = false;
+        _buildSrcdoc('post');
+        frame.addEventListener('load', () => { _ready = true; _ensureOverrideBlock(); }, { once: true });
+    }
+
+    function setProject(project) {
+        _project = project;
+        if (!_frame || !_skinData) return;
+        if (project.base_css) _skinData.style_css = project.base_css;
+        _postsData = { posts: project.preview_content?.posts || [] };
+        if (_ready) _buildSrcdoc(_currentView);
     }
 
     /**
@@ -123,6 +144,7 @@ ${css}
 /* ── Oh Snap! Overrides ── */
 ${overrideCss}
 </style>
+<style id="oh-snap-user-css">${_project?.user_css || ''}</style>
 <style id="oh-snap-chrome">
 /* ── Preview chrome resets (don't interfere with skin) ── */
 * { box-sizing: border-box; }
@@ -146,13 +168,16 @@ ${bodyHtml}
     }
 
     function _buildPostView() {
+        if (_project?.mode === 'GRAMOFSMACK') return _buildGramView();
+        if (_project?.mode === 'SMACKTALK') return _buildLongformView();
+        if (_project?.mode === 'FEDISTRUCTURE') return _buildFedistructureView();
         const post = _postsData?.posts?.[0];
-        const siteName = 'Preview Site';
+        const siteName = _project?.preview_content?.site_name || 'Preview Site';
         const tagline  = '';
 
         const imgHtml = post?.cover_url
             ? `<img src="${_escHtml(post.cover_url)}" class="post-image" alt="${_escHtml(post.title || '')}">`
-            : _placeholderImage(1200, 800, 'No image yet');
+            : _placeholderImage(post?.width || 1200, post?.height || 800, post?.title || 'Sample photograph', post?.colour);
 
         const title       = _escHtml(post?.title || 'Untitled Post');
         const description = post?.description
@@ -202,23 +227,46 @@ ${bodyHtml}
 </div>`;
     }
 
+    function _sharedHeader() {
+        return `<div id="header"><div class="inside"><div class="logo-area"><a href="#"><span class="site-title-text">${_escHtml(_project?.preview_content?.site_name || 'Preview Site')}</span></a></div><nav><ul class="nav-menu"><li><a href="#">Archive</a></li><li><a href="#">About</a></li></ul></nav></div></div>`;
+    }
+
+    function _buildGramView() {
+        const posts = _postsData?.posts || [];
+        const images = posts.slice(0, 5).map(p => _placeholderImage(p.width || 900, p.height || 900, p.title, p.colour)).join('');
+        return `<div id="page-wrapper">${_sharedHeader()}<div id="scroll-stage"><div class="gram-strip">${images}</div><div class="static-transmission"><h1 class="photo-title-footer">${_escHtml(posts[0]?.title || 'Carousel')}</h1><p>${_escHtml(posts[0]?.description || 'A multi-image story.')}</p></div>${_footer()}</div></div>`;
+    }
+
+    function _buildLongformView() {
+        const p = _postsData?.posts?.[0] || {};
+        return `<div id="page-wrapper">${_sharedHeader()}<div id="scroll-stage"><article class="longform"><h1 class="static-page-title">${_escHtml(p.title || 'A Longer Story')}</h1><p class="post-date">August 21, 2026</p>${_placeholderImage(1400,700,p.title || 'Feature image',p.colour)}<p>${_escHtml(p.description || 'The opening paragraph of a long-form post.')}</p><p>Photography rewards patience. This fixture includes enough text to test measure, rhythm, headings, links, and the way a design behaves when the image is no longer the only thing on the page.</p><h2>Second movement</h2><p>Every generated skin must remain readable when the story continues below the fold.</p></article>${_footer()}</div></div>`;
+    }
+
+    function _buildFedistructureView() {
+        const posts = _postsData?.posts || [];
+        const cards = posts.map(p => `<article class="fedi-card"><strong>@photographer@example.social</strong><p>${_escHtml(p.description)}</p>${_placeholderImage(1200,800,p.title,p.colour)}<p><a href="#">View at origin ↗</a></p></article>`).join('');
+        return `<div id="page-wrapper">${_sharedHeader()}<div id="scroll-stage">${cards}${_footer()}</div></div>`;
+    }
+
+    function _footer() { return `<div id="system-footer"><div class="inside"><p id="sig-text">Powered by SnapSmack</p></div></div>`; }
+
     function _buildArchiveView() {
         const posts = _postsData?.posts?.slice(0, 12) || [];
 
         const thumbs = posts.length ? posts.map(p => {
             const img = p.thumb_url
                 ? `<img src="${_escHtml(p.thumb_url)}" alt="${_escHtml(p.title || '')}">`
-                : _placeholderImage(300, 300, '');
+                : _placeholderImage(300, 300, p.title || '', p.colour);
             return `<a href="#" class="thumb-link">${img}</a>`;
         }).join('\n') : Array(9).fill(0).map((_, i) =>
-            `<a href="#" class="thumb-link">${_placeholderImage(300, 300, '')}</a>`
+            `<a href="#" class="thumb-link">${_placeholderImage(300, 300, `Sample ${i + 1}`)}</a>`
         ).join('\n');
 
         return `
 <div id="page-wrapper">
   <div id="header">
     <div class="inside">
-      <div class="logo-area"><a href="#"><span class="site-title-text">Preview Site</span></a></div>
+      <div class="logo-area"><a href="#"><span class="site-title-text">${_escHtml(_project?.preview_content?.site_name || 'Preview Site')}</span></a></div>
       <nav><ul class="nav-menu">
         <li><a href="#">Archive</a></li>
         <li><a href="#">About</a></li>
@@ -245,7 +293,7 @@ ${bodyHtml}
 <div id="page-wrapper">
   <div id="header">
     <div class="inside">
-      <div class="logo-area"><a href="#"><span class="site-title-text">Preview Site</span></a></div>
+      <div class="logo-area"><a href="#"><span class="site-title-text">${_escHtml(_project?.preview_content?.site_name || 'Preview Site')}</span></a></div>
     </div>
   </div>
 
@@ -311,8 +359,8 @@ ${bodyHtml}
     /**
      * Generate an inline SVG placeholder image (no external requests).
      */
-    function _placeholderImage(w, h, label) {
-        const bg  = '#1a1a1a';
+    function _placeholderImage(w, h, label, colour = '') {
+        const bg  = colour || '#1a1a1a';
         const fg  = '#444444';
         const txt = label ? `<text x="50%" y="50%" dy=".3em" text-anchor="middle" font-family="sans-serif" font-size="14" fill="${fg}">${label}</text>` : '';
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
@@ -322,9 +370,13 @@ ${bodyHtml}
         return `<img src="data:image/svg+xml;base64,${btoa(svg)}" width="${w}" height="${h}" alt="${label}">`;
     }
 
+    function _offlineShellCss() {
+        return `:root{--bg-page:#101010;--bg-secondary:#191919;--text-bright:#fff;--text-primary:#d0d0d0;--text-dim:#8a8a8a;--border-primary:#343434;--content-lh:1.6}body{margin:0;background:var(--bg-page);color:var(--text-primary);font-family:Arial,sans-serif}a{color:inherit;text-decoration:none}#header{border-bottom:1px solid var(--border-primary);padding:22px 5vw}.inside{max-width:1280px;margin:auto}.logo-area{font-size:28px;font-weight:700;color:var(--text-bright)}nav ul{display:flex;gap:22px;list-style:none;padding:0}.post-image-wrap{max-width:1100px;margin:36px auto}.post-image{width:100%;height:auto}.static-transmission,#infobox{max-width:900px;margin:24px auto;line-height:var(--content-lh)}.photo-title-footer{color:var(--text-bright)}#browse-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:1100px;margin:36px auto}.thumb-link img{width:100%;aspect-ratio:1;object-fit:cover}#system-footer{padding:36px 5vw;color:var(--text-dim)}@media(max-width:600px){#browse-grid{grid-template-columns:repeat(2,1fr);margin:16px}.post-image-wrap,.static-transmission,#infobox{margin:16px}.site-title-text{font-size:22px}}`;
+    }
+
     // --- EXPOSE ---
 
-    return { init, applyOverrides, switchView };
+    return { init, initOffline, setProject, applyOverrides, switchView };
 
 })();
 // ===== SNAPSMACK EOF =====

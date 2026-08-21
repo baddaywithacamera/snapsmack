@@ -10,6 +10,59 @@
 
 # SnapSmack Changelog
 
+## 0.7.545D — 2026-08-21 "SMACKCAST RELAY"
+
+### OH SNAP becomes an honest offline-first skin designer
+- OH SNAP 0.2.0 no longer requires a site connection to enter the editor. A bundled, deterministic photo-
+  blog fixture supplies post, archive, and landing previews with manual colour, typography, layout, CSS,
+  responsive-width, save/open, autosave, and undo/redo workflows available offline.
+- Project files move to a complete schema-v2 `.ohsnap` format with preview content, contract provenance,
+  base/user CSS separation, dependencies, validation state, and history. Native saves use a flushed atomic
+  replace and keep a last-known-good backup; schema-v1 variable projects migrate on open.
+- The interface now labels CSS export and live variable push honestly. Offline projects cannot push, and
+  direct skin-package upload remains permanently removed.
+- Live override writes now name the exact skin the user reviewed. The server rejects active-skin races,
+  skins without explicit `oh_snap_ready`, undeclared variables, and unsafe values. NEW HORIZON and 50
+  SHADES OF NOAH GREY declare support.
+- Site and AI secrets are no longer written to browser localStorage. Keys remain session-only pending a
+  proper operating-system credential-vault integration. Production Tauri CSP is no longer null, broad
+  frontend filesystem permission is removed, and the Windows build is pinned to the established NSIS
+  deliverable.
+
+### photoblogs.fyi becomes the virtual LOCAL server
+- FEDISTRUCTURE is now durable, incompatible install mode **4.0**, with SMACKCAST behavior additionally
+  gated by HUB role, profile, and a default-off relay switch.
+- Participating blogs publish normally from their own actors and queue a separate best-effort notification
+  to photoblogs.fyi. The hub admits public original posts from active members and durably fans out one
+  Announce per destination without storing image bytes.
+- Remote objects are stored once with normalized HOME/LOCAL/GLOBAL membership, so a directly followed
+  post can appear once in HOME and once in LOCAL regardless of delivery order.
+- Receiver origin-fetch failures now enter a bounded durable retry queue and become visible as shelved
+  work after eight attempts or seven days; transient failure is never treated as deletion.
+- Relay discovery now accepts only posts explicitly addressed to Public, verifies that the publishing actor
+  owns the object URL, honours local actor/domain blocks, refreshes verified edits, and sends Undo when a
+  post or member disappears. Unlisted posts are not promoted into LOCAL.
+- Signed inbox dates are now part of the verified signature and a durable replay ledger suppresses repeated
+  deliveries. Relay fan-out uses each member's personal inbox so shared-inbox optimization cannot blur
+  which SnapSmack blog was meant to receive a post.
+- The reader now prefers the hub-populated LOCAL and GLOBAL caches. Remote avatars and still images pass
+  through an authenticated, signed, SSRF-hardened privacy proxy with strict image, size, and expiry limits,
+  so opening those cached feeds does not disclose a blog owner's IP address to every remote media host.
+- Shared search remains deliberately absent and disabled until the isolated relay proof passes.
+
+### PHOTOFRI.DAY challenge completion
+- PHOTOFRI now uses the shared 50-hour global Friday for everyone and a durable admission ledger: each
+  participant's first five qualifying objects consume immutable slots 1–5; later posts are never boosted,
+  shown, or ranked, and deleting an early entry cannot promote the sixth.
+- Follow/tag consent, leave, actor/domain blocking, sensitive-content exclusion, `#horsconcours`, edits,
+  deletions, boost Undo, and origin attribution are enforced through one admission lifecycle.
+- Likes and boosts aimed at PHOTOFRI's Announce activity are normalized back to the admitted origin object,
+  so ranking measures engagement on the challenge boost rather than an unrelated timeline row.
+- The federation cron now finalizes ended rounds, retries failed challenge boosts, and gardens origin links.
+  Three failed validation passes are required before an unreachable object is withdrawn as deleted.
+- Public PHOTOFRI copy now states the permanent `#photofri` tag, the global window, and the honest first-five
+  rule instead of the former sliding-timezone and "drop the earliest" language.
+
 ## 0.7.543 — 2026-08-20 "BOOKKEEPING"
 
 ### Comment counter, mode guard, and solo-poster correctness (with regression tests)

@@ -232,7 +232,7 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                 $_SESSION['distribution'] = 'fedistructure';
                 $_SESSION['distribution_profile'] = $profile;
                 $_SESSION['node_role'] = $profile === 'smackcast' ? 'hub' : 'spoke';
-                $_SESSION['site_mode'] = 'photoblog';
+                $_SESSION['site_mode'] = 'fedistructure';
             }
         } else {
         $posted_mode = $_POST['site_mode'] ?? '';
@@ -1305,6 +1305,9 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'photochallenge_window_mode'=> $install_profile === 'daily-photo' ? 'daily' : 'weekly',
                 'photochallenge_boost_enabled'=> in_array($install_profile, ['photo-challenge', 'daily-photo'], true) ? '1' : '0',
                 'smackcast_inbox_policy'     => $install_profile === 'smackcast' ? 'relay' : 'standard',
+                'smackcast_relay_enabled'    => '0',
+                'smackcast_admission_mode'   => 'allowlist',
+                'smackcast_outbox_recovery_enabled'=> '0',
                 'timezone'                  => 'UTC',
                 'date_format'               => 'F j, Y',
                 'header_type'               => 'text',
@@ -1537,12 +1540,8 @@ HTACCESS;
         $install_mode_str = $_SESSION['site_mode'] ?? 'photoblog';
         $manifest_url = 'https://snapsmack.ca/install-manifest.php?mode=' . urlencode($install_mode_str);
 
-        // FEDISTRUCTURE service profiles all run on site_mode 'photoblog', so the
-        // mode alone cannot tell snapsmack.ca that this is a PHOTOFRI.DAY install
-        // rather than an ordinary photoblog — and without that, a challenge site
-        // comes up wearing the generic photoblog skin. Send the profile too when
-        // there is one. Older manifests that ignore the parameter behave exactly
-        // as before.
+        // FEDISTRUCTURE is incompatible install mode 4.0. The profile selects the
+        // hub/spoke product skin inside that mode; it is never served as a blog.
         $install_profile_str = $_SESSION['distribution_profile'] ?? '';
         if ($install_profile_str !== '') {
             $manifest_url .= '&profile=' . urlencode($install_profile_str);

@@ -3,7 +3,8 @@
  * v0.1.0
  *
  * Manages AI provider configuration and app preferences.
- * Settings are stored in localStorage under 'ohsnap_settings'.
+ * Non-secret preferences are stored locally. Provider keys are session-only;
+ * OH SNAP does not persist plaintext credentials in browser storage.
  *
  * Supported AI providers:
  *   claude   — Anthropic Claude (claude-sonnet-4-6)
@@ -25,6 +26,7 @@
 const OhSnapSettings = (() => {
 
     const STORE_KEY = 'ohsnap_settings';
+    let SESSION_SECRETS = {};
 
     const DEFAULTS = {
         ai_provider:    'claude',
@@ -41,17 +43,34 @@ const OhSnapSettings = (() => {
 
     function load() {
         try {
-            return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORE_KEY) || '{}') };
+            return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORE_KEY) || '{}'), ...SESSION_SECRETS };
         } catch {
             return { ...DEFAULTS };
         }
     }
 
-    function save(partial) {
+    async function save(partial) {
         const current = load();
         const updated = { ...current, ...partial };
-        localStorage.setItem(STORE_KEY, JSON.stringify(updated));
+        SESSION_SECRETS = {
+            claude_key: updated.claude_key || '', gemini_key: updated.gemini_key || '',
+            openai_key: updated.openai_key || '', deepseek_key: updated.deepseek_key || '',
+            kimi_key: updated.kimi_key || '',
+        };
+        const persisted = { ...updated };
+        Object.keys(SESSION_SECRETS).forEach(key => delete persisted[key]);
+        localStorage.setItem(STORE_KEY, JSON.stringify(persisted));
+        if (OhSnapVault.available()) {
+            await Promise.all(Object.entries(SESSION_SECRETS).map(([name, value]) => value ? OhSnapVault.set(`ai:${name}`, value) : OhSnapVault.remove(`ai:${name}`)));
+        }
         return updated;
+    }
+
+    async function hydrateVault() {
+        if (!OhSnapVault.available()) return;
+        const names = ['claude_key','gemini_key','openai_key','deepseek_key','kimi_key'];
+        const values = await Promise.all(names.map(name => OhSnapVault.get(`ai:${name}`).catch(() => null)));
+        names.forEach((name, i) => { if (values[i]) SESSION_SECRETS[name] = values[i]; });
     }
 
     function get(key) {
@@ -84,7 +103,8 @@ const OhSnapSettings = (() => {
         <button class="settings-close" id="btn-settings-close" title="Close">✕</button>
     </div>
 
-    <div class="settings-body">
+        <div class="settings-body">
+            <p class="field-hint">Security: AI keys are kept for this running session only and are not written to browser storage.</p>
 
         <section class="settings-section">
             <h3 class="settings-section-title">AI Provider</h3>
@@ -234,9 +254,9 @@ const OhSnapSettings = (() => {
         });
     }
 
-    function _saveFromModal() {
+    async function _saveFromModal() {
         const modal = document.getElementById('oh-snap-settings-modal');
-        save({
+        await save({
             ai_provider:     modal.querySelector('#s-ai-provider').value,
             claude_key:      modal.querySelector('#s-claude-key').value.trim(),
             gemini_key:      modal.querySelector('#s-gemini-key').value.trim(),
@@ -249,7 +269,7 @@ const OhSnapSettings = (() => {
         closeModal();
     }
 
-    return { load, save, get, openModal, closeModal };
+    return { load, save, get, hydrateVault, openModal, closeModal };
 
 })();
 // ===== SNAPSMACK EOF =====

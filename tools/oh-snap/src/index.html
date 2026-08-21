@@ -16,10 +16,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy"
-          content="default-src 'self' tauri: https:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
+          content="default-src 'self' tauri: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; img-src 'self' data: blob: https:;">
     <title>Oh Snap!</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
@@ -38,7 +36,23 @@
         </div>
 
         <div class="connect-card">
-            <h2 class="connect-card-title">Connect to SnapSmack</h2>
+            <h2 class="connect-card-title">Start designing</h2>
+
+            <div class="start-actions">
+                <button type="button" id="btn-new-offline" class="btn btn-primary">New Offline Skin</button>
+                <button type="button" id="btn-open-project" class="btn">Open Project</button>
+            </div>
+            <div class="field offline-mode-field">
+                <label for="offline-mode">New project type</label>
+                <select id="offline-mode">
+                    <option value="SMACKONEOUT">SMACKONEOUT — single-photo blog</option>
+                    <option value="GRAMOFSMACK">GRAMOFSMACK — carousel/grid blog</option>
+                    <option value="SMACKTALK">SMACKTALK — long-form blog</option>
+                    <option value="FEDISTRUCTURE">FEDISTRUCTURE — hub/spoke 4.0</option>
+                </select>
+            </div>
+            <p class="field-hint start-hint">No site, photos, or AI account required.</p>
+            <div class="start-divider"><span>or customize a connected skin</span></div>
 
             <div id="connect-error" class="connect-error hidden"></div>
 
@@ -66,7 +80,7 @@
                        autocomplete="off">
             </div>
 
-            <button type="button" id="btn-connect" class="btn btn-primary btn-full">
+            <button type="button" id="btn-connect" class="btn btn-full">
                 <span id="btn-connect-label">Connect</span>
                 <span id="btn-connect-spinner" class="spinner hidden"></span>
             </button>
@@ -97,6 +111,7 @@
                 <span id="toolbar-site-name">—</span>
                 <svg class="icon" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>
             </button>
+            <select id="skin-picker" class="toolbar-select hidden" aria-label="Installed skin"></select>
         </div>
         <div class="toolbar-centre">
             <span id="toolbar-project-name" class="project-name">Untitled Skin</span>
@@ -104,8 +119,10 @@
         </div>
         <div class="toolbar-right">
             <button type="button" class="toolbar-btn" id="btn-save" title="Save project (Ctrl+S)">Save</button>
-            <button type="button" class="toolbar-btn" id="btn-export" title="Export skin package">Export</button>
-            <button type="button" class="toolbar-btn toolbar-btn-push" id="btn-push" title="Push to site">Push to Site</button>
+            <button type="button" class="toolbar-btn" id="btn-open" title="Open an OH SNAP project">Open</button>
+            <button type="button" class="toolbar-btn" id="btn-export" title="Export CSS overrides">Export CSS Overrides</button>
+            <button type="button" class="toolbar-btn" id="btn-export-package" title="Validate and export a SHAREABLE skin package">Export Skin Package</button>
+            <button type="button" class="toolbar-btn toolbar-btn-push" id="btn-push" title="Push variable overrides to the named connected skin">Push Variable Overrides</button>
             <div class="toolbar-sep"></div>
             <button type="button" class="toolbar-btn toolbar-btn-icon" id="btn-settings" title="Settings">
                 <svg class="icon" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2"/><path d="M8 2v1M8 13v1M2 8h1M13 8h1M3.5 3.5l.7.7M11.8 11.8l.7.7M11.8 4.2l-.7.7M4.2 11.8l-.7.7"/></svg>
@@ -122,8 +139,10 @@
                 <button class="tab-btn active" data-tab="colours">Colours</button>
                 <button class="tab-btn" data-tab="typography">Type</button>
                 <button class="tab-btn" data-tab="layout">Layout</button>
+                <button class="tab-btn" data-tab="content">Content</button>
                 <button class="tab-btn" data-tab="css">CSS</button>
                 <button class="tab-btn" data-tab="history">History</button>
+                <button class="tab-btn" data-tab="diagnostics">Diagnostics</button>
             </nav>
 
             <div class="tab-panel active" id="tab-colours">
@@ -137,13 +156,30 @@
             <div class="tab-panel" id="tab-layout">
                 <div class="panel-empty"><p>Layout controls load with the skin.</p></div>
             </div>
+            <div class="tab-panel" id="tab-content">
+                <div class="content-lab">
+                    <div class="field"><label for="fixture-site-name">Site name</label><input id="fixture-site-name" value="My Photo Blog"></div>
+                    <div class="field"><label for="fixture-post-title">Lead title</label><input id="fixture-post-title" value="The Long Way Home"></div>
+                    <div class="field"><label for="fixture-caption">Lead caption</label><textarea id="fixture-caption">A quiet road, late light, and enough time to notice.</textarea></div>
+                    <div class="field"><label for="fixture-count">Scenario size</label><select id="fixture-count"><option value="0">Empty site</option><option value="1">1 image</option><option value="5" selected>5 images</option><option value="20">20 images</option><option value="100">100-image stress test</option></select></div>
+                    <button type="button" class="btn btn-primary btn-full" id="btn-apply-fixture">Apply Preview Content</button>
+                </div>
+            </div>
             <div class="tab-panel" id="tab-css">
                 <div class="panel-empty">
                     <textarea class="css-editor" id="css-editor" placeholder="/* Direct CSS overrides — changes here reflect in the preview and vice versa. */"></textarea>
                 </div>
             </div>
             <div class="tab-panel" id="tab-history">
-                <div class="panel-empty"><p>No history yet. Changes are auto-saved.</p></div>
+                <div class="history-actions">
+                    <button type="button" class="btn" id="btn-undo">Undo</button>
+                    <button type="button" class="btn" id="btn-redo">Redo</button>
+                </div>
+                <div id="history-list" class="history-list"></div>
+            </div>
+            <div class="tab-panel" id="tab-diagnostics">
+                <div class="history-actions"><button type="button" class="btn btn-primary" id="btn-validate">Validate Project</button></div>
+                <div id="diagnostics-list" class="history-list">Not validated yet.</div>
             </div>
         </aside>
 
@@ -181,7 +217,7 @@
                         sandbox="allow-same-origin allow-scripts"
                         title="Skin preview"></iframe>
                 <div class="preview-placeholder" id="preview-placeholder">
-                    <p>Preview loads after connecting to a site.</p>
+                    <p>Choose New Offline Skin or connect to a site.</p>
                 </div>
             </div>
         </main>
@@ -196,10 +232,11 @@
         <div class="ai-drawer-body" id="ai-drawer-body">
             <div class="ai-messages" id="ai-messages">
                 <div class="ai-msg ai-msg-system">
-                    Describe the skin you want, or upload a reference image. I'll generate a starting point.
+                    Describe a colour, type, or spacing change. AI is optional; manual design works offline.
                 </div>
             </div>
             <div class="ai-input-row">
+                <input type="file" id="ai-reference" accept="image/png,image/jpeg,image/webp" class="ai-reference" title="Optional reference image">
                 <input type="text" id="ai-input" class="ai-input" placeholder="Describe a change…">
                 <button type="button" class="btn btn-primary" id="btn-ai-send">Send</button>
             </div>
@@ -208,7 +245,9 @@
 
 </div><!-- /#screen-app -->
 
+<script src="data/skin-kit-contract.js"></script>
 <script src="scripts/api.js"></script>
+<script src="scripts/vault.js"></script>
 <script src="scripts/settings.js"></script>
 <script src="scripts/controls.js"></script>
 <script src="scripts/preview.js"></script>

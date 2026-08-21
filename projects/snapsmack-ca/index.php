@@ -222,6 +222,8 @@ require_once __DIR__ . '/includes/header.php';
                 <p class="site-discovery-kicker">Production-ready skins</p>
                 <h2>One engine. No house style.</h2>
                 <p class="lede">Real sites, real archives, and three very different answers to what a photography website should look like.</p>
+                <p><strong>A SnapSmack skin is presentation plus a manifest, not a plugin.</strong> The manifest is a declarative shopping list: it says which layouts, controls, fonts, and visual effects the skin needs. The executable machinery stays in one shared, reviewed library inside the CMS. SnapSmack checks out only what the skin declared, and the skin is not allowed to smuggle in its own JavaScript.</p>
+                <p>That means an ambitious skin can still have lightboxes, moving walls, film effects, galleries, and other tricks without becoming a second software product bolted onto your site. Fix an engine once and every skin using it gets the repair. Remove a skin and it leaves no abandoned plugin code behind.</p>
             </div>
             <div class="featured-skin-grid">
                 <a class="featured-skin" href="https://hekeepsdroningon.ca" target="_blank" rel="noopener" data-stats="<?php echo ss_skin_card_stats('hekeepsdroningon.ca', $_skin_demo_stats); ?>">

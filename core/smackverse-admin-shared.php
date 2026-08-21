@@ -30,6 +30,53 @@ $sv_setting_upsert = function (string $key, string $val) use ($pdo, &$sv_setting
     $sv_settings[$key] = $val;
 };
 
+$sc_is_hub_install = ($sv_settings['site_mode'] ?? '') === 'fedistructure'
+    && ($sv_settings['node_role'] ?? '') === 'hub'
+    && ($sv_settings['distribution_profile'] ?? '') === 'smackcast';
+
+// SMACKCAST consequential controls are step-up gated. Code installation never
+// opens the relay; an operator must deliberately enable it and admit members.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $sc_is_hub_install
+    && in_array(($_POST['action'] ?? ''), ['smackcast_toggle','smackcast_member'], true)) {
+    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    if (!$ra['ok']) {
+        header('Location: ' . $sv_self . '?msg=' . urlencode('SMACKCAST unchanged — ' . $ra['error'])); exit;
+    }
+    if ($_POST['action'] === 'smackcast_toggle') {
+        $enabled = ($_POST['enabled'] ?? '0') === '1' ? '1' : '0';
+        $sv_setting_upsert('smackcast_relay_enabled', $enabled);
+        $sv_setting_upsert('smackcast_outbox_recovery_enabled', $enabled);
+        header('Location: ' . $sv_self . '?msg=' . urlencode($enabled === '1' ? 'SMACKCAST relay enabled.' : 'SMACKCAST relay disabled.')); exit;
+    }
+    $id = max(0, (int)($_POST['subscriber_id'] ?? 0));
+    $state = (string)($_POST['member_state'] ?? '');
+    if ($id > 0 && in_array($state, ['active','blocked','left'], true)) {
+        $pdo->beginTransaction();
+        try {
+            $rowq = $pdo->prepare("SELECT * FROM snap_relay_subscribers WHERE id=? FOR UPDATE");
+            $rowq->execute([$id]);
+            $member = $rowq->fetch(PDO::FETCH_ASSOC);
+            if ($member) {
+                $pdo->prepare("UPDATE snap_relay_subscribers SET state=? WHERE id=?")->execute([$state, $id]);
+                if ($state === 'active') {
+                    $follow = ['id'=>$member['follow_id'],'type'=>'Follow','actor'=>$member['actor_url'],
+                        'object'=>'https://www.w3.org/ns/activitystreams#Public'];
+                    $accept = ['@context'=>'https://www.w3.org/ns/activitystreams',
+                        'id'=>sv_actor_url($sv_settings).'#relay-accept-'.hash('sha256',(string)$member['follow_id']),
+                        'type'=>'Accept','actor'=>sv_actor_url($sv_settings),'object'=>$follow];
+                    sv_queue_delivery($pdo, (string)$member['inbox_url'],
+                        json_encode($accept, JSON_UNESCAPED_SLASHES), 'relay-accept:'.$id.':'.hash('sha256',(string)$member['follow_id']));
+                }
+            }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
+    }
+    header('Location: ' . $sv_self . '?msg=' . urlencode('SMACKCAST member state updated.')); exit;
+}
+
 // Active follower count is needed by both the handle guard and the display.
 $sv_follower_count = 0;
 try {
@@ -327,6 +374,14 @@ $sv_key_fp   = $sv_has_key ? substr(hash('sha256', $sv_settings['smackverse_publ
 $sv_htaccess    = @file_get_contents(dirname(__DIR__) . '/.htaccess') ?: '';
 $sv_rewrite_ok  = strpos($sv_htaccess, 'smackverse.php?ap=webfinger') !== false;
 $sv_aproute_ok  = strpos($sv_htaccess, 'smackverse.php?appath=') !== false;
+
+$sc_subscribers = [];
+if ($sc_is_hub_install) {
+    try {
+        $sc_subscribers = $pdo->query("SELECT * FROM snap_relay_subscribers ORDER BY subscribed_at DESC LIMIT 200")
+            ->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) { $sc_subscribers = []; }
+}
 
 // Delivery cron health — registration state + last-run freshness.
 require_once 'core/cron-register.php';

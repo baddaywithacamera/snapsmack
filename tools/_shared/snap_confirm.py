@@ -1,4 +1,5 @@
 """
+SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 snap_confirm — one shared "are you sure, and to WHICH site?" dialog for the
 SnapSmack desktop tools.
 

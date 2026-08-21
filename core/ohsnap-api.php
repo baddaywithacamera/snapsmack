@@ -34,6 +34,7 @@ if (!defined('BASE_URL')) {
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/constants.php';
+require_once __DIR__ . '/skin-registry.php';
 
 // --- CORS: allow Oh Snap! desktop app. Origins: file:// and tauri://localhost
 //     (macOS/Linux) AND http(s)://tauri.localhost — Tauri 2 on Windows/WebView2
@@ -148,6 +149,22 @@ function os_skin_variables(string $skin_slug): array {
     } catch (Throwable $e) {
         return [];
     }
+}
+
+function os_skin_meta(string $slug, string $active_skin): ?array {
+    $safe = preg_replace('/[^a-z0-9\-]/', '', $slug);
+    if (!$safe) return null;
+    $path = dirname(__DIR__) . '/skins/' . $safe . '/manifest.json';
+    if (!is_readable($path)) return null;
+    try { $manifest = snapsmack_load_manifest($path); } catch (Throwable $e) { return null; }
+    $locked = in_array($safe, ['photogram', 'the-grid'], true);
+    $compatible = snapsmack_skin_allowed_distribution($manifest);
+    return [
+        'slug' => $safe, 'name' => $manifest['name'] ?? $safe, 'version' => $manifest['version'] ?? '',
+        'active' => hash_equals($active_skin, $safe), 'locked' => $locked, 'compatible' => $compatible,
+        'oh_snap_ready' => !empty($manifest['oh_snap_ready']) && !empty($manifest['css_variables']),
+        'modes' => $manifest['modes'] ?? [],
+    ];
 }
 
 // =============================================================================
@@ -270,20 +287,37 @@ if ($resource === 'media' && $method === 'GET') {
 }
 
 // =============================================================================
+// ENDPOINT: GET ohsnap/skins — installed skin picker metadata only.
+// =============================================================================
+if ($resource === 'skins' && $method === 'GET') {
+    $active_skin = (string)($settings['active_skin'] ?? '');
+    $skins = [];
+    foreach (glob(dirname(__DIR__) . '/skins/*/manifest.json') ?: [] as $manifest_path) {
+        $meta = os_skin_meta(basename(dirname($manifest_path)), $active_skin);
+        if ($meta && $meta['compatible']) $skins[] = $meta;
+    }
+    usort($skins, fn($a, $b) => ($b['active'] <=> $a['active']) ?: strcasecmp($a['name'], $b['name']));
+    os_ok(['skins' => $skins, 'active_skin' => $active_skin, 'site_mode' => $settings['site_mode'] ?? 'photoblog']);
+}
+
+// =============================================================================
 // ENDPOINT: GET ohsnap/skin
 // Active skin files: manifest contents, style.css, and CSS variable map.
 // Oh Snap! uses the variable map to populate its controls panel.
 // =============================================================================
 if ($resource === 'skin' && $method === 'GET') {
-    $active_skin = $settings['active_skin'] ?? '';
+    $active_skin = (string)($settings['active_skin'] ?? '');
+    $requested_skin = isset($_GET['slug']) ? preg_replace('/[^a-z0-9\-]/', '', (string)$_GET['slug']) : $active_skin;
 
-    if (!$active_skin) {
-        os_err('No active skin configured', 404);
-    }
+    if (!$requested_skin) os_err('No skin selected', 404);
+    $meta = os_skin_meta($requested_skin, $active_skin);
+    if (!$meta) os_err('Skin not found', 404);
+    if ($meta['locked']) os_err('This skin is locked and cannot be loaded for editing', 403);
+    if (!$meta['compatible']) os_err('This skin is incompatible with this installation', 409);
 
-    $manifest_raw = os_skin_file($active_skin, 'manifest.json');
-    $style_css    = os_skin_file($active_skin, 'style.css');
-    $variables    = os_skin_variables($active_skin);
+    $manifest_raw = os_skin_file($requested_skin, 'manifest.json');
+    $style_css    = os_skin_file($requested_skin, 'style.css');
+    $variables    = os_skin_variables($requested_skin);
 
     if ($manifest_raw === null) {
         os_err('Active skin files not found', 404);
@@ -291,7 +325,7 @@ if ($resource === 'skin' && $method === 'GET') {
 
     // Parse the manifest to a clean array for Oh Snap!
     $manifest_data = [];
-    $skin_slug     = preg_replace('/[^a-z0-9\-]/', '', $active_skin);
+    $skin_slug     = $requested_skin;
     $manifest_path = dirname(__DIR__) . '/skins/' . $skin_slug . '/manifest.json';
     try {
         $manifest_data = snapsmack_load_manifest($manifest_path);
@@ -302,11 +336,11 @@ if ($resource === 'skin' && $method === 'GET') {
     } catch (Throwable $e) {}
 
     os_ok([
-        'skin_slug'      => $active_skin,
+        'skin_slug'      => $requested_skin,
         'manifest'       => $manifest_data,
         'style_css'      => $style_css ?? '',
         'css_variables'  => $variables,
-        'oh_snap_ready'  => !empty($variables),
+        'oh_snap_ready'  => !empty($manifest_data['oh_snap_ready']) && !empty($variables),
     ]);
 }
 
@@ -339,9 +373,39 @@ if ($resource === 'skin' && $sub === 'vars' && $method === 'POST') {
     if (!$active_skin) os_err('No active skin configured', 404);
 
     $body = json_decode(file_get_contents('php://input'), true);
-    if (!isset($body['vars']) || !is_array($body['vars'])) {
-        os_err('Request body must be JSON with a "vars" object');
+    if (!isset($body['skin_slug'], $body['vars']) || !is_array($body['vars'])) {
+        os_err('Request body must name "skin_slug" and include a "vars" object');
     }
+
+    $requested_skin = preg_replace('/[^a-z0-9\-]/', '', (string)$body['skin_slug']);
+    if (!$requested_skin) os_err('Invalid skin slug', 422);
+    if (!hash_equals((string)$active_skin, $requested_skin)) {
+        os_err('The active skin changed after it was opened. Reload it before pushing variables.', 409);
+    }
+
+    $requested_meta = os_skin_meta($requested_skin, (string)$active_skin);
+    if (!$requested_meta) os_err('Skin not found', 404);
+    if ($requested_meta['locked']) os_err('This skin is locked and cannot be edited', 403);
+    if (!$requested_meta['compatible']) os_err('This skin is incompatible with this installation', 409);
+
+    $manifest_path = dirname(__DIR__) . '/skins/' . $requested_skin . '/manifest.json';
+    try {
+        $manifest = snapsmack_load_manifest($manifest_path);
+    } catch (Throwable $e) {
+        os_err('Skin manifest could not be validated', 409);
+    }
+    if (empty($manifest['oh_snap_ready'])) {
+        os_err('This skin has not declared OH SNAP compatibility', 409);
+    }
+
+    $declared = [];
+    $collect_declared = function (array $node) use (&$collect_declared, &$declared): void {
+        foreach ($node as $key => $value) {
+            if (is_string($key) && preg_match('/^--[a-z][a-z0-9-]*$/i', $key)) $declared[$key] = true;
+            if (is_array($value)) $collect_declared($value);
+        }
+    };
+    $collect_declared($manifest['css_variables'] ?? []);
 
     // Sanitise: only allow CSS custom property keys (--something) and safe values
     $safe = [];
@@ -349,19 +413,41 @@ if ($resource === 'skin' && $sub === 'vars' && $method === 'POST') {
         $prop = (string)$prop;
         $val  = (string)$val;
         if (!preg_match('/^--[a-z][a-z0-9-]*$/i', $prop)) continue;
+        if (empty($declared[$prop])) continue;
         // Strip anything that could break the CSS block
         if (preg_match('/[;<>{}]/', $val)) continue;
         $safe[$prop] = $val;
     }
 
-    $key     = 'ohsnap_vars_' . preg_replace('/[^a-z0-9\-]/', '', $active_skin);
+    if (count($safe) !== count($body['vars'])) {
+        os_err('One or more variables are undeclared or contain an unsafe value', 422);
+    }
+
+    $key     = 'ohsnap_vars_' . $requested_skin;
     $encoded = json_encode($safe, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-    $pdo->prepare("
-        INSERT INTO snap_settings (setting_key, setting_val)
-        VALUES (?, ?)
-        ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)
-    ")->execute([$key, $encoded]);
+    $pdo->beginTransaction();
+    try {
+        // Serialize against a simultaneous skin change. The earlier comparison
+        // gives a useful fast failure; this locked read closes the race before
+        // the override is committed.
+        $active_q = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key='active_skin' FOR UPDATE");
+        $active_q->execute();
+        $current_skin = (string)($active_q->fetchColumn() ?: '');
+        if (!hash_equals($requested_skin, $current_skin)) {
+            $pdo->rollBack();
+            os_err('The active skin changed while variables were being saved. Reload it and try again.', 409);
+        }
+        $pdo->prepare("
+            INSERT INTO snap_settings (setting_key, setting_val)
+            VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)
+        ")->execute([$key, $encoded]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
 
     os_ok([
         'skin_slug'  => $active_skin,

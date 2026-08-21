@@ -1,4 +1,5 @@
 <?php
+/** SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */
 $maintenance = file_get_contents(__DIR__ . '/../smack-maintenance.php');
 $modcheck = file_get_contents(__DIR__ . '/../modcheck.php');
 $failures = [];
@@ -47,3 +48,5 @@ if ($failures) {
     exit(1);
 }
 echo "PASS: post-model diagnostics and conversion respect install-mode boundaries.\n";
+
+// ===== SNAPSMACK EOF =====

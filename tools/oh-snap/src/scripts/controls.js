@@ -25,6 +25,7 @@
 const currentOverrides = {};   // { '--var-name': 'value', ... }
 let   _skinVariables   = {};   // The css_variables map from the API
 let   _controlInputs   = {};   // { '--var-name': HTMLInputElement }
+let   _userCss         = '';
 
 // --- PUBLIC API ---
 
@@ -33,6 +34,8 @@ let   _controlInputs   = {};   // { '--var-name': HTMLInputElement }
  * @param {Object} skinData   The full response from SnapSmackAPI.skin()
  */
 function controlsInit(skinData) {
+    Object.keys(currentOverrides).forEach(prop => delete currentOverrides[prop]);
+    _userCss = '';
     _skinVariables = skinData.css_variables || {};
     _controlInputs = {};
 
@@ -49,6 +52,12 @@ function controlsInit(skinData) {
  * @param {Object} overrides  { '--var-name': 'value', ... }
  */
 function controlsApplyExternal(overrides) {
+    Object.keys(currentOverrides).forEach(prop => delete currentOverrides[prop]);
+    Object.entries(_skinVariables).forEach(([_group, groupDef]) => {
+        Object.entries(groupDef.vars || {}).forEach(([prop, meta]) => {
+            if (_controlInputs[prop]) _controlInputs[prop].value = meta.default ?? '';
+        });
+    });
     Object.entries(overrides).forEach(([prop, val]) => {
         currentOverrides[prop] = val;
         if (_controlInputs[prop]) {
@@ -61,6 +70,9 @@ function controlsApplyExternal(overrides) {
     _syncCssEditor();
     OhSnapPreview.applyOverrides(currentOverrides);
 }
+
+function controlsGetUserCss() { return _userCss; }
+function controlsSetUserCss(css) { _userCss = String(css || ''); _syncCssEditor(); }
 
 /**
  * Return the current overrides map (for save/export/push).
@@ -83,6 +95,7 @@ function controlsReset() {
     });
     _syncCssEditor();
     OhSnapPreview.applyOverrides(currentOverrides);
+    markDirty();
 }
 
 // --- INTERNAL BUILDERS ---
@@ -291,7 +304,7 @@ function _syncCssEditor() {
         .map(([prop, val]) => `  ${prop}: ${val};`)
         .join('\n');
 
-    editor.value = `:root {\n${lines}\n}`;
+    editor.value = `:root {\n${lines}\n}${_userCss ? `\n\n${_userCss}` : ''}`;
 }
 
 // Wire the CSS editor — when the user types directly, parse and apply
@@ -307,8 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function _parseCssEditorIntoOverrides(css) {
     // Extract CSS custom property declarations from the editor content
     const matches = [...css.matchAll(/(-{2}[a-z][a-z0-9-]*)\s*:\s*([^;}\n]+)/gi)];
-    if (!matches.length) return;
-
+    Object.keys(currentOverrides).forEach(prop => delete currentOverrides[prop]);
     matches.forEach(([, prop, val]) => {
         const trimmed = val.trim();
         if (trimmed) {
@@ -318,6 +330,8 @@ function _parseCssEditorIntoOverrides(css) {
             }
         }
     });
+
+    _userCss = css.replace(/:root\s*\{[\s\S]*?\}/i, '').trim();
 
     OhSnapPreview.applyOverrides(currentOverrides);
     markDirty();

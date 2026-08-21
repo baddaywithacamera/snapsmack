@@ -122,6 +122,10 @@ if (isset($_GET['ajax'])) {
 
     if ($panel === 'local' || $panel === 'global') {
         if (!$sv_on) { echo json_encode(['ok' => true, 'items' => []]); exit; }
+        $cached = $panel === 'local' ? sv_local_timeline($pdo, 60) : sv_global_timeline($pdo, 60);
+        if ($cached) {
+            echo json_encode(['ok' => true, 'items' => $cached], JSON_UNESCAPED_SLASHES); exit;
+        }
         $host = trim((string)($sv_settings['smackverse_home_instance'] ?? ''));
         if ($host === '') {
             try {
@@ -132,7 +136,8 @@ if (isset($_GET['ajax'])) {
         $host = preg_replace('/[^a-z0-9.\-]/i', '', $host);
         if ($host === '') { echo json_encode(['ok' => true, 'items' => [], 'msg' => 'Follow someone (or set a home instance) and the ' . $panel . ' timeline lights up.']); exit; }
         @set_time_limit(30);
-        echo json_encode(['ok' => true, 'items' => sv_public_timeline($host, $panel === 'local', 30)], JSON_UNESCAPED_SLASHES); exit;
+        $remote_items = sv_public_timeline($host, $panel === 'local', 30);
+        echo json_encode(['ok' => true, 'items' => sv_proxy_client_items($remote_items)], JSON_UNESCAPED_SLASHES); exit;
     }
 
     if ($panel === 'profile' || $panel === 'search') {

@@ -84,6 +84,21 @@ if ($delivery_lock !== 1) {
 sv_ensure_tables($pdo);
 sv_ensure_keys($pdo, $settings);
 
+// Receiver-side relay dereference failures are durable work, separate from the
+// outbound delivery queue. The helper is inert when this blog has no jobs.
+$relay_ingest = [0, 0];
+if (function_exists('sc_relay_process_ingest_jobs')) {
+    $relay_ingest = sc_relay_process_ingest_jobs($pdo, $settings, 20);
+}
+$relay_recovery = [0, 0];
+if (function_exists('sc_relay_recover_member_outboxes')) {
+    $relay_recovery = sc_relay_recover_member_outboxes($pdo, $settings, 5, 20);
+}
+$pc_maintenance = [0, 0, 0];
+if (function_exists('pc_cron_maintain')) {
+    $pc_maintenance = pc_cron_maintain($pdo, $settings, 25);
+}
+
 // RESYNC mode: php cron-smackverse.php resync [N]
 // Re-federates the N most recent posts (default: smackverse_backfill_count) to
 // all active followers by pushing a signed Update per Note — same id, current
@@ -126,8 +141,8 @@ $actor_upd = sv_maybe_push_actor_update($pdo, $settings);
 sv_set_setting($pdo, $settings, 'smackverse_cron_last_run', date('Y-m-d H:i:s'));
 
 echo sprintf(
-    "SMACKVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed; profile-update: %d follower(s).\n",
-    $units, $queued, $bf_jobs, $bf_queued, $sent, $failed, $actor_upd
+    "SMACKVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed; relay ingest: %d recovered, %d retrying/shelved; outbox recovery: %d members, %d recovered; PHOTOFRI: %d finalized, %d gardened, %d withdrawn; profile-update: %d follower(s).\n",
+    $units, $queued, $bf_jobs, $bf_queued, $sent, $failed, $relay_ingest[0], $relay_ingest[1], $relay_recovery[0], $relay_recovery[1], $pc_maintenance[0], $pc_maintenance[1], $pc_maintenance[2], $actor_upd
 );
 exit(0);
 // ===== SNAPSMACK EOF =====
