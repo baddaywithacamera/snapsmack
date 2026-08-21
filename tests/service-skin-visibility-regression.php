@@ -58,19 +58,16 @@ s_ok(isset($filtered['new-horizon']) && isset($filtered['plain']),
 s_ok(count($filtered) === 2, 'the list filter changed the count unexpectedly');
 s_ok(snapsmack_skins_for_distribution([]) === [], 'the list filter breaks on an empty list');
 
-// ── ONYX ships as an ordinary skin (option A, 0.7.5xx) ──────────────────────
-// It used to carry features.fedistructure_only; it no longer does, so it is
-// offered on every install like any other blog skin. The mechanism above stays
-// in place for any FUTURE service skin — it simply has no skin using it today.
+// ── ONYX belongs exclusively to FEDISTRUCTURE mode 4.0 ─────────────────────
 $m = json_decode((string)file_get_contents(__DIR__ . '/../skins/onyx/manifest.json'), true);
 s_ok(is_array($m), 'onyx manifest does not parse');
-s_ok(empty($m['features']['fedistructure_only']),
-     'ONYX regained a fedistructure_only flag — it must ship as an ordinary skin');
-s_ok(snapsmack_skin_allowed_distribution($m) === true,
-     'ONYX is hidden on an ordinary install — it should be a normal blog skin now');
+s_ok(!empty($m['features']['fedistructure_only']),
+     'ONYX is not marked fedistructure_only');
+s_ok(snapsmack_skin_allowed_distribution($m) === false,
+     'ONYX is visible on an ordinary install');
 
-// NO shipped skin should carry the flag — a stray copy/paste here silently
-// removes a skin from every ordinary gallery. No service skin ships today.
+// ONYX is the only shipped service skin. A stray flag would silently remove an
+// unrelated skin from every ordinary gallery.
 $flagged = [];
 foreach (glob(__DIR__ . '/../skins/*/manifest.json') as $mf) {
     $d = json_decode((string)file_get_contents($mf), true);
@@ -78,8 +75,8 @@ foreach (glob(__DIR__ . '/../skins/*/manifest.json') as $mf) {
         $flagged[] = basename(dirname($mf));
     }
 }
-s_ok($flagged === [],
-     'a shipped skin carries fedistructure_only (none should): ' . implode(', ', $flagged));
+s_ok($flagged === ['onyx'],
+     'shipped fedistructure_only skins must be ONYX only: ' . implode(', ', $flagged));
 
 // ── Both enforcement points still call the filter ───────────────────────────
 $skin_admin = (string)file_get_contents(__DIR__ . '/../smack-skin.php');
