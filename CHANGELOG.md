@@ -53,6 +53,15 @@ neither of which exists on dev, while the real auth include `auth-smack.php` was
 - **Note:** `core/db.php` is deployment-local (absent from the repo), so its PHP guard must be added on the
   server / by the installer, not here — it stays covered by the Apache rule meanwhile.
 
+### SUYB HTTP media endpoint (`suyb-export.php?type=file`)
+`suyb-export.php` gains a **`type=file`** action that streams one inventoried media/asset file over HTTP,
+authenticated by the site's `suyb` scoped key — so **Smack Up Your Backup can pull the media library with
+NO FTP/SFTP credentials** on each site (the friction that otherwise blocks a 24-site backup). Path-safe:
+only files under `media_assets/`, `img_uploads/`, `skins/`, `assets/img/` are served (string reject +
+realpath containment), as `application/octet-stream`. The SUYB desktop tool (0.7.22+, shipped separately)
+uses it as the primary media transport with FTP/SFTP as fallback; a failed pull fails the backup loud
+(never a silent incomplete).
+
 ## 0.7.543 — 2026-08-20 "BOOKKEEPING"
 
 ### Comment counter, mode guard, and solo-poster correctness (with regression tests)
