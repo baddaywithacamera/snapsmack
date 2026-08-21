@@ -416,6 +416,39 @@ def load_backup_state(ftp: ftp_module.FTPClient, backup_state_rel: str = "backup
     return {}
 
 
+def _local_state_path(profile_name: str) -> str:
+    """Per-profile differential state kept LOCALLY, used by the HTTP transport — a
+    read-only channel cannot write the server's backups/backup-state.json back, so the
+    'what changed since last time' record lives on the operator's machine instead."""
+    import config
+    safe = "".join(c if (c.isalnum() or c in "-_.") else "_" for c in (profile_name or "blog"))
+    d = config.resolve_dir("backup_state")
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, f"{safe}.json")
+
+
+def load_local_state(profile_name: str) -> dict:
+    """Load the local differential state for a profile. {} on first run / any error."""
+    try:
+        p = _local_state_path(profile_name)
+        if os.path.exists(p):
+            with open(p, encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+
+def save_local_state(profile_name: str, state: dict) -> bool:
+    """Persist the local differential state. Non-fatal on failure (next run re-downloads)."""
+    try:
+        with open(_local_state_path(profile_name), "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2)
+        return True
+    except Exception:
+        return False
+
+
 def save_backup_state(
     ftp:          ftp_module.FTPClient,
     state:        dict,
@@ -731,13 +764,24 @@ class BackupEngine:
         remaining = {k: v for k, v in media_files.items() if k not in already_done}
         need_ftp  = bool(remaining)
 
+        _use_http = str(self.profile.get("transport", "ftp")).lower() == "http"
         if need_ftp:
             self._progress("stage3", "Connecting…", 0.18)
-            ftp = transport.make_client(
-                self.profile,
-                transfer_delay = float(self.profile.get("pacing_delay") or 0),
-                batch_size     = int(self.profile.get("batch_size", 0)),
-            )
+            if _use_http:
+                # HTTP media transport: pull files through suyb-export.php?type=file
+                # using the SAME authenticated session as the DB/kit stages. No FTP
+                # credentials — the friction remover on a large fleet.
+                from http_file_client import HttpFileClient
+                ftp = HttpFileClient(
+                    self.profile["site_url"], http,
+                    transfer_delay = float(self.profile.get("pacing_delay") or 0),
+                )
+            else:
+                ftp = transport.make_client(
+                    self.profile,
+                    transfer_delay = float(self.profile.get("pacing_delay") or 0),
+                    batch_size     = int(self.profile.get("batch_size", 0)),
+                )
             try:
                 ftp.connect()
             except Exception as e:
@@ -753,6 +797,9 @@ class BackupEngine:
             if self.force_full:
                 prev_state = {}
                 self._log("Full backup mode — ignoring previous backup state.")
+            elif _use_http:
+                # HTTP is read-only; the differential record lives locally.
+                prev_state = load_local_state(blog_name)
             else:
                 prev_state = load_backup_state(ftp)
 
@@ -1080,9 +1127,15 @@ class BackupEngine:
             else:
                 self._log("✓ Cloud copy verified — size + content hash match.")
 
-        # Upload updated backup-state.json to server
+        # Persist updated backup-state: HTTP mode saves it locally (read-only channel),
+        # FTP/SFTP upload it back to the server as before.
         self._progress("stage6", "Updating server state…", 0.96)
-        if ftp:
+        if _use_http:
+            if not save_local_state(blog_name, new_state):
+                result["errors"].append("Could not save local backup-state (non-fatal).")
+            if ftp:
+                ftp.disconnect()
+        elif ftp:
             state_ok = save_backup_state(ftp, new_state)
             if not state_ok:
                 result["errors"].append("Could not upload backup-state.json to server (non-fatal).")

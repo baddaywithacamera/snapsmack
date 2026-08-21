@@ -39,6 +39,7 @@ a = Analysis(
         (os.path.join(_src, 'file_matcher.py'),       '.'),
         (os.path.join(_src, 'ftp_client.py'),         '.'),
         (os.path.join(_src, 'sftp_client.py'),        '.'),
+        (os.path.join(_src, 'http_file_client.py'),   '.'),
         (os.path.join(_src, 'transport.py'),          '.'),
         (os.path.join(_src, 'hub_discovery.py'),      '.'),
         (os.path.join(_src, 'manifest_reader.py'),    '.'),
@@ -56,6 +57,8 @@ a = Analysis(
         'tkinter', 'tkinter.ttk', 'tkinter.filedialog', 'tkinter.messagebox',
         # Network
         'requests',
+        # HTTP media transport (lazy-imported inside backup_engine Stage 3)
+        'http_file_client',
         # SFTP transport (paramiko + its crypto backends — dynamic imports)
         'paramiko', 'cryptography', 'cffi', 'nacl', 'bcrypt',
         # Google Drive
