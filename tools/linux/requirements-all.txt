@@ -1,0 +1,33 @@
+# SnapSmack Linux tool family — every third-party dependency any tool needs.
+# Install once on the Linux laptop so all 14 Chrome/Blink tools run:
+#     pip3 install -r tools/linux/requirements-all.txt
+#
+# The runtime itself (snap_blink) is stdlib-only; these are the deps the tools'
+# own work modules need (posting, image work, cloud, credentials). GYSS and
+# OH SNAP need nothing here — they are stdlib-only.
+#
+# Versions are the highest floor any tool asked for (a superset — safe for all).
+
+requests>=2.31.0
+Pillow>=10.0.0
+piexif>=1.1.3
+beautifulsoup4>=4.12.0
+imagehash>=4.3.0
+opencv-python-headless>=4.8.0
+
+# credentials at rest / keyring
+cryptography>=42.0.0
+keyring>=24.0.0
+
+# database (SmackAttack Scanner)
+pymysql>=1.1.0
+
+# cloud + backup (SUYB, SYBU)
+google-api-python-client>=2.100.0
+google-auth-httplib2>=0.1.0
+google-auth-oauthlib>=1.0.0
+google-generativeai>=0.7.0
+msal>=1.28.0
+paramiko>=3.0.0
+
+# ===== SNAPSMACK EOF =====

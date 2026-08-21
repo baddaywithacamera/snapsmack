@@ -42,6 +42,30 @@ it defaults to `~/snapsmack` on Linux. The shared-library contract
 (`snap_home`/`snap_creds`/`snap_profiles`/`snap_prompts`) is unchanged — set a blog
 up in one tool and the rest find it.
 
+## Setting up the Linux laptop (do this once)
+
+```bash
+sudo apt install -y chromium zenity        # a Blink browser + the native file-dialog
+pip3 install -r tools/linux/requirements-all.txt
+```
+
+Then `cd tools && ./run-tool.sh <tool>`. GYSS and OH SNAP need no pip deps; the
+others need what's in `requirements-all.txt` (a superset of every tool's needs).
+
+**Import readiness (checked, each tool isolated in its own process as it really
+runs):** all 14 import clean. Note: each tool uses generic module names (`config`,
+`poster`, `fleet`), so tools must run one-per-process — which is exactly the desktop
+model (each is its own window). Never import two into one process.
+
+**In-app Help parity gap:** the ports carried each tool's Help across for 7 of 14
+(coldsnap, sybu, flkr-fckr, suyb, smack-your-mouth, tyswy, unzucker). Shots Fired,
+SmackAttack Scanner, and SmackPress had a Help button in the Windows build that the
+port did NOT carry over — restore before calling those three finished. Cronometer,
+Hub, GYSS, OH SNAP had no in-app Help to begin with. The CMS help page
+(`smack-help.php`) covers SYBU/SMACKPRESS/FLKR/SUYB/SMACKATTACK/OH SNAP well, barely
+mentions GYSS + Unzucker, and omits COLD SNAP/Shots Fired/Smack Your Mouth/
+Cronometer/Hub.
+
 ## Honesty about verification
 
 These ports were written and their Python was syntax-checked on a **Windows** build
