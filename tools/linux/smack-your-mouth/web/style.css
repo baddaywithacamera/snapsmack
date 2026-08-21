@@ -1,0 +1,126 @@
+/* SMACK YOUR MOUTH — dark desktop UI. Palette mirrors the tkinter ui.py
+   (COLD SNAP / SUMNABATCH family) so the whole desktop suite looks like one
+   product. Desktop-only; big hit targets (Parkinson's): buttons ≥ 40px, and
+   the destructive SYNC path is guarded by a confirm modal. */
+:root {
+  --bg-deep:#141414; --bg-card:#1C1C1C; --bg-mid:#050505; --bg-hover:#252525;
+  --accent:#39FF14; --fg-main:#EEEEEE; --fg-dim:#777777;
+  --ok:#4EC994; --err:#FF3E3E; --warn:#D4872A; --line:#2A2A2A;
+}
+* { box-sizing:border-box; }
+html, body { height:100%; }
+body {
+  margin:0; background:var(--bg-deep); color:var(--fg-main);
+  font:14px/1.4 "Segoe UI", system-ui, Roboto, sans-serif;
+  display:flex; flex-direction:column;
+}
+
+header {
+  display:flex; align-items:baseline; gap:12px;
+  padding:12px 18px; background:var(--bg-mid); border-bottom:1px solid #000;
+}
+header h1 { margin:0; font-size:16px; color:var(--accent); letter-spacing:.5px; }
+.build { color:var(--fg-dim); font-size:11px; }
+
+main { flex:1; overflow:auto; padding:8px 0 12px; }
+
+/* ── cards ─────────────────────────────────────────────────────────────── */
+.card {
+  background:var(--bg-card); border:1px solid var(--line);
+  margin:6px 8px; padding:8px 10px 10px;
+}
+.card-title { color:var(--accent); font-weight:700; font-size:12px; margin-bottom:6px; }
+
+.row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:4px 0; }
+.tag { color:var(--fg-dim); font-size:11px; letter-spacing:.5px; }
+.spacer { flex:1 1 auto; }
+
+/* ── inputs ────────────────────────────────────────────────────────────── */
+.in, select, textarea {
+  background:var(--bg-mid); color:var(--fg-main); border:1px solid var(--line);
+  border-radius:4px; padding:7px 8px; font:14px "Segoe UI", system-ui, sans-serif;
+}
+.in:focus, select:focus, textarea:focus { outline:1px solid var(--accent); }
+select { min-width:260px; min-height:38px; }
+
+/* ── buttons (min 40px tall targets) ───────────────────────────────────── */
+.btn {
+  min-height:40px; padding:0 14px; border:0; border-radius:6px; cursor:pointer;
+  background:var(--bg-hover); color:var(--fg-main);
+  font:700 12px "Segoe UI", system-ui, sans-serif; letter-spacing:.4px;
+}
+.btn:hover { filter:brightness(1.15); }
+.btn:disabled { opacity:.5; cursor:default; }
+.btn.primary { background:var(--accent); color:var(--bg-deep); }
+.btn.ok      { background:var(--ok);     color:var(--bg-deep); }
+.btn.danger  { background:var(--err);    color:#fff; }
+.btn.warn    { background:var(--warn);   color:var(--bg-deep); }
+.btn.tiny    { min-height:30px; padding:0 10px; background:var(--bg-hover); color:var(--fg-dim); }
+.btn.big     { min-height:44px; padding:0 22px; }
+
+/* ── fleet list ────────────────────────────────────────────────────────── */
+.fleet-list {
+  margin-top:6px; max-height:150px; overflow:auto;
+  background:var(--bg-mid); border:1px solid var(--line); border-radius:4px;
+}
+.fleet-row { display:flex; gap:10px; padding:6px 10px; border-bottom:1px solid #111; }
+.fleet-row:last-child { border-bottom:0; }
+.fleet-name { color:var(--fg-main); min-width:160px; }
+.fleet-tag  { color:var(--warn); }
+.fleet-url  { color:var(--fg-dim); margin-left:auto; }
+.fleet-empty, .queue-empty { color:var(--fg-dim); padding:14px; }
+
+/* ── queue ─────────────────────────────────────────────────────────────── */
+.queue-head {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 14px; background:var(--bg-mid); margin-top:4px;
+}
+.queue-title { color:var(--accent); font-weight:700; font-size:13px; }
+.queue-count { color:var(--fg-dim); font-size:11px; }
+.queue { padding:2px 0; }
+
+.qcard {
+  background:var(--bg-card); border:1px solid var(--line);
+  margin:5px 8px; padding:10px 12px;
+}
+.qhead { display:flex; align-items:center; }
+.qsrc { color:var(--accent); font-size:11px; }
+.qstatus { margin-left:auto; font-size:11px; font-weight:700; }
+.qwho { font-weight:700; margin-top:4px; }
+.qmeta { color:var(--fg-dim); font-size:11px; margin-top:2px; }
+.qbody { margin:8px 0; white-space:pre-wrap; }
+
+.qdecide { display:flex; align-items:center; gap:6px; }
+.qreply-head { display:flex; align-items:center; gap:6px; margin-top:10px; }
+.qreply { width:100%; margin-top:4px; resize:vertical; }
+.qerr { color:var(--err); font-size:12px; margin-top:6px; }
+
+/* status word colours (mirror ui.STATUS_COLORS) */
+.dim { color:var(--fg-dim); } .accent { color:var(--accent); }
+.ok  { color:var(--ok); }     .err { color:var(--err); } .warn { color:var(--warn); }
+
+/* ── bottom bar ────────────────────────────────────────────────────────── */
+footer {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 12px; background:var(--bg-mid); border-top:1px solid #000;
+}
+.status { color:var(--fg-dim); font-size:12px; }
+.status.ok { color:var(--ok); } .status.err { color:var(--err); }
+.status.warn { color:var(--warn); }
+
+/* ── modals ────────────────────────────────────────────────────────────── */
+.overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.6);
+  display:flex; align-items:center; justify-content:center; z-index:50;
+}
+.overlay.hidden { display:none; }
+.modal {
+  background:var(--bg-card); border:1px solid var(--line); border-radius:8px;
+  padding:18px; width:min(520px, 90vw);
+}
+.modal-title { color:var(--accent); font-weight:700; margin-bottom:12px; }
+.modal-body { margin-bottom:14px; font-size:13px; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
+.site-list { margin:6px 0 0; padding-left:18px; color:var(--fg-dim); font-size:12px; }
+.danger-note { color:var(--err); margin-top:10px; font-weight:700; }
+/* ===== SNAPSMACK EOF ===== */

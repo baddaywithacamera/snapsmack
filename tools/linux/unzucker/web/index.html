@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UNZUCKER</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+
+  <!-- ── Header ─────────────────────────────────────────────────── -->
+  <header>
+    <span class="brand">UNZUCKER</span>
+    <span id="build" class="muted small"></span>
+    <span class="spacer"></span>
+    <span id="keyring" class="small"></span>
+    <span id="conn-label" class="small muted">Not connected</span>
+    <span id="conn-dot" class="dot">●</span>
+  </header>
+
+  <!-- ── Configuration drawer ───────────────────────────────────── -->
+  <div id="cfg-toggle" class="cfg-toggle"><span id="cfg-arrow">▲</span>&nbsp;&nbsp;CONFIGURATION</div>
+
+  <section id="cfg" class="cfg">
+    <div class="box">
+      <div class="box-hdr">CONNECTION</div>
+      <div class="box-body">
+        <label class="fld-label">SITE URL</label>
+        <input id="url" class="fld" type="text" autocomplete="off" spellcheck="false" placeholder="https://yoursite.example">
+
+        <label class="fld-label">API KEY</label>
+        <div class="row">
+          <input id="api-key" class="fld" type="password" autocomplete="off" spellcheck="false">
+          <button id="key-toggle" class="mini" type="button">show</button>
+        </div>
+
+        <div class="row end">
+          <button id="btn-connect" class="accent" type="button">Connect</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="box-hdr">IMPORT SETTINGS</div>
+      <div class="box-body">
+        <label class="fld-label">INSTAGRAM EXPORT FOLDER
+          <span class="muted small">— paste the full path to the unzipped export folder</span>
+        </label>
+        <input id="export" class="fld" type="text" autocomplete="off" spellcheck="false"
+               placeholder="/home/you/Downloads/instagram-you-2026-01-01-abcd">
+
+        <label class="fld-label">COPYRIGHT STRING</label>
+        <input id="copyright" class="fld" type="text" autocomplete="off" spellcheck="false">
+
+        <label class="fld-label">SERVER THROTTLE</label>
+        <div id="throttle" class="throttle"></div>
+
+        <div class="row offpeak">
+          <label class="chk"><input id="offpeak" type="checkbox"> OFF-PEAK ONLY</label>
+          <span id="offpeak-hours" class="hours" hidden>
+            <span class="muted small">Peak:</span>
+            <select id="peak-start" class="sel"></select>
+            <span class="muted small">to</span>
+            <select id="peak-end" class="sel"></select>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Grid section (hidden until a parse succeeds) ───────────── -->
+  <section id="grid-section" class="grid-section" hidden>
+    <div class="grid-hdr">
+      <span id="grid-label" class="strong">POSTS — 0</span>
+      <span id="tg-label" class="tg-label"></span>
+      <span class="spacer"></span>
+      <span class="muted small">Right-click a cell to exclude · Ctrl+click 3 posts to group a trigram</span>
+    </div>
+
+    <div id="grid" class="grid"></div>
+
+    <!-- Detail view (shown over the grid on cell click) -->
+    <div id="detail" class="detail" hidden>
+      <div class="detail-nav">
+        <button id="d-back" class="ghost" type="button">←  BACK TO GRID</button>
+        <span id="d-info" class="muted"></span>
+        <span class="spacer"></span>
+        <button id="d-prev" class="ghost" type="button">← PREV</button>
+        <button id="d-next" class="ghost" type="button">NEXT →</button>
+      </div>
+      <div class="detail-body">
+        <img id="d-preview" class="d-preview" alt="">
+        <div id="d-strip" class="d-strip"></div>
+        <div class="d-meta">
+          <span id="d-type" class="badge"></span>
+          <span id="d-count" class="muted"></span>
+          <span class="spacer"></span>
+          <span id="d-date" class="muted"></span>
+        </div>
+        <div class="d-section-label">CAPTION</div>
+        <div id="d-caption" class="d-caption"></div>
+        <div class="d-section-label">TAGS</div>
+        <div id="d-tags" class="d-tags"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Bottom action bar ──────────────────────────────────────── -->
+  <footer>
+    <button id="btn-parse" class="ghost" type="button">Parse Export</button>
+    <button id="btn-validate" class="ghost" type="button">Validate</button>
+    <button id="btn-unload" class="ghost" type="button" disabled>Unload Job</button>
+    <button id="btn-post" class="post" type="button">TRANSFER &amp; POST</button>
+    <span class="spacer"></span>
+    <span id="status" class="small muted">Parse an export to begin.</span>
+    <span id="prog-label" class="small muted"></span>
+    <progress id="prog" class="prog" value="0" max="1"></progress>
+  </footer>
+
+  <!-- ── Modal host ─────────────────────────────────────────────── -->
+  <div id="modal-back" class="modal-back" hidden>
+    <div id="modal" class="modal"></div>
+  </div>
+
+  <div id="log" class="log" aria-live="polite"></div>
+
+  <script src="/snap_blink.js"></script>
+  <script src="app.js"></script>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->

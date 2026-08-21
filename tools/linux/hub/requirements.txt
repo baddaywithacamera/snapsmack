@@ -1,0 +1,6 @@
+# THE HUB (Linux Chrome/Blink port) — real pip deps only.
+# The window runtime (snap_blink) is stdlib-only. The Hub's WORK needs requests
+# for Discover Fleet (snap_discovery), the Gemini key test, and prompt fetch/push.
+# pyinstaller from the Windows requirements is NOT needed here (no .exe build).
+requests>=2.28
+# ===== SNAPSMACK EOF =====

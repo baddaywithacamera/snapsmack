@@ -1,0 +1,140 @@
+/* Smack Up Your Backup — Linux Chrome/Blink UI.
+   Dark, desktop-only (these tools never serve phones). Big hit targets for
+   Parkinson's: min 44px on primary actions, destructive buttons kept apart. */
+
+:root{
+  --bg:#1a1a22;        /* deepest background (BG_DEEP) */
+  --panel:#22222c;     /* card / section (BG_MID) */
+  --card:#2c2c38;      /* elevated surface (BG_CARD) */
+  --input:#2a2a34;     /* text inputs (BG_INPUT) */
+  --ink:#e8e8ec;       /* primary text (FG_MAIN) */
+  --muted:#888890;     /* muted text (FG_DIM) */
+  --accent:#5dea5d;    /* leaf green (ACCENT) */
+  --accent2:#4ac34a;
+  --ok:#5dea5d;
+  --warn:#f0b030;
+  --danger:#e86060;
+  --border:#33333f;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  font:14px/1.45 "Segoe UI",system-ui,Roboto,sans-serif;
+  background:var(--bg); color:var(--ink);
+  display:flex; flex-direction:column;
+}
+
+/* header */
+#topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; padding:10px 16px; background:var(--card);
+  border-bottom:1px solid #000;
+}
+.brand-name{color:var(--accent); font-weight:700; font-size:15px; letter-spacing:.5px;}
+.brand-ver{color:var(--muted); font-size:12px; margin-left:8px;}
+.profile-bar{display:flex; align-items:center; gap:6px;}
+#profile-select{
+  min-width:240px; background:var(--input); color:var(--ink);
+  border:1px solid var(--border); border-radius:6px; padding:8px 10px; font-size:14px;
+}
+
+/* tab bar */
+#tabbar{display:flex; background:var(--card); border-bottom:1px solid var(--border);}
+.tab{
+  background:transparent; color:var(--muted); border:0;
+  padding:12px 18px; font-size:14px; font-weight:600; cursor:pointer;
+  border-bottom:3px solid transparent;
+}
+.tab:hover{color:var(--ink);}
+.tab.active{color:var(--accent); border-bottom-color:var(--accent); background:var(--bg);}
+
+/* main scroll area */
+#app{flex:1 1 auto; overflow:auto; padding:16px; min-height:0;}
+
+/* generic buttons */
+button{
+  min-height:38px; padding:0 16px; border:0; border-radius:8px;
+  background:var(--accent); color:#0d180d; font-size:14px; font-weight:600; cursor:pointer;
+}
+button:hover{background:var(--accent2);}
+button:disabled{opacity:.45; cursor:not-allowed;}
+button.primary{min-height:46px; font-size:15px; padding:0 22px;}
+button.ghost{background:var(--card); color:var(--ink); font-weight:500; min-height:34px;}
+button.ghost:hover{background:var(--border);}
+button.danger{background:var(--danger); color:#fff;}
+button.danger-text{color:var(--danger);}
+button.warn{background:var(--warn); color:#221a00;}
+
+/* cards & layout */
+.card{background:var(--panel); border:1px solid var(--border); border-radius:10px;
+  padding:16px; margin-bottom:14px;}
+.card h2{margin:0 0 4px; font-size:15px; color:var(--accent);}
+.card .sub{color:var(--muted); font-size:12.5px; margin:0 0 12px;}
+.row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+.row.end{justify-content:flex-end;}
+.spacer{flex:1 1 auto;}
+.muted{color:var(--muted);}
+.ok{color:var(--ok);} .warn-t{color:var(--warn);} .err{color:var(--danger);}
+.hint{color:var(--muted); font-size:12px; margin-top:6px;}
+
+/* form fields */
+label.field{display:block; margin-bottom:10px;}
+label.field > span{display:block; color:var(--muted); font-size:12px; margin-bottom:4px;}
+input[type=text],input[type=password],input[type=number],select,textarea{
+  width:100%; background:var(--input); color:var(--ink);
+  border:1px solid var(--border); border-radius:6px; padding:9px 10px; font-size:14px;
+  font-family:inherit;
+}
+textarea{min-height:120px; font-family:Consolas,monospace; font-size:12.5px;}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:0 16px;}
+.checkbox{display:flex; align-items:center; gap:8px; margin:8px 0; color:var(--ink);}
+.checkbox input{width:18px; height:18px;}
+.status-line{font-size:12.5px; color:var(--muted); margin-top:6px; min-height:16px; white-space:pre-wrap;}
+
+/* progress */
+.progress{height:10px; background:var(--input); border-radius:5px; overflow:hidden; margin:10px 0;}
+.progress > i{display:block; height:100%; width:0; background:var(--accent); transition:width .2s;}
+.stats{display:flex; justify-content:space-between; color:var(--muted); font-size:12px;}
+
+/* radios */
+.radios{display:flex; gap:18px; flex-wrap:wrap; margin:6px 0;}
+.radios label{display:flex; align-items:center; gap:6px; color:var(--ink);}
+
+/* tables */
+table{width:100%; border-collapse:collapse; font-size:13px;}
+th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--border);}
+th{color:var(--muted); font-weight:600; font-size:12px;}
+tr:hover td{background:rgba(255,255,255,.02);}
+
+/* result block */
+pre.result{background:#0c0d10; border:1px solid var(--border); border-radius:8px;
+  padding:12px; max-height:40vh; overflow:auto; font:12px/1.5 Consolas,monospace;
+  color:var(--ink); white-space:pre-wrap;}
+
+/* bottom log */
+.log{flex:0 0 auto; max-height:26vh; overflow:auto; background:#0c0d10;
+  padding:8px 16px; font:12px/1.5 Consolas,monospace; border-top:1px solid #000;}
+.log .line{color:var(--muted);}
+.log .line.err{color:var(--danger);}
+.log .line.ok{color:var(--ok);}
+.log:empty{display:none;}
+
+/* modal */
+#modal-root:empty{display:none;}
+.modal-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.6);
+  display:flex; align-items:flex-start; justify-content:center; padding:40px 16px;
+  overflow:auto; z-index:50;}
+.modal{background:var(--panel); border:1px solid var(--border); border-radius:12px;
+  padding:20px; width:min(680px,100%); box-shadow:0 20px 60px rgba(0,0,0,.5);}
+.modal h2{margin:0 0 12px; color:var(--accent); font-size:16px;}
+.modal .section-h{color:var(--accent); font-weight:600; font-size:13px;
+  margin:14px 0 6px; border-top:1px solid var(--border); padding-top:12px;}
+.modal .section-h:first-of-type{border-top:0; padding-top:0;}
+.modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:18px;}
+
+/* help */
+.help-topic{margin-bottom:8px;}
+.help-topic summary{cursor:pointer; color:var(--accent); font-weight:600; padding:8px 0;}
+.help-topic p{white-space:pre-wrap; color:var(--ink); margin:6px 0 14px;}
+/* ===== SNAPSMACK EOF ===== */

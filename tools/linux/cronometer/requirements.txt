@@ -1,0 +1,5 @@
+# CRONOMETER (Linux Blink port) — real pip deps only.
+# snap_blink is stdlib-only. The reused logic (heartbeat_client.py) needs requests.
+# PyInstaller is a Windows-build concern, not needed to run the Linux port.
+requests>=2.31.0
+# ===== SNAPSMACK EOF =====

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SMACKATTACK SCANNER</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+  <header>
+    <span class="brand">SMACKATTACK SCANNER</span>
+    <span class="ver" id="ver"></span>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="settings" role="tab">SETTINGS</button>
+    <button class="tab" data-tab="scan" role="tab">SCAN</button>
+    <button class="tab" data-tab="results" role="tab">RESULTS</button>
+  </nav>
+
+  <main id="app">
+    <!-- ── SETTINGS ─────────────────────────────────────────────── -->
+    <section class="panel active" id="panel-settings">
+      <h2 class="accent">DATABASE CONNECTION</h2>
+      <div class="fields">
+        <label>Host        <input id="f-db_host"></label>
+        <label>Port        <input id="f-db_port"></label>
+        <label>Database    <input id="f-db_name"></label>
+        <label>Username    <input id="f-db_user"></label>
+        <label>Password    <input id="f-db_password" type="password"></label>
+      </div>
+
+      <h2 class="accent">SMACKATTACK HUB API <span class="muted">(optional)</span></h2>
+      <div class="fields">
+        <label>Hub API URL <input id="f-api_url"></label>
+        <label>API Key     <input id="f-api_key" type="password"></label>
+      </div>
+
+      <h2 class="accent">SCAN PARAMETERS</h2>
+      <div class="fields">
+        <label>Similarity Threshold <input id="f-threshold"></label>
+        <p class="hint">Flag matches at or above this cosine similarity (0.0–1.0). Default: 0.55</p>
+        <label>Minimum Words <input id="f-min_words"></label>
+        <p class="hint">Skip authors with fewer combined words than this. Default: 30</p>
+      </div>
+
+      <div class="actionbar">
+        <button id="btn-save">SAVE &amp; TEST CONNECTION</button>
+        <span id="conn-msg" class="muted"></span>
+      </div>
+    </section>
+
+    <!-- ── SCAN ─────────────────────────────────────────────────── -->
+    <section class="panel" id="panel-scan">
+      <h2 class="accent">STYLOMETRIC SCAN</h2>
+      <p class="muted">
+        Fetches approved comments from the database, computes 25-dimension writing
+        style vectors, and compares all authors against each other and any stored ban
+        profiles. Matches above the similarity threshold are stored in
+        snap_gobsmacked_scan.
+      </p>
+
+      <div class="stats">
+        <div class="stat"><span class="num" id="s-authors">—</span><span class="cap">AUTHORS WITH<br>ENOUGH TEXT</span></div>
+        <div class="stat"><span class="num" id="s-pairs">—</span><span class="cap">PAIRS<br>COMPARED</span></div>
+        <div class="stat"><span class="num warn" id="s-flags">—</span><span class="cap">FLAGS<br>ISSUED</span></div>
+      </div>
+
+      <div class="bar"><div class="bar-fill" id="bar"></div></div>
+      <p class="muted" id="scan-status"></p>
+
+      <div class="logbox" id="scan-log" aria-live="polite"></div>
+
+      <div class="actionbar">
+        <button id="btn-run">RUN SCAN</button>
+        <button id="btn-view" class="ghost">VIEW RESULTS</button>
+      </div>
+    </section>
+
+    <!-- ── RESULTS ──────────────────────────────────────────────── -->
+    <section class="panel" id="panel-results">
+      <h2 class="accent">FLAGGED MATCHES</h2>
+
+      <div class="filterbar">
+        <span class="muted">Show:</span>
+        <label><input type="radio" name="filt" value="all" checked> All</label>
+        <label><input type="radio" name="filt" value="peer"> Peer Matches</label>
+        <label><input type="radio" name="filt" value="banned"> vs Banned</label>
+        <label><input type="radio" name="filt" value="unreviewed"> Unreviewed</label>
+        <button id="btn-refresh" class="ghost right">⟳ Refresh</button>
+      </div>
+
+      <div class="tablewrap">
+        <table id="results-table">
+          <thead><tr>
+            <th>SIMILARITY</th><th>TYPE</th><th>AUTHOR</th><th>MATCHED</th>
+            <th>EMAIL</th><th>FLAGGED</th><th>STATUS</th>
+          </tr></thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+
+      <div class="actionbar">
+        <button id="btn-reviewed">MARK REVIEWED</button>
+        <button id="btn-upload">UPLOAD TO HUB</button>
+        <span id="act-msg" class="muted"></span>
+      </div>
+    </section>
+  </main>
+
+  <footer id="statusbar">Not connected.</footer>
+
+  <script src="/snap_blink.js"></script>
+  <script src="app.js"></script>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->

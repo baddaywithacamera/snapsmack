@@ -1,0 +1,132 @@
+/* SMACKPRESS — dark desktop UI. Big hit targets (Parkinson's): min 44px, guard SEND/POST. */
+:root {
+  --bg:#14161a; --panel:#1d2027; --panel2:#23272f; --ink:#e9edf2; --muted:#9aa4b2;
+  --accent:#4f8cff; --danger:#e5484d; --ok:#3fb950; --go:#1a6a2a; --line:#0a0b0d;
+  --nav-w:280px; --card-w:340px;
+}
+* { box-sizing: border-box; }
+html, body { height:100%; }
+body {
+  margin:0; font:15px/1.4 system-ui,Segoe UI,Roboto,sans-serif;
+  background:var(--bg); color:var(--ink); display:flex; flex-direction:column;
+}
+
+/* menu bar */
+#menubar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 16px; background:var(--panel); border-bottom:1px solid var(--line);
+}
+.brand { font-weight:700; letter-spacing:.5px; }
+.muted { color:var(--muted); font-weight:400; font-size:13px; }
+.menu { display:flex; gap:6px; }
+.menu-btn {
+  min-height:36px; padding:0 12px; border:0; border-radius:6px;
+  background:var(--panel2); color:var(--ink); font-size:14px; cursor:pointer;
+}
+.menu-btn:hover { background:#2c313b; }
+
+/* workbench three panes */
+#workbench { flex:1; display:flex; min-height:0; }
+
+/* buttons */
+button {
+  min-height:44px; padding:0 16px; border:0; border-radius:8px;
+  background:var(--accent); color:#fff; font-size:15px; cursor:pointer;
+}
+button:hover { filter:brightness(1.08); }
+button.grey { background:gray; } button.grey:hover { filter:brightness(1.1); }
+button.accent { background:var(--accent); }
+button.go { background:var(--go); }
+button.danger { background:var(--danger); }
+button.icon { min-height:36px; width:40px; padding:0; font-size:16px; background:var(--panel2); }
+button.small { min-height:40px; padding:0 12px; }
+button.wide { width:100%; margin:6px 0; }
+
+/* ── NAVIGATOR ─────────────────────────────────────────── */
+#navigator {
+  width:var(--nav-w); flex:0 0 var(--nav-w); background:var(--panel);
+  border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0;
+}
+.nav-head { display:flex; align-items:center; justify-content:space-between; padding:10px 10px 4px; }
+.nav-row { display:flex; align-items:center; gap:6px; padding:4px 10px; }
+.nav-row label { color:var(--muted); font-size:13px; }
+.nav-row select, .nav-row input { flex:1; }
+select, input[type=text], input[type=password], textarea {
+  background:var(--panel2); color:var(--ink); border:1px solid #333;
+  border-radius:6px; padding:8px; font:14px/1.4 system-ui,sans-serif; min-height:40px;
+}
+textarea { min-height:unset; }
+.post-list { flex:1; overflow:auto; padding:4px 6px; }
+.loading { color:var(--muted); padding:8px; font-size:13px; }
+.post-row {
+  padding:8px 8px; border-radius:6px; cursor:pointer; font-size:13px;
+  white-space:normal; word-break:break-word;
+}
+.post-row:hover { background:var(--panel2); }
+.post-row.migrated { color:#2a5; }
+.post-row.hidden { color:var(--muted); }
+.nav-pager { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; gap:8px; }
+#page-label { flex:1; text-align:center; color:var(--muted); font-size:13px; }
+
+/* ── WORKING CANVAS ────────────────────────────────────── */
+#canvas { flex:1; min-width:0; display:flex; flex-direction:column; padding:10px 12px; gap:6px; }
+.pane-label { color:var(--muted); font-weight:700; font-size:13px; }
+.box { flex:1; width:100%; resize:none; min-height:120px; }
+#wp-source { background:#0f1114; }
+.toolbar {
+  display:flex; align-items:center; gap:8px; background:var(--panel2);
+  padding:4px 8px; border-radius:8px;
+}
+.toolbar .grow { flex:1; padding-left:4px; }
+.toolbar button { min-height:38px; }
+.status { color:var(--muted); font-size:13px; padding:2px 2px 0; min-height:20px; }
+
+/* ── CARD STACK ────────────────────────────────────────── */
+#cards {
+  width:var(--card-w); flex:0 0 var(--card-w); background:var(--panel);
+  border-left:1px solid var(--line); padding:10px 12px; overflow:auto;
+  display:flex; flex-direction:column;
+}
+.card-title { display:block; margin:12px 0 4px; font-weight:700; }
+.meta {
+  background:var(--panel2); border-radius:6px; padding:8px; margin:0;
+  font:13px/1.5 ui-monospace,Consolas,monospace; white-space:pre-wrap; color:var(--ink);
+}
+.field-label { display:block; color:var(--muted); font-size:13px; margin:8px 0 2px; }
+#cards input, #cards select { width:100%; }
+.images { max-height:180px; overflow:auto; background:var(--panel2); border-radius:6px; padding:4px; }
+.img-row { font:12px/1.5 ui-monospace,monospace; padding:2px 4px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.check { display:flex; align-items:center; gap:8px; margin:8px 0; font-size:14px; cursor:pointer; }
+.check input { width:20px; height:20px; }
+.migration { background:var(--panel2); border-radius:6px; padding:8px; font-size:13px; word-break:break-word; }
+
+/* ── SETTINGS MODAL ────────────────────────────────────── */
+.overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.6);
+  display:flex; align-items:center; justify-content:center; z-index:20;
+}
+.overlay.hidden { display:none; }
+.modal {
+  width:560px; max-width:92vw; max-height:88vh; overflow:auto;
+  background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px;
+}
+.modal h2 { margin:0 0 12px; font-size:18px; }
+.settings-fields { display:flex; flex-direction:column; }
+.settings-fields input { margin-bottom:2px; }
+.settings-group { font-weight:700; margin:14px 0 4px; color:var(--accent); }
+.prompt { min-height:90px; height:90px; }
+.modal-actions { display:flex; gap:8px; margin-top:14px; }
+.settings-result { margin-top:12px; font:13px/1.6 ui-monospace,monospace; white-space:pre-wrap; }
+.settings-result .ok { color:var(--ok); } .settings-result .err { color:var(--danger); }
+
+/* ── LOG ───────────────────────────────────────────────── */
+.log {
+  position:fixed; bottom:0; left:0; right:0; max-height:24vh; overflow:auto;
+  background:#0c0d10; padding:6px 16px; font:13px/1.5 ui-monospace,monospace;
+  border-top:1px solid var(--line); pointer-events:none;
+}
+.log:empty { display:none; }
+.log .line { pointer-events:auto; }
+.log .err { color:var(--danger); }
+.log .ok { color:var(--ok); }
+/* ===== SNAPSMACK EOF ===== */

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SMACKPRESS</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+
+  <!-- Menu bar (File / View from the tkinter menu) -->
+  <header id="menubar">
+    <div class="brand"><span id="app-title">SMACKPRESS</span> <span id="app-version" class="muted"></span></div>
+    <nav class="menu">
+      <button id="menu-settings" class="menu-btn">Settings…</button>
+      <button id="menu-refresh" class="menu-btn">Refresh posts</button>
+      <button id="menu-quit" class="menu-btn">Quit</button>
+    </nav>
+  </header>
+
+  <!-- Three panes: NAVIGATOR | WORKING CANVAS | CARD STACK -->
+  <main id="workbench">
+
+    <!-- ── NAVIGATOR (left) ─────────────────────────────── -->
+    <aside id="navigator">
+      <div class="nav-head">
+        <strong>WordPress</strong>
+        <button id="nav-refresh" class="icon" title="Refresh">⟳</button>
+      </div>
+
+      <div class="nav-row">
+        <label>Type:</label>
+        <select id="nav-type">
+          <option>Posts</option>
+          <option>Pages</option>
+        </select>
+      </div>
+
+      <div class="nav-row">
+        <label>Status:</label>
+        <select id="nav-status">
+          <option>publish</option>
+          <option>private</option>
+          <option>draft</option>
+          <option>any</option>
+        </select>
+      </div>
+
+      <div class="nav-row">
+        <input id="nav-search" type="text" placeholder="Search…">
+        <button id="nav-go" class="small">Go</button>
+      </div>
+
+      <div id="post-list" class="post-list"></div>
+
+      <div class="nav-pager">
+        <button id="page-prev" class="icon">◀</button>
+        <span id="page-label">1 / 1</span>
+        <button id="page-next" class="icon">▶</button>
+      </div>
+    </aside>
+
+    <!-- ── WORKING CANVAS (center) ──────────────────────── -->
+    <section id="canvas">
+      <label class="pane-label">WordPress source</label>
+      <textarea id="wp-source" class="box" readonly></textarea>
+
+      <div id="draft-toolbar" class="toolbar">
+        <strong class="grow">SMACKTALK draft</strong>
+        <button id="btn-ai" class="accent">✦ AI rewrite</button>
+        <button id="btn-reset" class="grey">⟳ Reset</button>
+        <button id="btn-push" class="go">→ SnapSmack</button>
+      </div>
+
+      <textarea id="draft" class="box" placeholder="Select a post from the navigator."></textarea>
+      <div id="canvas-status" class="status">Select a post from the navigator.</div>
+    </section>
+
+    <!-- ── CARD STACK (right) ───────────────────────────── -->
+    <aside id="cards">
+      <strong class="card-title">Post details</strong>
+      <pre id="meta" class="meta"></pre>
+
+      <label class="field-label">Tags (space-separated)</label>
+      <input id="tags" type="text">
+
+      <label class="field-label">Category</label>
+      <select id="category"><option value="">(none)</option></select>
+
+      <strong class="card-title">Gallery images</strong>
+      <div id="images" class="images"></div>
+
+      <label class="check">
+        <input id="caption-fn" type="checkbox">
+        Caption images from filename
+      </label>
+      <button id="btn-mosaic" class="wide">Create mosaic from gallery</button>
+
+      <strong class="card-title">Migration status</strong>
+      <div id="migration" class="migration">—</div>
+      <button id="btn-hide" class="wide grey">Hide WP post (mark migrated)</button>
+    </aside>
+  </main>
+
+  <!-- ── Settings modal ─────────────────────────────────── -->
+  <div id="settings-overlay" class="overlay hidden">
+    <div class="modal">
+      <h2>SMACKPRESS Settings</h2>
+      <div id="settings-fields" class="settings-fields"></div>
+      <label class="field-label">AI system prompt</label>
+      <textarea id="ai-prompt" class="box prompt"></textarea>
+      <div class="modal-actions">
+        <button id="settings-save" class="go">Save</button>
+        <button id="settings-test" class="accent">Test connections</button>
+        <button id="settings-cancel" class="grey">Cancel</button>
+      </div>
+      <div id="settings-result" class="settings-result"></div>
+    </div>
+  </div>
+
+  <div id="log" class="log" aria-live="polite"></div>
+
+  <script src="/snap_blink.js"></script>
+  <script src="app.js"></script>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->

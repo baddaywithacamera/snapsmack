@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smack Up Your Backup</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+  <header id="topbar">
+    <div class="brand">
+      <span class="brand-name">SMACK UP YOUR BACKUP</span>
+      <span class="brand-ver" id="version">v—</span>
+    </div>
+    <div class="profile-bar">
+      <select id="profile-select" title="Blog profile"></select>
+      <button class="ghost" id="btn-new">+ New</button>
+      <button class="ghost" id="btn-edit">Edit</button>
+      <button class="ghost" id="btn-dup">Dup</button>
+      <button class="ghost danger-text" id="btn-del">Del</button>
+    </div>
+  </header>
+
+  <nav id="tabbar">
+    <button class="tab" data-tab="backup">Backup</button>
+    <button class="tab" data-tab="restore">Restore</button>
+    <button class="tab" data-tab="audit">Audit</button>
+    <button class="tab" data-tab="scheduler">Schedule</button>
+    <button class="tab" data-tab="cloud_sync">Cloud Sync</button>
+    <button class="tab" data-tab="settings">Settings</button>
+    <button class="tab" data-tab="help">Help</button>
+  </nav>
+
+  <main id="app">Loading…</main>
+
+  <div id="log" class="log" aria-live="polite"></div>
+
+  <!-- Modal host: dialogs (profile editor, hub discovery, sync-job editor,
+       cloud picker, confirm boxes) render here. -->
+  <div id="modal-root"></div>
+
+  <script src="/snap_blink.js"></script>
+  <script src="app.js"></script>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->

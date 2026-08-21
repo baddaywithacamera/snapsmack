@@ -1,0 +1,17 @@
+# Smack Up Your Backup — Linux Chrome/Blink port.
+# The Blink runtime (snap_blink) is stdlib-only. These are the SAME deps the
+# tool's real work already needs (backup/cloud/sftp/vault engines); the port
+# adds nothing new. Chromium/Chrome must be installed on the box (snap_blink
+# discovers it) — that is a system package, not a pip dep.
+requests>=2.31.0
+google-api-python-client>=2.100.0
+google-auth-httplib2>=0.1.0
+google-auth-oauthlib>=1.0.0
+msal>=1.28.0
+paramiko>=3.0.0
+cryptography>=41.0.0        # credential vault; also a paramiko dep
+keyring>=24.0.0             # machine key for unattended backups when encryption is on
+
+# Optional — AI-assisted file matching. Install separately; the tool runs without it.
+# sentence-transformers>=2.2.0
+# ===== SNAPSMACK EOF =====

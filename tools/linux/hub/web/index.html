@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THE HUB</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+  <header>
+    <h1>THE HUB</h1>
+    <span class="tag">one door · set the fleet up once</span>
+    <span class="ver" id="ver"></span>
+  </header>
+
+  <main id="app">
+    <div class="loading">Loading…</div>
+  </main>
+
+  <!-- template markup for the body, cloned into #app once state loads -->
+  <template id="tpl-body">
+    <!-- LAUNCH -->
+    <section class="card">
+      <h2>LAUNCH</h2>
+      <div class="roster" id="roster"></div>
+    </section>
+
+    <!-- HUB SETUP -->
+    <section class="card">
+      <h2>HUB SETUP <span class="sub">· set once, every tool has it</span></h2>
+      <div class="field">
+        <label>HUB SITE URL</label>
+        <div class="line"><input id="hub_url" type="text" spellcheck="false"></div>
+      </div>
+      <div class="field">
+        <label>HUB API KEY <span class="stat" id="stat_hub"></span></label>
+        <div class="line">
+          <input id="hub_key" type="password" spellcheck="false">
+          <button class="small" data-test="hub">Test</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>GEMINI API KEY <span class="stat" id="stat_gemini"></span></label>
+        <div class="line">
+          <input id="gemini_api_key" type="password" spellcheck="false">
+          <button class="small" data-test="gemini">Test</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>GOOGLE DRIVE CREDENTIALS (json) <span class="stat" id="stat_drive"></span></label>
+        <div class="line">
+          <input id="google_credentials" type="text" spellcheck="false"
+                 placeholder="full path to the credentials .json">
+          <button class="small" data-test="drive">Test</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>BACKUP FOLDER ID</label>
+        <div class="line"><input id="drive_folder_id" type="text" spellcheck="false"></div>
+      </div>
+      <div class="bar">
+        <button id="btn_save" class="ink">SAVE SHARED CREDENTIALS</button>
+        <button id="btn_discover" class="go">⟳ DISCOVER FLEET</button>
+        <span class="stat" id="setup_status"></span>
+      </div>
+    </section>
+
+    <!-- SHARED PROFILES -->
+    <section class="card">
+      <h2>SHARED PROFILES <span class="sub">· every tool sees these</span></h2>
+      <ul class="list" id="profiles"></ul>
+    </section>
+
+    <!-- PROMPT SYNC -->
+    <section class="card">
+      <h2>PROMPT SYNC <span class="sub">· one AI prompt per blog, shared across the fleet</span></h2>
+      <div class="prow">
+        <label>SITE</label>
+        <select id="psite"></select>
+        <button id="btn_pull_all" class="go right">⟳ PULL ALL FROM FLEET</button>
+      </div>
+      <textarea id="ptext" rows="6" spellcheck="false"
+                placeholder="the one-call AI prompt this blog uses for every new image"></textarea>
+      <div class="prow">
+        <button id="btn_copy" class="small">COPY FROM…</button>
+        <button id="btn_pull_one" class="small">⬇ PULL THIS SITE</button>
+        <span class="stat" id="psync_status"></span>
+        <button id="btn_push" class="ink right">⬆ PUSH TO THIS SITE</button>
+      </div>
+    </section>
+  </template>
+
+  <!-- COPY FROM… picker -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <h3>Use which blog's prompt as a starting point?</h3>
+      <ul class="list picker" id="copy_list"></ul>
+      <div class="modal-bar">
+        <button id="modal_cancel" class="small">Cancel</button>
+        <button id="modal_use" class="go">USE THIS</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="log" class="log" aria-live="polite"></div>
+
+  <script src="/snap_blink.js"></script>
+  <script src="app.js"></script>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->
