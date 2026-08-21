@@ -36,6 +36,23 @@ reversible by flipping the flag back off. Same rollout pattern as `comments_post
   setting_key='comments_unified_display';` (insert the row if absent). Default stays OFF everywhere until
   flipped; flip forever first, verify, then the rest.
 
+### Direct-access guard on core includes + reconciled deny-list (secaudit 050-B)
+The public was kept off sensitive core files ONLY by a hand-maintained Apache `<FilesMatch>` deny-list —
+which is Apache-only (no protection on nginx) and had drifted: it blocked `login.php` and `auth.php`,
+neither of which exists on dev, while the real auth include `auth-smack.php` was not listed. Reconciled:
+- **Each sensitive core include now carries its own PHP direct-access guard** — returns 404 on a direct
+  HTTP request, server-agnostic, passing normal includes and CLI untouched. Files: `core/updater.php`,
+  `core/release-pubkey.php`, `core/skin-registry.php`, `core/manifest-inventory.php`, `core/auth-smack.php`.
+  Protection no longer depends on Apache and can't silently drift out of sync with the filenames.
+- **The Apache deny-list is reconciled to real filenames** (`core/htaccess-template`): dropped the dead
+  `login` / `auth` entries, added `auth-smack`. Reaches live installs after update + System Maintenance →
+  **REPAIR** (which rebuilds `.htaccess` from the template).
+- **NOT changed:** the default-open clean-URL router and the `smack-*.php` admin self-guard (those admin
+  pages must stay reachable). The separate admin fail-open denylist→allowlist authz flip
+  (`core/auth-smack.php` array) remains Codex's item per the ARCH-03 division of labor.
+- **Note:** `core/db.php` is deployment-local (absent from the repo), so its PHP guard must be added on the
+  server / by the installer, not here — it stays covered by the Apache rule meanwhile.
+
 ## 0.7.543 — 2026-08-20 "BOOKKEEPING"
 
 ### Comment counter, mode guard, and solo-poster correctness (with regression tests)

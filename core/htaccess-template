@@ -84,8 +84,12 @@ RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
     Deny from all
 </FilesMatch>
 
-# Block direct access to core PHP includes and the old login filename.
-<FilesMatch "^(db|auth|constants|release-pubkey|updater|skin-registry|manifest-inventory|login)\.php$">
+# Block direct access to core PHP includes (SECAUDIT 050-B — reconciled to real
+# filenames). Dropped 'login' and 'auth' (no login.php / auth.php exist on dev —
+# the real auth include is auth-smack.php, now listed). This Apache rule is the
+# belt; each of these files also carries a server-agnostic PHP direct-access guard
+# (the suspenders), so protection no longer depends on Apache alone.
+<FilesMatch "^(db|auth-smack|constants|release-pubkey|updater|skin-registry|manifest-inventory)\.php$">
     Order Allow,Deny
     Deny from all
 </FilesMatch>
