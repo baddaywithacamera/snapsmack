@@ -10,7 +10,7 @@
 
 # SnapSmack Changelog
 
-## 0.7.545D — 2026-08-21 "SMACKCAST RELAY"
+## 0.7.545 — 2026-08-21 "SMACKCAST RELAY"
 
 ### OH SNAP becomes an honest offline-first skin designer
 - OH SNAP 0.2.0 no longer requires a site connection to enter the editor. A bundled, deterministic photo-
