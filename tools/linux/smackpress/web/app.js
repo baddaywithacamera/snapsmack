@@ -325,6 +325,11 @@ async function testConnections() {
   }
 }
 
+/* ── help modal ────────────────────────────────────────── */
+/* Static content — lives in index.html, so no blink.call is needed. */
+function openHelp() { $("#help-overlay").classList.remove("hidden"); }
+function closeHelp() { $("#help-overlay").classList.add("hidden"); }
+
 /* ── misc ──────────────────────────────────────────────── */
 function setStatus(msg) { $("#canvas-status").textContent = msg; }
 
@@ -332,6 +337,7 @@ function wireEvents() {
   // Menu
   $("#menu-settings").addEventListener("click", openSettings);
   $("#menu-refresh").addEventListener("click", resetAndRefresh);
+  $("#menu-help").addEventListener("click", openHelp);
   $("#menu-quit").addEventListener("click", () => window.close());
   // Navigator
   $("#nav-refresh").addEventListener("click", refreshPosts);
@@ -354,6 +360,8 @@ function wireEvents() {
   $("#settings-save").addEventListener("click", saveSettings);
   $("#settings-test").addEventListener("click", testConnections);
   $("#settings-cancel").addEventListener("click", () => $("#settings-overlay").classList.add("hidden"));
+  // Help modal
+  $("#help-close").addEventListener("click", closeHelp);
 }
 
 document.addEventListener("DOMContentLoaded", boot);

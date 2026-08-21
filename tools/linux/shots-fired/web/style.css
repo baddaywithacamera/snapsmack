@@ -192,4 +192,17 @@ body {
   justify-content: space-between;
   margin-top: 12px;
 }
+.dialog-btns--end { justify-content: flex-end; }
+
+/* ---- Help dialog ---- */
+.dialog.help { width: 560px; }
+.help-body {
+  color: var(--fg-main);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  max-height: 60vh;
+  overflow-y: auto;
+  margin: 0;
+}
 /* ===== SNAPSMACK EOF ===== */
