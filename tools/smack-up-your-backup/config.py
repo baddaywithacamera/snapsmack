@@ -57,6 +57,26 @@ def shared_cred(key: str, default: str = "") -> str:
         return default
 
 
+def effective_backup_key(profile: dict) -> str:
+    """The key SUYB actually authenticates a backup with (546D hub-key model).
+
+    Prefers the ONE fleet 'backup_hub_key' from The Hub's shared store when it is
+    set: one key, provisioned to every site as a labeled/revocable row, held once
+    in The Hub. Falls back to the profile's own api_key when the hub key is unset —
+    so existing installs (and any site not yet provisioned) keep working exactly as
+    before. Empty hub key (today's default) => identical to the old behaviour, so
+    this is non-breaking until The Hub actually publishes a backup_hub_key.
+
+    Rollout order matters: provision the hub key onto every site FIRST, THEN set
+    backup_hub_key in the shared store — otherwise a not-yet-provisioned site 401s
+    (there is deliberately no per-site fallback once the hub key is in force, so a
+    per-blog revoke actually stops that blog)."""
+    hub = shared_cred("backup_hub_key")
+    if hub:
+        return hub
+    return (profile or {}).get("api_key", "") or ""
+
+
 def resolve_file(name: str) -> str:
     """Path to a SUYB config/state FILE under C:\\snapsmack\\config_files\\suyb,
     migrating the legacy next-to-exe copy in on first run (adopt_legacy). Falls back
