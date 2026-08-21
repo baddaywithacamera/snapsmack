@@ -50,5 +50,17 @@ sc_test(str_contains($admin, 'reauth_verify'), 'hub consequential controls requi
 sc_test(str_contains($admin, "if (\$state === 'active')"), 'manual approval atomically queues its Accept');
 sc_test(!str_contains($relay, 'notes_index') && !str_contains($relay, 'search_observation'), 'search is absent from relay slice');
 
+// ── Mode-4.0 re-stamp migration: installs done before 545D recorded the old
+// site_mode='photoblog' disguise, so the relay/hub gates stay dormant on them.
+// The migration flips them to 'fedistructure' — but ONLY genuine network installs
+// (guarded by the distribution marker), never a normal blog.
+$mig = @file_get_contents($root . '/migrations/migrate-fedistructure-site-mode.sql') ?: '';
+$upd = file_get_contents($root . '/core/updater.php');
+sc_test($mig !== '', 'mode-4.0 re-stamp migration file exists');
+sc_test(str_contains($mig, "SET s.setting_val = 'fedistructure'") && str_contains($mig, "s.setting_key = 'site_mode'"), 're-stamp sets site_mode to fedistructure');
+sc_test(str_contains($mig, "s.setting_val = 'photoblog'"), 're-stamp only touches the old photoblog disguise (idempotent)');
+sc_test(str_contains($mig, "d.setting_key = 'distribution'") && str_contains($mig, "d.setting_val = 'fedistructure'"), 're-stamp is guarded by the distribution marker (never touches a normal blog)');
+sc_test(str_contains($upd, "'migrate-fedistructure-site-mode.sql'"), 're-stamp migration is registered so the updater runs it fleet-wide');
+
 exit($fail === 0 ? 0 : 1);
 // ===== SNAPSMACK EOF =====

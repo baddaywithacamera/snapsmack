@@ -194,6 +194,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-posts-title-text.sql',
     'migrate-drop-pimpotron.sql',
     'migrate-ap-timeline-membership.sql',
+    'migrate-fedistructure-site-mode.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
