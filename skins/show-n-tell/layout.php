@@ -69,10 +69,14 @@ $frame_class = 'snt-frame-' . $frame_style;
                 <button class="htbs-overlay-close" title="Close">&times;</button>
             </div>
             <div class="htbs-overlay-pane active" data-pane="info">
-                <?php include dirname(__DIR__, 2) . '/core/info_block.php'; ?>
+                <?php // core/info_block.php does not exist on dev; guarded so the pane never fatals.
+                      // The INFO details content is this skin's own (in development) — Sean owns it.
+                      $__ib = dirname(__DIR__, 2) . '/core/info_block.php'; if (is_file($__ib)) include $__ib; ?>
             </div>
             <div class="htbs-overlay-pane" data-pane="comments">
-                <?php include dirname(__DIR__, 2) . '/core/comments_block.php'; ?>
+                <?php // Was core/comments_block.php (never existed on dev → empty pane). Point at the
+                      // real shared comment component, which also gives this skin unified comments.
+                      include dirname(__DIR__, 2) . '/core/community-component.php'; ?>
             </div>
         </div>
     </div>

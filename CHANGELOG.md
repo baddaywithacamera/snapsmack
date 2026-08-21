@@ -10,6 +10,32 @@
 
 # SnapSmack Changelog
 
+## 0.7.544 — 2026-08-20 "CONFLUENCE"
+
+### Unified comment thread — Phase 1 (display + counter), behind a per-site flag (default OFF)
+A photo can carry three kinds of comment — Flickr imports, website comments, and fediverse (Mastodon/
+Pixelfed) replies — which have always lived in two database tables the blog never bridged. So fediverse
+replies never showed in the thread, and the COMMENTS (N) counter read the empty legacy table (the
+"COMMENTS (0)" bug). This adds a **per-site setting `comments_unified_display` (default `'0'` = no change)**
+that merges both tables into ONE thread and one count. Pure read: no schema change, no migration, fully
+reversible by flipping the flag back off. Same rollout pattern as `comments_post_keyed`.
+- **Unified thread** in `core/community-component.php`: new box + legacy box (fediverse / legacy anon /
+  admin reply) for this photo, parity-filtered (`is_approved = 1 AND is_spam = 0`), newest first with Flickr
+  imports sorted below the newer conversation (Sean's ordering rule). Origin is derived at read time (no
+  schema change); the read degrades to new-box-only if a column lags. A remote commenter renders as a named
+  guest linking to their profile.
+- **Counter counts exactly what the thread shows:** `index.php` adds the legacy count when the flag is on,
+  and `core/navigation-bar.php` reads that count instead of the empty legacy loader.
+- **Photogram single-post view** counted the wrong (empty) box while its feed/landing counted the new box —
+  now consistent (`skins/photogram/layout.php`).
+- **Two broken skins fixed:** `52-card-pickup` and `show-n-tell` included `core/comments_block.php`, which
+  never existed on dev, so their comment pane was empty — now pointed at the shared comment component (and
+  thus unified for free). The also-missing `core/info_block.php` include is guarded so the INFO pane can't
+  fatal; that pane's content is skin-side (in development).
+- **Flip on per site from the hub:** `UPDATE snap_settings SET setting_val='1' WHERE
+  setting_key='comments_unified_display';` (insert the row if absent). Default stays OFF everywhere until
+  flipped; flip forever first, verify, then the rest.
+
 ## 0.7.543 — 2026-08-20 "BOOKKEEPING"
 
 ### Comment counter, mode guard, and solo-poster correctness (with regression tests)

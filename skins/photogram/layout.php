@@ -70,7 +70,27 @@ $_pg_community_id = !empty($_pg_post['id']) ? (int)$_pg_post['id'] : $image_id;
 
 $is_liked     = false;
 $like_count   = 0;
-$comment_count = count($comments);
+// Count the comments actually shown: snap_community_comments (status 'visible'), keyed like the
+// display — NOT the legacy snap_comments box, which is empty on post-model sites (the old "0").
+// Matches feed.php / landing.php, which already count the new box.
+$comment_count = 0;
+try {
+    $_pg_cc = $pdo->prepare("SELECT COUNT(*) FROM snap_community_comments WHERE post_id = ? AND status = 'visible'");
+    $_pg_cc->execute([$_pg_community_id]);
+    $comment_count = (int)$_pg_cc->fetchColumn();
+    // COMMENT UNIFICATION (Phase 1): add the legacy box when the per-site flag is ON, so the count
+    // matches the unified thread rendered by core/community-component.php.
+    if (($settings['comments_unified_display'] ?? '0') === '1') {
+        $_pg_lw = "img_id = ?" . (!empty($_pg_post['id']) ? " OR post_id = ?" : "");
+        $_pg_lp = [$image_id];
+        if (!empty($_pg_post['id'])) { $_pg_lp[] = (int)$_pg_post['id']; }
+        $_pg_lg = $pdo->prepare("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 1 AND is_spam = 0 AND ({$_pg_lw})");
+        $_pg_lg->execute($_pg_lp);
+        $comment_count += (int)$_pg_lg->fetchColumn();
+    }
+} catch (PDOException $e) {
+    $comment_count = count($comments); // pre-migration fallback, never fatal
+}
 
 // Fetch like count and check if current session already liked
 // Wrapped in try/catch — snap_likes only exists if the community migration has been run.

@@ -172,6 +172,14 @@ if ($show_reactions) {
 
 // --- COMMUNITY COMMENTS ---
 // LEFT JOIN so guest comments (user_id IS NULL) are included alongside account comments.
+//
+// COMMENT UNIFICATION (Phase 1, per-site flag `comments_unified_display`, default '0'):
+// The new box (snap_community_comments) holds native + Flickr; the legacy box (snap_comments)
+// holds inbound fediverse replies + legacy anon + admin replies. They were never bridged, so
+// fediverse replies never showed in the thread and the counter read the wrong box. With the flag
+// ON we UNION both boxes into ONE thread for this photo. Flag OFF = today's exact behaviour
+// (new box only). NO schema change, NO migration, NO write here — origin is derived at read time
+// and this is a pure read, fully reversible by flipping the flag back off.
 $community_comments = [];
 if ($show_comments) {
     // Check whether the edited_at column exists yet (added in 0.7.4b).
@@ -185,19 +193,61 @@ if ($show_comments) {
     $_url_col = $pdo->query("SHOW COLUMNS FROM snap_community_comments LIKE 'guest_url'")->fetchColumn()
                 ? 'cc.guest_url' : 'NULL AS guest_url';
 
-    $cc_stmt = $pdo->prepare("
-        SELECT cc.id, cc.comment_text, cc.created_at, {$_edited_col},
+    // New-box half. `origin` is derived, not stored (Phase 1 is schema-free): a Flickr import
+    // carries no ip and no fp_hash; a native comment always has one (or an account user_id).
+    $new_sql = "
+        SELECT cc.id, 'community' AS src_table, cc.comment_text, cc.created_at, {$_edited_col},
                cu.username, cu.display_name, cu.avatar_url,
                cc.guest_name, cc.guest_email, {$_url_col},
-               CASE WHEN cc.user_id IS NULL THEN 1 ELSE 0 END AS is_guest
+               CASE WHEN cc.user_id IS NULL THEN 1 ELSE 0 END AS is_guest,
+               CASE WHEN cc.user_id IS NOT NULL THEN 'native'
+                    WHEN cc.ip IS NULL AND cc.fp_hash IS NULL THEN 'flickr'
+                    ELSE 'native' END AS origin
         FROM snap_community_comments cc
         LEFT JOIN snap_community_users cu ON cu.id = cc.user_id
-        WHERE cc.post_id = ? AND cc.status = 'visible'
-        ORDER BY cc.created_at ASC
-    ");
-    $cc_stmt->execute([$post_id]);
-    $community_comments = $cc_stmt->fetchAll();
+        WHERE cc.post_id = ? AND cc.status = 'visible'";
+
+    $unified = (($settings['comments_unified_display'] ?? '0') === '1');
+    if ($unified) {
+        // Legacy-box half for THIS photo. Old box is dual-keyed img_id (image) / post_id (longform).
+        // Parity filters mirror the old counter loader, tightened with is_spam = 0. Remote actor
+        // shows as a named guest linking to their profile (comment_author / comment_url).
+        $legacy_where = "sc.img_id = ?" . (!empty($img['post_id']) ? " OR sc.post_id = ?" : "");
+        $legacy_sql = "
+            SELECT sc.id, 'legacy' AS src_table, sc.comment_text, sc.comment_date, NULL,
+                   NULL, NULL, NULL,
+                   sc.comment_author, sc.comment_email, sc.comment_url,
+                   1,
+                   CASE WHEN sc.ap_source = 'fediverse' THEN 'fediverse' ELSE 'admin' END
+            FROM snap_comments sc
+            WHERE sc.is_approved = 1 AND sc.is_spam = 0 AND ({$legacy_where})";
+        // Sean's ordering rule: newest on top, Flickr imports sorted below the newer conversation.
+        $sql = "SELECT * FROM ( {$new_sql} UNION ALL {$legacy_sql} ) AS thread
+                ORDER BY (origin = 'flickr') ASC, created_at DESC, src_table ASC, id DESC";
+        $params = [$post_id, $image_id];
+        if (!empty($img['post_id'])) { $params[] = (int)$img['post_id']; }
+        try {
+            $cc_stmt = $pdo->prepare($sql);
+            $cc_stmt->execute($params);
+            $community_comments = $cc_stmt->fetchAll();
+        } catch (PDOException $e) {
+            // Legacy box or a column lags the canonical schema — degrade to new box only,
+            // never fatal on the public page.
+            $cc_stmt = $pdo->prepare($new_sql . " ORDER BY cc.created_at ASC");
+            $cc_stmt->execute([$post_id]);
+            $community_comments = $cc_stmt->fetchAll();
+        }
+    } else {
+        $cc_stmt = $pdo->prepare($new_sql . " ORDER BY cc.created_at ASC");
+        $cc_stmt->execute([$post_id]);
+        $community_comments = $cc_stmt->fetchAll();
+    }
 }
+// The COMMENTS (N) counter must count exactly what the thread shows (fixes COMMENTS (0),
+// which counted the empty legacy box while the thread rendered the new box). index.php computes
+// $comment_count before the skin renders (that is what the navbar reads); we only set it here as
+// a fallback for any surface that includes this component without index.php's pre-render count.
+if (!isset($comment_count)) { $comment_count = count($community_comments); }
 
 // --- REACTION SET ---
 // Curated photography-appropriate set. Final set to be locked before UI ships.

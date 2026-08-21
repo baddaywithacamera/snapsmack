@@ -46,7 +46,7 @@ $show_comments = ($global_on && $post_on);
 
         <?php if ($show_comments): ?>
             <span class="sep">|</span>
-            <a href="#" id="show-comments">COMMENTS (<?php echo count($comments); ?>)</a>
+            <a href="#" id="show-comments">COMMENTS (<?php echo isset($comment_count) ? (int)$comment_count : count($comments); ?>)</a>
         <?php endif; ?>
     </span>
 
