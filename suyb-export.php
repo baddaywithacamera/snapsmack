@@ -15,10 +15,15 @@
  *   type=kit      — Recovery kit (.tar.gz with manifest + SQL dump)
  *   type=inventory — File inventory JSON (paths + sizes, NO hashing) for SUYB
  *                    client-side manifest/kit generation (Windows/Linux path)
+ *   type=file      — Stream ONE inventoried media/asset file (param: path=) so SUYB
+ *                    can pull the media library over HTTP with NO FTP/SFTP creds.
+ *                    Path-safe: only files under media_assets/, img_uploads/, skins/,
+ *                    assets/img/ are served (string + realpath containment checks).
  *
  * Response:
  *   type=schema|full      → Content-Type: application/sql, streamed as download
  *   type=kit              → Content-Type: application/x-gzip, streamed as download
+ *   type=file             → Content-Type: application/octet-stream, streamed
  */
 
 /**
@@ -42,10 +47,70 @@ require_once 'core/export-engine.php';
 
 $type = $_GET['type'] ?? 'full';
 
-if (!in_array($type, ['schema', 'full', 'kit', 'inventory'], true)) {
+if (!in_array($type, ['schema', 'full', 'kit', 'inventory', 'file'], true)) {
     http_response_code(400);
     header('Content-Type: application/json');
-    echo json_encode(['ok' => false, 'error' => 'Invalid type. Use: schema, full, kit, or inventory']);
+    echo json_encode(['ok' => false, 'error' => 'Invalid type. Use: schema, full, kit, inventory, or file']);
+    exit;
+}
+
+// type=file — stream ONE inventoried media/asset file over HTTP, so SUYB can pull
+// the media library without FTP/SFTP credentials (the friction on a 24-site fleet).
+// Authenticated above by the 'suyb' scoped key. Path-safe: only files under the four
+// inventory roots may be served, checked BOTH as a string prefix (fast reject) AND by
+// realpath containment (defends against `..` and symlinks). Served as octet-stream so a
+// planted .html/.svg can never execute in a browser.
+if ($type === 'file') {
+    $rel = (string)($_GET['path'] ?? '');
+    $rel = str_replace('\\', '/', $rel);
+    // Fast structural rejects: empty, null byte, traversal, or an absolute/drive/UNC path.
+    if ($rel === '' || strpos($rel, "\0") !== false || strpos($rel, '..') !== false
+        || preg_match('#^([A-Za-z]:|/|//)#', $rel)) {
+        http_response_code(400);
+        header('Content-Type: application/json');
+        echo json_encode(['ok' => false, 'error' => 'Invalid path']);
+        exit;
+    }
+    // The only roots the inventory exposes (see core/export-engine.php).
+    $allowed = ['media_assets', 'img_uploads', 'skins', 'assets/img'];
+    $prefixOk = false;
+    foreach ($allowed as $root) {
+        if ($rel === $root || strpos($rel, $root . '/') === 0) { $prefixOk = true; break; }
+    }
+    if (!$prefixOk) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        echo json_encode(['ok' => false, 'error' => 'Path is not inside a backup directory']);
+        exit;
+    }
+    $full = realpath(__DIR__ . '/' . $rel);
+    if ($full === false || !is_file($full)) {
+        http_response_code(404);
+        header('Content-Type: application/json');
+        echo json_encode(['ok' => false, 'error' => 'File not found']);
+        exit;
+    }
+    // realpath containment: the resolved file must still sit under an allowed root
+    // (a symlink could otherwise point out of the backup tree).
+    $inside = false;
+    foreach ($allowed as $root) {
+        $rootReal = realpath(__DIR__ . '/' . $root);
+        if ($rootReal !== false && strpos($full, $rootReal . DIRECTORY_SEPARATOR) === 0) {
+            $inside = true; break;
+        }
+    }
+    if (!$inside) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        echo json_encode(['ok' => false, 'error' => 'Path escapes the backup root']);
+        exit;
+    }
+    header('Content-Type: application/octet-stream');
+    header('X-Content-Type-Options: nosniff');
+    header('Content-Length: ' . filesize($full));
+    @set_time_limit(0);
+    while (ob_get_level() > 0) { ob_end_flush(); }
+    readfile($full);
     exit;
 }
 

@@ -192,7 +192,7 @@ def new_profile_template() -> Dict:
     return {
         "name":                  "",
         "site_url":              "",
-        "transport":             "ftp",            # "ftp" | "sftp" — transport.make_client() keys on this
+        "transport":             "http",           # "http" (primary — pulls media via suyb-export.php?type=file, NO FTP creds) | "ftp" | "sftp"
         "ftp_host":              "",
         "ftp_port":              21,
         "ftp_user":              "",
