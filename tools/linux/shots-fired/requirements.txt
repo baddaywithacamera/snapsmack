@@ -1,0 +1,5 @@
+# SHOTS FIRED (Linux Chrome/Blink port) — real pip deps only.
+# snap_blink is stdlib-only. The tool's HTTP client (schedule_client.py) uses
+# requests. pyinstaller from the Windows build is NOT needed here.
+requests>=2.31.0
+# ===== SNAPSMACK EOF =====

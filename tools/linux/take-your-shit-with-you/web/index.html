@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TAKE YOUR SHIT WITH YOU</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+
+  <header>
+    <h1 id="stage-title">PACKING LIST</h1>
+    <p id="tagline" class="tagline">Every image. Every scrap of data. Pack it up and leave.</p>
+  </header>
+
+  <main id="app">
+
+    <!-- ============ SCREEN 1 — PACKING LIST ============ -->
+    <section id="screen-connect" class="screen">
+
+      <div class="card">
+        <h2>YOUR SITE</h2>
+        <div class="field">
+          <label for="f-url">Site address</label>
+          <input id="f-url" type="text" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="f-key">Export key</label>
+          <input id="f-key" type="password" autocomplete="off" spellcheck="false">
+          <button id="b-keysec" class="minor" type="button">Key security</button>
+        </div>
+        <p class="hint">
+          Make the key on your site: Boring Ass Stuff → API Keys → TYSWY
+          (read-only export). It is shown once, it cannot write anything, and it
+          expires in three months.
+        </p>
+        <div class="row">
+          <button id="b-connect" class="primary" type="button">CONNECT</button>
+          <span id="conn-status" class="status"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>WHAT IS THERE</h2>
+        <pre id="manifest" class="mono dim">Connect and this fills in.</pre>
+      </div>
+
+      <div class="card">
+        <h2>WHERE IT GOES</h2>
+        <div class="field">
+          <label for="f-dest">Folder</label>
+          <input id="f-dest" type="text" autocomplete="off" spellcheck="false">
+          <button id="b-browse" class="minor" type="button">Browse…</button>
+        </div>
+        <p id="space" class="hint"></p>
+
+        <div class="opts">
+          <label class="check"><input id="o-wp" type="checkbox" checked>
+            Build a WordPress courtesy package</label>
+          <label class="check"><input id="o-thumbs" type="checkbox">
+            Include generated thumbnails (derived files, usually not needed)</label>
+          <label class="check"><input id="o-zip" type="checkbox">
+            Also make a .zip when it is finished</label>
+        </div>
+
+        <div class="row">
+          <label for="o-conc" class="inline">Downloads at once</label>
+          <select id="o-conc">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+          <span class="hint inline">— 2 is kind to shared hosting. 4 is the most
+            this tool will ever do.</span>
+        </div>
+      </div>
+
+      <div class="row go">
+        <button id="b-go" class="primary big" type="button" disabled>PACK MY SHIT</button>
+        <span id="farewell" class="hint"></span>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN 2 — PACK YOUR SHIT ============ -->
+    <section id="screen-progress" class="screen" hidden>
+      <div class="card">
+        <div id="p-stage" class="p-stage">Starting…</div>
+        <div id="p-detail" class="dim"></div>
+        <div class="bar-wrap"><div id="bar" class="bar"></div></div>
+      </div>
+
+      <h2 class="section-label">LOG</h2>
+      <pre id="logbox" class="mono box" aria-live="polite"></pre>
+
+      <div class="row">
+        <button id="b-cancel" class="danger" type="button">STOP</button>
+        <span class="hint">Stopping is safe. Everything already downloaded and
+          verified stays where it is, and this folder will carry on from there.</span>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN 3 — YOUR SHIT IS PACKED ============ -->
+    <section id="screen-done" class="screen" hidden>
+      <div id="done-head" class="done-head"></div>
+      <p id="done-sub" class="dim"></p>
+
+      <pre id="reportbox" class="mono box tall"></pre>
+
+      <div class="row wrap">
+        <button id="b-open" class="primary" type="button">OPEN FOLDER</button>
+        <button id="b-view" type="button">VIEW REPORT</button>
+        <button id="b-zip" type="button">COMPRESS LOCALLY</button>
+        <button id="b-another" class="right" type="button">START ANOTHER</button>
+      </div>
+
+      <div id="delete-wrap" class="delete-wrap" hidden>
+        <button id="b-delete" class="linkdanger" type="button">Delete this incomplete export</button>
+        <span class="hint">Throws away everything downloaded so far. Only do this
+          if you want to start over from nothing.</span>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ Key security modal ============ -->
+  <div id="modal" class="modal-bg" hidden>
+    <div class="modal">
+      <div id="ks-status" class="ks-status"></div>
+      <div id="ks-detail" class="dim ks-detail"></div>
+      <div id="ks-buttons" class="row wrap"></div>
+      <div class="row right-row">
+        <button id="ks-close" class="minor" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/snap_blink.js"></script>
+  <script src="app.js"></script>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->

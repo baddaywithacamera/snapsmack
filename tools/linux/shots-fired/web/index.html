@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SHOTS FIRED</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-name">SHOTS FIRED</span>
+      <span class="brand-sub">fleet-wide scheduled-post calendar</span>
+    </div>
+    <div class="controls">
+      <label class="lookahead-label" for="lookahead">LOOK AHEAD</label>
+      <select id="lookahead" class="lookahead"></select>
+      <button id="refresh" class="btn primary">REFRESH</button>
+    </div>
+  </header>
+
+  <main id="agenda" class="agenda">Loading…</main>
+
+  <footer id="status" class="statusbar">Loading fleet…</footer>
+
+  <!-- Reschedule ("MOVE…") dialog — the tkinter Toplevel, as a modal. -->
+  <div id="move-backdrop" class="backdrop" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="move-title">
+      <h2 id="move-title" class="dialog-title">MOVE THIS POST</h2>
+      <p id="move-post" class="dialog-post"></p>
+      <p id="move-current" class="dialog-current"></p>
+
+      <label class="field-label" for="move-date">NEW DATE  (YYYY-MM-DD)</label>
+      <input id="move-date" class="field" type="text" inputmode="numeric" autocomplete="off">
+      <label class="field-label" for="move-time">NEW TIME  (HH:MM, 24h)</label>
+      <input id="move-time" class="field" type="text" inputmode="numeric" autocomplete="off">
+
+      <p id="move-err" class="dialog-err" aria-live="polite"></p>
+
+      <div class="dialog-btns">
+        <button id="move-cancel" class="btn">CANCEL</button>
+        <button id="move-confirm" class="btn primary big">MOVE POST</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/snap_blink.js"></script>
+  <script src="app.js"></script>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->

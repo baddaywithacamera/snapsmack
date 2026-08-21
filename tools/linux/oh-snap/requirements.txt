@@ -1,0 +1,12 @@
+# OH SNAP! — Linux Blink port.
+# Pure Python standard library only. snap_blink and the reproduced Rust-command
+# logic (file I/O, zipfile, json) need nothing from pip.
+#
+# A Chromium/Chrome family browser must exist on the box (chromium,
+# google-chrome, brave, edge, or vivaldi); snap_blink discovers it at launch.
+# That is a system package, not a pip dependency.
+#
+# TODO(port): adopting the shared snap_vault (encrypted creds at rest) would add
+# `cryptography` (and optional `keyring`) here; deliberately not done yet — see
+# app.py vault notes.
+# ===== SNAPSMACK EOF =====

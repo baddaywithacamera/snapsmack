@@ -1,0 +1,7 @@
+# SMACK YOUR MOUTH (Linux Chrome/Blink port) — real pip deps only.
+# snap_blink and the shared library are stdlib-only. The tool's HTTP transport
+# (moderation_api.py) needs requests. Pillow is NOT needed here — it only backed
+# the tkinter per-comment thumbnail (ui.py), which the web UI does not use. The
+# window is drawn by a Chromium/Chrome binary already on the box, not by pip.
+requests>=2.31.0
+# ===== SNAPSMACK EOF =====

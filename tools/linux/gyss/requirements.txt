@@ -1,0 +1,5 @@
+# GET YOUR SHIT SORTED (GYSS) — Linux Chrome/Blink port.
+# Pure Python standard library: snap_blink (stdlib http.server), sqlite3, urllib,
+# base64, json. No pip installs. A Chromium/Chrome (Blink) binary must be on the
+# box — snap_blink discovers chromium / google-chrome / brave / edge / vivaldi.
+# ===== SNAPSMACK EOF =====

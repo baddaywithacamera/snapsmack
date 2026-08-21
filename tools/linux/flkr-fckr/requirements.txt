@@ -1,0 +1,7 @@
+# FLKR FCKR (Linux Chrome/Blink port) — real pip deps only.
+# snap_blink itself is stdlib-only; these are what the reused WORK modules need.
+Pillow>=10.0.0          # local resize + square thumbnails (poster/image_prep, thumbnails)
+requests>=2.31.0        # HTTPS API + image upload (poster, snap_stepup)
+cryptography>=41.0.0    # credential vault — seals the API key at rest (SECAUDIT 040)
+keyring>=24.0.0         # optional: remember the vault unlock key on this machine
+# ===== SNAPSMACK EOF =====

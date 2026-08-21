@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FLKR FCKR</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+  <header>
+    <h1>FLKR FCKR <span id="version" class="version"></span></h1>
+    <div class="header-actions">
+      <span id="conn-status" class="conn-status"></span>
+      <button class="ghost" id="btn-key" title="API key encryption">Key</button>
+      <button class="ghost" id="btn-logs" title="Open the log folder">Logs</button>
+      <button class="ghost" id="btn-help" title="Help">?</button>
+    </div>
+  </header>
+
+  <!-- Settings bar -->
+  <section class="settings" id="settings">
+    <div class="row">
+      <label>Site URL
+        <input type="text" id="site-url" placeholder="https://myphotoblog.com" autocomplete="off">
+      </label>
+      <label>API Key
+        <input type="password" id="api-key" placeholder="FLKR FCKR import key" autocomplete="off">
+      </label>
+      <button id="btn-connect" class="accent">Connect</button>
+    </div>
+
+    <div class="row">
+      <label class="grow">Export Folder
+        <input type="text" id="export-folder" placeholder="/path/to/unzipped/flickr/export" autocomplete="off">
+      </label>
+      <button id="btn-browse" class="ghost">Browse…</button>
+      <button id="btn-load" class="accent">Load Export</button>
+    </div>
+
+    <div class="row">
+      <label>Throttle
+        <select id="throttle"></select>
+      </label>
+      <label>Private &rarr;
+        <select id="private-status">
+          <option value="draft">draft</option>
+          <option value="published">published</option>
+        </select>
+      </label>
+      <label>Unalbumed
+        <select id="unalbumed-action">
+          <option value="feed">feed</option>
+          <option value="default_album">default_album</option>
+        </select>
+      </label>
+      <label id="default-album-wrap" class="hidden">Default album name
+        <input type="text" id="default-album" placeholder="Album name" autocomplete="off">
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="check">
+        <input type="checkbox" id="offpeak"> Off-peak only
+      </label>
+      <label>Peak
+        <select id="peak-start"></select>
+      </label>
+      <label>to
+        <select id="peak-end"></select>
+      </label>
+    </div>
+  </section>
+
+  <!-- Main area: photo grid + album sidebar -->
+  <main id="app">
+    <section class="grid-pane">
+      <div class="filter-bar">
+        <span class="muted">Show:</span>
+        <label class="radio"><input type="radio" name="filter" value="all" checked> All</label>
+        <label class="radio"><input type="radio" name="filter" value="unalbumed"> Unalbumed</label>
+        <span id="grid-count" class="muted grid-count">No export loaded</span>
+      </div>
+      <div id="grid" class="grid"></div>
+    </section>
+
+    <aside class="album-pane">
+      <div class="album-head">ALBUMS</div>
+      <ul id="album-list" class="album-list"></ul>
+    </aside>
+  </main>
+
+  <!-- Run panel -->
+  <section class="run-panel">
+    <div class="run-row">
+      <span id="summary" class="summary">Load an export to begin.</span>
+      <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
+      <button id="btn-run" class="accent" disabled>Start Import</button>
+    </div>
+    <div class="log-head">
+      <span class="muted">LOG</span>
+      <button class="ghost tiny" id="btn-log-expand">Pop Out &#8599;</button>
+    </div>
+    <div id="log" class="log" aria-live="polite"></div>
+  </section>
+
+  <!-- Modal host -->
+  <div id="modal-root" class="modal-root hidden"></div>
+
+  <script src="/snap_blink.js"></script>
+  <script src="app.js"></script>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->

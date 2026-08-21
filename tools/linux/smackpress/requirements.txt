@@ -1,0 +1,15 @@
+# SMACKPRESS (Linux Chrome/Blink port) — pip dependencies.
+#
+# The window is Chromium via snap_blink, which is STDLIB-ONLY. No customtkinter,
+# no PyQt, no Flask/Eel. The tool's work (config/db/wp_client/smacktalk_client/
+# ai_client) also runs on the standard library (urllib, sqlite3, pathlib).
+#
+# The ONE optional dependency, carried over from the tkinter build:
+keyring>=24.0    # store WP app-password / API keys in the OS keychain (Secret
+                 # Service on Linux). If absent, config.py falls back to the
+                 # local smackpress.db — the tool still works either way.
+#
+# You also need a Chromium/Chrome/Brave/Edge binary installed (not a pip dep);
+# snap_blink discovers it automatically. AI provider SDKs are NOT required —
+# ai_client talks to every provider over plain HTTP.
+# ===== SNAPSMACK EOF =====

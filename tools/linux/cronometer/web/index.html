@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRONOMETER</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-name">CRONOMETER</span>
+      <span class="brand-sub">fleet cron / job-health</span>
+    </div>
+    <div class="topbar-right">
+      <span id="status" class="status"></span>
+      <button id="btn-reload" class="btn">RELOAD FLEET</button>
+      <button id="btn-refresh" class="btn primary">REFRESH ALL</button>
+    </div>
+  </header>
+
+  <div id="legend" class="legend" aria-label="severity legend"></div>
+
+  <main id="board" class="board">Loading…</main>
+
+  <div id="log" class="log" aria-live="polite"></div>
+
+  <script src="/snap_blink.js"></script>
+  <script src="app.js"></script>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->

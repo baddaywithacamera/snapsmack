@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>COLD SNAP</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+
+<header>
+  <div class="brand">COLD&nbsp;SNAP <span id="version" class="muted"></span></div>
+  <div class="tagline">Compose posts offline. Sync when you're connected.</div>
+  <button id="help-btn" class="ghost" type="button">?&nbsp;HELP</button>
+</header>
+
+<!-- ── CONNECTION ────────────────────────────────────────────────────────── -->
+<section class="card conn">
+  <h2>CONNECTION</h2>
+  <div class="conn-grid">
+    <label class="fld">
+      <span>LOAD PROFILE</span>
+      <select id="profile"><option value="">— pick a saved site —</option></select>
+    </label>
+    <label class="fld">
+      <span>SITE URL</span>
+      <input id="url" type="text" placeholder="https://yoursite.tld" autocomplete="off">
+    </label>
+    <label class="fld">
+      <span>API KEY</span>
+      <input id="api_key" type="password" placeholder="posting-scope key" autocomplete="off">
+    </label>
+  </div>
+  <div class="conn-actions">
+    <span id="conn-status" class="status"></span>
+    <button id="save-conn" class="primary" type="button">SAVE / APPLY</button>
+  </div>
+  <div id="post-warn" class="banner err" hidden></div>
+</section>
+
+<!-- ── MODE SELECTOR (COLD ONE / COLD STACK) ────────────────────────────── -->
+<nav class="modes" role="tablist">
+  <button class="mode active" data-mode="solo" type="button">COLD ONE<small>solo · one photo</small></button>
+  <button class="mode" data-mode="gram" type="button">COLD STACK<small>gram · carousel / trigram</small></button>
+</nav>
+
+<!-- ── COLD ONE (solo) ──────────────────────────────────────────────────── -->
+<main id="mode-solo" class="mode-panel">
+  <div class="session-bar card">
+    <h2>SESSION</h2>
+    <div class="row">
+      <select id="solo-session" class="grow"></select>
+      <button data-act="solo-new" type="button">New</button>
+      <button data-act="solo-export" type="button">Export to USB…</button>
+      <button data-act="solo-import" type="button">Import…</button>
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="left card">
+      <h2>DRAFTS</h2>
+      <div id="solo-drafts" class="draft-list"></div>
+      <button id="solo-sync" class="primary wide" type="button">⇪ SYNC WITH LIVE</button>
+      <div id="solo-sync-status" class="status wrap"></div>
+    </div>
+
+    <div class="right card">
+      <h2>COMPOSE</h2>
+      <div class="compose-head">
+        <div class="preview" id="solo-preview"></div>
+        <div class="grow">
+          <button data-act="solo-choose" type="button">Choose image…</button>
+          <div id="solo-imgpath" class="path muted"></div>
+          <input id="solo-imgpath-manual" class="manual-path" type="text"
+                 placeholder="…or paste an absolute image path" hidden>
+        </div>
+      </div>
+
+      <label class="fld"><span>Title</span><input id="solo-title" type="text"></label>
+      <label class="fld"><span>Tags (space-separated #hashtags)</span><input id="solo-tags" type="text"></label>
+      <label class="fld"><span>Caption / description</span><textarea id="solo-caption" rows="3"></textarea></label>
+      <label class="fld"><span>ALT text (accessibility — one plain sentence for screen readers)</span>
+        <textarea id="solo-alt" rows="2"></textarea></label>
+
+      <div class="row ai-row">
+        <button data-act="solo-ai" class="accent" type="button">✨ AI Fill (Gemini)</button>
+        <span id="solo-ai-status" class="status"></span>
+      </div>
+
+      <div class="row">
+        <label class="fld grow"><span>Category</span><input id="solo-category" type="text"></label>
+        <label class="fld grow"><span>Album</span><input id="solo-album" type="text"></label>
+      </div>
+
+      <div class="row meta-row">
+        <label class="fld"><span>Orientation</span>
+          <select id="solo-orientation">
+            <option>auto</option><option>landscape</option>
+            <option>portrait</option><option>square</option>
+          </select></label>
+        <label class="fld"><span>Status</span>
+          <select id="solo-status"><option>published</option><option>draft</option></select></label>
+        <label class="fld"><span>Colour</span>
+          <select id="solo-color"><option>—</option><option>Colour</option><option>B&amp;W</option></select></label>
+      </div>
+
+      <div class="row">
+        <label class="chk"><input id="solo-allowdl" type="checkbox"> Allow download</label>
+      </div>
+      <label class="fld"><span>Download URL (if allowed)</span><input id="solo-dlurl" type="text"></label>
+
+      <div class="row actions">
+        <button data-act="solo-save" type="button">Save draft</button>
+        <button data-act="solo-post" class="primary" type="button">✓ OFFLINE POST</button>
+        <button data-act="solo-clear" type="button">Clear</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ── COLD STACK (gram) ────────────────────────────────────────────────── -->
+<main id="mode-gram" class="mode-panel" hidden>
+  <div class="session-bar card">
+    <h2>SESSION (your offline batch)</h2>
+    <div class="row">
+      <select id="gram-session" class="grow"></select>
+      <button data-act="gram-new" type="button">New</button>
+      <button data-act="gram-export" type="button">Export to USB…</button>
+      <button data-act="gram-import" type="button">Import…</button>
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="left card">
+      <h2>THE BATCH</h2>
+      <div id="gram-drafts" class="draft-list"></div>
+      <button id="gram-sync" class="primary wide" type="button">⇪ SYNC WITH LIVE</button>
+      <div id="gram-sync-status" class="status wrap">Compose offline. Sync when you're connected.</div>
+    </div>
+
+    <div class="right card">
+      <h2>COMPOSE</h2>
+      <div class="row kind-row">
+        <label class="rdo"><input type="radio" name="gkind" value="single"> Single</label>
+        <label class="rdo"><input type="radio" name="gkind" value="carousel" checked> Carousel</label>
+        <label class="rdo"><input type="radio" name="gkind" value="trigram"> Trigram</label>
+      </div>
+
+      <div id="gram-trig-style" class="trig-style" hidden>
+        <span class="muted">Trigram of:</span>
+        <label class="rdo"><input type="radio" name="gtstyle" value="single" checked> 3 single slices</label>
+        <label class="rdo"><input type="radio" name="gtstyle" value="carousels"> 3 carousels (slice = cover)</label>
+        <span class="muted">orient:</span>
+        <select id="gram-trig-orient"><option value="h">h</option><option value="v">v</option></select>
+      </div>
+
+      <div id="gram-trig-tools" class="trig-tools" hidden>
+        <div class="row">
+          <label class="fld grow"><span>Seam A %</span>
+            <input id="gram-cut-a" type="range" min="5" max="90" value="33"></label>
+          <label class="fld grow"><span>Seam B %</span>
+            <input id="gram-cut-b" type="range" min="10" max="95" value="67"></label>
+          <button data-act="gram-reslice" type="button">Re-slice</button>
+        </div>
+        <div class="muted">Band preview (how the row will land):</div>
+        <div id="gram-band" class="band"></div>
+      </div>
+
+      <div id="gram-src" class="row src-row"></div>
+      <input id="gram-paths-manual" class="manual-path" type="text"
+             placeholder="…or paste absolute image path(s), separated by |" hidden>
+
+      <div id="gram-strip" class="strip"></div>
+
+      <div class="card sub">
+        <h3>IMAGE CONTROLS <small class="muted">(select an image above)</small></h3>
+        <div class="row">
+          <span class="muted">Fit mode</span>
+          <label class="rdo"><input type="radio" name="gcrop" value="fit" checked> Fit (image in tile)</label>
+          <label class="rdo"><input type="radio" name="gcrop" value="fill"> Fill (square crop)</label>
+          <label class="chk push"><input id="gc-split" type="checkbox"> Post separately (split)</label>
+        </div>
+        <div class="ctl"><label>Image size %</label><input id="gc-size" type="range" min="10" max="100" value="100"><output id="gc-size-o">100</output></div>
+        <div class="ctl"><label>Focal X %</label><input id="gc-fx" type="range" min="0" max="100" value="50"><output id="gc-fx-o">50</output></div>
+        <div class="ctl"><label>Focal Y %</label><input id="gc-fy" type="range" min="0" max="100" value="50"><output id="gc-fy-o">50</output></div>
+        <div class="ctl"><label>Zoom %</label><input id="gc-zoom" type="range" min="100" max="300" value="100"><output id="gc-zoom-o">100</output></div>
+        <div class="ctl"><label>Border px</label><input id="gc-border" type="range" min="0" max="50" value="0"><output id="gc-border-o">0</output></div>
+        <div class="ctl"><label>Shadow</label><input id="gc-shadow" type="range" min="0" max="3" value="0"><output id="gc-shadow-o">0</output></div>
+        <div class="row">
+          <label class="fld grow"><span>Border color (#RRGGBB)</span><input id="gc-bcolor" type="text" value="#000000"></label>
+          <label class="fld grow"><span>Background matte (#RRGGBB)</span><input id="gc-bg" type="text" value="#ffffff"></label>
+        </div>
+        <div class="row">
+          <div class="preview" id="gram-sel-preview"></div>
+          <button data-act="gram-recrop" type="button">Update crop preview</button>
+        </div>
+      </div>
+
+      <div class="card sub">
+        <h3>POST</h3>
+        <label class="fld"><span>Caption</span><textarea id="gram-caption" rows="3"></textarea></label>
+        <label class="fld"><span>Tags (space-separated #hashtags)</span><input id="gram-tags" type="text"></label>
+        <label class="fld"><span>Date (YYYY-MM-DD HH:MM:SS, blank = now)</span><input id="gram-date" type="text"></label>
+        <div class="row">
+          <label class="chk"><input id="gram-comments" type="checkbox" checked> Comments</label>
+          <label class="chk"><input id="gram-allowdl" type="checkbox"> Allow download</label>
+          <label class="fld"><span>Status</span>
+            <select id="gram-status"><option>published</option><option>draft</option></select></label>
+        </div>
+        <label class="fld"><span>Download URL (if allowed)</span><input id="gram-dlurl" type="text"></label>
+        <div class="row actions">
+          <button data-act="gram-save" type="button">Save draft</button>
+          <button data-act="gram-post" class="primary" type="button">✓ OFFLINE POST</button>
+          <button data-act="gram-clear" type="button">Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ── Modals ───────────────────────────────────────────────────────────── -->
+<div id="modal" class="modal" hidden>
+  <div class="modal-box">
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button id="modal-cancel" type="button">Cancel</button>
+      <button id="modal-ok" class="primary" type="button">OK</button>
+    </div>
+  </div>
+</div>
+
+<div id="log" class="log" aria-live="polite"></div>
+
+<script src="/snap_blink.js"></script>
+<script src="app.js"></script>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->

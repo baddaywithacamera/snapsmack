@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SMACK YOUR MOUTH</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+  <header>
+    <h1>SMACK YOUR MOUTH</h1>
+    <span id="build" class="build"></span>
+  </header>
+
+  <main id="app">
+    <!-- ── CONNECTION · FLEET ─────────────────────────────────────── -->
+    <section class="card" id="conn-card">
+      <div class="card-title">CONNECTION&nbsp;·&nbsp;FLEET</div>
+
+      <!-- Session picker row -->
+      <div class="row">
+        <label class="tag">SESSION</label>
+        <select id="session-select"></select>
+        <button id="btn-new-session" class="btn">NEW SESSION</button>
+        <span class="spacer"></span>
+        <button id="btn-export" class="btn">EXPORT…</button>
+        <button id="btn-import" class="btn">IMPORT…</button>
+      </div>
+
+      <!-- Reply author + one-off connection row -->
+      <div class="row">
+        <label class="tag">REPLY AS</label>
+        <input id="author" type="text" class="in" style="width:180px" />
+        <label class="tag" style="margin-left:14px">ONE-OFF SITE URL</label>
+        <input id="one-off-url" type="text" class="in" style="width:220px" />
+        <input id="one-off-key" type="password" class="in" style="width:150px"
+               placeholder="API key" />
+        <button id="btn-pull-one" class="btn">PULL THIS SITE</button>
+      </div>
+
+      <!-- Fleet action row -->
+      <div class="row">
+        <button id="btn-refresh-fleet" class="btn">REFRESH FLEET</button>
+        <button id="btn-probe" class="btn">PROBE (LIVE)</button>
+        <button id="btn-pull-all" class="btn primary">PULL ALL PENDING</button>
+      </div>
+
+      <!-- Fleet list -->
+      <div id="fleet-list" class="fleet-list"></div>
+    </section>
+
+    <!-- ── COMMENT QUEUE ──────────────────────────────────────────── -->
+    <div class="queue-head">
+      <span class="queue-title">COMMENT QUEUE</span>
+      <span id="queue-count" class="queue-count"></span>
+    </div>
+    <section id="queue" class="queue"></section>
+  </main>
+
+  <!-- ── Bottom bar ───────────────────────────────────────────────── -->
+  <footer id="bar">
+    <span id="status" class="status">Ready.</span>
+    <span class="spacer"></span>
+    <button id="btn-sync" class="btn primary big">SYNC DECISIONS + REPLIES</button>
+  </footer>
+
+  <!-- Folder-path prompt (stands in for tkinter's native folder picker) -->
+  <div id="prompt-overlay" class="overlay hidden">
+    <div class="modal">
+      <div id="prompt-title" class="modal-title"></div>
+      <input id="prompt-input" type="text" class="in" style="width:100%" />
+      <div class="modal-actions">
+        <button id="prompt-cancel" class="btn">CANCEL</button>
+        <button id="prompt-ok" class="btn primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sync confirmation (Parkinson's-forgiving: names sites, flags deletes) -->
+  <div id="confirm-overlay" class="overlay hidden">
+    <div class="modal">
+      <div id="confirm-title" class="modal-title"></div>
+      <div id="confirm-body" class="modal-body"></div>
+      <div class="modal-actions">
+        <button id="confirm-cancel" class="btn">CANCEL</button>
+        <button id="confirm-ok" class="btn primary">CONFIRM</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/snap_blink.js"></script>
+  <script src="app.js"></script>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->

@@ -1,0 +1,16 @@
+# TAKE YOUR SHIT WITH YOU — Linux Chrome/Blink port dependencies.
+#
+# snap_blink is stdlib-only, so the window itself adds nothing. The pip deps
+# below are the SAME ones the tkinter build already needs, because the port
+# reuses config.py / tyswy_client.py / export_engine.py unchanged.
+#
+# tkinter is NOT needed here — the window is Chromium, not tk.
+
+requests>=2.31.0
+
+# Credential vault (tools/_shared/snap_vault.py). Without these the tool still
+# runs, but "Key security" reports encryption unavailable and the export key is
+# stored as base64 — an encoding, not encryption. Not optional for a shipped build.
+cryptography>=42.0.0
+keyring>=24.0.0
+# ===== SNAPSMACK EOF =====

@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SMACK YOUR BATCH UP</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+
+<header id="topbar">
+  <div class="brand">
+    <span class="brand-name">SMACK YOUR BATCH UP</span>
+    <span class="brand-ver" id="brandVer"></span>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="solo">SMACKONEOUT</button>
+    <button class="tab" data-tab="gram">GRAMOFSMACK</button>
+    <button class="tab" data-tab="audit">AUDIT</button>
+    <button class="tab" data-tab="repair">BASIC REPAIR</button>
+    <button class="tab" data-tab="match">ADV. MATCH</button>
+    <button class="tab" data-tab="settings">SETTINGS</button>
+  </nav>
+  <button class="ghost help-btn" id="helpBtn">?  Help</button>
+</header>
+
+<!-- LED status bar -->
+<section id="ledbar">
+  <div class="led-panel">
+    <div class="led-head">SITE CONNECTION</div>
+    <div class="led-row"><span class="dot" id="siteDot">■</span><span id="siteLbl">NOT CONNECTED</span></div>
+  </div>
+  <div class="led-sep"></div>
+  <div class="led-panel">
+    <div class="led-head">CLOUD DRIVE</div>
+    <div class="led-row"><span class="dot" id="driveDot">■</span><span id="driveLbl">NOT CONNECTED</span></div>
+  </div>
+  <div class="led-sep"></div>
+  <div class="led-panel">
+    <div class="led-head">AI ENGINE</div>
+    <div class="led-row"><span class="dot" id="aiDot">■</span><span id="aiLbl">NO KEY</span></div>
+  </div>
+</section>
+
+<main id="app">
+
+  <!-- ============ POST panel (solo + gram share it) ============ -->
+  <section class="panel" id="panel-post">
+    <div class="cfg-toggle" id="cfgToggle">▲  CONFIGURATION</div>
+
+    <div class="cfg" id="cfg">
+      <div class="grid2">
+        <!-- CONNECTION -->
+        <div class="box">
+          <div class="box-hd">CONNECTION</div>
+          <div class="box-bd">
+            <label>LOAD PROFILE</label>
+            <select id="postProfile"><option value="">—</option></select>
+            <label>SITE URL</label>
+            <input id="url" type="text" spellcheck="false" placeholder="https://yoursite.ca">
+            <label>API KEY</label>
+            <input id="apiKey" type="password" spellcheck="false">
+            <div class="row between">
+              <label class="chk"><input type="checkbox" id="remember"> Remember</label>
+              <button class="accent" id="connectBtn">Connect</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- MANIFEST & DEFAULTS -->
+        <div class="box">
+          <div class="box-hd">MANIFEST &amp; DEFAULTS</div>
+          <div class="box-bd">
+            <label>IMAGE FOLDER</label>
+            <div class="row"><input id="folder" type="text" spellcheck="false"><button class="mini" id="browseFolder">…</button></div>
+            <label>MANIFEST FILE (advanced)</label>
+            <div class="row"><input id="manifest" type="text" spellcheck="false"><button class="mini" id="browseManifest">…</button></div>
+            <div class="grid4">
+              <div><label>DEFAULT CATEGORY</label><input id="defCat" list="catList" type="text"></div>
+              <div><label>DEFAULT ALBUM</label><input id="defAlbum" list="albumList" type="text"></div>
+              <div><label>ORIENTATION</label>
+                <select id="defOrient"><option>Auto</option><option>Landscape</option><option>Portrait</option><option>Square</option></select></div>
+              <div><label>COLOUR</label>
+                <select id="defColor"><option>—</option><option>Colour</option><option>B&amp;W</option></select></div>
+            </div>
+            <div class="row wrap gap">
+              <button class="ghost" id="loadManifestBtn">Load Manifest</button>
+              <button class="ghost" id="scanBtn">Scan Folder</button>
+              <button class="ghost enrich-ghost" id="enrichTopBtn">✦ Enrich with Gemini</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GOOGLE DRIVE -->
+      <div class="box">
+        <div class="box-hd">GOOGLE DRIVE (OPTIONAL)</div>
+        <div class="box-bd">
+          <label class="chk"><input type="checkbox" id="driveEnabled" checked> Enable Google Drive</label>
+          <div class="grid-drive">
+            <div><label>CREDENTIALS FILE</label>
+              <div class="row"><input id="driveCreds" type="text" spellcheck="false"><button class="mini" id="browseCreds">…</button></div></div>
+            <div><label>FOLDER ID</label><input id="driveFolder" type="text" spellcheck="false"></div>
+            <div class="drive-btn-cell"><button class="ghost" id="authDriveBtn">Auth Drive</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GEMINI -->
+      <div class="box">
+        <div class="box-hd">GEMINI AI (OPTIONAL)</div>
+        <div class="box-bd">
+          <p class="hint">Paste your Gemini API key to enable one-click metadata enrichment.</p>
+          <label>API KEY</label>
+          <div class="row"><input id="gemKey" type="password" spellcheck="false"><button class="ghost" id="gemTestBtn">Test Connection</button><span class="test-lbl" id="gemTestLbl"></span></div>
+          <label>PROMPT</label>
+          <div class="row wrap gap">
+            <span class="hint">Saved presets:</span>
+            <select id="presetSel"><option value="">—</option></select>
+            <button class="mini wide" id="presetSaveBtn">Save As…</button>
+            <button class="mini wide" id="presetDelBtn">Delete</button>
+          </div>
+          <p class="hint">Leave blank to use the built-in default.</p>
+          <textarea id="gemPrompt" rows="5" spellcheck="false"></textarea>
+        </div>
+      </div>
+
+      <!-- COPYRIGHT -->
+      <div class="box">
+        <div class="box-hd">COPYRIGHT STRING</div>
+        <div class="box-bd"><input id="copyright" type="text" spellcheck="false"></div>
+      </div>
+    </div><!-- /cfg -->
+
+    <!-- QUEUE -->
+    <div class="queue-hd">
+      <span id="queueLbl">QUEUE — 0 ITEMS</span>
+      <label class="chk"><input type="checkbox" id="selAll" checked> Select all</label>
+    </div>
+    <div id="queue" class="queue"></div>
+
+    <!-- BOTTOM BAR -->
+    <div class="bottom">
+      <button class="ghost" id="validateBtn">Validate</button>
+      <button class="enrich-btn" id="enrichBtn">✦ ENRICH</button>
+      <button class="post-btn" id="postBtn">POST BATCH</button>
+      <button class="ghost" id="clearBtn">Clear</button>
+      <button class="ghost" id="clearWarnBtn" disabled>Clear AI Warning</button>
+      <button class="ghost" id="randomBtn">Randomize</button>
+      <div class="progress"><div class="bar" id="postBar"></div></div>
+      <span class="prog-lbl" id="postProgLbl"></span>
+      <span class="status" id="postStatus">Load a manifest or scan a folder to begin.</span>
+    </div>
+  </section>
+
+  <!-- ============ AUDIT ============ -->
+  <section class="panel hidden" id="panel-audit">
+    <div class="pad">
+      <div class="row between">
+        <h2>Audit — published posts</h2>
+        <button class="ghost" id="auditRefreshBtn">↻ Refresh</button>
+      </div>
+      <div class="summary" id="auditSummary">Connect on the POST tab, then Refresh to pull your posts.</div>
+      <div class="audit-cols">
+        <div class="box"><div class="box-hd">DUPLICATE TITLES</div><div class="box-bd" id="auditDups"><p class="hint">—</p></div></div>
+        <div class="box"><div class="box-hd">MISSING DRIVE LINKS</div><div class="box-bd" id="auditMissing"><p class="hint">—</p></div></div>
+      </div>
+      <button class="ghost" id="goRepairBtn">→  Go to Repair</button>
+    </div>
+  </section>
+
+  <!-- ============ REPAIR ============ -->
+  <section class="panel hidden" id="panel-repair">
+    <div class="pad">
+      <div class="box">
+        <div class="box-hd">1 — RENAME DRIVE FILES (to snap_id.jpg)</div>
+        <div class="box-bd">
+          <p class="hint">Renames each Drive original to its post id. The share URL is id-based, so posts don't break.</p>
+          <div class="row gap">
+            <button class="ghost" id="renameBtn">▶  Start Rename Batch</button>
+            <button class="ghost" id="renameStopBtn" disabled>■  Stop</button>
+            <span class="status" id="renameStatus"></span>
+          </div>
+          <div class="progress"><div class="bar" id="renameBar"></div></div>
+          <div class="log-box" id="renameLog"></div>
+        </div>
+      </div>
+      <div class="box">
+        <div class="box-hd">2 — RE-ENRICH DUPLICATE TITLES</div>
+        <div class="box-bd">
+          <p class="hint">Downloads each duplicate's Drive image and asks Gemini for a fresh unique title.</p>
+          <div class="row gap">
+            <button class="ghost" id="reenrichBtn">▶  Start Re-enrich</button>
+            <button class="ghost" id="reenrichStopBtn" disabled>■  Stop</button>
+            <span class="status" id="reenrichStatus"></span>
+          </div>
+          <div class="progress"><div class="bar" id="reenrichBar"></div></div>
+          <div class="log-box" id="reenrichLog"></div>
+        </div>
+      </div>
+      <div class="box">
+        <div class="box-hd">3 — BACKFILL MISSING DRIVE LINKS</div>
+        <div class="box-bd">
+          <div class="row gap"><button class="ghost" id="backfillLoadBtn">Load missing-link posts</button><span class="status" id="backfillStatus"></span></div>
+          <div id="backfillRows"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ADV. MATCH ============ -->
+  <section class="panel hidden" id="panel-match">
+    <div class="pad">
+      <div class="box">
+        <div class="box-hd">ADVANCED VISUAL MATCH</div>
+        <div class="box-bd">
+          <p class="hint">Match server-side copies to your local originals by image content, then upload the original to Drive and backfill the post's link.</p>
+          <div class="grid2">
+            <div><label>SERVER FOLDER (local FTP copy)</label>
+              <div class="row"><input id="matchSrv" type="text" spellcheck="false"><button class="mini" id="browseMatchSrv">…</button></div></div>
+            <div><label>ORIGINALS FOLDER (local photos)</label>
+              <div class="row"><input id="matchOrig" type="text" spellcheck="false"><button class="mini" id="browseMatchOrig">…</button></div></div>
+          </div>
+          <div class="row gap">
+            <button class="ghost" id="matchRunBtn">▶  Run Matching</button>
+            <button class="ghost" id="matchStopBtn" disabled>■  Stop</button>
+            <span class="status" id="matchStatus"></span>
+          </div>
+          <div class="progress"><div class="bar" id="matchBar"></div></div>
+        </div>
+      </div>
+      <div id="matchRows"></div>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="panel hidden" id="panel-settings">
+    <div class="pad settings-grid">
+      <div class="box">
+        <div class="box-hd">SITE PROFILES</div>
+        <div class="box-bd">
+          <select id="profileList" size="12" class="profile-list"></select>
+          <div class="grid-prof-btns">
+            <button class="ghost" id="profNewBtn">+ New</button>
+            <button class="ghost" id="profDupBtn">Duplicate</button>
+            <button class="ghost" id="profDelBtn">Delete</button>
+          </div>
+          <button class="accent full" id="profLoadBtn">→  Load Site</button>
+        </div>
+      </div>
+      <div class="box">
+        <div class="box-hd">PROFILE</div>
+        <div class="box-bd">
+          <label>PROFILE NAME</label><input id="spName" type="text">
+          <div class="box inner"><div class="box-hd">CONNECTION</div><div class="box-bd">
+            <label>SITE URL</label><input id="spUrl" type="text" spellcheck="false">
+            <label>API KEY</label><input id="spApiKey" type="password" spellcheck="false">
+            <div class="row"><button class="ghost" id="spTestBtn">Test Connection</button><span class="test-lbl" id="spTestLbl"></span></div>
+          </div></div>
+          <div class="box inner"><div class="box-hd">GOOGLE DRIVE</div><div class="box-bd">
+            <label>CREDENTIALS FILE</label>
+            <div class="row"><input id="spCreds" type="text" spellcheck="false"><button class="mini" id="browseSpCreds">…</button></div>
+            <label>DRIVE FOLDER ID</label><input id="spFolder" type="text" spellcheck="false">
+          </div></div>
+          <div class="box inner"><div class="box-hd">GEMINI AI</div><div class="box-bd">
+            <label>API KEY</label><input id="spGemini" type="password" spellcheck="false">
+            <div class="row"><button class="ghost" id="spGemTestBtn">Test Connection</button><span class="test-lbl" id="spGemTestLbl"></span></div>
+          </div></div>
+          <div class="box inner"><div class="box-hd">DEFAULTS</div><div class="box-bd">
+            <label>COPYRIGHT TEXT</label><input id="spCopyright" type="text">
+            <div class="grid4">
+              <div><label>DEFAULT CATEGORY</label><input id="spCat" type="text"></div>
+              <div><label>DEFAULT ALBUM</label><input id="spAlbum" type="text"></div>
+              <div><label>ORIENTATION</label>
+                <select id="spOrient"><option value="auto">Auto</option><option value="0">Landscape</option><option value="1">Portrait</option><option value="2">Square</option></select></div>
+              <div></div>
+            </div>
+          </div></div>
+          <div class="row between">
+            <span class="status" id="spStatus"></span>
+            <button class="accent" id="profSaveBtn">Save Profile</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<datalist id="catList"></datalist>
+<datalist id="albumList"></datalist>
+<div id="log" class="log" aria-live="polite"></div>
+<div id="modal" class="modal hidden"><div class="modal-card" id="modalCard"></div></div>
+
+<script src="/snap_blink.js"></script>
+<script src="app.js"></script>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->

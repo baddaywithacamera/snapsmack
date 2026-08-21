@@ -1,0 +1,8 @@
+# COLD SNAP — Linux Chrome/Blink port.
+# snap_blink itself is stdlib-only. These are the tool's own real deps:
+#   Pillow   — thumbnail generation + trigram slicing (sumna_offline / snap_thumbs). REQUIRED to compose.
+#   requests — HTTP transport for SYNC (sumna_post). Compose works without it; SYNC needs it.
+# No PyInstaller here — the Linux port runs from source via run.sh (no frozen exe).
+Pillow>=10.0.0
+requests>=2.31.0
+# ===== SNAPSMACK EOF =====

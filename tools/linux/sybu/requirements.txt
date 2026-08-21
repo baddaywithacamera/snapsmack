@@ -1,0 +1,16 @@
+# SMACK YOUR BATCH UP (Linux Chrome/Blink port) — pip deps.
+# The window runtime (snap_blink) is stdlib-only; these are the tool's real
+# work deps, the same ones the desktop build uses (minus pyinstaller/exiftool).
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+Pillow>=10.0.0
+piexif>=1.1.3
+google-api-python-client>=2.100.0
+google-auth-httplib2>=0.1.0
+google-auth-oauthlib>=1.0.0
+google-generativeai>=0.7.0
+# Advanced Visual Match only (matcher.py uses cv2 + imagehash); the rest of the
+# tool runs fine without these installed.
+opencv-python-headless>=4.8.0
+imagehash>=4.3.0
+# ===== SNAPSMACK EOF =====
