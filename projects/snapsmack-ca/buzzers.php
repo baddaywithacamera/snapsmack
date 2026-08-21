@@ -162,6 +162,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Aug 21</span><a href="#a050">CMS Architecture Assessment &mdash; Direct-Access Hardening &amp; an Honest Accounting</a></li>
                 <li><span class="idx-date">Aug 18</span><a href="#a049">CMS Compliance, Image Handling &amp; the Missing Content Invariant</a></li>
                 <li><span class="idx-date">Aug 15</span><a href="#a048">Live Penetration Test &mdash; Installer, Bootstrap, JSON-LD &amp; Editor Boundary</a></li>
                 <li><span class="idx-date">Aug 14</span><a href="#a047">Full Multi-Dimension Audit &mdash; Authentication, Recovery, Federation &amp; Uploads</a></li>
@@ -215,6 +216,15 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a050">
+                <div class="post-meta"><span class="post-date">August 21, 2026</span><span class="post-tag">Fixed Item Closed &mdash; Architecture Review Dispositioned</span></div>
+                <h2>CMS Architecture Assessment &mdash; Direct-Access Hardening &amp; an Honest Accounting</h2>
+                <p>SECAUDIT 050 stepped back from line-by-line review to assess the whole content-management system against the patterns mature publishing, media-library, database, security, recovery and federation systems follow. Its one publishable security fix: protection for sensitive server-side files was a hand-maintained, Apache-only deny-list that had drifted out of step with the code. Several core includes &mdash; the updater, the release-signing public key, the skin registry, the shared-asset manifest inventory, and the real authentication file &mdash; could be requested directly rather than only through the application, while the list still named files that no longer existed and omitted the authentication file that mattered most. Release 0.7.544 gives each of those includes a server-agnostic guard that refuses a direct request regardless of web server, and reconciles the deny-list to the files that actually ship. The code is released; confirming it on every live installation runs through the normal update-and-repair path and is recorded as pending, not quietly marked done.</p>
+                <p>We are also recording something embarrassing, because transparency is the point of this page. This architecture review exists in part because an earlier audit read the code, found it clean, and called the system sound &mdash; while missing that the system had no single, enforced definition of what a published item even is. Legacy solo publishing stored a photograph as a bare image row rather than a post, so publication state, ownership, dates, engagement, collections and federation identity had no one home. Clean code sitting on an undefined content model passes a code review and still fails an architecture review. As with SECAUDIT 046, a foundational miss belongs in the record rather than tidied away; the repair of the content model itself is real work in progress and is not represented as finished.</p>
+                <p>A long-open data-integrity check for orphaned community records was completed and confirmed there were none. That comes with an honest caveat: an earlier version of the check used a posts-only definition of &ldquo;orphan&rdquo; that is wrong for how this system stores engagement &mdash; comments and likes are keyed to the image identifier by design &mdash; and that assumption briefly removed legitimate community comments during analysis before they were restored from backup and the corrected check ran clean. The review dispositioned eight findings in total; the two closed here are disclosed, and the remainder &mdash; including further hardening of administrator authorization and URL routing &mdash; are tracked internally and deliberately not mapped in public until they are fixed and can be disclosed the same way.</p>
+                <a class="report-link" href="secaudits/2026-08-21-050-cms-architecture-assessment.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a049">
                 <div class="post-meta"><span class="post-date">August 18, 2026</span><span class="post-tag">Assessment Closed &mdash; Architecture Escalated</span></div>
