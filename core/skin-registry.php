@@ -98,8 +98,8 @@ function snapsmack_skin_allowed_distribution($manifest): bool {
     // this install ships NO service skin at all, filtering to "service only"
     // would leave the skin picker EMPTY — a site with nothing to choose. In that
     // case fall back to showing the ordinary skins so the picker is never blank.
-    // (Onyx shipped as an ordinary skin from 0.7.5xx, so with no service skin
-    // installed this is the live path, not a corner case.)
+    // This remains a recovery fallback for incomplete/custom packages. Official
+    // FEDISTRUCTURE packages ship ONYX as their service skin.
     if (!snapsmack_any_service_skin_installed()) return true;
     return $skin_is_service;
 }

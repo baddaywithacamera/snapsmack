@@ -10,6 +10,13 @@
 
 # SnapSmack Changelog
 
+## 0.7.546 — 2026-08-21 "ONYX BOUNDARY"
+
+- ONYX 0.1.7 is now explicitly restricted to FEDISTRUCTURE install mode 4.0. Ordinary SnapSmack blogs
+  neither list nor activate it, while mode-4 skin lists expose ONYX and exclude incompatible blog skins.
+- Both sides of the distribution boundary are regression-tested so a future manifest or gallery change
+  cannot quietly leak one product's identity and layout into the other.
+
 ## 0.7.545 — 2026-08-21 "SMACKCAST RELAY"
 
 ### OH SNAP becomes an honest offline-first skin designer
