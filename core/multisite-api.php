@@ -352,9 +352,16 @@ $pdo->prepare("UPDATE snap_multisite_nodes SET last_seen_at = NOW() WHERE id = ?
 // desktop fleet is genuinely set-up-once — no per-site posting key made by hand.
 // A backup-scoped key is already 403'd above; belt-and-braces re-checks 'full'.
 // Idempotent by rotation: any prior HUB-provisioned key of the same type is
-// revoked, then exactly one fresh key is minted, so re-running Discover never
-// piles keys up. This grants nothing api_key_local cannot already do.
-// Body: {"key_type":"sybu"}   Returns: {ok, api_key, key_type, key_prefix, expires_at}
+// revoked, then exactly one key is installed, so re-running Discover never piles
+// keys up. This grants nothing api_key_local cannot already do.
+//
+// Two modes, distinguished by the body:
+//   {"key_type":"suyb"}                        → MINT a fresh per-site key (legacy).
+//   {"key_type":"suyb","key_value":"<64hex>"}  → INSTALL a caller-supplied value,
+//        i.e. the ONE shared fleet key, so every site accepts the same backup key
+//        (kills the per-site drift). The value is stored hashed exactly like a
+//        minted key; the caller already holds it, so it is NOT echoed back.
+// Returns: {ok, key_type, key_prefix, expires_at, shared, [api_key if minted]}
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'provision-key' && $method === 'POST') {
     if ($ms_key_scope !== 'full') {
@@ -362,10 +369,17 @@ if ($resource === 'provision-key' && $method === 'POST') {
     }
     $pv_body = json_decode(file_get_contents('php://input') ?: '', true);
     $pv_type = is_array($pv_body) ? strtolower(trim((string)($pv_body['key_type'] ?? 'sybu'))) : 'sybu';
-    // Only genuine per-site TOOL keys may be minted this way — never 'hub'.
+    // Only genuine per-site TOOL keys may be installed this way — never 'hub'.
     if (!in_array($pv_type, ['sybu', 'suyb', 'gyss', 'ohsnap', 'tyswy'], true)) {
         ms_err('key_type not provisionable', 400);
     }
+    // Optional caller-supplied value = the single shared fleet key. Must match the
+    // Bearer-key format the login path validates (64 lowercase hex).
+    $pv_supplied = is_array($pv_body) ? strtolower(trim((string)($pv_body['key_value'] ?? ''))) : '';
+    if ($pv_supplied !== '' && !preg_match('/^[a-f0-9]{64}$/', $pv_supplied)) {
+        ms_err('key_value must be 64 hexadecimal characters', 400);
+    }
+    $pv_shared = ($pv_supplied !== '');
     try {
         // A spoke that never opened Admin -> API Keys may lack the newer columns.
         foreach ([
@@ -375,19 +389,28 @@ if ($resource === 'provision-key' && $method === 'POST') {
         ] as $pv_alter) {
             try { $pdo->exec($pv_alter); } catch (\PDOException $e) { /* column already present */ }
         }
-        $pv_label = 'HUB auto-provisioned (' . $pv_type . ')';
-        // Retire prior hub-provisioned keys of this type so they never accumulate.
-        $pdo->prepare("UPDATE snap_ohsnap_keys SET is_active = 0 WHERE key_type = ? AND label = ?")
-            ->execute([$pv_type, $pv_label]);
-        $pv_raw     = bin2hex(random_bytes(32));
+        $pv_label = $pv_shared
+            ? 'HUB shared key (' . $pv_type . ')'
+            : 'HUB auto-provisioned (' . $pv_type . ')';
+        // Retire EVERY prior hub-provisioned key of this type (both the legacy
+        // per-site 'auto-provisioned' label and any earlier shared one) so the
+        // site converges on exactly one active hub key. A user's own manually
+        // created key (any non-'HUB ' label) is left untouched, so a per-site
+        // revoke on the admin page still means what it says.
+        $pdo->prepare("UPDATE snap_ohsnap_keys SET is_active = 0 WHERE key_type = ? AND label LIKE 'HUB %'")
+            ->execute([$pv_type]);
+        $pv_raw     = $pv_shared ? $pv_supplied : bin2hex(random_bytes(32));
         $pv_hash    = hash('sha256', $pv_raw);
         $pv_prefix  = substr($pv_raw, 0, 8);
         $pv_expires = date('Y-m-d H:i:s', strtotime('+1 year'));
         $pdo->prepare("INSERT INTO snap_ohsnap_keys (label, key_type, key_hash, key_prefix, expires_at, user_id)
                        VALUES (?, ?, ?, ?, ?, NULL)")
             ->execute([$pv_label, $pv_type, $pv_hash, $pv_prefix, $pv_expires]);
-        ms_ok(['api_key' => $pv_raw, 'key_type' => $pv_type,
-               'key_prefix' => $pv_prefix, 'expires_at' => $pv_expires]);
+        $pv_out = ['key_type' => $pv_type, 'key_prefix' => $pv_prefix,
+                   'expires_at' => $pv_expires, 'shared' => $pv_shared];
+        // Only echo a freshly MINTED key; never reflect a caller-supplied value.
+        if (!$pv_shared) $pv_out['api_key'] = $pv_raw;
+        ms_ok($pv_out);
     } catch (\Throwable $e) {
         ms_err('Provisioning failed', 500);
     }
