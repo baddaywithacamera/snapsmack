@@ -32,6 +32,11 @@
 ### photoblogs.fyi becomes the virtual LOCAL server
 - FEDISTRUCTURE is now durable, incompatible install mode **4.0**, with SMACKCAST behavior additionally
   gated by HUB role, profile, and a default-off relay switch.
+- Existing network sites are re-stamped to mode 4.0 automatically on update. Installs made before this
+  release recorded the old `site_mode='photoblog'` disguise, which would have left the relay/hub gates
+  dormant on already-deployed sites; a guarded migration flips only genuine FEDISTRUCTURE installs (keyed
+  on the install's own `distribution` marker) to `fedistructure`, so a normal photoblog, gram, or longform
+  site is never touched.
 - Participating blogs publish normally from their own actors and queue a separate best-effort notification
   to photoblogs.fyi. The hub admits public original posts from active members and durably fans out one
   Announce per destination without storing image bytes.
