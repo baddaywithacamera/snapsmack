@@ -15,6 +15,42 @@ function status(msg, kind) {
   el.className = kind || "";
 }
 
+// ── help modal (static content, rendered client-side — no blink.call) ──────────
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"]/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+function openModal(html) {
+  const m = $("#modal");
+  m.innerHTML = html;
+  $("#modal-back").hidden = false;
+}
+function closeModal() {
+  $("#modal-back").hidden = true;
+  $("#modal").innerHTML = "";
+}
+function showHelp() {
+  openModal(
+    `<h3>SMACKATTACK SCANNER — help</h3><p>${esc(
+      "SMACKATTACK SCANNER finds commenters whose writing style matches banned users or each other.\n\n" +
+      "1. SETTINGS: enter the database connection (Host, Port, Database, Username, Password), then " +
+      "SAVE & TEST CONNECTION. The SMACKATTACK HUB API (URL + key) is optional — it only enables " +
+      "UPLOAD TO HUB.\n\n" +
+      "2. SCAN PARAMETERS (in SETTINGS): Similarity Threshold flags matches at or above this cosine " +
+      "similarity (0.0–1.0). Default: 0.55. Minimum Words skips authors with fewer combined words than " +
+      "this. Default: 30.\n\n" +
+      "3. SCAN: RUN SCAN fetches approved comments from the database, computes 25-dimension writing " +
+      "style vectors, and compares all authors against each other and any stored ban profiles. Matches " +
+      "above the similarity threshold are stored in snap_gobsmacked_scan.\n\n" +
+      "4. RESULTS: VIEW RESULTS shows flagged matches. Filter by All, Peer Matches, vs Banned, or " +
+      "Unreviewed. Select a row, then MARK REVIEWED, or UPLOAD TO HUB to report it (needs the hub API " +
+      "URL and key in Settings)."
+    )}</p>` +
+    `<div class="modal-btns"><button class="accent" id="btn-help-ok">OK</button></div>`
+  );
+  $("#btn-help-ok").addEventListener("click", closeModal);
+}
+
 // ── tab switching ────────────────────────────────────────────────────────────
 function initTabs() {
   $$(".tab").forEach((t) => {
@@ -192,6 +228,8 @@ async function boot() {
   $("#btn-refresh").addEventListener("click", loadResults);
   $("#btn-reviewed").addEventListener("click", markReviewed);
   $("#btn-upload").addEventListener("click", uploadSelected);
+  $("#btn-help").addEventListener("click", showHelp);
+  $("#modal-back").addEventListener("click", (e) => { if (e.target.id === "modal-back") closeModal(); });
   $$('input[name="filt"]').forEach((r) => r.addEventListener("change", loadResults));
 
   try {

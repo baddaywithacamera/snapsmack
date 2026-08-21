@@ -57,14 +57,16 @@ runs):** all 14 import clean. Note: each tool uses generic module names (`config
 `poster`, `fleet`), so tools must run one-per-process — which is exactly the desktop
 model (each is its own window). Never import two into one process.
 
-**In-app Help parity gap:** the ports carried each tool's Help across for 7 of 14
-(coldsnap, sybu, flkr-fckr, suyb, smack-your-mouth, tyswy, unzucker). Shots Fired,
-SmackAttack Scanner, and SmackPress had a Help button in the Windows build that the
-port did NOT carry over — restore before calling those three finished. Cronometer,
-Hub, GYSS, OH SNAP had no in-app Help to begin with. The CMS help page
-(`smack-help.php`) covers SYBU/SMACKPRESS/FLKR/SUYB/SMACKATTACK/OH SNAP well, barely
-mentions GYSS + Unzucker, and omits COLD SNAP/Shots Fired/Smack Your Mouth/
-Cronometer/Hub.
+**In-app Help:** 10 of 14 ports now have an in-app Help modal — the 7 that carried
+one from the Windows build (coldsnap, sybu, flkr-fckr, suyb, smack-your-mouth, tyswy,
+unzucker) plus shots-fired, smackattack-scanner, and smackpress, which were given a
+faithful Help modal built from each tool's own on-screen text / README (those three
+never had a Help button in the Windows build — earlier notes calling that a "parity
+gap" were wrong; there was nothing to lose). Cronometer, Hub, GYSS, and OH SNAP have
+no in-app Help yet. The CMS help page (`smack-help.php`) covers
+SYBU/SMACKPRESS/FLKR/SUYB/SMACKATTACK/OH SNAP well, barely mentions GYSS + Unzucker,
+and omits COLD SNAP/Shots Fired/Smack Your Mouth/Cronometer/Hub — filling those is a
+separate pass in Sean's brand voice.
 
 ## Honesty about verification
 

@@ -11,6 +11,7 @@
     <nav class="menu">
       <button id="menu-settings" class="menu-btn">Settings…</button>
       <button id="menu-refresh" class="menu-btn">Refresh posts</button>
+      <button id="menu-help" class="menu-btn">?  Help</button>
       <button id="menu-quit" class="menu-btn">Quit</button>
     </nav>
   </header>
@@ -112,6 +113,58 @@
         <button id="settings-cancel" class="grey">Cancel</button>
       </div>
       <div id="settings-result" class="settings-result"></div>
+    </div>
+  </div>
+
+  <!-- ── Help modal ─────────────────────────────────────── -->
+  <div id="help-overlay" class="overlay hidden">
+    <div class="modal">
+      <h2>SMACKPRESS — Help</h2>
+      <div class="help-body">
+        <p>One-post-at-a-time WordPress to SMACKTALK migration workbench.</p>
+
+        <h3>First launch — Settings</h3>
+        <p>On first launch, Settings opens automatically. Fill in:</p>
+        <ol>
+          <li><strong>WordPress site URL</strong> — your WP site root, e.g. https://myblog.com</li>
+          <li><strong>WordPress username</strong> — your WP admin username</li>
+          <li><strong>Application Password</strong> — generate in WP Admin → Users → Profile → Application Passwords</li>
+          <li><strong>SnapSmack site URL</strong> — the site you are migrating INTO</li>
+          <li><strong>SmackPress API key</strong> — generate in SnapSmack Admin → API Keys (choose SmackPress type)</li>
+        </ol>
+        <p>Then click <strong>Test connections</strong> to verify both ends before loading posts.</p>
+
+        <h3>Workflow</h3>
+        <ol>
+          <li>Pick a post from the navigator (left pane).</li>
+          <li>Review the WordPress source (top of canvas).</li>
+          <li>Edit the SMACKTALK draft (bottom of canvas) — or hit AI rewrite.</li>
+          <li>Add tags and select a category in the right pane.</li>
+          <li>Click → SnapSmack to push as a draft.</li>
+          <li>Review on site, publish when happy.</li>
+          <li>Click Hide WP post to set the original to private.</li>
+        </ol>
+
+        <h3>AI rewrite</h3>
+        <p>Supports Gemini, OpenAI, and Anthropic. Set provider + API key in Settings.
+        No AI SDK is required — SmackPress calls the APIs directly over HTTPS.</p>
+
+        <h3>WordPress companion plugin</h3>
+        <p>Install the SmackPress WordPress companion plugin on the source WordPress site.
+        It exposes the /wp-json/smackpress/v1/ REST API that SmackPress reads from.
+        Delete it once migration is complete.</p>
+
+        <h3>Credentials &amp; security</h3>
+        <p>Your WordPress application password, SnapSmack API key, and AI key are stored in
+        your OS keychain (Windows Credential Manager / macOS Keychain / Linux Secret Service)
+        when one is available, so they are never written in plaintext. The keys are short-lived
+        regardless — the SnapSmack SmackPress key expires (max 4 weeks) and the WordPress
+        application password can be revoked any time in WP Admin. Revoke both and delete the
+        companion plugin once the migration is done.</p>
+      </div>
+      <div class="modal-actions">
+        <button id="help-close" class="accent">Close</button>
+      </div>
     </div>
   </div>
 

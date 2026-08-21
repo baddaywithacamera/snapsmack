@@ -14,6 +14,7 @@
       <label class="lookahead-label" for="lookahead">LOOK AHEAD</label>
       <select id="lookahead" class="lookahead"></select>
       <button id="refresh" class="btn primary">REFRESH</button>
+      <button id="help" class="btn" aria-haspopup="dialog">?  HELP</button>
     </div>
   </header>
 
@@ -38,6 +39,27 @@
       <div class="dialog-btns">
         <button id="move-cancel" class="btn">CANCEL</button>
         <button id="move-confirm" class="btn primary big">MOVE POST</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help — static text, no server call. Restores the in-app Help the
+       Windows tkinter tool documented in its module notes / README. -->
+  <div id="help-backdrop" class="backdrop" hidden>
+    <div class="dialog help" role="dialog" aria-modal="true" aria-labelledby="help-title">
+      <h2 id="help-title" class="dialog-title">SHOTS FIRED — HELP</h2>
+      <div class="help-body">SHOTS FIRED is the fleet-wide scheduled-post calendar: it pulls the FUTURE-dated (scheduled) posts from every fleet site into one agenda so you can SEE the whole lineup and SHUFFLE it — move a post to a new day, spread a bunched week out, bump one.
+
+It does NOT create posts (that is SYBU / COLD SNAP); it only surfaces and reschedules what is already queued. A post with a future date is already scheduled — the site holds it and reveals it on its date.
+
+1. LOOK AHEAD sets how far forward to look (14 / 30 / 60 / 90 / 180 / 365 days).
+2. REFRESH pulls every site's upcoming posts into the day-grouped agenda; each site has its own colour.
+3. MOVE… on a post opens the reschedule box. Type a new date (YYYY-MM-DD) and time (HH:MM, 24h), then MOVE POST. CANCEL sits apart from MOVE POST so a mis-click cannot move a post by accident.
+
+Sites are read from the shared profile store — a blog set up in SYBU / COLD SNAP appears here automatically. A site with no scheduling API deployed yet shows a note and is skipped until its server route is added.</div>
+
+      <div class="dialog-btns dialog-btns--end">
+        <button id="help-close" class="btn primary">CLOSE</button>
       </div>
     </div>
   </div>

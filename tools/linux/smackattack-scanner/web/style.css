@@ -106,4 +106,18 @@ footer#statusbar {
 footer#statusbar.ok { color:var(--ok); }
 footer#statusbar.warn { color:var(--warn); }
 footer#statusbar.err { color:var(--err); }
+
+/* help button (pushed to the right of the header) */
+.help-btn { margin-left:auto; min-height:34px; padding:0 14px; font-size:12px; }
+
+/* help modal */
+.modal-back { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:50; }
+.modal-back[hidden] { display:none; }
+.modal-card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:10px;
+  padding:22px; max-width:600px; width:90%; max-height:82vh; overflow:auto;
+}
+.modal-card h3 { margin:0 0 12px; color:var(--accent); font-size:15px; letter-spacing:.5px; }
+.modal-card p { margin:0; white-space:pre-wrap; font-size:13px; line-height:1.6; color:var(--fg); }
+.modal-btns { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
 /* ===== SNAPSMACK EOF ===== */

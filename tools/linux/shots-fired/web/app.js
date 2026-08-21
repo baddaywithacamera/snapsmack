@@ -162,6 +162,10 @@ async function confirmMove() {
   }
 }
 
+/* ---- Help modal (static text; no server call) --------------------------- */
+function openHelp()  { $("#help-backdrop").hidden = false; $("#help-close").focus(); }
+function closeHelp() { $("#help-backdrop").hidden = true; }
+
 /* ---- refresh (mirrors App.refresh) -------------------------------------- */
 async function doRefresh() {
   if (_loading) return;
@@ -200,6 +204,16 @@ async function boot() {
     if ($("#move-backdrop").hidden) return;
     if (e.key === "Escape") closeMoveDialog();
     if (e.key === "Enter") { e.preventDefault(); confirmMove(); }
+  });
+
+  // Help modal — static; open/close only.
+  $("#help").addEventListener("click", openHelp);
+  $("#help-close").addEventListener("click", closeHelp);
+  $("#help-backdrop").addEventListener("click", (e) => {
+    if (e.target === $("#help-backdrop")) closeHelp();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (!$("#help-backdrop").hidden && e.key === "Escape") closeHelp();
   });
 
   try {

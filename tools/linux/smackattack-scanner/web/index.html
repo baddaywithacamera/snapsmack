@@ -7,6 +7,7 @@
   <header>
     <span class="brand">SMACKATTACK SCANNER</span>
     <span class="ver" id="ver"></span>
+    <button class="ghost help-btn" id="btn-help">?  Help</button>
   </header>
 
   <nav class="tabs" role="tablist">
@@ -106,6 +107,11 @@
   </main>
 
   <footer id="statusbar">Not connected.</footer>
+
+  <!-- ── HELP modal (static content, no Python round-trip) ─────────── -->
+  <div id="modal-back" class="modal-back" hidden>
+    <div id="modal" class="modal-card"></div>
+  </div>
 
   <script src="/snap_blink.js"></script>
   <script src="app.js"></script>
