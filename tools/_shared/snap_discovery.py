@@ -21,6 +21,8 @@ SHARED stores instead of one tool's private config.
 
 import json
 import os
+import re
+import secrets
 import sys
 
 import requests
@@ -141,25 +143,36 @@ def _profile_for(node, fallback_key="") -> dict:
     }
 
 
-def _provision_spoke_key(site_url, api_key_local, key_type="sybu", timeout=20):
-    """Ask a spoke to mint a proper TOOL key for the fleet, using the hub's FULL
-    key (api_key_local). Returns the raw key, or "" if the spoke is on an older
-    build without the route — the caller then falls back to the discovered key."""
+def _provision_spoke_key(site_url, api_key_local, key_type="sybu", key_value="", timeout=20):
+    """Ask a spoke to provision a TOOL key for the fleet, using the hub's FULL key
+    (api_key_local).
+
+    - No key_value: the spoke MINTS a fresh per-site key and returns it (legacy).
+    - key_value given (the ONE shared fleet key, 64 hex): the spoke INSTALLS that
+      exact value so every site accepts the same key. The endpoint never echoes a
+      supplied value, so on success we return the value we sent — a truthy result
+      still signals success.
+
+    Returns the key (minted or supplied) on success, or "" if the spoke is on an
+    older build without the route / the call failed."""
     if not (site_url and api_key_local):
         return ""
+    body = {"key_type": key_type}
+    if key_value:
+        body["key_value"] = key_value.strip().lower()
     try:
         r = requests.post(
             site_url.rstrip("/") + "/api.php",
             params={"route": "multisite/provision-key"},
-            json={"key_type": key_type},
+            json=body,
             headers={"Authorization": "Bearer " + api_key_local.strip(),
                      "User-Agent": "SnapSmackHub/1.0"},
             timeout=timeout,
         )
         if r.status_code == 200:
             data = r.json()
-            if data.get("ok") and data.get("api_key"):
-                return str(data["api_key"]).strip()
+            if data.get("ok"):
+                return str(data.get("api_key") or key_value or "").strip()
     except Exception:
         pass
     return ""
@@ -202,4 +215,74 @@ def discover_and_save(hub_url, api_key="", admin_user="", admin_pass="", timeout
     """One call: discover the fleet from the hub and write the shared stores."""
     hub_info, spokes = discover(hub_url, api_key, admin_user, admin_pass, timeout)
     return save_to_shared(hub_info, spokes, hub_api_key=api_key)
+
+
+def provision_shared_backup_key(hub_url="", api_key="", key_value="",
+                                key_type="suyb", timeout=30) -> dict:
+    """Give the WHOLE fleet ONE backup key — the fix for per-site key drift.
+
+    This is the Hub 'mint-and-push' half of the one-key backup design. It:
+      1. Reuses the one shared key already in the vault ('backup_hub_key'), or the
+         value you pass, or mints a single fresh 64-hex key.
+      2. Discovers the fleet from the hub and POSTs that SAME value to every
+         spoke's multisite/provision-key (key_type='suyb', key_value=<shared>),
+         using each spoke's full hub key. The site half (0.7.546D) installs it, so
+         every site now accepts the one key. The hub is included as a target too.
+      3. Stores the one key in the shared vault so SUYB's resolver
+         (config.effective_backup_key) authenticates the whole fleet with it.
+
+    No per-site minting by hand. Idempotent — each site converges on the one key,
+    prior HUB keys of that type are retired server-side, and re-running is safe.
+    Keys are revocable per-site on each blog's API-Keys page.
+
+    hub_url/api_key default to the vault's stored hub creds, so the Hub button — or
+    `python snap_discovery.py provision-backup-key` — is a single action.
+
+    Returns {key_prefix, sites_ok:[...], sites_failed:[...], count}."""
+    hub_url = (hub_url or snap_creds.get("hub_url") or "").strip()
+    api_key = (api_key or snap_creds.get("hub_key") or "").strip()
+    if not (hub_url and api_key):
+        raise DiscoveryError("Hub URL and hub key are required — set the hub up "
+                             "first (Discover Fleet), then run this.")
+
+    shared = (key_value or snap_creds.get("backup_hub_key") or "").strip().lower()
+    if not shared:
+        shared = secrets.token_hex(32)          # 64 lowercase hex — matches the endpoint
+    if not re.fullmatch(r"[a-f0-9]{64}", shared):
+        raise DiscoveryError("shared backup key must be 64 hexadecimal characters")
+
+    hub_info, spokes = discover(hub_url, api_key, timeout=timeout)
+
+    # The hub is a backup target too; its own full key is the hub key itself.
+    targets = [{"site_url": hub_info.get("site_url", hub_url), "api_key_local": api_key}]
+    for n in spokes:
+        su  = (n.get("site_url") or n.get("url") or "").strip()
+        akl = (n.get("api_key_local") or "").strip()
+        if su and akl:
+            targets.append({"site_url": su, "api_key_local": akl})
+
+    ok, failed = [], []
+    for tgt in targets:
+        res = _provision_spoke_key(tgt["site_url"], tgt["api_key_local"],
+                                   key_type=key_type, key_value=shared, timeout=timeout)
+        (ok if res else failed).append(tgt["site_url"])
+
+    # Persist the one key so every tool authenticates the whole fleet with it.
+    try:
+        snap_creds.set("backup_hub_key", shared)
+    except Exception:
+        pass
+
+    return {"key_prefix": shared[:8], "sites_ok": ok,
+            "sites_failed": failed, "count": len(ok)}
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "provision-backup-key":
+        _hu = sys.argv[2] if len(sys.argv) > 2 else ""
+        _hk = sys.argv[3] if len(sys.argv) > 3 else ""
+        _out = provision_shared_backup_key(hub_url=_hu, api_key=_hk)
+        print(json.dumps(_out, indent=2))
+    else:
+        print("usage: python snap_discovery.py provision-backup-key [hub_url] [hub_key]")
 # ===== SNAPSMACK EOF =====
