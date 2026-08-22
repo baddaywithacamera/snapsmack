@@ -13,7 +13,7 @@ Same visual family as Smack Your Batch Up.
 
 
 
-BUILD_VERSION = "0.7.22"
+BUILD_VERSION = "0.7.23"
 
 import os
 import queue

@@ -253,7 +253,7 @@ def load_state():
     }
 
 
-_BUILD_VERSION = "0.7.22"   # keep in step with main.BUILD_VERSION
+_BUILD_VERSION = "0.7.23"   # keep in step with main.BUILD_VERSION
 
 
 def list_profiles():
