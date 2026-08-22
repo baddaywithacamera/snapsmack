@@ -70,11 +70,33 @@ def effective_backup_key(profile: dict) -> str:
     Rollout order matters: provision the hub key onto every site FIRST, THEN set
     backup_hub_key in the shared store — otherwise a not-yet-provisioned site 401s
     (there is deliberately no per-site fallback once the hub key is in force, so a
-    per-blog revoke actually stops that blog)."""
+    per-blog revoke actually stops that blog).
+
+    SELF-HEAL ("just works"): if this profile carries the site's FULL hub key
+    (extras.api_key_local — stored by The Hub's Discover Fleet), mint a FRESH
+    backup key from it right here, every run. The site retires the prior one, so
+    the backup key can never drift, expire, or get revoked into a 401 — there is
+    no key to paste, no CLI, no per-site setup. If that path isn't available
+    (older/manual profile), fall back to the shared hub key, then the stored key,
+    exactly as before — non-breaking."""
+    profile = profile or {}
+    akl  = ((profile.get("extras") or {}).get("api_key_local") or "").strip()
+    site = (profile.get("site_url") or profile.get("url") or "").strip()
+    if akl and site:
+        try:
+            _sd = os.path.join(_app_dir(), '..', '_shared')
+            if os.path.isdir(_sd) and _sd not in sys.path:
+                sys.path.insert(0, _sd)
+            import snap_discovery
+            fresh = snap_discovery._provision_spoke_key(site, akl, "suyb")
+            if fresh:
+                return fresh
+        except Exception:
+            pass  # fall through to the stored key — never block a backup on this
     hub = shared_cred("backup_hub_key")
     if hub:
         return hub
-    return (profile or {}).get("api_key", "") or ""
+    return profile.get("api_key", "") or ""
 
 
 def resolve_file(name: str) -> str:
