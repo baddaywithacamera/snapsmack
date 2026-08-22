@@ -80,8 +80,24 @@ def effective_backup_key(profile: dict) -> str:
     (older/manual profile), fall back to the shared hub key, then the stored key,
     exactly as before — non-breaking."""
     profile = profile or {}
-    akl  = ((profile.get("extras") or {}).get("api_key_local") or "").strip()
     site = (profile.get("site_url") or profile.get("url") or "").strip()
+    akl  = ((profile.get("extras") or {}).get("api_key_local") or "").strip()
+    # SUYB keeps its OWN profile store, but the site's FULL hub key lives in The
+    # Hub's SHARED store (snap_profiles), where Discover Fleet writes it. If our
+    # passed-in profile doesn't carry it, pull it from the shared store by
+    # site_url — every tool's auth comes from the Hub's shared store, not a private
+    # copy. (This is what makes the self-heal actually fire in the built app: the
+    # desktop profile has no api_key_local, the shared one does.)
+    if not akl and site:
+        try:
+            _sd = os.path.join(_app_dir(), '..', '_shared')
+            if os.path.isdir(_sd) and _sd not in sys.path:
+                sys.path.insert(0, _sd)
+            import snap_profiles
+            shared_prof = snap_profiles.load_by_site(site) or {}
+            akl = ((shared_prof.get("extras") or {}).get("api_key_local") or "").strip()
+        except Exception:
+            pass
     if akl and site:
         try:
             _sd = os.path.join(_app_dir(), '..', '_shared')
