@@ -3,9 +3,9 @@
   Last non-empty line must be the canonical SNAPSMACK EOF HTML comment.
 -->
 
-# SnapSmack Minimum Compliance Standard (SMCS) — v1.0
+# SnapSmack Minimum Compliance Standard (SMCS) — v1.1
 
-**Companion to Audit 049 · 2026-08-17**
+**Companion to Audit 049 · 2026-08-17 · Method + Part D added by Audit 050, 2026-08-21**
 
 ---
 
@@ -24,6 +24,38 @@ change the real answer. Can't confirm? Mark it "unconfirmed", don't call it MEET
 **Severity:** CRITICAL = a stranger could take over the site or steal all data ·
 HIGH = damage data / hijack a logged-in user / run code · MEDIUM = needs some access
 or luck · LOW = hardening / defense-in-depth.
+
+---
+
+## Method — how a review is actually run (added v1.1, from Audit 050)
+
+Audit 050 exposed a process failure, not just a code gap: asked to *compare the
+architecture against similar platforms*, the review answered from internal knowledge,
+found nothing, and called the system sound — while the CMS had no post object at all,
+a thing every mainstream CMS has. A checklist written from the same internal knowledge
+carries the same blind spot. These rules force external grounding and make skipping it
+visible.
+
+- **M1 · A comparative review produces a cited MATRIX, not a verdict · CRITICAL
+  (process).** When the ask is "compare our architecture to similar platforms / where do
+  we deviate from best practice," the deliverable is a table: **rows** = architecture
+  dimensions (content unit, media model, taxonomy, revisions/history, routing, auth &
+  capability model, federation); **columns** = *named* comparators (e.g. WordPress,
+  Ghost, Drupal, Koken, Pixelfed); **cells** = how each does it *with a source*, how we
+  do it, the deviation, and whether the deviation is justified. **No matrix = the task is
+  not done.** Do not answer from memory — pull the comparators' own docs/schema and cite
+  them.
+- **M2 · Deviation register + done-gate · CRITICAL (process).** Every departure from the
+  mainstream pattern is logged and labelled **deliberate / accepted-debt / defect**, with
+  a reason. A comparative or architecture review may **not** be marked complete — and may
+  **not** report "code is clean" — until the matrix and register exist and every deviation
+  is dispositioned. A code review answers *is it correct?*; an architecture review must
+  answer *is the model even defined, and where do we deviate from how mature platforms
+  build this?*
+- **M3 · Honesty flag · HIGH (process).** If a review did not consult external sources, it
+  must say so — that reads as **INCOMPLETE**, not "clean." New checklist items (Parts
+  A–D) are seeded from what the comparison shows mature platforms guarantee, so this
+  standard grows from evidence, not from the reviewer's assumptions.
 
 ---
 
@@ -112,6 +144,27 @@ or luck · LOW = hardening / defense-in-depth.
   *code presence* — code shipped into a protected file the updater doesn't deliver, or a
   header never confirmed with a live request, is not "live." Confirm on the running server.
 
+## Part D — Data model & content invariants (added by Audit 050)
+
+- **D1 · One publishable-unit model · CRITICAL (architecture).** There is a single
+  enforced definition of "a published item." Enumerate **every** write path that creates
+  published content — solo (SMACKONEOUT), gram (GRAMOFSMACK), longform, import
+  (Unzucker/FLKR/…), and the API — and confirm they all converge on that one model. No
+  entity may be stored two ways (e.g. a photo as a bare `snap_images` row in one path and
+  a `snap_posts` record in another). *This is the check that would have caught the
+  missing post object.*
+- **D2 · One keying scheme per relationship · HIGH.** Engagement and identity — comments,
+  likes, reactions, collections, federation/actor id — each key to exactly one thing, and
+  it is documented. A relationship is never keyed to the image id in one place and the
+  post id in another.
+- **D3 · Integrity checks model real reads · HIGH.** Any orphan / consistency / migration
+  check must define "valid" the way the code actually **reads** the table, not how you
+  assume it is keyed; state the read path it mirrors. *(Learned from the 050 orphan sweep,
+  which mis-flagged ~1,904 valid comments under a posts-only assumption.)*
+- **D4 · Deviations logged, not discovered later · HIGH.** Every place the model departs
+  from the comparative baseline (see **Method / M2**) is in the deviation register,
+  labelled deliberate / accepted-debt / defect, with a reason.
+
 ---
 
 ## Scoring template (copy per release)
@@ -142,6 +195,13 @@ or luck · LOW = hardening / defense-in-depth.
 | B9 | EXIF by design | N/A | | |
 | B10 | Safe derivatives | LOW | | |
 | C1 | Fixes reach installs | HIGH | | |
+| M1 | Comparative matrix (cited) | CRIT | | |
+| M2 | Deviation register + done-gate | CRIT | | |
+| M3 | External-sources honesty flag | HIGH | | |
+| D1 | One publishable-unit model | CRIT | | |
+| D2 | One keying scheme per relationship | HIGH | | |
+| D3 | Integrity checks model real reads | HIGH | | |
+| D4 | Deviations logged | HIGH | | |
 
 *Living standard — bump the version and date when requirements change.*
 
