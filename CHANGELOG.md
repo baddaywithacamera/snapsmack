@@ -16,6 +16,8 @@
   neither list nor activate it, while mode-4 skin lists expose ONYX and exclude incompatible blog skins.
 - Both sides of the distribution boundary are regression-tested so a future manifest or gallery change
   cannot quietly leak one product's identity and layout into the other.
+- The SnapSmack FAQ now describes the Fediverse's unresolved discoverability challenges respectfully and
+  acknowledges the wider community working on them.
 
 ## 0.7.545 — 2026-08-21 "SMACKCAST RELAY"
 
