@@ -19,6 +19,45 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.26 — 2026-08-22
+
+### Added — Backup Manager (new "Manage" tab)
+
+A proper manager for the backup ZIPs kept in the cloud, replacing the bare
+"pick one and press Select" restore picker. The old picker was a flat list with
+no way to sort, search, delete, or see how much space backups were using.
+
+The new **Manage** tab (between Restore and Audit) shows every backup across
+every blog that shares the cloud folder — not just the selected profile — and
+adds:
+
+- **Source picker** — "Backup cloud (Google Drive / Box)" plus every **Backblaze
+  B2** bucket referenced by a Cloud Sync job, so Backblaze backups can be viewed,
+  tidied and freed from the same screen. Backblaze credentials are read from the
+  sync jobs (a blog profile never stores B2 keys).
+- **Sort** — newest, oldest, blog name, **grouped under each blog** (with a
+  per-blog count and total size), file name, largest, smallest. Column headings
+  are clickable too.
+- **Search** box (matches blog or file name) and a **date-from / date-to** filter.
+- **Tick-box selection** with a "tick all" in the header — big, unambiguous
+  click targets instead of Ctrl/Shift-click.
+- **Restore selected** — Drive/Box backups hand straight to the Restore tab;
+  Backblaze backups download to the computer first, then load into Restore as a
+  local ZIP.
+- **Delete selected** (one or many) — removes the backups from the cloud after a
+  confirmation box that lists exactly what goes and how much space it frees. Only
+  the ticked backups are touched; blogs and local backups are left alone.
+- Status line showing how many backups are on screen and their total size, and
+  how many exist in total when a filter is on.
+- Full in-app **Help** entry, plus a line on the welcome-screen tour.
+
+### Added — delete support for Google Drive and Box cloud clients
+
+`DriveClient.delete_file` (permanent) and `BoxClient.delete_file` (to Box Trash)
+were added — previously only the Backblaze client could delete. A uniform
+`delete_file` alias was also added to the Backblaze client so the manager deletes
+the same way for every provider.
+
 ## 0.7.21 — 2026-08-19
 
 ### Fixed — hub credentials now pull from The Hub (backups were falling behind)
