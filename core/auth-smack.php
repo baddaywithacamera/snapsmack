@@ -331,6 +331,7 @@ if (isset($_SESSION['user_login']) && !smack_is_admin()) {
         // Federation control
         'smack-fediverse.php', 'smack-smackverse.php', 'smack-sv-tools.php',
         'smack-sv-followers.php', 'smack-pixelfed.php', 'smack-photochallenge.php',
+        'smack-directory.php',
     ];
     if (in_array(basename($_SERVER['SCRIPT_FILENAME'] ?? ''), $_admin_only, true)) {
         smack_require_admin();
