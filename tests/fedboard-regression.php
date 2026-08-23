@@ -30,7 +30,7 @@ $help = $read('smack-help.php');
 $migration = $read('migrations/migrate-fedboard-sso.sql');
 $updater = $read('core/updater.php');
 
-fb_expect(str_contains($constants, "SNAPSMACK_VERSION_SHORT', '0.7.548'"), 'release must be version 0.7.548');
+fb_expect(str_contains($constants, "SNAPSMACK_VERSION_SHORT', '0.7.547'"), 'release must be version 0.7.547');
 fb_expect(str_contains($constants, "SNAPSMACK_VERSION_CODENAME', 'FEDBOARD'"), 'release codename must be FEDBOARD');
 fb_expect(str_contains($migration, 'token_hash') && !str_contains($migration, '`token` VARCHAR'), 'migration must store only ticket hashes');
 fb_expect(str_contains(strtolower($migration), "enum('admin','fedboard')"), 'tickets must bind an allowlisted destination');
@@ -51,7 +51,7 @@ fb_expect(str_contains($multisite, 'fedboard_sso_enabled'), 'heartbeat storage m
 fb_expect(str_contains($mesh, "'fedboard_sso_enabled'"), 'mesh roster must propagate FEDBOARD consent state');
 
 fb_expect(str_contains($roster, 'strnatcasecmp'), 'FEDBOARD roster must sort names naturally and case-insensitively');
-fb_expect(str_contains($roster, "version_compare(\$version, '0.7.548', '>=')"), 'older fleet members must remain visible but unavailable');
+fb_expect(str_contains($roster, "version_compare(\$version, '0.7.547', '>=')"), 'older fleet members must remain visible but unavailable');
 fb_expect(str_contains($pixel, 'aria-current="page"') && str_contains($pixel, 'fb-cursor'), 'active site must be identified accessibly and visually');
 fb_expect(!str_contains($pixel, 'target="_blank"'), 'FEDBOARD page must keep switching in the same tab');
 fb_expect(str_contains($css, 'prefers-reduced-motion: reduce'), 'cursor must respect reduced-motion preferences');
