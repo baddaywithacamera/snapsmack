@@ -86,10 +86,10 @@ body.static-transmission .description li { margin: 0 0 .5rem; }
 /* ------------------------------------------------------- shared type bits */
 
 .pbf-kicker {
-  font: 700 .72rem/1 'Courier New', monospace;
-  letter-spacing: .3em;
+  font: 700 .8rem/1 'Courier New', monospace;
+  letter-spacing: .2em;
   text-transform: uppercase;
-  color: var(--pbf-red);
+  color: #cfcfcf;   /* was var(--pbf-red): dark red on black ~3.4:1, unreadable at this size */
   margin: 0 0 1.4rem;
 }
 

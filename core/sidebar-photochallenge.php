@@ -70,7 +70,6 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                     <li><a href="pixel.php" target="_blank" rel="noopener">Pixelfed &#8599;</a></li>
                     <li class="<?php echo $_pc_active_class('smack-fediverse.php'); ?>"><a href="smack-fediverse.php">Interactions</a></li>
                     <li class="<?php echo $_pc_active_class('smack-dms.php'); ?>"><a href="smack-dms.php">Messages</a></li>
-                    <li><a href="pixel.php?panel=notifications" target="_blank" rel="noopener">Notifications &#8599;</a></li>
                     <li class="<?php echo $_pc_active_class('smack-smackverse.php'); ?>"><a href="smack-smackverse.php">Federation</a></li>
                     <li class="<?php echo $_pc_active_class('smack-sv-followers.php'); ?>"><a href="smack-sv-followers.php">Followers</a></li>
                     <li class="<?php echo $_pc_active_class('smack-sv-tools.php'); ?>"><a href="smack-sv-tools.php">Push &amp; Tools</a></li>
