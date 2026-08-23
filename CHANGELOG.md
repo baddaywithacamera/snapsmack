@@ -10,8 +10,17 @@
 
 # SnapSmack Changelog
 
-## 0.7.548 — 2026-08-22 "FEDBOARD"
+## 0.7.547 — 2026-08-22 "FEDBOARD"
 
+- New **Fediverse → Directory** page on a blog: opt in to be listed on the photoblogs.fyi people-finder.
+  Separate from JOIN NETWORK (the relay) and ROLL CALL (fediverse.info). Turning it on is step-up gated
+  (password + 2FA); topics are editable; DELIST removes the blog immediately.
+- Directory hub side: `directory-api.php` receives opt-ins into `snap_directory_listings` as *pending*;
+  the same Directory page shows a moderation queue (Approve / Hide / Remove) on the hub. Nothing is public
+  until approved. Public directory (`directory.php`) is browsable by topic, searchable, sortable, no JS;
+  every card links back to the origin blog and no images are re-hosted.
+- Removed the redundant "Notifications" item from the Fediverse menu (it opened the same Pixelfed client).
+- Fixed an unreadable dark-red kicker on the photoblogs.fyi home page (now readable light grey).
 - FEDBOARD adds an alphabetical fleet selector to the top-right of every multisite Fediverse page. The
   active site alone carries a flashing terminal cursor; reduced-motion users see the cursor without the
   animation. Switching reuses the current tab and lands directly on the selected site's own `pixel.php`.
