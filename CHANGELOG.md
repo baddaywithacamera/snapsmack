@@ -10,6 +10,18 @@
 
 # SnapSmack Changelog
 
+## 0.7.547 — 2026-08-22 "DIRECTORY"
+
+- New **Fediverse → Directory** page on a blog: opt in to be listed on the photoblogs.fyi people-finder.
+  It is separate from JOIN NETWORK (the relay) and ROLL CALL (fediverse.info). Turning it on is step-up
+  gated (password + 2FA); topics are editable; DELIST removes the blog immediately.
+- Hub side: `directory-api.php` receives opt-ins into `snap_directory_listings` as *pending*; the same
+  Directory page shows a moderation queue (Approve / Hide / Remove). Nothing is public until approved.
+- Public directory (`directory.php`): browsable by topic, searchable, sortable, no JavaScript. Every card
+  links back to the photographer's own site; no images are re-hosted.
+- Removed the redundant "Notifications" item from the Fediverse menu (it opened the same Pixelfed client).
+- Fixed an unreadable dark-red kicker on the photoblogs.fyi home page (now a readable light grey).
+
 ## 0.7.546 — 2026-08-21 "ONYX BOUNDARY"
 
 - ONYX 0.1.7 is now explicitly restricted to FEDISTRUCTURE install mode 4.0. Ordinary SnapSmack blogs
