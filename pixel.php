@@ -22,6 +22,7 @@
 
 require_once 'core/auth-smack.php';       // owner gate + session + global csrf_check()
 require_once 'core/smackverse.php';
+require_once 'core/fedboard.php';
 
 $sv_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                    ->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -208,6 +209,7 @@ try {
 } catch (Throwable $e) {}
 
 $sv_unread = $sv_on ? sv_unread_count($pdo) : 0;
+$fb_roster = (($sv_settings['multisite_role'] ?? '') !== '') ? fb_roster($pdo, $sv_settings) : [];
 $ver = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : time();
 
 function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
@@ -230,6 +232,44 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
       <input type="text" placeholder="@user@host  ·  #hashtag" aria-label="Search the fediverse">
     </div>
     <div class="sx-top-right">
+      <?php if ($fb_roster): ?>
+      <div class="fb-switcher">
+        <?php
+          $fb_current_rows = array_values(array_filter($fb_roster, fn($r) => !empty($r['current'])));
+          $fb_current = $fb_current_rows[0] ?? $fb_roster[0];
+          $fb_name_counts = [];
+          foreach ($fb_roster as $fb_count_row) {
+              $fb_nk = strtolower((string)$fb_count_row['site_name']);
+              $fb_name_counts[$fb_nk] = ($fb_name_counts[$fb_nk] ?? 0) + 1;
+          }
+        ?>
+        <button class="fb-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Choose a Fediverse site">
+          <span class="fb-toggle-name"><?php echo px_e($fb_current['site_name']); ?></span><span class="fb-cursor" aria-hidden="true">&#9608;</span>
+        </button>
+        <div class="fb-menu" role="menu" hidden>
+          <?php foreach ($fb_roster as $fb_site):
+            $fb_host = (string)(parse_url($fb_site['site_url'], PHP_URL_HOST) ?: '');
+            $fb_label = (string)$fb_site['site_name'] . (!empty($fb_site['current']) ? ', active site' : '');
+            $fb_duplicate = ($fb_name_counts[strtolower((string)$fb_site['site_name'])] ?? 0) > 1;
+          ?>
+          <?php if (!empty($fb_site['current'])): ?>
+            <span class="fb-item is-current" role="menuitem" aria-current="page" aria-label="<?php echo px_e($fb_label); ?>">
+              <span><?php echo px_e($fb_site['site_name']); ?><?php if ($fb_duplicate): ?><small><?php echo px_e($fb_host); ?></small><?php endif; ?></span><span class="fb-cursor" aria-hidden="true">&#9608;</span>
+            </span>
+          <?php elseif (!empty($fb_site['available']) && $fb_site['switch_url'] !== ''): ?>
+            <a class="fb-item" role="menuitem" href="<?php echo px_e($fb_site['switch_url']); ?>">
+              <span><?php echo px_e($fb_site['site_name']); ?><?php if ($fb_duplicate): ?><small><?php echo px_e($fb_host); ?></small><?php endif; ?></span>
+            </a>
+          <?php else: ?>
+            <span class="fb-item is-disabled" role="menuitem" aria-disabled="true" title="<?php echo !empty($fb_site['maintenance_mode']) ? 'In maintenance' : 'Offline, Fediverse or hub sign-in disabled, or needs SnapSmack 0.7.548'; ?>">
+              <span><?php echo px_e($fb_site['site_name']); ?></span><?php if ($fb_duplicate): ?><small><?php echo px_e($fb_host); ?></small><?php endif; ?>
+            </span>
+          <?php endif; ?>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <a class="fb-help" href="smack-help.php?topic=fedboard" aria-label="Help with FEDBOARD" title="Switch among the Fediverse accounts in this SnapSmack network.">?</a>
+      <?php endif; ?>
       <button class="sx-theme" aria-label="Toggle light/dark">&#9790;</button>
       <div class="sx-account">
         <button class="sx-me-btn" aria-label="Your account" aria-haspopup="true">
@@ -248,6 +288,13 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
     </div>
   </div>
 </header>
+
+<?php if ($fb_roster): ?>
+<div class="fb-first-use" hidden>
+  <span>Use FEDBOARD to switch among your sites' Fediverse accounts. The flashing cursor shows which site you are using. Everything you do here comes from that site's own account.</span>
+  <button type="button" aria-label="Dismiss FEDBOARD introduction">GOT IT</button>
+</div>
+<?php endif; ?>
 
 <div class="sx-app"
      data-api="pixel.php"

@@ -27,6 +27,7 @@
 
 
 require_once 'core/db.php';
+require_once 'core/fedboard.php';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SESSION BOOTSTRAP — match the same session config as auth.php / login.php
@@ -55,62 +56,78 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Already authenticated — just go to admin
-if (isset($_SESSION['user_login'])) {
-    header('Location: smack-admin.php');
-    exit;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // VALIDATE TOKEN
 // ─────────────────────────────────────────────────────────────────────────────
 $token_input = trim($_GET['token'] ?? '');
 
-if (!$token_input || strlen($token_input) !== 64 || !ctype_xdigit($token_input)) {
-    sso_fail('Invalid or missing token.');
-}
-
-// Load settings
+// Load settings before any failure so the error page can name this site.
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 
-$stored_token   = $settings['multisite_sso_token']         ?? '';
-$token_expires  = (int)($settings['multisite_sso_token_expires'] ?? 0);
-
-if (!$stored_token) sso_fail('No SSO token on record. Request a new one from the hub.');
-if (time() > $token_expires) sso_fail('SSO token has expired. Request a new one from the hub.');
-if (!hash_equals($stored_token, $token_input)) sso_fail('Token mismatch.');
+if (!$token_input || strlen($token_input) !== 64 || !ctype_xdigit($token_input)) {
+    sso_fail('That one-time sign-in ticket is no longer valid. Return to the hub and try again.');
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SINGLE-USE: Invalidate immediately before creating the session
+// SINGLE-USE: lock and delete the destination-bound ticket atomically.
 // ─────────────────────────────────────────────────────────────────────────────
-$pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, '') ON DUPLICATE KEY UPDATE setting_val = ''")->execute(['multisite_sso_token']);
-$pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, '0') ON DUPLICATE KEY UPDATE setting_val = '0'")->execute(['multisite_sso_token_expires']);
+$destination = 'admin';
+$requested_by = '';
+fb_ensure_tables($pdo);
+$pdo->beginTransaction();
+try {
+    $hash = hash('sha256', $token_input);
+    $ticket_q = $pdo->prepare("SELECT id,token_hash,destination,requested_by,expires_at
+                               FROM snap_multisite_sso_tokens WHERE token_hash=? FOR UPDATE");
+    $ticket_q->execute([$hash]);
+    $ticket = $ticket_q->fetch(PDO::FETCH_ASSOC);
+    if ($ticket && hash_equals((string)$ticket['token_hash'], $hash)
+        && strtotime((string)$ticket['expires_at']) >= time()) {
+        $destination = in_array(($ticket['destination'] ?? ''), ['admin','fedboard'], true)
+            ? (string)$ticket['destination'] : 'admin';
+        $requested_by = (string)($ticket['requested_by'] ?? '');
+        $pdo->prepare("DELETE FROM snap_multisite_sso_tokens WHERE id=?")->execute([(int)$ticket['id']]);
+        $pdo->commit();
+    } else {
+        if ($ticket) $pdo->prepare("DELETE FROM snap_multisite_sso_tokens WHERE id=?")->execute([(int)$ticket['id']]);
+        $pdo->commit();
+        sso_fail('That one-time sign-in ticket is no longer valid. Return to the hub and try again.');
+    }
+} catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    sso_fail('The one-time sign-in ticket could not be verified. Return to the hub and try again.', $destination);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FIND PRIMARY ADMIN USER
 // ─────────────────────────────────────────────────────────────────────────────
 $admin = $pdo->query("SELECT id, username, user_role, preferred_skin FROM snap_users WHERE user_role = 'admin' ORDER BY id ASC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 
-if (!$admin) sso_fail('No admin user found on this spoke.');
+if (!$admin) sso_fail('No admin user found on this spoke.', $destination);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CREATE SESSION — identical to a successful login in login.php
 // ─────────────────────────────────────────────────────────────────────────────
-session_regenerate_id(true);
-$_SESSION['user_login']          = $admin['username'];
-$_SESSION['user_id']             = $admin['id'];
-$_SESSION['user_role']           = $admin['user_role'] ?: 'admin';
-$_SESSION['user_preferred_skin'] = $admin['preferred_skin'] ?: 'midnight-lime';
-$_SESSION['sso_login']           = true;  // Flag so audit log / UI can note this was an SSO session
+if (!isset($_SESSION['user_login'])) {
+    session_regenerate_id(true);
+    $_SESSION['user_login']          = $admin['username'];
+    $_SESSION['user_id']             = $admin['id'];
+    $_SESSION['user_role']           = $admin['user_role'] ?: 'admin';
+    $_SESSION['user_preferred_skin'] = $admin['preferred_skin'] ?: 'midnight-lime';
+    $_SESSION['sso_login']           = true;
+}
 
-header('Location: smack-admin.php');
+fb_audit($pdo, 'spoke', $requested_by, $destination, 'consumed', (int)$admin['id']);
+header('Referrer-Policy: no-referrer');
+header('Location: ' . ($destination === 'fedboard' ? 'pixel.php' : 'smack-admin.php'));
 exit;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FAIL HANDLER
 // ─────────────────────────────────────────────────────────────────────────────
-function sso_fail(string $reason): void {
+function sso_fail(string $reason, string $destination = 'admin'): void {
     global $settings;
+    header('Referrer-Policy: no-referrer');
     $site_name = htmlspecialchars($settings['site_name'] ?? 'SnapSmack');
     http_response_code(403);
     echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>SSO Failed — ' . $site_name . '</title>
@@ -118,8 +135,8 @@ function sso_fail(string $reason): void {
     .box{border:1px solid #333;padding:40px;max-width:450px;text-align:center;}
     h2{color:#f44336;margin-top:0;letter-spacing:2px;} p{color:#888;line-height:1.6;}
     a{color:#aaa;}</style></head><body>
-    <div class="box"><h2>SSO FAILED</h2><p>' . htmlspecialchars($reason) . '</p>
-    <p><a href="snap-in">&larr; Login manually</a></p></div></body></html>';
+    <div class="box"><h2>' . ($destination === 'fedboard' ? 'FEDBOARD COULD NOT SWITCH SITES' : 'SSO FAILED') . '</h2><p>' . htmlspecialchars($reason) . '</p>
+    <p><a href="snap-in">LOG IN MANUALLY</a></p></div></body></html>';
     exit;
 }
 // ===== SNAPSMACK EOF =====

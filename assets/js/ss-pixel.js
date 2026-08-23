@@ -555,6 +555,49 @@
     if (accProf) accProf.addEventListener("click", function (e) { e.preventDefault(); accMenu.hidden = true; loadPanel("profile"); });
   }
 
+  // FEDBOARD — one alphabetical fleet switcher, with the current site marked
+  // only by its terminal cursor. Switching reuses this tab by normal navigation.
+  var fbBtn = $(".fb-toggle"), fbMenu = $(".fb-menu");
+  if (fbBtn && fbMenu) {
+    fbBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var open = fbMenu.hidden;
+      fbMenu.hidden = !open;
+      fbBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open) {
+        var first = fbMenu.querySelector('a.fb-item:not(.is-disabled)');
+        if (first) first.focus();
+      }
+    });
+    fbMenu.addEventListener("click", function (e) { e.stopPropagation(); });
+    fbMenu.addEventListener("keydown", function (e) {
+      var links = Array.prototype.slice.call(fbMenu.querySelectorAll('a.fb-item'));
+      if (!links.length) return;
+      var i = links.indexOf(document.activeElement);
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        i = e.key === "ArrowDown" ? (i + 1) % links.length : (i <= 0 ? links.length - 1 : i - 1);
+        links[i].focus();
+      } else if (e.key === "Escape") {
+        fbMenu.hidden = true; fbBtn.setAttribute("aria-expanded", "false"); fbBtn.focus();
+      }
+    });
+    document.addEventListener("click", function () {
+      fbMenu.hidden = true; fbBtn.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  var fbIntro = $(".fb-first-use"), fbDismiss = $(".fb-first-use button");
+  if (fbIntro) {
+    var dismissed = false;
+    try { dismissed = localStorage.getItem("fedboard-help-dismissed") === "1"; } catch (e) {}
+    fbIntro.hidden = dismissed;
+    if (fbDismiss) fbDismiss.addEventListener("click", function () {
+      fbIntro.hidden = true;
+      try { localStorage.setItem("fedboard-help-dismissed", "1"); } catch (e) {}
+    });
+  }
+
   loadPanel(app.getAttribute("data-default-panel") || "home");
   loadRail();
 })();
