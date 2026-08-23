@@ -3434,6 +3434,43 @@ enabled. You can still use the manual login link shown on the error page.</p>
 HTML
 ];
 
+$help_topics['directory'] = [
+    'section'  => 'Fediverse',
+    'title'    => 'Directory — list on photoblogs.fyi',
+    'icon'     => '&#x1F4D2;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Directory</h3>
+<p>The Directory page opts this blog in to the <strong>photoblogs.fyi</strong> people-finder, so
+photographers and search engines can discover you by what you shoot. Every listing links back to your
+own site — your photos stay on your server and nothing is copied to the directory.</p>
+
+<h4>How it is different from the other two network switches</h4>
+<p>This is deliberately separate from:</p>
+<ul>
+  <li><strong>JOIN NETWORK</strong> (on the Portal page) — that joins the fan-out <em>relay</em>, which
+  carries posts between blogs. It does not list you anywhere.</li>
+  <li><strong>ROLL CALL</strong> (on the Portal page) — that lists you on <em>fediverse.info</em>, a
+  different, outside directory.</li>
+</ul>
+<p>You can use any combination of the three.</p>
+
+<h4>Listing your blog</h4>
+<p>Fill in your <strong>topics</strong> (the genres you want to be filed under, comma-separated — e.g.
+<code>street, film, landscape</code>), then click <strong>LIST THIS BLOG</strong>. Because a public
+listing reflects on the whole network, turning it on takes your <strong>password and 2FA code</strong> —
+the same deliberate step as enabling federation. Your submission is sent to photoblogs.fyi and appears
+publicly only after the hub reviews it. You can change your topics at any time, or click
+<strong>DELIST</strong> to remove yourself immediately.</p>
+
+<h4>On the photoblogs.fyi hub</h4>
+<p>On the hub itself, this same page shows the <strong>moderation queue</strong> — every blog that asked
+to be listed. New submissions are <em>pending</em> and stay off the public directory until you press
+<strong>APPROVE</strong>. You can also <strong>HIDE</strong> a listing (keep the record but take it off
+the directory) or <strong>REMOVE</strong> it. The public directory is at <code>/directory</code>.</p>
+HTML
+];
+
 $help_topics['fleet-stats'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'Fleet Stats Rollup',

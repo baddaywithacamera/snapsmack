@@ -1,0 +1,45 @@
+<!--
+  EXTRACTED FROM LIVE 2026-08-22 — https://smackverse.photoblogs.fyi/
+
+  IMPORTANT: This styled landing page is what the LIVE relay serves at "/".
+  The repo's public/index.php currently serves only a one-line PLAIN-TEXT page
+  at "/", so this HTML+CSS exists ONLY on the live server and is NOT otherwise
+  in version control. Captured here so a redeploy of the repo code does not
+  silently replace this page with the bare plain-text version.
+
+  TODO: fold this into projects/smackverse-relay/public/index.php (the "case '/'"
+  branch) so the code and the live site match. (Cloudflare's injected beacon
+  <script> was stripped — it is not part of the source.)
+-->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SMACKVERSE Relay</title>
+<style>
+:root{color-scheme:dark}
+body{margin:0;background:#0b1015;color:#dfe6ee;font:16px/1.6 system-ui,-apple-system,sans-serif}
+.wrap{max-width:620px;margin:0 auto;padding:56px 22px}
+h1{color:#4fd1c5;font-size:1.7rem;margin:0 0 .15em}
+.tag{color:#8aa2ad;margin:0 0 1.6em}
+h2{color:#4fd1c5;font-size:1rem;margin:1.8em 0 .4em}
+a{color:#6cc5ff;text-decoration:none}a:hover{text-decoration:underline}
+ul{padding-left:1.1em}li{margin:.35em 0}
+code{background:#131c24;padding:1px 6px;border-radius:4px;color:#9fead9}
+footer{margin-top:2.4em;padding-top:1.2em;border-top:1px solid #1e2a33;color:#7d8c99;font-size:.9rem}
+</style></head><body><div class="wrap">
+<h1>SMACKVERSE Relay</h1>
+<p class="tag">The fan-out relay for the <a href="https://snapsmack.ca">SnapSmack</a> photo-blogging network.</p>
+<p>This is an ActivityPub <strong>relay</strong> — an <code>Application</code> actor, not a person. SnapSmack blogs opt in, and each member's <em>public</em> posts fan out to the others, so the whole network's timeline fills in without everyone following everyone by hand.</p>
+<h2>What it does not do</h2>
+<p><strong>It stores no images and no private data.</strong> The relay passes along activity IDs and text only — photos always load from the origin blog. Nothing here was ever private: it relays public posts, and membership is entirely opt-in.</p>
+<h2>What we stand for</h2>
+<ul>
+<li><strong>Open software</strong> — SnapSmack is ours to run and yours to fork.</li>
+<li><strong>Open protocols</strong> — plain ActivityPub, so we federate with the whole fediverse, not a walled garden.</li>
+<li><strong>Open communication</strong> — reach that isn't throttled by an algorithm or an ad auction.</li>
+<li><strong>Self-determination</strong> — your blog is your identity, your data, and your call. You own it; we just help it travel.</li>
+</ul>
+<h2>Endpoints</h2>
+<p><a href="/actor">/actor</a> · <a href="/nodeinfo/2.0">/nodeinfo</a> · <code>/inbox</code> (signed POST)</p>
+<footer>Seeing this relay reach your server and have a question or concern? Find us at <a href="https://snapsmack.ca">snapsmack.ca</a>. We aim to be good fediverse neighbours.</footer>
+</div></body></html>
