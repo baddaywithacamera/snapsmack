@@ -387,6 +387,12 @@ class DriveClient:
                 break
         return all_files
 
+    def delete_file(self, file_id: str, file_name: str = "") -> None:
+        """Permanently delete a file from Drive by ID (skips Trash, so cloud
+        space is freed immediately). file_name is accepted for a uniform
+        interface across cloud clients but is not needed by Drive."""
+        self._svc().files().delete(fileId=file_id).execute()
+
     def download_file(
         self,
         file_id:     str,
@@ -669,6 +675,20 @@ class BoxClient:
             }
             for i in items if i.get("type") == "file"
         ]
+
+    def delete_file(self, file_id: str, file_name: str = "") -> None:
+        """Delete a file from Box by ID. Box moves the file to its Trash, from
+        which it can be recovered (or purged) in the Box web UI. file_name is
+        accepted for a uniform interface across cloud clients."""
+        import requests
+        resp = requests.delete(
+            f"{self.API_BASE}/files/{file_id}",
+            headers=self._headers(),
+            timeout=30,
+        )
+        # 204 = deleted, 404 = already gone — both are fine.
+        if resp.status_code not in (204, 404):
+            resp.raise_for_status()
 
     def upload_file(
         self,
@@ -1095,6 +1115,11 @@ class B2Client:
         os.makedirs(os.path.dirname(local_path) or ".", exist_ok=True)
         with open(local_path, "wb") as f:
             f.write(resp.content)
+
+    def delete_file(self, file_id: str, file_name: str = "") -> None:
+        """Uniform delete entry point across cloud clients — delegates to the
+        B2 version-delete call."""
+        self.delete_file_version(file_id, file_name)
 
     def delete_file_version(self, file_id: str, file_name: str) -> None:
         """Delete a specific version of a B2 file by ID."""

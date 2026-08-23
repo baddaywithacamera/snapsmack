@@ -13,7 +13,7 @@ Same visual family as Smack Your Batch Up.
 
 
 
-BUILD_VERSION = "0.7.25"
+BUILD_VERSION = "0.7.26"
 
 import os
 import queue
@@ -66,6 +66,7 @@ FONT_MONO  = ("Consolas", 11)
 
 TAB_BACKUP     = "backup"
 TAB_RESTORE    = "restore"
+TAB_MANAGE     = "manage"
 TAB_AUDIT      = "audit"
 TAB_SCHEDULER  = "scheduler"
 TAB_SETTINGS   = "settings"
@@ -424,6 +425,7 @@ class SetupWizard(tk.Toplevel):
         for tab, desc in [
             ("Backup", "Run backups — differential or full, one blog or all at once"),
             ("Restore", "Upload files back to your server from a backup package"),
+            ("Manage", "View, sort, search, restore and delete your cloud backups"),
             ("Audit", "Scan your server for missing, orphaned, or mismatched files"),
             ("Settings", "Manage profiles, cloud config, and global defaults"),
         ]:
@@ -1801,6 +1803,13 @@ class RestoreTab(tk.Frame):
         self._cloud_file_name = name
         self._cloud_sel_lbl.configure(text=name, fg=FG_MAIN)
 
+    def select_cloud_backup(self, file_id: str, name: str):
+        """Pre-load a cloud backup chosen elsewhere (the Manage tab) and switch
+        this tab's source to Cloud so the user only has to press START RESTORE."""
+        self._source_var.set("cloud")
+        self._on_source_change()
+        self._on_cloud_selected(file_id, name)
+
     def _start(self):
         profile = self._app.current_profile()
         if not profile:
@@ -1948,6 +1957,625 @@ class CloudBrowserDialog(tk.Toplevel):
         b   = self._backups[idx]
         self._callback(b["id"], b["name"])
         self.destroy()
+
+
+# ---------------------------------------------------------------------------
+# Backup Manager tab — view / sort / search / restore / delete cloud backups
+# ---------------------------------------------------------------------------
+
+# Sort choices shown in the dropdown. The grouped option renders the table as a
+# tree (one blog per parent row, its backups underneath); the rest are flat.
+_SORT_NEWEST   = "Newest first"
+_SORT_OLDEST   = "Oldest first"
+_SORT_BLOG     = "Blog name (A→Z)"
+_SORT_GROUPED  = "Group by blog, newest first"
+_SORT_NAME     = "File name (A→Z)"
+_SORT_LARGEST  = "Largest first"
+_SORT_SMALLEST = "Smallest first"
+_SORT_CHOICES  = [_SORT_NEWEST, _SORT_OLDEST, _SORT_BLOG, _SORT_GROUPED,
+                  _SORT_NAME, _SORT_LARGEST, _SORT_SMALLEST]
+
+
+class BackupManagerTab(tk.Frame):
+    """A real manager for the backup ZIPs stored in the cloud: search, filter by
+    date, sort several ways (including grouped under each blog with per-blog
+    totals), restore, and delete. Reads the same cloud folder the Restore tab
+    browses; works across every blog whose backups share that folder."""
+
+    def __init__(self, parent, app, **kwargs):
+        super().__init__(parent, bg=BG_DEEP, **kwargs)
+        self._app      = app
+        self._all      = []      # every backup dict pulled from the cloud
+        self._row_map  = {}      # tree row id -> backup dict (leaf rows only)
+        self._busy     = False
+        self._loaded   = False   # have we pulled the list at least once?
+        self._checks   = []      # [(BooleanVar, backup dict)] for each ticked-able row
+        self._build()
+
+    # -- helpers -------------------------------------------------------------
+
+    @staticmethod
+    def _hsize(nbytes: int) -> str:
+        n = float(nbytes or 0)
+        for unit in ("B", "KB", "MB", "GB", "TB"):
+            if n < 1024 or unit == "TB":
+                return f"{n:.0f} {unit}" if unit in ("B", "KB") else f"{n:.1f} {unit}"
+            n /= 1024
+        return f"{n:.1f} TB"
+
+    @staticmethod
+    def _blog_of(name: str) -> str:
+        """The blog a backup belongs to, taken from the filename prefix before
+        '_backup_' (e.g. 'acolourlesslife-ca_backup_2026-08-22_...zip')."""
+        marker = "_backup_"
+        i = name.find(marker)
+        return name[:i] if i > 0 else name
+
+    @staticmethod
+    def _date10(b: dict) -> str:
+        """Best 'YYYY-MM-DD' for a backup: the cloud modified-time if present,
+        otherwise the date parsed out of the filename."""
+        d = (b.get("date") or "")[:10]
+        if len(d) == 10 and d[4] == "-":
+            return d
+        name = b.get("name", "")
+        marker = "_backup_"
+        i = name.find(marker)
+        if i > 0:
+            cand = name[i + len(marker): i + len(marker) + 10]
+            if len(cand) == 10 and cand[4] == "-":
+                return cand
+        return ""
+
+    # Column layout (pixel widths) shared by the header and every row so the
+    # columns line up. A custom tk table is used instead of ttk.Treeview because
+    # the Windows 'vista' ttk theme ignores Treeview background colour, which
+    # would render a white table inside this dark app.
+    _COLS = [("blog", "Blog", 180, "w"),
+             ("file", "File", 360, "w"),
+             ("date", "Date", 100, "center"),
+             ("size", "Size",  90, "e")]
+
+    # -- build ---------------------------------------------------------------
+
+    def _build(self):
+        PAD = 16
+
+        # Title row + Refresh
+        head = tk.Frame(self, bg=BG_DEEP)
+        head.pack(fill="x", padx=PAD, pady=(PAD, 4))
+        tk.Label(head, text="CLOUD BACKUP MANAGER", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_TITLE).pack(side="left")
+        tk.Button(head, text="↻  Refresh", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=12, pady=4, cursor="hand2",
+                  command=self.refresh).pack(side="right")
+        tk.Label(head, text="View, sort, restore and delete the backups saved in your cloud folder.",
+                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL).pack(side="left", padx=(12, 0))
+
+        # Toolbar: source + search + sort + date range
+        bar = tk.Frame(self, bg=BG_MID)
+        bar.pack(fill="x", padx=PAD, pady=(4, 4))
+
+        row0 = tk.Frame(bar, bg=BG_MID)
+        row0.pack(fill="x", padx=10, pady=(8, 0))
+        tk.Label(row0, text="Source:", bg=BG_MID, fg=FG_MAIN,
+                 font=FONT_BODY).pack(side="left")
+        self._source_var = tk.StringVar()
+        self._source_menu = ttk.Combobox(row0, textvariable=self._source_var,
+                                         state="readonly", font=FONT_BODY, width=48)
+        self._source_menu.pack(side="left", padx=(6, 0))
+        self._source_menu.bind("<<ComboboxSelected>>", lambda *_: self.refresh())
+        self._sources = []
+        self._populate_sources()
+
+        row1 = tk.Frame(bar, bg=BG_MID)
+        row1.pack(fill="x", padx=10, pady=(6, 4))
+        tk.Label(row1, text="Search:", bg=BG_MID, fg=FG_MAIN,
+                 font=FONT_BODY).pack(side="left")
+        self._search_var = tk.StringVar()
+        self._search_var.trace_add("write", lambda *_: self._render())
+        se = tk.Entry(row1, textvariable=self._search_var, bg=BG_INPUT,
+                      fg=FG_MAIN, insertbackground=ACCENT, relief="flat",
+                      font=FONT_BODY, width=28)
+        se.pack(side="left", padx=(6, 16))
+
+        tk.Label(row1, text="Sort by:", bg=BG_MID, fg=FG_MAIN,
+                 font=FONT_BODY).pack(side="left")
+        self._sort_var = tk.StringVar(value=_SORT_NEWEST)
+        sort_menu = ttk.Combobox(row1, textvariable=self._sort_var,
+                                 values=_SORT_CHOICES, state="readonly",
+                                 font=FONT_BODY, width=30)
+        sort_menu.pack(side="left", padx=(6, 0))
+        sort_menu.bind("<<ComboboxSelected>>", lambda *_: self._render())
+
+        row2 = tk.Frame(bar, bg=BG_MID)
+        row2.pack(fill="x", padx=10, pady=(0, 8))
+        tk.Label(row2, text="Date from:", bg=BG_MID, fg=FG_MAIN,
+                 font=FONT_BODY).pack(side="left")
+        self._from_var = tk.StringVar()
+        tk.Entry(row2, textvariable=self._from_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat", font=FONT_MONO,
+                 width=12).pack(side="left", padx=(6, 12))
+        tk.Label(row2, text="to:", bg=BG_MID, fg=FG_MAIN,
+                 font=FONT_BODY).pack(side="left")
+        self._to_var = tk.StringVar()
+        tk.Entry(row2, textvariable=self._to_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat", font=FONT_MONO,
+                 width=12).pack(side="left", padx=(6, 8))
+        tk.Label(row2, text="(YYYY-MM-DD)", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_SMALL).pack(side="left")
+        tk.Button(row2, text="Apply dates", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_SMALL, padx=8,
+                  command=self._render).pack(side="left", padx=(12, 0))
+        tk.Button(row2, text="Clear filters", bg=BG_CARD, fg=FG_DIM,
+                  relief="flat", font=FONT_SMALL, padx=8,
+                  command=self._clear_filters).pack(side="left", padx=(6, 0))
+
+        # Header row (fixed) — a ✓-all box plus clickable column headings.
+        # Built with grid using the SAME column config as the body so the
+        # columns line up underneath each heading.
+        header = tk.Frame(self, bg=BG_CARD)
+        header.pack(fill="x", padx=PAD, pady=(4, 0))
+        header.grid_columnconfigure(0, minsize=34)
+        self._all_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(
+            header, variable=self._all_var, bg=BG_CARD, activebackground=BG_CARD,
+            selectcolor=BG_INPUT, command=self._toggle_all, takefocus=False,
+        ).grid(row=0, column=0, sticky="w", padx=(4, 0))
+        for idx, (col, label, w, anchor) in enumerate(self._COLS, start=1):
+            header.grid_columnconfigure(idx, minsize=w,
+                                        weight=(1 if col == "file" else 0))
+            tk.Button(
+                header, text=label + " ▾", bg=BG_CARD, fg=FG_MAIN,
+                relief="flat", font=FONT_SMALL,
+                anchor=("e" if anchor == "e" else "w"),
+                padx=6, cursor="hand2", bd=0, highlightthickness=0,
+                command=lambda c=col: self._sort_by_column(c),
+            ).grid(row=0, column=idx, sticky="ew")
+
+        # Scrollable body
+        tbl = tk.Frame(self, bg=BG_INPUT)
+        tbl.pack(fill="both", expand=True, padx=PAD, pady=(0, 4))
+        vsb = ttk.Scrollbar(tbl, orient="vertical")
+        vsb.pack(side="right", fill="y")
+        self._canvas = tk.Canvas(tbl, bg=BG_INPUT, highlightthickness=0,
+                                 yscrollcommand=vsb.set)
+        self._canvas.pack(side="left", fill="both", expand=True)
+        vsb.configure(command=self._canvas.yview)
+        self._rows_frame = tk.Frame(self._canvas, bg=BG_INPUT)
+        self._rows_win = self._canvas.create_window(
+            (0, 0), window=self._rows_frame, anchor="nw")
+        self._rows_frame.bind(
+            "<Configure>",
+            lambda e: self._canvas.configure(scrollregion=self._canvas.bbox("all")))
+        self._canvas.bind(
+            "<Configure>",
+            lambda e: self._canvas.itemconfigure(self._rows_win, width=e.width))
+        self._canvas.bind_all("<MouseWheel>", self._on_wheel)
+        # Grid columns: checkbox + the four data columns; File stretches.
+        self._rows_frame.grid_columnconfigure(0, minsize=34)
+        for idx, (col, _l, w, _a) in enumerate(self._COLS, start=1):
+            self._rows_frame.grid_columnconfigure(
+                idx, minsize=w, weight=(1 if col == "file" else 0))
+
+        # Status + actions
+        foot = tk.Frame(self, bg=BG_DEEP)
+        foot.pack(fill="x", padx=PAD, pady=(0, PAD))
+        self._status = tk.Label(foot, text="", bg=BG_DEEP, fg=FG_DIM,
+                                font=FONT_SMALL, anchor="w")
+        self._status.pack(side="left")
+
+        self._del_btn = tk.Button(
+            foot, text="🗑  Delete selected", bg=BG_CARD, fg=FG_DIM,
+            relief="flat", font=FONT_HEAD, padx=12, pady=6, cursor="hand2",
+            state="disabled", command=self._on_delete,
+        )
+        self._del_btn.pack(side="right")
+        self._restore_btn = tk.Button(
+            foot, text="⤓  Restore selected", bg=ACCENT, fg=BG_DEEP,
+            relief="flat", font=FONT_HEAD, padx=12, pady=6, cursor="hand2",
+            state="disabled", command=self._on_restore,
+        )
+        self._restore_btn.pack(side="right", padx=(0, 8))
+
+    # -- backup sources (profile cloud + any Backblaze buckets) --------------
+
+    def _enumerate_sources(self):
+        """The list of places backups can live: the profile's own cloud
+        (Google Drive / Box), plus every Backblaze B2 bucket referenced by a
+        Cloud Sync job. Backblaze credentials come from the sync jobs, since a
+        blog profile never stores B2 keys."""
+        srcs = [{"label": "Backup cloud (Google Drive / Box)", "kind": "profile"}]
+        seen = set()
+        try:
+            job_names = sync_manager.list_jobs()
+        except Exception:
+            job_names = []
+        for jn in job_names:
+            try:
+                job = sync_manager.load_job(jn)   # may raise if the vault is locked
+            except Exception:
+                continue
+            if not job:
+                continue
+            for side in ("source", "dest"):
+                prov = (job.get(f"{side}_provider") or "").lower()
+                if prov not in ("b2", "backblaze_b2"):
+                    continue
+                key_id  = (job.get(f"{side}_b2_key_id") or "").strip()
+                app_key = (job.get(f"{side}_b2_app_key") or "").strip()
+                bucket  = (job.get(f"{side}_folder") or "").strip()
+                if not (key_id and app_key and bucket):
+                    continue
+                if (key_id, bucket) in seen:
+                    continue
+                seen.add((key_id, bucket))
+                srcs.append({
+                    "label": f"Backblaze — {bucket}  (job: {jn})",
+                    "kind": "b2", "key_id": key_id,
+                    "app_key": app_key, "bucket": bucket,
+                })
+        return srcs
+
+    def _populate_sources(self):
+        prev = self._source_var.get()
+        self._sources = self._enumerate_sources()
+        labels = [s["label"] for s in self._sources]
+        self._source_menu.configure(values=labels)
+        if prev in labels:
+            self._source_var.set(prev)
+        elif labels:
+            self._source_var.set(labels[0])
+
+    def _selected_source(self):
+        lbl = self._source_var.get()
+        for s in self._sources:
+            if s["label"] == lbl:
+                return s
+        return self._sources[0] if self._sources else {"kind": "profile"}
+
+    def _current_cloud(self):
+        """The cloud client for whatever Source is picked."""
+        src = self._selected_source()
+        if src.get("kind") == "b2":
+            try:
+                return cloud_module.B2Client(
+                    src["key_id"], src["app_key"], src["bucket"])
+            except Exception:
+                return None
+        profile = self._app.current_profile()
+        return self._get_cloud(profile) if profile else None
+
+    # -- data loading --------------------------------------------------------
+
+    def refresh(self):
+        """Called when the tab is opened and by the Refresh button. Pulls the
+        backup list from the chosen source on a background thread so the UI
+        stays live."""
+        if self._busy:
+            return
+        self._populate_sources()
+        src = self._selected_source()
+        if src.get("kind") == "profile" and not self._app.current_profile():
+            self._all = []
+            self._render()
+            self._status.configure(
+                text="Select a blog profile first (or pick a Backblaze source).")
+            return
+        cloud = self._current_cloud()
+        if not cloud:
+            self._all = []
+            self._render()
+            self._status.configure(
+                text=("Could not open that Backblaze bucket — check the sync job."
+                      if src.get("kind") == "b2"
+                      else "No cloud provider configured — set one in Settings."))
+            return
+
+        self._busy = True
+        self._status.configure(text="Loading backups from cloud…")
+
+        def _run():
+            err = ""
+            try:
+                items = cloud_manifest_module.list_available_backups(cloud)
+            except Exception as e:
+                items, err = [], str(e)
+
+            def _done():
+                self._busy   = False
+                self._loaded = True
+                if err:
+                    self._all = []
+                    self._render()
+                    self._status.configure(text=f"Could not read cloud: {err}")
+                else:
+                    self._all = items
+                    self._render()
+            self.after(0, _done)
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _get_cloud(self, profile):
+        try:
+            return cloud_module.get_cloud_client(
+                profile, global_cloud=self._app.global_cloud_config())
+        except Exception:
+            return None
+
+    # -- filtering / sorting / rendering ------------------------------------
+
+    def _clear_filters(self):
+        self._search_var.set("")
+        self._from_var.set("")
+        self._to_var.set("")
+        self._sort_var.set(_SORT_NEWEST)
+        self._render()
+
+    def _filtered(self):
+        term = self._search_var.get().strip().lower()
+        d_from = self._from_var.get().strip()
+        d_to   = self._to_var.get().strip()
+        out = []
+        for b in self._all:
+            name = b.get("name", "")
+            blog = self._blog_of(name)
+            if term and term not in name.lower() and term not in blog.lower():
+                continue
+            d = self._date10(b)
+            if d_from and (not d or d < d_from):
+                continue
+            if d_to and (not d or d > d_to):
+                continue
+            out.append(b)
+        return out
+
+    def _sorted(self, rows):
+        choice = self._sort_var.get()
+        if choice == _SORT_OLDEST:
+            return sorted(rows, key=lambda b: self._date10(b))
+        if choice == _SORT_BLOG:
+            return sorted(rows, key=lambda b: (self._blog_of(b["name"]).lower(),
+                                               self._date10(b)))
+        if choice == _SORT_NAME:
+            return sorted(rows, key=lambda b: b.get("name", "").lower())
+        if choice == _SORT_LARGEST:
+            return sorted(rows, key=lambda b: b.get("size_bytes", 0), reverse=True)
+        if choice == _SORT_SMALLEST:
+            return sorted(rows, key=lambda b: b.get("size_bytes", 0))
+        # Newest first (default) and grouped both order by date desc first.
+        return sorted(rows, key=lambda b: self._date10(b), reverse=True)
+
+    def _on_wheel(self, event):
+        # Only scroll when the pointer is over this tab's table.
+        if self._app._active_tab != TAB_MANAGE:
+            return
+        self._canvas.yview_scroll(int(-event.delta / 120), "units")
+
+    def _add_cell(self, r, c, text, anchor, bg, fg=FG_MAIN, font=FONT_BODY):
+        lbl = tk.Label(self._rows_frame, text=text, bg=bg, fg=fg, font=font,
+                       anchor=("e" if anchor == "e" else
+                               "center" if anchor == "center" else "w"),
+                       padx=6, pady=3)
+        lbl.grid(row=r, column=c, sticky="ew")
+        return lbl
+
+    def _render(self):
+        if not hasattr(self, "_rows_frame"):
+            return
+        for w in self._rows_frame.winfo_children():
+            w.destroy()
+        self._checks = []
+        self._all_var.set(False)
+
+        rows      = self._sorted(self._filtered())
+        grouped   = (self._sort_var.get() == _SORT_GROUPED)
+        total_all = sum(b.get("size_bytes", 0) for b in self._all)
+        total_now = sum(b.get("size_bytes", 0) for b in rows)
+
+        r = 0
+
+        def add_backup(b, stripe):
+            nonlocal r
+            bg  = BG_INPUT if stripe else BG_MID
+            var = tk.BooleanVar(value=False)
+            cb  = tk.Checkbutton(
+                self._rows_frame, variable=var, bg=bg, activebackground=bg,
+                selectcolor=BG_DEEP, takefocus=False,
+                command=self._update_buttons)
+            cb.grid(row=r, column=0, sticky="w", padx=(4, 0))
+            self._add_cell(r, 1, self._blog_of(b["name"]), "w", bg, FG_DIM)
+            self._add_cell(r, 2, b.get("name", ""), "w", bg)
+            self._add_cell(r, 3, self._date10(b), "center", bg, FG_DIM)
+            self._add_cell(r, 4, self._hsize(b.get("size_bytes", 0)), "e", bg)
+            self._checks.append((var, b))
+            r += 1
+
+        if grouped:
+            by_blog = {}
+            for b in rows:
+                by_blog.setdefault(self._blog_of(b["name"]), []).append(b)
+            for i, blog in enumerate(sorted(by_blog, key=str.lower)):
+                items  = by_blog[blog]
+                subtot = sum(b.get("size_bytes", 0) for b in items)
+                hdr = tk.Label(
+                    self._rows_frame,
+                    text=f"  {blog}   —   {len(items)} backup(s), {self._hsize(subtot)}",
+                    bg=BG_CARD, fg=ACCENT, font=FONT_HEAD, anchor="w", pady=4)
+                hdr.grid(row=r, column=0, columnspan=5, sticky="ew", pady=(6, 0))
+                r += 1
+                for j, b in enumerate(items):
+                    add_backup(b, stripe=(j % 2 == 0))
+        else:
+            for i, b in enumerate(rows):
+                add_backup(b, stripe=(i % 2 == 0))
+
+        # Status line
+        if not self._loaded:
+            msg = ""
+        elif not self._all:
+            msg = "No backups found in the cloud folder."
+        else:
+            msg = f"{len(rows)} backup(s) shown • {self._hsize(total_now)}"
+            if len(rows) != len(self._all):
+                msg += (f"   (filtered from {len(self._all)} • "
+                        f"{self._hsize(total_all)} total)")
+        self._status.configure(text=msg)
+        self._canvas.yview_moveto(0)
+        self._update_buttons()
+
+    def _sort_by_column(self, col):
+        """Clicking a column heading picks the matching sort."""
+        mapping = {
+            "date": _SORT_NEWEST,
+            "size": _SORT_LARGEST,
+            "blog": _SORT_BLOG,
+            "file": _SORT_NAME,
+        }
+        self._sort_var.set(mapping.get(col, _SORT_NEWEST))
+        self._render()
+
+    # -- selection / actions -------------------------------------------------
+
+    def _toggle_all(self):
+        on = self._all_var.get()
+        for var, _b in self._checks:
+            var.set(on)
+        self._update_buttons()
+
+    def _selected_backups(self):
+        return [b for var, b in self._checks if var.get()]
+
+    def _update_buttons(self):
+        sel = self._selected_backups()
+        self._restore_btn.configure(state="normal" if len(sel) == 1 else "disabled")
+        self._del_btn.configure(
+            state="normal" if sel else "disabled",
+            fg=FG_ERR if sel else FG_DIM)
+
+    def _on_restore(self):
+        sel = self._selected_backups()
+        if len(sel) != 1:
+            messagebox.showinfo(
+                "Pick one backup",
+                "Tick a single backup to restore, then press Restore selected.")
+            return
+        b   = sel[0]
+        src = self._selected_source()
+        if src.get("kind") == "b2":
+            self._restore_from_b2(b)
+            return
+        # Google Drive / Box: hand straight to the Restore tab.
+        self._app._tab_restore.select_cloud_backup(b["id"], b.get("name", ""))
+        self._app._switch_tab(TAB_RESTORE)
+
+    def _restore_from_b2(self, b):
+        """Backblaze backups are downloaded to this computer first, then handed
+        to the Restore tab as a local ZIP — the Restore tab's cloud path talks
+        to Google Drive/Box, not Backblaze."""
+        name = b.get("name", "backup.zip")
+        if not messagebox.askyesno(
+                "Restore from Backblaze",
+                "Backblaze backups are downloaded to this computer first, then "
+                "restored from the local file.\n\n"
+                f"Download “{name}” now?"):
+            return
+        try:
+            initial = cfg_module.resolve_dir("staging")
+        except Exception:
+            initial = ""
+        dest = filedialog.asksaveasfilename(
+            parent=self, title="Save backup as", initialfile=name,
+            initialdir=initial or None, defaultextension=".zip",
+            filetypes=[("ZIP backup", "*.zip"), ("All files", "*.*")])
+        if not dest:
+            return
+        cloud = self._current_cloud()
+        if not cloud:
+            messagebox.showerror("No cloud", "Could not open the Backblaze bucket.")
+            return
+
+        self._busy = True
+        self._restore_btn.configure(state="disabled")
+        self._del_btn.configure(state="disabled")
+        self._status.configure(text=f"Downloading {name} from Backblaze…")
+
+        def _run():
+            err = ""
+
+            def _prog(done, total):
+                if total:
+                    pct = int(done * 100 / total)
+                    self.after(0, lambda: self._status.configure(
+                        text=f"Downloading {name} from Backblaze… {pct}%"))
+            try:
+                cloud.download_file(b["id"], dest, _prog)
+            except Exception as e:
+                err = str(e)
+
+            def _finish():
+                self._busy = False
+                self._update_buttons()
+                if err:
+                    self._status.configure(text=f"Download failed: {err}")
+                    messagebox.showerror("Download failed", err)
+                    return
+                self._status.configure(text=f"Downloaded to {dest}")
+                rt = self._app._tab_restore          # load it as a local ZIP
+                rt._source_var.set("local")
+                rt._on_source_change()
+                rt._zip_var.set(dest)
+                self._app._switch_tab(TAB_RESTORE)
+            self.after(0, _finish)
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _on_delete(self):
+        sel = self._selected_backups()
+        if not sel:
+            return
+        cloud = self._current_cloud()
+        if not cloud:
+            messagebox.showerror(
+                "No cloud", "No cloud source available to delete from.")
+            return
+
+        total = sum(b.get("size_bytes", 0) for b in sel)
+        names = "\n".join("  • " + b.get("name", "") for b in sel[:15])
+        if len(sel) > 15:
+            names += f"\n  … and {len(sel) - 15} more"
+        msg = (f"Permanently delete {len(sel)} backup(s) from the cloud?\n"
+               f"This frees {self._hsize(total)} and CANNOT be undone.\n\n"
+               f"{names}")
+        if not messagebox.askyesno("Delete backups", msg, icon="warning",
+                                   default="no"):
+            return
+
+        self._busy = True
+        self._status.configure(text=f"Deleting {len(sel)} backup(s)…")
+        self._del_btn.configure(state="disabled")
+        self._restore_btn.configure(state="disabled")
+
+        def _run():
+            done, errors = 0, []
+            for b in sel:
+                try:
+                    cloud.delete_file(b["id"], b.get("name", ""))
+                    done += 1
+                except Exception as e:
+                    errors.append(f"{b.get('name','?')}: {e}")
+
+            def _finish():
+                self._busy = False
+                if errors:
+                    messagebox.showwarning(
+                        "Delete finished with errors",
+                        f"Deleted {done} of {len(sel)}.\n\n"
+                        + "\n".join(errors[:10]))
+                self.refresh()
+            self.after(0, _finish)
+
+        threading.Thread(target=_run, daemon=True).start()
 
 
 # ---------------------------------------------------------------------------
@@ -3920,6 +4548,33 @@ Before uploading each file, SUYB verifies its SHA-256 checksum against the manif
 
 After uploading, SUYB issues a FTP SIZE command for each file to confirm the server received the correct number of bytes.
 """),
+    ("Manage tab (Backup Manager)", """
+The Manage tab is a full manager for the backup ZIP files kept in your cloud folder. It shows every backup across every blog that shares that folder — not just the blog you have selected — so it is the one place to see and tidy all your cloud backups.
+
+Opening the tab loads the list from the cloud automatically. Press ↻ Refresh any time to pull a fresh list.
+
+Source: the dropdown at the top chooses where to look. "Backup cloud (Google Drive / Box)" is where SUYB writes your backup ZIPs. If you also run a Cloud Sync job that copies backups into a Backblaze bucket, each such bucket appears here too (labelled "Backblaze — <bucket>"), so you can view, tidy and free space in Backblaze from the same screen. Backblaze logins are read from your Cloud Sync jobs — if the credential vault is locked, unlock SUYB first or the Backblaze buckets will not be listed.
+
+Each row shows the Blog the backup belongs to, the File name, its Date, and its Size.
+
+Finding a backup:
+— Search box: type any part of a blog name or file name to narrow the list as you type.
+— Date from / to: type dates as YYYY-MM-DD (for example 2026-08-01) and press Apply dates to show only backups in that range. Leave one side blank for an open-ended range.
+— Clear filters: empties the search and date boxes and puts the sort back to Newest first.
+
+Sorting (the "Sort by" dropdown, or click a column heading):
+— Newest first / Oldest first — by date.
+— Blog name (A→Z) — alphabetical by blog.
+— Group by blog, newest first — the backups are grouped under each blog as an expandable list, and each blog heading shows how many backups it has and how much cloud space they use together. This is the "backups grouped under each blog" view.
+— File name (A→Z) — alphabetical by file name.
+— Largest first / Smallest first — by size, handy for finding what is eating your cloud space.
+
+The line under the table always shows how many backups are on screen and their total size, and — when a filter is on — how many there are in total.
+
+Restore selected: pick ONE backup and press ⤓ Restore selected (or double-click it). For a Google Drive / Box backup this jumps to the Restore tab with that backup already chosen; just press START RESTORE there. For a Backblaze backup it first downloads the ZIP to your computer (you choose where) and then loads it into the Restore tab as a local file — because the Restore tab restores from Google Drive/Box or a local ZIP, not directly from Backblaze. Restoring never deletes anything — it uploads files back to your server.
+
+Delete selected: pick one or more backups and press 🗑 Delete selected. A confirmation box lists exactly what will go and how much space it frees. This permanently removes those ZIP files from the cloud and cannot be undone, so it only ever deletes the backups you ticked — your blogs and your local backups are untouched. (On Google Drive and Backblaze the files are removed outright; on Box they go to the Box Trash.)
+"""),
     ("Audit tab", """
 Audit performs a three-way comparison between:
 — The manifest (what the blog database says should exist)
@@ -5635,6 +6290,7 @@ class App(tk.Tk):
         for key, label in [
             (TAB_BACKUP,     "  Backup  "),
             (TAB_RESTORE,    "  Restore  "),
+            (TAB_MANAGE,     "  Manage  "),
             (TAB_AUDIT,      "  Audit  "),
             (TAB_SCHEDULER,  "  Schedule  "),
             (TAB_CLOUD_SYNC, "  Cloud Sync  "),
@@ -5653,6 +6309,7 @@ class App(tk.Tk):
         # Tab content frames
         self._tab_backup     = BackupTab(self,     self)
         self._tab_restore    = RestoreTab(self,    self)
+        self._tab_manage     = BackupManagerTab(self, self)
         self._tab_audit      = AuditTab(self,      self)
         self._tab_scheduler  = SchedulerTab(self,  self)
         self._tab_cloud_sync = CloudSyncTab(self,  self)
@@ -5671,14 +6328,15 @@ class App(tk.Tk):
                 font=(*FONT_HEAD[:2], "bold") if active else FONT_HEAD,
                 relief="flat",
             )
-        for frame in (self._tab_backup, self._tab_restore, self._tab_audit,
-                      self._tab_scheduler, self._tab_cloud_sync,
+        for frame in (self._tab_backup, self._tab_restore, self._tab_manage,
+                      self._tab_audit, self._tab_scheduler, self._tab_cloud_sync,
                       self._tab_settings, self._tab_help):
             frame.pack_forget()
 
         tab_map = {
             TAB_BACKUP:     self._tab_backup,
             TAB_RESTORE:    self._tab_restore,
+            TAB_MANAGE:     self._tab_manage,
             TAB_AUDIT:      self._tab_audit,
             TAB_SCHEDULER:  self._tab_scheduler,
             TAB_CLOUD_SYNC: self._tab_cloud_sync,
@@ -5690,6 +6348,9 @@ class App(tk.Tk):
         # Refresh scheduler view when switching to it
         if key == TAB_SCHEDULER:
             self._tab_scheduler.refresh()
+        # Pull the backup list when the Manage tab is opened
+        if key == TAB_MANAGE:
+            self._tab_manage.refresh()
 
     # ------------------------------------------------------------------
     # Profile management
