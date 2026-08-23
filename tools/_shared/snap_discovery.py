@@ -212,9 +212,22 @@ def save_to_shared(hub_info, spokes, hub_api_key="") -> dict:
 
 
 def discover_and_save(hub_url, api_key="", admin_user="", admin_pass="", timeout=30) -> dict:
-    """One call: discover the fleet from the hub and write the shared stores."""
+    """One call: discover the fleet from the hub and write the shared stores.
+
+    Also pushes the ONE shared backup key to every site INCLUDING the hub. The
+    hub never registers as a spoke, so it never mints its own per-site backup
+    key — which is why the hub was the one node SUYB could not back up. Folding
+    the shared-key push into Discover fixes that in a single action. It is
+    idempotent and best-effort: a failure here never aborts the discovery, it is
+    just reported under 'backup_key' so the caller can surface it.
+    """
     hub_info, spokes = discover(hub_url, api_key, admin_user, admin_pass, timeout)
-    return save_to_shared(hub_info, spokes, hub_api_key=api_key)
+    summary = save_to_shared(hub_info, spokes, hub_api_key=api_key)
+    try:
+        summary["backup_key"] = provision_shared_backup_key(hub_url, api_key, timeout=timeout)
+    except Exception as e:
+        summary["backup_key"] = {"error": str(e)}
+    return summary
 
 
 def provision_shared_backup_key(hub_url="", api_key="", key_value="",
