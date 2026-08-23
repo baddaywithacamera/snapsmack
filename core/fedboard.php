@@ -99,7 +99,7 @@ function fb_roster(PDO $pdo, array $settings): array {
             && empty($r['maintenance_mode'])
             && (($r['role'] ?? '') === 'hub' || !empty($r['smackverse_enabled']))
             && (($r['role'] ?? '') === 'hub' || !empty($r['fedboard_sso_enabled']))
-            && $version !== '' && version_compare($version, '0.7.548', '>=')
+            && $version !== '' && version_compare($version, '0.7.547', '>=')
         );
         $r['switch_url'] = '';
         if (empty($r['current']) && $r['available']) {

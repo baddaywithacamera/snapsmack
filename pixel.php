@@ -261,7 +261,7 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
               <span><?php echo px_e($fb_site['site_name']); ?><?php if ($fb_duplicate): ?><small><?php echo px_e($fb_host); ?></small><?php endif; ?></span>
             </a>
           <?php else: ?>
-            <span class="fb-item is-disabled" role="menuitem" aria-disabled="true" title="<?php echo !empty($fb_site['maintenance_mode']) ? 'In maintenance' : 'Offline, Fediverse or hub sign-in disabled, or needs SnapSmack 0.7.548'; ?>">
+            <span class="fb-item is-disabled" role="menuitem" aria-disabled="true" title="<?php echo !empty($fb_site['maintenance_mode']) ? 'In maintenance' : 'Offline, Fediverse or hub sign-in disabled, or needs SnapSmack 0.7.547'; ?>">
               <span><?php echo px_e($fb_site['site_name']); ?></span><?php if ($fb_duplicate): ?><small><?php echo px_e($fb_host); ?></small><?php endif; ?>
             </span>
           <?php endif; ?>
