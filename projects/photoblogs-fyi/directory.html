@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF marker for HTML:
+  an HTML comment containing five equals, space, 'SNAPSMACK EOF', space, five equals.
+  Missing or different = truncated/corrupted. Restore before saving.
+
+  photoblogs.fyi/directory — STATIC MOCKUP (presentation only).
+  The blogs below are placeholders to show the layout. The live directory will
+  list real opted-in members, pulled dynamically; every photo loads from the
+  photographer's own server (nothing re-hosted) and every card links out with
+  rel="canonical" to the origin. Palette + fonts match cms-pages/custom.css.
+  Serve at /directory or /dir — set the slug when seeding the page.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Directory — photoblogs.fyi</title>
+<meta name="description" content="Browse real photographers on their own SnapSmack blogs, by what they shoot. Every link goes to the photographer's own site.">
+<style>
+  :root{
+    --red:#D40000; --link:#F50A0A; --black:#111111; --panel:#141414;
+    --line:#282828; --ink:#f4f4f4; --muted:#9a9a9a; --card:#171717;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--black); color:var(--ink);
+    font-family:Georgia,'Iowan Old Style','Times New Roman',serif;
+    -webkit-font-smoothing:antialiased; padding:0 1.25rem 5rem;
+  }
+  .wrap{max-width:72rem;margin:0 auto}
+  a{color:var(--ink);text-decoration:none}
+
+  /* ---- header ---- */
+  header{padding:3rem 0 1.5rem;border-bottom:1px solid var(--line)}
+  .kicker{font:700 .8rem/1 'Courier New',monospace;letter-spacing:.2em;
+    text-transform:uppercase;color:#cfcfcf;margin:0 0 1.1rem}/* was dark red on black (~3.4:1) — unreadable */
+  .wordmark{font:900 clamp(2.1rem,7vw,3.8rem)/.95 'Arial Black',Arial,sans-serif;
+    letter-spacing:-.02em;text-transform:uppercase;margin:0}
+  .wordmark .dot{color:var(--red)}
+  .lede{font-size:clamp(1rem,2.4vw,1.2rem);line-height:1.6;color:var(--muted);
+    max-width:40rem;margin:.9rem 0 0}
+  .lede strong{color:var(--ink);font-weight:normal;border-bottom:1px solid var(--red)}
+  .sample-note{display:inline-block;margin:1.2rem 0 0;font:700 .68rem/1 'Courier New',monospace;
+    letter-spacing:.15em;text-transform:uppercase;color:#fff;background:var(--red);padding:5px 9px}
+
+  /* ---- controls ---- */
+  .controls{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;
+    justify-content:space-between;margin:2rem 0 1.2rem}
+  .search{flex:1 1 20rem;background:var(--panel);border:1px solid var(--line);
+    color:var(--ink);font:1rem/1.4 Georgia,serif;padding:.7rem .9rem;border-radius:2px}
+  .search::placeholder{color:#6a6a6a}
+  .sort{display:flex;align-items:center;gap:.5rem}
+  .sort-label{font:700 .68rem/1 'Helvetica Neue',Arial,sans-serif;letter-spacing:.15em;
+    text-transform:uppercase;color:var(--muted)}
+  .seg{background:transparent;border:1px solid var(--line);color:var(--muted);
+    font:700 .74rem/1 'Helvetica Neue',Arial,sans-serif;padding:.5rem .7rem;cursor:pointer}
+  .seg.is-on{background:var(--ink);color:var(--black);border-color:var(--ink)}
+
+  /* ---- topic chips ---- */
+  .chips{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 2rem}
+  .chip{border:1px solid var(--line);color:var(--ink);padding:.4rem .7rem;
+    font:.86rem/1 'Helvetica Neue',Arial,sans-serif;cursor:pointer;border-radius:2px}
+  .chip b{color:var(--muted);font-weight:700;margin-left:.35rem;font-size:.8em}
+  .chip:hover{border-color:var(--red)}
+  .chip.is-on{background:var(--red);border-color:var(--red);color:#fff}
+  .chip.is-on b{color:#ffd0d0}
+
+  /* ---- grid ---- */
+  .grid{list-style:none;margin:0;padding:0;display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(15.5rem,1fr));gap:1.1rem}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:3px;
+    overflow:hidden;display:flex;flex-direction:column;transition:border-color .15s,transform .15s}
+  .card:hover{border-color:var(--red);transform:translateY(-2px)}
+
+  /* three-photo strip (placeholder gradients stand in for real thumbnails) */
+  .shots{display:grid;grid-template-columns:2fr 1fr 1fr;gap:2px;height:8.5rem;background:var(--line)}
+  .shot{background-size:cover;background-position:center}
+  .v1 .s1{background:linear-gradient(135deg,#3a4a55,#0d1418)} .v1 .s2{background:linear-gradient(135deg,#556b74,#1c2a2e)} .v1 .s3{background:linear-gradient(135deg,#22323a,#05080a)}
+  .v2 .s1{background:linear-gradient(135deg,#5a4632,#140d06)} .v2 .s2{background:linear-gradient(135deg,#8a6b45,#2a1e10)} .v2 .s3{background:linear-gradient(135deg,#3a2c1c,#0a0704)}
+  .v3 .s1{background:linear-gradient(135deg,#2e2e33,#0a0a0c)} .v3 .s2{background:linear-gradient(135deg,#575760,#161619)} .v3 .s3{background:linear-gradient(135deg,#1a1a1e,#050506)}
+  .v4 .s1{background:linear-gradient(135deg,#3f5540,#0c140d)} .v4 .s2{background:linear-gradient(135deg,#6c8a5e,#243019)} .v4 .s3{background:linear-gradient(135deg,#24331f,#070a06)}
+  .v5 .s1{background:linear-gradient(135deg,#54384a,#160d13)} .v5 .s2{background:linear-gradient(135deg,#8a5f78,#2c1d26)} .v5 .s3{background:linear-gradient(135deg,#34222d,#0a060a)}
+  .v6 .s1{background:linear-gradient(135deg,#264a52,#07161a)} .v6 .s2{background:linear-gradient(135deg,#3f7d88,#123037)} .v6 .s3{background:linear-gradient(135deg,#173035,#04090a)}
+
+  .body{padding:.9rem 1rem 1rem;display:flex;flex-direction:column;flex:1}
+  .meta{display:flex;align-items:center;gap:.65rem}
+  .avatar{width:2.2rem;height:2.2rem;border-radius:50%;flex:none;display:grid;place-items:center;
+    font:900 .8rem/1 'Arial Black',Arial,sans-serif;color:#fff;background:var(--red)}
+  .name{font:900 1.02rem/1.15 'Arial Black',Arial,sans-serif;text-transform:uppercase;
+    letter-spacing:.01em;margin:0}
+  .who{font:.78rem/1.3 'Courier New',monospace;color:var(--muted);margin:.15rem 0 0}
+  .blurb{font-size:.92rem;line-height:1.5;color:#d8d8d8;margin:.75rem 0 .6rem}
+  .tags{margin:0 0 .9rem;display:flex;flex-wrap:wrap;gap:.35rem}
+  .tags span{font:.72rem/1 'Helvetica Neue',Arial,sans-serif;color:var(--muted);
+    border-bottom:1px solid var(--red);padding-bottom:1px}
+  .foot{margin:auto 0 0;display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+  .visit{font:700 .8rem/1 'Helvetica Neue',Arial,sans-serif;color:var(--ink);
+    border-bottom:2px solid var(--red);padding-bottom:2px}
+  .visit:hover{color:var(--red)}
+  .active{font:.72rem/1 'Courier New',monospace;color:#6f6f6f}
+
+  /* ---- join box ---- */
+  .join{border:1px solid var(--red);border-radius:3px;padding:1.8rem;margin:3rem 0 0;text-align:center}
+  .join h2{font:900 1.3rem/1.1 'Arial Black',Arial,sans-serif;text-transform:uppercase;margin:0 0 .6rem}
+  .join p{color:var(--muted);max-width:34rem;margin:0 auto 1.2rem;line-height:1.6}
+  .join-btn{display:inline-block;font:900 .78rem/1 'Arial Black',Arial,sans-serif;
+    text-transform:uppercase;letter-spacing:.12em;color:#fff;background:var(--red);padding:12px 22px}
+
+  footer{margin-top:3rem;padding-top:1.4rem;border-top:1px solid var(--line);
+    color:var(--muted);font:.82rem/1.6 'Courier New',monospace}
+  footer a{border-bottom:1px solid var(--red)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="kicker">photoblogs.fyi</p>
+    <h1 class="wordmark">The Directory<span class="dot">.</span></h1>
+    <p class="lede">Real photographers, on their own sites. Browse by <strong>what they shoot</strong> — every link goes straight to their blog.</p>
+    <p class="sample-note">Sample page — the blogs below are placeholders to show the layout</p>
+  </header>
+
+  <div class="controls">
+    <input class="search" type="search" placeholder="Search photographers, topics, places…" aria-label="Search the directory">
+    <div class="sort">
+      <span class="sort-label">Sort</span>
+      <button class="seg is-on" type="button">Suggested</button><button class="seg" type="button">Most active</button><button class="seg" type="button">Newest</button>
+    </div>
+  </div>
+
+  <nav class="chips" aria-label="Browse by topic">
+    <a class="chip is-on">All <b>96</b></a>
+    <a class="chip">Landscape <b>22</b></a>
+    <a class="chip">Film <b>18</b></a>
+    <a class="chip">Black &amp; White <b>16</b></a>
+    <a class="chip">Street <b>14</b></a>
+    <a class="chip">Travel <b>13</b></a>
+    <a class="chip">Nature <b>12</b></a>
+    <a class="chip">Urban <b>11</b></a>
+    <a class="chip">Portrait <b>9</b></a>
+    <a class="chip">Seascape <b>8</b></a>
+    <a class="chip">Night <b>7</b></a>
+    <a class="chip">Documentary <b>6</b></a>
+    <a class="chip">Macro <b>5</b></a>
+  </nav>
+
+  <ul class="grid">
+
+    <li class="card v1">
+      <div class="shots"><span class="shot s1"></span><span class="shot s2"></span><span class="shot s3"></span></div>
+      <div class="body">
+        <div class="meta"><span class="avatar">SG</span><div><h3 class="name">Salt &amp; Grain</h3><p class="who">saltandgrain.ca</p></div></div>
+        <p class="blurb">Coastal black &amp; white — long walks, cold light, film.</p>
+        <p class="tags"><span>Black &amp; White</span><span>Seascape</span><span>Film</span></p>
+        <p class="foot"><a class="visit" rel="canonical nofollow noopener" href="#">Visit blog ↗</a><span class="active">active 2d ago</span></p>
+      </div>
+    </li>
+
+    <li class="card v2">
+      <div class="shots"><span class="shot s1"></span><span class="shot s2"></span><span class="shot s3"></span></div>
+      <div class="body">
+        <div class="meta"><span class="avatar">NB</span><div><h3 class="name">Northbound</h3><p class="who">northbound.photo</p></div></div>
+        <p class="blurb">Backroads and big country. Landscapes from the drive north.</p>
+        <p class="tags"><span>Landscape</span><span>Travel</span><span>Nature</span></p>
+        <p class="foot"><a class="visit" rel="canonical nofollow noopener" href="#">Visit blog ↗</a><span class="active">active 5h ago</span></p>
+      </div>
+    </li>
+
+    <li class="card v3">
+      <div class="shots"><span class="shot s1"></span><span class="shot s2"></span><span class="shot s3"></span></div>
+      <div class="body">
+        <div class="meta"><span class="avatar">TN</span><div><h3 class="name">Tungsten Nights</h3><p class="who">tungstennights.ca</p></div></div>
+        <p class="blurb">The city after dark — neon, rain, and long exposures.</p>
+        <p class="tags"><span>Urban</span><span>Night</span><span>Street</span></p>
+        <p class="foot"><a class="visit" rel="canonical nofollow noopener" href="#">Visit blog ↗</a><span class="active">active 1d ago</span></p>
+      </div>
+    </li>
+
+    <li class="card v4">
+      <div class="shots"><span class="shot s1"></span><span class="shot s2"></span><span class="shot s3"></span></div>
+      <div class="body">
+        <div class="meta"><span class="avatar">FN</span><div><h3 class="name">Field Notes</h3><p class="who">fieldnotes.photo</p></div></div>
+        <p class="blurb">Small things up close — moss, insects, frost on a leaf.</p>
+        <p class="tags"><span>Macro</span><span>Nature</span></p>
+        <p class="foot"><a class="visit" rel="canonical nofollow noopener" href="#">Visit blog ↗</a><span class="active">active 3d ago</span></p>
+      </div>
+    </li>
+
+    <li class="card v5">
+      <div class="shots"><span class="shot s1"></span><span class="shot s2"></span><span class="shot s3"></span></div>
+      <div class="body">
+        <div class="meta"><span class="avatar">RM</span><div><h3 class="name">Room 4</h3><p class="who">room4.studio</p></div></div>
+        <p class="blurb">Portraits in available light. People, mostly. Sometimes their dogs.</p>
+        <p class="tags"><span>Portrait</span><span>Documentary</span></p>
+        <p class="foot"><a class="visit" rel="canonical nofollow noopener" href="#">Visit blog ↗</a><span class="active">active 6d ago</span></p>
+      </div>
+    </li>
+
+    <li class="card v6">
+      <div class="shots"><span class="shot s1"></span><span class="shot s2"></span><span class="shot s3"></span></div>
+      <div class="body">
+        <div class="meta"><span class="avatar">LE</span><div><h3 class="name">The Long Exposure</h3><p class="who">longexposure.ca</p></div></div>
+        <p class="blurb">Water turned to mist. Seascapes and slow shutters.</p>
+        <p class="tags"><span>Seascape</span><span>Landscape</span><span>Black &amp; White</span></p>
+        <p class="foot"><a class="visit" rel="canonical nofollow noopener" href="#">Visit blog ↗</a><span class="active">active 12h ago</span></p>
+      </div>
+    </li>
+
+    <li class="card v2">
+      <div class="shots"><span class="shot s1"></span><span class="shot s2"></span><span class="shot s3"></span></div>
+      <div class="body">
+        <div class="meta"><span class="avatar">AA</span><div><h3 class="name">Analog Avenue</h3><p class="who">analogavenue.photo</p></div></div>
+        <p class="blurb">35mm on the street. Grain, chance, and good light.</p>
+        <p class="tags"><span>Film</span><span>Street</span><span>Urban</span></p>
+        <p class="foot"><a class="visit" rel="canonical nofollow noopener" href="#">Visit blog ↗</a><span class="active">active 4d ago</span></p>
+      </div>
+    </li>
+
+    <li class="card v1">
+      <div class="shots"><span class="shot s1"></span><span class="shot s2"></span><span class="shot s3"></span></div>
+      <div class="body">
+        <div class="meta"><span class="avatar">HW</span><div><h3 class="name">High &amp; Wide</h3><p class="who">highandwide.ca</p></div></div>
+        <p class="blurb">Mountains, weather, and a lot of walking to get there.</p>
+        <p class="tags"><span>Landscape</span><span>Travel</span></p>
+        <p class="foot"><a class="visit" rel="canonical nofollow noopener" href="#">Visit blog ↗</a><span class="active">active 8h ago</span></p>
+      </div>
+    </li>
+
+  </ul>
+
+  <section class="join">
+    <h2>Want to be found too?</h2>
+    <p>Run a SnapSmack photo blog? Opt in from your own admin and you'll appear here — your photos stay on your server, and every link points back to you.</p>
+    <a class="join-btn" href="/for-admins">How it works</a>
+  </section>
+
+  <footer>photoblogs.fyi · lists the SnapSmack network only · <a href="/">home</a></footer>
+
+</div>
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
