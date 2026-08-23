@@ -10,6 +10,25 @@
 
 # SnapSmack Changelog
 
+## 0.7.549 — 2026-08-23 "FEDBOARD"
+
+- **Fix: Directory page was missing its admin footer.** `smack-directory.php` never
+  included `core/admin-footer.php`, so it had no footer (the PixelPost / GreyMatter /
+  Noah Grey credit), no sidebar/updater scripts, and — the real cause of the 0.7.548
+  CSRF failures — none of the automatic CSRF-token injection that the footer performs.
+  Added the include and removed the manual `csrf_field()` stopgap from 0.7.548; forms
+  now get their token the standard way, same as every other admin page.
+- **Sidebar cleanup.** The federation menu is split by what it is: engagement moves to
+  content, configuration stays admin-only.
+  - Renamed the **Fediverse** section to **Fediverse Config**.
+  - Moved **Interactions** (replies/follows — the conversation side) into **The Good
+    Shit**, next to Comments, and made it editor-reachable.
+  - The **Fediverse Config** section (Pixelfed, Messages, Portal, Followers, Push &
+    Tools, Directory, Photo Challenge) is now **hidden from editor accounts** — it is
+    all administrator-only.
+- **Access control.** **Messages** (the blog's private 1:1 DM inbox) and the admin
+  **Forum** (which auto-registers the install on the hub) are now administrator-only.
+
 ## 0.7.548 — 2026-08-23 "FEDBOARD"
 
 - **Fix: Directory opt-in now works.** Every form on the Directory page was missing its
