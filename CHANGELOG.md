@@ -10,6 +10,20 @@
 
 # SnapSmack Changelog
 
+## 0.7.548 — 2026-08-22 "FEDBOARD"
+
+- FEDBOARD adds an alphabetical fleet selector to the top-right of every multisite Fediverse page. The
+  active site alone carries a flashing terminal cursor; reduced-motion users see the cursor without the
+  animation. Switching reuses the current tab and lands directly on the selected site's own `pixel.php`.
+- The existing multisite SSO path now issues concurrent, hashed, single-use tickets whose fixed destination
+  is stored on the spoke. Arbitrary redirects are impossible, token consumption is atomic, raw tickets are
+  absent from audit history, and legacy Remote Login continues to land on the admin dashboard.
+- Fleet rosters now carry availability, maintenance, version, and Fediverse-capability state without API
+  keys. Offline, incompatible, maintenance, or Fediverse-disabled sites keep their alphabetical position
+  but cannot be selected.
+- FEDBOARD ships with its complete administrator help topic, first-use explanation, SSO permission copy,
+  accessible active-state wording, keyboard navigation, and plain-language failure guidance.
+
 ## 0.7.546 — 2026-08-21 "ONYX BOUNDARY"
 
 - ONYX 0.1.7 is now explicitly restricted to FEDISTRUCTURE install mode 4.0. Ordinary SnapSmack blogs

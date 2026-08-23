@@ -73,9 +73,9 @@ function ms_build_roster(PDO $pdo, string $exclude_url = ''): array
     // broadcasting it let one leaked spoke key compromise the whole fleet.
     $exclude_norm = preg_replace('~^https?://~i', '', rtrim($exclude_url, '/'));
     $rows = $pdo->query(
-        "SELECT site_url, site_name, role
+        "SELECT site_url, site_name, role, status, maintenance_mode,
+                software_version, smackverse_enabled, fedboard_sso_enabled
          FROM snap_multisite_nodes
-         WHERE status = 'active'
          ORDER BY site_name ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
     $out = [];
@@ -86,6 +86,11 @@ function ms_build_roster(PDO $pdo, string $exclude_url = ''): array
             'site_url'  => $r['site_url'],
             'site_name' => $r['site_name'],
             'role'      => $r['role'],
+            'status'              => $r['status'],
+            'maintenance_mode'    => (int)$r['maintenance_mode'],
+            'software_version'    => $r['software_version'],
+            'smackverse_enabled'  => (int)$r['smackverse_enabled'],
+            'fedboard_sso_enabled'=> (int)$r['fedboard_sso_enabled'],
         ];
     }
     return $out;
@@ -112,24 +117,34 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
         $upsert = $pdo->prepare("
             INSERT INTO snap_multisite_nodes
                 (role, site_url, site_name, api_key_local, api_key_remote, status,
+                 maintenance_mode, software_version, smackverse_enabled, fedboard_sso_enabled,
                  roster_source, last_roster_seen_at, connected_at)
-            VALUES (?, ?, ?, '', '', 'active', ?, ?, NOW())
+            VALUES (?, ?, ?, '', '', ?, ?, ?, ?, ?, ?, ?, NOW())
             ON DUPLICATE KEY UPDATE
                 role                = VALUES(role),
                 site_name           = VALUES(site_name),
-                status              = 'active',
+                status              = VALUES(status),
+                maintenance_mode    = VALUES(maintenance_mode),
+                software_version    = VALUES(software_version),
+                smackverse_enabled  = VALUES(smackverse_enabled),
+                fedboard_sso_enabled= VALUES(fedboard_sso_enabled),
                 roster_source       = VALUES(roster_source),
                 last_roster_seen_at = VALUES(last_roster_seen_at)
         ");
     } else {
         $upsert = $pdo->prepare("
             INSERT INTO snap_multisite_nodes
-                (role, site_url, site_name, api_key_local, api_key_remote, status, connected_at)
-            VALUES (?, ?, ?, '', '', 'active', NOW())
+                (role, site_url, site_name, api_key_local, api_key_remote, status,
+                 maintenance_mode, software_version, smackverse_enabled, fedboard_sso_enabled, connected_at)
+            VALUES (?, ?, ?, '', '', ?, ?, ?, ?, ?, NOW())
             ON DUPLICATE KEY UPDATE
-                role          = VALUES(role),
-                site_name     = VALUES(site_name),
-                status        = 'active'
+                role               = VALUES(role),
+                site_name          = VALUES(site_name),
+                status             = VALUES(status),
+                maintenance_mode   = VALUES(maintenance_mode),
+                software_version   = VALUES(software_version),
+                smackverse_enabled   = VALUES(smackverse_enabled),
+                fedboard_sso_enabled = VALUES(fedboard_sso_enabled)
         ");
     }
 
@@ -155,17 +170,27 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
 
         if ($has_roster_cols) {
             $upsert->execute([
-                $p['role']      ?? 'peer',
+                in_array(($p['role'] ?? ''), ['hub','spoke'], true) ? $p['role'] : 'spoke',
                 $url,
                 $p['site_name'] ?? parse_url($url, PHP_URL_HOST),
+                $p['status'] ?? 'offline',
+                !empty($p['maintenance_mode']) ? 1 : 0,
+                (string)($p['software_version'] ?? ''),
+                !empty($p['smackverse_enabled']) ? 1 : 0,
+                !empty($p['fedboard_sso_enabled']) ? 1 : 0,
                 $hub_url,
                 $now,
             ]);
         } else {
             $upsert->execute([
-                $p['role']      ?? 'peer',
+                in_array(($p['role'] ?? ''), ['hub','spoke'], true) ? $p['role'] : 'spoke',
                 $url,
                 $p['site_name'] ?? parse_url($url, PHP_URL_HOST),
+                $p['status'] ?? 'offline',
+                !empty($p['maintenance_mode']) ? 1 : 0,
+                (string)($p['software_version'] ?? ''),
+                !empty($p['smackverse_enabled']) ? 1 : 0,
+                !empty($p['fedboard_sso_enabled']) ? 1 : 0,
             ]);
         }
 

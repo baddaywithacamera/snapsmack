@@ -23,6 +23,7 @@ $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `installed
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `active_skin` VARCHAR(64) NOT NULL DEFAULT ''");
 // SMACKVERSE federation stats cache (0.7.343) — reported by heartbeat; fleet rollup.
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackverse_enabled` TINYINT(1) NOT NULL DEFAULT 0");
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `fedboard_sso_enabled` TINYINT(1) NOT NULL DEFAULT 0");
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackverse_followers` INT UNSIGNED NOT NULL DEFAULT 0");
 // SMACKVERSE engagement rollup (0.7.391) — reported by heartbeat; summed on the
 // Fleet board so Following/Likes/Boosts/Replies aren't hub-local-only.
@@ -266,6 +267,7 @@ if (isset($_POST['ping']) && isset($_POST['ping_id'])) {
                         installed_skins    = ?,
                         active_skin        = ?,
                         smackverse_enabled    = ?,
+                        fedboard_sso_enabled   = ?,
                         smackverse_followers  = ?,
                         smackverse_following  = ?,
                         smackverse_likes      = ?,
@@ -290,6 +292,7 @@ if (isset($_POST['ping']) && isset($_POST['ping_id'])) {
                         ? json_encode($hb['installed_skins']) : null,
                     (string)($hb['active_skin'] ?? ''),
                     (int)($hb['smackverse_enabled'] ?? 0),
+                    (int)($hb['fedboard_sso_enabled'] ?? 0),
                     (int)($hb['smackverse_followers'] ?? 0),
                     (int)($hb['smackverse_following'] ?? 0),
                     (int)($hb['smackverse_likes'] ?? 0),
@@ -1052,6 +1055,7 @@ if ($multisite_role === 'hub') {
                         installed_skins       = ?,
                         active_skin           = ?,
                         smackverse_enabled    = ?,
+                        fedboard_sso_enabled   = ?,
                         smackverse_followers  = ?,
                         smackverse_following  = ?,
                         smackverse_likes      = ?,
@@ -1080,6 +1084,7 @@ if ($multisite_role === 'hub') {
                         ? json_encode($hb['installed_skins']) : null,
                     (string)($hb['active_skin'] ?? ''),
                     (int)($hb['smackverse_enabled'] ?? 0),
+                    (int)($hb['fedboard_sso_enabled'] ?? 0),
                     (int)($hb['smackverse_followers'] ?? 0),
                     (int)($hb['smackverse_following'] ?? 0),
                     (int)($hb['smackverse_likes'] ?? 0),
@@ -1622,7 +1627,7 @@ include 'core/sidebar.php';
                                     <td class="col-center" id="spoke-act-<?php echo $n['id']; ?>">
                                         <div class="spoke-act-wrap">
                                         <?php if ($n['status'] === 'active'): ?>
-                                            <a href="smack-multisite-sso.php?sat=<?php echo $n['id']; ?>"
+                                            <a href="<?php echo htmlspecialchars(csrf_url('smack-multisite-sso.php?sat=' . (int)$n['id'])); ?>"
                                                target="_blank"
                                                class="action-authorize"
                                                title="Open spoke admin as primary admin user">REMOTE LOGIN</a>
@@ -2059,6 +2064,12 @@ include 'core/sidebar.php';
                                <?php echo (($settings[$def[0]] ?? '0') === '1') ? 'checked' : ''; ?>>
                         <?php echo htmlspecialchars($def[1]); ?>
                     </label>
+                    <?php if ($field === 'perm_sso'): ?>
+                    <p class="dim" style="font-size:0.78rem;margin:-5px 0 3px 27px;max-width:760px;">
+                        Allows your authenticated hub to open this site's administration and FEDBOARD pages with a short-lived, one-time ticket. It does not let the hub publish or interact as this site without opening its local page.
+                        <?php if (($settings['multisite_allow_sso'] ?? '0') !== '1'): ?><br>FEDBOARD switching into this site is off. The site remains connected to the multisite network.<?php endif; ?>
+                    </p>
+                    <?php endif; ?>
                     <?php endforeach; ?>
                 </div>
                 <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">

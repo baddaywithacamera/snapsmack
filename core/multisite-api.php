@@ -515,6 +515,7 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         'installed_skins'    => $installed_skins,
         'active_skin'        => $settings['active_skin'] ?? '',
         'smackverse_enabled' => $sv_enabled_hb,
+        'fedboard_sso_enabled' => (($settings['multisite_allow_sso'] ?? '0') === '1') ? 1 : 0,
         'smackverse_followers' => $sv_followers_hb,
         'smackverse_following' => $sv_following_hb,
         'smackverse_likes'     => $sv_likes_hb,
@@ -1899,15 +1900,22 @@ if ($resource === 'auth' && $sub_action === 'sso-token' && $method === 'POST') {
     if (($settings['multisite_allow_sso'] ?? '0') !== '1')
         ms_err('Hub SSO is disabled on this site (enable it in Multisite settings).', 403);
 
-    $token   = bin2hex(random_bytes(32)); // 64 hex chars
-    $expires = time() + 300;             // 5 minutes
+    $destination = (string)($_POST['destination'] ?? 'admin');
+    if (!in_array($destination, ['admin','fedboard'], true)) {
+        ms_err('Unknown SSO destination', 422);
+    }
 
-    $upsert = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
-                              ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
-    $upsert->execute(['multisite_sso_token',         $token]);
-    $upsert->execute(['multisite_sso_token_expires', (string)$expires]);
+    require_once __DIR__ . '/fedboard.php';
+    fb_ensure_tables($pdo);
+    $token = bin2hex(random_bytes(32));
+    $hash  = hash('sha256', $token);
+    $pdo->prepare("DELETE FROM snap_multisite_sso_tokens WHERE expires_at < NOW()")->execute();
+    $pdo->prepare("INSERT INTO snap_multisite_sso_tokens
+        (token_hash,destination,requested_by,expires_at) VALUES (?,?,?,DATE_ADD(NOW(), INTERVAL 5 MINUTE))")
+        ->execute([$hash, $destination, (string)($node['site_url'] ?? '')]);
+    fb_audit($pdo, 'spoke', (string)($node['site_url'] ?? ''), $destination, 'issued', null);
 
-    ms_ok(['sso_token' => $token]);
+    ms_ok(['sso_token' => $token, 'destination' => $destination]);
 }
 
 // Fell through -- unknown endpoint

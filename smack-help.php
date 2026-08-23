@@ -3390,6 +3390,50 @@ Communication uses HTTPS and keys are stored server-side — nothing is exposed 
 HTML
 ];
 
+$help_topics['fedboard'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'FEDBOARD',
+    'icon'     => '&#x2588;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>FEDBOARD</h3>
+<p>FEDBOARD lets you move between the Fediverse pages for the hub and every blog in your
+SnapSmack network. Each name in the selector is a separate Fediverse account belonging to that site.</p>
+
+<h4>Switching sites</h4>
+<p>Open the selector at the top-right of the Fediverse page and choose a site. The list is always
+alphabetical. The flashing cursor marks the site you are using now. Choosing another site takes you
+straight to that site's Fediverse page in the same browser tab.</p>
+
+<h4>Know which account you are using</h4>
+<p>The selected site does its own posting, following, liking, boosting, searching, and replying. The hub
+does not pretend to be another blog. Before interacting, check the site name beside the flashing cursor
+and the Fediverse handle shown on the page.</p>
+
+<h4>Why a site may be unavailable</h4>
+<p>An unavailable site stays in its alphabetical place but cannot be selected. It may be offline, in
+maintenance, running an older version of SnapSmack, have its Fediverse connection disabled, or be
+configured not to allow hub sign-in.</p>
+
+<h4>Allowing hub sign-in</h4>
+<p>On each spoke, open Multisite settings and enable <strong>Open an admin login session on this site
+(SSO)</strong>. Enabling it requires your password and, when configured, your two-factor code. You can turn
+it off at any time. Turning it off removes that spoke from FEDBOARD switching without disconnecting the
+site from the rest of the network.</p>
+
+<h4>Security and privacy</h4>
+<p>FEDBOARD uses a short-lived, one-time sign-in ticket created by the selected spoke. The ticket is
+destroyed when used. Passwords and permanent multisite keys are not put into the browser or shared among
+the sites. Each switch is recorded in the hub's and spoke's audit history without recording the ticket.</p>
+
+<h4>If switching fails</h4>
+<p>Return to the hub and try once more. If the site remains unavailable, check that it is online, out of
+maintenance, current enough to support FEDBOARD, has its Fediverse connection enabled, and has hub sign-in
+enabled. You can still use the manual login link shown on the error page.</p>
+<p><a href="pixel.php">RETURN TO FEDBOARD</a></p>
+HTML
+];
+
 $help_topics['fleet-stats'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'Fleet Stats Rollup',
