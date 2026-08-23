@@ -328,10 +328,13 @@ if (isset($_SESSION['user_login']) && !smack_is_admin()) {
         'smack-multisite.php', 'smack-multisite-blogroll.php', 'smack-multisite-comments.php',
         'smack-multisite-crosspost.php', 'smack-multisite-posts.php',
         'smack-multisite-settings.php', 'smack-multisite-sso.php', 'smack-multisite-stats.php',
-        // Federation control
-        'smack-fediverse.php', 'smack-smackverse.php', 'smack-sv-tools.php',
-        'smack-sv-followers.php', 'smack-pixelfed.php', 'smack-photochallenge.php',
-        'smack-directory.php',
+        // Federation control. (Interactions / smack-fediverse.php is intentionally
+        // NOT here: it's the conversation side — replies/follows — which an editor may
+        // work, like comments. DMs and the admin Forum ARE admin-only: DMs are the
+        // blog's private 1:1 identity, and the Forum auto-registers the install on the hub.)
+        'smack-smackverse.php', 'smack-sv-tools.php', 'smack-sv-followers.php',
+        'smack-pixelfed.php', 'smack-photochallenge.php', 'smack-directory.php',
+        'smack-dms.php', 'smack-forum.php',
     ];
     if (in_array(basename($_SERVER['SCRIPT_FILENAME'] ?? ''), $_admin_only, true)) {
         smack_require_admin();

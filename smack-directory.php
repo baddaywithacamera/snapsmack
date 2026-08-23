@@ -126,7 +126,6 @@ include 'core/sidebar.php';
 
             <form method="post" action="" style="margin-bottom:14px;">
                 <input type="hidden" name="action" value="directory_topics">
-                <?php csrf_field(); ?>
                 <label>TOPICS (comma-separated &mdash; the genres you're filed under)</label>
                 <input type="text" name="topics" maxlength="200" value="<?php echo htmlspecialchars($cur_topics); ?>" autocomplete="off">
                 <button type="submit" class="btn-smack" style="margin-top:10px;">SAVE TOPICS</button>
@@ -134,7 +133,6 @@ include 'core/sidebar.php';
 
             <form method="post" action="" onsubmit="return confirm('Delist this blog from photoblogs.fyi?');">
                 <input type="hidden" name="action" value="directory_disable">
-                <?php csrf_field(); ?>
                 <button type="submit" class="btn-smack btn-danger">DELIST</button>
             </form>
         <?php else: ?>
@@ -144,7 +142,6 @@ include 'core/sidebar.php';
             </p>
             <form method="post" action="">
                 <input type="hidden" name="action" value="directory_enable">
-                <?php csrf_field(); ?>
 
                 <label>TOPICS (comma-separated &mdash; the genres you're filed under)</label>
                 <input type="text" name="topics" maxlength="200" value="<?php echo htmlspecialchars($cur_topics); ?>" autocomplete="off">
@@ -193,7 +190,6 @@ include 'core/sidebar.php';
                         <td>
                             <form method="post" action="" style="display:inline;">
                                 <input type="hidden" name="action" value="directory_moderate">
-                                <?php csrf_field(); ?>
                                 <input type="hidden" name="listing_id" value="<?php echo (int)$L['id']; ?>">
                                 <?php if ($L['state'] !== 'active'): ?>
                                     <button type="submit" name="listing_state" value="active" class="btn-smack">APPROVE</button>
@@ -213,5 +209,7 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
 </div>
+
+<?php include 'core/admin-footer.php'; ?>
 
 <?php // ===== SNAPSMACK EOF ===== ?>
