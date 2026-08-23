@@ -10,6 +10,15 @@
 
 # SnapSmack Changelog
 
+## 0.7.548 — 2026-08-23 "FEDBOARD"
+
+- **Fix: Directory opt-in now works.** Every form on the Directory page was missing its
+  CSRF token, so all submits (list, delist, edit topics, hub moderation) failed with
+  "CSRF token mismatch." Added the token to all four forms. Regression from 0.7.547.
+- **Security: the Directory page is now administrator-only.** It was reachable by editor
+  accounts because it was missing from the admin-only denylist — a public listing reflects
+  on the whole network, so it belongs to admins. Added `smack-directory.php` to the denylist.
+
 ## 0.7.547 — 2026-08-22 "FEDBOARD"
 
 - New **Fediverse → Directory** page on a blog: opt in to be listed on the photoblogs.fyi people-finder.
