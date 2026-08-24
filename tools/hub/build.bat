@@ -27,6 +27,8 @@ pyinstaller --clean %SPEC_FILE% --distpath "C:\snapsmack\snap_slapper"
 echo.
 if exist "C:\snapsmack\snap_slapper\SNAP SLAPPER.exe" (
     echo Build successful: C:\snapsmack\snap_slapper\SNAP SLAPPER.exe
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$w=New-Object -ComObject WScript.Shell; $s=$w.CreateShortcut([Environment]::GetFolderPath('StartMenu')+'\Programs\SNAP SLAPPER.lnk'); $s.TargetPath='C:\snapsmack\snap_slapper\SNAP SLAPPER.exe'; $s.WorkingDirectory='C:\snapsmack\snap_slapper'; $s.Save()"
+    echo Start Menu shortcut updated.
 ) else (
     echo Build FAILED — check output above.
     pause

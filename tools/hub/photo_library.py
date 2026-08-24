@@ -2,6 +2,7 @@
 
 import datetime
 import glob
+import hashlib
 import json
 import os
 import queue
@@ -9,13 +10,16 @@ import shutil
 import subprocess
 import threading
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from PIL import Image, ImageFilter, ImageOps, ImageTk
 
+import photo_manager
+
 BG, CARD, INK, DIM, ACCENT, FIELD, BORDER = (
     "#0a0a0a", "#141414", "#e6e6e6", "#8a8a8a", "#39ff14", "#1c1c1c", "#2a2a2a")
-IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff",
+              ".dng", ".nef", ".cr2", ".cr3", ".arw", ".orf", ".rw2", ".raf"}
 
 
 class PhotoLibrary(tk.Toplevel):
@@ -29,9 +33,17 @@ class PhotoLibrary(tk.Toplevel):
         self.state_path = state_path
         self.tools_path = os.path.join(os.path.dirname(state_path), "external_tools.json") if state_path else None
         self.metadata_path = os.path.join(os.path.dirname(state_path), "photo_metadata.json") if state_path else None
+        state_dir = os.path.dirname(state_path) if state_path else ""
+        self.albums_path = os.path.join(state_dir, "albums.json") if state_dir else None
+        self.trash_path = os.path.join(state_dir, "trash_manifest.json") if state_dir else None
+        self.trash_root = os.path.join(state_dir, "trash") if state_dir else None
+        self.thumb_cache = os.path.join(state_dir, "thumbnail_cache") if state_dir else None
         self.rows, self.visible, self.photos = [], [], []
+        self.selected_paths = set()
         self.sources = {}
         self.selected = None
+        self.current_source = None
+        self.current_signature = None
         self.external_tools = self._load_external_tools()
         self.metadata = self._load_metadata()
         self.render_limit = 120
@@ -39,6 +51,7 @@ class PhotoLibrary(tk.Toplevel):
         self.scan_queue = queue.Queue()
         self._build()
         self.refresh_sources()
+        self.after(8000, self._watch_source)
 
     @staticmethod
     def _button(parent, text, command):
@@ -91,7 +104,14 @@ class PhotoLibrary(tk.Toplevel):
         self._button(left, "+ OPEN LOCAL FOLDER", self.choose_folder).pack(
             fill="x", padx=12, pady=(12, 5), ipady=5)
         self._button(left, "REMOVE FOLDER", self.remove_folder).pack(
-            fill="x", padx=12, pady=(0, 12), ipady=4)
+            fill="x", padx=12, pady=(0, 5), ipady=4)
+        self._button(left, "MANAGE PHOTOS", self.open_manage_menu).pack(
+            fill="x", padx=12, pady=(0, 5), ipady=4)
+        self.auto_refresh_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(left, text="AUTO REFRESH", variable=self.auto_refresh_var,
+                       bg="#111111", fg=DIM, selectcolor=FIELD, activebackground="#111111",
+                       activeforeground=INK, font=("Segoe UI", 8, "bold")).pack(
+                           anchor="w", padx=12, pady=(0, 12))
 
         controls = tk.Frame(centre, bg="#101010")
         controls.pack(fill="x")
@@ -194,6 +214,7 @@ class PhotoLibrary(tk.Toplevel):
         self.sources.clear()
         self.blog_group = self.source_tree.insert("", "end", text="▣  BLOG ARCHIVES", open=True)
         self.local_group = self.source_tree.insert("", "end", text="▦  LOCAL FOLDERS", open=True)
+        self.album_group = self.source_tree.insert("", "end", text="★  ALBUMS", open=True)
         try:
             names = sorted(os.listdir(self.library_root), key=str.lower)
         except OSError:
@@ -205,6 +226,9 @@ class PhotoLibrary(tk.Toplevel):
                 self.sources[item] = ("shared", folder)
         for folder in self._saved_folders():
             self._add_local_root(folder)
+        for name, paths in sorted(self._load_albums().items(), key=lambda item: item[0].lower()):
+            item = self.source_tree.insert(self.album_group, "end", text=name)
+            self.sources[item] = ("album", name)
 
     def _add_local_root(self, folder):
         label = os.path.basename(folder) or folder
@@ -302,6 +326,54 @@ class PhotoLibrary(tk.Toplevel):
         except OSError:
             pass
 
+    def _load_albums(self):
+        if not self.albums_path:
+            return {}
+        value = photo_manager.load_json(self.albums_path, {})
+        if not isinstance(value, dict):
+            return {}
+        return {str(name): [str(path) for path in paths if isinstance(path, str)]
+                for name, paths in value.items() if isinstance(paths, list)}
+
+    def _save_albums(self, albums):
+        if self.albums_path:
+            photo_manager.atomic_json(self.albums_path, albums)
+
+    def _source_signature(self):
+        source = self.current_source
+        if not source or source[0] != "folder":
+            return None
+        folder = source[1]
+        count, latest = 0, 0
+        try:
+            for base, dirs, files in os.walk(folder):
+                dirs[:] = [name for name in dirs if not name.startswith(".")]
+                for name in files:
+                    if os.path.splitext(name)[1].lower() in IMAGE_EXTS:
+                        count += 1
+                        latest = max(latest, self._mtime(os.path.join(base, name)))
+        except OSError:
+            return None
+        return count, latest
+
+    def _watch_source(self):
+        try:
+            if self.auto_refresh_var.get() and self.current_source and self.current_source[0] == "folder":
+                signature = self._source_signature()
+                if self.current_signature is not None and signature != self.current_signature:
+                    self.load_source(*self.current_source)
+                else:
+                    self.current_signature = signature
+        finally:
+            if self.winfo_exists():
+                self.after(8000, self._watch_source)
+
+    def refresh_current(self):
+        if self.current_source:
+            self.load_source(*self.current_source)
+        else:
+            self.refresh_sources()
+
     def _source_selected(self, _event=None):
         selected = self.source_tree.selection()
         if selected:
@@ -312,8 +384,15 @@ class PhotoLibrary(tk.Toplevel):
 
     def load_source(self, kind, folder, label):
         self.scan_token += 1          # invalidate any older background folder scan
+        self.current_source = (kind, folder, label)
+        self.selected_paths.clear()
         rows = []
-        if kind == "shared":
+        if kind == "album":
+            paths = self._load_albums().get(folder, [])
+            rows = [{"path": path, "title": os.path.splitext(os.path.basename(path))[0],
+                     "description": "", "tags": [], "modified": self._mtime(path)}
+                    for path in paths if os.path.isfile(path)]
+        elif kind == "shared":
             try:
                 with open(os.path.join(folder, "index.json"), "r", encoding="utf-8") as fh:
                     images = (json.load(fh) or {}).get("images", {})
@@ -337,6 +416,7 @@ class PhotoLibrary(tk.Toplevel):
             self.after(80, self._poll_scan)
             return
         self.rows = rows
+        self.current_signature = self._source_signature()
         self.heading.configure(text=f"{label.lstrip('▣▦ ')}  ·  {len(rows):,} photos")
         self.scan_status.configure(text="")
         self._refresh_dates()
@@ -373,6 +453,7 @@ class PhotoLibrary(tk.Toplevel):
             messagebox.showerror("Folder scan failed", error, parent=self)
             return
         self.rows = rows
+        self.current_signature = self._source_signature()
         self.heading.configure(text=f"{label.lstrip('▣▦ ')}  ·  {len(rows):,} photos")
         self.scan_status.configure(text=f"{len(rows):,} photos", fg=DIM)
         self._refresh_dates()
@@ -509,6 +590,249 @@ class PhotoLibrary(tk.Toplevel):
         self.favorite_var.set(not self.favorite_var.get())
         self.save_photo_details()
 
+    def open_manage_menu(self):
+        menu = tk.Menu(self, tearoff=False, bg=FIELD, fg=INK,
+                       activebackground=ACCENT, activeforeground=BG)
+        menu.add_command(label="Refresh now", command=self.refresh_current)
+        menu.add_command(label="Import photos…", command=self.import_photos)
+        menu.add_separator()
+        menu.add_command(label="Add selection to album…", command=self.add_to_album)
+        menu.add_command(label="Bulk tags…", command=self.bulk_tags)
+        menu.add_command(label="Bulk rating…", command=self.bulk_rating)
+        menu.add_command(label="Toggle favorite on selection", command=self.bulk_favorite)
+        menu.add_separator()
+        menu.add_command(label="Copy selection…", command=lambda: self.transfer_selection(False))
+        menu.add_command(label="Move selection…", command=lambda: self.transfer_selection(True))
+        menu.add_command(label="Rename selected photo…", command=self.rename_selected)
+        menu.add_command(label="Export selection…", command=self.export_selection)
+        menu.add_command(label="Rotate selection left", command=lambda: self.rotate_selection(90))
+        menu.add_command(label="Rotate selection right", command=lambda: self.rotate_selection(-90))
+        menu.add_separator()
+        menu.add_command(label="Find exact duplicates", command=self.find_duplicates)
+        menu.add_command(label="Find blurry / dark photos", command=self.find_quality_issues)
+        menu.add_command(label="Start slideshow", command=self.start_slideshow)
+        menu.add_separator()
+        menu.add_command(label="Move selection to SNAP SLAPPER Trash…", command=self.trash_selection)
+        menu.add_command(label="Restore last trashed photo", command=self.restore_trash)
+        menu.add_command(label="Back up organizer data…", command=self.backup_organizer)
+        try:
+            menu.tk_popup(self.winfo_pointerx(), self.winfo_pointery())
+        finally:
+            menu.grab_release()
+
+    def import_photos(self):
+        paths = filedialog.askopenfilenames(title="Choose photos to import", parent=self,
+                                            filetypes=[("Photos", "*.jpg *.jpeg *.png *.webp *.gif *.bmp *.tif *.tiff *.dng *.nef *.cr2 *.cr3 *.arw *.orf *.rw2 *.raf"),
+                                                       ("All files", "*.*")])
+        if not paths:
+            return
+        destination = filedialog.askdirectory(title="Import into folder", parent=self)
+        if not destination:
+            return
+        try:
+            outputs = photo_manager.copy_files(paths, destination)
+            messagebox.showinfo("Import complete", f"Imported {len(outputs):,} photo(s).", parent=self)
+            self.refresh_current()
+        except OSError as exc:
+            messagebox.showerror("Import failed", str(exc), parent=self)
+
+    def add_to_album(self):
+        paths = self._chosen_paths()
+        if not paths:
+            return
+        name = simpledialog.askstring("Album", "Album name:", parent=self)
+        if not name or not name.strip():
+            return
+        name = name.strip()
+        albums = self._load_albums()
+        albums[name] = list(dict.fromkeys(albums.get(name, []) + paths))
+        self._save_albums(albums)
+        self.refresh_sources()
+        messagebox.showinfo("Album updated", f"{len(paths):,} photo(s) added to {name}.", parent=self)
+
+    def _update_bulk_metadata(self, update):
+        rows = self._chosen_rows()
+        if not rows:
+            return
+        for row in rows:
+            key = self._metadata_key(row["path"])
+            details = self._photo_meta(row)
+            update(details)
+            if details.get("favorite") or details.get("rating") or details.get("tags"):
+                self.metadata[key] = details
+            else:
+                self.metadata.pop(key, None)
+        self._save_metadata()
+        if self.selected:
+            self.select_photo(self.selected)
+        self.filter_rows()
+
+    def bulk_tags(self):
+        value = simpledialog.askstring("Bulk tags", "Comma-separated tags to add:", parent=self)
+        if value is None:
+            return
+        additions = [tag.strip() for tag in value.split(",") if tag.strip()]
+        def update(details):
+            existing = [tag.strip() for tag in details.get("tags", "").split(",") if tag.strip()]
+            details["tags"] = ", ".join(dict.fromkeys(existing + additions))
+        self._update_bulk_metadata(update)
+
+    def bulk_rating(self):
+        value = simpledialog.askinteger("Bulk rating", "Rating from 0 to 5:", parent=self,
+                                        minvalue=0, maxvalue=5)
+        if value is not None:
+            self._update_bulk_metadata(lambda details: details.update(rating=value))
+
+    def bulk_favorite(self):
+        self._update_bulk_metadata(lambda details: details.update(
+            favorite=not bool(details.get("favorite", False))))
+
+    def transfer_selection(self, move):
+        paths = self._chosen_paths()
+        if not paths:
+            return
+        destination = filedialog.askdirectory(title="Move into folder" if move else "Copy into folder", parent=self)
+        if not destination:
+            return
+        try:
+            outputs = (photo_manager.move_files if move else photo_manager.copy_files)(paths, destination)
+            self._remap_paths(paths, outputs, remove_old=move)
+            messagebox.showinfo("Move complete" if move else "Copy complete",
+                                f"{len(outputs):,} photo(s) processed.", parent=self)
+            self.refresh_current()
+        except OSError as exc:
+            messagebox.showerror("File operation failed", str(exc), parent=self)
+
+    def rename_selected(self):
+        paths = self._chosen_paths()
+        if len(paths) != 1:
+            messagebox.showinfo("Rename", "Select exactly one photo to rename.", parent=self)
+            return
+        source = paths[0]
+        name = simpledialog.askstring("Rename photo", "New filename:",
+                                      initialvalue=os.path.basename(source), parent=self)
+        if not name:
+            return
+        name = os.path.basename(name.strip())
+        if not os.path.splitext(name)[1]:
+            name += os.path.splitext(source)[1]
+        target = os.path.join(os.path.dirname(source), name)
+        if os.path.exists(target):
+            messagebox.showerror("Rename failed", "A file with that name already exists.", parent=self)
+            return
+        try:
+            os.replace(source, target)
+            old_key = self._metadata_key(source)
+            if old_key in self.metadata:
+                self.metadata[self._metadata_key(target)] = self.metadata.pop(old_key)
+                self._save_metadata()
+            self.refresh_current()
+        except OSError as exc:
+            messagebox.showerror("Rename failed", str(exc), parent=self)
+
+    def export_selection(self):
+        paths = self._chosen_paths()
+        if not paths:
+            return
+        destination = filedialog.askdirectory(title="Export into folder", parent=self)
+        if not destination:
+            return
+        size = simpledialog.askinteger("Export size", "Maximum width/height in pixels (0 keeps full size):",
+                                       initialvalue=2048, minvalue=0, maxvalue=30000, parent=self)
+        if size is None:
+            return
+        quality = simpledialog.askinteger("JPEG quality", "Quality from 40 to 100:",
+                                          initialvalue=90, minvalue=40, maxvalue=100, parent=self)
+        if quality is None:
+            return
+        sharpen = messagebox.askyesno("Export sharpening", "Apply gentle output sharpening?", parent=self)
+        try:
+            outputs = photo_manager.export_files(paths, destination, size, quality, sharpen)
+            messagebox.showinfo("Export complete", f"Exported {len(outputs):,} photo(s).", parent=self)
+        except Exception as exc:
+            messagebox.showerror("Export failed", str(exc), parent=self)
+
+    def rotate_selection(self, degrees):
+        paths = self._chosen_paths()
+        if not paths or not messagebox.askyesno(
+                "Rotate originals?", f"Rotate {len(paths):,} original photo(s) in place?", parent=self):
+            return
+        try:
+            photo_manager.rotate_files(paths, degrees)
+            self.refresh_current()
+        except Exception as exc:
+            messagebox.showerror("Rotation failed", str(exc), parent=self)
+
+    def trash_selection(self):
+        paths = self._chosen_paths()
+        if not paths or not self.trash_root or not messagebox.askyesno(
+                "Move to SNAP SLAPPER Trash?",
+                f"Move {len(paths):,} photo(s) to recoverable SNAP SLAPPER Trash?", parent=self):
+            return
+        try:
+            photo_manager.trash_files(paths, self.trash_root, self.trash_path)
+            self.selected_paths.clear()
+            self.selected = None
+            self.refresh_current()
+        except OSError as exc:
+            messagebox.showerror("Trash failed", str(exc), parent=self)
+
+    def restore_trash(self):
+        if not self.trash_path:
+            return
+        try:
+            restored = photo_manager.restore_last_trash(self.trash_path)
+            messagebox.showinfo("Trash", "Restored:\n" + restored[0] if restored else "Trash is empty.", parent=self)
+            self.refresh_current()
+        except OSError as exc:
+            messagebox.showerror("Restore failed", str(exc), parent=self)
+
+    def find_duplicates(self):
+        groups = photo_manager.duplicate_groups([row["path"] for row in self.rows])
+        paths = [path for group in groups for path in group]
+        self.selected_paths = {self._metadata_key(path) for path in paths}
+        self.render_grid()
+        messagebox.showinfo("Exact duplicates", f"Found {len(groups):,} duplicate group(s), {len(paths):,} files selected.", parent=self)
+
+    def find_quality_issues(self):
+        results = photo_manager.quality_flags([row["path"] for row in self.rows])
+        self.selected_paths = {self._metadata_key(item["path"]) for item in results}
+        self.render_grid()
+        messagebox.showinfo("Quality suggestions", f"Flagged {len(results):,} possibly blurry or very dark photo(s).\nNothing was changed.", parent=self)
+
+    def start_slideshow(self):
+        rows = self._chosen_rows() or self.visible
+        if not rows:
+            return
+        self.open_viewer(rows[0])
+        self.slideshow_running = True
+        self._slideshow_step()
+
+    def _slideshow_step(self):
+        if not getattr(self, "slideshow_running", False):
+            return
+        viewer = getattr(self, "viewer", None)
+        if not viewer or not viewer.winfo_exists():
+            self.slideshow_running = False
+            return
+        self.viewer_step(1)
+        self.after(3000, self._slideshow_step)
+
+    def backup_organizer(self):
+        destination = filedialog.asksaveasfilename(title="Back up organizer data", parent=self,
+                                                   defaultextension=".json",
+                                                   initialfile="snap-slapper-organizer-backup.json",
+                                                   filetypes=[("JSON", "*.json")])
+        if not destination:
+            return
+        try:
+            photo_manager.atomic_json(destination, {"version": 1, "metadata": self.metadata,
+                                                     "albums": self._load_albums(),
+                                                     "folders": self._saved_folders()})
+            messagebox.showinfo("Backup complete", destination, parent=self)
+        except OSError as exc:
+            messagebox.showerror("Backup failed", str(exc), parent=self)
+
     def render_grid(self):
         for child in self.grid.winfo_children():
             child.destroy()
@@ -519,30 +843,31 @@ class PhotoLibrary(tk.Toplevel):
         for col in range(columns):
             self.grid.grid_columnconfigure(col, weight=1, uniform="photos")
         for i, row in enumerate(rows):
-            card = tk.Frame(self.grid, bg=CARD, cursor="hand2")
+            chosen = self._metadata_key(row["path"]) in self.selected_paths
+            card_bg = "#24421f" if chosen else CARD
+            card = tk.Frame(self.grid, bg=card_bg, cursor="hand2",
+                            highlightthickness=2 if chosen else 0, highlightbackground=ACCENT)
             card.grid(row=i // columns, column=i % columns, sticky="nsew", padx=5, pady=5)
             try:
-                with Image.open(row["path"]) as image:
-                    thumb = ImageOps.fit(image.convert("RGB"), (size, int(size * .75)),
-                                         method=Image.Resampling.LANCZOS)
+                thumb = self._thumbnail(row["path"], size)
                 photo = ImageTk.PhotoImage(thumb)
                 self.photos.append(photo)
-                pic = tk.Label(card, image=photo, bg=CARD, cursor="hand2")
+                pic = tk.Label(card, image=photo, bg=card_bg, cursor="hand2")
             except Exception:
                 pic = tk.Label(card, text="PREVIEW\nUNAVAILABLE", width=20, height=7,
                                bg=FIELD, fg=DIM, cursor="hand2")
             pic.pack(fill="x", padx=5, pady=(5, 2))
-            title = tk.Label(card, text=row.get("title") or "Untitled", bg=CARD, fg=INK,
+            title = tk.Label(card, text=row.get("title") or "Untitled", bg=card_bg, fg=INK,
                              anchor="w", font=("Segoe UI", 8), cursor="hand2")
             title.pack(fill="x", padx=6, pady=(0, 5))
             meta = self._photo_meta(row)
             badges = ("♥  " if meta.get("favorite") else "") + ("★" * int(meta.get("rating", 0)))
-            badge = tk.Label(card, text=badges, bg=CARD, fg=ACCENT, anchor="w",
+            badge = tk.Label(card, text=badges, bg=card_bg, fg=ACCENT, anchor="w",
                              font=("Segoe UI Symbol", 8), cursor="hand2")
             if badges:
                 badge.pack(fill="x", padx=6, pady=(0, 5))
             for widget in (card, pic, title, badge):
-                widget.bind("<Button-1>", lambda _e, r=row: self.select_photo(r))
+                widget.bind("<Button-1>", lambda e, r=row: self.photo_clicked(e, r))
                 widget.bind("<Double-Button-1>", lambda _e, r=row: self.open_viewer(r))
         if not rows:
             tk.Label(self.grid, text="No photographs here yet.", bg=BG, fg=DIM,
@@ -556,6 +881,70 @@ class PhotoLibrary(tk.Toplevel):
     def load_more(self):
         self.render_limit += 120
         self.render_grid()
+
+    def photo_clicked(self, event, row):
+        key = self._metadata_key(row["path"])
+        if event.state & 0x0004:
+            if key in self.selected_paths:
+                self.selected_paths.remove(key)
+            else:
+                self.selected_paths.add(key)
+        else:
+            self.selected_paths = {key}
+        self.select_photo(row)
+        self.render_grid()
+
+    def _chosen_rows(self):
+        if self.selected_paths:
+            chosen = [row for row in self.rows if self._metadata_key(row["path"]) in self.selected_paths]
+            if chosen:
+                return chosen
+        return [self.selected] if self.selected else []
+
+    def _chosen_paths(self):
+        return [row["path"] for row in self._chosen_rows() if os.path.isfile(row["path"])]
+
+    def _remap_paths(self, sources, outputs, remove_old=False):
+        mapping = dict(zip(sources, outputs))
+        for source, target in mapping.items():
+            old_key = self._metadata_key(source)
+            if old_key in self.metadata:
+                self.metadata[self._metadata_key(target)] = dict(self.metadata[old_key])
+                if remove_old:
+                    self.metadata.pop(old_key, None)
+        albums = self._load_albums()
+        changed = False
+        for name, paths in albums.items():
+            replacement = []
+            for path in paths:
+                replacement.append(mapping.get(path, path))
+                changed = changed or path in mapping
+            albums[name] = list(dict.fromkeys(replacement))
+        self._save_metadata()
+        if changed:
+            self._save_albums(albums)
+
+    def _thumbnail(self, path, size):
+        cache_path = None
+        if self.thumb_cache:
+            identity = f"{self._metadata_key(path)}|{self._mtime(path)}|{size}".encode("utf-8")
+            cache_path = os.path.join(self.thumb_cache, hashlib.sha1(identity).hexdigest() + ".jpg")
+            try:
+                if os.path.isfile(cache_path):
+                    with Image.open(cache_path) as cached:
+                        return cached.convert("RGB")
+            except Exception:
+                pass
+        with Image.open(path) as image:
+            thumb = ImageOps.fit(ImageOps.exif_transpose(image).convert("RGB"),
+                                 (size, int(size * .75)), method=Image.Resampling.LANCZOS)
+        if cache_path:
+            try:
+                os.makedirs(self.thumb_cache, exist_ok=True)
+                thumb.save(cache_path, "JPEG", quality=82, optimize=True)
+            except OSError:
+                pass
+        return thumb
 
     def select_photo(self, row):
         self.selected = row
