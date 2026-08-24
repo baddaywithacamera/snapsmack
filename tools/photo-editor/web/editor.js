@@ -13,6 +13,7 @@
   const selectedForGroup = new Set();
   let selectedStyleLayer = null;
   let selectedStyleIndex = null;
+  let copiedStyles = null;
   const byId = (id) => document.getElementById(id);
   const status = (text) => { byId("status").textContent = text; };
   document.querySelectorAll("aside fieldset").forEach((fieldset) => {
@@ -192,7 +193,7 @@
   const styleFromForm = () => {
     const type = byId("style-type").value, color = styleColor();
     if (type === "stroke") return { type, enabled: true, color, size: number("style-size"), position: byId("style-position").value };
-    if (type === "drop-shadow") return { type, enabled: true, color, offset_x: Math.round(number("style-offset-x")), offset_y: Math.round(number("style-offset-y")), blur: number("style-blur"), spread: number("style-spread") };
+    if (type === "drop-shadow" || type === "inner-shadow") return { type, enabled: true, color, offset_x: Math.round(number("style-offset-x")), offset_y: Math.round(number("style-offset-y")), blur: number("style-blur"), spread: number("style-spread") };
     return { type, enabled: true, color, size: number("style-size"), intensity: number("style-intensity") };
   };
   byId("save-style").addEventListener("click", () => {
@@ -216,6 +217,18 @@
       { type: "outer-glow", enabled: true, color: [57, 255, 20, 180], size: 8, intensity: 1 },
     ] : [{ type: "drop-shadow", enabled: true, color: [0, 0, 0, 170], offset_x: 6, offset_y: 6, blur: 8, spread: 1 }];
     selectedStyleIndex = null; byId("save-style").textContent = "Add style"; refreshStyles(); refreshLayers(); void render().catch((error) => status(error.message));
+  });
+  byId("copy-styles").addEventListener("click", () => {
+    const layer = selectedStyleLayer === null ? null : operations[selectedStyleLayer];
+    if (!layer || !["text-layer", "image-overlay-layer"].includes(layer.type)) return status("Choose Styles on a text or image layer first.");
+    copiedStyles = structuredClone(layer.styles || []); status(`Copied ${copiedStyles.length} layer style${copiedStyles.length === 1 ? "" : "s"}.`);
+  });
+  byId("paste-styles").addEventListener("click", () => {
+    const layer = selectedStyleLayer === null ? null : operations[selectedStyleLayer];
+    if (!layer || !["text-layer", "image-overlay-layer"].includes(layer.type)) return status("Choose Styles on a text or image layer first.");
+    if (layer.locked) return status("Unlock the layer before changing its styles.");
+    if (!copiedStyles) return status("Copy styles from another layer first.");
+    recordHistory(); layer.styles = structuredClone(copiedStyles); selectedStyleIndex = null; refreshStyles(); refreshLayers(); void render().catch((error) => status(error.message));
   });
   byId("undo").addEventListener("click", () => { if (undoStack.length) { redoStack.push(structuredClone(operations)); restore(undoStack.pop()); resetLayerEditors(); refreshHistory(); void render().catch((error) => status(error.message)); } });
   byId("redo").addEventListener("click", () => { if (redoStack.length) { undoStack.push(structuredClone(operations)); restore(redoStack.pop()); resetLayerEditors(); refreshHistory(); void render().catch((error) => status(error.message)); } });
