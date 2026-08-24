@@ -2,7 +2,7 @@
 
 # Packet 04 handoff — adjustment-layer foundation
 
-**Status:** adjustment layers usable; text/image/group/project work remains.
+**Status:** adjustment layers and editable projects usable; text/image/group work remains.
 
 Delivered:
 
@@ -14,9 +14,14 @@ Delivered:
 - 32-level nesting and 4,096-operation safety limits;
 - refusal when an adjustment layer attempts to change canvas geometry;
 - deterministic compositing with base alpha preserved.
+- portable `.spt` editable project save/load on Windows and Linux;
+- full-source content fingerprints that refuse silently changed originals;
+- locate/cancel flow for missing originals, accepting only the exact original content;
+- atomic project replacement with recovery backup;
+- preservation of unknown optional metadata for forward compatibility;
+- project safety limits and rejection of relative source paths.
 
-Still required for Packet 04: text layers, image-overlay layers, groups, editable project
-save/load, missing-original relocation, overlay path confinement, font fallback and full
-project round-trip/forward-metadata fixtures.
+Still required for Packet 04: text layers, image-overlay layers, groups, overlay path
+confinement, font fallback and their project round-trip fixtures.
 
 <!-- ===== SNAPSMACK EOF ===== -->
