@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://snapsmack.ca/contracts/photo-editor/result-v1.schema.json",
-  "title": "SnapSmack Photo Editor Result v1",
+  "title": "PIXEL TICKLER Result v1",
   "type": "object",
   "additionalProperties": false,
   "required": ["contract_version", "status", "return_token"],

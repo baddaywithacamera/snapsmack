@@ -1,6 +1,6 @@
 <!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the canonical HTML comment. -->
 
-# SnapSmack Photo Editor — build map
+# PIXEL TICKLER — build map
 
 This directory is the handoff surface for the standalone SnapSmack photo editor.
 The editor is a differentiating desktop darkroom for rendered photographs, not a

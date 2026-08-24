@@ -1,0 +1,165 @@
+// PIXEL TICKLER Windows host.
+// SNAPSMACK_EOF_HEADER: last non-empty line must be the canonical Rust marker.
+
+use base64::Engine;
+use image::ImageFormat;
+use serde_json::{json, Value};
+use snapsmack_photo_core::processing::{self, Operation, DEFAULT_MEMORY_BUDGET};
+use std::io::Cursor;
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use tauri::State;
+use tauri_plugin_dialog::DialogExt;
+
+#[derive(Default)]
+struct EditorState {
+    input: Mutex<Option<PathBuf>>,
+}
+
+fn allowed_input(path: &Path) -> Result<(), String> {
+    if snapsmack_photo_core::file_is_heic(path) {
+        return Err("HEIC/HEIF is not supported because of HEVC patent risk.".into());
+    }
+    let extension = path
+        .extension()
+        .and_then(|v| v.to_str())
+        .unwrap_or_default();
+    if !matches!(
+        extension.to_ascii_lowercase().as_str(),
+        "jpg" | "jpeg" | "png" | "webp" | "tif" | "tiff"
+    ) {
+        return Err("Choose a JPEG, PNG, WebP, or TIFF image.".into());
+    }
+    Ok(())
+}
+
+fn operations(params: &Value) -> Result<Vec<Operation>, String> {
+    serde_json::from_value(
+        params
+            .get("operations")
+            .cloned()
+            .unwrap_or_else(|| json!([])),
+    )
+    .map_err(|error| format!("Invalid edit recipe: {error}"))
+}
+
+fn current_input(state: &EditorState) -> Result<PathBuf, String> {
+    state
+        .input
+        .lock()
+        .map_err(|_| "Editor state is unavailable".to_string())?
+        .clone()
+        .ok_or_else(|| "Open an image first.".to_string())
+}
+
+fn preview_result(path: &Path, operations: &[Operation]) -> Result<Value, String> {
+    let loaded =
+        processing::load(path, DEFAULT_MEMORY_BUDGET).map_err(|error| error.to_string())?;
+    let image = processing::apply(loaded.pixels, operations, DEFAULT_MEMORY_BUDGET)
+        .map_err(|error| error.to_string())?;
+    let proxy = processing::preview(&image, 1600).map_err(|error| error.to_string())?;
+    let mut png = Cursor::new(Vec::new());
+    proxy
+        .write_to(&mut png, ImageFormat::Png)
+        .map_err(|error| error.to_string())?;
+    Ok(json!({
+        "name": path.file_name().and_then(|v| v.to_str()).unwrap_or("image"),
+        "width": image.width(), "height": image.height(),
+        "preview": format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png.into_inner())),
+        "histogram": processing::histogram(&image)
+    }))
+}
+
+#[tauri::command]
+fn editor_call(
+    app: tauri::AppHandle,
+    state: State<'_, EditorState>,
+    method: String,
+    params: Value,
+) -> Result<Value, String> {
+    match method.as_str() {
+        "hello" => Ok(json!({"contract_version": 1, "host": "tauri-windows"})),
+        "choose_image" => {
+            let selected = app
+                .dialog()
+                .file()
+                .add_filter(
+                    "Supported images",
+                    &["jpg", "jpeg", "png", "webp", "tif", "tiff"],
+                )
+                .blocking_pick_file();
+            let Some(selected) = selected else {
+                return Ok(Value::Null);
+            };
+            let path = selected
+                .into_path()
+                .map_err(|error| error.to_string())?
+                .canonicalize()
+                .map_err(|error| error.to_string())?;
+            allowed_input(&path)?;
+            let result = preview_result(&path, &[])?;
+            *state
+                .input
+                .lock()
+                .map_err(|_| "Editor state is unavailable".to_string())? = Some(path);
+            Ok(result)
+        }
+        "render_preview" => preview_result(&current_input(&state)?, &operations(&params)?),
+        "export_copy" => {
+            let input = current_input(&state)?;
+            let suggested = format!(
+                "{}-edited.png",
+                input
+                    .file_stem()
+                    .and_then(|v| v.to_str())
+                    .unwrap_or("photo")
+            );
+            let selected = app
+                .dialog()
+                .file()
+                .set_file_name(suggested)
+                .add_filter("PNG image", &["png"])
+                .add_filter("JPEG image", &["jpg", "jpeg"])
+                .add_filter("WebP image", &["webp"])
+                .add_filter("TIFF image", &["tif", "tiff"])
+                .blocking_save_file();
+            let Some(selected) = selected else {
+                return Ok(Value::Null);
+            };
+            let output = selected.into_path().map_err(|error| error.to_string())?;
+            let format = output
+                .extension()
+                .and_then(|v| v.to_str())
+                .and_then(ImageFormat::from_extension)
+                .filter(|v| {
+                    matches!(
+                        v,
+                        ImageFormat::Jpeg
+                            | ImageFormat::Png
+                            | ImageFormat::WebP
+                            | ImageFormat::Tiff
+                    )
+                })
+                .ok_or_else(|| "Save as JPEG, PNG, WebP, or TIFF.".to_string())?;
+            let loaded = processing::load(&input, DEFAULT_MEMORY_BUDGET)
+                .map_err(|error| error.to_string())?;
+            let image =
+                processing::apply(loaded.pixels, &operations(&params)?, DEFAULT_MEMORY_BUDGET)
+                    .map_err(|error| error.to_string())?;
+            processing::save_atomic(&image, &output, format).map_err(|error| error.to_string())?;
+            Ok(json!({"output_path": output, "width": image.width(), "height": image.height()}))
+        }
+        _ => Err(format!("Unsupported editor command: {method}")),
+    }
+}
+
+fn main() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .manage(EditorState::default())
+        .invoke_handler(tauri::generate_handler![editor_call])
+        .run(tauri::generate_context!())
+        .expect("PIXEL TICKLER failed to start");
+}
+
+// ===== SNAPSMACK EOF =====

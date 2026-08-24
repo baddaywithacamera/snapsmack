@@ -1,6 +1,7 @@
 //! Bounded image decode and deterministic basic recipe processing.
 //! SNAPSMACK_EOF_HEADER: last non-empty line must be the canonical Rust marker.
 
+use base64::Engine;
 use image::imageops::FilterType;
 use image::{DynamicImage, GenericImageView, ImageDecoder, ImageFormat, ImageReader};
 use serde::{Deserialize, Serialize};
@@ -185,6 +186,21 @@ pub fn preview(image: &DynamicImage, longest_edge: u32) -> Result<DynamicImage, 
         ));
     }
     Ok(image.thumbnail(longest_edge, longest_edge))
+}
+
+pub fn preview_data_uri(
+    image: &DynamicImage,
+    longest_edge: u32,
+) -> Result<String, ProcessingError> {
+    let proxy = preview(image, longest_edge)?;
+    let mut bytes = std::io::Cursor::new(Vec::new());
+    proxy
+        .write_to(&mut bytes, ImageFormat::Png)
+        .map_err(|error| ProcessingError::Io(error.to_string()))?;
+    Ok(format!(
+        "data:image/png;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(bytes.into_inner())
+    ))
 }
 
 pub fn histogram(image: &DynamicImage) -> Histogram {

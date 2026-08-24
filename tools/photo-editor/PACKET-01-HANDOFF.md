@@ -29,11 +29,11 @@ node --check ../web/editor-host.js
 
 ## Frozen schema hashes (SHA-256)
 
-- `error-v1.schema.json`: `8bfecdaa78319966fe401735a6c84f20bbb4ab7cf1cd8bd923a2d2b441025e17`
-- `job-v1.schema.json`: `87af98e47995caee1ad3005223da556a43902efc4147b111df782911ddd75894`
-- `project-v1.schema.json`: `c40013fcb10e4f4b3d162327d506f8e0f212a7777fe8b337534fa383251f966a`
-- `recipe-v1.schema.json`: `62098c7cda158233c2e5f815b555695f9ac71f0ad3724a0abd5136f102206cea`
-- `result-v1.schema.json`: `c51552204d90b7750d368d568a768c80f5ab11cabf76ffa44913437e4a78906a`
+- `error-v1.schema.json`: `37bbd395624aa71674c0d90bb332f515593e1ad4a81d5fb1d210d6842d648663`
+- `job-v1.schema.json`: `3d60825fab9fc598622dc884add8a3d8f82417f9a1bafe1784c878d84ce483aa`
+- `project-v1.schema.json`: `8b9da9d52ea235b4dfcaa5cdd3013b3f6ae08545ee30ebac612f3dd02629b26c`
+- `recipe-v1.schema.json`: `1452cca37c91611bad9c487ceadcd07fdf4c76491ce3c0218f9ed7c63a4a3983`
+- `result-v1.schema.json`: `025339ac79f4a8c354e3e188b3898f06afc67d242ceac83327b68c9faa856369`
 
 ## Packet 02 decisions still open
 

@@ -1,6 +1,6 @@
 <!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the canonical HTML comment. -->
 
-# SnapSmack Photo Editor — product and architecture specification
+# PIXEL TICKLER — product and architecture specification
 
 **Status:** build-ready draft  
 **Platforms:** Windows 10+ and current Linux distributions  

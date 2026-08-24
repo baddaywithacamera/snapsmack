@@ -20,6 +20,7 @@ SPL 2.1.
 | quote | 1.0.46 | serde build-time macros | MIT OR Apache-2.0 |
 | syn | 2.0.118 | serde build-time parsing | MIT OR Apache-2.0 |
 | unicode-ident | 1.0.24 | Rust identifier tables | (MIT OR Apache-2.0) AND Unicode-3.0 |
+| base64 | 0.22.1 | bounded preview transport encoding | MIT OR Apache-2.0 |
 | image | 0.25.10 | bounded JPEG/PNG/WebP/TIFF decode and encode | MIT OR Apache-2.0 |
 
 `image` is built with default features disabled. The only codec features admitted are
