@@ -11,23 +11,38 @@
   let selectedOverlayLayer = null;
   let overlayAsset = null;
   const selectedForGroup = new Set();
+  let selectedStyleLayer = null;
+  let selectedStyleIndex = null;
   const byId = (id) => document.getElementById(id);
   const status = (text) => { byId("status").textContent = text; };
-  const resetLayerEditors = () => { selectedTextLayer = null; selectedOverlayLayer = null; selectedForGroup.clear(); byId("make-text-layer").textContent = "Add text layer"; byId("make-overlay-layer").textContent = "Add image overlay"; };
+  const resetLayerEditors = () => { selectedTextLayer = null; selectedOverlayLayer = null; selectedStyleLayer = null; selectedStyleIndex = null; selectedForGroup.clear(); byId("make-text-layer").textContent = "Add text layer"; byId("make-overlay-layer").textContent = "Add image overlay"; byId("save-style").textContent = "Add style"; byId("style-target").textContent = "Choose Styles on a text or image layer"; refreshStyles(); };
+  const refreshStyles = () => {
+    const list = byId("styles"); if (!list) return; list.innerHTML = "";
+    const layer = selectedStyleLayer === null ? null : operations[selectedStyleLayer];
+    if (!layer || !["text-layer", "image-overlay-layer"].includes(layer.type)) return;
+    layer.styles ||= []; byId("style-target").textContent = layer.name;
+    layer.styles.forEach((style, index) => {
+      const item = document.createElement("li"); item.textContent = `${style.enabled ? "●" : "○"} ${style.type}`;
+      const actions = document.createElement("div"); actions.className = "layer-actions";
+      [["Edit", () => { selectedStyleIndex = index; byId("style-type").value = style.type; byId("style-color").value = `#${style.color.slice(0, 3).map((value) => value.toString(16).padStart(2, "0")).join("")}`; byId("style-alpha").value = style.color[3] / 255; if (style.size !== undefined) byId("style-size").value = style.size; if (style.position) byId("style-position").value = style.position; if (style.offset_x !== undefined) byId("style-offset-x").value = style.offset_x; if (style.offset_y !== undefined) byId("style-offset-y").value = style.offset_y; if (style.blur !== undefined) byId("style-blur").value = style.blur; if (style.spread !== undefined) byId("style-spread").value = style.spread; if (style.intensity !== undefined) byId("style-intensity").value = style.intensity; byId("save-style").textContent = "Update style"; }], [style.enabled ? "Disable" : "Enable", () => { style.enabled = !style.enabled; }], ["Up", () => { if (index > 0) [layer.styles[index - 1], layer.styles[index]] = [layer.styles[index], layer.styles[index - 1]]; }], ["Down", () => { if (index < layer.styles.length - 1) [layer.styles[index + 1], layer.styles[index]] = [layer.styles[index], layer.styles[index + 1]]; }], ["Delete", () => { layer.styles.splice(index, 1); selectedStyleIndex = null; byId("save-style").textContent = "Add style"; }]].forEach(([label, action]) => { const button = document.createElement("button"); button.textContent = label; button.addEventListener("click", () => { if (label !== "Edit") recordHistory(); action(); refreshStyles(); refreshLayers(); if (label !== "Edit") void render().catch((error) => status(error.message)); }); actions.appendChild(button); });
+      item.appendChild(actions); list.appendChild(item);
+    });
+  };
   const refreshLayers = () => {
     const list = byId("layers"); list.innerHTML = "";
     operations.forEach((operation, index) => {
       if (!operation.type.endsWith("-layer") && operation.type !== "layer-group") return;
       const item = document.createElement("li");
-      const title = document.createElement("div"); title.textContent = `${operation.visible ? "●" : "○"} ${operation.name} · ${operation.blend_mode}`;
+      const title = document.createElement("div"); title.textContent = `${operation.visible ? "●" : "○"} ${operation.name} · ${operation.blend_mode}${operation.styles?.length ? ` · ${operation.styles.length} fx` : ""}`;
       const selector = document.createElement("label"); selector.className = "layer-select";
       const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.checked = selectedForGroup.has(index); checkbox.setAttribute("aria-label", `Select ${operation.name} for grouping`); checkbox.addEventListener("change", () => { if (checkbox.checked) selectedForGroup.add(index); else selectedForGroup.delete(index); }); selector.append(checkbox, title);
       const actions = document.createElement("div"); actions.className = "layer-actions";
       const layerActions = [[operation.visible ? "Hide" : "Show", () => { operation.visible = !operation.visible; }], [operation.locked ? "Unlock" : "Lock", () => { operation.locked = !operation.locked; }], ["Duplicate", () => { operations.splice(index + 1, 0, structuredClone(operation)); }], ["Up", () => { if (!operation.locked && index < operations.length - 1) [operations[index], operations[index + 1]] = [operations[index + 1], operations[index]]; }], ["Down", () => { if (!operation.locked && index > 0) [operations[index], operations[index - 1]] = [operations[index - 1], operations[index]]; }], ["Delete", () => { if (!operation.locked) operations.splice(index, 1); }]];
       if (operation.type === "text-layer") layerActions.unshift(["Edit", () => { selectedOverlayLayer = null; selectedTextLayer = index; byId("text-content").value = operation.text; byId("text-font").value = operation.font_family; byId("text-size").value = operation.font_size; byId("text-color").value = `#${operation.color.slice(0, 3).map((value) => value.toString(16).padStart(2, "0")).join("")}`; byId("text-x").value = operation.x; byId("text-y").value = operation.y; byId("text-align").value = operation.alignment; byId("text-blend").value = operation.blend_mode; byId("text-opacity").value = operation.opacity; byId("make-text-layer").textContent = "Update text layer"; byId("make-overlay-layer").textContent = "Add image overlay"; }]);
       if (operation.type === "image-overlay-layer") layerActions.unshift(["Edit", () => { selectedTextLayer = null; selectedOverlayLayer = index; overlayAsset = { name: operation.original_name, data_uri: operation.data_uri }; byId("overlay-name").textContent = operation.original_name; byId("overlay-width").value = operation.width; byId("overlay-height").value = operation.height; byId("overlay-rotation").value = operation.rotation_degrees; byId("overlay-x").value = operation.x; byId("overlay-y").value = operation.y; byId("overlay-blend").value = operation.blend_mode; byId("overlay-opacity").value = operation.opacity; byId("make-overlay-layer").textContent = "Update image overlay"; byId("make-text-layer").textContent = "Add text layer"; }]);
+      if (["text-layer", "image-overlay-layer"].includes(operation.type)) layerActions.unshift(["Styles", () => { selectedStyleLayer = index; selectedStyleIndex = null; byId("save-style").textContent = "Add style"; refreshStyles(); }]);
       if (operation.type === "layer-group") layerActions.unshift(["Ungroup", () => { if (!operation.locked) operations.splice(index, 1, ...operation.operations); }]);
-      layerActions.forEach(([label, action]) => { const button = document.createElement("button"); button.textContent = label; button.addEventListener("click", () => { if (label !== "Edit") { recordHistory(); resetLayerEditors(); } action(); refreshHistory(); if (label !== "Edit") void render().catch((error) => status(error.message)); }); actions.appendChild(button); });
+      layerActions.forEach(([label, action]) => { const button = document.createElement("button"); button.textContent = label; button.addEventListener("click", () => { const uiOnly = label === "Edit" || label === "Styles"; if (!uiOnly) { recordHistory(); resetLayerEditors(); } action(); refreshHistory(); if (!uiOnly) void render().catch((error) => status(error.message)); }); actions.appendChild(button); });
       item.append(selector, actions); list.appendChild(item);
     });
   };
@@ -125,9 +140,10 @@
     if (!Number.isFinite(size) || size < 4 || size > 2048 || !Number.isFinite(opacity) || opacity < 0 || opacity > 1) return status("Check the text size and opacity.");
     const hex = byId("text-color").value;
     const color = [Number.parseInt(hex.slice(1, 3), 16), Number.parseInt(hex.slice(3, 5), 16), Number.parseInt(hex.slice(5, 7), 16), 255];
-    const layer = { type: "text-layer", name: text.split(/\r?\n/, 1)[0].slice(0, 40) || "Text", visible: true, locked: false, opacity, fill_opacity: 1, blend_mode: byId("text-blend").value, text, font_family: byId("text-font").value, font_size: size, color, x: Math.round(number("text-x")), y: Math.round(number("text-y")), alignment: byId("text-align").value };
+    const layer = { type: "text-layer", name: text.split(/\r?\n/, 1)[0].slice(0, 40) || "Text", visible: true, locked: false, opacity, fill_opacity: 1, blend_mode: byId("text-blend").value, text, font_family: byId("text-font").value, font_size: size, color, x: Math.round(number("text-x")), y: Math.round(number("text-y")), alignment: byId("text-align").value, styles: [] };
     if (selectedTextLayer !== null && operations[selectedTextLayer]?.type === "text-layer") {
       if (operations[selectedTextLayer].locked) return status("Unlock the text layer before editing it.");
+      layer.styles = structuredClone(operations[selectedTextLayer].styles || []);
       recordHistory(); operations[selectedTextLayer] = layer; selectedTextLayer = null; byId("make-text-layer").textContent = "Add text layer"; refreshHistory(); void render().catch((error) => status(error.message));
     } else void add(layer);
   });
@@ -137,9 +153,10 @@
     if (!overlayAsset) return status("Choose an overlay image first.");
     const width = number("overlay-width"), height = number("overlay-height"), rotation = number("overlay-rotation"), opacity = number("overlay-opacity");
     if (![width, height].every(Number.isInteger) || width < 1 || height < 1 || width > 65535 || height > 65535 || !Number.isFinite(rotation) || rotation < -180 || rotation > 180 || !Number.isFinite(opacity) || opacity < 0 || opacity > 1) return status("Check the overlay size, rotation, and opacity.");
-    const layer = { type: "image-overlay-layer", name: overlayAsset.name.slice(0, 200), visible: true, locked: false, opacity, fill_opacity: 1, blend_mode: byId("overlay-blend").value, original_name: overlayAsset.name, data_uri: overlayAsset.data_uri, width, height, rotation_degrees: rotation, x: Math.round(number("overlay-x")), y: Math.round(number("overlay-y")) };
+    const layer = { type: "image-overlay-layer", name: overlayAsset.name.slice(0, 200), visible: true, locked: false, opacity, fill_opacity: 1, blend_mode: byId("overlay-blend").value, original_name: overlayAsset.name, data_uri: overlayAsset.data_uri, width, height, rotation_degrees: rotation, x: Math.round(number("overlay-x")), y: Math.round(number("overlay-y")), styles: [] };
     if (selectedOverlayLayer !== null && operations[selectedOverlayLayer]?.type === "image-overlay-layer") {
       if (operations[selectedOverlayLayer].locked) return status("Unlock the image overlay before editing it.");
+      layer.styles = structuredClone(operations[selectedOverlayLayer].styles || []);
       recordHistory(); operations[selectedOverlayLayer] = layer; selectedOverlayLayer = null; byId("make-overlay-layer").textContent = "Add image overlay"; refreshHistory(); void render().catch((error) => status(error.message));
     } else void add(layer);
   });
@@ -152,6 +169,35 @@
     [...indices].reverse().forEach((index) => operations.splice(index, 1));
     operations.splice(insertAt, 0, { type: "layer-group", name, visible: true, locked: false, opacity, fill_opacity: 1, blend_mode: byId("group-blend").value, operations: children });
     resetLayerEditors(); refreshHistory(); void render().catch((error) => status(error.message));
+  });
+  const styleColor = () => { const hex = byId("style-color").value, alpha = number("style-alpha"); return [Number.parseInt(hex.slice(1, 3), 16), Number.parseInt(hex.slice(3, 5), 16), Number.parseInt(hex.slice(5, 7), 16), Math.round(alpha * 255)]; };
+  const styleFromForm = () => {
+    const type = byId("style-type").value, color = styleColor();
+    if (type === "stroke") return { type, enabled: true, color, size: number("style-size"), position: byId("style-position").value };
+    if (type === "drop-shadow") return { type, enabled: true, color, offset_x: Math.round(number("style-offset-x")), offset_y: Math.round(number("style-offset-y")), blur: number("style-blur"), spread: number("style-spread") };
+    return { type, enabled: true, color, size: number("style-size"), intensity: number("style-intensity") };
+  };
+  byId("save-style").addEventListener("click", () => {
+    const layer = selectedStyleLayer === null ? null : operations[selectedStyleLayer];
+    if (!layer || !["text-layer", "image-overlay-layer"].includes(layer.type)) return status("Choose Styles on a text or image layer first.");
+    if (layer.locked) return status("Unlock the layer before changing its styles.");
+    const style = styleFromForm(); const values = Object.values(style).filter((value) => typeof value === "number");
+    if (values.some((value) => !Number.isFinite(value)) || style.color[3] < 0 || style.color[3] > 255) return status("Check the style settings.");
+    recordHistory(); layer.styles ||= [];
+    if (selectedStyleIndex === null) layer.styles.push(style); else layer.styles[selectedStyleIndex] = style;
+    selectedStyleIndex = null; byId("save-style").textContent = "Add style"; refreshStyles(); refreshLayers(); void render().catch((error) => status(error.message));
+  });
+  byId("apply-style-preset").addEventListener("click", () => {
+    const layer = selectedStyleLayer === null ? null : operations[selectedStyleLayer], preset = byId("style-preset").value;
+    if (!layer || !["text-layer", "image-overlay-layer"].includes(layer.type)) return status("Choose Styles on a text or image layer first.");
+    if (layer.locked) return status("Unlock the layer before changing its styles.");
+    if (!preset) return status("Choose a style preset first.");
+    recordHistory();
+    layer.styles = preset === "midnight-lime" ? [
+      { type: "stroke", enabled: true, color: [0, 0, 0, 255], size: 2, position: "outside" },
+      { type: "outer-glow", enabled: true, color: [57, 255, 20, 180], size: 8, intensity: 1 },
+    ] : [{ type: "drop-shadow", enabled: true, color: [0, 0, 0, 170], offset_x: 6, offset_y: 6, blur: 8, spread: 1 }];
+    selectedStyleIndex = null; byId("save-style").textContent = "Add style"; refreshStyles(); refreshLayers(); void render().catch((error) => status(error.message));
   });
   byId("undo").addEventListener("click", () => { if (undoStack.length) { redoStack.push(structuredClone(operations)); restore(undoStack.pop()); resetLayerEditors(); refreshHistory(); void render().catch((error) => status(error.message)); } });
   byId("redo").addEventListener("click", () => { if (redoStack.length) { undoStack.push(structuredClone(operations)); restore(redoStack.pop()); resetLayerEditors(); refreshHistory(); void render().catch((error) => status(error.message)); } });

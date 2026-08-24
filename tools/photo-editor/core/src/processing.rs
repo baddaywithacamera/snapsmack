@@ -136,6 +136,8 @@ pub enum Operation {
         x: i32,
         y: i32,
         alignment: TextAlignment,
+        #[serde(default)]
+        styles: Vec<LayerStyle>,
     },
     ImageOverlayLayer {
         name: String,
@@ -151,6 +153,8 @@ pub enum Operation {
         rotation_degrees: f32,
         x: i32,
         y: i32,
+        #[serde(default)]
+        styles: Vec<LayerStyle>,
     },
     LayerGroup {
         name: String,
@@ -179,6 +183,40 @@ pub enum TextAlignment {
     Left,
     Center,
     Right,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "kebab-case")]
+pub enum LayerStyle {
+    Stroke {
+        enabled: bool,
+        color: [u8; 4],
+        size: u32,
+        position: StrokePosition,
+    },
+    DropShadow {
+        enabled: bool,
+        color: [u8; 4],
+        offset_x: i32,
+        offset_y: i32,
+        blur: u32,
+        spread: u32,
+    },
+    OuterGlow {
+        enabled: bool,
+        color: [u8; 4],
+        size: u32,
+        intensity: f32,
+    },
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum StrokePosition {
+    Inside,
+    #[default]
+    Center,
+    Outside,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
@@ -468,6 +506,7 @@ fn apply_with_depth(
                 x,
                 y,
                 alignment,
+                styles,
             } => {
                 validate_layer_header(&name, opacity, fill_opacity)?;
                 if text.is_empty()
@@ -480,8 +519,9 @@ fn apply_with_depth(
                 if !visible || opacity == 0.0 || fill_opacity == 0.0 {
                     image
                 } else {
-                    apply_text_layer(
-                        &image,
+                    let layer = render_text_layer(
+                        image.width(),
+                        image.height(),
                         &text,
                         font_family,
                         font_size,
@@ -489,9 +529,9 @@ fn apply_with_depth(
                         x,
                         y,
                         alignment,
-                        opacity * fill_opacity,
-                        blend_mode,
-                    )?
+                    )?;
+                    let styled = apply_layer_styles(&layer, &styles)?;
+                    composite_overlay(&image, &styled, opacity * fill_opacity, blend_mode)
                 }
             }
             Operation::ImageOverlayLayer {
@@ -508,6 +548,7 @@ fn apply_with_depth(
                 rotation_degrees,
                 x,
                 y,
+                styles,
             } => {
                 validate_layer_header(&name, opacity, fill_opacity)?;
                 if original_name.trim().is_empty()
@@ -525,7 +566,7 @@ fn apply_with_depth(
                 if !visible || opacity == 0.0 || fill_opacity == 0.0 {
                     image
                 } else {
-                    apply_image_overlay(
+                    let layer = render_image_overlay(
                         &image,
                         &data_uri,
                         width,
@@ -533,10 +574,10 @@ fn apply_with_depth(
                         rotation_degrees,
                         x,
                         y,
-                        opacity * fill_opacity,
-                        blend_mode,
                         budget,
-                    )?
+                    )?;
+                    let styled = apply_layer_styles(&layer, &styles)?;
+                    composite_overlay(&image, &styled, opacity * fill_opacity, blend_mode)
                 }
             }
             Operation::LayerGroup {
@@ -716,8 +757,9 @@ fn load_system_font(family: FontFamily) -> Result<Vec<u8>, ProcessingError> {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn apply_text_layer(
-    base: &DynamicImage,
+fn render_text_layer(
+    canvas_width: u32,
+    canvas_height: u32,
     text: &str,
     family: FontFamily,
     size: f32,
@@ -725,8 +767,6 @@ fn apply_text_layer(
     x: i32,
     y: i32,
     alignment: TextAlignment,
-    opacity: f32,
-    mode: BlendMode,
 ) -> Result<DynamicImage, ProcessingError> {
     let bytes = load_system_font(family)?;
     let font = FontRef::try_from_slice(&bytes)
@@ -734,7 +774,7 @@ fn apply_text_layer(
     let scale = PxScale::from(size);
     let scaled = font.as_scaled(scale);
     let line_height = (scaled.ascent() - scaled.descent() + scaled.line_gap()).max(size);
-    let mut overlay = ImageBuffer::from_pixel(base.width(), base.height(), Rgba([0_u16; 4]));
+    let mut overlay = ImageBuffer::from_pixel(canvas_width, canvas_height, Rgba([0_u16; 4]));
 
     for (line_index, line) in text.lines().enumerate() {
         let mut width = 0.0_f32;
@@ -787,12 +827,7 @@ fn apply_text_layer(
             previous = Some(id);
         }
     }
-    Ok(composite_overlay(
-        base,
-        &DynamicImage::ImageRgba16(overlay),
-        opacity,
-        mode,
-    ))
+    Ok(DynamicImage::ImageRgba16(overlay))
 }
 
 fn composite_overlay(
@@ -824,6 +859,296 @@ fn composite_overlay(
             ((source_alpha + base_alpha * (1.0 - source_alpha)) * 65535.0).round() as u16;
     }
     DynamicImage::ImageRgba16(output)
+}
+
+fn apply_layer_styles(
+    layer: &DynamicImage,
+    styles: &[LayerStyle],
+) -> Result<DynamicImage, ProcessingError> {
+    if styles.len() > 32 {
+        return Err(ProcessingError::Invalid(
+            "a layer may contain at most 32 styles".into(),
+        ));
+    }
+    let mut output = layer.to_rgba16();
+    for style in styles {
+        match *style {
+            LayerStyle::Stroke { enabled: false, .. }
+            | LayerStyle::DropShadow { enabled: false, .. }
+            | LayerStyle::OuterGlow { enabled: false, .. } => {}
+            LayerStyle::Stroke {
+                color,
+                size,
+                position,
+                ..
+            } => {
+                if size == 0 || size > 64 {
+                    return Err(ProcessingError::Invalid(
+                        "stroke size must be 1 to 64".into(),
+                    ));
+                }
+                let alpha = alpha_mask(&output);
+                let dilated = max_filter(&alpha, output.width(), output.height(), size);
+                let eroded = min_filter(&alpha, output.width(), output.height(), size);
+                let mask: Vec<u16> = alpha
+                    .iter()
+                    .enumerate()
+                    .map(|(index, value)| match position {
+                        StrokePosition::Outside => dilated[index].saturating_sub(*value),
+                        StrokePosition::Inside => value.saturating_sub(eroded[index]),
+                        StrokePosition::Center => dilated[index].saturating_sub(eroded[index]),
+                    })
+                    .collect();
+                let stroke = color_layer(output.width(), output.height(), &mask, color);
+                output = match position {
+                    StrokePosition::Outside => rgba_over(&stroke, &output),
+                    StrokePosition::Inside | StrokePosition::Center => rgba_over(&output, &stroke),
+                };
+            }
+            LayerStyle::DropShadow {
+                color,
+                offset_x,
+                offset_y,
+                blur,
+                spread,
+                ..
+            } => {
+                if blur > 64
+                    || spread > 64
+                    || offset_x.unsigned_abs() > 65_535
+                    || offset_y.unsigned_abs() > 65_535
+                {
+                    return Err(ProcessingError::Invalid(
+                        "invalid drop-shadow settings".into(),
+                    ));
+                }
+                let alpha = alpha_mask(&output);
+                let spread_mask = if spread == 0 {
+                    alpha
+                } else {
+                    max_filter(&alpha, output.width(), output.height(), spread)
+                };
+                let blurred = box_blur_alpha(&spread_mask, output.width(), output.height(), blur);
+                let shifted = shift_mask(
+                    &blurred,
+                    output.width(),
+                    output.height(),
+                    offset_x,
+                    offset_y,
+                );
+                let shadow = color_layer(output.width(), output.height(), &shifted, color);
+                output = rgba_over(&shadow, &output);
+            }
+            LayerStyle::OuterGlow {
+                color,
+                size,
+                intensity,
+                ..
+            } => {
+                if size == 0
+                    || size > 64
+                    || !intensity.is_finite()
+                    || !(0.0..=2.0).contains(&intensity)
+                {
+                    return Err(ProcessingError::Invalid(
+                        "invalid outer-glow settings".into(),
+                    ));
+                }
+                let alpha = alpha_mask(&output);
+                let dilated = max_filter(&alpha, output.width(), output.height(), size);
+                let blurred =
+                    box_blur_alpha(&dilated, output.width(), output.height(), (size / 2).max(1));
+                let mask: Vec<u16> = blurred
+                    .iter()
+                    .zip(alpha.iter())
+                    .map(|(wide, source)| {
+                        (wide.saturating_sub(*source) as f32 * intensity)
+                            .round()
+                            .clamp(0.0, 65535.0) as u16
+                    })
+                    .collect();
+                let glow = color_layer(output.width(), output.height(), &mask, color);
+                output = rgba_over(&glow, &output);
+            }
+        }
+    }
+    Ok(DynamicImage::ImageRgba16(output))
+}
+
+fn alpha_mask(image: &ImageBuffer<Rgba<u16>, Vec<u16>>) -> Vec<u16> {
+    image.pixels().map(|pixel| pixel.0[3]).collect()
+}
+
+fn color_layer(
+    width: u32,
+    height: u32,
+    mask: &[u16],
+    color: [u8; 4],
+) -> ImageBuffer<Rgba<u16>, Vec<u16>> {
+    ImageBuffer::from_fn(width, height, |x, y| {
+        let alpha = u32::from(mask[(y * width + x) as usize]) * u32::from(color[3]) / 255;
+        Rgba([
+            u16::from(color[0]) * 257,
+            u16::from(color[1]) * 257,
+            u16::from(color[2]) * 257,
+            alpha as u16,
+        ])
+    })
+}
+
+fn rgba_over(
+    bottom: &ImageBuffer<Rgba<u16>, Vec<u16>>,
+    top: &ImageBuffer<Rgba<u16>, Vec<u16>>,
+) -> ImageBuffer<Rgba<u16>, Vec<u16>> {
+    ImageBuffer::from_fn(bottom.width(), bottom.height(), |x, y| {
+        let under = bottom.get_pixel(x, y).0;
+        let over = top.get_pixel(x, y).0;
+        let top_alpha = over[3] as f32 / 65535.0;
+        let bottom_alpha = under[3] as f32 / 65535.0;
+        let output_alpha = top_alpha + bottom_alpha * (1.0 - top_alpha);
+        if output_alpha <= f32::EPSILON {
+            return Rgba([0, 0, 0, 0]);
+        }
+        let mut result = [0_u16; 4];
+        for channel in 0..3 {
+            let value = (over[channel] as f32 * top_alpha
+                + under[channel] as f32 * bottom_alpha * (1.0 - top_alpha))
+                / output_alpha;
+            result[channel] = value.round().clamp(0.0, 65535.0) as u16;
+        }
+        result[3] = (output_alpha * 65535.0).round() as u16;
+        Rgba(result)
+    })
+}
+
+fn max_filter(mask: &[u16], width: u32, height: u32, radius: u32) -> Vec<u16> {
+    neighbourhood_filter(mask, width, height, radius, true)
+}
+
+fn min_filter(mask: &[u16], width: u32, height: u32, radius: u32) -> Vec<u16> {
+    neighbourhood_filter(mask, width, height, radius, false)
+}
+
+fn neighbourhood_filter(
+    mask: &[u16],
+    width: u32,
+    height: u32,
+    radius: u32,
+    maximum: bool,
+) -> Vec<u16> {
+    let mut horizontal = vec![0_u16; mask.len()];
+    for y in 0..height {
+        let start = (y * width) as usize;
+        let line = extrema_line(
+            &mask[start..start + width as usize],
+            radius as usize,
+            maximum,
+        );
+        horizontal[start..start + width as usize].copy_from_slice(&line);
+    }
+    let mut output = vec![0_u16; mask.len()];
+    for x in 0..width {
+        let column: Vec<u16> = (0..height)
+            .map(|y| horizontal[(y * width + x) as usize])
+            .collect();
+        let filtered = extrema_line(&column, radius as usize, maximum);
+        for (y, value) in filtered.into_iter().enumerate() {
+            output[y * width as usize + x as usize] = value;
+        }
+    }
+    output
+}
+
+fn extrema_line(values: &[u16], radius: usize, maximum: bool) -> Vec<u16> {
+    use std::collections::VecDeque;
+    let mut output = vec![0_u16; values.len()];
+    let mut deque = VecDeque::new();
+    let mut next = 0_usize;
+    for (center, destination) in output.iter_mut().enumerate() {
+        let end = center.saturating_add(radius).min(values.len() - 1);
+        while next <= end {
+            while deque.back().is_some_and(|index| {
+                if maximum {
+                    values[*index] <= values[next]
+                } else {
+                    values[*index] >= values[next]
+                }
+            }) {
+                deque.pop_back();
+            }
+            deque.push_back(next);
+            next += 1;
+        }
+        let start = center.saturating_sub(radius);
+        while deque.front().is_some_and(|index| *index < start) {
+            deque.pop_front();
+        }
+        *destination = values[*deque.front().expect("non-empty filter window")];
+    }
+    output
+}
+
+fn box_blur_alpha(mask: &[u16], width: u32, height: u32, radius: u32) -> Vec<u16> {
+    if radius == 0 {
+        return mask.to_vec();
+    }
+    let mut horizontal = vec![0_u16; mask.len()];
+    for y in 0..height {
+        let start = (y * width) as usize;
+        let line = blur_line(&mask[start..start + width as usize], radius as usize);
+        horizontal[start..start + width as usize].copy_from_slice(&line);
+    }
+    let mut output = vec![0_u16; mask.len()];
+    for x in 0..width {
+        let column: Vec<u16> = (0..height)
+            .map(|y| horizontal[(y * width + x) as usize])
+            .collect();
+        let filtered = blur_line(&column, radius as usize);
+        for (y, value) in filtered.into_iter().enumerate() {
+            output[y * width as usize + x as usize] = value;
+        }
+    }
+    output
+}
+
+fn blur_line(values: &[u16], radius: usize) -> Vec<u16> {
+    let mut output = vec![0_u16; values.len()];
+    let mut sum = 0_u64;
+    let mut next = 0_usize;
+    let mut previous_start = 0_usize;
+    for (center, destination) in output.iter_mut().enumerate() {
+        let end = center.saturating_add(radius).min(values.len() - 1);
+        while next <= end {
+            sum += u64::from(values[next]);
+            next += 1;
+        }
+        let start = center.saturating_sub(radius);
+        while previous_start < start {
+            sum -= u64::from(values[previous_start]);
+            previous_start += 1;
+        }
+        *destination = (sum / (end - start + 1) as u64) as u16;
+    }
+    output
+}
+
+fn shift_mask(mask: &[u16], width: u32, height: u32, offset_x: i32, offset_y: i32) -> Vec<u16> {
+    let mut output = vec![0_u16; mask.len()];
+    for y in 0..height {
+        for x in 0..width {
+            let target_x = i64::from(x) + i64::from(offset_x);
+            let target_y = i64::from(y) + i64::from(offset_y);
+            if target_x >= 0
+                && target_y >= 0
+                && target_x < i64::from(width)
+                && target_y < i64::from(height)
+            {
+                output[(target_y as u32 * width + target_x as u32) as usize] =
+                    mask[(y * width + x) as usize];
+            }
+        }
+    }
+    output
 }
 
 fn decode_embedded_overlay(data_uri: &str, budget: u64) -> Result<DynamicImage, ProcessingError> {
@@ -936,7 +1261,7 @@ fn rotate_overlay(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn apply_image_overlay(
+fn render_image_overlay(
     base: &DynamicImage,
     data_uri: &str,
     width: u32,
@@ -944,8 +1269,6 @@ fn apply_image_overlay(
     rotation_degrees: f32,
     x: i32,
     y: i32,
-    opacity: f32,
-    mode: BlendMode,
     budget: u64,
 ) -> Result<DynamicImage, ProcessingError> {
     let decoded = decode_embedded_overlay(data_uri, budget)?;
@@ -963,12 +1286,7 @@ fn apply_image_overlay(
             canvas.put_pixel(destination_x as u32, destination_y as u32, *pixel);
         }
     }
-    Ok(composite_overlay(
-        base,
-        &DynamicImage::ImageRgba16(canvas),
-        opacity,
-        mode,
-    ))
+    Ok(DynamicImage::ImageRgba16(canvas))
 }
 
 fn srgb_to_linear(value: f32) -> f32 {
