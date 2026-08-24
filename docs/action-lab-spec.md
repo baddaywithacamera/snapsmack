@@ -1,31 +1,33 @@
 # ACTION LAB
 
 **Status:** TO DO / concept  
-**Type:** AI-enabled companion tool  
-**Core promise:** Describe the photographic look or correction you want. ACTION LAB builds the reusable action/preset and places it in the correct local Actions folder for you.
+**Type:** SnapSmack-exclusive AI tool  
+**Core promise:** Describe the photographic look or correction you want. ACTION LAB builds a Lightroom-compatible preset and places it in SnapSmack's local Actions folder for you.
 
 ## The pitch
 
-Stop buying expensive action and preset packs just to get one useful treatment. Tell ACTION LAB what you want in ordinary language—such as “muted winter documentary colour, protect skin tones, lift deep shadows, add restrained grain”—and it creates a reusable local recipe you own.
+Stop buying expensive action and preset packs just to get one useful treatment. Tell ACTION LAB what you want in ordinary language—such as “muted winter documentary colour, protect skin tones, lift deep shadows, add restrained grain”—and it creates a reusable Lightroom-compatible preset you own.
+
+ACTION LAB itself belongs exclusively to SnapSmack. It is not a general-purpose standalone generator and will not be offered as an editor-neutral product. Compatibility belongs to the preset it creates, not to the tool that creates it.
 
 ## First useful version
 
 - Accept a plain-language description of the desired result.
-- Ask which supported editor or SNAP SLAPPER workflow should receive it.
+- Build within the SnapSmack adjustment model and workflow.
 - Convert the request into a constrained, inspectable adjustment recipe.
 - Preview the recipe against one or more user-selected photographs.
 - Let the user refine the result conversationally.
 - Show every adjustment before installation.
-- Save the finished action/preset into the configured local Actions folder.
+- Save the finished preset into SnapSmack's configured local Actions folder.
 - Preserve the generated recipe as an editable ACTION LAB project.
 - Never upload photographs unless the user explicitly chooses a cloud model and approves the upload.
 
-## Output targets
+## Output contract
 
-- SNAP SLAPPER native adjustment recipes first.
-- Standard preset formats where they are documented and safely writable.
-- Editor-specific actions only where the target application provides a supported format or automation interface.
-- A sidecar recipe plus clear manual-install instructions when direct generation is not reliable.
+- Every generated action uses SnapSmack's native editable recipe internally.
+- Every completed action can be emitted as a Lightroom-compatible preset.
+- ACTION LAB generation, refinement, storage, and installation remain locked to SnapSmack.
+- The compatible preset is the portable result; ACTION LAB is not licensed or packaged as a Lightroom add-on.
 
 ## Guardrails
 
@@ -38,7 +40,6 @@ Stop buying expensive action and preset packs just to get one useful treatment. 
 
 ## Open decisions
 
-- Exact first editor target after SNAP SLAPPER.
 - Local model, cloud model, or user-selectable hybrid.
 - Whether recipes should support masks and subject-aware adjustments in the first release.
-- Naming and interchange format for portable ACTION LAB recipes.
+- Exact Lightroom-compatible preset version and metadata fields to target first.
