@@ -58,6 +58,14 @@
   });
   byId("angle").addEventListener("input", () => { byId("angle-value").textContent = `${Number(byId("angle").value).toFixed(1)}°`; });
   byId("straighten").addEventListener("click", () => { const degrees = Number(byId("angle").value); if (degrees === 0) return status("Choose a straighten angle first."); void add({ type: "straighten", degrees }); });
+  document.querySelectorAll("[data-reset]").forEach((button) => button.addEventListener("click", () => { document.querySelector(`[data-darkroom='${button.dataset.reset}']`).value = 0; }));
+  byId("apply-darkroom").addEventListener("click", async () => {
+    const settings = {};
+    document.querySelectorAll("[data-darkroom]").forEach((input) => { settings[input.dataset.darkroom] = Number(input.value); });
+    if (Object.values(settings).every((value) => value === 0)) return status("Set at least one darkroom adjustment.");
+    await add({ type: "darkroom", settings });
+    document.querySelectorAll("[data-darkroom]").forEach((input) => { input.value = 0; });
+  });
   byId("undo").addEventListener("click", () => { if (operations.length) { redo.push(operations.pop()); refreshHistory(); void render().catch((error) => status(error.message)); } });
   byId("redo").addEventListener("click", () => { if (redo.length) { operations.push(redo.pop()); refreshHistory(); void render().catch((error) => status(error.message)); } });
   byId("reset").addEventListener("click", () => { redo.push(...operations.splice(0)); refreshHistory(); void render().catch((error) => status(error.message)); });

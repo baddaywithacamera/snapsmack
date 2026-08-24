@@ -20,6 +20,19 @@
       <fieldset><legend>Crop</legend><label>Ratio<select id="ratio"><option value="free">Free</option><option value="1:1">1:1</option><option value="4:3">4:3</option><option value="3:2">3:2</option><option value="16:9">16:9</option></select></label><label>X<input id="crop-x" type="number" min="0" value="0"></label><label>Y<input id="crop-y" type="number" min="0" value="0"></label><label>Width<input id="crop-width" type="number" min="1"></label><label>Height<input id="crop-height" type="number" min="1"></label><button id="crop">Apply crop</button></fieldset>
       <fieldset><legend>Straighten</legend><label>Angle <output id="angle-value">0.0°</output><input id="angle" type="range" min="-45" max="45" value="0" step="0.1"></label><button id="straighten">Apply straighten</button></fieldset>
       <fieldset><legend>Resize</legend><label>Width<input id="width" type="number" min="1" max="65535"></label><label>Height<input id="height" type="number" min="1" max="65535"></label><button id="resize">Apply resize</button></fieldset>
+      <details open><summary>Darkroom</summary><div id="darkroom-controls">
+        <label>Exposure <span><input data-darkroom="exposure" type="number" min="-5" max="5" value="0" step="0.1"><button data-reset="exposure" aria-label="Reset exposure">↺</button></span></label>
+        <label>Contrast <span><input data-darkroom="contrast" type="number" min="-1" max="1" value="0" step="0.01"><button data-reset="contrast" aria-label="Reset contrast">↺</button></span></label>
+        <label>Highlights <span><input data-darkroom="highlights" type="number" min="-1" max="1" value="0" step="0.01"><button data-reset="highlights" aria-label="Reset highlights">↺</button></span></label>
+        <label>Shadows <span><input data-darkroom="shadows" type="number" min="-1" max="1" value="0" step="0.01"><button data-reset="shadows" aria-label="Reset shadows">↺</button></span></label>
+        <label>Whites <span><input data-darkroom="whites" type="number" min="-1" max="1" value="0" step="0.01"><button data-reset="whites" aria-label="Reset whites">↺</button></span></label>
+        <label>Blacks <span><input data-darkroom="blacks" type="number" min="-1" max="1" value="0" step="0.01"><button data-reset="blacks" aria-label="Reset blacks">↺</button></span></label>
+        <label>Temperature <span><input data-darkroom="temperature" type="number" min="-1" max="1" value="0" step="0.01"><button data-reset="temperature" aria-label="Reset temperature">↺</button></span></label>
+        <label>Tint <span><input data-darkroom="tint" type="number" min="-1" max="1" value="0" step="0.01"><button data-reset="tint" aria-label="Reset tint">↺</button></span></label>
+        <label>Saturation <span><input data-darkroom="saturation" type="number" min="-1" max="1" value="0" step="0.01"><button data-reset="saturation" aria-label="Reset saturation">↺</button></span></label>
+        <label>Vibrance <span><input data-darkroom="vibrance" type="number" min="-1" max="1" value="0" step="0.01"><button data-reset="vibrance" aria-label="Reset vibrance">↺</button></span></label>
+        <button id="apply-darkroom">Apply darkroom adjustment</button>
+      </div></details>
       <canvas id="histogram" width="256" height="100" aria-label="RGB histogram"></canvas>
       <output id="status" aria-live="polite">Ready</output>
     </aside>

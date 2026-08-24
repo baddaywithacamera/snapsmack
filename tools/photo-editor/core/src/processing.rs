@@ -72,6 +72,68 @@ pub enum Operation {
         width: u32,
         height: u32,
     },
+    Darkroom {
+        settings: DarkroomSettings,
+    },
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DarkroomSettings {
+    pub exposure: f32,
+    pub contrast: f32,
+    pub highlights: f32,
+    pub shadows: f32,
+    pub whites: f32,
+    pub blacks: f32,
+    pub temperature: f32,
+    pub tint: f32,
+    pub saturation: f32,
+    pub vibrance: f32,
+}
+
+impl DarkroomSettings {
+    fn is_neutral(self) -> bool {
+        [
+            self.exposure,
+            self.contrast,
+            self.highlights,
+            self.shadows,
+            self.whites,
+            self.blacks,
+            self.temperature,
+            self.tint,
+            self.saturation,
+            self.vibrance,
+        ]
+        .iter()
+        .all(|value| value.abs() < f32::EPSILON)
+    }
+
+    fn validate(self) -> Result<(), ProcessingError> {
+        let unit = [
+            self.contrast,
+            self.highlights,
+            self.shadows,
+            self.whites,
+            self.blacks,
+            self.temperature,
+            self.tint,
+            self.saturation,
+            self.vibrance,
+        ];
+        if !self.exposure.is_finite()
+            || !(-5.0..=5.0).contains(&self.exposure)
+            || unit
+                .iter()
+                .any(|value| !value.is_finite() || !(-1.0..=1.0).contains(value))
+        {
+            return Err(ProcessingError::Invalid(
+                "darkroom control is outside its documented range".into(),
+            ));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -180,9 +242,69 @@ pub fn apply(
                 checked_allocation(width, height, budget)?;
                 image.resize_exact(width, height, FilterType::Lanczos3)
             }
+            Operation::Darkroom { settings } => apply_darkroom(&image, settings)?,
         };
     }
     Ok(image)
+}
+
+fn srgb_to_linear(value: f32) -> f32 {
+    if value <= 0.04045 {
+        value / 12.92
+    } else {
+        ((value + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+fn linear_to_srgb(value: f32) -> f32 {
+    let value = value.clamp(0.0, 1.0);
+    if value <= 0.003_130_8 {
+        value * 12.92
+    } else {
+        1.055 * value.powf(1.0 / 2.4) - 0.055
+    }
+}
+
+fn apply_darkroom(
+    image: &DynamicImage,
+    settings: DarkroomSettings,
+) -> Result<DynamicImage, ProcessingError> {
+    settings.validate()?;
+    if settings.is_neutral() {
+        return Ok(image.clone());
+    }
+    let mut output = image.to_rgba16();
+    let exposure = 2.0_f32.powf(settings.exposure);
+    for pixel in output.pixels_mut() {
+        let alpha = pixel.0[3];
+        let mut rgb = [0.0_f32; 3];
+        for (index, channel) in rgb.iter_mut().enumerate() {
+            *channel = srgb_to_linear(pixel.0[index] as f32 / 65535.0) * exposure;
+        }
+        rgb[0] *= 1.0 + settings.temperature * 0.20 + settings.tint * 0.075;
+        rgb[1] *= 1.0 - settings.tint * 0.15;
+        rgb[2] *= 1.0 - settings.temperature * 0.20 + settings.tint * 0.075;
+        let luminance = (rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722).clamp(0.0, 1.0);
+        let tonal = settings.shadows * (1.0 - luminance).powi(2) * 0.25
+            + settings.highlights * luminance.powi(2) * 0.25
+            + settings.blacks * (1.0 - luminance).powi(6) * 0.12
+            + settings.whites * luminance.powi(6) * 0.12;
+        for channel in &mut rgb {
+            *channel = ((*channel + tonal - 0.18) * (1.0 + settings.contrast) + 0.18).max(0.0);
+        }
+        let luminance = rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+        let maximum = rgb.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+        let minimum = rgb.iter().copied().fold(f32::INFINITY, f32::min);
+        let chroma = (maximum - minimum).clamp(0.0, 1.0);
+        let saturation = (1.0 + settings.saturation) * (1.0 + settings.vibrance * (1.0 - chroma));
+        for (index, channel) in rgb.iter().enumerate() {
+            pixel.0[index] = (linear_to_srgb(luminance + (*channel - luminance) * saturation)
+                * 65535.0)
+                .round() as u16;
+        }
+        pixel.0[3] = alpha;
+    }
+    Ok(DynamicImage::ImageRgba16(output))
 }
 
 fn straighten(
