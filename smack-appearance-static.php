@@ -41,7 +41,7 @@ $current_gutter = (int)($settings['static_content_gutter'] ?? 40);
 
 <div class="main">
     <h2>STATIC PAGE APPEARANCE</h2>
-    <p class="dim" style="margin-bottom:20px;">Layout and spacing for static pages (About, Contact, Blogroll, etc.). These override each skin's built-in defaults when set.</p>
+    <p class="dim mb-20">Layout and spacing for static pages (About, Contact, Blogroll, etc.). These override each skin's built-in defaults when set.</p>
 
     <?php if (isset($_GET['msg'])): ?>
         <div class="alert alert-success">> STATIC PAGE APPEARANCE SAVED</div>
@@ -57,12 +57,12 @@ $current_gutter = (int)($settings['static_content_gutter'] ?? 40);
 
                 <div class="lens-input-wrapper">
                     <label>CONTENT WIDTH <span class="field-tip" data-tip="Maximum width of the text content column. Each skin has its own default when not set here.">ⓘ</span></label>
-                    <div style="display:flex; align-items:center; gap:12px;">
+                    <div class="flex-mid gap-12">
                         <input type="range"
                                name="settings[static_content_width]"
                                min="400" max="1400" step="10"
                                value="<?php echo $current_width; ?>"
-                               style="flex:1;"
+                               class="flex-1"
                                oninput="this.nextElementSibling.textContent = this.value + 'px'">
                         <span style="min-width:52px; font-family:monospace;"><?php echo $current_width; ?>px</span>
                     </div>
@@ -70,12 +70,12 @@ $current_gutter = (int)($settings['static_content_gutter'] ?? 40);
 
                 <div class="lens-input-wrapper">
                     <label>SIDE GUTTERS <span class="field-tip" data-tip="Internal side padding — how far text sits from the edge of the content area.">ⓘ</span></label>
-                    <div style="display:flex; align-items:center; gap:12px;">
+                    <div class="flex-mid gap-12">
                         <input type="range"
                                name="settings[static_content_gutter]"
                                min="0" max="120" step="4"
                                value="<?php echo $current_gutter; ?>"
-                               style="flex:1;"
+                               class="flex-1"
                                oninput="this.nextElementSibling.textContent = this.value + 'px'">
                         <span style="min-width:52px; font-family:monospace;"><?php echo $current_gutter; ?>px</span>
                     </div>
@@ -85,7 +85,7 @@ $current_gutter = (int)($settings['static_content_gutter'] ?? 40);
         </div>
 
         <!-- ── SAVE ───────────────────────────────────────────────────── -->
-        <div style="margin-top:4px;">
+        <div class="mt-4">
             <button type="submit" name="save_static_appearance" class="master-update-btn">SAVE STATIC PAGE APPEARANCE</button>
         </div>
 

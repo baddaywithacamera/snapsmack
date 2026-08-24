@@ -143,7 +143,7 @@ include 'core/sidebar.php';
             if they are locked out. The code is consumed on first use and they must set a new
             password immediately after.
             <?php if (!empty($user['recovery_code_hash'])): ?>
-                <br><span style="color:var(--accent,#aaa);">A recovery code is currently set for this account.</span>
+                <br><span class="text-accent">A recovery code is currently set for this account.</span>
             <?php endif; ?>
         </p>
         <form method="POST" style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">

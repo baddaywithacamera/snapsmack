@@ -189,7 +189,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
 
 <div class="main">
     <h2>ARCHIVE APPEARANCE</h2>
-    <p class="dim" style="margin-bottom:20px;">Controls how your image library looks to visitors. Layout mode, spacing, borders, and the floating gallery — your call, not the skin's.</p>
+    <p class="dim mb-20">Controls how your image library looks to visitors. Layout mode, spacing, borders, and the floating gallery — your call, not the skin's.</p>
 
     <?php if (isset($_GET['msg'])): ?>
         <div class="alert alert-success">> ARCHIVE APPEARANCE SAVED</div>
@@ -257,7 +257,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
 
                 <div class="lens-input-wrapper">
                     <label>COLUMNS <span class="field-tip" data-tip="How many columns across on desktop. Applies to square and cropped grid modes.">ⓘ</span></label>
-                    <div style="display:flex; align-items:center; gap:12px;">
+                    <div class="flex-mid gap-12">
                         <input type="range" name="settings[browse_cols]"
                                min="2" max="8" step="1"
                                value="<?php echo $current_cols; ?>"
@@ -268,7 +268,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
 
                 <div class="lens-input-wrapper">
                     <label>GUTTER <span class="field-tip" data-tip="Gap between grid tiles.">ⓘ</span></label>
-                    <div style="display:flex; align-items:center; gap:12px;">
+                    <div class="flex-mid gap-12">
                         <input type="range" name="settings[archive_gutter]"
                                min="0" max="40" step="2"
                                value="<?php echo $current_gutter; ?>"
@@ -279,7 +279,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
 
                 <div class="lens-input-wrapper">
                     <label>JUSTIFIED ROW HEIGHT <span class="field-tip" data-tip="Target row height for masonry/justified mode. Rows expand slightly to fill width.">ⓘ</span></label>
-                    <div style="display:flex; align-items:center; gap:12px;">
+                    <div class="flex-mid gap-12">
                         <input type="range" name="settings[justified_row_height]"
                                min="120" max="500" step="10"
                                value="<?php echo $current_row_h; ?>"
@@ -351,7 +351,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                 <div class="lens-input-wrapper">
                     <label>RECENT POSTS LISTED</label>
                     <?php $cal_posts = max(5, min(20, (int)($settings['calendar_post_count'] ?? 10))); ?>
-                    <div style="display:flex; align-items:center; gap:12px;">
+                    <div class="flex-mid gap-12">
                         <input type="range" name="settings[calendar_post_count]"
                                min="5" max="20" step="1"
                                value="<?php echo $cal_posts; ?>"

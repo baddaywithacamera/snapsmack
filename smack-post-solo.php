@@ -723,7 +723,7 @@ include 'core/sidebar.php';
     </div>
 
     <?php if (!empty($post_error)): ?>
-        <div class="alert" style="background:rgba(204,68,68,0.15);border:1px solid rgba(204,68,68,0.4);color:#cc4444;padding:12px 16px;border-radius:4px;margin-bottom:16px;">
+        <div class="alert" style="background:rgba(204,68,68,0.15);border:1px solid rgba(204,68,68,0.4);color:var(--danger, #cc4444);padding:12px 16px;border-radius:4px;margin-bottom:16px;">
             <?php echo htmlspecialchars($post_error); ?>
         </div>
     <?php endif; ?>
@@ -782,7 +782,7 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>COLLECTIONS</label>
                         <?php if (empty($all_collections)): ?>
-                            <p style="font-size:0.8rem;color:var(--text-muted,#888);margin:4px 0 0;">No collections yet — create one under <a href="smack-collections.php" style="color:var(--accent);">Collections</a>.</p>
+                            <p style="font-size:0.8rem;color:var(--text-muted,#888);margin:4px 0 0;">No collections yet — create one under <a href="smack-collections.php" class="text-accent">Collections</a>.</p>
                         <?php else: ?>
                         <div class="custom-multiselect">
                             <div class="select-box" onclick="toggleDropdown('collection-items')">

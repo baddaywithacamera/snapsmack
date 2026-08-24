@@ -175,10 +175,10 @@ include 'core/sidebar.php';
                                     <?php echo htmlspecialchars($t['handle'] ?: $t['remote_actor_url']); ?>
                                 </a>
                                 <?php if ((int)$t['unread'] > 0): ?>
-                                    <span class="status-pill status-online" style="margin-left:8px;"><?php echo (int)$t['unread']; ?> NEW</span>
+                                    <span class="status-pill status-online ml-8"><?php echo (int)$t['unread']; ?> NEW</span>
                                 <?php endif; ?>
                                 <?php if ((int)$t['is_request'] === 1): ?>
-                                    <span class="status-pill status-offline" style="margin-left:8px;">REQUEST</span>
+                                    <span class="status-pill status-offline ml-8">REQUEST</span>
                                 <?php endif; ?>
                             </div>
                             <div class="signal-body"><?php echo htmlspecialchars(mb_strimwidth((string)$t['last_body'], 0, 120, '…')); ?></div>

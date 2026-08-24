@@ -362,7 +362,7 @@ include 'core/sidebar.php';
                     <label>SITE EMAIL</label>
                     <?php if (($settings['hub_controls_email'] ?? '0') === '1' && ($settings['multisite_role'] ?? '') !== 'hub'): ?>
                         <div class="read-only-display"><?php echo htmlspecialchars($settings['site_email'] ?? '(not set)'); ?></div>
-                        <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">⊘ MANAGED BY NETWORK HUB</span>
+                        <span class="dim text-0-75 mt-4 d-block">⊘ MANAGED BY NETWORK HUB</span>
                     <?php else: ?>
                         <input type="email" name="settings[site_email]" value="<?php echo htmlspecialchars($settings['site_email'] ?? ''); ?>" placeholder="e.g. contact@example.com">
                     <?php endif; ?>
@@ -399,7 +399,7 @@ include 'core/sidebar.php';
                     <label>GLOBAL COMMENTS <span class="field-tip" data-tip="Master override for all posts. Disabling this kills comments site-wide regardless of per-post settings.">ⓘ</span></label>
                     <?php if (($settings['hub_controls_comments'] ?? '0') === '1' && ($settings['multisite_role'] ?? '') !== 'hub'): ?>
                         <div class="read-only-display"><?php echo ($settings['global_comments_enabled'] ?? '1') === '1' ? 'ENABLED' : 'DISABLED (KILL-SWITCH)'; ?></div>
-                        <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">⊘ MANAGED BY NETWORK HUB</span>
+                        <span class="dim text-0-75 mt-4 d-block">⊘ MANAGED BY NETWORK HUB</span>
                     <?php else: ?>
                         <select name="settings[global_comments_enabled]">
                             <option value="1" <?php echo (($settings['global_comments_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
@@ -411,10 +411,10 @@ include 'core/sidebar.php';
                 <div class="lens-input-wrapper">
                     <label>AKISMET API KEY <span class="field-tip" data-tip="Spam filter for comments. Leave blank to disable. Get a free key at akismet.com/signup">ⓘ</span></label>
                     <?php if (($settings['hub_controls_akismet'] ?? '0') === '1' && ($settings['multisite_role'] ?? '') !== 'hub'): ?>
-                        <div class="read-only-display" style="font-family:monospace;">
+                        <div class="read-only-display mono">
                             <?php $ak = $settings['akismet_key'] ?? ''; echo $ak ? '••••••••' . htmlspecialchars(substr($ak, -4)) : '(not set)'; ?>
                         </div>
-                        <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">⊘ MANAGED BY NETWORK HUB</span>
+                        <span class="dim text-0-75 mt-4 d-block">⊘ MANAGED BY NETWORK HUB</span>
                     <?php else: ?>
                         <div style="display:flex;gap:8px;align-items:center;">
                             <input type="text" name="settings[akismet_key]"
@@ -533,7 +533,7 @@ include 'core/sidebar.php';
                         </select>
 
                         <?php $show_thumb_style = ($settings['archive_layout'] ?? 'masonry') === 'thumbs'; ?>
-                        <div class="lens-input-wrapper<?php echo $show_thumb_style ? '' : ' d-none'; ?>" id="archive-thumb-style-wrap" style="margin-top:10px;">
+                        <div class="lens-input-wrapper<?php echo $show_thumb_style ? '' : ' d-none'; ?> mt-10" id="archive-thumb-style-wrap">
                             <label>THUMB STYLE <span class="field-tip" data-tip="How thumbnails are cropped in the thumbs grid. Cropped fills the tile; Square forces a 1:1 ratio.">ⓘ</span></label>
                             <select name="settings[archive_thumb_style]">
                                 <option value="cropped" <?php echo (($settings['archive_thumb_style'] ?? 'cropped') === 'cropped') ? 'selected' : ''; ?>>CROPPED (DEFAULT)</option>
@@ -564,7 +564,7 @@ include 'core/sidebar.php';
              ============================================================ -->
         <div class="box">
             <h3>UPDATE TRACK</h3>
-            <p class="dim" style="margin-bottom:16px;">
+            <p class="dim mb-16">
                 Controls which update stream this site receives.
                 <strong>Boring</strong> is the default — stable tagged releases only, recommended for production.
                 <strong>Bitchin'</strong> is opt-in — receives dev builds (D-suffixed versions) in addition to stable releases.
@@ -605,7 +605,7 @@ include 'core/sidebar.php';
                     <input type="text" name="settings[maintenance_title]" value="<?php echo htmlspecialchars($settings['maintenance_title'] ?? 'Under Maintenance'); ?>" placeholder="Under Maintenance">
                 </div>
             </div>
-            <div class="lens-input-wrapper" style="margin-top:12px;">
+            <div class="lens-input-wrapper mt-12">
                 <label>MESSAGE</label>
                 <textarea name="settings[maintenance_body]" rows="3" style="width:100%;resize:vertical;"><?php echo htmlspecialchars($settings['maintenance_body'] ?? "We're working on a few things. Check back soon."); ?></textarea>
             </div>
@@ -630,7 +630,7 @@ include 'core/sidebar.php';
                 <div class="lens-input-wrapper">
                     <label>TRUSTED PROXIES <span class="field-tip" data-tip="Only these peers may assert a forwarded client address. Use comma-separated IPs or CIDR ranges. Never add the whole internet.">i</span></label>
                     <input type="text" name="settings[trusted_proxies]" value="<?php echo htmlspecialchars($settings['trusted_proxies'] ?? '127.0.0.1,::1'); ?>" placeholder="127.0.0.1,::1">
-                    <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">The loopback default suits a same-host Cloudflare Tunnel or reverse proxy.</span>
+                    <span class="dim text-0-75 mt-4 d-block">The loopback default suits a same-host Cloudflare Tunnel or reverse proxy.</span>
                 </div>
                 <div class="lens-input-wrapper">
                     <label>CLIENT-IP DIAGNOSTIC</label>
@@ -655,22 +655,22 @@ include 'core/sidebar.php';
             $smack_mode_s    = $settings['smackback_mode']   ?? 'lockout';
             ?>
             <p class="dim">Automated sentinel: hashes all PHP, CSS, and JS files at install/update time and re-verifies on admin login and cron. Catches FTP credential compromise before it becomes a bigger problem.</p>
-            <div class="post-layout-grid" style="margin-top:12px;">
+            <div class="post-layout-grid mt-12">
                 <div class="lens-input-wrapper">
                     <label>STATUS</label>
-                    <p style="margin:0;">
+                    <p class="m-0">
                         <?php if (!$smack_enabled_s): ?>
                             <span class="dim">Disabled</span>
                         <?php elseif ($smack_status_s === 'breach'): ?>
-                            <strong style="color:#cc2200">⚠ BREACH DETECTED</strong>
+                            <strong style="color:var(--danger, #cc2200)">⚠ BREACH DETECTED</strong>
                         <?php else: ?>
-                            <span style="color:#5a9a5a">✓ Clean</span>
+                            <span style="color:var(--success, #5a9a5a)">✓ Clean</span>
                         <?php endif; ?>
                         &nbsp; Mode: <strong><?php echo strtoupper(htmlspecialchars($smack_mode_s)); ?></strong>
                     </p>
                 </div>
             </div>
-            <a href="smack-back.php" class="btn-smack" style="margin-top:12px;">OPEN SMACKBACK →</a>
+            <a href="smack-back.php" class="btn-smack mt-12">OPEN SMACKBACK →</a>
         </div>
 
         <!-- Footer Config + Image Engine moved to Global Vibe (smack-globalvibe.php) -->
@@ -712,7 +712,7 @@ include 'core/sidebar.php';
                 <div class="lens-input-wrapper">
                     <label>TIMEZONE</label>
                     <div class="read-only-display"><?php echo htmlspecialchars($settings['timezone'] ?? 'America/Edmonton'); ?></div>
-                    <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">⊘ MANAGED BY NETWORK HUB</span>
+                    <span class="dim text-0-75 mt-4 d-block">⊘ MANAGED BY NETWORK HUB</span>
                 </div>
                 <div class="lens-input-wrapper">
                     <label>DATE DISPLAY FORMAT</label>
@@ -823,10 +823,10 @@ include 'core/sidebar.php';
             ?>
             <div class="ai-grace-status" style="margin:0 0 16px;padding:12px 14px;border-radius:6px;border:1px solid <?php echo $ai_lapsed ? '#c55400' : 'rgba(76,175,80,.4)'; ?>;background:<?php echo $ai_lapsed ? 'rgba(197,84,0,.10)' : 'rgba(76,175,80,.08)'; ?>;">
                 <?php if ($ai_grace_flash): ?>
-                <p style="margin:0 0 8px;color:#4caf50;font-size:.85rem;">✓ <?php echo htmlspecialchars($ai_grace_flash); ?></p>
+                <p style="margin:0 0 8px;color:var(--success, #4caf50);font-size:.85rem;">✓ <?php echo htmlspecialchars($ai_grace_flash); ?></p>
                 <?php endif; ?>
                 <?php if ($ai_lapsed): ?>
-                <p style="margin:0 0 10px;font-size:.9rem;color:#e0a06a;"><strong>AI has lapsed.</strong> <?php echo htmlspecialchars(snap_ai_expired_message()); ?></p>
+                <p style="margin:0 0 10px;font-size:.9rem;color:var(--warning, #e0a06a);"><strong>AI has lapsed.</strong> <?php echo htmlspecialchars(snap_ai_expired_message()); ?></p>
                 <?php else: ?>
                 <p style="margin:0 0 10px;font-size:.9rem;"><strong>AI active — renews in <?php echo (int)$ai_days_left; ?> day<?php echo $ai_days_left === 1 ? '' : 's'; ?>.</strong>
                     <span class="dim">Every <?php echo SNAPSMACK_AI_GRACE_DAYS; ?> days AI switches itself off unless renewed, so API costs can't quietly run on across your sites.</span></p>
@@ -877,7 +877,7 @@ include 'core/sidebar.php';
                            value="<?php echo htmlspecialchars($settings['ai_key_gemini'] ?? ''); ?>"
                            placeholder="AIza…" autocomplete="off">
                     <span class="field-hint">Get yours at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a></span>
-                    <label style="margin-top:10px;">GEMINI MODEL</label>
+                    <label class="mt-10">GEMINI MODEL</label>
                     <select name="settings[ai_gemini_model]">
                         <?php
                         $gem_model  = $settings['ai_gemini_model'] ?? 'gemini-3.5-flash';
@@ -900,7 +900,7 @@ include 'core/sidebar.php';
                            value="<?php echo htmlspecialchars($settings['ai_key_openai'] ?? ''); ?>"
                            placeholder="sk-…" autocomplete="off">
                     <span class="field-hint">Get yours at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a></span>
-                    <label style="margin-top:10px;">CHATGPT MODEL</label>
+                    <label class="mt-10">CHATGPT MODEL</label>
                     <select name="settings[ai_openai_model]">
                         <?php
                         $oai_model  = $settings['ai_openai_model'] ?? 'gpt-5.4-mini';
@@ -921,7 +921,7 @@ include 'core/sidebar.php';
                            value="<?php echo htmlspecialchars($settings['ai_key_deepseek'] ?? ''); ?>"
                            placeholder="sk-…" autocomplete="off">
                     <span class="field-hint">Get yours at <a href="https://platform.deepseek.com/api_keys" target="_blank">platform.deepseek.com</a></span>
-                    <label style="margin-top:10px;">DEEPSEEK MODEL</label>
+                    <label class="mt-10">DEEPSEEK MODEL</label>
                     <select name="settings[ai_deepseek_model]">
                         <?php
                         $ds_model  = $settings['ai_deepseek_model'] ?? 'deepseek-chat';
@@ -942,7 +942,7 @@ include 'core/sidebar.php';
                            value="<?php echo htmlspecialchars($settings['ai_key_kimi'] ?? ''); ?>"
                            placeholder="sk-…" autocomplete="off">
                     <span class="field-hint">Get yours at <a href="https://platform.moonshot.ai/console/api-keys" target="_blank">platform.moonshot.ai</a></span>
-                    <label style="margin-top:10px;">KIMI MODEL</label>
+                    <label class="mt-10">KIMI MODEL</label>
                     <select name="settings[ai_kimi_model]">
                         <?php
                         $kimi_model  = $settings['ai_kimi_model'] ?? 'kimi-latest';
@@ -961,7 +961,7 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <div style="margin-top:12px;">
+            <div class="mt-12">
                 <button type="button" class="btn-smack btn-smack--sm" id="ai-test-btn"
                         style="display:<?php echo $ai_provider !== 'none' ? 'inline-block' : 'none'; ?>;">
                     TEST CONNECTION

@@ -418,8 +418,8 @@ $na_push_unregpend  = ($na_push_rows['network_alert_push_unregister_pending'] ??
 
 $na_status_labels = [
     'green'       => '<span style="color:var(--success,#5a9a5a)">&#9679; Green — no advisory</span>',
-    'yellow_slow' => '<span style="color:#cc9900">&#9679; YELLOW (advisory) — network-wide alert active</span>',
-    'yellow_fast' => '<span style="color:#ffcc00;font-weight:700;">&#9679; YELLOW FAST — coordinated threat detected</span>',
+    'yellow_slow' => '<span style="color:var(--warning, #cc9900)">&#9679; YELLOW (advisory) — network-wide alert active</span>',
+    'yellow_fast' => '<span style="color:var(--warning, #ffcc00);font-weight:700;">&#9679; YELLOW FAST — coordinated threat detected</span>',
 ];
 $na_status_display = $na_status_labels[$na['status']] ?? htmlspecialchars($na['status']);
 
@@ -450,7 +450,7 @@ include 'core/sidebar.php';
             <div class="stat-box">
                 <div class="stat-val"><?php
                     if (!$smack_enabled)  echo '<span class="dim">DISABLED</span>';
-                    elseif ($is_breach)   echo '<span style="color:#cc2200">BREACH</span>';
+                    elseif ($is_breach)   echo '<span style="color:var(--danger, #cc2200)">BREACH</span>';
                     else                  echo 'CLEAN';
                 ?></div>
                 <div class="stat-label">SMACKBACK STATUS</div>
@@ -464,7 +464,7 @@ include 'core/sidebar.php';
                 <div class="stat-label">FILES MONITORED<?php if (!empty($skin_breakdown)): ?> <span class="dim" style="font-size:0.7rem;font-weight:400;">(<?php echo implode(', ', $skin_breakdown); ?>)</span><?php endif; ?></div>
             </div>
             <div class="stat-box">
-                <div class="stat-val" style="font-size:0.9rem;"><?php echo $smack_last_verify ? htmlspecialchars($smack_last_verify) : '<span class="dim">Never</span>'; ?></div>
+                <div class="stat-val text-0-9"><?php echo $smack_last_verify ? htmlspecialchars($smack_last_verify) : '<span class="dim">Never</span>'; ?></div>
                 <div class="stat-label">LAST FULL VERIFY</div>
             </div>
         </div>
@@ -472,9 +472,9 @@ include 'core/sidebar.php';
 
     <?php if ($is_breach): ?>
     <!-- ── BREACH DETAIL ─────────────────────────────────────────────────── -->
-    <div class="box" style="border-left: 4px solid #cc2200;">
-        <h3 style="color:#cc2200">BREACH DETAIL</h3>
-        <p class="dim" style="margin-bottom:16px;">Detected: <strong style="color:inherit"><?php echo htmlspecialchars($smack_breach_at ?: 'Unknown'); ?></strong></p>
+    <div class="box" style="border-left: 4px solid var(--danger, #cc2200);">
+        <h3 style="color:var(--danger, #cc2200)">BREACH DETAIL</h3>
+        <p class="dim mb-16">Detected: <strong style="color:inherit"><?php echo htmlspecialchars($smack_breach_at ?: 'Unknown'); ?></strong></p>
 
         <?php require_once 'core/reauth.php'; $stepup_active = reauth_window_active('smackback_files'); ?>
 
@@ -489,7 +489,7 @@ include 'core/sidebar.php';
             </div>
         </form>
         <?php else: ?>
-        <p style="font-size:0.82rem;margin-bottom:12px;color:#88ffaa;">&#10003; File actions authorized — Re-bless / Remove enabled.</p>
+        <p style="font-size:0.82rem;margin-bottom:12px;color:var(--success, #88ffaa);">&#10003; File actions authorized — Re-bless / Remove enabled.</p>
         <?php endif; ?>
 
         <?php
@@ -512,26 +512,26 @@ include 'core/sidebar.php';
             <div style="display:flex;gap:6px;justify-content:flex-end;">
                 <?php if (!$is_unexpected): ?>
                 <a href="smack-back.php?action=restore&restore=<?php echo urlencode($entry['path'] ?? ''); ?>&t=<?php echo urlencode(csrf_token()); ?>"
-                   class="btn-smack btn-warning" style="margin-top:0;"
+                   class="btn-smack btn-warning mt-0"
                    onclick="return confirm('Restore <?php echo $bp; ?> from update server?');">RESTORE</a>
                 <?php endif; ?>
-                <form method="post" action="smack-back.php" style="margin:0;"
+                <form method="post" action="smack-back.php" class="m-0"
                       onsubmit="return confirm('Re-bless <?php echo $bp; ?>? Its current contents become the trusted baseline.');">
                     <input type="hidden" name="rebless_file" value="<?php echo $bp; ?>">
-                    <button type="submit" class="btn-smack" style="margin-top:0;"<?php echo $stepup_active ? '' : ' disabled'; ?>>RE-BLESS</button>
+                    <button type="submit" class="btn-smack mt-0"<?php echo $stepup_active ? '' : ' disabled'; ?>>RE-BLESS</button>
                 </form>
                 <?php if ($is_unexpected): ?>
-                <form method="post" action="smack-back.php" style="margin:0;"
+                <form method="post" action="smack-back.php" class="m-0"
                       onsubmit="return confirm('Permanently delete <?php echo $bp; ?> from this site? This cannot be undone.');">
                     <input type="hidden" name="remove_file" value="<?php echo $bp; ?>">
-                    <button type="submit" class="btn-smack btn-danger" style="margin-top:0;"<?php echo $stepup_active ? '' : ' disabled'; ?>>REMOVE</button>
+                    <button type="submit" class="btn-smack btn-danger mt-0"<?php echo $stepup_active ? '' : ' disabled'; ?>>REMOVE</button>
                 </form>
                 <?php endif; ?>
             </div>
         </div>
         <?php endforeach; ?>
 
-        <div class="form-action-row" style="margin-top:16px;">
+        <div class="form-action-row mt-16">
             <a href="smack-back.php?restore_all=1&t=<?php echo urlencode(csrf_token()); ?>"
                class="btn-smack btn-danger"
                onclick="return confirm('Restore all tampered files from the update server?');">
@@ -548,7 +548,7 @@ include 'core/sidebar.php';
     <!-- ── MANUAL VERIFICATION ───────────────────────────────────────────── -->
     <div class="box">
         <h3>MANUAL VERIFICATION</h3>
-        <p class="dim" style="margin-bottom:20px;">Hash all monitored files and compare against the stored baseline. Takes a fraction of a second on typical installs.</p>
+        <p class="dim mb-20">Hash all monitored files and compare against the stored baseline. Takes a fraction of a second on typical installs.</p>
         <form method="post">
             <?php csrf_field(); ?>
             <input type="hidden" name="run_verify" value="1">
@@ -559,9 +559,9 @@ include 'core/sidebar.php';
     <!-- ── INCIDENT LOG ──────────────────────────────────────────────────── -->
     <div class="box">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-            <h3 style="margin:0;">INCIDENT LOG</h3>
+            <h3 class="m-0">INCIDENT LOG</h3>
             <?php if (!empty($incidents)): ?>
-            <form method="post" style="margin:0;"
+            <form method="post" class="m-0"
                   onsubmit="return confirm('Clear the entire incident log? This permanently removes the recorded history of resolved integrity incidents.');">
                 <?php csrf_field(); ?>
                 <input type="hidden" name="clear_incident_log" value="1">
@@ -587,7 +587,7 @@ include 'core/sidebar.php';
                 </summary>
                 <div style="padding:10px 4px 4px;">
                     <?php if (empty($aff)): ?>
-                        <p class="dim" style="margin:0 0 10px;">No file list was recorded for this incident.</p>
+                        <p class="dim m-0 mb-10">No file list was recorded for this incident.</p>
                     <?php else: ?>
                         <ul class="input-code" style="margin:0 0 10px;padding:10px 14px;max-height:240px;overflow:auto;list-style:none;">
                             <?php foreach ($aff as $f): ?>
@@ -595,7 +595,7 @@ include 'core/sidebar.php';
                             <?php endforeach; ?>
                         </ul>
                     <?php endif; ?>
-                    <form method="post" style="margin:0;">
+                    <form method="post" class="m-0">
                         <?php csrf_field(); ?>
                         <input type="hidden" name="dismiss_incident" value="<?php echo (int)$inc['id']; ?>">
                         <button type="submit" class="btn-smack" style="font-size:0.8rem;padding:6px 12px;">DISMISS</button>
@@ -608,8 +608,8 @@ include 'core/sidebar.php';
 
     <!-- ── HUB PENDING DISABLE ───────────────────────────────────────────── -->
     <?php if ($smack_hub_pending_disable): ?>
-    <div class="box" style="border:2px solid #cc6600;background:rgba(204,102,0,0.08);">
-        <h3 style="color:#cc6600;">⚠ HUB HAS REQUESTED SMACKBACK BE DISABLED</h3>
+    <div class="box" style="border:2px solid var(--warning, #cc6600);background:rgba(204,102,0,0.08);">
+        <h3 style="color:var(--warning, #cc6600);">⚠ HUB HAS REQUESTED SMACKBACK BE DISABLED</h3>
         <p style="line-height:1.7;margin-bottom:20px;">
             Your network hub has pushed a request to turn off file integrity monitoring on this site.
             This was held for your confirmation because disabling SMACKBACK is a high-risk action —
@@ -620,13 +620,13 @@ include 'core/sidebar.php';
             <form method="post" onsubmit="return confirm('Disable SMACKBACK on this site as requested by hub?');">
                 <?php csrf_field(); ?>
                 <input type="hidden" name="smackback_hub_confirm_disable" value="1">
-                <div class="dash-grid" style="margin-bottom:10px;">
+                <div class="dash-grid mb-10">
                     <div class="lens-input-wrapper">
                         <label>PASSWORD</label>
                         <input type="password" name="reauth_password" autocomplete="current-password" required>
                     </div>
                     <div class="lens-input-wrapper">
-                        <label>2FA CODE <span class="dim" style="font-size:0.75rem;">(if enrolled)</span></label>
+                        <label>2FA CODE <span class="dim text-0-75">(if enrolled)</span></label>
                         <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="000000">
                     </div>
                 </div>
@@ -643,8 +643,8 @@ include 'core/sidebar.php';
 
     <!-- ── HUB PENDING MODE DOWNGRADE ───────────────────────────────────── -->
     <?php if ($smack_hub_pending_mode !== ''): ?>
-    <div class="box" style="border:2px solid #cc6600;background:rgba(204,102,0,0.08);">
-        <h3 style="color:#cc6600;">⚠ HUB HAS REQUESTED SMACKBACK MODE CHANGE</h3>
+    <div class="box" style="border:2px solid var(--warning, #cc6600);background:rgba(204,102,0,0.08);">
+        <h3 style="color:var(--warning, #cc6600);">⚠ HUB HAS REQUESTED SMACKBACK MODE CHANGE</h3>
         <p style="line-height:1.7;margin-bottom:20px;">
             Your network hub has pushed a request to change SMACKBACK protection mode from
             <strong>LOCKOUT</strong> to <strong><?php echo strtoupper(htmlspecialchars($smack_hub_pending_mode)); ?></strong>.
@@ -675,7 +675,7 @@ include 'core/sidebar.php';
             <div class="lens-input-wrapper">
                 <label>ENABLED</label>
                 <div class="read-only-display"><?php echo $smack_enabled ? 'YES' : 'NO'; ?></div>
-                <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">⊘ MANAGED BY NETWORK HUB</span>
+                <span class="dim text-0-75 mt-4 d-block">⊘ MANAGED BY NETWORK HUB</span>
             </div>
             <div class="lens-input-wrapper">
                 <label>RESPONSE MODE</label>
@@ -683,7 +683,7 @@ include 'core/sidebar.php';
             </div>
         </div>
         <p class="dim" style="font-size:0.85rem;margin-top:8px;">Enabled state and response mode are controlled by the network hub. Pageload check and alert email are yours to set.</p>
-        <form method="post" style="margin-top:16px;">
+        <form method="post" class="mt-16">
             <?php csrf_field(); ?>
             <input type="hidden" name="save_settings" value="1">
             <input type="hidden" name="smackback_enabled" value="<?php echo $smack_enabled ? '1' : '0'; ?>">
@@ -694,7 +694,7 @@ include 'core/sidebar.php';
                         <input type="checkbox" name="smackback_pageload_check" value="1"<?php echo $smack_pageload ? ' checked' : ''; ?>>
                         PAGELOAD STAT CHECK
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">Check file mtimes on public page loads (very fast — no file reads unless mtime changed)</span>
+                    <span class="dim text-0-82">Check file mtimes on public page loads (very fast — no file reads unless mtime changed)</span>
                 </div>
                 <div class="lens-input-wrapper">
                     <label>ALERT EMAIL <span class="field-tip" data-tip="Leave blank to use the site admin email.">ⓘ</span></label>
@@ -729,11 +729,11 @@ include 'core/sidebar.php';
                 <div class="dash-grid">
                     <div class="lens-input-wrapper">
                         <label>RESPONSE MODE</label>
-                        <label class="radio-option" style="margin-bottom:8px;">
+                        <label class="radio-option mb-8">
                             <input type="radio" name="smackback_mode" value="alert"<?php echo $smack_mode === 'alert' ? ' checked' : ''; ?>>
                             <strong>ALERT</strong> — banner in admin, no lockout
                         </label>
-                        <label class="radio-option" style="margin-bottom:8px;">
+                        <label class="radio-option mb-8">
                             <input type="radio" name="smackback_mode" value="lockout"<?php echo $smack_mode === 'lockout' ? ' checked' : ''; ?>>
                             <strong>LOCKOUT</strong> (recommended) — all admin pages redirect here until resolved
                         </label>
@@ -749,7 +749,7 @@ include 'core/sidebar.php';
                             <input type="checkbox" name="smackback_pageload_check" value="1"<?php echo $smack_pageload ? ' checked' : ''; ?>>
                             <span class="toggle-slider"></span>
                         </label>
-                        <span class="dim" style="font-size:0.82rem;">Check file mtimes on public page loads (very fast — no file reads unless mtime changed)</span>
+                        <span class="dim text-0-82">Check file mtimes on public page loads (very fast — no file reads unless mtime changed)</span>
                     </div>
 
                     <div class="lens-input-wrapper">
@@ -759,7 +759,7 @@ include 'core/sidebar.php';
                             <option value="<?php echo $h; ?>"<?php echo $smack_interval === $h ? ' selected' : ''; ?>><?php echo $h; ?> hour<?php echo $h === 1 ? '' : 's'; ?></option>
                             <?php endfor; ?>
                         </select>
-                        <span class="dim" style="font-size:0.82rem;">Full scan runs at least this often — on admin page loads and via cron. Mandatory: integrity checks cannot be switched off, only scheduled.</span>
+                        <span class="dim text-0-82">Full scan runs at least this often — on admin page loads and via cron. Mandatory: integrity checks cannot be switched off, only scheduled.</span>
                     </div>
 
                     <div class="lens-input-wrapper">
@@ -785,7 +785,7 @@ include 'core/sidebar.php';
                         <input type="password" name="reauth_password" autocomplete="current-password">
                     </div>
                     <div class="lens-input-wrapper">
-                        <label>2FA CODE <span class="dim" style="font-size:0.75rem;">(if enrolled)</span></label>
+                        <label>2FA CODE <span class="dim text-0-75">(if enrolled)</span></label>
                         <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="000000">
                     </div>
                 </div>
@@ -831,13 +831,13 @@ include 'core/sidebar.php';
             Entirely separate from your local SMACKBACK RED alerts — those never leave your server.
         </p>
 
-        <div class="dash-grid" style="margin-bottom:20px;">
+        <div class="dash-grid mb-20">
             <div class="stat-box">
-                <div class="stat-val" style="font-size:0.9rem;"><?php echo $na_status_display; ?><?php if ($na['since']): ?> <span class="dim" style="font-size:0.75rem;">since <?php echo htmlspecialchars($na['since']); ?></span><?php endif; ?></div>
+                <div class="stat-val text-0-9"><?php echo $na_status_display; ?><?php if ($na['since']): ?> <span class="dim text-0-75">since <?php echo htmlspecialchars($na['since']); ?></span><?php endif; ?></div>
                 <div class="stat-label">CURRENT NETWORK STATUS</div>
             </div>
             <div class="stat-box">
-                <div class="stat-val" style="font-size:0.9rem;"><?php echo $na['last_checked'] ? htmlspecialchars($na['last_checked']) : '<span class="dim">Never</span>'; ?></div>
+                <div class="stat-val text-0-9"><?php echo $na['last_checked'] ? htmlspecialchars($na['last_checked']) : '<span class="dim">Never</span>'; ?></div>
                 <div class="stat-label">LAST CHECKED
                     <form method="post" style="display:inline;margin-left:10px;">
                         <?php csrf_field(); ?>
@@ -848,7 +848,7 @@ include 'core/sidebar.php';
             </div>
             <?php if ($na['message']): ?>
             <div class="stat-box">
-                <div class="stat-val" style="font-size:0.9rem;"><?php echo htmlspecialchars($na['message']); ?></div>
+                <div class="stat-val text-0-9"><?php echo htmlspecialchars($na['message']); ?></div>
                 <div class="stat-label">SC MESSAGE</div>
             </div>
             <?php endif; ?>
@@ -862,7 +862,7 @@ include 'core/sidebar.php';
                 <div class="lens-input-wrapper">
                     <label>CONTRIBUTE BREACH REPORTS</label>
                     <div class="read-only-display"><?php echo $na['send'] ? 'YES' : 'NO'; ?></div>
-                    <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">⊘ MANAGED BY NETWORK HUB</span>
+                    <span class="dim text-0-75 mt-4 d-block">⊘ MANAGED BY NETWORK HUB</span>
                 </div>
                 <div class="lens-input-wrapper">
                     <label>RECEIVE YELLOW ALERTS</label>
@@ -877,14 +877,14 @@ include 'core/sidebar.php';
                         <input type="checkbox" name="network_alert_send" value="1"<?php echo $na['send'] ? ' checked' : ''; ?>>
                         CONTRIBUTE BREACH REPORTS TO THE NETWORK
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">Reports contain: site name, server IP, affected file paths, timestamps, and SHA-256 hashes. No visitor data, no content.</span>
+                    <span class="dim text-0-82">Reports contain: site name, server IP, affected file paths, timestamps, and SHA-256 hashes. No visitor data, no content.</span>
                 </div>
                 <div class="lens-input-wrapper">
                     <label>
                         <input type="checkbox" name="network_alert_receive" value="1"<?php echo $na['receive'] ? ' checked' : ''; ?>>
                         RECEIVE YELLOW ALERTS
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">Show SC network alerts in the admin panel. You can receive without sending (courtesy opt-in).</span>
+                    <span class="dim text-0-82">Show SC network alerts in the admin panel. You can receive without sending (courtesy opt-in).</span>
                 </div>
             </div>
             <?php endif; // hub_controls_netalert ?>
@@ -902,9 +902,9 @@ include 'core/sidebar.php';
                             <?php if ($na_push_enabled && $na_push_registered): ?>
                                 <span style="color:var(--success,#5a9a5a);font-size:0.75rem;font-weight:400;margin-left:8px;">&#10003; Registered with SC</span>
                             <?php elseif ($na_push_enabled && !$na_push_registered): ?>
-                                <span style="color:#cc9900;font-size:0.75rem;font-weight:400;margin-left:8px;">&#9888; Registration pending</span>
+                                <span style="color:var(--warning, #cc9900);font-size:0.75rem;font-weight:400;margin-left:8px;">&#9888; Registration pending</span>
                             <?php elseif ($na_push_unregpend): ?>
-                                <span style="color:#cc9900;font-size:0.75rem;font-weight:400;margin-left:8px;">&#9888; Removal pending SC confirmation</span>
+                                <span style="color:var(--warning, #cc9900);font-size:0.75rem;font-weight:400;margin-left:8px;">&#9888; Removal pending SC confirmation</span>
                             <?php endif; ?>
                         </div>
                         <div style="font-size:0.82rem;line-height:1.7;color:var(--text-dim,#888);max-width:640px;">
@@ -912,7 +912,7 @@ include 'core/sidebar.php';
                             a coordinated breach is detected across the network — instead of waiting up to
                             30 minutes for the next poll.
                         </div>
-                        <div style="margin-top:10px;padding:12px 16px;background:var(--bg-offset,#111);border-left:3px solid #cc9900;font-size:0.8rem;line-height:1.8;color:var(--text-dim,#888);max-width:640px;">
+                        <div style="margin-top:10px;padding:12px 16px;background:var(--bg-offset,#111);border-left:3px solid var(--warning, #cc9900);font-size:0.8rem;line-height:1.8;color:var(--text-dim,#888);max-width:640px;">
                             <strong style="color:var(--text,#ddd);display:block;margin-bottom:4px;">&#9432; Privacy disclosure — read before enabling</strong>
                             Enabling this transmits your <strong>site URL</strong> and <strong>site name</strong> to Smack Central,
                             where they are stored to enable delivery. A unique push token (generated locally on your server,
@@ -943,14 +943,14 @@ include 'core/sidebar.php';
             <strong>Violations</strong> indicate active risk. <strong>Warnings</strong> are suspicious but may be legitimate.
         </p>
 
-        <div class="dash-grid" style="margin-bottom:20px;">
+        <div class="dash-grid mb-20">
             <div class="stat-box">
-                <div class="stat-val" style="font-size:0.9rem;">
+                <div class="stat-val text-0-9">
                     <?php if ($skin_js_scan_at): ?>
                         <?php echo htmlspecialchars($skin_js_scan_at); ?>
                         —
                         <?php if ($skin_js_violation_count > 0): ?>
-                            <span style="color:#cc2200"><?php echo $skin_js_violation_count; ?> violation(s)</span>
+                            <span style="color:var(--danger, #cc2200)"><?php echo $skin_js_violation_count; ?> violation(s)</span>
                         <?php else: ?>
                             <span class="msg">No violations</span>
                         <?php endif; ?>
@@ -980,12 +980,12 @@ include 'core/sidebar.php';
                 $sw = count(array_filter($skin_findings, fn($f) => $f['severity'] === 'warning'));
                 $si = count(array_filter($skin_findings, fn($f) => $f['severity'] === 'info'));
         ?>
-            <details style="margin-bottom:12px;" <?php echo $sv > 0 ? 'open' : ''; ?>>
+            <details class="mb-12" <?php echo $sv > 0 ? 'open' : ''; ?>>
                 <summary style="cursor:pointer;font-weight:700;font-size:0.9rem;letter-spacing:1px;padding:8px 0;">
                     <?php echo htmlspecialchars($slug); ?>
-                    <?php if ($sv > 0): ?><span style="margin-left:8px;color:#cc2200;font-size:0.8rem;"><?php echo $sv; ?> VIOLATION<?php echo $sv !== 1 ? 'S' : ''; ?></span><?php endif; ?>
-                    <?php if ($sw > 0): ?><span style="margin-left:6px;color:#cc9900;font-size:0.8rem;"><?php echo $sw; ?> WARNING<?php echo $sw !== 1 ? 'S' : ''; ?></span><?php endif; ?>
-                    <?php if ($si > 0 && $sv === 0 && $sw === 0): ?><span style="margin-left:6px;color:#888;font-size:0.8rem;"><?php echo $si; ?> INFO</span><?php endif; ?>
+                    <?php if ($sv > 0): ?><span style="margin-left:8px;color:var(--danger, #cc2200);font-size:0.8rem;"><?php echo $sv; ?> VIOLATION<?php echo $sv !== 1 ? 'S' : ''; ?></span><?php endif; ?>
+                    <?php if ($sw > 0): ?><span style="margin-left:6px;color:var(--warning, #cc9900);font-size:0.8rem;"><?php echo $sw; ?> WARNING<?php echo $sw !== 1 ? 'S' : ''; ?></span><?php endif; ?>
+                    <?php if ($si > 0 && $sv === 0 && $sw === 0): ?><span style="margin-left:6px;color:var(--text-muted, #888);font-size:0.8rem;"><?php echo $si; ?> INFO</span><?php endif; ?>
                 </summary>
                 <?php foreach ($skin_findings as $f):
                     $sev_color = match($f['severity']) {
@@ -996,19 +996,19 @@ include 'core/sidebar.php';
                 ?>
                 <div class="stat-row" style="display:grid;grid-template-columns:80px 140px 1fr 60px 1fr;gap:10px;align-items:center;padding:8px 0;font-size:0.82rem;">
                     <span style="color:<?php echo $sev_color; ?>;font-weight:700;text-transform:uppercase;"><?php echo htmlspecialchars($f['severity']); ?></span>
-                    <span style="font-family:monospace;"><?php echo htmlspecialchars($f['type']); ?></span>
+                    <span class="mono"><?php echo htmlspecialchars($f['type']); ?></span>
                     <span style="font-family:monospace;font-size:0.78rem;"><?php echo htmlspecialchars($f['file']); ?></span>
-                    <span style="text-align:center;"><?php echo (int)$f['line']; ?></span>
+                    <span class="text-center"><?php echo (int)$f['line']; ?></span>
                     <span class="dim"><?php echo htmlspecialchars($f['detail']); ?></span>
                 </div>
                 <?php endforeach; ?>
             </details>
         <?php endforeach;
         elseif ($skin_js_scan_at): ?>
-            <p class="msg" style="margin-bottom:16px;">✓ No findings — all installed skins are clean.</p>
+            <p class="msg mb-16">✓ No findings — all installed skins are clean.</p>
         <?php endif; ?>
 
-        <form method="post" style="margin-top:16px;">
+        <form method="post" class="mt-16">
             <?php csrf_field(); ?>
             <input type="hidden" name="save_skin_js_settings" value="1">
             <div class="dash-grid">
@@ -1017,7 +1017,7 @@ include 'core/sidebar.php';
                         <input type="checkbox" name="skin_allow_custom_js" value="1"<?php echo $skin_allow_custom_js ? ' checked' : ''; ?>>
                         ALLOW CUSTOM JS IN SKINS
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">Permits inline scripts and external JS in third-party skins. <code>eval()</code> is always flagged regardless.</span>
+                    <span class="dim text-0-82">Permits inline scripts and external JS in third-party skins. <code>eval()</code> is always flagged regardless.</span>
                 </div>
             </div>
             <div class="form-action-row">

@@ -366,9 +366,9 @@ require 'core/sidebar.php';
   </div>
 
   <?php if ($forum_breach_lock): ?>
-  <div class="box" style="grid-column:1 / -1;border:1px solid #cc2200;background:#2a0d05;margin-bottom:16px;">
+  <div class="box" style="grid-column:1 / -1;border:1px solid var(--danger, #cc2200);background:var(--danger, #2a0d05);margin-bottom:16px;">
     <div style="padding:14px 16px;">
-      <strong style="color:#ff7a55;letter-spacing:.05em;">&#9888; BREACH LOCKDOWN</strong>
+      <strong style="color:var(--danger, #ff7a55);letter-spacing:.05em;">&#9888; BREACH LOCKDOWN</strong>
       <p class="dim" style="font-size:0.85rem;margin:6px 0 0;">
         File tampering detected on this install. Forum posting is locked.
         <?php if (reauth_window_active('forum')): ?>
@@ -381,11 +381,11 @@ require 'core/sidebar.php';
       <form method="post" style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
         <?php if (function_exists('csrf_field')) csrf_field(); ?>
         <input type="hidden" name="action" value="forum-reauth">
-        <div class="lens-input-wrapper" style="margin:0;">
+        <div class="lens-input-wrapper m-0">
           <label>PASSWORD</label>
           <input type="password" name="reauth_password" autocomplete="current-password" required>
         </div>
-        <div class="lens-input-wrapper" style="margin:0;">
+        <div class="lens-input-wrapper m-0">
           <label>2FA CODE <span class="dim" style="font-size:0.72rem;">(if enrolled)</span></label>
           <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="000000">
         </div>
@@ -400,7 +400,7 @@ require 'core/sidebar.php';
 
     <?php if (!$forum_enabled): ?>
     <!-- ── DISABLED ──────────────────────────────────────────────────── -->
-    <div class="box" style="grid-column: 1 / -1;">
+    <div class="box grid-span-full">
       <div class="box-header"><span class="box-title">COMMUNITY FORUM</span></div>
       <div class="box-body forum-empty">
         <strong>Forum Disabled</strong>
@@ -410,7 +410,7 @@ require 'core/sidebar.php';
 
     <?php elseif ($reg_error): ?>
     <!-- ── REGISTRATION FAILED ───────────────────────────────────────── -->
-    <div class="box" style="grid-column: 1 / -1;">
+    <div class="box grid-span-full">
       <div class="box-header"><span class="box-title">COMMUNITY FORUM</span></div>
       <div class="box-body">
         <div class="alert"><?php echo htmlspecialchars($reg_error); ?></div>
@@ -420,7 +420,7 @@ require 'core/sidebar.php';
 
     <?php elseif ($api_error): ?>
     <!-- ── API ERROR ─────────────────────────────────────────────────── -->
-    <div class="box" style="grid-column: 1 / -1;">
+    <div class="box grid-span-full">
       <div class="box-header"><span class="box-title">COMMUNITY FORUM</span></div>
       <div class="box-body">
         <div class="alert"><?php echo htmlspecialchars($api_error); ?></div>
@@ -432,11 +432,11 @@ require 'core/sidebar.php';
     <!-- CATEGORIES                                                        -->
     <!-- ══════════════════════════════════════════════════════════════════ -->
     <?php $cats = $api_data['categories'] ?? []; ?>
-    <div class="box" style="grid-column: 1 / -1;">
+    <div class="box grid-span-full">
       <div class="box-header">
         <span class="box-title">BOARDS</span>
         <?php if ($forum_mod_key !== ''): ?>
-        <a href="smack-forum.php?view=new-board" class="action-edit" style="margin-left:auto;">+ NEW BOARD</a>
+        <a href="smack-forum.php?view=new-board" class="action-edit ml-auto">+ NEW BOARD</a>
         <?php else: ?>
         <span class="box-title" style="margin-left: auto;"><?php echo count($cats); ?> BOARDS</span>
         <?php endif; ?>
@@ -444,10 +444,10 @@ require 'core/sidebar.php';
       <div class="box-body">
 
         <?php if (isset($_GET['board_added'])): ?>
-          <div class="alert alert-success" style="margin-bottom:20px;">Board created successfully.</div>
+          <div class="alert alert-success mb-20">Board created successfully.</div>
         <?php endif; ?>
         <?php if (isset($_GET['posted'])): ?>
-          <div class="alert alert-success" style="margin-bottom: 20px;">Thread posted successfully.</div>
+          <div class="alert alert-success mb-20">Thread posted successfully.</div>
         <?php endif; ?>
         <?php if (empty($cats)): ?>
           <div class="forum-empty">
@@ -460,8 +460,8 @@ require 'core/sidebar.php';
         <div class="dim" style="display:grid; grid-template-columns:4px 1fr 100px 100px; font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; padding:0 0 8px 0;">
           <span></span>
           <span style="padding-left:20px;">Board</span>
-          <span style="text-align:center;">Threads</span>
-          <span style="text-align:center;">Replies</span>
+          <span class="text-center">Threads</span>
+          <span class="text-center">Replies</span>
         </div>
 
         <div class="forum-cat-list">
@@ -494,17 +494,17 @@ require 'core/sidebar.php';
 
     <?php if ($forum_mod_key === ''): ?>
     <!-- ── MOD KEY SETUP ────────────────────────────────────────────────── -->
-    <div class="box" style="grid-column: 1 / -1;">
+    <div class="box grid-span-full">
       <div class="box-header"><span class="box-title">FORUM ADMIN</span></div>
       <div class="box-body">
-        <p class="dim" style="margin-bottom:12px;">Enter your forum moderator key to enable board management from this panel.</p>
+        <p class="dim mb-12">Enter your forum moderator key to enable board management from this panel.</p>
         <form method="post" action="smack-forum.php" style="display:flex; gap:12px; align-items:flex-end;">
           <input type="hidden" name="action" value="save-mod-key">
           <div class="lens-input-wrapper" style="flex:1; margin:0;">
             <label>MOD KEY</label>
             <input type="password" name="mod_key" placeholder="mod_…" required>
           </div>
-          <button type="submit" class="forum-new-btn" style="margin-bottom:0;">Save</button>
+          <button type="submit" class="forum-new-btn mb-0">Save</button>
         </form>
       </div>
     </div>
@@ -519,18 +519,18 @@ require 'core/sidebar.php';
     $has_more = $api_data['has_more']    ?? false;
     $cat_name = !empty($threads) ? ($threads[0]['category_name'] ?? 'Board') : 'Board';
     ?>
-    <div class="box" style="grid-column: 1 / -1;">
+    <div class="box grid-span-full">
       <div class="box-header">
         <span class="box-title" style="font-weight:400;">
-          <a href="smack-forum.php" style="opacity:.45; text-decoration:none;">FORUM</a>
+          <a href="smack-forum.php" class="o-45 no-underline">FORUM</a>
           &nbsp;/&nbsp;<?php echo htmlspecialchars(strtoupper($cat_name)); ?>
         </span>
-        <a href="smack-forum.php?view=new-thread&new_thread_cat=<?php echo $cat_id; ?>" class="action-edit" style="margin-left:auto;">+ NEW THREAD</a>
+        <a href="smack-forum.php?view=new-thread&new_thread_cat=<?php echo $cat_id; ?>" class="action-edit ml-auto">+ NEW THREAD</a>
       </div>
       <div class="box-body">
 
         <?php if (isset($_GET['replied'])): ?>
-          <div class="alert alert-success" style="margin-bottom:20px;">Reply posted successfully.</div>
+          <div class="alert alert-success mb-20">Reply posted successfully.</div>
         <?php endif; ?>
 
         <?php if (empty($threads)): ?>
@@ -544,8 +544,8 @@ require 'core/sidebar.php';
         <div class="dim" style="display:grid; grid-template-columns:44px 1fr 64px 100px; font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; padding:0 16px 10px;">
           <span></span>
           <span style="padding-left:12px;">Topic</span>
-          <span style="text-align:center;">Replies</span>
-          <span style="text-align:right;">Activity</span>
+          <span class="text-center">Replies</span>
+          <span class="text-right">Activity</span>
         </div>
 
         <div class="forum-thread-list">
@@ -606,24 +606,24 @@ require 'core/sidebar.php';
     $replies     = $api_data['replies'] ?? [];
     $my_display  = $settings['site_name'] ?? '';
     ?>
-    <div class="box" style="grid-column: 1 / -1;">
+    <div class="box grid-span-full">
       <div class="box-header">
         <span class="box-title" style="font-weight:400;">
-          <a href="smack-forum.php" style="opacity:.45; text-decoration:none;">FORUM</a>
+          <a href="smack-forum.php" class="o-45 no-underline">FORUM</a>
           &nbsp;/&nbsp;
-          <a href="smack-forum.php?view=threads&cat=<?php echo (int)($thread['category_id'] ?? 0); ?>" style="opacity:.45; text-decoration:none;">
+          <a href="smack-forum.php?view=threads&cat=<?php echo (int)($thread['category_id'] ?? 0); ?>" class="o-45 no-underline">
             <?php echo htmlspecialchars(strtoupper($thread['category_name'] ?? 'BOARD')); ?>
           </a>
         </span>
-        <a href="smack-forum.php?view=new-thread&new_thread_cat=<?php echo (int)($thread['category_id'] ?? 0); ?>" class="action-edit" style="margin-left:auto;">+ NEW THREAD</a>
+        <a href="smack-forum.php?view=new-thread&new_thread_cat=<?php echo (int)($thread['category_id'] ?? 0); ?>" class="action-edit ml-auto">+ NEW THREAD</a>
       </div>
       <div class="box-body">
 
         <?php if (isset($_GET['replied'])): ?>
-          <div class="alert alert-success" style="margin-bottom:20px;">Reply posted successfully.</div>
+          <div class="alert alert-success mb-20">Reply posted successfully.</div>
         <?php endif; ?>
         <?php if ($msg): ?>
-          <div class="alert" style="margin-bottom:20px;"><?php echo htmlspecialchars($msg); ?></div>
+          <div class="alert mb-20"><?php echo htmlspecialchars($msg); ?></div>
         <?php endif; ?>
 
         <?php if (empty($thread)): ?>
@@ -731,7 +731,7 @@ require 'core/sidebar.php';
             Reply as <?php echo htmlspecialchars($my_display); ?>
           </div>
           <?php if ($msg && $action === 'post-reply'): ?>
-            <div class="alert" style="margin-bottom:12px;"><?php echo htmlspecialchars($msg); ?></div>
+            <div class="alert mb-12"><?php echo htmlspecialchars($msg); ?></div>
           <?php endif; ?>
           <form method="post" action="smack-forum.php">
             <input type="hidden" name="action"    value="post-reply">
@@ -769,13 +769,13 @@ require 'core/sidebar.php';
         if ((int)$fc['id'] === $new_thread_cat) { $form_cat_name = $fc['name']; break; }
     }
     ?>
-    <div class="box" style="grid-column: 1 / -1;">
+    <div class="box grid-span-full">
       <div class="box-header">
         <span class="box-title">
-          <a href="smack-forum.php" style="opacity:.45; text-decoration:none; font-weight:400;">FORUM</a>
+          <a href="smack-forum.php" class="o-45 no-underline fw-400">FORUM</a>
           <?php if ($new_thread_cat): ?>
           &nbsp;/&nbsp;
-          <a href="smack-forum.php?view=threads&cat=<?php echo $new_thread_cat; ?>" style="opacity:.45; text-decoration:none; font-weight:400;">
+          <a href="smack-forum.php?view=threads&cat=<?php echo $new_thread_cat; ?>" class="o-45 no-underline fw-400">
             <?php echo htmlspecialchars(strtoupper($form_cat_name ?: 'BOARD')); ?>
           </a>
           <?php endif; ?>
@@ -785,7 +785,7 @@ require 'core/sidebar.php';
       <div class="box-body">
 
         <?php if ($msg && $action === 'post-thread'): ?>
-          <div class="alert" style="margin-bottom:16px;"><?php echo htmlspecialchars($msg); ?></div>
+          <div class="alert mb-16"><?php echo htmlspecialchars($msg); ?></div>
         <?php endif; ?>
 
         <form method="post" action="smack-forum.php">
@@ -835,10 +835,10 @@ require 'core/sidebar.php';
     <!-- ══════════════════════════════════════════════════════════════════ -->
     <!-- NEW BOARD FORM                                                     -->
     <!-- ══════════════════════════════════════════════════════════════════ -->
-    <div class="box" style="grid-column: 1 / -1;">
+    <div class="box grid-span-full">
       <div class="box-header">
         <span class="box-title">
-          <a href="smack-forum.php" style="opacity:.45; text-decoration:none; font-weight:400;">FORUM</a>
+          <a href="smack-forum.php" class="o-45 no-underline fw-400">FORUM</a>
           &nbsp;/&nbsp;NEW BOARD
         </span>
       </div>
@@ -847,7 +847,7 @@ require 'core/sidebar.php';
           <div class="alert">Moderator key not set. <a href="smack-forum.php">Return to the forum</a> and enter it first.</div>
         <?php else: ?>
         <?php if ($msg): ?>
-          <div class="alert" style="margin-bottom:16px;"><?php echo htmlspecialchars($msg); ?></div>
+          <div class="alert mb-16"><?php echo htmlspecialchars($msg); ?></div>
         <?php endif; ?>
         <form method="post" action="smack-forum.php">
           <input type="hidden" name="action" value="add-category">

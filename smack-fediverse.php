@@ -284,14 +284,14 @@ include 'core/sidebar.php';
                                     </div>
                                 <?php endforeach; ?>
 
-                                <details style="margin-top:8px;">
-                                    <summary class="action-authorize" style="cursor:pointer;">REPLY</summary>
-                                    <form method="POST" style="margin-top:8px;">
+                                <details class="mt-8">
+                                    <summary class="action-authorize cursor-pointer">REPLY</summary>
+                                    <form method="POST" class="mt-8">
                                         <input type="hidden" name="action" value="reply">
                                         <input type="hidden" name="parent_id" value="<?php echo (int)$c['id']; ?>">
-                                        <textarea name="reply_text" rows="3" style="width:100%;" required
+                                        <textarea name="reply_text" rows="3" class="w-100" required
                                                   placeholder="Say it. This federates as the blog and notifies them."></textarea>
-                                        <button type="submit" class="btn-smack" style="margin-top:6px;">SEND REPLY</button>
+                                        <button type="submit" class="btn-smack mt-6">SEND REPLY</button>
                                     </form>
                                 </details>
 
@@ -391,7 +391,7 @@ include 'core/sidebar.php';
     <div class="box mt-30">
         <h3>FOLLOWING<?php echo $following ? ' (' . count($following) . ')' : ''; ?></h3>
         <p class="skin-desc-text">Accounts this blog follows, as the blog. Following a photographer puts you in their notifications — that's how follow-backs happen. The blog ingests nothing from them; this is a handshake, not a feed reader.</p>
-        <form method="POST" class="signal-search-group" style="margin-bottom:14px;">
+        <form method="POST" class="signal-search-group mb-14">
             <input type="hidden" name="action" value="follow">
             <input type="text" name="follow_target" placeholder="@photographer@pixelfed.ca" required
                    <?php echo $sv_on ? '' : 'disabled'; ?>>
@@ -407,8 +407,8 @@ include 'core/sidebar.php';
                             <a href="<?php echo htmlspecialchars($fw['actor_url']); ?>" target="_blank" rel="noopener">
                                 <?php echo htmlspecialchars($fw['actor_handle'] ?: $fedi_handle($fw['actor_url'])); ?>
                             </a>
-                            <span class="status-pill <?php echo $fw['state'] === 'accepted' ? 'status-online' : 'status-offline'; ?>"
-                                  style="margin-left:8px;"><?php echo strtoupper($fw['state']); ?></span>
+                            <span class="status-pill <?php echo $fw['state'] === 'accepted' ? 'status-online' : 'status-offline'; ?> ml-8"
+                                 ><?php echo strtoupper($fw['state']); ?></span>
                             <span class="signal-meta">since <?php echo htmlspecialchars($fw['followed_at'] ?? ''); ?></span>
                         </div>
                         <div class="item-actions">

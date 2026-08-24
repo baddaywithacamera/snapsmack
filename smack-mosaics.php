@@ -315,11 +315,11 @@ include 'core/sidebar.php';
                 </div>
 
                 <div style="display:flex;gap:16px;align-items:flex-end;margin-top:16px;">
-                    <div class="lens-input-wrapper" style="flex:0 0 auto;margin-top:0;">
+                    <div class="lens-input-wrapper flex-none mt-0">
                         <label>GAP (PX)</label>
                         <input type="number" id="mosaic-gap" value="<?php echo $mosaic_gap; ?>" min="0" max="20" style="width:80px;">
                     </div>
-                    <div class="lens-input-wrapper" style="flex:0 0 auto;margin-top:0;">
+                    <div class="lens-input-wrapper flex-none mt-0">
                         <label>LAYOUT</label>
                         <?php /* The same four the SCROLL wall offers, same wording. HERO
                                  EMPHASIS below only affects Asymmetric, so the JS hides it
@@ -335,7 +335,7 @@ include 'core/sidebar.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="lens-input-wrapper" id="emphasis-wrap" style="flex:0 0 auto;margin-top:0;">
+                    <div class="lens-input-wrapper flex-none mt-0" id="emphasis-wrap">
                         <label>HERO EMPHASIS</label>
                         <?php /* Wording matches SCROLL's "MOSAIC Hero Emphasis" control
                                  (skins/scroll/manifest.json) so the same setting is not
@@ -352,7 +352,7 @@ include 'core/sidebar.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div style="flex:1;">
+                    <div class="flex-1">
                         <label style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);display:block;margin-bottom:6px;">SHORTCODE</label>
                         <code id="mosaic-shortcode" style="color:var(--accent);cursor:pointer;font-size:13px;"
                               onclick="navigator.clipboard.writeText(this.textContent)" title="Click to copy">
@@ -386,7 +386,7 @@ include 'core/sidebar.php';
                 </div>
 
                 <div class="lens-input-wrapper mt-16">
-                    <button type="button" onclick="togglePicker()" class="btn-secondary" style="width:100%;">+ ADD IMAGES FROM MEDIA GALLERY</button>
+                    <button type="button" onclick="togglePicker()" class="btn-secondary w-100">+ ADD IMAGES FROM MEDIA GALLERY</button>
                 </div>
 
                 <!-- ASSET PICKER (hidden) -->
@@ -400,7 +400,7 @@ include 'core/sidebar.php';
                              post's BUCKET turns the whole Gallery into the dozen photos
                              that essay is actually built from. */ ?>
                     <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px;">
-                        <div class="lens-input-wrapper" style="flex:0 0 auto;margin-top:0;">
+                        <div class="lens-input-wrapper flex-none mt-0">
                             <label>SHOWING</label>
                             <select id="picker-scope" style="width:280px;">
                                 <option value="all" <?php echo $bucket_post_id ? '' : 'selected'; ?>>All gallery photos</option>
@@ -425,7 +425,7 @@ include 'core/sidebar.php';
                         </div>
                         <div class="lens-input-wrapper" style="flex:1;min-width:180px;margin-top:0;">
                             <label>SEARCH BY NAME</label>
-                            <input type="text" id="picker-search" placeholder="Type part of a filename or title" style="width:100%;">
+                            <input type="text" id="picker-search" placeholder="Type part of a filename or title" class="w-100">
                         </div>
                     </div>
 
@@ -591,23 +591,23 @@ include 'core/sidebar.php';
                 var dim = (used && !sel) ? 'opacity:.42;' : '';
                 html += '<div onclick="toggleAsset(event,' + id + ')" title="' + (used && !sel ? 'Already in ' + esc(used) : (a.asset_path.split('/').pop() || ''))
                       + '" style="cursor:pointer;position:relative;aspect-ratio:1;' + dim
-                      + 'border:2px solid ' + (sel ? 'var(--accent)' : 'transparent') + ';border-radius:3px;overflow:hidden;background:#111;">';
+                      + 'border:2px solid ' + (sel ? 'var(--accent)' : 'transparent') + ';border-radius:3px;overflow:hidden;background:var(--input-bg, #111);">';
                 if (webExts.indexOf(ext) !== -1) {
                     // contain, not cover: a cropped square makes a portrait, a landscape
                     // and a square look identical — useless when you are picking photos
                     // for an arrangement that is entirely about their shape.
-                    html += '<img src="' + BASE + a.asset_path + '" style="width:100%;height:100%;object-fit:contain;" loading="lazy">';
+                    html += '<img src="' + BASE + a.asset_path + '" class="img-contain" loading="lazy">';
                 } else {
                     html += '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--dim);font-size:10px;">' + ext.toUpperCase() + '</div>';
                 }
                 if (sel) {
-                    html += '<div style="position:absolute;top:3px;right:3px;background:var(--accent);color:#111;'
+                    html += '<div style="position:absolute;top:3px;right:3px;background:var(--accent);color:var(--text-muted, #111);'
                           + 'border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">✓</div>';
                 }
                 // Say WHY it is greyed out. A dimmed tile with no reason on it is
                 // indistinguishable from a broken thumbnail.
                 if (used && !sel) {
-                    html += '<div style="position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.72);color:#fff;'
+                    html += '<div style="position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.72);color:var(--text, #fff);'
                           + 'font-size:9px;line-height:1.25;padding:2px 3px;text-align:center;">IN ' + esc(used) + '</div>';
                 }
                 html += '</div>';
@@ -668,7 +668,7 @@ include 'core/sidebar.php';
                 if (!a) return;
                 html += '<div class="mosaic-thumb-wrap" draggable="true" data-index="' + i + '"'
                       + ' ondragstart="dragStart(event,' + i + ')" ondragend="dragEnd()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,' + i + ')"'
-                      + ' style="position:relative;width:72px;height:72px;border:1px solid var(--border);border-radius:3px;overflow:hidden;cursor:grab;flex-shrink:0;background:#111;">'
+                      + ' style="position:relative;width:72px;height:72px;border:1px solid var(--border);border-radius:3px;overflow:hidden;cursor:grab;flex-shrink:0;background:var(--input-bg, #111);">'
                       // draggable=false: without it the browser starts dragging the PHOTO
                       // instead of the tile, which is the classic "drag does nothing".
                       // object-fit:contain (not cover): a cropped square hides whether the
@@ -677,12 +677,12 @@ include 'core/sidebar.php';
                       + '<img src="' + BASE + a.asset_path + '" draggable="false" style="width:100%;height:100%;object-fit:contain;pointer-events:none;" loading="lazy">'
                       + '<div style="position:absolute;left:2px;bottom:2px;display:flex;gap:2px;">'
                       + '<button type="button" onclick="moveAsset(' + i + ',-1)" title="Move left" aria-label="Move image left"'
-                      + ' style="background:rgba(0,0,0,.72);border:none;color:#fff;cursor:pointer;width:20px;height:20px;padding:0;line-height:1;">&#8249;</button>'
+                      + ' style="background:rgba(0,0,0,.72);border:none;color:var(--text, #fff);cursor:pointer;width:20px;height:20px;padding:0;line-height:1;">&#8249;</button>'
                       + '<button type="button" onclick="moveAsset(' + i + ',1)" title="Move right" aria-label="Move image right"'
-                      + ' style="background:rgba(0,0,0,.72);border:none;color:#fff;cursor:pointer;width:20px;height:20px;padding:0;line-height:1;">&#8250;</button>'
+                      + ' style="background:rgba(0,0,0,.72);border:none;color:var(--text, #fff);cursor:pointer;width:20px;height:20px;padding:0;line-height:1;">&#8250;</button>'
                       + '</div>'
                       + '<button type="button" onclick="removeAsset(' + i + ')" title="Remove"'
-                      + ' style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.65);border:none;color:#ff5555;cursor:pointer;'
+                      + ' style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.65);border:none;color:var(--danger, #ff5555);cursor:pointer;'
                       + 'width:18px;height:18px;border-radius:50%;font-size:13px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;">×</button>'
                       + '</div>';
             });

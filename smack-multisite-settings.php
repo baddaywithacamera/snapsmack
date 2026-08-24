@@ -168,7 +168,7 @@ require_once 'core/admin-header.php';
         </div>
     </div>
 
-    <div class="signal-control-header" style="margin-bottom:20px;">
+    <div class="signal-control-header mb-20">
         <div class="signal-nav-group">
             <a href="smack-multisite.php"           class="btn-clear">DASHBOARD</a>
             <a href="smack-multisite-comments.php"  class="btn-clear">COMMENTS</a>
@@ -198,7 +198,7 @@ require_once 'core/admin-header.php';
         <p class="dim" style="font-size:0.85rem;margin-bottom:16px;">
             Push to selected spokes only. Selection is saved automatically.
         </p>
-        <div class="dash-grid" style="margin-bottom:16px;">
+        <div class="dash-grid mb-16">
             <div class="lens-input-wrapper">
                 <label>REQUIRE DOWNLOAD LINK?</label>
                 <div class="read-only-display"><?php echo ($settings['download_link_required'] ?? '0') === '1' ? 'YES — BLOCK PUBLISH IF MISSING' : 'NO — OPTIONAL'; ?></div>
@@ -210,7 +210,7 @@ require_once 'core/admin-header.php';
         </div>
 
         <!-- Spoke selector (saves independently) -->
-        <form method="POST" style="margin-bottom:16px;">
+        <form method="POST" class="mb-16">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
             <label style="display:block;font-size:0.7rem;letter-spacing:1.5px;text-transform:uppercase;opacity:0.5;margin-bottom:10px;">TARGET SPOKES</label>
             <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
@@ -220,7 +220,7 @@ require_once 'core/admin-header.php';
                            value="<?php echo $spoke['id']; ?>"
                            <?php echo in_array((int)$spoke['id'], $dl_spoke_ids, true) ? 'checked' : ''; ?>>
                     <?php echo htmlspecialchars($spoke['site_name'] ?: $spoke['site_url']); ?>
-                    <span class="dim" style="font-size:0.75rem;"><?php echo htmlspecialchars($spoke['site_url']); ?></span>
+                    <span class="dim text-0-75"><?php echo htmlspecialchars($spoke['site_url']); ?></span>
                 </label>
                 <?php endforeach; ?>
             </div>
@@ -237,7 +237,7 @@ require_once 'core/admin-header.php';
             <?php render_push_result($push_results['push_downloads']); ?>
         <?php endif; ?>
         <?php if (!empty($push_error)): ?>
-        <p style="color:#c55400; font-size:0.85rem; margin-bottom:10px;"><?php echo htmlspecialchars($push_error); ?></p>
+        <p style="color:var(--warning, #c55400); font-size:0.85rem; margin-bottom:10px;"><?php echo htmlspecialchars($push_error); ?></p>
         <?php endif; ?>
         <form method="POST">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
@@ -245,12 +245,12 @@ require_once 'core/admin-header.php';
                 <div>
                     <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.5; margin-bottom:4px;">PASSWORD (to push)</label>
                     <input type="password" name="reauth_password" autocomplete="off"
-                           style="padding:8px 10px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                           class="field-input">
                 </div>
                 <div>
                     <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.5; margin-bottom:4px;">2FA CODE (if enabled)</label>
                     <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off"
-                           style="padding:8px 10px; width:120px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                           class="field-input-120">
                 </div>
             </div>
             <button type="submit" name="push_downloads" class="btn-smack"

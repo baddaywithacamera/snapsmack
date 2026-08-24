@@ -1078,8 +1078,8 @@ if (!empty($google_families)) {
                     <div class="lens-input-wrapper">
                         <input type="hidden" name="skin_opt[skin_avatar]" value="<?php echo htmlspecialchars($_av_val); ?>">
                         <?php if ($_av_url): ?>
-                        <div style="margin-bottom:8px;">
-                            <img src="<?php echo htmlspecialchars($_av_url); ?>" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.15);display:block;">
+                        <div class="mb-8">
+                            <img src="<?php echo htmlspecialchars($_av_url); ?>" class="avatar-72">
                         </div>
                         <?php endif; ?>
                         <div class="file-upload-wrapper" onclick="document.getElementById('skinimg-skin_avatar').click()">
@@ -1089,7 +1089,7 @@ if (!empty($google_families)) {
                         <input type="file" id="skinimg-skin_avatar" name="skin_img_opt[skin_avatar]"
                                accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;"
                                onchange="document.getElementById('skinimg-name-skin_avatar').innerText = (this.files[0] ? this.files[0].name : 'SELECT FILE')">
-                        <p class="dim field-hint" style="margin-top:4px;">SQUARE IMAGE. PROFILE AVATAR &mdash; ALSO USED BY THE PHOTOGRAM MOBILE VIEW.</p>
+                        <p class="dim field-hint mt-4">SQUARE IMAGE. PROFILE AVATAR &mdash; ALSO USED BY THE PHOTOGRAM MOBILE VIEW.</p>
                     </div>
                 </div>
             </div>
@@ -1252,7 +1252,7 @@ if (!empty($google_families)) {
                                         $sz_unit = strtoupper($sz['unit'] ?? 'REM');
                                         $sz_val  = ($settings[$sz_key] ?? '') !== '' ? $settings[$sz_key] : ($sz['default'] ?? '1.0');
                                     ?>
-                                    <div style="margin-top:12px;">
+                                    <div class="mt-12">
                                         <label style="display:block; font-size:0.7rem; letter-spacing:1.5px; text-transform:uppercase; opacity:0.5; margin-bottom:6px;">Font Size (<?php echo strtolower($sz_unit); ?>)</label>
                                         <div class="range-wrapper">
                                             <input type="range" name="skin_opt[<?php echo $sz_key; ?>]"
@@ -1275,9 +1275,9 @@ if (!empty($google_families)) {
                                 ?>
                                 <input type="hidden" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">
                                 <?php if ($img_preview_url): ?>
-                                <div style="margin-bottom:8px;">
+                                <div class="mb-8">
                                     <img src="<?php echo htmlspecialchars($img_preview_url); ?>"
-                                         style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.15);display:block;">
+                                         class="avatar-72">
                                 </div>
                                 <?php endif; ?>
                                 <div class="file-upload-wrapper" onclick="document.getElementById('skinimg-<?php echo $k; ?>').click()">
@@ -1289,7 +1289,7 @@ if (!empty($google_families)) {
                                        style="display:none;"
                                        onchange="document.getElementById('skinimg-name-<?php echo $k; ?>').innerText = (this.files[0] ? this.files[0].name : 'SELECT FILE')">
                                 <?php if (!empty($o['hint'])): ?>
-                                <p class="dim field-hint" style="margin-top:4px;"><?php echo htmlspecialchars(strtoupper($o['hint'])); ?></p>
+                                <p class="dim field-hint mt-4"><?php echo htmlspecialchars(strtoupper($o['hint'])); ?></p>
                                 <?php endif; ?>
                             <?php elseif ($o['type'] === 'asset'): ?>
                                 <?php
@@ -1302,7 +1302,7 @@ if (!empty($google_families)) {
                                        name="skin_opt[<?php echo htmlspecialchars($k); ?>]"
                                        value="<?php echo htmlspecialchars($val); ?>"
                                        data-preview-target="<?php echo htmlspecialchars($asset_preview_id); ?>">
-                                <div id="<?php echo htmlspecialchars($asset_preview_id); ?>" style="margin-bottom:8px;">
+                                <div id="<?php echo htmlspecialchars($asset_preview_id); ?>" class="mb-8">
                                     <?php if ($asset_preview_url): ?>
                                     <img src="<?php echo htmlspecialchars($asset_preview_url); ?>" alt=""
                                          style="width:100%;max-width:240px;height:110px;object-fit:cover;border-radius:4px;display:block;">
@@ -1428,7 +1428,7 @@ if (!empty($google_families)) {
     <?php if (($target_skin ?? '') === 'parade'): ?>
     <!-- PARADE — reset the animated-background tuning (flag + fireworks) to the
          manifest defaults. Keeps the chosen mode, palette, colours, glow, nav. -->
-    <form method="post" action="smack-skin.php?s=parade" style="margin-top:12px;"
+    <form method="post" action="smack-skin.php?s=parade" class="mt-12"
           onsubmit="return confirm('Reset PARADE Flag &amp; Fireworks settings to their defaults?\n\nYour background mode, flag palette, colours, glow and nav settings are kept.');">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
         <input type="hidden" name="active_skin_target" value="parade">
@@ -1499,8 +1499,8 @@ if (!empty($google_families)) {
                     <div class="lens-input-wrapper">
                         <label>PROFILE AVATAR</label>
                         <?php if ($_mav_url): ?>
-                        <div style="margin-bottom:8px;">
-                            <img src="<?php echo htmlspecialchars($_mav_url); ?>" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.15);display:block;">
+                        <div class="mb-8">
+                            <img src="<?php echo htmlspecialchars($_mav_url); ?>" class="avatar-72">
                         </div>
                         <?php endif; ?>
                         <div class="file-upload-wrapper" onclick="document.getElementById('mob-av-<?php echo $_ms; ?>').click()">
@@ -1510,7 +1510,7 @@ if (!empty($google_families)) {
                         <input type="file" id="mob-av-<?php echo $_ms; ?>" name="mobile_avatar"
                                accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;"
                                onchange="document.getElementById('mob-av-name-<?php echo $_ms; ?>').innerText = (this.files[0] ? this.files[0].name : 'SELECT FILE')">
-                        <p class="dim field-hint" style="margin-top:4px;">SQUARE IMAGE. SHOWN AT THE TOP OF THE FEED AND PROFILE.</p>
+                        <p class="dim field-hint mt-4">SQUARE IMAGE. SHOWN AT THE TOP OF THE FEED AND PROFILE.</p>
                     </div>
                 </div>
                 <button type="submit" name="save_mobile_avatar" class="master-update-btn">SAVE <?php echo strtoupper(htmlspecialchars($_mname)); ?> AVATAR</button>
@@ -1661,7 +1661,7 @@ if (!empty($google_families)) {
                     if ($is_smacktalk && !$skin_smacktalk) continue;
                     if (!$is_carousel && !$is_smacktalk && ($skin_carousel || $skin_smacktalk)) continue;
                 ?>
-                    <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
+                    <div class="skin-card cursor-pointer" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                         <div class="skin-card-screenshot">
                             <?php render_skin_screenshots($slug, $skin['name']); ?>
                         </div>
@@ -1740,7 +1740,7 @@ if (!empty($google_families)) {
                 if ($is_smacktalk && !$skin_smacktalk) continue;
                 if (!$is_carousel && !$is_smacktalk && ($skin_carousel || $skin_smacktalk)) continue;
             ?>
-                <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
+                <div class="skin-card cursor-pointer" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                     <!-- Screenshot(s) -->
                     <div class="skin-card-screenshot">
                         <?php render_skin_screenshots($slug, $skin['name'] ?? $slug, $skin['screenshot'] ?? null, $skin['screenshots'] ?? []); ?>
@@ -1886,7 +1886,7 @@ if (!empty($google_families)) {
                 $skin_carousel = !empty($skin['features']['carousel']);
                 if ($skin_carousel !== $is_carousel) continue;
             ?>
-                <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
+                <div class="skin-card cursor-pointer" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                     <div class="skin-card-screenshot">
                         <?php render_skin_screenshots($slug, $skin['name']); ?>
                     </div>
@@ -1957,7 +1957,7 @@ if (!empty($google_families)) {
                 <div style="display:flex; align-items:center; gap:12px; padding:8px 12px; border:1px solid var(--border,#2a2a2a); border-radius:6px;">
                     <span style="font-weight:600; min-width:160px;"><?php echo htmlspecialchars($skin['name'] ?? $slug); ?></span>
                     <span style="color:var(--text-muted,#888); font-size:0.82rem; flex:1;"><?php echo htmlspecialchars($slug); ?> &middot; v<?php echo htmlspecialchars($skin['version'] ?? '?'); ?></span>
-                    <form method="POST" style="margin:0;">
+                    <form method="POST" class="m-0">
                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                         <input type="hidden" name="gallery_action" value="remove">
                         <input type="hidden" name="skin_slug" value="<?php echo htmlspecialchars($slug); ?>">
@@ -1991,7 +1991,7 @@ if (!empty($google_families)) {
         </div>
 
         <!-- Screenshots side by side -->
-        <div id="sm-screenshots" style="display:flex;gap:4px;background:#000;"></div>
+        <div id="sm-screenshots" style="display:flex;gap:4px;background:var(--input-bg, #000);"></div>
 
         <!-- Body -->
         <div style="padding:24px;">
@@ -2005,7 +2005,7 @@ if (!empty($google_families)) {
             <div id="sm-meta" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim, #666);margin-bottom:20px;"></div>
 
             <!-- Capabilities grid -->
-            <div style="margin-bottom:20px;">
+            <div class="mb-20">
                 <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim, #666);margin-bottom:8px;">CAPABILITIES</div>
                 <div id="sm-caps" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
             </div>
@@ -2098,11 +2098,11 @@ function openSkinModal(slug) {
         skin.screenshots.forEach(function(s) {
             ssHtml += '<div style="flex:1;position:relative;aspect-ratio:16/9;overflow:hidden;cursor:pointer;" onclick="openScreenshotLightbox(\'' + s.src.replace(/'/g, "\\'") + '\',\'' + s.label.replace(/'/g, "\\'") + '\')">' +
                 '<img src="' + s.src + '" alt="' + s.label + '" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy">' +
-                '<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);color:#fff;font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;padding:4px 8px;text-align:center;">' + s.label + '</div>' +
+                '<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);color:var(--text, #fff);font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;padding:4px 8px;text-align:center;">' + s.label + '</div>' +
                 '</div>';
         });
     } else {
-        ssHtml = '<div style="flex:1;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:#555;font-size:0.8rem;text-transform:uppercase;letter-spacing:2px;">No Preview Available</div>';
+        ssHtml = '<div style="flex:1;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:var(--text-muted, #555);font-size:0.8rem;text-transform:uppercase;letter-spacing:2px;">No Preview Available</div>';
     }
     document.getElementById('sm-screenshots').innerHTML = ssHtml;
 
@@ -2112,8 +2112,8 @@ function openSkinModal(slug) {
                       skin.status === 'beta' ? 'color:#ff9800;border-color:#ff9800;' :
                       'color:#999;border-color:#666;';
     badges += '<span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;padding:2px 8px;border:1px solid;border-radius:3px;' + statusClass + '">' + skin.status.toUpperCase() + '</span>';
-    if (skin.is_active) badges += '<span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;padding:2px 8px;border:1px solid;border-radius:3px;color:#4a9eff;border-color:#4a9eff;">ACTIVE</span>';
-    else if (skin.installed) badges += '<span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;padding:2px 8px;border:1px solid;border-radius:3px;color:#888;border-color:#555;">INSTALLED</span>';
+    if (skin.is_active) badges += '<span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;padding:2px 8px;border:1px solid;border-radius:3px;color:var(--link, #4a9eff);border-color:var(--link, #4a9eff);">ACTIVE</span>';
+    else if (skin.installed) badges += '<span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;padding:2px 8px;border:1px solid;border-radius:3px;color:var(--text-muted, #888);border-color:var(--border, #555);">INSTALLED</span>';
     document.getElementById('sm-badges').innerHTML = badges;
 
     // Description
@@ -2170,7 +2170,7 @@ function openScreenshotLightbox(src, label) {
         lb.id = 'ss-lightbox';
         lb.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;cursor:zoom-out;';
         lb.innerHTML = '<img id="ss-lightbox-img" style="max-width:95vw;max-height:95vh;object-fit:contain;display:block;box-shadow:0 0 60px rgba(0,0,0,0.8);" src="" alt="">' +
-                       '<div id="ss-lightbox-label" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);color:#fff;font-size:0.7rem;text-transform:uppercase;letter-spacing:2px;background:rgba(0,0,0,0.5);padding:4px 14px;border-radius:3px;pointer-events:none;"></div>';
+                       '<div id="ss-lightbox-label" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);color:var(--text, #fff);font-size:0.7rem;text-transform:uppercase;letter-spacing:2px;background:rgba(0,0,0,0.5);padding:4px 14px;border-radius:3px;pointer-events:none;"></div>';
         lb.addEventListener('click', closeScreenshotLightbox);
         document.body.appendChild(lb);
     }

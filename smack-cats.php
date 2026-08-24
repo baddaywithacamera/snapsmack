@@ -219,7 +219,7 @@ include 'core/sidebar.php';
                                     <div class="item-text">
                                         <strong><?php echo htmlspecialchars($c['cat_name']); ?></strong>
                                         <?php if (!($c['show_in_archive'] ?? 1)): ?>
-                                            <code class="slug-display" style="color:#c0392b;">HIDDEN FROM ARCHIVE</code>
+                                            <code class="slug-display" style="color:var(--danger, #c0392b);">HIDDEN FROM ARCHIVE</code>
                                         <?php endif; ?>
                                         <code class="slug-display">TRANSMISSIONS: <?php echo (int)$c['img_count']; ?></code>
                                         <?php if (!empty($c['cat_description'])): ?>

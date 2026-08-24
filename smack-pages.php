@@ -193,7 +193,7 @@ include 'core/sidebar.php';
             </div>
 
             <?php if (!empty($edit_page['image_asset'])): ?>
-            <div class="dash-grid" style="margin-top:12px;">
+            <div class="dash-grid mt-12">
                 <div class="lens-input-wrapper">
                     <label>IMAGE SIZE</label>
                     <select name="image_size">

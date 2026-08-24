@@ -138,23 +138,23 @@ function sso_hub_fail(string $reason, ?array $spoke, bool $fedboard = false): vo
                 <h3><?php echo htmlspecialchars(strtoupper($spoke['site_name'])); ?></h3>
                 <p style="color:var(--text-muted,#888); margin-bottom:5px;">
                     <a href="<?php echo htmlspecialchars($spoke['site_url']); ?>" target="_blank"
-                       style="color:var(--accent,#aaa);"><?php echo htmlspecialchars($spoke['site_url']); ?></a>
+                       class="text-accent"><?php echo htmlspecialchars($spoke['site_url']); ?></a>
                 </p>
             <?php endif; ?>
-            <div class="alert alert-error" style="margin-top:20px;"><?php echo htmlspecialchars($reason); ?></div>
+            <div class="alert alert-error mt-20"><?php echo htmlspecialchars($reason); ?></div>
             <p style="color:var(--text-muted,#888); font-size:0.9rem; margin-top:15px;">
                 The spoke may be offline, or it may be running an older version of SnapSmack that doesn't
                 support SSO. You can still log in manually at
                 <?php if ($spoke): ?>
                     <a href="<?php echo htmlspecialchars(rtrim($spoke['site_url'],'/') . '/snap-in'); ?>"
-                       target="_blank" style="color:var(--accent,#aaa);">
+                       target="_blank" class="text-accent">
                         <?php echo htmlspecialchars(rtrim($spoke['site_url'],'/') . '/snap-in'); ?>
                     </a>
                 <?php else: ?>
                     the spoke's login page.
                 <?php endif; ?>
             </p>
-            <p style="margin-top:20px;">
+            <p class="mt-20">
                 <a href="<?php echo $fedboard ? 'pixel.php' : 'smack-multisite.php'; ?>" class="btn-smack"><?php echo $fedboard ? 'RETURN TO HUB FEDBOARD' : 'BACK TO DASHBOARD'; ?></a>
             </p>
         </div>

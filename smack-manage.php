@@ -469,8 +469,8 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
     <?php if ($orphan_count > 0): ?>
-    <div class="box" style="border:1px solid #e45735;">
-        <h3 style="color:#e45735; margin-top:0;">
+    <div class="box" style="border:1px solid var(--danger, #e45735);">
+        <h3 style="color:var(--danger, #e45735); margin-top:0;">
             ⚠ <?php echo $orphan_count; ?> orphaned post<?php echo $orphan_count !== 1 ? 's' : ''; ?> in the database
         </h3>
         <p style="font-size:0.85rem; opacity:0.75; max-width:640px;">

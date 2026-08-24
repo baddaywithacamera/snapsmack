@@ -289,7 +289,7 @@ include 'core/sidebar.php';
     </div>
 
     <!-- QUICK NAV -->
-    <div class="signal-control-header" style="margin-bottom:20px;">
+    <div class="signal-control-header mb-20">
         <div class="signal-nav-group">
             <a href="smack-multisite.php"              class="btn-clear">DASHBOARD</a>
             <a href="smack-multisite-comments.php"     class="btn-clear">COMMENTS</a>
@@ -317,7 +317,7 @@ include 'core/sidebar.php';
 
     <?php if (empty($spokes)): ?>
         <div class="box">
-            <p style="color:var(--text-muted,#888);">No active spokes. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register one first.</a></p>
+            <p class="text-muted">No active spokes. <a href="smack-multisite.php" class="text-accent">Register one first.</a></p>
         </div>
 
     <?php elseif ($mode === 'push'): ?>
@@ -339,7 +339,7 @@ include 'core/sidebar.php';
                                     — <?php echo (int)$r['inserted']; ?> entries in "<?php echo htmlspecialchars($r['category']); ?>"
                                 </span>
                             <?php else: ?>
-                                <span style="color:#f44336; font-size:0.8rem;"> — <?php echo htmlspecialchars($r['error']); ?></span>
+                                <span style="color:var(--danger, #f44336); font-size:0.8rem;"> — <?php echo htmlspecialchars($r['error']); ?></span>
                             <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
@@ -365,7 +365,7 @@ include 'core/sidebar.php';
                                           padding:7px 14px; border:1px solid var(--border,#333);
                                           border-radius:3px; font-size:0.85rem;">
                                 <input type="checkbox" name="spoke_ids[]" value="<?php echo $spoke['id']; ?>"
-                                       class="tactical-checkbox" style="margin:0;" checked>
+                                       class="tactical-checkbox m-0" checked>
                                 <?php echo htmlspecialchars($spoke['site_name']); ?>
                             </label>
                         <?php endforeach; ?>
@@ -373,7 +373,7 @@ include 'core/sidebar.php';
                 </div>
 
                 <?php if (empty($hub_blogroll)): ?>
-                    <p style="color:#f44336; font-size:0.9rem;">Hub blogroll is empty. <a href="smack-blogroll.php" style="color:var(--accent,#aaa);">Add entries first.</a></p>
+                    <p style="color:var(--danger, #f44336); font-size:0.9rem;">Hub blogroll is empty. <a href="smack-blogroll.php" class="text-accent">Add entries first.</a></p>
                 <?php else: ?>
                     <button type="submit" name="push_blogroll" value="1" class="master-update-btn"
                             onclick="return confirm('Push <?php echo count($hub_blogroll); ?> entries to selected spokes?');">
@@ -399,7 +399,7 @@ include 'core/sidebar.php';
                         Enable My Blogs category in push
                     </label>
                 </div>
-                <div style="margin-bottom:20px;">
+                <div class="mb-20">
                     <label style="font-size:0.75rem; letter-spacing:1px; color:var(--text-muted,#888); display:block; margin-bottom:6px;">
                         CATEGORY NAME
                     </label>
@@ -409,13 +409,13 @@ include 'core/sidebar.php';
                            placeholder="My Blogs">
                 </div>
                 <?php if (!empty($spoke_nodes)): ?>
-                <div style="margin-bottom:20px;">
+                <div class="mb-20">
                     <div style="font-size:0.75rem; letter-spacing:1px; color:var(--text-muted,#888); margin-bottom:10px;">
                         DESCRIPTION OVERRIDES <span style="font-weight:400; color:var(--text-muted,#666);">(leave blank to use site tagline)</span>
                     </div>
-                    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                    <table class="data-table">
                         <thead>
-                            <tr style="border-bottom:1px solid var(--border,#333);">
+                            <tr class="border-b">
                                 <th style="text-align:left; padding:6px 8px; color:var(--text-muted,#888); width:220px;">SPOKE</th>
                                 <th style="text-align:left; padding:6px 8px; color:var(--text-muted,#888);">TAGLINE (CURRENT)</th>
                                 <th style="text-align:left; padding:6px 8px; color:var(--text-muted,#888);">CUSTOM DESC</th>
@@ -423,7 +423,7 @@ include 'core/sidebar.php';
                         </thead>
                         <tbody>
                             <?php foreach ($spoke_nodes as $sn): ?>
-                            <tr style="border-bottom:1px solid var(--border,#222);">
+                            <tr class="border-b-dim">
                                 <td style="padding:6px 8px;"><?php echo htmlspecialchars($sn['site_name']); ?></td>
                                 <td style="padding:6px 8px; color:var(--text-muted,#666); font-size:0.8rem;">
                                     <?php echo htmlspecialchars($sn['site_tagline'] ?? ''); ?>
@@ -432,7 +432,7 @@ include 'core/sidebar.php';
                                     <input type="text" name="spoke_blogroll_desc[<?php echo $sn['id']; ?>]"
                                            value="<?php echo htmlspecialchars($sn['blogroll_desc'] ?? ''); ?>"
                                            placeholder="<?php echo htmlspecialchars($sn['site_tagline'] ?? ''); ?>"
-                                           style="width:100%;">
+                                           class="w-100">
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -450,18 +450,18 @@ include 'core/sidebar.php';
         <?php if (!empty($hub_blogroll)): ?>
         <div class="box">
             <h3>HUB BLOGROLL PREVIEW</h3>
-            <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+            <table class="data-table">
                 <thead>
-                    <tr style="border-bottom:1px solid var(--border,#333);">
-                        <th style="text-align:left; padding:8px; color:var(--text-muted,#888);">NAME</th>
-                        <th style="text-align:left; padding:8px; color:var(--text-muted,#888);">URL</th>
-                        <th style="text-align:left; padding:8px; color:var(--text-muted,#888);">CATEGORY</th>
+                    <tr class="border-b">
+                        <th class="cell-l">NAME</th>
+                        <th class="cell-l">URL</th>
+                        <th class="cell-l">CATEGORY</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($hub_blogroll as $entry): ?>
-                        <tr style="border-bottom:1px solid var(--border,#222);">
-                            <td style="padding:8px;"><?php echo htmlspecialchars($entry['peer_name']); ?></td>
+                        <tr class="border-b-dim">
+                            <td class="p-8"><?php echo htmlspecialchars($entry['peer_name']); ?></td>
                             <td style="padding:8px; color:var(--text-muted,#888);">
                                 <a href="<?php echo htmlspecialchars($entry['peer_url']); ?>" target="_blank"
                                    style="color:inherit;"><?php echo htmlspecialchars(preg_replace('~^https?://~i', '', $entry['peer_url'])); ?></a>
@@ -480,7 +480,7 @@ include 'core/sidebar.php';
 
         <!-- PULL: Per-spoke blogroll view with import buttons -->
         <?php if (empty($spoke_blogrolls) && empty($fetch_errors)): ?>
-            <div class="box"><p style="color:var(--text-muted,#888);">No blogroll data returned from any spoke.</p></div>
+            <div class="box"><p class="text-muted">No blogroll data returned from any spoke.</p></div>
         <?php endif; ?>
 
         <?php foreach ($spoke_blogrolls as $node_id => $spoke_data): ?>
@@ -495,12 +495,12 @@ include 'core/sidebar.php';
             <?php if (empty($spoke_data['entries'])): ?>
                 <p style="color:var(--text-muted,#666); font-size:0.85rem;">No blogroll entries on this spoke.</p>
             <?php else: ?>
-                <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                <table class="data-table">
                     <thead>
-                        <tr style="border-bottom:1px solid var(--border,#333);">
-                            <th style="text-align:left; padding:8px; color:var(--text-muted,#888);">NAME</th>
-                            <th style="text-align:left; padding:8px; color:var(--text-muted,#888);">URL</th>
-                            <th style="text-align:left; padding:8px; color:var(--text-muted,#888);">CAT</th>
+                        <tr class="border-b">
+                            <th class="cell-l">NAME</th>
+                            <th class="cell-l">URL</th>
+                            <th class="cell-l">CAT</th>
                             <th style="text-align:center; padding:8px; color:var(--text-muted,#888);">ADD TO HUB</th>
                         </tr>
                     </thead>
@@ -508,8 +508,8 @@ include 'core/sidebar.php';
                         <?php foreach ($spoke_data['entries'] as $entry):
                             $already_have = in_array($entry['peer_url'], $hub_urls);
                         ?>
-                            <tr style="border-bottom:1px solid var(--border,#222);">
-                                <td style="padding:8px;"><?php echo htmlspecialchars($entry['peer_name']); ?></td>
+                            <tr class="border-b-dim">
+                                <td class="p-8"><?php echo htmlspecialchars($entry['peer_name']); ?></td>
                                 <td style="padding:8px; color:var(--text-muted,#888); font-size:0.8rem;">
                                     <a href="<?php echo htmlspecialchars($entry['peer_url']); ?>" target="_blank"
                                        style="color:inherit;"><?php echo htmlspecialchars(preg_replace('~^https?://~i', '', $entry['peer_url'])); ?></a>
@@ -519,7 +519,7 @@ include 'core/sidebar.php';
                                 </td>
                                 <td style="padding:8px; text-align:center;">
                                     <?php if ($already_have): ?>
-                                        <span style="color:#4CAF50; font-size:0.75rem;">&#x2713; HAVE IT</span>
+                                        <span style="color:var(--success, #4CAF50); font-size:0.75rem;">&#x2713; HAVE IT</span>
                                     <?php else: ?>
                                         <form method="POST" style="margin:0; display:inline;">
                                             <input type="hidden" name="peer_name" value="<?php echo htmlspecialchars($entry['peer_name']); ?>">

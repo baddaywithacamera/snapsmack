@@ -114,7 +114,7 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
     <!-- MANAGE CATEGORIES -->
-    <div class="box" style="margin-bottom:20px;">
+    <div class="box mb-20">
         <h3>MANAGE CATEGORIES</h3>
 
         <?php if (!empty($categories)): ?>

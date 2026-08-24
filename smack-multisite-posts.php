@@ -131,12 +131,12 @@ include 'core/sidebar.php';
 
     <?php if (empty($spokes)): ?>
         <div class="box">
-            <p style="color:var(--text-muted,#888);">No active spokes connected. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register a spoke</a> first.</p>
+            <p class="text-muted">No active spokes connected. <a href="smack-multisite.php" class="text-accent">Register a spoke</a> first.</p>
         </div>
     <?php else: ?>
 
         <!-- QUICK NAV -->
-        <div class="signal-control-header" style="margin-bottom:20px;">
+        <div class="signal-control-header mb-20">
             <div class="signal-nav-group">
                 <a href="smack-multisite.php"          class="btn-clear">DASHBOARD</a>
                 <a href="smack-multisite-comments.php" class="btn-clear">COMMENTS</a>
@@ -243,7 +243,7 @@ include 'core/sidebar.php';
                     <div style="text-align:center; padding:15px; color:var(--text-muted,#888); font-size:0.85rem;">
                         Showing <?php echo $per_spoke; ?> posts per spoke.
                         <a href="?<?php echo http_build_query(array_merge($_GET, ['limit' => min($per_spoke + 20, 50)])); ?>"
-                           style="color:var(--accent,#aaa);">LOAD MORE</a>
+                           class="text-accent">LOAD MORE</a>
                     </div>
                 <?php endif; ?>
 

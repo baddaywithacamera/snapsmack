@@ -1840,10 +1840,10 @@ include 'core/sidebar.php';
     <?php
     if ($sig_failure || $pending_rotation || isset($_GET['repair_key'])):
     ?>
-    <div class="box update-section" id="repair-key-panel" style="border-color:#c00;">
+    <div class="box update-section" id="repair-key-panel" style="border-color:var(--danger, #c00);">
 
         <?php if ($pending_rotation): ?>
-        <h3 style="color:#fa0;">&#9888; KEY ROTATION DETECTED</h3>
+        <h3 style="color:var(--warning, #fa0);">&#9888; KEY ROTATION DETECTED</h3>
         <p class="dim" style="font-size:0.8rem;margin-bottom:12px;">
             A key rotation announcement was fetched from <code>snapsmack.ca</code> and verified
             against the hardcoded root key. The new release signing key is shown below.
@@ -1851,28 +1851,28 @@ include 'core/sidebar.php';
         </p>
         <table style="font-size:0.78rem;margin-bottom:14px;width:100%;border-collapse:collapse;">
             <tr><td style="opacity:0.5;padding:3px 10px 3px 0;white-space:nowrap;">Issued</td>
-                <td style="font-family:monospace;"><?php echo htmlspecialchars($pending_rotation['issued_at']); ?></td></tr>
+                <td class="mono"><?php echo htmlspecialchars($pending_rotation['issued_at']); ?></td></tr>
             <?php if (!empty($pending_rotation['reason'])): ?>
-            <tr><td style="opacity:0.5;padding:3px 10px 3px 0;">Reason</td>
+            <tr><td class="dim-pad2">Reason</td>
                 <td><?php echo htmlspecialchars($pending_rotation['reason']); ?></td></tr>
             <?php endif; ?>
-            <tr><td style="opacity:0.5;padding:3px 10px 3px 0;">Old key</td>
+            <tr><td class="dim-pad2">Old key</td>
                 <td style="font-family:monospace;word-break:break-all;opacity:0.6;"><?php echo htmlspecialchars($pending_rotation['old_pubkey']); ?></td></tr>
-            <tr><td style="opacity:0.5;padding:3px 10px 3px 0;">New key</td>
-                <td style="font-family:monospace;word-break:break-all;color:#0f0;"><?php echo htmlspecialchars($pending_rotation['new_pubkey']); ?></td></tr>
+            <tr><td class="dim-pad2">New key</td>
+                <td style="font-family:monospace;word-break:break-all;color:var(--success, #0f0);"><?php echo htmlspecialchars($pending_rotation['new_pubkey']); ?></td></tr>
         </table>
         <form method="POST">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
             <button type="submit" name="action" value="accept_key_rotation" class="btn-smack"
-                    style="background:#fa0;color:#000;"
+                    style="background:var(--warning, #fa0);color:var(--text-muted, #000);"
                     onclick="return confirm('Accept this key rotation? It was verified against the root key.');">
                 &#10003; ACCEPT KEY ROTATION
             </button>
         </form>
 
         <?php else: ?>
-        <h3 style="color:#c00;">&#9888; REPAIR SIGNING KEY</h3>
-        <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
+        <h3 style="color:var(--danger, #c00);">&#9888; REPAIR SIGNING KEY</h3>
+        <p class="dim text-sm mb-16">
             The installed public key does not match the key used to sign this release.
             No root-key-signed rotation file was found on the server. Paste the new
             64-character hex public key manually (from Smack Central &rarr; Release Packager
@@ -1885,10 +1885,10 @@ include 'core/sidebar.php';
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
             <input type="text" name="new_pubkey" placeholder="64-char hex Ed25519 public key"
                    style="width:100%;font-family:monospace;font-size:0.8rem;padding:8px;
-                          background:#111;color:#0f0;border:1px solid #c00;margin-bottom:10px;"
+                          background:var(--input-bg, #111);color:var(--success, #0f0);border:1px solid var(--danger, #c00);margin-bottom:10px;"
                    maxlength="64" autocomplete="off" spellcheck="false">
             <button type="submit" name="action" value="repair_pubkey" class="btn-smack"
-                    style="background:#c00;"
+                    style="background:var(--danger, #c00);"
                     onclick="return confirm('Update the signing public key? Only do this if you rotated the keypair.');">
                 UPDATE SIGNING KEY
             </button>
@@ -1986,9 +1986,9 @@ include 'core/sidebar.php';
 
         <form method="POST" class="stage-cancel">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="action" value="cancel_update" class="btn-smack"
+            <button type="submit" name="action" value="cancel_update" class="btn-smack o-50"
                     onclick="return confirm('Cancel this update and discard the downloaded package?');"
-                    style="opacity:0.5;">
+                   >
                 CANCEL UPDATE
             </button>
         </form>
@@ -2204,7 +2204,7 @@ include 'core/sidebar.php';
                 <span class="skin-notify-version ml-10">v<?php echo htmlspecialchars($skin['from']); ?> &rarr; v<?php echo htmlspecialchars($skin['to']); ?></span>
             </div>
             <?php if (!empty($skin['download_url'])): ?>
-            <form method="POST" style="margin:0;">
+            <form method="POST" class="m-0">
                 <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
                 <input type="hidden" name="skin_slug" value="<?php echo htmlspecialchars($skin['slug']); ?>">
                 <input type="hidden" name="download_url" value="<?php echo htmlspecialchars($skin['download_url']); ?>">
@@ -2236,7 +2236,7 @@ include 'core/sidebar.php';
     <div class="box update-section" <?php echo ($has_pending || $has_ghosts) ? 'style="border-color:rgba(200,120,0,0.5);"' : ''; ?>>
         <h3>SCHEMA RECOVERY</h3>
         <?php if ($schema_resync_result): ?>
-        <div style="margin-bottom:16px;">
+        <div class="mb-16">
             <?php if (!empty($schema_resync_result['created'])): ?>
                 <div style="font-family:monospace;font-size:0.78rem;margin-bottom:6px;">TABLES CREATED:</div>
                 <?php foreach ($schema_resync_result['created'] as $t): ?>
@@ -2250,15 +2250,15 @@ include 'core/sidebar.php';
                 <?php endforeach; ?>
             <?php endif; ?>
             <?php if (!empty($schema_resync_result['errors'])): ?>
-                <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:#c44;">ERRORS:</div>
+                <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:var(--danger, #c44);">ERRORS:</div>
                 <?php foreach ($schema_resync_result['errors'] as $e): ?>
-                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#c44;">&#10007; <?php echo htmlspecialchars($e); ?></code>
+                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:var(--danger, #c44);">&#10007; <?php echo htmlspecialchars($e); ?></code>
                 <?php endforeach; ?>
             <?php endif; ?>
         </div>
         <?php endif; ?>
         <?php if ($has_ghosts): ?>
-        <div class="update-warning" style="margin-bottom:16px;">
+        <div class="update-warning mb-16">
             <strong>GHOST FILES DETECTED</strong> &mdash; Migration files on disk not part of any release.
             The updater skips them automatically, but they should be removed.<br><br>
             <?php foreach ($migration_status['ghosts'] as $g): ?>
@@ -2289,17 +2289,17 @@ include 'core/sidebar.php';
             <?php if ($has_pending): ?>
             <form method="POST">
                 <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="mark_migrations_applied" class="btn-smack btn-secondary"
+                <button type="submit" name="action" value="mark_migrations_applied" class="btn-smack btn-secondary text-0-75"
                         onclick="return confirm('Mark all known migrations as applied without running them?\n\nOnly do this if you have already applied the schema changes manually (e.g. via cPanel SQL).');"
-                        style="font-size:0.75rem;">MARK ALL MIGRATIONS APPLIED</button>
+                       >MARK ALL MIGRATIONS APPLIED</button>
             </form>
             <?php endif; ?>
             <?php if ($has_ghosts): $ghost_count = count($migration_status['ghosts']); ?>
             <form method="POST">
                 <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="purge_ghosts" class="btn-smack btn-secondary"
+                <button type="submit" name="action" value="purge_ghosts" class="btn-smack btn-secondary text-0-75"
                         onclick="return confirm('Permanently delete <?php echo $ghost_count; ?> ghost migration file(s) from disk?\n\nThese files are not part of any official release and will never be run by the updater.');"
-                        style="font-size:0.75rem;">PURGE GHOST FILES</button>
+                       >PURGE GHOST FILES</button>
             </form>
             <?php endif; ?>
         </div>
@@ -2339,7 +2339,7 @@ include 'core/sidebar.php';
                     <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
                     <button type="submit" name="action" value="reapply" class="btn-smack"
                             onclick="return confirm('Reapply v<?php echo htmlspecialchars($installed_version); ?>? This will re-download and re-extract all files.\n\nUse this if a release was packaged incorrectly or files were missed.');"
-                            style="background:#666;">REAPPLY CURRENT VERSION</button>
+                            style="background:var(--input-bg, #666);">REAPPLY CURRENT VERSION</button>
                 </form>
                 <form method="POST">
                     <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
@@ -2354,7 +2354,7 @@ include 'core/sidebar.php';
         <?php if (!$schema_resync_result && !$has_pending && !$has_ghosts): ?>
         <div class="box update-section">
             <h3>SCHEMA RECOVERY</h3>
-            <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
+            <p class="dim text-sm mb-16">
                 Run a schema sync or inspect migration state without running a full update.
                 Use these tools after a failed update or when bringing an older install current manually.
             </p>
@@ -2371,64 +2371,64 @@ include 'core/sidebar.php';
         <!-- CANONICAL SCHEMA DIFF -->
         <div class="box update-section">
             <h3>CANONICAL SCHEMA DIFF</h3>
-            <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
+            <p class="dim text-sm mb-16">
                 Fetches <em>snapsmack_canonical.sql</em> from the release server and
                 compares it against your live database. Catches missing tables or columns
                 including cases where an update failed before the on-disk copy was replaced.
                 <?php if ($has_canonical_url && $has_canonical_sig): ?>
-                    <span style="color:#0f0;"> &mdash; Remote URL + signature available.</span>
+                    <span style="color:var(--success, #0f0);"> &mdash; Remote URL + signature available.</span>
                 <?php elseif ($has_canonical_url): ?>
-                    <span style="color:#fa0;"> &mdash; Remote URL available (no signature).</span>
+                    <span style="color:var(--warning, #fa0);"> &mdash; Remote URL available (no signature).</span>
                 <?php else: ?>
-                    <span style="opacity:0.5;"> &mdash; No remote URL in manifest; will use on-disk copy.</span>
+                    <span class="o-50"> &mdash; No remote URL in manifest; will use on-disk copy.</span>
                 <?php endif; ?>
             </p>
             <?php if ($canonical_apply): ?>
-            <div style="margin-bottom:16px;">
+            <div class="mb-16">
                 <?php if (!empty($canonical_apply['created'])): ?>
                     <div style="font-family:monospace;font-size:0.78rem;margin-bottom:6px;">TABLES CREATED:</div>
                     <?php foreach ($canonical_apply['created'] as $t): ?>
-                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#0f0;">+ <?php echo htmlspecialchars($t); ?></code>
+                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:var(--success, #0f0);">+ <?php echo htmlspecialchars($t); ?></code>
                     <?php endforeach; ?>
                 <?php endif; ?>
                 <?php if (!empty($canonical_apply['columns_added'])): ?>
                     <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;">COLUMNS ADDED:</div>
                     <?php foreach ($canonical_apply['columns_added'] as $c): ?>
-                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#0f0;">+ <?php echo htmlspecialchars($c); ?></code>
+                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:var(--success, #0f0);">+ <?php echo htmlspecialchars($c); ?></code>
                     <?php endforeach; ?>
                 <?php endif; ?>
                 <?php if (!empty($canonical_apply['errors'])): ?>
-                    <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:#c44;">ERRORS:</div>
+                    <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:var(--danger, #c44);">ERRORS:</div>
                     <?php foreach ($canonical_apply['errors'] as $e): ?>
-                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#c44;">&#10007; <?php echo htmlspecialchars($e); ?></code>
+                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:var(--danger, #c44);">&#10007; <?php echo htmlspecialchars($e); ?></code>
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
             <?php endif; ?>
             <?php if ($canonical_diff && !$canonical_diff['all_ok']): ?>
-            <div style="margin-bottom:16px;">
+            <div class="mb-16">
                 <div style="font-family:monospace;font-size:0.75rem;opacity:0.6;margin-bottom:10px;">
                     SOURCE: <?php echo strtoupper(htmlspecialchars($canonical_diff['source'])); ?>
                     &nbsp;&mdash;&nbsp;
                     <?php echo (int)$canonical_diff['canonical_tables']; ?> TABLE(S) IN CANONICAL SCHEMA
                 </div>
                 <?php if (!empty($canonical_diff['missing_tables'])): ?>
-                    <div style="font-family:monospace;font-size:0.78rem;margin-bottom:6px;color:#fa0;">MISSING TABLES:</div>
+                    <div style="font-family:monospace;font-size:0.78rem;margin-bottom:6px;color:var(--warning, #fa0);">MISSING TABLES:</div>
                     <?php foreach ($canonical_diff['missing_tables'] as $t): ?>
-                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#fa0;">&#10007; <?php echo htmlspecialchars($t); ?></code>
+                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:var(--warning, #fa0);">&#10007; <?php echo htmlspecialchars($t); ?></code>
                     <?php endforeach; ?>
                 <?php endif; ?>
                 <?php if (!empty($canonical_diff['missing_columns'])): ?>
-                    <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:#fa0;">MISSING COLUMNS:</div>
+                    <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:var(--warning, #fa0);">MISSING COLUMNS:</div>
                     <?php foreach ($canonical_diff['missing_columns'] as $item): ?>
-                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#fa0;">
+                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:var(--warning, #fa0);">
                             &#10007; <?php echo htmlspecialchars($item['table'] . '.' . $item['column']); ?>
                         </code>
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
             <?php elseif ($canonical_diff && $canonical_diff['all_ok']): ?>
-            <div style="font-family:monospace;font-size:0.78rem;color:#0f0;margin-bottom:16px;">
+            <div style="font-family:monospace;font-size:0.78rem;color:var(--success, #0f0);margin-bottom:16px;">
                 &#10003; DATABASE MATCHES CANONICAL SCHEMA
                 (<?php echo (int)$canonical_diff['canonical_tables']; ?> tables,
                 source: <?php echo strtoupper(htmlspecialchars($canonical_diff['source'])); ?>)
@@ -2454,14 +2454,14 @@ include 'core/sidebar.php';
         <!-- MANUAL UPDATE (UPLOAD) -->
         <div class="box update-section" id="manual-upload">
             <h3>MANUAL UPDATE (UPLOAD)</h3>
-            <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
+            <p class="dim text-sm mb-16">
                 If this server cannot reach snapsmack.ca, download the update package
                 on your own machine and upload it here. The same backup, verification,
                 and extraction pipeline will run.
             </p>
             <form method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <div style="margin-bottom:14px;">
+                <div class="mb-14">
                     <label style="font-size:0.78rem;opacity:0.6;display:block;margin-bottom:10px;">UPDATE PACKAGE (.ZIP)</label>
                     <label class="file-pick-btn" id="file-pick-label">
                         <input type="file" name="update_zip" accept=".zip" required id="upload-zip-input" style="position:absolute;opacity:0;width:0;height:0;">
@@ -2495,11 +2495,11 @@ include 'core/sidebar.php';
                                 onclick="return confirm('Remove the automatic version check cron job?');">REMOVE VERSION CHECK</button>
                     </form>
                 </div>
-                <p class="dim mt-25" style="font-size:0.8rem;">Without cron, the dashboard falls back to a 24-hour on-load check.</p>
+                <p class="dim mt-25 text-sm">Without cron, the dashboard falls back to a 24-hour on-load check.</p>
             <?php else: ?>
                 <label>CRON ENGINE</label>
                 <div class="read-only-display">NOT SUPPORTED ON THIS HOST</div>
-                <p class="dim mt-10" style="font-size:0.8rem;">The dashboard will fall back to checking every 24 hours on page load.</p>
+                <p class="dim mt-10 text-sm">The dashboard will fall back to checking every 24 hours on page load.</p>
             <?php endif; ?>
         </div>
 

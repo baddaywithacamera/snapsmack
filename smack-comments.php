@@ -503,7 +503,7 @@ include 'core/sidebar.php';
                                 </div>
 
                                 <?php if (($c['ap_source'] ?? '') === 'fediverse'): ?>
-                                    <form method="POST" class="fedi-reply-form" style="margin-top:8px;">
+                                    <form method="POST" class="fedi-reply-form mt-8">
                                         <input type="hidden" name="reply_to_id" value="<?php echo (int)$c['id']; ?>">
                                         <textarea name="reply_text" rows="2" placeholder="Reply as the blog to the fediverse…" style="width:100%;box-sizing:border-box;" required></textarea>
                                         <button type="submit" class="btn-smack">REPLY TO FEDIVERSE</button>

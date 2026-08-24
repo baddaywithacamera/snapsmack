@@ -99,8 +99,8 @@ include 'core/sidebar.php';
                 <label>EMBED CODES</label>
                 <p class="dim">
                     Define reusable embed snippets. Each block starts with a key line —
-                    <code style="color:#a0ff90;">[key:mailerlite]</code> — followed by the HTML.
-                    Place them on any page with the <code style="color:#a0ff90;">[embed:mailerlite]</code> shortcode.
+                    <code style="color:var(--success, #a0ff90);">[key:mailerlite]</code> — followed by the HTML.
+                    Place them on any page with the <code style="color:var(--success, #a0ff90);">[embed:mailerlite]</code> shortcode.
                 </p>
                 <textarea name="embed_codes" class="css-override-textarea" spellcheck="false" placeholder="[key:mailerlite]
 <div class=&quot;ml-embedded&quot; data-form=&quot;Ixs8uR&quot;></div>

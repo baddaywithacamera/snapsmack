@@ -725,7 +725,7 @@ include 'core/sidebar.php';
         <h2>COLLECTIONS</h2>
     </div>
 
-    <div style="margin-bottom:20px;">
+    <div class="mb-20">
         <a href="smack-collections.php?new=1" class="btn-smack">+ NEW COLLECTION</a>
     </div>
 
@@ -765,7 +765,7 @@ include 'core/sidebar.php';
 
 <?php endif; ?>
 
-    <div class="box" style="margin-top:24px;">
+    <div class="box mt-24">
         <h3>COLLECTION SETTINGS</h3>
         <form method="POST">
             <input type="hidden" name="action_settings" value="1">

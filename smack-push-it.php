@@ -244,8 +244,8 @@ include 'core/sidebar.php';
         <input type="hidden" name="csrf" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
 
         <?php if (!empty($push_error)): ?>
-        <div class="box" style="border:1px solid #c55400; background:rgba(197,84,0,0.08);">
-            <p style="margin:0; color:#c55400; font-size:0.9rem;"><?php echo htmlspecialchars($push_error); ?></p>
+        <div class="box" style="border:1px solid var(--warning, #c55400); background:rgba(197,84,0,0.08);">
+            <p style="margin:0; color:var(--warning, #c55400); font-size:0.9rem;"><?php echo htmlspecialchars($push_error); ?></p>
         </div>
         <?php endif; ?>
 
@@ -266,7 +266,7 @@ include 'core/sidebar.php';
         <!-- ── TIMEZONE & DATE FORMAT ───────────────────────────────────── -->
         <div class="box">
             <h3>TIMEZONE &amp; DATE FORMAT</h3>
-            <div class="dash-grid" style="margin-bottom:16px;">
+            <div class="dash-grid mb-16">
                 <div class="lens-input-wrapper">
                     <label>TIMEZONE</label>
                     <div class="read-only-display"><?php echo htmlspecialchars($settings['timezone'] ?? 'America/Edmonton'); ?></div>
@@ -282,7 +282,7 @@ include 'core/sidebar.php';
                                <?php echo ($settings['hub_controls_timezone'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their timezone or date format.</span>
+                    <span class="dim text-0-82">When on, spokes cannot change their timezone or date format.</span>
                 </div>
             </div>
             <?php $render_result('timezone'); ?>
@@ -291,7 +291,7 @@ include 'core/sidebar.php';
         <!-- ── MAXIMUM IMAGE SIZE ───────────────────────────────────────── -->
         <div class="box">
             <h3>MAXIMUM IMAGE SIZE</h3>
-            <div class="dash-grid" style="margin-bottom:16px;">
+            <div class="dash-grid mb-16">
                 <div class="lens-input-wrapper">
                     <label>MAX WIDTH (LANDSCAPE)</label>
                     <div class="read-only-display"><?php echo htmlspecialchars($settings['max_width_landscape'] ?? '2500'); ?> px</div>
@@ -307,7 +307,7 @@ include 'core/sidebar.php';
                                <?php echo ($settings['hub_controls_imagesize'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their maximum image dimensions — the whole fleet resizes uploads to the same caps.</span>
+                    <span class="dim text-0-82">When on, spokes cannot change their maximum image dimensions — the whole fleet resizes uploads to the same caps.</span>
                 </div>
             </div>
             <?php $render_result('imagesize'); ?>
@@ -316,10 +316,10 @@ include 'core/sidebar.php';
         <!-- ── SPAM PROTECTION ──────────────────────────────────────────── -->
         <div class="box">
             <h3>SPAM PROTECTION</h3>
-            <div class="dash-grid" style="margin-bottom:16px;">
+            <div class="dash-grid mb-16">
                 <div class="lens-input-wrapper">
                     <label>AKISMET API KEY</label>
-                    <div class="read-only-display" style="font-family:monospace;">
+                    <div class="read-only-display mono">
                         <?php $ak = $settings['akismet_key'] ?? '';
                         echo $ak ? '••••••••' . htmlspecialchars(substr($ak, -4)) : '<span class="dim">(not set)</span>'; ?>
                     </div>
@@ -331,7 +331,7 @@ include 'core/sidebar.php';
                                <?php echo ($settings['hub_controls_akismet'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their Akismet key.</span>
+                    <span class="dim text-0-82">When on, spokes cannot change their Akismet key.</span>
                 </div>
             </div>
             <?php $render_result('akismet'); ?>
@@ -345,7 +345,7 @@ include 'core/sidebar.php';
                 (provider + keys + cost-acceptance, starting each spoke's 30-day grace). It does
                 NOT touch AI crawling — that's the free section below.
             </p>
-            <div class="dash-grid" style="margin-bottom:16px;">
+            <div class="dash-grid mb-16">
                 <div class="lens-input-wrapper">
                     <label>PROVIDER</label>
                     <div class="read-only-display"><?php echo htmlspecialchars($ai_prov_labels[$ai_prov] ?? strtoupper($ai_prov)); ?></div>
@@ -361,7 +361,7 @@ include 'core/sidebar.php';
                                <?php echo ($settings['hub_controls_ai'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their AI provider or keys.</span>
+                    <span class="dim text-0-82">When on, spokes cannot change their AI provider or keys.</span>
                 </div>
             </div>
             <?php $render_result('ai'); ?>
@@ -375,7 +375,7 @@ include 'core/sidebar.php';
                 no cost, no keys). Separate from enrichment so "allow AI to find me" can never
                 start a bill.
             </p>
-            <div class="dash-grid" style="margin-bottom:16px;">
+            <div class="dash-grid mb-16">
                 <div class="lens-input-wrapper">
                     <label>CRAWLER POLICY</label>
                     <div class="read-only-display"><?php
@@ -390,7 +390,7 @@ include 'core/sidebar.php';
                                <?php echo ($settings['hub_controls_aicrawl'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their AI crawler policy.</span>
+                    <span class="dim text-0-82">When on, spokes cannot change their AI crawler policy.</span>
                 </div>
             </div>
             <?php $render_result('aicrawl'); ?>
@@ -399,7 +399,7 @@ include 'core/sidebar.php';
         <!-- ── FOOTER ────────────────────────────────────────────────────── -->
         <div class="box">
             <h3>FOOTER — COPYRIGHT &amp; THEME</h3>
-            <div class="dash-grid" style="margin-bottom:16px;">
+            <div class="dash-grid mb-16">
                 <div class="lens-input-wrapper">
                     <label>COPYRIGHT</label>
                     <div class="read-only-display"><?php
@@ -425,7 +425,7 @@ include 'core/sidebar.php';
                                <?php echo ($settings['hub_controls_footer'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">When on, spokes use the hub's footer copyright and "theme in footer" setting. Tip: put {year} in custom copyright to auto-fill the current year.</span>
+                    <span class="dim text-0-82">When on, spokes use the hub's footer copyright and "theme in footer" setting. Tip: put {year} in custom copyright to auto-fill the current year.</span>
                 </div>
             </div>
             <?php $render_result('footer'); ?>
@@ -434,7 +434,7 @@ include 'core/sidebar.php';
         <!-- ── SMACKBACK ─────────────────────────────────────────────────── -->
         <div class="box">
             <h3>SMACKBACK — FILE INTEGRITY</h3>
-            <div class="dash-grid" style="margin-bottom:16px;">
+            <div class="dash-grid mb-16">
                 <div class="lens-input-wrapper">
                     <label>ENABLED</label>
                     <div class="read-only-display"><?php echo ($settings['smackback_enabled'] ?? '0') === '1' ? 'YES' : 'NO'; ?></div>
@@ -450,7 +450,7 @@ include 'core/sidebar.php';
                                <?php echo ($settings['hub_controls_smackback'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their SMACKBACK enabled state or response mode.</span>
+                    <span class="dim text-0-82">When on, spokes cannot change their SMACKBACK enabled state or response mode.</span>
                 </div>
             </div>
             <?php $render_result('smackback'); ?>
@@ -459,7 +459,7 @@ include 'core/sidebar.php';
         <!-- ── GLOBAL COMMENTS ───────────────────────────────────────────── -->
         <div class="box">
             <h3>GLOBAL COMMENTS</h3>
-            <div class="dash-grid" style="margin-bottom:16px;">
+            <div class="dash-grid mb-16">
                 <div class="lens-input-wrapper">
                     <label>COMMENTS</label>
                     <div class="read-only-display"><?php echo ($settings['global_comments_enabled'] ?? '1') === '1' ? 'ENABLED' : 'DISABLED (KILL-SWITCH)'; ?></div>
@@ -471,7 +471,7 @@ include 'core/sidebar.php';
                                <?php echo ($settings['hub_controls_comments'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">When on, spokes cannot toggle their global comments switch.</span>
+                    <span class="dim text-0-82">When on, spokes cannot toggle their global comments switch.</span>
                 </div>
             </div>
             <?php $render_result('comments'); ?>
@@ -486,7 +486,7 @@ include 'core/sidebar.php';
                 and your <strong>Brevo API key</strong> — so every spoke sends mail through this hub's Brevo account.
                 Enter Brevo once here on the hub, push, and all your blogs email properly with nothing to re-enter on each one.
             </p>
-            <div class="dash-grid" style="margin-bottom:16px;">
+            <div class="dash-grid mb-16">
                 <div class="lens-input-wrapper">
                     <label>SITE EMAIL</label>
                     <div class="read-only-display"><?php echo htmlspecialchars($settings['site_email'] ?? '(not set)'); ?></div>
@@ -502,7 +502,7 @@ include 'core/sidebar.php';
                                <?php echo ($settings['hub_controls_email'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">When on, spokes can't change their email/comms settings — and they send through this hub's Brevo account (one shared fleet sender).</span>
+                    <span class="dim text-0-82">When on, spokes can't change their email/comms settings — and they send through this hub's Brevo account (one shared fleet sender).</span>
                 </div>
             </div>
             <?php $render_result('email'); ?>
@@ -511,7 +511,7 @@ include 'core/sidebar.php';
         <!-- ── NETWORK ALERT (SMACKATTACK) ─────────────────────────────── -->
         <div class="box">
             <h3>SMACKATTACK — NETWORK ALERT</h3>
-            <div class="dash-grid" style="margin-bottom:16px;">
+            <div class="dash-grid mb-16">
                 <div class="lens-input-wrapper">
                     <label>RECEIVE SC ALERTS</label>
                     <div class="read-only-display"><?php echo ($settings['network_alert_receive'] ?? '0') === '1' ? 'YES' : 'NO'; ?></div>
@@ -527,7 +527,7 @@ include 'core/sidebar.php';
                                <?php echo ($settings['hub_controls_netalert'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their network alert receive/send settings.</span>
+                    <span class="dim text-0-82">When on, spokes cannot change their network alert receive/send settings.</span>
                 </div>
             </div>
             <?php $render_result('netalert'); ?>
@@ -553,7 +553,7 @@ include 'core/sidebar.php';
                 appearance, and every profile URL. Your profiles are the same everywhere,
                 so set them once here and push to all sites.
             </p>
-            <div class="dash-grid" style="margin-bottom:16px;">
+            <div class="dash-grid mb-16">
                 <div class="lens-input-wrapper">
                     <label>ENABLED</label>
                     <div class="read-only-display"><?php echo ($settings['social_dock_enabled'] ?? '0') === '1' ? 'YES' : 'NO'; ?></div>
@@ -574,7 +574,7 @@ include 'core/sidebar.php';
                                <?php echo ($settings['hub_controls_socialdock'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
-                    <span class="dim" style="font-size:0.82rem;">When on, the dock's enable state, appearance and profile URLs are pushed from the hub and spokes use the hub's values.</span>
+                    <span class="dim text-0-82">When on, the dock's enable state, appearance and profile URLs are pushed from the hub and spokes use the hub's values.</span>
                 </div>
             </div>
             <?php $render_result('socialdock'); ?>
@@ -590,14 +590,14 @@ include 'core/sidebar.php';
             </p>
             <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
                 <div>
-                    <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">PASSWORD</label>
+                    <label class="overline">PASSWORD</label>
                     <input type="password" name="reauth_password" autocomplete="off"
-                           style="padding:8px 10px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                           class="field-input">
                 </div>
                 <div>
-                    <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">2FA CODE (if enabled)</label>
+                    <label class="overline">2FA CODE (if enabled)</label>
                     <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off"
-                           style="padding:8px 10px; width:120px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                           class="field-input-120">
                 </div>
             </div>
         </div>
@@ -627,7 +627,7 @@ include 'core/sidebar.php';
             }
             if ($any_all_results && isset($_POST['push_all'])):
             ?>
-            <div style="margin-top:16px;">
+            <div class="mt-16">
                 <?php foreach (array_keys($push_group_keys) as $group): ?>
                     <?php if (!empty($push_results[$group])): ?>
                         <div style="margin-bottom:6px;font-size:0.82rem;"><strong style="text-transform:uppercase;"><?php echo $group; ?>:</strong> <?php $render_result($group); ?></div>

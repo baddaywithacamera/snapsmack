@@ -415,7 +415,7 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
     <?php if (!empty($form_error)): ?>
-        <div class="alert" style="background:rgba(204,68,68,0.15);border:1px solid rgba(204,68,68,0.4);color:#cc4444;padding:12px 16px;border-radius:4px;margin-bottom:16px;">
+        <div class="alert" style="background:rgba(204,68,68,0.15);border:1px solid rgba(204,68,68,0.4);color:var(--danger, #cc4444);padding:12px 16px;border-radius:4px;margin-bottom:16px;">
             <?php echo htmlspecialchars($form_error); ?>
         </div>
     <?php endif; ?>
@@ -534,7 +534,7 @@ include 'core/sidebar.php';
         #bucket-panel .bkt-hint { font-size:11px; color:var(--dim,#888); margin-left:10px; }
         </style>
         <div class="box" id="bucket-panel" style="border-radius:0;border-top:none;">
-            <div class="header-row" style="margin-bottom:10px;">
+            <div class="header-row mb-10">
                 <h3 style="margin:0;font-size:13px;letter-spacing:.8px;">
                     BUCKET
                     <span class="field-tip" data-tip="The photos this post is built from. Pick them once here, then the MOSAIC picker opens showing only these instead of your whole gallery. Nothing here is published or placed in the essay on its own.">ⓘ</span>
@@ -707,7 +707,7 @@ include 'core/sidebar.php';
                         <label>COVER IMAGE <span class="field-tip" data-tip="The post's cover / featured image — shown as the banner on the post and as its thumbnail in the post listing. Chosen from your Media Gallery (post images), like a GRAMOFSMACK cover.">ⓘ</span></label>
                         <input type="hidden" name="featured_image_id" id="long-cover-image-id"
                                value="<?php echo $featured_image_data ? (int)$featured_image_data['id'] : ''; ?>">
-                        <div id="long-cover-preview" style="margin-top:6px;">
+                        <div id="long-cover-preview" class="mt-6">
                             <?php if ($featured_image_data): ?>
                                 <?php $cover_url = BASE_URL . ltrim(($featured_image_data['img_thumb_square'] ?: $featured_image_data['img_file']), '/'); ?>
                                 <img src="<?php echo htmlspecialchars($cover_url); ?>"
@@ -784,7 +784,7 @@ include 'core/sidebar.php';
 
     <!-- EXISTING LONGFORM POSTS LIST -->
     <?php if (!empty($all_posts)): ?>
-    <div class="box" style="margin-top:20px;">
+    <div class="box mt-20">
         <h3>LONGFORM POSTS</h3>
         <?php foreach ($all_posts as $lp): ?>
             <div class="recent-item">
@@ -792,7 +792,7 @@ include 'core/sidebar.php';
                     <div class="item-text">
                         <strong><?php echo htmlspecialchars($lp['title']); ?></strong>
                         <?php if ($lp['status'] === 'draft'): ?>
-                            <code class="slug-display" style="color:#c0392b;">DRAFT</code>
+                            <code class="slug-display" style="color:var(--danger, #c0392b);">DRAFT</code>
                         <?php endif; ?>
                         <code class="slug-display"><?php echo htmlspecialchars($lp['slug']); ?></code>
                         <span class="dim" style="font-size:0.8em;"><?php echo date('M j, Y', strtotime($lp['created_at'])); ?></span>
@@ -821,7 +821,7 @@ include 'core/sidebar.php';
             <button type="button" onclick="closeMosaicModal()" style="background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;line-height:1;">×</button>
         </div>
         <div id="mosaic-modal-list" style="max-height:400px;overflow-y:auto;">
-            <p class="dim" style="font-size:12px;padding:10px;">Loading mosaics…</p>
+            <p class="dim text-12 p-10">Loading mosaics…</p>
         </div>
         <p style="font-size:11px;color:var(--dim);margin-top:12px;">
             <?php /* Carries ?post= so the builder opens narrowed to THIS post's
@@ -898,17 +898,17 @@ function openMosaicModal() {
     var modal = document.getElementById('mosaic-modal');
     var list  = document.getElementById('mosaic-modal-list');
     modal.style.display = 'block';
-    list.innerHTML = '<p class="dim" style="font-size:12px;padding:10px;">Loading…</p>';
+    list.innerHTML = '<p class="dim text-12 p-10">Loading…</p>';
     var xhr = new XMLHttpRequest();
     xhr.open('GET', 'smack-post-long.php?ajax=mosaics', true);
     xhr.onload = function () {
         if (xhr.status !== 200) {
-            list.innerHTML = '<p class="dim" style="font-size:12px;padding:10px;">Failed to load mosaics.</p>';
+            list.innerHTML = '<p class="dim text-12 p-10">Failed to load mosaics.</p>';
             return;
         }
         var mosaics = JSON.parse(xhr.responseText);
         if (!mosaics.length) {
-            list.innerHTML = '<p class="dim" style="font-size:12px;padding:10px;">No mosaics yet. <a href="smack-mosaics.php?new=1<?php echo $edit_post ? '&amp;post=' . (int)$edit_post['id'] : ''; ?>" target="_blank" style="color:var(--link);">Build one →</a></p>';
+            list.innerHTML = '<p class="dim text-12 p-10">No mosaics yet. <a href="smack-mosaics.php?new=1<?php echo $edit_post ? '&amp;post=' . (int)$edit_post['id'] : ''; ?>" target="_blank" style="color:var(--link);">Build one →</a></p>';
             return;
         }
         var html = '';
@@ -1045,10 +1045,10 @@ document.getElementById('mosaic-modal').addEventListener('click', function (e) {
             // object-fit:contain — the shape of a photo is the thing that matters
             // when these are headed for an arrangement.
             html += '<div style="position:relative;width:72px;height:72px;border:1px solid var(--border);'
-                  + 'border-radius:3px;overflow:hidden;flex-shrink:0;background:#111;" title="' + esc(im.name || '') + '">'
-                  + '<img src="' + BASE + im.path + '" style="width:100%;height:100%;object-fit:contain;" loading="lazy" alt="">'
+                  + 'border-radius:3px;overflow:hidden;flex-shrink:0;background:var(--input-bg, #111);" title="' + esc(im.name || '') + '">'
+                  + '<img src="' + BASE + im.path + '" class="img-contain" loading="lazy" alt="">'
                   + '<button type="button" data-remove="' + id + '" title="Remove from bucket" aria-label="Remove from bucket"'
-                  + ' style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);border:none;color:#ff5555;'
+                  + ' style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);border:none;color:var(--danger, #ff5555);'
                   + 'cursor:pointer;width:20px;height:20px;border-radius:50%;font-size:13px;line-height:1;padding:0;'
                   + 'display:flex;align-items:center;justify-content:center;">×</button>'
                   + '</div>';
@@ -1064,10 +1064,10 @@ document.getElementById('mosaic-modal').addEventListener('click', function (e) {
             var inBucket = bucketIds.indexOf(id) !== -1;
             html += '<div data-pick="' + id + '" title="' + esc(im.name || '') + '"'
                   + ' style="cursor:pointer;position:relative;aspect-ratio:1;border:2px solid '
-                  + (inBucket ? 'var(--accent)' : 'transparent') + ';border-radius:3px;overflow:hidden;background:#111;">'
-                  + '<img src="' + BASE + im.path + '" style="width:100%;height:100%;object-fit:contain;" loading="lazy" alt="">';
+                  + (inBucket ? 'var(--accent)' : 'transparent') + ';border-radius:3px;overflow:hidden;background:var(--input-bg, #111);">'
+                  + '<img src="' + BASE + im.path + '" class="img-contain" loading="lazy" alt="">';
             if (inBucket) {
-                html += '<div style="position:absolute;top:3px;right:3px;background:var(--accent);color:#111;'
+                html += '<div style="position:absolute;top:3px;right:3px;background:var(--accent);color:var(--text-muted, #111);'
                       + 'border-radius:50%;width:18px;height:18px;display:flex;align-items:center;'
                       + 'justify-content:center;font-size:11px;font-weight:700;">&#10003;</div>';
             }

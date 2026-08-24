@@ -472,7 +472,7 @@ include 'core/sidebar.php';
     </div>
 
     <!-- QUICK NAV -->
-    <div class="signal-control-header" style="margin-bottom:20px;">
+    <div class="signal-control-header mb-20">
         <div class="signal-nav-group">
             <a href="smack-multisite.php"          class="btn-clear">DASHBOARD</a>
             <a href="smack-multisite-comments.php" class="btn-clear">COMMENTS</a>
@@ -499,7 +499,7 @@ include 'core/sidebar.php';
 
     <?php if (empty($spokes)): ?>
         <div class="box">
-            <p style="color:var(--text-muted,#888);">No spokes connected. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register a spoke</a> first.</p>
+            <p class="text-muted">No spokes connected. <a href="smack-multisite.php" class="text-accent">Register a spoke</a> first.</p>
         </div>
     <?php else: ?>
 
@@ -507,7 +507,7 @@ include 'core/sidebar.php';
     <div class="box">
         <h3>FLEET TOTALS<?php echo $period ? ' — ' . $period_label : ' — ALL TIME'; ?><?php if ($period === 0 && !empty($fleet_daily)): ?> <span style="font-size:0.72rem; font-weight:400; color:var(--text-muted,#888); letter-spacing:1px; margin-left:8px;">(since <?php echo htmlspecialchars(array_key_first($fleet_daily)); ?> &ndash; <?php echo htmlspecialchars(array_key_last($fleet_daily)); ?>)</span><?php endif; ?></h3>
 
-        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:25px;">
+        <div class="stat-grid">
             <?php
                 $active_spokes = count(array_filter($spokes, fn($s) => $s['status'] === 'active'));
 
@@ -555,73 +555,73 @@ include 'core/sidebar.php';
                     $fedi_replies   += (int)($_fe['re'] ?? 0);
                 } catch (Exception $e) { /* fedi tables absent */ }
             ?>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_total_views); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">TOTAL VIEWS</div>
+            <div class="stat-tile">
+                <div class="stat-tile-num"><?php echo number_format($fleet_total_views); ?></div>
+                <div class="stat-tile-label">TOTAL VIEWS</div>
             </div>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_total_unique); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">UNIQUE VISITORS</div>
+            <div class="stat-tile">
+                <div class="stat-tile-num"><?php echo number_format($fleet_total_unique); ?></div>
+                <div class="stat-tile-label">UNIQUE VISITORS</div>
             </div>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo $active_spokes + 1; ?> / <?php echo count($spokes) + 1; ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">SITES REPORTING</div>
+            <div class="stat-tile">
+                <div class="stat-tile-num"><?php echo $active_spokes + 1; ?> / <?php echo count($spokes) + 1; ?></div>
+                <div class="stat-tile-label">SITES REPORTING</div>
             </div>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_bot_total); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">BOT VIEWS <span style="color:var(--text-muted,#666)">(<?php echo $fleet_bot_pct; ?>%)</span></div>
+            <div class="stat-tile">
+                <div class="stat-tile-num"><?php echo number_format($fleet_bot_total); ?></div>
+                <div class="stat-tile-label">BOT VIEWS <span class="stat-note-dim">(<?php echo $fleet_bot_pct; ?>%)</span></div>
             </div>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_avg_daily); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">AVG VIEWS / DAY</div>
+            <div class="stat-tile">
+                <div class="stat-tile-num"><?php echo number_format($fleet_avg_daily); ?></div>
+                <div class="stat-tile-label">AVG VIEWS / DAY</div>
             </div>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
+            <div class="stat-tile">
                 <?php if ($fleet_top_day['date']): ?>
-                    <div style="font-size:1.4rem; font-weight:900; color:var(--text,#eee);"><?php echo htmlspecialchars($fleet_top_day['date']); ?></div>
-                    <div style="font-size:0.85rem; font-weight:700; color:var(--text-muted,#aaa);"><?php echo number_format($fleet_top_day['views']); ?> views</div>
+                    <div class="stat-tile-num--sm"><?php echo htmlspecialchars($fleet_top_day['date']); ?></div>
+                    <div class="stat-tile-sub"><?php echo number_format($fleet_top_day['views']); ?> views</div>
                 <?php else: ?>
-                    <div style="font-size:1.4rem; font-weight:900; color:var(--text-muted,#555);">—</div>
+                    <div class="stat-tile-num--sm stat-tile-num--empty">—</div>
                 <?php endif; ?>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">PEAK DAY</div>
+                <div class="stat-tile-label">PEAK DAY</div>
             </div>
-            <a href="#network-breakdown" title="See posts per blog below" style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center; text-decoration:none; display:block;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_post_count); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">TOTAL POSTS &#9662;</div>
+            <a href="#network-breakdown" title="See posts per blog below" class="stat-tile">
+                <div class="stat-tile-num"><?php echo number_format($fleet_post_count); ?></div>
+                <div class="stat-tile-label">TOTAL POSTS &#9662;</div>
             </a>
-            <a href="#network-breakdown" title="See images per blog below" style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center; text-decoration:none; display:block;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_image_count); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">TOTAL IMAGES &#9662;</div>
+            <a href="#network-breakdown" title="See images per blog below" class="stat-tile">
+                <div class="stat-tile-num"><?php echo number_format($fleet_image_count); ?></div>
+                <div class="stat-tile-label">TOTAL IMAGES &#9662;</div>
             </a>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo htmlspecialchars($fleet_scroll_total_label); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">SCROLL TIME (TOTAL)</div>
-                <div style="font-size:0.64rem; color:var(--text-muted,#666); margin-top:6px;"><?php echo htmlspecialchars($fleet_scroll_label); ?> avg &middot; <?php echo number_format($scroll_n); ?> reads</div>
+            <div class="stat-tile">
+                <div class="stat-tile-num"><?php echo htmlspecialchars($fleet_scroll_total_label); ?></div>
+                <div class="stat-tile-label">SCROLL TIME (TOTAL)</div>
+                <div class="stat-tile-note"><?php echo htmlspecialchars($fleet_scroll_label); ?> avg &middot; <?php echo number_format($scroll_n); ?> reads</div>
             </div>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_fedi_followers); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">FEDIVERSE FOLLOWERS <span style="color:var(--text-muted,#666)">(<?php echo (int)$fleet_fedi_sites; ?> federating)</span></div>
+            <div class="stat-tile">
+                <div class="stat-tile-num"><?php echo number_format($fleet_fedi_followers); ?></div>
+                <div class="stat-tile-label">FEDIVERSE FOLLOWERS <span class="stat-note-dim">(<?php echo (int)$fleet_fedi_sites; ?> federating)</span></div>
             </div>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fedi_following); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">FEDIVERSE FOLLOWING</div>
+            <div class="stat-tile">
+                <div class="stat-tile-num"><?php echo number_format($fedi_following); ?></div>
+                <div class="stat-tile-label">FEDIVERSE FOLLOWING</div>
             </div>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fedi_likes); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">LIKES RECEIVED</div>
+            <div class="stat-tile">
+                <div class="stat-tile-num"><?php echo number_format($fedi_likes); ?></div>
+                <div class="stat-tile-label">LIKES RECEIVED</div>
             </div>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fedi_boosts); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">BOOSTS</div>
+            <div class="stat-tile">
+                <div class="stat-tile-num"><?php echo number_format($fedi_boosts); ?></div>
+                <div class="stat-tile-label">BOOSTS</div>
             </div>
-            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fedi_replies); ?></div>
-                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">REPLIES &amp; MENTIONS</div>
+            <div class="stat-tile">
+                <div class="stat-tile-num"><?php echo number_format($fedi_replies); ?></div>
+                <div class="stat-tile-label">REPLIES &amp; MENTIONS</div>
             </div>
         </div>
 
         <!-- FLEET SPARKLINE -->
         <?php if (!empty($fleet_daily) && $max_daily_views > 0): ?>
-            <div style="margin-top:10px;">
+            <div class="mt-10">
                 <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:1px; margin-bottom:8px;">DAILY FLEET TRAFFIC</div>
                 <div class="stats-sparkline" style="height:80px; display:flex; align-items:flex-end; gap:2px; width:100%; overflow:hidden;">
                     <?php
@@ -661,9 +661,9 @@ include 'core/sidebar.php';
                           text-decoration:none; overflow:hidden; transition:border-color 0.15s;"
                    onmouseover="this.style.borderColor='var(--text,#eee)'" onmouseout="this.style.borderColor='var(--border,#333)'">
                     <?php if ($fi_thumb): ?>
-                        <div style="width:100%; aspect-ratio:1; overflow:hidden; background:#000;">
+                        <div style="width:100%; aspect-ratio:1; overflow:hidden; background:var(--input-bg, #000);">
                             <img src="<?php echo $fi_thumb; ?>" alt="<?php echo $fi_title; ?>"
-                                 loading="lazy" style="width:100%; height:100%; object-fit:cover; display:block;">
+                                 loading="lazy" class="img-cover">
                         </div>
                     <?php else: ?>
                         <div style="width:100%; aspect-ratio:1; background:var(--border,#333); display:flex; align-items:center; justify-content:center;">
@@ -690,16 +690,16 @@ include 'core/sidebar.php';
         <?php if (!empty($spoke_stats)):
             $max_spoke_views = max(1, max(array_column($spoke_stats, 'total_views')));
         ?>
-            <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+            <table class="data-table">
                 <thead>
-                    <tr style="border-bottom:1px solid var(--border,#333);">
+                    <tr class="border-b">
                         <th style="text-align:left;   padding:10px 8px; color:var(--text-muted,#888);">SITE</th>
-                        <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">VIEWS</th>
-                        <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">UNIQUE</th>
-                        <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">POSTS</th>
-                        <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">IMAGES</th>
-                        <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">AVG/DAY</th>
-                        <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">BOTS</th>
+                        <th class="cell-c8">VIEWS</th>
+                        <th class="cell-c8">UNIQUE</th>
+                        <th class="cell-c8">POSTS</th>
+                        <th class="cell-c8">IMAGES</th>
+                        <th class="cell-c8">AVG/DAY</th>
+                        <th class="cell-c8">BOTS</th>
                         <th style="text-align:left;   padding:10px 8px; color:var(--text-muted,#888); min-width:120px;">TOP IMAGE</th>
                         <th style="text-align:left;   padding:10px 8px; color:var(--text-muted,#888); width:25%;">SHARE</th>
                     </tr>
@@ -720,19 +720,19 @@ include 'core/sidebar.php';
                         $top_img    = $sd['top_image'] ?? null;
                     ?>
                         <tr style="border-bottom:1px solid var(--border,#333);<?php echo $is_hub_row ? ' background:var(--input-bg,#111);' : ''; ?>">
-                            <td style="padding:10px 8px;">
+                            <td class="p-10-8">
                                 <strong><?php echo htmlspecialchars($sd['site_name']); ?></strong>
                                 <?php if ($is_hub_row): ?>
                                     <span style="font-size:0.7rem; color:var(--text-muted,#888); margin-left:5px; letter-spacing:1px;">LOCAL</span>
                                 <?php endif; ?>
                             </td>
                             <td style="padding:10px 8px; text-align:center; font-weight:700;"><?php echo number_format($sd['total_views']); ?></td>
-                            <td style="padding:10px 8px; text-align:center; color:var(--text-muted,#888);"><?php echo number_format($sd['total_unique']); ?></td>
-                            <td style="padding:10px 8px; text-align:center; color:var(--text-muted,#888);"><?php echo number_format((int)($sd['post_count'] ?? 0)); if (empty($sd['counts_live']) && empty($sd['is_hub'])): ?><span title="last stored value — spoke offline or not yet on 0.7.340, not reporting fresh counts" style="color:var(--accent-primary,#c66);">&nbsp;*</span><?php endif; ?></td>
-                            <td style="padding:10px 8px; text-align:center; color:var(--text-muted,#888);"><?php echo number_format((int)($sd['image_count'] ?? 0)); ?></td>
-                            <td style="padding:10px 8px; text-align:center; color:var(--text-muted,#888);"><?php echo number_format($avg_day); ?></td>
+                            <td class="cell-c8"><?php echo number_format($sd['total_unique']); ?></td>
+                            <td class="cell-c8"><?php echo number_format((int)($sd['post_count'] ?? 0)); if (empty($sd['counts_live']) && empty($sd['is_hub'])): ?><span title="last stored value — spoke offline or not yet on 0.7.340, not reporting fresh counts" style="color:var(--accent-primary,#c66);">&nbsp;*</span><?php endif; ?></td>
+                            <td class="cell-c8"><?php echo number_format((int)($sd['image_count'] ?? 0)); ?></td>
+                            <td class="cell-c8"><?php echo number_format($avg_day); ?></td>
                             <td style="padding:10px 8px; text-align:center; color:var(--text-muted,#666); font-size:0.8rem;"><?php echo $bot_pct; ?>%</td>
-                            <td style="padding:10px 8px;">
+                            <td class="p-10-8">
                                 <?php if ($top_img): ?>
                                     <a href="<?php echo htmlspecialchars($top_img['page_url'] ?? '#'); ?>" target="_blank" rel="noopener"
                                        style="display:flex; align-items:center; gap:8px; text-decoration:none; color:inherit;">
@@ -748,9 +748,9 @@ include 'core/sidebar.php';
                                     <span style="color:var(--text-muted,#555); font-size:0.78rem;">—</span>
                                 <?php endif; ?>
                             </td>
-                            <td style="padding:10px 8px;">
-                                <div style="display:flex; align-items:center; gap:8px;">
-                                    <div style="flex:1; height:8px; background:var(--border,#333); border-radius:4px; overflow:hidden;">
+                            <td class="p-10-8">
+                                <div class="flex-mid gap-8">
+                                    <div class="meter-track-lg">
                                         <div style="height:100%; width:<?php echo round($share_pct); ?>%; background:var(--accent-primary,#aaa); border-radius:4px;"></div>
                                     </div>
                                     <span style="font-size:0.8rem; color:var(--text-muted,#888); min-width:38px; text-align:right;"><?php echo round($share_pct, 1); ?>%</span>
@@ -761,7 +761,7 @@ include 'core/sidebar.php';
                 </tbody>
             </table>
         <?php else: ?>
-            <p style="color:var(--text-muted,#888);">No stats returned from any spoke for this period.</p>
+            <p class="text-muted">No stats returned from any spoke for this period.</p>
         <?php endif; ?>
     </div>
 
@@ -780,7 +780,7 @@ include 'core/sidebar.php';
                          title="<?php echo htmlspecialchars($ref); ?>">
                         <?php echo htmlspecialchars($ref ?: 'Direct / Unknown'); ?>
                     </div>
-                    <div style="flex:1; height:6px; background:var(--border,#333); border-radius:4px; overflow:hidden;">
+                    <div class="meter-track">
                         <div style="height:100%; width:<?php echo $share_pct; ?>%; background:var(--accent-primary,#aaa); border-radius:4px;"></div>
                     </div>
                     <div style="min-width:40px; text-align:right; font-size:0.8rem; color:var(--text-muted,#888);"><?php echo number_format($count); ?></div>
@@ -798,15 +798,15 @@ include 'core/sidebar.php';
         <div class="box">
             <h3>BROWSERS — FLEET WIDE</h3>
             <?php $max_b = max($fleet_browsers); ?>
-            <div style="display:grid; gap:8px; margin-top:8px;">
+            <div class="d-grid gap-8 mt-8">
                 <?php foreach ($fleet_browsers as $browser => $hits):
                     $pct = round(($hits / $max_b) * 100); ?>
-                <div style="display:flex; align-items:center; gap:10px; font-size:0.85rem;">
-                    <div style="min-width:110px; color:var(--text-muted,#888); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo htmlspecialchars($browser ?: 'Unknown'); ?></div>
-                    <div style="flex:1; height:6px; background:var(--border,#333); border-radius:4px; overflow:hidden;">
+                <div class="flex-mid gap-10 text-0-85">
+                    <div class="trunc-110"><?php echo htmlspecialchars($browser ?: 'Unknown'); ?></div>
+                    <div class="meter-track">
                         <div style="height:100%; width:<?php echo $pct; ?>%; background:var(--accent-primary,#aaa); border-radius:4px;"></div>
                     </div>
-                    <div style="min-width:36px; text-align:right; font-size:0.78rem; color:var(--text-muted,#888);"><?php echo number_format($hits); ?></div>
+                    <div class="bar-count"><?php echo number_format($hits); ?></div>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -817,15 +817,15 @@ include 'core/sidebar.php';
         <div class="box">
             <h3>OPERATING SYSTEMS — FLEET WIDE</h3>
             <?php $max_os = max($fleet_os); ?>
-            <div style="display:grid; gap:8px; margin-top:8px;">
+            <div class="d-grid gap-8 mt-8">
                 <?php foreach ($fleet_os as $os => $hits):
                     $pct = round(($hits / $max_os) * 100); ?>
-                <div style="display:flex; align-items:center; gap:10px; font-size:0.85rem;">
-                    <div style="min-width:110px; color:var(--text-muted,#888); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo htmlspecialchars($os ?: 'Unknown'); ?></div>
-                    <div style="flex:1; height:6px; background:var(--border,#333); border-radius:4px; overflow:hidden;">
+                <div class="flex-mid gap-10 text-0-85">
+                    <div class="trunc-110"><?php echo htmlspecialchars($os ?: 'Unknown'); ?></div>
+                    <div class="meter-track">
                         <div style="height:100%; width:<?php echo $pct; ?>%; background:var(--accent-primary,#aaa); border-radius:4px;"></div>
                     </div>
-                    <div style="min-width:36px; text-align:right; font-size:0.78rem; color:var(--text-muted,#888);"><?php echo number_format($hits); ?></div>
+                    <div class="bar-count"><?php echo number_format($hits); ?></div>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -843,15 +843,15 @@ include 'core/sidebar.php';
         <div class="box">
             <h3>VIEWS BY CATEGORY — FLEET WIDE</h3>
             <?php $max_cat = max($fleet_categories); ?>
-            <div style="display:grid; gap:8px; margin-top:8px;">
+            <div class="d-grid gap-8 mt-8">
                 <?php foreach ($fleet_categories as $cat => $views):
                     $pct = round(($views / $max_cat) * 100); ?>
-                <div style="display:flex; align-items:center; gap:10px; font-size:0.85rem;">
-                    <div style="min-width:110px; color:var(--text-muted,#888); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo htmlspecialchars($cat); ?></div>
-                    <div style="flex:1; height:6px; background:var(--border,#333); border-radius:4px; overflow:hidden;">
+                <div class="flex-mid gap-10 text-0-85">
+                    <div class="trunc-110"><?php echo htmlspecialchars($cat); ?></div>
+                    <div class="meter-track">
                         <div style="height:100%; width:<?php echo $pct; ?>%; background:var(--accent-primary,#aaa); border-radius:4px;"></div>
                     </div>
-                    <div style="min-width:36px; text-align:right; font-size:0.78rem; color:var(--text-muted,#888);"><?php echo number_format($views); ?></div>
+                    <div class="bar-count"><?php echo number_format($views); ?></div>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -862,15 +862,15 @@ include 'core/sidebar.php';
         <div class="box">
             <h3>SEARCH TERMS — FLEET WIDE</h3>
             <?php $max_st = max($fleet_search_terms); ?>
-            <div style="display:grid; gap:8px; margin-top:8px;">
+            <div class="d-grid gap-8 mt-8">
                 <?php foreach ($fleet_search_terms as $term => $uses):
                     $pct = round(($uses / $max_st) * 100); ?>
-                <div style="display:flex; align-items:center; gap:10px; font-size:0.85rem;">
-                    <div style="min-width:110px; color:var(--text-muted,#888); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo htmlspecialchars($term); ?></div>
-                    <div style="flex:1; height:6px; background:var(--border,#333); border-radius:4px; overflow:hidden;">
+                <div class="flex-mid gap-10 text-0-85">
+                    <div class="trunc-110"><?php echo htmlspecialchars($term); ?></div>
+                    <div class="meter-track">
                         <div style="height:100%; width:<?php echo $pct; ?>%; background:var(--accent-primary,#aaa); border-radius:4px;"></div>
                     </div>
-                    <div style="min-width:36px; text-align:right; font-size:0.78rem; color:var(--text-muted,#888);"><?php echo number_format($uses); ?></div>
+                    <div class="bar-count"><?php echo number_format($uses); ?></div>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -928,12 +928,12 @@ include 'core/sidebar.php';
         <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:8px; margin-top:8px;">
             <?php foreach ($fleet_countries as $country => $hits):
                 $pct = round(($hits / $max_co) * 100); ?>
-            <div style="display:flex; align-items:center; gap:10px; font-size:0.85rem;">
+            <div class="flex-mid gap-10 text-0-85">
                 <div style="min-width:130px; color:var(--text-muted,#888); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo htmlspecialchars($country ?: 'Unknown'); ?></div>
-                <div style="flex:1; height:6px; background:var(--border,#333); border-radius:4px; overflow:hidden;">
+                <div class="meter-track">
                     <div style="height:100%; width:<?php echo $pct; ?>%; background:var(--accent-primary,#aaa); border-radius:4px;"></div>
                 </div>
-                <div style="min-width:36px; text-align:right; font-size:0.78rem; color:var(--text-muted,#888);"><?php echo number_format($hits); ?></div>
+                <div class="bar-count"><?php echo number_format($hits); ?></div>
             </div>
             <?php endforeach; ?>
         </div>

@@ -1975,6 +1975,114 @@ input[type="range"]:active::-webkit-slider-thumb {
 .d-inline { display: inline; }
 .d-inline-block { display: inline-block; }
 .d-contents { display: contents; }
+.d-flex { display: flex; }
+
+/* Width / alignment / border utilities — complete the existing utility family.
+   !important mirrors the existing margin utilities: these replace inline styles,
+   which won the cascade, so !important guarantees identical rendering. */
+.w-100 { width: 100% !important; }
+.text-left  { text-align: left !important; }
+.text-right { text-align: right !important; }
+.m-0   { margin: 0 !important; }
+.mb-6  { margin-bottom: 6px !important; }
+.mb-24 { margin-bottom: 24px !important; }
+.mt-14 { margin-top: 14px !important; }
+.border-b { border-bottom: 1px solid var(--border, #333) !important; }
+
+/* Text-colour utilities — reference existing theme variables (never a hardcoded hex) */
+.text-muted  { color: var(--text-muted, #888) !important; }
+.text-accent { color: var(--accent) !important; }
+
+/* More family completions (font-size, grid span, spacing, flex, hairline) */
+.text-0-82 { font-size: 0.82rem; }
+.text-0-9  { font-size: 0.9rem; }
+.grid-span-full { grid-column: 1 / -1; }
+.mt-15 { margin-top: 15px !important; }
+.ml-8  { margin-left: 8px !important; }
+.flex-shrink-0 { flex-shrink: 0; }
+.h-1 { height: 1px; }
+
+/* Reusable layout helpers */
+.flex-mid { display: flex; align-items: center; }
+.gap-8  { gap: 8px; }
+.gap-10 { gap: 10px; }
+.gap-12 { gap: 12px; }
+
+/* Shared component blocks — values match the inline styles they replace exactly
+   (colours reference a theme variable with the original hex as fallback, so
+   rendering is unchanged today and themeable later). */
+.empty-state-full { grid-column: 1 / -1; padding: 60px 20px; text-align: center; color: var(--text-secondary); }
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.data-th { padding: 10px 16px; text-align: left; color: var(--text-muted, #666); font-weight: 600; }
+.meter-track    { flex: 1; height: 6px; background: var(--border, #333); border-radius: 4px; overflow: hidden; }
+.meter-track-lg { flex: 1; height: 8px; background: var(--border, #333); border-radius: 4px; overflow: hidden; }
+
+/* Tail primitives */
+.cursor-pointer { cursor: pointer; }
+.mono { font-family: monospace; }
+.va-mid { vertical-align: middle; }
+.mr-6 { margin-right: 6px !important; }
+.mb-14 { margin-bottom: 14px !important; }
+.text-0-85 { font-size: 0.85rem; }
+.text-0-78 { font-size: 0.78rem; }
+.text-12 { font-size: 12px; }
+
+/* More shared component blocks (values match the inline they replace) */
+.cell-l  { text-align: left;   padding: 8px;      color: var(--text-muted, #888); }
+.cell-c  { text-align: center; padding: 10px;     color: var(--text-muted, #888); }
+.cell-c8 { text-align: center; padding: 10px 8px; color: var(--text-muted, #888); }
+.bar-count { min-width: 36px; text-align: right; font-size: 0.78rem; color: var(--text-muted, #888); }
+.overline { display: block; font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase; opacity: 0.6; margin-bottom: 4px; }
+.btn-auto { width: auto; height: auto; margin-top: 0; padding: 8px 18px; }
+
+/* Wave 6 primitives */
+.d-grid { display: grid; }
+.ml-auto { margin-left: auto !important; }
+.mt-48 { margin-top: 48px !important; }
+.mw-280 { max-width: 280px; }
+.o-50 { opacity: 0.5; }
+.flex-none { flex: 0 0 auto; }
+.text-primary { color: var(--text-primary); }
+.p-8 { padding: 8px; }
+.p-10 { padding: 10px; }
+.p-8-6 { padding: 8px 6px; }
+.p-8-16 { padding: 8px 16px; }
+.p-5-10 { padding: 5px 10px; }
+.sc-size-label { font-size: var(--sc-size-label); }
+
+/* Wave 6 component blocks (values match the inline they replace) */
+.empty-state-lg { grid-column: 1 / -1; text-align: center; padding: 80px 20px; }
+.trunc-110 { min-width: 110px; color: var(--text-muted, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-cell-l6 { padding: 6px 10px; text-align: left; color: var(--sc-dim, #888); }
+.sc-cell-l4 { padding: 4px 10px; text-align: left; color: var(--sc-dim, #666); }
+
+/* Wave 7 primitives */
+.fw-bold { font-weight: bold; }
+.fw-400 { font-weight: 400; }
+.ox-auto { overflow-x: auto; }
+.pt-32 { padding-top: 32px; }
+.mt-3 { margin-top: 3px !important; }
+.p-0 { padding: 0; }
+.p-3-10 { padding: 3px 10px; }
+.p-10-8 { padding: 10px 8px; }
+.p-5-12 { padding: 5px 12px; }
+.o-45 { opacity: 0.45; }
+.no-underline { text-decoration: none; }
+.mw-40 { min-width: 40px; }
+.w-90 { width: 90px; }
+.border-b-dim { border-bottom: 1px solid var(--border, #222); }
+
+/* Wave 7 component blocks (values match the inline they replace; colours via variable) */
+.field-input     { padding: 8px 10px; background: var(--input-bg, #111); border: 1px solid var(--border, #333); border-radius: 4px; color: var(--text, #e0e0e0); }
+.field-input-120 { padding: 8px 10px; width: 120px; background: var(--input-bg, #111); border: 1px solid var(--border, #333); border-radius: 4px; color: var(--text, #e0e0e0); }
+.avatar-72 { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.15); display: block; }
+.img-cover   { width: 100%; height: 100%; object-fit: cover; display: block; }
+.img-contain { width: 100%; height: 100%; object-fit: contain; }
+.cell-c6 { text-align: center; padding: 6px 10px; color: var(--text-muted, #888); }
+.dim-pad  { opacity: 0.5; padding: 2px 12px 2px 0; }
+.dim-pad2 { opacity: 0.5; padding: 3px 10px 3px 0; }
+.section-caps  { margin: 0 0 18px; font-size: 1rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text, #e0e0e0); }
+.section-label { font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; opacity: 0.5; margin: 28px 0 10px; }
 
 /* Additional spacing utilities */
 .mt-0  { margin-top: 0 !important; }
@@ -7120,4 +7228,102 @@ input[type="range"]:active::-webkit-slider-thumb {
     justify-content: center;
 }
 .spoke-act-wrap form { margin: 0; display: inline-flex; }
+
+/* Directory moderation actions (smack-directory.php) — compact HALF-HEIGHT,
+   OUTLINED buttons (border + text, transparent fill). Replaces the old inline
+   styles. Overrides the global btn-smack full-width/52px. The outline colour is
+   pulled from the active theme's --accent variable (its value lives in each
+   admin-theme-colours-*.css file), so this themes automatically with no per-theme
+   edits — same var-driven pattern already used elsewhere in this file. Destructive
+   REMOVE uses a semantic red (var --danger with a fixed fallback). */
+.dir-mod-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.dir-mod-actions .btn-smack {
+    width: auto;
+    min-width: 0;
+    height: 26px;                 /* half the global 52px button */
+    padding: 0 16px;
+    margin-top: 0;
+    font-size: 11px;
+    letter-spacing: 1px;
+    line-height: 1;
+    white-space: nowrap;
+    flex-shrink: 0;
+    border: 1.5px solid var(--accent, currentColor);
+    background: transparent;
+    color: var(--accent, currentColor);
+    box-shadow: none;
+}
+.dir-mod-actions .btn-smack:hover {
+    background: var(--accent, currentColor);
+    color: #0a0a0a;
+    box-shadow: none;
+}
+.dir-mod-actions .btn-smack.btn-danger {
+    border-color: var(--danger, #e04b4b);
+    color: var(--danger, #e04b4b);
+    background: transparent;
+}
+.dir-mod-actions .btn-smack.btn-danger:hover {
+    background: var(--danger, #e04b4b);
+    color: #ffffff;
+}
+
+/* ---- Stat tiles (fleet/network stat boxes) --------------------------------
+   Replaces the padding:18px;border:...;background:...;text-align:center inline
+   block that was copy-pasted across smack-multisite-stats / -multisite /
+   -backup. Geometry lives here; colour stays on the existing theme variables
+   (var --border / --input-bg / --text / --text-muted), so all 21 themes track
+   automatically — no per-theme edits. Fallback hexes match the old inline. */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 25px;
+}
+.stat-tile {
+    padding: 18px;
+    border: 1px solid var(--border, #333);
+    background: var(--input-bg, #111);
+    text-align: center;
+    display: block;
+    text-decoration: none;
+}
+.stat-tile-num {
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--text, #eee);
+}
+.stat-tile-num--sm {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: var(--text, #eee);
+}
+.stat-tile-num--empty {
+    color: var(--text-muted, #555);
+}
+.stat-tile-sub {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted, #aaa);
+}
+.stat-tile-label {
+    font-size: 0.72rem;
+    color: var(--text-muted, #888);
+    letter-spacing: 2px;
+    margin-top: 5px;
+}
+.stat-tile-note {
+    font-size: 0.64rem;
+    color: var(--text-muted, #666);
+    margin-top: 6px;
+}
+.stat-note-dim {
+    color: var(--text-muted, #666);
+}
 /* ===== SNAPSMACK EOF ===== */

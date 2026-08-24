@@ -224,7 +224,7 @@ include 'core/sidebar.php';
             <p class="skin-desc-text">Push recovery kits or images to a remote FTP server. Configure credentials, test connection, and push on demand.</p>
             <a href="smack-ftp.php" class="btn-smack btn-block">CONFIGURE FTP</a>
             <?php if (!empty($settings['ftp_last_push'])): ?>
-                <p style="margin-top: 15px; font-size: 12px; color: #888;">
+                <p style="margin-top: 15px; font-size: 12px; color: var(--text-muted, #888);">
                     Last: <?php echo htmlspecialchars($settings['ftp_last_push']); ?>
                     <?php if (!empty($settings['ftp_last_status'])): ?>
                         — <?php echo htmlspecialchars($settings['ftp_last_status']); ?>
