@@ -28,10 +28,12 @@ class PhotoLibrary(tk.Toplevel):
         self.library_root = library_root
         self.state_path = state_path
         self.tools_path = os.path.join(os.path.dirname(state_path), "external_tools.json") if state_path else None
+        self.metadata_path = os.path.join(os.path.dirname(state_path), "photo_metadata.json") if state_path else None
         self.rows, self.visible, self.photos = [], [], []
         self.sources = {}
         self.selected = None
         self.external_tools = self._load_external_tools()
+        self.metadata = self._load_metadata()
         self.render_limit = 120
         self.scan_token = 0
         self.scan_queue = queue.Queue()
@@ -111,6 +113,15 @@ class PhotoLibrary(tk.Toplevel):
                                  relief="flat", highlightthickness=0, font=("Segoe UI", 9))
         self.date_menu["menu"].configure(bg=FIELD, fg=INK, activebackground=ACCENT, activeforeground=BG)
         self.date_menu.pack(side="left", pady=6)
+        tk.Label(controls, text="SHOW", bg="#101010", fg=DIM,
+                 font=("Segoe UI", 8, "bold")).pack(side="left", padx=(14, 5))
+        self.show_var = tk.StringVar(value="All photos")
+        show = tk.OptionMenu(controls, self.show_var, "All photos", "Favorites", "Rated", "Unrated",
+                             "5 stars", command=lambda _v: self.filter_rows())
+        show.configure(bg=FIELD, fg=INK, activebackground=ACCENT, activeforeground=BG,
+                       relief="flat", highlightthickness=0, font=("Segoe UI", 9))
+        show["menu"].configure(bg=FIELD, fg=INK, activebackground=ACCENT, activeforeground=BG)
+        show.pack(side="left", pady=6)
         self.scan_status = tk.Label(controls, text="", bg="#101010", fg=DIM,
                                     font=("Segoe UI", 9))
         self.scan_status.pack(side="left", padx=12)
@@ -139,6 +150,31 @@ class PhotoLibrary(tk.Toplevel):
                  font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=14, pady=(16, 10))
         self.preview = tk.Label(right, bg=FIELD, fg=DIM, text="Select a photo", width=28, height=14)
         self.preview.pack(fill="x", padx=14)
+        details = tk.Frame(right, bg="#111111")
+        details.pack(fill="x", padx=14, pady=(10, 0))
+        self.favorite_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(details, text="♥ FAVORITE", variable=self.favorite_var, bg="#111111", fg=INK,
+                       selectcolor=FIELD, activebackground="#111111", activeforeground=ACCENT,
+                       command=self.save_photo_details).pack(anchor="w")
+        rating_row = tk.Frame(details, bg="#111111")
+        rating_row.pack(fill="x", pady=(4, 5))
+        tk.Label(rating_row, text="RATING", bg="#111111", fg=DIM,
+                 font=("Segoe UI", 8, "bold")).pack(side="left")
+        self.rating_var = tk.IntVar(value=0)
+        for value in range(1, 6):
+            tk.Radiobutton(rating_row, text=str(value), value=value, variable=self.rating_var,
+                           command=self.save_photo_details, indicatoron=False, width=2,
+                           bg=FIELD, fg=INK, selectcolor=ACCENT, activebackground=ACCENT,
+                           activeforeground=BG, relief="flat").pack(side="left", padx=(5, 0))
+        self._button(rating_row, "×", self.clear_rating).pack(side="left", padx=(5, 0))
+        tk.Label(details, text="TAGS  ·  comma separated", bg="#111111", fg=DIM,
+                 font=("Segoe UI", 8, "bold")).pack(anchor="w")
+        self.tags_var = tk.StringVar()
+        tags = tk.Entry(details, textvariable=self.tags_var, bg=FIELD, fg=INK,
+                        insertbackground=INK, relief="flat", font=("Segoe UI", 9))
+        tags.pack(fill="x", pady=(4, 5), ipady=4)
+        tags.bind("<Return>", lambda _e: self.save_photo_details())
+        self._button(details, "SAVE DETAILS", self.save_photo_details).pack(fill="x", ipady=3)
         self.info = tk.Label(right, text="", bg="#111111", fg=INK, justify="left",
                              anchor="nw", wraplength=250, font=("Segoe UI", 9))
         self.info.pack(fill="both", expand=True, padx=14, pady=14)
@@ -361,11 +397,21 @@ class PhotoLibrary(tk.Toplevel):
         query = self.search_var.get().strip().lower()
         self.visible = [row for row in self.rows if not query or query in " ".join((
             row.get("title", ""), row.get("description", ""), os.path.basename(row["path"]),
-            " ".join(map(str, row.get("tags", []))))).lower()]
+            " ".join(map(str, row.get("tags", []))),
+            str(self._photo_meta(row).get("tags", "")))).lower()]
         date_filter = self.date_var.get()
         if date_filter != "All dates":
             self.visible = [row for row in self.visible if self._row_mtime(row) and
                             datetime.datetime.fromtimestamp(self._row_mtime(row)).strftime("%Y-%m") == date_filter]
+        show = self.show_var.get()
+        if show == "Favorites":
+            self.visible = [row for row in self.visible if self._photo_meta(row).get("favorite")]
+        elif show == "Rated":
+            self.visible = [row for row in self.visible if self._photo_meta(row).get("rating", 0) > 0]
+        elif show == "Unrated":
+            self.visible = [row for row in self.visible if self._photo_meta(row).get("rating", 0) == 0]
+        elif show == "5 stars":
+            self.visible = [row for row in self.visible if self._photo_meta(row).get("rating", 0) == 5]
         order = self.sort_var.get()
         if order == "Date (newest)":
             self.visible.sort(key=self._row_mtime, reverse=True)
@@ -388,6 +434,80 @@ class PhotoLibrary(tk.Toplevel):
     @classmethod
     def _row_mtime(cls, row):
         return row["modified"] if "modified" in row else cls._mtime(row["path"])
+
+    @staticmethod
+    def _metadata_key(path):
+        return os.path.normcase(os.path.abspath(path))
+
+    def _load_metadata(self):
+        if not self.metadata_path:
+            return {}
+        try:
+            with open(self.metadata_path, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            return data if isinstance(data, dict) else {}
+        except (OSError, ValueError, TypeError):
+            return {}
+
+    def _save_metadata(self):
+        if not self.metadata_path:
+            return
+        try:
+            os.makedirs(os.path.dirname(self.metadata_path), exist_ok=True)
+            temp = self.metadata_path + ".tmp"
+            with open(temp, "w", encoding="utf-8") as fh:
+                json.dump(self.metadata, fh, indent=2, sort_keys=True)
+            os.replace(temp, self.metadata_path)
+        except OSError as exc:
+            messagebox.showerror("Could not save photo details", str(exc), parent=self)
+
+    def _photo_meta(self, row_or_path):
+        path = row_or_path["path"] if isinstance(row_or_path, dict) else row_or_path
+        value = self.metadata.get(self._metadata_key(path), {})
+        if not isinstance(value, dict):
+            return {}
+        try:
+            rating = max(0, min(5, int(value.get("rating", 0))))
+        except (TypeError, ValueError):
+            rating = 0
+        tags = value.get("tags", "")
+        if isinstance(tags, list):
+            tags = ", ".join(map(str, tags))
+        return {"favorite": bool(value.get("favorite", False)),
+                "rating": rating, "tags": str(tags or "")}
+
+    def save_photo_details(self):
+        if not self.selected:
+            return
+        key = self._metadata_key(self.selected["path"])
+        details = {
+            "favorite": bool(self.favorite_var.get()),
+            "rating": max(0, min(5, int(self.rating_var.get()))),
+            "tags": self.tags_var.get().strip(),
+        }
+        if details["favorite"] or details["rating"] or details["tags"]:
+            self.metadata[key] = details
+        else:
+            self.metadata.pop(key, None)
+        self._save_metadata()
+        self.filter_rows()
+        self._render_viewer()
+
+    def clear_rating(self):
+        self.rating_var.set(0)
+        self.save_photo_details()
+
+    def set_rating(self, value):
+        if not self.selected:
+            return
+        self.rating_var.set(max(0, min(5, int(value))))
+        self.save_photo_details()
+
+    def toggle_favorite(self):
+        if not self.selected:
+            return
+        self.favorite_var.set(not self.favorite_var.get())
+        self.save_photo_details()
 
     def render_grid(self):
         for child in self.grid.winfo_children():
@@ -415,7 +535,13 @@ class PhotoLibrary(tk.Toplevel):
             title = tk.Label(card, text=row.get("title") or "Untitled", bg=CARD, fg=INK,
                              anchor="w", font=("Segoe UI", 8), cursor="hand2")
             title.pack(fill="x", padx=6, pady=(0, 5))
-            for widget in (card, pic, title):
+            meta = self._photo_meta(row)
+            badges = ("♥  " if meta.get("favorite") else "") + ("★" * int(meta.get("rating", 0)))
+            badge = tk.Label(card, text=badges, bg=CARD, fg=ACCENT, anchor="w",
+                             font=("Segoe UI Symbol", 8), cursor="hand2")
+            if badges:
+                badge.pack(fill="x", padx=6, pady=(0, 5))
+            for widget in (card, pic, title, badge):
                 widget.bind("<Button-1>", lambda _e, r=row: self.select_photo(r))
                 widget.bind("<Double-Button-1>", lambda _e, r=row: self.open_viewer(r))
         if not rows:
@@ -433,6 +559,10 @@ class PhotoLibrary(tk.Toplevel):
 
     def select_photo(self, row):
         self.selected = row
+        meta = self._photo_meta(row)
+        self.favorite_var.set(bool(meta.get("favorite", False)))
+        self.rating_var.set(max(0, min(5, int(meta.get("rating", 0)))))
+        self.tags_var.set(str(meta.get("tags", "")))
         path = row["path"]
         try:
             with Image.open(path) as image:
@@ -591,6 +721,10 @@ class PhotoLibrary(tk.Toplevel):
             viewer.bind("<space>", lambda _e: self.viewer_step(1))
             viewer.bind("b", lambda _e: self.toggle_before())
             viewer.bind("B", lambda _e: self.toggle_before())
+            viewer.bind("f", lambda _e: self.toggle_favorite())
+            viewer.bind("F", lambda _e: self.toggle_favorite())
+            for value in range(6):
+                viewer.bind(str(value), lambda _e, rating=value: self.set_rating(rating))
             viewer.bind("<F11>", lambda _e: viewer.attributes("-fullscreen", not bool(viewer.attributes("-fullscreen"))))
             viewer.bind("<Configure>", self._viewer_resized)
             bar = tk.Frame(viewer, bg="#101010")
@@ -623,6 +757,7 @@ class PhotoLibrary(tk.Toplevel):
             self.sharpen_enabled = False
             self.sharpen_amount, self.sharpen_radius, self.sharpen_threshold = 100, 1.2, 3
         self.selected = row
+        self.select_photo(row)
         self._render_viewer()
         viewer.deiconify()
         viewer.lift()
@@ -658,10 +793,12 @@ class PhotoLibrary(tk.Toplevel):
         except Exception as exc:
             self.viewer_image.configure(image="", text=f"Could not open image\n\n{exc}")
         title = row.get("title") or os.path.basename(path)
-        self.viewer_title.configure(text=title)
+        meta = self._photo_meta(row)
+        badges = ("♥ " if meta.get("favorite") else "") + ("★" * int(meta.get("rating", 0)))
+        self.viewer_title.configure(text=f"{badges}  {title}" if badges else title)
         try:
             index = next(i for i, item in enumerate(self.visible) if item["path"] == path)
-            self.viewer_count.configure(text=f"{index + 1:,} of {len(self.visible):,}   ·   ←/→ to browse   ·   Esc to close")
+            self.viewer_count.configure(text=f"{index + 1:,} of {len(self.visible):,}   ·   0–5 rate   ·   F favorite   ·   ←/→ browse")
         except StopIteration:
             self.viewer_count.configure(text="")
 
