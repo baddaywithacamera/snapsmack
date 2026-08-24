@@ -1,14 +1,17 @@
 """SNAP SLAPPER photo library: Picasa-style source rail, grid, and info rail."""
 
 import datetime
+import glob
 import json
 import os
 import queue
+import shutil
+import subprocess
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from PIL import Image, ImageOps, ImageTk
+from PIL import Image, ImageFilter, ImageOps, ImageTk
 
 BG, CARD, INK, DIM, ACCENT, FIELD, BORDER = (
     "#0a0a0a", "#141414", "#e6e6e6", "#8a8a8a", "#39ff14", "#1c1c1c", "#2a2a2a")
@@ -24,9 +27,11 @@ class PhotoLibrary(tk.Toplevel):
         self.minsize(900, 580)
         self.library_root = library_root
         self.state_path = state_path
+        self.tools_path = os.path.join(os.path.dirname(state_path), "external_tools.json") if state_path else None
         self.rows, self.visible, self.photos = [], [], []
         self.sources = {}
         self.selected = None
+        self.external_tools = self._load_external_tools()
         self.render_limit = 120
         self.scan_token = 0
         self.scan_queue = queue.Queue()
@@ -140,6 +145,8 @@ class PhotoLibrary(tk.Toplevel):
         self._button(right, "OPEN PHOTO", self.open_selected).pack(
             fill="x", padx=14, pady=(0, 5), ipady=5)
         self._button(right, "OPEN IN WINDOWS", self.open_external).pack(
+            fill="x", padx=14, pady=(0, 5), ipady=4)
+        self._button(right, "OPEN WITH / EDIT COPY", self.open_with_menu).pack(
             fill="x", padx=14, pady=(0, 14), ipady=4)
 
     def _wheel(self, event):
@@ -450,6 +457,110 @@ class PhotoLibrary(tk.Toplevel):
             self.preview.configure(image="", text="Preview unavailable", width=28, height=14)
             self.info.configure(text=f"{path}\n\n{exc}")
 
+    def _load_external_tools(self):
+        custom = []
+        if self.tools_path:
+            try:
+                with open(self.tools_path, "r", encoding="utf-8") as fh:
+                    custom = (json.load(fh) or {}).get("custom", [])
+            except (OSError, ValueError, TypeError):
+                pass
+        tools = []
+        roots = [os.environ.get("ProgramFiles", r"C:\Program Files"),
+                 os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+                 os.environ.get("LOCALAPPDATA", "")]
+        patterns = [
+            ("Adobe Photoshop", "Adobe/Adobe Photoshop */Photoshop.exe"),
+            ("Affinity Photo", "Affinity/Photo */Photo.exe"),
+            ("GIMP", "GIMP */bin/gimp*.exe"),
+            ("darktable", "darktable/bin/darktable.exe"),
+            ("RawTherapee", "RawTherapee/*/rawtherapee.exe"),
+        ]
+        for name, pattern in patterns:
+            matches = []
+            for root in roots:
+                if root:
+                    matches.extend(glob.glob(os.path.join(root, *pattern.split("/"))))
+            if matches:
+                tools.append({"name": name, "path": sorted(matches)[-1]})
+        for item in custom:
+            if isinstance(item, dict) and os.path.isfile(item.get("path", "")):
+                tools.append({"name": item.get("name") or os.path.basename(item["path"]),
+                              "path": item["path"], "custom": True})
+        unique = {}
+        for tool in tools:
+            unique[os.path.normcase(tool["path"])] = tool
+        return list(unique.values())
+
+    def _save_external_tools(self):
+        if not self.tools_path:
+            return
+        custom = [tool for tool in self.external_tools if tool.get("custom")]
+        try:
+            os.makedirs(os.path.dirname(self.tools_path), exist_ok=True)
+            temp = self.tools_path + ".tmp"
+            with open(temp, "w", encoding="utf-8") as fh:
+                json.dump({"custom": custom}, fh, indent=2)
+            os.replace(temp, self.tools_path)
+        except OSError:
+            pass
+
+    def add_external_tool(self):
+        path = filedialog.askopenfilename(title="Choose a photo editor", parent=self,
+                                          filetypes=[("Applications", "*.exe"), ("All files", "*.*")])
+        if not path:
+            return
+        name = os.path.splitext(os.path.basename(path))[0]
+        self.external_tools.append({"name": name, "path": path, "custom": True})
+        self._save_external_tools()
+
+    def open_with_menu(self):
+        if not self.selected:
+            return
+        menu = tk.Menu(self, tearoff=False, bg=FIELD, fg=INK,
+                       activebackground=ACCENT, activeforeground=BG)
+        for tool in self.external_tools:
+            sub = tk.Menu(menu, tearoff=False, bg=FIELD, fg=INK,
+                          activebackground=ACCENT, activeforeground=BG)
+            sub.add_command(label="Edit a copy (recommended)",
+                            command=lambda t=tool: self.launch_external(t, copy_first=True))
+            sub.add_command(label="Open original…",
+                            command=lambda t=tool: self.launch_external(t, copy_first=False))
+            menu.add_cascade(label=tool["name"], menu=sub)
+        if self.external_tools:
+            menu.add_separator()
+        menu.add_command(label="Add an editor…", command=self.add_external_tool)
+        try:
+            menu.tk_popup(self.winfo_pointerx(), self.winfo_pointery())
+        finally:
+            menu.grab_release()
+
+    def launch_external(self, tool, copy_first=True):
+        if not self.selected:
+            return
+        source = self.selected["path"]
+        target = source
+        if copy_first:
+            stem, ext = os.path.splitext(source)
+            target = stem + "_edit" + ext
+            counter = 2
+            while os.path.exists(target):
+                target = f"{stem}_edit_{counter}{ext}"
+                counter += 1
+            try:
+                shutil.copy2(source, target)
+            except OSError as exc:
+                messagebox.showerror("Could not create edit copy", str(exc), parent=self)
+                return
+        elif not messagebox.askyesno(
+                "Open original?", "Changes made in the external editor may overwrite the original photo.\n\nContinue?",
+                parent=self):
+            return
+        try:
+            subprocess.Popen([tool["path"], target], cwd=os.path.dirname(tool["path"]))
+        except OSError as exc:
+            messagebox.showerror("Editor failed to open", str(exc), parent=self)
+
     def open_path(self, path):
         try:
             os.startfile(path)
@@ -478,6 +589,8 @@ class PhotoLibrary(tk.Toplevel):
             viewer.bind("<Left>", lambda _e: self.viewer_step(-1))
             viewer.bind("<Right>", lambda _e: self.viewer_step(1))
             viewer.bind("<space>", lambda _e: self.viewer_step(1))
+            viewer.bind("b", lambda _e: self.toggle_before())
+            viewer.bind("B", lambda _e: self.toggle_before())
             viewer.bind("<F11>", lambda _e: viewer.attributes("-fullscreen", not bool(viewer.attributes("-fullscreen"))))
             viewer.bind("<Configure>", self._viewer_resized)
             bar = tk.Frame(viewer, bg="#101010")
@@ -495,6 +608,8 @@ class PhotoLibrary(tk.Toplevel):
                 side="left", padx=12, pady=7, ipadx=10)
             self._button(nav, "↺", lambda: self.rotate_viewer(90)).pack(side="left", pady=7, ipadx=8)
             self._button(nav, "↻", lambda: self.rotate_viewer(-90)).pack(side="left", padx=5, pady=7, ipadx=8)
+            self._button(nav, "SHARPEN", self.open_sharpen).pack(side="left", padx=(8, 3), pady=7, ipadx=8)
+            self._button(nav, "BEFORE / AFTER  [B]", self.toggle_before).pack(side="left", pady=7, ipadx=6)
             self.viewer_count = tk.Label(nav, text="", bg="#101010", fg=DIM,
                                          font=("Segoe UI", 9))
             self.viewer_count.pack(side="left", expand=True)
@@ -504,6 +619,9 @@ class PhotoLibrary(tk.Toplevel):
         self.viewer_row = row
         if not old or old.get("path") != row.get("path"):
             self.viewer_rotation = 0
+            self.viewer_before = False
+            self.sharpen_enabled = False
+            self.sharpen_amount, self.sharpen_radius, self.sharpen_threshold = 100, 1.2, 3
         self.selected = row
         self._render_viewer()
         viewer.deiconify()
@@ -530,6 +648,10 @@ class PhotoLibrary(tk.Toplevel):
                     source = source.rotate(self.viewer_rotation, expand=True)
                 rendered = ImageOps.contain(source, (width, height),
                                              method=Image.Resampling.LANCZOS)
+                if getattr(self, "sharpen_enabled", False) and not getattr(self, "viewer_before", False):
+                    rendered = rendered.filter(ImageFilter.UnsharpMask(
+                        radius=float(self.sharpen_radius), percent=int(self.sharpen_amount),
+                        threshold=int(self.sharpen_threshold)))
             photo = ImageTk.PhotoImage(rendered)
             self.viewer_image.configure(image=photo, text="")
             self.viewer_image.image = photo
@@ -554,6 +676,8 @@ class PhotoLibrary(tk.Toplevel):
         index = (index + amount) % len(self.visible)
         self.viewer_row = self.visible[index]
         self.viewer_rotation = 0
+        self.viewer_before = False
+        self.sharpen_enabled = False
         self.selected = self.viewer_row
         self.select_photo(self.viewer_row)
         self._render_viewer()
@@ -561,3 +685,97 @@ class PhotoLibrary(tk.Toplevel):
     def rotate_viewer(self, degrees):
         self.viewer_rotation = (getattr(self, "viewer_rotation", 0) + degrees) % 360
         self._render_viewer()
+
+    def toggle_before(self):
+        if not getattr(self, "sharpen_enabled", False):
+            return
+        self.viewer_before = not getattr(self, "viewer_before", False)
+        self._render_viewer()
+
+    def open_sharpen(self):
+        panel = getattr(self, "sharpen_panel", None)
+        if panel and panel.winfo_exists():
+            panel.lift()
+            return
+        panel = tk.Toplevel(self.viewer)
+        self.sharpen_panel = panel
+        panel.title("SNAP SLAPPER — Sharpen")
+        panel.configure(bg=CARD)
+        panel.geometry("360x360")
+        panel.resizable(False, False)
+        panel.transient(self.viewer)
+        tk.Label(panel, text="NON-DESTRUCTIVE SHARPENING", bg=CARD, fg=ACCENT,
+                 font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=16, pady=(16, 5))
+        tk.Label(panel, text="Preview only until you export a new copy.", bg=CARD, fg=DIM,
+                 font=("Segoe UI", 9)).pack(anchor="w", padx=16, pady=(0, 10))
+        self.sharpen_enabled_var = tk.BooleanVar(value=True)
+        self.sharpen_enabled = True
+        tk.Checkbutton(panel, text="Enable sharpening", variable=self.sharpen_enabled_var,
+                       command=self._sharpen_changed, bg=CARD, fg=INK, selectcolor=FIELD,
+                       activebackground=CARD, activeforeground=INK).pack(anchor="w", padx=12)
+        self.sharpen_amount_var = tk.IntVar(value=int(self.sharpen_amount))
+        self.sharpen_radius_var = tk.DoubleVar(value=float(self.sharpen_radius))
+        self.sharpen_threshold_var = tk.IntVar(value=int(self.sharpen_threshold))
+        self._sharpen_scale(panel, "AMOUNT", self.sharpen_amount_var, 0, 300, 5)
+        self._sharpen_scale(panel, "RADIUS", self.sharpen_radius_var, 0.1, 5.0, 0.1)
+        self._sharpen_scale(panel, "THRESHOLD", self.sharpen_threshold_var, 0, 20, 1)
+        actions = tk.Frame(panel, bg=CARD)
+        actions.pack(fill="x", padx=14, pady=12)
+        self._button(actions, "RESET", self.reset_sharpen).pack(side="left", ipadx=8, ipady=4)
+        export = self._button(actions, "EXPORT NEW COPY", self.export_sharpened)
+        export.pack(side="right", ipadx=8, ipady=4)
+        self._render_viewer()
+
+    def _sharpen_scale(self, parent, label, variable, start, end, resolution):
+        row = tk.Frame(parent, bg=CARD)
+        row.pack(fill="x", padx=14, pady=3)
+        tk.Label(row, text=label, width=10, anchor="w", bg=CARD, fg=DIM,
+                 font=("Segoe UI", 8, "bold")).pack(side="left")
+        scale = tk.Scale(row, from_=start, to=end, resolution=resolution, variable=variable,
+                         orient="horizontal", showvalue=True, bg=CARD, fg=INK, troughcolor=FIELD,
+                         activebackground=ACCENT, highlightthickness=0, bd=0,
+                         command=lambda _v: self._sharpen_changed())
+        scale.pack(side="left", fill="x", expand=True)
+
+    def _sharpen_changed(self):
+        self.sharpen_enabled = bool(self.sharpen_enabled_var.get())
+        self.sharpen_amount = int(self.sharpen_amount_var.get())
+        self.sharpen_radius = float(self.sharpen_radius_var.get())
+        self.sharpen_threshold = int(self.sharpen_threshold_var.get())
+        self.viewer_before = False
+        if getattr(self, "_sharpen_job", None):
+            self.after_cancel(self._sharpen_job)
+        self._sharpen_job = self.after(80, self._render_viewer)
+
+    def reset_sharpen(self):
+        self.sharpen_enabled_var.set(True)
+        self.sharpen_amount_var.set(100)
+        self.sharpen_radius_var.set(1.2)
+        self.sharpen_threshold_var.set(3)
+        self._sharpen_changed()
+
+    def export_sharpened(self):
+        row = getattr(self, "viewer_row", None)
+        if not row:
+            return
+        source_path = row["path"]
+        stem, ext = os.path.splitext(source_path)
+        target = stem + "_sharpened" + ext
+        counter = 2
+        while os.path.exists(target):
+            target = f"{stem}_sharpened_{counter}{ext}"
+            counter += 1
+        try:
+            with Image.open(source_path) as image:
+                output = ImageOps.exif_transpose(image).convert("RGB")
+                if getattr(self, "viewer_rotation", 0):
+                    output = output.rotate(self.viewer_rotation, expand=True)
+                if self.sharpen_enabled:
+                    output = output.filter(ImageFilter.UnsharpMask(
+                        radius=float(self.sharpen_radius), percent=int(self.sharpen_amount),
+                        threshold=int(self.sharpen_threshold)))
+                kwargs = {"quality": 95, "optimize": True} if ext.lower() in {".jpg", ".jpeg", ".webp"} else {}
+                output.save(target, **kwargs)
+            messagebox.showinfo("Sharpened copy exported", target, parent=self.sharpen_panel)
+        except Exception as exc:
+            messagebox.showerror("Export failed", str(exc), parent=self.sharpen_panel)
