@@ -1,5 +1,5 @@
 """
-SNAP SLAPPER — SnapSmack unified desktop front end & launcher.
+THE HUB — SnapSmack unified desktop front end & launcher.
 
 One door: launch every offline tool from here, and set the fleet up ONCE. Enter the
 hub login and hit Discover Fleet — it fills the SHARED stores (snap_creds + snap_profiles)
@@ -21,9 +21,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-from photo_library import PhotoLibrary
-
-BUILD_VERSION = "0.5.0-beta"
+BUILD_VERSION = "0.7.14"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -56,7 +54,7 @@ ACCENT  = "#39ff14"
 FIELD   = "#1c1c1c"
 BORDER  = "#2a2a2a"
 
-# ── the tools SNAP SLAPPER fronts, and where they install ────────────────
+# ── the tools THE HUB fronts, and where they install ─────────────────────
 # The SnapSmack shared root. This is ALSO the GYSS file-jail root (SECAUDIT 039): a
 # compromised GYSS webview is permitted to write ANYWHERE under it. So it must never
 # be a source of WILDCARD-matched launch targets — see _find_exe and SECAUDIT 044.
@@ -75,6 +73,7 @@ def _shared_root():
 # as defence in depth even though nothing globs now.
 _R = _shared_root()
 ROSTER = [
+    ("SNAP SLAPPER",        "photo manager",        [os.path.join(_R, "snap_slapper", "SNAP SLAPPER.exe")]),
     ("SMACK YOUR BATCH UP", "batch poster",         [os.path.join(_R, "sybu", "sybu.exe")]),
     ("GET YOUR SHIT SORTED", "offline sorter",      [os.path.join(_R, "gyss", "GET YOUR SHIT SORTED.exe")]),
     ("COLD SNAP",           "offline poster",       [os.path.join(_R, "coldsnap", "coldsnap.exe")]),
@@ -118,10 +117,10 @@ def _launch(path):
         return False, str(e)
 
 
-class SnapSlapper(tk.Tk):
+class Hub(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title(f"SNAP SLAPPER — SnapSmack   (build {BUILD_VERSION})")
+        self.title(f"THE HUB — SnapSmack   (build {BUILD_VERSION})")
         self.configure(bg=BG)
         self.geometry("980x720")
         self.minsize(860, 640)
@@ -147,15 +146,10 @@ class SnapSlapper(tk.Tk):
     def _build_header(self):
         h = tk.Frame(self, bg=BG)
         h.pack(fill="x", padx=18, pady=(16, 12))
-        tk.Label(h, text="SNAP SLAPPER", bg=BG, fg=ACCENT,
+        tk.Label(h, text="THE HUB", bg=BG, fg=ACCENT,
                  font=("Segoe UI Black", 22, "bold")).pack(side="left")
-        tk.Label(h, text="  one slap · whole fleet",
+        tk.Label(h, text="  one door · set the fleet up once",
                  bg=BG, fg=DIM, font=("Segoe UI", 11)).pack(side="left", pady=(10, 0))
-        lib = tk.Button(h, text="PHOTO LIBRARY", bg=ACCENT, fg=BG, relief="flat",
-                        font=("Segoe UI", 9, "bold"), cursor="hand2",
-                        command=self._open_photo_library)
-        lib.pack(side="right", ipadx=12, ipady=5)
-        self._hoverize(lib, hover_bg=INK, hover_fg=BG)
 
     def _card(self, parent, title):
         outer = tk.Frame(parent, bg=BORDER)
@@ -180,18 +174,6 @@ class SnapSlapper(tk.Tk):
         btn.bind("<Enter>", on_enter)
         btn.bind("<Leave>", on_leave)
         return btn
-
-    def _open_photo_library(self):
-        if not _SHARED_OK:
-            messagebox.showerror("Photo Library unavailable", _SHARED_ERR, parent=self)
-            return
-        win = getattr(self, "_library_win", None)
-        if win and win.winfo_exists():
-            win.lift()
-            return
-        state_path = snap_home.config_path("snap-slapper", "library_folders.json")
-        self._library_win = PhotoLibrary(
-            self, snap_home.shared_library(), BUILD_VERSION, state_path=state_path)
 
     # ── launcher ────────────────────────────────────────────────────────────
     def _build_launcher(self, parent):
@@ -564,7 +546,7 @@ class SnapSlapper(tk.Tk):
             raise RuntimeError("no GYSS key for this site — run Discover Fleet")
         r = requests.get(site + "/api.php", params={"route": "gyss/prompt"},
                          headers={"Authorization": "Bearer " + key,
-                                  "User-Agent": f"SnapSlapper/{BUILD_VERSION}"}, timeout=25)
+                                  "User-Agent": f"SnapSmackHub/{BUILD_VERSION}"}, timeout=25)
         if r.status_code != 200:
             raise RuntimeError(f"HTTP {r.status_code}")
         data = r.json() if r.content else {}
@@ -581,7 +563,7 @@ class SnapSlapper(tk.Tk):
         r = requests.post(site + "/api.php", params={"route": "gyss/prompt"},
                           json={"prompt": text},
                           headers={"Authorization": "Bearer " + key,
-                                   "User-Agent": f"SnapSlapper/{BUILD_VERSION}"}, timeout=25)
+                                   "User-Agent": f"SnapSmackHub/{BUILD_VERSION}"}, timeout=25)
         if r.status_code != 200:
             return False
         try:
@@ -703,24 +685,5 @@ class SnapSlapper(tk.Tk):
 
 
 if __name__ == "__main__":
-    app = SnapSlapper()
-    qa_image = os.environ.get("SNAP_SLAPPER_QA_IMAGE", "")
-    qa_marker = os.environ.get("SNAP_SLAPPER_QA_MARKER", "")
-    if qa_image and qa_marker:
-        def _qa_open_image():
-            try:
-                state_path = os.path.join(os.path.dirname(qa_marker), "qa-library-folders.json")
-                library = PhotoLibrary(app, snap_home.shared_library(), BUILD_VERSION, state_path=state_path)
-                row = {"path": qa_image, "title": "Packaged image check", "description": "", "tags": []}
-                library.rows = [row]
-                library.filter_rows()
-                library.select_photo(row)
-                library.open_viewer(row)
-                app.update_idletasks()
-                with open(qa_marker, "w", encoding="utf-8") as handle:
-                    handle.write("PASS")
-            finally:
-                app.after(100, app.destroy)
-        app.after(300, _qa_open_image)
-    app.mainloop()
+    Hub().mainloop()
 # ===== SNAPSMACK EOF =====

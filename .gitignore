@@ -118,6 +118,7 @@ tools/*/dist/
 tools/*/*.spec
 !tools/smack-up-your-backup/smackupyourbackup.spec
 !tools/hub/hub.spec
+!tools/hub/snap_slapper.spec
 tools/oh-snap/src-tauri/target/
 tools/oh-snap/node_modules/
 
