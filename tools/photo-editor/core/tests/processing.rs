@@ -3,7 +3,7 @@
 
 use image::{DynamicImage, ImageBuffer, ImageFormat, Rgba, RgbaImage};
 use snapsmack_photo_core::processing::{
-    apply, histogram, load, preview, replace_json_atomic, save_atomic, DarkroomSettings,
+    apply, histogram, load, preview, replace_json_atomic, save_atomic, BlendMode, DarkroomSettings,
     LevelsSettings, Operation, ProcessingError, DEFAULT_MEMORY_BUDGET,
 };
 use std::fs;
@@ -344,6 +344,82 @@ fn creative_controls_are_bounded_deterministic_and_neutral_safe() {
         DEFAULT_MEMORY_BUDGET
     )
     .is_err());
+}
+
+#[test]
+fn adjustment_layers_composite_hide_and_reject_geometry_changes() {
+    let source = fixture();
+    let hidden = [Operation::AdjustmentLayer {
+        name: "Hidden".into(),
+        visible: false,
+        locked: false,
+        opacity: 1.0,
+        fill_opacity: 1.0,
+        blend_mode: BlendMode::Normal,
+        operations: vec![Operation::Hsl {
+            hue_degrees: 90.0,
+            saturation: 0.5,
+            lightness: 0.0,
+        }],
+    }];
+    assert_eq!(
+        apply(source.clone(), &hidden, DEFAULT_MEMORY_BUDGET)
+            .unwrap()
+            .to_rgba8(),
+        source.to_rgba8()
+    );
+    let layer = [Operation::AdjustmentLayer {
+        name: "Punch".into(),
+        visible: true,
+        locked: false,
+        opacity: 0.5,
+        fill_opacity: 1.0,
+        blend_mode: BlendMode::Overlay,
+        operations: vec![Operation::Darkroom {
+            settings: DarkroomSettings {
+                contrast: 0.3,
+                vibrance: 0.2,
+                ..DarkroomSettings::default()
+            },
+        }],
+    }];
+    let first = apply(source.clone(), &layer, DEFAULT_MEMORY_BUDGET).unwrap();
+    let second = apply(source.clone(), &layer, DEFAULT_MEMORY_BUDGET).unwrap();
+    assert_eq!(first.to_rgba16(), second.to_rgba16());
+    let geometry = [Operation::AdjustmentLayer {
+        name: "Bad crop".into(),
+        visible: true,
+        locked: false,
+        opacity: 1.0,
+        fill_opacity: 1.0,
+        blend_mode: BlendMode::Normal,
+        operations: vec![Operation::Crop {
+            x: 0,
+            y: 0,
+            width: 2,
+            height: 2,
+        }],
+    }];
+    assert!(apply(source, &geometry, DEFAULT_MEMORY_BUDGET).is_err());
+}
+
+#[test]
+fn adjustment_layer_nesting_is_bounded() {
+    let mut operation = Operation::Darkroom {
+        settings: DarkroomSettings::default(),
+    };
+    for depth in 0..34 {
+        operation = Operation::AdjustmentLayer {
+            name: format!("Layer {depth}"),
+            visible: true,
+            locked: false,
+            opacity: 1.0,
+            fill_opacity: 1.0,
+            blend_mode: BlendMode::Normal,
+            operations: vec![operation],
+        };
+    }
+    assert!(apply(fixture(), &[operation], DEFAULT_MEMORY_BUDGET).is_err());
 }
 
 // ===== SNAPSMACK EOF =====

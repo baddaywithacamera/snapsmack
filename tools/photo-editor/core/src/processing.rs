@@ -112,6 +112,26 @@ pub enum Operation {
         saturation: f32,
         lightness: f32,
     },
+    AdjustmentLayer {
+        name: String,
+        visible: bool,
+        locked: bool,
+        opacity: f32,
+        fill_opacity: f32,
+        blend_mode: BlendMode,
+        operations: Vec<Operation>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BlendMode {
+    #[default]
+    Normal,
+    Multiply,
+    Screen,
+    Overlay,
+    SoftLight,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -269,12 +289,31 @@ pub fn load(path: &Path, budget: u64) -> Result<LoadedImage, ProcessingError> {
 }
 
 pub fn apply(
-    mut image: DynamicImage,
+    image: DynamicImage,
     operations: &[Operation],
     budget: u64,
 ) -> Result<DynamicImage, ProcessingError> {
+    apply_with_depth(image, operations, budget, 0)
+}
+
+fn apply_with_depth(
+    mut image: DynamicImage,
+    operations: &[Operation],
+    budget: u64,
+    depth: usize,
+) -> Result<DynamicImage, ProcessingError> {
+    if depth > 32 {
+        return Err(ProcessingError::Invalid(
+            "layer nesting exceeds 32 levels".into(),
+        ));
+    }
+    if operations.len() > 4096 {
+        return Err(ProcessingError::Invalid(
+            "recipe contains too many operations".into(),
+        ));
+    }
     for operation in operations {
-        image = match *operation {
+        image = match operation.clone() {
             Operation::Crop {
                 x,
                 y,
@@ -327,9 +366,82 @@ pub fn apply(
                 saturation,
                 lightness,
             } => apply_hsl(&image, hue_degrees, saturation, lightness)?,
+            Operation::AdjustmentLayer {
+                name,
+                visible,
+                locked: _,
+                opacity,
+                fill_opacity,
+                blend_mode,
+                operations,
+            } => {
+                if name.trim().is_empty()
+                    || name.len() > 200
+                    || !opacity.is_finite()
+                    || !(0.0..=1.0).contains(&opacity)
+                    || !fill_opacity.is_finite()
+                    || !(0.0..=1.0).contains(&fill_opacity)
+                {
+                    return Err(ProcessingError::Invalid("invalid adjustment layer".into()));
+                }
+                if !visible || opacity == 0.0 || fill_opacity == 0.0 {
+                    image
+                } else {
+                    let adjusted = apply_with_depth(image.clone(), &operations, budget, depth + 1)?;
+                    if adjusted.dimensions() != image.dimensions() {
+                        return Err(ProcessingError::Invalid(
+                            "adjustment layers cannot change canvas geometry".into(),
+                        ));
+                    }
+                    composite_adjustment(&image, &adjusted, opacity * fill_opacity, blend_mode)
+                }
+            }
         };
     }
     Ok(image)
+}
+
+fn blend_channel(base: f32, adjusted: f32, mode: BlendMode) -> f32 {
+    match mode {
+        BlendMode::Normal => adjusted,
+        BlendMode::Multiply => base * adjusted,
+        BlendMode::Screen => 1.0 - (1.0 - base) * (1.0 - adjusted),
+        BlendMode::Overlay => {
+            if base <= 0.5 {
+                2.0 * base * adjusted
+            } else {
+                1.0 - 2.0 * (1.0 - base) * (1.0 - adjusted)
+            }
+        }
+        BlendMode::SoftLight => (1.0 - 2.0 * adjusted) * base * base + 2.0 * adjusted * base,
+    }
+}
+
+fn composite_adjustment(
+    base: &DynamicImage,
+    adjusted: &DynamicImage,
+    opacity: f32,
+    mode: BlendMode,
+) -> DynamicImage {
+    let base = base.to_rgba16();
+    let adjusted = adjusted.to_rgba16();
+    let mut output = base.clone();
+    for ((destination, base_pixel), adjusted_pixel) in output
+        .pixels_mut()
+        .zip(base.pixels())
+        .zip(adjusted.pixels())
+    {
+        for channel in 0..3 {
+            let base_value = srgb_to_linear(base_pixel.0[channel] as f32 / 65535.0);
+            let adjusted_value = srgb_to_linear(adjusted_pixel.0[channel] as f32 / 65535.0);
+            let blended = blend_channel(base_value, adjusted_value, mode);
+            destination.0[channel] = (linear_to_srgb(base_value + (blended - base_value) * opacity)
+                * 65535.0)
+                .round() as u16;
+        }
+        destination.0[3] = base_pixel.0[3];
+    }
+    DynamicImage::ImageRgba16(output)
 }
 
 fn srgb_to_linear(value: f32) -> f32 {
