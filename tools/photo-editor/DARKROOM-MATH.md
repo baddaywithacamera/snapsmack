@@ -39,6 +39,11 @@ linear output interval. B&W computes a normalized, user-weighted mix of linear R
 Vignette uses a radial cubic smoothstep between midpoint and feather, with positive
 amounts darkening edges and negative amounts lifting them.
 
+Film grain uses a coordinate-hashed, recipe-seeded monochrome noise field. Grain size
+selects the coarse cell scale, roughness mixes coarse and per-pixel noise, and a tonal
+weight concentrates the effect in midtones. The stored seed makes preview, project
+reopen and full export deterministic without relying on a random-number library.
+
 Sharpening is an original 3×3 linear-light unsharp operation with an explicit edge
 threshold. Noise reduction separates Rec. 709 luminance from chroma, blends each toward
 its bounded 3×3 neighbourhood independently, and preserves alpha. Zero strength is an

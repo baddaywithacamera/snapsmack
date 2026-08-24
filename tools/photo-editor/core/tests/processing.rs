@@ -277,6 +277,17 @@ fn finishing_controls_reject_unsafe_ranges() {
     .is_err());
     assert!(apply(
         fixture(),
+        &[Operation::FilmGrain {
+            amount: 0.5,
+            size: 9.0,
+            roughness: 0.5,
+            seed: 1,
+        }],
+        DEFAULT_MEMORY_BUDGET
+    )
+    .is_err());
+    assert!(apply(
+        fixture(),
         &[Operation::Sharpen {
             amount: 3.0,
             threshold: 0.0
@@ -345,6 +356,59 @@ fn creative_controls_are_bounded_deterministic_and_neutral_safe() {
         DEFAULT_MEMORY_BUDGET
     )
     .is_err());
+}
+
+#[test]
+fn film_grain_is_seeded_deterministic_preserves_alpha_and_has_identity() {
+    let source = fixture();
+    let neutral = apply(
+        source.clone(),
+        &[Operation::FilmGrain {
+            amount: 0.0,
+            size: 1.5,
+            roughness: 0.65,
+            seed: 1977,
+        }],
+        DEFAULT_MEMORY_BUDGET,
+    )
+    .unwrap();
+    assert_eq!(neutral.to_rgba16(), source.to_rgba16());
+
+    let recipe = [Operation::FilmGrain {
+        amount: 0.6,
+        size: 2.0,
+        roughness: 0.7,
+        seed: 42,
+    }];
+    let first = apply(source.clone(), &recipe, DEFAULT_MEMORY_BUDGET)
+        .unwrap()
+        .to_rgba16();
+    let second = apply(source.clone(), &recipe, DEFAULT_MEMORY_BUDGET)
+        .unwrap()
+        .to_rgba16();
+    let different = apply(
+        source.clone(),
+        &[Operation::FilmGrain {
+            amount: 0.6,
+            size: 2.0,
+            roughness: 0.7,
+            seed: 43,
+        }],
+        DEFAULT_MEMORY_BUDGET,
+    )
+    .unwrap()
+    .to_rgba16();
+    assert_eq!(first, second);
+    assert_ne!(first, different);
+    for ((before, after), changed) in source
+        .to_rgba16()
+        .pixels()
+        .zip(first.pixels())
+        .zip(different.pixels())
+    {
+        assert_eq!(before.0[3], after.0[3]);
+        assert_eq!(before.0[3], changed.0[3]);
+    }
 }
 
 #[test]

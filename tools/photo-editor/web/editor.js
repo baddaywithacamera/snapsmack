@@ -126,6 +126,11 @@
   byId("apply-levels").addEventListener("click", () => void add({ type: "levels", settings: { black: number("level-black"), gamma: number("level-gamma"), white: number("level-white"), output_black: 0, output_white: 1 } }));
   byId("apply-bw").addEventListener("click", () => void add({ type: "black-and-white", red: number("bw-red"), green: number("bw-green"), blue: number("bw-blue") }));
   byId("apply-vignette").addEventListener("click", () => void add({ type: "vignette", amount: number("vignette-amount"), midpoint: number("vignette-midpoint"), feather: number("vignette-feather") }));
+  byId("apply-grain").addEventListener("click", () => {
+    const amount = number("grain-amount"), size = number("grain-size"), roughness = number("grain-roughness"), seed = number("grain-seed");
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1 || !Number.isFinite(size) || size < 0.5 || size > 8 || !Number.isFinite(roughness) || roughness < 0 || roughness > 1 || !Number.isSafeInteger(seed) || seed < 0) return status("Check the film grain settings and set an amount above zero.");
+    void add({ type: "film-grain", amount, size, roughness, seed });
+  });
   byId("apply-sharpen").addEventListener("click", () => void add({ type: "sharpen", amount: number("sharpen-amount"), threshold: number("sharpen-threshold") }));
   byId("apply-noise").addEventListener("click", () => void add({ type: "noise-reduction", luminance: number("nr-luminance"), chroma: number("nr-chroma") }));
   byId("apply-local-contrast").addEventListener("click", () => void add({ type: "local-contrast", amount: number("local-contrast") }));
