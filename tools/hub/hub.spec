@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# THE HUB build recipe — self-bundling, mirrors the SYBU spec's _shared bundling.
+# SNAP SLAPPER build recipe — self-bundling, mirrors the SYBU spec's _shared bundling.
 # Every local .py and every tools/_shared/*.py is copied flat AND force-imported,
 # so snap_creds / snap_profiles / snap_discovery / snap_home / snap_stepup can
 # never be silently dropped from the frozen exe.
