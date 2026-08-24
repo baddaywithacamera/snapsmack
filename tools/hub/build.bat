@@ -2,7 +2,7 @@
 REM ─────────────────────────────────────────────────────────────────────────
 REM  SNAP SLAPPER — build script
 REM  Requires: Python 3.10+, pip install -r requirements.txt
-REM  Output:   C:\snapsmack\hub\hub.exe
+REM  Output:   C:\snapsmack\snap_slapper\SNAP SLAPPER.exe
 REM  hub.spec auto-bundles every local .py AND tools/_shared/*.py.
 REM ─────────────────────────────────────────────────────────────────────────
 
@@ -20,13 +20,13 @@ echo Installing dependencies...
 pip install -r requirements.txt
 
 echo.
-echo Building hub.exe...
-if not exist C:\snapsmack\hub mkdir C:\snapsmack\hub
-pyinstaller --clean %SPEC_FILE% --distpath "C:\snapsmack\hub"
+echo Building SNAP SLAPPER.exe...
+if not exist C:\snapsmack\snap_slapper mkdir C:\snapsmack\snap_slapper
+pyinstaller --clean %SPEC_FILE% --distpath "C:\snapsmack\snap_slapper"
 
 echo.
-if exist "C:\snapsmack\hub\hub.exe" (
-    echo Build successful: C:\snapsmack\hub\hub.exe
+if exist "C:\snapsmack\snap_slapper\SNAP SLAPPER.exe" (
+    echo Build successful: C:\snapsmack\snap_slapper\SNAP SLAPPER.exe
 ) else (
     echo Build FAILED — check output above.
     pause

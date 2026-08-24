@@ -14,7 +14,7 @@
 **Date:** 2026-08-11
 **Platform:** Windows first, Linux second
 **Status:** v1 BUILT (2026-08-13). `tools/hub/{main.py,hub.spec,build.bat}` →
-`C:\snapsmack\hub\hub.exe`: launches installed tools + one-place HUB SETUP →
+`C:\snapsmack\snap_slapper\SNAP SLAPPER.exe`: launches installed tools + one-place HUB SETUP →
 Discover Fleet writes the shared vault (snap_creds) + shared profiles (snap_profiles)
 via `tools/_shared/snap_discovery.py`. The READ side that makes discovery pay off is
 now wired across the fleet: SYBU + GYSS read shared profiles; SYBU + COLD SNAP share
@@ -180,8 +180,8 @@ Python GUI (matches the tool stack). Leaning Tauri for the front-end quality, bu
 a genuine architecture call for Sean + Codex.
 
 ### 4. Name
-The product name is **SNAP SLAPPER**. Keep `hub.exe` as the compatibility filename so
-existing installs and shortcuts continue to work.
+The product name and executable are **SNAP SLAPPER**. Install it at
+`C:\snapsmack\snap_slapper\SNAP SLAPPER.exe` so its folder matches the rest of the tool fleet.
 
 ### 5. Multi-install management
 `snap_home` implies SNAP SLAPPER can see several installs. Decide whether SNAP SLAPPER manages the
