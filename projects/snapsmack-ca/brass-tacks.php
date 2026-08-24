@@ -119,6 +119,7 @@ require_once __DIR__ . '/includes/header.php';
                     <li><a href="#q-how-techie">How techie do I have to be to run this?</a></li>
                     <li><a href="#q-resources">Resources needed?</a></li>
                     <li><a href="#q-platforms">Platforms supported?</a></li>
+                    <li><a href="#q-heic">Does SnapSmack support HEIC or HEIF images?</a></li>
                     <li><a href="#q-mobile">Why such limited mobile support?</a></li>
                     <li><a href="#q-mobile-app">Will there be a mobile app for posting?</a></li>
                     <li><a href="#q-companion-apps">Why companion apps instead of plugins?</a></li>
@@ -271,6 +272,11 @@ require_once __DIR__ . '/includes/header.php';
                 <h3>Platforms supported?</h3>
                 <p><strong>Server.</strong> LAMP. Linux, Apache, MySQL/MariaDB, PHP 8.1 or newer. Nginx with PHP-FPM works in principle and several testers run it. Officially supported once it's been through enough cycles to call it tested. WIMP — Windows, IIS, MySQL, PHP — can go eat a bag of dicks. Not supported. Not going to be. Don't file bug reports. See "Why no Apple support?" for the other platform we don't build for, and why.</p>
                 <p><strong>Desktop Companion Apps.</strong> Windows 10 and up. Any recent Linux distribution. The Linux builds have also been found to work on macOS, entirely by accident, but macOS remains unsupported. See "Why no Apple support?" before getting excited.</p>
+            </div>
+
+            <div class="qa" id="q-heic">
+                <h3>Does SnapSmack support HEIC or HEIF images?</h3>
+                <p>No. HEIC commonly relies on patent-encumbered HEVC technology. SnapSmack is a free software project and cannot afford the licensing uncertainty or the risk of patent litigation, so HEIC and HEIF are not supported by the CMS or any SnapSmack desktop tool. Convert those files to TIFF for editing or to JPEG, PNG, or WebP before uploading.</p>
             </div>
 
             <div class="qa" id="q-mobile">
