@@ -3,8 +3,9 @@
 
 use image::{DynamicImage, ImageBuffer, ImageFormat, Rgba, RgbaImage};
 use snapsmack_photo_core::processing::{
-    apply, histogram, load, preview, replace_json_atomic, save_atomic, BlendMode, DarkroomSettings,
-    FontFamily, LevelsSettings, Operation, ProcessingError, TextAlignment, DEFAULT_MEMORY_BUDGET,
+    apply, histogram, load, preview, preview_data_uri, replace_json_atomic, save_atomic, BlendMode,
+    DarkroomSettings, FontFamily, LevelsSettings, Operation, ProcessingError, TextAlignment,
+    DEFAULT_MEMORY_BUDGET,
 };
 use std::fs;
 
@@ -454,6 +455,58 @@ fn text_layers_render_deterministically_and_respect_visibility() {
             .to_rgba8(),
         source.to_rgba8()
     );
+}
+
+#[test]
+fn embedded_image_overlays_transform_composite_and_validate() {
+    let source = fixture();
+    let overlay = DynamicImage::ImageRgba8(RgbaImage::from_pixel(3, 2, Rgba([255, 20, 10, 200])));
+    let data_uri = preview_data_uri(&overlay, 16).unwrap();
+    let mut layer = Operation::ImageOverlayLayer {
+        name: "Watermark".into(),
+        visible: true,
+        locked: false,
+        opacity: 0.7,
+        fill_opacity: 1.0,
+        blend_mode: BlendMode::Screen,
+        original_name: "mark.png".into(),
+        data_uri,
+        width: 4,
+        height: 3,
+        rotation_degrees: 25.0,
+        x: 2,
+        y: -1,
+    };
+    let first = apply(source.clone(), &[layer.clone()], DEFAULT_MEMORY_BUDGET).unwrap();
+    let second = apply(source.clone(), &[layer.clone()], DEFAULT_MEMORY_BUDGET).unwrap();
+    assert_eq!(first.to_rgba16(), second.to_rgba16());
+    assert_ne!(first.to_rgba8(), source.to_rgba8());
+    if let Operation::ImageOverlayLayer { visible, .. } = &mut layer {
+        *visible = false;
+    }
+    assert_eq!(
+        apply(source.clone(), &[layer], DEFAULT_MEMORY_BUDGET)
+            .unwrap()
+            .to_rgba8(),
+        source.to_rgba8()
+    );
+
+    let invalid = Operation::ImageOverlayLayer {
+        name: "Bad".into(),
+        visible: true,
+        locked: false,
+        opacity: 1.0,
+        fill_opacity: 1.0,
+        blend_mode: BlendMode::Normal,
+        original_name: "bad.svg".into(),
+        data_uri: "data:image/svg+xml;base64,PHN2Zy8+".into(),
+        width: 2,
+        height: 2,
+        rotation_degrees: 0.0,
+        x: 0,
+        y: 0,
+    };
+    assert!(apply(source, &[invalid], DEFAULT_MEMORY_BUDGET).is_err());
 }
 
 // ===== SNAPSMACK EOF =====

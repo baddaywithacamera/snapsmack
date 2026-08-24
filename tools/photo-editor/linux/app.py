@@ -1,6 +1,7 @@
 """PIXEL TICKLER Linux/Blink host. Original SnapSmack code, SPL 2.1."""
 
 import json
+import base64
 import os
 import subprocess
 import sys
@@ -111,6 +112,23 @@ def editor_call(method, params):
         result = _core("render_preview", params, [os.path.dirname(_input_path)])
         _autosave([])
         return result
+    if method == "choose_overlay":
+        selected = snap_blink.pick_path("file", "Open overlay image")
+        if not selected:
+            return None
+        selected = os.path.realpath(selected)
+        if os.path.getsize(selected) > 8 * 1024 * 1024:
+            raise RuntimeError("Overlay files are limited to 8 MB so projects stay portable")
+        extension = os.path.splitext(selected)[1].lower()
+        mime = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+                ".webp": "image/webp", ".tif": "image/tiff", ".tiff": "image/tiff"}.get(extension)
+        if not mime:
+            raise RuntimeError("Choose a JPEG, PNG, WebP, or TIFF overlay")
+        inspected = _core("inspect_image", {"input_path": selected}, [os.path.dirname(selected)])
+        with open(selected, "rb") as handle:
+            encoded = base64.b64encode(handle.read()).decode("ascii")
+        return {"name": os.path.basename(selected), "width": inspected["image"]["width"],
+                "height": inspected["image"]["height"], "data_uri": "data:" + mime + ";base64," + encoded}
     if method == "open_project":
         selected = snap_blink.pick_path("file", "Open PIXEL TICKLER project")
         if not selected:
