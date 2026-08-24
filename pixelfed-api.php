@@ -12,6 +12,10 @@ require_once __DIR__ . '/core/thumb-generator.php';
 require_once __DIR__ . '/core/alt-text.php';
 require_once __DIR__ . '/core/gram-client-authoring.php';
 require_once __DIR__ . '/core/pixelix-lifecycle.php';
+require_once __DIR__ . '/core/image-upload-policy.php';
+
+// Pixelix reaches this compatibility endpoint directly rather than api.php.
+snapsmack_reject_heic_upload_request(true);
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
