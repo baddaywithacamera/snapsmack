@@ -21,7 +21,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-BUILD_VERSION = "0.7.12"
+BUILD_VERSION = "0.7.13"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -202,7 +202,7 @@ class Hub(tk.Tk):
             messagebox.showerror("Launch failed", f"{name}\n\n{err}", parent=self)
 
     # ── shared setup ─────────────────────────────────────────────────────────
-    def _field(self, parent, label, key, show=None, browse=False, test=None):
+    def _field(self, parent, label, key, show=None, browse=False, test=None, reveal=False):
         row = tk.Frame(parent, bg=CARD)
         row.pack(fill="x", padx=14, pady=(0, 8))
         head = tk.Frame(row, bg=CARD)
@@ -220,6 +220,21 @@ class Hub(tk.Tk):
         ent = tk.Entry(line, textvariable=var, show=show, bg=FIELD, fg=INK,
                        insertbackground=INK, relief="flat", font=("Consolas", 10))
         ent.pack(side="left", fill="x", expand=True, ipady=5)
+        if reveal and show:
+            # Masked by default; this button flips the value in and out of view.
+            def _toggle_reveal(e=ent, mask=show):
+                if e.cget("show"):
+                    e.config(show="")
+                    rb.config(text="Hide")
+                else:
+                    e.config(show=mask)
+                    rb.config(text="Show")
+            rb = tk.Button(line, text="Show", bg=FIELD, fg=INK, relief="flat",
+                           activebackground=ACCENT, activeforeground=BG,
+                           font=("Segoe UI", 8, "bold"), cursor="hand2",
+                           command=_toggle_reveal)
+            rb.pack(side="left", padx=(6, 0), ipadx=8, ipady=3)
+            self._hoverize(rb)
         if browse:
             bb = tk.Button(line, text="…", bg=FIELD, fg=INK, relief="flat",
                            command=lambda v=var: self._browse(v))
@@ -306,7 +321,7 @@ class Hub(tk.Tk):
         self._field(card, "HUB API KEY",    "hub_key", show="•", test=self._test_hub)
         self._field(card, "GEMINI API KEY", "gemini_api_key", show="•", test=self._test_gemini)
         self._field(card, "GOOGLE DRIVE CREDENTIALS (json)", "google_credentials", browse=True, test=self._test_drive)
-        self._field(card, "BACKUP FOLDER ID", "drive_folder_id")
+        self._field(card, "BACKUP FOLDER ID", "drive_folder_id", show="•", reveal=True)
         bar = tk.Frame(card, bg=CARD)
         bar.pack(fill="x", padx=14, pady=(4, 12))
         save_b = tk.Button(bar, text="SAVE SHARED CREDENTIALS", bg=INK, fg=BG,
