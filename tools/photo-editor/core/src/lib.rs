@@ -1,4 +1,4 @@
-//! SnapSmack Photo Editor sidecar protocol and Packet 01 security boundary.
+//! PIXEL TICKLER sidecar protocol and security boundary.
 //!
 //! SNAPSMACK_EOF_HEADER: last non-empty line must be the canonical Rust marker.
 
@@ -323,6 +323,37 @@ pub fn handle_sync(state: &SidecarState, request: Request) -> (Response, bool) {
             processing::load(&input, request.params.get("memory_budget_bytes").and_then(Value::as_u64).unwrap_or(processing::DEFAULT_MEMORY_BUDGET))
                 .map(|loaded| json!({"image": loaded.info, "histogram": processing::histogram(&loaded.pixels)}))
                 .map_err(processing_rpc_error)
+        })(),
+        "render_preview" => (|| {
+            let input =
+                state.approve_existing(required_string(&request.params, "input_path")?, false)?;
+            if file_is_heic(&input) {
+                return Err(RpcError::new(
+                    error_code::HEIC_UNSUPPORTED,
+                    "HEIC/HEIF is not supported because of HEVC patent risk",
+                ));
+            }
+            let budget = request
+                .params
+                .get("memory_budget_bytes")
+                .and_then(Value::as_u64)
+                .unwrap_or(processing::DEFAULT_MEMORY_BUDGET);
+            let loaded = processing::load(&input, budget).map_err(processing_rpc_error)?;
+            let operations: Vec<processing::Operation> = serde_json::from_value(
+                request
+                    .params
+                    .get("operations")
+                    .cloned()
+                    .unwrap_or_else(|| json!([])),
+            )
+            .map_err(|e| RpcError::new(error_code::BAD_REQUEST, e.to_string()))?;
+            let image = processing::apply(loaded.pixels, &operations, budget)
+                .map_err(processing_rpc_error)?;
+            let preview =
+                processing::preview_data_uri(&image, 1600).map_err(processing_rpc_error)?;
+            Ok(
+                json!({"name": input.file_name().and_then(|v| v.to_str()).unwrap_or("image"), "width": image.width(), "height": image.height(), "preview": preview, "histogram": processing::histogram(&image)}),
+            )
         })(),
         "process_export" => (|| {
             let input =

@@ -1,6 +1,6 @@
 <!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the canonical HTML comment. -->
 
-# SnapSmack Photo Editor — development third-party notices
+# PIXEL TICKLER — development third-party notices
 
 The sidecar uses the Rust packages and exact versions recorded in
 `DEPENDENCIES.md` and `core/Cargo.lock`. They are distributed under their respective

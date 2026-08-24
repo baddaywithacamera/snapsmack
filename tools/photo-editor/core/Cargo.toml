@@ -2,13 +2,14 @@
 name = "snapsmack-photo-core"
 version = "0.1.0"
 edition = "2021"
-description = "SnapSmack Photo Editor native processing sidecar"
+description = "PIXEL TICKLER native photo-processing sidecar"
 license-file = "../../../licenses/SNAPSMACK-LICENSE.txt"
 homepage = "https://snapsmack.ca"
 repository = "https://github.com/baddaywithacamera/snapsmack"
 publish = false
 
 [dependencies]
+base64 = "0.22"
 image = { version = "0.25.8", default-features = false, features = ["jpeg", "png", "webp", "tiff"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

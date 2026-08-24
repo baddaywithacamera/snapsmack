@@ -1,4 +1,4 @@
-//! SnapSmack Photo Editor JSON-lines sidecar.
+//! PIXEL TICKLER JSON-lines sidecar.
 //! SNAPSMACK_EOF_HEADER: last non-empty line must be the canonical Rust marker.
 
 use serde_json::{json, Value};
