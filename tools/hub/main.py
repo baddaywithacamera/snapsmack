@@ -21,7 +21,9 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-BUILD_VERSION = "0.7.15"
+from photo_library import PhotoLibrary
+
+BUILD_VERSION = "0.8.0"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -39,6 +41,7 @@ try:
     import snap_discovery
     import snap_prompts
     import snap_prompt_sync
+    import snap_home
     _SHARED_OK = True
 except Exception as _e:                      # pragma: no cover
     _SHARED_OK = False
@@ -148,6 +151,11 @@ class SnapSlapper(tk.Tk):
                  font=("Segoe UI Black", 22, "bold")).pack(side="left")
         tk.Label(h, text="  one slap · whole fleet",
                  bg=BG, fg=DIM, font=("Segoe UI", 11)).pack(side="left", pady=(10, 0))
+        lib = tk.Button(h, text="PHOTO LIBRARY", bg=ACCENT, fg=BG, relief="flat",
+                        font=("Segoe UI", 9, "bold"), cursor="hand2",
+                        command=self._open_photo_library)
+        lib.pack(side="right", ipadx=12, ipady=5)
+        self._hoverize(lib, hover_bg=INK, hover_fg=BG)
 
     def _card(self, parent, title):
         outer = tk.Frame(parent, bg=BORDER)
@@ -172,6 +180,18 @@ class SnapSlapper(tk.Tk):
         btn.bind("<Enter>", on_enter)
         btn.bind("<Leave>", on_leave)
         return btn
+
+    def _open_photo_library(self):
+        if not _SHARED_OK:
+            messagebox.showerror("Photo Library unavailable", _SHARED_ERR, parent=self)
+            return
+        win = getattr(self, "_library_win", None)
+        if win and win.winfo_exists():
+            win.lift()
+            return
+        state_path = snap_home.config_path("snap-slapper", "library_folders.json")
+        self._library_win = PhotoLibrary(
+            self, snap_home.shared_library(), BUILD_VERSION, state_path=state_path)
 
     # ── launcher ────────────────────────────────────────────────────────────
     def _build_launcher(self, parent):
