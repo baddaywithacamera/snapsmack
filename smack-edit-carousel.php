@@ -696,7 +696,7 @@ include 'core/sidebar.php';
           data-customize-level="<?php echo htmlspecialchars($customize_level); ?>">
 
         <!-- New file input (populated by JS via DataTransfer before submit) -->
-        <input type="file" name="new_img_files[]" multiple style="display:none;" id="ce-new-file-hidden">
+        <input type="file" name="new_img_files[]" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" id="ce-new-file-hidden">
 
         <!-- ===================================================================
              SECTION 1: POST METADATA

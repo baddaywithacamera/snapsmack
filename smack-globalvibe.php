@@ -278,7 +278,7 @@ include 'core/sidebar.php';
 
                     <div class="lens-input-wrapper<?php echo ((($settings['header_type'] ?? 'text') == 'image') && (($settings['site_mode'] ?? 'photoblog') !== 'carousel')) ? '' : ' d-none'; ?>" id="logo-upload-group">
                         <label>UPLOAD LOGO (PNG/SVG)</label>
-                        <input type="file" name="site_logo_file" accept="image/*" class="file-input-raw">
+                        <input type="file" name="site_logo_file" accept="image/jpeg,image/png,image/webp,image/gif" class="file-input-raw">
                         <?php if (!empty($settings['site_logo'])): ?>
                             <div class="logo-preview-box">
                                 <span class="dim">ACTIVE LOGO:</span><br>

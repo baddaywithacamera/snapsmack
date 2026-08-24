@@ -916,7 +916,7 @@ include 'core/sidebar.php';
                         <div class="file-upload-wrapper">
                             <div class="file-custom-btn">INJECT ASSET</div>
                             <span id="post-file-name" class="file-name-display">No file selected...</span>
-                            <input type="file" name="img_file" id="post-file-input" accept="image/*" class="file-input-hidden">
+                            <input type="file" name="img_file" id="post-file-input" accept="image/jpeg,image/png,image/webp,image/gif" class="file-input-hidden">
                         </div>
                     </div>
                 </div>

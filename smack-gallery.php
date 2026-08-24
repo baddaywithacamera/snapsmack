@@ -409,7 +409,7 @@ include 'core/sidebar.php';
         <div class="file-upload-wrapper" id="gal-drop-zone">
             <div class="file-custom-btn">CHOOSE FILE(S)</div>
             <span id="gal-file-name-display" class="file-name-display">No signal selected... or drag &amp; drop here.</span>
-            <input type="file" id="gal-file-input" accept="image/*" multiple class="file-input-hidden">
+            <input type="file" id="gal-file-input" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="file-input-hidden">
         </div>
 
         <div class="gallery-upload-meta" style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
