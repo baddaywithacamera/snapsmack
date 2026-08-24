@@ -3,6 +3,8 @@
 import datetime
 import json
 import os
+import queue
+import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
@@ -25,6 +27,9 @@ class PhotoLibrary(tk.Toplevel):
         self.rows, self.visible, self.photos = [], [], []
         self.sources = {}
         self.selected = None
+        self.render_limit = 120
+        self.scan_token = 0
+        self.scan_queue = queue.Queue()
         self._build()
         self.refresh_sources()
 
@@ -72,7 +77,32 @@ class PhotoLibrary(tk.Toplevel):
         self.source_list.pack(fill="both", expand=True, padx=8)
         self.source_list.bind("<<ListboxSelect>>", self._source_selected)
         self._button(left, "+ OPEN LOCAL FOLDER", self.choose_folder).pack(
-            fill="x", padx=12, pady=12, ipady=5)
+            fill="x", padx=12, pady=(12, 5), ipady=5)
+        self._button(left, "REMOVE FOLDER", self.remove_folder).pack(
+            fill="x", padx=12, pady=(0, 12), ipady=4)
+
+        controls = tk.Frame(centre, bg="#101010")
+        controls.pack(fill="x")
+        tk.Label(controls, text="SORT", bg="#101010", fg=DIM,
+                 font=("Segoe UI", 8, "bold")).pack(side="left", padx=(12, 5), pady=8)
+        self.sort_var = tk.StringVar(value="Date (newest)")
+        sort = tk.OptionMenu(controls, self.sort_var, "Date (newest)", "Date (oldest)",
+                             "Filename A–Z", "Filename Z–A", command=lambda _v: self.filter_rows())
+        sort.configure(bg=FIELD, fg=INK, activebackground=ACCENT, activeforeground=BG,
+                       relief="flat", highlightthickness=0, font=("Segoe UI", 9))
+        sort["menu"].configure(bg=FIELD, fg=INK, activebackground=ACCENT, activeforeground=BG)
+        sort.pack(side="left", pady=6)
+        self.scan_status = tk.Label(controls, text="", bg="#101010", fg=DIM,
+                                    font=("Segoe UI", 9))
+        self.scan_status.pack(side="left", padx=12)
+        self.thumb_size = tk.IntVar(value=150)
+        zoom = tk.Scale(controls, from_=90, to=230, variable=self.thumb_size, orient="horizontal",
+                        showvalue=False, length=130, bg="#101010", fg=INK, troughcolor=FIELD,
+                        activebackground=ACCENT, highlightthickness=0, bd=0)
+        zoom.pack(side="right", padx=(4, 12))
+        zoom.bind("<ButtonRelease-1>", lambda _e: self.render_grid())
+        tk.Label(controls, text="THUMBNAILS", bg="#101010", fg=DIM,
+                 font=("Segoe UI", 8, "bold")).pack(side="right")
 
         self.canvas = tk.Canvas(centre, bg=BG, highlightthickness=0)
         scroll = tk.Scrollbar(centre, orient="vertical", command=self.canvas.yview)
@@ -133,6 +163,22 @@ class PhotoLibrary(tk.Toplevel):
         self.source_list.selection_set(idx)
         self.load_source("folder", folder, label)
 
+    def remove_folder(self):
+        sel = self.source_list.curselection()
+        if not sel:
+            return
+        label = self.source_list.get(sel[0])
+        source = self.sources.get(label)
+        if not source or source[0] != "folder":
+            return
+        self.scan_token += 1
+        del self.sources[label]
+        self.source_list.delete(sel[0])
+        self._save_folders()
+        self.rows, self.visible = [], []
+        self.heading.configure(text="PHOTO LIBRARY")
+        self.render_grid()
+
     def _saved_folders(self):
         if not self.state_path:
             return []
@@ -164,6 +210,7 @@ class PhotoLibrary(tk.Toplevel):
                 self.load_source(*self.sources[label], label)
 
     def load_source(self, kind, folder, label):
+        self.scan_token += 1          # invalidate any older background folder scan
         rows = []
         if kind == "shared":
             try:
@@ -180,15 +227,50 @@ class PhotoLibrary(tk.Toplevel):
                                  "description": image.get("description") or "",
                                  "tags": image.get("tags") or []})
         else:
+            token = self.scan_token
+            self.heading.configure(text=f"{label.lstrip('▣▦ ')}  ·  scanning…")
+            self.scan_status.configure(text="Scanning folders in background…", fg=ACCENT)
+            threading.Thread(target=self._scan_folder, args=(folder, token, label), daemon=True).start()
+            self.after(80, self._poll_scan)
+            return
+        self.rows = rows
+        self.heading.configure(text=f"{label.lstrip('▣▦ ')}  ·  {len(rows):,} photos")
+        self.scan_status.configure(text="")
+        self.filter_rows()
+
+    def _scan_folder(self, folder, token, label):
+        rows = []
+        try:
             for base, dirs, files in os.walk(folder):
                 dirs[:] = [d for d in dirs if not d.startswith(".")]
                 for name in files:
                     if os.path.splitext(name)[1].lower() in IMAGE_EXTS:
-                        rows.append({"path": os.path.join(base, name),
-                                     "title": os.path.splitext(name)[0], "description": "", "tags": []})
-            rows.sort(key=lambda row: row["path"].lower())
+                        path = os.path.join(base, name)
+                        try:
+                            modified = os.path.getmtime(path)
+                        except OSError:
+                            modified = 0
+                        rows.append({"path": path, "title": os.path.splitext(name)[0],
+                                     "description": "", "tags": [], "modified": modified})
+            self.scan_queue.put((token, label, rows, None))
+        except Exception as exc:
+            self.scan_queue.put((token, label, [], str(exc)))
+
+    def _poll_scan(self):
+        try:
+            token, label, rows, error = self.scan_queue.get_nowait()
+        except queue.Empty:
+            self.after(80, self._poll_scan)
+            return
+        if token != self.scan_token:
+            return
+        if error:
+            self.scan_status.configure(text="Scan failed", fg="#ff5555")
+            messagebox.showerror("Folder scan failed", error, parent=self)
+            return
         self.rows = rows
         self.heading.configure(text=f"{label.lstrip('▣▦ ')}  ·  {len(rows):,} photos")
+        self.scan_status.configure(text=f"{len(rows):,} photos", fg=DIM)
         self.filter_rows()
 
     def filter_rows(self):
@@ -196,21 +278,45 @@ class PhotoLibrary(tk.Toplevel):
         self.visible = [row for row in self.rows if not query or query in " ".join((
             row.get("title", ""), row.get("description", ""), os.path.basename(row["path"]),
             " ".join(map(str, row.get("tags", []))))).lower()]
+        order = self.sort_var.get()
+        if order == "Date (newest)":
+            self.visible.sort(key=self._row_mtime, reverse=True)
+        elif order == "Date (oldest)":
+            self.visible.sort(key=self._row_mtime)
+        elif order == "Filename Z–A":
+            self.visible.sort(key=lambda row: os.path.basename(row["path"]).lower(), reverse=True)
+        else:
+            self.visible.sort(key=lambda row: os.path.basename(row["path"]).lower())
+        self.render_limit = 120
         self.render_grid()
+
+    @staticmethod
+    def _mtime(path):
+        try:
+            return os.path.getmtime(path)
+        except OSError:
+            return 0
+
+    @classmethod
+    def _row_mtime(cls, row):
+        return row["modified"] if "modified" in row else cls._mtime(row["path"])
 
     def render_grid(self):
         for child in self.grid.winfo_children():
             child.destroy()
         self.photos = []
-        rows = self.visible[:1000]
-        for col in range(5):
+        rows = self.visible[:self.render_limit]
+        size = self.thumb_size.get()
+        columns = max(2, self.canvas.winfo_width() // (size + 22))
+        for col in range(columns):
             self.grid.grid_columnconfigure(col, weight=1, uniform="photos")
         for i, row in enumerate(rows):
             card = tk.Frame(self.grid, bg=CARD, cursor="hand2")
-            card.grid(row=i // 5, column=i % 5, sticky="nsew", padx=5, pady=5)
+            card.grid(row=i // columns, column=i % columns, sticky="nsew", padx=5, pady=5)
             try:
                 with Image.open(row["path"]) as image:
-                    thumb = ImageOps.fit(image.convert("RGB"), (150, 112), method=Image.Resampling.LANCZOS)
+                    thumb = ImageOps.fit(image.convert("RGB"), (size, int(size * .75)),
+                                         method=Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(thumb)
                 self.photos.append(photo)
                 pic = tk.Label(card, image=photo, bg=CARD, cursor="hand2")
@@ -226,11 +332,16 @@ class PhotoLibrary(tk.Toplevel):
                 widget.bind("<Double-Button-1>", lambda _e, r=row: self.open_path(r["path"]))
         if not rows:
             tk.Label(self.grid, text="No photographs here yet.", bg=BG, fg=DIM,
-                     font=("Segoe UI", 12)).grid(row=0, column=0, columnspan=5, pady=80)
+                     font=("Segoe UI", 12)).grid(row=0, column=0, columnspan=columns, pady=80)
         elif len(self.visible) > len(rows):
-            tk.Label(self.grid, text=f"Showing first {len(rows):,} of {len(self.visible):,}",
-                     bg=BG, fg=DIM).grid(row=(len(rows) + 4) // 5, column=0, columnspan=5, pady=15)
+            more = self._button(self.grid, f"LOAD MORE  ·  {len(rows):,} of {len(self.visible):,}", self.load_more)
+            more.grid(row=(len(rows) + columns - 1) // columns, column=0,
+                      columnspan=columns, sticky="ew", padx=30, pady=15, ipady=6)
         self.canvas.yview_moveto(0)
+
+    def load_more(self):
+        self.render_limit += 120
+        self.render_grid()
 
     def select_photo(self, row):
         self.selected = row

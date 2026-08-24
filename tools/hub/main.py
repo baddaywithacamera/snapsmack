@@ -23,7 +23,7 @@ from tkinter import filedialog, messagebox
 
 from photo_library import PhotoLibrary
 
-BUILD_VERSION = "0.8.0"
+BUILD_VERSION = "0.8.1"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
