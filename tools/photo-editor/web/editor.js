@@ -2,13 +2,27 @@
 (() => {
   "use strict";
   const operations = [];
-  const redo = [];
+  const undoStack = [];
+  const redoStack = [];
   let opened = false;
   let showingBefore = false;
   let renderGeneration = 0;
   const byId = (id) => document.getElementById(id);
   const status = (text) => { byId("status").textContent = text; };
-  const refreshHistory = () => { byId("undo").disabled = !operations.length; byId("redo").disabled = !redo.length; };
+  const refreshLayers = () => {
+    const list = byId("layers"); list.innerHTML = "";
+    operations.forEach((operation, index) => {
+      if (operation.type !== "adjustment-layer") return;
+      const item = document.createElement("li");
+      const title = document.createElement("div"); title.textContent = `${operation.visible ? "●" : "○"} ${operation.name} · ${operation.blend_mode}`;
+      const actions = document.createElement("div"); actions.className = "layer-actions";
+      [[operation.visible ? "Hide" : "Show", () => { operation.visible = !operation.visible; }], [operation.locked ? "Unlock" : "Lock", () => { operation.locked = !operation.locked; }], ["Duplicate", () => { operations.splice(index + 1, 0, structuredClone(operation)); }], ["Up", () => { if (!operation.locked && index < operations.length - 1) [operations[index], operations[index + 1]] = [operations[index + 1], operations[index]]; }], ["Down", () => { if (!operation.locked && index > 0) [operations[index], operations[index - 1]] = [operations[index - 1], operations[index]]; }], ["Delete", () => { if (!operation.locked) operations.splice(index, 1); }]].forEach(([label, action]) => { const button = document.createElement("button"); button.textContent = label; button.addEventListener("click", () => { recordHistory(); action(); refreshHistory(); void render().catch((error) => status(error.message)); }); actions.appendChild(button); });
+      item.append(title, actions); list.appendChild(item);
+    });
+  };
+  const refreshHistory = () => { byId("undo").disabled = !undoStack.length; byId("redo").disabled = !redoStack.length; refreshLayers(); };
+  const recordHistory = () => { undoStack.push(structuredClone(operations)); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; };
+  const restore = (snapshot) => { operations.splice(0, operations.length, ...structuredClone(snapshot)); };
   const drawHistogram = (histogram) => {
     if (!histogram) return;
     const canvas = byId("histogram"), context = canvas.getContext("2d");
@@ -37,7 +51,7 @@
     if (generation !== renderGeneration) return;
     showResult(result); status(showingBefore ? "Showing original" : `${operations.length} edit${operations.length === 1 ? "" : "s"}`);
   };
-  const add = async (operation) => { if (!opened) return status("Open an image first."); operations.push(operation); redo.length = 0; showingBefore = false; refreshHistory(); try { await render(); } catch (error) { operations.pop(); refreshHistory(); status(error.message); } };
+  const add = async (operation) => { if (!opened) return status("Open an image first."); recordHistory(); operations.push(operation); showingBefore = false; refreshHistory(); try { await render(); } catch (error) { restore(undoStack.pop()); refreshHistory(); status(error.message); } };
   document.querySelectorAll("[data-op]").forEach((button) => button.addEventListener("click", () => void add({ type: button.dataset.op })));
   byId("resize").addEventListener("click", () => {
     const width = Number(byId("width").value), height = Number(byId("height").value);
@@ -86,11 +100,17 @@
     if (preset === "mono") return void add({ type: "black-and-white", red: 0.3, green: 0.6, blue: 0.1 });
     status("Choose a preset first.");
   });
-  byId("undo").addEventListener("click", () => { if (operations.length) { redo.push(operations.pop()); refreshHistory(); void render().catch((error) => status(error.message)); } });
-  byId("redo").addEventListener("click", () => { if (redo.length) { operations.push(redo.pop()); refreshHistory(); void render().catch((error) => status(error.message)); } });
-  byId("reset").addEventListener("click", () => { redo.push(...operations.splice(0)); refreshHistory(); void render().catch((error) => status(error.message)); });
+  byId("make-layer").addEventListener("click", () => {
+    if (!operations.length) return status("Make an edit first.");
+    recordHistory(); const edit = operations.pop();
+    operations.push({ type: "adjustment-layer", name: byId("layer-name").value.trim() || "Adjustment", visible: true, locked: false, opacity: number("layer-opacity"), fill_opacity: number("layer-fill"), blend_mode: byId("layer-blend").value, operations: [edit] });
+    refreshHistory(); void render().catch((error) => status(error.message));
+  });
+  byId("undo").addEventListener("click", () => { if (undoStack.length) { redoStack.push(structuredClone(operations)); restore(undoStack.pop()); refreshHistory(); void render().catch((error) => status(error.message)); } });
+  byId("redo").addEventListener("click", () => { if (redoStack.length) { undoStack.push(structuredClone(operations)); restore(redoStack.pop()); refreshHistory(); void render().catch((error) => status(error.message)); } });
+  byId("reset").addEventListener("click", () => { if (operations.length) { recordHistory(); operations.length = 0; refreshHistory(); void render().catch((error) => status(error.message)); } });
   byId("before").addEventListener("click", () => { if (opened) { showingBefore = !showingBefore; void render().catch((error) => status(error.message)); } });
-  byId("open").addEventListener("click", async () => { try { ++renderGeneration; const result = await window.SnapSmackEditorHost.call("choose_image", {}); if (!result) return status("Open cancelled"); operations.length = 0; redo.length = 0; opened = true; showingBefore = false; refreshHistory(); showResult(result); status(`Opened ${result.name}`); } catch (error) { status(error.message); } });
+  byId("open").addEventListener("click", async () => { try { ++renderGeneration; const result = await window.SnapSmackEditorHost.call("choose_image", {}); if (!result) return status("Open cancelled"); operations.length = 0; undoStack.length = 0; redoStack.length = 0; opened = true; showingBefore = false; refreshHistory(); showResult(result); status(`Opened ${result.name}`); } catch (error) { status(error.message); } });
   byId("save").addEventListener("click", async () => { try { const result = await window.SnapSmackEditorHost.call("export_copy", { operations }); status(result ? `Saved ${result.output_path}` : "Save cancelled"); } catch (error) { status(error.message); } });
   document.addEventListener("keydown", (event) => { if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "z") return; event.preventDefault(); byId(event.shiftKey ? "redo" : "undo").click(); });
   window.SnapSmackEditorHost.call("recover", {}).then((result) => { if (!result) return; operations.push(...(result.operations || [])); opened = true; refreshHistory(); showResult(result); status(`Recovered ${result.name}`); }).catch(() => {});

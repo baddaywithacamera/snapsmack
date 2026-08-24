@@ -26,6 +26,12 @@ perceptual finishing transform, with hue wrapping and saturation/lightness clamp
 The included presets are recipes made only from these documented operations. They carry
 no third-party look data or copied constants.
 
+Adjustment layers process a copy through their nested operation graph, blend base and
+adjusted RGB in linear light, then interpolate by opacity multiplied by fill opacity.
+The base alpha channel is preserved. Supported formulas are normal, multiply, screen,
+overlay and soft light; their implementation is original and documented directly in
+`processing.rs`.
+
 ## Finishing controls
 
 Levels maps a validated linear input interval through a gamma midpoint and optional
