@@ -15,6 +15,11 @@
  */
 
 
+// Reject HEIC/HEIF before dispatch so every routed upload API inherits the
+// same policy, including companion tools added after this guard.
+require_once __DIR__ . '/core/image-upload-policy.php';
+snapsmack_reject_heic_upload_request(true);
+
 // --- ROUTE EXTRACTION ---
 // Parse route from query parameter or rewritten PATH_INFO
 $route = '';

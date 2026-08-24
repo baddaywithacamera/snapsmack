@@ -18,6 +18,11 @@
 
 
 
+// HEIC/HEIF is rejected once at the authenticated CMS boundary so every
+// current and future admin uploader inherits the same project policy.
+require_once __DIR__ . '/image-upload-policy.php';
+snapsmack_reject_heic_upload_request(false);
+
 // --- ENVIRONMENT BOOTSTRAP ---
 // Define BASE_URL if not already set by another file. This ensures all
 // relative links work correctly regardless of subdirectory deployment.

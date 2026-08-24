@@ -1,6 +1,37 @@
 <?php
 /** SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */
 require_once __DIR__ . '/../core/image-upload-policy.php';
+
+function policy_ok(bool $condition, string $message): void {
+    if (!$condition) {
+        fwrite(STDERR, "FAIL: {$message}\n");
+        exit(1);
+    }
+}
+
+policy_ok(snapsmack_request_contains_heic_upload([
+    'image' => ['name' => 'iphone-photo.HEIC', 'tmp_name' => ''],
+]), 'single HEIC filename was not rejected');
+policy_ok(snapsmack_request_contains_heic_upload([
+    'images' => ['name' => ['one.jpg', 'two.heif'], 'tmp_name' => ['', '']],
+]), 'HEIF filename in a multi-upload was not rejected');
+policy_ok(!snapsmack_request_contains_heic_upload([
+    'images' => ['name' => ['one.jpg', 'two.webp'], 'tmp_name' => ['', '']],
+]), 'supported filenames were incorrectly rejected');
+
+$heic_probe = tempnam(sys_get_temp_dir(), 'snapsmack-heic-');
+file_put_contents($heic_probe, pack('N', 24) . 'ftypheic' . pack('N', 0) . 'mif1heic');
+policy_ok(snapsmack_request_contains_heic_upload([
+    'image' => ['name' => 'renamed.jpg', 'tmp_name' => $heic_probe],
+]), 'HEIC content renamed to .jpg was not rejected');
+unlink($heic_probe);
+
+$root = dirname(__DIR__);
+foreach (['core/auth-smack.php', 'api.php', 'pixelfed-api.php'] as $entry) {
+    $source = (string)file_get_contents($root . '/' . $entry);
+    policy_ok(str_contains($source, 'snapsmack_reject_heic_upload_request('),
+        "{$entry} does not enforce the request-wide HEIC guard");
+}
 require_once __DIR__ . '/../core/svg-sanitizer.php';
 
 $failures = [];
