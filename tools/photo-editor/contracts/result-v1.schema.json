@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://snapsmack.ca/contracts/photo-editor/result-v1.schema.json",
+  "title": "SnapSmack Photo Editor Result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "status", "return_token"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "status": { "enum": ["completed", "cancelled", "failed"] },
+    "return_token": { "type": "string" },
+    "output_path": { "type": "string" },
+    "output_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "project_path": { "type": "string" },
+    "error": { "$ref": "error-v1.schema.json" }
+  }
+}

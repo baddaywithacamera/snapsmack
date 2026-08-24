@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://snapsmack.ca/contracts/photo-editor/recipe-v1.schema.json",
+  "title": "SnapSmack Photo Editor Recipe v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "operations"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "enabled", "parameters"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "type": { "type": "string", "minLength": 1 },
+          "enabled": { "type": "boolean" },
+          "required": { "type": "boolean", "default": true },
+          "parameters": { "type": "object" }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}
