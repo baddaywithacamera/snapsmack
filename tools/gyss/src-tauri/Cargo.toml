@@ -3,7 +3,9 @@ name = "get-your-shit-sorted"
 version = "0.1.5"
 edition = "2021"
 description = "GET YOUR SHIT SORTED — SnapSmack desktop photo sorting tool"
-license = "GPL-3.0"
+# SPL 2.1 is a project-specific license, so Cargo must reference the canonical
+# license file instead of claiming a standard SPDX license identifier.
+license-file = "../../../licenses/SNAPSMACK-LICENSE.txt"
 
 [lib]
 name = "gyss_lib"
