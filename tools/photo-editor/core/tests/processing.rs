@@ -520,11 +520,25 @@ fn text_layers_render_deterministically_and_respect_visibility() {
                 blur: 2,
                 spread: 1,
             },
+            LayerStyle::InnerShadow {
+                enabled: true,
+                color: [0, 0, 0, 140],
+                offset_x: 2,
+                offset_y: 2,
+                blur: 2,
+                spread: 1,
+            },
             LayerStyle::OuterGlow {
                 enabled: true,
                 color: [57, 255, 20, 160],
                 size: 3,
                 intensity: 0.8,
+            },
+            LayerStyle::InnerGlow {
+                enabled: true,
+                color: [255, 255, 255, 120],
+                size: 2,
+                intensity: 0.6,
             },
         ],
     };

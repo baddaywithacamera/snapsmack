@@ -213,7 +213,21 @@ pub enum LayerStyle {
         blur: u32,
         spread: u32,
     },
+    InnerShadow {
+        enabled: bool,
+        color: [u8; 4],
+        offset_x: i32,
+        offset_y: i32,
+        blur: u32,
+        spread: u32,
+    },
     OuterGlow {
+        enabled: bool,
+        color: [u8; 4],
+        size: u32,
+        intensity: f32,
+    },
+    InnerGlow {
         enabled: bool,
         color: [u8; 4],
         size: u32,
@@ -897,7 +911,9 @@ fn apply_layer_styles(
         match *style {
             LayerStyle::Stroke { enabled: false, .. }
             | LayerStyle::DropShadow { enabled: false, .. }
-            | LayerStyle::OuterGlow { enabled: false, .. } => {}
+            | LayerStyle::InnerShadow { enabled: false, .. }
+            | LayerStyle::OuterGlow { enabled: false, .. }
+            | LayerStyle::InnerGlow { enabled: false, .. } => {}
             LayerStyle::Stroke {
                 color,
                 size,
@@ -961,6 +977,40 @@ fn apply_layer_styles(
                 let shadow = color_layer(output.width(), output.height(), &shifted, color);
                 output = rgba_over(&shadow, &output);
             }
+            LayerStyle::InnerShadow {
+                color,
+                offset_x,
+                offset_y,
+                blur,
+                spread,
+                ..
+            } => {
+                validate_shadow(blur, spread, offset_x, offset_y, "inner shadow")?;
+                let alpha = alpha_mask(&output);
+                let contracted = if spread == 0 {
+                    alpha.clone()
+                } else {
+                    min_filter(&alpha, output.width(), output.height(), spread)
+                };
+                let blurred = box_blur_alpha(&contracted, output.width(), output.height(), blur);
+                let shifted = shift_mask(
+                    &blurred,
+                    output.width(),
+                    output.height(),
+                    offset_x,
+                    offset_y,
+                );
+                let mask: Vec<u16> = alpha
+                    .iter()
+                    .zip(shifted.iter())
+                    .map(|(source, inset)| {
+                        let missing = 65_535_u16.saturating_sub(*inset);
+                        (u32::from(*source) * u32::from(missing) / 65_535) as u16
+                    })
+                    .collect();
+                let shadow = color_layer(output.width(), output.height(), &mask, color);
+                output = rgba_over(&output, &shadow);
+            }
             LayerStyle::OuterGlow {
                 color,
                 size,
@@ -992,9 +1042,65 @@ fn apply_layer_styles(
                 let glow = color_layer(output.width(), output.height(), &mask, color);
                 output = rgba_over(&glow, &output);
             }
+            LayerStyle::InnerGlow {
+                color,
+                size,
+                intensity,
+                ..
+            } => {
+                validate_glow(size, intensity, "inner glow")?;
+                let alpha = alpha_mask(&output);
+                let eroded = min_filter(&alpha, output.width(), output.height(), size);
+                let edge: Vec<u16> = alpha
+                    .iter()
+                    .zip(eroded.iter())
+                    .map(|(source, inside)| source.saturating_sub(*inside))
+                    .collect();
+                let blurred =
+                    box_blur_alpha(&edge, output.width(), output.height(), (size / 2).max(1));
+                let mask: Vec<u16> = blurred
+                    .iter()
+                    .zip(alpha.iter())
+                    .map(|(value, source)| {
+                        (value.min(source).to_owned() as f32 * intensity)
+                            .round()
+                            .clamp(0.0, 65535.0) as u16
+                    })
+                    .collect();
+                let glow = color_layer(output.width(), output.height(), &mask, color);
+                output = rgba_over(&output, &glow);
+            }
         }
     }
     Ok(DynamicImage::ImageRgba16(output))
+}
+
+fn validate_shadow(
+    blur: u32,
+    spread: u32,
+    offset_x: i32,
+    offset_y: i32,
+    label: &str,
+) -> Result<(), ProcessingError> {
+    if blur > 64
+        || spread > 64
+        || offset_x.unsigned_abs() > 65_535
+        || offset_y.unsigned_abs() > 65_535
+    {
+        return Err(ProcessingError::Invalid(format!(
+            "invalid {label} settings"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_glow(size: u32, intensity: f32, label: &str) -> Result<(), ProcessingError> {
+    if size == 0 || size > 64 || !intensity.is_finite() || !(0.0..=2.0).contains(&intensity) {
+        return Err(ProcessingError::Invalid(format!(
+            "invalid {label} settings"
+        )));
+    }
+    Ok(())
 }
 
 fn alpha_mask(image: &ImageBuffer<Rgba<u16>, Vec<u16>>) -> Vec<u16> {
