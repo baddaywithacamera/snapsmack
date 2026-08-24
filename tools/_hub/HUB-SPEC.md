@@ -8,7 +8,7 @@
 -->
 
 
-# THE HUB — Unified Desktop Front End & Launcher
+# SNAP SLAPPER — Unified Desktop Front End & Launcher
 ## Tool Specification (DRAFT)
 **Version:** 0.1 draft
 **Date:** 2026-08-11
@@ -21,7 +21,7 @@ now wired across the fleet: SYBU + GYSS read shared profiles; SYBU + COLD SNAP s
 Gemini prompts (snap_prompts). v1 DEFERS fetching MISSING tools (the "distribution"
 open decision below is still open). SUYB profile-sharing is deliberately NOT wired —
 see the note under "The Roster".
-**Working title:** "THE HUB" is a placeholder — needs a real SnapSmack-voice name.
+**Product name:** **SNAP SLAPPER** — the SnapSmack desktop front end and launcher.
 
 ---
 
@@ -180,7 +180,8 @@ Python GUI (matches the tool stack). Leaning Tauri for the front-end quality, bu
 a genuine architecture call for Sean + Codex.
 
 ### 4. Name
-"THE HUB" is a placeholder. Needs a real name in SnapSmack voice.
+The product name is **SNAP SLAPPER**. Keep `hub.exe` as the compatibility filename so
+existing installs and shortcuts continue to work.
 
 ### 5. Multi-install management
 `snap_home` implies the Hub can see several installs. Decide whether the Hub manages the

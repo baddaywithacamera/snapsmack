@@ -1,6 +1,6 @@
 @echo off
 REM ─────────────────────────────────────────────────────────────────────────
-REM  THE HUB — build script
+REM  SNAP SLAPPER — build script
 REM  Requires: Python 3.10+, pip install -r requirements.txt
 REM  Output:   C:\snapsmack\hub\hub.exe
 REM  hub.spec auto-bundles every local .py AND tools/_shared/*.py.

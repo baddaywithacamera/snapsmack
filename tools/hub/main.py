@@ -1,5 +1,5 @@
 """
-THE HUB — SnapSmack unified desktop front end & launcher.
+SNAP SLAPPER — SnapSmack unified desktop front end & launcher.
 
 One door: launch every offline tool from here, and set the fleet up ONCE. Enter the
 hub login and hit Discover Fleet — it fills the SHARED stores (snap_creds + snap_profiles)
@@ -21,7 +21,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-BUILD_VERSION = "0.7.13"
+BUILD_VERSION = "0.7.14"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -118,7 +118,7 @@ def _launch(path):
 class Hub(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title(f"THE HUB — SnapSmack   (build {BUILD_VERSION})")
+        self.title(f"SNAP SLAPPER — SnapSmack   (build {BUILD_VERSION})")
         self.configure(bg=BG)
         self.geometry("980x720")
         self.minsize(860, 640)
@@ -144,7 +144,7 @@ class Hub(tk.Tk):
     def _build_header(self):
         h = tk.Frame(self, bg=BG)
         h.pack(fill="x", padx=18, pady=(16, 12))
-        tk.Label(h, text="THE HUB", bg=BG, fg=ACCENT,
+        tk.Label(h, text="SNAP SLAPPER", bg=BG, fg=ACCENT,
                  font=("Segoe UI Black", 22, "bold")).pack(side="left")
         tk.Label(h, text="  one door · set the fleet up once",
                  bg=BG, fg=DIM, font=("Segoe UI", 11)).pack(side="left", pady=(10, 0))
