@@ -9,8 +9,12 @@ repository = "https://github.com/baddaywithacamera/snapsmack"
 publish = false
 
 [dependencies]
+image = { version = "0.25.8", default-features = false, features = ["jpeg", "png", "webp", "tiff"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"
 
 [lib]
 name = "snapsmack_photo_core"
