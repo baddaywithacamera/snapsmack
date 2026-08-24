@@ -16,6 +16,41 @@ CORE = os.environ.get("SNAPSMACK_PHOTO_CORE") or os.path.abspath(
 app = snap_blink.App(tool="pixel-tickler", title="PIXEL TICKLER", web_dir=WEB)
 _input_path = None
 _render_generation = 0
+_project = None
+
+
+def _fingerprint(path):
+    canonical = os.path.realpath(path)
+    stat = os.stat(canonical)
+    value = 0xcbf29ce484222325
+    with open(canonical, "rb") as handle:
+        while True:
+            chunk = handle.read(64 * 1024)
+            if not chunk:
+                break
+            for byte in chunk:
+                value ^= byte
+                value = (value * 0x100000001b3) & 0xffffffffffffffff
+    return {"path": canonical, "bytes": stat.st_size,
+            "modified_unix_ms": int(stat.st_mtime_ns / 1_000_000),
+            "content_fnv1a64": format(value, "016x")}
+
+
+def _source_matches(document, path):
+    actual, expected = _fingerprint(path), document["source"]
+    return actual["bytes"] == expected["bytes"] and actual["content_fnv1a64"] == expected["content_fnv1a64"]
+
+
+def _write_json_atomic(document, path):
+    temporary, backup = path + ".tmp", path + ".bak"
+    with open(temporary, "w", encoding="utf-8") as handle:
+        json.dump(document, handle, indent=2)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    if os.path.exists(path):
+        os.replace(path, backup)
+    os.replace(temporary, path)
 
 
 def _autosave_path():
@@ -62,7 +97,7 @@ def _core(method, params, roots):
 
 @app.api
 def editor_call(method, params):
-    global _input_path, _render_generation
+    global _input_path, _render_generation, _project
     params = dict(params or {})
     if method == "hello":
         return {"contract_version": 1, "host": "blink-linux"}
@@ -71,10 +106,57 @@ def editor_call(method, params):
         if not selected:
             return None
         _input_path = os.path.realpath(selected)
+        _project = None
         params.update({"input_path": _input_path, "operations": []})
         result = _core("render_preview", params, [os.path.dirname(_input_path)])
         _autosave([])
         return result
+    if method == "open_project":
+        selected = snap_blink.pick_path("file", "Open PIXEL TICKLER project")
+        if not selected:
+            return None
+        with open(selected, "r", encoding="utf-8") as handle:
+            document = json.load(handle)
+        if document.get("format") != "snapsmack-pixel-tickler" or document.get("version") != 1:
+            raise RuntimeError("Unsupported PIXEL TICKLER project version")
+        operations = document.get("operations") or []
+        if len(operations) > 4096:
+            raise RuntimeError("Project contains too many operations")
+        source = document.get("source") or {}
+        _input_path = source.get("path")
+        if not _input_path or not os.path.isfile(_input_path):
+            relocated = snap_blink.pick_path("file", "Locate the original image")
+            if not relocated:
+                _input_path = None
+                return None
+            if not _source_matches(document, relocated):
+                _input_path = None
+                raise RuntimeError("That file is not the original image used by this project")
+            _input_path = os.path.realpath(relocated)
+            document["source"]["path"] = _input_path
+        elif not _source_matches(document, _input_path):
+            _input_path = None
+            raise RuntimeError("The original image has changed since this project was saved")
+        params.update({"input_path": _input_path, "operations": operations})
+        result = _core("render_preview", params, [os.path.dirname(_input_path)])
+        result.update({"operations": operations, "project_name": os.path.basename(selected)})
+        _project = document
+        return result
+    if method == "save_project":
+        if not _input_path:
+            raise RuntimeError("Open an image first")
+        selected = snap_blink.pick_path("save", "Save PIXEL TICKLER project", os.path.dirname(_input_path))
+        if not selected:
+            return None
+        if not selected.lower().endswith(".spt"):
+            selected += ".spt"
+        document = dict(_project or {})
+        document.update({"format": "snapsmack-pixel-tickler", "version": 1,
+                         "source": _fingerprint(_input_path),
+                         "operations": params.get("operations") or []})
+        _write_json_atomic(document, os.path.realpath(selected))
+        _project = document
+        return {"project_path": os.path.realpath(selected)}
     if method == "recover":
         path = _autosave_path()
         if not os.path.isfile(path):

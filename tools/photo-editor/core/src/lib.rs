@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 pub mod processing;
+pub mod project;
 
 pub const CONTRACT_VERSION: u64 = 1;
 pub const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");

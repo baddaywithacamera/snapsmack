@@ -14,6 +14,7 @@ use tauri_plugin_dialog::DialogExt;
 #[derive(Default)]
 struct EditorState {
     input: Mutex<Option<PathBuf>>,
+    project: Mutex<Option<snapsmack_photo_core::project::ProjectDocument>>,
     render_generation: Mutex<u64>,
 }
 
@@ -130,8 +131,109 @@ fn editor_call(
                 .input
                 .lock()
                 .map_err(|_| "Editor state is unavailable".to_string())? = Some(path);
+            *state
+                .project
+                .lock()
+                .map_err(|_| "Editor state is unavailable".to_string())? = None;
             autosave(&current_input(&state)?, &[])?;
             Ok(result)
+        }
+        "open_project" => {
+            let selected = app
+                .dialog()
+                .file()
+                .add_filter("PIXEL TICKLER project", &["spt"])
+                .blocking_pick_file();
+            let Some(selected) = selected else {
+                return Ok(Value::Null);
+            };
+            let project_path = selected.into_path().map_err(|error| error.to_string())?;
+            let mut document = snapsmack_photo_core::project::load(&project_path)
+                .map_err(|error| error.to_string())?;
+            let mut input = document.source.path.clone();
+            if !input.is_file() {
+                let relocated = app
+                    .dialog()
+                    .file()
+                    .set_title("Locate the original image")
+                    .add_filter(
+                        "Supported images",
+                        &["jpg", "jpeg", "png", "webp", "tif", "tiff"],
+                    )
+                    .blocking_pick_file();
+                let Some(relocated) = relocated else {
+                    return Ok(Value::Null);
+                };
+                input = relocated.into_path().map_err(|error| error.to_string())?;
+                allowed_input(&input)?;
+                if !snapsmack_photo_core::project::source_matches(&document, &input)
+                    .map_err(|error| error.to_string())?
+                {
+                    return Err("That file is not the original image used by this project.".into());
+                }
+                document.source.path = input.canonicalize().map_err(|error| error.to_string())?;
+            } else if !snapsmack_photo_core::project::source_matches(&document, &input)
+                .map_err(|error| error.to_string())?
+            {
+                return Err("The original image has changed since this project was saved. The project was not opened.".into());
+            }
+            allowed_input(&input)?;
+            let mut result = preview_result(&input, &document.operations)?;
+            result["operations"] =
+                serde_json::to_value(&document.operations).map_err(|error| error.to_string())?;
+            result["project_name"] = json!(project_path
+                .file_name()
+                .and_then(|value| value.to_str())
+                .unwrap_or("project.spt"));
+            *state
+                .input
+                .lock()
+                .map_err(|_| "Editor state is unavailable".to_string())? = Some(input);
+            *state
+                .project
+                .lock()
+                .map_err(|_| "Editor state is unavailable".to_string())? = Some(document);
+            Ok(result)
+        }
+        "save_project" => {
+            let input = current_input(&state)?;
+            let selected = app
+                .dialog()
+                .file()
+                .set_file_name(format!(
+                    "{}.spt",
+                    input
+                        .file_stem()
+                        .and_then(|value| value.to_str())
+                        .unwrap_or("project")
+                ))
+                .add_filter("PIXEL TICKLER project", &["spt"])
+                .blocking_save_file();
+            let Some(selected) = selected else {
+                return Ok(Value::Null);
+            };
+            let path = selected.into_path().map_err(|error| error.to_string())?;
+            let edits = operations(&params)?;
+            let mut document = state
+                .project
+                .lock()
+                .map_err(|_| "Editor state is unavailable".to_string())?
+                .clone()
+                .map_or_else(
+                    || snapsmack_photo_core::project::new_document(&input, edits.clone()),
+                    Ok,
+                )
+                .map_err(|error| error.to_string())?;
+            document.source = snapsmack_photo_core::project::fingerprint(&input)
+                .map_err(|error| error.to_string())?;
+            document.operations = edits;
+            snapsmack_photo_core::project::save(&document, &path)
+                .map_err(|error| error.to_string())?;
+            *state
+                .project
+                .lock()
+                .map_err(|_| "Editor state is unavailable".to_string())? = Some(document);
+            Ok(json!({"project_path": path}))
         }
         "render_preview" => {
             let input = current_input(&state)?;
