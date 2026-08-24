@@ -4,8 +4,8 @@
 use image::{DynamicImage, ImageBuffer, ImageFormat, Rgba, RgbaImage};
 use snapsmack_photo_core::processing::{
     apply, histogram, load, preview, preview_data_uri, replace_json_atomic, save_atomic, BlendMode,
-    DarkroomSettings, FontFamily, LevelsSettings, Operation, ProcessingError, TextAlignment,
-    DEFAULT_MEMORY_BUDGET,
+    DarkroomSettings, FontFamily, LayerStyle, LevelsSettings, Operation, ProcessingError,
+    StrokePosition, TextAlignment, DEFAULT_MEMORY_BUDGET,
 };
 use std::fs;
 
@@ -441,11 +441,53 @@ fn text_layers_render_deterministically_and_respect_visibility() {
         x: 20,
         y: 20,
         alignment: TextAlignment::Left,
+        styles: vec![
+            LayerStyle::Stroke {
+                enabled: true,
+                color: [57, 255, 20, 255],
+                size: 2,
+                position: StrokePosition::Outside,
+            },
+            LayerStyle::DropShadow {
+                enabled: true,
+                color: [0, 0, 0, 180],
+                offset_x: 3,
+                offset_y: 3,
+                blur: 2,
+                spread: 1,
+            },
+            LayerStyle::OuterGlow {
+                enabled: true,
+                color: [57, 255, 20, 160],
+                size: 3,
+                intensity: 0.8,
+            },
+        ],
     };
     let first = apply(source.clone(), &[layer.clone()], DEFAULT_MEMORY_BUDGET).unwrap();
     let second = apply(source.clone(), &[layer.clone()], DEFAULT_MEMORY_BUDGET).unwrap();
     assert_eq!(first.to_rgba16(), second.to_rgba16());
     assert_ne!(first.to_rgba8(), source.to_rgba8());
+    if let Operation::TextLayer { styles, .. } = &mut layer {
+        styles.reverse();
+    }
+    let reordered = apply(source.clone(), &[layer.clone()], DEFAULT_MEMORY_BUDGET).unwrap();
+    assert_ne!(first.to_rgba16(), reordered.to_rgba16());
+    if let Operation::TextLayer { styles, .. } = &mut layer {
+        *styles = vec![LayerStyle::Stroke {
+            enabled: false,
+            color: [0, 0, 0, 255],
+            size: 999,
+            position: StrokePosition::Outside,
+        }];
+    }
+    assert!(apply(source.clone(), &[layer.clone()], DEFAULT_MEMORY_BUDGET).is_ok());
+    if let Operation::TextLayer { styles, .. } = &mut layer {
+        if let LayerStyle::Stroke { enabled, .. } = &mut styles[0] {
+            *enabled = true;
+        }
+    }
+    assert!(apply(source.clone(), &[layer.clone()], DEFAULT_MEMORY_BUDGET).is_err());
     if let Operation::TextLayer { visible, .. } = &mut layer {
         *visible = false;
     }
@@ -476,6 +518,7 @@ fn embedded_image_overlays_transform_composite_and_validate() {
         rotation_degrees: 25.0,
         x: 2,
         y: -1,
+        styles: vec![],
     };
     let first = apply(source.clone(), &[layer.clone()], DEFAULT_MEMORY_BUDGET).unwrap();
     let second = apply(source.clone(), &[layer.clone()], DEFAULT_MEMORY_BUDGET).unwrap();
@@ -505,6 +548,7 @@ fn embedded_image_overlays_transform_composite_and_validate() {
         rotation_degrees: 0.0,
         x: 0,
         y: 0,
+        styles: vec![],
     };
     assert!(apply(source, &[invalid], DEFAULT_MEMORY_BUDGET).is_err());
 }

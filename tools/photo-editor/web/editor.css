@@ -65,7 +65,7 @@ input[type="range"] { padding-inline: 0; accent-color: var(--lime); }
 #histogram { width: 100%; height: 100px; background: var(--canvas); border: 1px solid var(--border); }
 output { padding: 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--canvas); color: var(--text); }
 kbd { color: var(--dim); font: inherit; font-size: .75rem; }
-#darkroom-controls, #finishing-controls, #layer-maker, #text-layer-maker, #overlay-layer-maker, #group-maker { display: grid; gap: 8px; padding-top: 10px; }
+#darkroom-controls, #finishing-controls, #layer-maker, #text-layer-maker, #overlay-layer-maker, #group-maker, #style-maker { display: grid; gap: 8px; padding-top: 10px; }
 #darkroom-controls label span { display: grid; grid-template-columns: 1fr 44px; gap: 4px; }
 #darkroom-controls button[data-reset] { padding: 4px; }
 #layers { display: grid; gap: 6px; padding-left: 22px; }
@@ -74,6 +74,8 @@ kbd { color: var(--dim); font: inherit; font-size: .75rem; }
 #layers .layer-select input { min-height: 20px; accent-color: var(--lime); }
 #layers .layer-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
 #layers button { min-height: 36px; padding: 4px 8px; }
+#styles { display: grid; gap: 5px; padding-left: 20px; }
+#styles li { padding: 6px; background: var(--field); border: 1px solid var(--border); }
 @media (max-width: 760px) {
   main { grid-template-columns: 60px 1fr; }
   aside { position: absolute; inset: 64px 0 52px auto; width: 280px; box-shadow: -8px 0 24px #000; }

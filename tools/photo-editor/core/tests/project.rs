@@ -2,7 +2,9 @@
 //! SNAPSMACK_EOF_HEADER: last non-empty line must be the canonical Rust marker.
 
 use serde_json::json;
-use snapsmack_photo_core::processing::{BlendMode, FontFamily, Operation, TextAlignment};
+use snapsmack_photo_core::processing::{
+    BlendMode, FontFamily, LayerStyle, Operation, StrokePosition, TextAlignment,
+};
 use snapsmack_photo_core::project::{self, ProjectDocument};
 use std::io::Write;
 
@@ -30,6 +32,12 @@ fn project_round_trip_preserves_edits_and_optional_metadata() {
                 x: 12,
                 y: 24,
                 alignment: TextAlignment::Left,
+                styles: vec![LayerStyle::Stroke {
+                    enabled: true,
+                    color: [0, 0, 0, 255],
+                    size: 2,
+                    position: StrokePosition::Outside,
+                }],
             },
             Operation::ImageOverlayLayer {
                 name: "Logo".into(),
@@ -45,6 +53,7 @@ fn project_round_trip_preserves_edits_and_optional_metadata() {
                 rotation_degrees: -5.0,
                 x: 40,
                 y: 50,
+                styles: vec![],
             },
             Operation::LayerGroup {
                 name: "Finish".into(),
@@ -108,6 +117,18 @@ fn relative_source_paths_are_refused() {
         "operations": []
     })).unwrap();
     assert!(project::validate(&document).is_err());
+}
+
+#[test]
+fn older_text_layers_without_styles_remain_compatible() {
+    let operation: Operation = serde_json::from_value(json!({
+        "type": "text-layer", "name": "Legacy", "visible": true, "locked": false,
+        "opacity": 1.0, "fill_opacity": 1.0, "blend_mode": "normal", "text": "old",
+        "font_family": "sans-serif", "font_size": 24.0, "color": [255,255,255,255],
+        "x": 0, "y": 0, "alignment": "left"
+    }))
+    .unwrap();
+    assert!(matches!(operation, Operation::TextLayer { styles, .. } if styles.is_empty()));
 }
 
 // ===== SNAPSMACK EOF =====
