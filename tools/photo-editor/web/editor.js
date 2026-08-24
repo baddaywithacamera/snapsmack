@@ -10,21 +10,25 @@
   let selectedTextLayer = null;
   let selectedOverlayLayer = null;
   let overlayAsset = null;
+  const selectedForGroup = new Set();
   const byId = (id) => document.getElementById(id);
   const status = (text) => { byId("status").textContent = text; };
-  const resetLayerEditors = () => { selectedTextLayer = null; selectedOverlayLayer = null; byId("make-text-layer").textContent = "Add text layer"; byId("make-overlay-layer").textContent = "Add image overlay"; };
+  const resetLayerEditors = () => { selectedTextLayer = null; selectedOverlayLayer = null; selectedForGroup.clear(); byId("make-text-layer").textContent = "Add text layer"; byId("make-overlay-layer").textContent = "Add image overlay"; };
   const refreshLayers = () => {
     const list = byId("layers"); list.innerHTML = "";
     operations.forEach((operation, index) => {
-      if (!operation.type.endsWith("-layer")) return;
+      if (!operation.type.endsWith("-layer") && operation.type !== "layer-group") return;
       const item = document.createElement("li");
       const title = document.createElement("div"); title.textContent = `${operation.visible ? "●" : "○"} ${operation.name} · ${operation.blend_mode}`;
+      const selector = document.createElement("label"); selector.className = "layer-select";
+      const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.checked = selectedForGroup.has(index); checkbox.setAttribute("aria-label", `Select ${operation.name} for grouping`); checkbox.addEventListener("change", () => { if (checkbox.checked) selectedForGroup.add(index); else selectedForGroup.delete(index); }); selector.append(checkbox, title);
       const actions = document.createElement("div"); actions.className = "layer-actions";
       const layerActions = [[operation.visible ? "Hide" : "Show", () => { operation.visible = !operation.visible; }], [operation.locked ? "Unlock" : "Lock", () => { operation.locked = !operation.locked; }], ["Duplicate", () => { operations.splice(index + 1, 0, structuredClone(operation)); }], ["Up", () => { if (!operation.locked && index < operations.length - 1) [operations[index], operations[index + 1]] = [operations[index + 1], operations[index]]; }], ["Down", () => { if (!operation.locked && index > 0) [operations[index], operations[index - 1]] = [operations[index - 1], operations[index]]; }], ["Delete", () => { if (!operation.locked) operations.splice(index, 1); }]];
       if (operation.type === "text-layer") layerActions.unshift(["Edit", () => { selectedOverlayLayer = null; selectedTextLayer = index; byId("text-content").value = operation.text; byId("text-font").value = operation.font_family; byId("text-size").value = operation.font_size; byId("text-color").value = `#${operation.color.slice(0, 3).map((value) => value.toString(16).padStart(2, "0")).join("")}`; byId("text-x").value = operation.x; byId("text-y").value = operation.y; byId("text-align").value = operation.alignment; byId("text-blend").value = operation.blend_mode; byId("text-opacity").value = operation.opacity; byId("make-text-layer").textContent = "Update text layer"; byId("make-overlay-layer").textContent = "Add image overlay"; }]);
       if (operation.type === "image-overlay-layer") layerActions.unshift(["Edit", () => { selectedTextLayer = null; selectedOverlayLayer = index; overlayAsset = { name: operation.original_name, data_uri: operation.data_uri }; byId("overlay-name").textContent = operation.original_name; byId("overlay-width").value = operation.width; byId("overlay-height").value = operation.height; byId("overlay-rotation").value = operation.rotation_degrees; byId("overlay-x").value = operation.x; byId("overlay-y").value = operation.y; byId("overlay-blend").value = operation.blend_mode; byId("overlay-opacity").value = operation.opacity; byId("make-overlay-layer").textContent = "Update image overlay"; byId("make-text-layer").textContent = "Add text layer"; }]);
+      if (operation.type === "layer-group") layerActions.unshift(["Ungroup", () => { if (!operation.locked) operations.splice(index, 1, ...operation.operations); }]);
       layerActions.forEach(([label, action]) => { const button = document.createElement("button"); button.textContent = label; button.addEventListener("click", () => { if (label !== "Edit") { recordHistory(); resetLayerEditors(); } action(); refreshHistory(); if (label !== "Edit") void render().catch((error) => status(error.message)); }); actions.appendChild(button); });
-      item.append(title, actions); list.appendChild(item);
+      item.append(selector, actions); list.appendChild(item);
     });
   };
   const refreshHistory = () => { byId("undo").disabled = !undoStack.length; byId("redo").disabled = !redoStack.length; refreshLayers(); };
@@ -138,6 +142,16 @@
       if (operations[selectedOverlayLayer].locked) return status("Unlock the image overlay before editing it.");
       recordHistory(); operations[selectedOverlayLayer] = layer; selectedOverlayLayer = null; byId("make-overlay-layer").textContent = "Add image overlay"; refreshHistory(); void render().catch((error) => status(error.message));
     } else void add(layer);
+  });
+  byId("make-group").addEventListener("click", () => {
+    const indices = [...selectedForGroup].filter((index) => operations[index] && (operations[index].type.endsWith("-layer") || operations[index].type === "layer-group")).sort((a, b) => a - b);
+    if (indices.length < 2) return status("Select at least two layers to group.");
+    const opacity = number("group-opacity"), name = byId("group-name").value.trim();
+    if (!name || !Number.isFinite(opacity) || opacity < 0 || opacity > 1) return status("Enter a group name and valid opacity.");
+    recordHistory(); const children = indices.map((index) => operations[index]); const insertAt = indices[0];
+    [...indices].reverse().forEach((index) => operations.splice(index, 1));
+    operations.splice(insertAt, 0, { type: "layer-group", name, visible: true, locked: false, opacity, fill_opacity: 1, blend_mode: byId("group-blend").value, operations: children });
+    resetLayerEditors(); refreshHistory(); void render().catch((error) => status(error.message));
   });
   byId("undo").addEventListener("click", () => { if (undoStack.length) { redoStack.push(structuredClone(operations)); restore(undoStack.pop()); resetLayerEditors(); refreshHistory(); void render().catch((error) => status(error.message)); } });
   byId("redo").addEventListener("click", () => { if (redoStack.length) { undoStack.push(structuredClone(operations)); restore(redoStack.pop()); resetLayerEditors(); refreshHistory(); void render().catch((error) => status(error.message)); } });

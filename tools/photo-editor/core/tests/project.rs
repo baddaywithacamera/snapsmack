@@ -46,6 +46,23 @@ fn project_round_trip_preserves_edits_and_optional_metadata() {
                 x: 40,
                 y: 50,
             },
+            Operation::LayerGroup {
+                name: "Finish".into(),
+                visible: true,
+                locked: false,
+                opacity: 0.9,
+                fill_opacity: 1.0,
+                blend_mode: BlendMode::SoftLight,
+                operations: vec![Operation::AdjustmentLayer {
+                    name: "Tone".into(),
+                    visible: true,
+                    locked: false,
+                    opacity: 1.0,
+                    fill_opacity: 1.0,
+                    blend_mode: BlendMode::Normal,
+                    operations: vec![Operation::Rotate180, Operation::Rotate180],
+                }],
+            },
         ],
     )
     .unwrap();
