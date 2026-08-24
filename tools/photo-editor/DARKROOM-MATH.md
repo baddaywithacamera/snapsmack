@@ -17,8 +17,20 @@ around linear 18% grey. Saturation moves channels from linear luminance, while v
 reduces its effect as existing channel chroma rises. Output is encoded through the sRGB
 transfer curve to 16-bit RGBA and alpha is preserved exactly.
 
-This first darkroom slice intentionally excludes local contrast, haze removal, B&W mix,
-sharpening, noise reduction, vignette, levels, curves and HSL. Those remain Packet 03
-acceptance work and must not be claimed yet.
+The remaining Packet 03 exclusions are local contrast, haze removal, curves, HSL and
+preset management. Those must not be claimed yet.
+
+## Finishing controls
+
+Levels maps a validated linear input interval through a gamma midpoint and optional
+linear output interval. B&W computes a normalized, user-weighted mix of linear RGB.
+Vignette uses a radial cubic smoothstep between midpoint and feather, with positive
+amounts darkening edges and negative amounts lifting them.
+
+Sharpening is an original 3×3 linear-light unsharp operation with an explicit edge
+threshold. Noise reduction separates Rec. 709 luminance from chroma, blends each toward
+its bounded 3×3 neighbourhood independently, and preserves alpha. Zero strength is an
+exact identity for levels, vignette, sharpening and both noise-reduction channels.
+
 
 <!-- ===== SNAPSMACK EOF ===== -->
