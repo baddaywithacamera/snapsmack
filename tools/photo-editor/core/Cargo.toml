@@ -1,0 +1,27 @@
+[package]
+name = "snapsmack-photo-core"
+version = "0.1.0"
+edition = "2021"
+description = "SnapSmack Photo Editor native processing sidecar"
+license-file = "../../../licenses/SNAPSMACK-LICENSE.txt"
+homepage = "https://snapsmack.ca"
+repository = "https://github.com/baddaywithacamera/snapsmack"
+publish = false
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lib]
+name = "snapsmack_photo_core"
+path = "src/lib.rs"
+
+[[bin]]
+name = "snapsmack-photo-core"
+path = "src/main.rs"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+strip = true

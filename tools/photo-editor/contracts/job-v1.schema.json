@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://snapsmack.ca/contracts/photo-editor/job-v1.schema.json",
+  "title": "SnapSmack Photo Editor Job v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "mode", "input_path", "permitted_output_directory", "calling_app", "return_token"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "mode": { "enum": ["edit-copy", "edit-replace-working-copy"] },
+    "input_path": { "type": "string", "minLength": 1 },
+    "permitted_output_directory": { "type": "string", "minLength": 1 },
+    "calling_app": { "enum": ["standalone", "hub", "coldsnap", "gyss"] },
+    "return_token": { "type": "string", "minLength": 32, "maxLength": 256 },
+    "project_path": { "type": "string" },
+    "result_path": { "type": "string" },
+    "output_preset": { "type": "string" }
+  }
+}
