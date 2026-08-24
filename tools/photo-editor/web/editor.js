@@ -25,6 +25,7 @@
     const image = byId("preview"); image.src = result.preview; image.hidden = false;
     byId("stage").querySelector("p").hidden = true;
     byId("width").value = result.width; byId("height").value = result.height;
+    byId("crop-width").value = result.width; byId("crop-height").value = result.height;
     drawHistogram(result.histogram);
   };
   const render = async () => {
@@ -40,6 +41,23 @@
     if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1) return status("Enter a valid width and height.");
     void add({ type: "resize", width, height });
   });
+  byId("ratio").addEventListener("change", () => {
+    const ratio = byId("ratio").value;
+    if (ratio === "free") return;
+    const [wide, high] = ratio.split(":").map(Number);
+    const width = Number(byId("width").value), height = Number(byId("height").value);
+    let cropWidth = width, cropHeight = Math.round(width * high / wide);
+    if (cropHeight > height) { cropHeight = height; cropWidth = Math.round(height * wide / high); }
+    byId("crop-width").value = cropWidth; byId("crop-height").value = cropHeight;
+    byId("crop-x").value = Math.floor((width - cropWidth) / 2); byId("crop-y").value = Math.floor((height - cropHeight) / 2);
+  });
+  byId("crop").addEventListener("click", () => {
+    const values = ["crop-x", "crop-y", "crop-width", "crop-height"].map((id) => Number(byId(id).value));
+    if (!values.every(Number.isInteger) || values[0] < 0 || values[1] < 0 || values[2] < 1 || values[3] < 1) return status("Enter a valid crop rectangle.");
+    void add({ type: "crop", x: values[0], y: values[1], width: values[2], height: values[3] });
+  });
+  byId("angle").addEventListener("input", () => { byId("angle-value").textContent = `${Number(byId("angle").value).toFixed(1)}°`; });
+  byId("straighten").addEventListener("click", () => { const degrees = Number(byId("angle").value); if (degrees === 0) return status("Choose a straighten angle first."); void add({ type: "straighten", degrees }); });
   byId("undo").addEventListener("click", () => { if (operations.length) { redo.push(operations.pop()); refreshHistory(); void render().catch((error) => status(error.message)); } });
   byId("redo").addEventListener("click", () => { if (redo.length) { operations.push(redo.pop()); refreshHistory(); void render().catch((error) => status(error.message)); } });
   byId("reset").addEventListener("click", () => { redo.push(...operations.splice(0)); refreshHistory(); void render().catch((error) => status(error.message)); });
@@ -47,5 +65,6 @@
   byId("open").addEventListener("click", async () => { try { const result = await window.SnapSmackEditorHost.call("choose_image", {}); if (!result) return status("Open cancelled"); operations.length = 0; redo.length = 0; opened = true; showingBefore = false; refreshHistory(); showResult(result); status(`Opened ${result.name}`); } catch (error) { status(error.message); } });
   byId("save").addEventListener("click", async () => { try { const result = await window.SnapSmackEditorHost.call("export_copy", { operations }); status(result ? `Saved ${result.output_path}` : "Save cancelled"); } catch (error) { status(error.message); } });
   document.addEventListener("keydown", (event) => { if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "z") return; event.preventDefault(); byId(event.shiftKey ? "redo" : "undo").click(); });
+  window.SnapSmackEditorHost.call("recover", {}).then((result) => { if (!result) return; operations.push(...(result.operations || [])); opened = true; refreshHistory(); showResult(result); status(`Recovered ${result.name}`); }).catch(() => {});
 })();
 // ===== SNAPSMACK EOF =====

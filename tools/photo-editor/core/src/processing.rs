@@ -3,7 +3,9 @@
 
 use base64::Engine;
 use image::imageops::FilterType;
-use image::{DynamicImage, GenericImageView, ImageDecoder, ImageFormat, ImageReader};
+use image::{
+    DynamicImage, GenericImageView, ImageBuffer, ImageDecoder, ImageFormat, ImageReader, Rgba,
+};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufWriter, Write};
@@ -63,6 +65,9 @@ pub enum Operation {
     Rotate270,
     FlipHorizontal,
     FlipVertical,
+    Straighten {
+        degrees: f32,
+    },
     Resize {
         width: u32,
         height: u32,
@@ -170,6 +175,7 @@ pub fn apply(
             Operation::Rotate270 => image.rotate270(),
             Operation::FlipHorizontal => image.fliph(),
             Operation::FlipVertical => image.flipv(),
+            Operation::Straighten { degrees } => straighten(&image, degrees, budget)?,
             Operation::Resize { width, height } => {
                 checked_allocation(width, height, budget)?;
                 image.resize_exact(width, height, FilterType::Lanczos3)
@@ -177,6 +183,67 @@ pub fn apply(
         };
     }
     Ok(image)
+}
+
+fn straighten(
+    image: &DynamicImage,
+    degrees: f32,
+    budget: u64,
+) -> Result<DynamicImage, ProcessingError> {
+    if !degrees.is_finite() || !(-45.0..=45.0).contains(&degrees) {
+        return Err(ProcessingError::Invalid(
+            "straighten angle must be between -45 and 45 degrees".into(),
+        ));
+    }
+    if degrees.abs() < f32::EPSILON {
+        return Ok(image.clone());
+    }
+    let source = image.to_rgba16();
+    let (width, height) = source.dimensions();
+    checked_allocation(width, height, budget)?;
+    let mut output = ImageBuffer::from_pixel(width, height, Rgba([0_u16; 4]));
+    let radians = -degrees.to_radians();
+    let (sin, cos) = radians.sin_cos();
+    let center_x = (width as f32 - 1.0) / 2.0;
+    let center_y = (height as f32 - 1.0) / 2.0;
+    for y in 0..height {
+        for x in 0..width {
+            let dx = x as f32 - center_x;
+            let dy = y as f32 - center_y;
+            let source_x = cos * dx - sin * dy + center_x;
+            let source_y = sin * dx + cos * dy + center_y;
+            if source_x < 0.0
+                || source_y < 0.0
+                || source_x > (width - 1) as f32
+                || source_y > (height - 1) as f32
+            {
+                continue;
+            }
+            let x0 = source_x.floor() as u32;
+            let y0 = source_y.floor() as u32;
+            let x1 = (x0 + 1).min(width - 1);
+            let y1 = (y0 + 1).min(height - 1);
+            let fx = source_x - x0 as f32;
+            let fy = source_y - y0 as f32;
+            let samples = [
+                source.get_pixel(x0, y0),
+                source.get_pixel(x1, y0),
+                source.get_pixel(x0, y1),
+                source.get_pixel(x1, y1),
+            ];
+            let mut channels = [0_u16; 4];
+            for (channel, output_channel) in channels.iter_mut().enumerate() {
+                let top =
+                    samples[0].0[channel] as f32 * (1.0 - fx) + samples[1].0[channel] as f32 * fx;
+                let bottom =
+                    samples[2].0[channel] as f32 * (1.0 - fx) + samples[3].0[channel] as f32 * fx;
+                *output_channel =
+                    (top * (1.0 - fy) + bottom * fy).round().clamp(0.0, 65535.0) as u16;
+            }
+            output.put_pixel(x, y, Rgba(channels));
+        }
+    }
+    Ok(DynamicImage::ImageRgba16(output))
 }
 
 pub fn preview(image: &DynamicImage, longest_edge: u32) -> Result<DynamicImage, ProcessingError> {
@@ -300,6 +367,47 @@ pub fn save_json_atomic<T: Serialize>(
         return Err(ProcessingError::Invalid("destination exists".into()));
     }
     fs::rename(temporary, destination).map_err(|e| ProcessingError::Io(e.to_string()))
+}
+
+pub fn replace_json_atomic<T: Serialize>(
+    value: &T,
+    destination: &Path,
+) -> Result<(), ProcessingError> {
+    let temporary = temp_path(destination)?;
+    let backup = destination.with_extension(format!(
+        "{}bak",
+        destination
+            .extension()
+            .and_then(|v| v.to_str())
+            .map_or(String::new(), |v| format!("{v}."))
+    ));
+    if temporary.exists() {
+        fs::remove_file(&temporary).map_err(|e| ProcessingError::Io(e.to_string()))?;
+    }
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temporary)
+        .map_err(|e| ProcessingError::Io(e.to_string()))?;
+    serde_json::to_writer_pretty(&mut file, value)
+        .map_err(|e| ProcessingError::Invalid(e.to_string()))?;
+    file.write_all(b"\n")
+        .map_err(|e| ProcessingError::Io(e.to_string()))?;
+    file.sync_all()
+        .map_err(|e| ProcessingError::Io(e.to_string()))?;
+    if destination.exists() {
+        if backup.exists() {
+            fs::remove_file(&backup).map_err(|e| ProcessingError::Io(e.to_string()))?;
+        }
+        fs::rename(destination, &backup).map_err(|e| ProcessingError::Io(e.to_string()))?;
+    }
+    if let Err(error) = fs::rename(&temporary, destination) {
+        if backup.exists() {
+            let _ = fs::rename(&backup, destination);
+        }
+        return Err(ProcessingError::Io(error.to_string()));
+    }
+    Ok(())
 }
 
 // ===== SNAPSMACK EOF =====

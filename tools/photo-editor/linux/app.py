@@ -17,6 +17,25 @@ app = snap_blink.App(tool="pixel-tickler", title="PIXEL TICKLER", web_dir=WEB)
 _input_path = None
 
 
+def _autosave_path():
+    root = os.environ.get("SNAPSMACK_HOME") or os.path.expanduser("~/snapsmack")
+    return os.path.join(os.path.abspath(root), "config_files", "pixel-tickler", "autosave.json")
+
+
+def _autosave(operations):
+    path = _autosave_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    temporary, backup = path + ".tmp", path + ".bak"
+    with open(temporary, "w", encoding="utf-8") as handle:
+        json.dump({"contract_version": 1, "input_path": _input_path, "operations": operations}, handle, indent=2)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    if os.path.exists(path):
+        os.replace(path, backup)
+    os.replace(temporary, path)
+
+
 def _core(method, params, roots):
     command = [CORE]
     for root in sorted(set(os.path.realpath(item) for item in roots)):
@@ -52,12 +71,27 @@ def editor_call(method, params):
             return None
         _input_path = os.path.realpath(selected)
         params.update({"input_path": _input_path, "operations": []})
-        return _core("render_preview", params, [os.path.dirname(_input_path)])
+        result = _core("render_preview", params, [os.path.dirname(_input_path)])
+        _autosave([])
+        return result
+    if method == "recover":
+        path = _autosave_path()
+        if not os.path.isfile(path):
+            return None
+        with open(path, "r", encoding="utf-8") as handle:
+            saved = json.load(handle)
+        _input_path = os.path.realpath(saved["input_path"])
+        params.update({"input_path": _input_path, "operations": saved.get("operations") or []})
+        result = _core("render_preview", params, [os.path.dirname(_input_path)])
+        result["operations"] = params["operations"]
+        return result
     if not _input_path:
         raise RuntimeError("Open an image first")
     params["input_path"] = _input_path
     if method == "render_preview":
-        return _core(method, params, [os.path.dirname(_input_path)])
+        result = _core(method, params, [os.path.dirname(_input_path)])
+        _autosave(params.get("operations") or [])
+        return result
     if method == "export_copy":
         output = snap_blink.pick_path("save", "Save edited copy", os.path.dirname(_input_path))
         if not output:

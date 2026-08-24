@@ -23,7 +23,7 @@ import sys
 import snap_discovery
 import snap_prompt_sync  # noqa: F401  (re-exported convenience for callers)
 
-BUILD_VERSION = "0.1.11"
+BUILD_VERSION = "0.1.12"
 
 
 # ── where the fleet lives on disk ────────────────────────────────────────────
@@ -63,6 +63,7 @@ _TOOLS = [
     ("SMACK YOUR MOUTH",     "comments: mod + reply", "smack-your-mouth"),
     ("SHOTS FIRED",          "schedule board",        "shots-fired"),
     ("CRONOMETER",           "fleet cron health",     "cronometer"),
+    ("PIXEL TICKLER",        "photo editor",          "pixel-tickler"),
 ]
 
 

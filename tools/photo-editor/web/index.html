@@ -17,7 +17,8 @@
     <section id="stage" tabindex="0" aria-label="Image preview"><p>Open a JPEG, PNG, WebP, or TIFF to begin.</p><img id="preview" alt="Edited preview" hidden></section>
     <aside>
       <h1>Geometry</h1>
-      <label>Crop ratio<select id="ratio"><option>Free</option><option>1:1</option><option>4:3</option><option>3:2</option><option>16:9</option></select></label>
+      <fieldset><legend>Crop</legend><label>Ratio<select id="ratio"><option value="free">Free</option><option value="1:1">1:1</option><option value="4:3">4:3</option><option value="3:2">3:2</option><option value="16:9">16:9</option></select></label><label>X<input id="crop-x" type="number" min="0" value="0"></label><label>Y<input id="crop-y" type="number" min="0" value="0"></label><label>Width<input id="crop-width" type="number" min="1"></label><label>Height<input id="crop-height" type="number" min="1"></label><button id="crop">Apply crop</button></fieldset>
+      <fieldset><legend>Straighten</legend><label>Angle <output id="angle-value">0.0°</output><input id="angle" type="range" min="-45" max="45" value="0" step="0.1"></label><button id="straighten">Apply straighten</button></fieldset>
       <fieldset><legend>Resize</legend><label>Width<input id="width" type="number" min="1" max="65535"></label><label>Height<input id="height" type="number" min="1" max="65535"></label><button id="resize">Apply resize</button></fieldset>
       <canvas id="histogram" width="256" height="100" aria-label="RGB histogram"></canvas>
       <output id="status" aria-live="polite">Ready</output>
