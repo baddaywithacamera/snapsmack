@@ -2,6 +2,8 @@
  * SnapSmack admin upload policy.
  * Reject HEIC/HEIF locally before a browser spends time sending a file the
  * server will refuse. The server-side 415 guard remains authoritative.
+ *
+ * SNAPSMACK_EOF_HEADER: last non-empty line must be the canonical JS marker.
  */
 (function () {
     'use strict';
