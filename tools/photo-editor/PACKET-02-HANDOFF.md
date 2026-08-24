@@ -2,7 +2,7 @@
 
 # Packet 02 handoff — usable processing core
 
-**Status:** processing-core slice complete; desktop host packaging remains separate.
+**Status:** usable Windows base and Linux host complete; advanced hardening remains.
 
 ## Delivered
 
@@ -18,6 +18,10 @@
   save primitive for autosave/recovery.
 - Sidecar `inspect_image` and `process_export` calls under approved-root confinement.
 - Keyboard-safe shared editor shell with undo/redo recipe history and 44px controls.
+- Manual and centred ratio crop controls plus original 16-bit bilinear straighten.
+- Crash-safe portable autosave with a previous-revision recovery backup.
+- Windows Tauri executable, Linux/Blink launcher, portable installers, and exact THE HUB
+  roster entries on both platforms.
 
 ## Verified
 
@@ -35,11 +39,10 @@ Acceptance tests cover all four formats, 16-bit TIFF, alpha, deterministic geome
 bounded previews, histograms, corrupt input, memory refusal, and preservation of an
 existing output when replacement is not explicitly authorized.
 
-## Remaining before Packet 02 can be called a packaged desktop editor
+## Remaining Packet 02 hardening
 
-The Windows Tauri and Linux Blink supervisors must connect native file dialogs and
-preview transport to the shared shell. Arbitrary-angle straighten, tiled full-resolution
-streaming, ICC conversion to a defined linear working space, replacement backup/recovery,
-and crash-recovery UI are not represented as complete. Do not claim those features yet.
+Linux packaging needs an actual Linux hardware run. Full-resolution tiled streaming,
+ICC conversion to a defined linear working space, and the integrated calling-app
+replacement/return-token workflow are not complete. Do not claim those features yet.
 
 <!-- ===== SNAPSMACK EOF ===== -->

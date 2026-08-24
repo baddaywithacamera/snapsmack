@@ -3,6 +3,8 @@
 # PIXEL TICKLER — build map
 
 This directory is the handoff surface for the standalone SnapSmack photo editor.
+The product name is **PIXEL TICKLER**; `photo-editor` remains the stable internal folder
+and integration API name.
 The editor is a differentiating desktop darkroom for rendered photographs, not a
 RAW developer or a Photoshop clone. It launches alone, from THE HUB, or against a
 specific photograph from COLD SNAP or GYSS.

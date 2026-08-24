@@ -3,7 +3,8 @@
 
 use image::{DynamicImage, ImageBuffer, ImageFormat, Rgba, RgbaImage};
 use snapsmack_photo_core::processing::{
-    apply, histogram, load, preview, save_atomic, Operation, ProcessingError, DEFAULT_MEMORY_BUDGET,
+    apply, histogram, load, preview, replace_json_atomic, save_atomic, Operation, ProcessingError,
+    DEFAULT_MEMORY_BUDGET,
 };
 use std::fs;
 
@@ -101,6 +102,42 @@ fn corrupt_input_memory_refusal_and_existing_destination_fail_closed() {
     fs::write(&output, b"original").unwrap();
     assert!(save_atomic(&fixture(), &output, ImageFormat::Png).is_err());
     assert_eq!(fs::read(output).unwrap(), b"original");
+}
+
+#[test]
+fn straighten_is_deterministic_and_preserves_sixteen_bit_precision() {
+    let source = DynamicImage::ImageRgba16(ImageBuffer::from_fn(7, 5, |x, y| {
+        image::Rgba([(x * 7000) as u16, (y * 9000) as u16, 12345, 65535])
+    }));
+    let recipe = [Operation::Straighten { degrees: 3.25 }];
+    let first = apply(source.clone(), &recipe, DEFAULT_MEMORY_BUDGET).unwrap();
+    let second = apply(source, &recipe, DEFAULT_MEMORY_BUDGET).unwrap();
+    assert!(matches!(first, DynamicImage::ImageRgba16(_)));
+    assert_eq!(first.to_rgba16(), second.to_rgba16());
+    assert!(apply(
+        fixture(),
+        &[Operation::Straighten { degrees: 46.0 }],
+        DEFAULT_MEMORY_BUDGET
+    )
+    .is_err());
+}
+
+#[test]
+fn autosave_replacement_keeps_a_recovery_backup() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("autosave.json");
+    replace_json_atomic(&serde_json::json!({"revision": 1}), &path).unwrap();
+    replace_json_atomic(&serde_json::json!({"revision": 2}), &path).unwrap();
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&fs::read(&path).unwrap()).unwrap()["revision"],
+        2
+    );
+    let backup = directory.path().join("autosave.json.bak");
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&fs::read(backup).unwrap()).unwrap()
+            ["revision"],
+        1
+    );
 }
 
 // ===== SNAPSMACK EOF =====

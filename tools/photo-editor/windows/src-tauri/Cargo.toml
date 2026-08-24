@@ -1,5 +1,5 @@
 [package]
-name = "snapsmack-photo-editor"
+name = "pixel-tickler"
 version = "0.1.0"
 edition = "2021"
 description = "PIXEL TICKLER Windows host"

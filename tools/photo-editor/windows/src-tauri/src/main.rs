@@ -16,6 +16,33 @@ struct EditorState {
     input: Mutex<Option<PathBuf>>,
 }
 
+fn shared_root() -> PathBuf {
+    std::env::var("SNAPSMACK_HOME")
+        .ok()
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(r"C:\snapsmack"))
+}
+
+fn autosave_path() -> PathBuf {
+    shared_root()
+        .join("config_files")
+        .join("pixel-tickler")
+        .join("autosave.json")
+}
+
+fn autosave(input: &Path, operations: &[Operation]) -> Result<(), String> {
+    let path = autosave_path();
+    std::fs::create_dir_all(path.parent().expect("autosave has parent"))
+        .map_err(|error| error.to_string())?;
+    processing::replace_json_atomic(
+        &json!({"contract_version": 1, "input_path": input, "operations": operations}),
+        &path,
+    )
+    .map_err(|error| error.to_string())
+}
+
 fn allowed_input(path: &Path) -> Result<(), String> {
     if snapsmack_photo_core::file_is_heic(path) {
         return Err("HEIC/HEIF is not supported because of HEVC patent risk.".into());
@@ -102,9 +129,43 @@ fn editor_call(
                 .input
                 .lock()
                 .map_err(|_| "Editor state is unavailable".to_string())? = Some(path);
+            autosave(&current_input(&state)?, &[])?;
             Ok(result)
         }
-        "render_preview" => preview_result(&current_input(&state)?, &operations(&params)?),
+        "render_preview" => {
+            let input = current_input(&state)?;
+            let operations = operations(&params)?;
+            let result = preview_result(&input, &operations)?;
+            autosave(&input, &operations)?;
+            Ok(result)
+        }
+        "recover" => {
+            let path = autosave_path();
+            if !path.is_file() {
+                return Ok(Value::Null);
+            }
+            let saved: Value =
+                serde_json::from_slice(&std::fs::read(&path).map_err(|error| error.to_string())?)
+                    .map_err(|error| error.to_string())?;
+            let input = PathBuf::from(
+                saved
+                    .get("input_path")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| "Recovery file has no input path".to_string())?,
+            )
+            .canonicalize()
+            .map_err(|error| error.to_string())?;
+            allowed_input(&input)?;
+            let operations = operations(&saved)?;
+            let mut result = preview_result(&input, &operations)?;
+            result["operations"] =
+                serde_json::to_value(&operations).map_err(|error| error.to_string())?;
+            *state
+                .input
+                .lock()
+                .map_err(|_| "Editor state is unavailable".to_string())? = Some(input);
+            Ok(result)
+        }
         "export_copy" => {
             let input = current_input(&state)?;
             let suggested = format!(
