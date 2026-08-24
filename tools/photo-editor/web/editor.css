@@ -65,11 +65,13 @@ input[type="range"] { padding-inline: 0; accent-color: var(--lime); }
 #histogram { width: 100%; height: 100px; background: var(--canvas); border: 1px solid var(--border); }
 output { padding: 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--canvas); color: var(--text); }
 kbd { color: var(--dim); font: inherit; font-size: .75rem; }
-#darkroom-controls, #finishing-controls, #layer-maker, #text-layer-maker, #overlay-layer-maker { display: grid; gap: 8px; padding-top: 10px; }
+#darkroom-controls, #finishing-controls, #layer-maker, #text-layer-maker, #overlay-layer-maker, #group-maker { display: grid; gap: 8px; padding-top: 10px; }
 #darkroom-controls label span { display: grid; grid-template-columns: 1fr 44px; gap: 4px; }
 #darkroom-controls button[data-reset] { padding: 4px; }
 #layers { display: grid; gap: 6px; padding-left: 22px; }
 #layers li { padding: 7px; border: 1px solid var(--border); border-radius: 4px; background: var(--field); }
+#layers .layer-select { display: flex; grid-template-columns: auto 1fr; align-items: center; gap: 7px; }
+#layers .layer-select input { min-height: 20px; accent-color: var(--lime); }
 #layers .layer-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
 #layers button { min-height: 36px; padding: 4px 8px; }
 @media (max-width: 760px) {

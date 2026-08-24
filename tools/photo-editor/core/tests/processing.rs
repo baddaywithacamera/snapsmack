@@ -509,4 +509,59 @@ fn embedded_image_overlays_transform_composite_and_validate() {
     assert!(apply(source, &[invalid], DEFAULT_MEMORY_BUDGET).is_err());
 }
 
+#[test]
+fn layer_groups_composite_hide_and_reject_geometry() {
+    let source = fixture();
+    let mut group = Operation::LayerGroup {
+        name: "Look".into(),
+        visible: true,
+        locked: false,
+        opacity: 0.5,
+        fill_opacity: 1.0,
+        blend_mode: BlendMode::Normal,
+        operations: vec![Operation::AdjustmentLayer {
+            name: "Colour".into(),
+            visible: true,
+            locked: false,
+            opacity: 1.0,
+            fill_opacity: 1.0,
+            blend_mode: BlendMode::Normal,
+            operations: vec![Operation::Hsl {
+                hue_degrees: 45.0,
+                saturation: 0.3,
+                lightness: 0.0,
+            }],
+        }],
+    };
+    let first = apply(source.clone(), &[group.clone()], DEFAULT_MEMORY_BUDGET).unwrap();
+    let second = apply(source.clone(), &[group.clone()], DEFAULT_MEMORY_BUDGET).unwrap();
+    assert_eq!(first.to_rgba16(), second.to_rgba16());
+    assert_ne!(first.to_rgba8(), source.to_rgba8());
+    if let Operation::LayerGroup { visible, .. } = &mut group {
+        *visible = false;
+    }
+    assert_eq!(
+        apply(source.clone(), &[group], DEFAULT_MEMORY_BUDGET)
+            .unwrap()
+            .to_rgba8(),
+        source.to_rgba8()
+    );
+
+    let geometry = Operation::LayerGroup {
+        name: "Bad".into(),
+        visible: true,
+        locked: false,
+        opacity: 1.0,
+        fill_opacity: 1.0,
+        blend_mode: BlendMode::Normal,
+        operations: vec![Operation::Crop {
+            x: 0,
+            y: 0,
+            width: 2,
+            height: 2,
+        }],
+    };
+    assert!(apply(source, &[geometry], DEFAULT_MEMORY_BUDGET).is_err());
+}
+
 // ===== SNAPSMACK EOF =====

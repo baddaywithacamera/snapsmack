@@ -2,7 +2,7 @@
 
 # Packet 04 handoff — adjustment-layer foundation
 
-**Status:** adjustment layers and editable projects usable; text/image/group work remains.
+**Status:** complete.
 
 Delivered:
 
@@ -31,7 +31,12 @@ Delivered:
   SVG, HEIC/HEIF and disguised unsupported payloads;
 - embedded overlay assets that remain portable on USB and cannot escape through a
   malicious project path; edit/reorder/duplicate/lock/hide/delete and undo/redo included.
+- nested groups built from selected layers, with visibility, locking, opacity, fill,
+  blend modes, ordering, duplication, ungrouping and undo/redo;
+- groups accept layers only, cannot hide geometry changes, and obey the existing
+  32-level nesting and 4,096-operation safety ceilings;
+- group structure survives stable `.spt` project round trips.
 
-Still required for Packet 04: nested layer groups and their project round-trip fixtures.
+Packet 05 may now build styles and masks on this frozen layer/project foundation.
 
 <!-- ===== SNAPSMACK EOF ===== -->
