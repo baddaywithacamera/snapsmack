@@ -264,6 +264,11 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="coming-grid">
                 <article class="coming-item">
+                    <span class="tag">Photo Manager</span>
+                    <h3>Snap Slapper</h3>
+                    <p>A fast, private desktop photo library for browsing, rating, tagging, organizing, editing, and exporting photographs without handing the collection to a cloud service.</p>
+                </article>
+                <article class="coming-item">
                     <span class="tag">Skin</span>
                     <h3>Lookbook</h3>
                     <p>A clean, high-resolution portfolio skin with minimal chrome and nowhere for weak photographs to hide.</p>

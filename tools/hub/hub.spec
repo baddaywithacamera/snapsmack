@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
-# SNAP SLAPPER build recipe — self-bundling, mirrors the SYBU spec's _shared bundling.
-# Every local .py and every tools/_shared/*.py is copied flat AND force-imported,
+# THE HUB build recipe — self-bundling, mirrors the SYBU spec's _shared bundling.
+# Shared modules are copied flat and force-imported,
 # so snap_creds / snap_profiles / snap_discovery / snap_home / snap_stepup can
 # never be silently dropped from the frozen exe.
 import os, glob, sys
@@ -8,7 +8,7 @@ sys.setrecursionlimit(sys.getrecursionlimit() * 5)
 
 _src = SPECPATH
 
-_py_files   = glob.glob(os.path.join(_src, '*.py'))
+_py_files   = [os.path.join(_src, 'main.py')]
 _local_data = [(f, '.') for f in _py_files]
 _local_mods = [os.path.splitext(os.path.basename(f))[0]
                for f in _py_files
@@ -48,7 +48,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='SNAP SLAPPER',
+    name='hub',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
