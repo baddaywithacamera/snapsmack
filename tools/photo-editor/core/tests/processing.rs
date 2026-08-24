@@ -608,4 +608,39 @@ fn layer_groups_composite_hide_and_reject_geometry() {
     assert!(apply(source, &[geometry], DEFAULT_MEMORY_BUDGET).is_err());
 }
 
+#[test]
+fn optics_correction_is_deterministic_bounded_and_neutral_safe() {
+    let source = fixture();
+    let neutral = [Operation::LensCorrection {
+        distortion: 0.0,
+        red_shift: 0.0,
+        blue_shift: 0.0,
+    }];
+    assert_eq!(
+        apply(source.clone(), &neutral, DEFAULT_MEMORY_BUDGET)
+            .unwrap()
+            .to_rgba16(),
+        source.to_rgba16()
+    );
+    let correction = [Operation::LensCorrection {
+        distortion: -0.35,
+        red_shift: 0.2,
+        blue_shift: -0.15,
+    }];
+    let first = apply(source.clone(), &correction, DEFAULT_MEMORY_BUDGET).unwrap();
+    let second = apply(source.clone(), &correction, DEFAULT_MEMORY_BUDGET).unwrap();
+    assert_eq!(first.to_rgba16(), second.to_rgba16());
+    assert_ne!(first.to_rgba16(), source.to_rgba16());
+    assert!(apply(
+        source,
+        &[Operation::LensCorrection {
+            distortion: 1.01,
+            red_shift: 0.0,
+            blue_shift: 0.0
+        }],
+        DEFAULT_MEMORY_BUDGET
+    )
+    .is_err());
+}
+
 // ===== SNAPSMACK EOF =====

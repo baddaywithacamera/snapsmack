@@ -15,6 +15,12 @@
   let selectedStyleIndex = null;
   const byId = (id) => document.getElementById(id);
   const status = (text) => { byId("status").textContent = text; };
+  document.querySelectorAll("aside fieldset").forEach((fieldset) => {
+    const legend = fieldset.querySelector(":scope > legend"); if (!legend) return;
+    const details = document.createElement("details"), summary = document.createElement("summary");
+    summary.textContent = legend.textContent; legend.remove(); fieldset.classList.add("accordion-body");
+    fieldset.replaceWith(details); details.append(summary, fieldset);
+  });
   const resetLayerEditors = () => { selectedTextLayer = null; selectedOverlayLayer = null; selectedStyleLayer = null; selectedStyleIndex = null; selectedForGroup.clear(); byId("make-text-layer").textContent = "Add text layer"; byId("make-overlay-layer").textContent = "Add image overlay"; byId("save-style").textContent = "Add style"; byId("style-target").textContent = "Choose Styles on a text or image layer"; refreshStyles(); };
   const refreshStyles = () => {
     const list = byId("styles"); if (!list) return; list.innerHTML = "";
@@ -102,12 +108,19 @@
   byId("angle").addEventListener("input", () => { byId("angle-value").textContent = `${Number(byId("angle").value).toFixed(1)}°`; });
   byId("straighten").addEventListener("click", () => { const degrees = Number(byId("angle").value); if (degrees === 0) return status("Choose a straighten angle first."); void add({ type: "straighten", degrees }); });
   document.querySelectorAll("[data-reset]").forEach((button) => button.addEventListener("click", () => { document.querySelector(`[data-darkroom='${button.dataset.reset}']`).value = 0; }));
+  document.querySelectorAll("[data-optics-reset]").forEach((button) => button.addEventListener("click", () => { byId(button.dataset.opticsReset).value = 0; }));
   byId("apply-darkroom").addEventListener("click", async () => {
     const settings = {};
     document.querySelectorAll("[data-darkroom]").forEach((input) => { settings[input.dataset.darkroom] = Number(input.value); });
     if (Object.values(settings).every((value) => value === 0)) return status("Set at least one darkroom adjustment.");
     await add({ type: "darkroom", settings });
     document.querySelectorAll("[data-darkroom]").forEach((input) => { input.value = 0; });
+  });
+  byId("apply-optics").addEventListener("click", () => {
+    const distortion = number("lens-distortion"), red_shift = number("lens-red"), blue_shift = number("lens-blue");
+    if ([distortion, red_shift, blue_shift].some((value) => !Number.isFinite(value) || value < -1 || value > 1)) return status("Optics controls must be between -1 and 1.");
+    if (distortion === 0 && red_shift === 0 && blue_shift === 0) return status("Set at least one optics correction.");
+    void add({ type: "lens-correction", distortion, red_shift, blue_shift });
   });
   const number = (id) => Number(byId(id).value);
   byId("apply-levels").addEventListener("click", () => void add({ type: "levels", settings: { black: number("level-black"), gamma: number("level-gamma"), white: number("level-white"), output_black: 0, output_white: 1 } }));

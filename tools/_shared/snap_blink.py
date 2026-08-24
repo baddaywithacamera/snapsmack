@@ -313,16 +313,43 @@ def find_dialog():
     return None
 
 
-def pick_path(mode="file", title=None, start_dir=None):
+def pick_path(mode="file", title=None, start_dir=None, filters=None):
     """Open the desktop's native chooser and return the picked absolute path.
 
     mode: "file" (open a file), "folder" (choose a directory), "save" (save-as).
     Returns None on cancel or when no dialog program exists. Never raises."""
+    title = title or {"file": "Choose a file", "folder": "Choose a folder",
+                      "save": "Save as"}.get(mode, "Choose")
+    if sys.platform.startswith("win"):
+        quote = lambda value: str(value or "").replace("'", "''")
+        if mode == "folder":
+            script = (
+                "Add-Type -AssemblyName System.Windows.Forms;"
+                "$d=New-Object System.Windows.Forms.FolderBrowserDialog;"
+                f"$d.Description='{quote(title)}';"
+                "if($d.ShowDialog() -eq 'OK'){[Console]::Out.Write($d.SelectedPath)}"
+            )
+        else:
+            dialog = "SaveFileDialog" if mode == "save" else "OpenFileDialog"
+            filter_value = "|".join(label + "|" + ";".join(patterns) for label, patterns in (filters or [("All files", ["*.*"])]))
+            script = (
+                "Add-Type -AssemblyName System.Windows.Forms;"
+                f"$d=New-Object System.Windows.Forms.{dialog};"
+                f"$d.Title='{quote(title)}';$d.Filter='{quote(filter_value)}';"
+                f"$d.InitialDirectory='{quote(start_dir)}';"
+                "if($d.ShowDialog() -eq 'OK'){[Console]::Out.Write($d.FileName)}"
+            )
+        try:
+            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            out = subprocess.run(["powershell.exe", "-NoProfile", "-STA", "-Command", script],
+                                 capture_output=True, text=True, creationflags=flags)
+            path = (out.stdout or "").strip()
+            return path or None
+        except Exception:
+            return None
     prog = find_dialog()
     if not prog:
         return None
-    title = title or {"file": "Choose a file", "folder": "Choose a folder",
-                      "save": "Save as"}.get(mode, "Choose")
     try:
         if prog == "kdialog":
             flag = {"folder": "--getexistingdirectory", "save": "--getsavefilename"}.get(mode, "--getopenfilename")
@@ -335,6 +362,8 @@ def pick_path(mode="file", title=None, start_dir=None):
                 cmd.append("--save")
             if start_dir:
                 cmd += ["--filename", os.path.join(start_dir, "")]
+            for label, patterns in filters or []:
+                cmd += ["--file-filter", label + " | " + " ".join(patterns)]
         out = subprocess.run(cmd, capture_output=True, text=True)
         path = (out.stdout or "").strip()
         return path or None

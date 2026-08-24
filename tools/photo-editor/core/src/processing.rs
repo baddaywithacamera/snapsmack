@@ -113,6 +113,11 @@ pub enum Operation {
         saturation: f32,
         lightness: f32,
     },
+    LensCorrection {
+        distortion: f32,
+        red_shift: f32,
+        blue_shift: f32,
+    },
     AdjustmentLayer {
         name: String,
         visible: bool,
@@ -462,6 +467,11 @@ fn apply_with_depth(
                 saturation,
                 lightness,
             } => apply_hsl(&image, hue_degrees, saturation, lightness)?,
+            Operation::LensCorrection {
+                distortion,
+                red_shift,
+                blue_shift,
+            } => apply_lens_correction(&image, distortion, red_shift, blue_shift, budget)?,
             Operation::AdjustmentLayer {
                 name,
                 visible,
@@ -1798,6 +1808,80 @@ fn straighten(
                     (top * (1.0 - fy) + bottom * fy).round().clamp(0.0, 65535.0) as u16;
             }
             output.put_pixel(x, y, Rgba(channels));
+        }
+    }
+    Ok(DynamicImage::ImageRgba16(output))
+}
+
+fn sample_channel(image: &ImageBuffer<Rgba<u16>, Vec<u16>>, x: f32, y: f32, channel: usize) -> u16 {
+    if x < 0.0 || y < 0.0 || x > (image.width() - 1) as f32 || y > (image.height() - 1) as f32 {
+        return 0;
+    }
+    let x0 = x.floor() as u32;
+    let y0 = y.floor() as u32;
+    let x1 = (x0 + 1).min(image.width() - 1);
+    let y1 = (y0 + 1).min(image.height() - 1);
+    let fx = x - x0 as f32;
+    let fy = y - y0 as f32;
+    let top = image.get_pixel(x0, y0).0[channel] as f32 * (1.0 - fx)
+        + image.get_pixel(x1, y0).0[channel] as f32 * fx;
+    let bottom = image.get_pixel(x0, y1).0[channel] as f32 * (1.0 - fx)
+        + image.get_pixel(x1, y1).0[channel] as f32 * fx;
+    (top * (1.0 - fy) + bottom * fy).round().clamp(0.0, 65535.0) as u16
+}
+
+fn apply_lens_correction(
+    image: &DynamicImage,
+    distortion: f32,
+    red_shift: f32,
+    blue_shift: f32,
+    budget: u64,
+) -> Result<DynamicImage, ProcessingError> {
+    if [distortion, red_shift, blue_shift]
+        .iter()
+        .any(|value| !value.is_finite() || !(-1.0..=1.0).contains(value))
+    {
+        return Err(ProcessingError::Invalid(
+            "optics controls must be between -1 and 1".into(),
+        ));
+    }
+    if distortion == 0.0 && red_shift == 0.0 && blue_shift == 0.0 {
+        return Ok(image.clone());
+    }
+    let source = image.to_rgba16();
+    let (width, height) = source.dimensions();
+    checked_allocation(width, height, budget)?;
+    let mut output = ImageBuffer::from_pixel(width, height, Rgba([0_u16; 4]));
+    let center_x = (width as f32 - 1.0) / 2.0;
+    let center_y = (height as f32 - 1.0) / 2.0;
+    let scale_x = center_x.max(1.0);
+    let scale_y = center_y.max(1.0);
+    for y in 0..height {
+        for x in 0..width {
+            let nx = (x as f32 - center_x) / scale_x;
+            let ny = (y as f32 - center_y) / scale_y;
+            let radius_squared = nx * nx + ny * ny;
+            let base_factor = 1.0 + distortion * radius_squared * 0.35;
+            let coordinates = |shift: f32| {
+                let factor = base_factor + shift * radius_squared * 0.02;
+                (
+                    center_x + nx * factor * scale_x,
+                    center_y + ny * factor * scale_y,
+                )
+            };
+            let green = coordinates(0.0);
+            let red = coordinates(red_shift);
+            let blue = coordinates(blue_shift);
+            output.put_pixel(
+                x,
+                y,
+                Rgba([
+                    sample_channel(&source, red.0, red.1, 0),
+                    sample_channel(&source, green.0, green.1, 1),
+                    sample_channel(&source, blue.0, blue.1, 2),
+                    sample_channel(&source, green.0, green.1, 3),
+                ]),
+            );
         }
     }
     Ok(DynamicImage::ImageRgba16(output))
