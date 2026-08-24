@@ -10,6 +10,13 @@
 
 # SnapSmack Changelog
 
+## 0.7.551 — 2026-08-23 "FEDBOARD"
+
+- **Directory page UI, hub side.** The hub is the directory, so it no longer shows
+  the "List this blog" opt-in form to itself — only spokes see it; the hub sees only
+  the moderation queue. And the moderation Approve/Hide/Remove buttons are now
+  compact and side-by-side instead of giant full-width stacks.
+
 ## 0.7.550 — 2026-08-23 "FEDBOARD"
 
 - **Fix: FEDISTRUCTURE installs stuck at `site_mode='photoblog'` now self-heal.** A

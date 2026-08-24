@@ -111,6 +111,8 @@ include 'core/sidebar.php';
         <div class="alert alert-warn">&gt; <?php echo htmlspecialchars($msg); ?></div>
     <?php endif; ?>
 
+    <?php // The hub IS the directory — it never lists itself. Opt-in form is spokes only. ?>
+    <?php if (!$is_hub): ?>
     <!-- LIST ON PHOTOBLOGS.FYI -->
     <div class="box mb-20">
         <h3>LIST ON PHOTOBLOGS.FYI</h3>
@@ -161,6 +163,7 @@ include 'core/sidebar.php';
             </form>
         <?php endif; ?>
     </div>
+    <?php endif; // !$is_hub — opt-in form hidden on the hub ?>
 
     <?php if ($is_hub): ?>
     <!-- HUB MODERATION -->
@@ -188,16 +191,18 @@ include 'core/sidebar.php';
                         <td><?php echo htmlspecialchars($topics_disp); ?></td>
                         <td><strong><?php echo htmlspecialchars((string)$L['state']); ?></strong></td>
                         <td>
-                            <form method="post" action="" style="display:inline;">
+                            <form method="post" action="">
                                 <input type="hidden" name="action" value="directory_moderate">
                                 <input type="hidden" name="listing_id" value="<?php echo (int)$L['id']; ?>">
+                                <div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;">
                                 <?php if ($L['state'] !== 'active'): ?>
-                                    <button type="submit" name="listing_state" value="active" class="btn-smack">APPROVE</button>
+                                    <button type="submit" name="listing_state" value="active" class="btn-smack" style="width:auto;padding:6px 14px;font-size:.78rem;">APPROVE</button>
                                 <?php endif; ?>
                                 <?php if ($L['state'] !== 'hidden'): ?>
-                                    <button type="submit" name="listing_state" value="hidden" class="btn-smack">HIDE</button>
+                                    <button type="submit" name="listing_state" value="hidden" class="btn-smack" style="width:auto;padding:6px 14px;font-size:.78rem;">HIDE</button>
                                 <?php endif; ?>
-                                <button type="submit" name="listing_state" value="removed" class="btn-smack btn-danger" onclick="return confirm('Remove this listing?');">REMOVE</button>
+                                    <button type="submit" name="listing_state" value="removed" class="btn-smack btn-danger" style="width:auto;padding:6px 14px;font-size:.78rem;" onclick="return confirm('Remove this listing?');">REMOVE</button>
+                                </div>
                             </form>
                         </td>
                     </tr>
