@@ -3,8 +3,8 @@
 
 use image::{DynamicImage, ImageBuffer, ImageFormat, Rgba, RgbaImage};
 use snapsmack_photo_core::processing::{
-    apply, histogram, load, preview, replace_json_atomic, save_atomic, Operation, ProcessingError,
-    DEFAULT_MEMORY_BUDGET,
+    apply, histogram, load, preview, replace_json_atomic, save_atomic, DarkroomSettings, Operation,
+    ProcessingError, DEFAULT_MEMORY_BUDGET,
 };
 use std::fs;
 
@@ -138,6 +138,45 @@ fn autosave_replacement_keeps_a_recovery_backup() {
             ["revision"],
         1
     );
+}
+
+#[test]
+fn neutral_darkroom_is_identity_and_adjustments_are_deterministic() {
+    let source = fixture();
+    let neutral = [Operation::Darkroom {
+        settings: DarkroomSettings::default(),
+    }];
+    assert_eq!(
+        apply(source.clone(), &neutral, DEFAULT_MEMORY_BUDGET)
+            .unwrap()
+            .to_rgba8(),
+        source.to_rgba8()
+    );
+    let settings = DarkroomSettings {
+        exposure: 0.75,
+        contrast: 0.2,
+        shadows: 0.3,
+        highlights: -0.2,
+        temperature: 0.15,
+        saturation: 0.25,
+        vibrance: 0.2,
+        ..DarkroomSettings::default()
+    };
+    let recipe = [Operation::Darkroom { settings }];
+    let first = apply(source.clone(), &recipe, DEFAULT_MEMORY_BUDGET).unwrap();
+    let second = apply(source, &recipe, DEFAULT_MEMORY_BUDGET).unwrap();
+    assert_eq!(first.to_rgba16(), second.to_rgba16());
+    assert!(apply(
+        fixture(),
+        &[Operation::Darkroom {
+            settings: DarkroomSettings {
+                exposure: 5.1,
+                ..DarkroomSettings::default()
+            },
+        }],
+        DEFAULT_MEMORY_BUDGET
+    )
+    .is_err());
 }
 
 // ===== SNAPSMACK EOF =====
