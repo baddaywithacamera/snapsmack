@@ -10,23 +10,17 @@
 
 # SnapSmack Changelog
 
-## 0.7.552 — 2026-08-23 "FEDBOARD"
-
-- **Fix: black input boxes on the PIXELPAST (light) admin theme.** The geometry
-  master styles some controls with `var(--admin-input-bg, #222)` / `var(--admin-text,
-  #ccc)` — dark fallbacks. PIXELPAST never defined those variables, so inputs and
-  status boxes rendered as black boxes on the light background (seen on Multisite
-  Management). PIXELPAST now sets the light values (`#FFFFFF` / `#333333`).
-
-## 0.7.551 — 2026-08-23 "FEDBOARD"
+## 0.7.550 — 2026-08-23 "FEDBOARD"
 
 - **Directory page UI, hub side.** The hub is the directory, so it no longer shows
   the "List this blog" opt-in form to itself — only spokes see it; the hub sees only
   the moderation queue. And the moderation Approve/Hide/Remove buttons are now
   compact and side-by-side instead of giant full-width stacks.
-
-## 0.7.550 — 2026-08-23 "FEDBOARD"
-
+- **Fix: black input boxes on the PIXELPAST (light) admin theme.** The geometry
+  master styles some controls with `var(--admin-input-bg, #222)` / `var(--admin-text,
+  #ccc)` — dark fallbacks. PIXELPAST never defined those variables, so inputs and
+  status boxes rendered as black boxes on the light background (seen on Multisite
+  Management). PIXELPAST now sets the light values (`#FFFFFF` / `#333333`).
 - **Fix: FEDISTRUCTURE installs stuck at `site_mode='photoblog'` now self-heal.** A
   genuine fedistructure install (`distribution='fedistructure'`) needs
   `site_mode='fedistructure'`, or the hub/relay/directory gates stay dormant — e.g.
