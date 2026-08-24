@@ -24,8 +24,14 @@ Delivered:
   families, deterministic safe fallback, size, colour, position and alignment;
 - text visibility, locking, opacity, fill, blend modes, ordering, duplication, deletion,
   undo/redo, preview/export parity and `.spt` persistence.
+- self-contained JPEG, PNG, WebP and TIFF image-overlay layers for logos, watermarks,
+  borders and textures, with scale, expanded-canvas rotation, signed positioning,
+  opacity, fill and blend modes;
+- 8 MB overlay admission limit, decoder dimension/memory checks and strict rejection of
+  SVG, HEIC/HEIF and disguised unsupported payloads;
+- embedded overlay assets that remain portable on USB and cannot escape through a
+  malicious project path; edit/reorder/duplicate/lock/hide/delete and undo/redo included.
 
-Still required for Packet 04: image-overlay layers, groups, overlay path confinement and
-their project round-trip fixtures.
+Still required for Packet 04: nested layer groups and their project round-trip fixtures.
 
 <!-- ===== SNAPSMACK EOF ===== -->

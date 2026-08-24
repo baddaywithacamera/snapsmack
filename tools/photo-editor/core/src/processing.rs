@@ -137,6 +137,21 @@ pub enum Operation {
         y: i32,
         alignment: TextAlignment,
     },
+    ImageOverlayLayer {
+        name: String,
+        visible: bool,
+        locked: bool,
+        opacity: f32,
+        fill_opacity: f32,
+        blend_mode: BlendMode,
+        original_name: String,
+        data_uri: String,
+        width: u32,
+        height: u32,
+        rotation_degrees: f32,
+        x: i32,
+        y: i32,
+    },
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
@@ -470,6 +485,51 @@ fn apply_with_depth(
                     )?
                 }
             }
+            Operation::ImageOverlayLayer {
+                name,
+                visible,
+                locked: _,
+                opacity,
+                fill_opacity,
+                blend_mode,
+                original_name,
+                data_uri,
+                width,
+                height,
+                rotation_degrees,
+                x,
+                y,
+            } => {
+                validate_layer_header(&name, opacity, fill_opacity)?;
+                if original_name.trim().is_empty()
+                    || original_name.len() > 255
+                    || width == 0
+                    || height == 0
+                    || !rotation_degrees.is_finite()
+                    || !(-180.0..=180.0).contains(&rotation_degrees)
+                {
+                    return Err(ProcessingError::Invalid(
+                        "invalid image-overlay layer".into(),
+                    ));
+                }
+                checked_allocation(width, height, budget)?;
+                if !visible || opacity == 0.0 || fill_opacity == 0.0 {
+                    image
+                } else {
+                    apply_image_overlay(
+                        &image,
+                        &data_uri,
+                        width,
+                        height,
+                        rotation_degrees,
+                        x,
+                        y,
+                        opacity * fill_opacity,
+                        blend_mode,
+                        budget,
+                    )?
+                }
+            }
         };
     }
     Ok(image)
@@ -697,6 +757,151 @@ fn composite_overlay(
             ((source_alpha + base_alpha * (1.0 - source_alpha)) * 65535.0).round() as u16;
     }
     DynamicImage::ImageRgba16(output)
+}
+
+fn decode_embedded_overlay(data_uri: &str, budget: u64) -> Result<DynamicImage, ProcessingError> {
+    const MAX_DATA_URI_BYTES: usize = 12 * 1024 * 1024;
+    if data_uri.len() > MAX_DATA_URI_BYTES {
+        return Err(ProcessingError::MemoryRefused {
+            required: data_uri.len() as u64,
+            budget: MAX_DATA_URI_BYTES as u64,
+        });
+    }
+    let encoded = [
+        "data:image/jpeg;base64,",
+        "data:image/png;base64,",
+        "data:image/webp;base64,",
+        "data:image/tiff;base64,",
+    ]
+    .iter()
+    .find_map(|prefix| data_uri.strip_prefix(prefix))
+    .ok_or_else(|| {
+        ProcessingError::Unsupported("overlay must be embedded JPEG, PNG, WebP or TIFF".into())
+    })?;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(encoded)
+        .map_err(|_| ProcessingError::Invalid("overlay contains invalid base64 data".into()))?;
+    let reader = ImageReader::new(std::io::Cursor::new(bytes))
+        .with_guessed_format()
+        .map_err(|error| ProcessingError::Invalid(error.to_string()))?;
+    let format = reader
+        .format()
+        .filter(|format| {
+            matches!(
+                format,
+                ImageFormat::Jpeg | ImageFormat::Png | ImageFormat::WebP | ImageFormat::Tiff
+            )
+        })
+        .ok_or_else(|| {
+            ProcessingError::Unsupported("overlay bytes are not JPEG, PNG, WebP or TIFF".into())
+        })?;
+    let mut decoder = reader
+        .into_decoder()
+        .map_err(|error| ProcessingError::Invalid(error.to_string()))?;
+    let (width, height) = decoder.dimensions();
+    checked_allocation(width, height, budget)?;
+    let orientation = decoder
+        .orientation()
+        .map_err(|error| ProcessingError::Invalid(error.to_string()))?;
+    let mut image = DynamicImage::from_decoder(decoder)
+        .map_err(|error| ProcessingError::Invalid(error.to_string()))?;
+    image.apply_orientation(orientation);
+    let _ = format;
+    Ok(image)
+}
+
+fn rotate_overlay(
+    image: &DynamicImage,
+    degrees: f32,
+    budget: u64,
+) -> Result<DynamicImage, ProcessingError> {
+    if degrees.abs() < f32::EPSILON {
+        return Ok(image.clone());
+    }
+    let source = image.to_rgba16();
+    let radians = degrees.to_radians();
+    let (sin, cos) = radians.sin_cos();
+    let width = source.width() as f32;
+    let height = source.height() as f32;
+    let output_width = (width * cos.abs() + height * sin.abs()).ceil() as u32;
+    let output_height = (width * sin.abs() + height * cos.abs()).ceil() as u32;
+    checked_allocation(output_width, output_height, budget)?;
+    let mut output = ImageBuffer::from_pixel(output_width, output_height, Rgba([0_u16; 4]));
+    let source_center = ((width - 1.0) / 2.0, (height - 1.0) / 2.0);
+    let output_center = (
+        (output_width as f32 - 1.0) / 2.0,
+        (output_height as f32 - 1.0) / 2.0,
+    );
+    for y in 0..output_height {
+        for x in 0..output_width {
+            let dx = x as f32 - output_center.0;
+            let dy = y as f32 - output_center.1;
+            let source_x = cos * dx + sin * dy + source_center.0;
+            let source_y = -sin * dx + cos * dy + source_center.1;
+            if source_x < 0.0 || source_y < 0.0 || source_x > width - 1.0 || source_y > height - 1.0
+            {
+                continue;
+            }
+            let x0 = source_x.floor() as u32;
+            let y0 = source_y.floor() as u32;
+            let x1 = (x0 + 1).min(source.width() - 1);
+            let y1 = (y0 + 1).min(source.height() - 1);
+            let fx = source_x - x0 as f32;
+            let fy = source_y - y0 as f32;
+            let samples = [
+                source.get_pixel(x0, y0),
+                source.get_pixel(x1, y0),
+                source.get_pixel(x0, y1),
+                source.get_pixel(x1, y1),
+            ];
+            let mut channels = [0_u16; 4];
+            for (channel, value) in channels.iter_mut().enumerate() {
+                let top =
+                    samples[0].0[channel] as f32 * (1.0 - fx) + samples[1].0[channel] as f32 * fx;
+                let bottom =
+                    samples[2].0[channel] as f32 * (1.0 - fx) + samples[3].0[channel] as f32 * fx;
+                *value = (top * (1.0 - fy) + bottom * fy).round() as u16;
+            }
+            output.put_pixel(x, y, Rgba(channels));
+        }
+    }
+    Ok(DynamicImage::ImageRgba16(output))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn apply_image_overlay(
+    base: &DynamicImage,
+    data_uri: &str,
+    width: u32,
+    height: u32,
+    rotation_degrees: f32,
+    x: i32,
+    y: i32,
+    opacity: f32,
+    mode: BlendMode,
+    budget: u64,
+) -> Result<DynamicImage, ProcessingError> {
+    let decoded = decode_embedded_overlay(data_uri, budget)?;
+    let resized = decoded.resize_exact(width, height, FilterType::Lanczos3);
+    let rotated = rotate_overlay(&resized, rotation_degrees, budget)?.to_rgba16();
+    let mut canvas = ImageBuffer::from_pixel(base.width(), base.height(), Rgba([0_u16; 4]));
+    for (overlay_x, overlay_y, pixel) in rotated.enumerate_pixels() {
+        let destination_x = i64::from(x) + i64::from(overlay_x);
+        let destination_y = i64::from(y) + i64::from(overlay_y);
+        if destination_x >= 0
+            && destination_y >= 0
+            && destination_x < i64::from(base.width())
+            && destination_y < i64::from(base.height())
+        {
+            canvas.put_pixel(destination_x as u32, destination_y as u32, *pixel);
+        }
+    }
+    Ok(composite_overlay(
+        base,
+        &DynamicImage::ImageRgba16(canvas),
+        opacity,
+        mode,
+    ))
 }
 
 fn srgb_to_linear(value: f32) -> f32 {

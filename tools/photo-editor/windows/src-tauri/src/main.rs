@@ -138,6 +138,45 @@ fn editor_call(
             autosave(&current_input(&state)?, &[])?;
             Ok(result)
         }
+        "choose_overlay" => {
+            let selected = app
+                .dialog()
+                .file()
+                .add_filter(
+                    "Overlay image",
+                    &["jpg", "jpeg", "png", "webp", "tif", "tiff"],
+                )
+                .blocking_pick_file();
+            let Some(selected) = selected else {
+                return Ok(Value::Null);
+            };
+            let path = selected.into_path().map_err(|error| error.to_string())?;
+            allowed_input(&path)?;
+            let metadata = path.metadata().map_err(|error| error.to_string())?;
+            if metadata.len() > 8 * 1024 * 1024 {
+                return Err("Overlay files are limited to 8 MB so projects stay portable.".into());
+            }
+            let loaded = processing::load(&path, DEFAULT_MEMORY_BUDGET)
+                .map_err(|error| error.to_string())?;
+            let extension = path
+                .extension()
+                .and_then(|value| value.to_str())
+                .unwrap_or_default()
+                .to_ascii_lowercase();
+            let mime = match extension.as_str() {
+                "jpg" | "jpeg" => "image/jpeg",
+                "png" => "image/png",
+                "webp" => "image/webp",
+                "tif" | "tiff" => "image/tiff",
+                _ => return Err("Unsupported overlay image.".into()),
+            };
+            let bytes = std::fs::read(&path).map_err(|error| error.to_string())?;
+            Ok(json!({
+                "name": path.file_name().and_then(|value| value.to_str()).unwrap_or("Overlay"),
+                "width": loaded.info.width, "height": loaded.info.height,
+                "data_uri": format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(bytes))
+            }))
+        }
         "open_project" => {
             let selected = app
                 .dialog()

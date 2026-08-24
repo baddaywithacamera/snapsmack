@@ -31,6 +31,21 @@ fn project_round_trip_preserves_edits_and_optional_metadata() {
                 y: 24,
                 alignment: TextAlignment::Left,
             },
+            Operation::ImageOverlayLayer {
+                name: "Logo".into(),
+                visible: true,
+                locked: false,
+                opacity: 0.6,
+                fill_opacity: 1.0,
+                blend_mode: BlendMode::Overlay,
+                original_name: "logo.png".into(),
+                data_uri: "data:image/png;base64,cGxhY2Vob2xkZXI=".into(),
+                width: 320,
+                height: 100,
+                rotation_degrees: -5.0,
+                x: 40,
+                y: 50,
+            },
         ],
     )
     .unwrap();
