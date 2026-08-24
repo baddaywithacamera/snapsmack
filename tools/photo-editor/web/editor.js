@@ -7,16 +7,19 @@
   let opened = false;
   let showingBefore = false;
   let renderGeneration = 0;
+  let selectedTextLayer = null;
   const byId = (id) => document.getElementById(id);
   const status = (text) => { byId("status").textContent = text; };
   const refreshLayers = () => {
     const list = byId("layers"); list.innerHTML = "";
     operations.forEach((operation, index) => {
-      if (operation.type !== "adjustment-layer") return;
+      if (!operation.type.endsWith("-layer")) return;
       const item = document.createElement("li");
       const title = document.createElement("div"); title.textContent = `${operation.visible ? "●" : "○"} ${operation.name} · ${operation.blend_mode}`;
       const actions = document.createElement("div"); actions.className = "layer-actions";
-      [[operation.visible ? "Hide" : "Show", () => { operation.visible = !operation.visible; }], [operation.locked ? "Unlock" : "Lock", () => { operation.locked = !operation.locked; }], ["Duplicate", () => { operations.splice(index + 1, 0, structuredClone(operation)); }], ["Up", () => { if (!operation.locked && index < operations.length - 1) [operations[index], operations[index + 1]] = [operations[index + 1], operations[index]]; }], ["Down", () => { if (!operation.locked && index > 0) [operations[index], operations[index - 1]] = [operations[index - 1], operations[index]]; }], ["Delete", () => { if (!operation.locked) operations.splice(index, 1); }]].forEach(([label, action]) => { const button = document.createElement("button"); button.textContent = label; button.addEventListener("click", () => { recordHistory(); action(); refreshHistory(); void render().catch((error) => status(error.message)); }); actions.appendChild(button); });
+      const layerActions = [[operation.visible ? "Hide" : "Show", () => { operation.visible = !operation.visible; }], [operation.locked ? "Unlock" : "Lock", () => { operation.locked = !operation.locked; }], ["Duplicate", () => { operations.splice(index + 1, 0, structuredClone(operation)); }], ["Up", () => { if (!operation.locked && index < operations.length - 1) [operations[index], operations[index + 1]] = [operations[index + 1], operations[index]]; }], ["Down", () => { if (!operation.locked && index > 0) [operations[index], operations[index - 1]] = [operations[index - 1], operations[index]]; }], ["Delete", () => { if (!operation.locked) { operations.splice(index, 1); if (selectedTextLayer === index) selectedTextLayer = null; } }]];
+      if (operation.type === "text-layer") layerActions.unshift(["Edit", () => { selectedTextLayer = index; byId("text-content").value = operation.text; byId("text-font").value = operation.font_family; byId("text-size").value = operation.font_size; byId("text-color").value = `#${operation.color.slice(0, 3).map((value) => value.toString(16).padStart(2, "0")).join("")}`; byId("text-x").value = operation.x; byId("text-y").value = operation.y; byId("text-align").value = operation.alignment; byId("text-blend").value = operation.blend_mode; byId("text-opacity").value = operation.opacity; byId("make-text-layer").textContent = "Update text layer"; }]);
+      layerActions.forEach(([label, action]) => { const button = document.createElement("button"); button.textContent = label; button.addEventListener("click", () => { if (label !== "Edit") { recordHistory(); selectedTextLayer = null; byId("make-text-layer").textContent = "Add text layer"; } action(); refreshHistory(); if (label !== "Edit") void render().catch((error) => status(error.message)); }); actions.appendChild(button); });
       item.append(title, actions); list.appendChild(item);
     });
   };
@@ -106,12 +109,26 @@
     operations.push({ type: "adjustment-layer", name: byId("layer-name").value.trim() || "Adjustment", visible: true, locked: false, opacity: number("layer-opacity"), fill_opacity: number("layer-fill"), blend_mode: byId("layer-blend").value, operations: [edit] });
     refreshHistory(); void render().catch((error) => status(error.message));
   });
-  byId("undo").addEventListener("click", () => { if (undoStack.length) { redoStack.push(structuredClone(operations)); restore(undoStack.pop()); refreshHistory(); void render().catch((error) => status(error.message)); } });
-  byId("redo").addEventListener("click", () => { if (redoStack.length) { undoStack.push(structuredClone(operations)); restore(redoStack.pop()); refreshHistory(); void render().catch((error) => status(error.message)); } });
-  byId("reset").addEventListener("click", () => { if (operations.length) { recordHistory(); operations.length = 0; refreshHistory(); void render().catch((error) => status(error.message)); } });
+  byId("make-text-layer").addEventListener("click", () => {
+    if (!opened) return status("Open an image first.");
+    const text = byId("text-content").value;
+    const size = number("text-size"), opacity = number("text-opacity");
+    if (!text.trim()) return status("Enter some text first.");
+    if (!Number.isFinite(size) || size < 4 || size > 2048 || !Number.isFinite(opacity) || opacity < 0 || opacity > 1) return status("Check the text size and opacity.");
+    const hex = byId("text-color").value;
+    const color = [Number.parseInt(hex.slice(1, 3), 16), Number.parseInt(hex.slice(3, 5), 16), Number.parseInt(hex.slice(5, 7), 16), 255];
+    const layer = { type: "text-layer", name: text.split(/\r?\n/, 1)[0].slice(0, 40) || "Text", visible: true, locked: false, opacity, fill_opacity: 1, blend_mode: byId("text-blend").value, text, font_family: byId("text-font").value, font_size: size, color, x: Math.round(number("text-x")), y: Math.round(number("text-y")), alignment: byId("text-align").value };
+    if (selectedTextLayer !== null && operations[selectedTextLayer]?.type === "text-layer") {
+      if (operations[selectedTextLayer].locked) return status("Unlock the text layer before editing it.");
+      recordHistory(); operations[selectedTextLayer] = layer; selectedTextLayer = null; byId("make-text-layer").textContent = "Add text layer"; refreshHistory(); void render().catch((error) => status(error.message));
+    } else void add(layer);
+  });
+  byId("undo").addEventListener("click", () => { if (undoStack.length) { redoStack.push(structuredClone(operations)); restore(undoStack.pop()); selectedTextLayer = null; byId("make-text-layer").textContent = "Add text layer"; refreshHistory(); void render().catch((error) => status(error.message)); } });
+  byId("redo").addEventListener("click", () => { if (redoStack.length) { undoStack.push(structuredClone(operations)); restore(redoStack.pop()); selectedTextLayer = null; byId("make-text-layer").textContent = "Add text layer"; refreshHistory(); void render().catch((error) => status(error.message)); } });
+  byId("reset").addEventListener("click", () => { if (operations.length) { recordHistory(); operations.length = 0; selectedTextLayer = null; byId("make-text-layer").textContent = "Add text layer"; refreshHistory(); void render().catch((error) => status(error.message)); } });
   byId("before").addEventListener("click", () => { if (opened) { showingBefore = !showingBefore; void render().catch((error) => status(error.message)); } });
-  byId("open").addEventListener("click", async () => { try { ++renderGeneration; const result = await window.SnapSmackEditorHost.call("choose_image", {}); if (!result) return status("Open cancelled"); operations.length = 0; undoStack.length = 0; redoStack.length = 0; opened = true; showingBefore = false; refreshHistory(); showResult(result); status(`Opened ${result.name}`); } catch (error) { status(error.message); } });
-  byId("open-project").addEventListener("click", async () => { try { ++renderGeneration; const result = await window.SnapSmackEditorHost.call("open_project", {}); if (!result) return status("Open project cancelled"); operations.splice(0, operations.length, ...(result.operations || [])); undoStack.length = 0; redoStack.length = 0; opened = true; showingBefore = false; refreshHistory(); showResult(result); status(`Opened project ${result.project_name}`); } catch (error) { status(error.message); } });
+  byId("open").addEventListener("click", async () => { try { ++renderGeneration; const result = await window.SnapSmackEditorHost.call("choose_image", {}); if (!result) return status("Open cancelled"); operations.length = 0; undoStack.length = 0; redoStack.length = 0; selectedTextLayer = null; byId("make-text-layer").textContent = "Add text layer"; opened = true; showingBefore = false; refreshHistory(); showResult(result); status(`Opened ${result.name}`); } catch (error) { status(error.message); } });
+  byId("open-project").addEventListener("click", async () => { try { ++renderGeneration; const result = await window.SnapSmackEditorHost.call("open_project", {}); if (!result) return status("Open project cancelled"); operations.splice(0, operations.length, ...(result.operations || [])); undoStack.length = 0; redoStack.length = 0; selectedTextLayer = null; byId("make-text-layer").textContent = "Add text layer"; opened = true; showingBefore = false; refreshHistory(); showResult(result); status(`Opened project ${result.project_name}`); } catch (error) { status(error.message); } });
   byId("save-project").addEventListener("click", async () => { try { if (!opened) return status("Open an image first."); const result = await window.SnapSmackEditorHost.call("save_project", { operations }); status(result ? `Saved project ${result.project_path}` : "Save project cancelled"); } catch (error) { status(error.message); } });
   byId("save").addEventListener("click", async () => { try { const result = await window.SnapSmackEditorHost.call("export_copy", { operations }); status(result ? `Saved ${result.output_path}` : "Save cancelled"); } catch (error) { status(error.message); } });
   document.addEventListener("keydown", (event) => { if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "z") return; event.preventDefault(); byId(event.shiftKey ? "redo" : "undo").click(); });

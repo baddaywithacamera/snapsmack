@@ -22,6 +22,10 @@ SPL 2.1.
 | unicode-ident | 1.0.24 | Rust identifier tables | (MIT OR Apache-2.0) AND Unicode-3.0 |
 | base64 | 0.22.1 | bounded preview transport encoding | MIT OR Apache-2.0 |
 | image | 0.25.10 | bounded JPEG/PNG/WebP/TIFF decode and encode | MIT OR Apache-2.0 |
+| ab_glyph | 0.2.32 | TrueType/OpenType glyph layout and outlines for text layers | Apache-2.0 |
+| ab_glyph_rasterizer | 0.1.10 | glyph outline rasterization | Apache-2.0 |
+| owned_ttf_parser | 0.25.1 | owned font parsing used by ab_glyph | Apache-2.0 |
+| ttf-parser | 0.25.1 | bounded TrueType/OpenType table parsing | MIT OR Apache-2.0 |
 
 `image` is built with default features disabled. The only codec features admitted are
 `jpeg`, `png`, `webp`, and `tiff`; AVIF/HEIF is not compiled. Its locked runtime codec
@@ -33,6 +37,11 @@ stack is `adler2 2.0.1`, `autocfg 1.5.1`, `bitflags 2.13.1`, `bytemuck 1.25.2`,
 `zerocopy-derive 0.8.56`, `zune-core 0.5.3`, and `zune-jpeg 0.5.15`. Every package
 offers an MIT, BSD, Apache, Zlib, 0BSD, or Unlicense path. No GPL-only or LGPL-only
 package is present.
+
+Text layers use fonts already installed by the operating system. PIXEL TICKLER does not
+copy, bundle or redistribute those font files. Its Sans Serif, Serif and Monospace
+choices resolve through a fixed platform allowlist and fall back to Sans Serif when the
+requested family is unavailable; project files contain only the generic family name.
 
 Test-only `tempfile 3.27.0` and its locked platform support packages are not linked into
 release binaries. All offer permissive choices. `r-efi 6.0.0` offers MIT/Apache in

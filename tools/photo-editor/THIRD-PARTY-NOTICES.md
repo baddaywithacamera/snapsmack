@@ -7,6 +7,9 @@ The sidecar uses the Rust packages and exact versions recorded in
 MIT, Apache-2.0, BSD, Zlib, 0BSD, Unlicense and Unicode-3.0 choices. No dependency is
 accepted under GPL or LGPL. The `image` crate is compiled without default features and
 with JPEG, PNG, WebP and TIFF only. No HEIC, HEIF, HEVC, or AVIF codec is included.
+Text rendering uses the Apache-2.0 `ab_glyph`, `ab_glyph_rasterizer`, and
+`owned_ttf_parser` packages plus `ttf-parser` under its MIT or Apache-2.0 choice.
+Operating-system fonts are referenced in place and are not distributed with PIXEL TICKLER.
 
 This development notice is not the final binary notice bundle. The release packager is
 required to extract the authoritative license files from every locked source package,

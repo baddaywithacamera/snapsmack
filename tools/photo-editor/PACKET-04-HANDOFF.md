@@ -20,8 +20,12 @@ Delivered:
 - atomic project replacement with recovery backup;
 - preservation of unknown optional metadata for forward compatibility;
 - project safety limits and rejection of relative source paths.
+- non-destructive multiline text layers with generic Sans Serif, Serif and Monospace
+  families, deterministic safe fallback, size, colour, position and alignment;
+- text visibility, locking, opacity, fill, blend modes, ordering, duplication, deletion,
+  undo/redo, preview/export parity and `.spt` persistence.
 
-Still required for Packet 04: text layers, image-overlay layers, groups, overlay path
-confinement, font fallback and their project round-trip fixtures.
+Still required for Packet 04: image-overlay layers, groups, overlay path confinement and
+their project round-trip fixtures.
 
 <!-- ===== SNAPSMACK EOF ===== -->
