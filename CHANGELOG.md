@@ -10,6 +10,17 @@
 
 # SnapSmack Changelog
 
+## 0.7.550 — 2026-08-23 "FEDBOARD"
+
+- **Fix: FEDISTRUCTURE installs stuck at `site_mode='photoblog'` now self-heal.** A
+  genuine fedistructure install (`distribution='fedistructure'`) needs
+  `site_mode='fedistructure'`, or the hub/relay/directory gates stay dormant — e.g.
+  the photoblogs.fyi Directory page showed the spoke opt-in form instead of the
+  approval queue. The one-shot migration ran once, no-op'd before `distribution`
+  was stamped, and never re-ran. `core/admin-header.php` now reconciles it on every
+  admin load, guarded to fedistructure installs (a normal blog is never touched)
+  and idempotent.
+
 ## 0.7.549 — 2026-08-23 "FEDBOARD"
 
 - **Fix: Directory page was missing its admin footer.** `smack-directory.php` never
