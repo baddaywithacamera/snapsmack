@@ -1,10 +1,12 @@
 <!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the canonical HTML comment. -->
 
-# SnapSmack Photo Editor — Packet 01 third-party notices
+# SnapSmack Photo Editor — development third-party notices
 
-The Packet 01 sidecar uses the Rust packages and exact versions recorded in
+The sidecar uses the Rust packages and exact versions recorded in
 `DEPENDENCIES.md` and `core/Cargo.lock`. They are distributed under their respective
-MIT, Apache-2.0, Unlicense and Unicode-3.0 choices. No GPL/LGPL component is included.
+MIT, Apache-2.0, BSD, Zlib, 0BSD, Unlicense and Unicode-3.0 choices. No dependency is
+accepted under GPL or LGPL. The `image` crate is compiled without default features and
+with JPEG, PNG, WebP and TIFF only. No HEIC, HEIF, HEVC, or AVIF codec is included.
 
 This development notice is not the final binary notice bundle. The release packager is
 required to extract the authoritative license files from every locked source package,

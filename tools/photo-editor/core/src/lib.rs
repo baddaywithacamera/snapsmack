@@ -2,6 +2,7 @@
 //!
 //! SNAPSMACK_EOF_HEADER: last non-empty line must be the canonical Rust marker.
 
+use image::ImageFormat;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashSet;
@@ -9,6 +10,8 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+
+pub mod processing;
 
 pub const CONTRACT_VERSION: u64 = 1;
 pub const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -21,6 +24,8 @@ pub mod error_code {
     pub const PATH_NOT_FOUND: &str = "PATH_NOT_FOUND";
     pub const METHOD_NOT_FOUND: &str = "METHOD_NOT_FOUND";
     pub const JOB_NOT_FOUND: &str = "JOB_NOT_FOUND";
+    pub const IMAGE_INVALID: &str = "IMAGE_INVALID";
+    pub const MEMORY_REFUSED: &str = "MEMORY_REFUSED";
 }
 
 #[derive(Debug, Deserialize)]
@@ -151,6 +156,35 @@ impl SidecarState {
         Ok(canonical)
     }
 
+    pub fn approve_new_file(&self, raw: &str) -> Result<PathBuf, RpcError> {
+        let supplied = PathBuf::from(raw);
+        if !supplied.is_absolute() || supplied.file_name().is_none() || supplied.exists() {
+            return Err(RpcError::new(
+                error_code::PATH_NOT_APPROVED,
+                "output must be a new absolute file",
+            ));
+        }
+        let parent = supplied.parent().ok_or_else(|| {
+            RpcError::new(
+                error_code::PATH_NOT_APPROVED,
+                "output has no parent directory",
+            )
+        })?;
+        let canonical_parent = parent.canonicalize().map_err(|_| {
+            RpcError::new(
+                error_code::PATH_NOT_FOUND,
+                "output directory does not exist",
+            )
+        })?;
+        if !self.path_is_approved(&canonical_parent) {
+            return Err(RpcError::new(
+                error_code::PATH_NOT_APPROVED,
+                "output is outside the host-approved roots",
+            ));
+        }
+        Ok(canonical_parent.join(supplied.file_name().expect("checked above")))
+    }
+
     pub fn cancel(&self, job_id: &str) {
         self.cancelled_jobs
             .lock()
@@ -272,11 +306,73 @@ pub fn handle_sync(state: &SidecarState, request: Request) -> (Response, bool) {
                     "engine": "snapsmack-photo-core",
                     "engine_version": ENGINE_VERSION,
                     "contract_version": CONTRACT_VERSION,
-                    "capabilities": ["validate-job", "cancel", "progress"]
+                    "capabilities": ["validate-job", "inspect-image", "process-export", "cancel", "progress"]
                 }))
             }
         }
         "validate_job" => validate_job(state, &request.params),
+        "inspect_image" => (|| {
+            let input =
+                state.approve_existing(required_string(&request.params, "input_path")?, false)?;
+            if file_is_heic(&input) {
+                return Err(RpcError::new(
+                    error_code::HEIC_UNSUPPORTED,
+                    "HEIC/HEIF is not supported because of HEVC patent risk",
+                ));
+            }
+            processing::load(&input, request.params.get("memory_budget_bytes").and_then(Value::as_u64).unwrap_or(processing::DEFAULT_MEMORY_BUDGET))
+                .map(|loaded| json!({"image": loaded.info, "histogram": processing::histogram(&loaded.pixels)}))
+                .map_err(processing_rpc_error)
+        })(),
+        "process_export" => (|| {
+            let input =
+                state.approve_existing(required_string(&request.params, "input_path")?, false)?;
+            if file_is_heic(&input) {
+                return Err(RpcError::new(
+                    error_code::HEIC_UNSUPPORTED,
+                    "HEIC/HEIF is not supported because of HEVC patent risk",
+                ));
+            }
+            let output =
+                state.approve_new_file(required_string(&request.params, "output_path")?)?;
+            let format = output
+                .extension()
+                .and_then(|v| v.to_str())
+                .and_then(ImageFormat::from_extension)
+                .filter(|v| {
+                    matches!(
+                        v,
+                        ImageFormat::Jpeg
+                            | ImageFormat::Png
+                            | ImageFormat::WebP
+                            | ImageFormat::Tiff
+                    )
+                })
+                .ok_or_else(|| {
+                    RpcError::new(
+                        error_code::IMAGE_INVALID,
+                        "output must use jpg, png, webp, tif or tiff",
+                    )
+                })?;
+            let budget = request
+                .params
+                .get("memory_budget_bytes")
+                .and_then(Value::as_u64)
+                .unwrap_or(processing::DEFAULT_MEMORY_BUDGET);
+            let loaded = processing::load(&input, budget).map_err(processing_rpc_error)?;
+            let operations: Vec<processing::Operation> = serde_json::from_value(
+                request
+                    .params
+                    .get("operations")
+                    .cloned()
+                    .unwrap_or_else(|| json!([])),
+            )
+            .map_err(|e| RpcError::new(error_code::BAD_REQUEST, e.to_string()))?;
+            let image = processing::apply(loaded.pixels, &operations, budget)
+                .map_err(processing_rpc_error)?;
+            processing::save_atomic(&image, &output, format).map_err(processing_rpc_error)?;
+            Ok(json!({"output_path": output, "width": image.width(), "height": image.height()}))
+        })(),
         "cancel" => required_string(&request.params, "job_id").map(|job_id| {
             state.cancel(job_id);
             json!({"job_id": job_id, "cancel_requested": true})
@@ -292,6 +388,15 @@ pub fn handle_sync(state: &SidecarState, request: Request) -> (Response, bool) {
         Ok(value) => (Response::success(id, value), shutdown),
         Err(error) => (Response::failure(id, error), false),
     }
+}
+
+fn processing_rpc_error(error: processing::ProcessingError) -> RpcError {
+    let code = if matches!(error, processing::ProcessingError::MemoryRefused { .. }) {
+        error_code::MEMORY_REFUSED
+    } else {
+        error_code::IMAGE_INVALID
+    };
+    RpcError::new(code, error.to_string())
 }
 
 // ===== SNAPSMACK EOF =====
