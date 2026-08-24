@@ -193,7 +193,7 @@ include 'core/sidebar.php';
                         <div class="file-upload-wrapper">
                             <div class="file-custom-btn">CHOOSE FILE</div>
                             <div class="file-name-display" id="file-name-text">Waiting for input...</div>
-                            <input type="file" name="new_image" id="file-input" required>
+                            <input type="file" name="new_image" id="file-input" accept="image/jpeg,image/png,image/webp,image/gif" required>
                         </div>
                     </div>
                     <div class="lens-input-wrapper">

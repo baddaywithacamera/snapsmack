@@ -867,6 +867,14 @@
             "purpose": "Update Manager Modal XHR-driven update modal."
         },
         {
+            "file": "assets/js/ss-engine-upload-policy.js",
+            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
+            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
+            "vendor": false,
+            "requires": [],
+            "purpose": "SnapSmack admin upload policy."
+        },
+        {
             "file": "assets/js/ss-engine-wall.js",
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",

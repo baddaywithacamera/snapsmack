@@ -32,6 +32,14 @@ foreach (['core/auth-smack.php', 'api.php', 'pixelfed-api.php'] as $entry) {
     policy_ok(str_contains($source, 'snapsmack_reject_heic_upload_request('),
         "{$entry} does not enforce the request-wide HEIC guard");
 }
+
+$client_policy = (string)file_get_contents($root . '/assets/js/ss-engine-upload-policy.js');
+$admin_footer = (string)file_get_contents($root . '/core/admin-footer.php');
+policy_ok(str_contains($client_policy, "'image/heic'")
+    && str_contains($client_policy, '/\\.(?:heic|heif)$/i'),
+    'browser upload policy does not reject HEIC by MIME and filename');
+policy_ok(str_contains($admin_footer, 'ss-engine-upload-policy.js'),
+    'admin footer does not load the browser upload policy');
 require_once __DIR__ . '/../core/svg-sanitizer.php';
 
 $failures = [];

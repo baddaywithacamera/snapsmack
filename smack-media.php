@@ -223,7 +223,7 @@ include 'core/sidebar.php';
         <div class="file-upload-wrapper" id="drop-zone" onclick="document.getElementById('file-input').click()">
             <div class="file-custom-btn">CHOOSE FILE</div>
             <span id="file-name-display" class="file-name-display">No signal selected... or drag & drop here.</span>
-            <input type="file" id="file-input" accept="image/*" class="file-input-hidden">
+            <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/gif" class="file-input-hidden">
         </div>
     </div>
 
@@ -298,7 +298,7 @@ include 'core/sidebar.php';
                         <div class="asset-actions">
                             <input type="file"
                                    id="swap-input-<?php echo $a['id']; ?>"
-                                   accept="image/*"
+                                   accept="image/jpeg,image/png,image/webp,image/gif"
                                    style="display:none"
                                    data-asset-id="<?php echo $a['id']; ?>">
                             <button type="button"
