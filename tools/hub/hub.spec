@@ -34,7 +34,7 @@ a = Analysis(
     excludes=[
         'torch', 'torchvision', 'tensorflow', 'keras', 'scipy', 'sklearn',
         'skimage', 'matplotlib', 'transformers', 'pandas', 'numpy',
-        'cv2', 'PIL', 'google', 'googleapiclient', 'bs4', 'imagehash',
+        'cv2', 'google', 'googleapiclient', 'bs4', 'imagehash',
         'IPython', 'notebook', 'streamlit', 'gradio',
     ],
     noarchive=False,

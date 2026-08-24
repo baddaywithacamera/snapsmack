@@ -23,7 +23,7 @@ from tkinter import filedialog, messagebox
 
 from photo_library import PhotoLibrary
 
-BUILD_VERSION = "0.4.2-alpha"
+BUILD_VERSION = "0.5.0-beta"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -703,5 +703,24 @@ class SnapSlapper(tk.Tk):
 
 
 if __name__ == "__main__":
-    SnapSlapper().mainloop()
+    app = SnapSlapper()
+    qa_image = os.environ.get("SNAP_SLAPPER_QA_IMAGE", "")
+    qa_marker = os.environ.get("SNAP_SLAPPER_QA_MARKER", "")
+    if qa_image and qa_marker:
+        def _qa_open_image():
+            try:
+                state_path = os.path.join(os.path.dirname(qa_marker), "qa-library-folders.json")
+                library = PhotoLibrary(app, snap_home.shared_library(), BUILD_VERSION, state_path=state_path)
+                row = {"path": qa_image, "title": "Packaged image check", "description": "", "tags": []}
+                library.rows = [row]
+                library.filter_rows()
+                library.select_photo(row)
+                library.open_viewer(row)
+                app.update_idletasks()
+                with open(qa_marker, "w", encoding="utf-8") as handle:
+                    handle.write("PASS")
+            finally:
+                app.after(100, app.destroy)
+        app.after(300, _qa_open_image)
+    app.mainloop()
 # ===== SNAPSMACK EOF =====
