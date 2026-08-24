@@ -126,11 +126,11 @@ include 'core/sidebar.php';
         <?php if ($listed): ?>
             <div class="alert alert-success">&#10003; This blog is opted in to the photoblogs.fyi directory (topics: <code><?php echo htmlspecialchars($cur_topics); ?></code>). It appears once <?php echo htmlspecialchars($hub_host); ?> approves it.</div>
 
-            <form method="post" action="" style="margin-bottom:14px;">
+            <form method="post" action="" class="mb-14">
                 <input type="hidden" name="action" value="directory_topics">
                 <label>TOPICS (comma-separated &mdash; the genres you're filed under)</label>
                 <input type="text" name="topics" maxlength="200" value="<?php echo htmlspecialchars($cur_topics); ?>" autocomplete="off">
-                <button type="submit" class="btn-smack" style="margin-top:10px;">SAVE TOPICS</button>
+                <button type="submit" class="btn-smack mt-10">SAVE TOPICS</button>
             </form>
 
             <form method="post" action="" onsubmit="return confirm('Delist this blog from photoblogs.fyi?');">
@@ -148,7 +148,7 @@ include 'core/sidebar.php';
                 <label>TOPICS (comma-separated &mdash; the genres you're filed under)</label>
                 <input type="text" name="topics" maxlength="200" value="<?php echo htmlspecialchars($cur_topics); ?>" autocomplete="off">
 
-                <div class="reauth-row" style="margin-top:14px;">
+                <div class="reauth-row mt-14">
                     <div>
                         <label>PASSWORD</label>
                         <input type="password" name="reauth_password" autocomplete="current-password">
@@ -159,7 +159,7 @@ include 'core/sidebar.php';
                     </div>
                 </div>
 
-                <button type="submit" class="btn-smack" style="margin-top:14px;">LIST THIS BLOG</button>
+                <button type="submit" class="btn-smack mt-14">LIST THIS BLOG</button>
             </form>
         <?php endif; ?>
     </div>
@@ -177,7 +177,7 @@ include 'core/sidebar.php';
         <?php if (!$dir_listings): ?>
             <p class="dim">No listings yet.</p>
         <?php else: ?>
-            <table class="data-table" style="width:100%;">
+            <table class="data-table w-100">
                 <thead>
                     <tr><th>Blog</th><th>Handle</th><th>Topics</th><th>State</th><th>Actions</th></tr>
                 </thead>
@@ -194,14 +194,14 @@ include 'core/sidebar.php';
                             <form method="post" action="">
                                 <input type="hidden" name="action" value="directory_moderate">
                                 <input type="hidden" name="listing_id" value="<?php echo (int)$L['id']; ?>">
-                                <div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;">
+                                <div class="dir-mod-actions">
                                 <?php if ($L['state'] !== 'active'): ?>
-                                    <button type="submit" name="listing_state" value="active" class="btn-smack" style="width:auto;padding:6px 14px;font-size:.78rem;">APPROVE</button>
+                                    <button type="submit" name="listing_state" value="active" class="btn-smack">APPROVE</button>
                                 <?php endif; ?>
                                 <?php if ($L['state'] !== 'hidden'): ?>
-                                    <button type="submit" name="listing_state" value="hidden" class="btn-smack" style="width:auto;padding:6px 14px;font-size:.78rem;">HIDE</button>
+                                    <button type="submit" name="listing_state" value="hidden" class="btn-smack">HIDE</button>
                                 <?php endif; ?>
-                                    <button type="submit" name="listing_state" value="removed" class="btn-smack btn-danger" style="width:auto;padding:6px 14px;font-size:.78rem;" onclick="return confirm('Remove this listing?');">REMOVE</button>
+                                    <button type="submit" name="listing_state" value="removed" class="btn-smack btn-danger" onclick="return confirm('Remove this listing?');">REMOVE</button>
                                 </div>
                             </form>
                         </td>

@@ -229,7 +229,7 @@ include 'core/sidebar.php';
         <?php endif; ?>
 
         <?php if (!SnapSmackFTP::isSslAvailable()): ?>
-            <div class="dim" style="margin-bottom: 20px;">
+            <div class="dim mb-20">
                 ⚠ FTPS NOT AVAILABLE — SERVER LACKS OPENSSL EXTENSION
             </div>
         <?php endif; ?>
@@ -268,7 +268,7 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <button type="submit" name="save_ftp_settings" class="btn-smack" style="margin-top: 20px;">SAVE FTP CONFIGURATION</button>
+            <button type="submit" name="save_ftp_settings" class="btn-smack mt-20">SAVE FTP CONFIGURATION</button>
         </form>
     </div>
 
@@ -281,7 +281,7 @@ include 'core/sidebar.php';
 
         <button type="button" id="test-connection-btn" class="btn-smack">TEST CONNECTION</button>
 
-        <div id="ftp-test-result" style="margin-top: 15px;"></div>
+        <div id="ftp-test-result" class="mt-15"></div>
     </div>
 
     <!-- ================================================================
@@ -293,25 +293,25 @@ include 'core/sidebar.php';
 
         <div class="dash-grid">
             <div class="box box-flex">
-                <h4 style="margin-top: 0;">RECOVERY KIT</h4>
+                <h4 class="mt-0">RECOVERY KIT</h4>
                 <p class="skin-desc-text">Database, branding, and core files packaged as .tar.gz. Portable fallback for system restoration.</p>
                 <button type="button" class="btn-smack btn-block push-btn" data-scope="recovery" disabled>PUSH RECOVERY KIT</button>
             </div>
 
             <div class="box box-flex">
-                <h4 style="margin-top: 0;">IMAGE LIBRARY</h4>
+                <h4 class="mt-0">IMAGE LIBRARY</h4>
                 <p class="skin-desc-text">Complete img_uploads/ directory with all user-uploaded images and thumbnails.</p>
                 <button type="button" class="btn-smack btn-block push-btn" data-scope="images" disabled>PUSH IMAGES</button>
             </div>
 
             <div class="box box-flex">
-                <h4 style="margin-top: 0;">FULL BACKUP</h4>
+                <h4 class="mt-0">FULL BACKUP</h4>
                 <p class="skin-desc-text">Everything: recovery kit AND image library. Most comprehensive option.</p>
                 <button type="button" class="btn-smack btn-block push-btn" data-scope="full" disabled>PUSH FULL BACKUP</button>
             </div>
         </div>
 
-        <div id="ftp-push-progress" style="margin-top: 20px;"></div>
+        <div id="ftp-push-progress" class="mt-20"></div>
     </div>
 
     <!-- ================================================================
@@ -326,7 +326,7 @@ include 'core/sidebar.php';
         ?>
 
         <?php if ($last_push): ?>
-            <div style="margin-bottom: 10px;">
+            <div class="mb-10">
                 <strong>Timestamp:</strong> <?php echo htmlspecialchars($last_push); ?>
             </div>
             <div>
@@ -379,7 +379,7 @@ document.querySelectorAll('.push-btn').forEach(btn => {
         document.querySelectorAll('.push-btn').forEach(b => b.disabled = true);
         testBtn.disabled = true;
 
-        progressDiv.innerHTML = '<pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; font-size: 12px; overflow-x: auto; max-height: 400px; line-height: 1.5;"></pre>';
+        progressDiv.innerHTML = '<pre style="background: var(--surface, #f5f5f5); padding: 15px; border-radius: 4px; font-size: 12px; overflow-x: auto; max-height: 400px; line-height: 1.5;"></pre>';
         const preEl = progressDiv.querySelector('pre');
 
         const url = 'smack-ftp.php?action=push_now&scope=' + encodeURIComponent(scope) + '&t=<?php echo urlencode(csrf_token()); ?>';

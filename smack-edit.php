@@ -365,7 +365,7 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>COLLECTIONS</label>
                         <?php if (empty($all_collections)): ?>
-                            <p style="font-size:0.8rem;color:var(--text-muted,#888);margin:4px 0 0;">No collections yet — create one under <a href="smack-collections.php" style="color:var(--accent);">Collections</a>.</p>
+                            <p style="font-size:0.8rem;color:var(--text-muted,#888);margin:4px 0 0;">No collections yet — create one under <a href="smack-collections.php" class="text-accent">Collections</a>.</p>
                         <?php else: ?>
                         <div class="custom-multiselect">
                             <div class="select-box" onclick="toggleDropdown('collection-items')">
@@ -421,7 +421,7 @@ include 'core/sidebar.php';
                                value="<?php echo htmlspecialchars($post['img_alt'] ?? ''); ?>"
                                placeholder="One plain sentence describing what's in the photo — for screen-reader users.">
                         <?php if (snap_ai_active()): ?>
-                        <div class="sc-row" style="margin-top:6px;">
+                        <div class="sc-row mt-6">
                             <button type="button" class="sc-btn sc-btn-ai" id="btn-ai-vision"
                                     data-image-url="<?php echo htmlspecialchars(BASE_URL . ltrim($post['img_file'], '/')); ?>"
                                     title="Analyse this photo and fill any EMPTY fields (title, caption, ALT, tags) in one AI call — won't overwrite what you've typed">VISION FILL (EMPTY FIELDS)</button>
@@ -444,7 +444,7 @@ include 'core/sidebar.php';
                             <option value="0" <?php echo empty($post['is_sensitive']) ? 'selected' : ''; ?>>NOT SENSITIVE</option>
                             <option value="1" <?php echo !empty($post['is_sensitive']) ? 'selected' : ''; ?>>MARK SENSITIVE &mdash; hide behind a warning</option>
                         </select>
-                        <input type="text" name="content_warning" style="margin-top:8px;" maxlength="255"
+                        <input type="text" name="content_warning" class="mt-8" maxlength="255"
                                placeholder="Content-warning text (optional, shown before the image)"
                                value="<?php echo htmlspecialchars($post['content_warning'] ?? ''); ?>">
                     </div>
@@ -510,7 +510,7 @@ include 'core/sidebar.php';
                         <div class="preview-frame">
                             <img src="<?php echo $post['img_file']; ?>" class="swap-preview">
                         </div>
-                        <button type="button" class="btn-smack" onclick="SnapPhotoEditor.open('<?php echo htmlspecialchars($post['img_file'], ENT_QUOTES); ?>', <?php echo (int)$post['post_id']; ?>)" style="margin-top:8px;">Edit Image</button>
+                        <button type="button" class="btn-smack mt-8" onclick="SnapPhotoEditor.open('<?php echo htmlspecialchars($post['img_file'], ENT_QUOTES); ?>', <?php echo (int)$post['post_id']; ?>)">Edit Image</button>
                     </div>
                 </div>
             </div>
@@ -583,7 +583,7 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <div class="form-action-row" style="margin-top:10px;">
+            <div class="form-action-row mt-10">
                 <button type="submit" name="reset_frame_options" value="1" class="btn-secondary" onclick="return confirm('Reset frame options to skin defaults?')">RESET TO DEFAULTS</button>
             </div>
         </div>

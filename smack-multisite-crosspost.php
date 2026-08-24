@@ -179,7 +179,7 @@ include 'core/sidebar.php';
     </div>
 
     <!-- QUICK NAV -->
-    <div class="signal-control-header" style="margin-bottom:20px;">
+    <div class="signal-control-header mb-20">
         <div class="signal-nav-group">
             <a href="smack-multisite.php"             class="btn-clear">DASHBOARD</a>
             <a href="smack-multisite-comments.php"    class="btn-clear">COMMENTS</a>
@@ -211,12 +211,12 @@ include 'core/sidebar.php';
                                 <span style="color:<?php echo $result['ok'] ? '#4CAF50' : '#f44336'; ?>; font-weight:700;">
                                     <?php echo $result['ok'] ? '&#x2713;' : '&#x2717;'; ?>
                                 </span>
-                                <span style="color:var(--text-muted,#888);"><?php echo htmlspecialchars($spoke_name); ?></span>
+                                <span class="text-muted"><?php echo htmlspecialchars($spoke_name); ?></span>
                                 <?php if ($result['ok'] && $result['post_url']): ?>
                                     <a href="<?php echo htmlspecialchars($result['post_url']); ?>" target="_blank"
                                        style="color:var(--accent,#aaa); font-size:0.75rem;">VIEW</a>
                                 <?php elseif (!$result['ok']): ?>
-                                    <span style="color:#f44336; font-size:0.75rem;"><?php echo htmlspecialchars($result['error'] ?? 'Failed'); ?></span>
+                                    <span style="color:var(--danger, #f44336); font-size:0.75rem;"><?php echo htmlspecialchars($result['error'] ?? 'Failed'); ?></span>
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
@@ -228,7 +228,7 @@ include 'core/sidebar.php';
 
     <?php if (empty($spokes)): ?>
         <div class="box">
-            <p style="color:var(--text-muted,#888);">No active spokes connected. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register a spoke</a> first.</p>
+            <p class="text-muted">No active spokes connected. <a href="smack-multisite.php" class="text-accent">Register a spoke</a> first.</p>
         </div>
     <?php else: ?>
 
@@ -245,7 +245,7 @@ include 'core/sidebar.php';
                                           padding:6px 12px; border:1px solid var(--border,#333);
                                           border-radius:3px; font-size:0.85rem;">
                                 <input type="checkbox" name="spoke_ids[]" value="<?php echo $spoke['id']; ?>"
-                                       class="tactical-checkbox" style="margin:0;">
+                                       class="tactical-checkbox m-0">
                                 <?php echo htmlspecialchars($spoke['site_name']); ?>
                             </label>
                         <?php endforeach; ?>
@@ -256,17 +256,17 @@ include 'core/sidebar.php';
                     <div style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:1px; margin-bottom:8px;">PUBLISH AS</div>
                     <div style="display:flex; gap:8px;">
                         <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem;">
-                            <input type="radio" name="xp_status" value="draft" checked class="tactical-checkbox" style="margin:0;">
+                            <input type="radio" name="xp_status" value="draft" checked class="tactical-checkbox m-0">
                             DRAFT
                         </label>
                         <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem;">
-                            <input type="radio" name="xp_status" value="published" class="tactical-checkbox" style="margin:0;">
+                            <input type="radio" name="xp_status" value="published" class="tactical-checkbox m-0">
                             PUBLISHED
                         </label>
                     </div>
                 </div>
 
-                <div style="margin-left:auto;">
+                <div class="ml-auto">
                     <button type="submit" name="xp_submit" value="1" class="btn-smack"
                             style="width:auto; padding:8px 18px;"
                             onclick="return confirmCrossPost();">
@@ -280,7 +280,7 @@ include 'core/sidebar.php';
         <div style="margin-bottom:20px; display:flex; gap:10px; align-items:center;">
             <form method="GET" style="display:flex; gap:8px; flex:1; margin:0;" id="search-form">
                 <input type="text" name="s" value="<?php echo htmlspecialchars($search); ?>"
-                       placeholder="SEARCH POSTS..." style="flex:1;">
+                       placeholder="SEARCH POSTS..." class="flex-1">
                 <button type="submit" class="btn-smack" style="width:auto; padding:8px 16px;">SCAN</button>
             </form>
             <div style="font-size:0.85rem; color:var(--text-muted,#888);">
@@ -300,19 +300,19 @@ include 'core/sidebar.php';
 
                     <div class="img-picker-card" style="border:2px solid var(--border,#333); border-radius:3px; overflow:hidden; transition:border-color 0.15s;">
                         <?php if ($thumb): ?>
-                            <div style="aspect-ratio:1; overflow:hidden; background:#111;">
+                            <div style="aspect-ratio:1; overflow:hidden; background:var(--input-bg, #111);">
                                 <img src="/<?php echo htmlspecialchars(ltrim($thumb, '/')); ?>"
                                      loading="lazy"
-                                     style="width:100%; height:100%; object-fit:cover; display:block;"
+                                     class="img-cover"
                                      alt="<?php echo htmlspecialchars($img['img_title']); ?>">
                             </div>
                         <?php else: ?>
-                            <div style="aspect-ratio:1; background:#111; display:flex; align-items:center; justify-content:center; color:#444; font-size:2rem;">
+                            <div style="aspect-ratio:1; background:var(--input-bg, #111); display:flex; align-items:center; justify-content:center; color:var(--text-muted, #444); font-size:2rem;">
                                 &#x1F4F7;
                             </div>
                         <?php endif; ?>
 
-                        <div style="padding:8px;">
+                        <div class="p-8">
                             <div style="font-size:0.75rem; font-weight:700; line-height:1.3; overflow:hidden;
                                         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
                                 <?php echo htmlspecialchars($img['img_title']); ?>
@@ -334,7 +334,7 @@ include 'core/sidebar.php';
                        class="<?php echo $i === $page ? 'active' : ''; ?>"><?php echo $i; ?></a>
                 <?php endfor; ?>
                 <?php if ($total_pages > 10): ?>
-                    <span style="color:var(--text-muted,#666);">... <?php echo $total_pages; ?> pages</span>
+                    <span class="text-muted">... <?php echo $total_pages; ?> pages</span>
                 <?php endif; ?>
             </div>
         <?php endif; ?>

@@ -471,7 +471,7 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
             <p class="gram-composer-lede">Choose up to ten photographs, set the order, then add the words.</p>
         </div>
         <div class="header-actions">
-            <span class="dim" style="font-size:12px; letter-spacing:1px;">GRAMOFSMACK</span>
+            <span class="dim text-12 ls-1">GRAMOFSMACK</span>
         </div>
     </div>
 
@@ -705,7 +705,7 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
             <div class="gram-section-heading gram-section-heading--split">
                 <span class="gram-step">1</span>
                 <div><h3>CHOOSE THE PHOTOS</h3><p>First photo becomes the grid cover. Drag to reorder.</p></div>
-                <span id="gp-file-count" class="dim" style="font-size:12px; letter-spacing:1px;">
+                <span id="gp-file-count" class="dim text-12 ls-1">
                     0 / 10 images
                 </span>
             </div>
@@ -720,7 +720,7 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
 
             <div id="gp-strip" class="cp-strip"></div>
 
-            <p class="skin-desc-text gram-order-hint" style="margin-top:12px;">
+            <p class="skin-desc-text gram-order-hint mt-12">
                 Drag thumbnails to reorder. First image is the cover shown on the grid.
             </p>
         </div>

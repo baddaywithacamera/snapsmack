@@ -511,7 +511,7 @@ require 'core/sidebar.php';
 
 <!-- Apply log (shown after applying) -->
 <?php if (!empty($apply_results)): ?>
-<div class="schema-table" style="margin-bottom:24px;">
+<div class="schema-table mb-24">
     <div class="schema-log">
         <?php foreach ($apply_results as [$level, $msg]): ?>
         <div class="schema-log-<?php echo $level === 'ok' ? 'ok' : 'err'; ?>">
@@ -524,14 +524,14 @@ require 'core/sidebar.php';
 <?php endif; ?>
 
 <!-- PHP Reference Audit -->
-<h3 style="font-size:0.8rem; letter-spacing:1px; text-transform:uppercase; opacity:0.5; margin:28px 0 10px;">
+<h3 class="section-label">
     PHP Reference Audit
 </h3>
 <p style="font-size:0.82rem; opacity:0.5; margin-bottom:14px; max-width:600px;">
     Tables referenced in PHP source that are absent from the canonical schema.
     Any gap here would cause the SC release packager to abort the build.
 </p>
-<div class="schema-status-bar" style="margin-bottom:24px;">
+<div class="schema-status-bar mb-24">
     <span class="schema-status-label">PHP → Schema</span>
     <?php if (empty($php_audit_missing)): ?>
         <span class="schema-status-ok">✓ All PHP-referenced tables present in canonical schema</span>
@@ -543,7 +543,7 @@ require 'core/sidebar.php';
     <?php endif; ?>
 </div>
 <?php if (!empty($php_audit_missing)): ?>
-<div class="schema-table" style="margin-bottom:24px;">
+<div class="schema-table mb-24">
     <div class="schema-cols" style="padding:14px 18px;">
         <?php foreach ($php_audit_missing as $t): ?>
         <span class="schema-col schema-col--missing"><?php echo htmlspecialchars($t); ?></span>
@@ -563,7 +563,7 @@ $drift_cols   = $schema_drift['extra_columns'] ?? [];
 $drift_col_n  = array_sum(array_map('count', $drift_cols));
 $drift_total  = count($drift_tables) + $drift_col_n;
 ?>
-<h3 style="font-size:0.8rem; letter-spacing:1px; text-transform:uppercase; opacity:0.5; margin:28px 0 10px;">
+<h3 class="section-label">
     Schema Drift — Debris Not in Canonical
 </h3>
 <p style="font-size:0.82rem; opacity:0.5; margin-bottom:14px; max-width:640px;">
@@ -575,7 +575,7 @@ $drift_total  = count($drift_tables) + $drift_col_n;
 </p>
 
 <?php if (!empty($prune_results)): ?>
-<div class="schema-table" style="margin-bottom:16px;">
+<div class="schema-table mb-16">
     <div class="schema-log">
         <?php
         foreach ($prune_results['dropped_tables']  as $t) echo '<div class="schema-log-ok">✓ dropped table `' . htmlspecialchars($t) . '`</div>';
@@ -608,7 +608,7 @@ $drift_total  = count($drift_tables) + $drift_col_n;
 </div>
 
 <?php if ($drift_total > 0): ?>
-<div class="schema-table" style="margin-bottom:24px;">
+<div class="schema-table mb-24">
     <?php foreach ($drift_tables as $t): ?>
     <div class="schema-table-head">
         <span class="schema-table-name schema-table-name--bad">`<?php echo htmlspecialchars($t); ?>`</span>
@@ -630,7 +630,7 @@ $drift_total  = count($drift_tables) + $drift_col_n;
     <?php endforeach; ?>
 
     <div class="schema-apply-bar">
-        <div class="schema-apply-note" style="color:#e45735;">
+        <div class="schema-apply-note" style="color:var(--danger, #e45735);">
             Pruning permanently DROPs the items above — irreversible, so back up first.
             Requires your password and 2FA.
         </div>
@@ -653,12 +653,12 @@ $drift_total  = count($drift_tables) + $drift_col_n;
     <?php endif; ?>
 </div>
 <?php elseif ($prune_error): ?>
-<div class="schema-status-bar" style="margin-bottom:24px;">
+<div class="schema-status-bar mb-24">
     <span class="schema-status-err">✗ <?php echo htmlspecialchars($prune_error); ?></span>
 </div>
 <?php endif; ?>
 
-<h3 style="font-size:0.8rem; letter-spacing:1px; text-transform:uppercase; opacity:0.5; margin:28px 0 10px;">
+<h3 class="section-label">
     Live Database vs Canonical Schema
 </h3>
 

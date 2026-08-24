@@ -287,7 +287,7 @@ if ($is_hub) {
         <div class="box">
             <h3>Active Bans</h3>
             <div id="banned-list"></div>
-            <div id="banned-paginator" style="margin-top:20px; text-align:center;"></div>
+            <div id="banned-paginator" class="mt-20 text-center"></div>
         </div>
     </div>
 
@@ -295,9 +295,9 @@ if ($is_hub) {
     <div class="tab-content" id="tab-fingerprints">
         <div class="box">
             <h3>Search Fingerprints</h3>
-            <input type="text" id="fp-search" class="full-width-input" placeholder="Search by fingerprint hash or IP…" style="margin-bottom:12px;">
+            <input type="text" id="fp-search" class="full-width-input mb-12" placeholder="Search by fingerprint hash or IP…">
             <div id="fingerprint-list"></div>
-            <div id="fp-paginator" style="margin-top:20px; text-align:center;"></div>
+            <div id="fp-paginator" class="mt-20 text-center"></div>
         </div>
     </div>
 
@@ -305,15 +305,15 @@ if ($is_hub) {
     <div class="tab-content" id="tab-semantic">
         <div class="box">
             <h3>Semantic Similarity Analysis</h3>
-            <p class="dim" style="margin-bottom:16px;">Find fingerprints with similar writing styles to detect related accounts.</p>
+            <p class="dim mb-16">Find fingerprints with similar writing styles to detect related accounts.</p>
             <div class="meta-grid">
                 <div class="lens-input-wrapper">
                     <label>FINGERPRINT TO ANALYZE</label>
                     <input type="text" id="semantic-fp" class="full-width-input" placeholder="Enter fingerprint hash">
                 </div>
             </div>
-            <button type="button" class="btn-smack" onclick="loadSemantic()" style="margin-top:12px;">Analyze</button>
-            <div id="semantic-results" style="margin-top:20px;"></div>
+            <button type="button" class="btn-smack mt-12" onclick="loadSemantic()">Analyze</button>
+            <div id="semantic-results" class="mt-20"></div>
         </div>
     </div>
 
@@ -321,7 +321,7 @@ if ($is_hub) {
     <div class="tab-content" id="tab-keywords">
         <div class="box">
             <h3>Banned Keywords & Phrases</h3>
-            <p class="dim" style="margin-bottom:16px;">Auto-detect and flag/reject comments containing specific words or patterns.</p>
+            <p class="dim mb-16">Auto-detect and flag/reject comments containing specific words or patterns.</p>
             <div class="meta-grid">
                 <div class="lens-input-wrapper">
                     <label>KEYWORD / PHRASE</label>
@@ -347,8 +347,8 @@ if ($is_hub) {
                     <input type="text" id="keyword-reason" class="full-width-input" placeholder="Why this keyword">
                 </div>
             </div>
-            <button type="button" class="btn-smack" onclick="addKeyword()" style="margin-top:12px;">Add Keyword</button>
-            <div id="keyword-list" style="margin-top:24px;"></div>
+            <button type="button" class="btn-smack mt-12" onclick="addKeyword()">Add Keyword</button>
+            <div id="keyword-list" class="mt-24"></div>
         </div>
     </div>
 
@@ -374,7 +374,7 @@ if ($is_hub) {
                     <input type="text" id="ban-reason" class="full-width-input" placeholder="e.g., Spam, Abuse, Sockpuppet">
                 </div>
             </div>
-            <button type="button" class="btn-smack" onclick="issueBan()" style="margin-top:12px;">Issue Ban</button>
+            <button type="button" class="btn-smack mt-12" onclick="issueBan()">Issue Ban</button>
         </div>
     </div>
 
@@ -382,12 +382,12 @@ if ($is_hub) {
     <div class="tab-content" id="tab-ip-smacker">
         <div class="box">
             <h3>IP SMACKER — Auto-Banned IPs</h3>
-            <p class="dim" style="margin-bottom:16px;">
+            <p class="dim mb-16">
                 IPs banned automatically by the login brute-force detector (5 failures in 10 minutes → 7-day ban).
                 UA-filtered requests are silently dropped and not listed here.
                 Lift a ban early if you blocked a legitimate user.
             </p>
-            <div id="ip-smacker-list"><em style="opacity:0.5;">Loading…</em></div>
+            <div id="ip-smacker-list"><em class="o-50">Loading…</em></div>
         </div>
     </div>
 
@@ -397,17 +397,17 @@ if ($is_hub) {
         <div class="box">
             <h3>Hub Shared Ban Registry</h3>
             <?php if (!$ban_sync_on): ?>
-            <div class="alert alert-info" style="margin-bottom:16px;">
+            <div class="alert alert-info mb-16">
                 Ban sync is currently disabled. Enable it in <a href="smack-community-settings.php">Community Settings → Shield</a>.
             </div>
             <?php endif; ?>
-            <p class="dim" style="margin-bottom:16px;">
+            <p class="dim mb-16">
                 Consolidated ban hashes collected from all connected spokes. Only SHA-256 hashes are stored — no raw IPs or emails.
                 Report count shows how many distinct spokes have reported the same identifier.
                 Clearing a ban removes it from distribution but preserves the audit row (shown in grey).
             </p>
             <div id="shared-ban-list"></div>
-            <div id="shared-ban-paginator" style="margin-top:20px; text-align:center;"></div>
+            <div id="shared-ban-paginator" class="mt-20 text-center"></div>
         </div>
     </div>
     <?php endif; ?>
@@ -448,14 +448,14 @@ function loadBans(page) {
     fetch('smack-fingerprints.php', { method: 'POST', body: fd })
         .then(r => r.json())
         .then(data => {
-            let html = '<table class="admin-table" style="width:100%;"><tbody>';
+            let html = '<table class="admin-table w-100"><tbody>';
             data.bans.forEach(ban => {
                 html += `<tr>
                     <td><code>${ban.ban_value.substring(0, 16)}...</code></td>
                     <td><span class="dim">${ban.ban_type}</span></td>
                     <td>${ban.reason || '(no reason given)'}</td>
-                    <td style="text-align:right;"><small>${new Date(ban.banned_at).toLocaleDateString()}</small></td>
-                    <td style="text-align:right;"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="removeBan(${ban.id})">Unban</button></td>
+                    <td class="text-right"><small>${new Date(ban.banned_at).toLocaleDateString()}</small></td>
+                    <td class="text-right"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="removeBan(${ban.id})">Unban</button></td>
                 </tr>`;
             });
             html += '</tbody></table>';
@@ -483,14 +483,14 @@ function loadFingerprints(page) {
     fetch('smack-fingerprints.php', { method: 'POST', body: fd })
         .then(r => r.json())
         .then(data => {
-            let html = '<table class="admin-table" style="width:100%;"><tbody>';
+            let html = '<table class="admin-table w-100"><tbody>';
             data.bans.forEach(ban => {
                 html += `<tr>
                     <td><code>${ban.ban_value.substring(0, 24)}...</code></td>
                     <td>${ban.ban_type}</td>
                     <td><strong>${ban.fp_comment_count || ban.ip_comment_count || 0}</strong> comments</td>
                     <td><span style="color:var(--danger,#cc4444);">⚫ BANNED</span></td>
-                    <td style="text-align:right;"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="banFingerprint('${ban.ban_value}', '${ban.ban_type}')">Ban</button></td>
+                    <td class="text-right"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="banFingerprint('${ban.ban_value}', '${ban.ban_type}')">Ban</button></td>
                 </tr>`;
             });
             html += '</tbody></table>';
@@ -585,14 +585,14 @@ function loadSemantic() {
             if (!data.ok || data.similar.length === 0) {
                 html = '<p class="dim">No similar fingerprints found (threshold: 55%).</p>';
             } else {
-                html = '<table class="admin-table" style="width:100%;"><tbody>';
-                html += '<tr style="font-weight:bold;"><td>Fingerprint</td><td>Similarity</td><td>Comments</td><td></td></tr>';
+                html = '<table class="admin-table w-100"><tbody>';
+                html += '<tr class="fw-bold"><td>Fingerprint</td><td>Similarity</td><td>Comments</td><td></td></tr>';
                 data.similar.forEach(s => {
                     html += `<tr>
                         <td><code>${s.fingerprint.substring(0, 24)}...</code></td>
                         <td><strong>${Math.round(s.similarity * 100)}%</strong></td>
                         <td>${s.comment_count}</td>
-                        <td style="text-align:right;"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="banSimilar('${s.fingerprint}')">Ban</button></td>
+                        <td class="text-right"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="banSimilar('${s.fingerprint}')">Ban</button></td>
                     </tr>`;
                 });
                 html += '</tbody></table>';
@@ -669,8 +669,8 @@ function loadKeywords() {
             if (!data.ok || data.keywords.length === 0) {
                 html = '<p class="dim">No banned keywords yet.</p>';
             } else {
-                html = '<table class="admin-table" style="width:100%;"><tbody>';
-                html += '<tr style="font-weight:bold;"><td>Keyword</td><td>Type</td><td>Severity</td><td>Reason</td><td></td></tr>';
+                html = '<table class="admin-table w-100"><tbody>';
+                html += '<tr class="fw-bold"><td>Keyword</td><td>Type</td><td>Severity</td><td>Reason</td><td></td></tr>';
                 data.keywords.forEach(kw => {
                     const severity_color = kw.severity === 'reject' ? 'color:var(--danger,#cc4444)' : '';
                     html += `<tr>
@@ -678,7 +678,7 @@ function loadKeywords() {
                         <td><span class="dim">${kw.match_type}</span></td>
                         <td style="${severity_color}"><strong>${kw.severity}</strong></td>
                         <td>${kw.reason || '(none)'}</td>
-                        <td style="text-align:right;"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="removeKeyword('${kw.keyword.replace(/'/g, "\\'")}')">Remove</button></td>
+                        <td class="text-right"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="removeKeyword('${kw.keyword.replace(/'/g, "\\'")}')">Remove</button></td>
                     </tr>`;
                 });
                 html += '</tbody></table>';
@@ -711,8 +711,8 @@ function loadSharedBans(page) {
             }
 
             const typeLabel = { fingerprint: 'Fingerprint', ip: 'IP', email_hash: 'Email' };
-            let html = '<table class="admin-table" style="width:100%;"><tbody>';
-            html += '<tr style="font-weight:bold;"><td>Hash</td><td>Type</td><td>Reason</td><td>Reported By</td><td style="text-align:center;">Reports</td><td>Last Seen</td><td></td></tr>';
+            let html = '<table class="admin-table w-100"><tbody>';
+            html += '<tr class="fw-bold"><td>Hash</td><td>Type</td><td>Reason</td><td>Reported By</td><td class="text-center">Reports</td><td>Last Seen</td><td></td></tr>';
             data.rows.forEach(row => {
                 const shortHash = row.ban_value.substring(0, 16) + '…';
                 const reporter  = row.reported_by ? (new URL(row.reported_by).hostname) : '—';
@@ -727,9 +727,9 @@ function loadSharedBans(page) {
                     <td><span class="dim">${typeLabel[row.ban_type] || row.ban_type}</span></td>
                     <td>${row.reason || '<span class="dim">(none)</span>'}</td>
                     <td><span class="dim" title="${row.reported_by}">${reporter}</span></td>
-                    <td style="text-align:center;">${countBadge}</td>
+                    <td class="text-center">${countBadge}</td>
                     <td><small>${lastSeen}</small></td>
-                    <td style="text-align:right;"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="removeSharedBan(${row.id})">Clear</button></td>
+                    <td class="text-right"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="removeSharedBan(${row.id})">Clear</button></td>
                 </tr>`;
             });
             html += '</tbody></table>';
@@ -765,7 +765,7 @@ function removeSharedBan(banId) {
 // ── IP SMACKER ────────────────────────────────────────────────────────────────
 function loadIpSmacker() {
     const el = document.getElementById('ip-smacker-list');
-    el.innerHTML = '<em style="opacity:0.5;">Loading…</em>';
+    el.innerHTML = '<em class="o-50">Loading…</em>';
     const fd = new FormData();
     fd.append('action', 'fetch_ip_bans');
     fetch('smack-fingerprints.php', { method: 'POST', body: fd })
@@ -775,7 +775,7 @@ function loadIpSmacker() {
                 el.innerHTML = '<p class="dim">No active auto-bans. Good.</p>';
                 return;
             }
-            let html = '<table class="admin-table" style="width:100%;"><tbody>';
+            let html = '<table class="admin-table w-100"><tbody>';
             html += '<tr style="font-weight:bold;font-size:0.78rem;"><td>IP</td><td>Reason</td><td>Banned At</td><td>Expires</td><td></td></tr>';
             data.bans.forEach(row => {
                 const banned  = new Date(row.banned_at).toLocaleString();
@@ -786,7 +786,7 @@ function loadIpSmacker() {
                     <td><span class="dim">${row.reason}</span></td>
                     <td><small>${banned}</small></td>
                     <td><small>${expires}${expired ? ' <em>(expired)</em>' : ''}</small></td>
-                    <td style="text-align:right;">
+                    <td class="text-right">
                         <button class="btn-smack btn-smack--dim btn-smack--sm"
                                 onclick="liftIpBan('${row.ip.replace(/'/g,'')}')">Lift</button>
                     </td>

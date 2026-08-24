@@ -80,7 +80,7 @@ include 'core/sidebar.php';
 
 <div class="main">
     <h2>SOLO IMAGE APPEARANCE</h2>
-    <p class="dim" style="margin-bottom:20px;">Controls how individual post pages look and behave — EXIF display, download behaviour, and typography.</p>
+    <p class="dim mb-20">Controls how individual post pages look and behave — EXIF display, download behaviour, and typography.</p>
 
     <?php if (isset($_GET['msg'])): ?>
         <div class="alert alert-success">> SOLO IMAGE APPEARANCE SAVED</div>
@@ -174,7 +174,7 @@ include 'core/sidebar.php';
                                 $sz_u   = strtoupper($sz['unit'] ?? 'REM');
                                 $sz_val = ($settings[$sz_key] ?? '') !== '' ? $settings[$sz_key] : ($sz['default'] ?? '1.0');
                             ?>
-                            <div style="margin-top:12px;">
+                            <div class="mt-12">
                                 <label style="display:block;font-size:0.7rem;letter-spacing:1.5px;text-transform:uppercase;opacity:0.5;margin-bottom:6px;">Font Size (<?php echo strtolower($sz_u); ?>)</label>
                                 <div class="range-wrapper">
                                     <input type="range" name="settings[<?php echo $sz_key; ?>]" min="0.6" max="2.4" step="0.05"
@@ -274,7 +274,7 @@ include 'core/sidebar.php';
         <?php endif; ?>
 
         <!-- ── SAVE ───────────────────────────────────────────────────── -->
-        <div style="margin-top:4px;">
+        <div class="mt-4">
             <button type="submit" name="save_solo_appearance" class="master-update-btn">SAVE SOLO APPEARANCE</button>
         </div>
 

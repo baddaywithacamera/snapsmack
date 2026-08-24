@@ -1231,8 +1231,8 @@ include 'core/sidebar.php';
                     <p style="font-size:0.9rem; color:var(--text-muted,#888); margin-bottom:15px;">
                         Connect this site to a central hub for remote monitoring and management.
                     </p>
-                    <form method="POST" style="margin:0;">
-                        <button type="submit" name="enable_spoke" class="master-update-btn" style="width:100%;">
+                    <form method="POST" class="m-0">
+                        <button type="submit" name="enable_spoke" class="master-update-btn w-100">
                             ENABLE AS SPOKE
                         </button>
                     </form>
@@ -1243,8 +1243,8 @@ include 'core/sidebar.php';
                     <p style="font-size:0.9rem; color:var(--text-muted,#888); margin-bottom:15px;">
                         Manage and monitor multiple SnapSmack installations from a central dashboard.
                     </p>
-                    <form method="POST" style="margin:0;">
-                        <button type="submit" name="enable_hub" class="master-update-btn" style="width:100%;">
+                    <form method="POST" class="m-0">
+                        <button type="submit" name="enable_hub" class="master-update-btn w-100">
                             ENABLE AS HUB
                         </button>
                     </form>
@@ -1261,7 +1261,7 @@ include 'core/sidebar.php';
                 'pending_comments'
             ));
         ?>
-        <div class="signal-control-header" style="margin-bottom:20px;">
+        <div class="signal-control-header mb-20">
             <div class="signal-nav-group">
                 <a href="smack-multisite.php"          class="btn-clear active">DASHBOARD</a>
                 <a href="smack-multisite-comments.php" class="btn-clear">
@@ -1300,17 +1300,17 @@ include 'core/sidebar.php';
                 ));
             ?>
 
-            <div id="update-progress-live" style="margin-bottom:6px;"></div>
+            <div id="update-progress-live" class="mb-6"></div>
             <?php if (!empty($update_results)): ?>
                 <div id="update-progress-php" style="margin-bottom:18px;">
                     <?php foreach ($update_results as $ur): ?>
                         <?php if ($ur['ok']): ?>
                             <?php if (($ur['status'] ?? '') === 'already_current'): ?>
-                                <div class="alert alert-success" style="margin-bottom:6px;">
+                                <div class="alert alert-success mb-6">
                                     ✓ <strong><?php echo htmlspecialchars($ur['name']); ?></strong> — already on current version.
                                 </div>
                             <?php else: ?>
-                                <div class="alert alert-success" style="margin-bottom:6px;">
+                                <div class="alert alert-success mb-6">
                                     ✓ <strong><?php echo htmlspecialchars($ur['name']); ?></strong>
                                     updated <?php echo htmlspecialchars($ur['from']); ?> → <?php echo htmlspecialchars($ur['to']); ?>
                                     (<?php echo (int)$ur['files']; ?> files<?php echo $ur['migs'] > 0 ? ', ' . (int)$ur['migs'] . ' migration' . ($ur['migs'] !== 1 ? 's' : '') : ''; ?>)<?php
@@ -1318,7 +1318,7 @@ include 'core/sidebar.php';
                                 </div>
                             <?php endif; ?>
                         <?php else: ?>
-                            <div class="alert alert-error" style="margin-bottom:6px;">
+                            <div class="alert alert-error mb-6">
                                 ✗ <strong><?php echo htmlspecialchars($ur['name']); ?></strong> — <?php echo htmlspecialchars($ur['detail']); ?>
                             </div>
                         <?php endif; ?>
@@ -1327,12 +1327,12 @@ include 'core/sidebar.php';
             <?php endif; ?>
 
             <?php if (empty($nodes) || count(array_filter($nodes, fn($n) => $n['role'] === 'spoke')) === 0): ?>
-                <p style="color:var(--text-muted,#888);">No spokes connected yet. Register one below.</p>
+                <p class="text-muted">No spokes connected yet. Register one below.</p>
             <?php else: ?>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
                     <?php if ($behind_count > 0): ?>
                         <form method="POST" id="update-all-form" data-behind-ids='<?php echo htmlspecialchars(json_encode($behind_ids), ENT_QUOTES, "UTF-8"); ?>'>
-                            <button type="submit" name="push_update_all" class="btn-smack" style="width:auto;height:auto;margin-top:0;padding:8px 18px;">
+                            <button type="submit" name="push_update_all" class="btn-smack btn-auto">
                                 UPDATE ALL BEHIND (<?php echo $behind_count; ?>)
                             </button>
                         </form>
@@ -1343,16 +1343,16 @@ include 'core/sidebar.php';
                     <?php endif; ?>
                     <form method="POST">
                         <input type="hidden" name="maintenance_mode" value="1">
-                        <button type="submit" name="push_maintenance_all" class="btn-smack btn-warning"
-                                style="width:auto;height:auto;margin-top:0;padding:8px 18px;"
+                        <button type="submit" name="push_maintenance_all" class="btn-smack btn-warning btn-auto"
+                               
                                 onclick="return confirm('Put ALL active spokes into maintenance mode?');">
                             MAINTENANCE ALL ON
                         </button>
                     </form>
                     <form method="POST">
                         <input type="hidden" name="maintenance_mode" value="0">
-                        <button type="submit" name="push_maintenance_all" class="btn-smack"
-                                style="width:auto;height:auto;margin-top:0;padding:8px 18px;"
+                        <button type="submit" name="push_maintenance_all" class="btn-smack btn-auto"
+                               
                                 onclick="return confirm('Take ALL active spokes out of maintenance mode?');">
                             MAINTENANCE ALL OFF
                         </button>
@@ -1397,7 +1397,7 @@ include 'core/sidebar.php';
                             '<div style="margin-bottom:6px;font-size:0.85rem;letter-spacing:1px;">' +
                               'UPDATING ' + Math.min(done + 1, total) + ' OF ' + total +
                               (current ? ' &mdash; ' + esc(current) : '') +
-                              '  <span style="color:var(--text-muted,#888);">(' + okCount +
+                              '  <span class="text-muted">(' + okCount +
                               ' ok, ' + failCount + ' failed)</span></div>' +
                             '<div style="height:6px;background:rgba(255,255,255,0.12);border-radius:3px;overflow:hidden;">' +
                               '<div style="height:100%;width:' + pct + '%;background:var(--accent,#00d4d4);transition:width .2s;"></div>' +
@@ -1407,8 +1407,8 @@ include 'core/sidebar.php';
                         if (btn) btn.textContent = "DONE";   // stays disabled; reload via the link
                         if (live) {
                             live.innerHTML =
-                                '<div class="alert ' + (failCount ? "alert-warning" : "alert-success") +
-                                '" style="margin-bottom:6px;">Finished &mdash; ' + okCount + ' updated, ' +
+                                '<div class="alert ' + (failCount ? mb-6"alert-warning" : "alert-success") +
+                                '">Finished &mdash; ' + okCount + ' updated, ' +
                                 failCount + ' failed. <a href="#" onclick="location.reload();return false;">' +
                                 'Reload</a> to refresh the board.</div>';
                         }
@@ -1460,7 +1460,7 @@ include 'core/sidebar.php';
                 })();
                 </script>
 
-                <div style="overflow-x:auto;">
+                <div class="ox-auto">
                     <table class="multisite-table">
                         <thead>
                             <tr>
@@ -1504,7 +1504,7 @@ include 'core/sidebar.php';
                                 </td>
                                 <td class="col-center">
                                     <?php if ($hub_update_track === 'dev'): ?>
-                                        <span style="font-size:0.7rem; font-weight:700; letter-spacing:1px; color:#f90;">BITCHIN'</span>
+                                        <span style="font-size:0.7rem; font-weight:700; letter-spacing:1px; color:var(--warning, #f90);">BITCHIN'</span>
                                     <?php else: ?>
                                         <span style="font-size:0.7rem; font-weight:700; letter-spacing:1px; color:var(--text-muted,#888);">BORING</span>
                                     <?php endif; ?>
@@ -1735,18 +1735,18 @@ include 'core/sidebar.php';
             </p>
 
             <?php if (!empty($skin_results)): ?>
-                <div style="margin-bottom:14px;">
+                <div class="mb-14">
                     <?php foreach ($skin_results as $sr): ?>
                         <?php if (!empty($sr['skipped'])): ?>
-                            <div class="alert alert-muted" style="margin-bottom:6px;">
+                            <div class="alert alert-muted mb-6">
                                 – <strong><?php echo htmlspecialchars($sr['name']); ?></strong> — <?php echo htmlspecialchars($sr['detail']); ?>
                             </div>
                         <?php elseif ($sr['ok']): ?>
-                            <div class="alert alert-success" style="margin-bottom:6px;">
+                            <div class="alert alert-success mb-6">
                                 ✓ <strong><?php echo htmlspecialchars($sr['name']); ?></strong> — <?php echo htmlspecialchars($sr['detail'] ?: 'Skin installed successfully.'); ?>
                             </div>
                         <?php else: ?>
-                            <div class="alert alert-error" style="margin-bottom:6px;">
+                            <div class="alert alert-error mb-6">
                                 ✗ <strong><?php echo htmlspecialchars($sr['name']); ?></strong> — <?php echo htmlspecialchars($sr['detail']); ?>
                             </div>
                         <?php endif; ?>
@@ -1791,12 +1791,12 @@ include 'core/sidebar.php';
                 </select>
 
                 <div class="skin-deploy-buttons">
-                    <button type="submit" name="push_skin" class="btn-smack"
-                            style="width:auto;height:auto;margin-top:0;padding:8px 18px;">
+                    <button type="submit" name="push_skin" class="btn-smack btn-auto"
+                           >
                         PUSH TO SPOKE
                     </button>
-                    <button type="submit" name="push_skin_all" class="btn-smack"
-                            style="width:auto;height:auto;margin-top:0;padding:8px 18px;"
+                    <button type="submit" name="push_skin_all" class="btn-smack btn-auto"
+                           
                             onclick="return confirm('Push this skin to ALL active spokes?');">
                         PUSH TO ALL SPOKES
                     </button>
@@ -1804,7 +1804,7 @@ include 'core/sidebar.php';
             </form>
             </details>
             <?php else: ?>
-                <p style="color:var(--text-muted,#888);">Skin registry unavailable -- check your connection to snapsmack.ca.</p>
+                <p class="text-muted">Skin registry unavailable -- check your connection to snapsmack.ca.</p>
             <?php endif; ?>
         </div>
         <?php endif; ?>
@@ -1847,16 +1847,16 @@ include 'core/sidebar.php';
             ?>
             <?php if (!empty($fleet_updates)): ?>
             <div style="margin-bottom:16px; padding:12px 14px; border:1px solid rgba(200,140,0,0.35); border-radius:6px; background:rgba(200,140,0,0.06);">
-                <div style="font-size:0.78rem; letter-spacing:0.05em; color:#e0a020; margin-bottom:10px;">UPDATES READY ACROSS THE FLEET</div>
+                <div style="font-size:0.78rem; letter-spacing:0.05em; color:var(--warning, #e0a020); margin-bottom:10px;">UPDATES READY ACROSS THE FLEET</div>
                 <?php foreach ($fleet_updates as $fslug => $fu): ?>
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:5px 0;">
-                    <span style="font-size:0.9rem;">
+                    <span class="text-0-9">
                         <?php echo htmlspecialchars($fu['name']); ?> &rarr; v<?php echo htmlspecialchars($fu['latest']); ?>
                         <span style="color:var(--text-muted,#888); font-size:0.82rem;">
                             — <?php echo (int)$fu['count']; ?> spoke<?php echo $fu['count'] === 1 ? '' : 's'; ?> behind
                         </span>
                     </span>
-                    <form method="POST" style="margin:0;">
+                    <form method="POST" class="m-0">
                         <input type="hidden" name="skin_slug"    value="<?php echo htmlspecialchars($fslug); ?>">
                         <input type="hidden" name="download_url" value="<?php echo htmlspecialchars($fu['url']); ?>">
                         <input type="hidden" name="signature"    value="<?php echo htmlspecialchars($fu['sig']); ?>">
@@ -1907,7 +1907,7 @@ include 'core/sidebar.php';
                                 <td style="padding:6px 8px 6px 0;">
                                     <?php echo htmlspecialchars($sk['name']); ?>
                                     <?php if ($sk['is_active']): ?>
-                                        <span style="margin-left:6px; font-size:0.7rem; padding:1px 6px; border-radius:3px; background:rgba(93,234,93,0.15); color:#5dea5d;">ACTIVE</span>
+                                        <span style="margin-left:6px; font-size:0.7rem; padding:1px 6px; border-radius:3px; background:rgba(93,234,93,0.15); color:var(--success, #5dea5d);">ACTIVE</span>
                                     <?php endif; ?>
                                 </td>
                                 <td style="padding:6px 8px; color:var(--text-muted,#888); white-space:nowrap;">
@@ -1915,11 +1915,11 @@ include 'core/sidebar.php';
                                 </td>
                                 <td style="padding:6px 8px; white-space:nowrap;">
                                     <?php if ($sk['state'] === 'update'): ?>
-                                        <span style="font-size:0.72rem; padding:2px 8px; border-radius:3px; background:rgba(200,140,0,0.18); color:#e0a020;">UPDATE READY</span>
+                                        <span style="font-size:0.72rem; padding:2px 8px; border-radius:3px; background:rgba(200,140,0,0.18); color:var(--warning, #e0a020);">UPDATE READY</span>
                                     <?php elseif ($sk['state'] === 'current'): ?>
-                                        <span style="font-size:0.72rem; padding:2px 8px; border-radius:3px; background:rgba(93,234,93,0.12); color:#5dea5d;">UP TO DATE</span>
+                                        <span style="font-size:0.72rem; padding:2px 8px; border-radius:3px; background:rgba(93,234,93,0.12); color:var(--success, #5dea5d);">UP TO DATE</span>
                                     <?php else: ?>
-                                        <span style="font-size:0.72rem; padding:2px 8px; border-radius:3px; background:rgba(150,150,150,0.15); color:#999;">NOT IN REGISTRY</span>
+                                        <span style="font-size:0.72rem; padding:2px 8px; border-radius:3px; background:rgba(150,150,150,0.15); color:var(--text-muted, #999);">NOT IN REGISTRY</span>
                                     <?php endif; ?>
                                 </td>
                                 <td style="padding:6px 0 6px 8px; text-align:right; white-space:nowrap;">
@@ -1960,7 +1960,7 @@ include 'core/sidebar.php';
                 </p>
 
                 <div style="padding:12px 15px; background:rgba(200,140,0,0.12); border:1px solid rgba(200,140,0,0.45); border-radius:4px; margin-bottom:20px;">
-                    <p style="margin:0; font-size:0.85rem; color:#c88c00;">
+                    <p style="margin:0; font-size:0.85rem; color:var(--warning, #c88c00);">
                         <strong>⚠ Security note:</strong> Only connect to a hub you personally own and control.
                         The hub will have admin-level access to this site — including the ability to push settings, deploy updates, and trigger maintenance mode.
                         Never connect to a hub operated by a third party.
@@ -1977,7 +1977,7 @@ include 'core/sidebar.php';
                                style="width:100%; box-sizing:border-box; font-family:monospace; font-size:1rem;
                                       letter-spacing:2px; padding:12px 14px; margin-bottom:8px;
                                       background:var(--input-bg,#111); border:1px solid var(--border,#333);
-                                      border-radius:4px; color:#e0e0e0; cursor:text;"
+                                      border-radius:4px; color:var(--text, #e0e0e0); cursor:text;"
                                onclick="this.select();">
                         <button type="button" class="btn-smack" id="copy-token-btn" style="width:100%; margin-bottom:10px;"
                                 onclick="navigator.clipboard.writeText(document.getElementById('reg-token-display').value).then(function(){ var b=document.getElementById('copy-token-btn'); b.textContent='COPIED ✓'; setTimeout(function(){ b.textContent='COPY'; }, 2000); });">
@@ -1988,21 +1988,21 @@ include 'core/sidebar.php';
                         </p>
                     </div>
                 <?php else: ?>
-                    <form method="POST" style="margin-bottom:20px;">
+                    <form method="POST" class="mb-20">
                         <p class="dim" style="font-size:0.82rem; margin-bottom:12px;">
                             Joining a hub grants it admin-level access to this site, so it needs your password
                             (plus your 2FA code if you use it). Leaving a hub never needs a password.
                         </p>
                         <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px;">
                             <div>
-                                <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">PASSWORD</label>
+                                <label class="overline">PASSWORD</label>
                                 <input type="password" name="reauth_password" autocomplete="off"
-                                       style="padding:8px 10px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                                       class="field-input">
                             </div>
                             <div>
-                                <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">2FA CODE (if enabled)</label>
+                                <label class="overline">2FA CODE (if enabled)</label>
                                 <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off"
-                                       style="padding:8px 10px; width:120px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                                       class="field-input-120">
                             </div>
                         </div>
                         <button type="submit" name="gen_reg_token" class="master-update-btn">
@@ -2016,7 +2016,7 @@ include 'core/sidebar.php';
                 <div class="hub-connected-border" style="padding:15px; background:var(--input-bg,#111);">
                     <p><strong>Connected to Hub:</strong> <?php echo htmlspecialchars($hub['site_name']); ?></p>
                     <p style="color:var(--text-muted,#888); font-size:0.9rem;">
-                        URL: <a href="<?php echo htmlspecialchars($hub['site_url']); ?>" target="_blank" style="color:var(--accent,#aaa);">
+                        URL: <a href="<?php echo htmlspecialchars($hub['site_url']); ?>" target="_blank" class="text-accent">
                             <?php echo htmlspecialchars($hub['site_url']); ?>
                         </a>
                     </p>
@@ -2074,14 +2074,14 @@ include 'core/sidebar.php';
                 </div>
                 <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
                     <div>
-                        <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">PASSWORD (to enable)</label>
+                        <label class="overline">PASSWORD (to enable)</label>
                         <input type="password" name="reauth_password" autocomplete="off"
-                               style="padding:8px 10px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                               class="field-input">
                     </div>
                     <div>
-                        <label style="display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; margin-bottom:4px;">2FA CODE (if enabled)</label>
+                        <label class="overline">2FA CODE (if enabled)</label>
                         <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off"
-                               style="padding:8px 10px; width:120px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; color:#e0e0e0;">
+                               class="field-input-120">
                     </div>
                     <button type="submit" name="save_hub_perms" class="btn-smack btn-mt-0" style="padding:8px 20px;">SAVE PERMISSIONS</button>
                 </div>
@@ -2099,19 +2099,19 @@ include 'core/sidebar.php';
                 ")->fetchAll(PDO::FETCH_ASSOC);
             ?>
             <?php if (empty($log)): ?>
-                <p style="color:var(--text-muted,#888);">No API calls recorded yet.</p>
+                <p class="text-muted">No API calls recorded yet.</p>
             <?php else: ?>
-                <div style="overflow-x:auto;">
-                    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                <div class="ox-auto">
+                    <table class="data-table">
                         <thead>
-                            <tr style="border-bottom:1px solid var(--border,#333);">
-                                <th style="text-align:left; padding:8px; color:var(--text-muted,#888);">TIMESTAMP</th>
+                            <tr class="border-b">
+                                <th class="cell-l">TIMESTAMP</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($log as $entry): ?>
-                                <tr style="border-bottom:1px solid var(--border,#333);">
-                                    <td style="padding:8px;">
+                                <tr class="border-b">
+                                    <td class="p-8">
                                         <?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($entry['created_at']))); ?>
                                     </td>
                                 </tr>

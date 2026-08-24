@@ -284,7 +284,7 @@ include 'core/sidebar.php';
     <div class="header-row header-row--ruled">
         <h2>PANORAMA SLICER</h2>
         <div class="header-actions">
-            <span class="dim" style="font-size:12px; letter-spacing:1px;">TRIGRAM / TRIPTYCH</span>
+            <span class="dim text-12 ls-1">TRIGRAM / TRIPTYCH</span>
         </div>
     </div>
 
@@ -420,8 +420,8 @@ include 'core/sidebar.php';
 
         <!-- Trigram-cover: pick three existing posts ------------------------- -->
         <div class="box mt-30" id="sl-trigram-pick" style="display:none;">
-            <h3 style="margin:0 0 6px;">ASSIGN SLICES TO POSTS</h3>
-            <p class="skin-desc-text" style="margin:0 0 10px;">
+            <h3 class="m-0 mb-6">ASSIGN SLICES TO POSTS</h3>
+            <p class="skin-desc-text m-0 mb-10">
                 Click a post below to fill the next slot. Click a filled slot to clear it.
             </p>
             <div class="sl-slots">
@@ -454,7 +454,7 @@ include 'core/sidebar.php';
                 </button>
                 <?php endforeach; ?>
                 <?php if (empty($pick_posts)): ?>
-                    <p class="dim" style="grid-column:1/-1;">No posts yet to assign covers to.</p>
+                    <p class="dim grid-span-full">No posts yet to assign covers to.</p>
                 <?php endif; ?>
             </div>
         </div>

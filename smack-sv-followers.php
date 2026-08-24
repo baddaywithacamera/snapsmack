@@ -45,7 +45,7 @@ include 'core/sidebar.php';
             <?php if ($sv_on): ?>
                 <span class="alert-success" style="padding:2px 10px; margin-left:10px;">LIVE</span>
             <?php else: ?>
-                <span class="dim" style="margin-left:10px;">NOT FEDERATING</span>
+                <span class="dim ml-10">NOT FEDERATING</span>
             <?php endif; ?>
         </p>
         <table class="admin-table" style="max-width:640px;">

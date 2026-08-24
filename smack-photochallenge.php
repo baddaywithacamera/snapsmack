@@ -233,7 +233,7 @@ include 'core/sidebar.php';
             <label class="dim">Places to crown:
                 <input type="number" name="pc_places" min="1" max="10" value="3" style="width:70px; margin-left:6px;">
             </label>
-            <button type="submit" class="btn-smack" style="margin-left:10px;">CROWN</button>
+            <button type="submit" class="btn-smack ml-10">CROWN</button>
         </form>
     </div>
 
@@ -245,11 +245,11 @@ include 'core/sidebar.php';
         <?php else: ?>
             <table class="dim" style="width:100%; border-collapse:collapse;">
                 <?php foreach ($hof as $h): ?>
-                    <tr style="border-bottom:1px solid var(--border,#333);">
+                    <tr class="border-b">
                         <td style="padding:8px 6px; white-space:nowrap;">
                             <code><?php echo $esc($h['week_key']); ?></code> #<?php echo (int)$h['place']; ?>
                         </td>
-                        <td style="padding:8px 6px;">
+                        <td class="p-8-6">
                             <strong><?php echo $esc($h['handle']); ?></strong>
                             <?php /* SECAUDIT 047: scheme-guard federation URL */
                                   $__pu = (string)($h['post_url'] ?? ''); $__psafe = preg_match('#^https?://#i', $__pu) ? $__pu : ''; ?>
@@ -290,13 +290,13 @@ include 'core/sidebar.php';
         <?php else: ?>
             <table class="dim" style="width:100%; border-collapse:collapse;">
                 <?php foreach ($roster as $p): $hc = (int)$p['horsconcours'] === 1; ?>
-                    <tr style="border-bottom:1px solid var(--border,#333);">
-                        <td style="padding:8px 6px;">
+                    <tr class="border-b">
+                        <td class="p-8-6">
                             <strong><?php echo $esc($p['handle'] ?: $p['actor_url']); ?></strong>
                             <?php if ($hc): ?><span class="dim" title="hors concours — shown, never ranked"> · hc</span><?php endif; ?>
                         </td>
-                        <td style="padding:8px 6px;"><span class="dim"><?php echo $esc($p['state']); ?></span></td>
-                        <td style="padding:8px 6px;">
+                        <td class="p-8-6"><span class="dim"><?php echo $esc($p['state']); ?></span></td>
+                        <td class="p-8-6">
                             <form method="post" style="display:flex;gap:5px;flex-wrap:wrap;">
                                 <input type="hidden" name="action" value="participant_state">
                                 <input type="hidden" name="actor_url" value="<?php echo $esc($p['actor_url']); ?>">

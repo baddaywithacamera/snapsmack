@@ -392,9 +392,9 @@ include 'core/sidebar.php';
         </div>
 
         <?php if (!empty($shield_nodes)): ?>
-        <div style="margin-top:20px;">
+        <div class="mt-20">
             <h4 style="margin-bottom:10px; font-size:0.85em; letter-spacing:0.05em; color:var(--text-muted,#888);">SPOKE SYNC STATUS</h4>
-            <table class="admin-table" style="width:100%;">
+            <table class="admin-table w-100">
                 <tbody>
                 <tr style="font-weight:bold; font-size:0.85em;">
                     <td>Spoke</td>
@@ -407,7 +407,7 @@ include 'core/sidebar.php';
                     $hostname = parse_url($sn['site_url'], PHP_URL_HOST) ?: $sn['site_url'];
                     $sync_display = $cursor
                         ? date('Y-m-d H:i', strtotime($cursor))
-                        : '<span style="color:var(--text-muted,#888);">Never synced</span>';
+                        : '<span class="text-muted">Never synced</span>';
                     $status_color = $status === 'active' ? 'var(--accent,#7aad5a)' : 'var(--text-muted,#888)';
                 ?>
                 <tr>
@@ -424,7 +424,7 @@ include 'core/sidebar.php';
         <?php if ($shield_ban_count > 0): ?>
         <p style="margin-top:16px; font-size:0.9em;">
             <strong><?php echo $shield_ban_count; ?></strong> shared ban<?php echo $shield_ban_count !== 1 ? 's' : ''; ?> in hub registry.
-            <a href="smack-fingerprints.php" style="margin-left:8px;">View Shared Bans →</a>
+            <a href="smack-fingerprints.php" class="ml-8">View Shared Bans →</a>
         </p>
         <?php endif; ?>
     </div>

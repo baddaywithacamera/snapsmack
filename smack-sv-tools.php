@@ -53,9 +53,9 @@ include 'core/sidebar.php';
         </p>
         <form method="post" action="">
             <input type="hidden" name="action" value="set_push_mode">
-            <label class="dim" style="display:block; margin-bottom:12px;">
+            <label class="dim d-block mb-12">
                 Mode:
-                <select name="push_mode" style="margin-left:6px;">
+                <select name="push_mode" class="ml-6">
                     <option value="auto"   <?php echo $sv_pmode === 'auto'   ? 'selected' : ''; ?>>AUTO — federate on publish</option>
                     <option value="manual" <?php echo $sv_pmode === 'manual' ? 'selected' : ''; ?>>MANUAL — stage, arrange, then push</option>
                 </select>
@@ -88,15 +88,15 @@ include 'core/sidebar.php';
         <form method="post" action=""
               onsubmit="return confirm('Push your recent posts to followers? Seed = create any they are missing; Refresh = update ones they already have.');">
             <input type="hidden" name="action" value="resync">
-            <label class="dim" style="display:block; margin-bottom:12px;">
+            <label class="dim d-block mb-12">
                 Posts to push:
                 <input type="number" name="resync_count" min="1" max="500"
                        value="<?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 200); ?>"
-                       style="width:90px; margin-left:6px;">
+                       class="w-90 ml-6">
             </label>
-            <label class="dim" style="display:block; margin-bottom:12px;">
+            <label class="dim d-block mb-12">
                 Mode:
-                <select name="resync_mode" style="margin-left:6px;">
+                <select name="resync_mode" class="ml-6">
                     <option value="create">Seed / full rebuild — every post in grid order + carousels + comments (Create)</option>
                     <option value="update">Refresh existing renders (Update)</option>
                 </select>
@@ -120,11 +120,11 @@ include 'core/sidebar.php';
         <form method="post" action=""
               onsubmit="return confirm('RE-IMPRINT: give every post a new fediverse id, retract the old ones from followers, and re-send in your current grid order? Followers re-ingest clean. Safe (nothing is lost) but it sends a lot of deliveries.');">
             <input type="hidden" name="action" value="reimprint">
-            <label class="dim" style="display:block; margin-bottom:12px;">
+            <label class="dim d-block mb-12">
                 Posts to re-imprint:
                 <input type="number" name="reimprint_count" min="1" max="1000"
                        value="<?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 200); ?>"
-                       style="width:90px; margin-left:6px;">
+                       class="w-90 ml-6">
             </label>
             <button type="submit" class="btn-smack" <?php echo $sv_on ? '' : 'disabled'; ?>>RE-IMPRINT ORDER</button>
         </form>
@@ -144,13 +144,13 @@ include 'core/sidebar.php';
         <form method="post" action=""
               onsubmit="return confirm('Combine these images into ONE carousel? The old single posts are deleted locally and retracted from your followers. This cannot be undone.');">
             <input type="hidden" name="action" value="convert_carousel">
-            <label class="dim" style="display:block; margin-bottom:12px;">
+            <label class="dim d-block mb-12">
                 Image IDs (comma-separated, in order):
                 <input type="text" name="cc_images" placeholder="e.g. 412, 413, 414" style="width:240px; margin-left:6px;">
             </label>
-            <label class="dim" style="display:block; margin-bottom:12px;">
+            <label class="dim d-block mb-12">
                 Cover image ID (blank = first):
-                <input type="number" name="cc_cover" min="0" style="width:90px; margin-left:6px;">
+                <input type="number" name="cc_cover" min="0" class="w-90 ml-6">
             </label>
             <button type="submit" class="btn-smack">COMBINE INTO CAROUSEL</button>
         </form>

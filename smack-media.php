@@ -284,7 +284,7 @@ include 'core/sidebar.php';
                             <span class="border-saved-note"></span>
                         </div>
 
-                        <div class="asset-alt-control" style="margin-top:6px;">
+                        <div class="asset-alt-control mt-6">
                             <label class="border-label" style="align-items:flex-start;gap:6px;">ALT
                                 <input type="text" class="asset-alt-input" maxlength="500"
                                        value="<?php echo htmlspecialchars($a['asset_alt'] ?? '', ENT_QUOTES); ?>"

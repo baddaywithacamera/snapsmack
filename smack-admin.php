@@ -389,7 +389,7 @@ include 'core/sidebar.php';
             ?>
         </div>
         <div style="display:flex; gap:12px; align-items:center;">
-            <a href="smack-update.php" class="btn-smack" style="margin-top:0;">VIEW UPDATES</a>
+            <a href="smack-update.php" class="btn-smack mt-0">VIEW UPDATES</a>
             <a href="smack-admin.php?dismiss_update_notice=1" class="btn-smack-ghost" style="margin-top:0; white-space:nowrap;">DISMISS</a>
         </div>
     </div>

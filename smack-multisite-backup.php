@@ -170,7 +170,7 @@ include 'core/sidebar.php';
     </div>
 
     <!-- QUICK NAV -->
-    <div class="signal-control-header" style="margin-bottom:20px;">
+    <div class="signal-control-header mb-20">
         <div class="signal-nav-group">
             <a href="smack-multisite.php"             class="btn-clear">DASHBOARD</a>
             <a href="smack-multisite-comments.php"    class="btn-clear">COMMENTS</a>
@@ -186,7 +186,7 @@ include 'core/sidebar.php';
 
     <?php if (empty($spokes)): ?>
         <div class="box">
-            <p style="color:var(--text-muted,#888);">No spokes connected. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register a spoke</a> first.</p>
+            <p class="text-muted">No spokes connected. <a href="smack-multisite.php" class="text-accent">Register a spoke</a> first.</p>
         </div>
     <?php else: ?>
 
@@ -219,17 +219,17 @@ include 'core/sidebar.php';
     <div class="box">
         <h3>SPOKE BACKUP STATUS</h3>
 
-        <div style="overflow-x:auto;">
+        <div class="ox-auto">
             <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
                 <thead>
-                    <tr style="border-bottom:1px solid var(--border,#333);">
+                    <tr class="border-b">
                         <th style="text-align:left;   padding:10px; color:var(--text-muted,#888);">SPOKE</th>
-                        <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">HEALTH</th>
-                        <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">LAST BACKUP</th>
-                        <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">SIZE</th>
-                        <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">DESTINATION</th>
-                        <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">DISK USED</th>
-                        <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">LOG</th>
+                        <th class="cell-c">HEALTH</th>
+                        <th class="cell-c">LAST BACKUP</th>
+                        <th class="cell-c">SIZE</th>
+                        <th class="cell-c">DESTINATION</th>
+                        <th class="cell-c">DISK USED</th>
+                        <th class="cell-c">LOG</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -240,7 +240,7 @@ include 'core/sidebar.php';
                         $is_drilling = $drill_node === $spoke['id'];
                     ?>
                         <tr style="border-bottom:1px solid var(--border,#333); <?php echo $is_drilling ? 'background:var(--hover-bg,rgba(255,255,255,0.03));' : ''; ?>">
-                            <td style="padding:10px;">
+                            <td class="p-10">
                                 <strong><?php echo htmlspecialchars($spoke['site_name'] ?? 'Unknown'); ?></strong>
                                 <div style="font-size:0.8rem; color:var(--text-muted,#888);">
                                     <a href="<?php echo htmlspecialchars($spoke['site_url']); ?>" target="_blank" style="color:inherit; text-decoration:none;">
@@ -248,11 +248,11 @@ include 'core/sidebar.php';
                                     </a>
                                 </div>
                                 <?php if ($is_offline): ?>
-                                    <div style="font-size:0.75rem; color:#f44336; margin-top:3px;">OFFLINE</div>
+                                    <div style="font-size:0.75rem; color:var(--danger, #f44336); margin-top:3px;">OFFLINE</div>
                                 <?php endif; ?>
                             </td>
 
-                            <td style="padding:10px; text-align:center;">
+                            <td class="p-10 text-center">
                                 <span style="display:inline-flex; align-items:center; gap:6px;">
                                     <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:<?php echo $color; ?>;"></span>
                                     <span style="color:<?php echo $color; ?>; font-size:0.8rem; font-weight:700;">
@@ -268,7 +268,7 @@ include 'core/sidebar.php';
                                         echo htmlspecialchars(rel_time($spoke['last_backup_at']));
                                         echo '</span>';
                                     } else {
-                                        echo '<span style="color:#666;">never</span>';
+                                        echo '<span style="color:var(--text-muted, #666);">never</span>';
                                     }
                                 ?>
                             </td>
@@ -277,7 +277,7 @@ include 'core/sidebar.php';
                                 <?php echo human_bytes((int)($spoke['last_backup_size'] ?? 0)); ?>
                             </td>
 
-                            <td style="padding:10px; text-align:center;">
+                            <td class="p-10 text-center">
                                 <?php
                                     $dest = $spoke['last_backup_dest'] ?? '';
                                     $dest_icons = [
@@ -287,7 +287,7 @@ include 'core/sidebar.php';
                                     $icon = $dest_icons[strtolower($dest)] ?? '&#x2753;';
                                     echo $dest
                                         ? '<span title="' . htmlspecialchars($dest) . '">' . $icon . ' <span style="font-size:0.8rem; color:var(--text-muted,#888);">' . htmlspecialchars(strtoupper($dest)) . '</span></span>'
-                                        : '<span style="color:#666;">—</span>';
+                                        : '<span style="color:var(--text-muted, #666);">—</span>';
                                 ?>
                             </td>
 
@@ -295,7 +295,7 @@ include 'core/sidebar.php';
                                 <?php echo human_bytes((int)($spoke['disk_usage_bytes'] ?? 0)); ?>
                             </td>
 
-                            <td style="padding:10px; text-align:center;">
+                            <td class="p-10 text-center">
                                 <?php if ($spoke['status'] === 'active'): ?>
                                     <a href="smack-multisite-backup.php?node=<?php echo $spoke['id']; ?>#drill"
                                        class="btn-clear <?php echo $is_drilling ? 'active' : ''; ?>"
@@ -303,7 +303,7 @@ include 'core/sidebar.php';
                                         <?php echo $is_drilling ? 'VIEWING' : 'VIEW'; ?>
                                     </a>
                                 <?php else: ?>
-                                    <span style="color:#666; font-size:0.8rem;">OFFLINE</span>
+                                    <span style="color:var(--text-muted, #666); font-size:0.8rem;">OFFLINE</span>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -318,19 +318,19 @@ include 'core/sidebar.php';
                                         </h4>
 
                                         <?php if ($drill_err): ?>
-                                            <p style="color:#f44336; font-size:0.85rem;"><?php echo htmlspecialchars($drill_err); ?></p>
+                                            <p style="color:var(--danger, #f44336); font-size:0.85rem;"><?php echo htmlspecialchars($drill_err); ?></p>
 
                                         <?php elseif (empty($drill_log)): ?>
                                             <p style="color:var(--text-muted,#666); font-size:0.85rem;">No backup log entries found. Requires snap_backup_log table on the spoke.</p>
 
                                         <?php else: ?>
-                                            <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                                            <table class="data-table">
                                                 <thead>
-                                                    <tr style="border-bottom:1px solid var(--border,#333);">
+                                                    <tr class="border-b">
                                                         <th style="text-align:left;   padding:6px 10px; color:var(--text-muted,#888);">DATE</th>
-                                                        <th style="text-align:center; padding:6px 10px; color:var(--text-muted,#888);">STATUS</th>
-                                                        <th style="text-align:center; padding:6px 10px; color:var(--text-muted,#888);">SIZE</th>
-                                                        <th style="text-align:center; padding:6px 10px; color:var(--text-muted,#888);">DESTINATION</th>
+                                                        <th class="cell-c6">STATUS</th>
+                                                        <th class="cell-c6">SIZE</th>
+                                                        <th class="cell-c6">DESTINATION</th>
                                                         <th style="text-align:left;   padding:6px 10px; color:var(--text-muted,#888);">NOTES</th>
                                                     </tr>
                                                 </thead>
@@ -339,7 +339,7 @@ include 'core/sidebar.php';
                                                         $entry_status = $entry['status'] ?? 'unknown';
                                                         $entry_color  = $entry_status === 'ok' ? '#4CAF50' : ($entry_status === 'failed' ? '#f44336' : '#888');
                                                     ?>
-                                                        <tr style="border-bottom:1px solid var(--border,#222);">
+                                                        <tr class="border-b-dim">
                                                             <td style="padding:6px 10px; color:var(--text-muted,#888);">
                                                                 <?php echo htmlspecialchars(substr($entry['created_at'] ?? '', 0, 16)); ?>
                                                             </td>

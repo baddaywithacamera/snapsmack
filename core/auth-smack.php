@@ -95,7 +95,7 @@ if (!function_exists('smack_require_admin')) {
         } else {
             $back = htmlspecialchars(BASE_URL, ENT_QUOTES) . 'smack-admin.php';
             echo '<!doctype html><meta charset="utf-8"><title>Administrator access required</title>'
-               . '<div style="font:16px/1.55 system-ui,sans-serif;max-width:34rem;margin:16vh auto;padding:0 1.5rem;color:#222">'
+               . '<div style="font:16px/1.55 system-ui,sans-serif;max-width:34rem;margin:16vh auto;padding:0 1.5rem;color:var(--text-muted, #222)">'
                . '<h1 style="font-size:1.4rem;margin:0 0 .6rem">Administrator access required</h1>'
                . '<p>This tool changes site-wide settings, accounts, or system state, so only administrator '
                . 'accounts can open it. Your account is signed in as an editor (content only).</p>'

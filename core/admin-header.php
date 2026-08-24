@@ -128,11 +128,11 @@ ob_start();
 <div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('open'); this.classList.remove('open');"></div>
 <?php if (!empty($GLOBALS['_smackback_alert_breach'])): ?>
 <style>#smackback-banner{margin-left:240px;}@media(max-width:1024px){#smackback-banner{margin-left:0;}}</style>
-<div id="smackback-banner" style="background:#3a1000;border-bottom:3px solid #cc2200;padding:10px 24px;font-size:0.88rem;color:#ffccc0;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:999;">
-    <strong style="color:#ff6600;letter-spacing:1px;font-size:0.82rem;">&#9888; SMACKBACK</strong>
+<div id="smackback-banner" style="background:var(--danger, #3a1000);border-bottom:3px solid var(--danger, #cc2200);padding:10px 24px;font-size:0.88rem;color:var(--danger, #ffccc0);display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:999;">
+    <strong style="color:var(--warning, #ff6600);letter-spacing:1px;font-size:0.82rem;">&#9888; SMACKBACK</strong>
     File tampering or corruption detected. Admin functions are unrestricted (Alert mode).
-    <a href="smack-back.php" style="color:#ff9900;text-decoration:none;border:1px solid #ff6600;padding:3px 10px;font-size:0.8rem;white-space:nowrap;">View Breach Detail &rarr;</a>
-    <button id="smackback-silence-btn" onclick="document.body.classList.add('alarm-silenced');localStorage.setItem('smackback_alarm_silenced','1');this.style.display='none';" style="margin-left:auto;background:transparent;border:1px solid #884400;color:#ff9900;font-size:0.75rem;padding:3px 10px;cursor:pointer;white-space:nowrap;font-family:inherit;">&#128263; Silence Alarm</button>
+    <a href="smack-back.php" style="color:var(--warning, #ff9900);text-decoration:none;border:1px solid var(--warning, #ff6600);padding:3px 10px;font-size:0.8rem;white-space:nowrap;">View Breach Detail &rarr;</a>
+    <button id="smackback-silence-btn" onclick="document.body.classList.add('alarm-silenced');localStorage.setItem('smackback_alarm_silenced','1');this.style.display='none';" style="margin-left:auto;background:transparent;border:1px solid var(--warning, #884400);color:var(--warning, #ff9900);font-size:0.75rem;padding:3px 10px;cursor:pointer;white-space:nowrap;font-family:inherit;">&#128263; Silence Alarm</button>
 </div>
 <script>if(localStorage.getItem('smackback_alarm_silenced')==='1'){document.body.classList.add('alarm-silenced');var b=document.getElementById('smackback-silence-btn');if(b)b.style.display='none';}</script>
 <?php endif; ?>

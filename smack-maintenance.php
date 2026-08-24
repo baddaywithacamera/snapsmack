@@ -1222,8 +1222,8 @@ include 'core/sidebar.php';
             <form method="POST" onsubmit="return confirm('Randomize the whole feed order? Trigrams stay intact. You can restore chronological order afterward.');">
                 <input type="hidden" name="action" value="randomize_feed">
                 <div class="reauth-row" style="display:flex; gap:10px; margin:8px 0;">
-                    <label style="flex:1;">PASSWORD<br><input type="password" name="reauth_password" autocomplete="off" style="width:100%;"></label>
-                    <label style="flex:0 0 120px;">2FA CODE<br><input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" style="width:100%;"></label>
+                    <label class="flex-1">PASSWORD<br><input type="password" name="reauth_password" autocomplete="off" class="w-100"></label>
+                    <label style="flex:0 0 120px;">2FA CODE<br><input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" class="w-100"></label>
                 </div>
                 <button type="submit" class="btn-smack btn-block">RANDOMIZE FEED</button>
             </form>
@@ -1235,8 +1235,8 @@ include 'core/sidebar.php';
             <form method="POST" onsubmit="return confirm('Restore the feed to chronological order (newest first)? Trigrams stay intact.');">
                 <input type="hidden" name="action" value="restore_chrono">
                 <div class="reauth-row" style="display:flex; gap:10px; margin:8px 0;">
-                    <label style="flex:1;">PASSWORD<br><input type="password" name="reauth_password" autocomplete="off" style="width:100%;"></label>
-                    <label style="flex:0 0 120px;">2FA CODE<br><input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" style="width:100%;"></label>
+                    <label class="flex-1">PASSWORD<br><input type="password" name="reauth_password" autocomplete="off" class="w-100"></label>
+                    <label style="flex:0 0 120px;">2FA CODE<br><input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" class="w-100"></label>
                 </div>
                 <button type="submit" class="btn-smack btn-block">RESTORE ORDER</button>
             </form>
@@ -1295,7 +1295,7 @@ include 'core/sidebar.php';
                     <button type="submit" class="btn-smack btn-block">REBUILD (500 AT A TIME)</button>
                 </form>
             <?php endif; ?>
-            <form method="POST" style="margin-top:8px;"
+            <form method="POST" class="mt-8"
                   onsubmit="return confirm('Run over EVERY image in one pass, without stopping?\n\nReading EXIF is much lighter than building thumbnails, so 10,000 images is typically a minute or two. On a slow shared host it will still hold one PHP process for that whole time and the page will look frozen until it finishes.\n\nNothing is overwritten and nothing is deleted, so this is safe to abandon and re-run.')">
                 <input type="hidden" name="action" value="rebuild_exif">
                 <input type="hidden" name="exif_run" value="everything">
@@ -1417,7 +1417,7 @@ include 'core/sidebar.php';
     <?php if (!empty($htaccess_view_content)): ?>
     <div class="box mt-30">
         <h3><?php echo htmlspecialchars($htaccess_view_label); ?></h3>
-        <pre style="background:#0c0c0c;color:#cfcfcf;padding:14px;border-radius:4px;overflow:auto;max-height:560px;font-family:monospace;font-size:12px;line-height:1.5;border:1px solid #2a2a2a;"><?php echo htmlspecialchars($htaccess_view_content); ?></pre>
+        <pre style="background:var(--input-bg, #0c0c0c);color:var(--text, #cfcfcf);padding:14px;border-radius:4px;overflow:auto;max-height:560px;font-family:monospace;font-size:12px;line-height:1.5;border:1px solid var(--border, #2a2a2a);"><?php echo htmlspecialchars($htaccess_view_content); ?></pre>
     </div>
     <?php endif; ?>
 </div>

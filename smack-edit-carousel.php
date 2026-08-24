@@ -681,7 +681,7 @@ include 'core/sidebar.php';
     <div class="header-row header-row--ruled">
         <h2>EDIT POST: <?php echo htmlspecialchars($post['title']); ?></h2>
         <div class="header-actions">
-            <span class="dim" style="font-size:12px; letter-spacing:1px;">
+            <span class="dim text-12 ls-1">
                 <?php echo strtoupper($post['post_type']); ?>
                 &nbsp;·&nbsp; <?php echo count($post_images); ?> IMAGE<?php echo count($post_images) !== 1 ? 'S' : ''; ?>
             </span>
@@ -872,7 +872,7 @@ include 'core/sidebar.php';
                             <option value="0" <?php echo empty($post['is_sensitive']) ? 'selected' : ''; ?>>NOT SENSITIVE</option>
                             <option value="1" <?php echo !empty($post['is_sensitive']) ? 'selected' : ''; ?>>MARK SENSITIVE &mdash; hide behind a warning</option>
                         </select>
-                        <input type="text" name="content_warning" class="full-width-select" style="margin-top:8px;"
+                        <input type="text" name="content_warning" class="full-width-select mt-8"
                                maxlength="255" placeholder="Content-warning text (optional, shown before the image)"
                                value="<?php echo htmlspecialchars($post['content_warning'] ?? ''); ?>">
                     </div>
@@ -885,8 +885,8 @@ include 'core/sidebar.php';
              =================================================================== -->
         <?php if ($customize_level === 'per_carousel'): ?>
         <div class="box mt-30">
-            <h3 style="margin:0 0 6px;">IMAGE FRAME STYLE</h3>
-            <p class="skin-desc-text" style="margin-bottom:16px;">
+            <h3 class="m-0 mb-6">IMAGE FRAME STYLE</h3>
+            <p class="skin-desc-text mb-16">
                 Applied to every image in this post.
             </p>
             <div class="post-layout-grid" style="gap:16px;">
@@ -946,9 +946,9 @@ include 'core/sidebar.php';
              =================================================================== -->
         <div class="box mt-30">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
-                <h3 style="margin:0;">SOURCE ASSETS</h3>
+                <h3 class="m-0">SOURCE ASSETS</h3>
                 <div style="display:flex; gap:12px; align-items:center;">
-                    <span class="dim" style="font-size:12px; letter-spacing:1px;">
+                    <span class="dim text-12 ls-1">
                         <?php echo count($post_images); ?> / 10 images
                     </span>
                     <button type="button" id="ce-add-toggle" class="btn-secondary">+ ADD MORE IMAGES</button>
@@ -958,7 +958,7 @@ include 'core/sidebar.php';
             <p class="skin-desc-text">Drag thumbnails to reorder. Click COVER badge to promote. First image is always the grid cover.</p>
 
             <!-- Existing image strip -->
-            <div id="ce-strip" class="cp-strip" style="margin-bottom:20px;">
+            <div id="ce-strip" class="cp-strip mb-20">
                 <?php foreach ($post_images as $pimg):
                     $exif = json_decode($pimg['img_exif'] ?: '{}', true) ?: [];
                     $is_cover = $pimg['is_cover'] ? true : false;
@@ -985,7 +985,7 @@ include 'core/sidebar.php';
                         </span>
                         <span class="ce-pos-badge cp-pos-badge"><?php echo $pimg['sort_position'] + 1; ?></span>
                         <button type="button" class="ce-remove-btn cp-remove-btn" title="Remove from post">×</button>
-                        <button type="button" class="ce-split-btn" title="Pull out into its own separate post" style="position:absolute;top:6px;left:6px;width:24px;height:24px;border:0;border-radius:4px;background:rgba(0,0,0,0.55);color:#fff;font-size:14px;line-height:1;cursor:pointer;" data-confirm="Pull this image out into its own separate post?">↗</button>
+                        <button type="button" class="ce-split-btn" title="Pull out into its own separate post" style="position:absolute;top:6px;left:6px;width:24px;height:24px;border:0;border-radius:4px;background:rgba(0,0,0,0.55);color:var(--text, #fff);font-size:14px;line-height:1;cursor:pointer;" data-confirm="Pull this image out into its own separate post?">↗</button>
                         <button type="button" class="ce-edit-img-btn" title="Edit Image" onclick="SnapPhotoEditor.open('<?php echo htmlspecialchars($pimg['img_file'], ENT_QUOTES); ?>', <?php echo (int)$pimg['post_id']; ?>)">✎</button>
                     </div>
                     <div class="cp-item-label"><?php echo htmlspecialchars(basename($pimg['img_file'])); ?></div>
@@ -1031,7 +1031,7 @@ include 'core/sidebar.php';
             </div>
 
             <!-- Add-more section (collapsed by default) -->
-            <div id="ce-add-zone" style="display:none; border-top:1px dashed #444; padding-top:20px; margin-top:4px;">
+            <div id="ce-add-zone" style="display:none; border-top:1px dashed var(--border, #444); padding-top:20px; margin-top:4px;">
                 <input type="file" id="ce-file-input" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
                 <div id="ce-drop-zone" class="cp-drop-zone">
                     <div class="cp-drop-icon">⊕</div>

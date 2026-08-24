@@ -10,6 +10,22 @@
 
 # SnapSmack Changelog
 
+## 0.7.551 — 2026-08-24 "FEDBOARD"
+
+- **Admin inline-CSS cleanup (geometry/colour split).** Moved ~600 hardcoded
+  inline `style="..."` attributes off the admin pages and into shared classes in
+  the geometry master, reusing the existing utility classes (`.mb-16`,
+  `.text-muted`, `.flex-1`, `.stat-tile`, `.meter-track`, …) instead of the same
+  styles pasted over and over. No visible change — the admin looks identical — but
+  spacing and layout now live in one place, the way the house rule wants.
+- **Admin colours de-hardcoded.** Every raw hex colour in an admin inline style
+  (`#666`, `#fff`, `#cc2200`, …) now reads a theme variable with the original
+  colour kept as the fallback (`color:var(--text-muted, #666)`). Renders exactly
+  the same today; the admin can be themed properly later by defining those
+  variables in the theme colour files.
+- Scope is **admin pages only** — skins, public pages and SMACK CENTRAL keep
+  their own styling and are untouched.
+
 ## 0.7.550 — 2026-08-23 "FEDBOARD"
 
 - **Directory page UI, hub side.** The hub is the directory, so it no longer shows

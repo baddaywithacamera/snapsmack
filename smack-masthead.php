@@ -152,7 +152,7 @@ include 'core/sidebar.php';
             if ($cr): ?>
                 <img src="<?php echo BASE_URL . ltrim($cr['img_thumb_aspect'] ?: $cr['img_file'], '/'); ?>" style="height:48px; border-radius:4px;">
             <?php endif; ?>
-            <form method="post" style="margin:0;">
+            <form method="post" class="m-0">
                 <input type="hidden" name="action" value="reset_cover">
                 <button type="submit" class="btn-smack btn-smack--sm">Reset to automatic</button>
             </form>
@@ -163,7 +163,7 @@ include 'core/sidebar.php';
     <style>#mh-stage.mh-grabbing{cursor:grabbing;}</style>
     <div class="box" style="margin:0 0 22px; padding:18px;">
         <p style="margin:0 0 12px; font-size:0.85rem;"><strong>Position &amp; zoom</strong> &mdash; drag the cover to move it, slide to zoom in. This preview renders exactly like the live banner.</p>
-        <div id="mh-stage" style="position:relative; width:100%; height:240px; overflow:hidden; background:#222; border-radius:6px; cursor:grab; touch-action:none; user-select:none;">
+        <div id="mh-stage" style="position:relative; width:100%; height:240px; overflow:hidden; background:var(--input-bg, #222); border-radius:6px; cursor:grab; touch-action:none; user-select:none;">
             <img id="mh-cover-img" src="<?php echo htmlspecialchars($cover_full_url, ENT_QUOTES); ?>" alt=""
                  style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:<?php echo $cover_pos_x; ?>% <?php echo $cover_pos_y; ?>%; transform-origin:<?php echo $cover_pos_x; ?>% <?php echo $cover_pos_y; ?>%; transform:scale(<?php echo number_format($cover_zoom / 100, 3); ?>); pointer-events:none;">
             <div aria-hidden="true" style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to bottom, rgba(0,0,0,0) 18%, rgba(0,0,0,.45) 62%, rgba(0,0,0,.82) 100%);"></div>
@@ -210,12 +210,12 @@ include 'core/sidebar.php';
         <?php else: foreach ($photos as $p):
             $is_cur = ((int)$p['id'] === $current_cover_id);
         ?>
-            <form method="post" style="margin:0;">
+            <form method="post" class="m-0">
                 <input type="hidden" name="action" value="set_cover">
                 <input type="hidden" name="image_id" value="<?php echo (int)$p['id']; ?>">
                 <button type="submit" title="<?php echo htmlspecialchars($p['img_title'] ?? ''); ?>"
                         style="display:block; width:100%; padding:0; border:3px solid <?php echo $is_cur ? 'var(--accent,#b6ff1a)' : 'transparent'; ?>; border-radius:6px; background:#222; cursor:pointer; overflow:hidden; aspect-ratio:1/1;">
-                    <img src="<?php echo _mh_thumb($p); ?>" alt="<?php echo htmlspecialchars($p['img_title'] ?? ''); ?>" loading="lazy" style="width:100%; height:100%; object-fit:cover; display:block;">
+                    <img src="<?php echo _mh_thumb($p); ?>" alt="<?php echo htmlspecialchars($p['img_title'] ?? ''); ?>" loading="lazy" class="img-cover">
                 </button>
             </form>
         <?php endforeach; endif; ?>

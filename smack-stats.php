@@ -503,7 +503,7 @@ $msg = $_GET['msg'] ?? '';
                 </div>
             <?php endif; ?>
 
-            <h3 style="margin-top: 20px;">Platforms</h3>
+            <h3 class="mt-20">Platforms</h3>
             <?php if (!empty($t1_os)): ?>
                 <?php $max_os = $t1_os[0]['hits'] ?? 1; ?>
                 <div class="stats-bar-list">
@@ -584,7 +584,7 @@ $msg = $_GET['msg'] ?? '';
 
             <!-- DIRECT VS BROWSED -->
             <?php if ($t2_direct_hits + $t2_browsed_hits > 0): ?>
-            <h3 style="margin-top: 20px;">How They Found Images</h3>
+            <h3 class="mt-20">How They Found Images</h3>
             <div class="stats-ratio-bar">
                 <?php
                 $total_ratio = $t2_direct_hits + $t2_browsed_hits;

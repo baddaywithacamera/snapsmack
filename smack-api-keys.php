@@ -316,7 +316,7 @@ include 'core/sidebar.php';
         <?php endif; ?>
         <?php if ($api_site_mode === 'carousel' && $pixelix_apps): ?>
             <div class="mt-20" style="border-top:1px solid var(--border-color,#333);padding-top:18px;">
-                <h4 style="margin:0 0 10px;">CONNECTED PIXELIX CLIENTS</h4>
+                <h4 class="m-0 mb-10">CONNECTED PIXELIX CLIENTS</h4>
                 <?php foreach ($pixelix_apps as $app): ?>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0;">
                         <div><strong><?php echo htmlspecialchars($app['name']); ?></strong><br>

@@ -297,9 +297,9 @@ require_once 'core/sidebar.php';
         <div class="setting-section">
             <h2 class="section-title">Regenerate Recovery Codes</h2>
             <p class="setting-desc">Use this if your existing recovery codes are lost or compromised. Current codes are invalidated immediately.</p>
-            <form method="POST" style="margin-top: 16px;">
+            <form method="POST" class="mt-16">
                 <input type="hidden" name="action" value="regen_recovery">
-                <div class="control-group" style="max-width: 280px;">
+                <div class="control-group mw-280">
                     <label>CONFIRM WITH AUTHENTICATOR CODE</label>
                     <input type="text" name="totp_code" maxlength="6" pattern="\d{6}"
                            inputmode="numeric" autocomplete="one-time-code"
@@ -312,15 +312,15 @@ require_once 'core/sidebar.php';
         <div class="setting-section setting-section-danger-zone">
             <h2 class="section-title section-title-danger">Disable Two-Factor Authentication</h2>
             <p class="setting-desc">Removing 2FA makes your account less secure. You will need your current authenticator code <strong>and your account password</strong> to confirm.</p>
-            <form method="POST" style="margin-top: 16px;">
+            <form method="POST" class="mt-16">
                 <input type="hidden" name="action" value="disable">
-                <div class="control-group" style="max-width: 280px;">
+                <div class="control-group mw-280">
                     <label>AUTHENTICATOR CODE</label>
                     <input type="text" name="totp_code" maxlength="6" pattern="\d{6}"
                            inputmode="numeric" autocomplete="one-time-code"
                            placeholder="000000" required>
                 </div>
-                <div class="control-group" style="max-width: 280px;">
+                <div class="control-group mw-280">
                     <label>CONFIRM YOUR PASSWORD</label>
                     <input type="password" name="confirm_password"
                            autocomplete="current-password" required>
@@ -356,7 +356,7 @@ require_once 'core/sidebar.php';
 
             <form method="POST">
                 <input type="hidden" name="action" value="confirm">
-                <div class="control-group" style="max-width: 280px;">
+                <div class="control-group mw-280">
                     <label>ENTER 6-DIGIT CODE TO CONFIRM</label>
                     <input type="text" name="totp_code" maxlength="6" pattern="\d{6}"
                            inputmode="numeric" autocomplete="one-time-code"
@@ -377,16 +377,16 @@ require_once 'core/sidebar.php';
                 <h2 class="section-title">Two-Factor Authentication Is Off</h2>
             </div>
             <p class="setting-desc">Add a second layer of security to your account. After enabling, every login will require your password <em>plus</em> a 6-digit code from your authenticator app.</p>
-            <div class="setting-desc" style="margin-top:12px;">
-                <p style="margin:0 0 6px;">Any TOTP (RFC 6238) authenticator app works. Scan the QR or enter the key. Recommended:</p>
+            <div class="setting-desc mt-12">
+                <p class="m-0 mb-6">Any TOTP (RFC 6238) authenticator app works. Scan the QR or enter the key. Recommended:</p>
                 <p style="margin:0 0 4px;"><strong>Open-source (recommended):</strong>
                     Aegis Authenticator (Android),
                     Ente Auth (iOS/Android/desktop),
                     2FAS (iOS/Android).</p>
-                <p style="margin:0;"><strong>Also fine:</strong>
+                <p class="m-0"><strong>Also fine:</strong>
                     Google Authenticator, Microsoft Authenticator, 1Password, Authy, Bitwarden.</p>
             </div>
-            <form method="POST" style="margin-top: 20px;">
+            <form method="POST" class="mt-20">
                 <input type="hidden" name="action" value="generate">
                 <button type="submit" class="master-update-btn">Set Up Two-Factor Authentication</button>
             </form>
@@ -399,9 +399,9 @@ require_once 'core/sidebar.php';
             <p class="setting-desc">Devices where you checked &ldquo;Trust this device&rdquo; at login. These skip the authenticator code prompt until the trust expires.</p>
 
             <?php if (empty($trusted_devices)): ?>
-                <p class="setting-desc" style="margin-top:12px;"><em>No trusted devices.</em></p>
+                <p class="setting-desc mt-12"><em>No trusted devices.</em></p>
             <?php else: ?>
-                <table class="smack-table" style="margin-top:14px;">
+                <table class="smack-table mt-14">
                     <thead>
                         <tr>
                             <th>Device</th>
@@ -417,7 +417,7 @@ require_once 'core/sidebar.php';
                             <td style="white-space:nowrap;font-size:0.8rem;"><?php echo htmlspecialchars(date('M j, Y', strtotime($td['created_at']))); ?></td>
                             <td style="white-space:nowrap;font-size:0.8rem;"><?php echo htmlspecialchars(date('M j, Y', strtotime($td['expires_at']))); ?></td>
                             <td>
-                                <form method="POST" style="margin:0;">
+                                <form method="POST" class="m-0">
                                     <input type="hidden" name="action" value="revoke_device">
                                     <input type="hidden" name="device_id" value="<?php echo (int)$td['id']; ?>">
                                     <button type="submit" class="btn-smack btn-smack-small btn-danger">REVOKE</button>
@@ -427,7 +427,7 @@ require_once 'core/sidebar.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
-                <form method="POST" style="margin-top:12px;">
+                <form method="POST" class="mt-12">
                     <input type="hidden" name="action" value="revoke_all_devices">
                     <button type="submit" class="btn-smack btn-smack-small btn-danger"
                             onclick="return confirm('Revoke all trusted devices? You will need to enter your authenticator code on next login.')">

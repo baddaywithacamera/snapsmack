@@ -303,17 +303,17 @@ include 'core/sidebar.php';
 
                     <div class="lens-input-wrapper">
                         <label>BACKGROUND OPACITY (TRANSPARENT STATE) <span class="field-tip" data-tip="0% = fully see-through, 100% = fully opaque.">ⓘ</span></label>
-                        <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="flex-mid gap-10">
                             <input type="range" name="sticky_header_opacity" min="0" max="100" value="<?php echo htmlspecialchars($settings['sticky_header_opacity'] ?? '12'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + '%'">
-                            <span style="min-width: 40px; font-family: monospace;"><?php echo htmlspecialchars($settings['sticky_header_opacity'] ?? '12'); ?>%</span>
+                            <span class="mw-40 mono"><?php echo htmlspecialchars($settings['sticky_header_opacity'] ?? '12'); ?>%</span>
                         </div>
                     </div>
 
                     <div class="lens-input-wrapper">
                         <label>BACKDROP BLUR <span class="field-tip" data-tip="Glass-morphism blur. Higher = more frosted glass. 0 = no blur.">ⓘ</span></label>
-                        <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="flex-mid gap-10">
                             <input type="range" name="sticky_header_blur" min="0" max="30" value="<?php echo htmlspecialchars($settings['sticky_header_blur'] ?? '14'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + 'px'">
-                            <span style="min-width: 40px; font-family: monospace;"><?php echo htmlspecialchars($settings['sticky_header_blur'] ?? '14'); ?>px</span>
+                            <span class="mw-40 mono"><?php echo htmlspecialchars($settings['sticky_header_blur'] ?? '14'); ?>px</span>
                         </div>
                     </div>
                 </div>
@@ -386,7 +386,7 @@ include 'core/sidebar.php';
                     </div>
                 </div>
 
-                <div class="lens-input-wrapper" style="margin-top:14px;">
+                <div class="lens-input-wrapper mt-14">
                     <label>FOOTER TEXT CASE <span class="field-tip" data-tip="Render the entire footer bar in lowercase. Applies to every theme.">ⓘ</span></label>
                     <select name="settings[footer_lowercase]">
                         <option value="0" <?php echo (($settings['footer_lowercase'] ?? '0') === '1') ? '' : 'selected'; ?>>NORMAL (AS WRITTEN)</option>
@@ -493,7 +493,7 @@ include 'core/sidebar.php';
                             <input type="range" disabled min="4" max="120" value="24">
                             <input type="hidden" name="settings[wall_gap]" value="24">
                         <?php else: ?>
-                            <div style="display:flex; align-items:center; gap:12px;">
+                            <div class="flex-mid gap-12">
                                 <input type="range" name="settings[wall_gap]" min="4" max="120" step="2"
                                        value="<?php echo htmlspecialchars($settings['wall_gap'] ?? '24'); ?>"
                                        oninput="this.nextElementSibling.textContent = this.value + 'px'">
@@ -508,7 +508,7 @@ include 'core/sidebar.php';
                             <input type="range" disabled min="0.80" max="0.99" value="0.96">
                             <input type="hidden" name="settings[wall_friction]" value="0.96">
                         <?php else: ?>
-                            <div style="display:flex; align-items:center; gap:12px;">
+                            <div class="flex-mid gap-12">
                                 <input type="range" name="settings[wall_friction]" min="0.80" max="0.99" step="0.01"
                                        value="<?php echo htmlspecialchars($settings['wall_friction'] ?? '0.96'); ?>"
                                        oninput="this.nextElementSibling.textContent = this.value">
@@ -523,7 +523,7 @@ include 'core/sidebar.php';
                             <input type="range" disabled min="0.5" max="5.0" value="2.5">
                             <input type="hidden" name="settings[wall_dragweight]" value="2.5">
                         <?php else: ?>
-                            <div style="display:flex; align-items:center; gap:12px;">
+                            <div class="flex-mid gap-12">
                                 <input type="range" name="settings[wall_dragweight]" min="0.5" max="5.0" step="0.1"
                                        value="<?php echo htmlspecialchars($settings['wall_dragweight'] ?? '2.5'); ?>"
                                        oninput="this.nextElementSibling.textContent = this.value">

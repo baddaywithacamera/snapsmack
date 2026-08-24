@@ -171,7 +171,7 @@ include 'core/sidebar.php';
                 <input type="password" name="password" required>
             </div>
 
-            <div class="lens-input-wrapper" style="margin-top:10px;">
+            <div class="lens-input-wrapper mt-10">
                 <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
                     <input type="checkbox" name="gen_recovery_code" id="gen_rc_new" value="1">
                     Generate a one-time recovery code for this user
@@ -196,7 +196,7 @@ include 'core/sidebar.php';
                         <span class="dim">
                             <?php echo htmlspecialchars($u['email']); ?> | Role: <?php echo ucfirst($u['user_role']); ?>
                             <?php if ($u['has_recovery_code']): ?>
-                                <span style="color:var(--accent,#aaa);">&nbsp;· recovery code set</span>
+                                <span class="text-accent">&nbsp;· recovery code set</span>
                             <?php endif; ?>
                         </span>
                     </div>

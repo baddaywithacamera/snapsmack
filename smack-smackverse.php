@@ -41,7 +41,7 @@ include 'core/sidebar.php';
                 <input type="hidden" name="action" value="disable_smackverse">
                 <button type="submit" class="btn-smack">DISABLE FEDERATION</button>
             </form>
-            <p class="dim" style="margin-top:10px;">
+            <p class="dim mt-10">
                 Disabling 404s every federation endpoint immediately. Followers are kept and
                 pick back up if you re-enable.
             </p>
@@ -65,9 +65,9 @@ include 'core/sidebar.php';
                         <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" class="input-code">
                     </div>
                 </div>
-                <div class="lens-input-wrapper" style="margin-top:14px;">
+                <div class="lens-input-wrapper mt-14">
                     <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer; font-weight:normal;">
-                        <input type="checkbox" name="participation_ack" value="1" style="margin-top:3px; flex:0 0 auto;">
+                        <input type="checkbox" name="participation_ack" value="1" class="mt-3 flex-none">
                         <span class="dim">
                             <strong>The fediverse is a community, not a broadcast channel.</strong> Federating means
                             you show up: read replies, answer the people who signal on your work, follow and boost
@@ -172,7 +172,7 @@ include 'core/sidebar.php';
                 <button type="submit" class="btn-smack">SAVE ROLL CALL</button>
             </form>
             <?php if ($rc_on): ?>
-            <p class="dim" style="margin-top:14px;">
+            <p class="dim mt-14">
                 Your bio carries the tags and your handle
                 (<code><?php echo htmlspecialchars($sv_address); ?></code>) was submitted when you saved.
                 Check yourself on the roll at
@@ -253,8 +253,8 @@ include 'core/sidebar.php';
         <?php if ($sv_search_accounts): ?>
         <table class="dim" style="width:100%; margin-bottom:18px; border-collapse:collapse;">
             <?php foreach ($sv_search_accounts as $sa): ?>
-            <tr style="border-bottom:1px solid var(--border,#333);">
-                <td style="padding:8px 6px;">
+            <tr class="border-b">
+                <td class="p-8-6">
                     <strong><?php echo htmlspecialchars($sa['instance_host']); ?></strong><?php echo !empty($sa['username']) ? ' &middot; @' . htmlspecialchars($sa['username']) : ''; ?>
                 </td>
                 <td style="padding:8px 6px; text-align:right;">
@@ -276,24 +276,24 @@ include 'core/sidebar.php';
         <?php endif; ?>
         <form method="post" action="" autocomplete="off">
             <input type="hidden" name="action" value="add_search_account">
-            <label class="dim" style="display:block; margin-bottom:12px;">
+            <label class="dim d-block mb-12">
                 Instance host:
                 <input type="text" name="sa_host" placeholder="pixelfed.social" style="width:220px; margin-left:6px;">
             </label>
-            <label class="dim" style="display:block; margin-bottom:12px;">
+            <label class="dim d-block mb-12">
                 Username on that instance (optional label):
                 <input type="text" name="sa_username" placeholder="yourname" style="width:220px; margin-left:6px;">
             </label>
-            <label class="dim" style="display:block; margin-bottom:12px;">
+            <label class="dim d-block mb-12">
                 Access token:
                 <input type="password" name="sa_token" placeholder="paste a read-scope token" style="width:320px; margin-left:6px;" autocomplete="new-password">
             </label>
             <div class="reauth-row" style="margin:14px 0;">
                 <label class="dim" style="display:block; margin-bottom:8px;">Confirm password:
-                    <input type="password" name="reauth_password" autocomplete="off" style="margin-left:6px;">
+                    <input type="password" name="reauth_password" autocomplete="off" class="ml-6">
                 </label>
                 <label class="dim" style="display:block;">2FA code:
-                    <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" class="input-code" style="margin-left:6px;">
+                    <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" class="input-code ml-6">
                 </label>
             </div>
             <button type="submit" class="btn-smack">ADD SEARCH ACCOUNT</button>
