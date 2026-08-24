@@ -14,6 +14,7 @@ use tauri_plugin_dialog::DialogExt;
 #[derive(Default)]
 struct EditorState {
     input: Mutex<Option<PathBuf>>,
+    render_generation: Mutex<u64>,
 }
 
 fn shared_root() -> PathBuf {
@@ -135,8 +136,25 @@ fn editor_call(
         "render_preview" => {
             let input = current_input(&state)?;
             let operations = operations(&params)?;
+            let generation = params
+                .get("generation")
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+            {
+                let mut latest = state
+                    .render_generation
+                    .lock()
+                    .map_err(|_| "Editor state is unavailable".to_string())?;
+                *latest = (*latest).max(generation);
+            }
             let result = preview_result(&input, &operations)?;
-            autosave(&input, &operations)?;
+            let latest = *state
+                .render_generation
+                .lock()
+                .map_err(|_| "Editor state is unavailable".to_string())?;
+            if generation >= latest {
+                autosave(&input, &operations)?;
+            }
             Ok(result)
         }
         "recover" => {

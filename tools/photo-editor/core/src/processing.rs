@@ -96,6 +96,22 @@ pub enum Operation {
         luminance: f32,
         chroma: f32,
     },
+    LocalContrast {
+        amount: f32,
+    },
+    HazeReduction {
+        amount: f32,
+    },
+    ToneCurve {
+        shadows: f32,
+        midtones: f32,
+        highlights: f32,
+    },
+    Hsl {
+        hue_degrees: f32,
+        saturation: f32,
+        lightness: f32,
+    },
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -299,6 +315,18 @@ pub fn apply(
             Operation::NoiseReduction { luminance, chroma } => {
                 apply_noise_reduction(&image, luminance, chroma)?
             }
+            Operation::LocalContrast { amount } => apply_local_contrast(&image, amount)?,
+            Operation::HazeReduction { amount } => apply_haze_reduction(&image, amount)?,
+            Operation::ToneCurve {
+                shadows,
+                midtones,
+                highlights,
+            } => apply_tone_curve(&image, shadows, midtones, highlights)?,
+            Operation::Hsl {
+                hue_degrees,
+                saturation,
+                lightness,
+            } => apply_hsl(&image, hue_degrees, saturation, lightness)?,
         };
     }
     Ok(image)
@@ -569,6 +597,189 @@ fn apply_noise_reduction(
             let average_chroma = average[channel] - average_luma;
             let value = new_luma + center_chroma * (1.0 - chroma) + average_chroma * chroma;
             pixel.0[channel] = (linear_to_srgb(value) * 65535.0).round() as u16;
+        }
+    }
+    Ok(DynamicImage::ImageRgba16(output))
+}
+
+fn apply_local_contrast(
+    image: &DynamicImage,
+    amount: f32,
+) -> Result<DynamicImage, ProcessingError> {
+    if !amount.is_finite() || !(0.0..=2.0).contains(&amount) {
+        return Err(ProcessingError::Invalid(
+            "local contrast must be between 0 and 2".into(),
+        ));
+    }
+    if amount == 0.0 {
+        return Ok(image.clone());
+    }
+    let source = image.to_rgba16();
+    let mut output = source.clone();
+    for (x, y, pixel) in output.enumerate_pixels_mut() {
+        let center = linear_rgb(source.get_pixel(x, y));
+        let average = neighbourhood_average(&source, x, y);
+        let center_luma = center[0] * 0.2126 + center[1] * 0.7152 + center[2] * 0.0722;
+        let average_luma = average[0] * 0.2126 + average[1] * 0.7152 + average[2] * 0.0722;
+        let adjusted_luma = (center_luma + (center_luma - average_luma) * amount).max(0.0);
+        let scale = if center_luma > 0.000_001 {
+            adjusted_luma / center_luma
+        } else {
+            1.0
+        };
+        for (channel, value) in center.iter().enumerate() {
+            pixel.0[channel] = (linear_to_srgb(*value * scale) * 65535.0).round() as u16;
+        }
+    }
+    Ok(DynamicImage::ImageRgba16(output))
+}
+
+fn apply_haze_reduction(
+    image: &DynamicImage,
+    amount: f32,
+) -> Result<DynamicImage, ProcessingError> {
+    if !amount.is_finite() || !(-1.0..=1.0).contains(&amount) {
+        return Err(ProcessingError::Invalid(
+            "haze reduction must be between -1 and 1".into(),
+        ));
+    }
+    if amount == 0.0 {
+        return Ok(image.clone());
+    }
+    let mut output = image.to_rgba16();
+    let floor = output
+        .pixels()
+        .map(|pixel| {
+            let rgb = linear_rgb(pixel);
+            rgb[0].min(rgb[1]).min(rgb[2])
+        })
+        .fold(1.0_f32, f32::min);
+    let removal = floor.min(0.45) * amount.max(0.0);
+    let addition = 0.15 * (-amount).max(0.0);
+    for pixel in output.pixels_mut() {
+        for channel in &mut pixel.0[..3] {
+            let linear = srgb_to_linear(*channel as f32 / 65535.0);
+            let corrected = if amount >= 0.0 {
+                (linear - removal) / (1.0 - removal).max(0.01)
+            } else {
+                linear * (1.0 - addition) + addition
+            };
+            *channel = (linear_to_srgb(corrected) * 65535.0).round() as u16;
+        }
+    }
+    Ok(DynamicImage::ImageRgba16(output))
+}
+
+fn apply_tone_curve(
+    image: &DynamicImage,
+    shadows: f32,
+    midtones: f32,
+    highlights: f32,
+) -> Result<DynamicImage, ProcessingError> {
+    if [shadows, midtones, highlights]
+        .iter()
+        .any(|value| !value.is_finite() || !(-1.0..=1.0).contains(value))
+    {
+        return Err(ProcessingError::Invalid(
+            "tone-curve regions must be between -1 and 1".into(),
+        ));
+    }
+    if shadows == 0.0 && midtones == 0.0 && highlights == 0.0 {
+        return Ok(image.clone());
+    }
+    let mut output = image.to_rgba16();
+    for pixel in output.pixels_mut() {
+        for channel in &mut pixel.0[..3] {
+            let value = srgb_to_linear(*channel as f32 / 65535.0);
+            let offset = shadows * (1.0 - value).powi(2) * 0.20
+                + midtones * (4.0 * value * (1.0 - value)) * 0.20
+                + highlights * value.powi(2) * 0.20;
+            *channel = (linear_to_srgb(value + offset) * 65535.0).round() as u16;
+        }
+    }
+    Ok(DynamicImage::ImageRgba16(output))
+}
+
+fn rgb_to_hsl(rgb: [f32; 3]) -> [f32; 3] {
+    let maximum = rgb.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+    let minimum = rgb.iter().copied().fold(f32::INFINITY, f32::min);
+    let lightness = (maximum + minimum) / 2.0;
+    let delta = maximum - minimum;
+    if delta < f32::EPSILON {
+        return [0.0, 0.0, lightness];
+    }
+    let saturation = delta / (1.0 - (2.0 * lightness - 1.0).abs()).max(f32::EPSILON);
+    let hue = if maximum == rgb[0] {
+        ((rgb[1] - rgb[2]) / delta).rem_euclid(6.0)
+    } else if maximum == rgb[1] {
+        (rgb[2] - rgb[0]) / delta + 2.0
+    } else {
+        (rgb[0] - rgb[1]) / delta + 4.0
+    } / 6.0;
+    [hue, saturation, lightness]
+}
+
+fn hue_channel(p: f32, q: f32, t: f32) -> f32 {
+    let t = t.rem_euclid(1.0);
+    if t < 1.0 / 6.0 {
+        p + (q - p) * 6.0 * t
+    } else if t < 0.5 {
+        q
+    } else if t < 2.0 / 3.0 {
+        p + (q - p) * (2.0 / 3.0 - t) * 6.0
+    } else {
+        p
+    }
+}
+
+fn hsl_to_rgb(hsl: [f32; 3]) -> [f32; 3] {
+    if hsl[1] < f32::EPSILON {
+        return [hsl[2]; 3];
+    }
+    let q = if hsl[2] < 0.5 {
+        hsl[2] * (1.0 + hsl[1])
+    } else {
+        hsl[2] + hsl[1] - hsl[2] * hsl[1]
+    };
+    let p = 2.0 * hsl[2] - q;
+    [
+        hue_channel(p, q, hsl[0] + 1.0 / 3.0),
+        hue_channel(p, q, hsl[0]),
+        hue_channel(p, q, hsl[0] - 1.0 / 3.0),
+    ]
+}
+
+fn apply_hsl(
+    image: &DynamicImage,
+    hue_degrees: f32,
+    saturation: f32,
+    lightness: f32,
+) -> Result<DynamicImage, ProcessingError> {
+    if !hue_degrees.is_finite()
+        || !(-180.0..=180.0).contains(&hue_degrees)
+        || [saturation, lightness]
+            .iter()
+            .any(|value| !value.is_finite() || !(-1.0..=1.0).contains(value))
+    {
+        return Err(ProcessingError::Invalid("invalid HSL settings".into()));
+    }
+    if hue_degrees == 0.0 && saturation == 0.0 && lightness == 0.0 {
+        return Ok(image.clone());
+    }
+    let mut output = image.to_rgba16();
+    for pixel in output.pixels_mut() {
+        let rgb = [
+            pixel.0[0] as f32 / 65535.0,
+            pixel.0[1] as f32 / 65535.0,
+            pixel.0[2] as f32 / 65535.0,
+        ];
+        let mut hsl = rgb_to_hsl(rgb);
+        hsl[0] = (hsl[0] + hue_degrees / 360.0).rem_euclid(1.0);
+        hsl[1] = (hsl[1] + saturation).clamp(0.0, 1.0);
+        hsl[2] = (hsl[2] + lightness).clamp(0.0, 1.0);
+        let adjusted = hsl_to_rgb(hsl);
+        for (channel, value) in adjusted.iter().enumerate() {
+            pixel.0[channel] = (*value * 65535.0).round() as u16;
         }
     }
     Ok(DynamicImage::ImageRgba16(output))

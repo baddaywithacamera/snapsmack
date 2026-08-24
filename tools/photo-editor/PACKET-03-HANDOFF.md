@@ -2,7 +2,7 @@
 
 # Packet 03 handoff — darkroom foundation
 
-**Status:** first tonal slice complete; Packet 03 remains in progress.
+**Status:** complete control set implemented; extended golden-fixture QA remains.
 
 Delivered as an original, non-destructive recipe operation:
 
@@ -14,6 +14,8 @@ Delivered as an original, non-destructive recipe operation:
 - saturation and vibrance.
 - levels and B&W channel mixing;
 - vignette, thresholded sharpening, and separate luminance/chroma noise reduction.
+- local contrast and bounded haze reduction;
+- three-region tone curve, global HSL, and original starting presets.
 
 Processing decodes sRGB values to linear light, emits 16-bit RGBA, preserves alpha and
 uses one identical path for preview and export. Every control is range-validated. A
@@ -23,7 +25,9 @@ entry, individual resets and one explicit apply action so history stays intellig
 Acceptance covers neutral identity, range refusal and deterministic adjusted output.
 The formulas and ranges are documented in `DARKROOM-MATH.md`.
 
-Still required for Packet 03: local contrast, haze removal, curves, HSL, presets and
-obsolete-preview cancellation.
+Fast successive requests carry monotonically increasing generations. Both hosts prevent
+an obsolete preview from replacing newer autosave state, and the UI suppresses stale
+visual results. True mid-operation cancellation and expanded colour-chart/golden-image
+fixtures remain before Packet 03 receives its final release gate.
 
 <!-- ===== SNAPSMACK EOF ===== -->

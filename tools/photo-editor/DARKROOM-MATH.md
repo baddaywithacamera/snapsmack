@@ -17,8 +17,14 @@ around linear 18% grey. Saturation moves channels from linear luminance, while v
 reduces its effect as existing channel chroma rises. Output is encoded through the sRGB
 transfer curve to 16-bit RGBA and alpha is preserved exactly.
 
-The remaining Packet 03 exclusions are local contrast, haze removal, curves, HSL and
-preset management. Those must not be claimed yet.
+Local contrast scales each pixel's linear luminance away from its bounded 3×3 mean while
+retaining channel ratios. Haze reduction estimates a conservative global dark floor and
+removes only a bounded fraction; negative values add a controlled veil. The tone curve
+combines smooth shadow, midtone and highlight basis functions. HSL is deliberately a
+perceptual finishing transform, with hue wrapping and saturation/lightness clamping.
+
+The included presets are recipes made only from these documented operations. They carry
+no third-party look data or copied constants.
 
 ## Finishing controls
 
