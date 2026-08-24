@@ -11,9 +11,11 @@ This boundary is intentional. It keeps the tools, documentation, compatibility p
 
 ## Entitlement rules
 
-- The user's own SnapSmack CMS generates the API key used to unlock each protected desktop tool.
+- The user's own SnapSmack CMS generates the API key used to unlock SNAP SLAPPER and its ACTION LAB capability.
 - There is no separate charge for the tools. A valid SnapSmack installation includes their use.
 - The key proves that the user has their own installation; it is not a paid licence term.
+- ACTION LAB does not require a second key or separate activation. When SNAP SLAPPER is valid and unlocked, ACTION LAB is unlocked under the same entitlement state.
+- If SNAP SLAPPER is in grace or expired, ACTION LAB follows the same state and dates.
 - A valid key grants **90 days** of use.
 - The desktop tool must clearly show the entitlement expiry date.
 - After expiry, the tool enters a **14-day grace period** so temporary server, network, or renewal trouble does not immediately interrupt work.
@@ -50,9 +52,18 @@ This boundary is intentional. It keeps the tools, documentation, compatibility p
 - ACTION LAB may emit Lightroom-compatible presets, but ACTION LAB itself remains a SnapSmack-only tool.
 - Lightroom compatibility describes the generated preset format; it does not turn ACTION LAB into an independently supported Lightroom product.
 
+## Forks and independent builds
+
+- The complete source remains available under the Smack Public License (SPL).
+- Anyone determined to run SNAP SLAPPER or ACTION LAB independently may fork the repository and build a decoupled version, provided the fork complies fully with the SPL.
+- A decoupled or independently distributed fork must rename the tools. The official names **SNAP SLAPPER** and **ACTION LAB** identify the SnapSmack-integrated builds and their defined support surface.
+- A fork must not present itself as an official SnapSmack build or imply that Sean McCormick or the SnapSmack project supports it.
+- The fork's distributor owns its documentation, compatibility promises, user support, releases, and security response. Independent users are not transferred into the official SnapSmack support surface.
+- Renaming does not remove or weaken the SPL's source, attribution-chain, AI-provenance, Thomas Clause, or other obligations.
+
 ## Decisions still required
 
-- One key per tool, one shared desktop-tools key, or entitlements carried in one signed token.
+- Exact representation of the shared SNAP SLAPPER/ACTION LAB entitlement in the signed key or server response.
 - Whether keys bind to a CMS installation, user, device, or a limited device set.
 - The CMS endpoint and signed payload format.
 - Validation frequency while a key remains valid.
