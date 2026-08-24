@@ -21,7 +21,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-BUILD_VERSION = "0.7.14"
+BUILD_VERSION = "0.7.15"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -53,7 +53,7 @@ ACCENT  = "#39ff14"
 FIELD   = "#1c1c1c"
 BORDER  = "#2a2a2a"
 
-# ── the tools the Hub fronts, and where they install ────────────────────────
+# ── the tools SNAP SLAPPER fronts, and where they install ────────────────
 # The SnapSmack shared root. This is ALSO the GYSS file-jail root (SECAUDIT 039): a
 # compromised GYSS webview is permitted to write ANYWHERE under it. So it must never
 # be a source of WILDCARD-matched launch targets — see _find_exe and SECAUDIT 044.
@@ -115,7 +115,7 @@ def _launch(path):
         return False, str(e)
 
 
-class Hub(tk.Tk):
+class SnapSlapper(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(f"SNAP SLAPPER — SnapSmack   (build {BUILD_VERSION})")
@@ -146,7 +146,7 @@ class Hub(tk.Tk):
         h.pack(fill="x", padx=18, pady=(16, 12))
         tk.Label(h, text="SNAP SLAPPER", bg=BG, fg=ACCENT,
                  font=("Segoe UI Black", 22, "bold")).pack(side="left")
-        tk.Label(h, text="  one door · set the fleet up once",
+        tk.Label(h, text="  one slap · whole fleet",
                  bg=BG, fg=DIM, font=("Segoe UI", 11)).pack(side="left", pady=(10, 0))
 
     def _card(self, parent, title):
@@ -544,7 +544,7 @@ class Hub(tk.Tk):
             raise RuntimeError("no GYSS key for this site — run Discover Fleet")
         r = requests.get(site + "/api.php", params={"route": "gyss/prompt"},
                          headers={"Authorization": "Bearer " + key,
-                                  "User-Agent": "SnapSmackHub/1.0"}, timeout=25)
+                                  "User-Agent": f"SnapSlapper/{BUILD_VERSION}"}, timeout=25)
         if r.status_code != 200:
             raise RuntimeError(f"HTTP {r.status_code}")
         data = r.json() if r.content else {}
@@ -561,7 +561,7 @@ class Hub(tk.Tk):
         r = requests.post(site + "/api.php", params={"route": "gyss/prompt"},
                           json={"prompt": text},
                           headers={"Authorization": "Bearer " + key,
-                                   "User-Agent": "SnapSmackHub/1.0"}, timeout=25)
+                                   "User-Agent": f"SnapSlapper/{BUILD_VERSION}"}, timeout=25)
         if r.status_code != 200:
             return False
         try:
@@ -683,5 +683,5 @@ class Hub(tk.Tk):
 
 
 if __name__ == "__main__":
-    Hub().mainloop()
+    SnapSlapper().mainloop()
 # ===== SNAPSMACK EOF =====
