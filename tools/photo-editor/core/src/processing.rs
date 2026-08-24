@@ -89,6 +89,12 @@ pub enum Operation {
         midpoint: f32,
         feather: f32,
     },
+    FilmGrain {
+        amount: f32,
+        size: f32,
+        roughness: f32,
+        seed: u64,
+    },
     Sharpen {
         amount: f32,
         threshold: f32,
@@ -451,6 +457,12 @@ fn apply_with_depth(
                 midpoint,
                 feather,
             } => apply_vignette(&image, amount, midpoint, feather)?,
+            Operation::FilmGrain {
+                amount,
+                size,
+                roughness,
+                seed,
+            } => apply_film_grain(&image, amount, size, roughness, seed)?,
             Operation::Sharpen { amount, threshold } => apply_sharpen(&image, amount, threshold)?,
             Operation::NoiseReduction { luminance, chroma } => {
                 apply_noise_reduction(&image, luminance, chroma)?
@@ -1469,6 +1481,61 @@ fn apply_vignette(
             let linear = srgb_to_linear(*channel as f32 / 65535.0);
             *channel = (linear_to_srgb((linear * (1.0 - amount * mask)).clamp(0.0, 1.0)) * 65535.0)
                 .round() as u16;
+        }
+    }
+    Ok(DynamicImage::ImageRgba16(output))
+}
+
+fn grain_hash(x: u32, y: u32, seed: u64) -> f32 {
+    let mut value = seed
+        ^ u64::from(x).wrapping_mul(0x9e3779b185ebca87)
+        ^ u64::from(y).wrapping_mul(0xc2b2ae3d27d4eb4f);
+    value ^= value >> 30;
+    value = value.wrapping_mul(0xbf58476d1ce4e5b9);
+    value ^= value >> 27;
+    value = value.wrapping_mul(0x94d049bb133111eb);
+    value ^= value >> 31;
+    ((value >> 40) as f32 / 8_388_607.5) - 1.0
+}
+
+fn apply_film_grain(
+    image: &DynamicImage,
+    amount: f32,
+    size: f32,
+    roughness: f32,
+    seed: u64,
+) -> Result<DynamicImage, ProcessingError> {
+    if !amount.is_finite()
+        || !(0.0..=1.0).contains(&amount)
+        || !size.is_finite()
+        || !(0.5..=8.0).contains(&size)
+        || !roughness.is_finite()
+        || !(0.0..=1.0).contains(&roughness)
+    {
+        return Err(ProcessingError::Invalid(
+            "invalid film grain settings".into(),
+        ));
+    }
+    if amount == 0.0 {
+        return Ok(image.clone());
+    }
+    let mut output = image.to_rgba16();
+    for (x, y, pixel) in output.enumerate_pixels_mut() {
+        let coarse = grain_hash(
+            (x as f32 / size).floor() as u32,
+            (y as f32 / size).floor() as u32,
+            seed,
+        );
+        let fine = grain_hash(x, y, seed ^ 0xa0761d6478bd642f);
+        let noise = coarse * (1.0 - roughness) + fine * roughness;
+        let luminance = 0.2126 * srgb_to_linear(pixel.0[0] as f32 / 65535.0)
+            + 0.7152 * srgb_to_linear(pixel.0[1] as f32 / 65535.0)
+            + 0.0722 * srgb_to_linear(pixel.0[2] as f32 / 65535.0);
+        let tonal_weight = 0.35 + 0.65 * (1.0 - (luminance * 2.0 - 1.0).abs());
+        let delta = noise * amount * 0.12 * tonal_weight;
+        for channel in &mut pixel.0[..3] {
+            let linear = (srgb_to_linear(*channel as f32 / 65535.0) + delta).clamp(0.0, 1.0);
+            *channel = (linear_to_srgb(linear) * 65535.0).round() as u16;
         }
     }
     Ok(DynamicImage::ImageRgba16(output))
