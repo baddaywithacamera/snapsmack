@@ -294,4 +294,56 @@ fn finishing_controls_reject_unsafe_ranges() {
     .is_err());
 }
 
+#[test]
+fn creative_controls_are_bounded_deterministic_and_neutral_safe() {
+    let source = fixture();
+    let neutral = [
+        Operation::LocalContrast { amount: 0.0 },
+        Operation::HazeReduction { amount: 0.0 },
+        Operation::ToneCurve {
+            shadows: 0.0,
+            midtones: 0.0,
+            highlights: 0.0,
+        },
+        Operation::Hsl {
+            hue_degrees: 0.0,
+            saturation: 0.0,
+            lightness: 0.0,
+        },
+    ];
+    assert_eq!(
+        apply(source.clone(), &neutral, DEFAULT_MEMORY_BUDGET)
+            .unwrap()
+            .to_rgba8(),
+        source.to_rgba8()
+    );
+    let recipe = [
+        Operation::LocalContrast { amount: 0.4 },
+        Operation::HazeReduction { amount: 0.25 },
+        Operation::ToneCurve {
+            shadows: 0.1,
+            midtones: 0.15,
+            highlights: -0.05,
+        },
+        Operation::Hsl {
+            hue_degrees: 12.0,
+            saturation: 0.1,
+            lightness: 0.02,
+        },
+    ];
+    let first = apply(source.clone(), &recipe, DEFAULT_MEMORY_BUDGET).unwrap();
+    let second = apply(source, &recipe, DEFAULT_MEMORY_BUDGET).unwrap();
+    assert_eq!(first.to_rgba16(), second.to_rgba16());
+    assert!(apply(
+        fixture(),
+        &[Operation::Hsl {
+            hue_degrees: 181.0,
+            saturation: 0.0,
+            lightness: 0.0
+        }],
+        DEFAULT_MEMORY_BUDGET
+    )
+    .is_err());
+}
+
 // ===== SNAPSMACK EOF =====

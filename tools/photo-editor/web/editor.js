@@ -5,6 +5,7 @@
   const redo = [];
   let opened = false;
   let showingBefore = false;
+  let renderGeneration = 0;
   const byId = (id) => document.getElementById(id);
   const status = (text) => { byId("status").textContent = text; };
   const refreshHistory = () => { byId("undo").disabled = !operations.length; byId("redo").disabled = !redo.length; };
@@ -30,8 +31,10 @@
   };
   const render = async () => {
     if (!opened) return;
+    const generation = ++renderGeneration;
     status("Rendering preview…");
-    const result = await window.SnapSmackEditorHost.call("render_preview", { operations: showingBefore ? [] : operations });
+    const result = await window.SnapSmackEditorHost.call("render_preview", { operations: showingBefore ? [] : operations, generation });
+    if (generation !== renderGeneration) return;
     showResult(result); status(showingBefore ? "Showing original" : `${operations.length} edit${operations.length === 1 ? "" : "s"}`);
   };
   const add = async (operation) => { if (!opened) return status("Open an image first."); operations.push(operation); redo.length = 0; showingBefore = false; refreshHistory(); try { await render(); } catch (error) { operations.pop(); refreshHistory(); status(error.message); } };
@@ -72,11 +75,22 @@
   byId("apply-vignette").addEventListener("click", () => void add({ type: "vignette", amount: number("vignette-amount"), midpoint: number("vignette-midpoint"), feather: number("vignette-feather") }));
   byId("apply-sharpen").addEventListener("click", () => void add({ type: "sharpen", amount: number("sharpen-amount"), threshold: number("sharpen-threshold") }));
   byId("apply-noise").addEventListener("click", () => void add({ type: "noise-reduction", luminance: number("nr-luminance"), chroma: number("nr-chroma") }));
+  byId("apply-local-contrast").addEventListener("click", () => void add({ type: "local-contrast", amount: number("local-contrast") }));
+  byId("apply-haze").addEventListener("click", () => void add({ type: "haze-reduction", amount: number("haze") }));
+  byId("apply-curve").addEventListener("click", () => void add({ type: "tone-curve", shadows: number("curve-shadows"), midtones: number("curve-midtones"), highlights: number("curve-highlights") }));
+  byId("apply-hsl").addEventListener("click", () => void add({ type: "hsl", hue_degrees: number("hsl-hue"), saturation: number("hsl-saturation"), lightness: number("hsl-lightness") }));
+  byId("apply-preset").addEventListener("click", () => {
+    const preset = byId("preset").value;
+    if (preset === "punch") return void add({ type: "darkroom", settings: { exposure: 0.2, contrast: 0.25, highlights: -0.1, shadows: 0.1, whites: 0.05, blacks: -0.05, temperature: 0, tint: 0, saturation: 0.05, vibrance: 0.2 } });
+    if (preset === "soft") return void add({ type: "darkroom", settings: { exposure: 0.15, contrast: -0.05, highlights: -0.2, shadows: 0.25, whites: 0, blacks: 0.05, temperature: 0.08, tint: 0.02, saturation: -0.05, vibrance: 0.1 } });
+    if (preset === "mono") return void add({ type: "black-and-white", red: 0.3, green: 0.6, blue: 0.1 });
+    status("Choose a preset first.");
+  });
   byId("undo").addEventListener("click", () => { if (operations.length) { redo.push(operations.pop()); refreshHistory(); void render().catch((error) => status(error.message)); } });
   byId("redo").addEventListener("click", () => { if (redo.length) { operations.push(redo.pop()); refreshHistory(); void render().catch((error) => status(error.message)); } });
   byId("reset").addEventListener("click", () => { redo.push(...operations.splice(0)); refreshHistory(); void render().catch((error) => status(error.message)); });
   byId("before").addEventListener("click", () => { if (opened) { showingBefore = !showingBefore; void render().catch((error) => status(error.message)); } });
-  byId("open").addEventListener("click", async () => { try { const result = await window.SnapSmackEditorHost.call("choose_image", {}); if (!result) return status("Open cancelled"); operations.length = 0; redo.length = 0; opened = true; showingBefore = false; refreshHistory(); showResult(result); status(`Opened ${result.name}`); } catch (error) { status(error.message); } });
+  byId("open").addEventListener("click", async () => { try { ++renderGeneration; const result = await window.SnapSmackEditorHost.call("choose_image", {}); if (!result) return status("Open cancelled"); operations.length = 0; redo.length = 0; opened = true; showingBefore = false; refreshHistory(); showResult(result); status(`Opened ${result.name}`); } catch (error) { status(error.message); } });
   byId("save").addEventListener("click", async () => { try { const result = await window.SnapSmackEditorHost.call("export_copy", { operations }); status(result ? `Saved ${result.output_path}` : "Save cancelled"); } catch (error) { status(error.message); } });
   document.addEventListener("keydown", (event) => { if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "z") return; event.preventDefault(); byId(event.shiftKey ? "redo" : "undo").click(); });
   window.SnapSmackEditorHost.call("recover", {}).then((result) => { if (!result) return; operations.push(...(result.operations || [])); opened = true; refreshHistory(); showResult(result); status(`Recovered ${result.name}`); }).catch(() => {});

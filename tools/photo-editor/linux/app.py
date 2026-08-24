@@ -15,6 +15,7 @@ CORE = os.environ.get("SNAPSMACK_PHOTO_CORE") or os.path.abspath(
     os.path.join(HERE, "..", "core", "target", "release", "snapsmack-photo-core"))
 app = snap_blink.App(tool="pixel-tickler", title="PIXEL TICKLER", web_dir=WEB)
 _input_path = None
+_render_generation = 0
 
 
 def _autosave_path():
@@ -61,7 +62,7 @@ def _core(method, params, roots):
 
 @app.api
 def editor_call(method, params):
-    global _input_path
+    global _input_path, _render_generation
     params = dict(params or {})
     if method == "hello":
         return {"contract_version": 1, "host": "blink-linux"}
@@ -89,8 +90,11 @@ def editor_call(method, params):
         raise RuntimeError("Open an image first")
     params["input_path"] = _input_path
     if method == "render_preview":
+        generation = int(params.get("generation") or 0)
+        _render_generation = max(_render_generation, generation)
         result = _core(method, params, [os.path.dirname(_input_path)])
-        _autosave(params.get("operations") or [])
+        if generation >= _render_generation:
+            _autosave(params.get("operations") or [])
         return result
     if method == "export_copy":
         output = snap_blink.pick_path("save", "Save edited copy", os.path.dirname(_input_path))
