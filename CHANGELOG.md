@@ -10,6 +10,14 @@
 
 # SnapSmack Changelog
 
+## 0.7.552 — 2026-08-23 "FEDBOARD"
+
+- **Fix: black input boxes on the PIXELPAST (light) admin theme.** The geometry
+  master styles some controls with `var(--admin-input-bg, #222)` / `var(--admin-text,
+  #ccc)` — dark fallbacks. PIXELPAST never defined those variables, so inputs and
+  status boxes rendered as black boxes on the light background (seen on Multisite
+  Management). PIXELPAST now sets the light values (`#FFFFFF` / `#333333`).
+
 ## 0.7.551 — 2026-08-23 "FEDBOARD"
 
 - **Directory page UI, hub side.** The hub is the directory, so it no longer shows

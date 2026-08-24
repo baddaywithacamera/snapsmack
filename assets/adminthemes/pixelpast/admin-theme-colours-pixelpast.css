@@ -14,7 +14,15 @@
  */
 
 
-:root { --accent: #247AA2; }
+:root {
+    --accent: #247AA2;
+    /* PIXELPAST is a LIGHT theme. The geometry master styles some controls with
+       var(--admin-input-bg, #222) / var(--admin-text, #ccc) — dark fallbacks. Set
+       the light values here so inputs and status boxes don't render as black boxes
+       on the light background. */
+    --admin-input-bg: #FFFFFF;
+    --admin-text: #333333;
+}
 
 /* 01: GLOBAL BASE */
 html, body {
