@@ -6,7 +6,7 @@ import os
 import queue
 import threading
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 
 from PIL import Image, ImageOps, ImageTk
 
@@ -71,11 +71,16 @@ class PhotoLibrary(tk.Toplevel):
 
         tk.Label(left, text="LIBRARIES", bg="#111111", fg=ACCENT,
                  font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=14, pady=(16, 8))
-        self.source_list = tk.Listbox(left, bg="#111111", fg=INK, selectbackground=ACCENT,
-            selectforeground=BG, relief="flat", highlightthickness=0, font=("Segoe UI", 10),
-            activestyle="none", exportselection=False)
-        self.source_list.pack(fill="both", expand=True, padx=8)
-        self.source_list.bind("<<ListboxSelect>>", self._source_selected)
+        style = ttk.Style(self)
+        style.configure("Slapper.Treeview", background="#111111", fieldbackground="#111111",
+                        foreground=INK, borderwidth=0, relief="flat", rowheight=25,
+                        font=("Segoe UI", 10))
+        style.map("Slapper.Treeview", background=[("selected", ACCENT)],
+                  foreground=[("selected", BG)])
+        self.source_tree = ttk.Treeview(left, style="Slapper.Treeview", show="tree", selectmode="browse")
+        self.source_tree.pack(fill="both", expand=True, padx=8)
+        self.source_tree.bind("<<TreeviewSelect>>", self._source_selected)
+        self.source_tree.bind("<<TreeviewOpen>>", self._tree_opened)
         self._button(left, "+ OPEN LOCAL FOLDER", self.choose_folder).pack(
             fill="x", padx=12, pady=(12, 5), ipady=5)
         self._button(left, "REMOVE FOLDER", self.remove_folder).pack(
@@ -92,6 +97,15 @@ class PhotoLibrary(tk.Toplevel):
                        relief="flat", highlightthickness=0, font=("Segoe UI", 9))
         sort["menu"].configure(bg=FIELD, fg=INK, activebackground=ACCENT, activeforeground=BG)
         sort.pack(side="left", pady=6)
+        tk.Label(controls, text="DATE", bg="#101010", fg=DIM,
+                 font=("Segoe UI", 8, "bold")).pack(side="left", padx=(14, 5))
+        self.date_var = tk.StringVar(value="All dates")
+        self.date_menu = tk.OptionMenu(controls, self.date_var, "All dates",
+                                       command=lambda _v: self.filter_rows())
+        self.date_menu.configure(bg=FIELD, fg=INK, activebackground=ACCENT, activeforeground=BG,
+                                 relief="flat", highlightthickness=0, font=("Segoe UI", 9))
+        self.date_menu["menu"].configure(bg=FIELD, fg=INK, activebackground=ACCENT, activeforeground=BG)
+        self.date_menu.pack(side="left", pady=6)
         self.scan_status = tk.Label(controls, text="", bg="#101010", fg=DIM,
                                     font=("Segoe UI", 9))
         self.scan_status.pack(side="left", padx=12)
@@ -123,15 +137,20 @@ class PhotoLibrary(tk.Toplevel):
         self.info = tk.Label(right, text="", bg="#111111", fg=INK, justify="left",
                              anchor="nw", wraplength=250, font=("Segoe UI", 9))
         self.info.pack(fill="both", expand=True, padx=14, pady=14)
-        self._button(right, "OPEN IN DEFAULT VIEWER", self.open_selected).pack(
-            fill="x", padx=14, pady=(0, 14), ipady=5)
+        self._button(right, "OPEN PHOTO", self.open_selected).pack(
+            fill="x", padx=14, pady=(0, 5), ipady=5)
+        self._button(right, "OPEN IN WINDOWS", self.open_external).pack(
+            fill="x", padx=14, pady=(0, 14), ipady=4)
 
     def _wheel(self, event):
         self.canvas.yview_scroll(int(-event.delta / 120), "units")
 
     def refresh_sources(self):
-        self.source_list.delete(0, "end")
+        for item in self.source_tree.get_children(""):
+            self.source_tree.delete(item)
         self.sources.clear()
+        self.blog_group = self.source_tree.insert("", "end", text="▣  BLOG ARCHIVES", open=True)
+        self.local_group = self.source_tree.insert("", "end", text="▦  LOCAL FOLDERS", open=True)
         try:
             names = sorted(os.listdir(self.library_root), key=str.lower)
         except OSError:
@@ -139,44 +158,81 @@ class PhotoLibrary(tk.Toplevel):
         for name in names:
             folder = os.path.join(self.library_root, name)
             if os.path.isfile(os.path.join(folder, "index.json")):
-                label = f"▣  {name}"
-                self.source_list.insert("end", label)
-                self.sources[label] = ("shared", folder)
+                item = self.source_tree.insert(self.blog_group, "end", text=name)
+                self.sources[item] = ("shared", folder)
         for folder in self._saved_folders():
-            label = f"▦  {os.path.basename(folder) or folder}"
-            self.source_list.insert("end", label)
-            self.sources[label] = ("folder", folder)
-        if not self.sources:
-            self.source_list.insert("end", "No synced blog libraries yet")
+            self._add_local_root(folder)
+
+    def _add_local_root(self, folder):
+        label = os.path.basename(folder) or folder
+        item = self.source_tree.insert(self.local_group, "end", text=label, open=False)
+        self.sources[item] = ("folder", folder)
+        self._add_folder_dummy(item, folder)
+        return item
+
+    def _add_folder_dummy(self, item, folder):
+        try:
+            has_dirs = any(entry.is_dir() and not entry.name.startswith(".")
+                           for entry in os.scandir(folder))
+        except OSError:
+            has_dirs = False
+        if has_dirs:
+            self.source_tree.insert(item, "end", text="Loading…", tags=("dummy",))
+
+    def _tree_opened(self, _event=None):
+        item = self.source_tree.focus()
+        source = self.sources.get(item)
+        if not source or source[0] != "folder":
+            return
+        children = self.source_tree.get_children(item)
+        if not children or "dummy" not in self.source_tree.item(children[0], "tags"):
+            return
+        self.source_tree.delete(children[0])
+        folder = source[1]
+        try:
+            dirs = sorted((entry for entry in os.scandir(folder)
+                           if entry.is_dir() and not entry.name.startswith(".")),
+                          key=lambda entry: entry.name.lower())
+        except OSError:
+            dirs = []
+        for entry in dirs:
+            child = self.source_tree.insert(item, "end", text=entry.name, open=False)
+            self.sources[child] = ("folder", entry.path)
+            self._add_folder_dummy(child, entry.path)
 
     def choose_folder(self):
         folder = filedialog.askdirectory(title="Choose a photo folder", parent=self)
         if not folder:
             return
-        label = f"▦  {os.path.basename(folder) or folder}"
-        if label not in self.sources:
-            self.source_list.insert("end", label)
-        self.sources[label] = ("folder", folder)
+        existing = next((item for item, source in self.sources.items()
+                         if source == ("folder", folder) and self.source_tree.parent(item) == self.local_group), None)
+        item = existing or self._add_local_root(folder)
         self._save_folders()
-        idx = list(self.source_list.get(0, "end")).index(label)
-        self.source_list.selection_clear(0, "end")
-        self.source_list.selection_set(idx)
-        self.load_source("folder", folder, label)
+        self.source_tree.selection_set(item)
+        self.source_tree.focus(item)
+        self.source_tree.see(item)
+        self.load_source("folder", folder, os.path.basename(folder) or folder)
 
     def remove_folder(self):
-        sel = self.source_list.curselection()
-        if not sel:
+        selected = self.source_tree.selection()
+        if not selected:
             return
-        label = self.source_list.get(sel[0])
-        source = self.sources.get(label)
+        item = selected[0]
+        while self.source_tree.parent(item) and self.source_tree.parent(item) != self.local_group:
+            item = self.source_tree.parent(item)
+        source = self.sources.get(item)
         if not source or source[0] != "folder":
             return
         self.scan_token += 1
-        del self.sources[label]
-        self.source_list.delete(sel[0])
+        root_path = source[1]
+        for key, value in list(self.sources.items()):
+            if value[0] == "folder" and (value[1] == root_path or value[1].startswith(root_path + os.sep)):
+                del self.sources[key]
+        self.source_tree.delete(item)
         self._save_folders()
         self.rows, self.visible = [], []
         self.heading.configure(text="PHOTO LIBRARY")
+        self._refresh_dates()
         self.render_grid()
 
     def _saved_folders(self):
@@ -192,7 +248,8 @@ class PhotoLibrary(tk.Toplevel):
     def _save_folders(self):
         if not self.state_path:
             return
-        folders = sorted({path for kind, path in self.sources.values() if kind == "folder"}, key=str.lower)
+        folders = sorted({path for item, (kind, path) in self.sources.items()
+                          if kind == "folder" and self.source_tree.parent(item) == self.local_group}, key=str.lower)
         try:
             os.makedirs(os.path.dirname(self.state_path), exist_ok=True)
             temp = self.state_path + ".tmp"
@@ -203,11 +260,12 @@ class PhotoLibrary(tk.Toplevel):
             pass
 
     def _source_selected(self, _event=None):
-        sel = self.source_list.curselection()
-        if sel:
-            label = self.source_list.get(sel[0])
-            if label in self.sources:
-                self.load_source(*self.sources[label], label)
+        selected = self.source_tree.selection()
+        if selected:
+            item = selected[0]
+            source = self.sources.get(item)
+            if source:
+                self.load_source(*source, self.source_tree.item(item, "text"))
 
     def load_source(self, kind, folder, label):
         self.scan_token += 1          # invalidate any older background folder scan
@@ -230,12 +288,15 @@ class PhotoLibrary(tk.Toplevel):
             token = self.scan_token
             self.heading.configure(text=f"{label.lstrip('▣▦ ')}  ·  scanning…")
             self.scan_status.configure(text="Scanning folders in background…", fg=ACCENT)
+            self.rows, self.visible = [], []
+            self.render_grid()
             threading.Thread(target=self._scan_folder, args=(folder, token, label), daemon=True).start()
             self.after(80, self._poll_scan)
             return
         self.rows = rows
         self.heading.configure(text=f"{label.lstrip('▣▦ ')}  ·  {len(rows):,} photos")
         self.scan_status.configure(text="")
+        self._refresh_dates()
         self.filter_rows()
 
     def _scan_folder(self, folder, token, label):
@@ -271,13 +332,33 @@ class PhotoLibrary(tk.Toplevel):
         self.rows = rows
         self.heading.configure(text=f"{label.lstrip('▣▦ ')}  ·  {len(rows):,} photos")
         self.scan_status.configure(text=f"{len(rows):,} photos", fg=DIM)
+        self._refresh_dates()
         self.filter_rows()
+
+    def _refresh_dates(self):
+        months = set()
+        for row in self.rows:
+            stamp = self._row_mtime(row)
+            if stamp:
+                months.add(datetime.datetime.fromtimestamp(stamp).strftime("%Y-%m"))
+        choices = ["All dates"] + sorted(months, reverse=True)
+        menu = self.date_menu["menu"]
+        menu.delete(0, "end")
+        for choice in choices:
+            menu.add_command(label=choice, command=lambda value=choice: (
+                self.date_var.set(value), self.filter_rows()))
+        if self.date_var.get() not in choices:
+            self.date_var.set("All dates")
 
     def filter_rows(self):
         query = self.search_var.get().strip().lower()
         self.visible = [row for row in self.rows if not query or query in " ".join((
             row.get("title", ""), row.get("description", ""), os.path.basename(row["path"]),
             " ".join(map(str, row.get("tags", []))))).lower()]
+        date_filter = self.date_var.get()
+        if date_filter != "All dates":
+            self.visible = [row for row in self.visible if self._row_mtime(row) and
+                            datetime.datetime.fromtimestamp(self._row_mtime(row)).strftime("%Y-%m") == date_filter]
         order = self.sort_var.get()
         if order == "Date (newest)":
             self.visible.sort(key=self._row_mtime, reverse=True)
@@ -329,7 +410,7 @@ class PhotoLibrary(tk.Toplevel):
             title.pack(fill="x", padx=6, pady=(0, 5))
             for widget in (card, pic, title):
                 widget.bind("<Button-1>", lambda _e, r=row: self.select_photo(r))
-                widget.bind("<Double-Button-1>", lambda _e, r=row: self.open_path(r["path"]))
+                widget.bind("<Double-Button-1>", lambda _e, r=row: self.open_viewer(r))
         if not rows:
             tk.Label(self.grid, text="No photographs here yet.", bg=BG, fg=DIM,
                      font=("Segoe UI", 12)).grid(row=0, column=0, columnspan=columns, pady=80)
@@ -349,6 +430,7 @@ class PhotoLibrary(tk.Toplevel):
         try:
             with Image.open(path) as image:
                 size = image.size
+                exif = image.getexif()
                 preview = ImageOps.contain(image.convert("RGB"), (255, 255), method=Image.Resampling.LANCZOS)
             photo = ImageTk.PhotoImage(preview)
             self.preview.configure(image=photo, text="", width=0, height=0)
@@ -356,6 +438,11 @@ class PhotoLibrary(tk.Toplevel):
             text = (f"{row.get('title') or 'Untitled'}\n\n{size[0]} × {size[1]} pixels\n"
                     f"{os.path.getsize(path) / 1048576:.1f} MB\n"
                     f"Modified {datetime.datetime.fromtimestamp(os.path.getmtime(path)):%Y-%m-%d %H:%M}\n\n{path}")
+            camera = " ".join(filter(None, (str(exif.get(271, "")).strip(), str(exif.get(272, "")).strip())))
+            taken = str(exif.get(36867, exif.get(306, ""))).strip()
+            if camera or taken:
+                text += "\n\n" + "\n".join(filter(None, (
+                    f"Camera: {camera}" if camera else "", f"Taken: {taken}" if taken else "")))
             if row.get("description"):
                 text += f"\n\n{row['description']}"
             self.info.configure(text=text)
@@ -371,4 +458,106 @@ class PhotoLibrary(tk.Toplevel):
 
     def open_selected(self):
         if self.selected:
+            self.open_viewer(self.selected)
+
+    def open_external(self):
+        if self.selected:
             self.open_path(self.selected["path"])
+
+    def open_viewer(self, row):
+        viewer = getattr(self, "viewer", None)
+        if not viewer or not viewer.winfo_exists():
+            viewer = tk.Toplevel(self)
+            self.viewer = viewer
+            viewer.title("SNAP SLAPPER — Viewer")
+            viewer.configure(bg="#050505")
+            viewer.geometry("1100x760")
+            viewer.minsize(640, 420)
+            viewer.transient(self)
+            viewer.bind("<Escape>", lambda _e: viewer.destroy())
+            viewer.bind("<Left>", lambda _e: self.viewer_step(-1))
+            viewer.bind("<Right>", lambda _e: self.viewer_step(1))
+            viewer.bind("<space>", lambda _e: self.viewer_step(1))
+            viewer.bind("<F11>", lambda _e: viewer.attributes("-fullscreen", not bool(viewer.attributes("-fullscreen"))))
+            viewer.bind("<Configure>", self._viewer_resized)
+            bar = tk.Frame(viewer, bg="#101010")
+            bar.pack(fill="x")
+            self.viewer_title = tk.Label(bar, text="", bg="#101010", fg=INK,
+                                         font=("Segoe UI", 10, "bold"))
+            self.viewer_title.pack(side="left", padx=14, pady=10)
+            self._button(bar, "CLOSE", viewer.destroy).pack(side="right", padx=(5, 12), pady=6)
+            self._button(bar, "OPEN IN WINDOWS", self.open_external).pack(side="right", pady=6)
+            self.viewer_image = tk.Label(viewer, bg="#050505", fg=DIM, text="Loading…")
+            self.viewer_image.pack(fill="both", expand=True, padx=12, pady=12)
+            nav = tk.Frame(viewer, bg="#101010")
+            nav.pack(fill="x")
+            self._button(nav, "← PREVIOUS", lambda: self.viewer_step(-1)).pack(
+                side="left", padx=12, pady=7, ipadx=10)
+            self._button(nav, "↺", lambda: self.rotate_viewer(90)).pack(side="left", pady=7, ipadx=8)
+            self._button(nav, "↻", lambda: self.rotate_viewer(-90)).pack(side="left", padx=5, pady=7, ipadx=8)
+            self.viewer_count = tk.Label(nav, text="", bg="#101010", fg=DIM,
+                                         font=("Segoe UI", 9))
+            self.viewer_count.pack(side="left", expand=True)
+            self._button(nav, "NEXT →", lambda: self.viewer_step(1)).pack(
+                side="right", padx=12, pady=7, ipadx=10)
+        old = getattr(self, "viewer_row", None)
+        self.viewer_row = row
+        if not old or old.get("path") != row.get("path"):
+            self.viewer_rotation = 0
+        self.selected = row
+        self._render_viewer()
+        viewer.deiconify()
+        viewer.lift()
+        viewer.focus_force()
+
+    def _viewer_resized(self, _event=None):
+        if getattr(self, "_viewer_resize_job", None):
+            self.after_cancel(self._viewer_resize_job)
+        self._viewer_resize_job = self.after(120, self._render_viewer)
+
+    def _render_viewer(self):
+        viewer = getattr(self, "viewer", None)
+        row = getattr(self, "viewer_row", None)
+        if not viewer or not viewer.winfo_exists() or not row:
+            return
+        path = row["path"]
+        width = max(320, viewer.winfo_width() - 40)
+        height = max(240, viewer.winfo_height() - 145)
+        try:
+            with Image.open(path) as image:
+                source = image.convert("RGB")
+                if getattr(self, "viewer_rotation", 0):
+                    source = source.rotate(self.viewer_rotation, expand=True)
+                rendered = ImageOps.contain(source, (width, height),
+                                             method=Image.Resampling.LANCZOS)
+            photo = ImageTk.PhotoImage(rendered)
+            self.viewer_image.configure(image=photo, text="")
+            self.viewer_image.image = photo
+        except Exception as exc:
+            self.viewer_image.configure(image="", text=f"Could not open image\n\n{exc}")
+        title = row.get("title") or os.path.basename(path)
+        self.viewer_title.configure(text=title)
+        try:
+            index = next(i for i, item in enumerate(self.visible) if item["path"] == path)
+            self.viewer_count.configure(text=f"{index + 1:,} of {len(self.visible):,}   ·   ←/→ to browse   ·   Esc to close")
+        except StopIteration:
+            self.viewer_count.configure(text="")
+
+    def viewer_step(self, amount):
+        row = getattr(self, "viewer_row", None)
+        if not row or not self.visible:
+            return
+        try:
+            index = next(i for i, item in enumerate(self.visible) if item["path"] == row["path"])
+        except StopIteration:
+            index = 0
+        index = (index + amount) % len(self.visible)
+        self.viewer_row = self.visible[index]
+        self.viewer_rotation = 0
+        self.selected = self.viewer_row
+        self.select_photo(self.viewer_row)
+        self._render_viewer()
+
+    def rotate_viewer(self, degrees):
+        self.viewer_rotation = (getattr(self, "viewer_rotation", 0) + degrees) % 360
+        self._render_viewer()
