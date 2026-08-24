@@ -12,6 +12,8 @@ Delivered as an original, non-destructive recipe operation:
 - whites and blacks;
 - temperature and tint;
 - saturation and vibrance.
+- levels and B&W channel mixing;
+- vignette, thresholded sharpening, and separate luminance/chroma noise reduction.
 
 Processing decodes sRGB values to linear light, emits 16-bit RGBA, preserves alpha and
 uses one identical path for preview and export. Every control is range-validated. A
@@ -21,8 +23,7 @@ entry, individual resets and one explicit apply action so history stays intellig
 Acceptance covers neutral identity, range refusal and deterministic adjusted output.
 The formulas and ranges are documented in `DARKROOM-MATH.md`.
 
-Still required for Packet 03: local contrast, haze removal, B&W channel mix, sharpening,
-bounded luminance/chroma noise reduction, vignette, levels, curves, HSL, presets and
+Still required for Packet 03: local contrast, haze removal, curves, HSL, presets and
 obsolete-preview cancellation.
 
 <!-- ===== SNAPSMACK EOF ===== -->

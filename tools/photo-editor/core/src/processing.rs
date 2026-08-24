@@ -75,6 +75,49 @@ pub enum Operation {
     Darkroom {
         settings: DarkroomSettings,
     },
+    Levels {
+        settings: LevelsSettings,
+    },
+    BlackAndWhite {
+        red: f32,
+        green: f32,
+        blue: f32,
+    },
+    Vignette {
+        amount: f32,
+        midpoint: f32,
+        feather: f32,
+    },
+    Sharpen {
+        amount: f32,
+        threshold: f32,
+    },
+    NoiseReduction {
+        luminance: f32,
+        chroma: f32,
+    },
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LevelsSettings {
+    pub black: f32,
+    pub gamma: f32,
+    pub white: f32,
+    pub output_black: f32,
+    pub output_white: f32,
+}
+
+impl Default for LevelsSettings {
+    fn default() -> Self {
+        Self {
+            black: 0.0,
+            gamma: 1.0,
+            white: 1.0,
+            output_black: 0.0,
+            output_white: 1.0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
@@ -243,6 +286,19 @@ pub fn apply(
                 image.resize_exact(width, height, FilterType::Lanczos3)
             }
             Operation::Darkroom { settings } => apply_darkroom(&image, settings)?,
+            Operation::Levels { settings } => apply_levels(&image, settings)?,
+            Operation::BlackAndWhite { red, green, blue } => {
+                apply_black_and_white(&image, red, green, blue)?
+            }
+            Operation::Vignette {
+                amount,
+                midpoint,
+                feather,
+            } => apply_vignette(&image, amount, midpoint, feather)?,
+            Operation::Sharpen { amount, threshold } => apply_sharpen(&image, amount, threshold)?,
+            Operation::NoiseReduction { luminance, chroma } => {
+                apply_noise_reduction(&image, luminance, chroma)?
+            }
         };
     }
     Ok(image)
@@ -303,6 +359,217 @@ fn apply_darkroom(
                 .round() as u16;
         }
         pixel.0[3] = alpha;
+    }
+    Ok(DynamicImage::ImageRgba16(output))
+}
+
+fn apply_levels(
+    image: &DynamicImage,
+    settings: LevelsSettings,
+) -> Result<DynamicImage, ProcessingError> {
+    let values = [
+        settings.black,
+        settings.gamma,
+        settings.white,
+        settings.output_black,
+        settings.output_white,
+    ];
+    if values.iter().any(|value| !value.is_finite())
+        || settings.black < 0.0
+        || settings.white > 1.0
+        || settings.black >= settings.white
+        || !(0.1..=10.0).contains(&settings.gamma)
+        || settings.output_black < 0.0
+        || settings.output_white > 1.0
+        || settings.output_black > settings.output_white
+    {
+        return Err(ProcessingError::Invalid("invalid levels settings".into()));
+    }
+    if settings.black == 0.0
+        && settings.gamma == 1.0
+        && settings.white == 1.0
+        && settings.output_black == 0.0
+        && settings.output_white == 1.0
+    {
+        return Ok(image.clone());
+    }
+    let mut output = image.to_rgba16();
+    for pixel in output.pixels_mut() {
+        for channel in &mut pixel.0[..3] {
+            let linear = srgb_to_linear(*channel as f32 / 65535.0);
+            let normalized = ((linear - settings.black) / (settings.white - settings.black))
+                .clamp(0.0, 1.0)
+                .powf(1.0 / settings.gamma);
+            let mapped = settings.output_black
+                + normalized * (settings.output_white - settings.output_black);
+            *channel = (linear_to_srgb(mapped) * 65535.0).round() as u16;
+        }
+    }
+    Ok(DynamicImage::ImageRgba16(output))
+}
+
+fn apply_black_and_white(
+    image: &DynamicImage,
+    red: f32,
+    green: f32,
+    blue: f32,
+) -> Result<DynamicImage, ProcessingError> {
+    if [red, green, blue]
+        .iter()
+        .any(|value| !value.is_finite() || !(0.0..=2.0).contains(value))
+        || red + green + blue <= f32::EPSILON
+    {
+        return Err(ProcessingError::Invalid(
+            "B&W channel weights must be between 0 and 2".into(),
+        ));
+    }
+    let sum = red + green + blue;
+    let mut output = image.to_rgba16();
+    for pixel in output.pixels_mut() {
+        let grey = (srgb_to_linear(pixel.0[0] as f32 / 65535.0) * red
+            + srgb_to_linear(pixel.0[1] as f32 / 65535.0) * green
+            + srgb_to_linear(pixel.0[2] as f32 / 65535.0) * blue)
+            / sum;
+        let encoded = (linear_to_srgb(grey) * 65535.0).round() as u16;
+        pixel.0[0] = encoded;
+        pixel.0[1] = encoded;
+        pixel.0[2] = encoded;
+    }
+    Ok(DynamicImage::ImageRgba16(output))
+}
+
+fn smoothstep(edge0: f32, edge1: f32, value: f32) -> f32 {
+    let t = ((value - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+fn apply_vignette(
+    image: &DynamicImage,
+    amount: f32,
+    midpoint: f32,
+    feather: f32,
+) -> Result<DynamicImage, ProcessingError> {
+    if !amount.is_finite()
+        || !(-1.0..=1.0).contains(&amount)
+        || !midpoint.is_finite()
+        || !(0.0..=1.0).contains(&midpoint)
+        || !feather.is_finite()
+        || !(0.01..=1.0).contains(&feather)
+    {
+        return Err(ProcessingError::Invalid("invalid vignette settings".into()));
+    }
+    if amount.abs() < f32::EPSILON {
+        return Ok(image.clone());
+    }
+    let mut output = image.to_rgba16();
+    let (width, height) = output.dimensions();
+    let cx = (width.saturating_sub(1)) as f32 / 2.0;
+    let cy = (height.saturating_sub(1)) as f32 / 2.0;
+    for (x, y, pixel) in output.enumerate_pixels_mut() {
+        let dx = if cx > 0.0 { (x as f32 - cx) / cx } else { 0.0 };
+        let dy = if cy > 0.0 { (y as f32 - cy) / cy } else { 0.0 };
+        let distance = (dx * dx + dy * dy).sqrt() / 2.0_f32.sqrt();
+        let mask = smoothstep(midpoint, (midpoint + feather).min(1.0001), distance);
+        for channel in &mut pixel.0[..3] {
+            let linear = srgb_to_linear(*channel as f32 / 65535.0);
+            *channel = (linear_to_srgb((linear * (1.0 - amount * mask)).clamp(0.0, 1.0)) * 65535.0)
+                .round() as u16;
+        }
+    }
+    Ok(DynamicImage::ImageRgba16(output))
+}
+
+fn linear_rgb(pixel: &Rgba<u16>) -> [f32; 3] {
+    [
+        srgb_to_linear(pixel.0[0] as f32 / 65535.0),
+        srgb_to_linear(pixel.0[1] as f32 / 65535.0),
+        srgb_to_linear(pixel.0[2] as f32 / 65535.0),
+    ]
+}
+
+fn neighbourhood_average(source: &ImageBuffer<Rgba<u16>, Vec<u16>>, x: u32, y: u32) -> [f32; 3] {
+    let mut total = [0.0; 3];
+    let mut count = 0.0;
+    for sample_y in y.saturating_sub(1)..=(y + 1).min(source.height() - 1) {
+        for sample_x in x.saturating_sub(1)..=(x + 1).min(source.width() - 1) {
+            let sample = linear_rgb(source.get_pixel(sample_x, sample_y));
+            for channel in 0..3 {
+                total[channel] += sample[channel];
+            }
+            count += 1.0;
+        }
+    }
+    for channel in &mut total {
+        *channel /= count;
+    }
+    total
+}
+
+fn apply_sharpen(
+    image: &DynamicImage,
+    amount: f32,
+    threshold: f32,
+) -> Result<DynamicImage, ProcessingError> {
+    if !amount.is_finite()
+        || !(0.0..=2.0).contains(&amount)
+        || !threshold.is_finite()
+        || !(0.0..=1.0).contains(&threshold)
+    {
+        return Err(ProcessingError::Invalid(
+            "invalid sharpening settings".into(),
+        ));
+    }
+    if amount == 0.0 {
+        return Ok(image.clone());
+    }
+    let source = image.to_rgba16();
+    let mut output = source.clone();
+    for (x, y, pixel) in output.enumerate_pixels_mut() {
+        let center = linear_rgb(source.get_pixel(x, y));
+        let average = neighbourhood_average(&source, x, y);
+        for channel in 0..3 {
+            let detail = center[channel] - average[channel];
+            let value = if detail.abs() >= threshold {
+                center[channel] + detail * amount
+            } else {
+                center[channel]
+            };
+            pixel.0[channel] = (linear_to_srgb(value) * 65535.0).round() as u16;
+        }
+    }
+    Ok(DynamicImage::ImageRgba16(output))
+}
+
+fn apply_noise_reduction(
+    image: &DynamicImage,
+    luminance: f32,
+    chroma: f32,
+) -> Result<DynamicImage, ProcessingError> {
+    if [luminance, chroma]
+        .iter()
+        .any(|value| !value.is_finite() || !(0.0..=1.0).contains(value))
+    {
+        return Err(ProcessingError::Invalid(
+            "invalid noise-reduction settings".into(),
+        ));
+    }
+    if luminance == 0.0 && chroma == 0.0 {
+        return Ok(image.clone());
+    }
+    let source = image.to_rgba16();
+    let mut output = source.clone();
+    for (x, y, pixel) in output.enumerate_pixels_mut() {
+        let center = linear_rgb(source.get_pixel(x, y));
+        let average = neighbourhood_average(&source, x, y);
+        let center_luma = center[0] * 0.2126 + center[1] * 0.7152 + center[2] * 0.0722;
+        let average_luma = average[0] * 0.2126 + average[1] * 0.7152 + average[2] * 0.0722;
+        let new_luma = center_luma + (average_luma - center_luma) * luminance;
+        for channel in 0..3 {
+            let center_chroma = center[channel] - center_luma;
+            let average_chroma = average[channel] - average_luma;
+            let value = new_luma + center_chroma * (1.0 - chroma) + average_chroma * chroma;
+            pixel.0[channel] = (linear_to_srgb(value) * 65535.0).round() as u16;
+        }
     }
     Ok(DynamicImage::ImageRgba16(output))
 }

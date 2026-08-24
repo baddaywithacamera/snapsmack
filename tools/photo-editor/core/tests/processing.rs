@@ -3,8 +3,8 @@
 
 use image::{DynamicImage, ImageBuffer, ImageFormat, Rgba, RgbaImage};
 use snapsmack_photo_core::processing::{
-    apply, histogram, load, preview, replace_json_atomic, save_atomic, DarkroomSettings, Operation,
-    ProcessingError, DEFAULT_MEMORY_BUDGET,
+    apply, histogram, load, preview, replace_json_atomic, save_atomic, DarkroomSettings,
+    LevelsSettings, Operation, ProcessingError, DEFAULT_MEMORY_BUDGET,
 };
 use std::fs;
 
@@ -173,6 +173,121 @@ fn neutral_darkroom_is_identity_and_adjustments_are_deterministic() {
                 exposure: 5.1,
                 ..DarkroomSettings::default()
             },
+        }],
+        DEFAULT_MEMORY_BUDGET
+    )
+    .is_err());
+}
+
+#[test]
+fn finishing_controls_have_identity_guards_and_preserve_alpha() {
+    let source = fixture();
+    let neutral = [
+        Operation::Levels {
+            settings: LevelsSettings::default(),
+        },
+        Operation::Vignette {
+            amount: 0.0,
+            midpoint: 0.5,
+            feather: 0.5,
+        },
+        Operation::Sharpen {
+            amount: 0.0,
+            threshold: 0.0,
+        },
+        Operation::NoiseReduction {
+            luminance: 0.0,
+            chroma: 0.0,
+        },
+    ];
+    assert_eq!(
+        apply(source.clone(), &neutral, DEFAULT_MEMORY_BUDGET)
+            .unwrap()
+            .to_rgba8(),
+        source.to_rgba8()
+    );
+    let recipe = [
+        Operation::Levels {
+            settings: LevelsSettings {
+                black: 0.02,
+                gamma: 1.1,
+                white: 0.95,
+                ..LevelsSettings::default()
+            },
+        },
+        Operation::BlackAndWhite {
+            red: 0.3,
+            green: 0.6,
+            blue: 0.1,
+        },
+        Operation::Vignette {
+            amount: 0.4,
+            midpoint: 0.35,
+            feather: 0.5,
+        },
+        Operation::Sharpen {
+            amount: 0.5,
+            threshold: 0.01,
+        },
+        Operation::NoiseReduction {
+            luminance: 0.2,
+            chroma: 0.4,
+        },
+    ];
+    let first = apply(source.clone(), &recipe, DEFAULT_MEMORY_BUDGET).unwrap();
+    let second = apply(source, &recipe, DEFAULT_MEMORY_BUDGET).unwrap();
+    assert_eq!(first.to_rgba16(), second.to_rgba16());
+    assert_eq!(first.to_rgba16().get_pixel(0, 0).0[3], 0);
+}
+
+#[test]
+fn finishing_controls_reject_unsafe_ranges() {
+    assert!(apply(
+        fixture(),
+        &[Operation::Levels {
+            settings: LevelsSettings {
+                black: 0.8,
+                white: 0.2,
+                ..LevelsSettings::default()
+            }
+        }],
+        DEFAULT_MEMORY_BUDGET
+    )
+    .is_err());
+    assert!(apply(
+        fixture(),
+        &[Operation::BlackAndWhite {
+            red: 0.0,
+            green: 0.0,
+            blue: 0.0
+        }],
+        DEFAULT_MEMORY_BUDGET
+    )
+    .is_err());
+    assert!(apply(
+        fixture(),
+        &[Operation::Vignette {
+            amount: 2.0,
+            midpoint: 0.5,
+            feather: 0.5
+        }],
+        DEFAULT_MEMORY_BUDGET
+    )
+    .is_err());
+    assert!(apply(
+        fixture(),
+        &[Operation::Sharpen {
+            amount: 3.0,
+            threshold: 0.0
+        }],
+        DEFAULT_MEMORY_BUDGET
+    )
+    .is_err());
+    assert!(apply(
+        fixture(),
+        &[Operation::NoiseReduction {
+            luminance: -0.1,
+            chroma: 0.0
         }],
         DEFAULT_MEMORY_BUDGET
     )
