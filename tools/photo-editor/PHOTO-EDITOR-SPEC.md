@@ -68,13 +68,61 @@ Darkroom: exposure, contrast, highlights, shadows, whites, blacks, temperature, 
 saturation, vibrance, clarity/local contrast, haze reduction, B&W channel mix,
 sharpening, basic luminance/chroma noise reduction, vignette, levels, curves and HSL.
 
+Geometry/optics: interactive free and common-ratio crop with draggable handles and
+rule-of-thirds overlay; arbitrary horizon straightening plus draw-a-horizon mode;
+two-axis horizontal/vertical perspective correction; draggable four-corner freeform
+perspective correction; lens distortion and red/cyan plus blue/yellow chromatic
+aberration correction. Preview and full export must use the same transform.
+
 Layers: reorderable named adjustment layers; text and image-overlay layers; opacity,
 fill opacity, groups, common blend modes, visibility, duplicate/delete, presets, and
 flattened export while preserving the editable project recipe.
 
+The Layers panel is a first-class, plainly visible accordion—not a buried advanced
+screen. It must always show the ordered stack and expose add adjustment layer, add text,
+add image overlay, group, select, edit, hide/show, lock/unlock, duplicate, reorder,
+delete and ungroup. Every applicable layer exposes Normal, Multiply, Screen, Overlay
+and Soft Light blending plus opacity and fill. Structural actions participate in
+undo/redo and survive editable-project round trips.
+
 Styles/masks: stroke, drop/inner shadow, outer/inner glow, colour/gradient/texture
 overlay, bevel/emboss; gradient, radial, luminance and colour-range masks. Painted
 masks are a later acceptance-gated addition, not a prerequisite for release.
+
+Effects: vignette and deterministic photographic film grain with amount, grain size
+and roughness controls. Film grain must be seeded from stable recipe data so preview,
+project reopen and export remain reproducible.
+
+## Lighttable and selection workflow
+
+Folder browsing shows compatible JPEG, PNG, WebP and TIFF images only. RAW, HEIC/HEIF,
+SVG, GIF, AVIF, PDF, video, renamed/disguised payloads and corrupt files do not appear.
+The Lighttable provides a virtualized thumbnail grid, filmstrip, previous/next image,
+keyboard navigation, pick, reject, zero-to-five stars, colour labels and filters for
+flag/rating/label. `P` means pick, `X` means reject and `0`–`5` set stars.
+
+Ratings live in an atomic portable catalog beside the folder and never modify original
+images. Thumbnail generation is lazy, cached, cancellable and isolated so one corrupt
+or enormous file cannot block the folder. Folder changes and concurrent catalog writers
+are detected. Selected images can be opened for editing or handed to suite posting flows.
+
+## Preset compatibility
+
+PIXEL TICKLER has its own named non-destructive presets and imports current Lightroom
+Develop `.xmp` presets, including `.zip` packages containing them. Import translates
+only settings with a documented PIXEL TICKLER equivalent and reports imported,
+approximated and unsupported properties. It never claims pixel-identical Adobe output.
+Legacy `.lrtemplate`, camera/DCP profiles, proprietary lens profiles, RAW calibration,
+AI masks and Adobe process-version rendering are not silently accepted. Preset files
+are data only, never executable, and importing them does not redistribute their content.
+
+## Interface organization
+
+The right rail uses independently collapsible Midnight Lime accordions, including at
+minimum Crop, Straighten, Resize, Exposure, Optics, Colour/Tone, Detail, Effects,
+Layers, Text, Image Overlay, Groups, Layer Styles, Masks and Histogram. A collapsed
+section consumes only its labelled header. Essential layer and blend controls must be
+discoverable without scrolling through every photographic adjustment.
 
 ## Job and project contracts
 
