@@ -29,6 +29,24 @@ if (!isset($settings)) {
     $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 }
 
+// --- FEDISTRUCTURE site_mode SELF-HEAL ---
+// A genuine FEDISTRUCTURE install (distribution='fedistructure') must run
+// site_mode='fedistructure', or the hub / relay / directory gates stay dormant.
+// The one-shot migration (migrate-fedistructure-site-mode.sql) ran once, no-op'd
+// on installs whose distribution wasn't stamped at that moment, and never re-ran
+// — leaving them at site_mode='photoblog'. Reconcile on every admin load instead:
+// guarded to genuine fedistructure installs so a normal blog is NEVER touched,
+// and idempotent (writes once, then the guard is false forever after).
+if (($settings['distribution'] ?? '') === 'fedistructure'
+    && ($settings['site_mode'] ?? '') === 'photoblog') {
+    try {
+        $pdo->prepare("UPDATE snap_settings SET setting_val = 'fedistructure' WHERE setting_key = 'site_mode'")->execute();
+        $settings['site_mode'] = 'fedistructure';
+    } catch (\Throwable $e) {
+        error_log('SnapSmack: FEDISTRUCTURE site_mode self-heal skipped — ' . $e->getMessage());
+    }
+}
+
 // --- CRON CAPABILITY DETECTION ---
 // Check if the server supports cron and PHP CLI for scheduled task runner
 $cron_supported  = false;
