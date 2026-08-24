@@ -1,6 +1,7 @@
 //! Bounded image decode and deterministic basic recipe processing.
 //! SNAPSMACK_EOF_HEADER: last non-empty line must be the canonical Rust marker.
 
+use ab_glyph::{point, Font, FontRef, PxScale, ScaleFont};
 use base64::Engine;
 use image::imageops::FilterType;
 use image::{
@@ -121,6 +122,39 @@ pub enum Operation {
         blend_mode: BlendMode,
         operations: Vec<Operation>,
     },
+    TextLayer {
+        name: String,
+        visible: bool,
+        locked: bool,
+        opacity: f32,
+        fill_opacity: f32,
+        blend_mode: BlendMode,
+        text: String,
+        font_family: FontFamily,
+        font_size: f32,
+        color: [u8; 4],
+        x: i32,
+        y: i32,
+        alignment: TextAlignment,
+    },
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FontFamily {
+    #[default]
+    SansSerif,
+    Serif,
+    Monospace,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TextAlignment {
+    #[default]
+    Left,
+    Center,
+    Right,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
@@ -396,9 +430,66 @@ fn apply_with_depth(
                     composite_adjustment(&image, &adjusted, opacity * fill_opacity, blend_mode)
                 }
             }
+            Operation::TextLayer {
+                name,
+                visible,
+                locked: _,
+                opacity,
+                fill_opacity,
+                blend_mode,
+                text,
+                font_family,
+                font_size,
+                color,
+                x,
+                y,
+                alignment,
+            } => {
+                validate_layer_header(&name, opacity, fill_opacity)?;
+                if text.is_empty()
+                    || text.chars().count() > 8_192
+                    || !font_size.is_finite()
+                    || !(4.0..=2_048.0).contains(&font_size)
+                {
+                    return Err(ProcessingError::Invalid("invalid text layer".into()));
+                }
+                if !visible || opacity == 0.0 || fill_opacity == 0.0 {
+                    image
+                } else {
+                    apply_text_layer(
+                        &image,
+                        &text,
+                        font_family,
+                        font_size,
+                        color,
+                        x,
+                        y,
+                        alignment,
+                        opacity * fill_opacity,
+                        blend_mode,
+                    )?
+                }
+            }
         };
     }
     Ok(image)
+}
+
+fn validate_layer_header(
+    name: &str,
+    opacity: f32,
+    fill_opacity: f32,
+) -> Result<(), ProcessingError> {
+    if name.trim().is_empty()
+        || name.len() > 200
+        || !opacity.is_finite()
+        || !(0.0..=1.0).contains(&opacity)
+        || !fill_opacity.is_finite()
+        || !(0.0..=1.0).contains(&fill_opacity)
+    {
+        return Err(ProcessingError::Invalid("invalid layer properties".into()));
+    }
+    Ok(())
 }
 
 fn blend_channel(base: f32, adjusted: f32, mode: BlendMode) -> f32 {
@@ -440,6 +531,170 @@ fn composite_adjustment(
                 .round() as u16;
         }
         destination.0[3] = base_pixel.0[3];
+    }
+    DynamicImage::ImageRgba16(output)
+}
+
+fn system_font_candidates(family: FontFamily) -> Vec<PathBuf> {
+    #[cfg(target_os = "windows")]
+    {
+        let root = std::env::var_os("WINDIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from(r"C:\Windows"))
+            .join("Fonts");
+        let names: &[&str] = match family {
+            FontFamily::SansSerif => &["segoeui.ttf", "arial.ttf"],
+            FontFamily::Serif => &["times.ttf", "georgia.ttf"],
+            FontFamily::Monospace => &["consola.ttf", "cour.ttf"],
+        };
+        names.iter().map(|name| root.join(name)).collect()
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let names: &[&str] = match family {
+            FontFamily::SansSerif => &[
+                "dejavu/DejaVuSans.ttf",
+                "liberation2/LiberationSans-Regular.ttf",
+            ],
+            FontFamily::Serif => &[
+                "dejavu/DejaVuSerif.ttf",
+                "liberation2/LiberationSerif-Regular.ttf",
+            ],
+            FontFamily::Monospace => &[
+                "dejavu/DejaVuSansMono.ttf",
+                "liberation2/LiberationMono-Regular.ttf",
+            ],
+        };
+        ["/usr/share/fonts/truetype", "/usr/local/share/fonts"]
+            .iter()
+            .flat_map(|root| names.iter().map(move |name| PathBuf::from(root).join(name)))
+            .collect()
+    }
+}
+
+fn load_system_font(family: FontFamily) -> Result<Vec<u8>, ProcessingError> {
+    system_font_candidates(family)
+        .into_iter()
+        .find_map(|path| std::fs::read(path).ok())
+        .or_else(|| {
+            if matches!(family, FontFamily::SansSerif) {
+                None
+            } else {
+                system_font_candidates(FontFamily::SansSerif)
+                    .into_iter()
+                    .find_map(|path| std::fs::read(path).ok())
+            }
+        })
+        .ok_or_else(|| ProcessingError::Unsupported("no supported system font is installed".into()))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn apply_text_layer(
+    base: &DynamicImage,
+    text: &str,
+    family: FontFamily,
+    size: f32,
+    color: [u8; 4],
+    x: i32,
+    y: i32,
+    alignment: TextAlignment,
+    opacity: f32,
+    mode: BlendMode,
+) -> Result<DynamicImage, ProcessingError> {
+    let bytes = load_system_font(family)?;
+    let font = FontRef::try_from_slice(&bytes)
+        .map_err(|_| ProcessingError::Invalid("installed fallback font is invalid".into()))?;
+    let scale = PxScale::from(size);
+    let scaled = font.as_scaled(scale);
+    let line_height = (scaled.ascent() - scaled.descent() + scaled.line_gap()).max(size);
+    let mut overlay = ImageBuffer::from_pixel(base.width(), base.height(), Rgba([0_u16; 4]));
+
+    for (line_index, line) in text.lines().enumerate() {
+        let mut width = 0.0_f32;
+        let mut previous = None;
+        for character in line.chars() {
+            let id = font.glyph_id(character);
+            if let Some(before) = previous {
+                width += scaled.kern(before, id);
+            }
+            width += scaled.h_advance(id);
+            previous = Some(id);
+        }
+        let start_x = match alignment {
+            TextAlignment::Left => x as f32,
+            TextAlignment::Center => x as f32 - width / 2.0,
+            TextAlignment::Right => x as f32 - width,
+        };
+        let baseline = y as f32 + scaled.ascent() + line_index as f32 * line_height;
+        let mut pen_x = start_x;
+        let mut previous = None;
+        for character in line.chars() {
+            let id = font.glyph_id(character);
+            if let Some(before) = previous {
+                pen_x += scaled.kern(before, id);
+            }
+            let glyph = id.with_scale_and_position(scale, point(pen_x, baseline));
+            if let Some(outlined) = font.outline_glyph(glyph) {
+                let bounds = outlined.px_bounds();
+                outlined.draw(|gx, gy, coverage| {
+                    let px = bounds.min.x.floor() as i32 + gx as i32;
+                    let py = bounds.min.y.floor() as i32 + gy as i32;
+                    if px < 0
+                        || py < 0
+                        || px >= overlay.width() as i32
+                        || py >= overlay.height() as i32
+                    {
+                        return;
+                    }
+                    let alpha = (coverage * f32::from(color[3]) / 255.0 * 65535.0).round() as u16;
+                    let pixel = overlay.get_pixel_mut(px as u32, py as u32);
+                    pixel.0 = [
+                        u16::from(color[0]) * 257,
+                        u16::from(color[1]) * 257,
+                        u16::from(color[2]) * 257,
+                        pixel.0[3].max(alpha),
+                    ];
+                });
+            }
+            pen_x += scaled.h_advance(id);
+            previous = Some(id);
+        }
+    }
+    Ok(composite_overlay(
+        base,
+        &DynamicImage::ImageRgba16(overlay),
+        opacity,
+        mode,
+    ))
+}
+
+fn composite_overlay(
+    base: &DynamicImage,
+    overlay: &DynamicImage,
+    opacity: f32,
+    mode: BlendMode,
+) -> DynamicImage {
+    let base = base.to_rgba16();
+    let overlay = overlay.to_rgba16();
+    let mut output = base.clone();
+    for ((destination, base_pixel), overlay_pixel) in
+        output.pixels_mut().zip(base.pixels()).zip(overlay.pixels())
+    {
+        let source_alpha = overlay_pixel.0[3] as f32 / 65535.0 * opacity;
+        if source_alpha <= 0.0 {
+            continue;
+        }
+        for channel in 0..3 {
+            let base_value = srgb_to_linear(base_pixel.0[channel] as f32 / 65535.0);
+            let source_value = srgb_to_linear(overlay_pixel.0[channel] as f32 / 65535.0);
+            let blended = blend_channel(base_value, source_value, mode);
+            destination.0[channel] =
+                (linear_to_srgb(base_value + (blended - base_value) * source_alpha) * 65535.0)
+                    .round() as u16;
+        }
+        let base_alpha = base_pixel.0[3] as f32 / 65535.0;
+        destination.0[3] =
+            ((source_alpha + base_alpha * (1.0 - source_alpha)) * 65535.0).round() as u16;
     }
     DynamicImage::ImageRgba16(output)
 }

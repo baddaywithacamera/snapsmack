@@ -9,6 +9,7 @@ repository = "https://github.com/baddaywithacamera/snapsmack"
 publish = false
 
 [dependencies]
+ab_glyph = "0.2"
 base64 = "0.22"
 image = { version = "0.25.8", default-features = false, features = ["jpeg", "png", "webp", "tiff"] }
 serde = { version = "1", features = ["derive"] }

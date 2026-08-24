@@ -2,7 +2,7 @@
 //! SNAPSMACK_EOF_HEADER: last non-empty line must be the canonical Rust marker.
 
 use serde_json::json;
-use snapsmack_photo_core::processing::Operation;
+use snapsmack_photo_core::processing::{BlendMode, FontFamily, Operation, TextAlignment};
 use snapsmack_photo_core::project::{self, ProjectDocument};
 use std::io::Write;
 
@@ -12,7 +12,28 @@ fn project_round_trip_preserves_edits_and_optional_metadata() {
     let source = temp.path().join("source.png");
     std::fs::write(&source, b"stable source bytes").unwrap();
     let path = temp.path().join("work.spt");
-    let mut document = project::new_document(&source, vec![Operation::Rotate90]).unwrap();
+    let mut document = project::new_document(
+        &source,
+        vec![
+            Operation::Rotate90,
+            Operation::TextLayer {
+                name: "Title".into(),
+                visible: true,
+                locked: false,
+                opacity: 0.8,
+                fill_opacity: 1.0,
+                blend_mode: BlendMode::Normal,
+                text: "Hello".into(),
+                font_family: FontFamily::SansSerif,
+                font_size: 48.0,
+                color: [57, 255, 20, 255],
+                x: 12,
+                y: 24,
+                alignment: TextAlignment::Left,
+            },
+        ],
+    )
+    .unwrap();
     document
         .optional_metadata
         .insert("future-field".into(), json!({"kept": true}));
@@ -26,7 +47,7 @@ fn project_round_trip_preserves_edits_and_optional_metadata() {
     );
     assert_eq!(
         serde_json::to_value(&loaded.operations).unwrap(),
-        json!([{"type": "rotate90"}])
+        serde_json::to_value(&document.operations).unwrap()
     );
     assert!(project::source_matches(&loaded, &source).unwrap());
 }

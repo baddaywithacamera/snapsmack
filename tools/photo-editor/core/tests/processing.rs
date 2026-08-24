@@ -4,7 +4,7 @@
 use image::{DynamicImage, ImageBuffer, ImageFormat, Rgba, RgbaImage};
 use snapsmack_photo_core::processing::{
     apply, histogram, load, preview, replace_json_atomic, save_atomic, BlendMode, DarkroomSettings,
-    LevelsSettings, Operation, ProcessingError, DEFAULT_MEMORY_BUDGET,
+    FontFamily, LevelsSettings, Operation, ProcessingError, TextAlignment, DEFAULT_MEMORY_BUDGET,
 };
 use std::fs;
 
@@ -420,6 +420,40 @@ fn adjustment_layer_nesting_is_bounded() {
         };
     }
     assert!(apply(fixture(), &[operation], DEFAULT_MEMORY_BUDGET).is_err());
+}
+
+#[test]
+fn text_layers_render_deterministically_and_respect_visibility() {
+    let source =
+        DynamicImage::ImageRgba8(RgbaImage::from_pixel(320, 120, Rgba([255, 255, 255, 255])));
+    let mut layer = Operation::TextLayer {
+        name: "Caption".into(),
+        visible: true,
+        locked: false,
+        opacity: 1.0,
+        fill_opacity: 1.0,
+        blend_mode: BlendMode::Normal,
+        text: "PIXEL".into(),
+        font_family: FontFamily::SansSerif,
+        font_size: 48.0,
+        color: [0, 0, 0, 255],
+        x: 20,
+        y: 20,
+        alignment: TextAlignment::Left,
+    };
+    let first = apply(source.clone(), &[layer.clone()], DEFAULT_MEMORY_BUDGET).unwrap();
+    let second = apply(source.clone(), &[layer.clone()], DEFAULT_MEMORY_BUDGET).unwrap();
+    assert_eq!(first.to_rgba16(), second.to_rgba16());
+    assert_ne!(first.to_rgba8(), source.to_rgba8());
+    if let Operation::TextLayer { visible, .. } = &mut layer {
+        *visible = false;
+    }
+    assert_eq!(
+        apply(source.clone(), &[layer], DEFAULT_MEMORY_BUDGET)
+            .unwrap()
+            .to_rgba8(),
+        source.to_rgba8()
+    );
 }
 
 // ===== SNAPSMACK EOF =====
