@@ -10,6 +10,10 @@
 
 # SnapSmack Changelog
 
+## 0.7.557 — 2026-08-25 "FEDBOARD"
+
+- Fediverse: **RUN JOBS — ALL SPOKES** now runs one spoke per request with live progress instead of looping the whole fleet in a single request — which timed out on a constrained hub and left most pickers unfilled. New per-spoke `run_jobs` AJAX handler plus a client-driven driver (mirrors UPDATE ALL BEHIND): one slow site can't hang the batch, and the hub shows "RUNNING X OF Y (ok/failed)" with a progress bar and a running tally of peers added. No-JS falls back to the server-side loop.
+
 ## 0.7.556 — 2026-08-25 "FEDBOARD"
 
 - Fediverse: the FEDBOARD site-picker now actually fills. The roster pull was reading peers from the `multisite/heartbeat` response, which never carried them (only `multisite/ping` does), so every sweep ingested an empty roster and the picker stayed empty on every site. It now reads the correct endpoint, so the RUN NOW button and the automatic web-cron fill the picker on their own.
