@@ -8,6 +8,26 @@ import time
 
 from PIL import Image, ImageFilter, ImageOps, ImageStat
 
+EXIF_COPYRIGHT = 33432
+
+
+def save_with_metadata(output, target, source_path, copyright_text="", **options):
+    """Save a derived image while retaining the source EXIF and colour profile."""
+    with Image.open(source_path) as source:
+        oriented = ImageOps.exif_transpose(source)
+        exif = oriented.getexif()
+        if copyright_text and not str(exif.get(EXIF_COPYRIGHT, "")).strip():
+            exif[EXIF_COPYRIGHT] = copyright_text.strip()
+        if exif:
+            options["exif"] = exif.tobytes()
+        icc = source.info.get("icc_profile")
+        if icc:
+            options["icc_profile"] = icc
+        dpi = source.info.get("dpi")
+        if dpi:
+            options["dpi"] = dpi
+    output.save(target, **options)
+
 
 def unique_path(path):
     if not os.path.exists(path):
@@ -90,7 +110,8 @@ def restore_last_trash(manifest_path):
     return restored
 
 
-def export_files(paths, destination, max_size=2048, quality=90, sharpen=False):
+def export_files(paths, destination, max_size=2048, quality=90, sharpen=False,
+                 copyright_text=""):
     os.makedirs(destination, exist_ok=True)
     outputs = []
     for source in paths:
@@ -102,7 +123,8 @@ def export_files(paths, destination, max_size=2048, quality=90, sharpen=False):
                 output.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
             if sharpen:
                 output = output.filter(ImageFilter.UnsharpMask(radius=1.2, percent=100, threshold=3))
-            output.save(target, "JPEG", quality=quality, optimize=True)
+            save_with_metadata(output, target, source, copyright_text,
+                               format="JPEG", quality=quality, optimize=True)
         outputs.append(target)
     return outputs
 
@@ -112,8 +134,11 @@ def rotate_files(paths, degrees):
         with Image.open(path) as image:
             output = ImageOps.exif_transpose(image)
             output = output.rotate(degrees, expand=True)
-            save_args = {"quality": 95, "optimize": True} if image.format in {"JPEG", "WEBP"} else {}
-            output.save(path, **save_args)
+            image_format = image.format
+        save_args = {"quality": 95, "optimize": True} if image_format in {"JPEG", "WEBP"} else {}
+        temporary = path + ".snap-rotate"
+        save_with_metadata(output, temporary, path, format=image_format, **save_args)
+        os.replace(temporary, path)
 
 
 def content_hash(path, chunk_size=1024 * 1024):

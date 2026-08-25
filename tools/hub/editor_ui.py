@@ -24,12 +24,14 @@ BLEND_MODES = ("normal", "multiply", "screen", "overlay", "soft_light", "hard_li
 class EditorWindow(tk.Toplevel):
     recipe_clipboard = None
 
-    def __init__(self, parent, row, rows, on_select=None, on_refresh=None):
+    def __init__(self, parent, row, rows, on_select=None, on_refresh=None,
+                 copyright_text=None):
         super().__init__(parent)
         self.row = row
         self.rows = rows
         self.on_select = on_select
         self.on_refresh = on_refresh
+        self.copyright_text = copyright_text or (lambda: "")
         self.document = editor_engine.EditorDocument(row["path"])
         self.documents = {os.path.abspath(row["path"]): self.document}
         self.zoom = 0.0
@@ -766,7 +768,8 @@ class EditorWindow(tk.Toplevel):
         destination = filedialog.askdirectory(title="Batch export folder", parent=self)
         if destination and messagebox.askyesno("Batch apply", f"Create edited JPEG copies for {len(paths):,} visible photo(s)?", parent=self):
             try:
-                outputs = editor_engine.batch_apply(paths, self.document.recipe(), destination)
+                outputs = editor_engine.batch_apply(paths, self.document.recipe(), destination,
+                                                    copyright_text=self.copyright_text())
                 messagebox.showinfo("Batch complete", f"Created {len(outputs):,} edited copies.", parent=self)
             except Exception as exc:
                 messagebox.showerror("Batch failed", str(exc), parent=self)
@@ -822,7 +825,7 @@ class EditorWindow(tk.Toplevel):
                                             filetypes=[("JPEG", "*.jpg"), ("PNG", "*.png"), ("TIFF", "*.tif")])
         if path:
             try:
-                self.document.export(path)
+                self.document.export(path, copyright_text=self.copyright_text())
                 messagebox.showinfo("Export complete", path, parent=self)
                 if self.on_refresh: self.on_refresh()
             except Exception as exc:

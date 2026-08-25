@@ -35,6 +35,7 @@ class PhotoLibrary(tk.Toplevel):
         self.tools_path = os.path.join(os.path.dirname(state_path), "external_tools.json") if state_path else None
         self.metadata_path = os.path.join(os.path.dirname(state_path), "photo_metadata.json") if state_path else None
         state_dir = os.path.dirname(state_path) if state_path else ""
+        self.export_settings_path = os.path.join(state_dir, "export_settings.json") if state_dir else None
         self.albums_path = os.path.join(state_dir, "albums.json") if state_dir else None
         self.trash_path = os.path.join(state_dir, "trash_manifest.json") if state_dir else None
         self.trash_root = os.path.join(state_dir, "trash") if state_dir else None
@@ -47,6 +48,9 @@ class PhotoLibrary(tk.Toplevel):
         self.current_signature = None
         self.external_tools = self._load_external_tools()
         self.metadata = self._load_metadata()
+        export_settings = photo_manager.load_json(self.export_settings_path, {}) if self.export_settings_path else {}
+        self.add_copyright_var = tk.BooleanVar(value=bool(export_settings.get("add_copyright", False)))
+        self.copyright_var = tk.StringVar(value=str(export_settings.get("copyright", "")))
         self.render_limit = 120
         self._single_click_job = None
         self._grid_generation = 0
@@ -219,6 +223,18 @@ class PhotoLibrary(tk.Toplevel):
                         insertbackground=INK, relief="flat", font=("Segoe UI", 9))
         tags.pack(fill="x", pady=(4, 5), ipady=4)
         tags.bind("<Return>", lambda _e: self.save_photo_details())
+        copyright_row = tk.Frame(details, bg="#111111")
+        copyright_row.pack(fill="x", pady=(1, 5))
+        tk.Checkbutton(copyright_row, text="Add copyright if EXIF field is missing",
+                       variable=self.add_copyright_var, command=self._save_export_settings,
+                       bg="#111111", fg=INK, selectcolor=FIELD,
+                       activebackground="#111111", activeforeground=INK,
+                       font=("Segoe UI", 8)).pack(anchor="w")
+        copyright_entry = tk.Entry(copyright_row, textvariable=self.copyright_var,
+                                   bg=FIELD, fg=INK, insertbackground=INK,
+                                   relief="flat", font=("Segoe UI", 9))
+        copyright_entry.pack(fill="x", pady=(3, 0), ipady=3)
+        copyright_entry.bind("<FocusOut>", lambda _event: self._save_export_settings())
         tag_buttons = tk.Frame(details, bg="#111111")
         tag_buttons.pack(fill="x")
         self._button(tag_buttons, "SAVE DETAILS", self.save_photo_details).pack(
@@ -612,6 +628,16 @@ class PhotoLibrary(tk.Toplevel):
         self.filter_rows()
         self._render_viewer()
 
+    def _save_export_settings(self):
+        if self.export_settings_path:
+            photo_manager.atomic_json(self.export_settings_path, {
+                "add_copyright": bool(self.add_copyright_var.get()),
+                "copyright": self.copyright_var.get().strip(),
+            })
+
+    def _copyright_text(self):
+        return self.copyright_var.get().strip() if self.add_copyright_var.get() else ""
+
     def delete_tag(self):
         rows = self._chosen_rows()
         if not rows:
@@ -822,7 +848,9 @@ class PhotoLibrary(tk.Toplevel):
             return
         sharpen = messagebox.askyesno("Export sharpening", "Apply gentle output sharpening?", parent=self)
         try:
-            outputs = photo_manager.export_files(paths, destination, size, quality, sharpen)
+            self._save_export_settings()
+            outputs = photo_manager.export_files(paths, destination, size, quality, sharpen,
+                                                  self._copyright_text())
             messagebox.showinfo("Export complete", f"Exported {len(outputs):,} photo(s).", parent=self)
         except Exception as exc:
             messagebox.showerror("Export failed", str(exc), parent=self)
@@ -1280,7 +1308,8 @@ class PhotoLibrary(tk.Toplevel):
                 output = self._apply_viewer_adjustments(output)
                 options = {"quality": 95, "optimize": True} if extension.lower() in {
                     ".jpg", ".jpeg", ".webp"} else {}
-                output.save(target, **options)
+                photo_manager.save_with_metadata(output, target, source,
+                                                 self._copyright_text(), **options)
             messagebox.showinfo("Edited copy exported", target, parent=self.viewer)
             self.refresh_current()
         except Exception as exc:
@@ -1298,7 +1327,8 @@ class PhotoLibrary(tk.Toplevel):
             editor_rows = chosen if len(chosen) > 1 else (self.visible or self.rows)
             self.editor_window = EditorWindow(
                 self, row, editor_rows,
-                on_select=self.select_photo, on_refresh=self.refresh_current)
+                on_select=self.select_photo, on_refresh=self.refresh_current,
+                copyright_text=self._copyright_text)
         return
         viewer = getattr(self, "viewer", None)
         if not viewer or not viewer.winfo_exists():
@@ -1558,7 +1588,8 @@ class PhotoLibrary(tk.Toplevel):
                         radius=float(self.sharpen_radius), percent=int(self.sharpen_amount),
                         threshold=int(self.sharpen_threshold)))
                 kwargs = {"quality": 95, "optimize": True} if ext.lower() in {".jpg", ".jpeg", ".webp"} else {}
-                output.save(target, **kwargs)
+                photo_manager.save_with_metadata(output, target, source_path,
+                                                 self._copyright_text(), **kwargs)
             messagebox.showinfo("Sharpened copy exported", target, parent=self.sharpen_panel)
         except Exception as exc:
             messagebox.showerror("Export failed", str(exc), parent=self.sharpen_panel)
