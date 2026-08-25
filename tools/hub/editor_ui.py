@@ -25,13 +25,14 @@ class EditorWindow(tk.Toplevel):
     recipe_clipboard = None
 
     def __init__(self, parent, row, rows, on_select=None, on_refresh=None,
-                 copyright_text=None):
+                 copyright_text=None, batch_rows=None):
         super().__init__(parent)
         self.row = row
         self.rows = rows
         self.on_select = on_select
         self.on_refresh = on_refresh
         self.copyright_text = copyright_text or (lambda: "")
+        self.batch_rows = list(batch_rows or [row])
         self.document = editor_engine.EditorDocument(row["path"])
         self.documents = {os.path.abspath(row["path"]): self.document}
         self.zoom = 0.0
@@ -264,11 +265,12 @@ class EditorWindow(tk.Toplevel):
         settings.pack(fill="x", padx=8, pady=5)
         self.layer_visible_var = tk.BooleanVar(value=True)
         tk.Checkbutton(settings, text="Visible", variable=self.layer_visible_var,
-                       command=self.layer_setting_changed, bg=PANEL, fg=INK, selectcolor=FIELD,
+                       command=lambda: self.commit_layer_setting("Layer visibility"),
+                       bg=PANEL, fg=INK, selectcolor=FIELD,
                        activebackground=PANEL).pack(side="left")
         self.layer_blend_var = tk.StringVar(value="normal")
         blend = tk.OptionMenu(settings, self.layer_blend_var, *BLEND_MODES,
-                              command=lambda _value: self.layer_setting_changed())
+                              command=lambda _value: self.commit_layer_setting("Layer blend mode"))
         blend.configure(bg=FIELD, fg=INK, activebackground=ACCENT, relief="flat", highlightthickness=0)
         blend["menu"].configure(bg=FIELD, fg=INK, activebackground=ACCENT)
         blend.pack(side="right", fill="x", expand=True)
@@ -314,6 +316,7 @@ class EditorWindow(tk.Toplevel):
                                        selectbackground=ACCENT, selectforeground=BG,
                                        highlightthickness=0, relief="flat")
         self.history_list.pack(fill="x", padx=8, pady=7)
+        self.history_list.bind("<Double-Button-1>", self.restore_history)
 
     def _load_document_controls(self):
         self.title_label.configure(text=os.path.basename(self.document.source_path))
@@ -374,7 +377,7 @@ class EditorWindow(tk.Toplevel):
             self.display_box = (x - shown.width // 2, y - shown.height // 2,
                                 x + shown.width // 2, y + shown.height // 2)
             self.zoom_label.configure(text="FIT" if self.zoom <= 0 else f"{self.zoom * 100:.0f}%")
-            self.draw_histogram()
+            self.draw_histogram(edited)
             self.draw_curve()
         except Exception as exc:
             self.canvas.delete("all")
@@ -396,6 +399,9 @@ class EditorWindow(tk.Toplevel):
         self.schedule_render()
 
     def set_tool(self, name):
+        if name in {"crop", "spot", "red_eye", "mask"} and self.compare_mode != "edited":
+            self.compare_mode = "edited"
+            self.schedule_render()
         self.tool = name
         if name != "crop":
             self.crop_rect = None
@@ -493,6 +499,12 @@ class EditorWindow(tk.Toplevel):
         top, bottom = sorted((first[1], second[1]))
         if right - left < .01 or bottom - top < .01:
             return
+        previous = self.document.geometry.get("crop")
+        if previous:
+            old_left, old_top, old_right, old_bottom = previous
+            width, height = old_right - old_left, old_bottom - old_top
+            left, right = old_left + left * width, old_left + right * width
+            top, bottom = old_top + top * height, old_top + bottom * height
         self.document.geometry["crop"] = [left, top, right, bottom]
         self.document.record("Crop")
         self.crop_rect = None
@@ -569,11 +581,18 @@ class EditorWindow(tk.Toplevel):
         for x, y in coords:
             canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill=ACCENT, outline="")
 
-    def draw_histogram(self):
+    def draw_histogram(self, image=None):
         canvas = self.hist_canvas
         canvas.delete("all")
         try:
-            values = self.document.histogram((300, 200))
+            if image is None:
+                values = self.document.histogram((300, 200))
+            else:
+                sample = image.copy()
+                sample.thumbnail((300, 200), Image.Resampling.BILINEAR)
+                red, green, blue = sample.convert("RGB").split()
+                values = {"red": red.histogram(), "green": green.histogram(),
+                          "blue": blue.histogram()}
         except Exception:
             return
         width, height = max(1, canvas.winfo_width()), max(1, canvas.winfo_height())
@@ -651,6 +670,12 @@ class EditorWindow(tk.Toplevel):
             layer["blend"] = self.layer_blend_var.get()
             layer["opacity"] = self.layer_opacity_var.get()
             self.schedule_render()
+
+    def commit_layer_setting(self, label="Layer settings"):
+        self.layer_setting_changed()
+        if self.current_layer():
+            self.document.record(label)
+            self.refresh_history()
 
     def layer_setting_begin(self, _event=None):
         layer = self.current_layer()
@@ -762,7 +787,7 @@ class EditorWindow(tk.Toplevel):
             self.document.apply_recipe(editor_engine.load_recipe(path)); self._load_document_controls()
 
     def batch_apply(self):
-        paths = [row["path"] for row in self.rows if os.path.isfile(row.get("path", ""))]
+        paths = [row["path"] for row in self.batch_rows if os.path.isfile(row.get("path", ""))]
         if not paths:
             return
         destination = filedialog.askdirectory(title="Batch export folder", parent=self)
@@ -793,6 +818,17 @@ class EditorWindow(tk.Toplevel):
             self.history_list.insert("end", prefix + item["label"])
         if self.document.history:
             self.history_list.see(self.document.history_index)
+
+    def restore_history(self, _event=None):
+        selection = self.history_list.curselection()
+        if not selection:
+            return
+        index = selection[0]
+        if not 0 <= index < len(self.document.history):
+            return
+        self.document.history_index = index
+        self.document.restore(self.document.history[index]["state"])
+        self._load_document_controls()
 
     def save_project(self):
         path = self.document.project_path or filedialog.asksaveasfilename(
