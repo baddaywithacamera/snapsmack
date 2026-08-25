@@ -137,6 +137,15 @@ list($sent, $failed)  = sv_process_deliveries($pdo, $settings, 30, sv_delivery_c
 // ANY save path lands within a cron tick — no per-page hook to forget.
 $actor_upd = sv_maybe_push_actor_update($pdo, $settings);
 
+// Mesh roster refresh so the FEDBOARD site-picker fills without anyone loading
+// the Multisite admin page (its only other trigger).
+if (is_file("{$root}/core/mesh-helpers.php")) {
+    require_once "{$root}/core/mesh-helpers.php";
+    if (function_exists('ms_spoke_pull_roster')) {
+        try { ms_spoke_pull_roster($pdo, $settings); } catch (Throwable $e) {}
+    }
+}
+
 // Health stamp for the SMACKVERSE admin page's delivery panel.
 sv_set_setting($pdo, $settings, 'smackverse_cron_last_run', date('Y-m-d H:i:s'));
 
