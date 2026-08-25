@@ -224,4 +224,63 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
 
     return ['added' => $added, 'updated' => $updated, 'pruned' => $pruned];
 }
+
+/**
+ * Spoke -> hub roster pull. Calls this spoke's hub heartbeat endpoint and
+ * ingests the returned peer roster into snap_multisite_nodes, so the FEDBOARD
+ * site-switcher fills WITHOUT anyone loading the Multisite admin page (which was
+ * the only trigger before). No-op on a hub, or with no hub row / no outbound key.
+ * Discovery data only — ms_ingest_roster stores no sibling keys.
+ *
+ * @return array{added:int,updated:int,pruned:int,ok:bool}
+ */
+function ms_spoke_pull_roster(PDO $pdo, array $settings): array
+{
+    $none = ['added' => 0, 'updated' => 0, 'pruned' => 0, 'ok' => false];
+    if (($settings['multisite_role'] ?? '') === 'hub' || !function_exists('curl_init')) {
+        return $none;
+    }
+    try {
+        $hub = $pdo->query("SELECT * FROM snap_multisite_nodes WHERE role = 'hub' LIMIT 1")
+                   ->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return $none;
+    }
+    if (!$hub || trim((string)($hub['api_key_remote'] ?? '')) === '') {
+        return $none;
+    }
+    $hub_url = rtrim((string)$hub['site_url'], '/');
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $hub_url . '/api.php?route=multisite/heartbeat',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . $hub['api_key_remote'],
+            'Accept: application/json',
+        ],
+    ]);
+    $raw  = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if (!$raw || $code !== 200) {
+        return $none;
+    }
+    $hb = json_decode((string)$raw, true);
+    if (empty($hb['ok'])) {
+        return $none;
+    }
+    try {
+        $pdo->prepare("UPDATE snap_multisite_nodes SET last_seen_at = NOW(), status = 'active' WHERE id = ?")
+            ->execute([$hub['id']]);
+    } catch (Throwable $e) {
+    }
+    if (empty($hb['mesh']['peers']) || !is_array($hb['mesh']['peers'])) {
+        return ['added' => 0, 'updated' => 0, 'pruned' => 0, 'ok' => true];
+    }
+    $r = ms_ingest_roster($pdo, $hub_url, $hb['mesh']['peers']);
+    $r['ok'] = true;
+    return $r;
+}
 // ===== SNAPSMACK EOF =====

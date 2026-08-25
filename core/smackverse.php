@@ -5525,4 +5525,81 @@ function sv_sweep_new_posts(PDO $pdo, array &$settings): array {
 
     return [$units, $queued];
 }
+
+/**
+ * Run one full delivery + maintenance sweep — the same work cron-smackverse.php
+ * does on its normal (non-resync) run, but callable from the web so the owner can
+ * trigger it from the admin ("Run Fediverse jobs now") on hosts that block cron and
+ * exec(). Takes the SAME cross-process advisory lock as the CLI cron, so a web
+ * trigger and the scheduled cron can never drain the queue at the same time. Also
+ * pulls the mesh roster so the FEDBOARD site-picker refreshes without the Multisite
+ * admin page. Returns a summary array; ['busy'=>true] when a sweep already holds the
+ * lock, ['disabled'=>true] when federation is off.
+ */
+function sv_run_sweep(PDO $pdo, array &$settings): array
+{
+    if (!sv_enabled($settings)) {
+        return ['busy' => false, 'disabled' => true];
+    }
+    $root      = dirname(__DIR__);
+    $lock_name = 'snapsmack_sv_' . substr(hash('sha256', realpath($root) ?: $root), 0, 40);
+    $ls = $pdo->prepare("SELECT GET_LOCK(?, 0)");
+    $ls->execute([$lock_name]);
+    if ((int)$ls->fetchColumn() !== 1) {
+        return ['busy' => true];
+    }
+    try {
+        $mesh = $root . '/core/mesh-helpers.php';
+        if (is_file($mesh)) {
+            require_once $mesh;
+        }
+        sv_ensure_tables($pdo);
+        sv_ensure_keys($pdo, $settings);
+
+        $relay_ingest = function_exists('sc_relay_process_ingest_jobs')
+            ? sc_relay_process_ingest_jobs($pdo, $settings, 20) : [0, 0];
+        if (function_exists('sc_relay_recover_member_outboxes')) {
+            sc_relay_recover_member_outboxes($pdo, $settings, 5, 20);
+        }
+        if (function_exists('pc_cron_maintain')) {
+            pc_cron_maintain($pdo, $settings, 25);
+        }
+
+        list($units, $queued)   = sv_sweep_new_posts($pdo, $settings);
+        list($bf_jobs, $bf_q)   = sv_process_backfill_jobs($pdo, $settings);
+        list($sent, $failed)    = sv_process_deliveries($pdo, $settings, 30, sv_delivery_cadence($settings));
+        $actor_upd = sv_maybe_push_actor_update($pdo, $settings);
+
+        // Refresh the mesh roster so the FEDBOARD picker fills (the only other
+        // caller of ms_ingest_roster is the Multisite admin page).
+        $roster = ['added' => 0, 'updated' => 0, 'pruned' => 0, 'ok' => false];
+        if (function_exists('ms_spoke_pull_roster')) {
+            try {
+                $roster = ms_spoke_pull_roster($pdo, $settings);
+            } catch (Throwable $e) {
+            }
+        }
+
+        sv_set_setting($pdo, $settings, 'smackverse_cron_last_run', date('Y-m-d H:i:s'));
+        sv_set_setting($pdo, $settings, 'smackverse_cron_last_status', 'ok');
+
+        return [
+            'busy'      => false,
+            'units'     => $units,
+            'queued'    => $queued,
+            'bf_jobs'   => $bf_jobs,
+            'bf_queued' => $bf_q,
+            'sent'      => $sent,
+            'failed'    => $failed,
+            'relay'     => $relay_ingest,
+            'roster'    => $roster,
+            'actor_upd' => $actor_upd,
+        ];
+    } finally {
+        try {
+            $pdo->prepare("SELECT RELEASE_LOCK(?)")->execute([$lock_name]);
+        } catch (Throwable $e) {
+        }
+    }
+}
 // ===== SNAPSMACK EOF =====

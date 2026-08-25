@@ -90,6 +90,17 @@ include 'core/sidebar.php';
                 <td>Followers</td>
                 <td><?php echo (int)$sv_follower_count; ?></td>
             </tr>
+            <tr>
+                <td>Run jobs now</td>
+                <td>
+                    <form method="post" action="">
+                        <input type="hidden" name="action" value="run_jobs_now">
+                        <button type="submit" class="btn-smack">RUN FEDIVERSE JOBS NOW</button>
+                    </form>
+                    <p class="dim">Runs delivery, relay, and the site-picker roster refresh right now &mdash;
+                        no cron or server access needed. Use it if the site-picker is empty or posts aren&rsquo;t going out.</p>
+                </td>
+            </tr>
         </table>
     </div>
 
