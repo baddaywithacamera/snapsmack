@@ -10,11 +10,9 @@
 
 # SnapSmack Changelog
 
-## 0.7.555 — 2026-08-25 "FEDBOARD"
+## 0.7.554 — 2026-08-25 "FEDBOARD"
 
 - Fediverse: the CMS now runs its own cron. On hosts that block background jobs (no crontab, `exec` disabled) — where the admin showed "Last cron run: never" — the fediverse/relay sweep now fires automatically from ordinary public page visits. It is throttled to the 10-minute cadence, runs *after* the page is sent so visitors never wait, and shares the same lock as the real cron so two can't overlap. No terminal, no hub, no desktop tool — a plain single install self-heals. A site stamped "never" runs on its next visit. On by default; set `smackverse_webcron_enabled` to `0` in settings to turn it off. Where a real system cron already runs, this simply stays idle (the throttle sees the fresh last-run stamp).
-
-## 0.7.554 — 2026-08-25 "FEDBOARD"
 
 - Fediverse: added a **RUN FEDIVERSE JOBS NOW** button to the Fediverse → Followers & Delivery page. It runs the delivery/relay sweep and refreshes the site-picker roster on demand, entirely from the CMS — no cron, no exec, no server access. Fixes the case where a locked-down host runs no background jobs at all ("Last cron run: never"), which left the feed slow, the relay empty, and the FEDBOARD site-picker showing no sibling sites. Use it if the picker is empty or posts aren't going out.
 - Fediverse: the background sweep (button and cron) now also pulls the mesh roster from the hub (`ms_spoke_pull_roster`), so the FEDBOARD site-picker fills without anyone opening the Multisite admin page — previously its only trigger. The web sweep shares the same cross-process lock as the CLI cron, so the two can never run the queue at once.
