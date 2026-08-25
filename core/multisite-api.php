@@ -1449,6 +1449,28 @@ if ($resource === 'ban-sync' && $method === 'POST') {
 // Hub instructs this spoke to download and apply the latest release.
 // Hub role required. Returns {ok, version, files_updated, migrations, errors[]}.
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/jobs/run
+// Hub tells this spoke to run its fediverse/relay sweep now — delivery, relay,
+// and the roster pull that fills the FEDBOARD site-picker. Hub-authenticated
+// only; NO per-site opt-in, because it runs only the spoke's OWN scheduled jobs
+// (identical to its cron / web-cron), so it grants the hub no new reach. Lets the
+// hub fill every spoke's picker in one action instead of visiting each site.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'jobs' && $sub_action === 'run' && $method === 'POST') {
+    if (($node['role'] ?? '') !== 'hub') ms_err('Only a hub may run spoke jobs', 403);
+    require_once __DIR__ . '/smackverse.php';
+    if (!function_exists('sv_run_sweep')) ms_err('Fediverse engine unavailable', 500);
+    @set_time_limit(120);
+    $r = sv_run_sweep($pdo, $settings);
+    ms_ok([
+        'ran'    => empty($r['busy']) && empty($r['disabled']),
+        'busy'   => !empty($r['busy']),
+        'roster' => $r['roster'] ?? null,
+        'result' => $r,
+    ]);
+}
+
 if ($resource === 'updates' && $sub_action === 'track' && $method === 'POST') {
     if ($node['role'] !== 'hub') ms_err('Only a hub may set the update track', 403);
     if (($settings['multisite_allow_update'] ?? '0') !== '1')
