@@ -252,7 +252,11 @@ function ms_spoke_pull_roster(PDO $pdo, array $settings): array
     $hub_url = rtrim((string)$hub['site_url'], '/');
     $ch = curl_init();
     curl_setopt_array($ch, [
-        CURLOPT_URL            => $hub_url . '/api.php?route=multisite/heartbeat',
+        // multisite/ping is the endpoint that returns mesh.peers (multisite/heartbeat
+        // does NOT — it only carries version/jobs/backup fields). Reading peers off
+        // heartbeat silently returned an empty roster, so the FEDBOARD picker never
+        // filled from a sweep. This is the same endpoint smack-multisite.php pings.
+        CURLOPT_URL            => $hub_url . '/api.php?route=multisite/ping',
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 10,
         CURLOPT_SSL_VERIFYPEER => true,
