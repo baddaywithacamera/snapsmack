@@ -10,6 +10,11 @@
 
 # SnapSmack Changelog
 
+## 0.7.556 — 2026-08-25 "FEDBOARD"
+
+- Fediverse: added a **RUN FEDIVERSE JOBS NOW** button to the Fediverse → Followers & Delivery page. It runs the delivery/relay sweep and refreshes the site-picker roster on demand, entirely from the CMS — no cron, no exec, no server access. Fixes the case where a locked-down host runs no background jobs at all ("Last cron run: never"), which left the feed slow, the relay empty, and the FEDBOARD site-picker showing no sibling sites. Use it if the picker is empty or posts aren't going out.
+- Fediverse: the background sweep (button and cron) now also pulls the mesh roster from the hub (`ms_spoke_pull_roster`), so the FEDBOARD site-picker fills without anyone opening the Multisite admin page — previously its only trigger. The web sweep shares the same cross-process lock as the CLI cron, so the two can never run the queue at once.
+
 ## 0.7.552 — 2026-08-24 "FEDBOARD"
 
 - Photo Challenge: added a TESTING WHITELIST to the challenge admin page. Turn it on and list the handles of your test accounts; while it is on, only #photofriday photos from those accounts qualify, and each boost is delivered ONLY to those whitelisted accounts (never Public, never the real follower crowd, not the origin author). So you can watch a boost land on your own test account without any of the blog's real followers seeing it. The admin LIVE STATE panel counts entries boosted to test accounts this window. Everyone else's entries are ignored. Off by default — everyone qualifies and boosts go to all followers for real. Lets a live site be exercised end to end without standing up a second install. The whitelist gate covers admission (leaderboard) and delivery (the boost) both.
