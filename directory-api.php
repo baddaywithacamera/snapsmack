@@ -72,7 +72,15 @@ if ($action !== 'register') pbdir_api_out(['error' => 'unknown action'], 404);
 $name   = mb_substr(trim((string)($in['name'] ?? $host)), 0, 120);
 $handle = mb_substr(trim((string)($in['handle'] ?? '')), 0, 120);
 $desc   = mb_substr(trim((string)($in['description'] ?? '')), 0, 500);
-$avatar = filter_var(trim((string)($in['avatar_url'] ?? '')), FILTER_VALIDATE_URL) ?: '';
+// SECAUDIT: media URLs render inside a CSS url('...') on the public directory,
+// so a value carrying a quote/paren could break out and inject a CSS declaration
+// (e.g. a tracking beacon). Require a clean http(s) URL with no CSS-breakout chars.
+$avatar = trim((string)($in['avatar_url'] ?? ''));
+if ($avatar !== '' && (strpbrk($avatar, "'\"()<>\\ \t\r\n") !== false
+        || !preg_match('~^https?://~i', $avatar)
+        || !filter_var($avatar, FILTER_VALIDATE_URL))) {
+    $avatar = '';
+}
 
 $topics = [];
 if (isset($in['topics']) && is_array($in['topics'])) {
@@ -82,15 +90,27 @@ $topics = array_slice($topics, 0, 12);
 
 $samples = [];
 if (isset($in['samples']) && is_array($in['samples'])) {
-    foreach ($in['samples'] as $s) { $s = filter_var(trim((string)$s), FILTER_VALIDATE_URL); if ($s) $samples[] = $s; }
+    foreach ($in['samples'] as $s) {
+        $s = trim((string)$s);
+        if ($s !== '' && strpbrk($s, "'\"()<>\\ \t\r\n") === false
+                && preg_match('~^https?://~i', $s)
+                && filter_var($s, FILTER_VALIDATE_URL)) {
+            $samples[] = $s;
+        }
+    }
 }
 $samples = array_slice($samples, 0, 6);
 
-// Keep an already-approved listing active on re-submit; new ones start pending.
-$stmt = $pdo->prepare("SELECT state FROM snap_directory_listings WHERE site_url=?");
-$stmt->execute([$site_url]);
-$prev  = $stmt->fetchColumn();
-$state = ($prev === 'active') ? 'active' : 'pending';
+// SECAUDIT: this endpoint is UNAUTHENTICATED (a plain blog opt-in — no shared
+// secret exists to sign with) and site_url is public, so anyone could re-POST a
+// victim's URL. Force EVERY submit back through moderation: attacker-supplied
+// content can never appear live on an approved card without a human re-approving
+// it. The public directory renders only state='active', so a queued 'pending'
+// row is invisible until reviewed.
+// TODO(secaudit): the complete fix is domain-ownership proof (a hub callback for
+// a one-time token the submitting site publishes) — that also closes the
+// unauthenticated 'remove' below. Tracked for a follow-up.
+$state = 'pending';
 
 $pdo->prepare(
     "INSERT INTO snap_directory_listings
