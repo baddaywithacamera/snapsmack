@@ -97,6 +97,8 @@ class EditorWindow(tk.Toplevel):
                            ("RED EYE", "red_eye"), ("MASK BRUSH", "mask")):
             self._button(tool_bar, text, lambda name=tool: self.set_tool(name)).pack(
                 side="left", padx=(6, 0), pady=5, ipadx=5, ipady=3)
+        self._button(tool_bar, "LOCAL ADJUST", self.start_local_adjustment, True).pack(
+            side="left", padx=(6, 0), pady=5, ipadx=5, ipady=3)
         self._button(tool_bar, "STRAIGHTEN…", self.straighten).pack(side="left", padx=6, pady=5, ipadx=5, ipady=3)
         self._button(tool_bar, "APPLY CROP", self.apply_crop).pack(side="left", pady=5, ipadx=5, ipady=3)
         tk.Label(tool_bar, text="Spot", bg="#101010", fg=DIM).pack(side="left", padx=(14, 3))
@@ -198,6 +200,24 @@ class EditorWindow(tk.Toplevel):
         ]
         for group, names in groups:
             panel = self.accordion(group, group == "LIGHT")
+            if group == "LIGHT":
+                histogram_header = tk.Frame(panel, bg=PANEL)
+                histogram_header.pack(fill="x", padx=7, pady=(6, 2))
+                tk.Label(histogram_header, text="LIVE HISTOGRAM", bg=PANEL, fg=DIM,
+                         font=("Segoe UI", 8, "bold")).pack(side="left")
+                self.histogram_mode = tk.StringVar(value="luma")
+                for text, value in (("LUMA", "luma"), ("RGB", "rgb")):
+                    tk.Radiobutton(histogram_header, text=text, value=value,
+                                   variable=self.histogram_mode,
+                                   command=self.schedule_render, indicatoron=False,
+                                   bg=FIELD, fg=INK, selectcolor=ACCENT,
+                                   activebackground=ACCENT, activeforeground=BG,
+                                   font=("Segoe UI", 8, "bold"), relief="flat",
+                                   width=6).pack(side="right", padx=(3, 0))
+                self.hist_canvas = tk.Canvas(panel, height=105, bg="#070707",
+                                             highlightthickness=1,
+                                             highlightbackground=BORDER)
+                self.hist_canvas.pack(fill="x", padx=7, pady=(0, 6))
             for name in names:
                 start, end, resolution = (-3, 3, .05) if name == "exposure" else (-100, 100, 1)
                 variable = tk.DoubleVar(value=0)
@@ -238,10 +258,7 @@ class EditorWindow(tk.Toplevel):
             fill="x", padx=8, pady=(0, 8), ipady=3)
 
     def _build_curve_histogram(self):
-        panel = self.accordion("CURVE + HISTOGRAM", False)
-        self.hist_canvas = tk.Canvas(panel, height=110, bg="#070707", highlightthickness=1,
-                                     highlightbackground=BORDER)
-        self.hist_canvas.pack(fill="x", padx=8, pady=(6, 3))
+        panel = self.accordion("TONE CURVE", False)
         self.curve_canvas = tk.Canvas(panel, height=150, bg="#0b0b0b", highlightthickness=1,
                                       highlightbackground=BORDER, cursor="crosshair")
         self.curve_canvas.pack(fill="x", padx=8, pady=3)
@@ -399,6 +416,9 @@ class EditorWindow(tk.Toplevel):
         self.schedule_render()
 
     def set_tool(self, name):
+        if name == "mask" and not self.current_layer():
+            self.start_local_adjustment()
+            return
         if name in {"crop", "spot", "red_eye", "mask"} and self.compare_mode != "edited":
             self.compare_mode = "edited"
             self.schedule_render()
@@ -415,6 +435,23 @@ class EditorWindow(tk.Toplevel):
             "mask": "MASK BRUSH — select a layer and mask, then paint Hide or Reveal",
         }
         self.status_label.configure(text=instructions.get(name, name.upper()))
+
+    def start_local_adjustment(self):
+        layer = self.document.add_adjustment_layer("Local Adjustment")
+        self.refresh_layers()
+        self.layer_list.selection_clear(0, "end")
+        self.layer_list.selection_set(0)
+        self.layer_list.activate(0)
+        self.layer_selected()
+        self.create_mask(0)
+        self.mask_brush_value.set(255)
+        self.tool = "mask"
+        self.canvas.configure(cursor="crosshair")
+        self.status_label.configure(
+            text="LOCAL ADJUST — choose an adjustment, then paint where it should appear")
+        self.refresh_history()
+        self.schedule_render()
+        return layer
 
     def canvas_motion(self, event):
         self.canvas.delete("tool-preview")
@@ -596,8 +633,17 @@ class EditorWindow(tk.Toplevel):
         except Exception:
             return
         width, height = max(1, canvas.winfo_width()), max(1, canvas.winfo_height())
-        maximum = max(max(values[channel]) for channel in ("red", "green", "blue")) or 1
-        for channel, color in (("red", "#ff5555"), ("green", "#55ff55"), ("blue", "#5599ff")):
+        mode = self.histogram_mode.get() if hasattr(self, "histogram_mode") else "rgb"
+        if mode == "luma":
+            if image is not None:
+                values["luma"] = image.convert("L").histogram()
+            else:
+                values["luma"] = values.get("luminance", [0] * 256)
+            channels = (("luma", "#d8d8d8"),)
+        else:
+            channels = (("red", "#ff5555"), ("green", "#55ff55"), ("blue", "#5599ff"))
+        maximum = max(max(values[channel]) for channel, _colour in channels) or 1
+        for channel, color in channels:
             points = []
             for index, count in enumerate(values[channel]):
                 points.extend((index / 255 * width, height - count / maximum * height))
