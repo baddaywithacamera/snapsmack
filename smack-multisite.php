@@ -1540,7 +1540,7 @@ include 'core/sidebar.php';
                         if (btn) btn.textContent = "DONE";   // stays disabled; reload via the link
                         if (live) {
                             live.innerHTML =
-                                '<div class="alert ' + (failCount ? mb-6"alert-warning" : "alert-success") +
+                                '<div class="alert ' + (failCount ? "alert-warning" : "alert-success") +
                                 '">Finished &mdash; ' + okCount + ' updated, ' +
                                 failCount + ' failed. <a href="#" onclick="location.reload();return false;">' +
                                 'Reload</a> to refresh the board.</div>';
