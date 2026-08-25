@@ -12,7 +12,7 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
-from PIL import Image, ImageFilter, ImageOps, ImageTk
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps, ImageTk
 
 import photo_manager
 
@@ -92,6 +92,10 @@ class PhotoLibrary(tk.Toplevel):
         tk.Label(left, text="LIBRARIES", bg="#111111", fg=ACCENT,
                  font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=14, pady=(16, 8))
         style = ttk.Style(self)
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
         style.configure("Slapper.Treeview", background="#111111", fieldbackground="#111111",
                         foreground=INK, borderwidth=0, relief="flat", rowheight=25,
                         font=("Segoe UI", 10))
@@ -155,7 +159,9 @@ class PhotoLibrary(tk.Toplevel):
                  font=("Segoe UI", 8, "bold")).pack(side="right")
 
         self.canvas = tk.Canvas(centre, bg=BG, highlightthickness=0)
-        scroll = tk.Scrollbar(centre, orient="vertical", command=self.canvas.yview)
+        scroll = tk.Scrollbar(centre, orient="vertical", command=self.canvas.yview,
+                              bg=FIELD, troughcolor=BG, activebackground=ACCENT,
+                              highlightthickness=0, bd=0, relief="flat")
         self.canvas.configure(yscrollcommand=scroll.set)
         scroll.pack(side="right", fill="y")
         self.canvas.pack(side="left", fill="both", expand=True)
@@ -1094,6 +1100,88 @@ class PhotoLibrary(tk.Toplevel):
         if self.selected:
             self.open_path(self.selected["path"])
 
+    def _viewer_accordion(self, parent, title, opened=False):
+        section = tk.Frame(parent, bg="#111111")
+        section.pack(fill="x")
+        content = tk.Frame(section, bg="#111111")
+        state = {"open": opened}
+        button = self._button(section, ("▾  " if opened else "▸  ") + title, lambda: None)
+        button.configure(anchor="w", bg="#171717")
+        button.pack(fill="x", padx=6, pady=(0, 2), ipady=3)
+        def toggle():
+            state["open"] = not state["open"]
+            button.configure(text=("▾  " if state["open"] else "▸  ") + title)
+            if state["open"]:
+                content.pack(fill="x")
+            else:
+                content.pack_forget()
+        button.configure(command=toggle)
+        if opened:
+            content.pack(fill="x")
+        return content
+
+    def _viewer_adjust_scale(self, parent, label, variable, start, end, resolution):
+        row = tk.Frame(parent, bg="#111111")
+        row.pack(fill="x", padx=8, pady=2)
+        tk.Label(row, text=label, width=9, anchor="w", bg="#111111", fg=DIM,
+                 font=("Segoe UI", 8)).pack(side="left")
+        scale = tk.Scale(row, from_=start, to=end, resolution=resolution, variable=variable,
+                         orient="horizontal", showvalue=True, length=145, bg="#111111", fg=INK,
+                         troughcolor=FIELD, activebackground=ACCENT, highlightthickness=0, bd=0,
+                         command=lambda _value: self._viewer_adjust_changed())
+        scale.pack(side="left", fill="x", expand=True)
+
+    def _viewer_adjust_changed(self):
+        self.viewer_before = False
+        if getattr(self, "_viewer_adjust_job", None):
+            self.after_cancel(self._viewer_adjust_job)
+        self._viewer_adjust_job = self.after(70, self._render_viewer)
+
+    def reset_viewer_adjustments(self, render=True):
+        self.viewer_brightness_var.set(1.0)
+        self.viewer_contrast_var.set(1.0)
+        self.viewer_colour_var.set(1.0)
+        self.viewer_sharp_var.set(0)
+        self.viewer_before = False
+        if render:
+            self._render_viewer()
+
+    def _apply_viewer_adjustments(self, image):
+        if getattr(self, "viewer_before", False):
+            return image
+        image = ImageEnhance.Brightness(image).enhance(float(self.viewer_brightness_var.get()))
+        image = ImageEnhance.Contrast(image).enhance(float(self.viewer_contrast_var.get()))
+        image = ImageEnhance.Color(image).enhance(float(self.viewer_colour_var.get()))
+        sharp = int(self.viewer_sharp_var.get())
+        if sharp:
+            image = image.filter(ImageFilter.UnsharpMask(radius=1.2, percent=sharp, threshold=3))
+        if getattr(self, "sharpen_enabled", False):
+            image = image.filter(ImageFilter.UnsharpMask(
+                radius=float(self.sharpen_radius), percent=int(self.sharpen_amount),
+                threshold=int(self.sharpen_threshold)))
+        return image
+
+    def export_viewer_copy(self):
+        row = getattr(self, "viewer_row", None)
+        if not row:
+            return
+        source = row["path"]
+        stem, extension = os.path.splitext(source)
+        target = photo_manager.unique_path(stem + "_edited" + extension)
+        try:
+            with Image.open(source) as image:
+                output = ImageOps.exif_transpose(image).convert("RGB")
+                if getattr(self, "viewer_rotation", 0):
+                    output = output.rotate(self.viewer_rotation, expand=True)
+                output = self._apply_viewer_adjustments(output)
+                options = {"quality": 95, "optimize": True} if extension.lower() in {
+                    ".jpg", ".jpeg", ".webp"} else {}
+                output.save(target, **options)
+            messagebox.showinfo("Edited copy exported", target, parent=self.viewer)
+            self.refresh_current()
+        except Exception as exc:
+            messagebox.showerror("Export failed", str(exc), parent=self.viewer)
+
     def open_viewer(self, row):
         viewer = getattr(self, "viewer", None)
         if not viewer or not viewer.winfo_exists():
@@ -1103,7 +1191,7 @@ class PhotoLibrary(tk.Toplevel):
             viewer.configure(bg="#050505")
             viewer.geometry("1100x760")
             viewer.minsize(640, 420)
-            viewer.transient(self)
+            viewer.resizable(True, True)
             viewer.bind("<Escape>", lambda _e: viewer.destroy())
             viewer.bind("<Left>", lambda _e: self.viewer_step(-1))
             viewer.bind("<Right>", lambda _e: self.viewer_step(1))
@@ -1123,8 +1211,54 @@ class PhotoLibrary(tk.Toplevel):
             self.viewer_title.pack(side="left", padx=14, pady=10)
             self._button(bar, "CLOSE", viewer.destroy).pack(side="right", padx=(5, 12), pady=6)
             self._button(bar, "OPEN IN WINDOWS", self.open_external).pack(side="right", pady=6)
-            self.viewer_image = tk.Label(viewer, bg="#050505", fg=DIM, text="Loading…")
+            body = tk.Frame(viewer, bg="#050505")
+            body.pack(fill="both", expand=True)
+            self.viewer_image_area = tk.Frame(body, bg="#050505")
+            self.viewer_image_area.pack(side="left", fill="both", expand=True)
+            self.viewer_image = tk.Label(self.viewer_image_area, bg="#050505", fg=DIM, text="Loading…")
             self.viewer_image.pack(fill="both", expand=True, padx=12, pady=12)
+            tools = tk.Frame(body, bg="#111111", width=270)
+            tools.pack(side="right", fill="y")
+            tools.pack_propagate(False)
+            tk.Label(tools, text="EDIT PHOTO", bg="#111111", fg=ACCENT,
+                     font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=12, pady=(12, 8))
+            self.viewer_brightness_var = tk.DoubleVar(value=1.0)
+            self.viewer_contrast_var = tk.DoubleVar(value=1.0)
+            self.viewer_colour_var = tk.DoubleVar(value=1.0)
+            self.viewer_sharp_var = tk.IntVar(value=0)
+            adjust = self._viewer_accordion(tools, "ADJUST", True)
+            self._viewer_adjust_scale(adjust, "Brightness", self.viewer_brightness_var, 0.25, 2.0, .05)
+            self._viewer_adjust_scale(adjust, "Contrast", self.viewer_contrast_var, 0.25, 2.0, .05)
+            self._viewer_adjust_scale(adjust, "Colour", self.viewer_colour_var, 0.0, 2.0, .05)
+            self._viewer_adjust_scale(adjust, "Sharpen", self.viewer_sharp_var, 0, 250, 5)
+            adjust_buttons = tk.Frame(adjust, bg="#111111")
+            adjust_buttons.pack(fill="x", padx=8, pady=(4, 8))
+            self._button(adjust_buttons, "RESET", self.reset_viewer_adjustments).pack(side="left", fill="x", expand=True)
+            self._button(adjust_buttons, "BEFORE / AFTER", self.toggle_before).pack(
+                side="left", fill="x", expand=True, padx=(5, 0))
+            geometry = self._viewer_accordion(tools, "ROTATE", False)
+            self._button(geometry, "↺ LEFT", lambda: self.rotate_viewer(90)).pack(
+                fill="x", padx=8, pady=(4, 3), ipady=3)
+            self._button(geometry, "↻ RIGHT", lambda: self.rotate_viewer(-90)).pack(
+                fill="x", padx=8, pady=(0, 8), ipady=3)
+            organize = self._viewer_accordion(tools, "ORGANIZE", False)
+            self._button(organize, "TOGGLE FAVORITE  [F]", self.toggle_favorite).pack(
+                fill="x", padx=8, pady=(4, 3), ipady=3)
+            rating = tk.Frame(organize, bg="#111111")
+            rating.pack(fill="x", padx=8, pady=(0, 8))
+            for value in range(6):
+                self._button(rating, str(value), lambda number=value: self.set_rating(number)).pack(
+                    side="left", fill="x", expand=True, padx=(0 if value == 0 else 2, 0))
+            output = self._viewer_accordion(tools, "OUTPUT", False)
+            self._button(output, "EXPORT EDITED COPY", self.export_viewer_copy).pack(
+                fill="x", padx=8, pady=(4, 3), ipady=3)
+            self._button(output, "OPEN WITH / EDIT COPY", self.open_with_menu).pack(
+                fill="x", padx=8, pady=(0, 8), ipady=3)
+            info_panel = self._viewer_accordion(tools, "INFO", False)
+            self.viewer_details = tk.Label(info_panel, text="", bg="#111111", fg=INK,
+                                           justify="left", anchor="nw", wraplength=235,
+                                           font=("Segoe UI", 8))
+            self.viewer_details.pack(fill="x", padx=8, pady=(4, 8))
             nav = tk.Frame(viewer, bg="#101010")
             nav.pack(fill="x")
             self._button(nav, "← PREVIOUS", lambda: self.viewer_step(-1)).pack(
@@ -1145,6 +1279,8 @@ class PhotoLibrary(tk.Toplevel):
             self.viewer_before = False
             self.sharpen_enabled = False
             self.sharpen_amount, self.sharpen_radius, self.sharpen_threshold = 100, 1.2, 3
+            if hasattr(self, "viewer_brightness_var"):
+                self.reset_viewer_adjustments(render=False)
         self.selected = row
         self.select_photo(row)
         self._render_viewer()
@@ -1163,19 +1299,16 @@ class PhotoLibrary(tk.Toplevel):
         if not viewer or not viewer.winfo_exists() or not row:
             return
         path = row["path"]
-        width = max(320, viewer.winfo_width() - 40)
+        width = max(320, viewer.winfo_width() - 310)
         height = max(240, viewer.winfo_height() - 145)
         try:
             with Image.open(path) as image:
-                source = image.convert("RGB")
+                source = ImageOps.exif_transpose(image).convert("RGB")
                 if getattr(self, "viewer_rotation", 0):
                     source = source.rotate(self.viewer_rotation, expand=True)
                 rendered = ImageOps.contain(source, (width, height),
                                              method=Image.Resampling.LANCZOS)
-                if getattr(self, "sharpen_enabled", False) and not getattr(self, "viewer_before", False):
-                    rendered = rendered.filter(ImageFilter.UnsharpMask(
-                        radius=float(self.sharpen_radius), percent=int(self.sharpen_amount),
-                        threshold=int(self.sharpen_threshold)))
+                rendered = self._apply_viewer_adjustments(rendered)
             photo = ImageTk.PhotoImage(rendered)
             self.viewer_image.configure(image=photo, text="")
             self.viewer_image.image = photo
@@ -1185,6 +1318,14 @@ class PhotoLibrary(tk.Toplevel):
         meta = self._photo_meta(row)
         badges = ("♥ " if meta.get("favorite") else "") + ("★" * int(meta.get("rating", 0)))
         self.viewer_title.configure(text=f"{badges}  {title}" if badges else title)
+        if hasattr(self, "viewer_details"):
+            try:
+                with Image.open(path) as source_info:
+                    dimensions = f"{source_info.width:,} × {source_info.height:,}"
+            except Exception:
+                dimensions = "Dimensions unavailable"
+            self.viewer_details.configure(
+                text=f"{dimensions}\n{os.path.getsize(path) / 1048576:.1f} MB\n\n{path}")
         try:
             index = next(i for i, item in enumerate(self.visible) if item["path"] == path)
             self.viewer_count.configure(text=f"{index + 1:,} of {len(self.visible):,}   ·   0–5 rate   ·   F favorite   ·   ←/→ browse")
@@ -1204,6 +1345,7 @@ class PhotoLibrary(tk.Toplevel):
         self.viewer_rotation = 0
         self.viewer_before = False
         self.sharpen_enabled = False
+        self.reset_viewer_adjustments(render=False)
         self.selected = self.viewer_row
         self.select_photo(self.viewer_row)
         self._render_viewer()
@@ -1213,8 +1355,6 @@ class PhotoLibrary(tk.Toplevel):
         self._render_viewer()
 
     def toggle_before(self):
-        if not getattr(self, "sharpen_enabled", False):
-            return
         self.viewer_before = not getattr(self, "viewer_before", False)
         self._render_viewer()
 
