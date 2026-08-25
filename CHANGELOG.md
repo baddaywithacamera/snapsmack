@@ -10,6 +10,11 @@
 
 # SnapSmack Changelog
 
+## 0.7.558 — 2026-08-25 "FEDBOARD"
+
+- Fediverse: **RUN JOBS — ALL SPOKES** now does a fast roster refresh per spoke instead of the full delivery sweep. Running the whole sweep made one spoke grind through its queue and outlast a locked-down hub's request window, so the fan-out timed out (stuck on job 1, then mass failures). It now calls the roster pull directly — the same fast operation as VERIFY CONNECTION — which also fills blogs that have fediverse switched off. Deliveries stay with each spoke's own cron / web-cron.
+- Multisite: fixed a JavaScript syntax error in the **UPDATE ALL BEHIND** driver that made it silently fall back to the old server-side loop — which pushed every spoke in one request and timed out on hubs with many or slow spokes ("push times out from hub"). The client-driven, one-spoke-per-request path now actually runs.
+
 ## 0.7.557 — 2026-08-25 "FEDBOARD"
 
 - Fediverse: **RUN JOBS — ALL SPOKES** now runs one spoke per request with live progress instead of looping the whole fleet in a single request — which timed out on a constrained hub and left most pickers unfilled. New per-spoke `run_jobs` AJAX handler plus a client-driven driver (mirrors UPDATE ALL BEHIND): one slow site can't hang the batch, and the hub shows "RUNNING X OF Y (ok/failed)" with a progress bar and a running tally of peers added. No-JS falls back to the server-side loop.
