@@ -1,15 +1,24 @@
 <?php
 /**
- * SNAPSMACK — photoblogs.fyi DIRECTORY API (hub side)  [0.7.547]
+ * SNAPSMACK — photoblogs.fyi DIRECTORY API (hub side)  [0.7.559]
  *
  * Public JSON endpoint that receives directory listing opt-ins from spoke blogs
- * (posted by core/photoblogs-directory.php :: pbdir_submit). A new listing is
- * stored as 'pending' and shows on the public directory only after the hub admin
- * approves it — mirroring fediverse.info's model and the for-admins promise that
- * "new members' first entries are reviewed by a human." Re-submitting an already
- * approved listing keeps it active and just refreshes the details.
+ * (posted by core/photoblogs-directory.php :: pbdir_submit).
  *
- *   POST /directory-api.php?action=register   {site_url, handle, name, ...}
+ * SECAUDIT 051: this endpoint has no login (any blog may opt in, and site_url is
+ * public), so it must NOT trust the POST body. A forged POST for someone else's
+ * site_url could otherwise deface a live listing or delist a site. Instead, the
+ * hub VERIFIES domain ownership by calling the site back at /directory-verify.php
+ * and reads the card straight from there — so the only thing a register/remove
+ * can do is make the hub re-read that site's OWN truth:
+ *   - register: honoured only if the site itself reports listed:true; the card is
+ *     built from the site's data, never from the POST body.
+ *   - remove:   honoured only if the site itself reports listed:false (or the
+ *     verify endpoint is gone). A stranger cannot delist a site that still lists.
+ * A brand-new listing lands 'pending' (human-reviewed first entry); a re-submit
+ * from an already-approved site refreshes in place and stays active.
+ *
+ *   POST /directory-api.php?action=register   {site_url}
  *   POST /directory-api.php?action=remove     {site_url}
  *
  * SNAPSMACK_EOF_HEADER
@@ -48,6 +57,59 @@ function pbdir_ensure_table(PDO $pdo): void {
     );
 }
 
+/**
+ * Media URLs render inside a CSS url('...') on the public page, so reject any
+ * value carrying a quote/paren/space (CSS breakout / tracking beacon) and require
+ * a plain http(s) URL. Returns '' if unsafe.
+ */
+function pbdir_clean_media_url(string $url): string {
+    $url = trim($url);
+    if ($url === '') return '';
+    if (strpbrk($url, "'\"()<>\\ \t\r\n") !== false) return '';
+    if (!preg_match('~^https?://~i', $url)) return '';
+    return filter_var($url, FILTER_VALIDATE_URL) ? $url : '';
+}
+
+/**
+ * Fetch a site's /directory-verify.php with SSRF protection: pin the vetted
+ * public IP, refuse redirects, https/http only, cap the body. Returns the decoded
+ * array only when the endpoint proves it belongs to $site_url, else null.
+ */
+function pbdir_verify_site(string $site_url): ?array {
+    if (!filter_var($site_url, FILTER_VALIDATE_URL) || !preg_match('~^https?://~i', $site_url)) return null;
+    $verify_url = $site_url . '/directory-verify.php';
+    $p    = parse_url($verify_url);
+    $host = (string)($p['host'] ?? '');
+    if ($host === '') return null;
+    if (in_array(strtolower($host), ['localhost', 'ip6-localhost', 'ip6-loopback', '::1', '0.0.0.0'], true)) return null;
+    $port = (int)($p['port'] ?? (strtolower((string)($p['scheme'] ?? 'http')) === 'https' ? 443 : 80));
+    $ip   = filter_var($host, FILTER_VALIDATE_IP) ? $host : (string)@gethostbyname($host);
+    if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return null;
+
+    $ch = curl_init($verify_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RESOLVE        => ["{$host}:{$port}:{$ip}"],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_USERAGENT      => 'SnapSmack-DirectoryVerify/1.0',
+    ]);
+    $body = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($body === false || $code !== 200) return null;
+
+    $v = json_decode((string)substr((string)$body, 0, 20000), true);
+    if (!is_array($v)) return null;
+
+    // The endpoint must declare the SAME site_url it was fetched under.
+    $claimed = filter_var(rtrim(trim((string)($v['site_url'] ?? '')), '/'), FILTER_VALIDATE_URL);
+    if ($claimed !== $site_url) return null;
+    return $v;
+}
+
 pbdir_ensure_table($pdo);
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') pbdir_api_out(['error' => 'POST only'], 405);
@@ -62,55 +124,57 @@ if (!$site_url || !preg_match('~^https?://~i', (string)$site_url)) {
 }
 $host = (string)parse_url($site_url, PHP_URL_HOST);
 
+// ── REMOVE ────────────────────────────────────────────────────────────────
+// Honour only if the site itself no longer reports as listed (or its verify
+// endpoint is gone). This stops a stranger delisting a site that still lists.
 if ($action === 'remove') {
+    $v = pbdir_verify_site($site_url);
+    if (is_array($v) && !empty($v['listed'])) {
+        pbdir_api_out(['error' => 'site still reports itself as listed — refusing to remove'], 409);
+    }
     $pdo->prepare("UPDATE snap_directory_listings SET state='removed', updated_at=NOW() WHERE site_url=?")
         ->execute([$site_url]);
     pbdir_api_out(['ok' => true, 'state' => 'removed']);
 }
 if ($action !== 'register') pbdir_api_out(['error' => 'unknown action'], 404);
 
-$name   = mb_substr(trim((string)($in['name'] ?? $host)), 0, 120);
-$handle = mb_substr(trim((string)($in['handle'] ?? '')), 0, 120);
-$desc   = mb_substr(trim((string)($in['description'] ?? '')), 0, 500);
-// SECAUDIT: media URLs render inside a CSS url('...') on the public directory,
-// so a value carrying a quote/paren could break out and inject a CSS declaration
-// (e.g. a tracking beacon). Require a clean http(s) URL with no CSS-breakout chars.
-$avatar = trim((string)($in['avatar_url'] ?? ''));
-if ($avatar !== '' && (strpbrk($avatar, "'\"()<>\\ \t\r\n") !== false
-        || !preg_match('~^https?://~i', $avatar)
-        || !filter_var($avatar, FILTER_VALIDATE_URL))) {
-    $avatar = '';
+// ── REGISTER ──────────────────────────────────────────────────────────────
+// Verify domain ownership and read the card FROM THE SITE — never the POST body.
+$v = pbdir_verify_site($site_url);
+if ($v === null) {
+    pbdir_api_out(['error' => 'could not verify site — /directory-verify.php must be reachable and match this site_url'], 400);
+}
+if (empty($v['listed'])) {
+    pbdir_api_out(['error' => 'this site is not opted in to the directory'], 403);
 }
 
+$name   = mb_substr(trim((string)($v['name'] ?? $host)), 0, 120);
+$handle = mb_substr(trim((string)($v['handle'] ?? '')), 0, 120);
+$desc   = mb_substr(trim((string)($v['description'] ?? '')), 0, 500);
+$avatar = pbdir_clean_media_url((string)($v['avatar_url'] ?? ''));
+
 $topics = [];
-if (isset($in['topics']) && is_array($in['topics'])) {
-    foreach ($in['topics'] as $t) { $t = trim((string)$t); if ($t !== '') $topics[] = mb_substr($t, 0, 40); }
+if (isset($v['topics']) && is_array($v['topics'])) {
+    foreach ($v['topics'] as $t) { $t = trim((string)$t); if ($t !== '') $topics[] = mb_substr($t, 0, 40); }
 }
 $topics = array_slice($topics, 0, 12);
 
 $samples = [];
-if (isset($in['samples']) && is_array($in['samples'])) {
-    foreach ($in['samples'] as $s) {
-        $s = trim((string)$s);
-        if ($s !== '' && strpbrk($s, "'\"()<>\\ \t\r\n") === false
-                && preg_match('~^https?://~i', $s)
-                && filter_var($s, FILTER_VALIDATE_URL)) {
-            $samples[] = $s;
-        }
+if (isset($v['samples']) && is_array($v['samples'])) {
+    foreach ($v['samples'] as $s) {
+        $s = pbdir_clean_media_url((string)$s);
+        if ($s !== '') $samples[] = $s;
     }
 }
 $samples = array_slice($samples, 0, 6);
 
-// SECAUDIT: this endpoint is UNAUTHENTICATED (a plain blog opt-in — no shared
-// secret exists to sign with) and site_url is public, so anyone could re-POST a
-// victim's URL. Force EVERY submit back through moderation: attacker-supplied
-// content can never appear live on an approved card without a human re-approving
-// it. The public directory renders only state='active', so a queued 'pending'
-// row is invisible until reviewed.
-// TODO(secaudit): the complete fix is domain-ownership proof (a hub callback for
-// a one-time token the submitting site publishes) — that also closes the
-// unauthenticated 'remove' below. Tracked for a follow-up.
-$state = 'pending';
+// Card content is now proven to come from the site, so an already-approved
+// listing may refresh in place and stay active; a first-time listing waits in
+// 'pending' for the one-time human review of a new member.
+$stmt = $pdo->prepare("SELECT state FROM snap_directory_listings WHERE site_url=?");
+$stmt->execute([$site_url]);
+$prev  = $stmt->fetchColumn();
+$state = ($prev === 'active') ? 'active' : 'pending';
 
 $pdo->prepare(
     "INSERT INTO snap_directory_listings
