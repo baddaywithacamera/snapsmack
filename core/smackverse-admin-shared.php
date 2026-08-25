@@ -411,6 +411,12 @@ list($sv_cron_supported, )  = cron_capability();
 $sv_cron_registered = cron_job_registered('# snapsmack-smackverse');
 $sv_cron_last = trim($sv_settings['smackverse_cron_last_run'] ?? '');
 $sv_cron_ok   = $sv_cron_last !== '' && (time() - strtotime($sv_cron_last)) < 3600;
+// In-CMS web-cron: on hosts that block background jobs, index.php runs the sweep
+// from public page visits (sv_web_cron_tick). On by default; only an explicit
+// '0' disables it. This is what covers the locked-down host where the system
+// crontab cannot be registered, so the admin can stop telling users to add a
+// cron line by hand.
+$sv_webcron_on = ($sv_settings['smackverse_webcron_enabled'] ?? '1') !== '0';
 
 // Queue counts + followers.
 $sv_q_queued = 0; $sv_q_failed = 0; $sv_followers = [];
