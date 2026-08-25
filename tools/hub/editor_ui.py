@@ -642,12 +642,25 @@ class EditorWindow(tk.Toplevel):
             channels = (("luma", "#d8d8d8"),)
         else:
             channels = (("red", "#ff5555"), ("green", "#55ff55"), ("blue", "#5599ff"))
-        maximum = max(max(values[channel]) for channel, _colour in channels) or 1
+        maximum = self._histogram_ceiling(values, channels)
         for channel, color in channels:
             points = []
             for index, count in enumerate(values[channel]):
-                points.extend((index / 255 * width, height - count / maximum * height))
+                displayed = min(count, maximum)
+                points.extend((index / 255 * width, height - displayed / maximum * height))
             canvas.create_line(*points, fill=color, width=1)
+
+    @staticmethod
+    def _histogram_ceiling(values, channels):
+        # A clipped black or white bin can dwarf every useful tonal bin. Scale from
+        # the 98th percentile of interior bins, then clip exceptional spikes to the
+        # top edge so clipping remains visible without flattening the whole graph.
+        interior = sorted(count for channel, _colour in channels
+                          for count in values[channel][1:255] if count > 0)
+        if not interior:
+            return max((max(values[channel]) for channel, _colour in channels), default=1) or 1
+        index = min(len(interior) - 1, int((len(interior) - 1) * .98))
+        return max(1, interior[index])
 
     def current_layer(self):
         selection = self.layer_list.curselection()
