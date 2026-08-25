@@ -10,6 +10,16 @@
 
 # SnapSmack Changelog
 
+## 0.7.559 — 2026-08-25 "FEDBOARD"
+
+Security hardening for the new multisite/federation features (secaudit 051). No visible change to how blogs are used; these close ways one connected blog — or a stranger on the internet — could have interfered with another.
+
+- **Connected blogs can no longer overstep.** A satellite blog shares a secret key with its main blog so the main blog can send it commands. Four of those command endpoints on the main blog weren't checking that the caller was actually the main blog, so a satellite (or an attacker who got into one) could turn the key around and, on the main blog, create a posting credential, read the email address + IP of everyone with a pending comment, add posts, or rewrite the blogroll. All four now require the caller to be the hub, matching every other command.
+- **The public photoblogs.fyi directory can't be spoofed.** The sign-up endpoint had no login and trusted whatever was posted to it, so anyone could overwrite an approved listing with their own content (it stayed live) or delist any site. The hub now confirms a request by calling the site back at `/directory-verify.php` and reads the listing straight from the site itself — so a forged submission can only make the hub re-read that site's own truth, never inject content or remove a site that still lists. New listings still wait for human review.
+- **Image fetch can't be aimed at the private network.** The hub→spoke "create post" image download followed redirects on a raw hostname; a crafted image URL could bounce it onto an internal address (SSRF). It now pins the verified public address and refuses redirects, like every other fetch in the engine.
+- **SNAP SLAPPER no longer ships the fleet credential/network code.** The photo editor's build bundled the whole shared toolkit — including the credential vault and fleet-discovery/network modules it never uses. It now bundles only what it imports, with the sensitive modules hard-excluded. (No secret was ever embedded in the exe.)
+- Smaller: the site-join one-time token is now claimed atomically (no two-registration race), and public-directory media URLs are sanitised at the source (blocks a CSS-based tracking beacon).
+
 ## 0.7.558 — 2026-08-25 "FEDBOARD"
 
 - Fediverse: **RUN JOBS — ALL SPOKES** now does a fast roster refresh per spoke instead of the full delivery sweep. Running the whole sweep made one spoke grind through its queue and outlast a locked-down hub's request window, so the fan-out timed out (stuck on job 1, then mass failures). It now calls the roster pull directly — the same fast operation as VERIFY CONNECTION — which also fills blogs that have fediverse switched off. Deliveries stay with each spoke's own cron / web-cron.
