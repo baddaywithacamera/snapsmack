@@ -175,9 +175,16 @@ class PhotoLibrary(tk.Toplevel):
 
         view_controls = tk.Frame(centre, bg="#0d0d0d")
         view_controls.pack(fill="x")
+        self.include_subfolders_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(view_controls, text="INCLUDE SUBFOLDERS",
+                       variable=self.include_subfolders_var,
+                       command=self.filter_rows, bg="#0d0d0d", fg=INK,
+                       selectcolor=FIELD, activebackground="#0d0d0d",
+                       activeforeground=INK, font=("Segoe UI", 8, "bold")).pack(
+                           side="left", padx=(12, 4), pady=5)
         self.scan_status = tk.Label(view_controls, text="", bg="#0d0d0d", fg=DIM,
                                     font=("Segoe UI", 9))
-        self.scan_status.pack(side="left", padx=12, pady=5)
+        self.scan_status.pack(side="left", padx=8, pady=5)
         self.thumb_size = tk.IntVar(value=150)
         self.thumb_value = tk.Label(view_controls, text="150 px", bg="#0d0d0d", fg=INK,
                                     width=6, font=("Segoe UI", 8, "bold"))
@@ -533,7 +540,13 @@ class PhotoLibrary(tk.Toplevel):
 
     def filter_rows(self):
         query = self.search_var.get().strip().lower()
-        self.visible = [row for row in self.rows if not query or query in " ".join((
+        candidates = self.rows
+        if (not self.include_subfolders_var.get() and self.current_source and
+                self.current_source[0] not in {"album", "shared"}):
+            selected_folder = os.path.normcase(os.path.abspath(self.current_source[1]))
+            candidates = [row for row in candidates if os.path.normcase(os.path.abspath(
+                os.path.dirname(row["path"]))) == selected_folder]
+        self.visible = [row for row in candidates if not query or query in " ".join((
             row.get("title", ""), row.get("description", ""), os.path.basename(row["path"]),
             " ".join(map(str, row.get("tags", []))),
             str(self._photo_meta(row).get("tags", "")))).lower()]

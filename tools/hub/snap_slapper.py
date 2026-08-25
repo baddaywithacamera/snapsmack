@@ -5,7 +5,7 @@ import sys
 import tkinter as tk
 
 
-BUILD_VERSION = "0.7.554"
+BUILD_VERSION = "0.7.555"
 
 
 def _add_shared_to_path():
