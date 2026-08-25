@@ -540,17 +540,30 @@ if (isset($_POST['set_spoke_track'])) {
     }
 }
 
-// --- RUN FEDIVERSE JOBS ON ALL SPOKES (fills every FEDBOARD picker at once) ---
-// One hub action instead of visiting each site: tell every active spoke to run
-// its own fediverse/relay sweep, which pulls the mesh roster and fills its
-// site-picker. Uses the same hub->spoke key + endpoint pattern as push_update_all.
-if (isset($_POST['run_jobs_all']) && $multisite_role === 'hub') {
-    $job_nodes = $pdo->query(
-        "SELECT site_url, site_name, api_key_local FROM snap_multisite_nodes
-         WHERE role = 'spoke' AND status = 'active'"
-    )->fetchAll(PDO::FETCH_ASSOC);
-    $job_ok = 0; $job_fail = 0;
+// --- RUN FEDIVERSE JOBS ON SPOKE(S) (fills the FEDBOARD picker) ---
+// Tell a spoke to run its own fediverse/relay sweep, which pulls the mesh roster
+// and fills its site-picker. run_jobs (single spoke_id) is the AJAX endpoint the
+// progress driver calls once per spoke so a 20-spoke run never blocks on one slow
+// site; run_jobs_all is the no-JS fallback that loops server-side. Same hub->spoke
+// key + endpoint pattern as push_update.
+if ((isset($_POST['run_jobs']) || isset($_POST['run_jobs_all'])) && $multisite_role === 'hub') {
+    if (isset($_POST['run_jobs_all'])) {
+        $job_nodes = $pdo->query(
+            "SELECT id, site_url, site_name, api_key_local FROM snap_multisite_nodes
+             WHERE role = 'spoke' AND status = 'active'"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $stmt = $pdo->prepare(
+            "SELECT id, site_url, site_name, api_key_local FROM snap_multisite_nodes
+             WHERE id = ? AND role = 'spoke' LIMIT 1"
+        );
+        $stmt->execute([(int)($_POST['spoke_id'] ?? 0)]);
+        $job_nodes = array_filter([$stmt->fetch(PDO::FETCH_ASSOC)]);
+    }
+
+    $job_results = []; $job_ok = 0; $job_fail = 0;
     foreach ($job_nodes as $tn) {
+        if (!$tn) continue;
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL            => rtrim($tn['site_url'], '/') . '/api.php?route=multisite/jobs/run',
@@ -568,8 +581,23 @@ if (isset($_POST['run_jobs_all']) && $multisite_role === 'hub') {
         $raw  = curl_exec($ch);
         $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        $data = json_decode((string)$raw, true);
-        if ($code === 200 && !empty($data['ok'])) { $job_ok++; } else { $job_fail++; }
+        $data   = json_decode((string)$raw, true);
+        $ok     = ($code === 200 && !empty($data['ok']));
+        $ok ? $job_ok++ : $job_fail++;
+        $roster = $data['roster'] ?? null;
+        $job_results[] = [
+            'name'  => $tn['site_name'] ?? $tn['site_url'],
+            'ok'    => $ok,
+            'added' => is_array($roster) ? (int)($roster['added'] ?? 0) : 0,
+        ];
+    }
+
+    // AJAX (per-spoke progress driver): return JSON, skip full page render.
+    if ($is_ajax) {
+        if (ob_get_level()) ob_end_clean();
+        header('Content-Type: application/json');
+        echo json_encode(['results' => $job_results]);
+        exit;
     }
     $msg = sprintf(
         'Ran fediverse jobs on %d spoke(s)%s — site-pickers refreshed.',
@@ -1394,13 +1422,75 @@ include 'core/sidebar.php';
                             MAINTENANCE ALL OFF
                         </button>
                     </form>
-                    <form method="POST">
+                    <form method="POST" id="run-jobs-form" data-spoke-ids='<?php echo htmlspecialchars(json_encode(array_values(array_map(fn($n) => (int)$n['id'], array_filter($nodes, fn($n) => $n['role'] === 'spoke' && ($n['status'] ?? '') === 'active')))), ENT_QUOTES, "UTF-8"); ?>'>
                         <button type="submit" name="run_jobs_all" class="btn-smack btn-auto"
                                 onclick="return confirm('Run fediverse jobs on ALL active spokes now? This fills every site-picker.');">
                             RUN JOBS — ALL SPOKES
                         </button>
                     </form>
                 </div>
+                <div id="run-jobs-progress-live" class="mb-6"></div>
+                <script>
+                /* RUN JOBS - ALL SPOKES: client-driven, one spoke per request with live
+                   progress. Mirrors the UPDATE ALL BEHIND driver so a 20-spoke run never
+                   blocks on one slow site and the operator sees status as it goes. No-JS
+                   falls back to the server-side loop (name="run_jobs_all"). */
+                (function () {
+                    var form = document.getElementById("run-jobs-form");
+                    if (!form || !window.fetch) return;   // no JS/fetch -> plain POST still works
+                    var live = document.getElementById("run-jobs-progress-live");
+                    var btn  = form.querySelector("button[type='submit']");
+                    var ids;
+                    try { ids = JSON.parse(form.getAttribute("data-spoke-ids") || "[]"); }
+                    catch (e) { ids = []; }
+                    if (!ids.length) return;
+
+                    var total = ids.length, done = 0, okCount = 0, failCount = 0, added = 0, queue = [];
+
+                    function paint() {
+                        if (!live) return;
+                        var pct = Math.round((done / total) * 100);
+                        live.innerHTML =
+                            '<div>RUNNING ' + Math.min(done + 1, total) + ' OF ' + total +
+                              ' <span class="text-muted">(' + okCount + ' ok, ' + failCount + ' failed)</span></div>' +
+                            '<div class="cloud-progress-track"><div class="cloud-progress-fill" style="width:' + pct + '%"></div></div>';
+                    }
+                    function finish() {
+                        if (btn) btn.textContent = "DONE";
+                        if (!live) return;
+                        live.innerHTML = '<div class="alert ' + (failCount ? 'alert-warning' : 'alert-success') +
+                            '">Finished — ' + okCount + ' spoke(s) run, ' + added + ' peer(s) added' +
+                            (failCount ? ', ' + failCount + ' failed' : '') +
+                            '. <a href="#" onclick="location.reload();return false;">Reload</a> to refresh the picker.</div>';
+                    }
+                    function next() {
+                        if (!queue.length) { finish(); return; }
+                        var id = queue.shift();
+                        paint();
+                        var fd = new FormData();
+                        fd.append("run_jobs", "1");
+                        fd.append("spoke_id", id);
+                        fetch(window.location.href, {
+                            method: "POST", body: fd, credentials: "same-origin",
+                            headers: { "X-Requested-With": "XMLHttpRequest" }
+                        })
+                        .then(function (r) { return r.json(); })
+                        .then(function (d) {
+                            var res = (d && d.results && d.results[0]) || {};
+                            if (res.ok) { okCount++; added += (res.added || 0); } else { failCount++; }
+                        })
+                        .catch(function () { failCount++; })
+                        .then(function () { done++; paint(); next(); });
+                    }
+                    form.addEventListener("submit", function (e) {
+                        e.preventDefault();
+                        if (btn) { btn.disabled = true; btn.textContent = "RUNNING…"; }
+                        done = 0; okCount = 0; failCount = 0; added = 0;
+                        queue = ids.slice();
+                        next();
+                    });
+                })();
+                </script>
 
                 <script>
                 /* UPDATE ALL BEHIND - client-driven sequential run (0.7.452).
