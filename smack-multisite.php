@@ -540,6 +540,43 @@ if (isset($_POST['set_spoke_track'])) {
     }
 }
 
+// --- RUN FEDIVERSE JOBS ON ALL SPOKES (fills every FEDBOARD picker at once) ---
+// One hub action instead of visiting each site: tell every active spoke to run
+// its own fediverse/relay sweep, which pulls the mesh roster and fills its
+// site-picker. Uses the same hub->spoke key + endpoint pattern as push_update_all.
+if (isset($_POST['run_jobs_all']) && $multisite_role === 'hub') {
+    $job_nodes = $pdo->query(
+        "SELECT site_url, site_name, api_key_local FROM snap_multisite_nodes
+         WHERE role = 'spoke' AND status = 'active'"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    $job_ok = 0; $job_fail = 0;
+    foreach ($job_nodes as $tn) {
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => rtrim($tn['site_url'], '/') . '/api.php?route=multisite/jobs/run',
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => '',
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_TIMEOUT        => 120,
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $tn['api_key_local'],
+                'Accept: application/json',
+                'Content-Length: 0',
+            ],
+        ]);
+        $raw  = curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $data = json_decode((string)$raw, true);
+        if ($code === 200 && !empty($data['ok'])) { $job_ok++; } else { $job_fail++; }
+    }
+    $msg = sprintf(
+        'Ran fediverse jobs on %d spoke(s)%s — site-pickers refreshed.',
+        $job_ok, $job_fail ? " ($job_fail unreachable — retry those)" : ''
+    );
+}
+
 if (isset($_POST['push_update']) || isset($_POST['push_update_all'])) {
     if ($multisite_role !== 'hub') {
         $err = "Only a hub can push updates.";
@@ -1355,6 +1392,12 @@ include 'core/sidebar.php';
                                
                                 onclick="return confirm('Take ALL active spokes out of maintenance mode?');">
                             MAINTENANCE ALL OFF
+                        </button>
+                    </form>
+                    <form method="POST">
+                        <button type="submit" name="run_jobs_all" class="btn-smack btn-auto"
+                                onclick="return confirm('Run fediverse jobs on ALL active spokes now? This fills every site-picker.');">
+                            RUN JOBS — ALL SPOKES
                         </button>
                     </form>
                 </div>
