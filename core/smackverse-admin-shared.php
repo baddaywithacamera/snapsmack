@@ -346,6 +346,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regis
     exit;
 }
 
+// RUN NOW: run the delivery + maintenance sweep immediately from the CMS, for
+// hosts that block cron AND exec(). Also refreshes the FEDBOARD picker roster.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'run_jobs_now') {
+    if (!sv_enabled($sv_settings)) {
+        header('Location: ' . $sv_self . '?msg=' . urlencode('Enable Fediverse first, then run the jobs.'));
+        exit;
+    }
+    $r = sv_run_sweep($pdo, $sv_settings);
+    if (!empty($r['busy'])) {
+        $rjmsg = 'Fediverse jobs are already running — give it a moment and reload.';
+    } else {
+        $ros   = $r['roster'] ?? [];
+        $rjmsg = sprintf(
+            'Fediverse jobs ran: %d new post(s) swept, %d delivery(ies) sent, %d retrying. Site-picker roster: %d added, %d updated.',
+            (int)($r['units'] ?? 0), (int)($r['sent'] ?? 0), (int)($r['failed'] ?? 0),
+            (int)($ros['added'] ?? 0), (int)($ros['updated'] ?? 0)
+        );
+    }
+    header('Location: ' . $sv_self . '?msg=' . urlencode($rjmsg));
+    exit;
+}
+
 // JOIN / LEAVE the SMACKVERSE network relay.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'relay_join') {
     if (!sv_enabled($sv_settings)) {
