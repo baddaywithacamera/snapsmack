@@ -218,4 +218,75 @@ vintage, faded, warm/cool, matte, black-and-white film, colour grading, split to
 bleach bypass, cross-process, infrared-style, diffusion, soft-focus, and high-pass
 sharpening filters. These are not part of the first acceptance gate.
 
+## 14. Snapseed-level capability target
+
+SNAP SLAPPER should eventually cover the practical photographic filter territory offered
+by Snapseed while using original names, presets, code, visual design, and control layouts.
+This is capability equivalence, not pixel-for-pixel preset cloning or imitation of another
+application's interface.
+
+Required capability families after the first four-filter milestone:
+
+- **Lens focus:** elliptical, linear, and painted blur regions with transition, blur
+  strength, vignette, and highlight controls.
+- **Photographic glow:** soft luminous glow with warmth and saturation controls. The
+  Orton implementation supplies the foundation but must also support restrained portrait
+  and diffusion-style results.
+- **Tonal contrast:** separately adjustable highlight, midtone, and shadow detail with
+  protection against halos and clipped extremes.
+- **Single-image HDR:** local tone mapping with natural through stylized strengths,
+  brightness, saturation, smoothing, and halo suppression.
+- **Dramatic tone:** gritty or smooth high-impact contrast with brightness, saturation,
+  shadow protection, and strength controls.
+- **Grunge and distressed texture:** locally generated or properly licensed textures,
+  style seed, texture strength, saturation, contrast, and movable texture origin.
+- **Colour film looks:** deterministic colour-film profiles combined with the Film Grain
+  engine; grain and style strength remain independently adjustable.
+- **Vintage colour:** colour response, fade, texture, brightness, saturation, and a
+  movable vignette.
+- **Retro damage:** film style, scratches, dust, light leaks, brightness, saturation,
+  contrast, strength, and deterministic shuffle. This extends the first Light Leak layer.
+- **Noir:** darkroom-style monochrome tone, wash, grain, brightness, contrast, and filter
+  strength.
+- **Black and white:** channel-sensitive monochrome conversion, coloured lens-filter
+  simulation, brightness, contrast, grain, and editable starting styles.
+- **Frames:** adjustable border width, inset, colour, irregularity, and properly licensed
+  or procedurally generated frame textures. Frames remain editable and are applied after
+  or before other layers according to their stack position.
+
+Face-aware enhancement is not part of this required filter target. If it is ever added,
+it must be an explicit optional capability and must follow the separate product decision
+on AI/face processing rather than introducing silent face recognition into the library.
+
+All equivalents inherit the same requirements as the first four filters: non-destructive
+layers, masks, stacking, history, deterministic projects, presets, selected-photo batch
+application, local processing, responsive previews, and metadata-safe export.
+
+## 15. Perspective correction
+
+Perspective correction is a geometry tool, not a stylistic filter, but it is required for
+the intended editor capability level and must be built before claiming Snapseed-level tool
+coverage.
+
+Required controls and interactions:
+
+- Vertical perspective/keystone correction
+- Horizontal perspective/keystone correction
+- Rotation and straighten integration
+- X and Y scale
+- Aspect correction where needed after transformation
+- Four-corner free perspective mode
+- Visible grid and draggable on-image handles
+- Auto-crop to valid pixels
+- Transparent-edge mode for formats that support alpha
+- Edge-fill option that clearly identifies generated pixels and can be disabled
+- Reset and before/after comparison
+
+Perspective remains non-destructive in the document geometry model, participates in
+undo/redo, survives project save/open, renders consistently in previews and exports, and
+never changes the source file. Crop coordinates, masks, retouch points, and positioned
+overlays must continue to align after the transformation. Automated checks must cover
+both keystone axes, four-corner transforms, crop/fill behavior, project round-trips, and
+full-resolution export.
+
 <!-- ===== SNAPSMACK EOF ===== -->
