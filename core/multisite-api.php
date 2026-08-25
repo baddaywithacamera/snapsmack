@@ -1459,16 +1459,20 @@ if ($resource === 'ban-sync' && $method === 'POST') {
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'jobs' && $sub_action === 'run' && $method === 'POST') {
     if (($node['role'] ?? '') !== 'hub') ms_err('Only a hub may run spoke jobs', 403);
-    require_once __DIR__ . '/smackverse.php';
-    if (!function_exists('sv_run_sweep')) ms_err('Fediverse engine unavailable', 500);
-    @set_time_limit(120);
-    $r = sv_run_sweep($pdo, $settings);
-    ms_ok([
-        'ran'    => empty($r['busy']) && empty($r['disabled']),
-        'busy'   => !empty($r['busy']),
-        'roster' => $r['roster'] ?? null,
-        'result' => $r,
-    ]);
+    @set_time_limit(45);
+    // Purpose: refresh THIS spoke's mesh roster so its FEDBOARD picker fills. That
+    // is fast (one ping to the hub) and — unlike the full sv_run_sweep — is NOT
+    // gated on fediverse being enabled, so every spoke's picker fills. Running the
+    // whole delivery/relay sweep here made a single spoke grind through its entire
+    // queue and outlast a locked-down hub's request window, hanging the fan-out on
+    // the first slow site. Deliveries are drained separately by each spoke's own
+    // cron / web-cron, so the picker refresh must not wait on them.
+    require_once __DIR__ . '/mesh-helpers.php';
+    $roster = ['added' => 0, 'updated' => 0, 'pruned' => 0, 'ok' => false];
+    if (function_exists('ms_spoke_pull_roster')) {
+        try { $roster = ms_spoke_pull_roster($pdo, $settings); } catch (Throwable $e) {}
+    }
+    ms_ok(['ran' => !empty($roster['ok']), 'roster' => $roster]);
 }
 
 if ($resource === 'updates' && $sub_action === 'track' && $method === 'POST') {
