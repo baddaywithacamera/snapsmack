@@ -160,6 +160,19 @@ A local uploads directory is a staging inbox, not a server mirror.
 - Posting tools must distinguish prepared, queued, uploaded, published, failed, and user-retained states.
 - SNAP SLAPPER should not infer publication success by observing that a file vanished.
 
+## SNAP SLAPPER brush compatibility
+
+The editor will provide a visible brush palette shared by mask painting and retouch tools.
+It must include useful built-in hard and soft brushes, readable tip previews, and controls
+for size, hardness, opacity, flow, spacing, angle, and rotation.
+
+The palette may import grayscale or alpha PNG brush tips and compatible sampled brush tips
+from Photoshop `.abr` files. Imported Photoshop brushes are translated into SNAP SLAPPER's
+own non-destructive brush model. Photoshop-only behavior such as mixer brushes, dual-brush
+engines, proprietary textures, and application-specific pressure dynamics is not promised
+to reproduce exactly; unsupported settings must be reported rather than silently misread.
+Imported brushes remain local workstation data and are never uploaded to the CMS.
+
 ## 10. Failure and recovery semantics
 
 Desktop-heavy architecture is valuable only if failures are recoverable.
