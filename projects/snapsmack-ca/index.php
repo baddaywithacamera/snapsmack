@@ -317,7 +317,8 @@ require_once __DIR__ . '/includes/header.php';
                 <article class="coming-item coming-item--feature">
                     <span class="tag">Photo Manager</span>
                     <h3>Snap Slapper</h3>
-                    <p>Picasa, if it had been accidentally exposed to gamma radiation in a lab accident. A fast, private desktop photo library for browsing, rating, tagging, organizing, editing, and exporting your photographs &mdash; without ever handing the collection to a cloud service. Then the mutation kicks in: layers, LEWKS (Lightroom-style actions), and partial Lightroom plugin support. Just don&rsquo;t make it angry. You won&rsquo;t like it when it&rsquo;s angry.</p>
+                    <p>Picasa, if it had been accidentally exposed to gamma radiation in a lab accident. A fast, private desktop photo library for browsing, rating, tagging, organizing, editing, and exporting your photographs &mdash; without ever handing the collection to a cloud service.</p>
+                    <p>Then the mutation kicks in: layers, LEWKS (Lightroom-style actions), and partial Lightroom plugin support. Just don&rsquo;t make it angry. You won&rsquo;t like it when it&rsquo;s angry.</p>
                 </article>
                 <article class="coming-item coming-item--feature">
                     <span class="tag">AI Actions</span>
