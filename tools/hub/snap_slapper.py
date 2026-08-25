@@ -5,7 +5,7 @@ import sys
 import tkinter as tk
 
 
-BUILD_VERSION = "0.5.0-beta"
+BUILD_VERSION = "0.5.1-beta"
 
 
 def _add_shared_to_path():
