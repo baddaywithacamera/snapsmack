@@ -1,4 +1,7 @@
-"""SNAP SLAPPER photo library: Picasa-style source rail, grid, and info rail."""
+"""SNAP SLAPPER photo library: Picasa-style source rail, grid, and info rail.
+
+SNAPSMACK_EOF_HEADER: this file must end with the canonical Python EOF marker.
+"""
 
 import datetime
 import glob
@@ -1014,6 +1017,7 @@ class PhotoLibrary(tk.Toplevel):
             for widget in (card, pic, title, badge):
                 widget.bind("<Button-1>", lambda e, r=row: self.photo_clicked(e, r))
                 widget.bind("<Double-Button-1>", lambda e, r=row: self.photo_double_clicked(e, r))
+                widget.bind("<Button-3>", lambda e, r=row: self.photo_context_menu(e, r))
         def add_chunk(start=0):
             if generation != self._grid_generation:
                 return
@@ -1073,6 +1077,57 @@ class PhotoLibrary(tk.Toplevel):
         self.select_photo(row)
         self.open_viewer(row)
         return "break"
+
+    def photo_context_menu(self, event, row):
+        if self._single_click_job:
+            self.after_cancel(self._single_click_job)
+            self._single_click_job = None
+        key = self._metadata_key(row["path"])
+        if key not in self.selected_paths:
+            self.selected_paths = {key}
+        self.select_photo(row)
+        self._refresh_card_selection()
+
+        chosen = self._chosen_rows()
+        count = len(chosen)
+        all_favorite = bool(chosen) and all(self._photo_meta(item).get("favorite") for item in chosen)
+        menu = tk.Menu(self, tearoff=False, bg=FIELD, fg=INK,
+                       activebackground=ACCENT, activeforeground=BG,
+                       selectcolor=ACCENT)
+        menu.add_command(label="Open / edit in SNAP SLAPPER", command=lambda: self.open_viewer(row))
+        menu.add_command(label="Open in Windows", command=lambda: self.open_path(row["path"]))
+        if self.external_tools:
+            menu.add_command(label="Open with / edit copy…", command=self.open_with_menu)
+        menu.add_separator()
+        menu.add_command(
+            label="Remove favorite" if all_favorite else "Mark as favorite",
+            command=lambda: self.set_selection_favorite(not all_favorite))
+        rating_menu = tk.Menu(menu, tearoff=False, bg=FIELD, fg=INK,
+                              activebackground=ACCENT, activeforeground=BG,
+                              selectcolor=ACCENT)
+        rating_menu.add_command(label="No rating", command=lambda: self.set_selection_rating(0))
+        for value in range(1, 6):
+            rating_menu.add_command(label=("★" * value) + ("  " + str(value)),
+                                    command=lambda number=value: self.set_selection_rating(number))
+        menu.add_cascade(label="Set rating", menu=rating_menu)
+        menu.add_command(label="Add tags…", command=self.bulk_tags)
+        menu.add_command(label="Remove tag…", command=self.delete_tag)
+        menu.add_separator()
+        menu.add_command(label=f"Mark {count:,} photo{'s' if count != 1 else ''} for deletion…",
+                         command=self.trash_selection)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
+
+    def set_selection_rating(self, value):
+        value = max(0, min(5, int(value)))
+        self._update_bulk_metadata(lambda details: details.update(rating=value))
+
+    def set_selection_favorite(self, value):
+        value = bool(value)
+        self._update_bulk_metadata(lambda details: details.update(favorite=value))
 
     def _chosen_rows(self):
         if self.selected_paths:
@@ -1635,3 +1690,5 @@ class PhotoLibrary(tk.Toplevel):
             messagebox.showinfo("Sharpened copy exported", target, parent=self.sharpen_panel)
         except Exception as exc:
             messagebox.showerror("Export failed", str(exc), parent=self.sharpen_panel)
+
+# ===== SNAPSMACK EOF =====

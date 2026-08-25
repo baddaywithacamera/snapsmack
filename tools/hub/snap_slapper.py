@@ -1,11 +1,14 @@
-"""Standalone SNAP SLAPPER photo manager entry point."""
+"""Standalone SNAP SLAPPER photo manager entry point.
+
+SNAPSMACK_EOF_HEADER: this file must end with the canonical Python EOF marker.
+"""
 
 import os
 import sys
 import tkinter as tk
 
 
-BUILD_VERSION = "0.7.555"
+BUILD_VERSION = "0.7.557"
 
 
 def _add_shared_to_path():
@@ -51,3 +54,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# ===== SNAPSMACK EOF =====
