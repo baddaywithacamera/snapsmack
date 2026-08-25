@@ -54,6 +54,7 @@ class PhotoLibrary(tk.Toplevel):
         self.render_limit = 120
         self._single_click_job = None
         self._grid_generation = 0
+        self.card_widgets = {}
         self.scan_token = 0
         self.scan_queue = queue.Queue()
         self._build()
@@ -936,12 +937,13 @@ class PhotoLibrary(tk.Toplevel):
         except OSError as exc:
             messagebox.showerror("Backup failed", str(exc), parent=self)
 
-    def render_grid(self, incremental=False):
+    def render_grid(self, incremental=True):
         self._grid_generation += 1
         generation = self._grid_generation
         for child in self.grid.winfo_children():
             child.destroy()
         self.photos = []
+        self.card_widgets = {}
         rows = self.visible[:self.render_limit]
         size = self.thumb_size.get()
         columns = max(2, self.canvas.winfo_width() // (size + 22))
@@ -978,6 +980,7 @@ class PhotoLibrary(tk.Toplevel):
                              font=("Segoe UI Symbol", 8), cursor="hand2")
             if badges:
                 badge.pack(fill="x", padx=6, pady=(0, 5))
+            self.card_widgets[self._metadata_key(row["path"])] = (card, pic, title, badge)
             for widget in (card, pic, title, badge):
                 widget.bind("<Button-1>", lambda e, r=row: self.photo_clicked(e, r))
                 widget.bind("<Double-Button-1>", lambda e, r=row: self.photo_double_clicked(e, r))
@@ -1020,7 +1023,16 @@ class PhotoLibrary(tk.Toplevel):
         else:
             self.selected_paths = {key}
         self.select_photo(row)
-        self.render_grid()
+        self._refresh_card_selection()
+
+    def _refresh_card_selection(self):
+        for key, widgets in self.card_widgets.items():
+            chosen = key in self.selected_paths
+            colour = "#24421f" if chosen else CARD
+            card = widgets[0]
+            card.configure(bg=colour, highlightthickness=2 if chosen else 0)
+            for widget in widgets[1:]:
+                widget.configure(bg=colour)
 
     def photo_double_clicked(self, _event, row):
         if self._single_click_job:
@@ -1328,7 +1340,7 @@ class PhotoLibrary(tk.Toplevel):
             self.editor_window = EditorWindow(
                 self, row, editor_rows,
                 on_select=self.select_photo, on_refresh=self.refresh_current,
-                copyright_text=self._copyright_text)
+                copyright_text=self._copyright_text, batch_rows=chosen)
         return
         viewer = getattr(self, "viewer", None)
         if not viewer or not viewer.winfo_exists():
