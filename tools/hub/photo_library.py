@@ -583,8 +583,20 @@ class PhotoLibrary(tk.Toplevel):
             self.visible.sort(key=lambda row: os.path.basename(row["path"]).lower(), reverse=True)
         else:
             self.visible.sort(key=lambda row: os.path.basename(row["path"]).lower())
+        self._update_view_counts()
         self.render_limit = 120
         self.render_grid()
+
+    def _update_view_counts(self):
+        shown = len(self.visible)
+        total = len(self.rows)
+        label = self.current_source[2].lstrip("▣▦ ") if self.current_source else "PHOTOS"
+        self.heading.configure(text=f"{label}  ·  {shown:,} photo{'s' if shown != 1 else ''}")
+        if shown == total:
+            status = f"{shown:,} photo{'s' if shown != 1 else ''}"
+        else:
+            status = f"{shown:,} of {total:,} photos shown"
+        self.scan_status.configure(text=status, fg=DIM)
 
     def reset_filters(self):
         self.search_var.set("")
