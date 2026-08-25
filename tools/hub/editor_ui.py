@@ -53,6 +53,7 @@ class EditorWindow(tk.Toplevel):
         self.resizable(True, True)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self._build()
+        self.set_tool("pan")
         self._load_document_controls()
         self.after(100, self.fit_image)
 
@@ -107,6 +108,9 @@ class EditorWindow(tk.Toplevel):
         self.canvas.bind("<ButtonPress-1>", self.canvas_press)
         self.canvas.bind("<B1-Motion>", self.canvas_drag)
         self.canvas.bind("<ButtonRelease-1>", self.canvas_release)
+        self.canvas.bind("<Motion>", self.canvas_motion)
+        self.canvas.bind("<Leave>", lambda _event: self.canvas.delete("tool-preview"))
+        self.canvas.bind("<Double-Button-1>", self.canvas_double_click)
         self.canvas.bind("<ButtonPress-3>", lambda _event: self.set_tool("pan"))
 
         film = tk.Frame(centre, bg="#101010", height=98)
@@ -150,6 +154,7 @@ class EditorWindow(tk.Toplevel):
         self.bind("<Control-y>", lambda _event: self.redo())
         self.bind("<Control-s>", lambda _event: self.save_project())
         self.bind("<Escape>", lambda _event: self.set_tool("pan"))
+        self.bind("<Return>", lambda _event: self.apply_crop() if self.tool == "crop" else None)
         self.bind("<Left>", lambda _event: self.open_relative(-1))
         self.bind("<Right>", lambda _event: self.open_relative(1))
 
@@ -355,11 +360,11 @@ class EditorWindow(tk.Toplevel):
             x = width // 2 + self.pan_x
             y = height // 2 + self.pan_y
             self.canvas.create_image(x, y, image=photo, tags="image")
+            self.canvas.tag_lower("image")
             self.canvas.image = photo
             self.display_box = (x - shown.width // 2, y - shown.height // 2,
                                 x + shown.width // 2, y + shown.height // 2)
             self.zoom_label.configure(text="FIT" if self.zoom <= 0 else f"{self.zoom * 100:.0f}%")
-            self.status_label.configure(text=f"{self.tool.upper()}  ·  {self.compare_mode.upper()}  ·  non-destructive")
             self.draw_histogram()
             self.draw_curve()
         except Exception as exc:
@@ -383,8 +388,35 @@ class EditorWindow(tk.Toplevel):
 
     def set_tool(self, name):
         self.tool = name
+        if name != "crop":
+            self.crop_rect = None
+            self.canvas.delete("crop")
         self.canvas.configure(cursor="crosshair" if name in {"crop", "spot", "red_eye", "mask"} else "fleur")
-        self.status_label.configure(text=name.upper())
+        instructions = {
+            "pan": "PAN — drag the photograph; mouse wheel zooms",
+            "crop": "CROP — drag a rectangle, then press Enter or APPLY CROP",
+            "spot": "SPOT — adjust Spot size, then click a blemish; Ctrl+Z undoes",
+            "red_eye": "RED EYE — size the circle over one pupil and click",
+            "mask": "MASK BRUSH — select a layer and mask, then paint Hide or Reveal",
+        }
+        self.status_label.configure(text=instructions.get(name, name.upper()))
+
+    def canvas_motion(self, event):
+        self.canvas.delete("tool-preview")
+        if self.tool not in {"spot", "red_eye", "mask"}:
+            return
+        point = self.canvas_to_normalized(event.x, event.y)
+        if not point:
+            return
+        radius = self.mask_brush_size.get() if self.tool == "mask" else self.spot_radius.get()
+        colour = "#ff5555" if self.tool == "red_eye" else ACCENT
+        self.canvas.create_oval(event.x - radius, event.y - radius,
+                                event.x + radius, event.y + radius,
+                                outline=colour, width=2, tags="tool-preview")
+
+    def canvas_double_click(self, _event):
+        if self.tool == "crop" and self.crop_rect:
+            self.apply_crop()
 
     def canvas_press(self, event):
         self.drag_start = (event.x, event.y)
@@ -397,6 +429,8 @@ class EditorWindow(tk.Toplevel):
                                                      self.display_box[3] - self.display_box[1]))})
                 self.document.record("Red-eye correction" if self.tool == "red_eye" else "Spot removal")
                 self.refresh_history()
+                self.status_label.configure(text=("Red-eye correction applied — Ctrl+Z to undo" if self.tool == "red_eye"
+                                                  else "Spot softened — Ctrl+Z to undo"))
                 self.schedule_render()
         elif self.tool == "mask":
             self.paint_mask(event.x, event.y)
@@ -411,9 +445,16 @@ class EditorWindow(tk.Toplevel):
             self.schedule_render()
         elif self.tool == "crop":
             self.canvas.delete("crop")
-            self.canvas.create_rectangle(self.drag_start[0], self.drag_start[1], event.x, event.y,
-                                         outline=ACCENT, width=2, tags="crop")
-            self.crop_rect = (*self.drag_start, event.x, event.y)
+            left, top, right, bottom = self.display_box
+            x0 = max(left, min(right, self.drag_start[0]))
+            y0 = max(top, min(bottom, self.drag_start[1]))
+            x1 = max(left, min(right, event.x))
+            y1 = max(top, min(bottom, event.y))
+            self.canvas.create_rectangle(x0, y0, x1, y1, outline=ACCENT,
+                                         width=3, dash=(8, 4), tags="crop")
+            self.canvas.tag_raise("crop")
+            self.crop_rect = (x0, y0, x1, y1)
+            self.status_label.configure(text="CROP READY — press Enter, double-click, or APPLY CROP")
         elif self.tool == "mask":
             self.paint_mask(event.x, event.y)
 
@@ -432,6 +473,7 @@ class EditorWindow(tk.Toplevel):
 
     def apply_crop(self):
         if not self.crop_rect:
+            self.status_label.configure(text="CROP — drag a rectangle over the part you want to keep")
             return
         x0, y0, x1, y1 = self.crop_rect
         first, second = self.canvas_to_normalized(x0, y0), self.canvas_to_normalized(x1, y1)
@@ -448,6 +490,7 @@ class EditorWindow(tk.Toplevel):
         self.canvas.delete("crop")
         self.fit_image()
         self.refresh_history()
+        self.status_label.configure(text="Crop applied — Ctrl+Z to undo")
 
     def straighten(self):
         value = simpledialog.askfloat("Straighten", "Angle in degrees (-45 to 45):",
@@ -724,6 +767,7 @@ class EditorWindow(tk.Toplevel):
     def cycle_compare(self):
         modes = ("edited", "split", "side_by_side", "original")
         self.compare_mode = modes[(modes.index(self.compare_mode) + 1) % len(modes)]
+        self.status_label.configure(text=f"Comparison: {self.compare_mode.replace('_', ' ').title()}")
         self.schedule_render()
 
     def undo(self):
