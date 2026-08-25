@@ -13,6 +13,8 @@ import time
 
 from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
+import photo_manager
+
 
 PROJECT_VERSION = 1
 DEFAULT_ADJUSTMENTS = {
@@ -383,11 +385,12 @@ class EditorDocument:
         document.record("Open project")
         return document
 
-    def export(self, path, quality=95):
+    def export(self, path, quality=95, copyright_text=""):
         output = self.render()
         extension = os.path.splitext(path)[1].lower()
         options = {"quality": quality, "optimize": True} if extension in {".jpg", ".jpeg", ".webp"} else {}
-        output.save(path, **options)
+        photo_manager.save_with_metadata(output, path, self.source_path,
+                                         copyright_text, **options)
 
     def recipe(self):
         return {"version": PROJECT_VERSION, "adjustments": copy.deepcopy(self.adjustments),
@@ -413,7 +416,8 @@ def load_recipe(path):
         return json.load(handle)
 
 
-def batch_apply(paths, recipe, destination, suffix="_edited", quality=95):
+def batch_apply(paths, recipe, destination, suffix="_edited", quality=95,
+                copyright_text=""):
     os.makedirs(destination, exist_ok=True)
     outputs = []
     for source in paths:
@@ -425,7 +429,7 @@ def batch_apply(paths, recipe, destination, suffix="_edited", quality=95):
         while os.path.exists(target):
             target = os.path.join(destination, f"{stem}{suffix}_{number}.jpg")
             number += 1
-        document.export(target, quality)
+        document.export(target, quality, copyright_text)
         outputs.append(target)
     return outputs
 
