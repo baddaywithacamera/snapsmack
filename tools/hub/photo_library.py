@@ -15,6 +15,7 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps, ImageTk
 
 import photo_manager
+from editor_ui import EditorWindow
 
 BG, CARD, INK, DIM, ACCENT, FIELD, BORDER = (
     "#0a0a0a", "#141414", "#e6e6e6", "#8a8a8a", "#39ff14", "#1c1c1c", "#2a2a2a")
@@ -1183,6 +1184,19 @@ class PhotoLibrary(tk.Toplevel):
             messagebox.showerror("Export failed", str(exc), parent=self.viewer)
 
     def open_viewer(self, row):
+        editor = getattr(self, "editor_window", None)
+        if editor and editor.winfo_exists():
+            editor.open_row(row)
+            editor.deiconify()
+            editor.lift()
+            editor.focus_force()
+        else:
+            chosen = self._chosen_rows()
+            editor_rows = chosen if len(chosen) > 1 else (self.visible or self.rows)
+            self.editor_window = EditorWindow(
+                self, row, editor_rows,
+                on_select=self.select_photo, on_refresh=self.refresh_current)
+        return
         viewer = getattr(self, "viewer", None)
         if not viewer or not viewer.winfo_exists():
             viewer = tk.Toplevel(self)
