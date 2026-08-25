@@ -83,6 +83,8 @@ $page_css = <<<'CSS'
 .coming-item .tag { display: block; margin-bottom: 9px; color: var(--red); font: 700 .68rem/1 'Courier New', monospace; letter-spacing: .08em; text-transform: uppercase; }
 .coming-item h3 { color: var(--white); margin-bottom: 9px; font-size: 1rem; }
 .coming-item p { margin: 0; color: #aaa; font-size: .88rem; line-height: 1.55; }
+.coming-item--feature { grid-column: 1 / -1; }
+.coming-item--feature p { column-count: 3; column-gap: 22px; }
 #security { background: #2e2e2e; color: var(--white); }
 #security h2 { color: var(--red); }
 #security .site-discovery-kicker { color: #bbb; }
@@ -122,6 +124,7 @@ $page_css = <<<'CSS'
     .mode-grid, .featured-skin-grid { grid-template-columns: 1fr; }
     .fed-shots, .fed-split { grid-template-columns: 1fr; }
     .coming-grid { grid-template-columns: 1fr; }
+    .coming-item--feature p { column-count: 1; }
     .security-layers { grid-template-columns: 1fr; }
     .trust-grid { grid-template-columns: 1fr; }
     .whodat-card { display: block; }
@@ -264,11 +267,6 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="coming-grid">
                 <article class="coming-item">
-                    <span class="tag">Photo Manager</span>
-                    <h3>Snap Slapper</h3>
-                    <p>Picasa, if it had been accidentally exposed to gamma radiation in a lab accident. A fast, private desktop photo library for browsing, rating, tagging, organizing, editing, and exporting your photographs &mdash; without ever handing the collection to a cloud service. Then the mutation kicks in: layers, LEWKS (Lightroom-style actions), and partial Lightroom plugin support. Just don&rsquo;t make it angry. You won&rsquo;t like it when it&rsquo;s angry.</p>
-                </article>
-                <article class="coming-item">
                     <span class="tag">Skin</span>
                     <h3>Lookbook</h3>
                     <p>A clean, high-resolution portfolio skin with minimal chrome and nowhere for weak photographs to hide.</p>
@@ -312,6 +310,11 @@ require_once __DIR__ . '/includes/header.php';
                     <span class="tag">Discovery</span>
                     <h3>Photoblogs.fyi</h3>
                     <p>A shared front door for finding independent photography sites without making any of those sites depend on it.</p>
+                </article>
+                <article class="coming-item coming-item--feature">
+                    <span class="tag">Photo Manager</span>
+                    <h3>Snap Slapper</h3>
+                    <p>Picasa, if it had been accidentally exposed to gamma radiation in a lab accident. A fast, private desktop photo library for browsing, rating, tagging, organizing, editing, and exporting your photographs &mdash; without ever handing the collection to a cloud service. Then the mutation kicks in: layers, LEWKS (Lightroom-style actions), and partial Lightroom plugin support. Just don&rsquo;t make it angry. You won&rsquo;t like it when it&rsquo;s angry.</p>
                 </article>
             </div>
         </div>
