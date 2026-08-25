@@ -102,6 +102,13 @@ class PhotoLibrary(tk.Toplevel):
                         font=("Segoe UI", 10))
         style.map("Slapper.Treeview", background=[("selected", ACCENT)],
                   foreground=[("selected", BG)])
+        style.configure("Slapper.Vertical.TScrollbar", background="#303030",
+                        troughcolor="#0a0a0a", bordercolor="#0a0a0a",
+                        arrowcolor="#8a8a8a", darkcolor="#303030",
+                        lightcolor="#303030", relief="flat", borderwidth=0)
+        style.map("Slapper.Vertical.TScrollbar",
+                  background=[("active", "#454545"), ("pressed", ACCENT)],
+                  arrowcolor=[("active", INK)])
         self.source_tree = ttk.Treeview(left, style="Slapper.Treeview", show="tree", selectmode="browse")
         self.source_tree.pack(fill="both", expand=True, padx=8)
         self.source_tree.bind("<<TreeviewSelect>>", self._source_selected)
@@ -160,9 +167,8 @@ class PhotoLibrary(tk.Toplevel):
                  font=("Segoe UI", 8, "bold")).pack(side="right")
 
         self.canvas = tk.Canvas(centre, bg=BG, highlightthickness=0)
-        scroll = tk.Scrollbar(centre, orient="vertical", command=self.canvas.yview,
-                              bg=FIELD, troughcolor=BG, activebackground=ACCENT,
-                              highlightthickness=0, bd=0, relief="flat")
+        scroll = ttk.Scrollbar(centre, orient="vertical", command=self.canvas.yview,
+                               style="Slapper.Vertical.TScrollbar")
         self.canvas.configure(yscrollcommand=scroll.set)
         scroll.pack(side="right", fill="y")
         self.canvas.pack(side="left", fill="both", expand=True)

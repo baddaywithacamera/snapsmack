@@ -7,7 +7,7 @@ import copy
 import json
 import os
 import tkinter as tk
-from tkinter import colorchooser, filedialog, messagebox, simpledialog
+from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 
 from PIL import Image, ImageDraw, ImageOps, ImageTk
 
@@ -126,9 +126,16 @@ class EditorWindow(tk.Toplevel):
         tk.Label(side, text="EDIT PHOTO", bg=PANEL, fg=ACCENT,
                  font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=10, pady=(10, 6))
         side_canvas = tk.Canvas(side, bg=PANEL, highlightthickness=0)
-        side_scroll = tk.Scrollbar(side, orient="vertical", command=side_canvas.yview,
-                                   bg=FIELD, troughcolor=PANEL, activebackground=ACCENT,
-                                   highlightthickness=0, bd=0)
+        style = ttk.Style(self)
+        style.configure("Slapper.Vertical.TScrollbar", background="#303030",
+                        troughcolor=BG, bordercolor=BG, arrowcolor=DIM,
+                        darkcolor="#303030", lightcolor="#303030",
+                        relief="flat", borderwidth=0)
+        style.map("Slapper.Vertical.TScrollbar",
+                  background=[("active", "#454545"), ("pressed", ACCENT)],
+                  arrowcolor=[("active", INK)])
+        side_scroll = ttk.Scrollbar(side, orient="vertical", command=side_canvas.yview,
+                                    style="Slapper.Vertical.TScrollbar")
         side_canvas.configure(yscrollcommand=side_scroll.set)
         side_scroll.pack(side="right", fill="y")
         side_canvas.pack(side="left", fill="both", expand=True)
