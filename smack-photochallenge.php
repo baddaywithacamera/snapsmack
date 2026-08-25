@@ -42,12 +42,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
         }
         $bw = (string)max(0, (int)($_POST['pc_boost_weight'] ?? 1));
         $wm = (($_POST['pc_window_mode'] ?? 'weekly') === 'daily') ? 'daily' : 'weekly';
+        $test_mode  = isset($_POST['pc_test_mode']) ? '1' : '0';
+        $test_allow = trim((string)($_POST['pc_test_allow'] ?? ''));
         sv_set_setting($pdo, $settings, 'photochallenge_tag', $tag);
         sv_set_setting($pdo, $settings, 'photochallenge_tz', $tz);
         sv_set_setting($pdo, $settings, 'photochallenge_boost_weight', $bw);
         sv_set_setting($pdo, $settings, 'photochallenge_window_mode', $wm);
+        sv_set_setting($pdo, $settings, 'photochallenge_test_allow', $test_allow);
+        sv_set_setting($pdo, $settings, 'photochallenge_test_mode', $test_mode);
         sv_set_setting($pdo, $settings, 'photochallenge_enabled', $enabled);   // flip last
         if ($msg === '') $msg = $enabled === '1' ? 'Photo challenge ON. Settings saved.' : 'Settings saved (challenge OFF).';
+        if ($test_mode === '1') $msg .= ' TESTING WHITELIST is ON — only listed handles qualify, and boosts go only to those whitelisted accounts, never your real followers.';
 
     } elseif ($action === 'crown_week') {
         $n = max(1, min(10, (int)($_POST['pc_places'] ?? 3)));
@@ -89,6 +94,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
 $pc_on    = pc_enabled($settings);
 $fed_on   = sv_enabled($settings);
 $win      = pc_window($settings);
+$test_on  = (string)($settings['photochallenge_test_mode'] ?? '0') === '1';
+$test_dry = 0;
+if ($test_on) {
+    try {
+        $tq = $pdo->prepare("SELECT COUNT(*) FROM pc_admissions WHERE week_key=? AND status='active' AND boost_state='test'");
+        $tq->execute([$win['week_key']]);
+        $test_dry = (int)$tq->fetchColumn();
+    } catch (Throwable $e) { $test_dry = 0; }
+}
 $counts   = pc_participant_counts($pdo);
 $roster   = pc_participants($pdo, 300);
 $ranked   = $pc_on ? pc_board_ranked($pdo, $settings, $win, 60) : [];
@@ -175,6 +189,28 @@ include 'core/sidebar.php';
                 <p class="dim">Score = likes + boosts &times; this weight. Set 0 to rank on likes alone.</p>
             </div>
 
+            <?php
+                $pc_test_on = (string)($settings['photochallenge_test_mode'] ?? '0') === '1';
+                $pc_test_allow = (string)($settings['photochallenge_test_allow'] ?? '');
+            ?>
+            <div class="lens-input-wrapper">
+                <label>TESTING WHITELIST</label>
+                <label class="pc-inline-check">
+                    <input type="checkbox" name="pc_test_mode" value="1" <?php echo $pc_test_on ? 'checked' : ''; ?>>
+                    <span><strong>ONLY BOOST &amp; SCORE THE HANDLES BELOW</strong> (test mode)</span>
+                </label>
+                <textarea name="pc_test_allow" rows="4" spellcheck="false" autocomplete="off"
+                          placeholder="One handle per line, e.g. @sean@photofri.day"><?php echo $esc($pc_test_allow); ?></textarea>
+                <p class="dim">While this is ON, only <code>#<?php echo $esc(pc_tag($settings)); ?></code> photos
+                    from the listed authors qualify, and each boost is <strong>sent only to those whitelisted
+                    accounts</strong> &mdash; never Public, never your real followers. So you see the boost land on
+                    your test account while everyone else sees nothing. The test account must
+                    <strong>follow this blog</strong> to receive the boost. Everyone else's entries are ignored. Turn
+                    it OFF to go back to real, everyone-qualifying operation with boosts to all followers. A line
+                    matches on the full <code>user@host</code> handle, the bare username, the domain, or any part of
+                    the actor URL. ON with an empty list admits nobody.</p>
+            </div>
+
             <button type="submit" class="master-update-btn">SAVE CHALLENGE SETTINGS</button>
         </form>
     </div>
@@ -191,6 +227,13 @@ include 'core/sidebar.php';
             participants: <strong><?php echo (int)$counts['active']; ?></strong> active,
             <?php echo (int)$counts['left']; ?> left, <?php echo (int)$counts['blocked']; ?> blocked.
         </p>
+        <?php if ($test_on): ?>
+        <p class="dim">
+            <strong>TESTING WHITELIST is ON.</strong>
+            <?php echo (int)$test_dry; ?> entr<?php echo $test_dry === 1 ? 'y' : 'ies'; ?> this window
+            <strong>boosted to your whitelisted test account(s) only</strong> &mdash; your real followers got nothing.
+        </p>
+        <?php endif; ?>
         <p class="dim">
             Public pages:
             <a href="<?php echo $esc($board_url); ?>" target="_blank" rel="noopener">the board</a> &middot;

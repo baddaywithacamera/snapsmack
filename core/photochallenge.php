@@ -37,6 +37,30 @@ function pc_tag(array $settings): string {
     return $t !== '' ? $t : 'photofri';
 }
 
+/**
+ * Testing gate. When photochallenge_test_mode is ON, only entries whose author
+ * appears on the whitelist are admitted (and therefore boosted and scored). This
+ * lets a live site be exercised end to end without touching real participants and
+ * without standing up a second install. OFF (the default) = everyone qualifies as
+ * normal. Matching is deliberately forgiving: a whitelist line matches on the full
+ * user@host handle, the bare username, the domain, or any substring of the actor URL.
+ */
+function pc_test_allowed(array $settings, string $actor_url, string $handle = ''): bool {
+    if ((string)($settings['photochallenge_test_mode'] ?? '0') !== '1') return true;
+    $norm = static fn($s) => ltrim(strtolower(trim((string)$s)), '@');
+    $list = array_values(array_filter(array_map($norm, preg_split('/[\s,]+/', (string)($settings['photochallenge_test_allow'] ?? '')) ?: [])));
+    if (!$list) return false;   // test mode on, nobody listed = admit nobody
+    $host = strtolower((string)parse_url($actor_url, PHP_URL_HOST));
+    $bare = $norm($handle);
+    $full = ($bare !== '' && $host !== '') ? $bare . '@' . $host : '';
+    $url  = strtolower($actor_url);
+    foreach ($list as $entry) {
+        if ($entry === $full || ($bare !== '' && $entry === $bare) || ($host !== '' && $entry === $host)) return true;
+        if (strpos($url, $entry) !== false) return true;
+    }
+    return false;
+}
+
 /** Display timezone retained for admin copy; qualification uses the shared global UTC window. */
 function pc_tz(array $settings): DateTimeZone {
     $tz = trim((string)($settings['photochallenge_tz'] ?? ''));
@@ -147,7 +171,7 @@ function pc_ensure_tables(PDO $pdo): void {
             object_id varchar(500) NOT NULL, admission_number tinyint unsigned NOT NULL,
             status enum('active','withdrawn','deleted','moderated') NOT NULL DEFAULT 'active',
             horsconcours tinyint(1) NOT NULL DEFAULT 0,
-            boost_state enum('pending','sent','undone','failed') NOT NULL DEFAULT 'pending',
+            boost_state enum('pending','sent','undone','failed','test') NOT NULL DEFAULT 'pending',
             boost_activity_id varchar(600) DEFAULT NULL,
             admitted_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             last_checked_at datetime DEFAULT NULL, check_failures tinyint unsigned NOT NULL DEFAULT 0,
@@ -168,6 +192,11 @@ function pc_ensure_tables(PDO $pdo): void {
         $has_boost_id = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
             WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pc_admissions' AND COLUMN_NAME='boost_activity_id' LIMIT 1")->fetchColumn();
         if (!$has_boost_id) $pdo->exec("ALTER TABLE pc_admissions ADD COLUMN boost_activity_id varchar(600) DEFAULT NULL AFTER boost_state, ADD UNIQUE KEY uq_pc_boost_activity(boost_activity_id(191))");
+        $boost_type = (string)$pdo->query("SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pc_admissions' AND COLUMN_NAME='boost_state' LIMIT 1")->fetchColumn();
+        if ($boost_type !== '' && strpos($boost_type, "'test'") === false) {
+            $pdo->exec("ALTER TABLE pc_admissions MODIFY boost_state enum('pending','sent','undone','failed','test') NOT NULL DEFAULT 'pending'");
+        }
     } catch (Throwable $e) {}
     $pdo->exec("CREATE TABLE IF NOT EXISTS pc_blocklist (
         kind enum('actor','domain') NOT NULL,value varchar(500) NOT NULL,reason varchar(255) DEFAULT NULL,
@@ -263,7 +292,7 @@ function pc_admit_object(PDO $pdo, array $settings, string $object_id): ?array {
     if (!$win['open']) return null;
     $tag = pc_tag($settings);
     $q = $pdo->prepare(
-        "SELECT t.*,p.state AS participant_state,p.horsconcours AS participant_hc
+        "SELECT t.*,p.state AS participant_state,p.horsconcours AS participant_hc,p.handle AS participant_handle
            FROM snap_ap_timeline t JOIN pc_participants p ON p.actor_url=t.actor_url
           WHERE t.object_id=? LIMIT 1"
     );
@@ -272,6 +301,7 @@ function pc_admit_object(PDO $pdo, array $settings, string $object_id): ?array {
     if (!$row || ($row['participant_state'] ?? '') !== 'active' || (int)$row['is_boost'] !== 0
         || pc_is_blocked($pdo,(string)($row['actor_url'] ?? ''))
         || !empty($row['in_reply_to']) || (int)($row['sensitive'] ?? 0) !== 0) return null;
+    if (!pc_test_allowed($settings, (string)($row['actor_url'] ?? ''), (string)($row['participant_handle'] ?? ''))) return null;
     $published = (string)($row['published'] ?? '');
     if ($published < $win['start'] || $published >= $win['end']) return null;
     $tags = json_decode((string)($row['tags_json'] ?? '[]'), true) ?: [];
@@ -324,10 +354,10 @@ function pc_withdraw_actor_admissions(PDO $pdo, array $settings, string $actor_u
     $q = $pdo->prepare("SELECT object_id,boost_state,boost_activity_id FROM pc_admissions WHERE actor_url=? AND status='active'");
     $q->execute([$actor_url]);
     foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $entry) {
-        if (($entry['boost_state'] ?? '') === 'sent' && function_exists('sv_unboost_remote')) {
+        if (in_array(($entry['boost_state'] ?? ''), ['sent','test'], true) && function_exists('sv_unboost_remote')) {
             try { sv_unboost_remote($pdo,$settings,(string)$entry['object_id'],(string)($entry['boost_activity_id'] ?? '')); } catch (Throwable $e) {}
         }
-        $pdo->prepare("UPDATE pc_admissions SET status=?,boost_state=IF(boost_state='sent','undone',boost_state) WHERE object_id=?")
+        $pdo->prepare("UPDATE pc_admissions SET status=?,boost_state=IF(boost_state IN('sent','test'),'undone',boost_state) WHERE object_id=?")
             ->execute([$status, $entry['object_id']]);
     }
 }
@@ -338,10 +368,10 @@ function pc_withdraw_object(PDO $pdo, array $settings, string $object_id, string
     $q->execute([$object_id]);
     $boost = $q->fetch(PDO::FETCH_ASSOC);
     if (!$boost) return;
-    if (($boost['boost_state'] ?? '') === 'sent' && function_exists('sv_unboost_remote')) {
+    if (in_array(($boost['boost_state'] ?? ''), ['sent','test'], true) && function_exists('sv_unboost_remote')) {
         try { sv_unboost_remote($pdo,$settings,$object_id,(string)($boost['boost_activity_id'] ?? '')); } catch (Throwable $e) {}
     }
-    $pdo->prepare("UPDATE pc_admissions SET status=?,boost_state=IF(boost_state='sent','undone',boost_state) WHERE object_id=?")
+    $pdo->prepare("UPDATE pc_admissions SET status=?,boost_state=IF(boost_state IN('sent','test'),'undone',boost_state) WHERE object_id=?")
         ->execute([$status, $object_id]);
     if (in_array($status, ['deleted','moderated'], true)) {
         $pdo->prepare("UPDATE pc_hall_of_fame SET active=0 WHERE object_id=?")->execute([$object_id]);
@@ -487,15 +517,20 @@ function pc_maybe_boost_entry(PDO $pdo, array $settings, string $object_id): boo
     try {
         $admission = pc_admit_object($pdo, $settings, $object_id);
         if (!$admission || ($admission['status'] ?? '') !== 'active'
-            || ($admission['boost_state'] ?? '') === 'sent') return false;
+            || in_array(($admission['boost_state'] ?? ''), ['sent','test'], true)) return false;
+
+        // TESTING WHITELIST: sv_boost_remote delivers this boost ONLY to whitelisted
+        // test accounts (never Public, never the real follower crowd). We still record
+        // it, but as 'test' so the admin can tell real boosts from test ones.
+        $is_test = (string)($settings['photochallenge_test_mode'] ?? '0') === '1';
 
         $boost_result = sv_boost_remote($pdo, $settings, $object_id);
         $ok = (bool)($boost_result[0] ?? false);
         $boost_id = (string)($boost_result[2] ?? '');
         if ($ok) {
             $pdo->prepare(
-                "UPDATE pc_admissions SET boost_state='sent',boost_activity_id=? WHERE object_id=?"
-            )->execute([(string)$boost_id,$object_id]);
+                "UPDATE pc_admissions SET boost_state=?,boost_activity_id=? WHERE object_id=?"
+            )->execute([$is_test ? 'test' : 'sent', (string)$boost_id, $object_id]);
             return true;
         }
         $pdo->prepare("UPDATE pc_admissions SET boost_state='failed' WHERE object_id=?")

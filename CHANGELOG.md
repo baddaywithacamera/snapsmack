@@ -10,6 +10,10 @@
 
 # SnapSmack Changelog
 
+## 0.7.552 — 2026-08-24 "FEDBOARD"
+
+- Photo Challenge: added a TESTING WHITELIST to the challenge admin page. Turn it on and list the handles of your test accounts; while it is on, only #photofriday photos from those accounts qualify, and each boost is delivered ONLY to those whitelisted accounts (never Public, never the real follower crowd, not the origin author). So you can watch a boost land on your own test account without any of the blog's real followers seeing it. The admin LIVE STATE panel counts entries boosted to test accounts this window. Everyone else's entries are ignored. Off by default — everyone qualifies and boosts go to all followers for real. Lets a live site be exercised end to end without standing up a second install. The whitelist gate covers admission (leaderboard) and delivery (the boost) both.
+
 ## 0.7.551 — 2026-08-24 "FEDBOARD"
 
 - **Admin inline-CSS cleanup (geometry/colour split).** Moved ~600 hardcoded

@@ -1264,6 +1264,29 @@ function sv_follower_inboxes(PDO $pdo): array {
 }
 
 /**
+ * Active followers whose actor passes the Photo-Challenge testing whitelist.
+ * Returns ['inboxes'=>[url,...], 'actors'=>[actor_url,...]] for targeted test
+ * boosts that reach only whitelisted test accounts. Uses the direct inbox (not
+ * the shared inbox) so a test boost lands on that one account, not a whole host.
+ */
+function sv_test_whitelist_recipients(PDO $pdo, array $settings): array {
+    $inboxes = []; $actors = [];
+    if (!function_exists('pc_test_allowed')) return ['inboxes' => [], 'actors' => []];
+    $rows = $pdo->query(
+        "SELECT actor_url, actor_handle, inbox_url FROM snap_ap_followers WHERE is_active = 1"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as $r) {
+        $actor = (string)($r['actor_url'] ?? '');
+        if ($actor === '' || !pc_test_allowed($settings, $actor, (string)($r['actor_handle'] ?? ''))) continue;
+        $inbox = trim((string)($r['inbox_url'] ?? ''));
+        if ($inbox === '') continue;
+        $inboxes[$inbox] = true;
+        $actors[$actor] = true;
+    }
+    return ['inboxes' => array_keys($inboxes), 'actors' => array_keys($actors)];
+}
+
+/**
  * Process due queued deliveries. Success → row deleted; failure → backoff
  * (5min · 2^attempts, capped 24h); parked as status=failed after 8 tries.
  * Returns [sent, failed_now].
@@ -3056,6 +3079,28 @@ function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
                 if ($cand !== '' && sv_url_is_public($cand)) $author_inbox = $cand;
             }
         }
+    }
+
+    // TESTING WHITELIST: send the boost ONLY to whitelisted test accounts that
+    // follow this blog — never Public, never the real follower crowd, not the author.
+    if ((string)($settings['photochallenge_test_mode'] ?? '0') === '1' && function_exists('pc_test_allowed')) {
+        $wl = sv_test_whitelist_recipients($pdo, $settings);
+        if (!$wl['inboxes']) return [false, 'Test mode: no whitelisted account follows this blog yet — have your test account follow first.'];
+        $targets = $wl['inboxes'];
+        $announce = [
+            '@context'  => 'https://www.w3.org/ns/activitystreams',
+            'id'        => sv_actor_url($settings) . '#boost-' . bin2hex(random_bytes(8)),
+            'type'      => 'Announce',
+            'actor'     => sv_actor_url($settings),
+            'published' => gmdate('Y-m-d\TH:i:s\Z'),
+            'to'        => $wl['actors'],
+            'cc'        => [],
+            'object'    => $object_id,
+        ];
+        $json = json_encode($announce, JSON_UNESCAPED_SLASHES);
+        foreach ($targets as $inbox) sv_queue_delivery($pdo, $inbox, $json);
+        sv_process_deliveries($pdo, $settings, 20);
+        return [true, 'Test boost — sent only to your whitelisted test account(s).', (string)$announce['id']];
     }
 
     // Delivery set = followers + origin author. If we can reach neither, the
