@@ -241,6 +241,7 @@ class EditorDocument:
         self.history_index = -1
         self.project_path = None
         self.record("Open image")
+        self.saved_snapshot = self.snapshot()
 
     def snapshot(self):
         return {"adjustments": copy.deepcopy(self.adjustments),
@@ -275,6 +276,12 @@ class EditorDocument:
         self.history_index += 1
         self.restore(self.history[self.history_index]["state"])
         return True
+
+    def is_dirty(self):
+        return self.snapshot() != self.saved_snapshot
+
+    def mark_saved(self):
+        self.saved_snapshot = self.snapshot()
 
     def add_adjustment_layer(self, name="Adjustment"):
         self.layers.append({"id": str(time.time_ns()), "name": name, "type": "adjustment",
@@ -367,6 +374,7 @@ class EditorDocument:
             json.dump(value, handle, indent=2)
         os.replace(temporary, path)
         self.project_path = path
+        self.mark_saved()
 
     @classmethod
     def load_project(cls, path):
@@ -383,6 +391,7 @@ class EditorDocument:
         document.history_index = -1
         document.project_path = path
         document.record("Open project")
+        document.mark_saved()
         return document
 
     def export(self, path, quality=95, copyright_text=""):

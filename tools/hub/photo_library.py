@@ -171,16 +171,26 @@ class PhotoLibrary(tk.Toplevel):
                               font=("Segoe UI", 9))
         tag_filter.pack(side="left", pady=6, ipady=3)
         self.tag_filter_var.trace_add("write", lambda *_: self.filter_rows())
-        self.scan_status = tk.Label(controls, text="", bg="#101010", fg=DIM,
+        self._button(controls, "RESET", self.reset_filters).pack(side="left", padx=8, pady=6, ipady=2)
+
+        view_controls = tk.Frame(centre, bg="#0d0d0d")
+        view_controls.pack(fill="x")
+        self.scan_status = tk.Label(view_controls, text="", bg="#0d0d0d", fg=DIM,
                                     font=("Segoe UI", 9))
-        self.scan_status.pack(side="left", padx=12)
+        self.scan_status.pack(side="left", padx=12, pady=5)
         self.thumb_size = tk.IntVar(value=150)
-        zoom = tk.Scale(controls, from_=90, to=230, variable=self.thumb_size, orient="horizontal",
-                        showvalue=False, length=130, bg="#101010", fg=INK, troughcolor=FIELD,
+        self.thumb_value = tk.Label(view_controls, text="150 px", bg="#0d0d0d", fg=INK,
+                                    width=6, font=("Segoe UI", 8, "bold"))
+        self.thumb_value.pack(side="right", padx=(0, 10))
+        tk.Label(view_controls, text="LARGER +", bg="#0d0d0d", fg=DIM,
+                 font=("Segoe UI", 8, "bold")).pack(side="right")
+        zoom = tk.Scale(view_controls, from_=90, to=230, variable=self.thumb_size, orient="horizontal",
+                        showvalue=False, length=150, bg="#0d0d0d", fg=INK, troughcolor=FIELD,
                         activebackground=ACCENT, highlightthickness=0, bd=0)
-        zoom.pack(side="right", padx=(4, 12))
+        zoom.configure(command=lambda value: self.thumb_value.configure(text=f"{int(float(value))} px"))
+        zoom.pack(side="right", padx=6)
         zoom.bind("<ButtonRelease-1>", lambda _e: self.render_grid(incremental=True))
-        tk.Label(controls, text="THUMBNAILS", bg="#101010", fg=DIM,
+        tk.Label(view_controls, text="− SMALLER   THUMBNAIL SIZE", bg="#0d0d0d", fg=DIM,
                  font=("Segoe UI", 8, "bold")).pack(side="right")
 
         self.canvas = tk.Canvas(centre, bg=BG, highlightthickness=0)
@@ -559,6 +569,13 @@ class PhotoLibrary(tk.Toplevel):
             self.visible.sort(key=lambda row: os.path.basename(row["path"]).lower())
         self.render_limit = 120
         self.render_grid()
+
+    def reset_filters(self):
+        self.search_var.set("")
+        self.date_var.set("All dates")
+        self.show_var.set("All photos")
+        self.tag_filter_var.set("")
+        self.filter_rows()
 
     @staticmethod
     def _mtime(path):

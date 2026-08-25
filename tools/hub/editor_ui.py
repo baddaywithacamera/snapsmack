@@ -54,7 +54,7 @@ class EditorWindow(tk.Toplevel):
         self.geometry("1500x900")
         self.minsize(1000, 650)
         self.resizable(True, True)
-        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self.protocol("WM_DELETE_WINDOW", self.close_editor)
         self._build()
         self.set_tool("pan")
         self._load_document_controls()
@@ -319,7 +319,7 @@ class EditorWindow(tk.Toplevel):
         self.history_list.bind("<Double-Button-1>", self.restore_history)
 
     def _load_document_controls(self):
-        self.title_label.configure(text=os.path.basename(self.document.source_path))
+        self.update_document_title()
         target = self.adjustment_target()
         for name, variable in self.adjustment_vars.items():
             variable.set(target.get(name, 0))
@@ -818,6 +818,21 @@ class EditorWindow(tk.Toplevel):
             self.history_list.insert("end", prefix + item["label"])
         if self.document.history:
             self.history_list.see(self.document.history_index)
+        self.update_document_title()
+
+    def update_document_title(self):
+        dirty = "  •  UNSAVED" if self.document.is_dirty() else ""
+        self.title_label.configure(text=os.path.basename(self.document.source_path) + dirty)
+
+    def close_editor(self):
+        dirty = [document for document in self.documents.values() if document.is_dirty()]
+        if dirty and not messagebox.askyesno(
+                "Discard unsaved edits?",
+                f"{len(dirty):,} photo(s) have unsaved non-destructive edits.\n\n"
+                "Choose No, then save each editable project. Choose Yes only to discard them.",
+                parent=self, icon="warning"):
+            return
+        self.destroy()
 
     def restore_history(self, _event=None):
         selection = self.history_list.curselection()
@@ -835,7 +850,9 @@ class EditorWindow(tk.Toplevel):
             title="Save SNAP SLAPPER project", parent=self, defaultextension=".slapper",
             filetypes=[("SNAP SLAPPER project", "*.slapper")])
         if path:
-            self.document.save_project(path); self.status_label.configure(text=f"Saved {path}")
+            self.document.save_project(path)
+            self.update_document_title()
+            self.status_label.configure(text=f"Saved {path}")
 
     def open_project(self):
         path = filedialog.askopenfilename(title="Open SNAP SLAPPER project", parent=self,
