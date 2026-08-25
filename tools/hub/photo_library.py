@@ -48,6 +48,8 @@ class PhotoLibrary(tk.Toplevel):
         self.external_tools = self._load_external_tools()
         self.metadata = self._load_metadata()
         self.render_limit = 120
+        self._single_click_job = None
+        self._grid_generation = 0
         self.scan_token = 0
         self.scan_queue = queue.Queue()
         self._build()
@@ -145,15 +147,25 @@ class PhotoLibrary(tk.Toplevel):
                                  relief="flat", highlightthickness=0, font=("Segoe UI", 9))
         self.date_menu["menu"].configure(bg=FIELD, fg=INK, activebackground=ACCENT, activeforeground=BG)
         self.date_menu.pack(side="left", pady=6)
-        tk.Label(controls, text="SHOW", bg="#101010", fg=DIM,
+        tk.Label(controls, text="FILTER", bg="#101010", fg=DIM,
                  font=("Segoe UI", 8, "bold")).pack(side="left", padx=(14, 5))
         self.show_var = tk.StringVar(value="All photos")
         show = tk.OptionMenu(controls, self.show_var, "All photos", "Favorites", "Rated", "Unrated",
-                             "5 stars", command=lambda _v: self.filter_rows())
+                             "1 star", "2 stars", "3 stars", "4 stars", "5 stars",
+                             "1+ stars", "2+ stars", "3+ stars", "4+ stars",
+                             command=lambda _v: self.filter_rows())
         show.configure(bg=FIELD, fg=INK, activebackground=ACCENT, activeforeground=BG,
                        relief="flat", highlightthickness=0, font=("Segoe UI", 9))
         show["menu"].configure(bg=FIELD, fg=INK, activebackground=ACCENT, activeforeground=BG)
         show.pack(side="left", pady=6)
+        tk.Label(controls, text="TAG", bg="#101010", fg=DIM,
+                 font=("Segoe UI", 8, "bold")).pack(side="left", padx=(12, 4))
+        self.tag_filter_var = tk.StringVar()
+        tag_filter = tk.Entry(controls, textvariable=self.tag_filter_var, width=12,
+                              bg=FIELD, fg=INK, insertbackground=INK, relief="flat",
+                              font=("Segoe UI", 9))
+        tag_filter.pack(side="left", pady=6, ipady=3)
+        self.tag_filter_var.trace_add("write", lambda *_: self.filter_rows())
         self.scan_status = tk.Label(controls, text="", bg="#101010", fg=DIM,
                                     font=("Segoe UI", 9))
         self.scan_status.pack(side="left", padx=12)
@@ -162,7 +174,7 @@ class PhotoLibrary(tk.Toplevel):
                         showvalue=False, length=130, bg="#101010", fg=INK, troughcolor=FIELD,
                         activebackground=ACCENT, highlightthickness=0, bd=0)
         zoom.pack(side="right", padx=(4, 12))
-        zoom.bind("<ButtonRelease-1>", lambda _e: self.render_grid())
+        zoom.bind("<ButtonRelease-1>", lambda _e: self.render_grid(incremental=True))
         tk.Label(controls, text="THUMBNAILS", bg="#101010", fg=DIM,
                  font=("Segoe UI", 8, "bold")).pack(side="right")
 
@@ -207,7 +219,12 @@ class PhotoLibrary(tk.Toplevel):
                         insertbackground=INK, relief="flat", font=("Segoe UI", 9))
         tags.pack(fill="x", pady=(4, 5), ipady=4)
         tags.bind("<Return>", lambda _e: self.save_photo_details())
-        self._button(details, "SAVE DETAILS", self.save_photo_details).pack(fill="x", ipady=3)
+        tag_buttons = tk.Frame(details, bg="#111111")
+        tag_buttons.pack(fill="x")
+        self._button(tag_buttons, "SAVE DETAILS", self.save_photo_details).pack(
+            side="left", fill="x", expand=True, ipady=3)
+        self._button(tag_buttons, "DELETE TAG…", self.delete_tag).pack(
+            side="left", padx=(5, 0), ipady=3)
         self.info = tk.Label(right, text="", bg="#111111", fg=INK, justify="left",
                              anchor="nw", wraplength=250, font=("Segoe UI", 9))
         self.info.pack(fill="both", expand=True, padx=14, pady=14)
@@ -504,8 +521,16 @@ class PhotoLibrary(tk.Toplevel):
             self.visible = [row for row in self.visible if self._photo_meta(row).get("rating", 0) > 0]
         elif show == "Unrated":
             self.visible = [row for row in self.visible if self._photo_meta(row).get("rating", 0) == 0]
-        elif show == "5 stars":
-            self.visible = [row for row in self.visible if self._photo_meta(row).get("rating", 0) == 5]
+        elif show.endswith("+ stars"):
+            minimum = int(show[0])
+            self.visible = [row for row in self.visible if self._photo_meta(row).get("rating", 0) >= minimum]
+        elif show.endswith(" star") or show.endswith(" stars"):
+            exact = int(show[0])
+            self.visible = [row for row in self.visible if self._photo_meta(row).get("rating", 0) == exact]
+        tag_filter = self.tag_filter_var.get().strip().lower()
+        if tag_filter:
+            self.visible = [row for row in self.visible if tag_filter in str(
+                self._photo_meta(row).get("tags", "")).lower()]
         order = self.sort_var.get()
         if order == "Date (newest)":
             self.visible.sort(key=self._row_mtime, reverse=True)
@@ -586,6 +611,43 @@ class PhotoLibrary(tk.Toplevel):
         self._save_metadata()
         self.filter_rows()
         self._render_viewer()
+
+    def delete_tag(self):
+        rows = self._chosen_rows()
+        if not rows:
+            return
+        available = sorted({tag.strip() for row in rows
+                            for tag in str(self._photo_meta(row).get("tags", "")).split(",")
+                            if tag.strip()}, key=str.lower)
+        if not available:
+            messagebox.showinfo("Delete tag", "The selected photo(s) have no tags.", parent=self)
+            return
+        value = simpledialog.askstring("Delete tag",
+                                       "Tag to remove from the selected photo(s):\n\n" + ", ".join(available),
+                                       parent=self)
+        if not value:
+            return
+        wanted = value.strip().lower()
+        changed = 0
+        for row in rows:
+            key = self._metadata_key(row["path"])
+            details = self._photo_meta(row)
+            tags = [tag.strip() for tag in str(details.get("tags", "")).split(",") if tag.strip()]
+            kept = [tag for tag in tags if tag.lower() != wanted]
+            if kept == tags:
+                continue
+            changed += 1
+            details["tags"] = ", ".join(kept)
+            if details.get("favorite") or details.get("rating") or details.get("tags"):
+                self.metadata[key] = details
+            else:
+                self.metadata.pop(key, None)
+        self._save_metadata()
+        if self.selected:
+            self.select_photo(self.selected)
+        self.filter_rows()
+        if not changed:
+            messagebox.showinfo("Delete tag", f'No exact tag named "{value.strip()}" was found.', parent=self)
 
     def clear_rating(self):
         self.rating_var.set(0)
@@ -846,16 +908,25 @@ class PhotoLibrary(tk.Toplevel):
         except OSError as exc:
             messagebox.showerror("Backup failed", str(exc), parent=self)
 
-    def render_grid(self):
+    def render_grid(self, incremental=False):
+        self._grid_generation += 1
+        generation = self._grid_generation
         for child in self.grid.winfo_children():
             child.destroy()
         self.photos = []
         rows = self.visible[:self.render_limit]
         size = self.thumb_size.get()
         columns = max(2, self.canvas.winfo_width() // (size + 22))
+        for col in range(20):
+            self.grid.grid_columnconfigure(col, weight=0, uniform="")
         for col in range(columns):
             self.grid.grid_columnconfigure(col, weight=1, uniform="photos")
-        for i, row in enumerate(rows):
+        self.canvas.yview_moveto(0)
+
+        def add_card(i):
+            if generation != self._grid_generation:
+                return
+            row = rows[i]
             chosen = self._metadata_key(row["path"]) in self.selected_paths
             card_bg = "#24421f" if chosen else CARD
             card = tk.Frame(self.grid, bg=card_bg, cursor="hand2",
@@ -881,23 +952,39 @@ class PhotoLibrary(tk.Toplevel):
                 badge.pack(fill="x", padx=6, pady=(0, 5))
             for widget in (card, pic, title, badge):
                 widget.bind("<Button-1>", lambda e, r=row: self.photo_clicked(e, r))
-                widget.bind("<Double-Button-1>", lambda _e, r=row: self.open_viewer(r))
+                widget.bind("<Double-Button-1>", lambda e, r=row: self.photo_double_clicked(e, r))
+        def add_chunk(start=0):
+            if generation != self._grid_generation:
+                return
+            end = min(len(rows), start + (10 if incremental else len(rows)))
+            for index in range(start, end):
+                add_card(index)
+            if end < len(rows):
+                self.after(1, lambda: add_chunk(end))
+            elif len(self.visible) > len(rows):
+                more = self._button(self.grid, f"LOAD MORE  ·  {len(rows):,} of {len(self.visible):,}", self.load_more)
+                more.grid(row=(len(rows) + columns - 1) // columns, column=0,
+                          columnspan=columns, sticky="ew", padx=30, pady=15, ipady=6)
         if not rows:
             tk.Label(self.grid, text="No photographs here yet.", bg=BG, fg=DIM,
                      font=("Segoe UI", 12)).grid(row=0, column=0, columnspan=columns, pady=80)
-        elif len(self.visible) > len(rows):
-            more = self._button(self.grid, f"LOAD MORE  ·  {len(rows):,} of {len(self.visible):,}", self.load_more)
-            more.grid(row=(len(rows) + columns - 1) // columns, column=0,
-                      columnspan=columns, sticky="ew", padx=30, pady=15, ipady=6)
-        self.canvas.yview_moveto(0)
+        else:
+            add_chunk()
 
     def load_more(self):
         self.render_limit += 120
         self.render_grid()
 
     def photo_clicked(self, event, row):
+        if self._single_click_job:
+            self.after_cancel(self._single_click_job)
+        state = event.state
+        self._single_click_job = self.after(220, lambda: self._finish_photo_click(state, row))
+
+    def _finish_photo_click(self, state, row):
+        self._single_click_job = None
         key = self._metadata_key(row["path"])
-        if event.state & 0x0004:
+        if state & 0x0004:
             if key in self.selected_paths:
                 self.selected_paths.remove(key)
             else:
@@ -906,6 +993,16 @@ class PhotoLibrary(tk.Toplevel):
             self.selected_paths = {key}
         self.select_photo(row)
         self.render_grid()
+
+    def photo_double_clicked(self, _event, row):
+        if self._single_click_job:
+            self.after_cancel(self._single_click_job)
+            self._single_click_job = None
+        key = self._metadata_key(row["path"])
+        self.selected_paths = {key}
+        self.select_photo(row)
+        self.open_viewer(row)
+        return "break"
 
     def _chosen_rows(self):
         if self.selected_paths:
