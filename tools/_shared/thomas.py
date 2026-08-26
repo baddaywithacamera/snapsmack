@@ -788,29 +788,32 @@ class Thomas:
             self.story.deiconify()
             self.story.lift()
             return self.story
+        # SnapSmack's midnight-lime: near-black ground, neon-lime accent.
+        midnight, lime, dim = "#0b0b0b", "#39ff14", "#8a8a8a"
         window = tk.Toplevel(self.window)
         window.title("Noah Grey & Thomas the Bear")
-        window.configure(bg="#141414")
+        window.configure(bg=midnight)
         window.geometry("560x600")
         window.transient(self.window)
-        tk.Label(window, text="NOAH GREY  &  THOMAS THE BEAR", bg="#141414", fg="#e6e6e6",
-                 font=("Segoe UI", 12, "bold")).pack(anchor="center", padx=24, pady=(22, 4))
+        tk.Label(window, text="NOAH GREY  &  THOMAS THE BEAR", bg=midnight, fg=lime,
+                 font=("Segoe UI", 12, "bold")).pack(anchor="center", padx=24, pady=(22, 6))
+        tk.Frame(window, bg=lime, height=2).pack(fill="x", padx=150, pady=(0, 6))
         try:
             photo = self._photo(120)
-            holder = tk.Label(window, image=photo, bg="#141414")
+            holder = tk.Label(window, image=photo, bg=midnight)
             holder.image = photo
             holder.pack(pady=(4, 8))
         except Exception:
             pass
-        body = tk.Text(window, bg="#141414", fg="#d8d8d8", relief="flat", wrap="word",
+        body = tk.Text(window, bg=midnight, fg="#d8d8d8", relief="flat", wrap="word",
                        padx=26, pady=6, font=("Georgia", 11), spacing1=2, spacing3=8,
                        highlightthickness=0)
         body.pack(fill="both", expand=True)
         body.insert("1.0", STORY)
         body.configure(state="disabled")
-        tk.Label(window, text="—  For Noah Grey  —", bg="#141414", fg="#8a8a8a",
+        tk.Label(window, text="—  For Noah Grey  —", bg=midnight, fg=lime,
                  font=("Segoe UI", 10)).pack(pady=(4, 4))
-        tk.Label(window, text="[ ESC ] Close", bg="#141414", fg="#6a6a6a",
+        tk.Label(window, text="[ ESC ] Close", bg=midnight, fg=dim,
                  font=("Segoe UI", 8)).pack(pady=(0, 14))
         window.bind("<Escape>", lambda _event: self._close(window))
         self.story = window
