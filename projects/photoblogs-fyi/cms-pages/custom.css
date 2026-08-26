@@ -41,7 +41,7 @@ body.static-transmission {
 /* The CMS prints the page title above the body. Both pages carry their own
    heading in the content, so the automatic one is hidden. Delete this rule if
    you would rather use the built-in title. */
-body.static-transmission .static-page-title { display: none; }
+body.static-transmission .static-page-title { display: none !important; }
 
 body.static-transmission .static-content {
   max-width: 44rem;
