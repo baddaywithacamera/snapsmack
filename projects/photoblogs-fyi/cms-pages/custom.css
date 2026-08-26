@@ -256,7 +256,7 @@ body.static-transmission .description li { margin: 0 0 .5rem; }
 /* Reproduces the original projects/photoblogs-fyi/index.html centred hero.
    Scoped to body.homepage-static so the for-admins doc stays left-aligned.
    Paired with landing_only OFF (Settings) so the standard nav + footer render. */
-body.homepage-static .static-content { max-width: 820px; text-align: center; }
+body.homepage-static .static-content { max-width: 820px; text-align: center; background: transparent; }
 body.homepage-static .pbf-rule { margin-left: auto; margin-right: auto; }
 body.homepage-static .pbf-lede { max-width: 34em; margin-left: auto; margin-right: auto; }
 body.homepage-static .pbf-sub  { max-width: 46em; margin-left: auto; margin-right: auto; }
