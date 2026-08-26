@@ -18,12 +18,14 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps, ImageTk
 
 import photo_manager
+import help_ui
 from editor_ui import EditorWindow
 
 BG, CARD, INK, DIM, ACCENT, FIELD, BORDER = (
     "#0a0a0a", "#141414", "#e6e6e6", "#8a8a8a", "#39ff14", "#1c1c1c", "#2a2a2a")
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff",
               ".dng", ".nef", ".cr2", ".cr3", ".arw", ".orf", ".rw2", ".raf"}
+RAW_EXTS = photo_manager.RAW_EXTENSIONS
 
 
 class PhotoLibrary(tk.Toplevel):
@@ -33,6 +35,7 @@ class PhotoLibrary(tk.Toplevel):
         self.configure(bg=BG)
         self.geometry("1240x780")
         self.minsize(900, 580)
+        self.build_version = build_version
         self.library_root = library_root
         self.state_path = state_path
         self.tools_path = os.path.join(os.path.dirname(state_path), "external_tools.json") if state_path else None
@@ -42,6 +45,7 @@ class PhotoLibrary(tk.Toplevel):
         self.albums_path = os.path.join(state_dir, "albums.json") if state_dir else None
         self.trash_path = os.path.join(state_dir, "trash_manifest.json") if state_dir else None
         self.trash_root = os.path.join(state_dir, "trash") if state_dir else None
+        self.recovery_dir = os.path.join(state_dir, "recovery") if state_dir else None
         self.thumb_cache = os.path.join(state_dir, "thumbnail_cache") if state_dir else None
         self.rows, self.visible, self.photos = [], [], []
         self.selected_paths = set()
@@ -51,15 +55,21 @@ class PhotoLibrary(tk.Toplevel):
         self.current_signature = None
         self.external_tools = self._load_external_tools()
         self.metadata = self._load_metadata()
-        export_settings = photo_manager.load_json(self.export_settings_path, {}) if self.export_settings_path else {}
+        export_settings = photo_manager.load_versioned(
+            self.export_settings_path, "settings", {}) if self.export_settings_path else {}
         self.add_copyright_var = tk.BooleanVar(value=bool(export_settings.get("add_copyright", False)))
         self.copyright_var = tk.StringVar(value=str(export_settings.get("copyright", "")))
+        self.strip_gps_var = tk.BooleanVar(value=bool(export_settings.get("strip_gps", False)))
+        self.saved_images_dir = str(export_settings.get("saved_images_dir", "") or "")
+        self.projects_dir = str(export_settings.get("projects_dir", "") or "")
         self.render_limit = 120
         self._single_click_job = None
         self._grid_generation = 0
         self.card_widgets = {}
         self.scan_token = 0
         self.scan_queue = queue.Queue()
+        self.bind("<F1>", lambda _event: help_ui.open_help(
+            self, "Quick start", self.build_version))
         self._build()
         self.refresh_sources()
         self.after(8000, self._watch_source)
@@ -90,6 +100,9 @@ class PhotoLibrary(tk.Toplevel):
         tk.Label(top, text="SEARCH", bg="#101010", fg=DIM,
                  font=("Segoe UI", 8, "bold")).pack(side="right")
         self.search_var.trace_add("write", lambda *_: self.filter_rows())
+        self._button(top, "HELP", lambda: help_ui.open_help(
+            self, "Quick start", self.build_version)).pack(
+            side="right", padx=(0, 8), ipady=3)
 
         panes = tk.PanedWindow(self, orient="horizontal", bg=BORDER, sashwidth=4, relief="flat", bd=0)
         panes.pack(fill="both", expand=True)
@@ -256,6 +269,11 @@ class PhotoLibrary(tk.Toplevel):
                                    relief="flat", font=("Segoe UI", 9))
         copyright_entry.pack(fill="x", pady=(3, 0), ipady=3)
         copyright_entry.bind("<FocusOut>", lambda _event: self._save_export_settings())
+        tk.Checkbutton(copyright_row, text="Remove GPS from exported copies",
+                       variable=self.strip_gps_var, command=self._save_export_settings,
+                       bg="#111111", fg=INK, selectcolor=FIELD,
+                       activebackground="#111111", activeforeground=INK,
+                       font=("Segoe UI", 8)).pack(anchor="w", pady=(4, 0))
         tag_buttons = tk.Frame(details, bg="#111111")
         tag_buttons.pack(fill="x")
         self._button(tag_buttons, "SAVE DETAILS", self.save_photo_details).pack(
@@ -267,7 +285,7 @@ class PhotoLibrary(tk.Toplevel):
         self.info.pack(fill="both", expand=True, padx=14, pady=14)
         self._button(right, "OPEN PHOTO", self.open_selected).pack(
             fill="x", padx=14, pady=(0, 5), ipady=5)
-        self._button(right, "OPEN IN WINDOWS", self.open_external).pack(
+        self._button(right, "SHOW IN FOLDER", self.open_external).pack(
             fill="x", padx=14, pady=(0, 5), ipady=4)
         self._button(right, "OPEN WITH / EDIT COPY", self.open_with_menu).pack(
             fill="x", padx=14, pady=(0, 14), ipady=4)
@@ -372,12 +390,8 @@ class PhotoLibrary(tk.Toplevel):
     def _saved_folders(self):
         if not self.state_path:
             return []
-        try:
-            with open(self.state_path, "r", encoding="utf-8") as fh:
-                rows = json.load(fh)
-            return [os.path.abspath(p) for p in rows if isinstance(p, str) and os.path.isdir(p)]
-        except (OSError, ValueError, TypeError):
-            return []
+        rows = photo_manager.load_versioned(self.state_path, "folders", [])
+        return [os.path.abspath(p) for p in rows if isinstance(p, str) and os.path.isdir(p)]
 
     def _save_folders(self):
         if not self.state_path:
@@ -385,26 +399,28 @@ class PhotoLibrary(tk.Toplevel):
         folders = sorted({path for item, (kind, path) in self.sources.items()
                           if kind == "folder" and self.source_tree.parent(item) == self.local_group}, key=str.lower)
         try:
-            os.makedirs(os.path.dirname(self.state_path), exist_ok=True)
-            temp = self.state_path + ".tmp"
-            with open(temp, "w", encoding="utf-8") as fh:
-                json.dump(folders, fh, indent=2)
-            os.replace(temp, self.state_path)
-        except OSError:
-            pass
+            photo_manager.save_versioned(self.state_path, "folders", folders)
+            try:
+                from snap_slapper import publish_backup_contract
+                publish_backup_contract(self.state_path, self.library_root)
+            except (ImportError, OSError, TypeError, ValueError):
+                pass
+        except (OSError, TypeError, ValueError) as exc:
+            messagebox.showerror("Could not save library folders", str(exc), parent=self)
 
     def _load_albums(self):
         if not self.albums_path:
             return {}
-        value = photo_manager.load_json(self.albums_path, {})
-        if not isinstance(value, dict):
-            return {}
+        value = photo_manager.load_versioned(self.albums_path, "albums", {})
         return {str(name): [str(path) for path in paths if isinstance(path, str)]
                 for name, paths in value.items() if isinstance(paths, list)}
 
     def _save_albums(self, albums):
         if self.albums_path:
-            photo_manager.atomic_json(self.albums_path, albums)
+            try:
+                photo_manager.save_versioned(self.albums_path, "albums", albums)
+            except (OSError, TypeError, ValueError) as exc:
+                messagebox.showerror("Could not save albums", str(exc), parent=self)
 
     def _source_signature(self):
         source = self.current_source
@@ -623,23 +639,14 @@ class PhotoLibrary(tk.Toplevel):
     def _load_metadata(self):
         if not self.metadata_path:
             return {}
-        try:
-            with open(self.metadata_path, "r", encoding="utf-8") as fh:
-                data = json.load(fh)
-            return data if isinstance(data, dict) else {}
-        except (OSError, ValueError, TypeError):
-            return {}
+        return photo_manager.load_versioned(self.metadata_path, "photos", {})
 
     def _save_metadata(self):
         if not self.metadata_path:
             return
         try:
-            os.makedirs(os.path.dirname(self.metadata_path), exist_ok=True)
-            temp = self.metadata_path + ".tmp"
-            with open(temp, "w", encoding="utf-8") as fh:
-                json.dump(self.metadata, fh, indent=2, sort_keys=True)
-            os.replace(temp, self.metadata_path)
-        except OSError as exc:
+            photo_manager.save_versioned(self.metadata_path, "photos", self.metadata)
+        except (OSError, TypeError, ValueError) as exc:
             messagebox.showerror("Could not save photo details", str(exc), parent=self)
 
     def _photo_meta(self, row_or_path):
@@ -676,13 +683,27 @@ class PhotoLibrary(tk.Toplevel):
 
     def _save_export_settings(self):
         if self.export_settings_path:
-            photo_manager.atomic_json(self.export_settings_path, {
-                "add_copyright": bool(self.add_copyright_var.get()),
-                "copyright": self.copyright_var.get().strip(),
-            })
+            try:
+                photo_manager.save_versioned(self.export_settings_path, "settings", {
+                    "add_copyright": bool(self.add_copyright_var.get()),
+                    "copyright": self.copyright_var.get().strip(),
+                    "strip_gps": bool(self.strip_gps_var.get()),
+                    "saved_images_dir": self.saved_images_dir,
+                    "projects_dir": self.projects_dir,
+                })
+                try:
+                    from snap_slapper import publish_backup_contract
+                    publish_backup_contract(self.state_path, self.library_root)
+                except (ImportError, OSError, TypeError, ValueError):
+                    pass
+            except (OSError, TypeError, ValueError) as exc:
+                messagebox.showerror("Could not save export settings", str(exc), parent=self)
 
     def _copyright_text(self):
         return self.copyright_var.get().strip() if self.add_copyright_var.get() else ""
+
+    def _strip_gps(self):
+        return bool(self.strip_gps_var.get())
 
     def delete_tag(self):
         rows = self._chosen_rows()
@@ -752,12 +773,13 @@ class PhotoLibrary(tk.Toplevel):
         menu.add_command(label="Move selection…", command=lambda: self.transfer_selection(True))
         menu.add_command(label="Rename selected photo…", command=self.rename_selected)
         menu.add_command(label="Export selection…", command=self.export_selection)
+        menu.add_command(label="Choose saved images folder…", command=self.choose_saved_images_dir)
+        menu.add_command(label="Choose project folder…", command=self.choose_projects_dir)
         menu.add_command(label="Rotate selection left", command=lambda: self.rotate_selection(90))
         menu.add_command(label="Rotate selection right", command=lambda: self.rotate_selection(-90))
         menu.add_separator()
         menu.add_command(label="Find exact duplicates", command=self.find_duplicates)
         menu.add_command(label="Find blurry / dark photos", command=self.find_quality_issues)
-        menu.add_command(label="Start slideshow", command=self.start_slideshow)
         menu.add_separator()
         menu.add_command(label="Move selection to SNAP SLAPPER Trash…", command=self.trash_selection)
         menu.add_command(label="Restore last trashed photo", command=self.restore_trash)
@@ -766,6 +788,20 @@ class PhotoLibrary(tk.Toplevel):
             menu.tk_popup(self.winfo_pointerx(), self.winfo_pointery())
         finally:
             menu.grab_release()
+
+    def choose_saved_images_dir(self):
+        folder = filedialog.askdirectory(title="Choose where saved images go", parent=self,
+                                         initialdir=self.saved_images_dir or None)
+        if folder:
+            self.saved_images_dir = os.path.abspath(folder)
+            self._save_export_settings()
+
+    def choose_projects_dir(self):
+        folder = filedialog.askdirectory(title="Choose where SNAP SLAPPER projects go", parent=self,
+                                         initialdir=self.projects_dir or None)
+        if folder:
+            self.projects_dir = os.path.abspath(folder)
+            self._save_export_settings()
 
     def import_photos(self):
         paths = filedialog.askopenfilenames(title="Choose photos to import", parent=self,
@@ -881,7 +917,8 @@ class PhotoLibrary(tk.Toplevel):
         paths = self._chosen_paths()
         if not paths:
             return
-        destination = filedialog.askdirectory(title="Export into folder", parent=self)
+        destination = filedialog.askdirectory(title="Export into folder", parent=self,
+                                              initialdir=self.saved_images_dir or None)
         if not destination:
             return
         size = simpledialog.askinteger("Export size", "Maximum width/height in pixels (0 keeps full size):",
@@ -896,7 +933,7 @@ class PhotoLibrary(tk.Toplevel):
         try:
             self._save_export_settings()
             outputs = photo_manager.export_files(paths, destination, size, quality, sharpen,
-                                                  self._copyright_text())
+                                                  self._copyright_text(), self._strip_gps())
             messagebox.showinfo("Export complete", f"Exported {len(outputs):,} photo(s).", parent=self)
         except Exception as exc:
             messagebox.showerror("Export failed", str(exc), parent=self)
@@ -904,11 +941,17 @@ class PhotoLibrary(tk.Toplevel):
     def rotate_selection(self, degrees):
         paths = self._chosen_paths()
         if not paths or not messagebox.askyesno(
-                "Rotate originals?", f"Rotate {len(paths):,} original photo(s) in place?", parent=self):
+                "Create rotated copies?",
+                f"Create a rotated copy of {len(paths):,} photo(s)?\n\n"
+                "The originals will not be changed.", parent=self):
             return
         try:
-            photo_manager.rotate_files(paths, degrees)
+            outputs = photo_manager.rotate_files(paths, degrees)
             self.refresh_current()
+            messagebox.showinfo(
+                "Rotated copies created",
+                f"Created {len(outputs):,} rotated copy/copies. The originals were not changed.",
+                parent=self)
         except Exception as exc:
             messagebox.showerror("Rotation failed", str(exc), parent=self)
 
@@ -1107,7 +1150,7 @@ class PhotoLibrary(tk.Toplevel):
                        activebackground=ACCENT, activeforeground=BG,
                        selectcolor=ACCENT)
         menu.add_command(label="Open / edit in SNAP SLAPPER", command=lambda: self.open_viewer(row))
-        menu.add_command(label="Open in Windows", command=lambda: self.open_path(row["path"]))
+        menu.add_command(label="Show in folder", command=lambda: self.open_path(row["path"]))
         if self.external_tools:
             menu.add_command(label="Open with / edit copy…", command=self.open_with_menu)
         menu.add_separator()
@@ -1224,13 +1267,8 @@ class PhotoLibrary(tk.Toplevel):
             self.info.configure(text=f"{path}\n\n{exc}")
 
     def _load_external_tools(self):
-        custom = []
-        if self.tools_path:
-            try:
-                with open(self.tools_path, "r", encoding="utf-8") as fh:
-                    custom = (json.load(fh) or {}).get("custom", [])
-            except (OSError, ValueError, TypeError):
-                pass
+        custom = photo_manager.load_versioned(
+            self.tools_path, "custom", []) if self.tools_path else []
         tools = []
         roots = [os.environ.get("ProgramFiles", r"C:\Program Files"),
                  os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
@@ -1263,13 +1301,9 @@ class PhotoLibrary(tk.Toplevel):
             return
         custom = [tool for tool in self.external_tools if tool.get("custom")]
         try:
-            os.makedirs(os.path.dirname(self.tools_path), exist_ok=True)
-            temp = self.tools_path + ".tmp"
-            with open(temp, "w", encoding="utf-8") as fh:
-                json.dump({"custom": custom}, fh, indent=2)
-            os.replace(temp, self.tools_path)
-        except OSError:
-            pass
+            photo_manager.save_versioned(self.tools_path, "custom", custom)
+        except (OSError, TypeError, ValueError) as exc:
+            messagebox.showerror("Could not save external editors", str(exc), parent=self)
 
     def add_external_tool(self):
         path = filedialog.askopenfilename(title="Choose a photo editor", parent=self,
@@ -1286,13 +1320,8 @@ class PhotoLibrary(tk.Toplevel):
         menu = tk.Menu(self, tearoff=False, bg=FIELD, fg=INK,
                        activebackground=ACCENT, activeforeground=BG)
         for tool in self.external_tools:
-            sub = tk.Menu(menu, tearoff=False, bg=FIELD, fg=INK,
-                          activebackground=ACCENT, activeforeground=BG)
-            sub.add_command(label="Edit a copy (recommended)",
-                            command=lambda t=tool: self.launch_external(t, copy_first=True))
-            sub.add_command(label="Open original…",
-                            command=lambda t=tool: self.launch_external(t, copy_first=False))
-            menu.add_cascade(label=tool["name"], menu=sub)
+            menu.add_command(label=f"Edit a copy in {tool['name']}",
+                             command=lambda t=tool: self.launch_external(t))
         if self.external_tools:
             menu.add_separator()
         menu.add_command(label="Add an editor…", command=self.add_external_tool)
@@ -1301,26 +1330,14 @@ class PhotoLibrary(tk.Toplevel):
         finally:
             menu.grab_release()
 
-    def launch_external(self, tool, copy_first=True):
+    def launch_external(self, tool):
         if not self.selected:
             return
         source = self.selected["path"]
-        target = source
-        if copy_first:
-            stem, ext = os.path.splitext(source)
-            target = stem + "_edit" + ext
-            counter = 2
-            while os.path.exists(target):
-                target = f"{stem}_edit_{counter}{ext}"
-                counter += 1
-            try:
-                shutil.copy2(source, target)
-            except OSError as exc:
-                messagebox.showerror("Could not create edit copy", str(exc), parent=self)
-                return
-        elif not messagebox.askyesno(
-                "Open original?", "Changes made in the external editor may overwrite the original photo.\n\nContinue?",
-                parent=self):
+        try:
+            target = photo_manager.copy_for_external_edit(source)
+        except OSError as exc:
+            messagebox.showerror("Could not create edit copy", str(exc), parent=self)
             return
         try:
             subprocess.Popen([tool["path"], target], cwd=os.path.dirname(tool["path"]))
@@ -1329,9 +1346,9 @@ class PhotoLibrary(tk.Toplevel):
 
     def open_path(self, path):
         try:
-            os.startfile(path)
+            subprocess.Popen(["explorer.exe", "/select," + os.path.normpath(path)])
         except Exception as exc:
-            messagebox.showerror("Open failed", str(exc), parent=self)
+            messagebox.showerror("Could not show file", str(exc), parent=self)
 
     def open_selected(self):
         if self.selected:
@@ -1408,7 +1425,9 @@ class PhotoLibrary(tk.Toplevel):
             return
         source = row["path"]
         stem, extension = os.path.splitext(source)
-        target = photo_manager.unique_path(stem + "_edited" + extension)
+        base = self.saved_images_dir or os.path.dirname(source)
+        target = photo_manager.unique_path(os.path.join(
+            base, os.path.basename(stem) + "_edited" + extension))
         try:
             with Image.open(source) as image:
                 output = ImageOps.exif_transpose(image).convert("RGB")
@@ -1418,13 +1437,66 @@ class PhotoLibrary(tk.Toplevel):
                 options = {"quality": 95, "optimize": True} if extension.lower() in {
                     ".jpg", ".jpeg", ".webp"} else {}
                 photo_manager.save_with_metadata(output, target, source,
-                                                 self._copyright_text(), **options)
+                                                 self._copyright_text(),
+                                                 strip_gps=self._strip_gps(), **options)
             messagebox.showinfo("Edited copy exported", target, parent=self.viewer)
             self.refresh_current()
         except Exception as exc:
             messagebox.showerror("Export failed", str(exc), parent=self.viewer)
 
+    def show_unsupported_file(self, path, is_raw=False):
+        """Offer safe offline handoff for RAW or otherwise unsupported photographs."""
+        dialog = tk.Toplevel(self)
+        dialog.title("File format not supported")
+        dialog.configure(bg=BG)
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        dialog.grab_set()
+        kind = "This is a RAW photograph." if is_raw else "SNAP SLAPPER cannot decode this file."
+        message = (f"SNAP SLAPPER cannot open this file format. {kind}\n\n"
+                   "Open it with RawTherapee or darktable. The original file will be "
+                   "passed to the program untouched.")
+        tk.Label(dialog, text=message, bg=BG, fg=INK, justify="left", wraplength=460,
+                 padx=24, pady=20, font=("Segoe UI", 10)).pack(fill="x")
+        buttons = tk.Frame(dialog, bg=BG)
+        buttons.pack(fill="x", padx=20, pady=(0, 20))
+        raw_tools = [tool for tool in self.external_tools
+                     if tool.get("name", "").lower() in {"rawtherapee", "darktable"}]
+        for tool in raw_tools:
+            self._button(buttons, f"OPEN IN {tool['name'].upper()}",
+                         lambda t=tool: self._open_unsupported_with(dialog, path, t["path"])).pack(
+                             fill="x", pady=(0, 5), ipady=3)
+        self._button(buttons, "CHOOSE ANOTHER PROGRAM",
+                     lambda: self._choose_unsupported_program(dialog, path)).pack(
+                         fill="x", pady=(0, 5), ipady=3)
+        self._button(buttons, "CANCEL", dialog.destroy).pack(fill="x", ipady=3)
+        dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+
+    def _choose_unsupported_program(self, dialog, path):
+        executable = filedialog.askopenfilename(
+            title="Choose a program", parent=dialog,
+            filetypes=[("Applications", "*.exe"), ("All files", "*.*")])
+        if executable:
+            self._open_unsupported_with(dialog, path, executable)
+
+    def _open_unsupported_with(self, dialog, path, executable):
+        try:
+            subprocess.Popen([executable, path], cwd=os.path.dirname(executable))
+            dialog.destroy()
+        except OSError as exc:
+            messagebox.showerror("Program failed to open", str(exc), parent=dialog)
+
     def open_viewer(self, row):
+        source = row.get("path", "")
+        if os.path.splitext(source)[1].lower() in RAW_EXTS:
+            self.show_unsupported_file(source, is_raw=True)
+            return
+        try:
+            with Image.open(source) as candidate:
+                candidate.verify()
+        except Exception:
+            self.show_unsupported_file(source, is_raw=False)
+            return
         editor = getattr(self, "editor_window", None)
         if editor and editor.winfo_exists():
             editor.open_row(row)
@@ -1437,7 +1509,10 @@ class PhotoLibrary(tk.Toplevel):
             self.editor_window = EditorWindow(
                 self, row, editor_rows,
                 on_select=self.select_photo, on_refresh=self.refresh_current,
-                copyright_text=self._copyright_text, batch_rows=chosen)
+                copyright_text=self._copyright_text, strip_gps=self._strip_gps,
+                recovery_dir=self.recovery_dir, build_version=self.build_version,
+                batch_rows=chosen, saved_images_dir=lambda: self.saved_images_dir,
+                projects_dir=lambda: self.projects_dir)
         return
         viewer = getattr(self, "viewer", None)
         if not viewer or not viewer.winfo_exists():
@@ -1460,13 +1535,14 @@ class PhotoLibrary(tk.Toplevel):
                 viewer.bind(str(value), lambda _e, rating=value: self.set_rating(rating))
             viewer.bind("<F11>", lambda _e: viewer.attributes("-fullscreen", not bool(viewer.attributes("-fullscreen"))))
             viewer.bind("<Configure>", self._viewer_resized)
+
             bar = tk.Frame(viewer, bg="#101010")
             bar.pack(fill="x")
             self.viewer_title = tk.Label(bar, text="", bg="#101010", fg=INK,
                                          font=("Segoe UI", 10, "bold"))
             self.viewer_title.pack(side="left", padx=14, pady=10)
             self._button(bar, "CLOSE", viewer.destroy).pack(side="right", padx=(5, 12), pady=6)
-            self._button(bar, "OPEN IN WINDOWS", self.open_external).pack(side="right", pady=6)
+            self._button(bar, "SHOW IN FOLDER", self.open_external).pack(side="right", pady=6)
             body = tk.Frame(viewer, bg="#050505")
             body.pack(fill="both", expand=True)
             self.viewer_image_area = tk.Frame(body, bg="#050505")
@@ -1682,10 +1758,11 @@ class PhotoLibrary(tk.Toplevel):
             return
         source_path = row["path"]
         stem, ext = os.path.splitext(source_path)
-        target = stem + "_sharpened" + ext
+        base = self.saved_images_dir or os.path.dirname(source_path)
+        target = os.path.join(base, os.path.basename(stem) + "_sharpened" + ext)
         counter = 2
         while os.path.exists(target):
-            target = f"{stem}_sharpened_{counter}{ext}"
+            target = os.path.join(base, f"{os.path.basename(stem)}_sharpened_{counter}{ext}")
             counter += 1
         try:
             with Image.open(source_path) as image:
@@ -1698,7 +1775,8 @@ class PhotoLibrary(tk.Toplevel):
                         threshold=int(self.sharpen_threshold)))
                 kwargs = {"quality": 95, "optimize": True} if ext.lower() in {".jpg", ".jpeg", ".webp"} else {}
                 photo_manager.save_with_metadata(output, target, source_path,
-                                                 self._copyright_text(), **kwargs)
+                                                 self._copyright_text(),
+                                                 strip_gps=self._strip_gps(), **kwargs)
             messagebox.showinfo("Sharpened copy exported", target, parent=self.sharpen_panel)
         except Exception as exc:
             messagebox.showerror("Export failed", str(exc), parent=self.sharpen_panel)
