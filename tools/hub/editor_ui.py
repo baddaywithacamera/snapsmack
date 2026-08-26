@@ -463,7 +463,7 @@ class EditorWindow(tk.Toplevel):
             item = selected()
             if not item:
                 return
-            self.document.apply_recipe(built_in_lewks.recipe(item["id"], strength.get()))
+            self.document.stack_layers(built_in_lewks.recipe(item["id"], strength.get())["layers"])
             self._load_document_controls()
             self.status_label.configure(text=f"LEWK applied: {item['name']} · {strength.get()}%")
             window.destroy()
@@ -980,7 +980,8 @@ class EditorWindow(tk.Toplevel):
 
     def paste_adjustments(self):
         if EditorWindow.recipe_clipboard:
-            self.document.apply_recipe(EditorWindow.recipe_clipboard)
+            self.document.set_adjustments(
+                EditorWindow.recipe_clipboard.get("adjustments", editor_engine.DEFAULT_ADJUSTMENTS))
             self._load_document_controls()
 
     def save_preset(self):

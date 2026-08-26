@@ -49,4 +49,44 @@ class BuiltInLewksTests(unittest.TestCase):
         self.assertEqual(high["lewk"]["provenance"], "built-in")
         self.assertEqual(high["layers"][0]["opacity"], 1)
 
+
+class ApplyingALewkPreservesWorkTests(unittest.TestCase):
+    """Applying a LEWK must stack on top of the photographer's edits, never
+    reset the base adjustments or duplicate layers (spec: a LEWK does not
+    flatten existing edits)."""
+
+    def _document(self):
+        return editor_engine.EditorDocument("no-such-file.jpg")
+
+    def test_apply_lewk_keeps_base_adjustments_and_adds_one_layer(self):
+        document = self._document()
+        document.adjustments["exposure"] = 0.35
+        document.adjustments["contrast"] = 20
+        layers = built_in_lewks.recipe("golden-hourglass", 80)["layers"]
+        document.stack_layers(layers)
+        # Base edits survive untouched.
+        self.assertEqual(document.adjustments["exposure"], 0.35)
+        self.assertEqual(document.adjustments["contrast"], 20)
+        # Exactly one LEWK layer was added on top.
+        self.assertEqual(len(document.layers), 1)
+        self.assertEqual(document.layers[0]["lewk"]["id"], "golden-hourglass")
+
+    def test_stacking_two_lewks_does_not_reset_or_collapse(self):
+        document = self._document()
+        document.adjustments["shadows"] = 15
+        document.stack_layers(built_in_lewks.recipe("silver-teeth")["layers"])
+        document.stack_layers(built_in_lewks.recipe("noir-means-noir")["layers"])
+        self.assertEqual(document.adjustments["shadows"], 15)
+        self.assertEqual(len(document.layers), 2)
+
+    def test_paste_adjustments_replaces_base_without_touching_layers(self):
+        document = self._document()
+        document.stack_layers(built_in_lewks.recipe("frost-warning")["layers"])
+        copied = dict(editor_engine.DEFAULT_ADJUSTMENTS)
+        copied["temperature"] = -22
+        document.set_adjustments(copied)
+        self.assertEqual(document.adjustments["temperature"], -22)
+        # The existing layer is left exactly as it was — no append, no duplicate.
+        self.assertEqual(len(document.layers), 1)
+
 # ===== SNAPSMACK EOF =====

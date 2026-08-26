@@ -470,7 +470,15 @@ class EditorDocument:
             raise ValueError("Unsupported recipe version")
         adjustments = recipe.get("adjustments", DEFAULT_ADJUSTMENTS)
         layers = recipe.get("layers", [])
-        if not isinstance(adjustments, dict) or not isinstance(layers, list):
+        if not isinstance(adjustments, dict):
+            raise ValueError("Invalid SNAP SLAPPER recipe contents")
+        self._validate_layers(layers)
+        self.adjustments = copy.deepcopy(adjustments)
+        self.layers.extend(copy.deepcopy(layers))
+        self.record("Apply recipe")
+
+    def _validate_layers(self, layers):
+        if not isinstance(layers, list):
             raise ValueError("Invalid SNAP SLAPPER recipe contents")
         if len(layers) > MAX_PROJECT_LAYERS:
             raise ValueError("Invalid SNAP SLAPPER recipe: too many layers")
@@ -480,9 +488,24 @@ class EditorDocument:
             mask = layer.get("mask", "")
             if not isinstance(mask, str) or len(mask) > MAX_ENCODED_MASK_BYTES:
                 raise ValueError(f"Invalid SNAP SLAPPER recipe: layer {index + 1} mask is invalid")
-        self.adjustments = copy.deepcopy(adjustments)
+
+    def stack_layers(self, layers):
+        """Add adjustment layers on top of the project without disturbing the
+        photographer's existing base adjustments or layers. Applying a LEWK
+        stacks an appearance; it must never flatten work already in progress."""
+        self._validate_layers(layers)
+        if len(self.layers) + len(layers) > MAX_PROJECT_LAYERS:
+            raise ValueError("Invalid SNAP SLAPPER recipe: too many layers")
         self.layers.extend(copy.deepcopy(layers))
-        self.record("Apply recipe")
+        self.record("Apply LEWK")
+
+    def set_adjustments(self, adjustments):
+        """Replace only the base adjustments, leaving every layer untouched.
+        Paste adjustments uses this so it can never append or duplicate layers."""
+        if not isinstance(adjustments, dict):
+            raise ValueError("Invalid SNAP SLAPPER adjustments")
+        self.adjustments = copy.deepcopy(adjustments)
+        self.record("Paste adjustments")
 
 
 def save_recipe(path, recipe):
