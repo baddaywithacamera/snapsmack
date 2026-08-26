@@ -8,7 +8,7 @@
 
 **Status:** Governing architecture
 
-**Applies to:** THE HUB, SNAP SLAPPER, ACTION LAB, and every SnapSmack desktop companion
+**Applies to:** THE HUB, SNAP SLAPPER, LEWK AGAIN, and every SnapSmack desktop companion
 
 **Principle:** The CMS coordinates. Desktop companions do the heavy lifting.
 
@@ -33,14 +33,14 @@ Any proposal that puts substantial media processing, AI inference, archive const
 
 Desktop companions should perform the following whenever technically possible:
 
-- RAW and high-resolution image decoding.
+- High-resolution non-RAW image decoding.
 - Colour and tonal adjustments.
 - Resizing, cropping, sharpening, and format conversion.
 - Thumbnail and derivative generation.
 - Batch file operations.
 - Duplicate and quality analysis.
 - AI-assisted metadata, sorting, and adjustment generation.
-- ACTION LAB recipe generation and preset rendering.
+- LEWK AGAIN recipe generation and preset rendering.
 - Large archive and backup construction.
 - Compression, checksumming, and integrity verification of large local payloads.
 - Local folder scanning and change detection.
@@ -100,7 +100,8 @@ Useful capability fields include:
 - Maximum upload byte size.
 - Accepted MIME types and file extensions.
 - Preferred JPEG/WebP quality where relevant.
-- Whether EXIF, ICC profile, GPS, and other metadata should be kept or stripped.
+- Whether a local export requests the single permitted metadata exception: GPS removal
+  from the newly created derivative. Other EXIF and embedded metadata are preserved.
 - Whether the blog expects a particular colour space.
 - Local desktop uploads/staging directory configured for that blog.
 - Available authenticated routes and feature flags.
@@ -202,15 +203,18 @@ Desktop-heavy architecture is valuable only if failures are recoverable.
 - Local processing is the default.
 - AI features must state whether inference is local or cloud-based.
 - Photographs are never uploaded to an AI provider without explicit informed approval.
-- GPS and sensitive EXIF handling must follow the chosen blog profile/export policy.
+- Originals are immutable. New derivatives preserve all available EXIF and embedded
+  metadata; GPS is the only removable field and only after an explicit local preference
+  or export choice. GPS removal never changes the original.
 - Local analysis indexes, thumbnails, and recipes remain local unless the user exports or synchronizes them deliberately.
 
 ## 13. Entitlements and product support
 
-SNAP SLAPPER and ACTION LAB are included free for people running their own SnapSmack CMS installation. The CMS-issued entitlement limits the official support population to SnapSmack users; it is not a paid subscription.
+SNAP SLAPPER and LEWK AGAIN are included free for people running their own SnapSmack CMS installation. The CMS-issued entitlement limits the official support population to SnapSmack users; it is not a paid subscription.
 
 - SNAP SLAPPER carries the desktop entitlement.
-- ACTION LAB inherits SNAP SLAPPER's unlock state and never requires a second key.
+- LEWK AGAIN reads SNAP SLAPPER's locally verified unlock state and never requires key
+  re-entry, a second key, or a duplicate entitlement clock.
 - Entitlement expiry must not delete or encrypt local work or exported output.
 - Decoupled forks may exist under the SPL but must use different tool names and own their support surface.
 
