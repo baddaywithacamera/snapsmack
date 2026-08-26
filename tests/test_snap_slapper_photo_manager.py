@@ -230,7 +230,10 @@ class ImmutableOriginalTests(unittest.TestCase):
         with open(spec_path, "r", encoding="utf-8") as handle:
             spec = handle.read()
 
-        self.assertIn("('snap_home.py', 'snap_paths.py')", spec)
+        # Minimal shared surface: path helpers plus the stdlib-only shared AI
+        # client (snap_ai, urllib not requests). The credential/network fleet
+        # stack stays out of the editor build.
+        self.assertIn("('snap_home.py', 'snap_paths.py', 'snap_ai.py')", spec)
         for forbidden in ("snap_creds.py", "snap_vault.py", "snap_discovery.py",
                           "snap_profiles.py", "snap_enrich.py"):
             self.assertNotIn(forbidden, spec)

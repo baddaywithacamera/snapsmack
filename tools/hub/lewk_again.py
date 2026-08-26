@@ -13,7 +13,8 @@ no code, no network fetches, no unknown operations. Photographs are never
 uploaded: LEWK AGAIN sends only the text description.
 
 This module has no Tk or UI code and makes no network call on import, so it can
-be unit-tested headless. The provider HTTP calls live in `providers.py`.
+be unit-tested headless. The provider HTTP calls live in the shared `snap_ai`
+client (tools/_shared), so all five providers work here and in every tool.
 
 SNAPSMACK_EOF_HEADER: this file must end with the canonical Python EOF marker.
 """
@@ -26,8 +27,8 @@ import re
 import time
 
 import editor_engine
-import lewk_providers
-from lewk_providers import MissingKeyError, OfflineError, ProviderError
+import snap_ai
+from snap_ai import MissingKeyError, OfflineError, ProviderError
 
 
 # --- The allowlist ---------------------------------------------------------
@@ -301,21 +302,10 @@ def parse_model_json(text):
 
 
 # --- API keys and local config --------------------------------------------
-# Keys are resolved in three steps, most explicit first, so LEWK AGAIN works
-# both inside the Hub (shared vault) and as a fenced standalone editor (env or
-# its own small config), without ever forcing the excluded credential vault
-# into the editor build — the vault is only read if it happens to be present.
-_ENV_KEYS = {
-    "claude":   ("SNAP_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY", "CLAUDE_API_KEY"),
-    "openai":   ("SNAP_OPENAI_API_KEY", "OPENAI_API_KEY"),
-    "gemini":   ("SNAP_GEMINI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"),
-    "kimi":     ("SNAP_KIMI_API_KEY", "MOONSHOT_API_KEY", "KIMI_API_KEY"),
-    "deepseek": ("SNAP_DEEPSEEK_API_KEY", "DEEPSEEK_API_KEY"),
-}
-_VAULT_KEYS = {
-    "claude": "anthropic_api_key", "openai": "openai_api_key",
-    "gemini": "gemini_api_key", "kimi": "kimi_api_key", "deepseek": "deepseek_api_key",
-}
+# Key lookup is delegated to the shared snap_ai resolver (env var, then the Hub
+# vault); LEWK AGAIN adds its own local config file as the last fallback so it
+# still works as a fenced standalone editor. The vault is read lazily and never
+# forced into the editor build.
 _CONFIG_NAME = "lewk_again.json"
 
 
@@ -384,27 +374,19 @@ def save_config(config):
 
 
 def resolve_key(provider, config=None):
-    """Return the API key for `provider`: env var, then shared vault, then the
-    local config. Empty string when nothing is set."""
-    pid = lewk_providers.normalize_provider(provider)
-    for var in _ENV_KEYS.get(pid, ()):
-        value = os.environ.get(var)
-        if value and value.strip():
-            return value.strip()
-    try:  # shared vault — only if it survived the build (Hub / dev)
-        import snap_creds
-        if hasattr(snap_creds, "init"):
-            try:
-                snap_creds.init()
-            except Exception:
-                pass
-        value = snap_creds.get(_VAULT_KEYS[pid], "")
-        if value and value.strip():
-            return value.strip()
-    except Exception:
-        pass
+    """Return the API key for `provider` via the shared snap_ai resolver (env
+    var, then the Hub vault), falling back to LEWK AGAIN's own local config.
+    Empty string when nothing is set."""
     cfg = config if config is not None else load_config()
-    return _decode_local_key((cfg.get("keys", {}) or {}).get(pid, ""))
+    local = {}
+    for stored_id, value in (cfg.get("keys", {}) or {}).items():
+        decoded = _decode_local_key(value)
+        if decoded:
+            try:
+                local[snap_ai.normalize_provider(stored_id)] = decoded
+            except ProviderError:
+                continue
+    return snap_ai.resolve_key(provider, local=local)
 
 
 def key_available(provider, config=None):
@@ -448,17 +430,17 @@ def generate(description, provider, refinement=None, previous=None, strength=100
     all carry a plain-language message safe to show directly.
     """
     require_unlocked()
-    pid = lewk_providers.normalize_provider(provider)
+    pid = snap_ai.normalize_provider(provider)
     cfg = config if config is not None else load_config()
     key = api_key or resolve_key(pid, cfg)
     if not key:
         raise MissingKeyError(
-            "No API key is set for " + lewk_providers.PROVIDERS[pid]["label"]
+            "No API key is set for " + snap_ai.PROVIDERS[pid]["label"]
             + ". Add one in LEWK AGAIN settings, or set an environment variable.")
     chosen_model = model or (cfg.get("models", {}) or {}).get(pid) \
-        or lewk_providers.default_model(pid)
+        or snap_ai.default_model(pid)
     turns = build_messages(description, refinement, previous)
-    text = lewk_providers.call(pid, key, SYSTEM_PROMPT, turns, model=chosen_model)
+    text = snap_ai.call(pid, key, SYSTEM_PROMPT, turns, model=chosen_model)
     proposal = parse_model_json(text)
     recipe = build_lewk(proposal, strength=strength)
     return recipe, proposal
