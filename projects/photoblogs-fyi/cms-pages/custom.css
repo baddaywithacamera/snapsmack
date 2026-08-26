@@ -270,13 +270,17 @@ body.homepage-static .pbf-how  { max-width: 48em; margin-left: auto; margin-righ
    IDs + !important are needed to beat the skin's own id-scoped !important footer rules. */
 body.homepage-static #scroll-stage { display: flex !important; flex-direction: column !important; overflow-y: auto !important; }
 body.homepage-static #header { height: 46px !important; flex: 0 0 auto !important; }
-body.homepage-static #scroll-stage .static-content { flex: 0 0 auto !important; overflow: visible !important; padding-top: 4px !important; padding-bottom: 4px !important; }
-body.homepage-static .pbf-how { margin-top: 1.3rem !important; }
-body.homepage-static .pbf-rule { margin-top: 0.9rem !important; margin-bottom: 0.9rem !important; }
+body.homepage-static #scroll-stage .static-content { flex: 0 0 auto !important; overflow: visible !important; max-width: 1060px !important; padding-top: 12px !important; padding-bottom: 10px !important; }
+body.homepage-static .pbf-lede { max-width: 44em !important; }
+body.homepage-static .pbf-sub  { max-width: 60em !important; }
+body.homepage-static .pbf-how  { max-width: 62em !important; margin-top: 2.0rem !important; }
+body.homepage-static .pbf-rule { margin-top: 1.3rem !important; margin-bottom: 1.3rem !important; }
+body.homepage-static .pbf-tagline { margin-top: 1.0rem !important; }
+body.homepage-static .pbf-kicker { margin-bottom: 1.35rem !important; }
 body.homepage-static #page-wrapper #scroll-stage #system-footer {
   margin-top: auto !important; flex: 0 0 auto !important;
   background: transparent !important; border-top: 3px solid #D40000 !important;
-  padding: 11px 24px !important; color: #8a8a8a !important;
+  padding: 15px 24px !important; color: #8a8a8a !important;
   font-family: 'Courier New', monospace !important; font-size: 0.68rem !important; letter-spacing: 0.06em !important;
 }
 body.homepage-static #page-wrapper #scroll-stage #system-footer * { font-family: 'Courier New', monospace !important; font-size: 0.68rem !important; letter-spacing: 0.06em !important; }
