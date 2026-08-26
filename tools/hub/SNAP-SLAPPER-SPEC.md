@@ -149,6 +149,13 @@ details. `SHOW THE GUTS` exposes them in the LEWK's Action list.
 
 ## 6. File formats and compatibility
 
+The canonical `.slapper` project is an ordinary ZIP container with a product-specific
+extension. Renaming `name.slapper` to `name.zip` opens it in any standard ZIP tool.
+The root `project.json` is versioned, UTF-8, human-readable JSON; a plain-text README
+explains the container without requiring SNAP SLAPPER. Standard project assets belong
+in named archive folders rather than an opaque database. Legacy bare-JSON `.slapper`
+files remain readable and are upgraded to the ZIP container on their next save.
+
 The canonical LEWK document is versioned JSON and uses the extension `.lewk`.
 It contains no photograph pixels, credentials, absolute cache paths, or executable
 code. Imported values are bounded and validated before preview or application.
