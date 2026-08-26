@@ -12,6 +12,11 @@
 
 ## 0.7.560 — 2026-08-26 "SNAP SLAPPER"
 
+- **The first stock LEWKS pack.** Twelve curated built-in appearances cover clean correction,
+  film/print, black-and-white, portrait, landscape/weather, night/neon, and experimental work.
+  The editor's LEWKS + BATCH panel opens a browser with descriptions and an overall strength
+  control. Stock masters are read-only; applying one uses the non-destructive recipe engine and
+  records history instead of touching the original photograph.
 - **SNAP SLAPPER closed-beta hardening.** The immutable-original rule is now enforced by the shared writer rather than left to individual tools: rotation creates named, collision-safe copies; every derivative is written atomically; copy, move, external-edit, Trash, and restore paths never publish partial files; and a failed Trash manifest rolls photographs back instead of orphaning them. External editors can receive working copies only. Existing EXIF copyright, ICC, DPI, and XMP metadata continue forward, and the explicit GPS-removal preference now reaches library, viewer, editor, and batch exports without touching the original. Organizer settings now use versioned, atomically replaced state files while still reading the earlier unwrapped files.
 - **Editor recovery and honest failures.** Unsaved documents autosave to a local recovery area and are offered back after an interrupted session. Project and preset writes use the same last-good atomic state writer. Malformed projects, missing originals, missing image layers, broken presets, and failed saves now produce direct errors instead of silently changing the composite or dropping work.
 - **Offline beta guidance.** SNAP SLAPPER now ships searchable local help, available from the library, editor, and F1, covering the core workflow, file safety, metadata, projects, RAW handoff, Trash, recovery, and shortcuts. Recognized RAW files and formats the editor cannot decode are handed off offline to detected RawTherapee/darktable installs or another chosen program, with the original passed untouched.

@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw, ImageOps, ImageTk
 import editor_engine
 import photo_manager
 import help_ui
+import built_in_lewks
 
 
 BG, PANEL, FIELD, BORDER = "#080808", "#111111", "#1c1c1c", "#292929"
@@ -403,7 +404,9 @@ class EditorWindow(tk.Toplevel):
         self._button(panel, "LAYER STYLES…", self.layer_styles).pack(fill="x", padx=8, pady=(0, 8), ipady=3)
 
     def _build_presets(self):
-        panel = self.accordion("PRESETS + BATCH", False)
+        panel = self.accordion("LEWKS + BATCH", False)
+        self._button(panel, "BROWSE STOCK LEWKS…", self.browse_stock_lewks, True).pack(
+            fill="x", padx=8, pady=(5, 2), ipady=4)
         for text, command in (("COPY ADJUSTMENTS", self.copy_adjustments),
                               ("PASTE ADJUSTMENTS", self.paste_adjustments),
                               ("SAVE PRESET…", self.save_preset), ("LOAD PRESET…", self.load_preset),
@@ -411,6 +414,68 @@ class EditorWindow(tk.Toplevel):
             self._button(panel, text, command).pack(fill="x", padx=8, pady=(4, 0), ipady=3)
         tk.Label(panel, text="Batch export always creates new JPEG copies.", bg=PANEL, fg=DIM,
                  wraplength=270, justify="left", font=("Segoe UI", 8)).pack(anchor="w", padx=8, pady=8)
+
+    def browse_stock_lewks(self):
+        window = tk.Toplevel(self)
+        window.title("SNAP SLAPPER — Stock LEWKS")
+        window.configure(bg=BG)
+        window.geometry("720x520")
+        window.transient(self)
+        window.grab_set()
+        lewks = built_in_lewks.all_lewks()
+        left = tk.Frame(window, bg=PANEL, width=300)
+        left.pack(side="left", fill="both", padx=(12, 6), pady=12)
+        right = tk.Frame(window, bg=PANEL)
+        right.pack(side="right", fill="both", expand=True, padx=(6, 12), pady=12)
+        listing = tk.Listbox(left, bg="#0b0b0b", fg=INK, selectbackground=ACCENT,
+                             selectforeground=BG, relief="flat", font=("Segoe UI", 10), width=30)
+        listing.pack(fill="both", expand=True, padx=8, pady=8)
+        for item in lewks:
+            listing.insert("end", item["name"])
+        name_var, category_var, description_var = tk.StringVar(), tk.StringVar(), tk.StringVar()
+        tk.Label(right, textvariable=name_var, bg=PANEL, fg=ACCENT,
+                 font=("Segoe UI Black", 18, "bold"), wraplength=360,
+                 justify="left").pack(anchor="w", padx=16, pady=(22, 4))
+        tk.Label(right, textvariable=category_var, bg=PANEL, fg=DIM,
+                 font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=16)
+        tk.Label(right, textvariable=description_var, bg=PANEL, fg=INK,
+                 font=("Segoe UI", 11), wraplength=360, justify="left").pack(
+                     anchor="w", padx=16, pady=(20, 24))
+        strength = tk.IntVar(value=100)
+        tk.Label(right, text="OVERALL STRENGTH", bg=PANEL, fg=DIM,
+                 font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=16)
+        tk.Scale(right, from_=0, to=100, variable=strength, orient="horizontal",
+                 bg=PANEL, fg=INK, troughcolor=FIELD, activebackground=ACCENT,
+                 highlightthickness=0).pack(fill="x", padx=12)
+
+        def selected():
+            choice = listing.curselection()
+            return lewks[choice[0]] if choice else None
+
+        def describe(_event=None):
+            item = selected()
+            if item:
+                name_var.set(item["name"])
+                category_var.set(item["category"].upper())
+                description_var.set(item["description"])
+
+        def apply():
+            item = selected()
+            if not item:
+                return
+            self.document.apply_recipe(built_in_lewks.recipe(item["id"], strength.get()))
+            self._load_document_controls()
+            self.status_label.configure(text=f"LEWK applied: {item['name']} · {strength.get()}%")
+            window.destroy()
+
+        listing.bind("<<ListboxSelect>>", describe)
+        listing.selection_set(0)
+        describe()
+        buttons = tk.Frame(right, bg=PANEL)
+        buttons.pack(side="bottom", fill="x", padx=16, pady=16)
+        self._button(buttons, "CANCEL", window.destroy).pack(side="left", fill="x", expand=True)
+        self._button(buttons, "APPLY LEWK", apply, True).pack(
+            side="right", fill="x", expand=True, padx=(8, 0))
 
     def _build_history(self):
         panel = self.accordion("HISTORY", False)
