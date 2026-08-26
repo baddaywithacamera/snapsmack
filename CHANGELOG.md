@@ -10,6 +10,10 @@
 
 # SnapSmack Changelog
 
+## 0.7.562 — 2026-08-26 "FEDBOARD"
+
+- **The photoblogs.fyi directory is now a wall of photos, not text cards.** Each listing shows its blog's three latest pictures, and the whole card is a dofollow link straight to that blog — no captions, tags, avatars, or blurbs. The photos are pulled from each blog's own `/rss.php` feed (all feeds fetched in parallel, cached six hours) whenever a blog hasn't supplied sample thumbnails through the directory API, so the grid shows real pictures instead of empty placeholder tiles. A blog with no photo yet (feed empty or offline) is hidden rather than shown as a grey box.
+
 ## 0.7.561 — 2026-08-25 "FEDBOARD"
 
 - **The discovery feed is now one switchable engine.** A per-install `feed_mode` setting picks what fills it: `blogs` boosts the registered directory blogs' own RSS (photoblogs.fyi); `hashtag` boosts the posts of followed Fediverse actors carrying a configured hashtag (photofri.day and the other challenge sites, each with its own tag). Everything downstream — the cache, the de-clump, the square grid, the RSS — is shared, so the same code serves every site in the network. The hashtag adapter is a safe no-op until the weekly collect side is feeding it.
