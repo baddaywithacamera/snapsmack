@@ -100,4 +100,22 @@ class SlapHappyTests(unittest.TestCase):
                                         state_path=state, destination_key="cloud", commit=False)
         self.assertEqual(done["changed"], 0)
 
+    def test_suyb_settings_are_included_without_credentials(self):
+        suyb = os.path.join(self.home, "config_files", "suyb")
+        profiles = os.path.join(suyb, "profiles")
+        os.makedirs(profiles)
+        with open(os.path.join(suyb, "config.ini"), "w", encoding="utf-8") as f:
+            f.write("[window]\nwidth=1100\n")
+        with open(os.path.join(profiles, "site.json"), "w", encoding="utf-8") as f:
+            json.dump({"name": "My Site", "site_url": "https://example.test",
+                       "password": "never-package-me", "api_key": "also-secret"}, f)
+        result = slap_happy.create_backup(self.home, self.output, "full", ["suyb_settings"])
+        with zipfile.ZipFile(result["path"]) as package:
+            payload = package.read("suyb-settings/SUYB-SETTINGS.json").decode("utf-8")
+        self.assertIn("My Site", payload)
+        self.assertIn("width=1100", payload)
+        self.assertNotIn("never-package-me", payload)
+        self.assertNotIn("also-secret", payload)
+        self.assertIn("[REDACTED]", payload)
+
 # ===== SNAPSMACK EOF =====
