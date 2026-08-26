@@ -286,4 +286,31 @@ body.homepage-static #page-wrapper #scroll-stage #system-footer {
 body.homepage-static #page-wrapper #scroll-stage #system-footer * { font-family: 'Courier New', monospace !important; font-size: 0.68rem !important; letter-spacing: 0.06em !important; }
 body.homepage-static #page-wrapper #scroll-stage #system-footer a { color: #a5a5a5 !important; }
 
+/* --------------------------------- the feed page: square-thumb discovery grid */
+/* Rendered by [photoblogs_feed] (core/photoblogs-feed.php) — one square per recent
+   post across the directory, no text, each a dofollow new-tab link to the post.
+   The .pbfeed-* classes only appear on the feed page, so no body scope is needed.
+   The feed scrolls normally (it is NOT the home page's one-screen fit). */
+.pbfeed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 4px;
+  margin: 1.6rem 0 0;
+}
+.pbfeed-sq {
+  display: block;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+.pbfeed-sq img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform .35s ease, opacity .35s ease;
+}
+.pbfeed-sq:hover img { transform: scale(1.06); opacity: .9; }
+.pbfeed-empty { color: var(--pbf-muted); text-align: center; padding: 2.5rem 0; }
+
 /* ===== SNAPSMACK EOF ===== */
