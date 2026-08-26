@@ -10,7 +10,11 @@
 
 # SnapSmack Changelog
 
-## 0.7.559 — 2026-08-25 "FEDBOARD"
+## 0.7.560 — 2026-08-25 "FEDBOARD"
+
+- **photoblogs.fyi discovery feed.** New `[photoblogs_feed]` shortcode renders a grid of square thumbnails — one per recent post across every directory-listed blog, newest first with a mild de-clump so no single blog runs back-to-back. Each square is a dofollow, new-tab link straight to that post; thumbnails are hotlinked from each blog's own server (nothing is re-hosted). A cache table (`snap_feed_items`) is refreshed inside the existing RSS cron via `core/photoblogs-feed.php`, so a visitor never waits on outbound fetches. The whole point is to send traffic and search-engine credit OUT to the member blogs.
+- **Directory links are now dofollow.** The public directory's "Visit blog" links dropped `rel="nofollow"` — a directory that exists to lift its members shouldn't withhold link equity from them.
+- **photoblogs.fyi front-end** (custom CSS, no core change): home page reworked to the original centred one-screen layout with the standard nav and a reference-styled footer; nav trimmed to Home / Directory; About and Feed page bodies added as CMS-page seeds.
 
 Security hardening for the new multisite/federation features (secaudit 051). No visible change to how blogs are used; these close ways one connected blog — or a stranger on the internet — could have interfered with another.
 
