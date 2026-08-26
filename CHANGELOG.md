@@ -32,6 +32,9 @@
   `requests`), so the editor build still carries no fleet network stack, and the
   credential vault is read lazily rather than bundled into the exe. Offline Help
   gains a LEWK AGAIN topic.
+- **Thomas the Bear lives in SNAP SLAPPER now**, the way he lived in Picasa —
+  hidden, waiting to be found by anyone who knows to look. For Noah Grey. (See
+  THE-THOMAS-CLAUSE.)
 
 ## 0.7.563 — 2026-08-26 "FEDBOARD"
 

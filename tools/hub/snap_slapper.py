@@ -84,6 +84,13 @@ def main():
     publish_backup_contract(state_path, snap_home.shared_library())
     library = PhotoLibrary(root, snap_home.shared_library(), BUILD_VERSION, state_path=state_path)
 
+    # Thomas the Bear lives here. Ctrl+Shift+Y. For Noah. (THE-THOMAS-CLAUSE.txt)
+    try:
+        import thomas
+        thomas.install(library)
+    except Exception:
+        pass
+
     def close_app():
         editor = getattr(library, "editor_window", None)
         if editor and editor.winfo_exists():
