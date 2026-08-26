@@ -21,9 +21,10 @@ _app_files.append(os.path.join(_src, 'built_in_lewks.py'))
 # credential vault is read lazily and remains hard-excluded, so the editor exe
 # still carries no fleet auth/network code.
 _app_files.append(os.path.join(_src, 'lewk_again.py'))
-# Thomas the Bear — the Easter egg required by THE-THOMAS-CLAUSE. Module + image.
-_app_files.append(os.path.join(_src, 'thomas.py'))
-_asset_files = [(os.path.join(_src, 'thomas-transparent.png'), '.')]
+# Thomas the Bear — the Easter egg required by THE-THOMAS-CLAUSE. He lives in the
+# shared library (tools/_shared) so every desktop app carries the same bear; the
+# module is bundled via _shared_files below and the image ships alongside it.
+_asset_files = [(os.path.join(_shared_dir, 'thomas-transparent.png'), '.')]
 # SECAUDIT: bundle ONLY the shared modules SNAP SLAPPER actually imports
 # (snap_slapper/photo_* import just snap_home, which imports snap_paths).
 # The previous glob('*.py') force-compiled the whole fleet toolkit into the
@@ -32,7 +33,7 @@ _asset_files = [(os.path.join(_src, 'thomas-transparent.png'), '.')]
 # editor must never carry. Keep this list minimal; add a name only when the app
 # genuinely imports it.
 _shared_files = [os.path.join(_shared_dir, name) for name in
-                 ('snap_home.py', 'snap_paths.py', 'snap_ai.py')]
+                 ('snap_home.py', 'snap_paths.py', 'snap_ai.py', 'thomas.py')]
 _shared_mods = [os.path.splitext(os.path.basename(path))[0] for path in _shared_files]
 
 a = Analysis(
@@ -41,7 +42,7 @@ a = Analysis(
     binaries=[],
     datas=[(path, '.') for path in _app_files + _shared_files] + _asset_files,
     hiddenimports=['photo_library', 'photo_manager', 'editor_engine', 'editor_ui', 'help_ui', 'built_in_lewks',
-                   'lewk_again', 'thomas',
+                   'lewk_again',
                    'PIL', 'PIL.Image', 'PIL.ImageTk'] + _shared_mods,
     hookspath=[],
     hooksconfig={},

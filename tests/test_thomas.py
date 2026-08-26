@@ -11,9 +11,9 @@ import os
 import sys
 import unittest
 
-HUB = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tools", "hub"))
-if HUB not in sys.path:
-    sys.path.insert(0, HUB)
+SHARED = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tools", "_shared"))
+if SHARED not in sys.path:
+    sys.path.insert(0, SHARED)
 
 import thomas
 
