@@ -10,6 +10,10 @@
 
 # SnapSmack Changelog
 
+## 0.7.563 — 2026-08-26 "FEDBOARD"
+
+- **Countdown clocks can reset themselves.** The shared countdown engine (`ss-engine-countdown.js`) gained an optional recurring roll: add `data-every="7d"` (or `1w` / `12h` / raw seconds) and when a counter hits zero it re-aims at the next occurrence instead of stopping. `data-roll-caption="Next prompt drops in"` relabels the heading (any element marked `[data-cd-caption]`) on that first roll. One-shot countdowns with no `data-every` are unchanged. This lets the PhotoFri prompt clock roll from the launch prompt to next week's prompt on its own, changing "First prompt drops in" to "Next prompt drops in".
+
 ## 0.7.562 — 2026-08-26 "FEDBOARD"
 
 - **The photoblogs.fyi directory is now a wall of photos, not text cards.** Each listing shows its blog's three latest pictures, and the whole card is a dofollow link straight to that blog — no captions, tags, avatars, or blurbs. The photos are pulled from each blog's own `/rss.php` feed (all feeds fetched in parallel, cached six hours) whenever a blog hasn't supplied sample thumbnails through the directory API, so the grid shows real pictures instead of empty placeholder tiles. A blog with no photo yet (feed empty or offline) is hidden rather than shown as a grey box.
