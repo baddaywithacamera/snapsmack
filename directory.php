@@ -2,11 +2,15 @@
 /**
  * SNAPSMACK — photoblogs.fyi PUBLIC DIRECTORY  [0.7.547]
  *
- * Renders the APPROVED (state='active') directory listings. Browse by topic,
- * search, sort — all server-side, no JavaScript. Every card links back to the
- * photographer's own site (dofollow — the directory passes its link equity OUT
- * to members on purpose; sending traffic + SEO back is the whole point);
- * nothing is re-hosted here.
+ * Renders the APPROVED (state='active') directory listings as a PICTURE-FIRST
+ * grid: each card is just the blog's photos, and the whole card links back to
+ * that blog's own site DOFOLLOW — the directory passes its link equity OUT to
+ * members on purpose; sending traffic + SEO back is the whole point. Nothing is
+ * re-hosted here. Photo tiles are filled from each blog's own /rss.php feed
+ * (parallel fetch, cached 6h) when it hasn't submitted samples via the API, so
+ * the grid shows real pictures and never a placeholder box. Browse by topic,
+ * search, sort — all server-side, no JS. A blog with no photo yet is hidden
+ * rather than shown as an empty tile.
  * Reachable at /directory.php (a pretty /directory rewrite is a follow-up).
  *
  * SNAPSMACK_EOF_HEADER
@@ -27,6 +31,75 @@ foreach ($rows as &$r) {
     $r['_samples'] = json_decode((string)($r['samples'] ?? '[]'), true) ?: [];
 }
 unset($r);
+
+// --- Fill the photo tiles from each blog's own RSS feed (cached), so the
+// --- directory shows real pictures instead of empty placeholders. Hub-side and
+// --- self-healing: no per-blog upload step. Samples a blog explicitly submitted
+// --- via the API win; RSS only fills the blanks, refreshed every 6 hours.
+$dir_need = [];
+foreach ($rows as $i => $r) {
+    if (empty($r['_samples']) && !empty($r['site_url'])) {
+        $dir_need[$i] = rtrim((string)$r['site_url'], '/');
+    }
+}
+if ($dir_need) {
+    $cache_file = sys_get_temp_dir() . '/pbdir_rss_samples.json';
+    $cache = is_readable($cache_file) ? (json_decode((string)file_get_contents($cache_file), true) ?: []) : [];
+    $now = time();
+    $ttl = 21600; // 6 hours
+    $fetch = [];
+    foreach ($dir_need as $i => $url) {
+        $c = $cache[$url] ?? null;
+        if (is_array($c) && ($now - (int)($c['t'] ?? 0)) < $ttl) {
+            if (!empty($c['s'])) $rows[$i]['_samples'] = $c['s'];
+        } else {
+            $fetch[$i] = $url;
+        }
+    }
+    if ($fetch && function_exists('curl_multi_init')) {
+        $mh = curl_multi_init();
+        $handles = [];
+        foreach ($fetch as $i => $url) {
+            $ch = curl_init($url . '/rss.php');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_MAXREDIRS      => 3,
+                CURLOPT_TIMEOUT        => 6,
+                CURLOPT_CONNECTTIMEOUT => 4,
+                CURLOPT_USERAGENT      => 'photoblogs.fyi-directory/1.0',
+            ]);
+            curl_multi_add_handle($mh, $ch);
+            $handles[$i] = $ch;
+        }
+        do {
+            $st = curl_multi_exec($mh, $running);
+            if ($running) curl_multi_select($mh, 1.0);
+        } while ($running && $st === CURLM_OK);
+        foreach ($handles as $i => $ch) {
+            $body = (string)curl_multi_getcontent($ch);
+            $imgs = [];
+            if ($body !== '' && preg_match_all(
+                '~<(?:img[^>]+src|enclosure[^>]+url|media:content[^>]+url)=["\']([^"\']+\.(?:jpe?g|png|webp))["\']~i',
+                $body, $m)) {
+                foreach ($m[1] as $u) {
+                    $u = html_entity_decode($u, ENT_QUOTES);
+                    if (stripos($u, 'https://') === 0 && filter_var($u, FILTER_VALIDATE_URL)
+                        && !in_array($u, $imgs, true)) {
+                        $imgs[] = $u;
+                    }
+                    if (count($imgs) >= 3) break;
+                }
+            }
+            if ($imgs) $rows[$i]['_samples'] = $imgs;
+            $cache[$fetch[$i]] = ['t' => $now, 's' => $imgs];
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+        }
+        curl_multi_close($mh);
+        @file_put_contents($cache_file, json_encode($cache), LOCK_EX);
+    }
+}
 
 // Topic counts across all active listings (for the chips).
 $topic_counts = [];
@@ -87,12 +160,12 @@ $initials = function (string $name): string {
   .wordmark{font:900 clamp(2.1rem,7vw,3.8rem)/.95 'Arial Black',Arial,sans-serif;letter-spacing:-.02em;text-transform:uppercase;margin:0}
   .wordmark .dot{color:var(--red)}
   .lede{font-size:clamp(1rem,2.4vw,1.2rem);line-height:1.6;color:var(--muted);max-width:40rem;margin:.9rem 0 0}
-  .controls{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between;margin:2rem 0 1.2rem}
+  .controls{display:flex;flex-wrap:wrap;gap:1rem;align-items:stretch;justify-content:space-between;margin:2rem 0 1.2rem}
   .search{display:flex;gap:.5rem;flex:1 1 20rem}
   .search input{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink);font:1rem/1.4 Georgia,serif;padding:.7rem .9rem;border-radius:2px}
   .search button,.seg{background:var(--ink);color:var(--black);border:1px solid var(--ink);font:700 .78rem/1 'Helvetica Neue',Arial,sans-serif;padding:.6rem .8rem;cursor:pointer;border-radius:2px}
-  .sort{display:flex;align-items:center;gap:.5rem}
-  .sort a{border:1px solid var(--line);color:var(--muted);font:700 .74rem/1 'Helvetica Neue',Arial,sans-serif;padding:.5rem .7rem;border-radius:2px}
+  .sort{display:flex;flex-direction:column;gap:.4rem}
+  .sort a{flex:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);color:var(--muted);font:700 .74rem/1 'Helvetica Neue',Arial,sans-serif;padding:.35rem .9rem;border-radius:2px}
   .sort a.on{background:var(--ink);color:var(--black);border-color:var(--ink)}
   .chips{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 2rem}
   .chip{border:1px solid var(--line);color:var(--ink);padding:.4rem .7rem;font:.86rem/1 'Helvetica Neue',Arial,sans-serif;border-radius:2px}
@@ -101,20 +174,14 @@ $initials = function (string $name): string {
   .chip.on{background:var(--red);border-color:var(--red);color:#fff}
   .chip.on b{color:#ffd0d0}
   .grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(15.5rem,1fr));gap:1.1rem}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:3px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .15s,transform .15s}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:3px;overflow:hidden;transition:border-color .15s,transform .15s}
   .card:hover{border-color:var(--red);transform:translateY(-2px)}
-  .shots{display:grid;grid-template-columns:2fr 1fr 1fr;gap:2px;height:8.5rem;background:var(--line)}
-  .shot{background-size:cover;background-position:center}
-  .ph1{background:linear-gradient(135deg,#3a4a55,#0d1418)}.ph2{background:linear-gradient(135deg,#556b74,#1c2a2e)}.ph3{background:linear-gradient(135deg,#22323a,#05080a)}
-  .body{padding:.9rem 1rem 1rem;display:flex;flex-direction:column;flex:1}
-  .meta{display:flex;align-items:center;gap:.65rem}
-  .avatar{width:2.2rem;height:2.2rem;border-radius:50%;flex:none;display:grid;place-items:center;font:900 .8rem/1 'Arial Black',Arial,sans-serif;color:#fff;background:var(--red);background-size:cover;background-position:center}
-  .name{font:900 1.02rem/1.15 'Arial Black',Arial,sans-serif;text-transform:uppercase;letter-spacing:.01em;margin:0}
-  .who{font:.78rem/1.3 'Courier New',monospace;color:var(--muted);margin:.15rem 0 0}
-  .blurb{font-size:.92rem;line-height:1.5;color:#d8d8d8;margin:.75rem 0 .6rem}
-  .tags{margin:0 0 .9rem;display:flex;flex-wrap:wrap;gap:.35rem}
-  .tags span{font:.72rem/1 'Helvetica Neue',Arial,sans-serif;color:var(--muted);border-bottom:1px solid var(--red);padding-bottom:1px}
-  .foot{margin:auto 0 0}
+  .card-link{display:block}
+  .shots{display:grid;grid-template-columns:2fr 1fr 1fr;gap:2px;height:11rem;background:var(--line)}
+  .shots-1{grid-template-columns:1fr}
+  .shots-2{grid-template-columns:1fr 1fr}
+  .shots-3{grid-template-columns:2fr 1fr 1fr}
+  .shot{background-size:cover;background-position:center;background-color:#0d1418}
   .visit{font:700 .8rem/1 'Helvetica Neue',Arial,sans-serif;color:var(--ink);border-bottom:2px solid var(--red);padding-bottom:2px}
   .visit:hover{color:var(--red)}
   .empty{border:1px solid var(--line);background:var(--panel);border-radius:3px;padding:2.5rem;text-align:center;color:var(--muted);margin-top:2rem}
@@ -168,33 +235,15 @@ $initials = function (string $name): string {
   <?php else: ?>
     <ul class="grid">
       <?php foreach ($filtered as $r): ?>
+        <?php $sm = array_values(array_filter((array)$r['_samples'])); if (!$sm) continue; /* pictures-first: hide a blog that has no photo yet, don't show an empty box */ ?>
         <li class="card">
-          <div class="shots">
-            <?php $sm = $r['_samples']; ?>
-            <?php for ($i = 0; $i < 3; $i++): ?>
-              <?php if (!empty($sm[$i])): ?>
-                <span class="shot" style="background-image:url('<?php echo $h($sm[$i]); ?>')"></span>
-              <?php else: ?>
-                <span class="shot ph<?php echo $i+1; ?>"></span>
-              <?php endif; ?>
-            <?php endfor; ?>
-          </div>
-          <div class="body">
-            <div class="meta">
-              <span class="avatar"<?php echo !empty($r['avatar_url']) ? ' style="background-image:url(\''.$h($r['avatar_url']).'\')"' : ''; ?>><?php echo empty($r['avatar_url']) ? $h($initials((string)$r['name'])) : ''; ?></span>
-              <div>
-                <h3 class="name"><?php echo $h($r['name']); ?></h3>
-                <p class="who"><?php echo $h($r['host']); ?></p>
-              </div>
-            </div>
-            <?php if (trim((string)$r['description']) !== ''): ?>
-              <p class="blurb"><?php echo $h($r['description']); ?></p>
-            <?php endif; ?>
-            <?php if ($r['_topics']): ?>
-              <p class="tags"><?php foreach (array_slice($r['_topics'],0,4) as $t): ?><span><?php echo $h($t); ?></span><?php endforeach; ?></p>
-            <?php endif; ?>
-            <p class="foot"><a class="visit" href="<?php echo $h($r['site_url']); ?>" rel="noopener">Visit blog ↗</a></p>
-          </div>
+          <a class="card-link" href="<?php echo $h($r['site_url']); ?>" rel="noopener" title="<?php echo $h($r['name']); ?>" aria-label="<?php echo $h($r['name']); ?>">
+            <span class="shots shots-<?php echo min(3, count($sm)); ?>">
+              <?php foreach (array_slice($sm, 0, 3) as $u): ?>
+                <span class="shot" style="background-image:url('<?php echo $h($u); ?>')"></span>
+              <?php endforeach; ?>
+            </span>
+          </a>
         </li>
       <?php endforeach; ?>
     </ul>
