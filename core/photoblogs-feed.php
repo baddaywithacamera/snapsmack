@@ -97,11 +97,29 @@ function pbfeed_first_img(string $html): string {
  * rows for currently-listed blogs are kept, so a delisted blog drops out.
  * $log is an optional callable(string) for CLI progress.
  */
+/**
+ * Feed source mode — the ONE thing that varies per install:
+ *   'blogs'   — boost registered directory blogs' own RSS (photoblogs.fyi).
+ *   'hashtag' — boost the followed actors' posts carrying the configured hashtag
+ *               (photofri.day + every challenge sibling, each with its own tag).
+ * Everything downstream (cache, de-clump, grid, RSS) is shared. Default 'blogs'.
+ */
+function pbfeed_mode(PDO $pdo): string {
+    try { $v = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='feed_mode'")->fetchColumn(); }
+    catch (\Throwable $e) { $v = ''; }
+    return ($v === 'hashtag') ? 'hashtag' : 'blogs';
+}
+
 function pbfeed_refresh(PDO $pdo, ?callable $log = null): array {
     $say = $log ?: function () {};
     pbfeed_ensure_table($pdo);
 
-    // Source of truth = the public directory members.
+    // Switchable source. Only the adapter that FILLS the cache differs.
+    if (pbfeed_mode($pdo) === 'hashtag') {
+        return pbfeed_refresh_hashtag($pdo, $say);
+    }
+
+    // --- MODE 'blogs': boost each registered directory member's own RSS -------
     $blogs = $pdo->query(
         "SELECT site_url, host, name FROM snap_directory_listings WHERE state = 'active'"
     )->fetchAll(PDO::FETCH_ASSOC);
@@ -191,6 +209,58 @@ function pbfeed_refresh(PDO $pdo, ?callable $log = null): array {
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('pbfeed_last_run', ?) ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute([date('Y-m-d H:i:s')]);
     $say("Feed refresh done: {$items_total} items across " . count($blogs) . " blogs.");
     return ['blogs' => count($blogs), 'items' => $items_total];
+}
+
+/**
+ * MODE 'hashtag' — boost the posts of the actors this instance follows that
+ * carry the configured hashtag (the challenge sites: photofri.day et al). Writes
+ * the SAME snap_feed_items rows (image_url; post_url = the ORIGINAL federated post
+ * on the poster's instance; pub_date), so the grid + RSS renderers are unchanged.
+ *
+ * TODO(2026-08-26): read the followed actors' collected posts + hashtag filter.
+ * Stubbed until the follow-and-collect side is delivering (challenge boosts run
+ * on the weekly cycle). A no-op that leaves the cache untouched, so an early run
+ * never wipes anything.
+ */
+function pbfeed_refresh_hashtag(PDO $pdo, callable $say): array {
+    $say('Feed mode: hashtag — adapter not built yet; no-op.');
+    return ['blogs' => 0, 'items' => 0, 'mode' => 'hashtag'];
+}
+
+/**
+ * Render the cached feed items as an RSS 2.0 document — the same data as the
+ * grid, for readers. Chronological (readers re-sort by date anyway), each item
+ * linking to the post with the thumbnail embedded. $channel takes title/link/
+ * description and an optional self href.
+ */
+function pbfeed_rss_xml(PDO $pdo, array $channel): string {
+    pbfeed_ensure_table($pdo);
+    $rows = $pdo->query(
+        "SELECT blog_name, post_url, image_url, title, pub_date
+         FROM snap_feed_items ORDER BY pub_date DESC, id DESC LIMIT 100"
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+    $out  = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+    $out .= '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>' . "\n";
+    $out .= '<title>' . $e($channel['title'] ?? 'Feed') . '</title>';
+    $out .= '<link>' . $e($channel['link'] ?? '') . '</link>';
+    $out .= '<description>' . $e($channel['description'] ?? '') . '</description><language>en-us</language>' . "\n";
+    if (!empty($channel['self'])) {
+        $out .= '<atom:link href="' . $e($channel['self']) . '" rel="self" type="application/rss+xml" />' . "\n";
+    }
+    foreach ($rows as $r) {
+        // image_url / post_url are cleaned on ingest (no quotes/spaces/brackets),
+        // so they are safe inside the CDATA HTML and the XML link element.
+        $label = $e(($r['blog_name'] ?? '') . ($r['title'] ? ' — ' . $r['title'] : ''));
+        $pd = $r['pub_date'] ? date(DATE_RSS, strtotime($r['pub_date'])) : '';
+        $out .= "<item>\n<title>{$label}</title>\n<link>" . $e($r['post_url']) . "</link>\n";
+        $out .= '<guid isPermaLink="true">' . $e($r['post_url']) . "</guid>\n";
+        if ($pd) $out .= "<pubDate>{$pd}</pubDate>\n";
+        $out .= "<description><![CDATA[<a href=\"{$r['post_url']}\" rel=\"noopener\"><img src=\"{$r['image_url']}\" alt=\"\"></a>]]></description>\n</item>\n";
+    }
+    $out .= "</channel></rss>\n";
+    return $out;
 }
 
 /**
