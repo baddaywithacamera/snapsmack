@@ -19,6 +19,24 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.27 — 2026-08-26
+
+### Added — SLAP HAPPY
+
+SUYB now has a dedicated **SLAP HAPPY** tab for SNAP SLAPPER backups. SNAP
+SLAPPER publishes an explicit handoff declaring its settings directory, shared
+catalog, and every photograph root. The tab shows those locations before a run
+and lets the user independently include settings, catalog/cache data,
+photographs, and editable `.slapper` / `.slaprecipe` projects.
+
+Backups can be full or incremental. Incrementals contain only changed files plus
+a deletion ledger, maintain a separate verified baseline for every destination,
+and never advance a cloud baseline unless the upload's bytes are verified.
+Destinations include a local folder and every SUYB profile with a configured
+Google Drive or Box target, so multiple cloud drives remain distinct.
+
+---
+
 ## 0.7.26 — 2026-08-22
 
 ### Added — Backup Manager (new "Manage" tab)

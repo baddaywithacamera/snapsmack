@@ -6,9 +6,61 @@ SNAPSMACK_EOF_HEADER: this file must end with the canonical Python EOF marker.
 import os
 import sys
 import tkinter as tk
+import json
+import tempfile
 
 
-BUILD_VERSION = "0.7.559"
+BUILD_VERSION = "0.7.560"
+
+
+def publish_backup_contract(state_path, library_root):
+    """Tell SUYB exactly where SNAP SLAPPER's settings and photographs live."""
+    state_dir = os.path.dirname(state_path)
+    folders = []
+    try:
+        with open(state_path, "r", encoding="utf-8") as handle:
+            value = json.load(handle)
+        if isinstance(value, dict):
+            folders = value.get("folders", [])
+        else:
+            folders = value if isinstance(value, list) else []
+    except (OSError, ValueError, TypeError):
+        pass
+    saved_roots = []
+    try:
+        with open(os.path.join(state_dir, "export_settings.json"), "r", encoding="utf-8") as handle:
+            export_value = json.load(handle)
+        if isinstance(export_value, dict) and export_value.get("version") == 1:
+            export_value = export_value.get("settings", {})
+        for key in ("saved_images_dir", "projects_dir"):
+            path = export_value.get(key, "") if isinstance(export_value, dict) else ""
+            if isinstance(path, str) and os.path.isdir(path):
+                saved_roots.append(os.path.abspath(path))
+    except (OSError, ValueError, TypeError):
+        pass
+    contract = {
+        "format": 1,
+        "settings_dir": os.path.abspath(state_dir),
+        "catalog_dir": os.path.abspath(library_root),
+        "image_roots": [os.path.abspath(p) for p in folders
+                        if isinstance(p, str) and os.path.isdir(p)],
+        "saved_roots": saved_roots,
+    }
+    os.makedirs(state_dir, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=".snap-contract-", suffix=".tmp",
+                                             dir=state_dir, text=True)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump(contract, handle, indent=2, sort_keys=True)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, os.path.join(state_dir, "backup_contract.json"))
+    except Exception:
+        try:
+            os.remove(temporary)
+        except OSError:
+            pass
+        raise
 
 
 def _add_shared_to_path():
@@ -29,8 +81,18 @@ def main():
     root = tk.Tk()
     root.withdraw()
     state_path = snap_home.config_path("snap-slapper", "library_folders.json")
+    publish_backup_contract(state_path, snap_home.shared_library())
     library = PhotoLibrary(root, snap_home.shared_library(), BUILD_VERSION, state_path=state_path)
-    library.protocol("WM_DELETE_WINDOW", root.destroy)
+
+    def close_app():
+        editor = getattr(library, "editor_window", None)
+        if editor and editor.winfo_exists():
+            editor.close_editor()
+            if editor.winfo_exists():
+                return
+        root.destroy()
+
+    library.protocol("WM_DELETE_WINDOW", close_app)
 
     qa_image = os.environ.get("SNAP_SLAPPER_QA_IMAGE", "")
     qa_marker = os.environ.get("SNAP_SLAPPER_QA_MARKER", "")
