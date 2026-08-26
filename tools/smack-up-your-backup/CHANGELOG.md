@@ -35,6 +35,10 @@ and never advance a cloud baseline unless the upload's bytes are verified.
 Destinations include a local folder and every SUYB profile with a configured
 Google Drive or Box target, so multiple cloud drives remain distinct.
 
+SLAP HAPPY can also include SUYB's own preferences, schedules, and sanitized
+profile definitions. Passwords, API keys, OAuth tokens, credential files, and
+other live secrets are explicitly redacted from these ordinary backup ZIPs.
+
 ---
 
 ## 0.7.26 — 2026-08-22

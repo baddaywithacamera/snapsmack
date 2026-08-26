@@ -3044,7 +3044,8 @@ class SlapHappyTab(tk.Frame):
         tk.Label(controls, text="WHAT GETS SAVED", bg=BG_MID, fg=ACCENT,
                  font=FONT_HEAD).grid(row=0, column=0, columnspan=4, sticky="w")
         self._parts = {}
-        labels = [("settings", "Settings"), ("catalog", "Catalog + cache"),
+        labels = [("suyb_settings", "SUYB settings"),
+                  ("settings", "SLAPPER settings"), ("catalog", "Catalog + cache"),
                   ("photos", "Photographs"), ("projects", "Editable projects")]
         for column, (key, label) in enumerate(labels):
             var = tk.BooleanVar(value=True)

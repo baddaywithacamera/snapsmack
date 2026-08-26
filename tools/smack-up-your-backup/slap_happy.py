@@ -12,8 +12,10 @@ import zipfile
 from datetime import datetime, timezone
 
 
-COMPONENTS = ("settings", "catalog", "photos", "projects")
+COMPONENTS = ("suyb_settings", "settings", "catalog", "photos", "projects")
 PROJECT_EXTENSIONS = {".slapper", ".slaprecipe"}
+SECRET_WORDS = ("password", "passwd", "secret", "token", "api_key", "key_id",
+                "app_key", "credential", "private_key")
 
 
 def _atomic_json(path: str, value: dict) -> None:
@@ -136,6 +138,38 @@ def _fingerprint(path: str) -> dict:
             "sha256": digest.hexdigest()}
 
 
+def _sanitized(value):
+    if isinstance(value, dict):
+        return {key: ("[REDACTED]" if any(word in key.lower() for word in SECRET_WORDS)
+                      else _sanitized(item)) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_sanitized(item) for item in value]
+    return value
+
+
+def suyb_settings_snapshot(home: str) -> bytes:
+    """Portable SUYB preferences/profile shape, deliberately excluding secrets."""
+    root = os.path.join(os.path.abspath(home), "config_files", "suyb")
+    snapshot = {"format": 1, "notice": "Credentials and OAuth tokens are excluded.",
+                "config_ini": "", "profiles": [], "sync_jobs": []}
+    try:
+        with open(os.path.join(root, "config.ini"), "r", encoding="utf-8") as handle:
+            snapshot["config_ini"] = handle.read()
+    except OSError:
+        pass
+    for bucket, field in (("profiles", "profiles"), ("sync_jobs", "sync_jobs")):
+        directory = os.path.join(root, bucket)
+        if not os.path.isdir(directory):
+            continue
+        for name in sorted(os.listdir(directory), key=str.lower):
+            if not name.lower().endswith(".json"):
+                continue
+            value = _read_json(os.path.join(directory, name), None)
+            if value is not None:
+                snapshot[field].append({"file": name, "value": _sanitized(value)})
+    return json.dumps(snapshot, indent=2, sort_keys=True).encode("utf-8")
+
+
 def create_backup(home: str, output_dir: str, mode="incremental", components=COMPONENTS,
                   state_path: str | None = None, destination_key="local",
                   commit=True, on_progress=None) -> dict:
@@ -147,6 +181,10 @@ def create_backup(home: str, output_dir: str, mode="incremental", components=COM
         raise ValueError("Pick at least one SNAP SLAPPER component.")
     contract = discover_contract(home)
     files = selected_files(contract, chosen)
+    if "suyb_settings" in chosen:
+        payload = suyb_settings_snapshot(home)
+        files.append({"component": "suyb_settings", "source": None,
+                      "archive": "suyb-settings/SUYB-SETTINGS.json", "data": payload})
     state_path = state_path or os.path.join(home, "config_files", "suyb",
                                             "slap_happy_manifest.json")
     all_state = _read_json(state_path, {})
@@ -156,7 +194,11 @@ def create_backup(home: str, output_dir: str, mode="incremental", components=COM
     current, changed = {}, []
     total = len(files)
     for number, record in enumerate(files, 1):
-        fingerprint = _fingerprint(record["source"])
+        if "data" in record:
+            fingerprint = {"size": len(record["data"]),
+                           "sha256": hashlib.sha256(record["data"]).hexdigest()}
+        else:
+            fingerprint = _fingerprint(record["source"])
         current[record["archive"]] = fingerprint
         if previous.get(record["archive"]) != fingerprint or mode == "full":
             changed.append(record)
@@ -179,7 +221,10 @@ def create_backup(home: str, output_dir: str, mode="incremental", components=COM
             archive.writestr("SLAP-HAPPY-MANIFEST.json",
                              json.dumps(manifest, indent=2, sort_keys=True))
             for number, record in enumerate(changed, 1):
-                archive.write(record["source"], record["archive"])
+                if "data" in record:
+                    archive.writestr(record["archive"], record["data"])
+                else:
+                    archive.write(record["source"], record["archive"])
                 if on_progress:
                     on_progress("Packing", number, len(changed))
         os.replace(temporary, target)
