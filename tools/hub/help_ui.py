@@ -7,11 +7,21 @@ import tkinter as tk
 
 
 TOPICS = [
-    ("Stock LEWKS", "LEWKS are coordinated appearance packs; Filters are individual "
-     "image-processing operations. Open LEWKS + BATCH in the editor and choose BROWSE "
-     "STOCK LEWKS to apply a built-in appearance at a chosen overall strength. Stock "
-     "masters are read-only. Applying a LEWK records a non-destructive project change "
-     "and never overwrites the original."),
+    ("Stock LEWKS", "Filters process pixels. LEWKS coordinate a style. LEWKS are "
+     "coordinated appearance packs; Filters are individual image-processing operations. "
+     "Open LEWKS + BATCH in the editor and choose BROWSE STOCK LEWKS to apply a built-in "
+     "appearance at a chosen overall strength. Stock masters are read-only. Applying a "
+     "LEWK records a non-destructive project change and never overwrites the original."),
+    ("LEWK AGAIN", "LEWK AGAIN builds a LEWK from a plain-language description using an AI "
+     "model you choose — Claude, ChatGPT, Gemini, Kimi, or Deepseek. Open LEWKS + BATCH, "
+     "choose LEWK AGAIN, describe the look ('muted winter documentary colour, protect skin "
+     "tones, lift deep shadows, restrained grain'), and press GENERATE LEWK. Your photograph "
+     "is never uploaded — only your words are sent. Every value the model returns is checked "
+     "against the controls SNAP SLAPPER actually has and clamped to a safe range, so a "
+     "generated LEWK is an ordinary editable appearance, never code or an unknown operation. "
+     "Review the adjustments, set STRENGTH, REFINE with a follow-up like 'warmer, less grain', "
+     "then APPLY TO PHOTO or SAVE AS .LEWK. Add model API keys with the KEYS button; a key can "
+     "also come from an environment variable or the shared Hub vault."),
     ("Quick start", "Open a local folder, select a photograph, and press Enter or double-click "
      "to open the editor. Adjustments remain non-destructive. Save a .slapper project to "
      "keep the editing instructions, then Export to create a new image file."),

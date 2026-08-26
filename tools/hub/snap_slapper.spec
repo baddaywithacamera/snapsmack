@@ -16,6 +16,11 @@ _app_files = [os.path.join(_src, name) for name in
               ('snap_slapper.py', 'photo_library.py', 'photo_manager.py',
                'editor_engine.py', 'editor_ui.py', 'help_ui.py')]
 _app_files.append(os.path.join(_src, 'built_in_lewks.py'))
+# LEWK AGAIN (the AI look builder) and its provider client. Both are stdlib-only
+# (urllib, no requests); the shared credential vault is read lazily and remains
+# hard-excluded below, so the editor exe still carries no fleet auth/network code.
+_app_files.append(os.path.join(_src, 'lewk_again.py'))
+_app_files.append(os.path.join(_src, 'lewk_providers.py'))
 # SECAUDIT: bundle ONLY the shared modules SNAP SLAPPER actually imports
 # (snap_slapper/photo_* import just snap_home, which imports snap_paths).
 # The previous glob('*.py') force-compiled the whole fleet toolkit into the
@@ -33,6 +38,7 @@ a = Analysis(
     binaries=[],
     datas=[(path, '.') for path in _app_files + _shared_files],
     hiddenimports=['photo_library', 'photo_manager', 'editor_engine', 'editor_ui', 'help_ui', 'built_in_lewks',
+                   'lewk_again', 'lewk_providers',
                    'PIL', 'PIL.Image', 'PIL.ImageTk'] + _shared_mods,
     hookspath=[],
     hooksconfig={},
