@@ -10,6 +10,13 @@
 
 # SnapSmack Changelog
 
+## 0.7.560 — 2026-08-26 "SNAP SLAPPER"
+
+- **SNAP SLAPPER closed-beta hardening.** The immutable-original rule is now enforced by the shared writer rather than left to individual tools: rotation creates named, collision-safe copies; every derivative is written atomically; copy, move, external-edit, Trash, and restore paths never publish partial files; and a failed Trash manifest rolls photographs back instead of orphaning them. External editors can receive working copies only. Existing EXIF copyright, ICC, DPI, and XMP metadata continue forward, and the explicit GPS-removal preference now reaches library, viewer, editor, and batch exports without touching the original. Organizer settings now use versioned, atomically replaced state files while still reading the earlier unwrapped files.
+- **Editor recovery and honest failures.** Unsaved documents autosave to a local recovery area and are offered back after an interrupted session. Project and preset writes use the same last-good atomic state writer. Malformed projects, missing originals, missing image layers, broken presets, and failed saves now produce direct errors instead of silently changing the composite or dropping work.
+- **Offline beta guidance.** SNAP SLAPPER now ships searchable local help, available from the library, editor, and F1, covering the core workflow, file safety, metadata, projects, RAW handoff, Trash, recovery, and shortcuts. Recognized RAW files and formats the editor cannot decode are handed off offline to detected RawTherapee/darktable installs or another chosen program, with the original passed untouched.
+- **The standalone build is fenced.** Its package now includes only the two shared path modules it uses—not fleet credentials, discovery, profiles, AI, or network code. The build refuses to create a knowingly dead executable when Python lacks a usable Tk desktop runtime. It builds into staging, must open a real image in the frozen application, and only then replaces the installed beta; a failed package leaves the last working executable untouched.
+
 ## 0.7.558 — 2026-08-25 "FEDBOARD"
 
 - Fediverse: **RUN JOBS — ALL SPOKES** now does a fast roster refresh per spoke instead of the full delivery sweep. Running the whole sweep made one spoke grind through its queue and outlast a locked-down hub's request window, so the fan-out timed out (stuck on job 1, then mass failures). It now calls the roster pull directly — the same fast operation as VERIFY CONNECTION — which also fills blogs that have fediverse switched off. Deliveries stay with each spoke's own cron / web-cron.
