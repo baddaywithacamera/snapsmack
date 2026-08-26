@@ -137,6 +137,14 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Aug 26</span>
+                    <a href="#slapper-file-format">.SLAPPER: Your Edits Are Not Hostages</a>
+                </li>
+                <li>
+                    <span class="idx-date">Aug 25</span>
+                    <a href="#snap-slapper-lab">SNAP SLAPPER Has Escaped the Lab</a>
+                </li>
+                <li>
                     <span class="idx-date">Aug 13</span>
                     <a href="#pixelix-live">Pixelix Comes Through the Front Door</a>
                 </li>
@@ -298,6 +306,37 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="slapper-file-format">
+                <div class="post-meta">
+                    <span class="post-date">August 26, 2026</span>
+                    <span class="post-tag">Data Freedom</span>
+                </div>
+                <h2><a href="#slapper-file-format">.SLAPPER: Your Edits Are Not Hostages</a></h2>
+                <p>A photograph is not a fucking timeshare. You should not lose the work you did to it because you stopped paying rent to the program that opened it.</p>
+                <p>That is the point of the <code>.slapper</code> project file. It is a versioned, readable document describing the edit: which original photograph it belongs to, the crop and geometry, global adjustments, layers, masks, blend modes, retouch work, Filters, and the LEWKS stacked on top. The photograph stays where the photographer put it. SNAP SLAPPER stores the instructions, not a secret second original buried in an app dungeon with a tiny proprietary door.</p>
+                <p>The format is deliberately boring where boring is beautiful. Structured data. Declared versions. Ordinary paths. Masks stored as standard image data. No executable scripts hiding in a style pack, no cloud account required to interpret the file, and no mystery database that turns into alphabet soup the minute the company gets acquired by Bastard Holdings LLC.</p>
+                <p>Open the project next year and SNAP SLAPPER rebuilds the result from the original plus those instructions. Move the photograph and it tells you the reference is missing instead of quietly substituting something else. Encounter an operation from a newer build and the file keeps it intact and says what cannot be rendered. &ldquo;I don&rsquo;t understand this yet&rdquo; is acceptable. Silently eating somebody&rsquo;s layers is not.</p>
+                <p>That also means a <code>.slapper</code> file is small enough to back up, inspect, copy, diff, archive, and hand to another machine. SUYB&rsquo;s SLAP HAPPY backup knows where the projects, settings, originals, and saved photographs live because the photographer declares those locations. Full and incremental backups preserve the pieces without dragging the entire library into SNAP SLAPPER&rsquo;s program folder. Your filing system remains your filing system. Revolutionary stuff, apparently.</p>
+                <p>But an open-looking JSON file is not enough if the only program that can render it is ours. That is just lock-in wearing a hemp shirt.</p>
+                <p>So the closed-beta interchange contract includes <strong>PSD</strong> and <strong>layered TIFF</strong>. PSD is the practical bridge into Photoshop and the enormous ecosystem that grew around it. Layered TIFF is the durable, widely understood bridge for programs that can preserve layers without adopting Adobe&rsquo;s whole worldview. Where an outside format cannot express a SNAP SLAPPER operation exactly, export must preserve the rendered appearance, retain the editable pieces it can represent, and produce an honest compatibility report for whatever had to be rasterized. No green checkmark followed by a flattened surprise.</p>
+                <p>Those PSD and layered-TIFF bridges are on the 564D closed-beta path; they are part of the format promise, not a feature we are pretending has already shipped. We will call them supported after round-trip tests prove that layers, masks, names, opacity, blend modes, dimensions, colour profiles, and rendered appearance survive the trip. Marketing does not get to outrank the file hash.</p>
+                <p><code>.slapper</code> remains the native project format because it can preserve SNAP SLAPPER&rsquo;s complete editing model without squeezing it into somebody else&rsquo;s trousers. PSD and layered TIFF are the exits. JPEG, PNG, and ordinary TIFF are the finished photographs. LEWKS are portable appearance packs. They serve different jobs, and none of those jobs is trapping the photographer.</p>
+                <p>You made the photograph. You made the edit. You get the source, the instructions, the layered interchange copy, the finished render, and the right to leave.</p>
+                <p><strong>The only thing SNAP SLAPPER wants to lock in is the look.</strong></p>
+            </article>
+
+            <article class="post" id="snap-slapper-lab">
+                <div class="post-meta">
+                    <span class="post-date">August 25, 2026</span>
+                    <span class="post-tag">Desktop</span>
+                </div>
+                <h2><a href="#snap-slapper-lab">SNAP SLAPPER Has Escaped the Lab</a></h2>
+                <p>The framework is built. SNAP SLAPPER is alive: a fast, private desktop photo library for browsing, rating, tagging, organizing, editing, and exporting your photographs without feeding the whole bloody collection to somebody else&rsquo;s cloud.</p>
+                <p>Now we&rsquo;re armouring it for the closed beta&mdash;hardening the library, sharpening the workflow, and making sure it can survive photographers doing unspeakable things to years of accumulated work.</p>
+                <p>And the mutation isn&rsquo;t finished.</p>
+                <p><strong>LEWK AGAIN</strong> is stirring inside it: AI-assisted action stacking that turns the look in your head into a reusable LEWK without buying another influencer&rsquo;s overpriced bag of presets. We&rsquo;ll show you what crawls out of the lab soon.</p>
+            </article>
 
             <article class="post" id="pixelix-live">
                 <div class="post-meta">
