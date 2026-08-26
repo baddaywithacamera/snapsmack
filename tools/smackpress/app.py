@@ -38,6 +38,10 @@ _HERE = Path(__file__).resolve().parent
 _PKG = _HERE / "smackpress"
 if str(_PKG) not in sys.path:
     sys.path.insert(0, str(_PKG))
+# The shared library (for Thomas the Bear, and future shared modules).
+_SHARED = _HERE.parent / "_shared"
+if _SHARED.is_dir() and str(_SHARED) not in sys.path:
+    sys.path.insert(0, str(_SHARED))
 
 import config
 import db
@@ -642,6 +646,12 @@ class SmackPressApp:
         w = int(config.get("window_width") or 1400)
         h = int(config.get("window_height") or 900)
         self._root.geometry(f"{w}x{h}")
+        # Thomas the Bear. Ctrl+Shift+Y. For Noah. (THE-THOMAS-CLAUSE)
+        try:
+            import thomas
+            thomas.install(self._root)
+        except Exception:
+            pass
         self._root.minsize(900, MIN_HEIGHT)
         self._root.protocol("WM_DELETE_WINDOW", self._on_close)
 

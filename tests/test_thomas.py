@@ -19,9 +19,15 @@ import thomas
 
 
 class PresenceTests(unittest.TestCase):
-    def test_image_ships_with_the_editor(self):
-        self.assertTrue(os.path.isfile(thomas.image_path()),
-                        "Thomas image must ship beside the editor")
+    def test_bear_image_is_embedded(self):
+        # The bear travels inside thomas.py (base64), so any tool that bundles
+        # the module carries him with no separate asset to lose.
+        import base64
+        import io
+        from PIL import Image
+        data = base64.b64decode(thomas._IMAGE_B64)
+        image = Image.open(io.BytesIO(data))
+        self.assertGreater(min(image.size), 10)
 
     def test_story_attributes_noah_grey(self):
         story = thomas.STORY
