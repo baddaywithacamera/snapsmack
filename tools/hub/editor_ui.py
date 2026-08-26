@@ -6,6 +6,7 @@ SNAPSMACK_EOF_HEADER: this file must end with the canonical Python EOF marker.
 import copy
 import json
 import os
+import threading
 import tkinter as tk
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 
@@ -15,6 +16,8 @@ import editor_engine
 import photo_manager
 import help_ui
 import built_in_lewks
+import lewk_again
+import lewk_providers
 
 
 BG, PANEL, FIELD, BORDER = "#080808", "#111111", "#1c1c1c", "#292929"
@@ -407,6 +410,8 @@ class EditorWindow(tk.Toplevel):
         panel = self.accordion("LEWKS + BATCH", False)
         self._button(panel, "BROWSE STOCK LEWKS…", self.browse_stock_lewks, True).pack(
             fill="x", padx=8, pady=(5, 2), ipady=4)
+        self._button(panel, "LEWK AGAIN — DESCRIBE A LOOK…", self.lewk_again_dialog, True).pack(
+            fill="x", padx=8, pady=(0, 2), ipady=4)
         for text, command in (("COPY ADJUSTMENTS", self.copy_adjustments),
                               ("PASTE ADJUSTMENTS", self.paste_adjustments),
                               ("SAVE PRESET…", self.save_preset), ("LOAD PRESET…", self.load_preset),
@@ -476,6 +481,198 @@ class EditorWindow(tk.Toplevel):
         self._button(buttons, "CANCEL", window.destroy).pack(side="left", fill="x", expand=True)
         self._button(buttons, "APPLY LEWK", apply, True).pack(
             side="right", fill="x", expand=True, padx=(8, 0))
+
+    def lewk_again_dialog(self):
+        window = tk.Toplevel(self)
+        window.title("SNAP SLAPPER — LEWK AGAIN")
+        window.configure(bg=BG)
+        window.geometry("640x640")
+        window.transient(self)
+        state = {"proposal": None}
+
+        tk.Label(window, text="LEWK AGAIN", bg=BG, fg=ACCENT,
+                 font=("Segoe UI Black", 18, "bold")).pack(anchor="w", padx=16, pady=(14, 0))
+        tk.Label(window, text="Describe the look you want and LEWK AGAIN builds an editable "
+                 "LEWK. Your photograph is never uploaded — only your words are sent.",
+                 bg=BG, fg=DIM, wraplength=600, justify="left",
+                 font=("Segoe UI", 9)).pack(anchor="w", padx=16, pady=(2, 10))
+
+        choices = lewk_providers.provider_choices()
+        labels = [label for _pid, label in choices]
+
+        def current_pid():
+            for pid, label in choices:
+                if label == provider_var.get():
+                    return pid
+            return "claude"
+
+        row = tk.Frame(window, bg=BG)
+        row.pack(fill="x", padx=16)
+        tk.Label(row, text="MODEL", bg=BG, fg=DIM, font=("Segoe UI", 8, "bold")).pack(side="left")
+        provider_var = tk.StringVar(value=labels[0])
+        ttk.Combobox(row, values=labels, textvariable=provider_var, state="readonly",
+                     width=22).pack(side="left", padx=8)
+        self._button(row, "KEYS…", lambda: self._lewk_again_keys(window)).pack(side="left")
+
+        tk.Label(window, text="DESCRIPTION", bg=BG, fg=DIM,
+                 font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=16, pady=(12, 2))
+        description_box = tk.Text(window, height=4, bg=FIELD, fg=INK, insertbackground=INK,
+                                  relief="flat", wrap="word", font=("Segoe UI", 10))
+        description_box.pack(fill="x", padx=16)
+        description_box.insert("1.0", "muted winter documentary colour, protect skin tones, "
+                               "lift deep shadows, restrained grain")
+
+        strength = tk.IntVar(value=100)
+        srow = tk.Frame(window, bg=BG)
+        srow.pack(fill="x", padx=16, pady=(8, 0))
+        tk.Label(srow, text="STRENGTH", bg=BG, fg=DIM, font=("Segoe UI", 8, "bold")).pack(side="left")
+        tk.Scale(srow, from_=0, to=100, variable=strength, orient="horizontal", bg=BG, fg=INK,
+                 troughcolor=FIELD, activebackground=ACCENT, highlightthickness=0,
+                 length=360).pack(side="left", padx=8)
+
+        status = tk.Label(window, text="Describe a look and press GENERATE LEWK.", bg=BG, fg=DIM,
+                          wraplength=600, justify="left", font=("Segoe UI", 9))
+        status.pack(anchor="w", padx=16, pady=(8, 0))
+        summary = tk.Text(window, height=9, bg="#0b0b0b", fg=INK, relief="flat", wrap="word",
+                          font=("Consolas", 9), state="disabled")
+        summary.pack(fill="both", expand=True, padx=16, pady=(6, 6))
+
+        def set_summary(text):
+            summary.configure(state="normal")
+            summary.delete("1.0", "end")
+            summary.insert("1.0", text)
+            summary.configure(state="disabled")
+
+        rrow = tk.Frame(window, bg=BG)
+        rrow.pack(fill="x", padx=16)
+        tk.Label(rrow, text="REFINE", bg=BG, fg=DIM, font=("Segoe UI", 8, "bold")).pack(side="left")
+        refine_var = tk.StringVar()
+        tk.Entry(rrow, textvariable=refine_var, bg=FIELD, fg=INK, insertbackground=INK,
+                 relief="flat").pack(side="left", fill="x", expand=True, padx=8, ipady=3)
+
+        brow = tk.Frame(window, bg=BG)
+        brow.pack(fill="x", padx=16, pady=12)
+        buttons = {}
+
+        def busy(on, message="", error=False):
+            status.configure(text=message, fg="#ff6b6b" if error else (DIM if on else INK))
+            for button in buttons.values():
+                button.configure(state="disabled" if on else "normal")
+
+        def describe_proposal(proposal):
+            clean = lewk_again.sanitize_adjustments(proposal.get("adjustments", {}))
+            lines = [proposal.get("name", "LEWK AGAIN"),
+                     "(" + lewk_again._pick_category(proposal.get("category")) + ")  "
+                     + proposal.get("description", ""), ""]
+            for key in sorted(clean):
+                lines.append("  %-14s %s" % (key, clean[key]))
+            set_summary("\n".join(lines))
+
+        def worker(description, refinement, previous):
+            try:
+                _recipe, proposal = lewk_again.generate(
+                    description, current_pid(), refinement=refinement, previous=previous,
+                    strength=strength.get())
+            except Exception as exc:
+                message = str(exc)
+                window.after(0, lambda: busy(False, message, error=True))
+                return
+
+            def done():
+                state["proposal"] = proposal
+                describe_proposal(proposal)
+                busy(False, "LEWK ready — review it, then APPLY or SAVE.")
+
+            window.after(0, done)
+
+        def generate(refine=False):
+            description = description_box.get("1.0", "end").strip()
+            if not description:
+                busy(False, "Describe the look first.", error=True)
+                return
+            if refine and not state["proposal"]:
+                busy(False, "Generate a LEWK first, then refine it.", error=True)
+                return
+            refinement = refine_var.get().strip() if refine else None
+            previous = state["proposal"] if refine else None
+            busy(True, "Asking %s…" % provider_var.get())
+            threading.Thread(target=worker, args=(description, refinement, previous),
+                             daemon=True).start()
+
+        def apply_to_photo():
+            if not state["proposal"]:
+                return
+            recipe = lewk_again.build_lewk(state["proposal"], strength=strength.get())
+            self.document.stack_layers(recipe["layers"])
+            self._load_document_controls()
+            self.status_label.configure(text="LEWK applied: " + recipe["lewk"]["name"])
+            window.destroy()
+
+        def save_lewk():
+            if not state["proposal"]:
+                return
+            path = filedialog.asksaveasfilename(parent=window, title="Save LEWK",
+                    defaultextension=".lewk", filetypes=[("SNAP SLAPPER LEWK", "*.lewk")])
+            if not path:
+                return
+            try:
+                editor_engine.save_recipe(path, lewk_again.build_lewk(
+                    state["proposal"], strength=strength.get()))
+                status.configure(text="Saved " + os.path.basename(path), fg=INK)
+            except Exception as exc:
+                status.configure(text=str(exc), fg="#ff6b6b")
+
+        buttons["generate"] = self._button(brow, "GENERATE LEWK", lambda: generate(False), True)
+        buttons["generate"].pack(side="left", ipady=3, ipadx=6)
+        buttons["refine"] = self._button(brow, "REFINE THIS", lambda: generate(True))
+        buttons["refine"].pack(side="left", padx=(8, 0), ipady=3)
+        buttons["apply"] = self._button(brow, "APPLY TO PHOTO", apply_to_photo, True)
+        buttons["apply"].pack(side="right", ipady=3, ipadx=6)
+        buttons["save"] = self._button(brow, "SAVE AS .LEWK…", save_lewk)
+        buttons["save"].pack(side="right", padx=(0, 8), ipady=3)
+
+    def _lewk_again_keys(self, parent):
+        window = tk.Toplevel(parent)
+        window.title("LEWK AGAIN — API keys")
+        window.configure(bg=BG)
+        window.geometry("520x300")
+        window.transient(parent)
+        window.grab_set()
+        config = lewk_again.load_config()
+        tk.Label(window, text="Paste an API key for any models you want to use. Keys are stored "
+                 "on this computer only. Environment variables and the shared Hub vault, if set, "
+                 "take priority.", bg=BG, fg=DIM, wraplength=470, justify="left",
+                 font=("Segoe UI", 9)).pack(anchor="w", padx=16, pady=(14, 8))
+        stored = config.get("keys", {}) or {}
+        entries = {}
+        for pid, label in lewk_providers.provider_choices():
+            line = tk.Frame(window, bg=BG)
+            line.pack(fill="x", padx=16, pady=3)
+            tk.Label(line, text=label, bg=BG, fg=INK, width=20, anchor="w",
+                     font=("Segoe UI", 9)).pack(side="left")
+            variable = tk.StringVar(value=lewk_again._decode_local_key(stored.get(pid, "")))
+            tk.Entry(line, textvariable=variable, bg=FIELD, fg=INK, insertbackground=INK,
+                     relief="flat", show="*").pack(side="left", fill="x", expand=True, ipady=3)
+            entries[pid] = variable
+
+        def save():
+            config.setdefault("keys", {})
+            for pid, variable in entries.items():
+                value = variable.get().strip()
+                if value:
+                    config["keys"][pid] = value
+                elif pid in config["keys"]:
+                    del config["keys"][pid]
+            try:
+                lewk_again.save_config(config)
+                window.destroy()
+            except Exception as exc:
+                messagebox.showerror("Could not save keys", str(exc), parent=window)
+
+        brow = tk.Frame(window, bg=BG)
+        brow.pack(fill="x", padx=16, pady=14)
+        self._button(brow, "SAVE KEYS", save, True).pack(side="right", ipadx=6, ipady=3)
+        self._button(brow, "CANCEL", window.destroy).pack(side="right", padx=(0, 8), ipady=3)
 
     def _build_history(self):
         panel = self.accordion("HISTORY", False)

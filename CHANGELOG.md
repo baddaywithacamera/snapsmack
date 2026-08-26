@@ -10,6 +10,29 @@
 
 # SnapSmack Changelog
 
+## 0.7.564 — 2026-08-26 "FEDBOARD"
+
+- **LEWK AGAIN — describe a look, get an editable LEWK.** SNAP SLAPPER's AI look
+  builder. In the editor's LEWKS + BATCH panel, choose LEWK AGAIN, type what you
+  want ("muted winter documentary colour, protect skin tones, lift deep shadows,
+  restrained grain"), and it asks a language model for a matching LEWK. Your
+  photograph is never uploaded — only your words are sent. Pick any of five
+  models: Claude, ChatGPT, Gemini, Kimi, or Deepseek. Set an overall strength,
+  REFINE conversationally ("warmer, less grain"), then APPLY TO PHOTO
+  (non-destructively, on top of your existing edits) or SAVE AS .LEWK.
+- **The AI can only ever produce a safe, editable look.** Every value the model
+  returns is checked against the exact controls the SNAP SLAPPER renderer has
+  and clamped into a sane range; unknown keys are dropped and the tone curve is
+  validated point by point. A generated LEWK is ordinary editable adjustments —
+  never code, a network fetch, or an operation outside the local allowlist
+  (SNAP-SLAPPER-SPEC section 9).
+- **Keys come from where you already keep them.** LEWK AGAIN reads a provider's
+  API key from an environment variable, then the shared Hub vault, then its own
+  local settings (KEYS button). The provider client is stdlib-only (urllib, no
+  `requests`), so the editor build still carries no fleet network stack, and the
+  credential vault is read lazily rather than bundled into the exe. Offline Help
+  gains a LEWK AGAIN topic.
+
 ## 0.7.563 — 2026-08-26 "FEDBOARD"
 
 - **Countdown clocks can reset themselves.** The shared countdown engine (`ss-engine-countdown.js`) gained an optional recurring roll: add `data-every="7d"` (or `1w` / `12h` / raw seconds) and when a counter hits zero it re-aims at the next occurrence instead of stopping. `data-roll-caption="Next prompt drops in"` relabels the heading (any element marked `[data-cd-caption]`) on that first roll. One-shot countdowns with no `data-every` are unchanged. This lets the PhotoFri prompt clock roll from the launch prompt to next week's prompt on its own, changing "First prompt drops in" to "Next prompt drops in".
