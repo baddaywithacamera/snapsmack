@@ -7,6 +7,11 @@ import tkinter as tk
 
 
 TOPICS = [
+    ("Stock LEWKS", "LEWKS are coordinated appearance packs; Filters are individual "
+     "image-processing operations. Open LEWKS + BATCH in the editor and choose BROWSE "
+     "STOCK LEWKS to apply a built-in appearance at a chosen overall strength. Stock "
+     "masters are read-only. Applying a LEWK records a non-destructive project change "
+     "and never overwrites the original."),
     ("Quick start", "Open a local folder, select a photograph, and press Enter or double-click "
      "to open the editor. Adjustments remain non-destructive. Save a .slapper project to "
      "keep the editing instructions, then Export to create a new image file."),
@@ -21,8 +26,8 @@ TOPICS = [
     ("Editor", "Use the right rail for light, colour, detail, effects, geometry, layers, masks, "
      "and history. Undo and Redo restore document states. Compare cycles through edited, split, "
      "side-by-side, and original views. Export writes the visible composite to a new file."),
-    ("Projects and presets", "A .slapper project stores the source reference and editable "
-     "document state. Save before closing if the title shows unsaved work. Presets store reusable "
+    ("Projects and LEWKS", "A .slapper project stores the source reference and editable "
+     "document state. Save before closing if the title shows unsaved work. LEWKS store reusable "
      "adjustments. A missing original or image layer is reported explicitly instead of silently "
      "changing the result."),
     ("Export and metadata", "Exports use collision-safe names and preserve available EXIF, ICC "

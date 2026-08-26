@@ -15,6 +15,7 @@ _shared_dir = os.path.normpath(os.path.join(_src, '..', '_shared'))
 _app_files = [os.path.join(_src, name) for name in
               ('snap_slapper.py', 'photo_library.py', 'photo_manager.py',
                'editor_engine.py', 'editor_ui.py', 'help_ui.py')]
+_app_files.append(os.path.join(_src, 'built_in_lewks.py'))
 _shared_files = [os.path.join(_shared_dir, name) for name in
                  ('snap_home.py', 'snap_paths.py')]
 _shared_mods = [os.path.splitext(os.path.basename(path))[0] for path in _shared_files]
@@ -24,7 +25,7 @@ a = Analysis(
     pathex=[_src, _shared_dir],
     binaries=[],
     datas=[(path, '.') for path in _app_files + _shared_files],
-    hiddenimports=['photo_library', 'photo_manager', 'editor_engine', 'editor_ui', 'help_ui',
+    hiddenimports=['photo_library', 'photo_manager', 'editor_engine', 'editor_ui', 'help_ui', 'built_in_lewks',
                    'PIL', 'PIL.Image', 'PIL.ImageTk'] + _shared_mods,
     hookspath=[],
     hooksconfig={},
