@@ -17,7 +17,7 @@ import photo_manager
 import help_ui
 import built_in_lewks
 import lewk_again
-import lewk_providers
+import snap_ai
 
 
 BG, PANEL, FIELD, BORDER = "#080808", "#111111", "#1c1c1c", "#292929"
@@ -497,7 +497,7 @@ class EditorWindow(tk.Toplevel):
                  bg=BG, fg=DIM, wraplength=600, justify="left",
                  font=("Segoe UI", 9)).pack(anchor="w", padx=16, pady=(2, 10))
 
-        choices = lewk_providers.provider_choices()
+        choices = snap_ai.provider_choices()
         labels = [label for _pid, label in choices]
 
         def current_pid():
@@ -645,7 +645,7 @@ class EditorWindow(tk.Toplevel):
                  font=("Segoe UI", 9)).pack(anchor="w", padx=16, pady=(14, 8))
         stored = config.get("keys", {}) or {}
         entries = {}
-        for pid, label in lewk_providers.provider_choices():
+        for pid, label in snap_ai.provider_choices():
             line = tk.Frame(window, bg=BG)
             line.pack(fill="x", padx=16, pady=3)
             tk.Label(line, text=label, bg=BG, fg=INK, width=20, anchor="w",

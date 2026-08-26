@@ -1,7 +1,7 @@
 """Regression checks for LEWK AGAIN — the AI-assisted LEWK builder.
 
 These never touch the network: the provider layer's single HTTP helper
-(`lewk_providers._post_json`) is patched, so every provider path is exercised
+(`snap_ai._post_json`) is patched, so every provider path is exercised
 offline and deterministically.
 
 SNAPSMACK_EOF_HEADER: this file must end with the canonical Python EOF marker.
@@ -15,12 +15,14 @@ from unittest import mock
 from PIL import Image
 
 HUB = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tools", "hub"))
-if HUB not in sys.path:
-    sys.path.insert(0, HUB)
+SHARED = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tools", "_shared"))
+for _path in (SHARED, HUB):
+    if _path not in sys.path:
+        sys.path.insert(0, _path)
 
 import editor_engine
 import lewk_again
-import lewk_providers
+import snap_ai
 
 
 class SanitizeTests(unittest.TestCase):
@@ -149,8 +151,8 @@ class ProviderTests(unittest.TestCase):
             captured["body"] = body
             return fake_reply
 
-        with mock.patch.object(lewk_providers, "_post_json", fake_post):
-            text = lewk_providers.call(provider, "KEY123", self.SYSTEM, self.TURNS)
+        with mock.patch.object(snap_ai, "_post_json", fake_post):
+            text = snap_ai.call(provider, "KEY123", self.SYSTEM, self.TURNS)
         return text, captured
 
     def test_claude_request_and_parse(self):
@@ -181,15 +183,15 @@ class ProviderTests(unittest.TestCase):
             self.assertIn(host, cap["url"])
 
     def test_missing_key_raises(self):
-        with self.assertRaises(lewk_providers.MissingKeyError):
-            lewk_providers.call("claude", "", self.SYSTEM, self.TURNS)
+        with self.assertRaises(snap_ai.MissingKeyError):
+            snap_ai.call("claude", "", self.SYSTEM, self.TURNS)
 
     def test_unknown_provider_raises(self):
-        with self.assertRaises(lewk_providers.ProviderError):
-            lewk_providers.normalize_provider("bard")
+        with self.assertRaises(snap_ai.ProviderError):
+            snap_ai.normalize_provider("bard")
 
     def test_all_five_have_choices(self):
-        ids = {pid for pid, _ in lewk_providers.provider_choices()}
+        ids = {pid for pid, _ in snap_ai.provider_choices()}
         self.assertEqual(ids, {"claude", "openai", "gemini", "kimi", "deepseek"})
 
 
@@ -214,7 +216,7 @@ class GenerateTests(unittest.TestCase):
     def test_generate_end_to_end(self):
         reply = {"content": [{"text": '{"name":"Warm","category":"Portrait",'
                               '"description":"cosy","adjustments":{"temperature":15,"contrast":8}}'}]}
-        with mock.patch.object(lewk_providers, "_post_json", return_value=reply):
+        with mock.patch.object(snap_ai, "_post_json", return_value=reply):
             recipe, proposal = lewk_again.generate(
                 "cosy warm portrait", "claude", api_key="KEY", config={"keys": {}, "models": {}})
         self.assertEqual(proposal["name"], "Warm")
@@ -223,7 +225,7 @@ class GenerateTests(unittest.TestCase):
 
     def test_generate_requires_a_key(self):
         with mock.patch.dict(os.environ, {}, clear=True):
-            with self.assertRaises(lewk_providers.MissingKeyError):
+            with self.assertRaises(snap_ai.MissingKeyError):
                 lewk_again.generate("x", "claude", config={"keys": {}, "models": {}})
 
     def test_refinement_builds_multi_turn(self):
