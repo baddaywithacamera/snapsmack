@@ -4,7 +4,9 @@
  *
  * Renders the APPROVED (state='active') directory listings. Browse by topic,
  * search, sort — all server-side, no JavaScript. Every card links back to the
- * photographer's own site (rel="nofollow"); nothing is re-hosted here.
+ * photographer's own site (dofollow — the directory passes its link equity OUT
+ * to members on purpose; sending traffic + SEO back is the whole point);
+ * nothing is re-hosted here.
  * Reachable at /directory.php (a pretty /directory rewrite is a follow-up).
  *
  * SNAPSMACK_EOF_HEADER
@@ -191,7 +193,7 @@ $initials = function (string $name): string {
             <?php if ($r['_topics']): ?>
               <p class="tags"><?php foreach (array_slice($r['_topics'],0,4) as $t): ?><span><?php echo $h($t); ?></span><?php endforeach; ?></p>
             <?php endif; ?>
-            <p class="foot"><a class="visit" href="<?php echo $h($r['site_url']); ?>" rel="nofollow noopener">Visit blog ↗</a></p>
+            <p class="foot"><a class="visit" href="<?php echo $h($r['site_url']); ?>" rel="noopener">Visit blog ↗</a></p>
           </div>
         </li>
       <?php endforeach; ?>

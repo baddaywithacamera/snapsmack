@@ -152,7 +152,34 @@ class SnapSmack {
         // outside any wrapping <p> — same reason parseMosaics runs here.
         $content = $this->parseContactForm($content);
 
+        // --- PHASE 10: DISCOVERY FEED ---
+        // [photoblogs_feed] → the photoblogs.fyi square-thumb grid. Block-level,
+        // so it runs after block-nesting cleanup like the contact form / mosaics.
+        $content = $this->parseFeed($content);
+
         return $content;
+    }
+
+    // =========================================================================
+    //  PHOTOBLOGS.FYI DISCOVERY FEED
+    // =========================================================================
+
+    /**
+     * Expand [photoblogs_feed] into the photoblogs.fyi square-thumb grid. The
+     * markup is static (the cache is refreshed by cron, not per-request), so it
+     * is safe to page-cache. Only the directory hub has snap_feed_items rows;
+     * anywhere else the grid renders its empty state.
+     */
+    private function parseFeed($content) {
+        if (stripos($content, '[photoblogs_feed]') === false) {
+            return $content;
+        }
+        return preg_replace_callback('/\[photoblogs_feed\]/i', function () {
+            if (!function_exists('pbfeed_grid_html')) {
+                require_once __DIR__ . '/photoblogs-feed.php';
+            }
+            return pbfeed_grid_html($this->pdo);
+        }, $content);
     }
 
     // =========================================================================
