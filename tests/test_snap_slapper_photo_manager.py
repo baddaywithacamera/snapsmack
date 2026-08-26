@@ -5,10 +5,12 @@ SNAPSMACK_EOF_HEADER: this file must end with the canonical Python EOF marker.
 
 import hashlib
 import errno
+import json
 import os
 import sys
 import tempfile
 import unittest
+import zipfile
 from unittest import mock
 
 from PIL import Image
@@ -152,6 +154,32 @@ class ImmutableOriginalTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "will not overwrite the original"):
             document.save_project(self.source)
         self.assertEqual(self.original_hash, file_hash(self.source))
+
+    def test_slapper_is_an_ordinary_zip_with_readable_project_document(self):
+        project = os.path.join(self.temporary.name, "portable.slapper")
+        document = editor_engine.EditorDocument(self.source)
+        document.adjustments["contrast"] = 17
+        document.save_project(project)
+
+        self.assertTrue(zipfile.is_zipfile(project))
+        with zipfile.ZipFile(project, "r") as archive:
+            self.assertEqual({"README.txt", "project.json"}, set(archive.namelist()))
+            value = json.loads(archive.read("project.json").decode("utf-8"))
+            self.assertEqual(17, value["adjustments"]["contrast"])
+            self.assertIn("Rename this file", archive.read("README.txt").decode("utf-8"))
+        restored = editor_engine.EditorDocument.load_project(project)
+        self.assertEqual(17, restored.adjustments["contrast"])
+
+    def test_legacy_bare_json_slapper_still_opens(self):
+        project = os.path.join(self.temporary.name, "legacy.slapper")
+        photo_manager.atomic_json(project, {
+            "version": editor_engine.PROJECT_VERSION,
+            "source_path": self.source,
+            "adjustments": {"exposure": .75},
+            "geometry": {}, "layers": [], "retouched": [], "history": [],
+        })
+        restored = editor_engine.EditorDocument.load_project(project)
+        self.assertEqual(.75, restored.adjustments["exposure"])
 
     def test_renderer_does_not_silently_drop_missing_image_layer(self):
         document = editor_engine.EditorDocument(self.source)

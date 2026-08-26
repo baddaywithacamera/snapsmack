@@ -10,6 +10,8 @@ import json
 import math
 import os
 import time
+import tempfile
+import zipfile
 
 from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
@@ -21,6 +23,8 @@ MAX_PROJECT_BYTES = 512 * 1024 * 1024
 MAX_PROJECT_LAYERS = 500
 MAX_RETOUCH_POINTS = 100000
 MAX_ENCODED_MASK_BYTES = 128 * 1024 * 1024
+PROJECT_DOCUMENT_NAME = "project.json"
+PROJECT_README_NAME = "README.txt"
 DEFAULT_ADJUSTMENTS = {
     "exposure": 0.0, "brightness": 0.0, "contrast": 0.0,
     "highlights": 0.0, "shadows": 0.0, "whites": 0.0, "blacks": 0.0,
@@ -48,6 +52,54 @@ def _mask_from_text(value):
     if not value:
         return None
     return Image.open(io.BytesIO(base64.b64decode(value))).convert("L")
+
+
+def _write_project_archive(path, value):
+    """Atomically publish an ordinary ZIP container with a .slapper extension."""
+    target = os.path.abspath(path)
+    directory = os.path.dirname(target)
+    os.makedirs(directory, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=".snap-project-", suffix=".tmp",
+                                             dir=directory)
+    os.close(descriptor)
+    document = json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode("utf-8")
+    readme = ("SNAP SLAPPER project archive\n\n"
+              "Rename this file from .slapper to .zip to inspect it with any ZIP tool.\n"
+              "project.json contains the versioned, human-readable editing document.\n"
+              "The original photograph is referenced, not imprisoned inside this archive.\n")
+    try:
+        with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED,
+                             allowZip64=True) as archive:
+            archive.writestr(PROJECT_DOCUMENT_NAME, document)
+            archive.writestr(PROJECT_README_NAME, readme)
+        photo_manager.fsync_file(temporary)
+        os.replace(temporary, target)
+    except Exception:
+        try:
+            os.remove(temporary)
+        except OSError:
+            pass
+        raise
+
+
+def _read_project_document(path):
+    """Read the ZIP container, retaining compatibility with legacy bare JSON projects."""
+    if zipfile.is_zipfile(path):
+        try:
+            with zipfile.ZipFile(path, "r") as archive:
+                try:
+                    info = archive.getinfo(PROJECT_DOCUMENT_NAME)
+                except KeyError as exc:
+                    raise ValueError("Invalid SNAP SLAPPER project: project.json is missing") from exc
+                if info.file_size > MAX_PROJECT_BYTES:
+                    raise ValueError("SNAP SLAPPER project document is too large to open safely")
+                raw = archive.read(info)
+            return json.loads(raw.decode("utf-8"),
+                              parse_constant=photo_manager.reject_json_constant)
+        except zipfile.BadZipFile as exc:
+            raise ValueError("Invalid SNAP SLAPPER project archive") from exc
+    with open(path, "r", encoding="utf-8") as handle:
+        return json.load(handle, parse_constant=photo_manager.reject_json_constant)
 
 
 def _curve_lut(points):
@@ -390,21 +442,20 @@ class EditorDocument:
         if photo_manager.same_file(path, self.source_path):
             raise ValueError("SNAP SLAPPER will not overwrite the original photograph with a project.")
         value = self.project_value()
-        photo_manager.atomic_json(path, value)
+        _write_project_archive(path, value)
         self.project_path = path
         self.mark_saved()
 
     def save_recovery(self, path):
         if photo_manager.same_file(path, self.source_path):
             raise ValueError("Recovery path resolves to the original photograph.")
-        photo_manager.atomic_json(path, self.project_value(recovery=True))
+        _write_project_archive(path, self.project_value(recovery=True))
 
     @classmethod
     def load_project(cls, path):
         if os.path.getsize(path) > MAX_PROJECT_BYTES:
             raise ValueError("SNAP SLAPPER project is too large to open safely")
-        with open(path, "r", encoding="utf-8") as handle:
-            value = json.load(handle, parse_constant=photo_manager.reject_json_constant)
+        value = _read_project_document(path)
         if not isinstance(value, dict):
             raise ValueError("Invalid SNAP SLAPPER project: the root must be an object")
         if value.get("version") != PROJECT_VERSION:
