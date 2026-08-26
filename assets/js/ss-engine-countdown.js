@@ -21,6 +21,12 @@
  * owns only the numbers. Skins ship zero JS; this is the shared engine they
  * point at.
  *
+ * Recurring counters: add data-every="7d" (or 1w / 12h / raw seconds) and the
+ * counter re-aims at the next occurrence instead of finishing — a weekly prompt
+ * clock that resets itself. Add data-roll-caption="Next prompt drops in" and,
+ * on the first roll, the [data-cd-caption] element is relabelled from its launch
+ * wording to that text.
+ *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  * Last non-empty line of this file MUST match the line above.
@@ -37,9 +43,27 @@ function _ssCountdownInit() {
 
     function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
+    // Optional recurring cadence. `data-every` ("7d", "1w", "12h", or a raw
+    // number of seconds) rolls the target forward by that step whenever it
+    // lapses, so a weekly prompt counter never dies — it re-aims at the next
+    // drop. On the first roll, if `data-roll-caption` is set, the element marked
+    // [data-cd-caption] is relabelled (e.g. "First prompt drops in" -> "Next
+    // prompt drops in"). With no data-every, behaviour is unchanged: it finishes.
+    function parseEvery(v) {
+        if (!v) return 0;
+        const m = String(v).trim().match(/^(\d+(?:\.\d+)?)\s*([smhdw]?)$/i);
+        if (!m) return 0;
+        const mult = { s: 1, m: 60, h: 3600, d: 86400, w: 604800 }[(m[2] || 's').toLowerCase()] || 1;
+        const ms = parseFloat(m[1]) * mult * 1000;
+        return ms > 0 ? Math.round(ms) : 0;
+    }
+
     function bind(el) {
-        const target = Date.parse(el.getAttribute('data-until'));
+        let target = Date.parse(el.getAttribute('data-until'));
         if (isNaN(target)) return null;            // bad date — leave the markup as-is
+
+        const everyMs = parseEvery(el.getAttribute('data-every'));
+        let rolled = false;
 
         const slots = {
             d: el.querySelector('[data-cd="d"]'),
@@ -56,9 +80,25 @@ function _ssCountdownInit() {
             el.classList.add('is-done');
         }
 
+        function roll() {
+            const now = Date.now();
+            while (target <= now) target += everyMs;   // re-aim at the next occurrence
+            if (!rolled) {
+                rolled = true;
+                const cap  = el.querySelector('[data-cd-caption]');
+                const next = el.getAttribute('data-roll-caption');
+                if (cap && next !== null) cap.textContent = next;
+                el.classList.add('is-rolled');
+            }
+        }
+
         function tick() {
+            if (Date.now() >= target) {
+                if (everyMs <= 0) { finish(); return false; }
+                roll();                            // recurring: aim at the next drop
+            }
             let diff = Math.floor((target - Date.now()) / 1000);
-            if (diff <= 0) { finish(); return false; }
+            if (diff < 0) diff = 0;
 
             const d = Math.floor(diff / 86400); diff -= d * 86400;
             const h = Math.floor(diff / 3600);  diff -= h * 3600;
