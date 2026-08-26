@@ -10,6 +10,11 @@
 
 # SnapSmack Changelog
 
+## 0.7.561 — 2026-08-25 "FEDBOARD"
+
+- **The discovery feed is now one switchable engine.** A per-install `feed_mode` setting picks what fills it: `blogs` boosts the registered directory blogs' own RSS (photoblogs.fyi); `hashtag` boosts the posts of followed Fediverse actors carrying a configured hashtag (photofri.day and the other challenge sites, each with its own tag). Everything downstream — the cache, the de-clump, the square grid, the RSS — is shared, so the same code serves every site in the network. The hashtag adapter is a safe no-op until the weekly collect side is feeding it.
+- **The feed is available as RSS.** New `/feed-rss.php` renders the same cached items as an RSS 2.0 feed (each item links back to the original post), alongside the on-page grid.
+
 ## 0.7.560 — 2026-08-25 "FEDBOARD"
 
 - **photoblogs.fyi discovery feed.** New `[photoblogs_feed]` shortcode renders a grid of square thumbnails — one per recent post across every directory-listed blog, newest first with a mild de-clump so no single blog runs back-to-back. Each square is a dofollow, new-tab link straight to that post; thumbnails are hotlinked from each blog's own server (nothing is re-hosted). A cache table (`snap_feed_items`) is refreshed inside the existing RSS cron via `core/photoblogs-feed.php`, so a visitor never waits on outbound fetches. The whole point is to send traffic and search-engine credit OUT to the member blogs.
