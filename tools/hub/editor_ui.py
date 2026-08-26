@@ -73,6 +73,12 @@ class EditorWindow(tk.Toplevel):
         self.set_tool("pan")
         self._load_document_controls()
         self.after(100, self.fit_image)
+        # Thomas the Bear lives here too. Ctrl+Shift+Y. For Noah.
+        try:
+            import thomas
+            thomas.install(self)
+        except Exception:
+            pass
 
     def _recovery_path(self, source_path):
         if not self.recovery_dir:
