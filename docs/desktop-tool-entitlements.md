@@ -1,21 +1,28 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical HTML-comment
+  SNAPSMACK EOF marker used by this repository.
+-->
+
 # SnapSmack Desktop Tool Entitlements
 
 **Status:** Required before public distribution  
-**Applies to:** SNAP SLAPPER and ACTION LAB
+**Applies to:** SNAP SLAPPER and LEWK AGAIN
 
 ## Product boundary
 
-SNAP SLAPPER and ACTION LAB are free companion products for people who own and run their own SnapSmack CMS installation. They are not separately sold subscriptions. Neither application runs as a free-standing public tool: the user's own CMS installation generates the entitlement API key required to start it.
+SNAP SLAPPER and LEWK AGAIN are free companion products for people who own and run their own SnapSmack CMS installation. They are not separately sold subscriptions. Neither application runs as a free-standing public tool: the user's own CMS installation generates the entitlement API key required to start it.
 
 This boundary is intentional. It keeps the tools, documentation, compatibility promises, and support obligation inside the SnapSmack ecosystem instead of turning them into general-purpose products supported across every possible website and workflow.
 
 ## Entitlement rules
 
-- The user's own SnapSmack CMS generates the API key used to unlock SNAP SLAPPER and its ACTION LAB capability.
+- The user's own SnapSmack CMS generates the API key used to unlock SNAP SLAPPER and its LEWK AGAIN capability.
 - There is no separate charge for the tools. A valid SnapSmack installation includes their use.
 - The key proves that the user has their own installation; it is not a paid licence term.
-- ACTION LAB does not require a second key or separate activation. When SNAP SLAPPER is valid and unlocked, ACTION LAB is unlocked under the same entitlement state.
-- If SNAP SLAPPER is in grace or expired, ACTION LAB follows the same state and dates.
+- LEWK AGAIN does not require a second key or separate activation. It reads SNAP SLAPPER's tamper-evident, locally verified entitlement result rather than asking the user to re-enter a key or independently duplicating CMS validation.
+- When SNAP SLAPPER is valid, in grace, or expired, LEWK AGAIN follows the identical state, dates, warning, and boundary.
+- Renewal is performed in SNAP SLAPPER and becomes available to LEWK AGAIN without key re-entry. Raw keys, CMS credentials, and signing secrets are not copied into LEWK AGAIN configuration.
 - A valid key grants **90 days** of use.
 - The desktop tool must clearly show the entitlement expiry date.
 - After expiry, the tool enters a **14-day grace period** so temporary server, network, or renewal trouble does not immediately interrupt work.
@@ -49,23 +56,25 @@ This boundary is intentional. It keeps the tools, documentation, compatibility p
 
 - Supported environment: current supported SnapSmack CMS plus the published Windows/Linux application builds.
 - No promise of compatibility with unrelated CMS products.
-- ACTION LAB may emit Lightroom-compatible presets, but ACTION LAB itself remains a SnapSmack-only tool.
-- Lightroom compatibility describes the generated preset format; it does not turn ACTION LAB into an independently supported Lightroom product.
+- LEWK AGAIN may emit Lightroom-compatible presets, but LEWK AGAIN itself remains a SnapSmack-only tool.
+- Lightroom compatibility describes the generated LEWK format; it does not turn LEWK AGAIN into an independently supported Lightroom product.
 
 ## Forks and independent builds
 
 - The complete source remains available under the Smack Public License (SPL).
-- Anyone determined to run SNAP SLAPPER or ACTION LAB independently may fork the repository and build a decoupled version, provided the fork complies fully with the SPL.
-- A decoupled or independently distributed fork must rename the tools. The official names **SNAP SLAPPER** and **ACTION LAB** identify the SnapSmack-integrated builds and their defined support surface.
+- Anyone determined to run SNAP SLAPPER or LEWK AGAIN independently may fork the repository and build a decoupled version, provided the fork complies fully with the SPL.
+- A decoupled or independently distributed fork must rename the tools. The official names **SNAP SLAPPER** and **LEWK AGAIN** identify the SnapSmack-integrated builds and their defined support surface.
 - A fork must not present itself as an official SnapSmack build or imply that Sean McCormick or the SnapSmack project supports it.
 - The fork's distributor owns its documentation, compatibility promises, user support, releases, and security response. Independent users are not transferred into the official SnapSmack support surface.
 - Renaming does not remove or weaken the SPL's source, attribution-chain, AI-provenance, Thomas Clause, or other obligations.
 
 ## Decisions still required
 
-- Exact representation of the shared SNAP SLAPPER/ACTION LAB entitlement in the signed key or server response.
+- Exact representation of the shared SNAP SLAPPER/LEWK AGAIN entitlement in the signed key or server response.
 - Whether keys bind to a CMS installation, user, device, or a limited device set.
 - The CMS endpoint and signed payload format.
 - Validation frequency while a key remains valid.
 - Revocation behavior for compromised keys.
 - Exact read-only behavior after expiry, if any, beyond access to already exported user files.
+
+<!-- ===== SNAPSMACK EOF ===== -->
