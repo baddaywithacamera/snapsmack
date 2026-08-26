@@ -10,6 +10,46 @@
 
 # SnapSmack Changelog
 
+## 0.7.563 — 2026-08-26 "FEDBOARD"
+
+- **Countdown clocks can reset themselves.** The shared countdown engine (`ss-engine-countdown.js`) gained an optional recurring roll: add `data-every="7d"` (or `1w` / `12h` / raw seconds) and when a counter hits zero it re-aims at the next occurrence instead of stopping. `data-roll-caption="Next prompt drops in"` relabels the heading (any element marked `[data-cd-caption]`) on that first roll. One-shot countdowns with no `data-every` are unchanged. This lets the PhotoFri prompt clock roll from the launch prompt to next week's prompt on its own, changing "First prompt drops in" to "Next prompt drops in".
+
+SNAP SLAPPER (the desktop photo editor) reaches closed-beta shape in this build:
+
+- **The first stock LEWKS pack.** Twelve curated built-in appearances cover clean correction,
+  film/print, black-and-white, portrait, landscape/weather, night/neon, and experimental work.
+  The editor's LEWKS + BATCH panel opens a browser with descriptions and an overall strength
+  control. Stock masters are read-only; applying one uses the non-destructive recipe engine and
+  records history instead of touching the original photograph.
+- **SNAP SLAPPER closed-beta hardening.** The immutable-original rule is now enforced by the shared writer rather than left to individual tools: rotation creates named, collision-safe copies; every derivative is written atomically; copy, move, external-edit, Trash, and restore paths never publish partial files; and a failed Trash manifest rolls photographs back instead of orphaning them. External editors can receive working copies only. Existing EXIF copyright, ICC, DPI, and XMP metadata continue forward, and the explicit GPS-removal preference now reaches library, viewer, editor, and batch exports without touching the original. Organizer settings now use versioned, atomically replaced state files while still reading the earlier unwrapped files.
+- **Editor recovery and honest failures.** Unsaved documents autosave to a local recovery area and are offered back after an interrupted session. Project and preset writes use the same last-good atomic state writer. Malformed projects, missing originals, missing image layers, broken presets, and failed saves now produce direct errors instead of silently changing the composite or dropping work.
+- **Offline beta guidance.** SNAP SLAPPER now ships searchable local help, available from the library, editor, and F1, covering the core workflow, file safety, metadata, projects, RAW handoff, Trash, recovery, and shortcuts. Recognized RAW files and formats the editor cannot decode are handed off offline to detected RawTherapee/darktable installs or another chosen program, with the original passed untouched.
+- **The standalone build is fenced.** Its package now includes only the two shared path modules it uses—not fleet credentials, discovery, profiles, AI, or network code. The build refuses to create a knowingly dead executable when Python lacks a usable Tk desktop runtime. It builds into staging, must open a real image in the frozen application, and only then replaces the installed beta; a failed package leaves the last working executable untouched.
+- **Applying a LEWK no longer wipes your edits.** Applying a stock LEWK now stacks the appearance as a layer on top of the photograph's base adjustments, instead of resetting exposure, contrast, and every other base slider back to zero. Paste Adjustments now pastes only the adjustment values, instead of quietly appending the copied photo's layers (and duplicating them on every repeat). Both paths keep prior work intact, matching the spec rule that a LEWK never flattens edits already in progress.
+
+## 0.7.562 — 2026-08-26 "FEDBOARD"
+
+- **The photoblogs.fyi directory is now a wall of photos, not text cards.** Each listing shows its blog's three latest pictures, and the whole card is a dofollow link straight to that blog — no captions, tags, avatars, or blurbs. The photos are pulled from each blog's own `/rss.php` feed (all feeds fetched in parallel, cached six hours) whenever a blog hasn't supplied sample thumbnails through the directory API, so the grid shows real pictures instead of empty placeholder tiles. A blog with no photo yet (feed empty or offline) is hidden rather than shown as a grey box.
+
+## 0.7.561 — 2026-08-25 "FEDBOARD"
+
+- **The discovery feed is now one switchable engine.** A per-install `feed_mode` setting picks what fills it: `blogs` boosts the registered directory blogs' own RSS (photoblogs.fyi); `hashtag` boosts the posts of followed Fediverse actors carrying a configured hashtag (photofri.day and the other challenge sites, each with its own tag). Everything downstream — the cache, the de-clump, the square grid, the RSS — is shared, so the same code serves every site in the network. The hashtag adapter is a safe no-op until the weekly collect side is feeding it.
+- **The feed is available as RSS.** New `/feed-rss.php` renders the same cached items as an RSS 2.0 feed (each item links back to the original post), alongside the on-page grid.
+
+## 0.7.560 — 2026-08-25 "FEDBOARD"
+
+- **photoblogs.fyi discovery feed.** New `[photoblogs_feed]` shortcode renders a grid of square thumbnails — one per recent post across every directory-listed blog, newest first with a mild de-clump so no single blog runs back-to-back. Each square is a dofollow, new-tab link straight to that post; thumbnails are hotlinked from each blog's own server (nothing is re-hosted). A cache table (`snap_feed_items`) is refreshed inside the existing RSS cron via `core/photoblogs-feed.php`, so a visitor never waits on outbound fetches. The whole point is to send traffic and search-engine credit OUT to the member blogs.
+- **Directory links are now dofollow.** The public directory's "Visit blog" links dropped `rel="nofollow"` — a directory that exists to lift its members shouldn't withhold link equity from them.
+- **photoblogs.fyi front-end** (custom CSS, no core change): home page reworked to the original centred one-screen layout with the standard nav and a reference-styled footer; nav trimmed to Home / Directory; About and Feed page bodies added as CMS-page seeds.
+
+Security hardening for the new multisite/federation features (secaudit 051). No visible change to how blogs are used; these close ways one connected blog — or a stranger on the internet — could have interfered with another.
+
+- **Connected blogs can no longer overstep.** A satellite blog shares a secret key with its main blog so the main blog can send it commands. Four of those command endpoints on the main blog weren't checking that the caller was actually the main blog, so a satellite (or an attacker who got into one) could turn the key around and, on the main blog, create a posting credential, read the email address + IP of everyone with a pending comment, add posts, or rewrite the blogroll. All four now require the caller to be the hub, matching every other command.
+- **The public photoblogs.fyi directory can't be spoofed.** The sign-up endpoint had no login and trusted whatever was posted to it, so anyone could overwrite an approved listing with their own content (it stayed live) or delist any site. The hub now confirms a request by calling the site back at `/directory-verify.php` and reads the listing straight from the site itself — so a forged submission can only make the hub re-read that site's own truth, never inject content or remove a site that still lists. New listings still wait for human review.
+- **Image fetch can't be aimed at the private network.** The hub→spoke "create post" image download followed redirects on a raw hostname; a crafted image URL could bounce it onto an internal address (SSRF). It now pins the verified public address and refuses redirects, like every other fetch in the engine.
+- **SNAP SLAPPER no longer ships the fleet credential/network code.** The photo editor's build bundled the whole shared toolkit — including the credential vault and fleet-discovery/network modules it never uses. It now bundles only what it imports, with the sensitive modules hard-excluded. (No secret was ever embedded in the exe.)
+- Smaller: the site-join one-time token is now claimed atomically (no two-registration race), and public-directory media URLs are sanitised at the source (blocks a CSS-based tracking beacon).
+
 ## 0.7.558 — 2026-08-25 "FEDBOARD"
 
 - Fediverse: **RUN JOBS — ALL SPOKES** now does a fast roster refresh per spoke instead of the full delivery sweep. Running the whole sweep made one spoke grind through its queue and outlast a locked-down hub's request window, so the fan-out timed out (stuck on job 1, then mass failures). It now calls the roster pull directly — the same fast operation as VERIFY CONNECTION — which also fills blogs that have fediverse switched off. Deliveries stay with each spoke's own cron / web-cron.

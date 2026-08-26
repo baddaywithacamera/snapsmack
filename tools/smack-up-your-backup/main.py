@@ -13,7 +13,7 @@ Same visual family as Smack Your Batch Up.
 
 
 
-BUILD_VERSION = "0.7.26"
+BUILD_VERSION = "0.7.27"
 
 import os
 import queue
@@ -31,6 +31,7 @@ import sync_manager
 import manifest_reader
 import cloud_manifest as cloud_manifest_module
 import cloud_client as cloud_module
+import slap_happy
 import credential_store as cred_store
 from audit_engine import AuditEngine, AuditReport
 from backup_engine import BackupEngine
@@ -71,6 +72,7 @@ TAB_AUDIT      = "audit"
 TAB_SCHEDULER  = "scheduler"
 TAB_SETTINGS   = "settings"
 TAB_CLOUD_SYNC = "cloud_sync"
+TAB_SLAP_HAPPY = "slap_happy"
 TAB_HELP       = "help"
 
 # Transfer speed tiers — (label, delay_seconds_as_str). Mirrors UNZUCKER's
@@ -3007,6 +3009,175 @@ class AuditTab(tk.Frame):
             messagebox.showinfo("Saved", f"Report saved to:\n{path}")
         except Exception as e:
             messagebox.showerror("Save failed", str(e))
+
+
+# ---------------------------------------------------------------------------
+# SLAP HAPPY — local SNAP SLAPPER backup
+# ---------------------------------------------------------------------------
+
+class SlapHappyTab(tk.Frame):
+    def __init__(self, parent, app, **kwargs):
+        super().__init__(parent, bg=BG_DEEP, **kwargs)
+        self._app = app
+        self._running = False
+        self._destinations = {}
+        self._build()
+
+    def _build(self):
+        wrap = tk.Frame(self, bg=BG_DEEP)
+        wrap.pack(fill="both", expand=True, padx=24, pady=20)
+        tk.Label(wrap, text="SLAP HAPPY", bg=BG_DEEP, fg=ACCENT,
+                 font=("Segoe UI Black", 21, "bold")).pack(anchor="w")
+        tk.Label(wrap, text="Back up SNAP SLAPPER's brain, photographs, and editable work.",
+                 bg=BG_DEEP, fg=FG_MAIN, font=FONT_HEAD).pack(anchor="w", pady=(2, 18))
+        paths = tk.Frame(wrap, bg=BG_MID, padx=16, pady=14,
+                         highlightbackground=BORDER, highlightthickness=1)
+        paths.pack(fill="x", pady=(0, 12))
+        tk.Label(paths, text="SNAP SLAPPER HANDOFF", bg=BG_MID, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w")
+        self._paths_var = tk.StringVar()
+        tk.Label(paths, textvariable=self._paths_var, bg=BG_MID, fg=FG_DIM,
+                 font=FONT_SMALL, justify="left", wraplength=900).pack(anchor="w", pady=(6, 0))
+        controls = tk.Frame(wrap, bg=BG_MID, padx=16, pady=14,
+                            highlightbackground=BORDER, highlightthickness=1)
+        controls.pack(fill="x", pady=(0, 12))
+        tk.Label(controls, text="WHAT GETS SAVED", bg=BG_MID, fg=ACCENT,
+                 font=FONT_HEAD).grid(row=0, column=0, columnspan=4, sticky="w")
+        self._parts = {}
+        labels = [("suyb_settings", "SUYB settings"),
+                  ("settings", "SLAPPER settings"), ("catalog", "Catalog + cache"),
+                  ("photos", "Photographs"), ("projects", "Editable projects")]
+        for column, (key, label) in enumerate(labels):
+            var = tk.BooleanVar(value=True)
+            self._parts[key] = var
+            tk.Checkbutton(controls, text=label, variable=var, bg=BG_MID, fg=FG_MAIN,
+                           selectcolor=BG_INPUT, activebackground=BG_MID,
+                           font=FONT_BODY).grid(row=1, column=column, sticky="w", padx=(0, 18), pady=(8, 12))
+        self._mode = tk.StringVar(value="incremental")
+        tk.Label(controls, text="Backup type", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY).grid(row=2, column=0, sticky="w")
+        ttk.Combobox(controls, textvariable=self._mode, state="readonly",
+                     values=["incremental", "full"], width=18).grid(row=2, column=1, sticky="w")
+        tk.Label(controls, text="Destination", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY).grid(row=3, column=0, sticky="w", pady=(8, 0))
+        self._destination = tk.StringVar(value="Local folder")
+        self._destination_box = ttk.Combobox(controls, textvariable=self._destination,
+                                             state="readonly", width=42)
+        self._destination_box.grid(row=3, column=1, columnspan=2, sticky="w", pady=(8, 0))
+        local = tk.Frame(wrap, bg=BG_MID, padx=16, pady=12,
+                         highlightbackground=BORDER, highlightthickness=1)
+        local.pack(fill="x", pady=(0, 12))
+        tk.Label(local, text="Local staging folder", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY).pack(side="left")
+        home = os.path.abspath((os.environ.get("SNAPSMACK_HOME") or "").strip() or r"C:\snapsmack")
+        self._folder = tk.StringVar(value=os.path.join(home, "backups", "slap-happy"))
+        tk.Entry(local, textvariable=self._folder, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat", font=FONT_MONO).pack(
+                     side="left", fill="x", expand=True, padx=10, ipady=4)
+        tk.Button(local, text="Browse…", bg=BG_CARD, fg=FG_MAIN, relief="flat",
+                  command=self._browse).pack(side="right")
+        action = tk.Frame(wrap, bg=BG_DEEP)
+        action.pack(fill="x")
+        self._run_btn = tk.Button(action, text="PUNCH IT", bg=ACCENT, fg=BG_DEEP,
+                                  activebackground=ACCENT2, relief="flat", font=FONT_HEAD,
+                                  padx=24, pady=8, command=self._run)
+        self._run_btn.pack(side="left")
+        self._status = tk.StringVar(value="Ready.")
+        tk.Label(action, textvariable=self._status, bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_BODY).pack(side="left", padx=16)
+        self._progress = ttk.Progressbar(wrap, mode="determinate")
+        self._progress.pack(fill="x", pady=(14, 0))
+
+    def refresh(self):
+        home = os.path.abspath((os.environ.get("SNAPSMACK_HOME") or "").strip() or r"C:\snapsmack")
+        contract = slap_happy.discover_contract(home)
+        roots = contract["image_roots"]
+        saved = contract.get("saved_roots", [])
+        self._paths_var.set(f"Settings: {contract['config_dir']}\nCatalog: {contract['catalog_dir']}\n"
+                            f"Original locations: {len(roots)} chosen by photographer" +
+                            ("\n" + "\n".join(f"  • {path}" for path in roots) if roots else "") +
+                            f"\nSaved image/project locations: {len(saved)} chosen by photographer" +
+                            ("\n" + "\n".join(f"  • {path}" for path in saved) if saved else ""))
+        self._destinations = {"Local folder": None}
+        for name in profile_manager.list_profiles():
+            profile = profile_manager.load_profile(name)
+            if not profile:
+                continue
+            try:
+                client = cloud_module.get_cloud_client(profile, self._app.global_cloud_config())
+            except Exception:
+                client = None
+            if client:
+                provider = profile.get("cloud_provider") or self._app.global_cloud_config().get("cloud_provider", "cloud")
+                label = f"Cloud — {name} ({provider.replace('_', ' ').title()})"
+                self._destinations[label] = profile
+        values = list(self._destinations)
+        self._destination_box.configure(values=values)
+        if self._destination.get() not in self._destinations:
+            self._destination.set(values[0])
+
+    def _browse(self):
+        folder = _dlg_dir(self, title="Choose SLAP HAPPY staging folder")
+        if folder:
+            self._folder.set(folder)
+
+    def _run(self):
+        if self._running:
+            return
+        components = [key for key, var in self._parts.items() if var.get()]
+        if not components:
+            messagebox.showinfo("Pick something", "Choose at least one thing to back up.", parent=self)
+            return
+        folder = self._folder.get().strip()
+        if not folder:
+            messagebox.showinfo("Pick a folder", "Choose a local staging folder.", parent=self)
+            return
+        label = self._destination.get()
+        profile = self._destinations.get(label)
+        self._running = True
+        self._run_btn.configure(state="disabled")
+        self._status.set("Finding SNAP SLAPPER data…")
+        self._progress.configure(value=0)
+
+        def work():
+            try:
+                home = os.path.abspath((os.environ.get("SNAPSMACK_HOME") or "").strip() or r"C:\snapsmack")
+                def progress(stage, done, total):
+                    self._app.queue_msg(("slap_happy_progress", stage, done, total))
+                result = slap_happy.create_backup(
+                    home, folder, mode=self._mode.get(), components=components,
+                    destination_key=label, commit=profile is None, on_progress=progress)
+                if profile is not None:
+                    self._app.queue_msg(("slap_happy_progress", "Uploading", 0, 1))
+                    client = cloud_module.get_cloud_client(profile, self._app.global_cloud_config())
+                    if client is None:
+                        raise RuntimeError("That cloud destination is not configured.")
+                    remote_id = client.upload_file(result["path"], os.path.basename(result["path"]))
+                    if not remote_id or not client.verify_upload(remote_id, result["path"]):
+                        raise RuntimeError("Cloud upload could not be verified; incremental state was not advanced.")
+                    slap_happy.commit_backup_state(result)
+                    result["cloud"] = label
+                self._app.queue_msg(("slap_happy_done", result))
+            except Exception as exc:
+                self._app.queue_msg(("slap_happy_error", str(exc)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def on_progress(self, stage, done, total):
+        self._status.set(f"{stage}… {done:,}/{total:,}" if total else f"{stage}…")
+        self._progress.configure(maximum=max(total, 1), value=done)
+
+    def on_done(self, result):
+        self._running = False
+        self._run_btn.configure(state="normal")
+        destination = result.get("cloud", "local storage")
+        self._status.set(f"Done — {result['changed']:,} file(s) packed to {destination}.")
+        messagebox.showinfo("SLAP HAPPY", f"Backup verified.\n\n{result['path']}", parent=self)
+
+    def on_error(self, message):
+        self._running = False
+        self._run_btn.configure(state="normal")
+        self._status.set("Backup stopped safely.")
+        messagebox.showerror("SLAP HAPPY could not finish", message, parent=self)
 
 
 # ---------------------------------------------------------------------------
@@ -6294,6 +6465,7 @@ class App(tk.Tk):
             (TAB_AUDIT,      "  Audit  "),
             (TAB_SCHEDULER,  "  Schedule  "),
             (TAB_CLOUD_SYNC, "  Cloud Sync  "),
+            (TAB_SLAP_HAPPY, "  SLAP HAPPY  "),
             (TAB_SETTINGS,   "  Settings  "),
             (TAB_HELP,       "  Help  "),
         ]:
@@ -6313,6 +6485,7 @@ class App(tk.Tk):
         self._tab_audit      = AuditTab(self,      self)
         self._tab_scheduler  = SchedulerTab(self,  self)
         self._tab_cloud_sync = CloudSyncTab(self,  self)
+        self._tab_slap_happy = SlapHappyTab(self, self)
         self._tab_settings   = SettingsTab(self,   self)
         self._tab_settings.load(self._cfg)
         self._tab_help       = HelpTab(self)
@@ -6330,6 +6503,7 @@ class App(tk.Tk):
             )
         for frame in (self._tab_backup, self._tab_restore, self._tab_manage,
                       self._tab_audit, self._tab_scheduler, self._tab_cloud_sync,
+                      self._tab_slap_happy,
                       self._tab_settings, self._tab_help):
             frame.pack_forget()
 
@@ -6340,6 +6514,7 @@ class App(tk.Tk):
             TAB_AUDIT:      self._tab_audit,
             TAB_SCHEDULER:  self._tab_scheduler,
             TAB_CLOUD_SYNC: self._tab_cloud_sync,
+            TAB_SLAP_HAPPY: self._tab_slap_happy,
             TAB_SETTINGS:   self._tab_settings,
             TAB_HELP:       self._tab_help,
         }
@@ -6351,6 +6526,8 @@ class App(tk.Tk):
         # Pull the backup list when the Manage tab is opened
         if key == TAB_MANAGE:
             self._tab_manage.refresh()
+        if key == TAB_SLAP_HAPPY:
+            self._tab_slap_happy.refresh()
 
     # ------------------------------------------------------------------
     # Profile management
@@ -6520,6 +6697,12 @@ class App(tk.Tk):
                         profile_manager.save_profile(self._current_profile)
                         self._tab_backup.refresh(self._current_profile)
                     self._tab_scheduler.refresh()
+                elif kind == "slap_happy_progress":
+                    self._tab_slap_happy.on_progress(*msg[1:])
+                elif kind == "slap_happy_done":
+                    self._tab_slap_happy.on_done(msg[1])
+                elif kind == "slap_happy_error":
+                    self._tab_slap_happy.on_error(msg[1])
 
                 elif kind == "backup_done_queued":
                     result = msg[1]
