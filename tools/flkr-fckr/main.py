@@ -1639,5 +1639,11 @@ class FlkrDckrApp(tk.Tk):
 
 if __name__ == '__main__':
     app = FlkrDckrApp()
+    # Thomas the Bear. Ctrl+Shift+Y. For Noah. (THE-THOMAS-CLAUSE)
+    try:
+        import thomas
+        thomas.install(app)
+    except Exception:
+        pass
     app.mainloop()
 # ===== SNAPSMACK EOF =====

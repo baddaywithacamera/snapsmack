@@ -7002,5 +7002,11 @@ if __name__ == "__main__":
         sys.exit(headless.run_backup_all(silent=_args.silent))
     _enforce_single_instance()
     app = App()
+    # Thomas the Bear. Ctrl+Shift+Y. For Noah. (THE-THOMAS-CLAUSE)
+    try:
+        import thomas
+        thomas.install(app)
+    except Exception:
+        pass
     app.mainloop()
 # ===== SNAPSMACK EOF =====

@@ -384,5 +384,12 @@ class App(tk.Tk):
 
 
 if __name__ == "__main__":
-    App().mainloop()
+    app = App()
+    # Thomas the Bear. Ctrl+Shift+Y. For Noah. (THE-THOMAS-CLAUSE)
+    try:
+        import thomas
+        thomas.install(app)
+    except Exception:
+        pass
+    app.mainloop()
 # ===== SNAPSMACK EOF =====
