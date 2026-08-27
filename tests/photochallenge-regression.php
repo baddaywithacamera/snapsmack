@@ -162,6 +162,13 @@ pc_test(str_contains($photo, 'INSERT INTO snap_posts') && str_contains($photo, '
     'the queued card must be post-backed so it federates on drop');
 pc_test(str_contains($admin, "value=\"queue_prompt\"") && str_contains($admin, 'SCHEDULE A PROMPT'),
     'the admin is missing the SCHEDULE A PROMPT panel');
+pc_test(str_contains($admin, 'name="pc_caption"')
+    && str_contains($admin, 'name="pc_alt"')
+    && str_contains($admin, "'caption' => (string)(\$_POST['pc_caption'] ?? '')"),
+    'the prompt form must include ordinary post caption and ALT fields');
+pc_test(str_contains($photo, "\$caption = trim((string)(\$data['caption'] ?? ''))")
+    && str_contains($photo, "\$caption !== '' ? \"\\n\\n\" . \$caption : ''"),
+    'the additional caption must be included in the published card body');
 pc_test(str_contains($sidebar, '>Contest &amp; Feed</a>')
     && str_contains($sidebar, 'smack-photochallenge.php#queue-contest-post">Queue Contest Post</a>')
     && str_contains($sidebar, 'smack-photochallenge.php#queued-contest-posts">Queued Posts</a>')

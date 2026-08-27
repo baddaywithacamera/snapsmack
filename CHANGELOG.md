@@ -10,6 +10,14 @@
 
 # SnapSmack Changelog
 
+## 0.7.569 — 2026-08-27 "FEDBOARD"
+
+- **Prompt post copy restored.** **Queue Contest Post** once again accepts an
+  optional caption for instructions, context, or credit, plus dedicated ALT text
+  for the prompt-card image. The caption is stored in the ordinary post body and
+  travels with the card when it publishes and federates; the generated weekly
+  hashtag and participation link remain automatic.
+
 ## 0.7.568 — 2026-08-27 "FEDBOARD"
 
 - **Launch-ready prompt queue.** The selected Photo-Friday now puts the matching
