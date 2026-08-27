@@ -102,6 +102,7 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                 </button>
                 <ul class="nav-section-links">
                     <li class="<?php echo $_pc_active_class('smack-photochallenge.php'); ?>"><a href="smack-photochallenge.php">Contest &amp; Feed</a></li>
+                    <li><a href="smack-photochallenge.php#queue-contest-post">Queue Contest Post</a></li>
                 </ul>
             </div>
 

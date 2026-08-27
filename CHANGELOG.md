@@ -10,6 +10,13 @@
 
 # SnapSmack Changelog
 
+## 0.7.567 — 2026-08-26 "FEDBOARD"
+
+- **Restored both PHOTO CHALLENGE navigation choices.** The **CHALLENGE ME**
+  accordion keeps its original **Contest & Feed** entry and now adds **Queue
+  Contest Post** as a separate second option. The new link jumps directly to
+  the scheduled-prompt form instead of silently replacing the existing tool.
+
 ## 0.7.566 — 2026-08-26 "FEDBOARD"
 
 - **DIRECTORY is a directory again.** photoblogs.fyi now presents searchable,

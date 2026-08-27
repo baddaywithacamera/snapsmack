@@ -240,7 +240,7 @@ include 'core/sidebar.php';
     </div>
 
     <!-- SCHEDULE A PROMPT -->
-    <div class="box mb-20 pc-schedule">
+    <div class="box mb-20 pc-schedule" id="queue-contest-post">
         <h3>SCHEDULE A PROMPT</h3>
         <p class="dim mb-20">
             Enter the prompt word, pick the Photo-Friday, and upload the card. The tool builds the hashtag,
