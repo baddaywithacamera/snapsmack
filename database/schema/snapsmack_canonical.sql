@@ -1479,4 +1479,27 @@ CREATE TABLE IF NOT EXISTS `pc_outbound_boosts` (
   KEY `idx_pc_boost_state` (`state`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Scheduled prompts (SCHEDULE A PROMPT): one row per Photo-Friday. The card post
+-- is queued as a hidden draft; pc_activate_due_prompts publishes it and switches
+-- the live qualifying hashtag when drop_at arrives. week_key ties to pc_rounds.
+CREATE TABLE IF NOT EXISTS `pc_prompts` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `week_key` varchar(12) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `friday` date NOT NULL,
+  `submit_start` datetime NOT NULL,
+  `submit_end` datetime NOT NULL,
+  `prompt` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tag` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tag_display` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `drop_at` datetime NOT NULL,
+  `post_id` bigint unsigned DEFAULT NULL,
+  `image_id` bigint unsigned DEFAULT NULL,
+  `status` enum('queued','live','done','canceled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'queued',
+  `dropped_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_pc_prompt_week` (`week_key`),
+  KEY `idx_pc_prompt_due` (`status`,`drop_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ===== SNAPSMACK EOF =====

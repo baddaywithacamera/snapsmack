@@ -29,6 +29,29 @@ pc_test($open['end'] === '2026-09-05 12:00:00', 'global window end was incorrect
 $closed = pc_window($settings, strtotime('2026-09-05 12:00:00 UTC'));
 pc_test($closed['open'] === false, 'window remained open at its exclusive end');
 
+// --- SCHEDULE A PROMPT: hashtag generation ---
+$h = pc_hashtag_from_prompt('Belonging');
+pc_test($h['display'] === 'PhotoFriBelonging', 'prompt hashtag display form is wrong');
+pc_test($h['tag'] === 'photofribelonging', 'prompt hashtag qualifying tag is wrong');
+pc_test(pc_hashtag_from_prompt('golden hour')['display'] === 'PhotoFriGoldenHour',
+    'multi-word prompt is not CamelCased');
+pc_test(pc_hashtag_from_prompt('self-portrait!')['display'] === 'PhotoFriSelfPortrait',
+    'prompt punctuation is not stripped');
+pc_test(pc_hashtag_from_prompt('Belonging', 'ArtFri')['display'] === 'ArtFriBelonging',
+    'prompt hashtag ignores the brand prefix');
+
+// --- SCHEDULE A PROMPT: a specific Friday maps to the same 50-hour window pc_window() derives ---
+$fw = pc_window_for_friday('2026-09-04');            // a Friday
+$pw = pc_window($settings, strtotime('2026-09-04 12:00:00 UTC'));
+pc_test($fw !== null, 'pc_window_for_friday rejected a valid Friday');
+pc_test($fw['start'] === '2026-09-03 10:00:00', 'Friday window start is not Thursday 10:00 UTC');
+pc_test($fw['end'] === '2026-09-05 12:00:00', 'Friday window end is not Saturday 12:00 UTC');
+pc_test($fw['start'] === $pw['start'] && $fw['end'] === $pw['end'] && $fw['week_key'] === $pw['week_key'],
+    'pc_window_for_friday disagrees with the live pc_window() weekly math');
+pc_test(pc_window_for_friday('2026-09-02')['friday'] === '2026-09-04',
+    'a mid-week date does not snap to that week\'s Friday');
+pc_test(pc_window_for_friday('not-a-date') === null, 'an unparseable date was not rejected');
+
 $photo = file_get_contents(__DIR__ . '/../core/photochallenge.php');
 $sv = file_get_contents(__DIR__ . '/../core/smackverse.php');
 $schema = file_get_contents(__DIR__ . '/../database/schema/snapsmack_canonical.sql');
@@ -104,6 +127,28 @@ pc_test(str_contains($packager, 'snapsmack-fedistructure-')
     'Release Packager does not publish the FEDISTRUCTURE sibling artifact');
 pc_test(str_contains($htaccess, '^board/?$'), 'pretty board route is missing');
 pc_test(str_contains($htaccess, '^hall-of-fame/?$'), 'pretty Hall of Fame route is missing');
+
+// --- SCHEDULE A PROMPT: structure ---
+pc_test(str_contains($schema, 'CREATE TABLE IF NOT EXISTS `pc_prompts`'),
+    'pc_prompts is absent from the canonical schema');
+pc_test(str_contains($photo, 'CREATE TABLE IF NOT EXISTS pc_prompts'),
+    'pc_ensure_tables does not create pc_prompts on upgraded installs');
+pc_test(str_contains($photo, 'function pc_queue_prompt')
+    && str_contains($photo, 'function pc_activate_due_prompts')
+    && str_contains($photo, 'function pc_cancel_prompt'),
+    'prompt scheduler engine functions are missing');
+pc_test(str_contains($photo, 'pc_activate_due_prompts($pdo, $settings);   // drop any scheduled prompt'),
+    'the cron (pc_cron_maintain) must activate due prompts');
+pc_test(str_contains($photo, "sv_set_setting(\$pdo, \$settings, 'photochallenge_tag', (string)\$p['tag'])"),
+    'dropping a prompt must switch the live qualifying hashtag');
+pc_test(str_contains($photo, "'status'      => 'draft'") && str_contains($photo, 'snap_ingest_image('),
+    'the queued card must be ingested as a hidden draft, not published immediately');
+pc_test(str_contains($photo, 'INSERT INTO snap_posts') && str_contains($photo, 'INSERT INTO snap_post_images'),
+    'the queued card must be post-backed so it federates on drop');
+pc_test(str_contains($admin, "value=\"queue_prompt\"") && str_contains($admin, 'SCHEDULE A PROMPT'),
+    'the admin is missing the SCHEDULE A PROMPT panel');
+pc_test(str_contains($admin, 'enctype="multipart/form-data"'),
+    'the prompt form cannot upload a card image');
 
 if ($failures) {
     fwrite(STDERR, "FAIL\n- " . implode("\n- ", $failures) . "\n");

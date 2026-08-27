@@ -10,6 +10,31 @@
 
 # SnapSmack Changelog
 
+## 0.7.565 — 2026-08-26 "FEDBOARD"
+
+- **Schedule a Photo-Friday prompt in one step.** The PHOTO CHALLENGE admin gained a
+  **SCHEDULE A PROMPT** panel. You type the prompt word, pick the Friday, and upload the
+  card image; the tool builds the hashtag for you (the rule is your brand word + your
+  word, joined and capitalised — `Belonging` → **#PhotoFriBelonging**, `golden hour` →
+  **#PhotoFriGoldenHour**), works out that week's fifty-hour submission window (Thursday
+  10:00 → Saturday 12:00 UTC), and files the card as a hidden draft. When the drop time
+  arrives, the site's background task publishes the card to the fediverse and switches the
+  challenge's qualifying hashtag to that week's tag — you do not have to be at the keyboard.
+  A list under the form shows what is scheduled and what has already dropped; a prompt that
+  has not dropped yet can be **CANCEL**led (its card stays as a hidden draft, so nothing is
+  lost). One prompt per Friday.
+
+  This fills a real gap: a post dated in the future was never actually held back — the
+  "internal timestamp" only changed the *displayed* date, so a future-dated post went live
+  immediately. The scheduler adds a genuine publish-at-time step (`pc_activate_due_prompts`,
+  run by the challenge cron) so a prompt truly waits for its moment. New engine:
+  `pc_hashtag_from_prompt`, `pc_window_for_friday`, `pc_queue_prompt`, `pc_cancel_prompt`,
+  `pc_activate_due_prompts`, and a `pc_prompts` table (added to the canonical schema and
+  created on upgrade). The queued card reuses the existing image ingest and post-model plug,
+  so it federates exactly like any other post — no second poster, no bespoke federation.
+  A live hashtag preview and drop-time hint are provided by a small admin helper
+  (`smack-prompt-schedule.js`).
+
 ## 0.7.564 — 2026-08-26 "FEDBOARD"
 
 - **Global Configuration is saveable again.** On any updated install, the Global
