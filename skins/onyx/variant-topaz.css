@@ -1,0 +1,16 @@
+/**
+ * SNAPSMACK - ONYX skin · Topaz palette
+ * A warm amber accent on the same onyx (the birthstone amber).
+ * Only the accent + link colours change per palette; the onyx neutrals
+ * (canvas, ink, muted, hairline) live in style.css and stay constant.
+ *
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line MUST be the CSS EOF marker below.
+ */
+
+:root {
+    --pfd-red:  #E08600;   /* accent: rules, borders, numerals, the dot, the glow */
+    --pfd-link: #FFA51F;   /* links & hover — a step brighter than the accent */
+}
+
+/* ===== SNAPSMACK EOF ===== */

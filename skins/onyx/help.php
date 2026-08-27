@@ -25,11 +25,13 @@ to get out of the way &mdash; a clean shell for a photoblog or for longform read
 work carries the page rather than the decoration.</p>
 
 <h4>Colour is a palette, not a paint job</h4>
-<p>Pick the accent from the <strong>SKIN PALETTE</strong> dropdown on the Skins page:
-<strong>Crimson</strong> (the default), <strong>Sapphire</strong>, or <strong>Emerald</strong>.
-The onyx canvas and the geometry stay put &mdash; only the accent moves. Each palette is one
-small <code>variant-*.css</code> file, so adding another colour later is a file plus a line, not
-a forked skin.</p>
+<p>Pick the accent from the <strong>SKIN PALETTE</strong> dropdown on the Skins page. The palettes
+are birthstones: <strong>Garnet</strong> (red, the default &mdash; the original look),
+<strong>Topaz</strong> (amber), <strong>Emerald</strong> (green), <strong>Amethyst</strong> (purple),
+<strong>Aquamarine</strong> (light blue), and <strong>Sapphire</strong> (royal blue). The onyx canvas
+and the geometry stay put &mdash; only the accent moves. This is how sibling blogs on the same network
+tell themselves apart at a glance: give each one its own stone. Each palette is one small
+<code>variant-*.css</code> file, so adding another colour later is a file plus a line, not a forked skin.</p>
 
 <h4>What it does not have</h4>
 <ul>
@@ -101,9 +103,10 @@ notifications. Without it, your account shows up blank on every other instance. 
 skin, so switching skins and switching back keeps it.</p>
 
 <h3>Colour &amp; glow</h3>
-<p><strong>SKIN PALETTE</strong> (Crimson / Sapphire / Emerald) sets the accent that drives every
-rule, border, step numeral, the footer bar and the glow behind the page. Change the palette and
-the whole look moves together &mdash; there is no second place where the accent is written down.
+<p><strong>SKIN PALETTE</strong> (Garnet / Topaz / Emerald / Amethyst / Aquamarine / Sapphire) sets
+the accent that drives every rule, border, step numeral, the footer bar and the glow behind the page.
+Change the palette and the whole look moves together &mdash; there is no second place where the accent
+is written down.
 <strong>Glow Strength</strong> controls the soft wash behind the canvas; set it to 0 for flat
 black.</p>
 
