@@ -200,8 +200,12 @@ pc_test(str_contains($admin, '1. BOOSTING WINDOW STARTS AT')
     && str_contains($admin, 'does <strong>not</strong> change the boosting window')
     && str_contains($photo, 'The target challenge date must be a Friday.')
     && str_contains($prompt_js, "windowEl.value = date + 'T' + time")
+    && str_contains($prompt_js, 'dropEl.addEventListener(\'change\', updateFromPromptPost)')
     && str_contains($admin, 'contest Friday is stored automatically'),
     'challenge date and prompt publication timestamp must be distinct and Friday-only');
+pc_test(str_contains($admin, 'while ($_def_win && isset($occupied_weeks[$_def_win[\'week_key\']]))')
+    && str_contains($admin, "->modify('+7 days')"),
+    'a fresh prompt composer must advance past already scheduled challenge weeks');
 pc_test(str_contains($admin, 'class="pc-file-picker__button"')
     && str_contains($admin, 'class="pc-file-picker__name"')
     && str_contains($admin, 'class="file-input-hidden"')

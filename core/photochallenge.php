@@ -674,7 +674,8 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
 
     $drop_at = trim((string)($data['drop_at'] ?? ''));
     if ($drop_at === '') {
-        $drop_at = $win['start'];                        // default: drops when the window opens
+        $drop_at = (new DateTimeImmutable($win['start'], new DateTimeZone('UTC')))
+            ->modify('-7 days')->format('Y-m-d H:i:s');  // announce one week before entries open
     } else {
         $drop_at = str_replace('T', ' ', $drop_at);      // datetime-local -> SQL
         if (strlen($drop_at) === 16) $drop_at .= ':00';
@@ -773,7 +774,10 @@ function pc_update_prompt(PDO $pdo, array &$settings, int $id, array $data): arr
     $win = pc_window_for_friday($requested_friday);
     if (!$win || $win['friday'] !== $requested_friday) return ['ok' => false, 'msg' => 'The target challenge date must be a Friday.'];
     $drop_at = str_replace('T', ' ', trim((string)($data['drop_at'] ?? '')));
-    if ($drop_at === '') $drop_at = $win['start'];
+    if ($drop_at === '') {
+        $drop_at = (new DateTimeImmutable($win['start'], new DateTimeZone('UTC')))
+            ->modify('-7 days')->format('Y-m-d H:i:s');
+    }
     if (strlen($drop_at) === 16) $drop_at .= ':00';
     $dupe = $pdo->prepare("SELECT 1 FROM pc_prompts WHERE week_key=? AND id<>? AND status IN ('queued','live') LIMIT 1");
     $dupe->execute([$win['week_key'], $id]);
