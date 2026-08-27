@@ -103,6 +103,59 @@ function pc_window(array $settings, ?int $now_ts = null): array {
     ];
 }
 
+/**
+ * Turn a plain-language prompt into its hashtag pair. One word is the norm
+ * ("Belonging"); multiple words CamelCase ("Golden Hour" -> GoldenHour).
+ *
+ *   pc_hashtag_from_prompt('Belonging')
+ *     => ['tag' => 'photofribelonging', 'display' => 'PhotoFriBelonging']
+ *
+ * 'tag' is the normalised form pc_tag()/qualification compares (lowercase,
+ * [a-z0-9_]); 'display' is what the card and copy show. The prefix is the
+ * per-install brand (PhotoFri, ArtFri…) from photochallenge_tag_prefix.
+ */
+function pc_hashtag_from_prompt(string $prompt, string $prefix = 'PhotoFri'): array {
+    $prefix = preg_replace('/[^A-Za-z0-9]/', '', $prefix) ?: 'PhotoFri';
+    $words  = preg_split('/[^A-Za-z0-9]+/', trim($prompt), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    $camel  = '';
+    foreach ($words as $w) { $camel .= ucfirst(strtolower($w)); }
+    $display = $prefix . $camel;
+    return ['tag' => strtolower($display), 'display' => $display];
+}
+
+/** The brand prefix used to build a prompt's hashtag (PhotoFri, ArtFri…). */
+function pc_tag_prefix(array $settings): string {
+    $p = preg_replace('/[^A-Za-z0-9]/', '', (string)($settings['photochallenge_tag_prefix'] ?? 'PhotoFri'));
+    return $p !== '' ? $p : 'PhotoFri';
+}
+
+/**
+ * The 50-hour submission window for a specific Photo-Friday (any date in that
+ * week is snapped to its Friday). Mirrors pc_window()'s weekly math exactly:
+ * opens Thursday 10:00 UTC (Friday 00:00 minus 14h), closes Saturday 12:00 UTC.
+ *
+ * @return array{friday:string,start:string,end:string,week_key:string,label:string}|null
+ *         All UTC. null if the date is unparseable.
+ */
+function pc_window_for_friday(string $any_date_in_week): ?array {
+    try {
+        $d = new DateTimeImmutable($any_date_in_week . ' 00:00:00', new DateTimeZone('UTC'));
+    } catch (Throwable $e) {
+        return null;
+    }
+    $dow = (int)$d->format('N');                 // 1=Mon … 7=Sun; 5 = Friday
+    $fri = $d->modify(($dow <= 5 ? '+' : '-') . abs(5 - $dow) . ' days'); // snap to this week's Friday
+    $start = $fri->modify('-14 hours');          // Thu 10:00 UTC (Friday 00:00 minus 14h)
+    $end   = $start->modify('+50 hours');        // Sat 12:00 UTC
+    return [
+        'friday'   => $fri->format('Y-m-d'),
+        'start'    => $start->format('Y-m-d H:i:s'),
+        'end'      => $end->format('Y-m-d H:i:s'),
+        'week_key' => $fri->format('o-\WW'),
+        'label'    => $fri->format('M j, Y'),
+    ];
+}
+
 /** Create the two challenge-owned tables (idempotent, safe on every boot). */
 function pc_ensure_tables(PDO $pdo): void {
     $pdo->exec(
@@ -201,6 +254,29 @@ function pc_ensure_tables(PDO $pdo): void {
     $pdo->exec("CREATE TABLE IF NOT EXISTS pc_blocklist (
         kind enum('actor','domain') NOT NULL,value varchar(500) NOT NULL,reason varchar(255) DEFAULT NULL,
         blocked_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY uq_pc_block(kind,value(190))
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // One scheduled prompt per Photo-Friday: the word, its hashtag, the 50-hour
+    // submission window it governs, and the card post queued to drop. The cron
+    // (pc_activate_due_prompts) publishes the card and switches the live tag when
+    // drop_at arrives. week_key ties a prompt to its pc_rounds / pc_admissions.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS pc_prompts (
+        id bigint unsigned NOT NULL AUTO_INCREMENT,
+        week_key     varchar(12)  NOT NULL,
+        friday       date         NOT NULL,
+        submit_start datetime     NOT NULL,
+        submit_end   datetime     NOT NULL,
+        prompt       varchar(120) NOT NULL,
+        tag          varchar(120) NOT NULL,
+        tag_display  varchar(120) NOT NULL DEFAULT '',
+        drop_at      datetime     NOT NULL,
+        post_id      bigint unsigned DEFAULT NULL,
+        image_id     bigint unsigned DEFAULT NULL,
+        status       enum('queued','live','done','canceled') NOT NULL DEFAULT 'queued',
+        dropped_at   datetime     DEFAULT NULL,
+        created_at   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY(id),
+        UNIQUE KEY uq_pc_prompt_week(week_key),
+        KEY idx_pc_prompt_due(status, drop_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 }
 
@@ -415,6 +491,7 @@ function pc_reconcile_object(PDO $pdo, array $settings, string $object_id): void
 function pc_cron_maintain(PDO $pdo, array &$settings, int $limit = 25): array {
     if (!pc_enabled($settings)) return [0,0,0];
     pc_ensure_tables($pdo);
+    pc_activate_due_prompts($pdo, $settings);   // drop any scheduled prompt whose time has come
     $finalized = 0; $checked = 0; $withdrawn = 0;
     $rounds = $pdo->query("SELECT * FROM pc_rounds WHERE finalized_at IS NULL AND window_end<=NOW() ORDER BY window_end LIMIT 4")
         ->fetchAll(PDO::FETCH_ASSOC);
@@ -447,6 +524,183 @@ function pc_cron_maintain(PDO $pdo, array &$settings, int $limit = 25): array {
         $checked++;
     }
     return [$finalized,$checked,$withdrawn];
+}
+
+/* =========================================================================
+ * SCHEDULE A PROMPT
+ * A thin scheduler over the same window math. Sean enters a one-word prompt,
+ * picks the Photo-Friday, and uploads the card. The tool derives the hashtag
+ * (#PhotoFri<Word>), files the card as a hidden draft, and — when drop_at
+ * arrives — the cron publishes the card (which federates via the delivery
+ * worker), switches the live qualifying hashtag to that week's tag, and moves
+ * the "next prompt" pointers forward. No second poster, no bespoke federation:
+ * it reuses snap_ingest_image, the post-model plug, and sv_kick_delivery.
+ * ========================================================================= */
+
+/**
+ * Queue a prompt for a Photo-Friday. Ingests the card image as a DRAFT post,
+ * generates the hashtag, and files it against that week's 50-hour window. The
+ * card stays hidden until pc_activate_due_prompts() drops it at drop_at.
+ *
+ * $data: prompt (word), friday (Y-m-d), drop_at (optional datetime-local/SQL,
+ *        default = window open), alt (optional card ALT).
+ * $file: one $_FILES entry (the uploaded card).
+ *
+ * @return array{ok:bool,msg:string,id?:int}
+ */
+function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): array {
+    pc_ensure_tables($pdo);
+    $prompt = trim((string)($data['prompt'] ?? ''));
+    if ($prompt === '') return ['ok' => false, 'msg' => 'Enter a prompt word.'];
+    $win = pc_window_for_friday((string)($data['friday'] ?? ''));
+    if ($win === null) return ['ok' => false, 'msg' => 'Pick a valid Photo-Friday date.'];
+
+    $hash = pc_hashtag_from_prompt($prompt, pc_tag_prefix($settings));
+
+    $drop_at = trim((string)($data['drop_at'] ?? ''));
+    if ($drop_at === '') {
+        $drop_at = $win['start'];                        // default: drops when the window opens
+    } else {
+        $drop_at = str_replace('T', ' ', $drop_at);      // datetime-local -> SQL
+        if (strlen($drop_at) === 16) $drop_at .= ':00';
+    }
+
+    // One prompt per Friday (week_key is UNIQUE). Guard the friendly path too.
+    $dupe = $pdo->prepare("SELECT id FROM pc_prompts WHERE week_key=? AND status IN ('queued','live') LIMIT 1");
+    $dupe->execute([$win['week_key']]);
+    if ($dupe->fetchColumn()) {
+        return ['ok' => false, 'msg' => 'A prompt is already scheduled for ' . $win['label'] . '. Cancel it first to reschedule.'];
+    }
+
+    // Card body: the word, its hashtag, and the challenge link.
+    $base = function_exists('sv_base') ? rtrim((string)sv_base($settings), '/') : '';
+    $body = $prompt . "\n\n#" . $hash['display']
+          . ($base !== '' ? "\n\nPost your photo during the 50-hour Photo-Friday window. " . $base . '/' : '');
+
+    require_once __DIR__ . '/image-ingest.php';
+    $res = snap_ingest_image($pdo, $settings, $file, [
+        'title'       => $prompt,
+        'status'      => 'draft',                         // hidden until the drop
+        'description' => $body,
+        'img_date'    => $drop_at,                        // dates the card at its drop moment
+        'alt'         => (string)($data['alt'] ?? ($prompt . ' — Photo-Friday prompt card')),
+    ]);
+    if (empty($res['ok'])) return ['ok' => false, 'msg' => 'Card image: ' . ($res['error'] ?? 'upload failed') . '.'];
+    $img_id = (int)$res['id'];
+
+    // POST-MODEL PLUG — mirrors smack-post-solo.php so the card is post-backed
+    // and federates on drop. NEVER touches img_slug (the federation identity).
+    $sq = $pdo->prepare("SELECT img_slug FROM snap_images WHERE id=?");
+    $sq->execute([$img_id]);
+    $slug = (string)$sq->fetchColumn();
+    $post_slug = $slug !== '' ? $slug : ('prompt-' . $img_id);
+    $chk = $pdo->prepare('SELECT 1 FROM snap_posts WHERE slug=? LIMIT 1');
+    $chk->execute([$post_slug]);
+    if ($chk->fetchColumn()) $post_slug .= '-p' . $img_id;
+    $pdo->prepare(
+        "INSERT INTO snap_posts
+            (title, slug, description, post_type, status, created_at,
+             allow_comments, allow_download, download_url, panorama_rows,
+             post_img_size_pct, post_border_px, post_border_color,
+             post_bg_color, post_shadow, fedi_enabled)
+         VALUES ('', ?, ?, 'single', 'draft', ?, 1, 0, '', 1, 100, 0, '#000000', '#ffffff', 0, 1)"
+    )->execute([$post_slug, $body, $drop_at]);
+    $post_id = (int)$pdo->lastInsertId();
+    $pdo->prepare(
+        "INSERT INTO snap_post_images
+            (post_id, image_id, sort_position, is_cover,
+             img_size_pct, img_border_px, img_border_color, img_bg_color,
+             img_shadow, img_crop_mode, img_focus_x, img_focus_y, img_zoom)
+         VALUES (?, ?, 0, 1, 100, 0, '#000000', '#ffffff', 0, 'fit', 50, 50, 100)"
+    )->execute([$post_id, $img_id]);
+    $pdo->prepare('UPDATE snap_images SET post_id=? WHERE id=?')->execute([$post_id, $img_id]);
+
+    $ins = $pdo->prepare(
+        "INSERT INTO pc_prompts
+            (week_key, friday, submit_start, submit_end, prompt, tag, tag_display, drop_at, post_id, image_id, status)
+         VALUES (?,?,?,?,?,?,?,?,?,?,'queued')"
+    );
+    $ins->execute([$win['week_key'], $win['friday'], $win['start'], $win['end'],
+                   $prompt, $hash['tag'], $hash['display'], $drop_at, $post_id, $img_id]);
+    $id = (int)$pdo->lastInsertId();
+
+    pc_refresh_prompt_pointers($pdo, $settings);
+    return ['ok' => true, 'id' => $id,
+            'msg' => 'Queued “' . $prompt . '” (#' . $hash['display'] . ') for ' . $win['label']
+                   . '. Card drops ' . $drop_at . ' UTC.'];
+}
+
+/** Scheduled + already-dropped prompts, newest first (canceled ones hidden). */
+function pc_prompts_list(PDO $pdo, int $limit = 60): array {
+    pc_ensure_tables($pdo);
+    $limit = max(1, min(200, $limit));
+    return $pdo->query("SELECT * FROM pc_prompts WHERE status<>'canceled' ORDER BY drop_at DESC LIMIT {$limit}")
+        ->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/**
+ * Unschedule a prompt that has not dropped yet. Non-destructive: the card stays
+ * as a hidden draft in the library (never auto-deleted) so nothing is lost.
+ * A prompt that already dropped cannot be canceled here — that would not un-post
+ * what already federated.
+ *
+ * @return array{ok:bool,msg:string}
+ */
+function pc_cancel_prompt(PDO $pdo, array &$settings, int $id): array {
+    $q = $pdo->prepare("SELECT status, friday FROM pc_prompts WHERE id=? LIMIT 1");
+    $q->execute([$id]);
+    $p = $q->fetch(PDO::FETCH_ASSOC);
+    if (!$p) return ['ok' => false, 'msg' => 'That prompt is already gone.'];
+    if (in_array($p['status'], ['live', 'done'], true)) {
+        return ['ok' => false, 'msg' => 'That prompt already dropped — canceling would not un-post it.'];
+    }
+    $pdo->prepare("UPDATE pc_prompts SET status='canceled' WHERE id=?")->execute([$id]);
+    pc_refresh_prompt_pointers($pdo, $settings);
+    return ['ok' => true, 'msg' => 'Unscheduled the ' . $p['friday'] . ' prompt. Its card stays as a hidden draft in your library.'];
+}
+
+/**
+ * The cron step: publish any queued prompt whose drop_at has arrived. Flips the
+ * card post live (the delivery worker then federates it as a new Note), switches
+ * the live qualifying hashtag to that week's tag, and advances the pointers.
+ * Uses NOW() to match pc_rounds finalization (both treat the DB clock as UTC).
+ *
+ * @return int prompts dropped this pass
+ */
+function pc_activate_due_prompts(PDO $pdo, array &$settings): int {
+    $due = $pdo->query("SELECT * FROM pc_prompts WHERE status='queued' AND drop_at<=NOW() ORDER BY drop_at LIMIT 5")
+        ->fetchAll(PDO::FETCH_ASSOC);
+    if (!$due) return 0;
+    $dropped = 0;
+    foreach ($due as $p) {
+        $post_id = (int)$p['post_id'];
+        $img_id  = (int)$p['image_id'];
+        if ($post_id > 0) $pdo->prepare("UPDATE snap_posts SET status='published' WHERE id=?")->execute([$post_id]);
+        if ($img_id  > 0) $pdo->prepare("UPDATE snap_images SET img_status='published' WHERE id=?")->execute([$img_id]);
+        sv_set_setting($pdo, $settings, 'photochallenge_tag', (string)$p['tag']);  // this week's qualifying tag goes live
+        $pdo->prepare("UPDATE pc_prompts SET status='live', dropped_at=NOW() WHERE id=?")->execute([(int)$p['id']]);
+        $dropped++;
+    }
+    pc_refresh_prompt_pointers($pdo, $settings);
+    require_once __DIR__ . '/page-cache.php';
+    if (function_exists('page_cache_purge_all')) page_cache_purge_all();     // card appears immediately
+    require_once __DIR__ . '/smackverse-kick.php';
+    if (function_exists('sv_kick_delivery')) sv_kick_delivery();             // federate the freshly-published card
+    return $dropped;
+}
+
+/**
+ * Keep the "next prompt drops" / "next submissions open" pointers current so a
+ * countdown can read a live value instead of a hardcoded date. Stored as ISO-8601
+ * Z strings the countdown engine (data-until) understands. Display only — never
+ * gates anything.
+ */
+function pc_refresh_prompt_pointers(PDO $pdo, array &$settings): void {
+    $next = $pdo->query("SELECT drop_at, submit_start FROM pc_prompts WHERE status='queued' AND drop_at>NOW() ORDER BY drop_at LIMIT 1")
+        ->fetch(PDO::FETCH_ASSOC);
+    $iso = static fn(string $sql): string => $sql !== '' ? str_replace(' ', 'T', $sql) . 'Z' : '';
+    sv_set_setting($pdo, $settings, 'photochallenge_next_prompt_at', $iso((string)($next['drop_at'] ?? '')));
+    sv_set_setting($pdo, $settings, 'photochallenge_next_submit_at', $iso((string)($next['submit_start'] ?? '')));
 }
 
 /**
