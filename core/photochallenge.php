@@ -188,6 +188,15 @@ function pc_ensure_tables(PDO $pdo): void {
             KEY idx_pc_round_finalize(finalized_at,window_end)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS pc_window_notices (
+            actor_url varchar(500) NOT NULL, week_key varchar(12) NOT NULL,
+            object_id varchar(500) NOT NULL, state enum('pending','sent','failed') NOT NULL DEFAULT 'pending',
+            attempted_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, last_error varchar(500) NOT NULL DEFAULT '',
+            UNIQUE KEY uq_pc_window_notice(actor_url(170),week_key),
+            KEY idx_pc_window_notice_state(state,attempted_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
     try {
         $has_boost_id = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
             WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pc_admissions' AND COLUMN_NAME='boost_activity_id' LIMIT 1")->fetchColumn();
@@ -286,10 +295,47 @@ function pc_set_horsconcours(PDO $pdo, string $actor_url, bool $on): void {
     } catch (Throwable $e) {}
 }
 
+/**
+ * Privately tell an opted-in participant that a plausible entry was published
+ * after the last round closed. One durable reservation per actor/upcoming round
+ * prevents duplicate DMs when the same object arrives through multiple paths.
+ */
+function pc_notice_closed_window(PDO $pdo, array $settings, array $row, array $win): void {
+    if (!function_exists('sv_send_dm')) return;
+    $published = (string)($row['published'] ?? '');
+    if ($published === '' || $published < (string)$win['end']) return;
+
+    $next_start = (new DateTimeImmutable((string)$win['start'], new DateTimeZone('UTC')))->modify('+7 days');
+    $next_end = $next_start->modify('+50 hours');
+    $week_key = $next_start->modify('+14 hours')->format('o-\\WW');
+    $actor = (string)($row['actor_url'] ?? '');
+    $object_id = (string)($row['object_id'] ?? '');
+    if ($actor === '' || $object_id === '') return;
+
+    try {
+        $reserve = $pdo->prepare("INSERT IGNORE INTO pc_window_notices(actor_url,week_key,object_id) VALUES(?,?,?)");
+        $reserve->execute([$actor,$week_key,$object_id]);
+        if ($reserve->rowCount() !== 1) return;
+
+        $tag = '#' . pc_tag($settings);
+        $body = "This Photo Friday round isn't open, so your post wasn't entered or boosted. "
+              . "Please post again while the round is open: "
+              . $next_start->format('Thursday, M j \\a\\t H:i') . " UTC through "
+              . $next_end->format('Saturday, M j \\a\\t H:i') . " UTC. Use {$tag}.";
+        [$ok,$message] = sv_send_dm($pdo,$settings,$actor,$body);
+        $pdo->prepare("UPDATE pc_window_notices SET state=?,last_error=? WHERE actor_url=? AND week_key=?")
+            ->execute([$ok ? 'sent' : 'failed',$ok ? '' : substr((string)$message,0,500),$actor,$week_key]);
+    } catch (Throwable $e) {
+        try {
+            $pdo->prepare("UPDATE pc_window_notices SET state='failed',last_error=? WHERE actor_url=? AND week_key=?")
+                ->execute([substr($e->getMessage(),0,500),$actor,$week_key]);
+        } catch (Throwable $ignored) {}
+    }
+}
+
 /** Allocate one immutable weekly slot under the participant-row lock. */
 function pc_admit_object(PDO $pdo, array $settings, string $object_id): ?array {
     $win = pc_window($settings);
-    if (!$win['open']) return null;
     $tag = pc_tag($settings);
     $q = $pdo->prepare(
         "SELECT t.*,p.state AS participant_state,p.horsconcours AS participant_hc,p.handle AS participant_handle
@@ -303,12 +349,16 @@ function pc_admit_object(PDO $pdo, array $settings, string $object_id): ?array {
         || !empty($row['in_reply_to']) || (int)($row['sensitive'] ?? 0) !== 0) return null;
     if (!pc_test_allowed($settings, (string)($row['actor_url'] ?? ''), (string)($row['participant_handle'] ?? ''))) return null;
     $published = (string)($row['published'] ?? '');
-    if ($published < $win['start'] || $published >= $win['end']) return null;
     $tags = json_decode((string)($row['tags_json'] ?? '[]'), true) ?: [];
     if (!in_array($tag, $tags, true)) return null;
     $media = json_decode((string)($row['media_json'] ?? '[]'), true) ?: [];
     $videos = json_decode((string)($row['media_video_json'] ?? '[]'), true) ?: [];
     if (count($media) !== 1 || $videos || !is_string($media[0]) || trim($media[0]) === '') return null;
+    if (!$win['open']) {
+        pc_notice_closed_window($pdo,$settings,$row,$win);
+        return null;
+    }
+    if ($published < $win['start'] || $published >= $win['end']) return null;
     $actor = (string)$row['actor_url'];
     $hc = ((int)($row['participant_hc'] ?? 0) === 1 || in_array('horsconcours', $tags, true)) ? 1 : 0;
 

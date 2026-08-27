@@ -152,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['push_blogroll'])) {
                 $my_blog_entries[] = [
                     'peer_name' => $sn['site_name'],
                     'peer_url'  => rtrim($sn['site_url'], '/') . '/',
-                    'peer_rss'  => '',
+                    'peer_rss'  => rtrim($sn['site_url'], '/') . '/rss.php',
                     'peer_desc' => $desc,
                     'category'  => $my_blogs_cat,
                 ];
@@ -164,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['push_blogroll'])) {
                 $my_blog_entries[] = [
                     'peer_name' => $hub_self_name,
                     'peer_url'  => $hub_self_url,
-                    'peer_rss'  => '',
+                    'peer_rss'  => rtrim($hub_self_url, '/') . '/rss.php',
                     'peer_desc' => trim($settings['site_tagline'] ?? ''),
                     'category'  => $my_blogs_cat,
                 ];

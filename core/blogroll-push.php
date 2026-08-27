@@ -71,7 +71,7 @@ function blogroll_build_entries(PDO $pdo, array $settings): array {
         $my[] = [
             'peer_name' => $sn['site_name'],
             'peer_url'  => rtrim($sn['site_url'], '/') . '/',
-            'peer_rss'  => '',
+            'peer_rss'  => rtrim($sn['site_url'], '/') . '/rss.php',
             'peer_desc' => $desc,
             'category'  => $my_blogs_cat,
         ];
@@ -83,7 +83,7 @@ function blogroll_build_entries(PDO $pdo, array $settings): array {
         $my[] = [
             'peer_name' => $hub_name,
             'peer_url'  => $hub_url,
-            'peer_rss'  => '',
+            'peer_rss'  => rtrim($hub_url, '/') . '/rss.php',
             'peer_desc' => trim($settings['site_tagline'] ?? ''),
             'category'  => $my_blogs_cat,
         ];

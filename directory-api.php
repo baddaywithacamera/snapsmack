@@ -39,6 +39,14 @@ function pbdir_ensure_table(PDO $pdo): void {
             description  VARCHAR(600) NOT NULL DEFAULT '',
             topics       TEXT NULL,
             avatar_url   VARCHAR(500) NOT NULL DEFAULT '',
+            feed_url     VARCHAR(500) NOT NULL DEFAULT '',
+            last_post_at DATETIME NULL,
+            last_checked_at DATETIME NULL,
+            last_success_at DATETIME NULL,
+            feed_status  VARCHAR(20) NOT NULL DEFAULT 'unknown',
+            feed_failures INT UNSIGNED NOT NULL DEFAULT 0,
+            feed_etag VARCHAR(255) NOT NULL DEFAULT '',
+            feed_last_modified VARCHAR(255) NOT NULL DEFAULT '',
             samples      TEXT NULL,
             state        ENUM('pending','active','hidden','removed') NOT NULL DEFAULT 'pending',
             submitted_at DATETIME NULL,
@@ -46,6 +54,18 @@ function pbdir_ensure_table(PDO $pdo): void {
             KEY state_idx (state)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
     );
+    foreach ([
+        "ADD COLUMN IF NOT EXISTS feed_url VARCHAR(500) NOT NULL DEFAULT '' AFTER avatar_url",
+        "ADD COLUMN IF NOT EXISTS last_post_at DATETIME NULL AFTER feed_url",
+        "ADD COLUMN IF NOT EXISTS last_checked_at DATETIME NULL AFTER last_post_at",
+        "ADD COLUMN IF NOT EXISTS last_success_at DATETIME NULL AFTER last_checked_at",
+        "ADD COLUMN IF NOT EXISTS feed_status VARCHAR(20) NOT NULL DEFAULT 'unknown' AFTER last_success_at",
+        "ADD COLUMN IF NOT EXISTS feed_failures INT UNSIGNED NOT NULL DEFAULT 0 AFTER feed_status",
+        "ADD COLUMN IF NOT EXISTS feed_etag VARCHAR(255) NOT NULL DEFAULT '' AFTER feed_failures",
+        "ADD COLUMN IF NOT EXISTS feed_last_modified VARCHAR(255) NOT NULL DEFAULT '' AFTER feed_etag",
+    ] as $alter) {
+        $pdo->exec("ALTER TABLE snap_directory_listings {$alter}");
+    }
 }
 
 pbdir_ensure_table($pdo);
@@ -73,6 +93,8 @@ $name   = mb_substr(trim((string)($in['name'] ?? $host)), 0, 120);
 $handle = mb_substr(trim((string)($in['handle'] ?? '')), 0, 120);
 $desc   = mb_substr(trim((string)($in['description'] ?? '')), 0, 500);
 $avatar = filter_var(trim((string)($in['avatar_url'] ?? '')), FILTER_VALIDATE_URL) ?: '';
+$feed   = filter_var(trim((string)($in['feed_url'] ?? '')), FILTER_VALIDATE_URL) ?: '';
+if ($feed !== '' && strcasecmp((string)parse_url($feed, PHP_URL_HOST), $host) !== 0) $feed = '';
 
 $topics = [];
 if (isset($in['topics']) && is_array($in['topics'])) {
@@ -94,13 +116,13 @@ $state = ($prev === 'active') ? 'active' : 'pending';
 
 $pdo->prepare(
     "INSERT INTO snap_directory_listings
-        (site_url, host, handle, name, description, topics, avatar_url, samples, state, submitted_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,NOW(),NOW())
+        (site_url, host, handle, name, description, topics, avatar_url, feed_url, samples, state, submitted_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,NOW(),NOW())
      ON DUPLICATE KEY UPDATE
         host=VALUES(host), handle=VALUES(handle), name=VALUES(name), description=VALUES(description),
-        topics=VALUES(topics), avatar_url=VALUES(avatar_url), samples=VALUES(samples),
+        topics=VALUES(topics), avatar_url=VALUES(avatar_url), feed_url=VALUES(feed_url), samples=VALUES(samples),
         state=VALUES(state), updated_at=NOW()"
-)->execute([$site_url, $host, $handle, $name, $desc, json_encode($topics), $avatar, json_encode($samples), $state]);
+)->execute([$site_url, $host, $handle, $name, $desc, json_encode($topics), $avatar, $feed, json_encode($samples), $state]);
 
 pbdir_api_out(['ok' => true, 'state' => $state]);
 // ===== SNAPSMACK EOF =====
