@@ -243,6 +243,11 @@ img { max-width: 100%; height: auto; }
     color: var(--pfd-red);
 }
 
+/* A title that already ends in . ! or ? keeps its own punctuation and skips the
+   accent dot (skin-page.php tags it .no-accent-dot), so "F.A.Q." never renders
+   as "F.A.Q..". */
+.static-page-title.no-accent-dot::after { content: none; }
+
 .static-content .description {
     margin-top: 8px;
 }

@@ -12,13 +12,16 @@ except Exception as exc:
 
 _src = SPECPATH
 _shared_dir = os.path.normpath(os.path.join(_src, '..', '_shared'))
+# Bundle the editor modules SNAP SLAPPER genuinely imports. Keep shared fleet
+# modules separately allowlisted below so credentials/network code cannot ride.
 _app_files = [os.path.join(_src, name) for name in
               ('snap_slapper.py', 'photo_library.py', 'photo_manager.py',
                'editor_engine.py', 'editor_ui.py', 'help_ui.py')]
 _app_files.append(os.path.join(_src, 'built_in_lewks.py'))
-_shared_files = [os.path.join(_shared_dir, name) for name in
-                 ('snap_home.py', 'snap_paths.py')]
-_shared_mods = [os.path.splitext(os.path.basename(path))[0] for path in _shared_files]
+# SECAUDIT 051: bundle ONLY the shared modules the standalone editor imports.
+_shared_names = ('snap_home.py', 'snap_paths.py')
+_shared_files = [os.path.join(_shared_dir, name) for name in _shared_names]
+_shared_mods = [os.path.splitext(name)[0] for name in _shared_names]
 
 a = Analysis(
     ['snap_slapper.py'],

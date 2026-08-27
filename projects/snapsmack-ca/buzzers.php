@@ -162,6 +162,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Aug 25</span><a href="#a051">Multisite Federation &mdash; Cross-Blog Trust, the Public Directory &amp; SNAP SLAPPER</a></li>
                 <li><span class="idx-date">Aug 21</span><a href="#a050">CMS Architecture Assessment &mdash; Direct-Access Guards &amp; Content-Model Integrity</a></li>
                 <li><span class="idx-date">Aug 18</span><a href="#a049">CMS Compliance, Image Handling &amp; the Missing Content Invariant</a></li>
                 <li><span class="idx-date">Aug 15</span><a href="#a048">Live Penetration Test &mdash; Installer, Bootstrap, JSON-LD &amp; Editor Boundary</a></li>
@@ -216,6 +217,14 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a051">
+                <div class="post-meta"><span class="post-date">August 25, 2026</span><span class="post-tag">Serious Findings Closed</span></div>
+                <h2>Multisite Federation &mdash; Cross-Blog Trust, the Public Directory &amp; SNAP SLAPPER</h2>
+                <p>SnapSmack blogs can now connect into a hub-and-spoke network &mdash; one blog sends commands to the others &mdash; and photoblogs.fyi runs a public directory blogs can opt into. Both are exactly the kind of new machinery worth attacking, so they got a dedicated review: four reviewers reading the shipped code in parallel, every finding re-checked by hand. The engine itself &mdash; the cryptographic signatures on federated messages, the outbound requests, the remote-job runner &mdash; held up. Two serious issues were in the access-control layer around it. First, because a hub and a spoke share one secret key, and four hub commands weren&rsquo;t checking that the caller really was the hub, a spoke &mdash; or an attacker who had compromised one &mdash; could turn its own key around and, on the hub, mint a posting credential, read the email address and IP of everyone with a pending comment, add posts, or rewrite the blogroll. All four now require the caller to be the hub, the same check every other command already carried.</p>
+                <p>Second, the public directory sign-up had no login and trusted whatever was posted to it, so anyone could overwrite an approved listing with their own content &mdash; and it stayed live &mdash; or delist any blog by address. The hub now verifies every request by calling the site back and reading the listing <em>straight from the site itself</em>, so a forged submission can only make the hub re-read that blog&rsquo;s own truth: it cannot inject content, and it cannot remove a site that still lists itself. New members still wait for human review. Three more were closed alongside: a hub-to-spoke image fetch that could be pointed at the private network, a photo-editor build (SNAP SLAPPER) that shipped the fleet&rsquo;s credential code it never runs &mdash; no secret was ever embedded in it &mdash; and two minor items, a directory tracking-beacon trick and a one-in-a-million join-key race. Closed in 0.7.559, and published here only after the fix was live on every blog &mdash; because a working description of an unpatched hole is the opposite of protecting the people running these sites.</p>
+                <a class="report-link" href="secaudits/2026-08-25-051-multisite-federation-and-snap-slapper.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a050">
                 <div class="post-meta"><span class="post-date">August 21, 2026</span><span class="post-tag">Finding Closed &mdash; Architecture Dispositioned</span></div>

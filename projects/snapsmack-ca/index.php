@@ -83,6 +83,9 @@ $page_css = <<<'CSS'
 .coming-item .tag { display: block; margin-bottom: 9px; color: var(--red); font: 700 .68rem/1 'Courier New', monospace; letter-spacing: .08em; text-transform: uppercase; }
 .coming-item h3 { color: var(--white); margin-bottom: 9px; font-size: 1rem; }
 .coming-item p { margin: 0; color: #aaa; font-size: .88rem; line-height: 1.55; }
+.coming-features { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; margin-top: 22px; }
+.coming-item--feature p + p { margin-top: .85em; }
+.coming-item--feature .ps { margin-top: 1em; color: #777; font-style: italic; }
 #security { background: #2e2e2e; color: var(--white); }
 #security h2 { color: var(--red); }
 #security .site-discovery-kicker { color: #bbb; }
@@ -122,6 +125,7 @@ $page_css = <<<'CSS'
     .mode-grid, .featured-skin-grid { grid-template-columns: 1fr; }
     .fed-shots, .fed-split { grid-template-columns: 1fr; }
     .coming-grid { grid-template-columns: 1fr; }
+    .coming-features { grid-template-columns: 1fr; }
     .security-layers { grid-template-columns: 1fr; }
     .trust-grid { grid-template-columns: 1fr; }
     .whodat-card { display: block; }
@@ -264,11 +268,6 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="coming-grid">
                 <article class="coming-item">
-                    <span class="tag">Photo Manager</span>
-                    <h3>Snap Slapper</h3>
-                    <p>A fast, private desktop photo library for browsing, rating, tagging, organizing, editing, and exporting photographs without handing the collection to a cloud service.</p>
-                </article>
-                <article class="coming-item">
                     <span class="tag">Skin</span>
                     <h3>Lookbook</h3>
                     <p>A clean, high-resolution portfolio skin with minimal chrome and nowhere for weak photographs to hide.</p>
@@ -312,6 +311,21 @@ require_once __DIR__ . '/includes/header.php';
                     <span class="tag">Discovery</span>
                     <h3>Photoblogs.fyi</h3>
                     <p>A shared front door for finding independent photography sites without making any of those sites depend on it.</p>
+                </article>
+            </div>
+            <div class="coming-features">
+                <article class="coming-item coming-item--feature">
+                    <span class="tag">Photo Manager</span>
+                    <h3>Snap Slapper</h3>
+                    <p>Picasa, if it had been accidentally exposed to gamma radiation in a lab accident. A fast, private desktop photo library for browsing, rating, tagging, organizing, editing, and exporting your photographs &mdash; without ever handing the collection to a cloud service.</p>
+                    <p>Then the mutation kicks in: layers, LEWKS (Lightroom-style actions), and partial Lightroom plugin support. Just don&rsquo;t make it angry. You won&rsquo;t like it when it&rsquo;s angry.</p>
+                </article>
+                <article class="coming-item coming-item--feature">
+                    <span class="tag">AI Actions</span>
+                    <h3>LEWK AGAIN</h3>
+                    <p>You&rsquo;ve seen cool action sets on YouTube sold by hip photographers who can&rsquo;t STFU. You want them. But you can&rsquo;t afford them because you&rsquo;re more broke than the Titanic after it humped an iceberg. The worst part is you&rsquo;re looking at buying them because you don&rsquo;t know how to make your own.</p>
+                    <p>Forget the hard shit. LEWK AGAIN is an AI-assisted action stacker. You tell it the look you want, the tool builds the LEWK you like, and the d-bag on YouTube is finally at a loss for words when his revenue stream dries up. #winning</p>
+                    <p class="ps">p.s. No icebergs were traumatized in the creation of this software.</p>
                 </article>
             </div>
         </div>

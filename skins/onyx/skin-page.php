@@ -27,7 +27,7 @@ include __DIR__ . '/skin-meta.php';
     <?php include __DIR__ . '/skin-header.php'; ?>
 
     <div class="static-content">
-        <h1 class="static-page-title"><?php echo $page_title; ?></h1>
+        <h1 class="static-page-title<?php echo preg_match('/[.!?]$/', trim(strip_tags((string)$page_title))) ? ' no-accent-dot' : ''; ?>"><?php echo $page_title; ?></h1>
 
         <?php if (!empty($page_data['image_asset'])): ?>
             <div id="photobox" class="page-hero">

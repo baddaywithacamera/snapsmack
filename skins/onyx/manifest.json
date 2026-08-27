@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "ONYX",
-    "version": "0.1.8",
+  "version": "0.1.8",
   "author": "Sean McCormick",
   "support": "sean@baddaywithacamera.ca",
   "status": "alpha",

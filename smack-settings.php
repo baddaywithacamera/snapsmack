@@ -18,6 +18,14 @@ require_once 'core/auth-smack.php';
 require_once 'core/ste-client.php';
 require_once 'core/client-ip.php';
 
+// SNAPSMACK_AI_GRACE_DAYS is guard-defined in core/ai-provider.php, but this page
+// checks the AI helpers via function_exists() and never loads that module — so on
+// an updated install (whose protected constants.php predates the constant) the AI
+// status block echoed an undefined constant, which is a fatal in PHP 8. That fatal
+// halted the render before the SAVE CONFIGURATION button. Define it here too, the
+// same guarded way, so the page can never crash on it.
+if (!defined('SNAPSMACK_AI_GRACE_DAYS')) define('SNAPSMACK_AI_GRACE_DAYS', 30);
+
 // --- AKISMET KEY TEST (AJAX) ---
 if (
     isset($_SERVER['HTTP_X_REQUESTED_WITH']) &&

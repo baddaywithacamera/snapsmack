@@ -178,6 +178,18 @@ foreach ($peers as $peer) {
 
 $log('RSS fetch completed.');
 
+// photoblogs.fyi discovery feed: refresh the square-thumb cache from the
+// directory members in the same sweep, so the feed stays fresh without ever
+// making a visitor wait on 24 outbound RSS fetches. Hub-only in practice — on a
+// non-hub install snap_directory_listings is empty and this is a clean no-op.
+try {
+    require_once $base . '/core/photoblogs-feed.php';
+    $fr = pbfeed_refresh($pdo, $log);
+    $log("Discovery feed: {$fr['items']} items across {$fr['blogs']} blogs.");
+} catch (Throwable $e) {
+    $log('Feed refresh error: ' . $e->getMessage());
+}
+
 // CRONOMETER: record a fleet-level run marker so the job board can light the
 // rss_fetch row. Per-peer snap_blogroll.rss_last_fetched already existed, but
 // there was no job-level "the sweep ran" signal until now.
