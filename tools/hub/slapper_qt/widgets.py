@@ -5,11 +5,14 @@ screen shares one look and one behaviour instead of styling controls ad hoc.
 """
 
 from PySide6.QtCore import Qt, Signal, QRectF
-from PySide6.QtGui import QPainter, QPixmap
+from PySide6.QtGui import QPainter, QPixmap, QColor, QPolygonF, QPen
+from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsPixmapItem,
     QWidget, QLabel, QSlider, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy,
 )
+
+from . import theme
 
 
 class ImageView(QGraphicsView):
@@ -78,6 +81,71 @@ class ImageView(QGraphicsView):
         height = max(320, int(self.viewport().height() * ratio))
         # A little headroom so a zoom-in past fit still looks sharp.
         return (min(4096, int(width * 1.5)), min(4096, int(height * 1.5)))
+
+
+class Histogram(QWidget):
+    """A live Luma/RGB histogram painted from the engine's histogram data.
+
+    A clipped black or white bin can dwarf every useful tonal bin, so the
+    vertical scale ignores the two extreme bins (0 and 255) plus a little
+    headroom — the same reasoning as the Tk editor.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(96)
+        self._data = None
+        self._mode = "luma"
+
+    def set_data(self, data, mode=None):
+        self._data = data
+        if mode:
+            self._mode = mode
+        self.update()
+
+    def set_mode(self, mode):
+        self._mode = mode
+        self.update()
+
+    def _scale_max(self, bins):
+        interior = bins[1:255] if len(bins) >= 256 else bins
+        return max(interior) if interior and max(interior) > 0 else 1
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), QColor("#070707"))
+        painter.setPen(QPen(QColor(theme.BORDER), 1))
+        painter.drawRect(self.rect().adjusted(0, 0, -1, -1))
+        if not self._data:
+            return
+        painter.setRenderHint(QPainter.Antialiasing)
+        width = self.width() - 2
+        height = self.height() - 2
+
+        if self._mode == "rgb":
+            channels = [("red", QColor(255, 70, 70, 150)),
+                        ("green", QColor(70, 255, 70, 150)),
+                        ("blue", QColor(90, 130, 255, 150))]
+        else:
+            channels = [("luminance", QColor(theme.ACCENT))]
+
+        painter.setCompositionMode(QPainter.CompositionMode_Plus if self._mode == "rgb"
+                                   else QPainter.CompositionMode_SourceOver)
+        for key, colour in channels:
+            bins = self._data.get(key)
+            if not bins:
+                continue
+            top = self._scale_max(bins)
+            polygon = QPolygonF()
+            polygon.append(QPointF(1, height + 1))
+            for i, value in enumerate(bins):
+                x = 1 + (i / 255.0) * width
+                y = 1 + height - min(1.0, value / top) * height
+                polygon.append(QPointF(x, y))
+            polygon.append(QPointF(width + 1, height + 1))
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(colour)
+            painter.drawPolygon(polygon)
 
 
 class SliderRow(QWidget):

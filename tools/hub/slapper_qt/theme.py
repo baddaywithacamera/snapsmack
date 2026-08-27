@@ -101,6 +101,26 @@ def stylesheet() -> str:
         color: {ACCENT};
     }}
 
+    /* --- Mini toggles (histogram LUMA/RGB) ----------------------------- */
+    QPushButton#MiniToggle {{
+        background: {FIELD};
+        color: {DIM};
+        border: 1px solid {BORDER};
+        border-radius: 4px;
+        padding: 1px 8px;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 1px;
+    }}
+    QPushButton#MiniToggle:hover {{
+        color: {BODY};
+    }}
+    QPushButton#MiniToggle:checked {{
+        background: {ACCENT_DIM};
+        color: {ACCENT};
+        border: 1px solid {ACCENT};
+    }}
+
     /* --- Control rows --------------------------------------------------- */
     QLabel#ControlName {{
         color: {DIM};
