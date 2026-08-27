@@ -131,6 +131,38 @@ def test_layers_isolation_and_ops():
     assert len(win.doc.layers) == 1
 
 
+def test_lewk_apply_preserves_base():
+    import built_in_lewks
+    win = _editor(_image("lewk.jpg", (400, 300)))
+    win.rows["exposure"]._on_slider(win.rows["exposure"]._to_step(1.0))
+    win._on_commit("exposure")
+    base_exp = win.doc.adjustments["exposure"]
+    n0 = len(win.doc.layers)
+    layer = win.apply_lewk("golden-hourglass", 80)
+    # a LEWK must NOT flatten the photographer's base edits
+    assert win.doc.adjustments["exposure"] == base_exp
+    assert len(win.doc.layers) == n0 + 1
+    assert abs(layer["opacity"] - 0.8) < 1e-6
+    assert layer["lewk"]["id"] == "golden-hourglass"
+    # stacking a second LEWK keeps unique ids (no Windows time collision)
+    win.apply_lewk("frost-warning", 100)
+    ids = [lyr["id"] for lyr in win.doc.layers]
+    assert len(set(ids)) == len(ids)
+    assert win.doc.render((200, 200))
+
+
+def test_lewks_dialog_previews():
+    import built_in_lewks
+    from slapper_qt.lewks_dialog import LewksDialog
+    win = _editor(_image("lewkprev.jpg", (300, 200)))
+    dialog = LewksDialog(win)
+    assert dialog.grid.count() == len(built_in_lewks.all_lewks())
+    # previews render on the photo (at least one icon populated)
+    populated = sum(1 for r in range(dialog.grid.count())
+                    if not dialog.grid.item(r).icon().isNull())
+    assert populated == dialog.grid.count()
+
+
 def test_texture_layer():
     win = _editor(_image("tphoto.jpg", (400, 300)))
     tex = _image("texture.png", (120, 60), (200, 120, 60))
