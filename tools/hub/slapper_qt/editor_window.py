@@ -200,11 +200,23 @@ class EditorWindow(QMainWindow):
         geo_section.add(self._build_geometry())
         inner_layout.addWidget(geo_section)
 
-        # Black & white toggle
+        # Black & white — neutral toggle + per-colour luminance mix
         bw_section = Accordion("BLACK + WHITE", expanded=False)
         self.bw_check = QCheckBox("Convert to black and white")
         self.bw_check.toggled.connect(self._on_bw)
         bw_section.add(self.bw_check)
+        bw_hint = QLabel("Colour mix — how each colour becomes grey")
+        bw_hint.setObjectName("TargetLabel")
+        bw_section.add(bw_hint)
+        for key, label in (("bw_red", "Red"), ("bw_orange", "Orange"),
+                           ("bw_yellow", "Yellow"), ("bw_green", "Green"),
+                           ("bw_aqua", "Aqua"), ("bw_blue", "Blue"),
+                           ("bw_purple", "Purple"), ("bw_magenta", "Magenta")):
+            srow = SliderRow(key, label, -100, 100, 1, 0)
+            srow.changed.connect(self._on_adjust)
+            srow.committed.connect(self._on_commit)
+            self.rows[key] = srow
+            bw_section.add(srow)
         inner_layout.addWidget(bw_section)
 
         inner_layout.addStretch(1)

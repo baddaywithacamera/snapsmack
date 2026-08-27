@@ -14,7 +14,8 @@ import tempfile
 import textwrap
 import zipfile
 
-from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
+from PIL import (Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter,
+                 ImageFont, ImageMath, ImageOps)
 
 import photo_manager
 
@@ -34,8 +35,21 @@ DEFAULT_ADJUSTMENTS = {
     "clarity": 0.0, "texture": 0.0, "dehaze": 0.0, "sharpen": 0.0,
     "level_black": 0.0, "level_gamma": 1.0, "level_white": 255.0,
     "black_white": False, "vignette": 0.0, "grain": 0.0,
+    # Black & white colour mix — per-hue luminance, Lightroom-style.
+    # All zero == the classic neutral grayscale (backward compatible).
+    "bw_red": 0.0, "bw_orange": 0.0, "bw_yellow": 0.0, "bw_green": 0.0,
+    "bw_aqua": 0.0, "bw_blue": 0.0, "bw_purple": 0.0, "bw_magenta": 0.0,
     "curve": [[0, 0], [255, 255]],
 }
+
+# Pillow 10.3+ renamed ImageMath.eval -> unsafe_eval (same behaviour, our
+# expression is a fixed literal). Fall back to eval on older Pillow.
+_image_math_eval = getattr(ImageMath, "unsafe_eval", None) or getattr(ImageMath, "eval")
+
+# Hue centres (degrees) for the black & white colour mix, in wheel order.
+BW_BANDS = [("bw_red", 0.0), ("bw_orange", 30.0), ("bw_yellow", 60.0),
+            ("bw_green", 120.0), ("bw_aqua", 180.0), ("bw_blue", 240.0),
+            ("bw_purple", 270.0), ("bw_magenta", 300.0)]
 
 
 def _clamp(value, low=0, high=255):
@@ -148,6 +162,50 @@ def _tonal_lut(adjustments):
     return lut
 
 
+def _bw_multiplier_lut(settings):
+    """A 256-entry luminance-multiplier lookup indexed by PIL hue (0-255).
+
+    Each colour band's slider (-100..100) brightens or darkens pixels of that
+    hue in the black & white conversion. Values interpolate around the wheel,
+    so a hue between two bands blends their sliders. All-zero -> all 1.0.
+    """
+    centres = [(deg, float(settings.get(key, 0.0))) for key, deg in BW_BANDS]
+    lut = []
+    for index in range(256):
+        hue = index * 360.0 / 255.0
+        # nearest band on each side of this hue, around the circle
+        below = max(((deg - 360.0 if deg > hue else deg, value)
+                     for deg, value in centres), key=lambda item: item[0])
+        above = min(((deg + 360.0 if deg < hue else deg, value)
+                     for deg, value in centres), key=lambda item: item[0])
+        span = above[0] - below[0]
+        weight = 0.0 if span == 0 else (hue - below[0]) / span
+        slider = below[1] * (1 - weight) + above[1] * weight
+        multiplier = 1.0 + (slider / 100.0) * 0.7   # +-100 -> 1.7 / 0.3
+        lut.append(max(0, min(255, int(round(multiplier * 128.0)))))
+    return lut
+
+
+def _bw_mono(output, settings):
+    """Return the greyscale L image for black & white, using the colour mix.
+
+    With every band at 0 this equals ``ImageOps.grayscale`` exactly, so old
+    projects render identically.
+    """
+    base = ImageOps.grayscale(output)
+    if not any(float(settings.get(key, 0.0)) for key, _deg in BW_BANDS):
+        return base
+    hsv = output.convert("HSV")
+    hue = hsv.getchannel("H").point(_bw_multiplier_lut(settings))
+    saturation = hsv.getchannel("S")
+    # grey * (1 + (multiplier-1) * saturation); saturation weights the effect
+    # so neutral (grey) pixels are untouched.
+    return _image_math_eval(
+        "convert(min(max(float(g) * (1 + (float(m) / 128.0 - 1) "
+        "* (float(s) / 255.0)), 0.0), 255.0), 'L')",
+        g=base, m=hue, s=saturation)
+
+
 def apply_adjustments(image, adjustments):
     settings = dict(DEFAULT_ADJUSTMENTS)
     settings.update(adjustments or {})
@@ -198,7 +256,7 @@ def apply_adjustments(image, adjustments):
     curve = settings.get("curve") or [[0, 0], [255, 255]]
     output = output.point(_curve_lut(curve) * 3)
     if settings.get("black_white"):
-        mono = ImageOps.grayscale(output)
+        mono = _bw_mono(output, settings)
         output = Image.merge("RGB", (mono, mono, mono))
 
     vignette = float(settings["vignette"])

@@ -116,6 +116,28 @@ def test_layers_isolation_and_ops():
     assert len(win.doc.layers) == 1
 
 
+def test_bw_colour_mix():
+    from PIL import ImageOps, ImageChops
+    bands = Image.new("RGB", (300, 60))
+    px = bands.load()
+    for y in range(60):
+        for x in range(300):
+            px[x, y] = [(220, 40, 40), (40, 200, 40), (40, 60, 220)][x // 100]
+    path = os.path.join(TMP, "bw.png"); bands.save(path)
+    win = _editor(path)
+    win.bw_check.setChecked(True)
+    # all bands at 0 must equal the plain neutral grayscale
+    neutral = win.doc.render()
+    grey = ImageOps.grayscale(bands.resize(neutral.size))
+    assert ImageChops.difference(neutral, Image.merge("RGB", (grey,) * 3)).getbbox() is None
+    # brighten red, darken blue via the sliders
+    win.rows["bw_red"]._on_slider(100); win._on_commit("bw_red")
+    win.rows["bw_blue"]._on_slider(-100); win._on_commit("bw_blue")
+    mixed = win.doc.render()
+    assert mixed.getpixel((50, 30))[0] > neutral.getpixel((50, 30))[0]
+    assert mixed.getpixel((250, 30))[0] < neutral.getpixel((250, 30))[0]
+
+
 def test_geometry():
     win = _editor(_image("e.jpg", (400, 300)))
     win._on_geometry("rotation", 90.0); win._commit_geometry("Rotate")
