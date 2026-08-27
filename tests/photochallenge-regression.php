@@ -152,6 +152,10 @@ pc_test(str_contains($photo, 'INSERT INTO snap_posts') && str_contains($photo, '
     'the queued card must be post-backed so it federates on drop');
 pc_test(str_contains($admin, "value=\"queue_prompt\"") && str_contains($admin, 'SCHEDULE A PROMPT'),
     'the admin is missing the SCHEDULE A PROMPT panel');
+pc_test(str_contains($sidebar, '>Contest &amp; Feed</a>')
+    && str_contains($sidebar, 'smack-photochallenge.php#queue-contest-post">Queue Contest Post</a>')
+    && str_contains($admin, 'id="queue-contest-post"'),
+    'CHALLENGE ME must keep Contest & Feed and add Queue Contest Post as a second sidebar option');
 pc_test(str_contains($admin, 'enctype="multipart/form-data"'),
     'the prompt form cannot upload a card image');
 
