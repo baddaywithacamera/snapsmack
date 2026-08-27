@@ -1648,7 +1648,10 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
     $cols = ['object_id', 'actor_url', 'actor_handle', 'content', 'media_json'];
     $vals = [
         substr($object_id, 0, 500), substr($actor_url, 0, 500), substr($handle, 0, 190),
-        mb_substr(trim(strip_tags((string)($obj['content'] ?? ''))), 0, 4000),
+        // Decode entities as well as strip tags, so the stored plain text is not
+        // double-escaped when the timeline re-encodes it for display (an apostrophe
+        // must land as ' not &#039;). Matches the other content ingests in this file.
+        mb_substr(trim(html_entity_decode(strip_tags((string)($obj['content'] ?? '')), ENT_QUOTES, 'UTF-8')), 0, 4000),
         json_encode($images, JSON_UNESCAPED_SLASHES),
     ];
     $dupe = "content=VALUES(content), media_json=VALUES(media_json), tags_json=VALUES(tags_json), "
