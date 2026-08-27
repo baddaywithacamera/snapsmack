@@ -10,6 +10,19 @@
 
 # SnapSmack Changelog
 
+## 0.7.573 — 2026-08-27 "FEDBOARD"
+
+- **Fixed the fediverse "apostrophe catastrophe."** Federated posts with an
+  apostrophe (or `&`, `"`, `<`, `>`) showed the literal HTML entity in the
+  timeline — e.g. `week&#039;s` instead of `week's`. The timeline ingest
+  (`core/smackverse.php`) stripped tags from incoming post content but did not
+  decode HTML entities, while the display re-escapes for safety — so the entity
+  got encoded twice. Ingest now decodes entities the same way the file's three
+  other content ingests already do, so stored timeline text is clean and renders
+  correctly. Existing garbled rows can be corrected with a one-off `REPLACE`
+  update on `snap_ap_timeline`; after this ships fleet-wide a re-ingest keeps
+  them clean on its own.
+
 ## 0.7.572 — 2026-08-27 "FEDBOARD"
 
 - **Both scheduling controls show date and time.** **Boosting Window Starts At**
