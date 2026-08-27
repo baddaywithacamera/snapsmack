@@ -796,6 +796,69 @@ body.homepage-static .pfd-lede {
    of the CMS it never had to describe.
    =========================================================================== */
 
+/* Landing wall: ONYX presentation over SCROLL's shared native-aspect columns
+   engine. Geometry stays in the core engine; ONYX owns only width and chrome. */
+:root {
+    --onyx-wall-width: 92%;
+    --scroll-corner-radius: 0px;
+    --scroll-border-width: 0px;
+    --scroll-border-color: var(--pfd-red);
+}
+.onyx-wall-shell {
+    width: var(--onyx-wall-width, 92%);
+    margin: 0 auto;
+    padding: 28px 0 56px;
+}
+.onyx-wall-heading {
+    border-bottom: 1px solid var(--pfd-hairline);
+    margin-bottom: 24px;
+    padding-bottom: 18px;
+}
+.onyx-wall-heading p {
+    margin: 0;
+    color: var(--pfd-muted);
+    font-family: var(--pfd-mono);
+    font-size: .72rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+}
+.onyx-photo-wall {
+    --ss-cols: 4;
+    --ss-gap: 8px;
+    position: relative;
+    display: block;
+    width: 100%;
+}
+.onyx-wall-item {
+    display: block;
+    overflow: hidden;
+    background: #080808;
+    border: var(--scroll-border-width) solid var(--scroll-border-color);
+    border-radius: var(--scroll-corner-radius);
+    color: var(--pfd-ink);
+}
+.onyx-wall-item img { display:block;width:100%;height:100%; }
+.onyx-wall-title {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    color: #fff;
+    background: rgba(0,0,0,.68);
+    font-family: var(--pfd-black);
+    font-size: .9rem;
+    text-align: center;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity .16s ease;
+    pointer-events: none;
+}
+.onyx-wall-item:hover .onyx-wall-title,
+.onyx-wall-item:focus-visible .onyx-wall-title { opacity: 1; }
+.scroll-wall-sentinel { width:100%;height:1px; }
+@media(max-width:700px){.onyx-photo-wall{--ss-cols:2}.onyx-wall-shell{width:calc(100% - 24px)}}
+
 #pfd-photobox {
     padding: 40px var(--pfd-gutter) 0;
 }

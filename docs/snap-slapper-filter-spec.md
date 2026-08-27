@@ -9,7 +9,7 @@
 **Status:** Approved next editor milestone  
 **Written:** 2026-08-24  
 **Version target:** SnapSmack `0.7.x`; increment only the final revision  
-**Priority:** Before ACTION LAB
+**Priority:** Before LEWK AGAIN
 
 ## 1. Goal
 

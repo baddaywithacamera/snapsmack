@@ -333,7 +333,8 @@ if (isset($_SESSION['user_login']) && !smack_is_admin()) {
         // work, like comments. DMs and the admin Forum ARE admin-only: DMs are the
         // blog's private 1:1 identity, and the Forum auto-registers the install on the hub.)
         'smack-smackverse.php', 'smack-sv-tools.php', 'smack-sv-followers.php',
-        'smack-pixelfed.php', 'smack-photochallenge.php', 'smack-directory.php',
+        'smack-pixelfed.php', 'smack-photochallenge.php', 'smack-photochallenge-queue.php',
+        'smack-photochallenge-queued.php', 'smack-directory.php',
         'smack-dms.php', 'smack-forum.php',
     ];
     if (in_array(basename($_SERVER['SCRIPT_FILENAME'] ?? ''), $_admin_only, true)) {

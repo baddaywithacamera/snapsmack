@@ -74,7 +74,8 @@ if (!isset($cron_supported)) {
     $php_cli_path   = '';
     if (function_exists('exec')) {
         exec('crontab -l 2>&1', $_ct_out, $_ct_code);
-        $cron_supported = ($_ct_code === 0);
+        $cron_supported = ($_ct_code === 0)
+            || ($_ct_code !== 0 && stripos(implode("\n", $_ct_out), 'no crontab for') !== false);
         $php_cli_path   = trim(exec('which php 2>&1'));
         if (strpos($php_cli_path, '/') !== 0) $php_cli_path = '';
     }

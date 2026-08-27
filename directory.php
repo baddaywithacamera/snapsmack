@@ -2,15 +2,9 @@
 /**
  * SNAPSMACK — photoblogs.fyi PUBLIC DIRECTORY  [0.7.547]
  *
- * Renders the APPROVED (state='active') directory listings as a PICTURE-FIRST
- * grid: each card is just the blog's photos, and the whole card links back to
- * that blog's own site DOFOLLOW — the directory passes its link equity OUT to
- * members on purpose; sending traffic + SEO back is the whole point. Nothing is
- * re-hosted here. Photo tiles are filled from each blog's own /rss.php feed
- * (parallel fetch, cached 6h) when it hasn't submitted samples via the API, so
- * the grid shows real pictures and never a placeholder box. Browse by topic,
- * search, sort — all server-side, no JS. A blog with no photo yet is hidden
- * rather than shown as an empty tile.
+ * Renders the APPROVED (state='active') directory listings. Browse by topic,
+ * search, sort — all server-side, no JavaScript. This is a people/site listing;
+ * photographs belong to the separate public feed.
  * Reachable at /directory.php (a pretty /directory rewrite is a follow-up).
  *
  * SNAPSMACK_EOF_HEADER
@@ -21,85 +15,20 @@ require_once __DIR__ . '/core/db.php';   // $pdo
 
 $rows = [];
 try {
-    $rows = $pdo->query("SELECT * FROM snap_directory_listings WHERE state='active' ORDER BY updated_at DESC LIMIT 500")
+    $has_feed_health = (bool)$pdo->query("SHOW COLUMNS FROM snap_directory_listings LIKE 'feed_status'")->fetchColumn();
+    $where = $has_feed_health ? "state='active' AND feed_status<>'dead'" : "state='active'";
+    $order = $has_feed_health ? 'COALESCE(last_post_at,updated_at)' : 'updated_at';
+    $rows = $pdo->query("SELECT * FROM snap_directory_listings WHERE {$where} ORDER BY {$order} DESC LIMIT 500")
                 ->fetchAll(PDO::FETCH_ASSOC) ?: [];
 } catch (Throwable $e) { $rows = []; }
 
-// Decode topics/samples once.
+// Decode directory metadata once. Samples are retained for API compatibility,
+// but the directory is a blog listing and does not render feed photographs.
 foreach ($rows as &$r) {
     $r['_topics']  = json_decode((string)($r['topics'] ?? '[]'), true) ?: [];
     $r['_samples'] = json_decode((string)($r['samples'] ?? '[]'), true) ?: [];
 }
 unset($r);
-
-// --- Fill the photo tiles from each blog's own RSS feed (cached), so the
-// --- directory shows real pictures instead of empty placeholders. Hub-side and
-// --- self-healing: no per-blog upload step. Samples a blog explicitly submitted
-// --- via the API win; RSS only fills the blanks, refreshed every 6 hours.
-$dir_need = [];
-foreach ($rows as $i => $r) {
-    if (empty($r['_samples']) && !empty($r['site_url'])) {
-        $dir_need[$i] = rtrim((string)$r['site_url'], '/');
-    }
-}
-if ($dir_need) {
-    $cache_file = sys_get_temp_dir() . '/pbdir_rss_samples.json';
-    $cache = is_readable($cache_file) ? (json_decode((string)file_get_contents($cache_file), true) ?: []) : [];
-    $now = time();
-    $ttl = 21600; // 6 hours
-    $fetch = [];
-    foreach ($dir_need as $i => $url) {
-        $c = $cache[$url] ?? null;
-        if (is_array($c) && ($now - (int)($c['t'] ?? 0)) < $ttl) {
-            if (!empty($c['s'])) $rows[$i]['_samples'] = $c['s'];
-        } else {
-            $fetch[$i] = $url;
-        }
-    }
-    if ($fetch && function_exists('curl_multi_init')) {
-        $mh = curl_multi_init();
-        $handles = [];
-        foreach ($fetch as $i => $url) {
-            $ch = curl_init($url . '/rss.php');
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_MAXREDIRS      => 3,
-                CURLOPT_TIMEOUT        => 6,
-                CURLOPT_CONNECTTIMEOUT => 4,
-                CURLOPT_USERAGENT      => 'photoblogs.fyi-directory/1.0',
-            ]);
-            curl_multi_add_handle($mh, $ch);
-            $handles[$i] = $ch;
-        }
-        do {
-            $st = curl_multi_exec($mh, $running);
-            if ($running) curl_multi_select($mh, 1.0);
-        } while ($running && $st === CURLM_OK);
-        foreach ($handles as $i => $ch) {
-            $body = (string)curl_multi_getcontent($ch);
-            $imgs = [];
-            if ($body !== '' && preg_match_all(
-                '~<(?:img[^>]+src|enclosure[^>]+url|media:content[^>]+url)=["\']([^"\']+\.(?:jpe?g|png|webp))["\']~i',
-                $body, $m)) {
-                foreach ($m[1] as $u) {
-                    $u = html_entity_decode($u, ENT_QUOTES);
-                    if (stripos($u, 'https://') === 0 && filter_var($u, FILTER_VALIDATE_URL)
-                        && !in_array($u, $imgs, true)) {
-                        $imgs[] = $u;
-                    }
-                    if (count($imgs) >= 3) break;
-                }
-            }
-            if ($imgs) $rows[$i]['_samples'] = $imgs;
-            $cache[$fetch[$i]] = ['t' => $now, 's' => $imgs];
-            curl_multi_remove_handle($mh, $ch);
-            curl_close($ch);
-        }
-        curl_multi_close($mh);
-        @file_put_contents($cache_file, json_encode($cache), LOCK_EX);
-    }
-}
 
 // Topic counts across all active listings (for the chips).
 $topic_counts = [];
@@ -115,7 +44,8 @@ uksort($topic_counts, 'strcasecmp');
 // Filters (server-side).
 $q        = trim((string)($_GET['q'] ?? ''));
 $topic    = trim((string)($_GET['topic'] ?? ''));
-$sort     = (string)($_GET['sort'] ?? 'newest');
+$sort     = (string)($_GET['sort'] ?? 'recent');
+if (!in_array($sort, ['recent', 'name'], true)) $sort = 'recent';
 $filtered = [];
 foreach ($rows as $r) {
     if ($topic !== '') {
@@ -131,7 +61,41 @@ foreach ($rows as $r) {
 }
 if ($sort === 'name') {
     usort($filtered, fn($a, $b) => strcasecmp((string)$a['name'], (string)$b['name']));
-} // 'newest' keeps the SQL order (updated_at DESC)
+} else {
+    // Default discovery order: recent blogs dominate, with a deterministic
+    // daily rotation of older-but-still-active blogs woven in for fairness.
+    // Stable-for-the-day ordering avoids a disorienting reshuffle on refresh.
+    $inactive_before = strtotime('-30 days');
+    $recent = [];
+    $inactive = [];
+    foreach ($filtered as $listing) {
+        $updated = strtotime((string)($listing['last_post_at'] ?? $listing['updated_at'] ?? '')) ?: 0;
+        if ($updated >= $inactive_before) $recent[] = $listing;
+        else $inactive[] = $listing;
+    }
+    usort($recent, function ($a, $b) {
+        $bd = (string)($b['last_post_at'] ?? $b['updated_at'] ?? '');
+        $ad = (string)($a['last_post_at'] ?? $a['updated_at'] ?? '');
+        return strcmp($bd, $ad);
+    });
+    $rotation_day = gmdate('Y-m-d');
+    usort($inactive, function ($a, $b) use ($rotation_day) {
+        $ak = hash('sha256', $rotation_day . ':' . (string)($a['id'] ?? $a['site_url'] ?? ''));
+        $bk = hash('sha256', $rotation_day . ':' . (string)($b['id'] ?? $b['site_url'] ?? ''));
+        return strcmp($ak, $bk);
+    });
+
+    $filtered = [];
+    $inactive_i = 0;
+    foreach ($recent as $i => $listing) {
+        $filtered[] = $listing;
+        // Give one inactive-but-live blog a turn after every four recent blogs.
+        if (($i + 1) % 4 === 0 && isset($inactive[$inactive_i])) {
+            $filtered[] = $inactive[$inactive_i++];
+        }
+    }
+    while (isset($inactive[$inactive_i])) $filtered[] = $inactive[$inactive_i++];
+}
 
 $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
 $initials = function (string $name): string {
@@ -152,20 +116,30 @@ $initials = function (string $name): string {
 <style>
   :root{--red:#D40000;--link:#F50A0A;--black:#111;--panel:#141414;--line:#282828;--ink:#f4f4f4;--muted:#9a9a9a;--card:#171717;}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--black);color:var(--ink);font-family:Georgia,'Iowan Old Style','Times New Roman',serif;-webkit-font-smoothing:antialiased;padding:0 1.25rem 5rem}
-  .wrap{max-width:72rem;margin:0 auto}
+  html,body{min-height:100%}
+  body{margin:0;background:var(--black);color:var(--ink);font-family:Georgia,'Iowan Old Style','Times New Roman',serif;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
+  .wrap{width:min(72rem,calc(100% - 2.5rem));margin:0 auto}
   a{color:var(--ink);text-decoration:none}
-  header{padding:3rem 0 1.5rem;border-bottom:1px solid var(--line)}
+  .site-header{height:3rem;background:#050505;border-bottom:1px solid #181818;display:flex;align-items:center;flex:none}
+  .site-header .inner{width:calc(100% - 6rem);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:2rem}
+  .site-brand{font:900 1.05rem/1 'Arial Black',Arial,sans-serif;letter-spacing:.04em;text-transform:uppercase}
+  .site-brand .dot{color:var(--red)}
+  .site-nav{display:flex;align-items:center;gap:.85rem;font:700 .78rem/1 'Courier New',monospace;letter-spacing:.14em}
+  .site-nav a{color:#cfcfcf;padding:.25rem 0;border-bottom:2px solid transparent}
+  .site-nav a:hover,.site-nav a.active{color:#fff;border-bottom-color:var(--red)}
+  .site-nav .sep{color:#454545}
+  main{flex:1}
+  .directory-head{padding:3rem 0 1.5rem;border-bottom:1px solid var(--line)}
   .kicker{font:700 .8rem/1 'Courier New',monospace;letter-spacing:.2em;text-transform:uppercase;color:#cfcfcf;margin:0 0 1.1rem}
   .wordmark{font:900 clamp(2.1rem,7vw,3.8rem)/.95 'Arial Black',Arial,sans-serif;letter-spacing:-.02em;text-transform:uppercase;margin:0}
   .wordmark .dot{color:var(--red)}
   .lede{font-size:clamp(1rem,2.4vw,1.2rem);line-height:1.6;color:var(--muted);max-width:40rem;margin:.9rem 0 0}
-  .controls{display:flex;flex-wrap:wrap;gap:1rem;align-items:stretch;justify-content:space-between;margin:2rem 0 1.2rem}
+  .controls{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between;margin:2rem 0 1.2rem}
   .search{display:flex;gap:.5rem;flex:1 1 20rem}
   .search input{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink);font:1rem/1.4 Georgia,serif;padding:.7rem .9rem;border-radius:2px}
   .search button,.seg{background:var(--ink);color:var(--black);border:1px solid var(--ink);font:700 .78rem/1 'Helvetica Neue',Arial,sans-serif;padding:.6rem .8rem;cursor:pointer;border-radius:2px}
-  .sort{display:flex;flex-direction:column;gap:.4rem}
-  .sort a{flex:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);color:var(--muted);font:700 .74rem/1 'Helvetica Neue',Arial,sans-serif;padding:.35rem .9rem;border-radius:2px}
+  .sort{display:flex;align-items:center;gap:.5rem}
+  .sort a{border:1px solid var(--line);color:var(--muted);font:700 .74rem/1 'Helvetica Neue',Arial,sans-serif;padding:.5rem .7rem;border-radius:2px}
   .sort a.on{background:var(--ink);color:var(--black);border-color:var(--ink)}
   .chips{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 2rem}
   .chip{border:1px solid var(--line);color:var(--ink);padding:.4rem .7rem;font:.86rem/1 'Helvetica Neue',Arial,sans-serif;border-radius:2px}
@@ -174,32 +148,53 @@ $initials = function (string $name): string {
   .chip.on{background:var(--red);border-color:var(--red);color:#fff}
   .chip.on b{color:#ffd0d0}
   .grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(15.5rem,1fr));gap:1.1rem}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:3px;overflow:hidden;transition:border-color .15s,transform .15s}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:3px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .15s,transform .15s}
   .card:hover{border-color:var(--red);transform:translateY(-2px)}
-  .card-link{display:block}
-  .shots{display:grid;grid-template-columns:2fr 1fr 1fr;gap:2px;height:11rem;background:var(--line)}
-  .shots-1{grid-template-columns:1fr}
-  .shots-2{grid-template-columns:1fr 1fr}
-  .shots-3{grid-template-columns:2fr 1fr 1fr}
-  .shot{background-size:cover;background-position:center;background-color:#0d1418}
+  .body{padding:.9rem 1rem 1rem;display:flex;flex-direction:column;flex:1}
+  .meta{display:flex;align-items:center;gap:.65rem}
+  .avatar{width:2.2rem;height:2.2rem;border-radius:50%;flex:none;display:grid;place-items:center;font:900 .8rem/1 'Arial Black',Arial,sans-serif;color:#fff;background:var(--red);background-size:cover;background-position:center}
+  .name{font:900 1.02rem/1.15 'Arial Black',Arial,sans-serif;text-transform:uppercase;letter-spacing:.01em;margin:0}
+  .who{font:.78rem/1.3 'Courier New',monospace;color:var(--muted);margin:.15rem 0 0}
+  .blurb{font-size:.92rem;line-height:1.5;color:#d8d8d8;margin:.75rem 0 .6rem}
+  .tags{margin:0 0 .9rem;display:flex;flex-wrap:wrap;gap:.35rem}
+  .tags span{font:.72rem/1 'Helvetica Neue',Arial,sans-serif;color:var(--muted);border-bottom:1px solid var(--red);padding-bottom:1px}
+  .foot{margin:auto 0 0;display:flex;align-items:flex-end;justify-content:space-between;gap:.75rem}
+  .updated{color:#707070;font:.68rem/1.3 'Courier New',monospace;text-align:right}
   .visit{font:700 .8rem/1 'Helvetica Neue',Arial,sans-serif;color:var(--ink);border-bottom:2px solid var(--red);padding-bottom:2px}
   .visit:hover{color:var(--red)}
   .empty{border:1px solid var(--line);background:var(--panel);border-radius:3px;padding:2.5rem;text-align:center;color:var(--muted);margin-top:2rem}
-  .join{border:1px solid var(--red);border-radius:3px;padding:1.8rem;margin:3rem 0 0;text-align:center}
-  .join h2{font:900 1.3rem/1.1 'Arial Black',Arial,sans-serif;text-transform:uppercase;margin:0 0 .6rem}
-  .join p{color:var(--muted);max-width:34rem;margin:0 auto 1.2rem;line-height:1.6}
-  .join-btn{display:inline-block;font:900 .78rem/1 'Arial Black',Arial,sans-serif;text-transform:uppercase;letter-spacing:.12em;color:#fff;background:var(--red);padding:12px 22px}
-  footer{margin-top:3rem;padding-top:1.4rem;border-top:1px solid var(--line);color:var(--muted);font:.82rem/1.6 'Courier New',monospace}
-  footer a{border-bottom:1px solid var(--red)}
+  .join{margin:2.5rem 0 3rem;text-align:center;color:var(--muted);font-size:.92rem}
+  .join a{border-bottom:1px solid var(--red)}
+  .site-footer{border-top:3px solid var(--red);padding:1rem 1.5rem;text-align:center;color:#888;font:.64rem/1.7 'Courier New',monospace;letter-spacing:.05em;text-transform:uppercase;flex:none}
+  .site-footer a{color:#bbb}
+  .site-footer .sep{color:#555;margin:0 .9rem}
+  @media(max-width:700px){
+    .site-header{height:auto;padding:.9rem 0}.site-header .inner{width:calc(100% - 2.5rem);align-items:flex-start;flex-direction:column;gap:.75rem}
+    .site-nav{gap:.55rem;font-size:.68rem;letter-spacing:.08em;flex-wrap:wrap}
+    .site-footer .sep{margin:0 .35rem}
+  }
 </style>
 </head>
 <body>
+<header class="site-header">
+  <div class="inner">
+    <a class="site-brand" href="/">Photoblogs<span class="dot">.</span>fyi</a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="/">Home</a><span class="sep" aria-hidden="true">|</span>
+      <a class="active" href="/directory.php" aria-current="page">Directory</a><span class="sep" aria-hidden="true">|</span>
+      <a href="/feed.php">Feed</a><span class="sep" aria-hidden="true">|</span>
+      <a href="/page.php?slug=about">About</a>
+    </nav>
+  </div>
+</header>
+
+<main>
 <div class="wrap">
 
-  <header>
-    <p class="kicker">photoblogs.fyi</p>
+  <header class="directory-head">
+    <p class="kicker">Find · Follow · Be Found</p>
     <h1 class="wordmark">The Directory<span class="dot">.</span></h1>
-    <p class="lede">Real photographers, on their own sites. Browse by what they shoot — every link goes straight to their blog.</p>
+    <p class="lede">Independent photography blogs, on their own sites. Browse by photographer or by what they shoot.</p>
   </header>
 
   <form class="controls" method="get" action="">
@@ -210,7 +205,7 @@ $initials = function (string $name): string {
     </div>
     <div class="sort">
       <?php $qs = fn($s) => '?' . http_build_query(array_filter(['q'=>$q,'topic'=>$topic,'sort'=>$s])); ?>
-      <a class="<?php echo $sort==='newest'?'on':''; ?>" href="<?php echo $h($qs('newest')); ?>">Newest</a>
+      <a class="<?php echo $sort==='recent'?'on':''; ?>" href="<?php echo $h($qs('recent')); ?>">Recently updated</a>
       <a class="<?php echo $sort==='name'?'on':''; ?>" href="<?php echo $h($qs('name')); ?>">A–Z</a>
     </div>
   </form>
@@ -235,29 +230,44 @@ $initials = function (string $name): string {
   <?php else: ?>
     <ul class="grid">
       <?php foreach ($filtered as $r): ?>
-        <?php $sm = array_values(array_filter((array)$r['_samples'])); if (!$sm) continue; /* pictures-first: hide a blog that has no photo yet, don't show an empty box */ ?>
         <li class="card">
-          <a class="card-link" href="<?php echo $h($r['site_url']); ?>" rel="noopener" title="<?php echo $h($r['name']); ?>" aria-label="<?php echo $h($r['name']); ?>">
-            <span class="shots shots-<?php echo min(3, count($sm)); ?>">
-              <?php foreach (array_slice($sm, 0, 3) as $u): ?>
-                <span class="shot" style="background-image:url('<?php echo $h($u); ?>')"></span>
-              <?php endforeach; ?>
-            </span>
-          </a>
+          <div class="body">
+            <div class="meta">
+              <span class="avatar"<?php echo !empty($r['avatar_url']) ? ' style="background-image:url(\''.$h($r['avatar_url']).'\')"' : ''; ?>><?php echo empty($r['avatar_url']) ? $h($initials((string)$r['name'])) : ''; ?></span>
+              <div>
+                <h3 class="name"><?php echo $h($r['name']); ?></h3>
+                <p class="who"><?php echo $h($r['host']); ?></p>
+              </div>
+            </div>
+            <?php if (trim((string)$r['description']) !== ''): ?>
+              <p class="blurb"><?php echo $h($r['description']); ?></p>
+            <?php endif; ?>
+            <?php if ($r['_topics']): ?>
+              <p class="tags"><?php foreach (array_slice($r['_topics'],0,4) as $t): ?><span><?php echo $h($t); ?></span><?php endforeach; ?></p>
+            <?php endif; ?>
+            <p class="foot">
+              <a class="visit" href="<?php echo $h($r['site_url']); ?>" rel="nofollow noopener">Visit blog ↗</a>
+              <?php $activity_at = $r['last_post_at'] ?? $r['updated_at'] ?? ''; ?>
+              <?php if ($activity_at !== ''): ?><span class="updated">Updated <?php echo $h(date('M j, Y', strtotime((string)$activity_at))); ?></span><?php endif; ?>
+            </p>
+          </div>
         </li>
       <?php endforeach; ?>
     </ul>
   <?php endif; ?>
 
-  <section class="join">
-    <h2>Want to be found too?</h2>
-    <p>Run a SnapSmack photo blog? Opt in from your admin (Fediverse → Directory) and you'll appear here — your photos stay on your own server.</p>
-    <a class="join-btn" href="/for-admins">How it works</a>
-  </section>
-
-  <footer>photoblogs.fyi · lists the SnapSmack network only · <a href="/">home</a></footer>
+  <p class="join">Run a SnapSmack photo blog? <a href="/for-admins">Learn how to join the directory.</a></p>
 
 </div>
+</main>
+
+<footer class="site-footer">
+  <span>© <?php echo date('Y'); ?> <a href="/">photoblogs.fyi</a></span><span class="sep">|</span>
+  <span>Email: <a href="mailto:sean@photoblogs.fyi">sean@photoblogs.fyi</a></span><span class="sep">|</span>
+  <span>Theme: New Horizon</span><span class="sep">|</span>
+  <span>Powered by <a href="https://snapsmack.ca">SnapSmack</a> <?php echo $h(defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : ''); ?></span><span class="sep">|</span>
+  <a href="/feed">RSS</a>
+</footer>
 </body>
 </html>
 <?php // ===== SNAPSMACK EOF ===== ?>

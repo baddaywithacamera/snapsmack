@@ -10,6 +10,106 @@
 
 # SnapSmack Changelog
 
+## 0.7.572 — 2026-08-27 "FEDBOARD"
+
+- **Both scheduling controls show date and time.** **Boosting Window Starts At**
+  visibly snaps to the challenge's Thursday 10:00 UTC opening and derives the
+  contest Friday internally. **Prompt Post** separately shows the exact card
+  publication timestamp. Operators no longer have to translate between a Friday
+  date and the preceding Thursday opening.
+- **Prompt-card chooser aligned.** The standalone chooser button and filename
+  field now share the same fixed 52-pixel row; global label margins can no longer
+  stretch the filename box beyond the button.
+
+## 0.7.571 — 2026-08-27 "FEDBOARD"
+
+- **The two dates now say what they control.** The composer groups them under
+  **DATES — THESE CONTROL DIFFERENT THINGS**: **Boosting Window** chooses the
+  contest Friday and derives the fixed Thursday-to-Saturday admission window;
+  **Prompt Post** chooses only when the card publishes. Non-Friday contest dates
+  are rejected rather than silently moved.
+- **Queued posts are editable.** **Queued Posts** now offers **Edit** for prompts
+  that have not published. Changes synchronize the prompt, caption, ALT text,
+  generated hashtag, contest window, post body, image metadata, and publication
+  timestamp; already-published prompts remain locked.
+- **Upload control geometry restored.** The prompt-card chooser uses the standard
+  external-CSS button beside a filename field. The overly broad native file-input
+  rule that disrupted established upload controls has been removed. No inline CSS
+  or JavaScript was added.
+
+## 0.7.570 — 2026-08-27 "FEDBOARD"
+
+- **Challenge administration has real task pages.** **Contest & Feed**, **Queue
+  Contest Post**, and **Queued Posts** now lead to three distinct admin pages
+  instead of anchor links into one long screen. The dedicated composer retains
+  the restored caption/additional-information and ALT fields, and the queue page
+  handles review and cancellation without mixing configuration into the task.
+
+## 0.7.569 — 2026-08-27 "FEDBOARD"
+
+- **Prompt post copy restored.** **Queue Contest Post** once again accepts an
+  optional caption for instructions, context, or credit, plus dedicated ALT text
+  for the prompt-card image. The caption is stored in the ordinary post body and
+  travels with the card when it publishes and federates; the generated weekly
+  hashtag and participation link remain automatic.
+
+## 0.7.568 — 2026-08-27 "FEDBOARD"
+
+- **Launch-ready prompt queue.** The selected Photo-Friday now puts the matching
+  Thursday 10:00 UTC window opening directly into **DROPS AT** and keeps it synced
+  when the Friday changes. **CHALLENGE ME** now exposes **Queue Contest Post** and
+  **Queued Posts** separately; the queue area remains visible when empty and lists
+  only prompts still waiting to drop, with cancellation available.
+- **Challenge feed control.** **Contest & Feed** gained a separate public-feed
+  switch plus **Three Across** and **Masonry** layouts. Enabling the feed adds the
+  built-in **FEED** item to Menu Manager; disabling it removes the item and closes
+  `/board`. Existing challenge feeds remain available until the new switch is
+  explicitly saved, avoiding an upgrade surprise.
+- **Closed-window enforcement verified.** A qualifying hashtag post cannot reach
+  boosting until it has passed the current 50-hour window and publication-time
+  checks and received a durable admission. Outside-window attempts return before
+  admission/boosting and send at most one private courtesy DM per participant for
+  the upcoming week.
+- **Theme-consistent upload control.** Native file chooser buttons now use the
+  active admin theme's accent through the shared external admin stylesheet. The
+  challenge masonry geometry also ships in an external stylesheet; no new inline
+  CSS was added.
+
+## 0.7.567 — 2026-08-26 "FEDBOARD"
+
+- **Restored both PHOTO CHALLENGE navigation choices.** The **CHALLENGE ME**
+  accordion keeps its original **Contest & Feed** entry and now adds **Queue
+  Contest Post** as a separate second option. The new link jumps directly to
+  the scheduled-prompt form instead of silently replacing the existing tool.
+
+## 0.7.566 — 2026-08-26 "FEDBOARD"
+
+- **DIRECTORY is a directory again.** photoblogs.fyi now presents searchable,
+  filterable blog cards under the shared site header and footer. Recently updated
+  blogs lead, while a stable daily rotation gives older-but-live members fair
+  exposure. Dead feeds are omitted. The accidental three-photo cards are gone.
+- **FEED is the photography surface.** The hub securely polls each approved blog's
+  conventional `/rss.php`, caches only real origin posts, rejects landing/static
+  pages, keeps at most ten items per blog, and selects no more than one image from
+  a blog per calendar day. Every image links to its originating post; media remains
+  on the photographer's server. Feed targets are derived from verified member URLs,
+  not exposed as user configuration.
+- **RSS and cron repair.** A brand-new crontab is now correctly recognised as
+  writable, and automatic hub/spoke blogroll entries carry their conventional RSS
+  address. The centralized directory poller includes bounded downloads, TLS checks,
+  public-address pinning, no redirects, conditional requests, locking, health state,
+  and dead-feed retirement.
+- **Photo-Friday closed-window courtesy.** An active participant who publishes an
+  otherwise valid `#photofri` entry after the round closes receives one private
+  try-again message for the upcoming week, including its UTC window. The post is not
+  admitted, shown, ranked, boosted, or attached to the message; duplicate discovery
+  paths cannot send duplicate notices.
+- **ONYX masonry wall.** ONYX now reuses SCROLL's native-aspect columns engine with
+  controls for columns, width, batch size, gap, radius, and border presentation.
+- **SNAP SLAPPER foundation.** 566D also carries the open ZIP project format,
+  portable recovery work, first stock LEWKS, editor/action documentation, and SLAP
+  HAPPY backup support developed since the 558D branch point.
+
 ## 0.7.565 — 2026-08-26 "FEDBOARD"
 
 - **Schedule a Photo-Friday prompt in one step.** The PHOTO CHALLENGE admin gained a
