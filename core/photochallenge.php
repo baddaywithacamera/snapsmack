@@ -697,6 +697,7 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
         'description' => $body,
         'img_date'    => $drop_at,                        // dates the card at its drop moment
         'alt'         => $alt !== '' ? $alt : ($prompt . ' — Photo-Friday prompt card'),
+        'tags'        => $hash['display'],                // tag the card so discovery works without stuffing the hashtag into the body
     ]);
     if (empty($res['ok'])) return ['ok' => false, 'msg' => 'Card image: ' . ($res['error'] ?? 'upload failed') . '.'];
     $img_id = (int)$res['id'];
@@ -744,11 +745,17 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
 }
 
 function pc_prompt_body(array $settings, string $prompt, string $caption, string $tag_display): string {
-    $base = function_exists('sv_base') ? rtrim((string)sv_base($settings), '/') : '';
-    return $prompt
-        . ($caption !== '' ? "\n\n" . $caption : '')
-        . "\n\n#" . $tag_display
-        . ($base !== '' ? "\n\nPost your photo during the 50-hour Photo-Friday window. " . $base . '/' : '');
+    // The post text is just the human's caption plus a clickable participation
+    // link. We deliberately do NOT lead with the bare prompt word (it is already
+    // burned into the card image and named in the caption) and do NOT put the
+    // hashtag inline (the card shows it, and the fediverse layer appends the
+    // post's tag once on its own — a second inline copy just doubles it). Look at
+    // how this renders to a human, not just what fields exist.
+    $base  = function_exists('sv_base') ? rtrim((string)sv_base($settings), '/') : '';
+    $parts = [];
+    if ($caption !== '') $parts[] = $caption;
+    if ($base !== '')    $parts[] = 'Post your photo during the 50-hour Photo-Friday window. ' . $base . '/';
+    return implode("\n\n", $parts);
 }
 
 /** Return one editable queued prompt, including its current card filename. */
