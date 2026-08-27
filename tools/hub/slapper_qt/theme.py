@@ -1,24 +1,31 @@
-"""SNAP SLAPPER Qt theme — one dark visual language, no bright native gaps.
+"""SNAP SLAPPER Qt theme — MIDNIGHT LIME.
 
-Every colour lives here so the whole editor can be retuned in one place. The
-palette is deliberately neutral so photographs read true; a single warm accent
-is used sparingly on the parts the user is actively touching (slider handles,
-focus, the active section).
+Colours are taken directly from the SnapSmack admin Midnight Lime theme
+(assets/adminthemes/midnight-lime/) so the desktop editor is visually
+consistent with the admin and the other companion apps: deep near-black
+panels with a single neon-green accent and a red danger colour.
+
+Everything lives here so the whole editor can be retuned in one place.
+Note: Qt Style Sheets do not support box-shadow, so the admin's green glow is
+expressed here through colour shifts rather than shadow.
 """
 
-# --- Palette -----------------------------------------------------------------
-BG        = "#16161a"   # app background — deep neutral, warm-black
-PANEL     = "#1e1e23"   # rails and panels
-PANEL_HI  = "#26262c"   # accordion headers / raised chrome
-FIELD     = "#2a2a31"   # slider troughs, inputs
-FIELD_HI  = "#33333b"   # hover
-BORDER    = "#34343c"   # hairline separators
-INK       = "#ededf2"   # primary text
-DIM       = "#9b9ba6"   # secondary labels
-FAINT     = "#6a6a74"   # tertiary / disabled
-ACCENT    = "#d8a24a"   # warm brass — the one accent, used sparingly
-ACCENT_HI = "#e6b667"   # accent hover
-CANVAS    = "#0c0c0e"   # image backdrop behind the photo
+# --- Midnight Lime palette (from admin-theme-colours-midnight-lime.css) -------
+BG         = "#141414"   # app background (admin sidebar/body)
+PANEL      = "#1c1c1c"   # rails and boxes (.box)
+PANEL_HI   = "#111111"   # section headers (.box-header)
+FIELD      = "#1a1a1a"   # slider troughs / range track
+FIELD_HI   = "#2a2a2a"   # hover / raised chrome (also the border grey)
+BORDER     = "#2a2a2a"   # hairline separators
+INK        = "#eeeeee"   # primary text
+BODY       = "#cccccc"   # body text
+DIM        = "#777777"   # secondary labels
+FAINT      = "#555555"   # tertiary / disabled
+ACCENT     = "#39FF14"   # neon green — the Midnight Lime accent
+ACCENT_HI  = "#5bff42"   # brighter green for hover
+ACCENT_DIM = "#1E6610"   # muted green for slider fill (from the theme)
+DANGER     = "#ff3e3e"   # destructive / error
+CANVAS     = "#000000"   # image backdrop (admin .preview-frame)
 
 FONT = "Segoe UI"
 
@@ -28,7 +35,7 @@ def stylesheet() -> str:
     return f"""
     * {{
         font-family: "{FONT}", "Inter", sans-serif;
-        color: {INK};
+        color: {BODY};
         outline: none;
     }}
 
@@ -38,7 +45,7 @@ def stylesheet() -> str:
 
     /* --- Toolbar -------------------------------------------------------- */
     QToolBar {{
-        background: {PANEL};
+        background: {BG};
         border: none;
         border-bottom: 1px solid {BORDER};
         padding: 6px 8px;
@@ -46,19 +53,22 @@ def stylesheet() -> str:
     }}
     QToolBar QToolButton {{
         background: transparent;
-        color: {INK};
+        color: {DIM};
         padding: 6px 12px;
         border-radius: 6px;
         font-size: 12px;
     }}
     QToolBar QToolButton:hover {{
         background: {FIELD_HI};
+        color: {ACCENT};
     }}
     QToolBar QToolButton:pressed {{
         background: {FIELD};
+        color: {ACCENT};
     }}
     QToolBar QToolButton:disabled {{
         color: {FAINT};
+        background: transparent;
     }}
     QToolBar::separator {{
         background: {BORDER};
@@ -85,10 +95,10 @@ def stylesheet() -> str:
         letter-spacing: 1px;
     }}
     QPushButton#AccordionHeader:hover {{
-        color: {INK};
+        color: {ACCENT};
     }}
     QPushButton#AccordionHeader:checked {{
-        color: {INK};
+        color: {ACCENT};
     }}
 
     /* --- Control rows --------------------------------------------------- */
@@ -102,18 +112,18 @@ def stylesheet() -> str:
         font-weight: 600;
     }}
 
-    /* --- Sliders -------------------------------------------------------- */
+    /* --- Sliders (green thumb on a dark track, admin range style) ------- */
     QSlider::groove:horizontal {{
         height: 3px;
         background: {FIELD};
         border-radius: 2px;
     }}
     QSlider::sub-page:horizontal {{
-        background: {ACCENT};
+        background: {ACCENT_DIM};
         border-radius: 2px;
     }}
     QSlider::handle:horizontal {{
-        background: {INK};
+        background: {ACCENT};
         width: 13px;
         height: 13px;
         margin: -6px 0;
@@ -124,9 +134,9 @@ def stylesheet() -> str:
         background: {ACCENT_HI};
     }}
 
-    /* --- Checkboxes ----------------------------------------------------- */
+    /* --- Checkboxes (green when checked, admin style) ------------------- */
     QCheckBox {{
-        color: {INK};
+        color: {BODY};
         font-size: 11px;
         spacing: 8px;
         padding: 6px 12px;
@@ -135,8 +145,8 @@ def stylesheet() -> str:
         width: 15px;
         height: 15px;
         border-radius: 4px;
-        border: 1px solid {BORDER};
-        background: {FIELD};
+        border: 1px solid {FAINT};
+        background: #050505;
     }}
     QCheckBox::indicator:checked {{
         background: {ACCENT};
@@ -156,7 +166,7 @@ def stylesheet() -> str:
         border-radius: 6px;
         margin: 2px;
     }}
-    QScrollBar::handle:vertical:hover {{ background: {BORDER}; }}
+    QScrollBar::handle:vertical:hover {{ background: {ACCENT_DIM}; }}
     QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; background: none; }}
     QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}
 
@@ -168,7 +178,7 @@ def stylesheet() -> str:
 
     /* --- Status line ---------------------------------------------------- */
     QStatusBar {{
-        background: {PANEL};
+        background: {BG};
         color: {DIM};
         border-top: 1px solid {BORDER};
         font-size: 11px;
