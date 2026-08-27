@@ -1500,6 +1500,8 @@ CREATE TABLE IF NOT EXISTS `pc_prompts` (
   `submit_start` datetime NOT NULL,
   `submit_end` datetime NOT NULL,
   `prompt` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `caption` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `alt` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `tag` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
   `tag_display` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `drop_at` datetime NOT NULL,

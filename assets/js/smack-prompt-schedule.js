@@ -27,6 +27,8 @@ function _smackPromptScheduleInit() {
     var fridayEl = document.getElementById('pc_friday');
     var dropEl   = document.getElementById('pc_drop_at');
     var hintEl   = document.getElementById('pc_drop_hint');
+    var imageEl  = document.getElementById('pc_prompt_image');
+    var imageNameEl = document.getElementById('pc_prompt_image_name');
     var form     = promptEl ? promptEl.closest('form') : null;
     var prefix   = (form && form.getAttribute('data-pc-prefix')) || 'PhotoFri';
 
@@ -57,6 +59,10 @@ function _smackPromptScheduleInit() {
         var parts = fridayEl.value.split('-');
         if (parts.length !== 3) return;
         var fri = Date.UTC(+parts[0], +parts[1] - 1, +parts[2], 0, 0, 0);
+        var selected = new Date(fri);
+        var isFriday = selected.getUTCDay() === 5;
+        fridayEl.setCustomValidity(isFriday ? '' : 'Choose a Friday for the challenge date.');
+        if (!isFriday) return;
         var open = new Date(fri - 14 * 3600 * 1000);
         var date = open.getUTCFullYear() + '-' + pad(open.getUTCMonth() + 1) + '-' + pad(open.getUTCDate());
         var time = pad(open.getUTCHours()) + ':' + pad(open.getUTCMinutes());
@@ -66,6 +72,13 @@ function _smackPromptScheduleInit() {
 
     if (promptEl) { promptEl.addEventListener('input', updateHash); updateHash(); }
     if (fridayEl) { fridayEl.addEventListener('change', updateWindowStart); updateWindowStart(); }
+    if (imageEl && imageNameEl) {
+        imageEl.addEventListener('change', function () {
+            imageNameEl.textContent = imageEl.files && imageEl.files[0]
+                ? imageEl.files[0].name
+                : 'No file chosen';
+        });
+    }
 }
 
 if (document.readyState === 'loading') {

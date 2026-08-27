@@ -325,6 +325,8 @@ function pc_ensure_tables(PDO $pdo): void {
         submit_start datetime     NOT NULL,
         submit_end   datetime     NOT NULL,
         prompt       varchar(120) NOT NULL,
+        caption      text         NULL,
+        alt          varchar(500) NOT NULL DEFAULT '',
         tag          varchar(120) NOT NULL,
         tag_display  varchar(120) NOT NULL DEFAULT '',
         drop_at      datetime     NOT NULL,
@@ -337,6 +339,10 @@ function pc_ensure_tables(PDO $pdo): void {
         UNIQUE KEY uq_pc_prompt_week(week_key),
         KEY idx_pc_prompt_due(status, drop_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    try {
+        $pdo->exec("ALTER TABLE pc_prompts ADD COLUMN IF NOT EXISTS caption text NULL AFTER prompt");
+        $pdo->exec("ALTER TABLE pc_prompts ADD COLUMN IF NOT EXISTS alt varchar(500) NOT NULL DEFAULT '' AFTER caption");
+    } catch (Throwable $e) {}
 }
 
 function pc_is_blocked(PDO $pdo, string $actor_url): bool {
@@ -657,8 +663,12 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
     if (mb_strlen($caption) > 5000) {
         return ['ok' => false, 'msg' => 'Keep the caption under 5,000 characters.'];
     }
-    $win = pc_window_for_friday((string)($data['friday'] ?? ''));
+    $requested_friday = trim((string)($data['friday'] ?? ''));
+    $win = pc_window_for_friday($requested_friday);
     if ($win === null) return ['ok' => false, 'msg' => 'Pick a valid Photo-Friday date.'];
+    if ($win['friday'] !== $requested_friday) {
+        return ['ok' => false, 'msg' => 'The target challenge date must be a Friday.'];
+    }
 
     $hash = pc_hashtag_from_prompt($prompt, pc_tag_prefix($settings));
 
@@ -677,12 +687,8 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
         return ['ok' => false, 'msg' => 'A prompt is already scheduled for ' . $win['label'] . '. Cancel it first to reschedule.'];
     }
 
-    // Card body: the word, optional organizer copy, hashtag, and challenge link.
-    $base = function_exists('sv_base') ? rtrim((string)sv_base($settings), '/') : '';
-    $body = $prompt
-          . ($caption !== '' ? "\n\n" . $caption : '')
-          . "\n\n#" . $hash['display']
-          . ($base !== '' ? "\n\nPost your photo during the 50-hour Photo-Friday window. " . $base . '/' : '');
+    $alt = trim((string)($data['alt'] ?? ''));
+    $body = pc_prompt_body($settings, $prompt, $caption, $hash['display']);
 
     require_once __DIR__ . '/image-ingest.php';
     $res = snap_ingest_image($pdo, $settings, $file, [
@@ -690,9 +696,7 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
         'status'      => 'draft',                         // hidden until the drop
         'description' => $body,
         'img_date'    => $drop_at,                        // dates the card at its drop moment
-        'alt'         => trim((string)($data['alt'] ?? '')) !== ''
-            ? trim((string)$data['alt'])
-            : ($prompt . ' — Photo-Friday prompt card'),
+        'alt'         => $alt !== '' ? $alt : ($prompt . ' — Photo-Friday prompt card'),
     ]);
     if (empty($res['ok'])) return ['ok' => false, 'msg' => 'Card image: ' . ($res['error'] ?? 'upload failed') . '.'];
     $img_id = (int)$res['id'];
@@ -726,17 +730,71 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
 
     $ins = $pdo->prepare(
         "INSERT INTO pc_prompts
-            (week_key, friday, submit_start, submit_end, prompt, tag, tag_display, drop_at, post_id, image_id, status)
-         VALUES (?,?,?,?,?,?,?,?,?,?,'queued')"
+            (week_key, friday, submit_start, submit_end, prompt, caption, alt, tag, tag_display, drop_at, post_id, image_id, status)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'queued')"
     );
     $ins->execute([$win['week_key'], $win['friday'], $win['start'], $win['end'],
-                   $prompt, $hash['tag'], $hash['display'], $drop_at, $post_id, $img_id]);
+                   $prompt, $caption, $alt, $hash['tag'], $hash['display'], $drop_at, $post_id, $img_id]);
     $id = (int)$pdo->lastInsertId();
 
     pc_refresh_prompt_pointers($pdo, $settings);
     return ['ok' => true, 'id' => $id,
             'msg' => 'Queued “' . $prompt . '” (#' . $hash['display'] . ') for ' . $win['label']
                    . '. Card drops ' . $drop_at . ' UTC.'];
+}
+
+function pc_prompt_body(array $settings, string $prompt, string $caption, string $tag_display): string {
+    $base = function_exists('sv_base') ? rtrim((string)sv_base($settings), '/') : '';
+    return $prompt
+        . ($caption !== '' ? "\n\n" . $caption : '')
+        . "\n\n#" . $tag_display
+        . ($base !== '' ? "\n\nPost your photo during the 50-hour Photo-Friday window. " . $base . '/' : '');
+}
+
+/** Return one editable queued prompt, including its current card filename. */
+function pc_prompt_editable(PDO $pdo, int $id): ?array {
+    pc_ensure_tables($pdo);
+    $q = $pdo->prepare("SELECT p.*, i.img_file FROM pc_prompts p LEFT JOIN snap_images i ON i.id=p.image_id WHERE p.id=? AND p.status='queued' LIMIT 1");
+    $q->execute([$id]);
+    $row = $q->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+
+/** Update queued prompt metadata and both linked ordinary content records. */
+function pc_update_prompt(PDO $pdo, array &$settings, int $id, array $data): array {
+    $existing = pc_prompt_editable($pdo, $id);
+    if (!$existing) return ['ok' => false, 'msg' => 'Only a queued prompt can be edited.'];
+    $prompt = trim((string)($data['prompt'] ?? ''));
+    $caption = trim((string)($data['caption'] ?? ''));
+    $alt = trim((string)($data['alt'] ?? ''));
+    if ($prompt === '') return ['ok' => false, 'msg' => 'Enter a prompt word.'];
+    if (mb_strlen($caption) > 5000) return ['ok' => false, 'msg' => 'Keep the caption under 5,000 characters.'];
+    $requested_friday = trim((string)($data['friday'] ?? ''));
+    $win = pc_window_for_friday($requested_friday);
+    if (!$win || $win['friday'] !== $requested_friday) return ['ok' => false, 'msg' => 'The target challenge date must be a Friday.'];
+    $drop_at = str_replace('T', ' ', trim((string)($data['drop_at'] ?? '')));
+    if ($drop_at === '') $drop_at = $win['start'];
+    if (strlen($drop_at) === 16) $drop_at .= ':00';
+    $dupe = $pdo->prepare("SELECT 1 FROM pc_prompts WHERE week_key=? AND id<>? AND status IN ('queued','live') LIMIT 1");
+    $dupe->execute([$win['week_key'], $id]);
+    if ($dupe->fetchColumn()) return ['ok' => false, 'msg' => 'Another prompt is already scheduled for that Friday.'];
+    $hash = pc_hashtag_from_prompt($prompt, pc_tag_prefix($settings));
+    $body = pc_prompt_body($settings, $prompt, $caption, $hash['display']);
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare("UPDATE pc_prompts SET week_key=?,friday=?,submit_start=?,submit_end=?,prompt=?,caption=?,alt=?,tag=?,tag_display=?,drop_at=? WHERE id=? AND status='queued'")
+            ->execute([$win['week_key'],$win['friday'],$win['start'],$win['end'],$prompt,$caption,$alt,$hash['tag'],$hash['display'],$drop_at,$id]);
+        $pdo->prepare("UPDATE snap_posts SET description=?,created_at=? WHERE id=? AND status='draft'")
+            ->execute([$body,$drop_at,(int)$existing['post_id']]);
+        $pdo->prepare("UPDATE snap_images SET img_title=?,img_description=?,img_alt=?,img_date=? WHERE id=? AND img_status='draft'")
+            ->execute([$prompt,$body,$alt !== '' ? $alt : ($prompt . ' — Photo-Friday prompt card'),$drop_at,(int)$existing['image_id']]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        return ['ok' => false, 'msg' => 'The queued prompt could not be updated.'];
+    }
+    pc_refresh_prompt_pointers($pdo, $settings);
+    return ['ok' => true, 'msg' => 'Queued prompt updated.'];
 }
 
 /** Scheduled + already-dropped prompts, newest first (canceled ones hidden). */
