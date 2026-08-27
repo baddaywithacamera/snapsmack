@@ -21,6 +21,10 @@ require_once 'core/auth-smack.php';      // session + CSRF autovalidate + login 
 require_once 'core/smackverse.php';      // sv_set_setting, sv_enabled, sv_* helpers
 require_once 'core/photochallenge.php';  // pc_* policy layer
 
+$pc_admin_view = isset($pc_admin_view) && in_array($pc_admin_view, ['dashboard', 'queue', 'queued'], true)
+    ? $pc_admin_view
+    : 'dashboard';
+
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                 ->fetchAll(PDO::FETCH_KEY_PAIR);
 try { pc_ensure_tables($pdo); } catch (Throwable $e) { /* fresh install */ }
@@ -144,7 +148,12 @@ $def_drop_value = $_def_win ? str_replace(' ', 'T', substr((string)$_def_win['st
 $prompts   = pc_prompts_list($pdo, 40);
 $queued_prompts = array_values(array_filter($prompts, static fn(array $p): bool => ($p['status'] ?? '') === 'queued'));
 
-$page_title = 'PHOTO CHALLENGE';
+$pc_page_titles = [
+    'dashboard' => 'PHOTO CHALLENGE',
+    'queue'     => 'QUEUE CONTEST POST',
+    'queued'    => 'QUEUED CONTEST POSTS',
+];
+$page_title = $pc_page_titles[$pc_admin_view];
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -152,7 +161,7 @@ include 'core/sidebar.php';
 <div class="main">
 
     <div class="header-row header-row--ruled">
-        <h2>PHOTO CHALLENGE &mdash; PHOTOFRI.DAY</h2>
+        <h2><?php echo $esc($pc_page_titles[$pc_admin_view]); ?> &mdash; PHOTOFRI.DAY</h2>
     </div>
 
     <?php if ($msg): ?>
@@ -167,6 +176,7 @@ include 'core/sidebar.php';
         </div>
     <?php endif; ?>
 
+    <?php if ($pc_admin_view === 'dashboard'): ?>
     <!-- SWITCH + SETTINGS -->
     <div class="box mb-20">
         <h3>CHALLENGE SWITCH</h3>
@@ -262,9 +272,12 @@ include 'core/sidebar.php';
             <button type="submit" class="master-update-btn">SAVE CHALLENGE SETTINGS</button>
         </form>
     </div>
+    <?php endif; ?>
 
+    <?php if ($pc_admin_view === 'queue' || $pc_admin_view === 'queued'): ?>
     <!-- SCHEDULE A PROMPT -->
     <div class="box mb-20 pc-schedule" id="queue-contest-post">
+        <?php if ($pc_admin_view === 'queue'): ?>
         <h3>SCHEDULE A PROMPT</h3>
         <p class="dim mb-20">
             Enter the prompt word, pick the Photo-Friday, and upload the card. The tool builds the hashtag,
@@ -317,9 +330,11 @@ include 'core/sidebar.php';
 
             <button type="submit" class="master-update-btn">QUEUE PROMPT</button>
         </form>
+        <?php endif; ?>
 
+        <?php if ($pc_admin_view === 'queued'): ?>
         <section id="queued-contest-posts" aria-labelledby="queued-contest-posts-title">
-            <h4 class="pc-sched-sub" id="queued-contest-posts-title">QUEUED POSTS</h4>
+            <h3 id="queued-contest-posts-title">QUEUED POSTS</h3>
         <?php if ($queued_prompts): ?>
             <table class="pc-sched-list dim">
                 <thead>
@@ -352,8 +367,11 @@ include 'core/sidebar.php';
             <p class="dim"><em>No contest posts are queued yet.</em></p>
         <?php endif; ?>
         </section>
+        <?php endif; ?>
     </div>
+    <?php endif; ?>
 
+    <?php if ($pc_admin_view === 'dashboard'): ?>
     <!-- LIVE STATE -->
     <div class="box mb-20">
         <h3>THIS WINDOW &mdash; <?php echo $esc($win['label']); ?>
@@ -504,10 +522,13 @@ include 'core/sidebar.php';
             </table>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
 
 </div>
 
+<?php if ($pc_admin_view === 'queue'): ?>
 <script src="assets/js/smack-prompt-schedule.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+<?php endif; ?>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
