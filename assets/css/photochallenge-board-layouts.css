@@ -1,0 +1,53 @@
+/**
+ * SNAPSMACK - PHOTO CHALLENGE public feed layouts
+ *
+ * Layout choices for /board. The standalone page owns its fixed challenge
+ * palette; this file owns the selectable geometry so no layout CSS is emitted
+ * from PHP.
+ *
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line MUST be the canonical CSS EOF marker.
+ */
+
+.grid.grid--three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    max-width: 940px;
+    margin-inline: auto;
+}
+
+.grid.grid--masonry {
+    display: block;
+    max-width: 1180px;
+    margin-inline: auto;
+    column-count: 4;
+    column-gap: 8px;
+}
+
+.grid--masonry .card {
+    display: inline-block;
+    width: 100%;
+    margin: 0 0 8px;
+    break-inside: avoid;
+    vertical-align: top;
+}
+
+.grid--masonry .thumb {
+    height: auto;
+    aspect-ratio: auto;
+}
+
+.grid--masonry .thumb.none {
+    min-height: 210px;
+}
+
+@media (max-width: 800px) {
+    .grid.grid--masonry { column-count: 3; }
+}
+
+@media (max-width: 560px) {
+    .grid.grid--masonry { column-count: 2; }
+    .grid.grid--three { gap: 3px; }
+}
+
+/* ===== SNAPSMACK EOF ===== */

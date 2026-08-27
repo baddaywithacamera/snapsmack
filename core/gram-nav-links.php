@@ -54,6 +54,7 @@ if (!function_exists('_snap_gram_nav_url')) {
             case 'wall':      return $base . 'gallery-wall.php';
             case 'blogroll':  return $base . 'blogroll.php';
             case 'blog':      return $base . 'blog.php';
+            case 'challenge_feed': return $base . 'board';
             case 'custom':
             case 'external':  return $item['url'] ?? '';
             case 'page':
@@ -86,6 +87,7 @@ if (!function_exists('_snap_gram_nav_label')) {
         $builtins = [
             'home' => 'Home', 'blogroll' => 'Blogroll', 'archive' => 'Archive',
             'albums' => 'Albums', 'wall' => 'Gallery', 'blog' => 'Blog',
+            'challenge_feed' => 'Feed',
         ];
         $type = $item['type'] ?? 'custom';
         if (isset($builtins[$type])) return $builtins[$type];

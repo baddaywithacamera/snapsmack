@@ -513,6 +513,49 @@ select,
     align-items: center;
 }
 
+/* Native file controls otherwise fall back to the browser's light-grey button.
+   Keep the filename native/accessibile, but make the control and its chooser
+   follow the active admin theme through the shared --accent token. */
+input[type="file"] {
+    width: 100%;
+    min-height: 52px;
+    padding: 6px;
+    border: 1px solid color-mix(in srgb, var(--accent, currentColor) 30%, #1a1a1a);
+    border-radius: 4px;
+    background: #050505;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+input[type="file"]::file-selector-button {
+    min-height: 38px;
+    margin-right: 12px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 3px;
+    background: var(--accent, #a0ff90);
+    color: #050505;
+    font-family: inherit;
+    font-size: .78rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+input[type="file"]:hover::file-selector-button,
+input[type="file"]:focus-visible::file-selector-button {
+    filter: brightness(1.15);
+}
+
+input[type="file"]:focus-visible {
+    border-color: var(--accent, currentColor);
+    outline: 2px solid color-mix(in srgb, var(--accent, currentColor) 45%, transparent);
+    outline-offset: 2px;
+}
+
 textarea {
     width: 100%;
     border-width: 1px;

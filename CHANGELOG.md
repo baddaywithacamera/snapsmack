@@ -10,6 +10,28 @@
 
 # SnapSmack Changelog
 
+## 0.7.568 — 2026-08-27 "FEDBOARD"
+
+- **Launch-ready prompt queue.** The selected Photo-Friday now puts the matching
+  Thursday 10:00 UTC window opening directly into **DROPS AT** and keeps it synced
+  when the Friday changes. **CHALLENGE ME** now exposes **Queue Contest Post** and
+  **Queued Posts** separately; the queue area remains visible when empty and lists
+  only prompts still waiting to drop, with cancellation available.
+- **Challenge feed control.** **Contest & Feed** gained a separate public-feed
+  switch plus **Three Across** and **Masonry** layouts. Enabling the feed adds the
+  built-in **FEED** item to Menu Manager; disabling it removes the item and closes
+  `/board`. Existing challenge feeds remain available until the new switch is
+  explicitly saved, avoiding an upgrade surprise.
+- **Closed-window enforcement verified.** A qualifying hashtag post cannot reach
+  boosting until it has passed the current 50-hour window and publication-time
+  checks and received a durable admission. Outside-window attempts return before
+  admission/boosting and send at most one private courtesy DM per participant for
+  the upcoming week.
+- **Theme-consistent upload control.** Native file chooser buttons now use the
+  active admin theme's accent through the shared external admin stylesheet. The
+  challenge masonry geometry also ships in an external stylesheet; no new inline
+  CSS was added.
+
 ## 0.7.567 — 2026-08-26 "FEDBOARD"
 
 - **Restored both PHOTO CHALLENGE navigation choices.** The **CHALLENGE ME**
