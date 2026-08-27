@@ -116,6 +116,32 @@ def test_layers_isolation_and_ops():
     assert len(win.doc.layers) == 1
 
 
+def test_layer_masks():
+    win = _editor(_image("mask.jpg", (400, 300)))
+    lp = win.layers_panel
+    lp._add_adjustment()
+    layer = lp._selected_layer()
+    assert not win.mask_section.isHidden()   # visible for a selected layer
+    # give the layer a strong edit so the mask visibly limits it
+    win.rows["exposure"]._on_slider(win.rows["exposure"]._to_step(3.0))
+    win._on_commit("exposure")
+    # radial mask
+    win.mask_size.slider.setValue(30)
+    win._apply_radial_mask()
+    assert layer.get("mask") and layer.get("mask_enabled") is True
+    assert win.doc.render((300, 300))
+    # graduated mask replaces it
+    win.mask_dir.setCurrentText("Top")
+    win._apply_linear_mask()
+    assert layer.get("mask")
+    # clear
+    win._clear_mask()
+    assert layer.get("mask") == ""
+    # base selected hides the mask panel
+    win.set_target(BASE)
+    assert win.mask_section.isHidden()
+
+
 def test_text_layer_editing():
     win = _editor(_image("txt.jpg", (400, 300)))
     win.layers_panel._add_text()
