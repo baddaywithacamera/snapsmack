@@ -10,7 +10,20 @@
 
 # SnapSmack Changelog
 
-## 0.7.563 — 2026-08-26 "FEDBOARD"
+## 0.7.564 — 2026-08-26 "FEDBOARD"
+
+- **Global Configuration is saveable again.** On any updated install, the Global
+  Config page crashed partway through rendering and dropped the **SAVE
+  CONFIGURATION** button (and the SMACKATTACK and COMMUNICATIONS sections with
+  it), so settings could not be saved at all. The AI-status block echoed
+  `SNAPSMACK_AI_GRACE_DAYS`, a constant guard-defined in `core/ai-provider.php` —
+  which the settings page never loads (it checks the AI helpers via
+  `function_exists`). On installs whose protected `constants.php` predated that
+  constant, the echo hit an undefined constant, a fatal in PHP 8, halting the
+  render before the button; a shutdown-emitted footer made the page look whole,
+  so the symptom read as "the save button vanished." `smack-settings.php` now
+  guard-defines the constant itself, the same way `ai-provider.php` does, so the
+  page can never crash on it.
 
 - **Countdown clocks can reset themselves.** The shared countdown engine (`ss-engine-countdown.js`) gained an optional recurring roll: add `data-every="7d"` (or `1w` / `12h` / raw seconds) and when a counter hits zero it re-aims at the next occurrence instead of stopping. `data-roll-caption="Next prompt drops in"` relabels the heading (any element marked `[data-cd-caption]`) on that first roll. One-shot countdowns with no `data-every` are unchanged. This lets the PhotoFri prompt clock roll from the launch prompt to next week's prompt on its own, changing "First prompt drops in" to "Next prompt drops in".
 
