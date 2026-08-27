@@ -57,6 +57,62 @@ behavior, fork-renaming requirement, and support boundary are defined in
 - Never upload photographs unless the user explicitly chooses a cloud model and approves
   the upload.
 
+## Import an existing Lightroom preset or Photoshop action
+
+LEWK AGAIN must let a photographer bring in a Lightroom preset or Photoshop action as
+source material for a new native LEWK. The purpose is translation, not emulation: LEWK
+AGAIN inspects what the external preset or action is trying to accomplish, compares its
+operations with the adjustments, Filters, masks, layers, and blend modes actually
+available in SNAP SLAPPER, and proposes the closest safe editable equivalent.
+
+The workflow is:
+
+1. Choose `IMPORT PRESET OR ACTION` and select a supported Lightroom preset or Photoshop
+   action file.
+2. Parse the file as inert data. Never launch Lightroom or Photoshop, execute an action,
+   run embedded scripts, load plugins, or follow network references.
+3. Show the detected steps in plain language, preserving their original order when the
+   format exposes it.
+4. Classify every detected step as `MATCHED`, `REPLACED`, `OMITTED`, or `NEEDS REVIEW`.
+5. Use AI assistance to interpret recognizable intent and recommend only operations from
+   SNAP SLAPPER's versioned allowlist. AI does not create or execute arbitrary code.
+6. Explain every substitution or omission. A replacement identifies both the external
+   operation and the SNAP SLAPPER operation proposed in its place.
+7. Preview the translated LEWK on user-selected photographs, with before/after comparison
+   and access to `SHOW THE GUTS`.
+8. Let the photographer edit, approve, or cancel the proposal before it is installed.
+9. Save an approved result as a normal editable `.lewk` with provenance identifying the
+   source format, source filename, conversion date, and conversion report. Do not embed
+   the original proprietary file unless the photographer explicitly chooses to retain it.
+
+Lightroom presets and Photoshop actions are separate import adapters. Lightroom preset
+parameters may map directly when SNAP SLAPPER has an equivalent control. Photoshop
+actions may contain application commands, plugins, selections, scripts, or recorded UI
+steps that have no safe portable equivalent; those steps must remain visible in the
+conversion report and may be replaced or omitted only with the photographer's approval.
+
+If an input format cannot be parsed reliably, LEWK AGAIN must say so. It may offer a
+guided reconstruction from a written description and reference before/after images, but
+must not pretend it understood an opaque or unsupported action.
+
+### Direct-open interception
+
+People will try to open Lightroom and Photoshop files directly in SNAP SLAPPER. Known
+external preset/action extensions must therefore be intercepted before the ordinary
+project or LEWK loader attempts to parse them. Do not show a generic invalid-file error
+and do not attempt a partial direct import.
+
+The message is:
+
+> This is a Lightroom preset or Photoshop action. SNAP SLAPPER cannot apply it directly.
+> Open it in LEWK AGAIN to build a compatible, editable LEWK.
+
+The dialog provides `OPEN IN LEWK AGAIN` as the primary action and `CANCEL` as the safe
+secondary action. If LEWK AGAIN is unavailable, disabled, or not yet installed, replace
+the primary action with a plain explanation of what is required. Never imply that every
+external operation can be reproduced. After conversion, the report is the authoritative
+record of what matched, changed, or could not be carried across.
+
 ## Output contract
 
 - Every LEWK uses SnapSmack's native editable recipe internally.
@@ -73,11 +129,35 @@ behavior, fork-renaming requirement, and support boundary are defined in
 - Installation requires a visible summary and confirmation.
 - Every installed LEWK can be removed or exported.
 - AI suggestions are editable starting points, not magic or objective corrections.
+- Imported presets and actions are data to inspect, never trusted programs to execute.
+- A conversion cannot silently discard, approximate, reorder, or flatten an unsupported
+  external step.
+- Preview and installation use the same native SNAP SLAPPER renderer used after import.
+
+## Import acceptance criteria
+
+- A photographer can select a supported Lightroom preset or Photoshop action from LEWK
+  AGAIN without opening either originating application.
+- Opening a recognized external preset/action in SNAP SLAPPER produces the explanatory
+  interception dialog and can hand the file to LEWK AGAIN without first reporting it as
+  a malformed SNAP SLAPPER project.
+- The conversion screen lists every recoverable source step and its translation status.
+- Unsupported or unsafe steps are plainly identified and cannot execute.
+- Each replacement explains what changed and remains editable before approval.
+- Cancelling leaves the LEWKS folder and current SNAP SLAPPER project unchanged.
+- An approved conversion installs a valid native `.lewk`, includes a readable conversion
+  report, and can be inspected with `SHOW THE GUTS`.
+- The same source file and supported-operation versions produce the same proposed native
+  operation graph before optional AI refinements.
 
 ## Open decisions
 
 - Local model, cloud model, or user-selectable hybrid.
 - Whether recipes support masks and subject-aware adjustments in the first release.
 - Exact Lightroom-compatible preset version and metadata fields to target first.
+- Lightroom import formats and versions to support first (`.xmp`, legacy `.lrtemplate`,
+  or both).
+- Which Photoshop `.atn` records can be decoded reliably enough for the first importer,
+  and whether before/after reference images are required for opaque steps.
 
 <!-- ===== SNAPSMACK EOF ===== -->

@@ -11,9 +11,10 @@ import math
 import os
 import time
 import tempfile
+import textwrap
 import zipfile
 
-from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 import photo_manager
 
@@ -23,6 +24,7 @@ MAX_PROJECT_BYTES = 512 * 1024 * 1024
 MAX_PROJECT_LAYERS = 500
 MAX_RETOUCH_POINTS = 100000
 MAX_ENCODED_MASK_BYTES = 128 * 1024 * 1024
+MAX_TEXT_LAYER_CHARS = 1_000_000
 PROJECT_DOCUMENT_NAME = "project.json"
 PROJECT_README_NAME = "README.txt"
 DEFAULT_ADJUSTMENTS = {
@@ -287,6 +289,7 @@ def apply_layer_styles(image, styles):
 
 
 class EditorDocument:
+    _font_reference_cache = {}
     def __init__(self, source_path):
         self.source_path = os.path.abspath(source_path)
         self.adjustments = copy.deepcopy(DEFAULT_ADJUSTMENTS)
@@ -350,16 +353,171 @@ class EditorDocument:
     def add_adjustment_layer(self, name="Adjustment"):
         self.layers.append({"id": str(time.time_ns()), "name": name, "type": "adjustment",
                             "visible": True, "opacity": 1.0, "blend": "normal",
-                            "adjustments": copy.deepcopy(DEFAULT_ADJUSTMENTS), "mask": "", "styles": {}})
+                            "adjustments": copy.deepcopy(DEFAULT_ADJUSTMENTS), "mask": "",
+                            "mask_linked": True, "mask_transform": self.default_transform(),
+                            "styles": {}})
         self.record("Add adjustment layer")
         return self.layers[-1]
 
     def add_image_layer(self, path, name=None):
         self.layers.append({"id": str(time.time_ns()), "name": name or os.path.basename(path),
                             "type": "image", "path": os.path.abspath(path), "visible": True,
-                            "opacity": 1.0, "blend": "normal", "mask": "", "styles": {}})
+                            "opacity": 1.0, "blend": "normal",
+                            "adjustments": copy.deepcopy(DEFAULT_ADJUSTMENTS),
+                            "mask": "", "mask_linked": True,
+                            "mask_transform": self.default_transform(), "styles": {},
+                            "transform": self.default_transform()})
         self.record("Add image layer")
         return self.layers[-1]
+
+    @staticmethod
+    def default_transform():
+        return {"x": .5, "y": .5, "scale_x": 1.0, "scale_y": 1.0,
+                "rotation": 0.0, "flip_x": False, "flip_y": False}
+
+    def add_text_layer(self, text="Text", name="Text", font_path="", font_size=72):
+        self.layers.append({"id": str(time.time_ns()), "name": name or "Text",
+                            "type": "text", "text": str(text), "font_path": font_path or "",
+                            "font_family": os.path.splitext(os.path.basename(font_path))[0]
+                            if font_path else "Default", "font_size": int(font_size),
+                            "fill": [255, 255, 255, 255], "align": "left",
+                            "line_spacing": 4, "character_spacing": 0, "stroke_width": 0,
+                            "stroke_fill": [0, 0, 0, 255], "visible": True,
+                            "background": False, "background_fill": [0, 0, 0, 180],
+                            "background_padding": 8, "text_box_width": 0,
+                            "opacity": 1.0, "blend": "normal", "mask": "",
+                            "adjustments": copy.deepcopy(DEFAULT_ADJUSTMENTS),
+                            "mask_linked": True, "mask_transform": self.default_transform(),
+                            "styles": {}, "transform": self.default_transform()})
+        self.record("Add text layer")
+        return self.layers[-1]
+
+    @staticmethod
+    def _image_layer_canvas(top, canvas_size, transform, linked_mask=None):
+        """Transform an image layer and place it on a transparent document canvas."""
+        scale_x = max(.01, min(20.0, float(transform.get("scale_x", 1.0))))
+        scale_y = max(.01, min(20.0, float(transform.get("scale_y", 1.0))))
+        if transform.get("flip_x"):
+            top = ImageOps.mirror(top)
+        if transform.get("flip_y"):
+            top = ImageOps.flip(top)
+        if linked_mask is not None:
+            linked_mask = linked_mask.resize(top.size, Image.Resampling.LANCZOS)
+            top.putalpha(ImageChops.multiply(top.getchannel("A"), linked_mask))
+        size = (max(1, int(round(top.width * scale_x))),
+                max(1, int(round(top.height * scale_y))))
+        if size != top.size:
+            top = top.resize(size, Image.Resampling.LANCZOS)
+        rotation = float(transform.get("rotation", 0.0)) % 360
+        if rotation:
+            top = top.rotate(-rotation, expand=True, resample=Image.Resampling.BICUBIC)
+        x = int(round(float(transform.get("x", .5)) * canvas_size[0] - top.width / 2))
+        y = int(round(float(transform.get("y", .5)) * canvas_size[1] - top.height / 2))
+        canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+        canvas.alpha_composite(top, (x, y))
+        return canvas
+
+    @classmethod
+    def _canvas_mask(cls, mask, canvas_size, transform):
+        source = Image.new("RGBA", mask.size, (255, 255, 255, 255))
+        source.putalpha(mask)
+        return cls._image_layer_canvas(source, canvas_size, transform).getchannel("A")
+
+    @staticmethod
+    def _font_reference(layer):
+        path = layer.get("font_path", "")
+        if path and os.path.isfile(path):
+            return path
+        family = str(layer.get("font_family", "Default"))
+        if family in {"", "Default"}:
+            return ""
+        key = "".join(character.lower() for character in family if character.isalnum())
+        if key in EditorDocument._font_reference_cache:
+            return EditorDocument._font_reference_cache[key]
+        roots = []
+        windows = os.environ.get("WINDIR")
+        if windows:
+            roots.append(os.path.join(windows, "Fonts"))
+        roots.extend((os.path.expanduser("~/.fonts"), os.path.expanduser("~/.local/share/fonts"),
+                      "/usr/share/fonts", "/usr/local/share/fonts", "/Library/Fonts",
+                      "/System/Library/Fonts"))
+        best = ""
+        for root in roots:
+            if not os.path.isdir(root):
+                continue
+            for directory, _folders, files in os.walk(root):
+                for filename in files:
+                    if os.path.splitext(filename)[1].lower() not in {".ttf", ".otf"}:
+                        continue
+                    stem = "".join(character.lower() for character in os.path.splitext(filename)[0]
+                                   if character.isalnum())
+                    if stem == key:
+                        best = os.path.join(directory, filename); break
+                    if not best and (key in stem or stem in key):
+                        best = os.path.join(directory, filename)
+                if best and "".join(character.lower() for character in os.path.splitext(
+                        os.path.basename(best))[0] if character.isalnum()) == key:
+                    break
+            if best:
+                break
+        EditorDocument._font_reference_cache[key] = best
+        return best
+
+    @staticmethod
+    def _text_layer_image(layer):
+        size = max(1, min(2000, int(layer.get("font_size", 72))))
+        reference = EditorDocument._font_reference(layer)
+        try:
+            font = ImageFont.truetype(reference, size) if reference else ImageFont.load_default(size=size)
+        except (OSError, TypeError):
+            font = ImageFont.load_default()
+        text = str(layer.get("text", "Text")) or " "
+        spacing = int(layer.get("line_spacing", 4))
+        character_spacing = int(layer.get("character_spacing", 0))
+        stroke = max(0, min(100, int(layer.get("stroke_width", 0))))
+        probe = Image.new("L", (1, 1))
+        draw = ImageDraw.Draw(probe)
+        text_box_width = max(0, int(layer.get("text_box_width", 0)))
+        source_lines = text.splitlines() or [" "]
+        if text_box_width:
+            average = max(1, draw.textlength("M", font=font) + character_spacing)
+            columns = max(1, int(text_box_width / average))
+            lines = [wrapped for source_line in source_lines
+                     for wrapped in (textwrap.wrap(source_line, width=columns,
+                                                   replace_whitespace=False,
+                                                   drop_whitespace=False) or [" "])]
+        else:
+            lines = source_lines
+        widths = []
+        for line in lines:
+            advances = [draw.textlength(character, font=font) for character in (line or " ")]
+            widths.append(int(math.ceil(sum(advances) + character_spacing * max(0, len(advances) - 1))))
+        line_box = draw.textbbox((0, 0), "Ag", font=font, stroke_width=stroke)
+        line_height = max(1, line_box[3] - line_box[1])
+        padding = max(0, int(layer.get("background_padding", 8))) if layer.get("background") else 0
+        width = max(1, max(widths)); height = max(1, len(lines) * line_height + max(0, len(lines) - 1) * spacing)
+        output = Image.new("RGBA", (width + (stroke + padding + 2) * 2,
+                                    height + (stroke + padding + 2) * 2),
+                           tuple(layer.get("background_fill", [0, 0, 0, 180]))
+                           if layer.get("background") else (0, 0, 0, 0))
+        painter = ImageDraw.Draw(output)
+        top = stroke + padding + 2
+        align = layer.get("align", "left")
+        for line_index, line in enumerate(lines):
+            line_width = widths[line_index]
+            left = stroke + padding + 2
+            if align == "center":
+                left += (width - line_width) / 2
+            elif align == "right":
+                left += width - line_width
+            y = top + line_index * (line_height + spacing)
+            for character in (line or " "):
+                painter.text((left, y), character, font=font,
+                             fill=tuple(layer.get("fill", [255, 255, 255, 255])),
+                             stroke_width=stroke,
+                             stroke_fill=tuple(layer.get("stroke_fill", [0, 0, 0, 255])))
+                left += painter.textlength(character, font=font) + character_spacing
+        return output
 
     def render(self, max_size=None):
         with Image.open(self.source_path) as source:
@@ -405,7 +563,7 @@ class EditorDocument:
             if layer.get("type") == "adjustment":
                 adjusted = apply_adjustments(image.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
                 top = adjusted
-            else:
+            elif layer.get("type") == "image":
                 path = layer.get("path", "")
                 if not os.path.isfile(path):
                     name = layer.get("name") or os.path.basename(path) or "unnamed layer"
@@ -414,12 +572,32 @@ class EditorDocument:
                     top = ImageOps.exif_transpose(source_layer).convert("RGBA")
                 if max_size:
                     top.thumbnail(image.size, Image.Resampling.LANCZOS)
-            top = apply_layer_styles(top, layer.get("styles", {}))
-            mask = _mask_from_text(layer.get("mask", ""))
-            if mask:
+                alpha = top.getchannel("A")
+                top = apply_adjustments(
+                    top.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
+                top.putalpha(alpha)
+            elif layer.get("type") == "text":
+                top = self._text_layer_image(layer)
+                alpha = top.getchannel("A")
+                top = apply_adjustments(top.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
+                top.putalpha(alpha)
+            else:
+                continue
+            mask = (_mask_from_text(layer.get("mask", ""))
+                    if layer.get("mask_enabled", True) else None)
+            if layer.get("type") in {"image", "text"}:
+                linked_mask = mask if mask is not None and layer.get("mask_linked", True) else None
+                top = self._image_layer_canvas(
+                    top, image.size, layer.get("transform", {}), linked_mask)
+                if mask is not None and not layer.get("mask_linked", True):
+                    mask = self._canvas_mask(mask, image.size,
+                                             layer.get("mask_transform", {}))
+                    top.putalpha(ImageChops.multiply(top.getchannel("A"), mask))
+            elif mask:
                 if mask.size != image.size:
                     mask = mask.resize(image.size, Image.Resampling.LANCZOS)
                 top.putalpha(ImageChops.multiply(top.getchannel("A"), mask))
+            top = apply_layer_styles(top, layer.get("styles", {}))
             image = blend_images(image, top, layer.get("blend", "normal"), float(layer.get("opacity", 1.0)))
         return image.convert("RGB")
 
@@ -485,6 +663,12 @@ class EditorDocument:
             mask = layer.get("mask", "")
             if not isinstance(mask, str) or len(mask) > MAX_ENCODED_MASK_BYTES:
                 raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} mask is invalid")
+            if layer.get("type") == "text":
+                text = layer.get("text", "")
+                if not isinstance(text, str) or len(text) > MAX_TEXT_LAYER_CHARS:
+                    raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} text is invalid")
+                if not isinstance(layer.get("font_path", ""), str):
+                    raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} font is invalid")
         document = cls(source_path)
         document.adjustments = value.get("adjustments", copy.deepcopy(DEFAULT_ADJUSTMENTS))
         document.geometry = value.get("geometry", document.geometry)
