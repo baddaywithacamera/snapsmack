@@ -12,7 +12,7 @@ ported in later phases.
 import os
 
 from PySide6.QtCore import Qt, QObject, QRunnable, QThreadPool, Signal, QSize
-from PySide6.QtGui import QImage, QPixmap, QIcon, QAction
+from PySide6.QtGui import QImage, QPixmap, QIcon, QAction, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QListWidget, QListWidgetItem, QFileDialog, QLabel, QSlider,
     QWidget, QHBoxLayout,
@@ -105,6 +105,11 @@ class LibraryWindow(QMainWindow):
         act_edit.triggered.connect(self._open_selected)
         bar.addAction(act_edit)
 
+        act_help = QAction("Help", self)
+        act_help.setShortcut(QKeySequence.HelpContents)   # F1
+        act_help.triggered.connect(self._open_help)
+        bar.addAction(act_help)
+
         # thumbnail size control on the right
         spacer = QWidget()
         spacer.setSizePolicy(spacer.sizePolicy().horizontalPolicy().Expanding,
@@ -173,6 +178,10 @@ class LibraryWindow(QMainWindow):
             item.setIcon(QIcon(QPixmap.fromImage(qimage)))
 
     # --- Opening ------------------------------------------------------------
+    def _open_help(self):
+        from .help_dialog import HelpDialog
+        HelpDialog(self).show()
+
     def _open_selected(self):
         items = self.list.selectedItems()
         if items:

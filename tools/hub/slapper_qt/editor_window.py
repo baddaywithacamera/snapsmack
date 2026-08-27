@@ -188,6 +188,11 @@ class EditorWindow(QMainWindow):
         self.act_export.triggered.connect(self.export_image)
         bar.addAction(self.act_export)
 
+        self.act_help = QAction("Help", self)
+        self.act_help.setShortcut(QKeySequence.HelpContents)   # F1
+        self.act_help.triggered.connect(self.open_help)
+        bar.addAction(self.act_help)
+
     def _error(self, title, message):
         """Show an error dialog AND write it (with traceback if any) to the log."""
         _log.error("%s — %s", title, message, exc_info=sys.exc_info()[0] is not None)
@@ -810,6 +815,10 @@ class EditorWindow(QMainWindow):
             return
         self._update_title()
         self.status.showMessage(f"Saved {os.path.basename(path)}")
+
+    def open_help(self):
+        from .help_dialog import HelpDialog
+        HelpDialog(self).show()
 
     def open_lewks(self):
         if not self.doc:

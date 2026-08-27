@@ -131,6 +131,19 @@ def test_layers_isolation_and_ops():
     assert len(win.doc.layers) == 1
 
 
+def test_help_dialog():
+    from slapper_qt.help_dialog import HelpDialog, TOPICS
+    dialog = HelpDialog()
+    assert dialog.list.count() == len(TOPICS)
+    dialog.list.setCurrentRow(0)
+    assert TOPICS[0][0] in dialog.body.toPlainText()
+    # search filters topics
+    dialog.search.setText("mask")
+    assert 0 < dialog.list.count() < len(TOPICS)
+    dialog.search.setText("zzzznotopic")
+    assert dialog.list.count() == 0
+
+
 def test_lewk_apply_preserves_base():
     import built_in_lewks
     win = _editor(_image("lewk.jpg", (400, 300)))
