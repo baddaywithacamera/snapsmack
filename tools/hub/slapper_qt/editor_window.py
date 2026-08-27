@@ -11,14 +11,17 @@ import os
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QScrollArea, QCheckBox,
-    QFileDialog, QMessageBox, QLabel,
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QCheckBox,
+    QFileDialog, QMessageBox, QLabel, QButtonGroup, QPushButton,
 )
 
 import editor_engine
 from . import theme
-from .engine_bridge import render_pixmap
-from .widgets import ImageView, SliderRow, Accordion
+from .engine_bridge import render_pixmap, original_pixmap
+from .widgets import ImageView, SliderRow, Accordion, Histogram
+
+PROJECT_FILTER = "SNAP SLAPPER project (*.slapper)"
+RECIPE_FILTER = "SNAP SLAPPER recipe (*.slaprecipe *.json)"
 
 # The control groups and ranges mirror the Tk editor exactly so the feel is
 # identical and every key matches DEFAULT_ADJUSTMENTS in the engine.
@@ -92,6 +95,10 @@ class EditorWindow(QMainWindow):
         self.act_open.triggered.connect(self.open_image)
         bar.addAction(self.act_open)
 
+        self.act_open_project = QAction("Open Project", self)
+        self.act_open_project.triggered.connect(self.open_project)
+        bar.addAction(self.act_open_project)
+
         bar.addSeparator()
 
         self.act_undo = QAction("Undo", self)
@@ -118,7 +125,26 @@ class EditorWindow(QMainWindow):
         self.act_full.triggered.connect(lambda: self.view.actual_size())
         bar.addAction(self.act_full)
 
+        self.act_compare = QAction("Before/After", self)
+        self.act_compare.setCheckable(True)
+        self.act_compare.toggled.connect(self._toggle_compare)
+        bar.addAction(self.act_compare)
+
         bar.addSeparator()
+
+        self.act_recipe_save = QAction("Save Recipe", self)
+        self.act_recipe_save.triggered.connect(self.save_recipe)
+        bar.addAction(self.act_recipe_save)
+
+        self.act_recipe_apply = QAction("Apply Recipe", self)
+        self.act_recipe_apply.triggered.connect(self.apply_recipe)
+        bar.addAction(self.act_recipe_apply)
+
+        bar.addSeparator()
+
+        self.act_save_project = QAction("Save Project", self)
+        self.act_save_project.triggered.connect(self.save_project)
+        bar.addAction(self.act_save_project)
 
         self.act_export = QAction("Export…", self)
         self.act_export.setShortcut(QKeySequence.Save)
@@ -146,6 +172,8 @@ class EditorWindow(QMainWindow):
 
         for title, controls in GROUPS:
             section = Accordion(title, expanded=(title == "LIGHT"))
+            if title == "LIGHT":
+                section.add(self._build_histogram())
             for key, label, start, end, resolution, default in controls:
                 srow = SliderRow(key, label, start, end, resolution, default)
                 srow.changed.connect(self._on_adjust)
@@ -173,6 +201,46 @@ class EditorWindow(QMainWindow):
         dock.setWidget(rail)
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
 
+    def _build_histogram(self):
+        wrap = QWidget()
+        layout = QVBoxLayout(wrap)
+        layout.setContentsMargins(12, 6, 12, 6)
+        layout.setSpacing(6)
+
+        header = QHBoxLayout()
+        header.setSpacing(4)
+        title = QLabel("LIVE HISTOGRAM")
+        title.setObjectName("ControlName")
+        header.addWidget(title)
+        header.addStretch(1)
+
+        self._hist_mode = "luma"
+        self._hist_buttons = QButtonGroup(self)
+        for text, value in (("LUMA", "luma"), ("RGB", "rgb")):
+            btn = QPushButton(text)
+            btn.setObjectName("MiniToggle")
+            btn.setCheckable(True)
+            btn.setChecked(value == "luma")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setFixedHeight(20)
+            btn.clicked.connect(lambda _c, v=value: self._set_hist_mode(v))
+            self._hist_buttons.addButton(btn)
+            header.addWidget(btn)
+        layout.addLayout(header)
+
+        self.histogram = Histogram()
+        layout.addWidget(self.histogram)
+        return wrap
+
+    def _set_hist_mode(self, mode):
+        self._hist_mode = mode
+        self.histogram.set_mode(mode)
+        self._refresh_histogram()
+
+    def _refresh_histogram(self):
+        if self.doc:
+            self.histogram.set_data(self.doc.histogram(), self._hist_mode)
+
     # --- Document lifecycle -------------------------------------------------
     def open_image(self):
         if not self._confirm_discard():
@@ -191,6 +259,71 @@ class EditorWindow(QMainWindow):
         self._render_preview(keep_view=False)
         self._update_title()
         self.status.showMessage(os.path.basename(path))
+
+    def open_project(self):
+        if not self._confirm_discard():
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Open SNAP SLAPPER project", "", PROJECT_FILTER)
+        if not path:
+            return
+        try:
+            self.doc = editor_engine.EditorDocument.load_project(path)
+        except Exception as error:  # noqa: BLE001
+            QMessageBox.critical(self, "Cannot open project", str(error))
+            return
+        self.doc.on_change = lambda _doc: self._refresh_actions()
+        self._sync_controls_from_doc()
+        self._render_preview(keep_view=False)
+        self._update_title()
+        self.status.showMessage(os.path.basename(path))
+
+    def save_project(self):
+        if not self.doc:
+            return
+        base = os.path.splitext(os.path.basename(self.doc.source_path))[0]
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save project", f"{base}.slapper", PROJECT_FILTER)
+        if not path:
+            return
+        try:
+            self.doc.save_project(path)
+        except Exception as error:  # noqa: BLE001
+            QMessageBox.critical(self, "Save failed", str(error))
+            return
+        self._update_title()
+        self.status.showMessage(f"Saved {os.path.basename(path)}")
+
+    def save_recipe(self):
+        if not self.doc:
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save recipe", "look.slaprecipe", RECIPE_FILTER)
+        if not path:
+            return
+        try:
+            editor_engine.save_recipe(path, self.doc.recipe())
+        except Exception as error:  # noqa: BLE001
+            QMessageBox.critical(self, "Save failed", str(error))
+            return
+        self.status.showMessage(f"Saved recipe {os.path.basename(path)}")
+
+    def apply_recipe(self):
+        if not self.doc:
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Apply recipe", "", RECIPE_FILTER)
+        if not path:
+            return
+        try:
+            self.doc.apply_recipe(editor_engine.load_recipe(path))
+        except Exception as error:  # noqa: BLE001
+            QMessageBox.critical(self, "Apply failed", str(error))
+            return
+        self._sync_controls_from_doc()
+        self._render_preview()
+        self._update_title()
+        self.status.showMessage(f"Applied {os.path.basename(path)}")
 
     def _on_adjust(self, key, value):
         if not self.doc:
@@ -258,8 +391,17 @@ class EditorWindow(QMainWindow):
     def _render_preview(self, keep_view=True):
         if not self.doc:
             return
-        pixmap = render_pixmap(self.doc, max_size=self.view.viewport_target())
+        if self.act_compare.isChecked():
+            pixmap = original_pixmap(self.doc.source_path,
+                                     max_size=self.view.viewport_target())
+        else:
+            pixmap = render_pixmap(self.doc, max_size=self.view.viewport_target())
         self.view.set_pixmap(pixmap, keep_view=keep_view)
+        self._refresh_histogram()
+
+    def _toggle_compare(self, _checked):
+        if self.doc:
+            self._render_preview()
 
     # --- UI sync ------------------------------------------------------------
     def _sync_controls_from_doc(self):
@@ -279,6 +421,10 @@ class EditorWindow(QMainWindow):
         self.act_reset.setEnabled(has)
         self.act_fit.setEnabled(has)
         self.act_full.setEnabled(has)
+        self.act_compare.setEnabled(has)
+        self.act_recipe_save.setEnabled(has)
+        self.act_recipe_apply.setEnabled(has)
+        self.act_save_project.setEnabled(has)
 
     def _update_title(self):
         if not self.doc:

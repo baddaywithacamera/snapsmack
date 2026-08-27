@@ -5,6 +5,7 @@ converts between them, so the rest of the Qt code never imports PIL and the
 engine never imports Qt.
 """
 
+from PIL import Image, ImageOps
 from PySide6.QtGui import QImage, QPixmap
 
 
@@ -28,6 +29,15 @@ def render_pixmap(document, max_size=None) -> QPixmap:
     image, not the full-resolution original.
     """
     image = document.render(max_size=max_size)
+    return pil_to_qpixmap(image)
+
+
+def original_pixmap(source_path, max_size=None) -> QPixmap:
+    """The untouched original photograph (for before/after comparison)."""
+    with Image.open(source_path) as source:
+        image = ImageOps.exif_transpose(source).convert("RGBA")
+    if max_size:
+        image.thumbnail(max_size, Image.Resampling.LANCZOS)
     return pil_to_qpixmap(image)
 
 # ===== SNAPSMACK EOF =====
