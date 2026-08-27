@@ -132,6 +132,16 @@ class EditorWindow(QMainWindow):
         self.act_crop.toggled.connect(self._toggle_crop)
         bar.addAction(self.act_crop)
 
+        self.act_heal = QAction("Heal", self)
+        self.act_heal.setCheckable(True)
+        self.act_heal.toggled.connect(lambda on: self._toggle_retouch("heal", on))
+        bar.addAction(self.act_heal)
+
+        self.act_redeye = QAction("Red-Eye", self)
+        self.act_redeye.setCheckable(True)
+        self.act_redeye.toggled.connect(lambda on: self._toggle_retouch("red_eye", on))
+        bar.addAction(self.act_redeye)
+
         self.act_compare = QAction("Before/After", self)
         self.act_compare.setCheckable(True)
         self.act_compare.toggled.connect(self._toggle_compare)
@@ -161,8 +171,11 @@ class EditorWindow(QMainWindow):
     def _build_canvas(self):
         self.view = ImageView(self)
         self.view.cropped.connect(self._apply_crop)
+        self.view.retouch_clicked.connect(self._add_retouch)
         self.setCentralWidget(self.view)
         self._saved_crop = None
+        self._retouch_radius = 0.035
+        self._retouch_type = "heal"
 
     def _build_rail(self):
         rail = QWidget()
@@ -206,6 +219,11 @@ class EditorWindow(QMainWindow):
         geo_section = Accordion("GEOMETRY", expanded=False)
         geo_section.add(self._build_geometry())
         inner_layout.addWidget(geo_section)
+
+        # Retouch (spot heal / red-eye)
+        retouch_section = Accordion("RETOUCH", expanded=False)
+        retouch_section.add(self._build_retouch())
+        inner_layout.addWidget(retouch_section)
 
         # Black & white — neutral toggle + per-colour luminance mix
         bw_section = Accordion("BLACK + WHITE", expanded=False)
@@ -330,11 +348,75 @@ class EditorWindow(QMainWindow):
         self._render_preview()
         self._update_title()
 
+    def _build_retouch(self):
+        wrap = QWidget()
+        layout = QVBoxLayout(wrap)
+        layout.setContentsMargins(0, 2, 0, 4)
+        layout.setSpacing(4)
+
+        hint = QLabel("Toggle Heal or Red-Eye, then click blemishes on the photo")
+        hint.setObjectName("TargetLabel")
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+
+        self.retouch_size_row = SliderRow("spot", "Spot size", 1, 15, 0.5, 3.5)
+        self.retouch_size_row.changed.connect(
+            lambda _k, v: setattr(self, "_retouch_radius", v / 100.0))
+        layout.addWidget(self.retouch_size_row)
+
+        buttons = QHBoxLayout()
+        buttons.setContentsMargins(12, 2, 12, 2)
+        clear = QPushButton("Clear all retouch")
+        clear.setObjectName("LayerDeleteBtn")
+        clear.setCursor(Qt.PointingHandCursor)
+        clear.clicked.connect(self._clear_retouch)
+        buttons.addWidget(clear)
+        layout.addLayout(buttons)
+        return wrap
+
+    def _toggle_retouch(self, kind, on):
+        if not self.doc:
+            (self.act_heal if kind == "heal" else self.act_redeye).setChecked(False)
+            return
+        if on:
+            self._retouch_type = kind
+            other = self.act_redeye if kind == "heal" else self.act_heal
+            if other.isChecked():
+                other.setChecked(False)
+            if self.act_crop.isChecked():
+                self.act_crop.setChecked(False)
+            self.view.set_retouch_mode(True)
+            self.status.showMessage(f"{kind.replace('_', '-').title()} — click blemishes; toggle off when done")
+        elif not (self.act_heal.isChecked() or self.act_redeye.isChecked()):
+            self.view.set_retouch_mode(False)
+
+    def _add_retouch(self, nx, ny):
+        if not self.doc:
+            return
+        self.doc.retouched.append({"x": round(nx, 5), "y": round(ny, 5),
+                                   "radius": self._retouch_radius,
+                                   "type": self._retouch_type})
+        self.doc.record("Retouch")
+        self._render_preview()
+        self._update_title()
+
+    def _clear_retouch(self):
+        if not self.doc or not self.doc.retouched:
+            return
+        self.doc.retouched = []
+        self.doc.record("Clear retouch")
+        self._render_preview()
+        self._update_title()
+
     def _toggle_crop(self, checked):
         if not self.doc:
             self.act_crop.setChecked(False)
             return
         if checked:
+            for act in (self.act_heal, self.act_redeye):
+                if act.isChecked():
+                    act.setChecked(False)
+            self.view.set_retouch_mode(False)
             self._saved_crop = self.doc.geometry.get("crop")
             self.doc.geometry["crop"] = None      # show the full frame to crop on
             self._render_preview(keep_view=False)
@@ -623,6 +705,8 @@ class EditorWindow(QMainWindow):
         self.act_full.setEnabled(has)
         self.act_compare.setEnabled(has)
         self.act_crop.setEnabled(has)
+        self.act_heal.setEnabled(has)
+        self.act_redeye.setEnabled(has)
         self.act_recipe_save.setEnabled(has)
         self.act_recipe_apply.setEnabled(has)
         self.act_save_project.setEnabled(has)
