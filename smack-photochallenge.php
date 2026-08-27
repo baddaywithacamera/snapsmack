@@ -152,13 +152,32 @@ $esc = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 $pc_prefix = pc_tag_prefix($settings);
 $_now_utc  = new DateTimeImmutable('now', new DateTimeZone('UTC'));
 $_add_days = (5 - (int)$_now_utc->format('N') + 7) % 7;          // 0..6 days to the next Friday
-$next_friday = $_now_utc->modify("+{$_add_days} days")->format('Y-m-d');
+$next_friday = $_now_utc->modify("+{$_add_days} days")->modify('+7 days')->format('Y-m-d');
 $_def_win  = pc_window_for_friday($next_friday);
-$def_drop_hint = $_def_win ? $_def_win['start'] . ' UTC' : '';   // shown as the default drop time
-$def_drop_value = $_def_win ? str_replace(' ', 'T', substr((string)$_def_win['start'], 0, 16)) : '';
-$window_start_value = $def_drop_value;
+$window_start_value = $_def_win ? str_replace(' ', 'T', substr((string)$_def_win['start'], 0, 16)) : '';
+$def_drop_value = $_def_win
+    ? (new DateTimeImmutable($_def_win['start'], new DateTimeZone('UTC')))->modify('-7 days')->format('Y-m-d\TH:i')
+    : '';
+$def_drop_hint = $def_drop_value !== '' ? str_replace('T', ' ', $def_drop_value) . ':00 UTC' : '';
 $prompts   = pc_prompts_list($pdo, 40);
 $queued_prompts = array_values(array_filter($prompts, static fn(array $p): bool => ($p['status'] ?? '') === 'queued'));
+$occupied_weeks = [];
+foreach ($prompts as $scheduled_prompt) {
+    if (in_array((string)($scheduled_prompt['status'] ?? ''), ['queued', 'live'], true)) {
+        $occupied_weeks[(string)$scheduled_prompt['week_key']] = true;
+    }
+}
+while ($_def_win && isset($occupied_weeks[$_def_win['week_key']])) {
+    $next_friday = (new DateTimeImmutable($next_friday . ' 00:00:00', new DateTimeZone('UTC')))
+        ->modify('+7 days')->format('Y-m-d');
+    $_def_win = pc_window_for_friday($next_friday);
+}
+if ($_def_win) {
+    $window_start_value = str_replace(' ', 'T', substr((string)$_def_win['start'], 0, 16));
+    $def_drop_value = (new DateTimeImmutable($_def_win['start'], new DateTimeZone('UTC')))
+        ->modify('-7 days')->format('Y-m-d\TH:i');
+    $def_drop_hint = str_replace('T', ' ', $def_drop_value) . ':00 UTC';
+}
 $edit_prompt = null;
 if ($pc_admin_view === 'queue' && (int)($_GET['edit'] ?? 0) > 0) {
     $edit_prompt = pc_prompt_editable($pdo, (int)$_GET['edit']);
@@ -337,8 +356,9 @@ include 'core/sidebar.php';
                 <div class="pc-date-plan__item">
                     <label for="pc_drop_at"><strong>2. PROMPT POST</strong> &mdash; CHOOSE WHEN THE CARD PUBLISHES</label>
                     <input type="datetime-local" name="pc_drop_at" id="pc_drop_at" value="<?php echo $esc($def_drop_value); ?>">
-                    <p class="dim">This schedules only the prompt card. It does <strong>not</strong> change the boosting window.
-                        Times are UTC. Default: <span id="pc_drop_hint"><?php echo $esc($def_drop_hint); ?></span>.</p>
+                    <p class="dim">This publishes the prompt <strong>one week before</strong> the boosting window so people
+                        have seven days to make their photographs. Times are UTC. Default:
+                        <span id="pc_drop_hint"><?php echo $esc($def_drop_hint); ?></span>.</p>
                 </div>
             </fieldset>
 

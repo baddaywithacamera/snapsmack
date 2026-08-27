@@ -73,12 +73,27 @@ function _smackPromptScheduleInit() {
         var date = open.getUTCFullYear() + '-' + pad(open.getUTCMonth() + 1) + '-' + pad(open.getUTCDate());
         var time = pad(open.getUTCHours()) + ':' + pad(open.getUTCMinutes());
         windowEl.value = date + 'T' + time;
-        if (dropEl) dropEl.value = date + 'T' + time;
-        if (hintEl) hintEl.textContent = date + ' ' + time + ':00 UTC';
+        var prompt = new Date(open.getTime() - 7 * 24 * 3600 * 1000);
+        var promptDate = prompt.getUTCFullYear() + '-' + pad(prompt.getUTCMonth() + 1) + '-' + pad(prompt.getUTCDate());
+        var promptTime = pad(prompt.getUTCHours()) + ':' + pad(prompt.getUTCMinutes());
+        if (dropEl) dropEl.value = promptDate + 'T' + promptTime;
+        if (hintEl) hintEl.textContent = promptDate + ' ' + promptTime + ':00 UTC';
+    }
+
+    function updateFromPromptPost() {
+        if (!dropEl || !dropEl.value || !windowEl) return;
+        var promptParts = dropEl.value.slice(0, 10).split('-');
+        if (promptParts.length !== 3) return;
+        var promptAt = Date.UTC(+promptParts[0], +promptParts[1] - 1, +promptParts[2], 10, 0, 0);
+        var opening = new Date(promptAt + 7 * 24 * 3600 * 1000);
+        windowEl.value = opening.getUTCFullYear() + '-' + pad(opening.getUTCMonth() + 1)
+            + '-' + pad(opening.getUTCDate()) + 'T10:00';
+        updateWindowStart();
     }
 
     if (promptEl) { promptEl.addEventListener('input', updateHash); updateHash(); }
     if (windowEl && fridayEl) { windowEl.addEventListener('change', updateWindowStart); updateWindowStart(); }
+    if (dropEl) dropEl.addEventListener('change', updateFromPromptPost);
     if (imageEl && imageNameEl) {
         imageEl.addEventListener('change', function () {
             imageNameEl.textContent = imageEl.files && imageEl.files[0]

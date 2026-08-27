@@ -32,7 +32,7 @@ $page_css = <<<'CSS'
 .cost-callout { max-width: 820px; margin: 28px 0; padding: 30px; color: var(--white); background: var(--black); border-left: 7px solid var(--red); }
 .cost-callout strong { display: block; margin-bottom: 9px; color: var(--white); font: 900 clamp(1.8rem, 4vw, 3rem)/1 Arial Black, Arial, sans-serif; letter-spacing: -.04em; }
 .cost-callout p { margin: 0; color: #ddd; }
-.method-note { max-width: 820px; padding: 22px 25px; background: var(--light-grey); border-left: 4px solid var(--black); font-size: .9rem; }
+.method-note { max-width: 820px; margin: 28px 0 0; padding: 22px 25px; background: var(--light-grey); border-left: 4px solid var(--black); font-size: .9rem; }
 @media (max-width: 760px) { .reckoning-premise-grid, .number-grid { grid-template-columns: 1fr; } .reckoning-premise-label { margin: 0; } }
 CSS;
 
@@ -62,15 +62,15 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h2>The codebase</h2>
             <div class="reckoning-copy">
-                <p>These figures come from the Git-tracked repository on August 12, 2026. CLOC 2.10 classified source, comments, and blank lines separately. Dependencies, generated files, and untracked work are excluded.</p>
+                <p>These figures come from the Git-tracked repository on August 25, 2026. CLOC 2.10 classified source, comments, and blank lines separately. Dependencies, generated files, and untracked work are excluded.</p>
             </div>
             <div class="number-grid">
-                <div class="number-card"><strong>1,581</strong><span>Tracked files</span></div>
-                <div class="number-card"><strong>178,840</strong><span>PHP, JavaScript, and CSS source lines</span></div>
-                <div class="number-card"><strong>215,993</strong><span>Expanded source including Python, SQL, Rust, and scripts</span></div>
-                <div class="number-card"><strong>124</strong><span>Python files for desktop applications and tooling</span></div>
-                <div class="number-card"><strong>29</strong><span>Skin directories</span></div>
-                <div class="number-card"><strong>49</strong><span>Published security-audit records</span></div>
+                <div class="number-card"><strong>1,853</strong><span>Tracked files</span></div>
+                <div class="number-card"><strong>199,342</strong><span>PHP, JavaScript, and CSS source lines</span></div>
+                <div class="number-card"><strong>252,344</strong><span>Expanded source including Python, SQL, Rust, and scripts</span></div>
+                <div class="number-card"><strong>179</strong><span>Python files for desktop applications and tooling</span></div>
+                <div class="number-card"><strong>30</strong><span>Skin directories</span></div>
+                <div class="number-card"><strong>51</strong><span>Published numbered security audits</span></div>
             </div>
         </div>
     </section>
@@ -79,12 +79,12 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h2>What would a company pay?</h2>
             <div class="cost-callout">
-                <strong>CAD $4.5-11 million</strong>
+                <strong>CAD $5.3-13 million</strong>
                 <p>Estimated conventional commercial development cost for a company commissioning SNAPSMACK at its current scope.</p>
             </div>
             <div class="reckoning-copy">
                 <p>This is a replacement-cost estimate, not a sale price or company valuation. It covers product planning, core and desktop development, design, federation and infrastructure, security engineering, QA, compatibility testing, documentation, release engineering, project management, contingency, and vendor overhead.</p>
-                <p>The underlying estimate is approximately 26,500-46,000 hours, or 13-23 person-years. It is based on replacement workstreams and commercial delivery costs, not a dollars-per-line formula.</p>
+                <p>The underlying estimate is approximately 31,000-53,000 hours, or 16-27 person-years. It is based on replacement workstreams and commercial delivery costs, not a dollars-per-line formula.</p>
             </div>
         </div>
     </section>
@@ -116,8 +116,9 @@ require_once __DIR__ . '/includes/header.php';
             <div class="reckoning-copy">
                 <p>SNAPSMACK uses a human-directed, AI-assisted production model. Sean McCormick supplies the photography workflow, requirements, priorities, aesthetic judgment, testing, and acceptance decisions. Claude, Gemini, and OpenAI Codex contribute implementation, analysis, review, and iteration.</p>
                 <p>The useful conclusion is not that one person replaced a team in every sense. AI changed which parts of software production required scarce specialist labour. Human responsibility for goals, judgment, verification, and consequences remained.</p>
+                <p><strong>Or, put less politely: Sean accidentally founded a small software company without the inconvenience of employees, funding, or adult supervision.</strong></p>
             </div>
-            <p class="method-note"><strong>Counting note:</strong> The headline source figures exclude 46,739 comment lines and 40,516 blank lines. The broader CLOC-classified total, including documentation and configuration, is 262,815 lines. Counts measure repository scale, not quality or effort.</p>
+            <p class="method-note"><strong>Counting note:</strong> The headline source figures exclude 53,710 comment lines and 47,297 blank lines. The broader CLOC-classified total, including documentation and configuration, is 307,753 lines. Counts measure repository scale, not quality or effort.</p>
         </div>
     </section>
 </main>
