@@ -121,6 +121,84 @@ def stylesheet() -> str:
         border: 1px solid {ACCENT};
     }}
 
+    /* --- Layers panel --------------------------------------------------- */
+    QPushButton#LayerAddBtn {{
+        background: {FIELD};
+        color: {BODY};
+        border: 1px solid {BORDER};
+        border-radius: 5px;
+        padding: 5px 6px;
+        font-size: 11px;
+    }}
+    QPushButton#LayerAddBtn:hover {{
+        border: 1px solid {ACCENT};
+        color: {ACCENT};
+    }}
+    QWidget#LayerRow {{
+        background: transparent;
+        border-radius: 5px;
+    }}
+    QWidget#LayerRowActive {{
+        background: {ACCENT_DIM};
+        border-radius: 5px;
+    }}
+    QPushButton#LayerName {{
+        background: transparent;
+        border: none;
+        text-align: left;
+        padding: 3px 4px;
+        color: {BODY};
+        font-size: 12px;
+    }}
+    QWidget#LayerRowActive QPushButton#LayerName {{
+        color: {ACCENT};
+        font-weight: 600;
+    }}
+    QPushButton#LayerName:hover {{
+        color: {ACCENT};
+    }}
+    QPushButton#LayerOrderBtn {{
+        background: {FIELD};
+        color: {BODY};
+        border: 1px solid {BORDER};
+        border-radius: 4px;
+        padding: 3px;
+        font-size: 11px;
+    }}
+    QPushButton#LayerOrderBtn:hover {{ border: 1px solid {ACCENT}; color: {ACCENT}; }}
+    QPushButton#LayerDeleteBtn {{
+        background: transparent;
+        color: {DANGER};
+        border: 1px solid {BORDER};
+        border-radius: 4px;
+        padding: 4px 10px;
+        font-size: 11px;
+    }}
+    QPushButton#LayerDeleteBtn:hover {{ border: 1px solid {DANGER}; }}
+    QLabel#TargetLabel {{
+        color: {DIM};
+        font-size: 10px;
+        font-style: italic;
+        padding: 3px 12px 6px 12px;
+    }}
+    QComboBox {{
+        background: {FIELD};
+        color: {BODY};
+        border: 1px solid {BORDER};
+        border-radius: 4px;
+        padding: 3px 8px;
+        font-size: 11px;
+    }}
+    QComboBox:hover {{ border: 1px solid {ACCENT}; }}
+    QComboBox QAbstractItemView {{
+        background: {PANEL_HI};
+        color: {BODY};
+        border: 1px solid {BORDER};
+        selection-background-color: {ACCENT_DIM};
+        selection-color: {ACCENT};
+        outline: none;
+    }}
+
     /* --- Control rows --------------------------------------------------- */
     QLabel#ControlName {{
         color: {DIM};

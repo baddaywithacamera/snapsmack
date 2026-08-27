@@ -19,6 +19,7 @@ import editor_engine
 from . import theme
 from .engine_bridge import render_pixmap, original_pixmap
 from .widgets import ImageView, SliderRow, Accordion, Histogram
+from .layers_panel import LayersPanel, BASE
 
 PROJECT_FILTER = "SNAP SLAPPER project (*.slapper)"
 RECIPE_FILTER = "SNAP SLAPPER recipe (*.slaprecipe *.json)"
@@ -67,6 +68,7 @@ class EditorWindow(QMainWindow):
         super().__init__()
         self.doc = None
         self.rows = {}
+        self.active_target = "base"   # "base" or a layer id
         self.setWindowTitle("SNAP SLAPPER")
         self.resize(1280, 820)
 
@@ -170,6 +172,17 @@ class EditorWindow(QMainWindow):
         inner_layout.setContentsMargins(0, 0, 0, 0)
         inner_layout.setSpacing(0)
 
+        # Layers section at the top of the rail
+        layers_section = Accordion("LAYERS", expanded=True)
+        self.layers_panel = LayersPanel(self)
+        layers_section.add(self.layers_panel)
+        inner_layout.addWidget(layers_section)
+
+        # "Editing: …" target indicator
+        self.target_label = QLabel("Editing: Base image")
+        self.target_label.setObjectName("TargetLabel")
+        inner_layout.addWidget(self.target_label)
+
         for title, controls in GROUPS:
             section = Accordion(title, expanded=(title == "LIGHT"))
             if title == "LIGHT":
@@ -241,6 +254,47 @@ class EditorWindow(QMainWindow):
         if self.doc:
             self.histogram.set_data(self.doc.histogram(), self._hist_mode)
 
+    # --- Edit target (base vs a layer) --------------------------------------
+    def active_adjustments(self):
+        """The adjustments dict the rail currently edits."""
+        if not self.doc:
+            return None
+        if self.active_target == BASE:
+            return self.doc.adjustments
+        for layer in self.doc.layers:
+            if layer.get("id") == self.active_target:
+                return layer.setdefault("adjustments",
+                                        editor_engine.copy.deepcopy(
+                                            editor_engine.DEFAULT_ADJUSTMENTS))
+        return self.doc.adjustments
+
+    def _active_name(self):
+        if self.active_target == BASE:
+            return "Base image"
+        for layer in (self.doc.layers if self.doc else []):
+            if layer.get("id") == self.active_target:
+                return layer.get("name", "Layer")
+        return "Base image"
+
+    # --- Host interface used by LayersPanel ---------------------------------
+    def set_target(self, target):
+        self.active_target = target
+        self.target_label.setText(f"Editing: {self._active_name()}")
+        self._sync_controls_from_doc()
+
+    def request_render(self):
+        self._render_preview()
+
+    def update_title(self):
+        self._update_title()
+
+    def after_structure_change(self):
+        self.layers_panel.rebuild()
+        self.target_label.setText(f"Editing: {self._active_name()}")
+        self._sync_controls_from_doc()
+        self._render_preview()
+        self._update_title()
+
     # --- Document lifecycle -------------------------------------------------
     def open_image(self):
         if not self._confirm_discard():
@@ -255,6 +309,9 @@ class EditorWindow(QMainWindow):
             QMessageBox.critical(self, "Cannot open", f"Could not open this image:\n{error}")
             return
         self.doc.on_change = lambda _doc: self._refresh_actions()
+        self.active_target = BASE
+        self.layers_panel.rebuild()
+        self.target_label.setText("Editing: Base image")
         self._sync_controls_from_doc()
         self._render_preview(keep_view=False)
         self._update_title()
@@ -273,6 +330,9 @@ class EditorWindow(QMainWindow):
             QMessageBox.critical(self, "Cannot open project", str(error))
             return
         self.doc.on_change = lambda _doc: self._refresh_actions()
+        self.active_target = BASE
+        self.layers_panel.rebuild()
+        self.target_label.setText("Editing: Base image")
         self._sync_controls_from_doc()
         self._render_preview(keep_view=False)
         self._update_title()
@@ -320,15 +380,17 @@ class EditorWindow(QMainWindow):
         except Exception as error:  # noqa: BLE001
             QMessageBox.critical(self, "Apply failed", str(error))
             return
+        self.layers_panel.rebuild()
         self._sync_controls_from_doc()
         self._render_preview()
         self._update_title()
         self.status.showMessage(f"Applied {os.path.basename(path)}")
 
     def _on_adjust(self, key, value):
-        if not self.doc:
+        target = self.active_adjustments()
+        if target is None:
             return
-        self.doc.adjustments[key] = value
+        target[key] = value
         self._schedule_render()
 
     def _on_commit(self, key):
@@ -338,30 +400,45 @@ class EditorWindow(QMainWindow):
         self._update_title()
 
     def _on_bw(self, checked):
-        if not self.doc:
+        target = self.active_adjustments()
+        if target is None:
             return
-        self.doc.adjustments["black_white"] = bool(checked)
+        target["black_white"] = bool(checked)
         self.doc.record("Black and white")
         self._schedule_render()
         self._update_title()
 
     def reset_all(self):
-        if not self.doc:
+        target = self.active_adjustments()
+        if target is None:
             return
-        self.doc.adjustments = editor_engine.copy.deepcopy(editor_engine.DEFAULT_ADJUSTMENTS)
+        for key, value in editor_engine.DEFAULT_ADJUSTMENTS.items():
+            target[key] = editor_engine.copy.deepcopy(value)
         self.doc.record("Reset adjustments")
         self._sync_controls_from_doc()
         self._render_preview()
         self._update_title()
 
+    def _validate_target(self):
+        if self.active_target == BASE:
+            return
+        ids = {layer.get("id") for layer in (self.doc.layers if self.doc else [])}
+        if self.active_target not in ids:
+            self.active_target = BASE
+        self.target_label.setText(f"Editing: {self._active_name()}")
+
     def undo(self):
         if self.doc and self.doc.undo():
+            self._validate_target()
+            self.layers_panel.rebuild()
             self._sync_controls_from_doc()
             self._render_preview()
             self._update_title()
 
     def redo(self):
         if self.doc and self.doc.redo():
+            self._validate_target()
+            self.layers_panel.rebuild()
             self._sync_controls_from_doc()
             self._render_preview()
             self._update_title()
@@ -405,12 +482,13 @@ class EditorWindow(QMainWindow):
 
     # --- UI sync ------------------------------------------------------------
     def _sync_controls_from_doc(self):
-        if not self.doc:
+        adjustments = self.active_adjustments()
+        if adjustments is None:
             return
         for key, row in self.rows.items():
-            row.set_value(self.doc.adjustments.get(key, 0))
+            row.set_value(adjustments.get(key, editor_engine.DEFAULT_ADJUSTMENTS.get(key, 0)))
         self.bw_check.blockSignals(True)
-        self.bw_check.setChecked(bool(self.doc.adjustments.get("black_white", False)))
+        self.bw_check.setChecked(bool(adjustments.get("black_white", False)))
         self.bw_check.blockSignals(False)
 
     def _refresh_actions(self):
