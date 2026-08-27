@@ -13,9 +13,11 @@ from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QCheckBox,
     QFileDialog, QMessageBox, QLabel, QButtonGroup, QPushButton, QLineEdit,
-    QColorDialog,
+    QColorDialog, QComboBox,
 )
 from PySide6.QtGui import QColor
+
+from . import masks
 
 import editor_engine
 from . import theme
@@ -211,6 +213,12 @@ class EditorWindow(QMainWindow):
         self.text_section.setVisible(False)
         inner_layout.addWidget(self.text_section)
 
+        # Layer mask (only visible when a layer is selected)
+        self.mask_section = Accordion("MASK", expanded=False)
+        self.mask_section.add(self._build_mask_panel())
+        self.mask_section.setVisible(False)
+        inner_layout.addWidget(self.mask_section)
+
         for title, controls in GROUPS:
             section = Accordion(title, expanded=(title == "LIGHT"))
             if title == "LIGHT":
@@ -356,6 +364,122 @@ class EditorWindow(QMainWindow):
         self._render_preview()
         self._update_title()
 
+    def _build_mask_panel(self):
+        wrap = QWidget()
+        layout = QVBoxLayout(wrap)
+        layout.setContentsMargins(12, 4, 12, 6)
+        layout.setSpacing(4)
+
+        hint = QLabel("Limit this layer to part of the photo")
+        hint.setObjectName("TargetLabel")
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+
+        self.mask_cx = SliderRow("cx", "Centre X", 0, 100, 1, 50)
+        self.mask_cy = SliderRow("cy", "Centre Y", 0, 100, 1, 50)
+        self.mask_size = SliderRow("size", "Size", 5, 100, 1, 40)
+        self.mask_soft = SliderRow("soft", "Softness", 0, 60, 1, 15)
+        self.mask_pos = SliderRow("pos", "Line", 0, 100, 1, 50)
+        for row in (self.mask_cx, self.mask_cy, self.mask_size, self.mask_soft,
+                    self.mask_pos):
+            layout.addWidget(row)
+
+        dir_row = QHBoxLayout()
+        dir_row.setContentsMargins(0, 0, 0, 0)
+        dir_row.setSpacing(8)
+        dlabel = QLabel("Direction")
+        dlabel.setObjectName("ControlName")
+        dlabel.setFixedWidth(74)
+        dir_row.addWidget(dlabel)
+        self.mask_dir = QComboBox()
+        self.mask_dir.addItems(["Top", "Bottom", "Left", "Right"])
+        dir_row.addWidget(self.mask_dir, 1)
+        layout.addLayout(dir_row)
+
+        self.mask_invert = QCheckBox("Invert mask")
+        self.mask_invert.toggled.connect(self._reapply_mask)
+        layout.addWidget(self.mask_invert)
+
+        buttons = QHBoxLayout()
+        buttons.setContentsMargins(0, 2, 0, 0)
+        buttons.setSpacing(4)
+        radial = QPushButton("Radial")
+        linear = QPushButton("Graduated")
+        for btn, handler in ((radial, self._apply_radial_mask),
+                             (linear, self._apply_linear_mask)):
+            btn.setObjectName("LayerAddBtn")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(handler)
+            buttons.addWidget(btn)
+        clear = QPushButton("Clear")
+        clear.setObjectName("LayerOrderBtn")
+        clear.setCursor(Qt.PointingHandCursor)
+        clear.clicked.connect(self._clear_mask)
+        buttons.addWidget(clear)
+        layout.addLayout(buttons)
+
+        self._last_mask_kind = None
+        return wrap
+
+    def _mask_layer(self):
+        if not self.doc or self.active_target == BASE:
+            return None
+        for layer in self.doc.layers:
+            if layer.get("id") == self.active_target:
+                return layer
+        return None
+
+    def _mask_target_size(self):
+        probe = self.doc.render((256, 256))
+        long_edge = 1600
+        scale = long_edge / max(probe.width, probe.height)
+        return (max(1, int(probe.width * scale)), max(1, int(probe.height * scale)))
+
+    def _apply_radial_mask(self):
+        layer = self._mask_layer()
+        if layer is None:
+            return
+        mask = masks.radial_mask(
+            self._mask_target_size(), self.mask_cx.slider.value() / 100.0,
+            self.mask_cy.slider.value() / 100.0, self.mask_size.slider.value() / 100.0,
+            self.mask_soft.slider.value() / 100.0, self.mask_invert.isChecked())
+        self._store_mask(layer, mask, "radial", "Radial mask")
+
+    def _apply_linear_mask(self):
+        layer = self._mask_layer()
+        if layer is None:
+            return
+        mask = masks.linear_mask(
+            self._mask_target_size(), self.mask_dir.currentText().lower(),
+            self.mask_pos.slider.value() / 100.0, self.mask_soft.slider.value() / 100.0,
+            self.mask_invert.isChecked())
+        self._store_mask(layer, mask, "linear", "Graduated mask")
+
+    def _store_mask(self, layer, mask, kind, label):
+        layer["mask"] = editor_engine._mask_to_text(mask)
+        layer["mask_enabled"] = True
+        self._last_mask_kind = kind
+        self.doc.record(label)
+        self._render_preview()
+        self._update_title()
+
+    def _reapply_mask(self, _checked):
+        # re-generate the same mask kind when Invert changes, if one exists
+        if self._last_mask_kind == "radial":
+            self._apply_radial_mask()
+        elif self._last_mask_kind == "linear":
+            self._apply_linear_mask()
+
+    def _clear_mask(self):
+        layer = self._mask_layer()
+        if layer is None or not layer.get("mask"):
+            return
+        layer["mask"] = ""
+        self._last_mask_kind = None
+        self.doc.record("Clear mask")
+        self._render_preview()
+        self._update_title()
+
     def _build_text_panel(self):
         wrap = QWidget()
         layout = QVBoxLayout(wrap)
@@ -397,6 +521,8 @@ class EditorWindow(QMainWindow):
         return None
 
     def _update_text_panel(self):
+        # the mask panel applies to any selected layer
+        self.mask_section.setVisible(self.doc is not None and self.active_target != BASE)
         layer = self._text_layer()
         self.text_section.setVisible(layer is not None)
         if not layer:
