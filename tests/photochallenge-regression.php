@@ -19,6 +19,10 @@ $settings = [
     'photochallenge_tz' => 'UTC',
 ];
 pc_test(pc_enabled($settings), 'enabled profile was reported disabled');
+pc_test(pc_feed_enabled($settings), 'existing challenge feed disappeared before its new switch was saved');
+$feed_off_settings = $settings;
+$feed_off_settings['photochallenge_feed_enabled'] = '0';
+pc_test(!pc_feed_enabled($feed_off_settings), 'explicitly disabled challenge feed remained available');
 pc_test(pc_tag($settings) === 'photofri', 'challenge tag normalization failed');
 
 $open = pc_window($settings, strtotime('2026-09-04 12:00:00 UTC'));
@@ -59,6 +63,12 @@ $htaccess = file_get_contents(__DIR__ . '/../core/htaccess-template');
 $admin = file_get_contents(__DIR__ . '/../smack-photochallenge.php');
 $sidebar = file_get_contents(__DIR__ . '/../core/sidebar-photochallenge.php');
 $admin_header = file_get_contents(__DIR__ . '/../core/admin-header.php');
+$admin_geometry = file_get_contents(__DIR__ . '/../assets/css/admin-theme-geometry-master.css');
+$prompt_js = file_get_contents(__DIR__ . '/../assets/js/smack-prompt-schedule.js');
+$menu = file_get_contents(__DIR__ . '/../smack-menu.php');
+$header = file_get_contents(__DIR__ . '/../core/header.php');
+$board = file_get_contents(__DIR__ . '/../photochallenge-board.php');
+$board_layout_css = file_get_contents(__DIR__ . '/../assets/css/photochallenge-board-layouts.css');
 $installer = file_get_contents(__DIR__ . '/../install.php');
 $fedup = file_get_contents(__DIR__ . '/../fedup.php');
 $packager = file_get_contents(__DIR__ . '/../smack-central/sc-release.php');
@@ -154,10 +164,50 @@ pc_test(str_contains($admin, "value=\"queue_prompt\"") && str_contains($admin, '
     'the admin is missing the SCHEDULE A PROMPT panel');
 pc_test(str_contains($sidebar, '>Contest &amp; Feed</a>')
     && str_contains($sidebar, 'smack-photochallenge.php#queue-contest-post">Queue Contest Post</a>')
+    && str_contains($sidebar, 'smack-photochallenge.php#queued-contest-posts">Queued Posts</a>')
     && str_contains($admin, 'id="queue-contest-post"'),
-    'CHALLENGE ME must keep Contest & Feed and add Queue Contest Post as a second sidebar option');
+    'CHALLENGE ME must expose Contest & Feed, Queue Contest Post, and Queued Posts');
+pc_test(str_contains($admin, 'id="queued-contest-posts"')
+    && str_contains($admin, 'No contest posts are queued yet.'),
+    'queued-post area must remain visible before the first prompt is queued');
 pc_test(str_contains($admin, 'enctype="multipart/form-data"'),
     'the prompt form cannot upload a card image');
+pc_test(str_contains($admin, 'id="pc_drop_at" value="<?php echo $esc($def_drop_value); ?>"')
+    && str_contains($prompt_js, "dropEl.value = date + 'T' + time"),
+    'DROPS AT must display and track the selected Friday window opening');
+pc_test(str_contains($admin_geometry, 'input[type="file"]::file-selector-button')
+    && str_contains($admin_geometry, 'var(--accent'),
+    'native file chooser buttons must inherit the active admin theme accent');
+pc_test(str_contains($admin, 'name="pc_feed_enabled"')
+    && str_contains($photo, 'pc_sync_feed_menu')
+    && str_contains($menu, "'type' => 'challenge_feed'")
+    && str_contains($header, "case 'challenge_feed'")
+    && str_contains($board, '!pc_feed_enabled($settings)'),
+    'feed-page switch must control /board and its built-in Menu Manager item');
+pc_test(str_contains($admin, 'name="pc_feed_layout"')
+    && str_contains($board, 'grid--<?php echo $esc($feed_layout); ?>')
+    && str_contains($board, 'photochallenge-board-layouts.css')
+    && str_contains($board_layout_css, '.grid--masonry'),
+    'challenge feed must offer three-across and external-CSS masonry layouts');
+
+// Admission owns the window gate. The outbound boost function must obtain an
+// active admission before its only sv_boost_remote() call can run.
+$admit_pos = strpos($photo, 'function pc_admit_object');
+$closed_pos = strpos($photo, "if (!\$win['open'])", $admit_pos);
+$notice_pos = strpos($photo, 'pc_notice_closed_window($pdo,$settings,$row,$win);', $closed_pos);
+$closed_return_pos = strpos($photo, 'return null;', $notice_pos);
+$boost_fn_pos = strpos($photo, 'function pc_maybe_boost_entry');
+$admit_call_pos = strpos($photo, 'pc_admit_object($pdo, $settings, $object_id)', $boost_fn_pos);
+$boost_call_pos = strpos($photo, 'sv_boost_remote($pdo, $settings, $object_id)', $admit_call_pos);
+pc_test($admit_pos !== false && $closed_pos !== false && $notice_pos !== false
+    && $closed_return_pos !== false && $closed_return_pos < $boost_fn_pos
+    && $admit_call_pos !== false && $boost_call_pos !== false && $admit_call_pos < $boost_call_pos,
+    'an outside-window hashtag post can reach boosting before decline and courtesy notification');
+pc_test(str_contains($photo, 'INSERT IGNORE INTO pc_window_notices(actor_url,week_key,object_id)')
+    && str_contains($photo, 'if ($reserve->rowCount() !== 1) return;')
+    && str_contains($photo, 'sv_send_dm($pdo,$settings,$actor,$body)')
+    && str_contains($photo, "post wasn't entered or boosted"),
+    'closed-window courtesy DM is not private, deduplicated, and explicit about no boost');
 
 if ($failures) {
     fwrite(STDERR, "FAIL\n- " . implode("\n- ", $failures) . "\n");

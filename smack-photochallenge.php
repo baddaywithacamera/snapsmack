@@ -58,6 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
         $bw = (string)max(0, (int)($_POST['pc_boost_weight'] ?? 1));
         $wm = (($_POST['pc_window_mode'] ?? 'weekly') === 'daily') ? 'daily' : 'weekly';
         $test_mode  = isset($_POST['pc_test_mode']) ? '1' : '0';
+        $feed_enabled = isset($_POST['pc_feed_enabled']) ? '1' : '0';
+        $feed_layout = (($_POST['pc_feed_layout'] ?? 'three') === 'masonry') ? 'masonry' : 'three';
         $test_allow = trim((string)($_POST['pc_test_allow'] ?? ''));
         sv_set_setting($pdo, $settings, 'photochallenge_tag', $tag);
         sv_set_setting($pdo, $settings, 'photochallenge_tz', $tz);
@@ -65,6 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
         sv_set_setting($pdo, $settings, 'photochallenge_window_mode', $wm);
         sv_set_setting($pdo, $settings, 'photochallenge_test_allow', $test_allow);
         sv_set_setting($pdo, $settings, 'photochallenge_test_mode', $test_mode);
+        sv_set_setting($pdo, $settings, 'photochallenge_feed_enabled', $feed_enabled);
+        sv_set_setting($pdo, $settings, 'photochallenge_feed_layout', $feed_layout);
+        pc_sync_feed_menu($pdo, $settings, $feed_enabled === '1');
         sv_set_setting($pdo, $settings, 'photochallenge_enabled', $enabled);   // flip last
         if ($msg === '') $msg = $enabled === '1' ? 'Photo challenge ON. Settings saved.' : 'Settings saved (challenge OFF).';
         if ($test_mode === '1') $msg .= ' TESTING WHITELIST is ON — only listed handles qualify, and boosts go only to those whitelisted accounts, never your real followers.';
@@ -133,7 +138,9 @@ $_add_days = (5 - (int)$_now_utc->format('N') + 7) % 7;          // 0..6 days to
 $next_friday = $_now_utc->modify("+{$_add_days} days")->format('Y-m-d');
 $_def_win  = pc_window_for_friday($next_friday);
 $def_drop_hint = $_def_win ? $_def_win['start'] . ' UTC' : '';   // shown as the default drop time
+$def_drop_value = $_def_win ? str_replace(' ', 'T', substr((string)$_def_win['start'], 0, 16)) : '';
 $prompts   = pc_prompts_list($pdo, 40);
+$queued_prompts = array_values(array_filter($prompts, static fn(array $p): bool => ($p['status'] ?? '') === 'queued'));
 
 $page_title = 'PHOTO CHALLENGE';
 include 'core/admin-header.php';
@@ -195,6 +202,21 @@ include 'core/sidebar.php';
                 <p class="dim"><strong>Weekly</strong> is the real Photo-Friday cadence. <strong>Daily</strong> is a test/demo
                     mode &mdash; a rolling 24-hour window that is always open, so entries qualify any day. Switch back to
                     weekly before launch.</p>
+            </div>
+
+            <div class="lens-input-wrapper">
+                <label class="pc-inline-check">
+                    <input type="checkbox" name="pc_feed_enabled" value="1" <?php echo pc_feed_enabled($settings) ? 'checked' : ''; ?>>
+                    <span><strong>ENABLE PUBLIC FEED PAGE</strong></span>
+                </label>
+                <p class="dim">Publishes the challenge feed at <code>/board</code>. Menu Manager adds a built-in
+                    <strong>FEED</strong> item to the public navigation; move it there if you want a different position.</p>
+                <label for="pc_feed_layout">FEED LAYOUT</label>
+                <?php $pc_feed_layout = (($settings['photochallenge_feed_layout'] ?? 'three') === 'masonry') ? 'masonry' : 'three'; ?>
+                <select name="pc_feed_layout" id="pc_feed_layout">
+                    <option value="three" <?php echo $pc_feed_layout === 'three' ? 'selected' : ''; ?>>THREE ACROSS</option>
+                    <option value="masonry" <?php echo $pc_feed_layout === 'masonry' ? 'selected' : ''; ?>>MASONRY</option>
+                </select>
             </div>
 
             <div class="lens-input-wrapper">
@@ -273,22 +295,23 @@ include 'core/sidebar.php';
 
             <div class="lens-input-wrapper">
                 <label>DROPS AT <span class="dim">(when the card posts &amp; the hashtag goes live)</span></label>
-                <input type="datetime-local" name="pc_drop_at" id="pc_drop_at">
-                <p class="dim">Times are <strong>UTC</strong>. Leave blank to drop when the window opens
-                    (<span id="pc_drop_hint"><?php echo $esc($def_drop_hint); ?></span>), or set an earlier time to give a heads-up.</p>
+                <input type="datetime-local" name="pc_drop_at" id="pc_drop_at" value="<?php echo $esc($def_drop_value); ?>">
+                <p class="dim">Times are <strong>UTC</strong>. This matches the selected window opening
+                    (<span id="pc_drop_hint"><?php echo $esc($def_drop_hint); ?></span>); change it only if the card should give an earlier heads-up.</p>
             </div>
 
             <button type="submit" class="master-update-btn">QUEUE PROMPT</button>
         </form>
 
-        <?php if ($prompts): ?>
-            <h4 class="pc-sched-sub">SCHEDULED &amp; DROPPED</h4>
+        <section id="queued-contest-posts" aria-labelledby="queued-contest-posts-title">
+            <h4 class="pc-sched-sub" id="queued-contest-posts-title">QUEUED POSTS</h4>
+        <?php if ($queued_prompts): ?>
             <table class="pc-sched-list dim">
                 <thead>
                     <tr><th>Photo-Friday</th><th>Prompt</th><th>Hashtag</th><th>Drops (UTC)</th><th>Status</th><th></th></tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($prompts as $p):
+                    <?php foreach ($queued_prompts as $p):
                         $st = (string)$p['status'];
                         $st_label = $st === 'queued' ? 'QUEUED' : ($st === 'live' ? 'LIVE' : 'DONE'); ?>
                         <tr>
@@ -310,7 +333,10 @@ include 'core/sidebar.php';
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        <?php else: ?>
+            <p class="dim"><em>No contest posts are queued yet.</em></p>
         <?php endif; ?>
+        </section>
     </div>
 
     <!-- LIVE STATE -->

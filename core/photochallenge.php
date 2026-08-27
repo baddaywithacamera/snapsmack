@@ -30,6 +30,56 @@ function pc_enabled(array $settings): bool {
     return (string)($settings['photochallenge_enabled'] ?? '0') === '1';
 }
 
+/** Is the optional public challenge feed/board exposed? */
+function pc_feed_enabled(array $settings): bool {
+    if (array_key_exists('photochallenge_feed_enabled', $settings)) {
+        return (string)$settings['photochallenge_feed_enabled'] === '1';
+    }
+    // Upgrade compatibility: /board existed whenever the challenge was on
+    // before this separate switch shipped. Preserve that surface until the
+    // operator explicitly saves ON or OFF.
+    return pc_enabled($settings);
+}
+
+/**
+ * Keep Menu Manager's built-in FEED item in lockstep with the challenge switch.
+ * Existing menu order is preserved; first enable appends FEED for later dragging.
+ */
+function pc_sync_feed_menu(PDO $pdo, array &$settings, bool $enabled): void {
+    $items = json_decode((string)($settings['nav_menu_json'] ?? '[]'), true);
+    if (!is_array($items) || !$items) return; // legacy nav renders from the setting directly
+
+    $contains = static function (array $list) use (&$contains): bool {
+        foreach ($list as $item) {
+            if (!is_array($item)) continue;
+            if (($item['type'] ?? '') === 'challenge_feed' || ($item['id'] ?? '') === 'challenge_feed') return true;
+            if (!empty($item['children']) && is_array($item['children']) && $contains($item['children'])) return true;
+        }
+        return false;
+    };
+    $remove = static function (array $list) use (&$remove): array {
+        $out = [];
+        foreach ($list as $item) {
+            if (!is_array($item)) continue;
+            if (($item['type'] ?? '') === 'challenge_feed' || ($item['id'] ?? '') === 'challenge_feed') continue;
+            if (!empty($item['children']) && is_array($item['children'])) $item['children'] = $remove($item['children']);
+            $out[] = $item;
+        }
+        return $out;
+    };
+
+    if ($enabled) {
+        if ($contains($items)) return;
+        $items[] = ['id'=>'challenge_feed','type'=>'challenge_feed','label'=>'FEED','children'=>[]];
+    } else {
+        $items = $remove($items);
+    }
+    $json = json_encode($items, JSON_UNESCAPED_SLASHES);
+    $pdo->prepare("INSERT INTO snap_settings(setting_key,setting_val) VALUES('nav_menu_json',?)
+        ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$json]);
+    $settings['nav_menu_json'] = $json;
+}
+
 /** The challenge hashtag, normalised (lowercase, no leading '#'). */
 function pc_tag(array $settings): string {
     $t = strtolower(trim((string)($settings['photochallenge_tag'] ?? 'photofri')));
