@@ -12,8 +12,10 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QCheckBox,
-    QFileDialog, QMessageBox, QLabel, QButtonGroup, QPushButton,
+    QFileDialog, QMessageBox, QLabel, QButtonGroup, QPushButton, QLineEdit,
+    QColorDialog,
 )
+from PySide6.QtGui import QColor
 
 import editor_engine
 from . import theme
@@ -203,6 +205,12 @@ class EditorWindow(QMainWindow):
         self.target_label.setObjectName("TargetLabel")
         inner_layout.addWidget(self.target_label)
 
+        # Text-layer editor (only visible when a text layer is selected)
+        self.text_section = Accordion("TEXT LAYER", expanded=True)
+        self.text_section.add(self._build_text_panel())
+        self.text_section.setVisible(False)
+        inner_layout.addWidget(self.text_section)
+
         for title, controls in GROUPS:
             section = Accordion(title, expanded=(title == "LIGHT"))
             if title == "LIGHT":
@@ -348,6 +356,97 @@ class EditorWindow(QMainWindow):
         self._render_preview()
         self._update_title()
 
+    def _build_text_panel(self):
+        wrap = QWidget()
+        layout = QVBoxLayout(wrap)
+        layout.setContentsMargins(12, 4, 12, 6)
+        layout.setSpacing(6)
+
+        self.text_edit = QLineEdit()
+        self.text_edit.setPlaceholderText("Text…")
+        self.text_edit.textEdited.connect(self._on_text_changed)
+        self.text_edit.editingFinished.connect(lambda: self._commit_text("Edit text"))
+        layout.addWidget(self.text_edit)
+
+        self.text_size_row = SliderRow("font_size", "Size", 8, 400, 1, 72)
+        self.text_size_row.changed.connect(self._on_text_size)
+        self.text_size_row.committed.connect(lambda _k: self._commit_text("Text size"))
+        layout.addWidget(self.text_size_row)
+
+        colour_row = QHBoxLayout()
+        colour_row.setContentsMargins(0, 0, 0, 0)
+        colour_row.setSpacing(8)
+        label = QLabel("Colour")
+        label.setObjectName("ControlName")
+        label.setFixedWidth(52)
+        colour_row.addWidget(label)
+        self.text_colour_btn = QPushButton("Choose…")
+        self.text_colour_btn.setObjectName("LayerAddBtn")
+        self.text_colour_btn.setCursor(Qt.PointingHandCursor)
+        self.text_colour_btn.clicked.connect(self._pick_text_colour)
+        colour_row.addWidget(self.text_colour_btn, 1)
+        layout.addLayout(colour_row)
+        return wrap
+
+    def _text_layer(self):
+        if not self.doc or self.active_target == BASE:
+            return None
+        for layer in self.doc.layers:
+            if layer.get("id") == self.active_target and layer.get("type") == "text":
+                return layer
+        return None
+
+    def _update_text_panel(self):
+        layer = self._text_layer()
+        self.text_section.setVisible(layer is not None)
+        if not layer:
+            return
+        self.text_edit.blockSignals(True)
+        self.text_edit.setText(layer.get("text", ""))
+        self.text_edit.blockSignals(False)
+        self.text_size_row.set_value(layer.get("font_size", 72))
+        fill = layer.get("fill", [255, 255, 255, 255])
+        self._set_colour_swatch(fill)
+
+    def _set_colour_swatch(self, fill):
+        colour = QColor(*[int(c) for c in fill[:3]])
+        text = "#000" if colour.lightness() > 140 else "#fff"
+        self.text_colour_btn.setStyleSheet(
+            f"background:{colour.name()};color:{text};border:1px solid {theme.BORDER};"
+            "border-radius:5px;padding:5px 6px;")
+
+    def _on_text_changed(self, value):
+        layer = self._text_layer()
+        if layer is not None:
+            layer["text"] = value
+            self._schedule_render()
+
+    def _on_text_size(self, _key, value):
+        layer = self._text_layer()
+        if layer is not None:
+            layer["font_size"] = int(value)
+            self._schedule_render()
+
+    def _commit_text(self, label):
+        if self._text_layer() is not None:
+            self.doc.record(label)
+            self._update_title()
+
+    def _pick_text_colour(self):
+        layer = self._text_layer()
+        if layer is None:
+            return
+        fill = layer.get("fill", [255, 255, 255, 255])
+        chosen = QColorDialog.getColor(QColor(*[int(c) for c in fill[:3]]), self,
+                                       "Text colour")
+        if chosen.isValid():
+            layer["fill"] = [chosen.red(), chosen.green(), chosen.blue(),
+                             fill[3] if len(fill) > 3 else 255]
+            self._set_colour_swatch(layer["fill"])
+            self.doc.record("Text colour")
+            self._render_preview()
+            self._update_title()
+
     def _build_retouch(self):
         wrap = QWidget()
         layout = QVBoxLayout(wrap)
@@ -480,6 +579,7 @@ class EditorWindow(QMainWindow):
         self.active_target = target
         self.target_label.setText(f"Editing: {self._active_name()}")
         self._sync_controls_from_doc()
+        self._update_text_panel()
 
     def request_render(self):
         self._render_preview()
@@ -491,6 +591,7 @@ class EditorWindow(QMainWindow):
         self.layers_panel.rebuild()
         self.target_label.setText(f"Editing: {self._active_name()}")
         self._sync_controls_from_doc()
+        self._update_text_panel()
         self._render_preview()
         self._update_title()
 
@@ -507,6 +608,7 @@ class EditorWindow(QMainWindow):
         self.layers_panel.rebuild()
         self.target_label.setText("Editing: Base image")
         self._sync_controls_from_doc()
+        self._update_text_panel()
         self._render_preview(keep_view=False)
         self._update_title()
         self.status.showMessage(os.path.basename(path))
@@ -537,6 +639,7 @@ class EditorWindow(QMainWindow):
         self.layers_panel.rebuild()
         self.target_label.setText("Editing: Base image")
         self._sync_controls_from_doc()
+        self._update_text_panel()
         self._render_preview(keep_view=False)
         self._update_title()
         self.status.showMessage(os.path.basename(path))
@@ -635,6 +738,7 @@ class EditorWindow(QMainWindow):
             self._validate_target()
             self.layers_panel.rebuild()
             self._sync_controls_from_doc()
+            self._update_text_panel()
             self._render_preview()
             self._update_title()
 
@@ -643,6 +747,7 @@ class EditorWindow(QMainWindow):
             self._validate_target()
             self.layers_panel.rebuild()
             self._sync_controls_from_doc()
+            self._update_text_panel()
             self._render_preview()
             self._update_title()
 

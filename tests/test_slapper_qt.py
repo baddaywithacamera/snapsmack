@@ -116,6 +116,23 @@ def test_layers_isolation_and_ops():
     assert len(win.doc.layers) == 1
 
 
+def test_text_layer_editing():
+    win = _editor(_image("txt.jpg", (400, 300)))
+    win.layers_panel._add_text()
+    assert win._text_layer() is not None
+    assert not win.text_section.isHidden()
+    # edit content, size, colour
+    win._on_text_changed("Hello"); win._commit_text("Edit text")
+    win._on_text_size("font_size", 120); win._commit_text("Text size")
+    layer = win._text_layer()
+    layer["fill"] = [255, 0, 0, 255]  # simulate colour pick result
+    assert layer["text"] == "Hello" and layer["font_size"] == 120
+    assert win.doc.render((300, 300))  # renders text layer
+    # selecting base hides the text panel
+    win.set_target(BASE)
+    assert win.text_section.isHidden()
+
+
 def test_retouch():
     win = _editor(_image("ret.jpg", (300, 200)))
     win.act_heal.setChecked(True)
