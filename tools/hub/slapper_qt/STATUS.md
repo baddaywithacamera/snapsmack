@@ -38,19 +38,29 @@ UI-shell swap, not a rewrite.
 - **Interactive crop** — drag a rectangle on the canvas; cancel restores.
 - Geometry: rotate/straighten + Flip H/V + reset.
 - **Retouch** — spot heal + red-eye click tool, adjustable size, clear all.
+- **Found Textures layer** — search foundtextures.ca, thumbnail grid, add a
+  texture as a layer with fit (cover/contain/stretch/tile/original) + blend;
+  provenance (id/source/site/licence/date) preserved in the `.slapper`.
+  (`found_textures.py` client + `textures_dialog.py`; live fetch verified by
+  the user, not in-sandbox.)
 - `.slapper` project save/open; recipe save/apply; metadata-preserving export.
 - Unsaved indicator (● in title) + close guard.
+- **Error/crash logging** via shared `snap_log` → `C:\snapsmack\logs\` (app +
+  editor + library); handled dialogs logged too via `snap_errors`.
 
 ## Not yet built (next phases)
 - Filters: the four-filter foundation from `docs/snap-slapper-filter-spec.md`
   (engine has no filter functions yet — needs engine work).
 - LEWKS gallery UI (recipe apply exists; the browsable LEWK gallery does not).
+- Found Textures: category/album filter, favourite, local categories (search +
+  import done; these are the remaining spec bullets). Rights-based hide/flag
+  needs the gyss/photos API to expose a rights field (server-side gap).
 - Mask brush painting + colour-range masks (only gradient masks so far); moving
   a text layer / image layer by dragging on the canvas.
 - Library depth: ratings, tags, albums, filtering, Trash (all in the Tk
   `photo_library.py`, not yet ported); filmstrip in the editor; slideshow.
-- Autosave/crash recovery, Preferences, offline help.
-- Found Textures integration.
+- Offline help window (Tk has one; Qt does not yet), autosave/crash recovery,
+  Preferences.
 - Packaging the Qt build into the shipped SNAP SLAPPER.exe.
 
 <!-- ===== SNAPSMACK EOF ===== -->
