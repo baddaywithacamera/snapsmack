@@ -116,6 +116,24 @@ def test_layers_isolation_and_ops():
     assert len(win.doc.layers) == 1
 
 
+def test_retouch():
+    win = _editor(_image("ret.jpg", (300, 200)))
+    win.act_heal.setChecked(True)
+    assert win.view._retouch_mode and win._retouch_type == "heal"
+    win._add_retouch(0.5, 0.5)
+    assert len(win.doc.retouched) == 1 and win.doc.retouched[0]["type"] == "heal"
+    # switching to red-eye is mutually exclusive with heal
+    win.act_redeye.setChecked(True)
+    assert not win.act_heal.isChecked() and win._retouch_type == "red_eye"
+    win._add_retouch(0.3, 0.3)
+    assert win.doc.retouched[1]["type"] == "red_eye"
+    assert win.doc.render((200, 200))  # renders with retouch points
+    win._clear_retouch()
+    assert win.doc.retouched == []
+    win.undo()
+    assert len(win.doc.retouched) == 2
+
+
 def test_crop():
     win = _editor(_image("crop.jpg", (400, 300)))
     # crop to the centre half

@@ -23,6 +23,8 @@ class ImageView(QGraphicsView):
 
     # emitted when a crop rectangle is drawn, as normalized (l, t, r, b)
     cropped = Signal(float, float, float, float)
+    # emitted when the canvas is clicked in retouch mode, as normalized (x, y)
+    retouch_clicked = Signal(float, float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -43,6 +45,13 @@ class ImageView(QGraphicsView):
         self._crop_mode = False
         self._crop_rect_item = None
         self._crop_origin = None
+        self._retouch_mode = False
+
+    def set_retouch_mode(self, enabled):
+        self._retouch_mode = enabled
+        self.setDragMode(QGraphicsView.NoDrag if enabled
+                         else QGraphicsView.ScrollHandDrag)
+        self.setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
 
     def set_crop_mode(self, enabled):
         self._crop_mode = enabled
@@ -77,6 +86,13 @@ class ImageView(QGraphicsView):
         self.resetTransform()
 
     def mousePressEvent(self, event):
+        if self._retouch_mode and self._has_image and event.button() == Qt.LeftButton:
+            point = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            if scene.contains(point) and scene.width() and scene.height():
+                self.retouch_clicked.emit(point.x() / scene.width(),
+                                          point.y() / scene.height())
+            return
         if self._crop_mode and self._has_image and event.button() == Qt.LeftButton:
             self._crop_origin = self.mapToScene(event.position().toPoint())
             if self._crop_rect_item is None:
