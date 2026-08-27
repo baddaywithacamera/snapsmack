@@ -227,29 +227,44 @@
         });
     }
 
-    function buildRow(type, field) {
-        var row = document.createElement('div');
-        row.className = 'ss-ai-enrich-row';
+    // The classic two-point "AI" sparkle, drawn in currentColor so it takes the
+    // theme accent. Small — it lives INSIDE the field, at the end.
+    var SPARK_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">' +
+        '<path fill="currentColor" d="M12 3l1.5 4.7a4 4 0 0 0 2.8 2.8L21 12l-4.7 1.5a4 4 0 0 0-2.8 2.8L12 21l-1.5-4.7a4 4 0 0 0-2.8-2.8L3 12l4.7-1.5a4 4 0 0 0 2.8-2.8L12 3z"/>' +
+        '<path fill="currentColor" d="M18.6 2.5l.6 1.9a2 2 0 0 0 1.4 1.4l1.9.6-1.9.6a2 2 0 0 0-1.4 1.4l-.6 1.9-.6-1.9a2 2 0 0 0-1.4-1.4l-1.9-.6 1.9-.6a2 2 0 0 0 1.4-1.4l.6-1.9z"/></svg>';
 
+    function buildRow(type, field) {
+        // Tuck a small theme-coloured AI sparkle at the END of the field itself,
+        // rather than bolting a loud labelled button box underneath it. Clicking
+        // it fills THIS field from the single vision pull. Wrap the field once so
+        // the sparkle can sit inside it regardless of the label above.
+        var host = field.parentNode;
+        if (!host || !host.classList || !host.classList.contains('ss-ai-field')) {
+            host = document.createElement('span');
+            host.className = 'ss-ai-field';
+            field.parentNode.insertBefore(host, field);
+            host.appendChild(field);
+        }
+
+        var isArea = field.tagName === 'TEXTAREA';
         var button = document.createElement('button');
         button.type = 'button';
-        button.className = 'sc-btn sc-btn-ai ss-ai-enrich-button';
-        button.textContent = fieldMap[type].label;
+        button.className = 'ss-ai-spark' + (isArea ? ' ss-ai-spark--area' : '');
+        button.innerHTML = SPARK_SVG;
+        button.setAttribute('aria-label', 'Fill ' + (fieldMap[type].label || 'this field') + ' from the photo with AI');
         button.title = 'Fill this field from the photo — reuses the single AI vision pull, no extra charge';
+        host.appendChild(button);
 
         var status = document.createElement('span');
-        status.className = 'ss-ai-enrich-status';
+        status.className = 'ss-ai-enrich-status ss-ai-spark-status';
         status.setAttribute('aria-live', 'polite');
-
-        row.appendChild(button);
-        row.appendChild(status);
-        field.insertAdjacentElement('afterend', row);
+        host.insertAdjacentElement('afterend', status);
 
         var item = {
             type: type,
             key: fieldMap[type].key,
             field: field,
-            row: row,
+            row: host,
             button: button,
             status: status
         };
