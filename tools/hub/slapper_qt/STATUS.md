@@ -22,31 +22,33 @@ UI-shell swap, not a rewrite.
 | `library_window.py` | Folder browser: threaded thumbnail grid → open in editor |
 | `app.py` / `__main__.py` | Bootstrap (library is the entry point) |
 
-## Built and headless-verified (Phases 1–5)
+## Built and headless-verified (`tests/test_slapper_qt.py`, 11 tests)
 - Library: folder scan (+subfolders), threaded thumbnails (no freeze), size
   slider, double-click → editor.
 - Editor: open photo, zoom/pan canvas, dark Midnight-Lime UI.
-- Adjustments: LIGHT / COLOUR / PRESENCE / EFFECTS / LEVELS + Black & White,
-  live preview, double-click-to-reset, undo/redo/reset.
+- Adjustments: LIGHT / COLOUR / PRESENCE / EFFECTS / LEVELS, live preview,
+  double-click-to-reset, undo/redo/reset.
+- **Black & white colour mixer** — 8 per-hue luminance sliders (Red…Magenta);
+  all-zero == the old neutral grayscale (backward compatible).
 - Live Luma/RGB histogram; Before/After toggle.
 - Layers: adjustment/image/text layers, visibility, opacity, blend (11 modes),
   reorder, delete; editing a layer never touches the base photo.
+- **Layer masks** — radial + graduated, invert/clear (real local adjustments).
+- **Text layers** — edit content, size, and fill colour.
+- **Interactive crop** — drag a rectangle on the canvas; cancel restores.
 - Geometry: rotate/straighten + Flip H/V + reset.
+- **Retouch** — spot heal + red-eye click tool, adjustable size, clear all.
 - `.slapper` project save/open; recipe save/apply; metadata-preserving export.
 - Unsaved indicator (● in title) + close guard.
 
 ## Not yet built (next phases)
-- Interactive crop (drag rectangle on the canvas). Geometry crop field exists in
-  the engine; only rotate/flip are wired so far.
-- Masks: brush/gradient/colour-range mask painting per layer (engine supports
-  masks; no Qt painting UI yet).
-- Filters: the four-filter foundation from `docs/snap-slapper-filter-spec.md`.
-- LEWKS UI (recipe apply exists; the LEWK browser/gallery does not).
-- Text layer editing UI (text layers can be added and render, but content/font/
-  colour are not yet editable from Qt).
+- Filters: the four-filter foundation from `docs/snap-slapper-filter-spec.md`
+  (engine has no filter functions yet — needs engine work).
+- LEWKS gallery UI (recipe apply exists; the browsable LEWK gallery does not).
+- Mask brush painting + colour-range masks (only gradient masks so far); moving
+  a text layer / image layer by dragging on the canvas.
 - Library depth: ratings, tags, albums, filtering, Trash (all in the Tk
-  `photo_library.py`, not yet ported).
-- Spot/red-eye retouch UI, filmstrip in the editor, slideshow.
+  `photo_library.py`, not yet ported); filmstrip in the editor; slideshow.
 - Autosave/crash recovery, Preferences, offline help.
 - Found Textures integration.
 - Packaging the Qt build into the shipped SNAP SLAPPER.exe.

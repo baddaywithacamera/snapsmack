@@ -186,6 +186,18 @@ def stylesheet() -> str:
         font-style: italic;
         padding: 3px 12px 6px 12px;
     }}
+    QLineEdit {{
+        background: #050505;
+        color: {INK};
+        border: 1px solid {BORDER};
+        border-radius: 4px;
+        padding: 5px 8px;
+        font-size: 12px;
+        selection-background-color: {ACCENT_DIM};
+    }}
+    QLineEdit:focus {{
+        border: 1px solid {ACCENT};
+    }}
     QComboBox {{
         background: {FIELD};
         color: {BODY};

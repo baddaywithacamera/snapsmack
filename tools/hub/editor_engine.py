@@ -46,6 +46,17 @@ DEFAULT_ADJUSTMENTS = {
 # expression is a fixed literal). Fall back to eval on older Pillow.
 _image_math_eval = getattr(ImageMath, "unsafe_eval", None) or getattr(ImageMath, "eval")
 
+# Monotonic counter so layer ids are unique even when created faster than the
+# system clock's resolution (time.time_ns() is coarse on Windows, so two quick
+# add-layer calls would otherwise collide and make layers indistinguishable).
+_layer_id_counter = 0
+
+
+def _new_layer_id():
+    global _layer_id_counter
+    _layer_id_counter += 1
+    return f"{time.time_ns()}-{_layer_id_counter}"
+
 # Hue centres (degrees) for the black & white colour mix, in wheel order.
 BW_BANDS = [("bw_red", 0.0), ("bw_orange", 30.0), ("bw_yellow", 60.0),
             ("bw_green", 120.0), ("bw_aqua", 180.0), ("bw_blue", 240.0),
@@ -409,7 +420,7 @@ class EditorDocument:
         self.saved_snapshot = self.snapshot()
 
     def add_adjustment_layer(self, name="Adjustment"):
-        self.layers.append({"id": str(time.time_ns()), "name": name, "type": "adjustment",
+        self.layers.append({"id": _new_layer_id(), "name": name, "type": "adjustment",
                             "visible": True, "opacity": 1.0, "blend": "normal",
                             "adjustments": copy.deepcopy(DEFAULT_ADJUSTMENTS), "mask": "",
                             "mask_linked": True, "mask_transform": self.default_transform(),
@@ -418,7 +429,7 @@ class EditorDocument:
         return self.layers[-1]
 
     def add_image_layer(self, path, name=None):
-        self.layers.append({"id": str(time.time_ns()), "name": name or os.path.basename(path),
+        self.layers.append({"id": _new_layer_id(), "name": name or os.path.basename(path),
                             "type": "image", "path": os.path.abspath(path), "visible": True,
                             "opacity": 1.0, "blend": "normal",
                             "adjustments": copy.deepcopy(DEFAULT_ADJUSTMENTS),
@@ -434,7 +445,7 @@ class EditorDocument:
                 "rotation": 0.0, "flip_x": False, "flip_y": False}
 
     def add_text_layer(self, text="Text", name="Text", font_path="", font_size=72):
-        self.layers.append({"id": str(time.time_ns()), "name": name or "Text",
+        self.layers.append({"id": _new_layer_id(), "name": name or "Text",
                             "type": "text", "text": str(text), "font_path": font_path or "",
                             "font_family": os.path.splitext(os.path.basename(font_path))[0]
                             if font_path else "Default", "font_size": int(font_size),
