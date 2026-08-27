@@ -41,7 +41,7 @@ body.static-transmission {
 /* The CMS prints the page title above the body. Both pages carry their own
    heading in the content, so the automatic one is hidden. Delete this rule if
    you would rather use the built-in title. */
-body.static-transmission .static-page-title { display: none; }
+body.static-transmission .static-page-title { display: none !important; }
 
 body.static-transmission .static-content {
   max-width: 44rem;
@@ -251,5 +251,66 @@ body.static-transmission .description li { margin: 0 0 .5rem; }
   color: var(--pbf-muted);
   font-size: .85rem;
 }
+
+/* --------------------------------- home page: old static centred geometry */
+/* Reproduces the original projects/photoblogs-fyi/index.html centred hero.
+   Scoped to body.homepage-static so the for-admins doc stays left-aligned.
+   Paired with landing_only OFF (Settings) so the standard nav + footer render. */
+body.homepage-static .static-content { max-width: 820px; text-align: center; background: transparent; }
+body.homepage-static .pbf-rule { margin-left: auto; margin-right: auto; }
+body.homepage-static .pbf-lede { max-width: 34em; margin-left: auto; margin-right: auto; }
+body.homepage-static .pbf-sub  { max-width: 46em; margin-left: auto; margin-right: auto; }
+body.homepage-static .pbf-how  { max-width: 48em; margin-left: auto; margin-right: auto; text-align: left; }
+
+/* --------------- home page: full-HD one-screen fit + reference footer --------------- */
+/* #scroll-stage is the New Horizon skin's viewport-height box. Make it a flex column so the
+   footer pins to the bottom; thin the header; keep the content at natural height (flex:0 0 auto,
+   no internal scroll) and trimmed so header+content+footer fit one Full-HD screen; restyle the
+   footer to the old static reference (transparent, 3px red top rule, centred monospace grey).
+   IDs + !important are needed to beat the skin's own id-scoped !important footer rules. */
+body.homepage-static #scroll-stage { display: flex !important; flex-direction: column !important; overflow-y: auto !important; }
+body.homepage-static #header { height: 46px !important; flex: 0 0 auto !important; }
+body.homepage-static #scroll-stage .static-content { flex: 0 0 auto !important; overflow: visible !important; max-width: 1060px !important; padding-top: 12px !important; padding-bottom: 10px !important; }
+body.homepage-static .pbf-lede { max-width: 44em !important; }
+body.homepage-static .pbf-sub  { max-width: 60em !important; }
+body.homepage-static .pbf-how  { max-width: 62em !important; margin-top: 2.0rem !important; }
+body.homepage-static .pbf-rule { margin-top: 1.3rem !important; margin-bottom: 1.3rem !important; }
+body.homepage-static .pbf-tagline { margin-top: 1.0rem !important; }
+body.homepage-static .pbf-kicker { margin-bottom: 1.35rem !important; }
+body.homepage-static #page-wrapper #scroll-stage #system-footer {
+  margin-top: auto !important; flex: 0 0 auto !important;
+  background: transparent !important; border-top: 3px solid #D40000 !important;
+  padding: 15px 24px !important; color: #8a8a8a !important;
+  font-family: 'Courier New', monospace !important; font-size: 0.68rem !important; letter-spacing: 0.06em !important;
+}
+body.homepage-static #page-wrapper #scroll-stage #system-footer * { font-family: 'Courier New', monospace !important; font-size: 0.68rem !important; letter-spacing: 0.06em !important; }
+body.homepage-static #page-wrapper #scroll-stage #system-footer a { color: #a5a5a5 !important; }
+
+/* --------------------------------- the feed page: square-thumb discovery grid */
+/* Rendered by [photoblogs_feed] (core/photoblogs-feed.php) — one square per recent
+   post across the directory, no text, each a dofollow new-tab link to the post.
+   The .pbfeed-* classes only appear on the feed page, so no body scope is needed.
+   The feed scrolls normally (it is NOT the home page's one-screen fit). */
+.pbfeed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 4px;
+  margin: 1.6rem 0 0;
+}
+.pbfeed-sq {
+  display: block;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+.pbfeed-sq img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform .35s ease, opacity .35s ease;
+}
+.pbfeed-sq:hover img { transform: scale(1.06); opacity: .9; }
+.pbfeed-empty { color: var(--pbf-muted); text-align: center; padding: 2.5rem 0; }
 
 /* ===== SNAPSMACK EOF ===== */

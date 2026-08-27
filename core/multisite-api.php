@@ -112,6 +112,15 @@ if ($resource === 'handshake' && $method === 'POST') {
         ms_err('Invalid or expired registration token', 401);
     }
 
+    // SECAUDIT: atomically claim the one-time token BEFORE issuing keys, so two
+    // concurrent handshakes can't both pass the check above and both register.
+    // The conditional UPDATE matches for exactly one racer; the loser sees 0 rows.
+    $claim = $pdo->prepare("UPDATE snap_settings SET setting_val = '' WHERE setting_key = 'multisite_reg_token' AND setting_val = ?");
+    $claim->execute([$token]);
+    if ($claim->rowCount() < 1) {
+        ms_err('Registration token already used', 401);
+    }
+
     // Generate a persistent key pair: hub calls us with api_key_local,
     // we call the hub with api_key_remote.
     $api_key_local  = bin2hex(random_bytes(32));  // hub → spoke auth (FULL)
@@ -364,6 +373,10 @@ $pdo->prepare("UPDATE snap_multisite_nodes SET last_seen_at = NOW() WHERE id = ?
 // Returns: {ok, key_type, key_prefix, expires_at, shared, [api_key if minted]}
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'provision-key' && $method === 'POST') {
+    // SECAUDIT: hub→spoke only. api_key_local is a symmetric secret the spoke
+    // also holds; without this a spoke could replay its own key to mint a live
+    // tool credential ON the hub. The matched row's role must be 'hub'.
+    if ($node['role'] !== 'hub') ms_err('Only a hub may provision keys on this node', 403);
     if ($ms_key_scope !== 'full') {
         ms_err('A full hub key is required to provision tool keys', 403);
     }
@@ -550,6 +563,10 @@ if ($resource === 'comments') {
 // the image title they're attached to.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'comments' && $sub_action === 'pending' && $method === 'GET') {
+    // SECAUDIT: hub→spoke only (its sibling comments/list|get|action|reply all
+    // gate this way). Without it a spoke could replay its key to read the hub's
+    // un-moderated comments, including commenter email + IP.
+    if ($node['role'] !== 'hub') ms_err('Only a hub may read comments on this node', 403);
     $spam_select = $has_spam_col ? 'c.is_spam,' : '';
     $spam_where  = $has_spam_col ? 'AND c.is_spam = 0' : '';
     $rows = $pdo->query("
@@ -1149,6 +1166,8 @@ if ($resource === 'backup' && $sub_action === 'report' && $method === 'POST') {
 // This spoke fetches the image, saves it locally, and creates the record.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
+    // SECAUDIT: hub→spoke only, else a spoke could inject posts + files on the hub.
+    if ($node['role'] !== 'hub') ms_err('Only a hub may create posts on this node', 403);
     $title      = trim($_POST['title']      ?? '');
     $img_url    = trim($_POST['img_url']    ?? '');
     $img_ext    = strtolower(trim($_POST['img_ext'] ?? 'jpg'));
@@ -1161,6 +1180,19 @@ if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
     if (!$img_url || !filter_var($img_url, FILTER_VALIDATE_URL)) ms_err('valid img_url is required');
     if (!ms_is_safe_remote_url($img_url)) ms_err('img_url must be a public host — private/loopback addresses are not permitted', 403);
 
+    // SECAUDIT: pin the vetted IP and refuse redirects. Without this a public
+    // img_url could 302-redirect (or DNS-rebind after the check above) onto an
+    // internal address, turning this fetch into an SSRF pivot into the LAN /
+    // cloud-metadata. This matches the pin-the-IP discipline the engine uses
+    // for every other outbound fetch.
+    $img_parts = parse_url($img_url) ?: [];
+    $img_host  = (string)($img_parts['host'] ?? '');
+    $img_port  = (int)($img_parts['port'] ?? (strtolower((string)($img_parts['scheme'] ?? 'http')) === 'https' ? 443 : 80));
+    $img_ip    = filter_var($img_host, FILTER_VALIDATE_IP) ? $img_host : (string)@gethostbyname($img_host);
+    if (!filter_var($img_ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+        ms_err('img_url must resolve to a public address', 403);
+    }
+
     $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'];
     if (!in_array($img_ext, $allowed_exts)) ms_err('unsupported image format');
 
@@ -1168,11 +1200,11 @@ if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
     $fetch_ch = curl_init();
     curl_setopt_array($fetch_ch, [
         CURLOPT_URL            => $img_url,
+        CURLOPT_RESOLVE        => ["{$img_host}:{$img_port}:{$img_ip}"],
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_FOLLOWLOCATION => false,
         CURLOPT_TIMEOUT        => 30,
         CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_MAXREDIRS      => 3,
     ]);
     $img_binary = curl_exec($fetch_ch);
     $fetch_code = curl_getinfo($fetch_ch, CURLINFO_HTTP_CODE);
@@ -1283,6 +1315,8 @@ if ($resource === 'blogroll' && $sub_action === 'list' && $method === 'GET') {
 // hub-synced entries are removed before the new set is inserted.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'blogroll' && $sub_action === 'sync' && $method === 'POST') {
+    // SECAUDIT: hub→spoke only, else a spoke could wipe and rewrite the hub's blogroll.
+    if ($node['role'] !== 'hub') ms_err('Only a hub may sync the blogroll on this node', 403);
     $hub_url_raw = trim($_POST['hub_url']   ?? '');
     // Normalize to hostname-only form so storage and comparison always agree.
     // Migration 052 stamps source_hub_url the same way (substring after 'Hub: ').

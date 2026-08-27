@@ -3390,6 +3390,49 @@ Communication uses HTTPS and keys are stored server-side — nothing is exposed 
 HTML
 ];
 
+$help_topics['schedule-prompt'] = [
+    'section'  => 'Challenge Me',
+    'title'    => 'SCHEDULE A PROMPT',
+    'icon'     => '&#x2588;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>SCHEDULE A PROMPT</h3>
+<p>This panel is on the <strong>PHOTO CHALLENGE</strong> page. It sets up a Photo-Friday
+in one step: you type the prompt word, pick the Friday, and upload the card image. The tool
+does the rest and drops the prompt for you at the time you choose — you do not have to be at
+your computer when it goes out.</p>
+
+<h4>What each box does</h4>
+<p><strong>PROMPT</strong> — the one word for the week, for example <em>Belonging</em>. As you
+type, the tool shows the hashtag it will use. The rule is simple: your brand word (PhotoFri) plus
+your word, joined up, first letters capital — so <em>Belonging</em> becomes
+<strong>#PhotoFriBelonging</strong>, and <em>golden hour</em> becomes <strong>#PhotoFriGoldenHour</strong>.
+That hashtag is what entrants add to their photo so it lands on the board.</p>
+<p><strong>PHOTO-FRIDAY</strong> — the day the challenge runs. The submission window is always the
+same fifty hours: it opens Thursday 10:00 in UTC and closes Saturday 12:00 in UTC. Pick the Friday
+and the window is worked out for you.</p>
+<p><strong>CARD IMAGE</strong> — the picture people see when the prompt drops. You supply and upload
+it. JPG, PNG, WEBP or GIF.</p>
+<p><strong>DROPS AT</strong> — when the card posts and the hashtag goes live. Leave it blank to drop
+the moment the window opens, or set an earlier time (in UTC) if you want to give people a heads-up.</p>
+
+<h4>What happens when you queue it</h4>
+<p>The card is saved as a hidden draft straight away — nobody sees it yet. When the drop time arrives,
+the site publishes the card to the fediverse for you and switches the challenge's qualifying hashtag to
+that week's tag. The list under the form shows everything scheduled and everything that has already
+dropped.</p>
+
+<h4>Good to know</h4>
+<p>Only one prompt can be scheduled per Friday. If you need to change one that has not dropped yet, use
+<strong>CANCEL</strong> — that takes it off the schedule but leaves the card in your library as a hidden
+draft, so nothing is lost. A prompt that has already dropped cannot be cancelled from here, because that
+would not un-send what already went out.</p>
+<p>Two things must be on for the drop to actually go out: the challenge itself
+(<strong>RUN THE PHOTO CHALLENGE</strong> at the top of this page) and the site's fediverse federation.
+Drops are handled by the site's regular background task (the cron), so that needs to be running too.</p>
+HTML
+];
+
 $help_topics['fedboard'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'FEDBOARD',
