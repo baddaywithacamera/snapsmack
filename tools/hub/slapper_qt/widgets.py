@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, Signal, QRectF
 from PySide6.QtGui import QPainter, QPixmap, QColor, QPolygonF, QPen
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import (
-    QGraphicsView, QGraphicsScene, QGraphicsPixmapItem,
+    QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem,
     QWidget, QLabel, QSlider, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy,
 )
 
@@ -20,6 +20,9 @@ class ImageView(QGraphicsView):
 
     Fit-to-window by default; scroll wheel zooms toward the cursor; drag pans.
     """
+
+    # emitted when a crop rectangle is drawn, as normalized (l, t, r, b)
+    cropped = Signal(float, float, float, float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -37,6 +40,18 @@ class ImageView(QGraphicsView):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self._has_image = False
         self._fitting = True
+        self._crop_mode = False
+        self._crop_rect_item = None
+        self._crop_origin = None
+
+    def set_crop_mode(self, enabled):
+        self._crop_mode = enabled
+        self.setDragMode(QGraphicsView.NoDrag if enabled
+                         else QGraphicsView.ScrollHandDrag)
+        self.setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+        if not enabled and self._crop_rect_item is not None:
+            self._scene.removeItem(self._crop_rect_item)
+            self._crop_rect_item = None
 
     def set_pixmap(self, pixmap: QPixmap, keep_view: bool = True):
         """Show a pixmap. When ``keep_view`` the current zoom/pan is preserved
@@ -61,8 +76,41 @@ class ImageView(QGraphicsView):
         self._fitting = False
         self.resetTransform()
 
+    def mousePressEvent(self, event):
+        if self._crop_mode and self._has_image and event.button() == Qt.LeftButton:
+            self._crop_origin = self.mapToScene(event.position().toPoint())
+            if self._crop_rect_item is None:
+                pen = QPen(QColor(theme.ACCENT), 0)
+                self._crop_rect_item = QGraphicsRectItem()
+                self._crop_rect_item.setPen(pen)
+                self._crop_rect_item.setBrush(QColor(57, 255, 20, 40))
+                self._scene.addItem(self._crop_rect_item)
+            self._crop_rect_item.setRect(QRectF(self._crop_origin, self._crop_origin))
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._crop_mode and self._crop_origin is not None:
+            current = self.mapToScene(event.position().toPoint())
+            self._crop_rect_item.setRect(QRectF(self._crop_origin, current).normalized())
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self._crop_mode and self._crop_origin is not None:
+            rect = self._crop_rect_item.rect().intersected(self._scene.sceneRect())
+            self._crop_origin = None
+            scene = self._scene.sceneRect()
+            if rect.width() > 4 and rect.height() > 4 and scene.width() and scene.height():
+                self.cropped.emit(rect.left() / scene.width(),
+                                  rect.top() / scene.height(),
+                                  rect.right() / scene.width(),
+                                  rect.bottom() / scene.height())
+            return
+        super().mouseReleaseEvent(event)
+
     def wheelEvent(self, event):
-        if not self._has_image:
+        if not self._has_image or self._crop_mode:
             return
         self._fitting = False
         factor = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15
