@@ -10,6 +10,15 @@
 
 # SnapSmack Changelog
 
+## 0.7.575 — 2026-08-27 "FEDBOARD"
+
+- **AI field helper is a small themed sparkle, not a green button box.** The per-field
+  AI fill used to drop a bolted-on labelled button under every field. It's now a small
+  sparkle tucked at the end of each field (bottom-right for text areas), coloured with
+  the admin theme accent (`--lens-accent`) so it tracks the theme. Same behaviour —
+  click it to fill that field from the single AI vision pull. One change in
+  `ss-engine-ai-enrichment.js`/`.css`, so it applies to every post editor at once.
+
 ## 0.7.574 — 2026-08-27 "FEDBOARD"
 
 - **Photo-Friday card copy reads cleanly.** The prompt card's federated text used
