@@ -10,6 +10,22 @@
 
 # SnapSmack Changelog
 
+## 0.7.571 — 2026-08-27 "FEDBOARD"
+
+- **The two dates now say what they control.** The composer groups them under
+  **DATES — THESE CONTROL DIFFERENT THINGS**: **Boosting Window** chooses the
+  contest Friday and derives the fixed Thursday-to-Saturday admission window;
+  **Prompt Post** chooses only when the card publishes. Non-Friday contest dates
+  are rejected rather than silently moved.
+- **Queued posts are editable.** **Queued Posts** now offers **Edit** for prompts
+  that have not published. Changes synchronize the prompt, caption, ALT text,
+  generated hashtag, contest window, post body, image metadata, and publication
+  timestamp; already-published prompts remain locked.
+- **Upload control geometry restored.** The prompt-card chooser uses the standard
+  external-CSS button beside a filename field. The overly broad native file-input
+  rule that disrupted established upload controls has been removed. No inline CSS
+  or JavaScript was added.
+
 ## 0.7.570 — 2026-08-27 "FEDBOARD"
 
 - **Challenge administration has real task pages.** **Contest & Feed**, **Queue

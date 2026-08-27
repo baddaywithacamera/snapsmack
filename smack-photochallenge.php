@@ -46,6 +46,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
         $msg_ok = !empty($res['ok']);
         $msg = ($msg_ok ? '' : 'Not queued — ') . $res['msg'];
 
+    } elseif ($action === 'update_prompt') {
+        $res = pc_update_prompt($pdo, $settings, (int)($_POST['prompt_id'] ?? 0), [
+            'prompt'  => (string)($_POST['pc_prompt'] ?? ''),
+            'caption' => (string)($_POST['pc_caption'] ?? ''),
+            'alt'     => (string)($_POST['pc_alt'] ?? ''),
+            'friday'  => (string)($_POST['pc_friday'] ?? ''),
+            'drop_at' => (string)($_POST['pc_drop_at'] ?? ''),
+        ]);
+        $msg_ok = !empty($res['ok']);
+        $msg = ($msg_ok ? '' : 'Not updated — ') . $res['msg'];
+
     } elseif ($action === 'cancel_prompt') {
         $res = pc_cancel_prompt($pdo, $settings, (int)($_POST['prompt_id'] ?? 0));
         $msg_ok = !empty($res['ok']);
@@ -147,6 +158,20 @@ $def_drop_hint = $_def_win ? $_def_win['start'] . ' UTC' : '';   // shown as the
 $def_drop_value = $_def_win ? str_replace(' ', 'T', substr((string)$_def_win['start'], 0, 16)) : '';
 $prompts   = pc_prompts_list($pdo, 40);
 $queued_prompts = array_values(array_filter($prompts, static fn(array $p): bool => ($p['status'] ?? '') === 'queued'));
+$edit_prompt = null;
+if ($pc_admin_view === 'queue' && (int)($_GET['edit'] ?? 0) > 0) {
+    $edit_prompt = pc_prompt_editable($pdo, (int)$_GET['edit']);
+    if (!$edit_prompt && $msg === '') {
+        $msg_ok = false;
+        $msg = 'That queued prompt is no longer editable.';
+    }
+}
+if ($edit_prompt) {
+    $next_friday = (string)$edit_prompt['friday'];
+    $_def_win = pc_window_for_friday($next_friday);
+    $def_drop_value = str_replace(' ', 'T', substr((string)$edit_prompt['drop_at'], 0, 16));
+    $def_drop_hint = (string)$edit_prompt['drop_at'] . ' UTC';
+}
 
 $pc_page_titles = [
     'dashboard' => 'PHOTO CHALLENGE',
@@ -286,49 +311,66 @@ include 'core/sidebar.php';
         </p>
         <form method="post" action="" enctype="multipart/form-data" data-pc-prefix="<?php echo $esc($pc_prefix); ?>">
             <?php csrf_field(); ?>
-            <input type="hidden" name="action" value="queue_prompt">
+            <input type="hidden" name="action" value="<?php echo $edit_prompt ? 'update_prompt' : 'queue_prompt'; ?>">
+            <?php if ($edit_prompt): ?><input type="hidden" name="prompt_id" value="<?php echo (int)$edit_prompt['id']; ?>"><?php endif; ?>
 
             <div class="lens-input-wrapper">
                 <label>PROMPT <span class="dim">(one word)</span></label>
                 <input type="text" name="pc_prompt" id="pc_prompt" maxlength="60" required
-                       autocomplete="off" placeholder="Belonging">
+                       autocomplete="off" placeholder="Belonging" value="<?php echo $esc((string)($edit_prompt['prompt'] ?? '')); ?>">
                 <p class="dim">Hashtag: <span class="pc-hash-preview" id="pc_hash_preview">#<?php echo $esc($pc_prefix); ?>&hellip;</span>
                     &mdash; built for you from the word above.</p>
             </div>
 
-            <div class="lens-input-wrapper">
-                <label>PHOTO-FRIDAY <span class="dim">(the 50-hour submission window)</span></label>
-                <input type="date" name="pc_friday" id="pc_friday" value="<?php echo $esc($next_friday); ?>" required>
-                <p class="dim">Submissions open <strong>Thu 10:00 UTC</strong> and close <strong>Sat 12:00 UTC</strong> that week.</p>
-            </div>
+            <fieldset class="pc-date-plan">
+                <legend>DATES &mdash; THESE CONTROL DIFFERENT THINGS</legend>
+                <div class="pc-date-plan__item">
+                    <label for="pc_friday"><strong>1. BOOSTING WINDOW</strong> &mdash; CHOOSE THE CONTEST FRIDAY</label>
+                    <input type="date" name="pc_friday" id="pc_friday" value="<?php echo $esc($next_friday); ?>" required>
+                    <p class="dim" id="pc_friday_hint">This date controls when tagged participant posts may be boosted.
+                        The window opens automatically on <strong>Thursday at 10:00 UTC</strong> and closes on
+                        <strong>Saturday at 12:00 UTC</strong>.</p>
+                </div>
+                <div class="pc-date-plan__item">
+                    <label for="pc_drop_at"><strong>2. PROMPT POST</strong> &mdash; CHOOSE WHEN THE CARD PUBLISHES</label>
+                    <input type="datetime-local" name="pc_drop_at" id="pc_drop_at" value="<?php echo $esc($def_drop_value); ?>">
+                    <p class="dim">This schedules only the prompt card. It does <strong>not</strong> change the boosting window.
+                        Times are UTC. Default: <span id="pc_drop_hint"><?php echo $esc($def_drop_hint); ?></span>.</p>
+                </div>
+            </fieldset>
 
             <div class="lens-input-wrapper">
                 <label>CARD IMAGE</label>
-                <input type="file" name="pc_prompt_image" accept="image/jpeg,image/png,image/webp,image/gif" required>
+                <?php if ($edit_prompt): ?>
+                    <div class="pc-file-picker">
+                        <a class="pc-file-picker__button" href="smack-swap.php?id=<?php echo (int)$edit_prompt['image_id']; ?>">REPLACE IMAGE</a>
+                        <span class="pc-file-picker__name"><?php echo $esc(basename((string)($edit_prompt['img_file'] ?? 'Current prompt card'))); ?></span>
+                    </div>
+                <?php else: ?>
+                <div class="pc-file-picker">
+                    <label class="pc-file-picker__button" for="pc_prompt_image">CHOOSE FILE</label>
+                    <span class="pc-file-picker__name" id="pc_prompt_image_name">No file chosen</span>
+                    <input type="file" name="pc_prompt_image" id="pc_prompt_image"
+                           class="file-input-hidden" accept="image/jpeg,image/png,image/webp,image/gif" required>
+                </div>
+                <?php endif; ?>
                 <p class="dim">The prompt card people see when it drops. JPG, PNG, WEBP or GIF.</p>
             </div>
 
             <div class="lens-input-wrapper">
                 <label>CAPTION <span class="dim">(optional additional information)</span></label>
                 <textarea name="pc_caption" id="pc_caption" rows="5" maxlength="5000"
-                          placeholder="Add context, instructions, credit, or anything else that should appear with the prompt card."></textarea>
+                          placeholder="Add context, instructions, credit, or anything else that should appear with the prompt card."><?php echo $esc((string)($edit_prompt['caption'] ?? '')); ?></textarea>
                 <p class="dim">Published with the card. The prompt hashtag and participation link are added automatically.</p>
             </div>
 
             <div class="lens-input-wrapper">
                 <label>ALT TEXT <span class="dim">(accessibility description)</span></label>
                 <input type="text" name="pc_alt" id="pc_alt" maxlength="500"
-                       placeholder="Describe what is visible in the prompt card.">
+                       placeholder="Describe what is visible in the prompt card." value="<?php echo $esc((string)($edit_prompt['alt'] ?? '')); ?>">
             </div>
 
-            <div class="lens-input-wrapper">
-                <label>DROPS AT <span class="dim">(when the card posts &amp; the hashtag goes live)</span></label>
-                <input type="datetime-local" name="pc_drop_at" id="pc_drop_at" value="<?php echo $esc($def_drop_value); ?>">
-                <p class="dim">Times are <strong>UTC</strong>. This matches the selected window opening
-                    (<span id="pc_drop_hint"><?php echo $esc($def_drop_hint); ?></span>); change it only if the card should give an earlier heads-up.</p>
-            </div>
-
-            <button type="submit" class="master-update-btn">QUEUE PROMPT</button>
+            <button type="submit" class="master-update-btn"><?php echo $edit_prompt ? 'SAVE QUEUED POST' : 'QUEUE PROMPT'; ?></button>
         </form>
         <?php endif; ?>
 
@@ -352,7 +394,9 @@ include 'core/sidebar.php';
                             <td><span class="pc-badge pc-badge--<?php echo $esc($st); ?>"><?php echo $st_label; ?></span></td>
                             <td class="pc-sched-act">
                                 <?php if ($st === 'queued'): ?>
+                                    <a class="btn-smack" href="smack-photochallenge-queue.php?edit=<?php echo (int)$p['id']; ?>">EDIT</a>
                                     <form method="post" action="" onsubmit="return confirm('Unschedule this prompt? Its card stays as a hidden draft.');">
+                                        <?php csrf_field(); ?>
                                         <input type="hidden" name="action" value="cancel_prompt">
                                         <input type="hidden" name="prompt_id" value="<?php echo (int)$p['id']; ?>">
                                         <button type="submit" class="btn-smack">CANCEL</button>

@@ -160,7 +160,7 @@ pc_test(str_contains($photo, "'status'      => 'draft'") && str_contains($photo,
     'the queued card must be ingested as a hidden draft, not published immediately');
 pc_test(str_contains($photo, 'INSERT INTO snap_posts') && str_contains($photo, 'INSERT INTO snap_post_images'),
     'the queued card must be post-backed so it federates on drop');
-pc_test(str_contains($admin, "value=\"queue_prompt\"") && str_contains($admin, 'SCHEDULE A PROMPT'),
+pc_test(str_contains($admin, "'queue_prompt'") && str_contains($admin, 'SCHEDULE A PROMPT'),
     'the admin is missing the SCHEDULE A PROMPT panel');
 pc_test(str_contains($admin, 'name="pc_caption"')
     && str_contains($admin, 'name="pc_alt"')
@@ -180,14 +180,32 @@ pc_test(is_file(__DIR__ . '/../smack-photochallenge-queue.php')
 pc_test(str_contains($admin, 'id="queued-contest-posts"')
     && str_contains($admin, 'No contest posts are queued yet.'),
     'queued-post area must remain visible before the first prompt is queued');
+pc_test(str_contains($admin, 'smack-photochallenge-queue.php?edit=')
+    && str_contains($admin, "'update_prompt'")
+    && str_contains($photo, 'function pc_update_prompt')
+    && str_contains($photo, "WHERE id=? AND status='queued'")
+    && str_contains($schema, '`caption` text')
+    && str_contains($schema, '`alt` varchar(500)'),
+    'queued posts must be editable while keeping challenge and post records synchronized');
 pc_test(str_contains($admin, 'enctype="multipart/form-data"'),
     'the prompt form cannot upload a card image');
 pc_test(str_contains($admin, 'id="pc_drop_at" value="<?php echo $esc($def_drop_value); ?>"')
     && str_contains($prompt_js, "dropEl.value = date + 'T' + time"),
     'DROPS AT must display and track the selected Friday window opening');
-pc_test(str_contains($admin_geometry, 'input[type="file"]::file-selector-button')
-    && str_contains($admin_geometry, 'var(--accent'),
-    'native file chooser buttons must inherit the active admin theme accent');
+pc_test(str_contains($admin, '1. BOOSTING WINDOW')
+    && str_contains($admin, 'CHOOSE THE CONTEST FRIDAY')
+    && str_contains($admin, '2. PROMPT POST')
+    && str_contains($admin, 'CHOOSE WHEN THE CARD PUBLISHES')
+    && str_contains($admin, 'does <strong>not</strong> change the boosting window')
+    && str_contains($photo, 'The target challenge date must be a Friday.')
+    && str_contains($prompt_js, 'selected.getUTCDay() === 5'),
+    'challenge date and prompt publication timestamp must be distinct and Friday-only');
+pc_test(str_contains($admin, 'class="pc-file-picker__button"')
+    && str_contains($admin, 'class="pc-file-picker__name"')
+    && str_contains($admin, 'class="file-input-hidden"')
+    && str_contains($admin_geometry, '.pc-file-picker__button')
+    && str_contains($prompt_js, "imageNameEl.textContent"),
+    'card chooser must use an external-CSS button beside a live filename field');
 pc_test(str_contains($admin, 'name="pc_feed_enabled"')
     && str_contains($photo, 'pc_sync_feed_menu')
     && str_contains($menu, "'type' => 'challenge_feed'")
