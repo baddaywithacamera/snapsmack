@@ -273,6 +273,29 @@ def stylesheet() -> str:
     QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; background: none; }}
     QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}
 
+    /* --- Library grid --------------------------------------------------- */
+    QListWidget {{
+        background: {CANVAS};
+        border: none;
+        color: {DIM};
+        font-size: 10px;
+        padding: 6px;
+    }}
+    QListWidget::item {{
+        color: {DIM};
+        border: 1px solid transparent;
+        border-radius: 6px;
+        padding: 4px;
+    }}
+    QListWidget::item:hover {{
+        border: 1px solid {BORDER};
+    }}
+    QListWidget::item:selected {{
+        background: {ACCENT_DIM};
+        border: 1px solid {ACCENT};
+        color: {ACCENT};
+    }}
+
     /* --- Image canvas --------------------------------------------------- */
     #ImageView {{
         background: {CANVAS};

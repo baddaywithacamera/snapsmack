@@ -369,18 +369,13 @@ class EditorWindow(QMainWindow):
         self._update_title()
 
     # --- Document lifecycle -------------------------------------------------
-    def open_image(self):
-        if not self._confirm_discard():
-            return
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Open photograph", "", IMAGE_FILTER)
-        if not path:
-            return
+    def open_path(self, path):
+        """Open a specific image file (no dialog). Returns True on success."""
         try:
             self.doc = editor_engine.EditorDocument(path)
         except Exception as error:  # noqa: BLE001 — surface any decode failure plainly
             QMessageBox.critical(self, "Cannot open", f"Could not open this image:\n{error}")
-            return
+            return False
         self.doc.on_change = lambda _doc: self._refresh_actions()
         self.active_target = BASE
         self.layers_panel.rebuild()
@@ -389,6 +384,15 @@ class EditorWindow(QMainWindow):
         self._render_preview(keep_view=False)
         self._update_title()
         self.status.showMessage(os.path.basename(path))
+        return True
+
+    def open_image(self):
+        if not self._confirm_discard():
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Open photograph", "", IMAGE_FILTER)
+        if path:
+            self.open_path(path)
 
     def open_project(self):
         if not self._confirm_discard():
