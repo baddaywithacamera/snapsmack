@@ -49,6 +49,21 @@ def _editor(path):
     return win
 
 
+def test_bad_file_does_not_crash():
+    # a corrupt/non-image file must fail cleanly, not crash the app
+    from PySide6.QtWidgets import QMessageBox
+    original = QMessageBox.critical
+    QMessageBox.critical = staticmethod(lambda *a, **k: None)
+    try:
+        bad = os.path.join(TMP, "not_an_image.jpg")
+        with open(bad, "w") as handle:
+            handle.write("this is not an image")
+        win = EditorWindow()
+        assert win.open_path(bad) is False   # returns cleanly, no exception
+    finally:
+        QMessageBox.critical = original
+
+
 def test_open_render_export():
     win = _editor(_image("a.jpg"))
     assert win.doc is not None
