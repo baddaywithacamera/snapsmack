@@ -195,4 +195,70 @@
     }
 }
 
+/* ── In-field AI sparkle ──────────────────────────────────────────────────────
+   The per-field trigger is a small sparkle tucked at the END of the field, in
+   the theme accent — not a labelled button box below it. buildRow() wraps each
+   fillable field in .ss-ai-field so the sparkle can sit inside it. */
+.ss-ai-field {
+    position: relative;
+    display: block;
+}
+.ss-ai-field > input,
+.ss-ai-field > textarea {
+    width: 100%;
+    padding-right: 2.1rem;   /* leave room for the sparkle */
+}
+.ss-ai-spark {
+    position: absolute;
+    right: 0.55rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--lens-accent, #39ff14);   /* matches the admin theme accent */
+    opacity: 0.6;
+    cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.ss-ai-spark svg { display: block; }
+.ss-ai-spark:hover,
+.ss-ai-spark:focus-visible {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.14);
+    outline: none;
+}
+/* Textareas: sit the sparkle in the bottom-right corner instead of centred. */
+.ss-ai-spark--area {
+    top: auto;
+    bottom: 0.55rem;
+    transform: none;
+}
+.ss-ai-spark--area:hover,
+.ss-ai-spark--area:focus-visible {
+    transform: scale(1.14);
+}
+.ss-ai-spark.is-working {
+    opacity: 1;
+    cursor: wait;
+    animation: ss-ai-spark-pulse 1s ease-in-out infinite;
+}
+@keyframes ss-ai-spark-pulse {
+    0%, 100% { opacity: 0.45; }
+    50%      { opacity: 1; }
+}
+.ss-ai-spark-status {
+    display: block;
+    margin-top: 0.3rem;
+    font-size: 0.72rem;
+    color: var(--text-muted, #999);
+}
+.ss-ai-spark-status:empty { display: none; }
+.ss-ai-spark-status.is-error { color: var(--danger, #e0b000); }
+
 /* ===== SNAPSMACK EOF ===== */
