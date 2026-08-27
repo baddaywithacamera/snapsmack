@@ -25,6 +25,7 @@ function _smackPromptScheduleInit() {
     var promptEl = document.getElementById('pc_prompt');
     var hashEl   = document.getElementById('pc_hash_preview');
     var fridayEl = document.getElementById('pc_friday');
+    var windowEl = document.getElementById('pc_window_start');
     var dropEl   = document.getElementById('pc_drop_at');
     var hintEl   = document.getElementById('pc_drop_hint');
     var imageEl  = document.getElementById('pc_prompt_image');
@@ -55,23 +56,29 @@ function _smackPromptScheduleInit() {
     // 14 hours. Format as "YYYY-MM-DD HH:MM UTC" to match the server's hint text.
     function pad(n) { return n < 10 ? '0' + n : '' + n; }
     function updateWindowStart() {
-        if (!fridayEl || !fridayEl.value) return;
-        var parts = fridayEl.value.split('-');
+        if (!windowEl || !windowEl.value) return;
+        var parts = windowEl.value.slice(0, 10).split('-');
         if (parts.length !== 3) return;
-        var fri = Date.UTC(+parts[0], +parts[1] - 1, +parts[2], 0, 0, 0);
-        var selected = new Date(fri);
-        var isFriday = selected.getUTCDay() === 5;
-        fridayEl.setCustomValidity(isFriday ? '' : 'Choose a Friday for the challenge date.');
-        if (!isFriday) return;
+        var selectedAt = Date.UTC(+parts[0], +parts[1] - 1, +parts[2], 0, 0, 0);
+        var selected = new Date(selectedAt);
+        var day = selected.getUTCDay();
+        var distance = day <= 5 ? 5 - day : 5 - day;
+        var fri = selectedAt + distance * 24 * 3600 * 1000;
+        var friday = new Date(fri);
+        var fridayValue = friday.getUTCFullYear() + '-' + pad(friday.getUTCMonth() + 1)
+            + '-' + pad(friday.getUTCDate());
+        fridayEl.value = fridayValue;
+        fridayEl.setCustomValidity('');
         var open = new Date(fri - 14 * 3600 * 1000);
         var date = open.getUTCFullYear() + '-' + pad(open.getUTCMonth() + 1) + '-' + pad(open.getUTCDate());
         var time = pad(open.getUTCHours()) + ':' + pad(open.getUTCMinutes());
+        windowEl.value = date + 'T' + time;
         if (dropEl) dropEl.value = date + 'T' + time;
         if (hintEl) hintEl.textContent = date + ' ' + time + ':00 UTC';
     }
 
     if (promptEl) { promptEl.addEventListener('input', updateHash); updateHash(); }
-    if (fridayEl) { fridayEl.addEventListener('change', updateWindowStart); updateWindowStart(); }
+    if (windowEl && fridayEl) { windowEl.addEventListener('change', updateWindowStart); updateWindowStart(); }
     if (imageEl && imageNameEl) {
         imageEl.addEventListener('change', function () {
             imageNameEl.textContent = imageEl.files && imageEl.files[0]
