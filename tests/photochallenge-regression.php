@@ -145,10 +145,24 @@ pc_test(str_contains($photo, "'status'      => 'draft'") && str_contains($photo,
     'the queued card must be ingested as a hidden draft, not published immediately');
 pc_test(str_contains($photo, 'INSERT INTO snap_posts') && str_contains($photo, 'INSERT INTO snap_post_images'),
     'the queued card must be post-backed so it federates on drop');
-pc_test(str_contains($admin, "value=\"queue_prompt\"") && str_contains($admin, 'SCHEDULE A PROMPT'),
-    'the admin is missing the SCHEDULE A PROMPT panel');
-pc_test(str_contains($admin, 'enctype="multipart/form-data"'),
+$sched = file_get_contents(__DIR__ . '/../smack-prompt-schedule.php');
+pc_test(str_contains($sched, 'value="queue_prompt"') && str_contains($sched, 'SCHEDULE A PROMPT'),
+    'the SCHEDULE A PROMPT page is missing its form');
+pc_test(str_contains($sched, 'enctype="multipart/form-data"'),
     'the prompt form cannot upload a card image');
+pc_test(str_contains($sched, 'name="pc_drop_mode"') && str_contains($sched, 'week_before')
+    && str_contains($sched, 'window_open'),
+    'the drop-timing modes (week before / window open / custom) are missing');
+pc_test(str_contains($sched, 'name="pc_extra"'),
+    'the optional additional-text field is missing');
+pc_test(str_contains($photo, "\$data['drop_mode']") && str_contains($photo, "->modify('-7 days')"),
+    'pc_queue_prompt must honour drop_mode and compute the week-before drop');
+pc_test(str_contains($photo, "\$data['extra']"),
+    'pc_queue_prompt must include the additional text in the card body');
+pc_test(str_contains($sidebar, 'smack-prompt-schedule.php') && str_contains($sidebar, 'Schedule a Prompt'),
+    'the challenge sidebar is missing the Schedule a Prompt link');
+pc_test(!str_contains($admin, 'SCHEDULE A PROMPT'),
+    'the scheduler panel should have moved off Contest & Feed onto its own page');
 
 if ($failures) {
     fwrite(STDERR, "FAIL\n- " . implode("\n- ", $failures) . "\n");

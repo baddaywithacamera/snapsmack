@@ -31,21 +31,7 @@ $msg_ok = true;   // false renders the notice as a warning instead of a success
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-smack
     $action = (string)($_POST['action'] ?? '');
 
-    if ($action === 'queue_prompt') {
-        $res = pc_queue_prompt($pdo, $settings, [
-            'prompt'  => (string)($_POST['pc_prompt'] ?? ''),
-            'friday'  => (string)($_POST['pc_friday'] ?? ''),
-            'drop_at' => (string)($_POST['pc_drop_at'] ?? ''),
-        ], $_FILES['pc_prompt_image'] ?? []);
-        $msg_ok = !empty($res['ok']);
-        $msg = ($msg_ok ? '' : 'Not queued — ') . $res['msg'];
-
-    } elseif ($action === 'cancel_prompt') {
-        $res = pc_cancel_prompt($pdo, $settings, (int)($_POST['prompt_id'] ?? 0));
-        $msg_ok = !empty($res['ok']);
-        $msg = $res['msg'];
-
-    } elseif ($action === 'save_settings') {
+    if ($action === 'save_settings') {
         $enabled = isset($_POST['pc_enabled']) ? '1' : '0';
         $tag = ltrim(strtolower(trim((string)($_POST['pc_tag'] ?? 'photofri'))), '#');
         $tag = preg_replace('/[^a-z0-9_]/', '', $tag);
@@ -125,15 +111,6 @@ $hof      = pc_hof_list($pdo, 100);
 $board_url = rtrim(sv_base($settings), '/') . '/photochallenge-board.php';
 $hof_url   = rtrim(sv_base($settings), '/') . '/photochallenge-hof.php';
 $esc = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
-
-// --- SCHEDULE A PROMPT: prefill the next Photo-Friday + its window-open time ---
-$pc_prefix = pc_tag_prefix($settings);
-$_now_utc  = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-$_add_days = (5 - (int)$_now_utc->format('N') + 7) % 7;          // 0..6 days to the next Friday
-$next_friday = $_now_utc->modify("+{$_add_days} days")->format('Y-m-d');
-$_def_win  = pc_window_for_friday($next_friday);
-$def_drop_hint = $_def_win ? $_def_win['start'] . ' UTC' : '';   // shown as the default drop time
-$prompts   = pc_prompts_list($pdo, 40);
 
 $page_title = 'PHOTO CHALLENGE';
 include 'core/admin-header.php';
@@ -237,80 +214,6 @@ include 'core/sidebar.php';
 
             <button type="submit" class="master-update-btn">SAVE CHALLENGE SETTINGS</button>
         </form>
-    </div>
-
-    <!-- SCHEDULE A PROMPT -->
-    <div class="box mb-20 pc-schedule">
-        <h3>SCHEDULE A PROMPT</h3>
-        <p class="dim mb-20">
-            Enter the prompt word, pick the Photo-Friday, and upload the card. The tool builds the hashtag,
-            files the card as a hidden draft, and drops it automatically at the time below &mdash; publishing the
-            card to the fediverse and switching the qualifying hashtag to that week's tag. One prompt per Friday.
-        </p>
-        <form method="post" action="" enctype="multipart/form-data" data-pc-prefix="<?php echo $esc($pc_prefix); ?>">
-            <?php csrf_field(); ?>
-            <input type="hidden" name="action" value="queue_prompt">
-
-            <div class="lens-input-wrapper">
-                <label>PROMPT <span class="dim">(one word)</span></label>
-                <input type="text" name="pc_prompt" id="pc_prompt" maxlength="60" required
-                       autocomplete="off" placeholder="Belonging">
-                <p class="dim">Hashtag: <span class="pc-hash-preview" id="pc_hash_preview">#<?php echo $esc($pc_prefix); ?>&hellip;</span>
-                    &mdash; built for you from the word above.</p>
-            </div>
-
-            <div class="lens-input-wrapper">
-                <label>PHOTO-FRIDAY <span class="dim">(the 50-hour submission window)</span></label>
-                <input type="date" name="pc_friday" id="pc_friday" value="<?php echo $esc($next_friday); ?>" required>
-                <p class="dim">Submissions open <strong>Thu 10:00 UTC</strong> and close <strong>Sat 12:00 UTC</strong> that week.</p>
-            </div>
-
-            <div class="lens-input-wrapper">
-                <label>CARD IMAGE</label>
-                <input type="file" name="pc_prompt_image" accept="image/jpeg,image/png,image/webp,image/gif" required>
-                <p class="dim">The prompt card people see when it drops. JPG, PNG, WEBP or GIF.</p>
-            </div>
-
-            <div class="lens-input-wrapper">
-                <label>DROPS AT <span class="dim">(when the card posts &amp; the hashtag goes live)</span></label>
-                <input type="datetime-local" name="pc_drop_at" id="pc_drop_at">
-                <p class="dim">Times are <strong>UTC</strong>. Leave blank to drop when the window opens
-                    (<span id="pc_drop_hint"><?php echo $esc($def_drop_hint); ?></span>), or set an earlier time to give a heads-up.</p>
-            </div>
-
-            <button type="submit" class="master-update-btn">QUEUE PROMPT</button>
-        </form>
-
-        <?php if ($prompts): ?>
-            <h4 class="pc-sched-sub">SCHEDULED &amp; DROPPED</h4>
-            <table class="pc-sched-list dim">
-                <thead>
-                    <tr><th>Photo-Friday</th><th>Prompt</th><th>Hashtag</th><th>Drops (UTC)</th><th>Status</th><th></th></tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($prompts as $p):
-                        $st = (string)$p['status'];
-                        $st_label = $st === 'queued' ? 'QUEUED' : ($st === 'live' ? 'LIVE' : 'DONE'); ?>
-                        <tr>
-                            <td><?php echo $esc($p['friday']); ?></td>
-                            <td><strong><?php echo $esc($p['prompt']); ?></strong></td>
-                            <td><code>#<?php echo $esc($p['tag_display'] ?: $p['tag']); ?></code></td>
-                            <td><?php echo $esc($p['drop_at']); ?></td>
-                            <td><span class="pc-badge pc-badge--<?php echo $esc($st); ?>"><?php echo $st_label; ?></span></td>
-                            <td class="pc-sched-act">
-                                <?php if ($st === 'queued'): ?>
-                                    <form method="post" action="" onsubmit="return confirm('Unschedule this prompt? Its card stays as a hidden draft.');">
-                                        <input type="hidden" name="action" value="cancel_prompt">
-                                        <input type="hidden" name="prompt_id" value="<?php echo (int)$p['id']; ?>">
-                                        <button type="submit" class="btn-smack">CANCEL</button>
-                                    </form>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        <?php endif; ?>
     </div>
 
     <!-- LIVE STATE -->
@@ -465,8 +368,6 @@ include 'core/sidebar.php';
     </div>
 
 </div>
-
-<script src="assets/js/smack-prompt-schedule.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

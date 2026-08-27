@@ -10,6 +10,24 @@
 
 # SnapSmack Changelog
 
+## 0.7.567 — 2026-08-26 "FEDBOARD"
+
+- **SCHEDULE A PROMPT is now its own page, with drop-timing and extra copy.** The prompt
+  scheduler moved off the Contest & Feed page onto its own **CHALLENGE ME → Schedule a Prompt**
+  sidebar item, and gained two things Sean asked for:
+  - **DROP TIMING** — pick when the card posts: *A week before* (the default — posts the word the
+    Thursday before, a seven-day heads-up), *When the window opens* (Thursday 10:00 UTC that week),
+    or *Custom time* (an exact UTC moment). The line under the picker always shows the precise moment
+    it works out to, and updates live as you change the Friday or the mode. This replaces having to
+    hand-type the "a week before" datetime.
+  - **ADDITIONAL TEXT** — an optional box whose text is added to the card's post, under the word and
+    hashtag and above the challenge link.
+
+  No change to how a prompt drops: the card is still filed as a hidden draft and published +
+  federated by the challenge cron at the drop time, switching the qualifying hashtag to that week's
+  tag. Engine `pc_queue_prompt` now takes `drop_mode` (week_before / window_open / custom) and
+  `extra`; the standalone `smack-prompt-schedule.php` carries the form.
+
 ## 0.7.565 — 2026-08-26 "FEDBOARD"
 
 - **Schedule a Photo-Friday prompt in one step.** The PHOTO CHALLENGE admin gained a

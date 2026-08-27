@@ -3397,10 +3397,10 @@ $help_topics['schedule-prompt'] = [
     'role'     => 'admin',
     'content'  => <<<'HTML'
 <h3>SCHEDULE A PROMPT</h3>
-<p>This panel is on the <strong>PHOTO CHALLENGE</strong> page. It sets up a Photo-Friday
-in one step: you type the prompt word, pick the Friday, and upload the card image. The tool
-does the rest and drops the prompt for you at the time you choose — you do not have to be at
-your computer when it goes out.</p>
+<p>This is its own page under <strong>CHALLENGE ME &rarr; Schedule a Prompt</strong>. It sets up a
+Photo-Friday in one step: you type the prompt word, pick the Friday, add any extra copy, and upload
+the card image. The tool does the rest and drops the prompt for you at the time you choose — you do
+not have to be at your computer when it goes out.</p>
 
 <h4>What each box does</h4>
 <p><strong>PROMPT</strong> — the one word for the week, for example <em>Belonging</em>. As you
@@ -3411,10 +3411,19 @@ That hashtag is what entrants add to their photo so it lands on the board.</p>
 <p><strong>PHOTO-FRIDAY</strong> — the day the challenge runs. The submission window is always the
 same fifty hours: it opens Thursday 10:00 in UTC and closes Saturday 12:00 in UTC. Pick the Friday
 and the window is worked out for you.</p>
+<p><strong>ADDITIONAL TEXT</strong> — anything extra you want on the card's post, added under the word
+and hashtag and above the challenge link. Optional; leave it blank and the post is just the word,
+the hashtag, and the link.</p>
 <p><strong>CARD IMAGE</strong> — the picture people see when the prompt drops. You supply and upload
 it. JPG, PNG, WEBP or GIF.</p>
-<p><strong>DROPS AT</strong> — when the card posts and the hashtag goes live. Leave it blank to drop
-the moment the window opens, or set an earlier time (in UTC) if you want to give people a heads-up.</p>
+<p><strong>DROP TIMING</strong> — when the card posts and the hashtag goes live. Three choices, and the
+line underneath always shows the exact moment it works out to:</p>
+<ul>
+<li><strong>A week before</strong> (the usual one) — posts the word seven days ahead, on the Thursday
+before, so people have time to plan.</li>
+<li><strong>When the window opens</strong> — posts it as the fifty-hour window opens (Thursday 10:00 UTC).</li>
+<li><strong>Custom time</strong> — reveals a box where you pick an exact moment (in UTC).</li>
+</ul>
 
 <h4>What happens when you queue it</h4>
 <p>The card is saved as a hidden draft straight away — nobody sees it yet. When the drop time arrives,

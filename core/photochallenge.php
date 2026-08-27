@@ -557,12 +557,22 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
 
     $hash = pc_hashtag_from_prompt($prompt, pc_tag_prefix($settings));
 
-    $drop_at = trim((string)($data['drop_at'] ?? ''));
-    if ($drop_at === '') {
-        $drop_at = $win['start'];                        // default: drops when the window opens
-    } else {
-        $drop_at = str_replace('T', ' ', $drop_at);      // datetime-local -> SQL
+    // When the card drops. Three modes:
+    //   week_before  — a week's heads-up: the window-open time minus 7 days.
+    //   window_open  — the moment the 50-hour window opens (Thu 10:00 UTC).
+    //   custom       — an explicit datetime-local value (treated as UTC).
+    // A bare drop_at with no mode is treated as custom (older callers).
+    $mode   = (string)($data['drop_mode'] ?? '');
+    $custom = trim((string)($data['drop_at'] ?? ''));
+    if ($mode === '') $mode = $custom !== '' ? 'custom' : 'window_open';
+    if ($mode === 'week_before') {
+        $drop_at = (new DateTimeImmutable($win['start'], new DateTimeZone('UTC')))
+                       ->modify('-7 days')->format('Y-m-d H:i:s');
+    } elseif ($mode === 'custom' && $custom !== '') {
+        $drop_at = str_replace('T', ' ', $custom);       // datetime-local -> SQL
         if (strlen($drop_at) === 16) $drop_at .= ':00';
+    } else {
+        $drop_at = $win['start'];                         // window_open (default)
     }
 
     // One prompt per Friday (week_key is UNIQUE). Guard the friendly path too.
@@ -572,10 +582,12 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
         return ['ok' => false, 'msg' => 'A prompt is already scheduled for ' . $win['label'] . '. Cancel it first to reschedule.'];
     }
 
-    // Card body: the word, its hashtag, and the challenge link.
-    $base = function_exists('sv_base') ? rtrim((string)sv_base($settings), '/') : '';
-    $body = $prompt . "\n\n#" . $hash['display']
-          . ($base !== '' ? "\n\nPost your photo during the 50-hour Photo-Friday window. " . $base . '/' : '');
+    // Card body: the word, its hashtag, any extra text, and the challenge link.
+    $extra = trim((string)($data['extra'] ?? ''));
+    $base  = function_exists('sv_base') ? rtrim((string)sv_base($settings), '/') : '';
+    $body  = $prompt . "\n\n#" . $hash['display'];
+    if ($extra !== '') $body .= "\n\n" . $extra;
+    if ($base !== '')  $body .= "\n\nPost your photo during the 50-hour Photo-Friday window. " . $base . '/';
 
     require_once __DIR__ . '/image-ingest.php';
     $res = snap_ingest_image($pdo, $settings, $file, [
