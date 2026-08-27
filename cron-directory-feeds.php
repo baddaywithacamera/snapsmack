@@ -3,8 +3,8 @@
  * PHOTOBLOGS.FYI — secure directory RSS aggregator
  *
  * Polls approved directory members, records publishing activity and feed
- * health, and caches at most one real photo-post per blog per calendar day.
- * Run hourly from the photoblogs.fyi host.
+ * health, and caches up to the last 20 real photo-posts per blog from the last
+ * four weeks. Run hourly from the photoblogs.fyi host.
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -17,6 +17,8 @@ require_once __DIR__ . '/core/db.php';
 
 const PBDIR_MAX_FEED_BYTES = 2097152;
 const PBDIR_DEAD_FAILURES   = 168; // seven days at the recommended hourly cadence
+const PBDIR_MAX_PER_BLOG    = 20;  // keep the last 20 real posts per blog
+const PBDIR_WINDOW_DAYS     = 28;  // only the last four weeks are eligible
 
 function pbfeed_setting(PDO $pdo, string $key, string $value): void {
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?,?)
@@ -46,11 +48,17 @@ function pbfeed_schema(PDO $pdo): void {
         post_day DATE NOT NULL,
         discovered_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
-        UNIQUE KEY uq_listing_day (listing_id, post_day),
         UNIQUE KEY uq_post_url (post_url(191)),
         KEY idx_published (published_at),
         KEY idx_listing (listing_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Migrate off the old one-post-per-blog-per-day model: keep up to 20 real
+    // posts per blog instead. Drop the day-unique key if an older install has it.
+    $has_day_key = $pdo->query("SELECT 1 FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='snap_directory_feed_items'
+          AND INDEX_NAME='uq_listing_day' LIMIT 1")->fetchColumn();
+    if ($has_day_key) $pdo->exec("ALTER TABLE snap_directory_feed_items DROP INDEX uq_listing_day");
 }
 
 /** Resolve once and pin cURL to a public address, preventing DNS rebinding. */
@@ -166,6 +174,7 @@ function pbfeed_items(string $xml_raw, array $listing): ?array {
         catch (Throwable $e) { continue; }
         $ts = $published->getTimestamp();
         if ($ts > time() + 300) continue;
+        if ($ts < time() - PBDIR_WINDOW_DAYS * 86400) continue;   // only the last four weeks are eligible
 
         $image_url = $text('./*[local-name()="enclosure" and starts-with(@type,"image/")][1]/@url');
         if ($image_url === '') $image_url = $text('./*[local-name()="content" and starts-with(@type,"image/")][1]/@url');
@@ -191,7 +200,7 @@ function pbfeed_items(string $xml_raw, array $listing): ?array {
             'published_at' => gmdate('Y-m-d H:i:s', $ts),
             'post_day' => $day,
         ];
-        if (!isset($out[$day]) || $candidate['published_at'] > $out[$day]['published_at']) $out[$day] = $candidate;
+        $out[$post_url] = $candidate;   // one entry per POST (not per day) — up to 20/blog kept downstream
     }
     return array_values($out);
 }
@@ -236,10 +245,13 @@ try {
             $save->execute([$listing['id'],$item['post_url'],$item['image_url'],$item['title'],$item['alt_text'],$item['published_at'],$item['post_day']]);
             $item_count++;
         }
-        // The public feed promises the last ten daily selections per blog.
-        // Prune after each successful refresh so storage remains bounded too.
+        // Keep the newest 20 real posts per blog, and drop anything older than the
+        // four-week window, so the feed stays fresh and storage stays bounded.
+        $pdo->prepare("DELETE FROM snap_directory_feed_items
+                       WHERE listing_id=? AND published_at < (UTC_TIMESTAMP() - INTERVAL " . PBDIR_WINDOW_DAYS . " DAY)")
+            ->execute([$listing['id']]);
         $old_ids = $pdo->prepare("SELECT id FROM snap_directory_feed_items
-                                  WHERE listing_id=? ORDER BY published_at DESC, id DESC LIMIT 18446744073709551615 OFFSET 10");
+                                  WHERE listing_id=? ORDER BY published_at DESC, id DESC LIMIT 18446744073709551615 OFFSET " . PBDIR_MAX_PER_BLOG);
         $old_ids->execute([$listing['id']]);
         $old_ids = array_map('intval', $old_ids->fetchAll(PDO::FETCH_COLUMN));
         if ($old_ids) $pdo->exec("DELETE FROM snap_directory_feed_items WHERE id IN (" . implode(',', $old_ids) . ")");
