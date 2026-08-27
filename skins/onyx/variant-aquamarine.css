@@ -1,0 +1,16 @@
+/**
+ * SNAPSMACK - ONYX skin · Aquamarine palette
+ * A light cyan-blue accent on the same onyx (the birthstone aqua).
+ * Only the accent + link colours change per palette; the onyx neutrals
+ * (canvas, ink, muted, hairline) live in style.css and stay constant.
+ *
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line MUST be the CSS EOF marker below.
+ */
+
+:root {
+    --pfd-red:  #17B6C7;   /* accent: rules, borders, numerals, the dot, the glow */
+    --pfd-link: #4FD9E6;   /* links & hover — a step brighter than the accent */
+}
+
+/* ===== SNAPSMACK EOF ===== */
