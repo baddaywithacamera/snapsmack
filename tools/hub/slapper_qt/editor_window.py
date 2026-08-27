@@ -171,6 +171,10 @@ class EditorWindow(QMainWindow):
 
         bar.addSeparator()
 
+        self.act_lewks = QAction("LEWKS…", self)
+        self.act_lewks.triggered.connect(self.open_lewks)
+        bar.addAction(self.act_lewks)
+
         self.act_textures = QAction("Textures…", self)
         self.act_textures.triggered.connect(self.open_textures)
         bar.addAction(self.act_textures)
@@ -807,6 +811,38 @@ class EditorWindow(QMainWindow):
         self._update_title()
         self.status.showMessage(f"Saved {os.path.basename(path)}")
 
+    def open_lewks(self):
+        if not self.doc:
+            self._error("Open a photo first",
+                        "Open a photograph before applying a LEWK.")
+            return
+        try:
+            from .lewks_dialog import LewksDialog
+        except Exception as error:  # noqa: BLE001
+            self._error("LEWKS unavailable", str(error))
+            return
+        LewksDialog(self).show()
+
+    def apply_lewk(self, lewk_id, strength=100):
+        """Apply a built-in LEWK as a non-destructive adjustment layer on top,
+        without flattening the photographer's existing edits."""
+        if not self.doc:
+            return None
+        import built_in_lewks
+        recipe = built_in_lewks.recipe(lewk_id, strength)
+        added = self.doc.stack_layers(recipe.get("layers", []))
+        if added:
+            self.set_target(added[-1]["id"])
+        self.after_structure_change()
+        _log.info("Applied LEWK %s at %s%%", lewk_id, strength)
+        return added[-1] if added else None
+
+    def render_preview_image(self, max_size=(160, 160)):
+        """A small PIL render of the current document — for look previews."""
+        if not self.doc:
+            return None
+        return self.doc.render(max_size=max_size)
+
     def open_textures(self):
         if not self.doc:
             self._error("Open a photo first",
@@ -1001,6 +1037,7 @@ class EditorWindow(QMainWindow):
         self.act_recipe_apply.setEnabled(has)
         self.act_save_project.setEnabled(has)
         self.act_textures.setEnabled(has)
+        self.act_lewks.setEnabled(has)
 
     def _update_title(self):
         if not self.doc:

@@ -802,6 +802,27 @@ class EditorDocument:
         return {"version": PROJECT_VERSION, "adjustments": copy.deepcopy(self.adjustments),
                 "layers": [copy.deepcopy(layer) for layer in self.layers if layer.get("type") == "adjustment"]}
 
+    def stack_layers(self, layers):
+        """Add adjustment layers ON TOP without touching the base or existing
+        layers. This is how a LEWK applies — it must not flatten the
+        photographer's existing edits. Each layer gets a fresh unique id.
+        """
+        added = []
+        for layer in layers:
+            if not isinstance(layer, dict) or layer.get("type") != "adjustment":
+                raise ValueError("stack_layers only accepts adjustment layers")
+            mask = layer.get("mask", "")
+            if not isinstance(mask, str) or len(mask) > MAX_ENCODED_MASK_BYTES:
+                raise ValueError("Invalid layer mask")
+            clone = copy.deepcopy(layer)
+            clone["id"] = _new_layer_id()
+            self.layers.append(clone)
+            added.append(clone)
+        if len(self.layers) > MAX_PROJECT_LAYERS:
+            raise ValueError("Too many layers")
+        self.record("Apply LEWK")
+        return added
+
     def apply_recipe(self, recipe):
         if not isinstance(recipe, dict):
             raise ValueError("Invalid SNAP SLAPPER recipe: the root must be an object")
