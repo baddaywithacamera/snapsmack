@@ -23,6 +23,13 @@ from PIL import Image, ImageOps
 from . import theme
 from .editor_window import EditorWindow
 
+try:
+    import snap_log
+    _log = snap_log.get("snap_slapper")
+except Exception:  # noqa: BLE001
+    import logging
+    _log = logging.getLogger("snapsmack.snap_slapper")
+
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp", ".bmp", ".gif"}
 THUMB_SOURCE = 256   # thumbnails are generated at this size, displayed smaller
 
@@ -49,7 +56,7 @@ class _ThumbTask(QRunnable):
                             image.width * 4, QImage.Format_RGBA8888).copy()
             self.signals.ready.emit(self.path, qimage)
         except Exception:  # noqa: BLE001 — a bad file just keeps its placeholder
-            pass
+            _log.debug("thumbnail failed for %s", self.path, exc_info=True)
 
 
 class LibraryWindow(QMainWindow):

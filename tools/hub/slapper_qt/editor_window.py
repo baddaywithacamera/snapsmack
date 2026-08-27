@@ -7,6 +7,7 @@ metadata-preserving export. No image math lives here — only the engine's.
 """
 
 import os
+import sys
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QKeySequence
@@ -24,6 +25,13 @@ from . import theme
 from .engine_bridge import render_pixmap, original_pixmap
 from .widgets import ImageView, SliderRow, Accordion, Histogram
 from .layers_panel import LayersPanel, BASE
+
+try:
+    import snap_log
+    _log = snap_log.get("snap_slapper")
+except Exception:  # noqa: BLE001
+    import logging
+    _log = logging.getLogger("snapsmack.snap_slapper")
 
 PROJECT_FILTER = "SNAP SLAPPER project (*.slapper)"
 RECIPE_FILTER = "SNAP SLAPPER recipe (*.slaprecipe *.json)"
@@ -171,6 +179,11 @@ class EditorWindow(QMainWindow):
         self.act_export.setShortcut(QKeySequence.Save)
         self.act_export.triggered.connect(self.export_image)
         bar.addAction(self.act_export)
+
+    def _error(self, title, message):
+        """Show an error dialog AND write it (with traceback if any) to the log."""
+        _log.error("%s — %s", title, message, exc_info=sys.exc_info()[0] is not None)
+        QMessageBox.critical(self, title, message)
 
     def _build_canvas(self):
         self.view = ImageView(self)
@@ -725,10 +738,12 @@ class EditorWindow(QMainWindow):
     def open_path(self, path):
         """Open a specific image file (no dialog). Returns True on success."""
         try:
-            self.doc = editor_engine.EditorDocument(path)
+            document = editor_engine.EditorDocument(path)
+            document.render((64, 64))   # decode now so a bad file fails cleanly here
         except Exception as error:  # noqa: BLE001 — surface any decode failure plainly
-            QMessageBox.critical(self, "Cannot open", f"Could not open this image:\n{error}")
+            self._error("Cannot open", f"Could not open this image:\n{error}")
             return False
+        self.doc = document
         self.doc.on_change = lambda _doc: self._refresh_actions()
         self.active_target = BASE
         self.layers_panel.rebuild()
@@ -756,10 +771,12 @@ class EditorWindow(QMainWindow):
         if not path:
             return
         try:
-            self.doc = editor_engine.EditorDocument.load_project(path)
+            document = editor_engine.EditorDocument.load_project(path)
+            document.render((64, 64))   # decode the referenced photo now
         except Exception as error:  # noqa: BLE001
-            QMessageBox.critical(self, "Cannot open project", str(error))
+            self._error("Cannot open project", str(error))
             return
+        self.doc = document
         self.doc.on_change = lambda _doc: self._refresh_actions()
         self.active_target = BASE
         self.layers_panel.rebuild()
@@ -781,7 +798,7 @@ class EditorWindow(QMainWindow):
         try:
             self.doc.save_project(path)
         except Exception as error:  # noqa: BLE001
-            QMessageBox.critical(self, "Save failed", str(error))
+            self._error("Save failed", str(error))
             return
         self._update_title()
         self.status.showMessage(f"Saved {os.path.basename(path)}")
@@ -796,7 +813,7 @@ class EditorWindow(QMainWindow):
         try:
             editor_engine.save_recipe(path, self.doc.recipe())
         except Exception as error:  # noqa: BLE001
-            QMessageBox.critical(self, "Save failed", str(error))
+            self._error("Save failed", str(error))
             return
         self.status.showMessage(f"Saved recipe {os.path.basename(path)}")
 
@@ -810,7 +827,7 @@ class EditorWindow(QMainWindow):
         try:
             self.doc.apply_recipe(editor_engine.load_recipe(path))
         except Exception as error:  # noqa: BLE001
-            QMessageBox.critical(self, "Apply failed", str(error))
+            self._error("Apply failed", str(error))
             return
         self.layers_panel.rebuild()
         self._sync_controls_from_doc()
@@ -889,7 +906,7 @@ class EditorWindow(QMainWindow):
         try:
             self.doc.export(path)
         except Exception as error:  # noqa: BLE001
-            QMessageBox.critical(self, "Export failed", str(error))
+            self._error("Export failed", str(error))
             return
         self.doc.mark_saved()
         self._update_title()

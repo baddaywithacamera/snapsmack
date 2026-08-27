@@ -8,12 +8,20 @@ from . import theme
 from .editor_window import EditorWindow
 from .library_window import LibraryWindow
 
+try:
+    import snap_log
+    _log = snap_log.setup("snap_slapper")
+except Exception:  # noqa: BLE001 — never let logging setup stop the app
+    _log = None
+
 
 def main(argv=None):
     argv = list(sys.argv if argv is None else argv)
     app = QApplication.instance() or QApplication(argv)
     app.setApplicationName("SNAP SLAPPER")
     app.setStyleSheet(theme.stylesheet())
+    if _log is not None:
+        _log.info("SNAP SLAPPER Qt UI ready")
 
     # A file path on the command line opens straight into the editor;
     # otherwise the library browser is the entry point.

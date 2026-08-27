@@ -45,6 +45,14 @@ except Exception as _e:                      # pragma: no cover
     _SHARED_OK = False
     _SHARED_ERR = str(_e)
 
+# Start the run log + crash capture as early as possible so anything that goes
+# wrong during startup (SNAP SLAPPER editor, LEWK AGAIN, library) is recorded.
+try:
+    import snap_log
+    snap_log.setup("snap_slapper")
+except Exception:                            # pragma: no cover
+    pass
+
 # ── palette (matches the tool family: onyx + green) ─────────────────────────
 BG      = "#0a0a0a"
 CARD    = "#141414"
