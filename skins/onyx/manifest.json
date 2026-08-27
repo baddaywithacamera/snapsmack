@@ -21,7 +21,7 @@
   "features": {
     "fedistructure_only": true,
     "supports_wall": false,
-    "has_landing": false,
+    "has_landing": true,
     "post_modes": [
       "image"
     ],
@@ -46,7 +46,8 @@
     "smack-community",
     "smack-keyboard",
     "smack-archive-grid-switch",
-    "smack-countdown"
+    "smack-countdown",
+    "smack-columns"
   ],
   "options": {
     "pfd_canvas_width": {
@@ -188,6 +189,80 @@
       "unit": "rem",
       "selector": ":root",
       "property": "--pfd-body-size"
+    },
+    "onyx_wall_columns": {
+      "section": "PHOTO WALL",
+      "type": "range",
+      "label": "Columns Across",
+      "default": "4",
+      "min": "2",
+      "max": "6",
+      "step": "1",
+      "selector": ".onyx-photo-wall",
+      "property": "--ss-cols",
+      "unit": ""
+    },
+    "onyx_wall_width": {
+      "section": "PHOTO WALL",
+      "type": "range",
+      "label": "Wall Width (% of window)",
+      "default": "92",
+      "min": "55",
+      "max": "100",
+      "selector": ":root",
+      "property": "--onyx-wall-width",
+      "unit": "%"
+    },
+    "onyx_wall_page_size": {
+      "section": "PHOTO WALL",
+      "type": "range",
+      "label": "Images Loaded Per Scroll",
+      "default": "36",
+      "min": "12",
+      "max": "60",
+      "step": "6",
+      "unit": ""
+    },
+    "onyx_wall_gap": {
+      "section": "PHOTO WALL",
+      "type": "range",
+      "label": "Space Between Tiles (px)",
+      "default": "8",
+      "min": "0",
+      "max": "25",
+      "selector": ".onyx-photo-wall",
+      "property": "--ss-gap",
+      "unit": "px"
+    },
+    "onyx_wall_radius": {
+      "section": "PHOTO WALL",
+      "type": "range",
+      "label": "Image Corner Radius (px)",
+      "default": "0",
+      "min": "0",
+      "max": "24",
+      "selector": ":root",
+      "property": "--scroll-corner-radius",
+      "unit": "px"
+    },
+    "onyx_wall_border_width": {
+      "section": "PHOTO WALL",
+      "type": "range",
+      "label": "Image Border Width (px)",
+      "default": "0",
+      "min": "0",
+      "max": "8",
+      "selector": ":root",
+      "property": "--scroll-border-width",
+      "unit": "px"
+    },
+    "onyx_wall_border_color": {
+      "section": "PHOTO WALL",
+      "type": "color",
+      "label": "Image Border Colour",
+      "default": "#d40000",
+      "selector": ":root",
+      "property": "--scroll-border-color"
     },
     "skin_avatar": {
       "section": "PROFILE HEADER",

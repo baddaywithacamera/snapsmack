@@ -30,6 +30,56 @@ function pc_enabled(array $settings): bool {
     return (string)($settings['photochallenge_enabled'] ?? '0') === '1';
 }
 
+/** Is the optional public challenge feed/board exposed? */
+function pc_feed_enabled(array $settings): bool {
+    if (array_key_exists('photochallenge_feed_enabled', $settings)) {
+        return (string)$settings['photochallenge_feed_enabled'] === '1';
+    }
+    // Upgrade compatibility: /board existed whenever the challenge was on
+    // before this separate switch shipped. Preserve that surface until the
+    // operator explicitly saves ON or OFF.
+    return pc_enabled($settings);
+}
+
+/**
+ * Keep Menu Manager's built-in FEED item in lockstep with the challenge switch.
+ * Existing menu order is preserved; first enable appends FEED for later dragging.
+ */
+function pc_sync_feed_menu(PDO $pdo, array &$settings, bool $enabled): void {
+    $items = json_decode((string)($settings['nav_menu_json'] ?? '[]'), true);
+    if (!is_array($items) || !$items) return; // legacy nav renders from the setting directly
+
+    $contains = static function (array $list) use (&$contains): bool {
+        foreach ($list as $item) {
+            if (!is_array($item)) continue;
+            if (($item['type'] ?? '') === 'challenge_feed' || ($item['id'] ?? '') === 'challenge_feed') return true;
+            if (!empty($item['children']) && is_array($item['children']) && $contains($item['children'])) return true;
+        }
+        return false;
+    };
+    $remove = static function (array $list) use (&$remove): array {
+        $out = [];
+        foreach ($list as $item) {
+            if (!is_array($item)) continue;
+            if (($item['type'] ?? '') === 'challenge_feed' || ($item['id'] ?? '') === 'challenge_feed') continue;
+            if (!empty($item['children']) && is_array($item['children'])) $item['children'] = $remove($item['children']);
+            $out[] = $item;
+        }
+        return $out;
+    };
+
+    if ($enabled) {
+        if ($contains($items)) return;
+        $items[] = ['id'=>'challenge_feed','type'=>'challenge_feed','label'=>'FEED','children'=>[]];
+    } else {
+        $items = $remove($items);
+    }
+    $json = json_encode($items, JSON_UNESCAPED_SLASHES);
+    $pdo->prepare("INSERT INTO snap_settings(setting_key,setting_val) VALUES('nav_menu_json',?)
+        ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$json]);
+    $settings['nav_menu_json'] = $json;
+}
+
 /** The challenge hashtag, normalised (lowercase, no leading '#'). */
 function pc_tag(array $settings): string {
     $t = strtolower(trim((string)($settings['photochallenge_tag'] ?? 'photofri')));
@@ -241,6 +291,15 @@ function pc_ensure_tables(PDO $pdo): void {
             KEY idx_pc_round_finalize(finalized_at,window_end)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS pc_window_notices (
+            actor_url varchar(500) NOT NULL, week_key varchar(12) NOT NULL,
+            object_id varchar(500) NOT NULL, state enum('pending','sent','failed') NOT NULL DEFAULT 'pending',
+            attempted_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, last_error varchar(500) NOT NULL DEFAULT '',
+            UNIQUE KEY uq_pc_window_notice(actor_url(170),week_key),
+            KEY idx_pc_window_notice_state(state,attempted_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
     try {
         $has_boost_id = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
             WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pc_admissions' AND COLUMN_NAME='boost_activity_id' LIMIT 1")->fetchColumn();
@@ -266,6 +325,8 @@ function pc_ensure_tables(PDO $pdo): void {
         submit_start datetime     NOT NULL,
         submit_end   datetime     NOT NULL,
         prompt       varchar(120) NOT NULL,
+        caption      text         NULL,
+        alt          varchar(500) NOT NULL DEFAULT '',
         tag          varchar(120) NOT NULL,
         tag_display  varchar(120) NOT NULL DEFAULT '',
         drop_at      datetime     NOT NULL,
@@ -278,6 +339,10 @@ function pc_ensure_tables(PDO $pdo): void {
         UNIQUE KEY uq_pc_prompt_week(week_key),
         KEY idx_pc_prompt_due(status, drop_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    try {
+        $pdo->exec("ALTER TABLE pc_prompts ADD COLUMN IF NOT EXISTS caption text NULL AFTER prompt");
+        $pdo->exec("ALTER TABLE pc_prompts ADD COLUMN IF NOT EXISTS alt varchar(500) NOT NULL DEFAULT '' AFTER caption");
+    } catch (Throwable $e) {}
 }
 
 function pc_is_blocked(PDO $pdo, string $actor_url): bool {
@@ -362,10 +427,47 @@ function pc_set_horsconcours(PDO $pdo, string $actor_url, bool $on): void {
     } catch (Throwable $e) {}
 }
 
+/**
+ * Privately tell an opted-in participant that a plausible entry was published
+ * after the last round closed. One durable reservation per actor/upcoming round
+ * prevents duplicate DMs when the same object arrives through multiple paths.
+ */
+function pc_notice_closed_window(PDO $pdo, array $settings, array $row, array $win): void {
+    if (!function_exists('sv_send_dm')) return;
+    $published = (string)($row['published'] ?? '');
+    if ($published === '' || $published < (string)$win['end']) return;
+
+    $next_start = (new DateTimeImmutable((string)$win['start'], new DateTimeZone('UTC')))->modify('+7 days');
+    $next_end = $next_start->modify('+50 hours');
+    $week_key = $next_start->modify('+14 hours')->format('o-\\WW');
+    $actor = (string)($row['actor_url'] ?? '');
+    $object_id = (string)($row['object_id'] ?? '');
+    if ($actor === '' || $object_id === '') return;
+
+    try {
+        $reserve = $pdo->prepare("INSERT IGNORE INTO pc_window_notices(actor_url,week_key,object_id) VALUES(?,?,?)");
+        $reserve->execute([$actor,$week_key,$object_id]);
+        if ($reserve->rowCount() !== 1) return;
+
+        $tag = '#' . pc_tag($settings);
+        $body = "This Photo Friday round isn't open, so your post wasn't entered or boosted. "
+              . "Please post again while the round is open: "
+              . $next_start->format('Thursday, M j \\a\\t H:i') . " UTC through "
+              . $next_end->format('Saturday, M j \\a\\t H:i') . " UTC. Use {$tag}.";
+        [$ok,$message] = sv_send_dm($pdo,$settings,$actor,$body);
+        $pdo->prepare("UPDATE pc_window_notices SET state=?,last_error=? WHERE actor_url=? AND week_key=?")
+            ->execute([$ok ? 'sent' : 'failed',$ok ? '' : substr((string)$message,0,500),$actor,$week_key]);
+    } catch (Throwable $e) {
+        try {
+            $pdo->prepare("UPDATE pc_window_notices SET state='failed',last_error=? WHERE actor_url=? AND week_key=?")
+                ->execute([substr($e->getMessage(),0,500),$actor,$week_key]);
+        } catch (Throwable $ignored) {}
+    }
+}
+
 /** Allocate one immutable weekly slot under the participant-row lock. */
 function pc_admit_object(PDO $pdo, array $settings, string $object_id): ?array {
     $win = pc_window($settings);
-    if (!$win['open']) return null;
     $tag = pc_tag($settings);
     $q = $pdo->prepare(
         "SELECT t.*,p.state AS participant_state,p.horsconcours AS participant_hc,p.handle AS participant_handle
@@ -379,12 +481,16 @@ function pc_admit_object(PDO $pdo, array $settings, string $object_id): ?array {
         || !empty($row['in_reply_to']) || (int)($row['sensitive'] ?? 0) !== 0) return null;
     if (!pc_test_allowed($settings, (string)($row['actor_url'] ?? ''), (string)($row['participant_handle'] ?? ''))) return null;
     $published = (string)($row['published'] ?? '');
-    if ($published < $win['start'] || $published >= $win['end']) return null;
     $tags = json_decode((string)($row['tags_json'] ?? '[]'), true) ?: [];
     if (!in_array($tag, $tags, true)) return null;
     $media = json_decode((string)($row['media_json'] ?? '[]'), true) ?: [];
     $videos = json_decode((string)($row['media_video_json'] ?? '[]'), true) ?: [];
     if (count($media) !== 1 || $videos || !is_string($media[0]) || trim($media[0]) === '') return null;
+    if (!$win['open']) {
+        pc_notice_closed_window($pdo,$settings,$row,$win);
+        return null;
+    }
+    if ($published < $win['start'] || $published >= $win['end']) return null;
     $actor = (string)$row['actor_url'];
     $hc = ((int)($row['participant_hc'] ?? 0) === 1 || in_array('horsconcours', $tags, true)) ? 1 : 0;
 
@@ -542,8 +648,9 @@ function pc_cron_maintain(PDO $pdo, array &$settings, int $limit = 25): array {
  * generates the hashtag, and files it against that week's 50-hour window. The
  * card stays hidden until pc_activate_due_prompts() drops it at drop_at.
  *
- * $data: prompt (word), friday (Y-m-d), drop_at (optional datetime-local/SQL,
- *        default = window open), alt (optional card ALT).
+ * $data: prompt (word), caption (optional additional card copy), friday
+ *        (Y-m-d), drop_at (optional datetime-local/SQL, default = window
+ *        open), alt (optional card ALT).
  * $file: one $_FILES entry (the uploaded card).
  *
  * @return array{ok:bool,msg:string,id?:int}
@@ -552,8 +659,16 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
     pc_ensure_tables($pdo);
     $prompt = trim((string)($data['prompt'] ?? ''));
     if ($prompt === '') return ['ok' => false, 'msg' => 'Enter a prompt word.'];
-    $win = pc_window_for_friday((string)($data['friday'] ?? ''));
+    $caption = trim((string)($data['caption'] ?? ''));
+    if (mb_strlen($caption) > 5000) {
+        return ['ok' => false, 'msg' => 'Keep the caption under 5,000 characters.'];
+    }
+    $requested_friday = trim((string)($data['friday'] ?? ''));
+    $win = pc_window_for_friday($requested_friday);
     if ($win === null) return ['ok' => false, 'msg' => 'Pick a valid Photo-Friday date.'];
+    if ($win['friday'] !== $requested_friday) {
+        return ['ok' => false, 'msg' => 'The target challenge date must be a Friday.'];
+    }
 
     $hash = pc_hashtag_from_prompt($prompt, pc_tag_prefix($settings));
 
@@ -572,10 +687,8 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
         return ['ok' => false, 'msg' => 'A prompt is already scheduled for ' . $win['label'] . '. Cancel it first to reschedule.'];
     }
 
-    // Card body: the word, its hashtag, and the challenge link.
-    $base = function_exists('sv_base') ? rtrim((string)sv_base($settings), '/') : '';
-    $body = $prompt . "\n\n#" . $hash['display']
-          . ($base !== '' ? "\n\nPost your photo during the 50-hour Photo-Friday window. " . $base . '/' : '');
+    $alt = trim((string)($data['alt'] ?? ''));
+    $body = pc_prompt_body($settings, $prompt, $caption, $hash['display']);
 
     require_once __DIR__ . '/image-ingest.php';
     $res = snap_ingest_image($pdo, $settings, $file, [
@@ -583,7 +696,7 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
         'status'      => 'draft',                         // hidden until the drop
         'description' => $body,
         'img_date'    => $drop_at,                        // dates the card at its drop moment
-        'alt'         => (string)($data['alt'] ?? ($prompt . ' — Photo-Friday prompt card')),
+        'alt'         => $alt !== '' ? $alt : ($prompt . ' — Photo-Friday prompt card'),
     ]);
     if (empty($res['ok'])) return ['ok' => false, 'msg' => 'Card image: ' . ($res['error'] ?? 'upload failed') . '.'];
     $img_id = (int)$res['id'];
@@ -617,17 +730,71 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
 
     $ins = $pdo->prepare(
         "INSERT INTO pc_prompts
-            (week_key, friday, submit_start, submit_end, prompt, tag, tag_display, drop_at, post_id, image_id, status)
-         VALUES (?,?,?,?,?,?,?,?,?,?,'queued')"
+            (week_key, friday, submit_start, submit_end, prompt, caption, alt, tag, tag_display, drop_at, post_id, image_id, status)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'queued')"
     );
     $ins->execute([$win['week_key'], $win['friday'], $win['start'], $win['end'],
-                   $prompt, $hash['tag'], $hash['display'], $drop_at, $post_id, $img_id]);
+                   $prompt, $caption, $alt, $hash['tag'], $hash['display'], $drop_at, $post_id, $img_id]);
     $id = (int)$pdo->lastInsertId();
 
     pc_refresh_prompt_pointers($pdo, $settings);
     return ['ok' => true, 'id' => $id,
             'msg' => 'Queued “' . $prompt . '” (#' . $hash['display'] . ') for ' . $win['label']
                    . '. Card drops ' . $drop_at . ' UTC.'];
+}
+
+function pc_prompt_body(array $settings, string $prompt, string $caption, string $tag_display): string {
+    $base = function_exists('sv_base') ? rtrim((string)sv_base($settings), '/') : '';
+    return $prompt
+        . ($caption !== '' ? "\n\n" . $caption : '')
+        . "\n\n#" . $tag_display
+        . ($base !== '' ? "\n\nPost your photo during the 50-hour Photo-Friday window. " . $base . '/' : '');
+}
+
+/** Return one editable queued prompt, including its current card filename. */
+function pc_prompt_editable(PDO $pdo, int $id): ?array {
+    pc_ensure_tables($pdo);
+    $q = $pdo->prepare("SELECT p.*, i.img_file FROM pc_prompts p LEFT JOIN snap_images i ON i.id=p.image_id WHERE p.id=? AND p.status='queued' LIMIT 1");
+    $q->execute([$id]);
+    $row = $q->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+
+/** Update queued prompt metadata and both linked ordinary content records. */
+function pc_update_prompt(PDO $pdo, array &$settings, int $id, array $data): array {
+    $existing = pc_prompt_editable($pdo, $id);
+    if (!$existing) return ['ok' => false, 'msg' => 'Only a queued prompt can be edited.'];
+    $prompt = trim((string)($data['prompt'] ?? ''));
+    $caption = trim((string)($data['caption'] ?? ''));
+    $alt = trim((string)($data['alt'] ?? ''));
+    if ($prompt === '') return ['ok' => false, 'msg' => 'Enter a prompt word.'];
+    if (mb_strlen($caption) > 5000) return ['ok' => false, 'msg' => 'Keep the caption under 5,000 characters.'];
+    $requested_friday = trim((string)($data['friday'] ?? ''));
+    $win = pc_window_for_friday($requested_friday);
+    if (!$win || $win['friday'] !== $requested_friday) return ['ok' => false, 'msg' => 'The target challenge date must be a Friday.'];
+    $drop_at = str_replace('T', ' ', trim((string)($data['drop_at'] ?? '')));
+    if ($drop_at === '') $drop_at = $win['start'];
+    if (strlen($drop_at) === 16) $drop_at .= ':00';
+    $dupe = $pdo->prepare("SELECT 1 FROM pc_prompts WHERE week_key=? AND id<>? AND status IN ('queued','live') LIMIT 1");
+    $dupe->execute([$win['week_key'], $id]);
+    if ($dupe->fetchColumn()) return ['ok' => false, 'msg' => 'Another prompt is already scheduled for that Friday.'];
+    $hash = pc_hashtag_from_prompt($prompt, pc_tag_prefix($settings));
+    $body = pc_prompt_body($settings, $prompt, $caption, $hash['display']);
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare("UPDATE pc_prompts SET week_key=?,friday=?,submit_start=?,submit_end=?,prompt=?,caption=?,alt=?,tag=?,tag_display=?,drop_at=? WHERE id=? AND status='queued'")
+            ->execute([$win['week_key'],$win['friday'],$win['start'],$win['end'],$prompt,$caption,$alt,$hash['tag'],$hash['display'],$drop_at,$id]);
+        $pdo->prepare("UPDATE snap_posts SET description=?,created_at=? WHERE id=? AND status='draft'")
+            ->execute([$body,$drop_at,(int)$existing['post_id']]);
+        $pdo->prepare("UPDATE snap_images SET img_title=?,img_description=?,img_alt=?,img_date=? WHERE id=? AND img_status='draft'")
+            ->execute([$prompt,$body,$alt !== '' ? $alt : ($prompt . ' — Photo-Friday prompt card'),$drop_at,(int)$existing['image_id']]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        return ['ok' => false, 'msg' => 'The queued prompt could not be updated.'];
+    }
+    pc_refresh_prompt_pointers($pdo, $settings);
+    return ['ok' => true, 'msg' => 'Queued prompt updated.'];
 }
 
 /** Scheduled + already-dropped prompts, newest first (canceled ones hidden). */

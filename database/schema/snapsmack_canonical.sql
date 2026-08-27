@@ -1450,6 +1450,17 @@ CREATE TABLE IF NOT EXISTS `pc_rounds` (
   KEY `idx_pc_round_finalize` (`finalized_at`,`window_end`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `pc_window_notices` (
+  `actor_url` varchar(500) NOT NULL,
+  `week_key` varchar(12) NOT NULL,
+  `object_id` varchar(500) NOT NULL,
+  `state` enum('pending','sent','failed') NOT NULL DEFAULT 'pending',
+  `attempted_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_error` varchar(500) NOT NULL DEFAULT '',
+  UNIQUE KEY `uq_pc_window_notice` (`actor_url`(170),`week_key`),
+  KEY `idx_pc_window_notice_state` (`state`,`attempted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `pc_blocklist` (
   `kind` enum('actor','domain') COLLATE utf8mb4_unicode_ci NOT NULL,
   `value` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1489,6 +1500,8 @@ CREATE TABLE IF NOT EXISTS `pc_prompts` (
   `submit_start` datetime NOT NULL,
   `submit_end` datetime NOT NULL,
   `prompt` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `caption` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `alt` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `tag` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
   `tag_display` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `drop_at` datetime NOT NULL,

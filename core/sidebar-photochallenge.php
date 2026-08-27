@@ -23,7 +23,10 @@ $_pc_sections = [
         'smack-scripts.php', 'smack-appearance-archive.php',
         'smack-appearance-solo.php', 'smack-appearance-static.php',
     ],
-    'turbo-boost' => ['smack-photochallenge.php'],
+    'turbo-boost' => [
+        'smack-photochallenge.php', 'smack-photochallenge-queue.php',
+        'smack-photochallenge-queued.php',
+    ],
     'boring' => [
         'smack-settings.php', 'smack-users.php', 'smack-2fa.php',
         'smack-maintenance.php', 'smack-fingerprints.php', 'smack-backup.php',
@@ -102,6 +105,8 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                 </button>
                 <ul class="nav-section-links">
                     <li class="<?php echo $_pc_active_class('smack-photochallenge.php'); ?>"><a href="smack-photochallenge.php">Contest &amp; Feed</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-photochallenge-queue.php'); ?>"><a href="smack-photochallenge-queue.php">Queue Contest Post</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-photochallenge-queued.php'); ?>"><a href="smack-photochallenge-queued.php">Queued Posts</a></li>
                 </ul>
             </div>
 

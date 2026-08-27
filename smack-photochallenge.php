@@ -21,6 +21,10 @@ require_once 'core/auth-smack.php';      // session + CSRF autovalidate + login 
 require_once 'core/smackverse.php';      // sv_set_setting, sv_enabled, sv_* helpers
 require_once 'core/photochallenge.php';  // pc_* policy layer
 
+$pc_admin_view = isset($pc_admin_view) && in_array($pc_admin_view, ['dashboard', 'queue', 'queued'], true)
+    ? $pc_admin_view
+    : 'dashboard';
+
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                 ->fetchAll(PDO::FETCH_KEY_PAIR);
 try { pc_ensure_tables($pdo); } catch (Throwable $e) { /* fresh install */ }
@@ -34,11 +38,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
     if ($action === 'queue_prompt') {
         $res = pc_queue_prompt($pdo, $settings, [
             'prompt'  => (string)($_POST['pc_prompt'] ?? ''),
+            'caption' => (string)($_POST['pc_caption'] ?? ''),
+            'alt'     => (string)($_POST['pc_alt'] ?? ''),
             'friday'  => (string)($_POST['pc_friday'] ?? ''),
             'drop_at' => (string)($_POST['pc_drop_at'] ?? ''),
         ], $_FILES['pc_prompt_image'] ?? []);
         $msg_ok = !empty($res['ok']);
         $msg = ($msg_ok ? '' : 'Not queued — ') . $res['msg'];
+
+    } elseif ($action === 'update_prompt') {
+        $res = pc_update_prompt($pdo, $settings, (int)($_POST['prompt_id'] ?? 0), [
+            'prompt'  => (string)($_POST['pc_prompt'] ?? ''),
+            'caption' => (string)($_POST['pc_caption'] ?? ''),
+            'alt'     => (string)($_POST['pc_alt'] ?? ''),
+            'friday'  => (string)($_POST['pc_friday'] ?? ''),
+            'drop_at' => (string)($_POST['pc_drop_at'] ?? ''),
+        ]);
+        $msg_ok = !empty($res['ok']);
+        $msg = ($msg_ok ? '' : 'Not updated — ') . $res['msg'];
 
     } elseif ($action === 'cancel_prompt') {
         $res = pc_cancel_prompt($pdo, $settings, (int)($_POST['prompt_id'] ?? 0));
@@ -58,6 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
         $bw = (string)max(0, (int)($_POST['pc_boost_weight'] ?? 1));
         $wm = (($_POST['pc_window_mode'] ?? 'weekly') === 'daily') ? 'daily' : 'weekly';
         $test_mode  = isset($_POST['pc_test_mode']) ? '1' : '0';
+        $feed_enabled = isset($_POST['pc_feed_enabled']) ? '1' : '0';
+        $feed_layout = (($_POST['pc_feed_layout'] ?? 'three') === 'masonry') ? 'masonry' : 'three';
         $test_allow = trim((string)($_POST['pc_test_allow'] ?? ''));
         sv_set_setting($pdo, $settings, 'photochallenge_tag', $tag);
         sv_set_setting($pdo, $settings, 'photochallenge_tz', $tz);
@@ -65,6 +84,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
         sv_set_setting($pdo, $settings, 'photochallenge_window_mode', $wm);
         sv_set_setting($pdo, $settings, 'photochallenge_test_allow', $test_allow);
         sv_set_setting($pdo, $settings, 'photochallenge_test_mode', $test_mode);
+        sv_set_setting($pdo, $settings, 'photochallenge_feed_enabled', $feed_enabled);
+        sv_set_setting($pdo, $settings, 'photochallenge_feed_layout', $feed_layout);
+        pc_sync_feed_menu($pdo, $settings, $feed_enabled === '1');
         sv_set_setting($pdo, $settings, 'photochallenge_enabled', $enabled);   // flip last
         if ($msg === '') $msg = $enabled === '1' ? 'Photo challenge ON. Settings saved.' : 'Settings saved (challenge OFF).';
         if ($test_mode === '1') $msg .= ' TESTING WHITELIST is ON — only listed handles qualify, and boosts go only to those whitelisted accounts, never your real followers.';
@@ -133,9 +155,32 @@ $_add_days = (5 - (int)$_now_utc->format('N') + 7) % 7;          // 0..6 days to
 $next_friday = $_now_utc->modify("+{$_add_days} days")->format('Y-m-d');
 $_def_win  = pc_window_for_friday($next_friday);
 $def_drop_hint = $_def_win ? $_def_win['start'] . ' UTC' : '';   // shown as the default drop time
+$def_drop_value = $_def_win ? str_replace(' ', 'T', substr((string)$_def_win['start'], 0, 16)) : '';
+$window_start_value = $def_drop_value;
 $prompts   = pc_prompts_list($pdo, 40);
+$queued_prompts = array_values(array_filter($prompts, static fn(array $p): bool => ($p['status'] ?? '') === 'queued'));
+$edit_prompt = null;
+if ($pc_admin_view === 'queue' && (int)($_GET['edit'] ?? 0) > 0) {
+    $edit_prompt = pc_prompt_editable($pdo, (int)$_GET['edit']);
+    if (!$edit_prompt && $msg === '') {
+        $msg_ok = false;
+        $msg = 'That queued prompt is no longer editable.';
+    }
+}
+if ($edit_prompt) {
+    $next_friday = (string)$edit_prompt['friday'];
+    $_def_win = pc_window_for_friday($next_friday);
+    $def_drop_value = str_replace(' ', 'T', substr((string)$edit_prompt['drop_at'], 0, 16));
+    $def_drop_hint = (string)$edit_prompt['drop_at'] . ' UTC';
+    $window_start_value = $_def_win ? str_replace(' ', 'T', substr((string)$_def_win['start'], 0, 16)) : '';
+}
 
-$page_title = 'PHOTO CHALLENGE';
+$pc_page_titles = [
+    'dashboard' => 'PHOTO CHALLENGE',
+    'queue'     => 'QUEUE CONTEST POST',
+    'queued'    => 'QUEUED CONTEST POSTS',
+];
+$page_title = $pc_page_titles[$pc_admin_view];
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -143,7 +188,7 @@ include 'core/sidebar.php';
 <div class="main">
 
     <div class="header-row header-row--ruled">
-        <h2>PHOTO CHALLENGE &mdash; PHOTOFRI.DAY</h2>
+        <h2><?php echo $esc($pc_page_titles[$pc_admin_view]); ?> &mdash; PHOTOFRI.DAY</h2>
     </div>
 
     <?php if ($msg): ?>
@@ -158,6 +203,7 @@ include 'core/sidebar.php';
         </div>
     <?php endif; ?>
 
+    <?php if ($pc_admin_view === 'dashboard'): ?>
     <!-- SWITCH + SETTINGS -->
     <div class="box mb-20">
         <h3>CHALLENGE SWITCH</h3>
@@ -195,6 +241,21 @@ include 'core/sidebar.php';
                 <p class="dim"><strong>Weekly</strong> is the real Photo-Friday cadence. <strong>Daily</strong> is a test/demo
                     mode &mdash; a rolling 24-hour window that is always open, so entries qualify any day. Switch back to
                     weekly before launch.</p>
+            </div>
+
+            <div class="lens-input-wrapper">
+                <label class="pc-inline-check">
+                    <input type="checkbox" name="pc_feed_enabled" value="1" <?php echo pc_feed_enabled($settings) ? 'checked' : ''; ?>>
+                    <span><strong>ENABLE PUBLIC FEED PAGE</strong></span>
+                </label>
+                <p class="dim">Publishes the challenge feed at <code>/board</code>. Menu Manager adds a built-in
+                    <strong>FEED</strong> item to the public navigation; move it there if you want a different position.</p>
+                <label for="pc_feed_layout">FEED LAYOUT</label>
+                <?php $pc_feed_layout = (($settings['photochallenge_feed_layout'] ?? 'three') === 'masonry') ? 'masonry' : 'three'; ?>
+                <select name="pc_feed_layout" id="pc_feed_layout">
+                    <option value="three" <?php echo $pc_feed_layout === 'three' ? 'selected' : ''; ?>>THREE ACROSS</option>
+                    <option value="masonry" <?php echo $pc_feed_layout === 'masonry' ? 'selected' : ''; ?>>MASONRY</option>
+                </select>
             </div>
 
             <div class="lens-input-wrapper">
@@ -238,9 +299,12 @@ include 'core/sidebar.php';
             <button type="submit" class="master-update-btn">SAVE CHALLENGE SETTINGS</button>
         </form>
     </div>
+    <?php endif; ?>
 
+    <?php if ($pc_admin_view === 'queue' || $pc_admin_view === 'queued'): ?>
     <!-- SCHEDULE A PROMPT -->
-    <div class="box mb-20 pc-schedule">
+    <div class="box mb-20 pc-schedule" id="queue-contest-post">
+        <?php if ($pc_admin_view === 'queue'): ?>
         <h3>SCHEDULE A PROMPT</h3>
         <p class="dim mb-20">
             Enter the prompt word, pick the Photo-Friday, and upload the card. The tool builds the hashtag,
@@ -249,46 +313,80 @@ include 'core/sidebar.php';
         </p>
         <form method="post" action="" enctype="multipart/form-data" data-pc-prefix="<?php echo $esc($pc_prefix); ?>">
             <?php csrf_field(); ?>
-            <input type="hidden" name="action" value="queue_prompt">
+            <input type="hidden" name="action" value="<?php echo $edit_prompt ? 'update_prompt' : 'queue_prompt'; ?>">
+            <?php if ($edit_prompt): ?><input type="hidden" name="prompt_id" value="<?php echo (int)$edit_prompt['id']; ?>"><?php endif; ?>
 
             <div class="lens-input-wrapper">
                 <label>PROMPT <span class="dim">(one word)</span></label>
                 <input type="text" name="pc_prompt" id="pc_prompt" maxlength="60" required
-                       autocomplete="off" placeholder="Belonging">
+                       autocomplete="off" placeholder="Belonging" value="<?php echo $esc((string)($edit_prompt['prompt'] ?? '')); ?>">
                 <p class="dim">Hashtag: <span class="pc-hash-preview" id="pc_hash_preview">#<?php echo $esc($pc_prefix); ?>&hellip;</span>
                     &mdash; built for you from the word above.</p>
             </div>
 
-            <div class="lens-input-wrapper">
-                <label>PHOTO-FRIDAY <span class="dim">(the 50-hour submission window)</span></label>
-                <input type="date" name="pc_friday" id="pc_friday" value="<?php echo $esc($next_friday); ?>" required>
-                <p class="dim">Submissions open <strong>Thu 10:00 UTC</strong> and close <strong>Sat 12:00 UTC</strong> that week.</p>
-            </div>
+            <fieldset class="pc-date-plan">
+                <legend>DATES &mdash; THESE CONTROL DIFFERENT THINGS</legend>
+                <div class="pc-date-plan__item">
+                    <label for="pc_window_start"><strong>1. BOOSTING WINDOW STARTS AT</strong> &mdash; DATE AND TIME (UTC)</label>
+                    <input type="datetime-local" id="pc_window_start" value="<?php echo $esc($window_start_value); ?>" required>
+                    <input type="hidden" name="pc_friday" id="pc_friday" value="<?php echo $esc($next_friday); ?>">
+                    <p class="dim" id="pc_friday_hint">Tagged participant posts may be boosted from this displayed
+                        <strong>Thursday at 10:00 UTC</strong> until <strong>Saturday at 12:00 UTC</strong>. Picking another
+                        date visibly snaps this field to the matching challenge opening; the contest Friday is stored automatically.</p>
+                </div>
+                <div class="pc-date-plan__item">
+                    <label for="pc_drop_at"><strong>2. PROMPT POST</strong> &mdash; CHOOSE WHEN THE CARD PUBLISHES</label>
+                    <input type="datetime-local" name="pc_drop_at" id="pc_drop_at" value="<?php echo $esc($def_drop_value); ?>">
+                    <p class="dim">This schedules only the prompt card. It does <strong>not</strong> change the boosting window.
+                        Times are UTC. Default: <span id="pc_drop_hint"><?php echo $esc($def_drop_hint); ?></span>.</p>
+                </div>
+            </fieldset>
 
             <div class="lens-input-wrapper">
                 <label>CARD IMAGE</label>
-                <input type="file" name="pc_prompt_image" accept="image/jpeg,image/png,image/webp,image/gif" required>
+                <?php if ($edit_prompt): ?>
+                    <div class="pc-file-picker">
+                        <a class="pc-file-picker__button" href="smack-swap.php?id=<?php echo (int)$edit_prompt['image_id']; ?>">REPLACE IMAGE</a>
+                        <span class="pc-file-picker__name"><?php echo $esc(basename((string)($edit_prompt['img_file'] ?? 'Current prompt card'))); ?></span>
+                    </div>
+                <?php else: ?>
+                <div class="pc-file-picker">
+                    <label class="pc-file-picker__button" for="pc_prompt_image">CHOOSE FILE</label>
+                    <span class="pc-file-picker__name" id="pc_prompt_image_name">No file chosen</span>
+                    <input type="file" name="pc_prompt_image" id="pc_prompt_image"
+                           class="file-input-hidden" accept="image/jpeg,image/png,image/webp,image/gif" required>
+                </div>
+                <?php endif; ?>
                 <p class="dim">The prompt card people see when it drops. JPG, PNG, WEBP or GIF.</p>
             </div>
 
             <div class="lens-input-wrapper">
-                <label>DROPS AT <span class="dim">(when the card posts &amp; the hashtag goes live)</span></label>
-                <input type="datetime-local" name="pc_drop_at" id="pc_drop_at">
-                <p class="dim">Times are <strong>UTC</strong>. Leave blank to drop when the window opens
-                    (<span id="pc_drop_hint"><?php echo $esc($def_drop_hint); ?></span>), or set an earlier time to give a heads-up.</p>
+                <label>CAPTION <span class="dim">(optional additional information)</span></label>
+                <textarea name="pc_caption" id="pc_caption" rows="5" maxlength="5000"
+                          placeholder="Add context, instructions, credit, or anything else that should appear with the prompt card."><?php echo $esc((string)($edit_prompt['caption'] ?? '')); ?></textarea>
+                <p class="dim">Published with the card. The prompt hashtag and participation link are added automatically.</p>
             </div>
 
-            <button type="submit" class="master-update-btn">QUEUE PROMPT</button>
-        </form>
+            <div class="lens-input-wrapper">
+                <label>ALT TEXT <span class="dim">(accessibility description)</span></label>
+                <input type="text" name="pc_alt" id="pc_alt" maxlength="500"
+                       placeholder="Describe what is visible in the prompt card." value="<?php echo $esc((string)($edit_prompt['alt'] ?? '')); ?>">
+            </div>
 
-        <?php if ($prompts): ?>
-            <h4 class="pc-sched-sub">SCHEDULED &amp; DROPPED</h4>
+            <button type="submit" class="master-update-btn"><?php echo $edit_prompt ? 'SAVE QUEUED POST' : 'QUEUE PROMPT'; ?></button>
+        </form>
+        <?php endif; ?>
+
+        <?php if ($pc_admin_view === 'queued'): ?>
+        <section id="queued-contest-posts" aria-labelledby="queued-contest-posts-title">
+            <h3 id="queued-contest-posts-title">QUEUED POSTS</h3>
+        <?php if ($queued_prompts): ?>
             <table class="pc-sched-list dim">
                 <thead>
                     <tr><th>Photo-Friday</th><th>Prompt</th><th>Hashtag</th><th>Drops (UTC)</th><th>Status</th><th></th></tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($prompts as $p):
+                    <?php foreach ($queued_prompts as $p):
                         $st = (string)$p['status'];
                         $st_label = $st === 'queued' ? 'QUEUED' : ($st === 'live' ? 'LIVE' : 'DONE'); ?>
                         <tr>
@@ -299,7 +397,9 @@ include 'core/sidebar.php';
                             <td><span class="pc-badge pc-badge--<?php echo $esc($st); ?>"><?php echo $st_label; ?></span></td>
                             <td class="pc-sched-act">
                                 <?php if ($st === 'queued'): ?>
+                                    <a class="btn-smack" href="smack-photochallenge-queue.php?edit=<?php echo (int)$p['id']; ?>">EDIT</a>
                                     <form method="post" action="" onsubmit="return confirm('Unschedule this prompt? Its card stays as a hidden draft.');">
+                                        <?php csrf_field(); ?>
                                         <input type="hidden" name="action" value="cancel_prompt">
                                         <input type="hidden" name="prompt_id" value="<?php echo (int)$p['id']; ?>">
                                         <button type="submit" class="btn-smack">CANCEL</button>
@@ -310,9 +410,15 @@ include 'core/sidebar.php';
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        <?php else: ?>
+            <p class="dim"><em>No contest posts are queued yet.</em></p>
+        <?php endif; ?>
+        </section>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
 
+    <?php if ($pc_admin_view === 'dashboard'): ?>
     <!-- LIVE STATE -->
     <div class="box mb-20">
         <h3>THIS WINDOW &mdash; <?php echo $esc($win['label']); ?>
@@ -463,10 +569,13 @@ include 'core/sidebar.php';
             </table>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
 
 </div>
 
+<?php if ($pc_admin_view === 'queue'): ?>
 <script src="assets/js/smack-prompt-schedule.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+<?php endif; ?>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

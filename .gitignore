@@ -217,6 +217,7 @@ _to_delete/
 .codex-worktrees/
 tempwork/
 tmp/
+.python-build/
 
 # Working documents kept beside the repo but not part of it — same reasoning as
 # the named .docx specs above. Binary, they churn, and they are not source.

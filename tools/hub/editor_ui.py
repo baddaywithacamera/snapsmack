@@ -13,6 +13,8 @@ from PIL import Image, ImageDraw, ImageOps, ImageTk
 
 import editor_engine
 import photo_manager
+import help_ui
+import built_in_lewks
 
 
 BG, PANEL, FIELD, BORDER = "#080808", "#111111", "#1c1c1c", "#292929"
@@ -25,15 +27,24 @@ class EditorWindow(tk.Toplevel):
     recipe_clipboard = None
 
     def __init__(self, parent, row, rows, on_select=None, on_refresh=None,
-                 copyright_text=None, batch_rows=None):
+                 copyright_text=None, strip_gps=None, recovery_dir=None, build_version=None,
+                 batch_rows=None, saved_images_dir=None, projects_dir=None):
         super().__init__(parent)
         self.row = row
         self.rows = rows
         self.on_select = on_select
         self.on_refresh = on_refresh
         self.copyright_text = copyright_text or (lambda: "")
+        self.strip_gps = strip_gps or (lambda: False)
+        self.recovery_dir = recovery_dir
+        self.build_version = build_version
+        self.saved_images_dir = saved_images_dir or (lambda: "")
+        self.projects_dir = projects_dir or (lambda: "")
+        self._recovery_jobs = {}
+        self.bind("<F1>", lambda _event: help_ui.open_help(
+            self, "Editor", self.build_version))
         self.batch_rows = list(batch_rows or [row])
-        self.document = editor_engine.EditorDocument(row["path"])
+        self.document = self._recover_or_create_document(row["path"])
         self.documents = {os.path.abspath(row["path"]): self.document}
         self.zoom = 0.0
         self.pan_x = self.pan_y = 0
@@ -60,6 +71,79 @@ class EditorWindow(tk.Toplevel):
         self._load_document_controls()
         self.after(100, self.fit_image)
 
+    def _recovery_path(self, source_path):
+        if not self.recovery_dir:
+            return None
+        return photo_manager.recovery_path(self.recovery_dir, source_path)
+
+    def _attach_recovery(self, document):
+        document.on_change = self._schedule_recovery
+        return document
+
+    def _recover_or_create_document(self, source_path):
+        recovery = self._recovery_path(source_path)
+        if recovery and os.path.isfile(recovery):
+            try:
+                recovered = editor_engine.EditorDocument.load_project(recovery)
+                if not photo_manager.same_file(recovered.source_path, source_path):
+                    raise ValueError("Recovery file belongs to a different photograph")
+            except Exception as exc:
+                quarantined = photo_manager.unique_path(recovery + ".broken")
+                try:
+                    os.replace(recovery, quarantined)
+                    location = f"It was preserved for inspection at:\n{quarantined}"
+                except OSError:
+                    location = f"It remains at:\n{recovery}"
+                messagebox.showerror(
+                    "Recovery file could not be opened",
+                    f"{exc}\n\n{location}", parent=self)
+            else:
+                if messagebox.askyesno(
+                        "Recover unsaved edits?",
+                        "SNAP SLAPPER found editing work that was not saved before the last "
+                        "session ended. Recover it?",
+                        parent=self, icon="warning"):
+                    return self._attach_recovery(recovered)
+                try:
+                    os.remove(recovery)
+                except OSError as exc:
+                    messagebox.showerror("Recovery file could not be discarded", str(exc),
+                                         parent=self)
+        return self._attach_recovery(editor_engine.EditorDocument(source_path))
+
+    def _schedule_recovery(self, document):
+        recovery = self._recovery_path(document.source_path)
+        if not recovery:
+            return
+        old_job = self._recovery_jobs.pop(recovery, None)
+        if old_job:
+            self.after_cancel(old_job)
+        self._recovery_jobs[recovery] = self.after(
+            300, lambda d=document, p=recovery: self._write_recovery(d, p))
+
+    def _write_recovery(self, document, recovery):
+        self._recovery_jobs.pop(recovery, None)
+        try:
+            if document.is_dirty():
+                document.save_recovery(recovery)
+            elif os.path.isfile(recovery):
+                os.remove(recovery)
+        except Exception as exc:
+            self.status_label.configure(text=f"Recovery save failed: {exc}")
+
+    def _discard_recovery(self, document):
+        recovery = self._recovery_path(document.source_path)
+        if not recovery:
+            return
+        job = self._recovery_jobs.pop(recovery, None)
+        if job:
+            self.after_cancel(job)
+        try:
+            if os.path.isfile(recovery):
+                os.remove(recovery)
+        except OSError:
+            pass
+
     @staticmethod
     def _button(parent, text, command, accent=False):
         button = tk.Button(parent, text=text, command=command,
@@ -78,7 +162,9 @@ class EditorWindow(tk.Toplevel):
         for text, command in (("OPEN PROJECT", self.open_project), ("SAVE PROJECT", self.save_project), ("EXPORT", self.export),
                               ("UNDO", self.undo), ("REDO", self.redo),
                               ("COMPARE", self.cycle_compare), ("FIT", self.fit_image),
-                              ("100%", self.actual_size)):
+                              ("100%", self.actual_size),
+                              ("HELP", lambda: help_ui.open_help(
+                                  self, "Editor", self.build_version))):
             self._button(top, text, command, accent=text == "EXPORT").pack(side="right", padx=(0, 5), pady=5, ipadx=5, ipady=3)
         self._button(top, "←", lambda: self.open_relative(-1)).pack(side="left", padx=(10, 2), pady=5, ipadx=6, ipady=3)
         self._button(top, "→", lambda: self.open_relative(1)).pack(side="left", pady=5, ipadx=6, ipady=3)
@@ -318,7 +404,9 @@ class EditorWindow(tk.Toplevel):
         self._button(panel, "LAYER STYLES…", self.layer_styles).pack(fill="x", padx=8, pady=(0, 8), ipady=3)
 
     def _build_presets(self):
-        panel = self.accordion("PRESETS + BATCH", False)
+        panel = self.accordion("LEWKS + BATCH", False)
+        self._button(panel, "BROWSE STOCK LEWKS…", self.browse_stock_lewks, True).pack(
+            fill="x", padx=8, pady=(5, 2), ipady=4)
         for text, command in (("COPY ADJUSTMENTS", self.copy_adjustments),
                               ("PASTE ADJUSTMENTS", self.paste_adjustments),
                               ("SAVE PRESET…", self.save_preset), ("LOAD PRESET…", self.load_preset),
@@ -326,6 +414,68 @@ class EditorWindow(tk.Toplevel):
             self._button(panel, text, command).pack(fill="x", padx=8, pady=(4, 0), ipady=3)
         tk.Label(panel, text="Batch export always creates new JPEG copies.", bg=PANEL, fg=DIM,
                  wraplength=270, justify="left", font=("Segoe UI", 8)).pack(anchor="w", padx=8, pady=8)
+
+    def browse_stock_lewks(self):
+        window = tk.Toplevel(self)
+        window.title("SNAP SLAPPER — Stock LEWKS")
+        window.configure(bg=BG)
+        window.geometry("720x520")
+        window.transient(self)
+        window.grab_set()
+        lewks = built_in_lewks.all_lewks()
+        left = tk.Frame(window, bg=PANEL, width=300)
+        left.pack(side="left", fill="both", padx=(12, 6), pady=12)
+        right = tk.Frame(window, bg=PANEL)
+        right.pack(side="right", fill="both", expand=True, padx=(6, 12), pady=12)
+        listing = tk.Listbox(left, bg="#0b0b0b", fg=INK, selectbackground=ACCENT,
+                             selectforeground=BG, relief="flat", font=("Segoe UI", 10), width=30)
+        listing.pack(fill="both", expand=True, padx=8, pady=8)
+        for item in lewks:
+            listing.insert("end", item["name"])
+        name_var, category_var, description_var = tk.StringVar(), tk.StringVar(), tk.StringVar()
+        tk.Label(right, textvariable=name_var, bg=PANEL, fg=ACCENT,
+                 font=("Segoe UI Black", 18, "bold"), wraplength=360,
+                 justify="left").pack(anchor="w", padx=16, pady=(22, 4))
+        tk.Label(right, textvariable=category_var, bg=PANEL, fg=DIM,
+                 font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=16)
+        tk.Label(right, textvariable=description_var, bg=PANEL, fg=INK,
+                 font=("Segoe UI", 11), wraplength=360, justify="left").pack(
+                     anchor="w", padx=16, pady=(20, 24))
+        strength = tk.IntVar(value=100)
+        tk.Label(right, text="OVERALL STRENGTH", bg=PANEL, fg=DIM,
+                 font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=16)
+        tk.Scale(right, from_=0, to=100, variable=strength, orient="horizontal",
+                 bg=PANEL, fg=INK, troughcolor=FIELD, activebackground=ACCENT,
+                 highlightthickness=0).pack(fill="x", padx=12)
+
+        def selected():
+            choice = listing.curselection()
+            return lewks[choice[0]] if choice else None
+
+        def describe(_event=None):
+            item = selected()
+            if item:
+                name_var.set(item["name"])
+                category_var.set(item["category"].upper())
+                description_var.set(item["description"])
+
+        def apply():
+            item = selected()
+            if not item:
+                return
+            self.document.apply_recipe(built_in_lewks.recipe(item["id"], strength.get()))
+            self._load_document_controls()
+            self.status_label.configure(text=f"LEWK applied: {item['name']} · {strength.get()}%")
+            window.destroy()
+
+        listing.bind("<<ListboxSelect>>", describe)
+        listing.selection_set(0)
+        describe()
+        buttons = tk.Frame(right, bg=PANEL)
+        buttons.pack(side="bottom", fill="x", padx=16, pady=16)
+        self._button(buttons, "CANCEL", window.destroy).pack(side="left", fill="x", expand=True)
+        self._button(buttons, "APPLY LEWK", apply, True).pack(
+            side="right", fill="x", expand=True, padx=(8, 0))
 
     def _build_history(self):
         panel = self.accordion("HISTORY", False)
@@ -837,13 +987,21 @@ class EditorWindow(tk.Toplevel):
         path = filedialog.asksaveasfilename(title="Save preset", parent=self, defaultextension=".slaprecipe",
                                             filetypes=[("SNAP SLAPPER recipe", "*.slaprecipe")])
         if path:
-            editor_engine.save_recipe(path, self.document.recipe())
+            try:
+                editor_engine.save_recipe(path, self.document.recipe())
+                self.status_label.configure(text=f"Preset saved: {path}")
+            except Exception as exc:
+                messagebox.showerror("Preset could not be saved", str(exc), parent=self)
 
     def load_preset(self):
         path = filedialog.askopenfilename(title="Load preset", parent=self,
                                           filetypes=[("SNAP SLAPPER recipe", "*.slaprecipe"), ("All files", "*.*")])
         if path:
-            self.document.apply_recipe(editor_engine.load_recipe(path)); self._load_document_controls()
+            try:
+                self.document.apply_recipe(editor_engine.load_recipe(path))
+                self._load_document_controls()
+            except Exception as exc:
+                messagebox.showerror("Preset could not be opened", str(exc), parent=self)
 
     def batch_apply(self):
         paths = [row["path"] for row in self.batch_rows if os.path.isfile(row.get("path", ""))]
@@ -853,7 +1011,8 @@ class EditorWindow(tk.Toplevel):
         if destination and messagebox.askyesno("Batch apply", f"Create edited JPEG copies for {len(paths):,} visible photo(s)?", parent=self):
             try:
                 outputs = editor_engine.batch_apply(paths, self.document.recipe(), destination,
-                                                    copyright_text=self.copyright_text())
+                                                    copyright_text=self.copyright_text(),
+                                                    strip_gps=self.strip_gps())
                 messagebox.showinfo("Batch complete", f"Created {len(outputs):,} edited copies.", parent=self)
             except Exception as exc:
                 messagebox.showerror("Batch failed", str(exc), parent=self)
@@ -891,6 +1050,8 @@ class EditorWindow(tk.Toplevel):
                 "Choose No, then save each editable project. Choose Yes only to discard them.",
                 parent=self, icon="warning"):
             return
+        for document in self.documents.values():
+            self._discard_recovery(document)
         self.destroy()
 
     def restore_history(self, _event=None):
@@ -902,16 +1063,22 @@ class EditorWindow(tk.Toplevel):
             return
         self.document.history_index = index
         self.document.restore(self.document.history[index]["state"])
+        self.document.notify_change()
         self._load_document_controls()
 
     def save_project(self):
         path = self.document.project_path or filedialog.asksaveasfilename(
             title="Save SNAP SLAPPER project", parent=self, defaultextension=".slapper",
+            initialdir=self.projects_dir() or None,
             filetypes=[("SNAP SLAPPER project", "*.slapper")])
         if path:
-            self.document.save_project(path)
-            self.update_document_title()
-            self.status_label.configure(text=f"Saved {path}")
+            try:
+                self.document.save_project(path)
+                self._discard_recovery(self.document)
+                self.update_document_title()
+                self.status_label.configure(text=f"Saved {path}")
+            except Exception as exc:
+                messagebox.showerror("Project could not be saved", str(exc), parent=self)
 
     def open_project(self):
         path = filedialog.askopenfilename(title="Open SNAP SLAPPER project", parent=self,
@@ -921,6 +1088,7 @@ class EditorWindow(tk.Toplevel):
             return
         try:
             self.document = editor_engine.EditorDocument.load_project(path)
+            self._attach_recovery(self.document)
             self.documents[os.path.abspath(self.document.source_path)] = self.document
             self.row = {"path": self.document.source_path,
                         "title": os.path.splitext(os.path.basename(self.document.source_path))[0],
@@ -932,12 +1100,14 @@ class EditorWindow(tk.Toplevel):
     def export(self):
         source = self.document.source_path
         path = filedialog.asksaveasfilename(title="Export edited photograph", parent=self,
+                                            initialdir=self.saved_images_dir() or None,
                                             initialfile=os.path.splitext(os.path.basename(source))[0] + "_edited.jpg",
                                             defaultextension=".jpg",
                                             filetypes=[("JPEG", "*.jpg"), ("PNG", "*.png"), ("TIFF", "*.tif")])
         if path:
             try:
-                self.document.export(path, copyright_text=self.copyright_text())
+                self.document.export(path, copyright_text=self.copyright_text(),
+                                     strip_gps=self.strip_gps())
                 messagebox.showinfo("Export complete", path, parent=self)
                 if self.on_refresh: self.on_refresh()
             except Exception as exc:
@@ -967,7 +1137,7 @@ class EditorWindow(tk.Toplevel):
         self.row = row
         key = os.path.abspath(row["path"])
         if key not in self.documents:
-            self.documents[key] = editor_engine.EditorDocument(key)
+            self.documents[key] = self._recover_or_create_document(key)
         self.document = self.documents[key]
         self.fit_image(); self._render_filmstrip(); self._load_document_controls()
         if self.on_select: self.on_select(row)

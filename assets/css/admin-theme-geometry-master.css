@@ -1265,6 +1265,81 @@ button:active,
     z-index: 1;
 }
 
+/* Challenge composer: a standalone button beside the filename field. */
+.pc-file-picker {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-auto-rows: 52px;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.pc-file-picker__button,
+.pc-file-picker__name {
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    border-radius: 4px;
+    font-family: inherit;
+}
+
+.pc-file-picker__button {
+    margin: 0;
+    padding: 0 22px;
+    border: 1px solid var(--accent, #a0ff90);
+    background: var(--accent, #a0ff90);
+    color: #050505;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.pc-file-picker__button:hover,
+.pc-file-picker__button:focus-visible {
+    filter: brightness(1.15);
+    outline: 2px solid color-mix(in srgb, var(--accent, currentColor) 45%, transparent);
+    outline-offset: 2px;
+}
+
+.pc-file-picker__name {
+    min-width: 0;
+    padding: 0 15px;
+    border: 1px solid color-mix(in srgb, var(--accent, currentColor) 30%, #1a1a1a);
+    background: #050505;
+    color: inherit;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pc-date-plan {
+    margin: 0 0 28px;
+    padding: 18px;
+    border: 1px solid color-mix(in srgb, var(--accent, currentColor) 45%, #1a1a1a);
+    border-radius: 4px;
+}
+
+.pc-date-plan legend {
+    padding: 0 8px;
+    color: var(--accent, currentColor);
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+}
+
+.pc-date-plan__item + .pc-date-plan__item {
+    margin-top: 22px;
+    padding-top: 22px;
+    border-top: 1px solid color-mix(in srgb, var(--accent, currentColor) 20%, #1a1a1a);
+}
+
+.pc-date-plan__item > label {
+    display: block;
+    margin-bottom: 8px;
+}
+
 .progress-container {
     width: 100%;
     height: 20px;

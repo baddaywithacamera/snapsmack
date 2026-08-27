@@ -25,13 +25,13 @@ $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
 
 $esc = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 
-if (!pc_enabled($settings)) {
+if (!pc_enabled($settings) || !pc_feed_enabled($settings)) {
     http_response_code(404);
     header('Content-Type: text/html; charset=utf-8');
     echo '<!doctype html><meta charset="utf-8"><title>Not found</title>'
        . '<body style="background:#111;color:#f4f4f4;font-family:Georgia,serif;text-align:center;padding:80px 20px;">'
        . '<h1 style="font-family:Arial Black,sans-serif;color:#D40000;">404</h1>'
-       . '<p>No photo challenge runs here.</p></body>';
+       . '<p>The challenge feed is not available.</p></body>';
     exit;
 }
 
@@ -42,6 +42,7 @@ $site = rtrim(sv_base($settings), '/');
 $hof_url = $site . '/photochallenge-hof.php';
 $state   = $win['open'] ? 'OPEN' : 'CLOSED';
 $title   = 'PHOTO FRIDAY — ' . $win['label'];
+$feed_layout = (($settings['photochallenge_feed_layout'] ?? 'three') === 'masonry') ? 'masonry' : 'three';
 ?><!DOCTYPE html>
 <html lang="en">
 <head>
@@ -139,6 +140,7 @@ $title   = 'PHOTO FRIDAY — ' . $win['label'];
   footer a { color:var(--link); text-decoration:none; }
   footer a:hover { text-decoration:underline; }
 </style>
+<link rel="stylesheet" href="<?php echo $esc($site); ?>/assets/css/photochallenge-board-layouts.css?v=<?php echo $esc(defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1'); ?>">
 </head>
 <body>
 
@@ -165,7 +167,7 @@ $title   = 'PHOTO FRIDAY — ' . $win['label'];
         and follow this challenge to join the board.
       </p>
     <?php else: ?>
-      <div class="grid">
+      <div class="grid grid--<?php echo $esc($feed_layout); ?>">
         <?php foreach ($rows as $r):
             $rank = (int)($r['rank'] ?? 0);
             $rankClass = $rank === 1 ? 'gold' : ($rank === 2 ? 'silver' : ($rank === 3 ? 'bronze' : ''));

@@ -10,6 +10,8 @@ import json
 import math
 import os
 import time
+import tempfile
+import zipfile
 
 from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
@@ -17,6 +19,12 @@ import photo_manager
 
 
 PROJECT_VERSION = 1
+MAX_PROJECT_BYTES = 512 * 1024 * 1024
+MAX_PROJECT_LAYERS = 500
+MAX_RETOUCH_POINTS = 100000
+MAX_ENCODED_MASK_BYTES = 128 * 1024 * 1024
+PROJECT_DOCUMENT_NAME = "project.json"
+PROJECT_README_NAME = "README.txt"
 DEFAULT_ADJUSTMENTS = {
     "exposure": 0.0, "brightness": 0.0, "contrast": 0.0,
     "highlights": 0.0, "shadows": 0.0, "whites": 0.0, "blacks": 0.0,
@@ -44,6 +52,54 @@ def _mask_from_text(value):
     if not value:
         return None
     return Image.open(io.BytesIO(base64.b64decode(value))).convert("L")
+
+
+def _write_project_archive(path, value):
+    """Atomically publish an ordinary ZIP container with a .slapper extension."""
+    target = os.path.abspath(path)
+    directory = os.path.dirname(target)
+    os.makedirs(directory, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=".snap-project-", suffix=".tmp",
+                                             dir=directory)
+    os.close(descriptor)
+    document = json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode("utf-8")
+    readme = ("SNAP SLAPPER project archive\n\n"
+              "Rename this file from .slapper to .zip to inspect it with any ZIP tool.\n"
+              "project.json contains the versioned, human-readable editing document.\n"
+              "The original photograph is referenced, not imprisoned inside this archive.\n")
+    try:
+        with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED,
+                             allowZip64=True) as archive:
+            archive.writestr(PROJECT_DOCUMENT_NAME, document)
+            archive.writestr(PROJECT_README_NAME, readme)
+        photo_manager.fsync_file(temporary)
+        os.replace(temporary, target)
+    except Exception:
+        try:
+            os.remove(temporary)
+        except OSError:
+            pass
+        raise
+
+
+def _read_project_document(path):
+    """Read the ZIP container, retaining compatibility with legacy bare JSON projects."""
+    if zipfile.is_zipfile(path):
+        try:
+            with zipfile.ZipFile(path, "r") as archive:
+                try:
+                    info = archive.getinfo(PROJECT_DOCUMENT_NAME)
+                except KeyError as exc:
+                    raise ValueError("Invalid SNAP SLAPPER project: project.json is missing") from exc
+                if info.file_size > MAX_PROJECT_BYTES:
+                    raise ValueError("SNAP SLAPPER project document is too large to open safely")
+                raw = archive.read(info)
+            return json.loads(raw.decode("utf-8"),
+                              parse_constant=photo_manager.reject_json_constant)
+        except zipfile.BadZipFile as exc:
+            raise ValueError("Invalid SNAP SLAPPER project archive") from exc
+    with open(path, "r", encoding="utf-8") as handle:
+        return json.load(handle, parse_constant=photo_manager.reject_json_constant)
 
 
 def _curve_lut(points):
@@ -240,8 +296,13 @@ class EditorDocument:
         self.history = []
         self.history_index = -1
         self.project_path = None
+        self.on_change = None
         self.record("Open image")
         self.saved_snapshot = self.snapshot()
+
+    def notify_change(self):
+        if self.on_change:
+            self.on_change(self)
 
     def snapshot(self):
         return {"adjustments": copy.deepcopy(self.adjustments),
@@ -262,12 +323,14 @@ class EditorDocument:
         if len(self.history) > 100:
             self.history.pop(0)
             self.history_index -= 1
+        self.notify_change()
 
     def undo(self):
         if self.history_index <= 0:
             return False
         self.history_index -= 1
         self.restore(self.history[self.history_index]["state"])
+        self.notify_change()
         return True
 
     def redo(self):
@@ -275,6 +338,7 @@ class EditorDocument:
             return False
         self.history_index += 1
         self.restore(self.history[self.history_index]["state"])
+        self.notify_change()
         return True
 
     def is_dirty(self):
@@ -344,7 +408,8 @@ class EditorDocument:
             else:
                 path = layer.get("path", "")
                 if not os.path.isfile(path):
-                    continue
+                    name = layer.get("name") or os.path.basename(path) or "unnamed layer"
+                    raise FileNotFoundError(f'Image layer "{name}" is missing: {path}')
                 with Image.open(path) as source_layer:
                     top = ImageOps.exif_transpose(source_layer).convert("RGBA")
                 if max_size:
@@ -364,69 +429,126 @@ class EditorDocument:
         return {"red": red.histogram(), "green": green.histogram(), "blue": blue.histogram(),
                 "luminance": ImageOps.grayscale(image).histogram()}
 
-    def save_project(self, path):
+    def project_value(self, recovery=False):
         value = {"version": PROJECT_VERSION, "source_path": self.source_path,
                  "adjustments": self.adjustments, "geometry": self.geometry,
                  "layers": self.layers, "retouched": self.retouched}
-        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-        temporary = path + ".tmp"
-        with open(temporary, "w", encoding="utf-8") as handle:
-            json.dump(value, handle, indent=2)
-        os.replace(temporary, path)
+        if recovery:
+            value["recovery"] = True
+            value["project_path"] = self.project_path
+        return value
+
+    def save_project(self, path):
+        if photo_manager.same_file(path, self.source_path):
+            raise ValueError("SNAP SLAPPER will not overwrite the original photograph with a project.")
+        value = self.project_value()
+        _write_project_archive(path, value)
         self.project_path = path
         self.mark_saved()
 
+    def save_recovery(self, path):
+        if photo_manager.same_file(path, self.source_path):
+            raise ValueError("Recovery path resolves to the original photograph.")
+        _write_project_archive(path, self.project_value(recovery=True))
+
     @classmethod
     def load_project(cls, path):
-        with open(path, "r", encoding="utf-8") as handle:
-            value = json.load(handle)
+        if os.path.getsize(path) > MAX_PROJECT_BYTES:
+            raise ValueError("SNAP SLAPPER project is too large to open safely")
+        value = _read_project_document(path)
+        if not isinstance(value, dict):
+            raise ValueError("Invalid SNAP SLAPPER project: the root must be an object")
         if value.get("version") != PROJECT_VERSION:
             raise ValueError("Unsupported SNAP SLAPPER project version")
-        document = cls(value["source_path"])
+        source_path = value.get("source_path")
+        if not isinstance(source_path, str) or not source_path.strip():
+            raise ValueError("Invalid SNAP SLAPPER project: source_path is missing")
+        if not os.path.isfile(source_path):
+            raise FileNotFoundError(f"The project's original photograph is missing: {source_path}")
+        if os.path.splitext(source_path)[1].lower() in photo_manager.RAW_EXTENSIONS:
+            raise ValueError("This project references a RAW photograph. Open the original with "
+                             "RawTherapee or darktable.")
+        expected_types = {"adjustments": dict, "geometry": dict,
+                          "layers": list, "retouched": list}
+        for field, expected in expected_types.items():
+            if field in value and not isinstance(value[field], expected):
+                raise ValueError(f"Invalid SNAP SLAPPER project: {field} has the wrong type")
+        layers = value.get("layers", [])
+        retouched = value.get("retouched", [])
+        if len(layers) > MAX_PROJECT_LAYERS:
+            raise ValueError("Invalid SNAP SLAPPER project: too many layers")
+        if len(retouched) > MAX_RETOUCH_POINTS:
+            raise ValueError("Invalid SNAP SLAPPER project: too many retouch points")
+        for index, layer in enumerate(layers):
+            if not isinstance(layer, dict):
+                raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} is not an object")
+            mask = layer.get("mask", "")
+            if not isinstance(mask, str) or len(mask) > MAX_ENCODED_MASK_BYTES:
+                raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} mask is invalid")
+        document = cls(source_path)
         document.adjustments = value.get("adjustments", copy.deepcopy(DEFAULT_ADJUSTMENTS))
         document.geometry = value.get("geometry", document.geometry)
-        document.layers = value.get("layers", [])
-        document.retouched = value.get("retouched", [])
+        document.layers = layers
+        document.retouched = retouched
         document.history = []
         document.history_index = -1
-        document.project_path = path
+        if value.get("recovery"):
+            project_path = value.get("project_path")
+            document.project_path = project_path if isinstance(project_path, str) else None
+            document.saved_snapshot = None
+        else:
+            document.project_path = path
         document.record("Open project")
-        document.mark_saved()
+        if not value.get("recovery"):
+            document.mark_saved()
         return document
 
-    def export(self, path, quality=95, copyright_text=""):
+    def export(self, path, quality=95, copyright_text="", strip_gps=False):
         output = self.render()
         extension = os.path.splitext(path)[1].lower()
         options = {"quality": quality, "optimize": True} if extension in {".jpg", ".jpeg", ".webp"} else {}
         photo_manager.save_with_metadata(output, path, self.source_path,
-                                         copyright_text, **options)
+                                         copyright_text, strip_gps=strip_gps, **options)
 
     def recipe(self):
         return {"version": PROJECT_VERSION, "adjustments": copy.deepcopy(self.adjustments),
                 "layers": [copy.deepcopy(layer) for layer in self.layers if layer.get("type") == "adjustment"]}
 
     def apply_recipe(self, recipe):
+        if not isinstance(recipe, dict):
+            raise ValueError("Invalid SNAP SLAPPER recipe: the root must be an object")
         if recipe.get("version") != PROJECT_VERSION:
             raise ValueError("Unsupported recipe version")
-        self.adjustments = copy.deepcopy(recipe.get("adjustments", DEFAULT_ADJUSTMENTS))
-        self.layers.extend(copy.deepcopy(recipe.get("layers", [])))
+        adjustments = recipe.get("adjustments", DEFAULT_ADJUSTMENTS)
+        layers = recipe.get("layers", [])
+        if not isinstance(adjustments, dict) or not isinstance(layers, list):
+            raise ValueError("Invalid SNAP SLAPPER recipe contents")
+        if len(layers) > MAX_PROJECT_LAYERS:
+            raise ValueError("Invalid SNAP SLAPPER recipe: too many layers")
+        for index, layer in enumerate(layers):
+            if not isinstance(layer, dict) or layer.get("type") != "adjustment":
+                raise ValueError(f"Invalid SNAP SLAPPER recipe: layer {index + 1} is invalid")
+            mask = layer.get("mask", "")
+            if not isinstance(mask, str) or len(mask) > MAX_ENCODED_MASK_BYTES:
+                raise ValueError(f"Invalid SNAP SLAPPER recipe: layer {index + 1} mask is invalid")
+        self.adjustments = copy.deepcopy(adjustments)
+        self.layers.extend(copy.deepcopy(layers))
         self.record("Apply recipe")
 
 
 def save_recipe(path, recipe):
-    temporary = path + ".tmp"
-    with open(temporary, "w", encoding="utf-8") as handle:
-        json.dump(recipe, handle, indent=2)
-    os.replace(temporary, path)
+    photo_manager.atomic_json(path, recipe)
 
 
 def load_recipe(path):
+    if os.path.getsize(path) > MAX_PROJECT_BYTES:
+        raise ValueError("SNAP SLAPPER recipe is too large to open safely")
     with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
+        return json.load(handle, parse_constant=photo_manager.reject_json_constant)
 
 
 def batch_apply(paths, recipe, destination, suffix="_edited", quality=95,
-                copyright_text=""):
+                copyright_text="", strip_gps=False):
     os.makedirs(destination, exist_ok=True)
     outputs = []
     for source in paths:
@@ -438,7 +560,7 @@ def batch_apply(paths, recipe, destination, suffix="_edited", quality=95,
         while os.path.exists(target):
             target = os.path.join(destination, f"{stem}{suffix}_{number}.jpg")
             number += 1
-        document.export(target, quality, copyright_text)
+        document.export(target, quality, copyright_text, strip_gps)
         outputs.append(target)
     return outputs
 
