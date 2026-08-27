@@ -25,7 +25,10 @@ function cron_capability(): array {
     if (!function_exists('exec')) return [false, ''];
     $out = []; $code = 1;
     @exec('crontab -l 2>&1', $out, $code);
-    if ($code !== 0) return [false, ''];         // no crontab access
+    // `crontab -l` exits 1 when this user has no crontab yet. That is not lack
+    // of capability; it is precisely the state in which registration is needed.
+    $listing = implode("\n", $out);
+    if ($code !== 0 && stripos($listing, 'no crontab for') === false) return [false, ''];
     $php = trim((string)@exec('which php 2>&1'));
     if (strpos($php, '/') !== 0) return [false, ''];  // no CLI PHP on PATH
     return [true, $php];

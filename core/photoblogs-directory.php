@@ -61,6 +61,7 @@ function pbdir_payload(array $settings): array {
         'description' => (string)($settings['site_description'] ?? $settings['site_tagline'] ?? ''),
         'topics'      => pbdir_topics($settings),
         'avatar_url'  => (string)($settings['site_logo'] ?? ''),
+        'feed_url'    => rtrim((string)($settings['site_url'] ?? ''), '/') . '/rss.php',
         'samples'     => [],  // sample thumbnails: follow-up (kept optional by design)
         'software'    => 'SnapSmack',
         'version'     => defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '',

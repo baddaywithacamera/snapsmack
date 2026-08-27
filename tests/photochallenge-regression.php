@@ -40,7 +40,7 @@ $installer = file_get_contents(__DIR__ . '/../install.php');
 $fedup = file_get_contents(__DIR__ . '/../fedup.php');
 $packager = file_get_contents(__DIR__ . '/../smack-central/sc-release.php');
 
-foreach (['pc_participants', 'pc_hall_of_fame', 'pc_engagement', 'pc_outbound_boosts'] as $table) {
+foreach (['pc_participants', 'pc_hall_of_fame', 'pc_engagement', 'pc_outbound_boosts', 'pc_window_notices'] as $table) {
     pc_test(str_contains($schema, "CREATE TABLE IF NOT EXISTS `{$table}`"), "{$table} is absent from canonical schema");
 }
 foreach (['pc_on_follow', 'pc_on_leave', 'pc_record_like', 'pc_record_boost', 'pc_remove_engagement'] as $hook) {
@@ -75,6 +75,11 @@ pc_test(str_contains($photo, 'count($media) !== 1'), 'board does not enforce exa
 pc_test(str_contains($photo, 'sv_boost_remote(')
     && str_contains($sv, 'pc_maybe_boost_entry'),
     'qualified original entries are not automatically boosted');
+pc_test(str_contains($photo, 'pc_notice_closed_window')
+    && str_contains($photo, 'sv_send_dm(')
+    && str_contains($photo, 'uq_pc_window_notice')
+    && str_contains($photo, "post wasn't entered or boosted"),
+    'closed-window entries do not receive one deduplicated private retry notice');
 pc_test(str_contains($admin, 'Thursday 10:00 UTC through Saturday 12:00 UTC'),
     'admin describes a non-canonical challenge window');
 foreach (['THE GOOD SHIT', 'FEDIVERSE', 'CHALLENGE ME', 'BORING ASS STUFF'] as $heading) {
