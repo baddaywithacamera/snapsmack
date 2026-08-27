@@ -127,6 +127,11 @@ class EditorWindow(QMainWindow):
         self.act_full.triggered.connect(lambda: self.view.actual_size())
         bar.addAction(self.act_full)
 
+        self.act_crop = QAction("Crop", self)
+        self.act_crop.setCheckable(True)
+        self.act_crop.toggled.connect(self._toggle_crop)
+        bar.addAction(self.act_crop)
+
         self.act_compare = QAction("Before/After", self)
         self.act_compare.setCheckable(True)
         self.act_compare.toggled.connect(self._toggle_compare)
@@ -155,7 +160,9 @@ class EditorWindow(QMainWindow):
 
     def _build_canvas(self):
         self.view = ImageView(self)
+        self.view.cropped.connect(self._apply_crop)
         self.setCentralWidget(self.view)
+        self._saved_crop = None
 
     def _build_rail(self):
         rail = QWidget()
@@ -321,6 +328,31 @@ class EditorWindow(QMainWindow):
         self.doc.record("Reset geometry")
         self._sync_geometry()
         self._render_preview()
+        self._update_title()
+
+    def _toggle_crop(self, checked):
+        if not self.doc:
+            self.act_crop.setChecked(False)
+            return
+        if checked:
+            self._saved_crop = self.doc.geometry.get("crop")
+            self.doc.geometry["crop"] = None      # show the full frame to crop on
+            self._render_preview(keep_view=False)
+            self.view.set_crop_mode(True)
+            self.status.showMessage("Drag a rectangle to crop. Toggle Crop off to cancel.")
+        else:
+            self.view.set_crop_mode(False)
+            if self.doc.geometry.get("crop") is None and self._saved_crop is not None:
+                self.doc.geometry["crop"] = self._saved_crop   # cancelled — restore
+            self._render_preview(keep_view=False)
+
+    def _apply_crop(self, left, top, right, bottom):
+        if not self.doc:
+            return
+        self.doc.geometry["crop"] = [round(left, 5), round(top, 5),
+                                     round(right, 5), round(bottom, 5)]
+        self.doc.record("Crop")
+        self.act_crop.setChecked(False)   # exits crop mode, keeps the new crop
         self._update_title()
 
     def _sync_geometry(self):
@@ -590,6 +622,7 @@ class EditorWindow(QMainWindow):
         self.act_fit.setEnabled(has)
         self.act_full.setEnabled(has)
         self.act_compare.setEnabled(has)
+        self.act_crop.setEnabled(has)
         self.act_recipe_save.setEnabled(has)
         self.act_recipe_apply.setEnabled(has)
         self.act_save_project.setEnabled(has)

@@ -116,6 +116,20 @@ def test_layers_isolation_and_ops():
     assert len(win.doc.layers) == 1
 
 
+def test_crop():
+    win = _editor(_image("crop.jpg", (400, 300)))
+    # crop to the centre half
+    win._apply_crop(0.25, 0.25, 0.75, 0.75)
+    assert win.doc.geometry["crop"] == [0.25, 0.25, 0.75, 0.75]
+    out = win.doc.render()
+    assert out.size == (200, 150)
+    # cancel path: enter crop mode (clears crop for display) then toggle off
+    win.act_crop.setChecked(True)
+    assert win.doc.geometry["crop"] is None
+    win.act_crop.setChecked(False)
+    assert win.doc.geometry["crop"] == [0.25, 0.25, 0.75, 0.75]
+
+
 def test_bw_colour_mix():
     from PIL import ImageOps, ImageChops
     bands = Image.new("RGB", (300, 60))
