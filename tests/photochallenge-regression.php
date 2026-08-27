@@ -167,8 +167,13 @@ pc_test(str_contains($admin, 'name="pc_caption"')
     && str_contains($admin, "'caption' => (string)(\$_POST['pc_caption'] ?? '')"),
     'the prompt form must include ordinary post caption and ALT fields');
 pc_test(str_contains($photo, "\$caption = trim((string)(\$data['caption'] ?? ''))")
-    && str_contains($photo, "\$caption !== '' ? \"\\n\\n\" . \$caption : ''"),
+    && str_contains($photo, "if (\$caption !== '') \$parts[] = \$caption;"),
     'the additional caption must be included in the published card body');
+// The card body must NOT lead with the bare prompt word or stuff the hashtag
+// inline (the card image shows both; the fediverse layer appends the tag once).
+pc_test(!str_contains($photo, "return \$prompt\n"), 'card body must not lead with the bare prompt word');
+pc_test(str_contains($photo, "'tags'        => \$hash['display']"),
+    'the card must be tagged via ingest opts so discovery works without an inline hashtag');
 pc_test(str_contains($sidebar, '>Contest &amp; Feed</a>')
     && str_contains($sidebar, 'smack-photochallenge-queue.php">Queue Contest Post</a>')
     && str_contains($sidebar, 'smack-photochallenge-queued.php">Queued Posts</a>')
