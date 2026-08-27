@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - ONYX skin · Amethyst palette
- * A violet-purple accent on the same onyx (the birthstone purple).
+ * A deep violet-purple accent on the same onyx (the birthstone purple).
  * Only the accent + link colours change per palette; the onyx neutrals
  * (canvas, ink, muted, hairline) live in style.css and stay constant.
  *
@@ -9,8 +9,8 @@
  */
 
 :root {
-    --pfd-red:  #8B3FE8;   /* accent: rules, borders, numerals, the dot, the glow */
-    --pfd-link: #B07CFF;   /* links & hover — a step brighter than the accent */
+    --pfd-red:  #9E30DC;   /* accent: rules, borders, numerals, the dot, the glow */
+    --pfd-link: #C173FF;   /* links & hover — a step brighter than the accent */
 }
 
 /* ===== SNAPSMACK EOF ===== */
