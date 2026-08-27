@@ -10,6 +10,17 @@
 
 # SnapSmack Changelog
 
+## 0.7.572 — 2026-08-27 "FEDBOARD"
+
+- **Both scheduling controls show date and time.** **Boosting Window Starts At**
+  visibly snaps to the challenge's Thursday 10:00 UTC opening and derives the
+  contest Friday internally. **Prompt Post** separately shows the exact card
+  publication timestamp. Operators no longer have to translate between a Friday
+  date and the preceding Thursday opening.
+- **Prompt-card chooser aligned.** The standalone chooser button and filename
+  field now share the same fixed 52-pixel row; global label margins can no longer
+  stretch the filename box beyond the button.
+
 ## 0.7.571 — 2026-08-27 "FEDBOARD"
 
 - **The two dates now say what they control.** The composer groups them under

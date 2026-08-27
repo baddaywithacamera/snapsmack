@@ -1269,6 +1269,7 @@ button:active,
 .pc-file-picker {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
+    grid-auto-rows: 52px;
     gap: 8px;
     align-items: stretch;
 }
@@ -1283,6 +1284,7 @@ button:active,
 }
 
 .pc-file-picker__button {
+    margin: 0;
     padding: 0 22px;
     border: 1px solid var(--accent, #a0ff90);
     background: var(--accent, #a0ff90);

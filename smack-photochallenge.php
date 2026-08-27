@@ -156,6 +156,7 @@ $next_friday = $_now_utc->modify("+{$_add_days} days")->format('Y-m-d');
 $_def_win  = pc_window_for_friday($next_friday);
 $def_drop_hint = $_def_win ? $_def_win['start'] . ' UTC' : '';   // shown as the default drop time
 $def_drop_value = $_def_win ? str_replace(' ', 'T', substr((string)$_def_win['start'], 0, 16)) : '';
+$window_start_value = $def_drop_value;
 $prompts   = pc_prompts_list($pdo, 40);
 $queued_prompts = array_values(array_filter($prompts, static fn(array $p): bool => ($p['status'] ?? '') === 'queued'));
 $edit_prompt = null;
@@ -171,6 +172,7 @@ if ($edit_prompt) {
     $_def_win = pc_window_for_friday($next_friday);
     $def_drop_value = str_replace(' ', 'T', substr((string)$edit_prompt['drop_at'], 0, 16));
     $def_drop_hint = (string)$edit_prompt['drop_at'] . ' UTC';
+    $window_start_value = $_def_win ? str_replace(' ', 'T', substr((string)$_def_win['start'], 0, 16)) : '';
 }
 
 $pc_page_titles = [
@@ -325,11 +327,12 @@ include 'core/sidebar.php';
             <fieldset class="pc-date-plan">
                 <legend>DATES &mdash; THESE CONTROL DIFFERENT THINGS</legend>
                 <div class="pc-date-plan__item">
-                    <label for="pc_friday"><strong>1. BOOSTING WINDOW</strong> &mdash; CHOOSE THE CONTEST FRIDAY</label>
-                    <input type="date" name="pc_friday" id="pc_friday" value="<?php echo $esc($next_friday); ?>" required>
-                    <p class="dim" id="pc_friday_hint">This date controls when tagged participant posts may be boosted.
-                        The window opens automatically on <strong>Thursday at 10:00 UTC</strong> and closes on
-                        <strong>Saturday at 12:00 UTC</strong>.</p>
+                    <label for="pc_window_start"><strong>1. BOOSTING WINDOW STARTS AT</strong> &mdash; DATE AND TIME (UTC)</label>
+                    <input type="datetime-local" id="pc_window_start" value="<?php echo $esc($window_start_value); ?>" required>
+                    <input type="hidden" name="pc_friday" id="pc_friday" value="<?php echo $esc($next_friday); ?>">
+                    <p class="dim" id="pc_friday_hint">Tagged participant posts may be boosted from this displayed
+                        <strong>Thursday at 10:00 UTC</strong> until <strong>Saturday at 12:00 UTC</strong>. Picking another
+                        date visibly snaps this field to the matching challenge opening; the contest Friday is stored automatically.</p>
                 </div>
                 <div class="pc-date-plan__item">
                     <label for="pc_drop_at"><strong>2. PROMPT POST</strong> &mdash; CHOOSE WHEN THE CARD PUBLISHES</label>
