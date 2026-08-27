@@ -10,6 +10,14 @@
 
 # SnapSmack Changelog
 
+## 0.7.570 — 2026-08-27 "FEDBOARD"
+
+- **Challenge administration has real task pages.** **Contest & Feed**, **Queue
+  Contest Post**, and **Queued Posts** now lead to three distinct admin pages
+  instead of anchor links into one long screen. The dedicated composer retains
+  the restored caption/additional-information and ALT fields, and the queue page
+  handles review and cancellation without mixing configuration into the task.
+
 ## 0.7.569 — 2026-08-27 "FEDBOARD"
 
 - **Prompt post copy restored.** **Queue Contest Post** once again accepts an

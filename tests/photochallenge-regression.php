@@ -170,10 +170,13 @@ pc_test(str_contains($photo, "\$caption = trim((string)(\$data['caption'] ?? '')
     && str_contains($photo, "\$caption !== '' ? \"\\n\\n\" . \$caption : ''"),
     'the additional caption must be included in the published card body');
 pc_test(str_contains($sidebar, '>Contest &amp; Feed</a>')
-    && str_contains($sidebar, 'smack-photochallenge.php#queue-contest-post">Queue Contest Post</a>')
-    && str_contains($sidebar, 'smack-photochallenge.php#queued-contest-posts">Queued Posts</a>')
+    && str_contains($sidebar, 'smack-photochallenge-queue.php">Queue Contest Post</a>')
+    && str_contains($sidebar, 'smack-photochallenge-queued.php">Queued Posts</a>')
     && str_contains($admin, 'id="queue-contest-post"'),
-    'CHALLENGE ME must expose Contest & Feed, Queue Contest Post, and Queued Posts');
+    'CHALLENGE ME must expose three distinct task pages');
+pc_test(is_file(__DIR__ . '/../smack-photochallenge-queue.php')
+    && is_file(__DIR__ . '/../smack-photochallenge-queued.php'),
+    'queue composer and queued-post management must be separate pages');
 pc_test(str_contains($admin, 'id="queued-contest-posts"')
     && str_contains($admin, 'No contest posts are queued yet.'),
     'queued-post area must remain visible before the first prompt is queued');
