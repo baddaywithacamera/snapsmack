@@ -195,6 +195,11 @@ class EditorWindow(QMainWindow):
                 section.add(srow)
             inner_layout.addWidget(section)
 
+        # Geometry (rotate / straighten / flip)
+        geo_section = Accordion("GEOMETRY", expanded=False)
+        geo_section.add(self._build_geometry())
+        inner_layout.addWidget(geo_section)
+
         # Black & white toggle
         bw_section = Accordion("BLACK + WHITE", expanded=False)
         self.bw_check = QCheckBox("Convert to black and white")
@@ -244,6 +249,74 @@ class EditorWindow(QMainWindow):
         self.histogram = Histogram()
         layout.addWidget(self.histogram)
         return wrap
+
+    def _build_geometry(self):
+        wrap = QWidget()
+        layout = QVBoxLayout(wrap)
+        layout.setContentsMargins(0, 2, 0, 4)
+        layout.setSpacing(4)
+
+        self.rotation_row = SliderRow("rotation", "Rotate", -180, 180, 0.5, 0)
+        self.rotation_row.changed.connect(self._on_geometry)
+        self.rotation_row.committed.connect(lambda _k: self._commit_geometry("Rotate"))
+        layout.addWidget(self.rotation_row)
+
+        buttons = QHBoxLayout()
+        buttons.setContentsMargins(12, 2, 12, 2)
+        buttons.setSpacing(4)
+        self.flip_h_btn = QPushButton("Flip H")
+        self.flip_v_btn = QPushButton("Flip V")
+        for btn, axis in ((self.flip_h_btn, "flip_x"), (self.flip_v_btn, "flip_y")):
+            btn.setObjectName("LayerAddBtn")
+            btn.setCheckable(True)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(lambda _c, a=axis: self._flip(a))
+            buttons.addWidget(btn)
+        reset_geo = QPushButton("Reset")
+        reset_geo.setObjectName("LayerOrderBtn")
+        reset_geo.setCursor(Qt.PointingHandCursor)
+        reset_geo.clicked.connect(self._reset_geometry)
+        buttons.addWidget(reset_geo)
+        layout.addLayout(buttons)
+        return wrap
+
+    def _on_geometry(self, _key, value):
+        if not self.doc:
+            return
+        self.doc.geometry["rotation"] = float(value)
+        self._schedule_render()
+
+    def _commit_geometry(self, label):
+        if self.doc:
+            self.doc.record(label)
+            self._update_title()
+
+    def _flip(self, axis):
+        if not self.doc:
+            self._sync_geometry()
+            return
+        self.doc.geometry[axis] = not self.doc.geometry.get(axis, False)
+        self.doc.record("Flip")
+        self._render_preview()
+        self._update_title()
+        self._sync_geometry()
+
+    def _reset_geometry(self):
+        if not self.doc:
+            return
+        self.doc.geometry.update({"rotation": 0.0, "crop": None,
+                                  "flip_x": False, "flip_y": False})
+        self.doc.record("Reset geometry")
+        self._sync_geometry()
+        self._render_preview()
+        self._update_title()
+
+    def _sync_geometry(self):
+        if not self.doc:
+            return
+        self.rotation_row.set_value(self.doc.geometry.get("rotation", 0.0))
+        self.flip_h_btn.setChecked(bool(self.doc.geometry.get("flip_x", False)))
+        self.flip_v_btn.setChecked(bool(self.doc.geometry.get("flip_y", False)))
 
     def _set_hist_mode(self, mode):
         self._hist_mode = mode
@@ -490,6 +563,7 @@ class EditorWindow(QMainWindow):
         self.bw_check.blockSignals(True)
         self.bw_check.setChecked(bool(adjustments.get("black_white", False)))
         self.bw_check.blockSignals(False)
+        self._sync_geometry()
 
     def _refresh_actions(self):
         has = self.doc is not None

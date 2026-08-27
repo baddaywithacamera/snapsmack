@@ -134,6 +134,11 @@ def stylesheet() -> str:
         border: 1px solid {ACCENT};
         color: {ACCENT};
     }}
+    QPushButton#LayerAddBtn:checked {{
+        background: {ACCENT_DIM};
+        border: 1px solid {ACCENT};
+        color: {ACCENT};
+    }}
     QWidget#LayerRow {{
         background: transparent;
         border-radius: 5px;
