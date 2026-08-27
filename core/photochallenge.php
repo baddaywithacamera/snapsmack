@@ -642,8 +642,9 @@ function pc_cron_maintain(PDO $pdo, array &$settings, int $limit = 25): array {
  * generates the hashtag, and files it against that week's 50-hour window. The
  * card stays hidden until pc_activate_due_prompts() drops it at drop_at.
  *
- * $data: prompt (word), friday (Y-m-d), drop_at (optional datetime-local/SQL,
- *        default = window open), alt (optional card ALT).
+ * $data: prompt (word), caption (optional additional card copy), friday
+ *        (Y-m-d), drop_at (optional datetime-local/SQL, default = window
+ *        open), alt (optional card ALT).
  * $file: one $_FILES entry (the uploaded card).
  *
  * @return array{ok:bool,msg:string,id?:int}
@@ -652,6 +653,10 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
     pc_ensure_tables($pdo);
     $prompt = trim((string)($data['prompt'] ?? ''));
     if ($prompt === '') return ['ok' => false, 'msg' => 'Enter a prompt word.'];
+    $caption = trim((string)($data['caption'] ?? ''));
+    if (mb_strlen($caption) > 5000) {
+        return ['ok' => false, 'msg' => 'Keep the caption under 5,000 characters.'];
+    }
     $win = pc_window_for_friday((string)($data['friday'] ?? ''));
     if ($win === null) return ['ok' => false, 'msg' => 'Pick a valid Photo-Friday date.'];
 
@@ -672,9 +677,11 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
         return ['ok' => false, 'msg' => 'A prompt is already scheduled for ' . $win['label'] . '. Cancel it first to reschedule.'];
     }
 
-    // Card body: the word, its hashtag, and the challenge link.
+    // Card body: the word, optional organizer copy, hashtag, and challenge link.
     $base = function_exists('sv_base') ? rtrim((string)sv_base($settings), '/') : '';
-    $body = $prompt . "\n\n#" . $hash['display']
+    $body = $prompt
+          . ($caption !== '' ? "\n\n" . $caption : '')
+          . "\n\n#" . $hash['display']
           . ($base !== '' ? "\n\nPost your photo during the 50-hour Photo-Friday window. " . $base . '/' : '');
 
     require_once __DIR__ . '/image-ingest.php';
@@ -683,7 +690,9 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
         'status'      => 'draft',                         // hidden until the drop
         'description' => $body,
         'img_date'    => $drop_at,                        // dates the card at its drop moment
-        'alt'         => (string)($data['alt'] ?? ($prompt . ' — Photo-Friday prompt card')),
+        'alt'         => trim((string)($data['alt'] ?? '')) !== ''
+            ? trim((string)$data['alt'])
+            : ($prompt . ' — Photo-Friday prompt card'),
     ]);
     if (empty($res['ok'])) return ['ok' => false, 'msg' => 'Card image: ' . ($res['error'] ?? 'upload failed') . '.'];
     $img_id = (int)$res['id'];

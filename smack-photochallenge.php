@@ -34,6 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
     if ($action === 'queue_prompt') {
         $res = pc_queue_prompt($pdo, $settings, [
             'prompt'  => (string)($_POST['pc_prompt'] ?? ''),
+            'caption' => (string)($_POST['pc_caption'] ?? ''),
+            'alt'     => (string)($_POST['pc_alt'] ?? ''),
             'friday'  => (string)($_POST['pc_friday'] ?? ''),
             'drop_at' => (string)($_POST['pc_drop_at'] ?? ''),
         ], $_FILES['pc_prompt_image'] ?? []);
@@ -291,6 +293,19 @@ include 'core/sidebar.php';
                 <label>CARD IMAGE</label>
                 <input type="file" name="pc_prompt_image" accept="image/jpeg,image/png,image/webp,image/gif" required>
                 <p class="dim">The prompt card people see when it drops. JPG, PNG, WEBP or GIF.</p>
+            </div>
+
+            <div class="lens-input-wrapper">
+                <label>CAPTION <span class="dim">(optional additional information)</span></label>
+                <textarea name="pc_caption" id="pc_caption" rows="5" maxlength="5000"
+                          placeholder="Add context, instructions, credit, or anything else that should appear with the prompt card."></textarea>
+                <p class="dim">Published with the card. The prompt hashtag and participation link are added automatically.</p>
+            </div>
+
+            <div class="lens-input-wrapper">
+                <label>ALT TEXT <span class="dim">(accessibility description)</span></label>
+                <input type="text" name="pc_alt" id="pc_alt" maxlength="500"
+                       placeholder="Describe what is visible in the prompt card.">
             </div>
 
             <div class="lens-input-wrapper">
