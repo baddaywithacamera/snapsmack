@@ -10,6 +10,18 @@
 
 # SnapSmack Changelog
 
+## 0.7.574 — 2026-08-27 "FEDBOARD"
+
+- **Photo-Friday card copy reads cleanly.** The prompt card's federated text used
+  to lead with the bare prompt word ("Belonging Welcome to…") and put the hashtag
+  inline — while the card image already shows both and the fediverse layer appends
+  the post's tag on its own, so on Pixelfed the word was doubled with the caption
+  and the hashtag appeared twice. The card text is now just the caption plus a
+  clickable participation link; the card is tagged via the ingest options so
+  discovery still works and the hashtag appears exactly once. (Existing cards
+  already posted are corrected by editing them in Manage Posts and saving, which
+  re-federates the clean version.)
+
 ## 0.7.573 — 2026-08-27 "FEDBOARD"
 
 - **Fixed the fediverse "apostrophe catastrophe."** Federated posts with an
