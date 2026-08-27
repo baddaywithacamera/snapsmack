@@ -131,6 +131,36 @@ def test_layers_isolation_and_ops():
     assert len(win.doc.layers) == 1
 
 
+def test_texture_layer():
+    win = _editor(_image("tphoto.jpg", (400, 300)))
+    tex = _image("texture.png", (120, 60), (200, 120, 60))
+    prov = {"texture_id": 7, "title": "Rust",
+            "source_url": "https://foundtextures.ca/uploads/x/rust.jpg",
+            "source_site": "https://foundtextures.ca",
+            "licence": "unknown", "retrieved_at": "2026-08-27"}
+    layer = win.add_texture_layer(tex, prov, fit="cover", blend="overlay", opacity=0.8)
+    assert layer["fit"] == "cover" and layer["blend"] == "overlay"
+    assert layer["texture"]["texture_id"] == 7
+    assert win.doc.render((300, 300))
+    # provenance + fit survive a .slapper round-trip
+    pp = os.path.join(TMP, "tex.slapper")
+    win.doc.save_project(pp)
+    loaded = editor_engine.EditorDocument.load_project(pp)
+    assert loaded.layers[-1]["texture"]["texture_id"] == 7
+    assert loaded.layers[-1]["fit"] == "cover"
+
+
+def test_texture_fit_modes():
+    win = _editor(_image("fitphoto.jpg", (400, 300)))
+    tex = _image("smalltex.png", (80, 40), (60, 200, 90))
+    prov = {"texture_id": 1, "title": "T", "source_url": "", "source_site": "",
+            "licence": "unknown", "retrieved_at": "x"}
+    layer = win.add_texture_layer(tex, prov, fit="cover")
+    for mode in ("cover", "contain", "stretch", "tile", "original"):
+        layer["fit"] = mode
+        assert win.doc.render((300, 300)).size == (300, 225)
+
+
 def test_layer_masks():
     win = _editor(_image("mask.jpg", (400, 300)))
     lp = win.layers_panel

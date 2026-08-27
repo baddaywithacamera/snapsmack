@@ -486,6 +486,35 @@ class EditorDocument:
         canvas.alpha_composite(top, (x, y))
         return canvas
 
+    @staticmethod
+    def _fit_layer_image(top, canvas_size, fit):
+        """Fit an image/texture layer to the document canvas.
+
+        cover  — fill the frame, cropping overflow (keeps aspect)
+        contain— fit inside the frame, centred (keeps aspect)
+        stretch— resize to the exact frame (ignores aspect)
+        tile   — repeat the image across the frame
+        """
+        width, height = canvas_size
+        top = top.convert("RGBA")
+        if fit == "stretch":
+            return top.resize((width, height), Image.Resampling.LANCZOS)
+        if fit == "cover":
+            return ImageOps.fit(top, (width, height), Image.Resampling.LANCZOS)
+        if fit == "contain":
+            fitted = ImageOps.contain(top, (width, height), Image.Resampling.LANCZOS)
+            canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+            canvas.alpha_composite(fitted, ((width - fitted.width) // 2,
+                                            (height - fitted.height) // 2))
+            return canvas
+        if fit == "tile":
+            canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+            for y in range(0, height, max(1, top.height)):
+                for x in range(0, width, max(1, top.width)):
+                    canvas.alpha_composite(top, (x, y))
+            return canvas
+        return top
+
     @classmethod
     def _canvas_mask(cls, mask, canvas_size, transform):
         source = Image.new("RGBA", mask.size, (255, 255, 255, 255))
@@ -645,6 +674,9 @@ class EditorDocument:
                 top = apply_adjustments(
                     top.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
                 top.putalpha(alpha)
+                fit = layer.get("fit", "original")
+                if fit in ("cover", "contain", "stretch", "tile"):
+                    top = self._fit_layer_image(top, image.size, fit)
             elif layer.get("type") == "text":
                 top = self._text_layer_image(layer)
                 alpha = top.getchannel("A")
@@ -656,8 +688,11 @@ class EditorDocument:
                     if layer.get("mask_enabled", True) else None)
             if layer.get("type") in {"image", "text"}:
                 linked_mask = mask if mask is not None and layer.get("mask_linked", True) else None
-                top = self._image_layer_canvas(
-                    top, image.size, layer.get("transform", {}), linked_mask)
+                # A fit mode already sized the layer to the canvas; place it
+                # centred at scale 1 rather than re-applying the free transform.
+                fitted = layer.get("fit", "original") in ("cover", "contain", "stretch", "tile")
+                transform = self.default_transform() if fitted else layer.get("transform", {})
+                top = self._image_layer_canvas(top, image.size, transform, linked_mask)
                 if mask is not None and not layer.get("mask_linked", True):
                     mask = self._canvas_mask(mask, image.size,
                                              layer.get("mask_transform", {}))

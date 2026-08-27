@@ -171,6 +171,10 @@ class EditorWindow(QMainWindow):
 
         bar.addSeparator()
 
+        self.act_textures = QAction("Textures…", self)
+        self.act_textures.triggered.connect(self.open_textures)
+        bar.addAction(self.act_textures)
+
         self.act_save_project = QAction("Save Project", self)
         self.act_save_project.triggered.connect(self.save_project)
         bar.addAction(self.act_save_project)
@@ -803,6 +807,44 @@ class EditorWindow(QMainWindow):
         self._update_title()
         self.status.showMessage(f"Saved {os.path.basename(path)}")
 
+    def open_textures(self):
+        if not self.doc:
+            self._error("Open a photo first",
+                        "Open a photograph before adding a texture layer.")
+            return
+        try:
+            import found_textures
+            from .textures_dialog import TexturesDialog
+        except Exception as error:  # noqa: BLE001
+            self._error("Textures unavailable", str(error))
+            return
+        resolved = found_textures.resolve_profile()
+        if not resolved or not resolved[0]:
+            self._error(
+                "No Found Textures site",
+                "No Found Textures site is set up in The Hub. Add the "
+                "foundtextures.ca site (with its API key) in The Hub first.")
+            return
+        site, key = resolved
+        TexturesDialog(self, site, key).show()
+
+    def add_texture_layer(self, path, provenance, *, fit="cover",
+                          blend="normal", opacity=1.0):
+        """Add a downloaded texture as an image layer, with fit + provenance."""
+        if not self.doc:
+            return None
+        layer = self.doc.add_image_layer(path, name=provenance.get("title") or "Texture")
+        layer["fit"] = fit
+        layer["blend"] = blend
+        layer["opacity"] = float(opacity)
+        layer["texture"] = dict(provenance)     # preserved in the .slapper project
+        self.doc.record("Add texture")
+        self.set_target(layer["id"])
+        self.after_structure_change()
+        _log.info("Added texture layer: %s (%s)", provenance.get("title"),
+                  provenance.get("source_url"))
+        return layer
+
     def save_recipe(self):
         if not self.doc:
             return
@@ -958,6 +1000,7 @@ class EditorWindow(QMainWindow):
         self.act_recipe_save.setEnabled(has)
         self.act_recipe_apply.setEnabled(has)
         self.act_save_project.setEnabled(has)
+        self.act_textures.setEnabled(has)
 
     def _update_title(self):
         if not self.doc:
