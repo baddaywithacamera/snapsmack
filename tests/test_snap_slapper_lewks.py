@@ -19,9 +19,13 @@ import editor_engine
 class BuiltInLewksTests(unittest.TestCase):
     def test_stock_pack_has_distinct_ids_names_and_required_categories(self):
         lewks = built_in_lewks.all_lewks()
-        self.assertGreaterEqual(len(lewks), 12)
+        self.assertGreaterEqual(len(lewks), 50)   # 12 originals + the 40-look canon
         self.assertEqual(len({item["id"] for item in lewks}), len(lewks))
         self.assertEqual(len({item["name"] for item in lewks}), len(lewks))
+        # a few of the canon-derived looks are present (names are ours, not IG's)
+        names = {item["name"] for item in lewks}
+        for want in ("SPLIT DECISION", "COLD FRONT", "PLAIN TRUTH", "CROSS EXAMINED"):
+            self.assertIn(want, names)
         categories = {item["category"] for item in lewks}
         self.assertTrue({"Clean + Corrective", "Film + Print", "Black + White",
                          "Portrait", "Landscape + Weather", "Night + Neon",

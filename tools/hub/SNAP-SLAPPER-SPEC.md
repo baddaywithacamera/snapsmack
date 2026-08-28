@@ -227,7 +227,11 @@ as a Filter merely to inflate the catalogue.
 
 The existing adjustment renderer, adjustment/image layers, masks, blend modes,
 history, batch application, and `.slaprecipe` import/export are the foundation.
-They do not by themselves complete this specification.
+The custom layer workspace, content/mask targeting, image and independent mask
+transforms, canvas handles, mask-link state, zoom controls, practical mask tools, and
+editable text-layer foundation are built locally and pending
+release as recorded in `../../docs/snap-slapper-cross-platform-ui-spec.md`. They do not
+by themselves complete this specification.
 
 Work remaining includes:
 
@@ -238,7 +242,9 @@ Work remaining includes:
 4. Build the visual LEWKS browser and curated built-in library.
 5. Implement and test the required Filter families.
 6. Add `.lewk` and safe LEWK-pack import/export.
-7. Build LEWK AGAIN on the same allowlisted Action schema.
+7. Build LEWK AGAIN on the same allowlisted Action schema, including the inert
+   Lightroom-preset and Photoshop-action translation workflow defined in
+   `../../docs/lewk-again-spec.md`.
 8. Extend offline Help with Filters, LEWKS, Actions, compatibility, and safety.
 
 ## 11. Acceptance criteria
