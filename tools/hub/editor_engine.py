@@ -11,9 +11,11 @@ import math
 import os
 import time
 import tempfile
+import textwrap
 import zipfile
 
-from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps
+from PIL import (Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter,
+                 ImageFont, ImageMath, ImageOps)
 
 import photo_manager
 
@@ -23,6 +25,7 @@ MAX_PROJECT_BYTES = 512 * 1024 * 1024
 MAX_PROJECT_LAYERS = 500
 MAX_RETOUCH_POINTS = 100000
 MAX_ENCODED_MASK_BYTES = 128 * 1024 * 1024
+MAX_TEXT_LAYER_CHARS = 1_000_000
 PROJECT_DOCUMENT_NAME = "project.json"
 PROJECT_README_NAME = "README.txt"
 DEFAULT_ADJUSTMENTS = {
@@ -30,10 +33,104 @@ DEFAULT_ADJUSTMENTS = {
     "highlights": 0.0, "shadows": 0.0, "whites": 0.0, "blacks": 0.0,
     "temperature": 0.0, "tint": 0.0, "saturation": 0.0, "vibrance": 0.0,
     "clarity": 0.0, "texture": 0.0, "dehaze": 0.0, "sharpen": 0.0,
+    # Smart-sharpen controls. amount == the sharpen slider above. Lens mode
+    # edge-limits the sharpen (finer detail, no haloes, noise left alone);
+    # gaussian is the classic unsharp mask. Defaults keep sharpen off (0).
+    "sharpen_radius": 1.2, "sharpen_reduce_noise": 0.0, "sharpen_mode": "lens",
     "level_black": 0.0, "level_gamma": 1.0, "level_white": 255.0,
     "black_white": False, "vignette": 0.0, "grain": 0.0,
+    # Vignette edge softness (50 == the classic look) and a darken-only grain
+    # mode (False == the original soft-light grain). Defaults preserve every
+    # existing LEWK and project unchanged.
+    "vignette_feather": 50.0, "grain_darken": False,
+    # Split toning — colour the shadows and highlights independently (the
+    # teal-and-orange / warm-cool look most film emulations rely on). Both
+    # amounts default to 0, so this is off until dialled up.
+    "split_shadow": [60, 90, 150], "split_shadow_amount": 0.0,
+    "split_midtone": [128, 128, 128], "split_midtone_amount": 0.0,
+    "split_highlight": [255, 200, 120], "split_highlight_amount": 0.0,
+    # Per-channel tone curves (independent R / G / B). Identity == no change,
+    # so an unset LEWK renders exactly as before. This is what the colour-cast
+    # looks (cross-process, film) are built from.
+    "curve_red": [[0, 0], [255, 255]],
+    "curve_green": [[0, 0], [255, 255]],
+    "curve_blue": [[0, 0], [255, 255]],
+    # Colour HSL mix — per-hue saturation and luminance (like the B&W mixer,
+    # but in colour). All zero == unchanged.
+    "col_sat_red": 0.0, "col_sat_orange": 0.0, "col_sat_yellow": 0.0,
+    "col_sat_green": 0.0, "col_sat_aqua": 0.0, "col_sat_blue": 0.0,
+    "col_sat_purple": 0.0, "col_sat_magenta": 0.0,
+    "col_lum_red": 0.0, "col_lum_orange": 0.0, "col_lum_yellow": 0.0,
+    "col_lum_green": 0.0, "col_lum_aqua": 0.0, "col_lum_blue": 0.0,
+    "col_lum_purple": 0.0, "col_lum_magenta": 0.0,
+    # Positional colour glow (a placed bloom, screened over the photo).
+    "glow_amount": 0.0, "glow_colour": [255, 220, 170],
+    "glow_x": 50.0, "glow_y": 40.0, "glow_size": 45.0,
+    # Black & white colour mix — per-hue luminance, Lightroom-style.
+    # All zero == the classic neutral grayscale (backward compatible).
+    "bw_red": 0.0, "bw_orange": 0.0, "bw_yellow": 0.0, "bw_green": 0.0,
+    "bw_aqua": 0.0, "bw_blue": 0.0, "bw_purple": 0.0, "bw_magenta": 0.0,
+    # Photo filter — a coloured "gel" over the lens (the classic warming/cooling
+    # and colour filters). Density 0 == off, so this is backward compatible.
+    # Preserve-luminosity keeps the photo's brightness and changes only colour.
+    "photo_filter_color": [236, 138, 0], "photo_filter_density": 0.0,
+    "photo_filter_preserve_lum": True,
     "curve": [[0, 0], [255, 255]],
 }
+
+
+# Photo Filter presets — the classic Photoshop set (a coloured gel over the lens
+# at a density) plus a few faux-infrared washes. Each entry is (label, RGB,
+# suggested density %). Selecting one sets the layer's filter colour + density.
+PHOTO_FILTER_PRESETS = [
+    ("Warming Filter (85)",  (236, 138, 0),   25),
+    ("Warming Filter (LBA)", (250, 150, 40),  25),
+    ("Warming Filter (81)",  (235, 177, 19),  25),
+    ("Cooling Filter (80)",  (0, 109, 255),   25),
+    ("Cooling Filter (LBB)", (0, 93, 255),    25),
+    ("Cooling Filter (82)",  (0, 181, 255),   25),
+    ("Red",      (234, 26, 26),   25),
+    ("Orange",   (243, 128, 30),  25),
+    ("Yellow",   (237, 232, 23),  25),
+    ("Green",    (25, 201, 25),   25),
+    ("Cyan",     (26, 229, 229),  25),
+    ("Blue",     (29, 53, 255),   25),
+    ("Violet",   (155, 25, 229),  25),
+    ("Magenta",  (255, 25, 255),  25),
+    ("Sepia",    (172, 122, 51),  25),
+    ("Deep Red",     (235, 0, 0),    25),
+    ("Deep Blue",    (0, 0, 235),    25),
+    ("Deep Emerald", (0, 140, 0),    25),
+    ("Deep Yellow",  (255, 198, 0),  25),
+    ("Underwater",   (0, 194, 177),  25),
+    # Faux infrared — a coloured wash in the spirit of the deep filters IR
+    # shooters screw onto the lens. A colour wash gives the IR *cast*, not the
+    # full white-foliage / black-sky conversion (that needs a channel swap — a
+    # separate effect).
+    ("Faux IR — R72 Deep Red",    (120, 0, 0),    90),
+    ("Faux IR — Aerochrome Pink", (226, 40, 150),  80),
+    ("Faux IR — Green Window",    (0, 150, 90),    80),
+]
+
+# Pillow 10.3+ renamed ImageMath.eval -> unsafe_eval (same behaviour, our
+# expression is a fixed literal). Fall back to eval on older Pillow.
+_image_math_eval = getattr(ImageMath, "unsafe_eval", None) or getattr(ImageMath, "eval")
+
+# Monotonic counter so layer ids are unique even when created faster than the
+# system clock's resolution (time.time_ns() is coarse on Windows, so two quick
+# add-layer calls would otherwise collide and make layers indistinguishable).
+_layer_id_counter = 0
+
+
+def _new_layer_id():
+    global _layer_id_counter
+    _layer_id_counter += 1
+    return f"{time.time_ns()}-{_layer_id_counter}"
+
+# Hue centres (degrees) for the black & white colour mix, in wheel order.
+BW_BANDS = [("bw_red", 0.0), ("bw_orange", 30.0), ("bw_yellow", 60.0),
+            ("bw_green", 120.0), ("bw_aqua", 180.0), ("bw_blue", 240.0),
+            ("bw_purple", 270.0), ("bw_magenta", 300.0)]
 
 
 def _clamp(value, low=0, high=255):
@@ -146,6 +243,95 @@ def _tonal_lut(adjustments):
     return lut
 
 
+def _bw_multiplier_lut(settings):
+    """A 256-entry luminance-multiplier lookup indexed by PIL hue (0-255).
+
+    Each colour band's slider (-100..100) brightens or darkens pixels of that
+    hue in the black & white conversion. Values interpolate around the wheel,
+    so a hue between two bands blends their sliders. All-zero -> all 1.0.
+    """
+    centres = [(deg, float(settings.get(key, 0.0))) for key, deg in BW_BANDS]
+    lut = []
+    for index in range(256):
+        hue = index * 360.0 / 255.0
+        # nearest band on each side of this hue, around the circle
+        below = max(((deg - 360.0 if deg > hue else deg, value)
+                     for deg, value in centres), key=lambda item: item[0])
+        above = min(((deg + 360.0 if deg < hue else deg, value)
+                     for deg, value in centres), key=lambda item: item[0])
+        span = above[0] - below[0]
+        weight = 0.0 if span == 0 else (hue - below[0]) / span
+        slider = below[1] * (1 - weight) + above[1] * weight
+        multiplier = 1.0 + (slider / 100.0) * 0.7   # +-100 -> 1.7 / 0.3
+        lut.append(max(0, min(255, int(round(multiplier * 128.0)))))
+    return lut
+
+
+def _bw_mono(output, settings):
+    """Return the greyscale L image for black & white, using the colour mix.
+
+    With every band at 0 this equals ``ImageOps.grayscale`` exactly, so old
+    projects render identically.
+    """
+    base = ImageOps.grayscale(output)
+    if not any(float(settings.get(key, 0.0)) for key, _deg in BW_BANDS):
+        return base
+    hsv = output.convert("HSV")
+    hue = hsv.getchannel("H").point(_bw_multiplier_lut(settings))
+    saturation = hsv.getchannel("S")
+    # grey * (1 + (multiplier-1) * saturation); saturation weights the effect
+    # so neutral (grey) pixels are untouched.
+    return _image_math_eval(
+        "convert(min(max(float(g) * (1 + (float(m) / 128.0 - 1) "
+        "* (float(s) / 255.0)), 0.0), 255.0), 'L')",
+        g=base, m=hue, s=saturation)
+
+
+def auto_adjustments(image, percentile=0.005):
+    """Compute a gentle one-click 'auto enhance' as *editable* adjustment values.
+
+    Sets black/white levels from the tonal range (auto-levels) and a mild
+    grey-world white-balance nudge, plus a small contrast/vibrance lift. It
+    returns adjustment keys so the result stays non-destructive and the user can
+    fine-tune afterwards.
+    """
+    from PIL import ImageStat
+    rgb = image.convert("RGB")
+    result = {}
+
+    # Auto-levels: stretch to the 0.5% / 99.5% tonal points.
+    lum = ImageOps.grayscale(rgb)
+    histogram = lum.histogram()
+    total = sum(histogram) or 1
+    cutoff = total * percentile
+    low, running = 0, 0
+    for value in range(256):
+        running += histogram[value]
+        if running >= cutoff:
+            low = value
+            break
+    running = 0
+    high = 255
+    for value in range(255, -1, -1):
+        running += histogram[value]
+        if running >= cutoff:
+            high = value
+            break
+    if high - low >= 8:                       # only if there is range to recover
+        result["level_black"] = float(max(0, min(80, low)))
+        result["level_white"] = float(min(255, max(175, high)))
+
+    # Grey-world white balance: nudge temperature/tint toward neutral.
+    mean_r, mean_g, mean_b = ImageStat.Stat(rgb).mean
+    result["temperature"] = float(max(-40, min(40, round((mean_b - mean_r) * 0.5))))
+    result["tint"] = float(max(-30, min(30, round(((mean_r + mean_b) / 2 - mean_g) * 0.4))))
+
+    # A little life.
+    result["contrast"] = 8.0
+    result["vibrance"] = 10.0
+    return result
+
+
 def apply_adjustments(image, adjustments):
     settings = dict(DEFAULT_ADJUSTMENTS)
     settings.update(adjustments or {})
@@ -189,15 +375,31 @@ def apply_adjustments(image, adjustments):
     if dehaze:
         output = ImageEnhance.Contrast(output).enhance(max(.2, 1.0 + dehaze / 130.0))
         output = ImageEnhance.Color(output).enhance(max(0.0, 1.0 + dehaze / 350.0))
-    sharpen = float(settings["sharpen"])
-    if sharpen > 0:
-        output = output.filter(ImageFilter.UnsharpMask(radius=1.2, percent=int(sharpen * 2.5), threshold=3))
+    output = _smart_sharpen(output, settings)
+
+    output = _colour_mix(output, settings)
 
     curve = settings.get("curve") or [[0, 0], [255, 255]]
     output = output.point(_curve_lut(curve) * 3)
+
+    # Per-channel curves (independent R / G / B) — where the colour casts live.
+    identity = [[0, 0], [255, 255]]
+    r_pts = settings.get("curve_red") or identity
+    g_pts = settings.get("curve_green") or identity
+    b_pts = settings.get("curve_blue") or identity
+    if r_pts != identity or g_pts != identity or b_pts != identity:
+        red, green, blue = output.split()
+        red = red.point(_curve_lut(r_pts))
+        green = green.point(_curve_lut(g_pts))
+        blue = blue.point(_curve_lut(b_pts))
+        output = Image.merge("RGB", (red, green, blue))
     if settings.get("black_white"):
-        mono = ImageOps.grayscale(output)
+        mono = _bw_mono(output, settings)
         output = Image.merge("RGB", (mono, mono, mono))
+
+    output = _photo_filter(output, settings)
+    output = _split_tone(output, settings)
+    output = _colour_glow(output, settings)
 
     vignette = float(settings["vignette"])
     if vignette:
@@ -206,7 +408,10 @@ def apply_adjustments(image, adjustments):
         draw = ImageDraw.Draw(mask)
         inset_x, inset_y = int(width * .08), int(height * .08)
         draw.ellipse((inset_x, inset_y, width - inset_x, height - inset_y), fill=255)
-        mask = mask.filter(ImageFilter.GaussianBlur(radius=max(width, height) * .16))
+        # Feather: 50 reproduces the classic .16 blur; 0 = hard edge, 100 = very soft.
+        feather = float(settings.get("vignette_feather", 50)) / 100.0
+        blur = max(1.0, max(width, height) * feather * .32)
+        mask = mask.filter(ImageFilter.GaussianBlur(radius=blur))
         strength = abs(vignette) / 100.0
         edge = Image.new("RGB", output.size, (0, 0, 0) if vignette < 0 else (255, 255, 255))
         blend_mask = mask.point(lambda value: int(255 - (255 - value) * strength))
@@ -217,8 +422,336 @@ def apply_adjustments(image, adjustments):
         amount = grain / 100.0 * 32
         noise = Image.effect_noise(output.size, amount)
         noise_rgb = Image.merge("RGB", (noise, noise, noise))
-        output = ImageChops.soft_light(output, noise_rgb)
+        if settings.get("grain_darken"):
+            # Darken-only film grain: the noise only ever subtracts light, so
+            # specks sit in the image like real silver grain instead of also
+            # brightening it the way soft-light does.
+            darken = noise.point(lambda v: 255 if v >= 128 else int(255 - (128 - v)))
+            darken_rgb = Image.merge("RGB", (darken, darken, darken))
+            output = ImageChops.multiply(output, darken_rgb)
+        else:
+            output = ImageChops.soft_light(output, noise_rgb)
     return output
+
+
+_HUE_BAND_DEG = [("red", 0.0), ("orange", 30.0), ("yellow", 60.0),
+                 ("green", 120.0), ("aqua", 180.0), ("blue", 240.0),
+                 ("purple", 270.0), ("magenta", 300.0)]
+
+
+def _band_multiplier_lut(settings, prefix, scale):
+    """A 256-entry multiplier LUT indexed by PIL hue, from 8 per-band sliders
+    (-100..100). Bands interpolate around the wheel; all-zero -> flat 1.0."""
+    centres = [(deg, float(settings.get(f"{prefix}_{name}", 0.0)))
+               for name, deg in _HUE_BAND_DEG]
+    lut = []
+    for index in range(256):
+        hue = index * 360.0 / 255.0
+        below = max(((deg - 360.0 if deg > hue else deg, value)
+                     for deg, value in centres), key=lambda item: item[0])
+        above = min(((deg + 360.0 if deg < hue else deg, value)
+                     for deg, value in centres), key=lambda item: item[0])
+        span = above[0] - below[0]
+        weight = 0.0 if span == 0 else (hue - below[0]) / span
+        slider = below[1] * (1 - weight) + above[1] * weight
+        multiplier = 1.0 + (slider / 100.0) * scale
+        lut.append(max(0, min(255, int(round(multiplier * 128.0)))))
+    return lut
+
+
+def _colour_mix(image, settings):
+    """Per-hue saturation and luminance (HSL), like the B&W mixer but in colour.
+    A pixel's hue picks its multiplier; all bands at 0 leaves the image alone."""
+    sat_on = any(float(settings.get(f"col_sat_{n}", 0)) for n, _ in _HUE_BAND_DEG)
+    lum_on = any(float(settings.get(f"col_lum_{n}", 0)) for n, _ in _HUE_BAND_DEG)
+    if not sat_on and not lum_on:
+        return image
+    hue, sat, val = image.convert("HSV").split()
+    if sat_on:
+        mult = hue.point(_band_multiplier_lut(settings, "col_sat", 0.9))
+        sat = _image_math_eval(
+            "convert(min(max(float(s) * (float(m) / 128.0), 0.0), 255.0), 'L')",
+            s=sat, m=mult)
+    if lum_on:
+        mult = hue.point(_band_multiplier_lut(settings, "col_lum", 0.5))
+        val = _image_math_eval(
+            "convert(min(max(float(v) * (float(m) / 128.0), 0.0), 255.0), 'L')",
+            v=val, m=mult)
+    return Image.merge("HSV", (hue, sat, val)).convert("RGB")
+
+
+def _colour_glow(image, settings):
+    """A placed colour bloom, screened over the photo (soft centre spotlight or
+    coloured glow). Amount 0 == off."""
+    amount = float(settings.get("glow_amount", 0)) / 100.0
+    if amount <= 0:
+        return image
+    output = image.convert("RGB")
+    width, height = output.size
+    colour = tuple(int(c) for c in settings.get("glow_colour", [255, 220, 170]))[:3]
+    cx = float(settings.get("glow_x", 50)) / 100.0 * width
+    cy = float(settings.get("glow_y", 40)) / 100.0 * height
+    reach = max(1.0, max(width, height) * (float(settings.get("glow_size", 45)) / 100.0))
+    glow = Image.new("L", (width, height), 0)
+    ImageDraw.Draw(glow).ellipse([cx - reach, cy - reach, cx + reach, cy + reach],
+                                 fill=int(255 * amount))
+    glow = glow.filter(ImageFilter.GaussianBlur(reach * 0.5))
+    bloom = Image.composite(Image.new("RGB", (width, height), colour),
+                            Image.new("RGB", (width, height), (0, 0, 0)), glow)
+    return ImageChops.screen(output, bloom)
+
+
+def _smart_sharpen(image, settings):
+    """Unsharp-mask sharpening with Smart-Sharpen-style controls: Amount (the
+    sharpen slider), Radius, Reduce Noise, and a Lens/Gaussian edge model.
+    Lens mode confines the sharpen to real edge detail via a high-pass mask, so
+    smooth gradients (sky, skin) keep their pixels — finer detail, far fewer
+    haloes, and noise left alone. Gaussian mode is the classic unsharp mask."""
+    amount = float(settings.get("sharpen", 0.0))
+    if amount <= 0:
+        return image
+    radius = max(0.1, min(6.0, float(settings.get("sharpen_radius", 1.2))))
+    reduce_noise = max(0.0, min(1.0, float(settings.get("sharpen_reduce_noise", 0.0)) / 100.0))
+    mode = settings.get("sharpen_mode", "lens")
+    percent = int(max(0.0, min(500.0, amount * 2.5)))
+    # Reduce Noise raises the unsharp-mask threshold so low-contrast noise is
+    # ignored; at 0 it is the classic threshold of 3.
+    threshold = int(3 + reduce_noise * 10)
+
+    sharpened = image.filter(ImageFilter.UnsharpMask(radius=radius, percent=percent, threshold=threshold))
+
+    # Lens mode always edge-limits; Gaussian mode does so only as Reduce Noise
+    # is dialled up. The high-pass detail mask lets the sharpen land on edges
+    # and protects flat areas from haloing / noise amplification.
+    gate = reduce_noise
+    if mode == "lens":
+        gate = max(gate, 0.4)
+    if gate > 0:
+        blur = image.filter(ImageFilter.GaussianBlur(radius=radius))
+        detail = ImageChops.difference(image, blur).convert("L")
+        floor = int(gate * 28)
+        slope = 6 + int(gate * 6)
+        mask = detail.point(lambda v, f=floor, s=slope: 0 if v <= f else min(255, (v - f) * s))
+        mask = mask.filter(ImageFilter.GaussianBlur(radius=max(0.4, radius * 0.5)))
+        sharpened = Image.composite(sharpened, image, mask)
+    return sharpened
+
+
+def _deconv_gauss_taps(sigma):
+    """1-D separable Gaussian taps [(offset, weight), …] for a lens/soft blur."""
+    ri = max(1, int(math.ceil(sigma * 2.5)))
+    ws = [math.exp(-(i * i) / (2.0 * sigma * sigma)) for i in range(-ri, ri + 1)]
+    tot = sum(ws) or 1.0
+    return [(i - ri, w / tot) for i, w in enumerate(ws)]
+
+
+def _deconv_motion_taps(length, angle_deg):
+    """2-D taps [(dx, dy, weight), …] for a straight motion blur of `length` px."""
+    n = max(1, min(64, int(round(length))))
+    a = math.radians(angle_deg)
+    counts = {}
+    for i in range(n):
+        t = i - (n - 1) / 2.0
+        key = (int(round(math.cos(a) * t)), int(round(-math.sin(a) * t)))
+        counts[key] = counts.get(key, 0) + 1
+    tot = sum(counts.values()) or 1
+    return [(dx, dy, c / tot) for (dx, dy), c in counts.items()]
+
+
+def _deconv_conv2d(img_f, taps):
+    """Convolve an 'F' image with arbitrary (dx,dy,w) taps by shift-accumulate."""
+    acc = None
+    for dx, dy, w in taps:
+        term = _image_math_eval("a*%r" % float(w), a=ImageChops.offset(img_f, dx, dy))
+        acc = term if acc is None else _image_math_eval("a+b", a=acc, b=term)
+    return acc
+
+
+def _deconv_conv_sep(img_f, taps1d):
+    """Convolve an 'F' image with a separable 1-D kernel (H pass then V pass)."""
+    def run(im, horiz):
+        acc = None
+        for off, w in taps1d:
+            shifted = ImageChops.offset(im, off if horiz else 0, 0 if horiz else off)
+            term = _image_math_eval("a*%r" % float(w), a=shifted)
+            acc = term if acc is None else _image_math_eval("a+b", a=acc, b=term)
+        return acc
+    return run(run(img_f, True), False)
+
+
+def deconvolve(image, kind="lens", radius=2.0, length=12.0, angle=0.0, iterations=12):
+    """Richardson–Lucy deconvolution in PURE PIL — no third-party maths library.
+    Recovers a lens/soft blur (Gaussian PSF, run separably) or a straight motion
+    blur (PSF = a line at `angle` degrees, `length` px long).
+
+    HEAVY by nature: a few seconds for a web-sized frame, ~10 s for a large one,
+    because each of many iterations shift-accumulates the whole image. It is a
+    deliberate apply-and-wait operation and is intentionally NOT wired into the
+    live adjustment path (apply_adjustments) — that would stall the editor.
+
+    kind: 'lens' | 'motion'. radius: lens blur sigma. length/angle: motion PSF.
+    Returns a new RGB image the size of the input."""
+    iterations = max(1, min(40, int(iterations)))
+    rgb = image.convert("RGB")
+    if kind == "motion":
+        offs = _deconv_motion_taps(length, angle)
+        flip = [(-dx, -dy, w) for dx, dy, w in offs]
+        forward = lambda f: _deconv_conv2d(f, offs)
+        adjoint = lambda f: _deconv_conv2d(f, flip)
+    else:
+        taps = _deconv_gauss_taps(max(0.4, min(8.0, radius)))   # symmetric: adjoint == forward
+        forward = adjoint = lambda f: _deconv_conv_sep(f, taps)
+    out_bands = []
+    for band in rgb.split():
+        observed = band.convert("F")
+        estimate = observed
+        for _ in range(iterations):
+            reblur = forward(estimate)
+            ratio = _image_math_eval("o/(b+1.0)", o=observed, b=reblur)
+            estimate = _image_math_eval("e*c", e=estimate, c=adjoint(ratio))
+        out_bands.append(estimate.convert("L"))     # convert clamps to 0–255
+    return Image.merge("RGB", out_bands)
+
+
+def _photo_filter(image, settings):
+    """Lay a coloured gel over the photo — the classic warming/cooling/colour
+    photo filters. Density is the strength; preserve-luminosity keeps the
+    original brightness and lets the filter change only the colour."""
+    density = float(settings.get("photo_filter_density", 0.0)) / 100.0
+    if density <= 0:
+        return image
+    colour = settings.get("photo_filter_color") or [236, 138, 0]
+    r, g, b = [max(0, min(255, int(c))) for c in colour[:3]]
+    tint = Image.new("RGB", image.size, (r, g, b))
+    # A photographic filter absorbs the light complementary to its colour —
+    # multiply reproduces that "gel over the lens" look.
+    filtered = ImageChops.multiply(image, tint)
+    result = Image.blend(image, filtered, density)
+    if settings.get("photo_filter_preserve_lum", True):
+        # Keep the original brightness, take only the filter's colour: put the
+        # filtered chroma (Cb/Cr) back onto the untouched luma (Y).
+        y = image.convert("YCbCr").split()[0]
+        _, cb, cr = result.convert("YCbCr").split()
+        result = Image.merge("YCbCr", (y, cb, cr)).convert("RGB")
+    return result
+
+
+def _split_tone(image, settings):
+    """Colour the shadows and highlights independently.
+
+    Each tone is soft-light blended (so brightness is preserved and only the
+    hue shifts) and confined by a luminance mask — the shadow colour where the
+    photo is dark, the highlight colour where it is bright. Amount 0 == off.
+    """
+    shadow_amount = float(settings.get("split_shadow_amount", 0)) / 100.0
+    midtone_amount = float(settings.get("split_midtone_amount", 0)) / 100.0
+    highlight_amount = float(settings.get("split_highlight_amount", 0)) / 100.0
+    if shadow_amount <= 0 and midtone_amount <= 0 and highlight_amount <= 0:
+        return image
+    output = image.convert("RGB")
+    luminance = ImageOps.grayscale(output)
+    if shadow_amount > 0:
+        colour = tuple(int(c) for c in settings.get("split_shadow", [60, 90, 150]))[:3]
+        weight = luminance.point(lambda v: int((255 - v) * shadow_amount * .6))
+        toned = ImageChops.soft_light(output, Image.new("RGB", output.size, colour))
+        output = Image.composite(toned, output, weight)
+    if midtone_amount > 0:
+        colour = tuple(int(c) for c in settings.get("split_midtone", [128, 128, 128]))[:3]
+        # a triangular weight that peaks at mid grey and falls to the extremes
+        weight = luminance.point(
+            lambda v: max(0, int((255 - abs(v - 128) * 2) * midtone_amount * .6)))
+        toned = ImageChops.soft_light(output, Image.new("RGB", output.size, colour))
+        output = Image.composite(toned, output, weight)
+    if highlight_amount > 0:
+        colour = tuple(int(c) for c in settings.get("split_highlight", [255, 200, 120]))[:3]
+        weight = luminance.point(lambda v: int(v * highlight_amount * .6))
+        toned = ImageChops.soft_light(output, Image.new("RGB", output.size, colour))
+        output = Image.composite(toned, output, weight)
+    return output
+
+
+FILTER_TYPES = ("orton", "grain", "light_leak", "pastel")
+
+
+def _filter_orton(image, settings):
+    """Luminous soft-focus: a sharp base screened with a blurred, brightened copy,
+    keeping enough detail to avoid looking like a plain blur."""
+    radius = max(1.0, float(settings.get("radius", 6.0)))
+    glow = float(settings.get("glow", 0.6))
+    blurred = image.filter(ImageFilter.GaussianBlur(radius))
+    bright = ImageEnhance.Brightness(blurred).enhance(1.0 + 0.45 * glow)
+    screened = ImageChops.screen(image, bright)
+    return Image.blend(image, screened, 0.85)
+
+
+def _filter_grain(image, settings):
+    """Resolution-aware organic grain via soft-light, mono or colour."""
+    width, height = image.size
+    sigma = max(4.0, float(settings.get("size", 24.0)))
+    if settings.get("monochrome", True):
+        noise = Image.effect_noise((width, height), sigma)
+        noise_rgb = Image.merge("RGB", (noise, noise, noise))
+    else:
+        noise_rgb = Image.merge("RGB", tuple(
+            Image.effect_noise((width, height), sigma) for _ in range(3)))
+    return ImageChops.soft_light(image, noise_rgb)
+
+
+def _filter_light_leak(image, settings):
+    """A warm colour bloom from a corner, screened over the photo."""
+    width, height = image.size
+    colour = tuple(int(c) for c in settings.get("colour", [255, 120, 40]))[:3]
+    cx = float(settings.get("x", 0.85)) * width
+    cy = float(settings.get("y", 0.15)) * height
+    reach = max(width, height) * float(settings.get("size", 0.6))
+    glow = Image.new("L", (width, height), 0)
+    ImageDraw.Draw(glow).ellipse([cx - reach, cy - reach, cx + reach, cy + reach], fill=255)
+    glow = glow.filter(ImageFilter.GaussianBlur(reach * 0.4))
+    leak = Image.composite(Image.new("RGB", (width, height), colour),
+                           Image.new("RGB", (width, height), (0, 0, 0)), glow)
+    return ImageChops.screen(image, leak)
+
+
+def _filter_pastel(image, settings):
+    """Muted, lifted, gently warm — a soft pastel treatment."""
+    out = ImageEnhance.Color(image).enhance(float(settings.get("saturation", 0.7)))
+    out = ImageEnhance.Contrast(out).enhance(0.9)
+    lift = int(settings.get("lift", 28))
+    out = out.point(lambda v: int(min(255, lift + v * (255 - lift) / 255.0)))
+    wash = Image.new("RGB", image.size, (255, 240, 235))
+    return Image.blend(out, ImageChops.multiply(out, wash), 0.28)
+
+
+_FILTERS = {"orton": _filter_orton, "grain": _filter_grain,
+            "light_leak": _filter_light_leak, "pastel": _filter_pastel}
+
+
+def apply_filter(image, kind, settings=None):
+    """Return the full-strength filtered RGB image. A filter layer's opacity is
+    its Amount, so this always renders the effect at full and the compositor
+    crossfades it over the photo."""
+    func = _FILTERS.get(kind)
+    if func is None:
+        raise ValueError(f"Unknown filter: {kind}")
+    return func(image.convert("RGB"), settings or {}).convert("RGB")
+
+
+def apply_lewk_steps(image, steps, upto=None):
+    """Run a LEWK's steps in order and return the result (RGB).
+
+    A step is {"type": "adjust", "adjustments": {...}} or
+    {"type": "filter", "filter": "orton", "settings": {...}}. ``upto`` limits how
+    many steps run — the TEACH ME walkthrough uses it to show the effect building
+    up one step at a time.
+    """
+    result = image.convert("RGB")
+    limit = len(steps) if upto is None else max(0, min(int(upto), len(steps)))
+    for step in steps[:limit]:
+        if step.get("type") == "filter":
+            result = apply_filter(result, step.get("filter", ""), step.get("settings"))
+        else:
+            result = apply_adjustments(result, step.get("adjustments", {}))
+    return result
 
 
 def blend_images(base, top, mode="normal", opacity=1.0):
@@ -287,6 +820,7 @@ def apply_layer_styles(image, styles):
 
 
 class EditorDocument:
+    _font_reference_cache = {}
     def __init__(self, source_path):
         self.source_path = os.path.abspath(source_path)
         self.adjustments = copy.deepcopy(DEFAULT_ADJUSTMENTS)
@@ -348,18 +882,202 @@ class EditorDocument:
         self.saved_snapshot = self.snapshot()
 
     def add_adjustment_layer(self, name="Adjustment"):
-        self.layers.append({"id": str(time.time_ns()), "name": name, "type": "adjustment",
+        self.layers.append({"id": _new_layer_id(), "name": name, "type": "adjustment",
                             "visible": True, "opacity": 1.0, "blend": "normal",
-                            "adjustments": copy.deepcopy(DEFAULT_ADJUSTMENTS), "mask": "", "styles": {}})
+                            "adjustments": copy.deepcopy(DEFAULT_ADJUSTMENTS), "mask": "",
+                            "mask_linked": True, "mask_transform": self.default_transform(),
+                            "styles": {}})
         self.record("Add adjustment layer")
         return self.layers[-1]
 
     def add_image_layer(self, path, name=None):
-        self.layers.append({"id": str(time.time_ns()), "name": name or os.path.basename(path),
+        self.layers.append({"id": _new_layer_id(), "name": name or os.path.basename(path),
                             "type": "image", "path": os.path.abspath(path), "visible": True,
-                            "opacity": 1.0, "blend": "normal", "mask": "", "styles": {}})
+                            "opacity": 1.0, "blend": "normal",
+                            "adjustments": copy.deepcopy(DEFAULT_ADJUSTMENTS),
+                            "mask": "", "mask_linked": True,
+                            "mask_transform": self.default_transform(), "styles": {},
+                            "transform": self.default_transform()})
         self.record("Add image layer")
         return self.layers[-1]
+
+    @staticmethod
+    def default_transform():
+        return {"x": .5, "y": .5, "scale_x": 1.0, "scale_y": 1.0,
+                "rotation": 0.0, "flip_x": False, "flip_y": False}
+
+    def add_text_layer(self, text="Text", name="Text", font_path="", font_size=72):
+        self.layers.append({"id": _new_layer_id(), "name": name or "Text",
+                            "type": "text", "text": str(text), "font_path": font_path or "",
+                            "font_family": os.path.splitext(os.path.basename(font_path))[0]
+                            if font_path else "Default", "font_size": int(font_size),
+                            "fill": [255, 255, 255, 255], "align": "left",
+                            "line_spacing": 4, "character_spacing": 0, "stroke_width": 0,
+                            "stroke_fill": [0, 0, 0, 255], "visible": True,
+                            "background": False, "background_fill": [0, 0, 0, 180],
+                            "background_padding": 8, "text_box_width": 0,
+                            "opacity": 1.0, "blend": "normal", "mask": "",
+                            "adjustments": copy.deepcopy(DEFAULT_ADJUSTMENTS),
+                            "mask_linked": True, "mask_transform": self.default_transform(),
+                            "styles": {}, "transform": self.default_transform()})
+        self.record("Add text layer")
+        return self.layers[-1]
+
+    @staticmethod
+    def _image_layer_canvas(top, canvas_size, transform, linked_mask=None):
+        """Transform an image layer and place it on a transparent document canvas."""
+        scale_x = max(.01, min(20.0, float(transform.get("scale_x", 1.0))))
+        scale_y = max(.01, min(20.0, float(transform.get("scale_y", 1.0))))
+        if transform.get("flip_x"):
+            top = ImageOps.mirror(top)
+        if transform.get("flip_y"):
+            top = ImageOps.flip(top)
+        if linked_mask is not None:
+            linked_mask = linked_mask.resize(top.size, Image.Resampling.LANCZOS)
+            top.putalpha(ImageChops.multiply(top.getchannel("A"), linked_mask))
+        size = (max(1, int(round(top.width * scale_x))),
+                max(1, int(round(top.height * scale_y))))
+        if size != top.size:
+            top = top.resize(size, Image.Resampling.LANCZOS)
+        rotation = float(transform.get("rotation", 0.0)) % 360
+        if rotation:
+            top = top.rotate(-rotation, expand=True, resample=Image.Resampling.BICUBIC)
+        x = int(round(float(transform.get("x", .5)) * canvas_size[0] - top.width / 2))
+        y = int(round(float(transform.get("y", .5)) * canvas_size[1] - top.height / 2))
+        canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+        canvas.alpha_composite(top, (x, y))
+        return canvas
+
+    @staticmethod
+    def _fit_layer_image(top, canvas_size, fit):
+        """Fit an image/texture layer to the document canvas.
+
+        cover  — fill the frame, cropping overflow (keeps aspect)
+        contain— fit inside the frame, centred (keeps aspect)
+        stretch— resize to the exact frame (ignores aspect)
+        tile   — repeat the image across the frame
+        """
+        width, height = canvas_size
+        top = top.convert("RGBA")
+        if fit == "stretch":
+            return top.resize((width, height), Image.Resampling.LANCZOS)
+        if fit == "cover":
+            return ImageOps.fit(top, (width, height), Image.Resampling.LANCZOS)
+        if fit == "contain":
+            fitted = ImageOps.contain(top, (width, height), Image.Resampling.LANCZOS)
+            canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+            canvas.alpha_composite(fitted, ((width - fitted.width) // 2,
+                                            (height - fitted.height) // 2))
+            return canvas
+        if fit == "tile":
+            canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+            for y in range(0, height, max(1, top.height)):
+                for x in range(0, width, max(1, top.width)):
+                    canvas.alpha_composite(top, (x, y))
+            return canvas
+        return top
+
+    @classmethod
+    def _canvas_mask(cls, mask, canvas_size, transform):
+        source = Image.new("RGBA", mask.size, (255, 255, 255, 255))
+        source.putalpha(mask)
+        return cls._image_layer_canvas(source, canvas_size, transform).getchannel("A")
+
+    @staticmethod
+    def _font_reference(layer):
+        path = layer.get("font_path", "")
+        if path and os.path.isfile(path):
+            return path
+        family = str(layer.get("font_family", "Default"))
+        if family in {"", "Default"}:
+            return ""
+        key = "".join(character.lower() for character in family if character.isalnum())
+        if key in EditorDocument._font_reference_cache:
+            return EditorDocument._font_reference_cache[key]
+        roots = []
+        windows = os.environ.get("WINDIR")
+        if windows:
+            roots.append(os.path.join(windows, "Fonts"))
+        roots.extend((os.path.expanduser("~/.fonts"), os.path.expanduser("~/.local/share/fonts"),
+                      "/usr/share/fonts", "/usr/local/share/fonts", "/Library/Fonts",
+                      "/System/Library/Fonts"))
+        best = ""
+        for root in roots:
+            if not os.path.isdir(root):
+                continue
+            for directory, _folders, files in os.walk(root):
+                for filename in files:
+                    if os.path.splitext(filename)[1].lower() not in {".ttf", ".otf"}:
+                        continue
+                    stem = "".join(character.lower() for character in os.path.splitext(filename)[0]
+                                   if character.isalnum())
+                    if stem == key:
+                        best = os.path.join(directory, filename); break
+                    if not best and (key in stem or stem in key):
+                        best = os.path.join(directory, filename)
+                if best and "".join(character.lower() for character in os.path.splitext(
+                        os.path.basename(best))[0] if character.isalnum()) == key:
+                    break
+            if best:
+                break
+        EditorDocument._font_reference_cache[key] = best
+        return best
+
+    @staticmethod
+    def _text_layer_image(layer):
+        size = max(1, min(2000, int(layer.get("font_size", 72))))
+        reference = EditorDocument._font_reference(layer)
+        try:
+            font = ImageFont.truetype(reference, size) if reference else ImageFont.load_default(size=size)
+        except (OSError, TypeError):
+            font = ImageFont.load_default()
+        text = str(layer.get("text", "Text")) or " "
+        spacing = int(layer.get("line_spacing", 4))
+        character_spacing = int(layer.get("character_spacing", 0))
+        stroke = max(0, min(100, int(layer.get("stroke_width", 0))))
+        probe = Image.new("L", (1, 1))
+        draw = ImageDraw.Draw(probe)
+        text_box_width = max(0, int(layer.get("text_box_width", 0)))
+        source_lines = text.splitlines() or [" "]
+        if text_box_width:
+            average = max(1, draw.textlength("M", font=font) + character_spacing)
+            columns = max(1, int(text_box_width / average))
+            lines = [wrapped for source_line in source_lines
+                     for wrapped in (textwrap.wrap(source_line, width=columns,
+                                                   replace_whitespace=False,
+                                                   drop_whitespace=False) or [" "])]
+        else:
+            lines = source_lines
+        widths = []
+        for line in lines:
+            advances = [draw.textlength(character, font=font) for character in (line or " ")]
+            widths.append(int(math.ceil(sum(advances) + character_spacing * max(0, len(advances) - 1))))
+        line_box = draw.textbbox((0, 0), "Ag", font=font, stroke_width=stroke)
+        line_height = max(1, line_box[3] - line_box[1])
+        padding = max(0, int(layer.get("background_padding", 8))) if layer.get("background") else 0
+        width = max(1, max(widths)); height = max(1, len(lines) * line_height + max(0, len(lines) - 1) * spacing)
+        output = Image.new("RGBA", (width + (stroke + padding + 2) * 2,
+                                    height + (stroke + padding + 2) * 2),
+                           tuple(layer.get("background_fill", [0, 0, 0, 180]))
+                           if layer.get("background") else (0, 0, 0, 0))
+        painter = ImageDraw.Draw(output)
+        top = stroke + padding + 2
+        align = layer.get("align", "left")
+        for line_index, line in enumerate(lines):
+            line_width = widths[line_index]
+            left = stroke + padding + 2
+            if align == "center":
+                left += (width - line_width) / 2
+            elif align == "right":
+                left += width - line_width
+            y = top + line_index * (line_height + spacing)
+            for character in (line or " "):
+                painter.text((left, y), character, font=font,
+                             fill=tuple(layer.get("fill", [255, 255, 255, 255])),
+                             stroke_width=stroke,
+                             stroke_fill=tuple(layer.get("stroke_fill", [0, 0, 0, 255])))
+                left += painter.textlength(character, font=font) + character_spacing
+        return output
 
     def render(self, max_size=None):
         with Image.open(self.source_path) as source:
@@ -405,7 +1123,7 @@ class EditorDocument:
             if layer.get("type") == "adjustment":
                 adjusted = apply_adjustments(image.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
                 top = adjusted
-            else:
+            elif layer.get("type") == "image":
                 path = layer.get("path", "")
                 if not os.path.isfile(path):
                     name = layer.get("name") or os.path.basename(path) or "unnamed layer"
@@ -414,12 +1132,38 @@ class EditorDocument:
                     top = ImageOps.exif_transpose(source_layer).convert("RGBA")
                 if max_size:
                     top.thumbnail(image.size, Image.Resampling.LANCZOS)
-            top = apply_layer_styles(top, layer.get("styles", {}))
-            mask = _mask_from_text(layer.get("mask", ""))
-            if mask:
+                alpha = top.getchannel("A")
+                top = apply_adjustments(
+                    top.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
+                top.putalpha(alpha)
+                fit = layer.get("fit", "original")
+                if fit in ("cover", "contain", "stretch", "tile"):
+                    top = self._fit_layer_image(top, image.size, fit)
+            elif layer.get("type") == "text":
+                top = self._text_layer_image(layer)
+                alpha = top.getchannel("A")
+                top = apply_adjustments(top.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
+                top.putalpha(alpha)
+            else:
+                continue
+            mask = (_mask_from_text(layer.get("mask", ""))
+                    if layer.get("mask_enabled", True) else None)
+            if layer.get("type") in {"image", "text"}:
+                linked_mask = mask if mask is not None and layer.get("mask_linked", True) else None
+                # A fit mode already sized the layer to the canvas; place it
+                # centred at scale 1 rather than re-applying the free transform.
+                fitted = layer.get("fit", "original") in ("cover", "contain", "stretch", "tile")
+                transform = self.default_transform() if fitted else layer.get("transform", {})
+                top = self._image_layer_canvas(top, image.size, transform, linked_mask)
+                if mask is not None and not layer.get("mask_linked", True):
+                    mask = self._canvas_mask(mask, image.size,
+                                             layer.get("mask_transform", {}))
+                    top.putalpha(ImageChops.multiply(top.getchannel("A"), mask))
+            elif mask:
                 if mask.size != image.size:
                     mask = mask.resize(image.size, Image.Resampling.LANCZOS)
                 top.putalpha(ImageChops.multiply(top.getchannel("A"), mask))
+            top = apply_layer_styles(top, layer.get("styles", {}))
             image = blend_images(image, top, layer.get("blend", "normal"), float(layer.get("opacity", 1.0)))
         return image.convert("RGB")
 
@@ -485,6 +1229,12 @@ class EditorDocument:
             mask = layer.get("mask", "")
             if not isinstance(mask, str) or len(mask) > MAX_ENCODED_MASK_BYTES:
                 raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} mask is invalid")
+            if layer.get("type") == "text":
+                text = layer.get("text", "")
+                if not isinstance(text, str) or len(text) > MAX_TEXT_LAYER_CHARS:
+                    raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} text is invalid")
+                if not isinstance(layer.get("font_path", ""), str):
+                    raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} font is invalid")
         document = cls(source_path)
         document.adjustments = value.get("adjustments", copy.deepcopy(DEFAULT_ADJUSTMENTS))
         document.geometry = value.get("geometry", document.geometry)
@@ -513,6 +1263,27 @@ class EditorDocument:
     def recipe(self):
         return {"version": PROJECT_VERSION, "adjustments": copy.deepcopy(self.adjustments),
                 "layers": [copy.deepcopy(layer) for layer in self.layers if layer.get("type") == "adjustment"]}
+
+    def stack_layers(self, layers):
+        """Add adjustment layers ON TOP without touching the base or existing
+        layers. This is how a LEWK applies — it must not flatten the
+        photographer's existing edits. Each layer gets a fresh unique id.
+        """
+        added = []
+        for layer in layers:
+            if not isinstance(layer, dict) or layer.get("type") != "adjustment":
+                raise ValueError("stack_layers only accepts adjustment layers")
+            mask = layer.get("mask", "")
+            if not isinstance(mask, str) or len(mask) > MAX_ENCODED_MASK_BYTES:
+                raise ValueError("Invalid layer mask")
+            clone = copy.deepcopy(layer)
+            clone["id"] = _new_layer_id()
+            self.layers.append(clone)
+            added.append(clone)
+        if len(self.layers) > MAX_PROJECT_LAYERS:
+            raise ValueError("Too many layers")
+        self.record("Apply LEWK")
+        return added
 
     def apply_recipe(self, recipe):
         if not isinstance(recipe, dict):
