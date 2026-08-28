@@ -263,6 +263,10 @@ class EditorWindow(QMainWindow):
         self.act_export.triggered.connect(self.export_image)
         bar.addAction(self.act_export)
 
+        self.act_prefs = QAction("Preferences", self)
+        self.act_prefs.triggered.connect(self.open_preferences)
+        bar.addAction(self.act_prefs)
+
         self.act_help = QAction("Help", self)
         self.act_help.setShortcut(QKeySequence.HelpContents)   # F1
         self.act_help.triggered.connect(self.open_help)
@@ -899,6 +903,10 @@ class EditorWindow(QMainWindow):
         from .help_dialog import HelpDialog
         HelpDialog(self).show()
 
+    def open_preferences(self):
+        from .prefs_dialog import PreferencesDialog
+        PreferencesDialog(self).exec()
+
     def open_lewks(self):
         if not self.doc:
             self._error("Open a photo first",
@@ -1069,8 +1077,14 @@ class EditorWindow(QMainWindow):
             "JPEG (*.jpg);;PNG (*.png)")
         if not path:
             return
+        from . import prefs
+        settings = prefs.load()
+        copyright_text = (settings["copyright_text"]
+                          if settings["add_copyright_if_missing"] else "")
         try:
-            self.doc.export(path)
+            self.doc.export(path, quality=int(settings["export_quality"]),
+                            copyright_text=copyright_text,
+                            strip_gps=bool(settings["strip_gps"]))
         except Exception as error:  # noqa: BLE001
             self._error("Export failed", str(error))
             return
