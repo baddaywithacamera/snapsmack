@@ -537,6 +537,82 @@ def _smart_sharpen(image, settings):
     return sharpened
 
 
+def _deconv_gauss_taps(sigma):
+    """1-D separable Gaussian taps [(offset, weight), …] for a lens/soft blur."""
+    ri = max(1, int(math.ceil(sigma * 2.5)))
+    ws = [math.exp(-(i * i) / (2.0 * sigma * sigma)) for i in range(-ri, ri + 1)]
+    tot = sum(ws) or 1.0
+    return [(i - ri, w / tot) for i, w in enumerate(ws)]
+
+
+def _deconv_motion_taps(length, angle_deg):
+    """2-D taps [(dx, dy, weight), …] for a straight motion blur of `length` px."""
+    n = max(1, min(64, int(round(length))))
+    a = math.radians(angle_deg)
+    counts = {}
+    for i in range(n):
+        t = i - (n - 1) / 2.0
+        key = (int(round(math.cos(a) * t)), int(round(-math.sin(a) * t)))
+        counts[key] = counts.get(key, 0) + 1
+    tot = sum(counts.values()) or 1
+    return [(dx, dy, c / tot) for (dx, dy), c in counts.items()]
+
+
+def _deconv_conv2d(img_f, taps):
+    """Convolve an 'F' image with arbitrary (dx,dy,w) taps by shift-accumulate."""
+    acc = None
+    for dx, dy, w in taps:
+        term = _image_math_eval("a*%r" % float(w), a=ImageChops.offset(img_f, dx, dy))
+        acc = term if acc is None else _image_math_eval("a+b", a=acc, b=term)
+    return acc
+
+
+def _deconv_conv_sep(img_f, taps1d):
+    """Convolve an 'F' image with a separable 1-D kernel (H pass then V pass)."""
+    def run(im, horiz):
+        acc = None
+        for off, w in taps1d:
+            shifted = ImageChops.offset(im, off if horiz else 0, 0 if horiz else off)
+            term = _image_math_eval("a*%r" % float(w), a=shifted)
+            acc = term if acc is None else _image_math_eval("a+b", a=acc, b=term)
+        return acc
+    return run(run(img_f, True), False)
+
+
+def deconvolve(image, kind="lens", radius=2.0, length=12.0, angle=0.0, iterations=12):
+    """Richardson–Lucy deconvolution in PURE PIL — no third-party maths library.
+    Recovers a lens/soft blur (Gaussian PSF, run separably) or a straight motion
+    blur (PSF = a line at `angle` degrees, `length` px long).
+
+    HEAVY by nature: a few seconds for a web-sized frame, ~10 s for a large one,
+    because each of many iterations shift-accumulates the whole image. It is a
+    deliberate apply-and-wait operation and is intentionally NOT wired into the
+    live adjustment path (apply_adjustments) — that would stall the editor.
+
+    kind: 'lens' | 'motion'. radius: lens blur sigma. length/angle: motion PSF.
+    Returns a new RGB image the size of the input."""
+    iterations = max(1, min(40, int(iterations)))
+    rgb = image.convert("RGB")
+    if kind == "motion":
+        offs = _deconv_motion_taps(length, angle)
+        flip = [(-dx, -dy, w) for dx, dy, w in offs]
+        forward = lambda f: _deconv_conv2d(f, offs)
+        adjoint = lambda f: _deconv_conv2d(f, flip)
+    else:
+        taps = _deconv_gauss_taps(max(0.4, min(8.0, radius)))   # symmetric: adjoint == forward
+        forward = adjoint = lambda f: _deconv_conv_sep(f, taps)
+    out_bands = []
+    for band in rgb.split():
+        observed = band.convert("F")
+        estimate = observed
+        for _ in range(iterations):
+            reblur = forward(estimate)
+            ratio = _image_math_eval("o/(b+1.0)", o=observed, b=reblur)
+            estimate = _image_math_eval("e*c", e=estimate, c=adjoint(ratio))
+        out_bands.append(estimate.convert("L"))     # convert clamps to 0–255
+    return Image.merge("RGB", out_bands)
+
+
 def _photo_filter(image, settings):
     """Lay a coloured gel over the photo — the classic warming/cooling/colour
     photo filters. Density is the strength; preserve-luminosity keeps the
