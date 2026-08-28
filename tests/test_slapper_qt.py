@@ -131,6 +131,30 @@ def test_layers_isolation_and_ops():
     assert len(win.doc.layers) == 1
 
 
+def test_autosave_recovery():
+    win = _editor(_image("rec.jpg", (300, 200)))
+    win._recovery_dir = tempfile.mkdtemp(dir=TMP)     # isolate from the real dir
+    win.rows["contrast"]._on_slider(win.rows["contrast"]._to_step(30))
+    win._on_commit("contrast")
+    win._write_recovery()
+    recpath = win._recovery_path()
+    assert recpath and os.path.isfile(recpath)
+    # the recovery reproduces the edit
+    rec = editor_engine.EditorDocument.load_project(recpath)
+    assert rec.adjustments["contrast"] == 30
+    # _maybe_recover with "Yes" returns the recovered document
+    from PySide6.QtWidgets import QMessageBox
+    original = QMessageBox.question
+    QMessageBox.question = staticmethod(lambda *a, **k: QMessageBox.Yes)
+    try:
+        recovered = win._maybe_recover(win.doc.source_path)
+        assert recovered is not None and recovered.adjustments["contrast"] == 30
+    finally:
+        QMessageBox.question = original
+    win._clear_recovery()
+    assert not os.path.isfile(recpath)
+
+
 def test_help_dialog():
     from slapper_qt.help_dialog import HelpDialog, TOPICS
     dialog = HelpDialog()
