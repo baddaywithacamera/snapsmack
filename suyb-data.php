@@ -37,6 +37,54 @@ require_once 'core/api-auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
+// The hub is not one of its own multisite nodes, so it cannot use the
+// spoke-only multisite/provision-key route. Allow the already-authenticated hub
+// discovery credential to install the fleet's shared, read-only SUYB key on
+// this site itself. This is deliberately limited to one supplied 64-hex key;
+// it cannot mint or install keys for any other tool scope.
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    $body = json_decode(file_get_contents('php://input') ?: '', true);
+    $action = is_array($body) ? strtolower(trim((string)($body['action'] ?? ''))) : '';
+    $key_value = is_array($body) ? strtolower(trim((string)($body['key_value'] ?? ''))) : '';
+    if ($action !== 'provision-backup-key') {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Unknown action.']);
+        exit;
+    }
+    if (!preg_match('/^[a-f0-9]{64}$/', $key_value)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'key_value must be 64 hexadecimal characters.']);
+        exit;
+    }
+    try {
+        foreach ([
+            "ALTER TABLE snap_ohsnap_keys ADD COLUMN key_type VARCHAR(20) NOT NULL DEFAULT 'ohsnap' AFTER label",
+            "ALTER TABLE snap_ohsnap_keys ADD COLUMN key_prefix VARCHAR(8) NOT NULL DEFAULT '' AFTER key_hash",
+            "ALTER TABLE snap_ohsnap_keys ADD COLUMN expires_at DATETIME DEFAULT NULL AFTER last_used_at",
+        ] as $alter) {
+            try { $pdo->exec($alter); } catch (PDOException $e) { /* already present */ }
+        }
+        $pdo->beginTransaction();
+        $pdo->prepare("UPDATE snap_ohsnap_keys SET is_active = 0 WHERE key_type = 'suyb' AND label LIKE 'HUB %'")
+            ->execute();
+        $prefix = substr($key_value, 0, 8);
+        $expires = date('Y-m-d H:i:s', strtotime('+1 year'));
+        $pdo->prepare("INSERT INTO snap_ohsnap_keys
+            (label, key_type, key_hash, key_prefix, expires_at, user_id)
+            VALUES ('HUB shared key (suyb)', 'suyb', ?, ?, ?, NULL)")
+            ->execute([hash('sha256', $key_value), $prefix, $expires]);
+        $pdo->commit();
+        echo json_encode(['ok' => true, 'key_type' => 'suyb',
+                          'key_prefix' => $prefix, 'expires_at' => $expires,
+                          'shared' => true]);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => 'Provisioning failed.']);
+    }
+    exit;
+}
+
 // ── Load settings ────────────────────────────────────────────────────────────
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                 ->fetchAll(PDO::FETCH_KEY_PAIR);
