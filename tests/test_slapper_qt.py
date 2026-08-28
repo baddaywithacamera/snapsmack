@@ -421,6 +421,220 @@ def test_library_scan_and_open():
     assert lib._editors and lib._editors[0].doc is not None
 
 
+def test_zoom_actual_shows_native_pixels():
+    # "100%" must show the photograph's real pixels (a true focus check), not
+    # an upscaled window-sized proxy. Fit stays a smaller, fast proxy.
+    big = _image("big_zoom.jpg", size=(2400, 1600))
+    win = _editor(big)
+    win.zoom_fit()
+    APP.processEvents()
+    fit_w = win.view._item.pixmap().width()
+    win.zoom_actual()
+    APP.processEvents()
+    actual_w = win.view._item.pixmap().width()
+    assert actual_w == 2400, f"100% should be native width 2400, got {actual_w}"
+    assert fit_w < 2400, f"Fit should be a smaller proxy, got {fit_w}"
+    assert win._zoom_actual is True
+    win.zoom_fit()
+    assert win._zoom_actual is False
+    # opening a fresh photo resets to fitted, never stuck at 100%
+    win.zoom_actual()
+    win.open_path(big)
+    assert win._zoom_actual is False
+
+
+def test_filmstrip_lists_folder_and_opens():
+    # the filmstrip shows the current folder and clicking a frame opens it
+    folder = tempfile.mkdtemp(prefix="slapper_strip_", dir=TMP)
+    first = os.path.join(folder, "a.jpg")
+    Image.new("RGB", (120, 90), (200, 60, 60)).save(first)
+    second = os.path.join(folder, "b.jpg")
+    Image.new("RGB", (120, 90), (60, 200, 60)).save(second)
+
+    win = _editor(first)
+    win.act_filmstrip.setChecked(True)
+    win.filmstrip.show_for(first)
+    assert win.filmstrip.count() == 2
+    QThreadPool.globalInstance().waitForDone(5000)
+    for _ in range(20):
+        APP.processEvents(); time.sleep(0.01)
+    # activating the other frame opens it (clean doc → no discard dialog)
+    win.filmstrip._activate(win.filmstrip._items[os.path.abspath(second)])
+    APP.processEvents()
+    assert os.path.abspath(win.doc.source_path) == os.path.abspath(second)
+
+
+def test_mask_brush_and_type_switch():
+    from PySide6.QtCore import QPoint
+    win = _editor(_image("brushmask.jpg", (400, 300)))
+    lp = win.layers_panel
+    lp._add_adjustment()
+    layer = lp._selected_layer()
+    # Brush type seeds a paintable canvas from the photo
+    win._select_mask_type("brush")
+    assert win.mask_stack.currentIndex() == 2
+    assert win.mask_brush.has_mask()
+    # paint a Hide stroke and store it on the layer
+    win.mask_brush.set_paint_white(False)
+    win.mask_brush._paint_at(QPoint(20, 20))
+    win._store_brush_mask()
+    assert layer.get("mask")
+    assert win.doc.render((200, 200))     # still renders with a brush mask
+    # switching type swaps to only that type's controls
+    win._select_mask_type("radial")
+    assert win.mask_stack.currentIndex() == 0
+    win._select_mask_type("linear")
+    assert win.mask_stack.currentIndex() == 1
+
+
+def test_before_after_divider():
+    img = _image("compare.jpg", size=(600, 400))
+    win = _editor(img)
+    win.act_compare.setChecked(True)     # enter Before/After
+    APP.processEvents()
+    assert win.view._compare is True
+    width = win.view._item.pixmap().width()
+    assert width > 0
+    # moving the split recomposites the same frame (no engine re-render needed)
+    win.view._divider = 0.25
+    win.view._compose_compare()
+    APP.processEvents()
+    assert win.view._item.pixmap().width() == width
+    win.act_compare.setChecked(False)    # leave Before/After
+    assert win.view._compare is False
+
+
+def test_library_sort_search_info_and_folders():
+    from slapper_qt.library_window import LibraryWindow
+    folder = tempfile.mkdtemp(prefix="slapper_lib_", dir=TMP)
+    for name, colour in (("apple.jpg", (200, 30, 30)),
+                         ("banana.jpg", (220, 200, 40)),
+                         ("cherry.jpg", (150, 20, 40))):
+        Image.new("RGB", (300, 200), colour).save(os.path.join(folder, name))
+
+    lib = LibraryWindow()
+    lib.load_folder(folder)
+    assert lib.list.count() == 3
+    QThreadPool.globalInstance().waitForDone(5000)
+    for _ in range(20):
+        APP.processEvents(); time.sleep(0.01)
+
+    # search filters the grid by filename
+    lib.search.setText("ban")
+    visible = [p for p, it in lib._items.items() if not it.isHidden()]
+    assert len(visible) == 1 and os.path.basename(visible[0]) == "banana.jpg"
+    lib.search.setText("")
+
+    # sort by date re-orders without re-decoding (icons cached)
+    lib._icons_before = dict(lib._icons)
+    lib.sort_combo.setCurrentIndex(lib.sort_combo.findData("date_new"))
+    assert lib._sort == "date_new"
+    assert lib.list.count() == 3   # still all present, just reordered
+
+    # clicking an item reports its dimensions + size in the status bar
+    first = lib.list.item(0)
+    lib._show_info(first)
+    message = lib.status.currentMessage()
+    assert "×" in message and ("KB" in message or "MB" in message or "B" in message)
+
+    # the folder tree slides out (hidden) and back (isHidden reflects the
+    # explicit toggle even when the window itself isn't shown, as offscreen)
+    lib.act_folders.setChecked(False)
+    assert lib.tree.isHidden() is True
+    lib.act_folders.setChecked(True)
+    assert lib.tree.isHidden() is False
+
+
+def test_vignette_feather_and_grain_darken():
+    base = Image.new("RGB", (120, 90), (128, 128, 128))
+    # feather changes the vignette edge softness → a different result
+    soft = editor_engine.apply_adjustments(base, {"vignette": -60, "vignette_feather": 95})
+    hard = editor_engine.apply_adjustments(base, {"vignette": -60, "vignette_feather": 3})
+    assert list(soft.getdata()) != list(hard.getdata())
+    # darken-only grain never brightens the photo (soft-light grain can)
+    darkened = editor_engine.apply_adjustments(base, {"grain": 80, "grain_darken": True})
+    mean = sum(sum(p) for p in darkened.getdata()) / (120 * 90 * 3)
+    assert mean <= 129, f"darken-only grain should not brighten, mean={mean}"
+
+
+def test_split_tone():
+    base = Image.new("RGB", (80, 60), (128, 128, 128))
+    off = editor_engine.apply_adjustments(base, {})
+    warm = editor_engine.apply_adjustments(
+        base, {"split_highlight": [255, 180, 80], "split_highlight_amount": 80})
+    assert list(off.getdata()) != list(warm.getdata())    # a tone shifts colour
+    zero = editor_engine.apply_adjustments(
+        base, {"split_shadow": [0, 0, 255], "split_shadow_amount": 0})
+    assert list(zero.getdata()) == list(off.getdata())     # amount 0 == off
+    # the UI wires the amount slider + colour swatch without error
+    win = _editor(_image("split.jpg", (200, 150)))
+    assert "split_shadow_amount" in win.rows and "split_highlight_amount" in win.rows
+    win.active_adjustments()["split_highlight"] = [255, 0, 0]
+    win._update_split_swatches()
+
+
+def test_photo_filter():
+    from PIL import ImageStat
+    base = Image.new("RGB", (80, 60), (128, 128, 128))
+    off = editor_engine.apply_adjustments(base, {})
+    # amount 0 == off (backward compatible)
+    zero = editor_engine.apply_adjustments(
+        base, {"photo_filter_color": [236, 138, 0], "photo_filter_density": 0})
+    assert list(zero.getdata()) == list(off.getdata())
+    # a warming filter shifts colour
+    warm = editor_engine.apply_adjustments(
+        base, {"photo_filter_color": [236, 138, 0], "photo_filter_density": 40})
+    assert list(warm.getdata()) != list(off.getdata())
+    # preserve-brightness keeps luma ~unchanged; without it, luma drifts
+    keep = editor_engine.apply_adjustments(
+        base, {"photo_filter_color": [0, 0, 255], "photo_filter_density": 60,
+               "photo_filter_preserve_lum": True})
+    drop = editor_engine.apply_adjustments(
+        base, {"photo_filter_color": [0, 0, 255], "photo_filter_density": 60,
+               "photo_filter_preserve_lum": False})
+    base_luma = ImageStat.Stat(off.convert("L")).mean[0]
+    assert abs(ImageStat.Stat(keep.convert("L")).mean[0] - base_luma) < 6
+    assert ImageStat.Stat(drop.convert("L")).mean[0] < base_luma - 6
+    # the preset table carries the standard set + faux infrared
+    labels = [p[0] for p in editor_engine.PHOTO_FILTER_PRESETS]
+    for want in ("Warming Filter (85)", "Cooling Filter (80)", "Sepia",
+                 "Underwater", "Faux IR — R72 Deep Red"):
+        assert want in labels, want
+    # UI: choosing a preset writes colour + density onto the active target
+    win = _editor(_image("filter.jpg", (200, 150)))
+    assert "photo_filter_density" in win.rows
+    idx = [win.photo_filter_combo.itemText(i)
+           for i in range(win.photo_filter_combo.count())].index("Sepia")
+    win.photo_filter_combo.setCurrentIndex(idx)
+    win._on_photo_filter_preset(idx)
+    tgt = win.active_adjustments()
+    assert tgt["photo_filter_color"] == [172, 122, 51]
+    assert tgt["photo_filter_density"] == 25.0
+    win._update_photo_filter_swatch()          # no error
+    win._sync_photo_filter_combo(tgt)          # round-trips back to a named preset
+    assert win.photo_filter_combo.currentText() == "Sepia"
+
+
+def test_colour_engine_additions():
+    base = Image.new("RGB", (60, 48), (120, 150, 90))
+    ref = list(editor_engine.apply_adjustments(base, {}).getdata())
+    for adj in ({"curve_blue": [[0, 40], [255, 255]]},      # per-channel curve
+                {"col_sat_green": -100},                     # HSL saturation
+                {"col_lum_red": 80},                         # HSL luminance
+                {"split_midtone": [255, 0, 0], "split_midtone_amount": 80},
+                {"glow_amount": 80}):                        # placed glow
+        assert list(editor_engine.apply_adjustments(base, adj).getdata()) != ref
+    # every new control is wired into the rail
+    win = _editor(_image("colour.jpg", (200, 150)))
+    for key in ("col_sat_red", "col_lum_blue", "glow_amount", "glow_x",
+                "split_midtone_amount"):
+        assert key in win.rows, key
+    # the curve editor stores a per-channel curve onto the target
+    win._on_curve_changed("curve_red", [[0, 0], [128, 180], [255, 255]])
+    assert win.active_adjustments()["curve_red"] == [[0, 0], [128, 180], [255, 255]]
+    win.curve_editor.set_curves(win.active_adjustments())   # loads back with no error
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for test in tests:

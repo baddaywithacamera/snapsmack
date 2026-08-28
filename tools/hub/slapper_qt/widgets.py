@@ -5,7 +5,7 @@ screen shares one look and one behaviour instead of styling controls ad hoc.
 """
 
 from PySide6.QtCore import Qt, Signal, QRectF
-from PySide6.QtGui import QPainter, QPixmap, QColor, QPolygonF, QPen
+from PySide6.QtGui import QPainter, QPixmap, QColor, QPolygonF, QPen, QFont
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem,
@@ -46,6 +46,12 @@ class ImageView(QGraphicsView):
         self._crop_rect_item = None
         self._crop_origin = None
         self._retouch_mode = False
+        # Before/After split: original on the left of the divider, edited on the
+        # right, drag anywhere to move the split.
+        self._compare = False
+        self._orig_pixmap = None
+        self._edit_pixmap = None
+        self._divider = 0.5
 
     def set_retouch_mode(self, enabled):
         self._retouch_mode = enabled
@@ -85,7 +91,82 @@ class ImageView(QGraphicsView):
         self._fitting = False
         self.resetTransform()
 
+    # --- Before/After split -------------------------------------------------
+    def set_compare(self, original, edited, keep_view=True):
+        """Enter Before/After: original left of the divider, edited on the
+        right. Drag anywhere across the canvas to move the split."""
+        self._compare = True
+        self._orig_pixmap = original
+        self._edit_pixmap = edited
+        self.viewport().setCursor(Qt.SplitHCursor)
+        self._compose_compare(keep_view=keep_view)
+
+    def reset_divider(self):
+        self._divider = 0.5
+
+    def clear_compare(self):
+        self._compare = False
+        self._orig_pixmap = None
+        self._edit_pixmap = None
+        self.viewport().unsetCursor()
+
+    def _compose_compare(self, keep_view=True):
+        if not (self._orig_pixmap and self._edit_pixmap):
+            return
+        edited = self._edit_pixmap
+        width, height = edited.width(), edited.height()
+        if width < 1 or height < 1:
+            return
+        original = self._orig_pixmap
+        if original.size() != edited.size():
+            original = original.scaled(width, height, Qt.IgnoreAspectRatio,
+                                       Qt.SmoothTransformation)
+        canvas = QPixmap(width, height)
+        canvas.fill(Qt.black)
+        painter = QPainter(canvas)
+        split = max(0, min(width, int(width * self._divider)))
+        painter.drawPixmap(0, 0, original, 0, 0, split, height)
+        painter.drawPixmap(split, 0, edited, split, 0, width - split, height)
+        pen = QPen(QColor(theme.ACCENT))
+        pen.setWidth(max(1, round(width / 500)))
+        painter.setPen(pen)
+        painter.drawLine(split, 0, split, height)
+        self._draw_compare_labels(painter, width, height, split)
+        painter.end()
+        self.set_pixmap(canvas, keep_view=keep_view)
+
+    def _draw_compare_labels(self, painter, width, height, split):
+        font = QFont()
+        font.setPixelSize(max(11, round(height / 30)))
+        font.setBold(True)
+        painter.setFont(font)
+        metrics = painter.fontMetrics()
+        pad = max(6, round(width / 90))
+        y = metrics.ascent() + pad
+        if split > metrics.horizontalAdvance("BEFORE") + pad * 2:
+            self._label(painter, "BEFORE", pad, y)
+        after_w = metrics.horizontalAdvance("AFTER")
+        if (width - split) > after_w + pad * 2:
+            self._label(painter, "AFTER", width - after_w - pad, y)
+
+    def _label(self, painter, text, x, y):
+        painter.setPen(QColor(0, 0, 0, 210))   # shadow so it reads on any photo
+        painter.drawText(x + 1, y + 1, text)
+        painter.setPen(QColor(theme.ACCENT))
+        painter.drawText(x, y, text)
+
+    def _set_divider_from(self, event):
+        if not self._edit_pixmap:
+            return
+        point = self.mapToScene(event.position().toPoint())
+        width = self._edit_pixmap.width() or 1
+        self._divider = max(0.0, min(1.0, point.x() / width))
+        self._compose_compare(keep_view=True)
+
     def mousePressEvent(self, event):
+        if self._compare and self._has_image and event.button() == Qt.LeftButton:
+            self._set_divider_from(event)
+            return
         if self._retouch_mode and self._has_image and event.button() == Qt.LeftButton:
             point = self.mapToScene(event.position().toPoint())
             scene = self._scene.sceneRect()
@@ -106,6 +187,9 @@ class ImageView(QGraphicsView):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        if self._compare and (event.buttons() & Qt.LeftButton):
+            self._set_divider_from(event)
+            return
         if self._crop_mode and self._crop_origin is not None:
             current = self.mapToScene(event.position().toPoint())
             self._crop_rect_item.setRect(QRectF(self._crop_origin, current).normalized())

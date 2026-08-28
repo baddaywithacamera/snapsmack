@@ -1,21 +1,30 @@
-"""SNAP SLAPPER Qt library browser (Phase 5).
+"""SNAP SLAPPER Qt library browser.
 
-A Picasa-style entry point: pick a folder, see a thumbnail grid, double-click
-to open a photo in the editor. Thumbnails load on a background thread pool so
-the grid never freezes, and the icon size is adjustable.
+A Picasa-style entry point: pick a folder (or click one in the folder tree),
+see a thumbnail grid, double-click to open a photo in the editor. Thumbnails
+load on a background thread pool so the grid never freezes.
 
-This is a focused first browser — folders + grid + open. Ratings, tags,
-albums, filters, and Trash are richer features of the Tk library still to be
-ported in later phases.
+Features:
+  - Collapsible **folder tree** on the left (toggle to slide it in/out).
+  - **Sort** by name or capture date (newest / oldest). Capture date is read
+    from EXIF while the thumbnail loads, so it reflects when the shot was
+    taken, not when the file happened to land on disk.
+  - **Search** box that filters the grid by filename as you type.
+  - **Click a photo** to see its dimensions and file size in the status bar.
+
+Ratings, tags, albums, and Trash are richer features of the Tk library still
+to be ported in later phases.
 """
 
 import os
+import time
 
-from PySide6.QtCore import Qt, QObject, QRunnable, QThreadPool, Signal, QSize
+from PySide6.QtCore import Qt, QObject, QRunnable, QThreadPool, Signal, QSize, QDir
 from PySide6.QtGui import QImage, QPixmap, QIcon, QAction, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QListWidget, QListWidgetItem, QFileDialog, QLabel, QSlider,
-    QWidget, QHBoxLayout,
+    QWidget, QHBoxLayout, QComboBox, QLineEdit, QTreeView, QSplitter,
+    QFileSystemModel,
 )
 
 from PIL import Image, ImageOps
@@ -33,13 +42,51 @@ except Exception:  # noqa: BLE001
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp", ".bmp", ".gif"}
 THUMB_SOURCE = 256   # thumbnails are generated at this size, displayed smaller
 
+SORTS = [
+    ("name", "Name"),
+    ("date_new", "Date (newest)"),
+    ("date_old", "Date (oldest)"),
+]
+
+_EXIF_DATETIME_ORIGINAL = 0x9003
+_EXIF_IFD = 0x8769
+
+
+def _capture_timestamp(pil_image, path):
+    """Best-effort capture time as an epoch float: EXIF DateTimeOriginal when
+    present, else the file's modified time. Used only for sorting."""
+    try:
+        exif = pil_image.getexif()
+        raw = None
+        try:
+            raw = exif.get_ifd(_EXIF_IFD).get(_EXIF_DATETIME_ORIGINAL)
+        except Exception:  # noqa: BLE001
+            raw = None
+        if raw:
+            return time.mktime(time.strptime(str(raw), "%Y:%m:%d %H:%M:%S"))
+    except Exception:  # noqa: BLE001 — any EXIF trouble just falls back
+        pass
+    try:
+        return os.path.getmtime(path)
+    except OSError:
+        return 0.0
+
+
+def _human_size(num_bytes):
+    value = float(num_bytes)
+    for unit in ("B", "KB", "MB", "GB"):
+        if value < 1024 or unit == "GB":
+            return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
+        value /= 1024
+    return f"{value:.1f} GB"
+
 
 class _ThumbSignals(QObject):
-    ready = Signal(str, QImage)
+    ready = Signal(str, QImage, float)   # path, thumbnail, capture timestamp
 
 
 class _ThumbTask(QRunnable):
-    """Load and scale one thumbnail off the GUI thread."""
+    """Load one thumbnail (and its capture time) off the GUI thread."""
 
     def __init__(self, path, signals):
         super().__init__()
@@ -49,12 +96,13 @@ class _ThumbTask(QRunnable):
     def run(self):
         try:
             with Image.open(self.path) as source:
+                stamp = _capture_timestamp(source, self.path)
                 image = ImageOps.exif_transpose(source).convert("RGBA")
             image.thumbnail((THUMB_SOURCE, THUMB_SOURCE), Image.Resampling.LANCZOS)
             data = image.tobytes("raw", "RGBA")
             qimage = QImage(data, image.width, image.height,
                             image.width * 4, QImage.Format_RGBA8888).copy()
-            self.signals.ready.emit(self.path, qimage)
+            self.signals.ready.emit(self.path, qimage, stamp)
         except Exception:  # noqa: BLE001 — a bad file just keeps its placeholder
             _log.debug("thumbnail failed for %s", self.path, exc_info=True)
 
@@ -66,11 +114,33 @@ class LibraryWindow(QMainWindow):
         self.resize(1180, 780)
         self._pool = QThreadPool.globalInstance()
         self._items = {}          # path -> QListWidgetItem
+        self._icons = {}          # path -> QIcon (cached so re-sort never re-decodes)
+        self._stamps = {}         # path -> capture timestamp (float)
+        self._paths = []          # all photo paths in the current folder
+        self._folder = None
         self._editors = []        # keep editor windows alive
         self._signals = _ThumbSignals()
         self._signals.ready.connect(self._on_thumb)
 
+        from . import prefs
+        settings = prefs.load()
+        self._sort = settings.get("library_sort", "name")
+        folders_visible = bool(settings.get("library_folders_visible", True))
+
         self._build_toolbar()
+
+        # Left: folder tree. Right: thumbnail grid. Split so the tree slides
+        # in and out without disturbing the grid.
+        self.tree_model = QFileSystemModel(self)
+        self.tree_model.setRootPath("")
+        self.tree_model.setFilter(QDir.Dirs | QDir.Drives | QDir.NoDotAndDotDot)
+        self.tree = QTreeView()
+        self.tree.setModel(self.tree_model)
+        self.tree.setHeaderHidden(True)
+        for column in range(1, self.tree_model.columnCount()):
+            self.tree.hideColumn(column)
+        self.tree.setMinimumWidth(180)
+        self.tree.clicked.connect(self._tree_clicked)
 
         self.list = QListWidget()
         self.list.setViewMode(QListWidget.IconMode)
@@ -80,13 +150,30 @@ class LibraryWindow(QMainWindow):
         self.list.setUniformItemSizes(True)
         self.list.setIconSize(QSize(160, 160))
         self.list.setWordWrap(True)
+        grid_font = self.list.font()   # filenames under each thumb were too small
+        grid_font.setPointSize(max(grid_font.pointSize() + 2, 11))
+        self.list.setFont(grid_font)
         self.list.itemActivated.connect(self._open_item)
         self.list.itemDoubleClicked.connect(self._open_item)
-        self.setCentralWidget(self.list)
+        self.list.itemClicked.connect(self._show_info)
+        self.list.currentItemChanged.connect(
+            lambda cur, _prev: self._show_info(cur))
+
+        self.split = QSplitter(Qt.Horizontal)
+        self.split.addWidget(self.tree)
+        self.split.addWidget(self.list)
+        self.split.setStretchFactor(0, 0)
+        self.split.setStretchFactor(1, 1)
+        self.split.setSizes([240, 940])
+        self.setCentralWidget(self.split)
+
+        self.tree.setVisible(folders_visible)
+        self.act_folders.setChecked(folders_visible)
 
         self.status = self.statusBar()
         self.status.showMessage("Choose a folder to browse your photographs.")
 
+    # --- Toolbar ------------------------------------------------------------
     def _build_toolbar(self):
         bar = self.addToolBar("Main")
         bar.setMovable(False)
@@ -95,8 +182,15 @@ class LibraryWindow(QMainWindow):
         act_open.triggered.connect(self.choose_folder)
         bar.addAction(act_open)
 
+        self.act_folders = QAction("Folders", self)
+        self.act_folders.setCheckable(True)
+        self.act_folders.setToolTip("Show or hide the folder tree")
+        self.act_folders.toggled.connect(self._toggle_folders)
+        bar.addAction(self.act_folders)
+
         self.act_subfolders = QAction("Include Subfolders", self)
         self.act_subfolders.setCheckable(True)
+        self.act_subfolders.toggled.connect(self._reload_current)
         bar.addAction(self.act_subfolders)
 
         bar.addSeparator()
@@ -109,6 +203,28 @@ class LibraryWindow(QMainWindow):
         act_help.setShortcut(QKeySequence.HelpContents)   # F1
         act_help.triggered.connect(self._open_help)
         bar.addAction(act_help)
+
+        bar.addSeparator()
+
+        # Sort control
+        sort_label = QLabel("Sort")
+        sort_label.setObjectName("ControlName")
+        bar.addWidget(sort_label)
+        self.sort_combo = QComboBox()
+        for key, name in SORTS:
+            self.sort_combo.addItem(name, key)
+        index = self.sort_combo.findData(self._sort)
+        self.sort_combo.setCurrentIndex(index if index >= 0 else 0)
+        self.sort_combo.currentIndexChanged.connect(self._sort_changed)
+        bar.addWidget(self.sort_combo)
+
+        # Search box
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("Search filenames…")
+        self.search.setClearButtonEnabled(True)
+        self.search.setFixedWidth(200)
+        self.search.textChanged.connect(self._apply_filter)
+        bar.addWidget(self.search)
 
         # thumbnail size control on the right
         spacer = QWidget()
@@ -131,26 +247,44 @@ class LibraryWindow(QMainWindow):
         size_layout.addWidget(self.size_slider)
         bar.addWidget(size_wrap)
 
+    # --- Folder tree --------------------------------------------------------
+    def _toggle_folders(self, checked):
+        self.tree.setVisible(bool(checked))
+        from . import prefs
+        values = prefs.load()
+        values["library_folders_visible"] = bool(checked)
+        prefs.save(values)
+
+    def _tree_clicked(self, index):
+        path = self.tree_model.filePath(index)
+        if path and os.path.isdir(path):
+            self.load_folder(path)
+
     # --- Folder scanning ----------------------------------------------------
     def choose_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Choose photo folder")
         if folder:
             self.load_folder(folder)
+            index = self.tree_model.index(folder)
+            if index.isValid():
+                self.tree.setCurrentIndex(index)
+                self.tree.scrollTo(index)
+                self.tree.expand(index)
+
+    def _reload_current(self, _checked=None):
+        if self._folder:
+            self.load_folder(self._folder)
 
     def load_folder(self, folder):
-        self.list.clear()
-        self._items.clear()
-        paths = self._scan(folder, self.act_subfolders.isChecked())
+        self._folder = folder
+        self._paths = self._scan(folder, self.act_subfolders.isChecked())
+        self._icons.clear()
+        self._stamps.clear()
         self.setWindowTitle(f"SNAP SLAPPER — {os.path.basename(folder) or folder}")
-        placeholder = self._placeholder_icon()
-        for path in paths:
-            item = QListWidgetItem(placeholder, os.path.basename(path))
-            item.setData(Qt.UserRole, path)
-            item.setToolTip(path)
-            self.list.addItem(item)
-            self._items[path] = item
+        self._populate()
+        for path in self._paths:
             self._pool.start(_ThumbTask(path, self._signals))
-        self.status.showMessage(f"{len(paths)} photo(s) in {folder}")
+        self.status.showMessage(f"{len(self._paths)} photo(s) in {folder}")
 
     def _scan(self, folder, recursive):
         found = []
@@ -160,22 +294,103 @@ class LibraryWindow(QMainWindow):
                     if os.path.splitext(name)[1].lower() in IMAGE_EXTENSIONS:
                         found.append(os.path.join(root, name))
         else:
-            for name in os.listdir(folder):
-                full = os.path.join(folder, name)
-                if os.path.isfile(full) and \
-                        os.path.splitext(name)[1].lower() in IMAGE_EXTENSIONS:
-                    found.append(full)
-        return sorted(found, key=lambda p: os.path.basename(p).lower())
+            try:
+                for name in os.listdir(folder):
+                    full = os.path.join(folder, name)
+                    if os.path.isfile(full) and \
+                            os.path.splitext(name)[1].lower() in IMAGE_EXTENSIONS:
+                        found.append(full)
+            except OSError:
+                return []
+        return found
+
+    # --- Grid population, sort, filter --------------------------------------
+    def _sorted_paths(self):
+        if self._sort == "name":
+            return sorted(self._paths, key=lambda p: os.path.basename(p).lower())
+        newest = self._sort == "date_new"
+        return sorted(self._paths,
+                      key=lambda p: self._stamps.get(p, self._fallback_stamp(p)),
+                      reverse=newest)
+
+    def _fallback_stamp(self, path):
+        try:
+            return os.path.getmtime(path)
+        except OSError:
+            return 0.0
+
+    def _populate(self):
+        self.list.clear()
+        self._items.clear()
+        placeholder = self._placeholder_icon()
+        for path in self._sorted_paths():
+            icon = self._icons.get(path, placeholder)
+            item = QListWidgetItem(icon, os.path.basename(path))
+            item.setData(Qt.UserRole, path)
+            item.setToolTip(path)
+            self.list.addItem(item)
+            self._items[path] = item
+        self._apply_filter(self.search.text())
+
+    def _sort_changed(self, _index):
+        self._sort = self.sort_combo.currentData()
+        from . import prefs
+        values = prefs.load()
+        values["library_sort"] = self._sort
+        prefs.save(values)
+        if self._paths:
+            self._populate()
+
+    def _apply_filter(self, text):
+        needle = (text or "").strip().lower()
+        shown = 0
+        for path, item in self._items.items():
+            match = needle in os.path.basename(path).lower()
+            item.setHidden(not match)
+            if match:
+                shown += 1
+        if needle and self._folder:
+            self.status.showMessage(
+                f"{shown} of {len(self._paths)} match “{text}”")
+        elif self._folder:
+            self.status.showMessage(f"{len(self._paths)} photo(s) in {self._folder}")
 
     def _placeholder_icon(self):
         pixmap = QPixmap(THUMB_SOURCE, THUMB_SOURCE)
         pixmap.fill(Qt.transparent)
         return QIcon(pixmap)
 
-    def _on_thumb(self, path, qimage):
+    def _on_thumb(self, path, qimage, stamp):
+        icon = QIcon(QPixmap.fromImage(qimage))
+        self._icons[path] = icon
+        self._stamps[path] = stamp
         item = self._items.get(path)
         if item is not None:
-            item.setIcon(QIcon(QPixmap.fromImage(qimage)))
+            item.setIcon(icon)
+        # Once every thumbnail (and its capture date) is in, settle a date sort.
+        if self._sort in ("date_new", "date_old") and \
+                len(self._stamps) == len(self._paths) and self._paths:
+            self._populate()
+
+    # --- Info on click ------------------------------------------------------
+    def _show_info(self, item):
+        if item is None:
+            return
+        path = item.data(Qt.UserRole)
+        if not path:
+            return
+        name = os.path.basename(path)
+        try:
+            size = _human_size(os.path.getsize(path))
+        except OSError:
+            size = "?"
+        dimensions = ""
+        try:
+            with Image.open(path) as probe:   # header read only, no full decode
+                dimensions = f"{probe.width}×{probe.height}  •  "
+        except Exception:  # noqa: BLE001
+            dimensions = ""
+        self.status.showMessage(f"{name}  •  {dimensions}{size}")
 
     # --- Opening ------------------------------------------------------------
     def _open_help(self):
