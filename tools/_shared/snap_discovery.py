@@ -116,6 +116,8 @@ def discover(hub_url, api_key="", admin_user="", admin_pass="", timeout=30):
 def _save_cloud_to_vault(hub_url, api_key, cloud_config) -> list:
     """Fold the hub's shared secrets into snap_creds. Returns the keys written."""
     written = []
+    if hub_url.strip():
+        snap_creds.set("hub_url", hub_url.strip().rstrip("/")); written.append("hub_url")
     if api_key.strip():
         snap_creds.set("hub_key", api_key.strip()); written.append("hub_key")
     # cloud_config shapes vary; only copy well-known keys when present + non-empty.
@@ -173,6 +175,32 @@ def _provision_spoke_key(site_url, api_key_local, key_type="sybu", key_value="",
             data = r.json()
             if data.get("ok"):
                 return str(data.get("api_key") or key_value or "").strip()
+    except Exception:
+        pass
+    return ""
+
+
+def _provision_hub_backup_key(site_url, hub_api_key, key_value, timeout=20):
+    """Install the shared SUYB key on the hub through its local endpoint.
+
+    The hub intentionally has no self-referential multisite node, so sending its
+    discovery key to the spoke-only multisite/provision-key route always 401s.
+    suyb-data.php authenticates the hub credential directly and exposes only
+    this narrow same-site SUYB-key installation action.
+    """
+    if not (site_url and hub_api_key and key_value):
+        return ""
+    try:
+        r = requests.post(
+            site_url.rstrip("/") + "/suyb-data.php",
+            json={"action": "provision-backup-key",
+                  "key_value": key_value.strip().lower()},
+            headers={"Authorization": "Bearer " + hub_api_key.strip(),
+                     "User-Agent": "SnapSmackHub/1.0"},
+            timeout=timeout,
+        )
+        if r.status_code == 200 and r.json().get("ok"):
+            return key_value.strip().lower()
     except Exception:
         pass
     return ""
@@ -266,25 +294,37 @@ def provision_shared_backup_key(hub_url="", api_key="", key_value="",
 
     hub_info, spokes = discover(hub_url, api_key, timeout=timeout)
 
-    # The hub is a backup target too; its own full key is the hub key itself.
-    targets = [{"site_url": hub_info.get("site_url", hub_url), "api_key_local": api_key}]
+    hub_site = (hub_info.get("site_url") or hub_url).strip()
+    ok, failed = [], []
+
+    # The hub has no self-node and therefore needs its own local provisioning
+    # route. Do this separately; the spoke route and all working spokes remain
+    # unchanged.
+    if _provision_hub_backup_key(hub_site, api_key, shared, timeout=timeout):
+        ok.append(hub_site)
+    else:
+        failed.append(hub_site)
+
+    targets = []
     for n in spokes:
         su  = (n.get("site_url") or n.get("url") or "").strip()
         akl = (n.get("api_key_local") or "").strip()
         if su and akl:
             targets.append({"site_url": su, "api_key_local": akl})
 
-    ok, failed = [], []
     for tgt in targets:
         res = _provision_spoke_key(tgt["site_url"], tgt["api_key_local"],
                                    key_type=key_type, key_value=shared, timeout=timeout)
         (ok if res else failed).append(tgt["site_url"])
 
-    # Persist the one key so every tool authenticates the whole fleet with it.
-    try:
-        snap_creds.set("backup_hub_key", shared)
-    except Exception:
-        pass
+    # Rollout order is a security and availability boundary: every target must
+    # accept the key before SUYB begins preferring it fleet-wide. Never publish a
+    # newly minted key into the vault after a partial provisioning failure.
+    if not failed:
+        try:
+            snap_creds.set("backup_hub_key", shared)
+        except Exception:
+            pass
 
     return {"key_prefix": shared[:8], "sites_ok": ok,
             "sites_failed": failed, "count": len(ok)}

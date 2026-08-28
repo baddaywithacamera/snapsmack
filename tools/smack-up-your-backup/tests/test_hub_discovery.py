@@ -139,9 +139,13 @@ class BuildProfilesTests(unittest.TestCase):
             alpha["backup_dir"], os.path.join("X", "backups", "Alpha")
         )
 
-    def test_no_backup_dir_when_base_unset(self):
+    def test_profile_template_keeps_safe_staging_dir_when_base_unset(self):
         alpha = next(p for p in self._build() if p["name"] == "Alpha")
-        self.assertEqual(alpha.get("backup_dir", ""), "")
+        self.assertEqual(
+            alpha.get("backup_dir", ""),
+            os.path.join((os.environ.get("SNAPSMACK_HOME") or "").strip()
+                         or r"C:\snapsmack", "staging"),
+        )
 
 
 class ResolveCloudConfigTests(unittest.TestCase):
