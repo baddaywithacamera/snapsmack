@@ -19,6 +19,27 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.28 — 2026-08-27
+
+### Fixed — the hub now receives the shared backup key
+
+The last packaged Windows build (`0.7.25`) could self-heal backup credentials on
+ordinary spokes but still failed with HTTP 401 when backing up the hub itself.
+The fleet-discovery path now provisions the same revocable, backup-scoped key on
+the hub and every spoke, then stores it once for SUYB to use across the fleet.
+After installing this build, run **Discover Fleet** once in THE HUB to complete
+the idempotent rollout.
+
+### Clarified — Windows tray and Linux scheduling
+
+The Windows build still supports **Minimize to system tray instead of closing**
+when enabled under Settings → Automatic Backups. Linux deliberately uses its OS
+schedule for unattended backups rather than depending on inconsistent desktop
+tray implementations; the Linux window may be closed after the schedule is
+installed.
+
+---
+
 ## 0.7.27 — 2026-08-26
 
 ### Added — SLAP HAPPY
