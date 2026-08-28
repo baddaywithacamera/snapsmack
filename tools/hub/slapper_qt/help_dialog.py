@@ -34,6 +34,15 @@ TOPICS = [
      "(Red…Magenta) to control how each colour becomes grey — brighten a blue "
      "sky or darken foliage independently. With every slider at zero you get a "
      "plain neutral black-and-white conversion."),
+    ("Sharpening",
+     "The Sharpen slider (PRESENCE) crisps edges with an unsharp mask. Under it, "
+     "Sharpen detail adds Smart-Sharpen-style controls: Radius sets the edge "
+     "width (small = fine detail), Reduce noise keeps flat areas like sky and "
+     "skin from being sharpened, and the edge model chooses Lens Blur (confines "
+     "sharpening to real edges — finer detail with far fewer haloes, like "
+     "Photoshop's Smart Sharpen) or Gaussian (the plain unsharp mask). Amount 0 "
+     "means no sharpening. Sharpen last, after your other edits, and mask the "
+     "layer to sharpen just the subject."),
     ("Photo Filter",
      "In Advanced mode the PHOTO FILTER panel lays a coloured 'gel' over the "
      "photo, like the classic camera filters. Pick a preset — the warming and "

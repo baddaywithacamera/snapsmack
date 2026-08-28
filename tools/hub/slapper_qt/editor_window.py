@@ -428,6 +428,10 @@ class EditorWindow(QMainWindow):
         if "COLOUR" in self._sections:
             self._sections["COLOUR"].add(self._build_split_tone())
 
+        # Smart-sharpen detail controls sit under the PRESENCE Sharpen slider
+        if "PRESENCE" in self._sections:
+            self._sections["PRESENCE"].add(self._build_sharpen_detail())
+
         # Darken-only grain toggle lives with the EFFECTS controls
         self.grain_darken_check = QCheckBox("Darken-only grain (film style)")
         self.grain_darken_check.setToolTip(
@@ -1454,6 +1458,48 @@ class EditorWindow(QMainWindow):
                 f"QPushButton#SwatchBtn {{ background: rgb({r},{g},{b}); color: {ink};"
                 f" border: 1px solid #333; border-radius: 4px; padding: 6px; }}")
 
+    def _build_sharpen_detail(self):
+        wrap = QWidget()
+        col = QVBoxLayout(wrap)
+        col.setContentsMargins(12, 2, 12, 6)
+        col.setSpacing(4)
+        hint = QLabel("Sharpen detail — set the Sharpen amount above, then tune "
+                      "the edge width, noise guard, and edge model here.")
+        hint.setObjectName("TargetLabel")
+        hint.setWordWrap(True)
+        col.addWidget(hint)
+
+        radius = SliderRow("sharpen_radius", "Radius", 0.1, 6.0, 0.1, 1.2)
+        radius.changed.connect(self._on_adjust)
+        radius.committed.connect(self._on_commit)
+        self.rows["sharpen_radius"] = radius
+        col.addWidget(radius)
+
+        reduce_noise = SliderRow("sharpen_reduce_noise", "Reduce noise", 0, 100, 1, 0)
+        reduce_noise.changed.connect(self._on_adjust)
+        reduce_noise.committed.connect(self._on_commit)
+        self.rows["sharpen_reduce_noise"] = reduce_noise
+        col.addWidget(reduce_noise)
+
+        self.sharpen_mode_combo = QComboBox()
+        self.sharpen_mode_combo.addItem("Lens Blur — finer, fewer haloes", "lens")
+        self.sharpen_mode_combo.addItem("Gaussian — classic unsharp mask", "gaussian")
+        self.sharpen_mode_combo.setToolTip(
+            "Lens Blur confines sharpening to real edges (like Photoshop's Smart "
+            "Sharpen); Gaussian is the plain unsharp mask.")
+        self.sharpen_mode_combo.activated.connect(self._on_sharpen_mode)
+        col.addWidget(self.sharpen_mode_combo)
+        return wrap
+
+    def _on_sharpen_mode(self, index):
+        target = self.active_adjustments()
+        if target is None:
+            return
+        target["sharpen_mode"] = self.sharpen_mode_combo.itemData(index) or "lens"
+        self.doc.record("Sharpen mode")
+        self._schedule_render()
+        self._update_title()
+
     def _build_photo_filter(self):
         wrap = QWidget()
         col = QVBoxLayout(wrap)
@@ -1723,6 +1769,10 @@ class EditorWindow(QMainWindow):
         self.photo_filter_preserve.blockSignals(False)
         self._update_photo_filter_swatch()
         self._sync_photo_filter_combo(adjustments)
+        self.sharpen_mode_combo.blockSignals(True)
+        self.sharpen_mode_combo.setCurrentIndex(
+            0 if adjustments.get("sharpen_mode", "lens") == "lens" else 1)
+        self.sharpen_mode_combo.blockSignals(False)
         self._update_split_swatches()
         self.curve_editor.set_curves(adjustments)
         self._sync_geometry()
