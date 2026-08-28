@@ -10,7 +10,7 @@
 
 # SnapSmack Changelog
 
-## 0.7.576 — 2026-08-28  (version proposed — confirm before tagging)
+## 0.7.576 "SHOW AND TELL" — 2026-08-28
 
 - **The admin support forum accepts image posts.** Threads and replies can now
   carry images (jpg, png, gif, webp), so an owner can show a screenshot of a
