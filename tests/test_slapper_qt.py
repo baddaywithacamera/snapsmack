@@ -635,6 +635,27 @@ def test_colour_engine_additions():
     win.curve_editor.set_curves(win.active_adjustments())   # loads back with no error
 
 
+def test_deconvolve_pure_pil():
+    from PIL import ImageDraw, ImageFilter, ImageChops, ImageStat
+    def edge(im):
+        hp = ImageChops.difference(im, im.filter(ImageFilter.GaussianBlur(1.2)))
+        return ImageStat.Stat(hp).stddev[0]
+    img = Image.new("RGB", (120, 90), (40, 44, 54))
+    d = ImageDraw.Draw(img)
+    d.rectangle([15, 15, 55, 75], fill=(210, 210, 215))
+    d.line([80, 8, 80, 82], fill=(235, 235, 240), width=1)
+    blur = img.filter(ImageFilter.GaussianBlur(2.0))
+    # lens deconvolution recovers edge detail (Richardson-Lucy, no numpy/scipy)
+    rec = editor_engine.deconvolve(blur, kind="lens", radius=2.0, iterations=10)
+    assert rec.mode == "RGB" and rec.size == img.size
+    assert edge(rec) > edge(blur) * 1.3
+    # motion deconvolution runs and changes the image
+    mo = editor_engine.deconvolve(blur, kind="motion", length=9, angle=0, iterations=8)
+    assert list(mo.getdata()) != list(blur.getdata())
+    # iterations are bounded (0 -> at least 1 pass, no crash)
+    editor_engine.deconvolve(blur, kind="lens", radius=1.5, iterations=0)
+
+
 def test_smart_sharpen():
     from PIL import ImageDraw
     img = Image.new("RGB", (120, 90), (128, 128, 128))
