@@ -47,20 +47,26 @@ UI-shell swap, not a rewrite.
 - Unsaved indicator (● in title) + close guard.
 - **Error/crash logging** via shared `snap_log` → `C:\snapsmack\logs\` (app +
   editor + library); handled dialogs logged too via `snap_errors`.
+- **LEWKS gallery** — 14 built-in looks previewed live on the current photo at
+  an adjustable strength; applies as a non-destructive layer (engine
+  `stack_layers`, never flattens base).
+- **Offline Help** (F1) — searchable, 12 Qt-specific topics.
+- **Autosave / crash recovery** — recovery copy under
+  `C:\snapsmack\snap_slapper\recovery`; restore-on-reopen prompt.
+- **Preferences** — export quality, copyright-if-missing, strip-GPS; Export
+  honours them. Persisted under `C:\snapsmack\config_files`.
 
 ## Not yet built (next phases)
 - Filters: the four-filter foundation from `docs/snap-slapper-filter-spec.md`
   (engine has no filter functions yet — needs engine work).
-- LEWKS gallery UI (recipe apply exists; the browsable LEWK gallery does not).
 - Found Textures: category/album filter, favourite, local categories (search +
-  import done; these are the remaining spec bullets). Rights-based hide/flag
-  needs the gyss/photos API to expose a rights field (server-side gap).
+  import done). Rights-based hide/flag needs the gyss/photos API to expose a
+  rights field (server-side change).
 - Mask brush painting + colour-range masks (only gradient masks so far); moving
-  a text layer / image layer by dragging on the canvas.
+  a text/image layer by dragging on the canvas.
 - Library depth: ratings, tags, albums, filtering, Trash (all in the Tk
   `photo_library.py`, not yet ported); filmstrip in the editor; slideshow.
-- Offline help window (Tk has one; Qt does not yet), autosave/crash recovery,
-  Preferences.
+- Standardise `snap_log` into the other standalone tools (SUYB, scanner, etc.).
 - Packaging the Qt build into the shipped SNAP SLAPPER.exe.
 
 <!-- ===== SNAPSMACK EOF ===== -->
