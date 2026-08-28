@@ -319,6 +319,30 @@ class EditorWindow(QMainWindow):
             self.act_textures,
         ]
 
+        # Keyboard shortcuts. Modifier combos only (never bare letters) so they
+        # can't fire while someone is typing in a text layer or a dialog. Open,
+        # Undo, Redo, Export (save) and Help already carry the standard sequences.
+        self._shortcuts = [
+            (self.act_auto,         "Ctrl+U"),        # auto-enhance
+            (self.act_fit,          "Ctrl+0"),        # fit to window
+            (self.act_full,         "Ctrl+1"),        # 100% / actual pixels
+            (self.act_reset,        "Ctrl+Shift+R"),  # reset all
+            (self.act_crop,         "Ctrl+Shift+C"),  # crop tool
+            (self.act_heal,         "Ctrl+Shift+H"),  # heal tool
+            (self.act_redeye,       "Ctrl+Shift+E"),  # red-eye tool
+            (self.act_compare,      "Ctrl+\\"),       # before / after
+            (self.act_filmstrip,    "Ctrl+Shift+F"),  # filmstrip
+            (self.act_lewks,        "Ctrl+K"),        # LEWKS browser
+            (self.act_textures,     "Ctrl+T"),        # textures
+            (self.act_save_project, "Ctrl+Shift+S"),  # save project
+            (self.act_advanced,     "Ctrl+Shift+A"),  # normal / advanced
+        ]
+        for action, seq in self._shortcuts:
+            action.setShortcut(QKeySequence(seq))
+            base = action.toolTip() or action.text()
+            pretty = QKeySequence(seq).toString(QKeySequence.NativeText)
+            action.setToolTip(f"{base}  ({pretty})")
+
     def _error(self, title, message):
         """Show an error dialog AND write it (with traceback if any) to the log."""
         _log.error("%s — %s", title, message, exc_info=sys.exc_info()[0] is not None)

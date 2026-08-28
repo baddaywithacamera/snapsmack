@@ -34,6 +34,26 @@ TOPICS = [
      "(Red…Magenta) to control how each colour becomes grey — brighten a blue "
      "sky or darken foliage independently. With every slider at zero you get a "
      "plain neutral black-and-white conversion."),
+    ("Photo Filter",
+     "In Advanced mode the PHOTO FILTER panel lays a coloured 'gel' over the "
+     "photo, like the classic camera filters. Pick a preset — the warming and "
+     "cooling filters (85, LBA, 81, 80, LBB, 82), the colour filters (Red, "
+     "Orange, Yellow, Green, Cyan, Blue, Violet, Magenta), Sepia, the deep filters "
+     "(Deep Red/Blue/Emerald/Yellow), Underwater, or a few faux-infrared washes — "
+     "or click Filter colour to set your own. Density sets the strength. Keep "
+     "'Preserve brightness' on to change only the colour, not the exposure (the "
+     "standard photo-filter behaviour). Because the filter lives on a layer, you "
+     "can add a mask and paint it onto just the sky or a face. Note: the faux-"
+     "infrared entries give the infrared colour cast, not the full white-foliage "
+     "conversion."),
+    ("Tone curve, split tone, colour mix, and glow",
+     "Advanced mode adds deeper colour control. TONE CURVE bends brightness with "
+     "a master curve plus independent Red / Green / Blue curves — where colour "
+     "casts and cross-process looks come from. SPLIT TONE colours the shadows, "
+     "midtones, and highlights separately (the teal-and-orange film look). COLOUR "
+     "MIX sets saturation and luminance per hue across eight bands. GLOW places a "
+     "soft coloured bloom — a centre spotlight or a corner light leak. Each is "
+     "non-destructive and works on the base photo or on any adjustment layer."),
     ("Layers",
      "Add adjustment, image, or text layers. Click a layer to make it the edit "
      "target — the sliders then edit that layer, never the base photo. Set each "
@@ -45,10 +65,16 @@ TOPICS = [
      "line, softness), with Invert and Clear. This is how you make a local "
      "adjustment — darken only a sky, brighten only a face."),
     ("LEWKS",
-     "The LEWKS button opens a gallery of built-in looks, each previewed on your "
-     "own photograph at an adjustable Strength. Applying a LEWK adds it as a "
-     "non-destructive layer on top of your edits — it never flattens the work "
-     "you've already done. Lower the layer's opacity later to ease it back."),
+     "The LEWKS button (Ctrl+K) opens a gallery of built-in looks, each previewed "
+     "on your own photograph at an adjustable Strength. Applying a LEWK adds it as "
+     "a non-destructive layer on top of your edits — it never flattens the work "
+     "you've already done; lower the layer's opacity later to ease it back.\n\n"
+     "Looks are grouped: Clean + Corrective, Landscape + Weather, Night + Neon, "
+     "Film + Print, Black + White, Portrait, and Experimental. Every LEWK is a "
+     "glass-box recipe built from the same controls you use by hand — tone curves, "
+     "colour mix, split tone, photo filter, glow, grain — not a baked colour "
+     "table, so you can open one up and tune it. All names are original to SNAP "
+     "SLAPPER."),
     ("Found Textures",
      "The Textures button searches foundtextures.ca and adds a texture as a "
      "layer. Choose how it fits (cover, contain, stretch, tile, original) and a "
@@ -66,8 +92,17 @@ TOPICS = [
      "reuse a set of adjustments across photos. Export writes the finished image "
      "to a new file with metadata preserved."),
     ("Keyboard",
-     "Ctrl+O open a photo · Ctrl+S export · Ctrl+Z undo · Ctrl+Y redo · "
-     "F1 open this help. The title bar shows a ● when there are unsaved edits."),
+     "Standard: Ctrl+O open · Ctrl+S export · Ctrl+Z undo · Ctrl+Y redo · "
+     "F1 this help.\n\n"
+     "Tools & view: Ctrl+U auto-enhance · Ctrl+0 fit to window · Ctrl+1 100% "
+     "(actual pixels) · Ctrl+\\ before/after · Ctrl+Shift+C crop · "
+     "Ctrl+Shift+H heal · Ctrl+Shift+E red-eye · Ctrl+Shift+F filmstrip · "
+     "Ctrl+Shift+R reset all.\n\n"
+     "Panels & modes: Ctrl+K LEWKS · Ctrl+T textures · Ctrl+Shift+S save "
+     "project · Ctrl+Shift+A switch Normal / Advanced.\n\n"
+     "Every shortcut uses a modifier key, so none of them fire while you're "
+     "typing in a text layer. The title bar shows a ● when there are unsaved "
+     "edits, and each toolbar button's tooltip shows its shortcut."),
     ("If something goes wrong",
      "SNAP SLAPPER writes a log of each run to C:\\snapsmack\\logs\\ "
      "(snap_slapper_run_<date>.log). If the app misbehaves or an error appears, "
