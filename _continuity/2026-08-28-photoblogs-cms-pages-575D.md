@@ -1,4 +1,4 @@
-# PHOTOBLOGS.FYI CMS PAGE CONTINUITY — 0.7.576D
+# PHOTOBLOGS.FYI CMS PAGE CONTINUITY — 0.7.575D
 
 ## Start here
 
@@ -7,10 +7,12 @@ SnapSmack skin. No page is exempt.** Custom HTML and specialized displays may be
 inserted only inside the CMS page body. They must not ship their own document,
 header, navigation, footer, or competing page shell.
 
-`v0.7.575D` already exists at commit `fa57b347`. Do not rebuild, move, or replace
-that tag. The photoblogs work therefore ships in `0.7.576D` through the normal
-signed update path. Do not FTP these files into production: SMACKBACK/file-tamper
-integrity depends on the signed package and its manifest.
+`v0.7.575D` was tagged prematurely at commit `fa57b347`, but no package was built,
+signed, published, or deployed from it. Release `0.7.575D` remains the active
+unreleased version and all subsequent work in this handoff belongs to it. Do not
+advance the version again until Sean actually builds this release. Do not FTP
+these files into production: SMACKBACK/file-tamper integrity depends on the
+signed package and its manifest.
 
 ## What is implemented on dev
 
@@ -49,7 +51,7 @@ The authenticated Page Manager on photoblogs.fyi now contains four CMS pages:
 - Feed (`feed`) with `[photoblogs_feed]`
 - About (`about`)
 
-The shared custom CSS was also saved through the CMS. Until `0.7.576D` is built,
+The shared custom CSS was also saved through the CMS. Until `0.7.575D` is built,
 published, and installed, Directory will display its shortcode literally because
 production `0.7.572D` does not yet know that shortcode. That is expected and is
 the release blocker—not a reason to create another standalone page.
@@ -58,8 +60,9 @@ the release blocker—not a reason to create another standalone page.
 
 1. Commit this continuity/changelog addition without folding in unrelated dirty
    work (`projects/snapsmack-ca/brass-tacks.php` is a separate existing change).
-2. Tag `0.7.576D` using `php tools/release-flow.php tag-dev 0.7.576` once the dev
-   tree is clean and regression tests pass.
+2. Replace the premature `v0.7.575D` tag only after confirming again that no
+   package was built or published from it; the corrected tag must point at the
+   final tested `0.7.575` commit.
 3. Build the beta only through Smack Central's BITCHIN' release panel.
 4. Publish it through the established signed update channel.
 5. Install it on photoblogs.fyi from **System Updates**.
@@ -75,5 +78,5 @@ the release blocker—not a reason to create another standalone page.
 - Do not delete the compatibility entry points; keep them as redirects so old
   URLs remain valid.
 - Do not manually FTP release files or bypass the signed updater.
-- Do not repoint or rebuild `v0.7.575D`.
-
+- Do not advance to `0.7.576` merely because more work lands before `0.7.575D`
+  is built. One version remains active until Sean actually builds it.
