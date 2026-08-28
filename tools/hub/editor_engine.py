@@ -217,6 +217,51 @@ def _bw_mono(output, settings):
         g=base, m=hue, s=saturation)
 
 
+def auto_adjustments(image, percentile=0.005):
+    """Compute a gentle one-click 'auto enhance' as *editable* adjustment values.
+
+    Sets black/white levels from the tonal range (auto-levels) and a mild
+    grey-world white-balance nudge, plus a small contrast/vibrance lift. It
+    returns adjustment keys so the result stays non-destructive and the user can
+    fine-tune afterwards.
+    """
+    from PIL import ImageStat
+    rgb = image.convert("RGB")
+    result = {}
+
+    # Auto-levels: stretch to the 0.5% / 99.5% tonal points.
+    lum = ImageOps.grayscale(rgb)
+    histogram = lum.histogram()
+    total = sum(histogram) or 1
+    cutoff = total * percentile
+    low, running = 0, 0
+    for value in range(256):
+        running += histogram[value]
+        if running >= cutoff:
+            low = value
+            break
+    running = 0
+    high = 255
+    for value in range(255, -1, -1):
+        running += histogram[value]
+        if running >= cutoff:
+            high = value
+            break
+    if high - low >= 8:                       # only if there is range to recover
+        result["level_black"] = float(max(0, min(80, low)))
+        result["level_white"] = float(min(255, max(175, high)))
+
+    # Grey-world white balance: nudge temperature/tint toward neutral.
+    mean_r, mean_g, mean_b = ImageStat.Stat(rgb).mean
+    result["temperature"] = float(max(-40, min(40, round((mean_b - mean_r) * 0.5))))
+    result["tint"] = float(max(-30, min(30, round(((mean_r + mean_b) / 2 - mean_g) * 0.4))))
+
+    # A little life.
+    result["contrast"] = 8.0
+    result["vibrance"] = 10.0
+    return result
+
+
 def apply_adjustments(image, adjustments):
     settings = dict(DEFAULT_ADJUSTMENTS)
     settings.update(adjustments or {})
