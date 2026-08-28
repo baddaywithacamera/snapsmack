@@ -104,7 +104,14 @@ def effective_backup_key(profile: dict) -> str:
             if os.path.isdir(_sd) and _sd not in sys.path:
                 sys.path.insert(0, _sd)
             import snap_discovery
-            fresh = snap_discovery._provision_spoke_key(site, akl, "suyb")
+            hub_url = (shared_cred("hub_url") or "").strip().rstrip("/").lower()
+            is_hub = bool(hub_url and site.rstrip("/").lower() == hub_url)
+            if is_hub:
+                shared = shared_cred("backup_hub_key")
+                fresh = (snap_discovery._provision_hub_backup_key(site, akl, shared)
+                         if shared else "")
+            else:
+                fresh = snap_discovery._provision_spoke_key(site, akl, "suyb")
             if fresh:
                 return fresh
         except Exception:
