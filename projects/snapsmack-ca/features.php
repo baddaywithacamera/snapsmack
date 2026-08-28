@@ -23,10 +23,11 @@ $page_css = <<<'CSS'
 .feature-proof { background: var(--black); color: #ddd; }
 .feature-proof h2 { color: var(--white); }
 .feature-proof strong { color: var(--white); }
-.architecture-story { border-top: 1px solid var(--border); }
-.architecture-story .story-copy { max-width: 820px; }
-.architecture-story .story-copy > p { max-width: 72ch; margin-bottom: 1.35em; }
-.architecture-story .story-copy > p:last-child { margin-bottom: 0; }
+.architecture-bridge { border-top: 1px solid var(--border); background: var(--black); color: #ddd; }
+.architecture-bridge h2 { color: var(--white); }
+.architecture-bridge .bridge-copy { max-width: 800px; }
+.architecture-bridge .lede { color: #bbb; }
+.architecture-bridge a { font: 900 .78rem/1 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .working-now { background: var(--light-grey); border-top: 1px solid var(--border); }
 .working-head { max-width: 800px; margin-bottom: 34px; }
 .working-head h2 { margin-bottom: 12px; }
@@ -114,22 +115,13 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <section class="architecture-story" id="why-built-this-way">
-        <div class="wrap">
-            <div class="story-copy">
-                <p class="site-discovery-kicker">BUILT ON A HISTORY WORTH PRESERVING</p>
-                <h2>Architecture that refuses the usual answer</h2>
-                <p>SNAPSMACK did not appear from nowhere. It follows a trail broken by earlier photoblogging projects and the people who sustained them, often with too little help or recognition. Preserving that history means acknowledging their work, learning from what they endured, and carrying the best of their ideas forward.</p>
-                <p><strong><a href="https://bsky.app/profile/thatnoahgrey.bsky.social" target="_blank" rel="noopener">Noah Grey</a> comes first.</strong> He inspired me as a photographer, a creator, and a person. He is senpai. I am kohai. SnapSmack is the kohai&rsquo;s offering. His photographs and his work on <a href="https://en.wikipedia.org/wiki/Greymatter_(software)" target="_blank" rel="noopener">Greymatter</a> showed me that publishing software could be personal, independent, generous, strange, and unmistakably human.</p>
-                <p><strong>No arbitrary plugins.</strong> In SnapSmack, a <em>skin manifest</em> is not executable code. It is a validated, declarative shopping list describing the skin and naming the approved layouts, controls, fonts, and effects it wants. The CMS then supplies those capabilities from its own shared, reviewed library. A skin can ask for the masonry engine or a film effect; it cannot arrive carrying an unknown script and run it.</p>
-                <p>This keeps design separate from machinery. The same library engine can serve many radically different skins, and a security or compatibility repair made there reaches every skin that declared it. Removing a skin removes its presentation without leaving an abandoned plugin behind. The idea owes a debt to b2evolution's resistance to plugin hell; SNAPSMACK takes the boundary further.</p>
-                <p><strong>Support without a public forum surface.</strong> The support forum lives inside authenticated SNAPSMACK administration. Operators can ask for help from the software itself, while the usual public registration, login, and posting endpoints are not left outside for bots and drive-by spammers.</p>
-                <p>This decision owes something to <a href="https://github.com/pixelpost/pixelpost/wiki">Jay Williams' candid account of the attempted Pixelpost rewrite</a>. Jay deserves enormous credit: he wrote most of the code that moved Pixelpost from version 1.5 to 1.6, contributed substantially to the rewrite, and spent countless hours helping its users. He deserves far more recognition for that work than he received. SNAPSMACK stands in the shadow of that work.</p>
-                <p>As Pixelpost's last active developer and moderator, Jay described automatic spam across the forum and blog as nearly impossible for one person to clean up. He was equally clear that the rewrite was put on hold for broader reasons: too few developers, too little available time, and the difficulty of maintaining the site and finishing the software without the collaboration the project needed. That was not a failure of effort. SNAPSMACK's internal forum applies one practical lesson from his experience: public support infrastructure should not be allowed to consume the limited time available to maintain the software itself.</p>
-                <p><strong>A deliberately layered security system.</strong> Authentication, authorization, abuse prevention, signed distribution, integrity monitoring, breach containment, recovery, fleet intelligence, and public audit closure reinforce one another rather than operating as isolated features. GOBSMACKED adds local stylometric ban-evasion detection to the privacy-preserving federated troll-reputation system.</p>
-                <p>None of those ingredients is being claimed as an invention. What is unusual is the approach: putting all the fixings on the burger and bringing the coordinated architecture and security depth of paid software to freeware built for a small community.</p>
-                <p><a href="index.php#security"><strong>See the eight-layer security stack &rarr;</strong></a> &nbsp; <a href="buzzers.php"><strong>Read the closed security audits &rarr;</strong></a></p>
-            </div>
+    <section class="architecture-bridge" id="why-built-this-way">
+        <div class="wrap bridge-copy">
+            <p class="site-discovery-kicker">WELL-BRED, BADLY BEHAVED</p>
+            <h2>How&rsquo;s Yer Father?</h2>
+            <p class="lede">SnapSmack keeps presentation separate from executable machinery, keeps support behind authenticated administration, and treats publishing, federation, security, and recovery as one system. It also knows who taught it the good bits.</p>
+            <p>Meet the family tree: Greymatter, Pixelpost, the people who kept them alive, the bad habits SnapSmack refused to inherit, and the architecture hiding behind the bike sheds.</p>
+            <p><a href="hows-yer-father.php">Read the architecture and lineage &rarr;</a></p>
         </div>
     </section>
 
