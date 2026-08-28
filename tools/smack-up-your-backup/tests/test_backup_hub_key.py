@@ -17,6 +17,7 @@ unittest only, so it runs in the packaged build environment too.
 from __future__ import annotations
 
 import sys
+import types
 import unittest
 from pathlib import Path
 
@@ -58,6 +59,31 @@ class EffectiveBackupKey(unittest.TestCase):
     def test_hub_key_wins_even_when_profile_has_none(self):
         self._hub("HUB-FLEET-KEY")
         self.assertEqual(config.effective_backup_key({}), "HUB-FLEET-KEY")
+
+    def test_hub_profile_self_heals_through_hub_endpoint_only(self):
+        calls = []
+        stub = types.ModuleType("snap_discovery")
+        stub._provision_hub_backup_key = (
+            lambda site, key, shared: calls.append(("hub", site, key, shared)) or shared)
+        stub._provision_spoke_key = (
+            lambda *args, **kwargs: calls.append(("spoke", args, kwargs)) or "wrong")
+        old = sys.modules.get("snap_discovery")
+        sys.modules["snap_discovery"] = stub
+        values = {"hub_url": "https://hub.example/", "backup_hub_key": "FLEET"}
+        config.shared_cred = lambda key, default="": values.get(key, default)
+        try:
+            result = config.effective_backup_key({
+                "site_url": "https://hub.example",
+                "api_key": "old",
+                "extras": {"api_key_local": "HUB-AUTH"},
+            })
+        finally:
+            if old is None:
+                sys.modules.pop("snap_discovery", None)
+            else:
+                sys.modules["snap_discovery"] = old
+        self.assertEqual(result, "FLEET")
+        self.assertEqual(calls, [("hub", "https://hub.example", "HUB-AUTH", "FLEET")])
 
 
 if __name__ == "__main__":
