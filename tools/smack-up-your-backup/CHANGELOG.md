@@ -19,6 +19,20 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.29 — 2026-08-28
+
+### Fixed — foundtextures hub backup authentication
+
+The shared backup key already worked on every spoke, but the hub was incorrectly
+sent through the spoke-only multisite provisioning route and rejected it with
+HTTP 401. SUYB now installs that same revocable, backup-scoped key on the hub
+through a narrow authenticated local action while leaving spoke provisioning
+untouched. Fleet discovery publishes the shared key only after every target has
+accepted it, preventing a partial rollout from becoming the active credential.
+
+The per-backup self-heal also recognizes the configured hub URL and uses the
+hub-specific path. No spoke keys are rotated by this correction.
+
 ## 0.7.28 — 2026-08-27
 
 ### Fixed — the hub now receives the shared backup key
