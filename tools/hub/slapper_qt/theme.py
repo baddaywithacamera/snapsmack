@@ -328,6 +328,48 @@ def stylesheet() -> str:
         border: 1px solid {BORDER};
         padding: 4px 7px;
     }}
+
+    /* --- Mask type chooser + paint canvas ------------------------------ */
+    QPushButton#MaskTypeBtn {{
+        background: {FIELD};
+        color: {BODY};
+        border: 1px solid {BORDER};
+        border-radius: 4px;
+        padding: 5px 4px;
+        font-size: 11px;
+    }}
+    QPushButton#MaskTypeBtn:hover {{ border: 1px solid {ACCENT}; }}
+    QPushButton#MaskTypeBtn:checked {{
+        background: {ACCENT_DIM};
+        border: 1px solid {ACCENT};
+        color: {ACCENT};
+    }}
+    QWidget#MaskBrushCanvas {{
+        border: 1px solid {BORDER};
+        border-radius: 3px;
+    }}
+
+    /* --- Filmstrip ------------------------------------------------------ */
+    QListWidget#Filmstrip {{
+        background: {PANEL_HI};
+        border: none;
+        border-top: 1px solid {BORDER};
+        padding: 4px 2px;
+        outline: none;
+    }}
+    QListWidget#Filmstrip::item {{
+        border: 1px solid transparent;
+        border-radius: 3px;
+        margin: 2px;
+        padding: 2px;
+    }}
+    QListWidget#Filmstrip::item:hover {{
+        border: 1px solid {FIELD_HI};
+    }}
+    QListWidget#Filmstrip::item:selected {{
+        border: 1px solid {ACCENT};
+        background: {ACCENT_DIM};
+    }}
     """
 
 # ===== SNAPSMACK EOF =====

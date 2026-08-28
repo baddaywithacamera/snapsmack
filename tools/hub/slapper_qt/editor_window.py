@@ -14,9 +14,11 @@ from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QCheckBox,
     QFileDialog, QMessageBox, QLabel, QButtonGroup, QPushButton, QLineEdit,
-    QColorDialog, QComboBox,
+    QColorDialog, QComboBox, QStackedWidget,
 )
 from PySide6.QtGui import QColor
+
+from PIL import ImageOps
 
 from . import masks
 
@@ -26,6 +28,9 @@ from . import theme
 from .engine_bridge import render_pixmap, original_pixmap
 from .widgets import ImageView, SliderRow, Accordion, Histogram
 from .layers_panel import LayersPanel, BASE
+from .filmstrip import Filmstrip
+from .mask_brush import MaskBrushCanvas
+from .curve_editor import CurveEditor
 
 try:
     import snap_log
@@ -63,6 +68,7 @@ GROUPS = [
     ]),
     ("EFFECTS", [
         ("vignette", "Vignette", -100, 100, 1, 0),
+        ("vignette_feather", "Vignette Feather", 0, 100, 1, 50),
         ("grain", "Grain", -100, 100, 1, 0),
     ]),
     ("LEVELS", [
@@ -90,6 +96,13 @@ class EditorWindow(QMainWindow):
         self.active_target = "base"   # "base" or a layer id
         self.setWindowTitle("SNAP SLAPPER")
         self.resize(1280, 820)
+
+        # Zoom mode: False = Fit (fast viewport-sized proxy); True = 100% /
+        # actual pixels (render at the photo's native resolution so a focus
+        # check shows real detail, not an upscaled preview).
+        self._zoom_actual = False
+        from . import prefs as _prefs
+        self._filmstrip_visible = bool(_prefs.load().get("filmstrip_visible", True))
 
         self._build_toolbar()
         self._build_canvas()
@@ -219,11 +232,13 @@ class EditorWindow(QMainWindow):
         bar.addAction(self.act_auto)
 
         self.act_fit = QAction("Fit", self)
-        self.act_fit.triggered.connect(lambda: self.view.fit())
+        self.act_fit.setToolTip("Fit the whole photograph to the window")
+        self.act_fit.triggered.connect(self.zoom_fit)
         bar.addAction(self.act_fit)
 
         self.act_full = QAction("100%", self)
-        self.act_full.triggered.connect(lambda: self.view.actual_size())
+        self.act_full.setToolTip("Actual pixels — check focus at the photo's true resolution")
+        self.act_full.triggered.connect(self.zoom_actual)
         bar.addAction(self.act_full)
 
         self.act_crop = QAction("Crop", self)
@@ -245,6 +260,13 @@ class EditorWindow(QMainWindow):
         self.act_compare.setCheckable(True)
         self.act_compare.toggled.connect(self._toggle_compare)
         bar.addAction(self.act_compare)
+
+        self.act_filmstrip = QAction("Filmstrip", self)
+        self.act_filmstrip.setCheckable(True)
+        self.act_filmstrip.setChecked(self._filmstrip_visible)
+        self.act_filmstrip.setToolTip("Show or hide the folder filmstrip")
+        self.act_filmstrip.toggled.connect(self._toggle_filmstrip)
+        bar.addAction(self.act_filmstrip)
 
         bar.addSeparator()
 
@@ -306,7 +328,19 @@ class EditorWindow(QMainWindow):
         self.view = ImageView(self)
         self.view.cropped.connect(self._apply_crop)
         self.view.retouch_clicked.connect(self._add_retouch)
-        self.setCentralWidget(self.view)
+
+        self.filmstrip = Filmstrip(self)
+        self.filmstrip.open_requested.connect(self._open_from_filmstrip)
+        self.filmstrip.setVisible(self._filmstrip_visible)
+
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(self.view, 1)
+        layout.addWidget(self.filmstrip, 0)
+        self.setCentralWidget(container)
+
         self._saved_crop = None
         self._retouch_radius = 0.035
         self._retouch_type = "heal"
@@ -366,6 +400,27 @@ class EditorWindow(QMainWindow):
             inner_layout.addWidget(section)
             self._sections[title] = section
 
+        # Split-tone controls live in the COLOUR section
+        if "COLOUR" in self._sections:
+            self._sections["COLOUR"].add(self._build_split_tone())
+
+        # Darken-only grain toggle lives with the EFFECTS controls
+        self.grain_darken_check = QCheckBox("Darken-only grain (film style)")
+        self.grain_darken_check.setToolTip(
+            "Grain that only darkens — like real film grain — instead of also "
+            "brightening the photo.")
+        self.grain_darken_check.toggled.connect(self._on_grain_darken)
+        if "EFFECTS" in self._sections:
+            self._sections["EFFECTS"].add(self.grain_darken_check)
+
+        # Tone curve — master + per-channel (R / G / B)
+        curve_section = Accordion("TONE CURVE", expanded=False)
+        self.curve_editor = CurveEditor()
+        self.curve_editor.changed.connect(self._on_curve_changed)
+        curve_section.add(self.curve_editor)
+        inner_layout.addWidget(curve_section)
+        self._sections["TONE CURVE"] = curve_section
+
         # Geometry (rotate / straighten / flip)
         geo_section = Accordion("GEOMETRY", expanded=False)
         geo_section.add(self._build_geometry())
@@ -399,6 +454,70 @@ class EditorWindow(QMainWindow):
             self._bw_mixer_widgets.append(srow)
         inner_layout.addWidget(bw_section)
         self._sections["BLACK + WHITE"] = bw_section
+
+        # Colour mix — per-hue saturation + luminance (HSL in colour)
+        hsl_section = Accordion("COLOUR MIX", expanded=False)
+        _bands = (("red", "Red"), ("orange", "Orange"), ("yellow", "Yellow"),
+                  ("green", "Green"), ("aqua", "Aqua"), ("blue", "Blue"),
+                  ("purple", "Purple"), ("magenta", "Magenta"))
+        sat_hint = QLabel("Saturation — how vivid each colour is")
+        sat_hint.setObjectName("TargetLabel")
+        hsl_section.add(sat_hint)
+        for band, label in _bands:
+            key = f"col_sat_{band}"
+            srow = SliderRow(key, label, -100, 100, 1, 0)
+            srow.changed.connect(self._on_adjust)
+            srow.committed.connect(self._on_commit)
+            self.rows[key] = srow
+            hsl_section.add(srow)
+        lum_hint = QLabel("Luminance — how light or dark each colour is")
+        lum_hint.setObjectName("TargetLabel")
+        hsl_section.add(lum_hint)
+        for band, label in _bands:
+            key = f"col_lum_{band}"
+            srow = SliderRow(key, label, -100, 100, 1, 0)
+            srow.changed.connect(self._on_adjust)
+            srow.committed.connect(self._on_commit)
+            self.rows[key] = srow
+            hsl_section.add(srow)
+        inner_layout.addWidget(hsl_section)
+        self._sections["COLOUR MIX"] = hsl_section
+
+        # Glow — a placed colour bloom (centre spotlight or coloured leak)
+        glow_section = Accordion("GLOW", expanded=False)
+        gwrap = QWidget()
+        gl = QVBoxLayout(gwrap)
+        gl.setContentsMargins(12, 4, 12, 6)
+        gl.setSpacing(4)
+        ghint = QLabel("A soft colour bloom you can place — a centre glow or a "
+                       "coloured light leak.")
+        ghint.setObjectName("TargetLabel")
+        ghint.setWordWrap(True)
+        gl.addWidget(ghint)
+        self.glow_btn = QPushButton("Glow colour")
+        self.glow_btn.setObjectName("SwatchBtn")
+        self.glow_btn.setCursor(Qt.PointingHandCursor)
+        self.glow_btn.clicked.connect(lambda: self._pick_split_colour("glow_colour"))
+        gl.addWidget(self.glow_btn)
+        for key, label, lo, hi, df in (("glow_amount", "Amount", 0, 100, 0),
+                                       ("glow_x", "Position X", 0, 100, 50),
+                                       ("glow_y", "Position Y", 0, 100, 40),
+                                       ("glow_size", "Size", 5, 100, 45)):
+            srow = SliderRow(key, label, lo, hi, 1, df)
+            srow.changed.connect(self._on_adjust)
+            srow.committed.connect(self._on_commit)
+            self.rows[key] = srow
+            gl.addWidget(srow)
+        glow_section.add(gwrap)
+        inner_layout.addWidget(glow_section)
+        self._sections["GLOW"] = glow_section
+
+        # Photo filter — a coloured gel over the lens (warming / cooling / colour
+        # filters + a few faux-infrared washes)
+        pf_section = Accordion("PHOTO FILTER", expanded=False)
+        pf_section.add(self._build_photo_filter())
+        inner_layout.addWidget(pf_section)
+        self._sections["PHOTO FILTER"] = pf_section
 
         inner_layout.addStretch(1)
         scroll.setWidget(inner)
@@ -508,22 +627,55 @@ class EditorWindow(QMainWindow):
         wrap = QWidget()
         layout = QVBoxLayout(wrap)
         layout.setContentsMargins(12, 4, 12, 6)
-        layout.setSpacing(4)
+        layout.setSpacing(6)
 
-        hint = QLabel("Limit this layer to part of the photo")
+        hint = QLabel("Limit this layer to part of the photo. "
+                      "Pick a mask type, then shape it.")
         hint.setObjectName("TargetLabel")
         hint.setWordWrap(True)
         layout.addWidget(hint)
 
+        # --- Type chooser (pick first) --------------------------------------
+        type_row = QHBoxLayout()
+        type_row.setContentsMargins(0, 0, 0, 0)
+        type_row.setSpacing(4)
+        self.mask_type_group = QButtonGroup(self)
+        self.mask_type_group.setExclusive(True)
+        self._mask_type_buttons = {}
+        for kind, label in (("radial", "Radial"), ("linear", "Graduated"),
+                            ("brush", "Brush")):
+            btn = QPushButton(label)
+            btn.setObjectName("MaskTypeBtn")
+            btn.setCheckable(True)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(lambda _c, k=kind: self._select_mask_type(k))
+            self.mask_type_group.addButton(btn)
+            self._mask_type_buttons[kind] = btn
+            type_row.addWidget(btn)
+        layout.addLayout(type_row)
+
+        # --- Controls that change with the type -----------------------------
+        self.mask_stack = QStackedWidget()
+
+        # Radial page
+        radial_page = QWidget()
+        rl = QVBoxLayout(radial_page)
+        rl.setContentsMargins(0, 0, 0, 0)
+        rl.setSpacing(4)
         self.mask_cx = SliderRow("cx", "Centre X", 0, 100, 1, 50)
         self.mask_cy = SliderRow("cy", "Centre Y", 0, 100, 1, 50)
         self.mask_size = SliderRow("size", "Size", 5, 100, 1, 40)
         self.mask_soft = SliderRow("soft", "Softness", 0, 60, 1, 15)
-        self.mask_pos = SliderRow("pos", "Line", 0, 100, 1, 50)
-        for row in (self.mask_cx, self.mask_cy, self.mask_size, self.mask_soft,
-                    self.mask_pos):
-            layout.addWidget(row)
+        for row in (self.mask_cx, self.mask_cy, self.mask_size, self.mask_soft):
+            row.committed.connect(self._reapply_mask)   # apply on release, not per tick
+            rl.addWidget(row)
+        self.mask_stack.addWidget(radial_page)
 
+        # Graduated page
+        linear_page = QWidget()
+        ll = QVBoxLayout(linear_page)
+        ll.setContentsMargins(0, 0, 0, 0)
+        ll.setSpacing(4)
         dir_row = QHBoxLayout()
         dir_row.setContentsMargins(0, 0, 0, 0)
         dir_row.setSpacing(8)
@@ -533,33 +685,81 @@ class EditorWindow(QMainWindow):
         dir_row.addWidget(dlabel)
         self.mask_dir = QComboBox()
         self.mask_dir.addItems(["Top", "Bottom", "Left", "Right"])
+        self.mask_dir.currentIndexChanged.connect(self._reapply_mask)
         dir_row.addWidget(self.mask_dir, 1)
-        layout.addLayout(dir_row)
+        ll.addLayout(dir_row)
+        self.mask_pos = SliderRow("pos", "Line position", 0, 100, 1, 50)
+        self.mask_soft_lin = SliderRow("softl", "Softness", 0, 60, 1, 15)
+        for row in (self.mask_pos, self.mask_soft_lin):
+            row.committed.connect(self._reapply_mask)   # apply on release, not per tick
+            ll.addWidget(row)
+        self.mask_stack.addWidget(linear_page)
 
+        # Brush page
+        brush_page = QWidget()
+        bl = QVBoxLayout(brush_page)
+        bl.setContentsMargins(0, 0, 0, 0)
+        bl.setSpacing(4)
+        paint_hint = QLabel("Paint on the photo: Hide dims this layer, "
+                            "Reveal brings it back.")
+        paint_hint.setObjectName("TargetLabel")
+        paint_hint.setWordWrap(True)
+        bl.addWidget(paint_hint)
+        self.mask_brush = MaskBrushCanvas()
+        self.mask_brush.mask_changed.connect(self._store_brush_mask)
+        bl.addWidget(self.mask_brush, 0, Qt.AlignHCenter)
+        paint_row = QHBoxLayout()
+        paint_row.setContentsMargins(0, 0, 0, 0)
+        paint_row.setSpacing(4)
+        self.brush_paint_group = QButtonGroup(self)
+        self.brush_paint_group.setExclusive(True)
+        self.btn_hide = QPushButton("Hide")
+        self.btn_reveal = QPushButton("Reveal")
+        for btn, white in ((self.btn_hide, False), (self.btn_reveal, True)):
+            btn.setObjectName("MaskTypeBtn")
+            btn.setCheckable(True)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(lambda _c, w=white: self.mask_brush.set_paint_white(w))
+            self.brush_paint_group.addButton(btn)
+            paint_row.addWidget(btn)
+        self.btn_hide.setChecked(True)
+        bl.addLayout(paint_row)
+        self.brush_size = SliderRow("brush", "Brush size", 3, 60, 1, 22)
+        self.brush_size.changed.connect(
+            lambda _k, v: self.mask_brush.set_radius(int(v)))
+        bl.addWidget(self.brush_size)
+        self.mask_stack.addWidget(brush_page)
+
+        layout.addWidget(self.mask_stack)
+
+        # --- Shared: invert + clear -----------------------------------------
         self.mask_invert = QCheckBox("Invert mask")
         self.mask_invert.toggled.connect(self._reapply_mask)
         layout.addWidget(self.mask_invert)
 
-        buttons = QHBoxLayout()
-        buttons.setContentsMargins(0, 2, 0, 0)
-        buttons.setSpacing(4)
-        radial = QPushButton("Radial")
-        linear = QPushButton("Graduated")
-        for btn, handler in ((radial, self._apply_radial_mask),
-                             (linear, self._apply_linear_mask)):
-            btn.setObjectName("LayerAddBtn")
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.clicked.connect(handler)
-            buttons.addWidget(btn)
-        clear = QPushButton("Clear")
+        clear_row = QHBoxLayout()
+        clear_row.setContentsMargins(0, 2, 0, 0)
+        clear = QPushButton("Clear mask")
         clear.setObjectName("LayerOrderBtn")
         clear.setCursor(Qt.PointingHandCursor)
         clear.clicked.connect(self._clear_mask)
-        buttons.addWidget(clear)
-        layout.addLayout(buttons)
+        clear_row.addWidget(clear)
+        layout.addLayout(clear_row)
 
-        self._last_mask_kind = None
+        self._mask_kind = "radial"
+        self._mask_type_buttons["radial"].setChecked(True)
+        self.mask_stack.setCurrentIndex(0)
         return wrap
+
+    _MASK_PAGES = {"radial": 0, "linear": 1, "brush": 2}
+
+    def _select_mask_type(self, kind):
+        self._mask_kind = kind
+        self.mask_stack.setCurrentIndex(self._MASK_PAGES[kind])
+        if kind == "brush":
+            self._seed_brush()
+        else:
+            self._reapply_mask()
 
     def _mask_layer(self):
         if not self.doc or self.active_target == BASE:
@@ -591,32 +791,55 @@ class EditorWindow(QMainWindow):
             return
         mask = masks.linear_mask(
             self._mask_target_size(), self.mask_dir.currentText().lower(),
-            self.mask_pos.slider.value() / 100.0, self.mask_soft.slider.value() / 100.0,
+            self.mask_pos.slider.value() / 100.0, self.mask_soft_lin.slider.value() / 100.0,
             self.mask_invert.isChecked())
         self._store_mask(layer, mask, "linear", "Graduated mask")
+
+    def _seed_brush(self):
+        layer = self._mask_layer()
+        if layer is None:
+            return
+        photo = self.doc.render((476, 344))   # reference view for painting
+        existing = None
+        if layer.get("mask"):
+            existing = editor_engine._mask_from_text(layer.get("mask", ""))
+        self.mask_brush.load(photo, existing)
+
+    def _store_brush_mask(self):
+        layer = self._mask_layer()
+        if layer is None:
+            return
+        mask = self.mask_brush.mask_pil(self._mask_target_size())
+        if mask is None:
+            return
+        if self.mask_invert.isChecked():
+            mask = ImageOps.invert(mask)
+        self._store_mask(layer, mask, "brush", "Brush mask")
 
     def _store_mask(self, layer, mask, kind, label):
         layer["mask"] = editor_engine._mask_to_text(mask)
         layer["mask_enabled"] = True
-        self._last_mask_kind = kind
         self.doc.record(label)
         self._render_preview()
         self._update_title()
 
-    def _reapply_mask(self, _checked):
-        # re-generate the same mask kind when Invert changes, if one exists
-        if self._last_mask_kind == "radial":
+    def _reapply_mask(self, *_args):
+        # regenerate the currently-chosen mask kind (slider/invert changed)
+        if self._mask_kind == "radial":
             self._apply_radial_mask()
-        elif self._last_mask_kind == "linear":
+        elif self._mask_kind == "linear":
             self._apply_linear_mask()
+        elif self._mask_kind == "brush":
+            self._store_brush_mask()
 
     def _clear_mask(self):
         layer = self._mask_layer()
         if layer is None or not layer.get("mask"):
             return
         layer["mask"] = ""
-        self._last_mask_kind = None
         self.doc.record("Clear mask")
+        if self._mask_kind == "brush":
+            self._seed_brush()
         self._render_preview()
         self._update_title()
 
@@ -876,12 +1099,14 @@ class EditorWindow(QMainWindow):
         self.doc = document
         self.doc.on_change = self._on_doc_change
         self.active_target = BASE
+        self._zoom_actual = False   # a freshly opened photo starts fitted
         self.layers_panel.rebuild()
         self.target_label.setText("Editing: Base image")
         self._sync_controls_from_doc()
         self._update_text_panel()
         self._render_preview(keep_view=False)
         self._update_title()
+        self._refresh_filmstrip()
         self.status.showMessage(os.path.basename(path))
         return True
 
@@ -909,12 +1134,14 @@ class EditorWindow(QMainWindow):
         self.doc = document
         self.doc.on_change = self._on_doc_change
         self.active_target = BASE
+        self._zoom_actual = False   # a freshly opened project starts fitted
         self.layers_panel.rebuild()
         self.target_label.setText("Editing: Base image")
         self._sync_controls_from_doc()
         self._update_text_panel()
         self._render_preview(keep_view=False)
         self._update_title()
+        self._refresh_filmstrip()
         self.status.showMessage(os.path.basename(path))
 
     def save_project(self):
@@ -1126,6 +1353,208 @@ class EditorWindow(QMainWindow):
         self._schedule_render()
         self._update_title()
 
+    def _build_split_tone(self):
+        wrap = QWidget()
+        col = QVBoxLayout(wrap)
+        col.setContentsMargins(0, 2, 0, 0)
+        col.setSpacing(4)
+        hint = QLabel("Split tone — colour the shadows and highlights")
+        hint.setObjectName("TargetLabel")
+        hint.setWordWrap(True)
+        col.addWidget(hint)
+
+        self.split_shadow_btn = QPushButton("Shadow colour")
+        self.split_shadow_btn.setObjectName("SwatchBtn")
+        self.split_shadow_btn.setCursor(Qt.PointingHandCursor)
+        self.split_shadow_btn.clicked.connect(
+            lambda: self._pick_split_colour("split_shadow"))
+        col.addWidget(self.split_shadow_btn)
+        shadow_amt = SliderRow("split_shadow_amount", "Shadows", 0, 100, 1, 0)
+        shadow_amt.changed.connect(self._on_adjust)
+        shadow_amt.committed.connect(self._on_commit)
+        self.rows["split_shadow_amount"] = shadow_amt
+        col.addWidget(shadow_amt)
+
+        self.split_mid_btn = QPushButton("Midtone colour")
+        self.split_mid_btn.setObjectName("SwatchBtn")
+        self.split_mid_btn.setCursor(Qt.PointingHandCursor)
+        self.split_mid_btn.clicked.connect(
+            lambda: self._pick_split_colour("split_midtone"))
+        col.addWidget(self.split_mid_btn)
+        mid_amt = SliderRow("split_midtone_amount", "Midtones", 0, 100, 1, 0)
+        mid_amt.changed.connect(self._on_adjust)
+        mid_amt.committed.connect(self._on_commit)
+        self.rows["split_midtone_amount"] = mid_amt
+        col.addWidget(mid_amt)
+
+        self.split_hi_btn = QPushButton("Highlight colour")
+        self.split_hi_btn.setObjectName("SwatchBtn")
+        self.split_hi_btn.setCursor(Qt.PointingHandCursor)
+        self.split_hi_btn.clicked.connect(
+            lambda: self._pick_split_colour("split_highlight"))
+        col.addWidget(self.split_hi_btn)
+        hi_amt = SliderRow("split_highlight_amount", "Highlights", 0, 100, 1, 0)
+        hi_amt.changed.connect(self._on_adjust)
+        hi_amt.committed.connect(self._on_commit)
+        self.rows["split_highlight_amount"] = hi_amt
+        col.addWidget(hi_amt)
+        return wrap
+
+    def _pick_split_colour(self, key):
+        target = self.active_adjustments()
+        if target is None:
+            return
+        current = target.get(key, editor_engine.DEFAULT_ADJUSTMENTS[key])
+        colour = QColorDialog.getColor(
+            QColor(*[int(c) for c in current]), self, "Choose split-tone colour")
+        if not colour.isValid():
+            return
+        target[key] = [colour.red(), colour.green(), colour.blue()]
+        self._update_split_swatches()
+        self.doc.record("Split-tone colour")
+        self._schedule_render()
+        self._update_title()
+
+    def _update_split_swatches(self):
+        target = self.active_adjustments() or {}
+        for key, btn in (("split_shadow", self.split_shadow_btn),
+                        ("split_midtone", self.split_mid_btn),
+                        ("split_highlight", self.split_hi_btn),
+                        ("glow_colour", self.glow_btn)):
+            rgb = target.get(key, editor_engine.DEFAULT_ADJUSTMENTS[key])
+            r, g, b = [int(c) for c in rgb][:3]
+            ink = "#000000" if (r * 0.299 + g * 0.587 + b * 0.114) > 140 else "#ffffff"
+            # dynamic swatch colour (the user's chosen tone) — a live value, not
+            # a static style: setStyleSheet is the Qt way to show a picked colour
+            btn.setStyleSheet(
+                f"QPushButton#SwatchBtn {{ background: rgb({r},{g},{b}); color: {ink};"
+                f" border: 1px solid #333; border-radius: 4px; padding: 6px; }}")
+
+    def _build_photo_filter(self):
+        wrap = QWidget()
+        col = QVBoxLayout(wrap)
+        col.setContentsMargins(12, 4, 12, 6)
+        col.setSpacing(4)
+        hint = QLabel("A coloured filter over the lens — warm or cool the photo, "
+                      "or wash it with a colour. Pick a preset or your own colour.")
+        hint.setObjectName("TargetLabel")
+        hint.setWordWrap(True)
+        col.addWidget(hint)
+
+        self.photo_filter_combo = QComboBox()
+        self.photo_filter_combo.addItem("Custom", None)
+        for label, rgb, density in editor_engine.PHOTO_FILTER_PRESETS:
+            self.photo_filter_combo.addItem(label, [list(rgb), density])
+        self.photo_filter_combo.activated.connect(self._on_photo_filter_preset)
+        col.addWidget(self.photo_filter_combo)
+
+        self.photo_filter_btn = QPushButton("Filter colour")
+        self.photo_filter_btn.setObjectName("SwatchBtn")
+        self.photo_filter_btn.setCursor(Qt.PointingHandCursor)
+        self.photo_filter_btn.clicked.connect(self._pick_photo_filter_colour)
+        col.addWidget(self.photo_filter_btn)
+
+        density = SliderRow("photo_filter_density", "Density", 0, 100, 1, 0)
+        density.changed.connect(self._on_adjust)
+        density.committed.connect(self._on_commit)
+        self.rows["photo_filter_density"] = density
+        col.addWidget(density)
+
+        self.photo_filter_preserve = QCheckBox("Preserve brightness")
+        self.photo_filter_preserve.setChecked(True)
+        self.photo_filter_preserve.setToolTip(
+            "Keep the photo's original brightness and let the filter change only "
+            "the colour — the standard photo-filter behaviour.")
+        self.photo_filter_preserve.toggled.connect(self._on_photo_filter_preserve)
+        col.addWidget(self.photo_filter_preserve)
+        return wrap
+
+    def _on_photo_filter_preset(self, index):
+        data = self.photo_filter_combo.itemData(index)
+        if data is None:      # "Custom" — keep whatever colour is set
+            return
+        target = self.active_adjustments()
+        if target is None:
+            return
+        rgb, density = data
+        target["photo_filter_color"] = [int(c) for c in rgb]
+        target["photo_filter_density"] = float(density)
+        self.rows["photo_filter_density"].set_value(float(density))
+        self._update_photo_filter_swatch()
+        self.doc.record("Photo filter")
+        self._schedule_render()
+        self._update_title()
+
+    def _pick_photo_filter_colour(self):
+        target = self.active_adjustments()
+        if target is None:
+            return
+        current = target.get("photo_filter_color",
+                             editor_engine.DEFAULT_ADJUSTMENTS["photo_filter_color"])
+        colour = QColorDialog.getColor(
+            QColor(*[int(c) for c in current[:3]]), self, "Choose filter colour")
+        if not colour.isValid():
+            return
+        target["photo_filter_color"] = [colour.red(), colour.green(), colour.blue()]
+        self.photo_filter_combo.setCurrentIndex(0)   # Custom
+        self._update_photo_filter_swatch()
+        self.doc.record("Photo filter colour")
+        self._schedule_render()
+        self._update_title()
+
+    def _on_photo_filter_preserve(self, checked):
+        target = self.active_adjustments()
+        if target is None:
+            return
+        target["photo_filter_preserve_lum"] = bool(checked)
+        self.doc.record("Photo filter")
+        self._schedule_render()
+        self._update_title()
+
+    def _update_photo_filter_swatch(self):
+        target = self.active_adjustments() or {}
+        rgb = target.get("photo_filter_color",
+                         editor_engine.DEFAULT_ADJUSTMENTS["photo_filter_color"])
+        r, g, b = [int(c) for c in rgb][:3]
+        ink = "#000000" if (r * 0.299 + g * 0.587 + b * 0.114) > 140 else "#ffffff"
+        # dynamic swatch colour (the user's chosen filter) — a live value, not a
+        # static style: setStyleSheet is the Qt way to show a picked colour.
+        self.photo_filter_btn.setStyleSheet(
+            f"QPushButton#SwatchBtn {{ background: rgb({r},{g},{b}); color: {ink};"
+            f" border: 1px solid #333; border-radius: 4px; padding: 6px; }}")
+
+    def _sync_photo_filter_combo(self, adjustments):
+        rgb = [int(c) for c in adjustments.get(
+            "photo_filter_color",
+            editor_engine.DEFAULT_ADJUSTMENTS["photo_filter_color"])[:3]]
+        self.photo_filter_combo.blockSignals(True)
+        matched = 0     # default to Custom
+        for i in range(self.photo_filter_combo.count()):
+            data = self.photo_filter_combo.itemData(i)
+            if data and [int(c) for c in data[0][:3]] == rgb:
+                matched = i
+                break
+        self.photo_filter_combo.setCurrentIndex(matched)
+        self.photo_filter_combo.blockSignals(False)
+
+    def _on_grain_darken(self, checked):
+        target = self.active_adjustments()
+        if target is None:
+            return
+        target["grain_darken"] = bool(checked)
+        self.doc.record("Grain style")
+        self._schedule_render()
+        self._update_title()
+
+    def _on_curve_changed(self, key, points):
+        target = self.active_adjustments()
+        if target is None:
+            return
+        target[key] = points
+        self.doc.record("Tone curve")
+        self._schedule_render()
+        self._update_title()
+
     def reset_all(self):
         target = self.active_adjustments()
         if target is None:
@@ -1194,17 +1623,62 @@ class EditorWindow(QMainWindow):
     def _render_preview(self, keep_view=True):
         if not self.doc:
             return
+        # At 100% we render the photograph at its native resolution so the
+        # canvas shows true pixels (a real focus check); when Fit, we render a
+        # fast proxy capped to the window so slider drags stay smooth.
+        max_size = None if self._zoom_actual else self.view.viewport_target()
         if self.act_compare.isChecked():
-            pixmap = original_pixmap(self.doc.source_path,
-                                     max_size=self.view.viewport_target())
+            edited = render_pixmap(self.doc, max_size=max_size)
+            original = original_pixmap(self.doc.source_path, max_size=max_size)
+            self.view.set_compare(original, edited, keep_view=keep_view)
         else:
-            pixmap = render_pixmap(self.doc, max_size=self.view.viewport_target())
-        self.view.set_pixmap(pixmap, keep_view=keep_view)
+            pixmap = render_pixmap(self.doc, max_size=max_size)
+            self.view.set_pixmap(pixmap, keep_view=keep_view)
         self._refresh_histogram()
 
-    def _toggle_compare(self, _checked):
+    def zoom_fit(self):
+        """Fit the whole photograph to the window (fast preview resolution)."""
+        self._zoom_actual = False
+        if self.doc:
+            self._render_preview(keep_view=False)
+        else:
+            self.view.fit()
+
+    def zoom_actual(self):
+        """Show actual pixels — re-render at native resolution, then 1:1."""
+        self._zoom_actual = True
+        if self.doc:
+            self._render_preview(keep_view=True)
+        self.view.actual_size()
+
+    def _toggle_compare(self, checked):
+        if checked:
+            self.view.reset_divider()
+        else:
+            self.view.clear_compare()
         if self.doc:
             self._render_preview()
+
+    # --- Filmstrip ----------------------------------------------------------
+    def _toggle_filmstrip(self, checked):
+        self._filmstrip_visible = bool(checked)
+        self.filmstrip.setVisible(self._filmstrip_visible)
+        if self._filmstrip_visible and self.doc:
+            self.filmstrip.show_for(self.doc.source_path)
+        from . import prefs
+        values = prefs.load()
+        values["filmstrip_visible"] = self._filmstrip_visible
+        prefs.save(values)
+
+    def _refresh_filmstrip(self):
+        if self._filmstrip_visible and self.doc:
+            self.filmstrip.show_for(self.doc.source_path)
+
+    def _open_from_filmstrip(self, path):
+        if not self._confirm_discard():
+            self._refresh_filmstrip()   # bounce selection back to the open photo
+            return
+        self.open_path(path)
 
     # --- UI sync ------------------------------------------------------------
     def _sync_controls_from_doc(self):
@@ -1216,6 +1690,17 @@ class EditorWindow(QMainWindow):
         self.bw_check.blockSignals(True)
         self.bw_check.setChecked(bool(adjustments.get("black_white", False)))
         self.bw_check.blockSignals(False)
+        self.grain_darken_check.blockSignals(True)
+        self.grain_darken_check.setChecked(bool(adjustments.get("grain_darken", False)))
+        self.grain_darken_check.blockSignals(False)
+        self.photo_filter_preserve.blockSignals(True)
+        self.photo_filter_preserve.setChecked(
+            bool(adjustments.get("photo_filter_preserve_lum", True)))
+        self.photo_filter_preserve.blockSignals(False)
+        self._update_photo_filter_swatch()
+        self._sync_photo_filter_combo(adjustments)
+        self._update_split_swatches()
+        self.curve_editor.set_curves(adjustments)
         self._sync_geometry()
 
     def _refresh_actions(self):

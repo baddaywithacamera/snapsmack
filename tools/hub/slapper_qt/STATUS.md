@@ -22,18 +22,48 @@ UI-shell swap, not a rewrite.
 | `library_window.py` | Folder browser: threaded thumbnail grid → open in editor |
 | `app.py` / `__main__.py` | Bootstrap (library is the entry point) |
 
-## Built and headless-verified (`tests/test_slapper_qt.py`, 11 tests)
+## Built and headless-verified (`tests/test_slapper_qt.py`, 29 tests)
 - Library: folder scan (+subfolders), threaded thumbnails (no freeze), size
-  slider, double-click → editor.
+  slider, double-click → editor. Plus a **collapsible folder tree** (toggle to
+  slide in/out), **sort** by name or EXIF capture date (newest/oldest),
+  **filename search**, **click-a-photo → dimensions + file size** in the status
+  bar, and larger, readable filenames under each thumbnail.
 - Editor: open photo, zoom/pan canvas, dark Midnight-Lime UI.
 - Adjustments: LIGHT / COLOUR / PRESENCE / EFFECTS / LEVELS, live preview,
   double-click-to-reset, undo/redo/reset.
 - **Black & white colour mixer** — 8 per-hue luminance sliders (Red…Magenta);
   all-zero == the old neutral grayscale (backward compatible).
-- Live Luma/RGB histogram; Before/After toggle.
+- Live Luma/RGB histogram.
+- **Before/After split** — a draggable divider: original left, edited right,
+  each side labelled BEFORE / AFTER; drag anywhere to move the split (the split
+  recomposites without re-rendering the engine).
 - Layers: adjustment/image/text layers, visibility, opacity, blend (11 modes),
   reorder, delete; editing a layer never touches the base photo.
-- **Layer masks** — radial + graduated, invert/clear (real local adjustments).
+- **Layer masks** — pick the type first (Radial / Graduated / **Brush**), then
+  only that type's controls show. The **Brush** is a paint-on-the-photo window:
+  Hide (black) / Reveal (white), adjustable brush, hidden areas tinted red so
+  you see the mask (`mask_brush.py`). Invert + Clear apply to any type.
+- **Split toning** — colour the shadows and highlights independently (teal/
+  orange, warm/cool, etc.); two colour swatches + amount sliders in COLOUR.
+  Amount 0 == off, so existing looks are unchanged.
+- **Vignette feather** — a slider for how soft or hard the dark-edge fade is
+  (50 == the classic look).
+- **Darken-only grain** — a checkbox for grain that only darkens (real film
+  feel) instead of also brightening.
+
+## Colour engine — the LEWK-underpinning primitives (built this session)
+These four are what the Instagram-filter reference (`_spec/Instagram Photo
+Filters Technical Reference.md`) showed the engine was missing. All default to
+identity, so every existing look/project renders unchanged.
+- **Per-colour tone curves** — independent Red / Green / Blue curves plus the
+  master RGB, via a draggable **curve editor** (`curve_editor.py`; TONE CURVE
+  section). This is what colour-cast / cross-process looks are built from.
+- **Colour mix (HSL)** — per-hue **saturation + luminance** (8 bands each,
+  mirrors the B&W mixer), `_colour_mix` in the engine; COLOUR MIX section.
+- **3-zone split toning** — shadows / **midtones** / highlights, each its own
+  colour + amount (COLOUR section).
+- **Placed colour glow** — a positioned colour bloom (centre spotlight or
+  coloured leak): colour + amount + X/Y + size, `_colour_glow`; GLOW section.
 - **Text layers** — edit content, size, and fill colour.
 - **Interactive crop** — drag a rectangle on the canvas; cancel restores.
 - Geometry: rotate/straighten + Flip H/V + reset.
@@ -55,6 +85,16 @@ UI-shell swap, not a rewrite.
   `C:\snapsmack\snap_slapper\recovery`; restore-on-reopen prompt.
 - **Preferences** — export quality, copyright-if-missing, strip-GPS; Export
   honours them. Persisted under `C:\snapsmack\config_files`.
+- **Filmstrip** — a toggleable horizontal strip of the current folder's photos
+  under the canvas (`filmstrip.py`, threaded thumbnails like the library).
+  Click a frame to open it (with the unsaved-edits guard); the Filmstrip
+  toolbar toggle shows/hides it and the choice is remembered in prefs.
+- **True 100% zoom** — "100%" now re-renders the photograph at its native
+  resolution and shows it 1:1, so a focus check shows real pixels (previously
+  it showed a window-sized proxy at 1:1, which looked small and was not actual
+  pixels). "Fit" keeps the fast viewport-sized proxy for smooth slider drags;
+  a freshly opened photo starts fitted. Editing while held at 100% re-renders
+  full-resolution, so it is slower than Fit — flip to Fit for fast tuning.
 
 ## Not yet built (next phases)
 - Filters: the four-filter foundation from `docs/snap-slapper-filter-spec.md`
@@ -62,10 +102,13 @@ UI-shell swap, not a rewrite.
 - Found Textures: category/album filter, favourite, local categories (search +
   import done). Rights-based hide/flag needs the gyss/photos API to expose a
   rights field (server-side change).
-- Mask brush painting + colour-range masks (only gradient masks so far); moving
-  a text/image layer by dragging on the canvas.
+- Colour-range masks (radial + graduated + brush done); moving a text/image
+  layer by dragging on the canvas.
 - Library depth: ratings, tags, albums, filtering, Trash (all in the Tk
-  `photo_library.py`, not yet ported); filmstrip in the editor; slideshow.
+  `photo_library.py`, not yet ported); slideshow. (Editor filmstrip: done.)
+- 100% loupe polish: render only the visible viewport crop at native res
+  (instead of the whole photo) so editing while held at 100% stays fast on
+  very large files. Correct-but-slower full-native render ships now.
 - Standardise `snap_log` into the other standalone tools (SUYB, scanner, etc.).
 - Packaging the Qt build into the shipped SNAP SLAPPER.exe.
 

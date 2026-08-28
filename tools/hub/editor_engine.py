@@ -35,12 +35,78 @@ DEFAULT_ADJUSTMENTS = {
     "clarity": 0.0, "texture": 0.0, "dehaze": 0.0, "sharpen": 0.0,
     "level_black": 0.0, "level_gamma": 1.0, "level_white": 255.0,
     "black_white": False, "vignette": 0.0, "grain": 0.0,
+    # Vignette edge softness (50 == the classic look) and a darken-only grain
+    # mode (False == the original soft-light grain). Defaults preserve every
+    # existing LEWK and project unchanged.
+    "vignette_feather": 50.0, "grain_darken": False,
+    # Split toning — colour the shadows and highlights independently (the
+    # teal-and-orange / warm-cool look most film emulations rely on). Both
+    # amounts default to 0, so this is off until dialled up.
+    "split_shadow": [60, 90, 150], "split_shadow_amount": 0.0,
+    "split_midtone": [128, 128, 128], "split_midtone_amount": 0.0,
+    "split_highlight": [255, 200, 120], "split_highlight_amount": 0.0,
+    # Per-channel tone curves (independent R / G / B). Identity == no change,
+    # so an unset LEWK renders exactly as before. This is what the colour-cast
+    # looks (cross-process, film) are built from.
+    "curve_red": [[0, 0], [255, 255]],
+    "curve_green": [[0, 0], [255, 255]],
+    "curve_blue": [[0, 0], [255, 255]],
+    # Colour HSL mix — per-hue saturation and luminance (like the B&W mixer,
+    # but in colour). All zero == unchanged.
+    "col_sat_red": 0.0, "col_sat_orange": 0.0, "col_sat_yellow": 0.0,
+    "col_sat_green": 0.0, "col_sat_aqua": 0.0, "col_sat_blue": 0.0,
+    "col_sat_purple": 0.0, "col_sat_magenta": 0.0,
+    "col_lum_red": 0.0, "col_lum_orange": 0.0, "col_lum_yellow": 0.0,
+    "col_lum_green": 0.0, "col_lum_aqua": 0.0, "col_lum_blue": 0.0,
+    "col_lum_purple": 0.0, "col_lum_magenta": 0.0,
+    # Positional colour glow (a placed bloom, screened over the photo).
+    "glow_amount": 0.0, "glow_colour": [255, 220, 170],
+    "glow_x": 50.0, "glow_y": 40.0, "glow_size": 45.0,
     # Black & white colour mix — per-hue luminance, Lightroom-style.
     # All zero == the classic neutral grayscale (backward compatible).
     "bw_red": 0.0, "bw_orange": 0.0, "bw_yellow": 0.0, "bw_green": 0.0,
     "bw_aqua": 0.0, "bw_blue": 0.0, "bw_purple": 0.0, "bw_magenta": 0.0,
+    # Photo filter — a coloured "gel" over the lens (the classic warming/cooling
+    # and colour filters). Density 0 == off, so this is backward compatible.
+    # Preserve-luminosity keeps the photo's brightness and changes only colour.
+    "photo_filter_color": [236, 138, 0], "photo_filter_density": 0.0,
+    "photo_filter_preserve_lum": True,
     "curve": [[0, 0], [255, 255]],
 }
+
+
+# Photo Filter presets — the classic Photoshop set (a coloured gel over the lens
+# at a density) plus a few faux-infrared washes. Each entry is (label, RGB,
+# suggested density %). Selecting one sets the layer's filter colour + density.
+PHOTO_FILTER_PRESETS = [
+    ("Warming Filter (85)",  (236, 138, 0),   25),
+    ("Warming Filter (LBA)", (250, 150, 40),  25),
+    ("Warming Filter (81)",  (235, 177, 19),  25),
+    ("Cooling Filter (80)",  (0, 109, 255),   25),
+    ("Cooling Filter (LBB)", (0, 93, 255),    25),
+    ("Cooling Filter (82)",  (0, 181, 255),   25),
+    ("Red",      (234, 26, 26),   25),
+    ("Orange",   (243, 128, 30),  25),
+    ("Yellow",   (237, 232, 23),  25),
+    ("Green",    (25, 201, 25),   25),
+    ("Cyan",     (26, 229, 229),  25),
+    ("Blue",     (29, 53, 255),   25),
+    ("Violet",   (155, 25, 229),  25),
+    ("Magenta",  (255, 25, 255),  25),
+    ("Sepia",    (172, 122, 51),  25),
+    ("Deep Red",     (235, 0, 0),    25),
+    ("Deep Blue",    (0, 0, 235),    25),
+    ("Deep Emerald", (0, 140, 0),    25),
+    ("Deep Yellow",  (255, 198, 0),  25),
+    ("Underwater",   (0, 194, 177),  25),
+    # Faux infrared — a coloured wash in the spirit of the deep filters IR
+    # shooters screw onto the lens. A colour wash gives the IR *cast*, not the
+    # full white-foliage / black-sky conversion (that needs a channel swap — a
+    # separate effect).
+    ("Faux IR — R72 Deep Red",    (120, 0, 0),    90),
+    ("Faux IR — Aerochrome Pink", (226, 40, 150),  80),
+    ("Faux IR — Green Window",    (0, 150, 90),    80),
+]
 
 # Pillow 10.3+ renamed ImageMath.eval -> unsafe_eval (same behaviour, our
 # expression is a fixed literal). Fall back to eval on older Pillow.
@@ -309,11 +375,29 @@ def apply_adjustments(image, adjustments):
     if sharpen > 0:
         output = output.filter(ImageFilter.UnsharpMask(radius=1.2, percent=int(sharpen * 2.5), threshold=3))
 
+    output = _colour_mix(output, settings)
+
     curve = settings.get("curve") or [[0, 0], [255, 255]]
     output = output.point(_curve_lut(curve) * 3)
+
+    # Per-channel curves (independent R / G / B) — where the colour casts live.
+    identity = [[0, 0], [255, 255]]
+    r_pts = settings.get("curve_red") or identity
+    g_pts = settings.get("curve_green") or identity
+    b_pts = settings.get("curve_blue") or identity
+    if r_pts != identity or g_pts != identity or b_pts != identity:
+        red, green, blue = output.split()
+        red = red.point(_curve_lut(r_pts))
+        green = green.point(_curve_lut(g_pts))
+        blue = blue.point(_curve_lut(b_pts))
+        output = Image.merge("RGB", (red, green, blue))
     if settings.get("black_white"):
         mono = _bw_mono(output, settings)
         output = Image.merge("RGB", (mono, mono, mono))
+
+    output = _photo_filter(output, settings)
+    output = _split_tone(output, settings)
+    output = _colour_glow(output, settings)
 
     vignette = float(settings["vignette"])
     if vignette:
@@ -322,7 +406,10 @@ def apply_adjustments(image, adjustments):
         draw = ImageDraw.Draw(mask)
         inset_x, inset_y = int(width * .08), int(height * .08)
         draw.ellipse((inset_x, inset_y, width - inset_x, height - inset_y), fill=255)
-        mask = mask.filter(ImageFilter.GaussianBlur(radius=max(width, height) * .16))
+        # Feather: 50 reproduces the classic .16 blur; 0 = hard edge, 100 = very soft.
+        feather = float(settings.get("vignette_feather", 50)) / 100.0
+        blur = max(1.0, max(width, height) * feather * .32)
+        mask = mask.filter(ImageFilter.GaussianBlur(radius=blur))
         strength = abs(vignette) / 100.0
         edge = Image.new("RGB", output.size, (0, 0, 0) if vignette < 0 else (255, 255, 255))
         blend_mask = mask.point(lambda value: int(255 - (255 - value) * strength))
@@ -333,7 +420,139 @@ def apply_adjustments(image, adjustments):
         amount = grain / 100.0 * 32
         noise = Image.effect_noise(output.size, amount)
         noise_rgb = Image.merge("RGB", (noise, noise, noise))
-        output = ImageChops.soft_light(output, noise_rgb)
+        if settings.get("grain_darken"):
+            # Darken-only film grain: the noise only ever subtracts light, so
+            # specks sit in the image like real silver grain instead of also
+            # brightening it the way soft-light does.
+            darken = noise.point(lambda v: 255 if v >= 128 else int(255 - (128 - v)))
+            darken_rgb = Image.merge("RGB", (darken, darken, darken))
+            output = ImageChops.multiply(output, darken_rgb)
+        else:
+            output = ImageChops.soft_light(output, noise_rgb)
+    return output
+
+
+_HUE_BAND_DEG = [("red", 0.0), ("orange", 30.0), ("yellow", 60.0),
+                 ("green", 120.0), ("aqua", 180.0), ("blue", 240.0),
+                 ("purple", 270.0), ("magenta", 300.0)]
+
+
+def _band_multiplier_lut(settings, prefix, scale):
+    """A 256-entry multiplier LUT indexed by PIL hue, from 8 per-band sliders
+    (-100..100). Bands interpolate around the wheel; all-zero -> flat 1.0."""
+    centres = [(deg, float(settings.get(f"{prefix}_{name}", 0.0)))
+               for name, deg in _HUE_BAND_DEG]
+    lut = []
+    for index in range(256):
+        hue = index * 360.0 / 255.0
+        below = max(((deg - 360.0 if deg > hue else deg, value)
+                     for deg, value in centres), key=lambda item: item[0])
+        above = min(((deg + 360.0 if deg < hue else deg, value)
+                     for deg, value in centres), key=lambda item: item[0])
+        span = above[0] - below[0]
+        weight = 0.0 if span == 0 else (hue - below[0]) / span
+        slider = below[1] * (1 - weight) + above[1] * weight
+        multiplier = 1.0 + (slider / 100.0) * scale
+        lut.append(max(0, min(255, int(round(multiplier * 128.0)))))
+    return lut
+
+
+def _colour_mix(image, settings):
+    """Per-hue saturation and luminance (HSL), like the B&W mixer but in colour.
+    A pixel's hue picks its multiplier; all bands at 0 leaves the image alone."""
+    sat_on = any(float(settings.get(f"col_sat_{n}", 0)) for n, _ in _HUE_BAND_DEG)
+    lum_on = any(float(settings.get(f"col_lum_{n}", 0)) for n, _ in _HUE_BAND_DEG)
+    if not sat_on and not lum_on:
+        return image
+    hue, sat, val = image.convert("HSV").split()
+    if sat_on:
+        mult = hue.point(_band_multiplier_lut(settings, "col_sat", 0.9))
+        sat = _image_math_eval(
+            "convert(min(max(float(s) * (float(m) / 128.0), 0.0), 255.0), 'L')",
+            s=sat, m=mult)
+    if lum_on:
+        mult = hue.point(_band_multiplier_lut(settings, "col_lum", 0.5))
+        val = _image_math_eval(
+            "convert(min(max(float(v) * (float(m) / 128.0), 0.0), 255.0), 'L')",
+            v=val, m=mult)
+    return Image.merge("HSV", (hue, sat, val)).convert("RGB")
+
+
+def _colour_glow(image, settings):
+    """A placed colour bloom, screened over the photo (soft centre spotlight or
+    coloured glow). Amount 0 == off."""
+    amount = float(settings.get("glow_amount", 0)) / 100.0
+    if amount <= 0:
+        return image
+    output = image.convert("RGB")
+    width, height = output.size
+    colour = tuple(int(c) for c in settings.get("glow_colour", [255, 220, 170]))[:3]
+    cx = float(settings.get("glow_x", 50)) / 100.0 * width
+    cy = float(settings.get("glow_y", 40)) / 100.0 * height
+    reach = max(1.0, max(width, height) * (float(settings.get("glow_size", 45)) / 100.0))
+    glow = Image.new("L", (width, height), 0)
+    ImageDraw.Draw(glow).ellipse([cx - reach, cy - reach, cx + reach, cy + reach],
+                                 fill=int(255 * amount))
+    glow = glow.filter(ImageFilter.GaussianBlur(reach * 0.5))
+    bloom = Image.composite(Image.new("RGB", (width, height), colour),
+                            Image.new("RGB", (width, height), (0, 0, 0)), glow)
+    return ImageChops.screen(output, bloom)
+
+
+def _photo_filter(image, settings):
+    """Lay a coloured gel over the photo — the classic warming/cooling/colour
+    photo filters. Density is the strength; preserve-luminosity keeps the
+    original brightness and lets the filter change only the colour."""
+    density = float(settings.get("photo_filter_density", 0.0)) / 100.0
+    if density <= 0:
+        return image
+    colour = settings.get("photo_filter_color") or [236, 138, 0]
+    r, g, b = [max(0, min(255, int(c))) for c in colour[:3]]
+    tint = Image.new("RGB", image.size, (r, g, b))
+    # A photographic filter absorbs the light complementary to its colour —
+    # multiply reproduces that "gel over the lens" look.
+    filtered = ImageChops.multiply(image, tint)
+    result = Image.blend(image, filtered, density)
+    if settings.get("photo_filter_preserve_lum", True):
+        # Keep the original brightness, take only the filter's colour: put the
+        # filtered chroma (Cb/Cr) back onto the untouched luma (Y).
+        y = image.convert("YCbCr").split()[0]
+        _, cb, cr = result.convert("YCbCr").split()
+        result = Image.merge("YCbCr", (y, cb, cr)).convert("RGB")
+    return result
+
+
+def _split_tone(image, settings):
+    """Colour the shadows and highlights independently.
+
+    Each tone is soft-light blended (so brightness is preserved and only the
+    hue shifts) and confined by a luminance mask — the shadow colour where the
+    photo is dark, the highlight colour where it is bright. Amount 0 == off.
+    """
+    shadow_amount = float(settings.get("split_shadow_amount", 0)) / 100.0
+    midtone_amount = float(settings.get("split_midtone_amount", 0)) / 100.0
+    highlight_amount = float(settings.get("split_highlight_amount", 0)) / 100.0
+    if shadow_amount <= 0 and midtone_amount <= 0 and highlight_amount <= 0:
+        return image
+    output = image.convert("RGB")
+    luminance = ImageOps.grayscale(output)
+    if shadow_amount > 0:
+        colour = tuple(int(c) for c in settings.get("split_shadow", [60, 90, 150]))[:3]
+        weight = luminance.point(lambda v: int((255 - v) * shadow_amount * .6))
+        toned = ImageChops.soft_light(output, Image.new("RGB", output.size, colour))
+        output = Image.composite(toned, output, weight)
+    if midtone_amount > 0:
+        colour = tuple(int(c) for c in settings.get("split_midtone", [128, 128, 128]))[:3]
+        # a triangular weight that peaks at mid grey and falls to the extremes
+        weight = luminance.point(
+            lambda v: max(0, int((255 - abs(v - 128) * 2) * midtone_amount * .6)))
+        toned = ImageChops.soft_light(output, Image.new("RGB", output.size, colour))
+        output = Image.composite(toned, output, weight)
+    if highlight_amount > 0:
+        colour = tuple(int(c) for c in settings.get("split_highlight", [255, 200, 120]))[:3]
+        weight = luminance.point(lambda v: int(v * highlight_amount * .6))
+        toned = ImageChops.soft_light(output, Image.new("RGB", output.size, colour))
+        output = Image.composite(toned, output, weight)
     return output
 
 

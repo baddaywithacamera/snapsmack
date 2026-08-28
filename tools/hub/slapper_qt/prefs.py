@@ -15,6 +15,9 @@ DEFAULTS = {
     "strip_gps": False,            # remove GPS from exported copies (never the original)
     "texture_site_hint": "foundtextures",
     "mode": "advanced",            # "normal" (Picasa-simple) or "advanced"
+    "filmstrip_visible": True,     # show the folder filmstrip under the canvas
+    "library_folders_visible": True,   # show the library's left folder tree
+    "library_sort": "name",        # library grid sort: name / date_new / date_old
 }
 
 

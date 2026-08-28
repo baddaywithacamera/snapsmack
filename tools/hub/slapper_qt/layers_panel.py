@@ -188,6 +188,12 @@ class LayersPanel(QWidget):
         name = QPushButton(label)
         name.setObjectName("LayerName")
         name.setCursor(Qt.PointingHandCursor)
+        if target == BASE:
+            name.setToolTip("The original photograph. Click to edit it directly — "
+                            "the sliders then change the base photo, beneath any "
+                            "LEWKS or layers stacked on top.")
+        else:
+            name.setToolTip("Click to edit this layer")
         name.clicked.connect(lambda _c, t=target: self._select(t))
         layout.addWidget(name, 1)
         return row
