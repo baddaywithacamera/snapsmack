@@ -7464,4 +7464,47 @@ input[type="range"]:active::-webkit-slider-thumb {
 .pc-badge--done {
     opacity: 0.7;
 }
+
+/* Forum image attachments (v3) */
+.forum-post__images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+.forum-post__image {
+    display: block;
+    line-height: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border, #333);
+}
+.forum-post__image img {
+    max-width: 240px;
+    max-height: 240px;
+    width: auto;
+    height: auto;
+    object-fit: cover;
+    display: block;
+}
+.forum-attach {
+    margin-top: 12px;
+}
+.forum-attach__label {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    opacity: 0.7;
+}
+.forum-attach__input {
+    font-size: 0.82rem;
+    max-width: 100%;
+}
+.forum-attach__hint {
+    font-size: 0.72rem;
+    opacity: 0.6;
+    margin-top: 4px;
+}
 /* ===== SNAPSMACK EOF ===== */

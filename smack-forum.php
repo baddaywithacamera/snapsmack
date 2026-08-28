@@ -69,6 +69,62 @@ function forum_api(string $method, string $endpoint, array $body = [], string $k
 }
 
 /**
+ * Upload one image to an attachment endpoint as multipart/form-data.
+ * forum_api() is JSON-only, so image posts need their own multipart call.
+ */
+function forum_upload_image(string $endpoint, string $tmp_path, string $filename, string $mime, string $key): array {
+    global $forum_api_url;
+    $url   = $forum_api_url . '/' . ltrim($endpoint, '/');
+    $cfile = new CURLFile($tmp_path, $mime ?: 'application/octet-stream', $filename ?: 'image');
+    $ch    = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => ['image' => $cfile],
+        CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $key],
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+    $raw  = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+    curl_close($ch);
+
+    if ($err || $raw === false) {
+        return ['_error' => true, '_code' => 0, 'message' => 'Upload connection failed. (' . $err . ')'];
+    }
+    $data           = json_decode($raw, true) ?? [];
+    $data['_code']  = $code;
+    $data['_error'] = $code >= 400;
+    return $data;
+}
+
+/**
+ * Upload any images picked on a compose form to a freshly-created thread/reply.
+ * Best-effort: the post already exists, so a failed image is a warning, not a
+ * lost post. Returns [uploaded_count, failed_count].
+ */
+function forum_upload_attachments(string $target_type, int $target_id, string $key): array {
+    if (empty($_FILES['images']) || !is_array($_FILES['images']['tmp_name'] ?? null)) return [0, 0];
+    $endpoint = ($target_type === 'thread' ? "threads/{$target_id}" : "replies/{$target_id}") . '/attachments';
+    $ok = 0; $fail = 0;
+    foreach ($_FILES['images']['tmp_name'] as $i => $tmp) {
+        $err = $_FILES['images']['error'][$i] ?? UPLOAD_ERR_NO_FILE;
+        if ($err === UPLOAD_ERR_NO_FILE) continue;                 // empty slot — user picked fewer
+        if ($err !== UPLOAD_ERR_OK || !is_uploaded_file($tmp)) { $fail++; continue; }
+        $res = forum_upload_image(
+            $endpoint,
+            $tmp,
+            (string)($_FILES['images']['name'][$i] ?? 'image'),
+            (string)($_FILES['images']['type'][$i] ?? ''),
+            $key
+        );
+        $res['_error'] ? $fail++ : $ok++;
+    }
+    return [$ok, $fail];
+}
+
+/**
  * Generate a two-letter avatar initial from a display name.
  */
 function forum_initials(string $name): string {
@@ -222,7 +278,10 @@ if ($action === 'post-thread' && $forum_enabled && $forum_api_key) {
             'body'        => $body,
         ], $forum_api_key);
         if (!$res['_error']) {
-            header('Location: smack-forum.php?view=thread&id=' . (int)$res['thread_id'] . '&posted=1');
+            $tid = (int)$res['thread_id'];
+            [$img_ok, $img_fail] = forum_upload_attachments('thread', $tid, $forum_api_key);
+            header('Location: smack-forum.php?view=thread&id=' . $tid . '&posted=1'
+                   . ($img_fail ? '&imgfail=' . $img_fail : ''));
             exit;
         }
         $msg = 'Error: ' . ($res['message'] ?? 'Could not post thread.');
@@ -238,7 +297,10 @@ if ($action === 'post-reply' && $forum_enabled && $forum_api_key) {
     if ($thread_id && $body !== '') {
         $res = forum_api('POST', "threads/{$thread_id}/replies", ['body' => $body], $forum_api_key);
         if (!$res['_error']) {
-            header("Location: smack-forum.php?view=thread&id={$thread_id}&replied=1");
+            $rid = (int)($res['reply_id'] ?? 0);
+            [$img_ok, $img_fail] = $rid ? forum_upload_attachments('reply', $rid, $forum_api_key) : [0, 0];
+            header("Location: smack-forum.php?view=thread&id={$thread_id}&replied=1"
+                   . ($img_fail ? '&imgfail=' . $img_fail : ''));
             exit;
         }
         $msg = 'Error: ' . ($res['message'] ?? 'Could not post reply.');
@@ -622,6 +684,9 @@ require 'core/sidebar.php';
         <?php if (isset($_GET['replied'])): ?>
           <div class="alert alert-success mb-20">Reply posted successfully.</div>
         <?php endif; ?>
+        <?php if (!empty($_GET['imgfail'])): ?>
+          <div class="alert mb-20"><?php echo (int)$_GET['imgfail']; ?> image(s) could not be attached — too large, wrong type, or a server limit. The post itself was saved.</div>
+        <?php endif; ?>
         <?php if ($msg): ?>
           <div class="alert mb-20"><?php echo htmlspecialchars($msg); ?></div>
         <?php endif; ?>
@@ -686,6 +751,15 @@ require 'core/sidebar.php';
                 <?php endif; ?>
               </div>
               <div class="forum-post__body"><?php echo nl2br(htmlspecialchars($thread['body'])); ?></div>
+              <?php if (!empty($thread['attachments'])): ?>
+              <div class="forum-post__images">
+                <?php foreach ($thread['attachments'] as $att): ?>
+                <a href="<?php echo htmlspecialchars($att['url']); ?>" target="_blank" rel="noopener" class="forum-post__image">
+                  <img src="<?php echo htmlspecialchars($att['url']); ?>" alt="<?php echo htmlspecialchars($att['alt'] ?? ''); ?>" loading="lazy">
+                </a>
+                <?php endforeach; ?>
+              </div>
+              <?php endif; ?>
             </div>
           </div>
 
@@ -712,6 +786,15 @@ require 'core/sidebar.php';
                 <?php endif; ?>
               </div>
               <div class="forum-post__body"><?php echo nl2br(htmlspecialchars($r['body'])); ?></div>
+              <?php if (!empty($r['attachments'])): ?>
+              <div class="forum-post__images">
+                <?php foreach ($r['attachments'] as $att): ?>
+                <a href="<?php echo htmlspecialchars($att['url']); ?>" target="_blank" rel="noopener" class="forum-post__image">
+                  <img src="<?php echo htmlspecialchars($att['url']); ?>" alt="<?php echo htmlspecialchars($att['alt'] ?? ''); ?>" loading="lazy">
+                </a>
+                <?php endforeach; ?>
+              </div>
+              <?php endif; ?>
             </div>
           </div>
           <?php endforeach; ?>
@@ -733,7 +816,7 @@ require 'core/sidebar.php';
           <?php if ($msg && $action === 'post-reply'): ?>
             <div class="alert mb-12"><?php echo htmlspecialchars($msg); ?></div>
           <?php endif; ?>
-          <form method="post" action="smack-forum.php">
+          <form method="post" action="smack-forum.php" enctype="multipart/form-data">
             <input type="hidden" name="action"    value="post-reply">
             <input type="hidden" name="thread_id" value="<?php echo (int)$thread['id']; ?>">
             <div class="forum-emoji-bar">
@@ -742,6 +825,11 @@ require 'core/sidebar.php';
               <?php endforeach; ?>
             </div>
             <textarea name="body" placeholder="Write your reply&#8230;" required><?php echo htmlspecialchars($_POST['body'] ?? ''); ?></textarea>
+            <div class="forum-attach">
+              <label class="forum-attach__label">IMAGES <span class="dim">(optional)</span></label>
+              <input type="file" name="images[]" accept="image/jpeg,image/png,image/gif,image/webp" multiple class="forum-attach__input">
+              <div class="forum-attach__hint">Up to 8 images, 10&nbsp;MB each.</div>
+            </div>
             <div class="forum-composer__footer">
               <button type="submit" class="forum-new-btn">Post Reply</button>
             </div>
@@ -788,7 +876,7 @@ require 'core/sidebar.php';
           <div class="alert mb-16"><?php echo htmlspecialchars($msg); ?></div>
         <?php endif; ?>
 
-        <form method="post" action="smack-forum.php">
+        <form method="post" action="smack-forum.php" enctype="multipart/form-data">
           <input type="hidden" name="action" value="post-thread">
 
           <div class="lens-input-wrapper">
@@ -819,6 +907,12 @@ require 'core/sidebar.php';
             </div>
             <textarea name="body" rows="10" placeholder="Describe your issue, question, or topic&#8230;"
                       style="width:100%; resize:vertical;" required><?php echo htmlspecialchars($_POST['body'] ?? ''); ?></textarea>
+          </div>
+
+          <div class="forum-attach">
+            <label class="forum-attach__label">IMAGES <span class="dim">(optional — jpg, png, gif, webp)</span></label>
+            <input type="file" name="images[]" accept="image/jpeg,image/png,image/gif,image/webp" multiple class="forum-attach__input">
+            <div class="forum-attach__hint">Up to 8 images, 10&nbsp;MB each. Screenshots welcome.</div>
           </div>
 
           <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:16px;">
