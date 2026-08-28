@@ -338,6 +338,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
             $result_log[] = ['warn', 'projects/snapsmack-ca/ not found in archive — web-root files not updated'];
         }
 
+        // 3c. Copy projects/forum-server/api/forum/ to the forum web root ─────
+        // The admin support forum API. Deploys to <webroot>/api/forum/ so the
+        // endpoints resolve at snapsmack.ca/api/forum/. config.php holds the live
+        // forum DB creds + FORUM_MOD_KEY and is NEVER overwritten. The uploads/
+        // dir holds user-posted images and is hardened so nothing in it can ever
+        // execute as a script.
+        $forum_src = $wrapper . 'projects/forum-server/api/forum/';
+        if (is_dir($forum_src)) {
+            $forum_dest      = dirname(__DIR__) . '/api/forum/';
+            if (!is_dir($forum_dest)) mkdir($forum_dest, 0755, true);
+            $forum_protected = ['config.php'];
+            $fr_copied       = 0;
+            $fr_skipped      = 0;
+
+            $fr_iter = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($forum_src, FilesystemIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::SELF_FIRST
+            );
+            foreach ($fr_iter as $fr_item) {
+                $rel  = $fr_iter->getSubPathname();
+                $dest = $forum_dest . $rel;
+
+                if ($fr_item->isDir()) {
+                    if (!is_dir($dest)) mkdir($dest, 0755, true);
+                    continue;
+                }
+                if (in_array(basename($rel), $forum_protected, true)) { $fr_skipped++; continue; }
+                copy($fr_item->getPathname(), $dest);
+                $fr_copied++;
+            }
+
+            // Harden the uploads dir: it must exist, and nothing inside it may
+            // ever run as PHP (covers mod_php AND FPM/FastCGI). Re-encoding on
+            // upload already strips any payload; this is defense in depth.
+            $uploads_dir = $forum_dest . 'uploads/';
+            if (!is_dir($uploads_dir)) mkdir($uploads_dir, 0755, true);
+            $uploads_ht = $uploads_dir . '.htaccess';
+            if (!file_exists($uploads_ht)) {
+                file_put_contents($uploads_ht,
+                    "# Auto-written by sc-update.php — user uploads must never execute.\n"
+                  . "php_flag engine off\n"
+                  . "RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .phps\n"
+                  . "RemoveType .php .phtml .php3 .php4 .php5 .php7 .phps\n"
+                  . "<FilesMatch \"\\.(php|phtml|php[0-9]|phps)$\">\n"
+                  . "  Require all denied\n"
+                  . "</FilesMatch>\n"
+                );
+            }
+            $result_log[] = ['ok', "api/forum/: {$fr_copied} files installed" . ($fr_skipped ? ", {$fr_skipped} protected skipped" : '')];
+        } else {
+            $forum_src = '';   // signal "no forum in archive" to the schema step
+            $result_log[] = ['warn', 'projects/forum-server/api/forum/ not found in archive — forum not updated'];
+        }
+
         // 4. Schema sync — smackcent canonical ────────────────────────────────
         // Use the canonical schema file (schemas/sc-smackcent-canonical.sql),
         // not the legacy sc-schema.sql stub. All statements use IF NOT EXISTS
@@ -353,6 +407,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
             }
         } else {
             $result_log[] = ['warn', 'Canonical schema file not found — schema sync skipped'];
+        }
+
+        // 4a. Schema sync — forum DB (isolated) ───────────────────────────────
+        // Apply the forum schema idempotently against the forum DB. sc_forum_db()
+        // uses SC_FORUM_DB_* from sc-config.php (protected). Every statement is
+        // IF NOT EXISTS-guarded, so this is safe on every update. Runs only when
+        // the forum was actually present in the archive (3c above).
+        if ($forum_src && function_exists('sc_forum_db')) {
+            $forum_schema_path = $wrapper . 'projects/forum-server/forum-schema.sql';
+            if (file_exists($forum_schema_path)) {
+                try {
+                    $forum_db   = sc_forum_db();
+                    $forum_errs = sc_apply_schema($forum_db, file_get_contents($forum_schema_path));
+                    $result_log[] = $forum_errs
+                        ? ['warn', 'Forum schema: ' . implode('; ', $forum_errs)]
+                        : ['ok', 'Forum schema sync complete (forum-schema.sql)'];
+                } catch (Throwable $e) {
+                    $result_log[] = ['warn', 'Forum schema skipped: ' . $e->getMessage()];
+                }
+            } else {
+                $result_log[] = ['warn', 'forum-schema.sql not found in archive — forum schema not synced'];
+            }
         }
 
         // 5. Record installed tag ─────────────────────────────────────────────

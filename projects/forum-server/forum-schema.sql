@@ -5,9 +5,12 @@
 
 
 -- ============================================================
--- SNAPSMACK FORUM — Database Schema (v2)
+-- SNAPSMACK FORUM — Database Schema (v3)
 -- Deploy to: squir871_smackforum on snapsmack.ca
--- Run once on fresh installs. Existing installs: run forum-schema-v2-migration.sql first.
+-- Run once on fresh installs. Existing installs: run the latest
+-- forum-schema-vN-migration.sql (v2, then v3) — or let the Smack Central
+-- self-updater apply this file idempotently.
+-- v3: adds ss_forum_attachments (image posts on threads & replies).
 -- Safe to re-run (IF NOT EXISTS throughout).
 -- ============================================================
 
@@ -216,6 +219,34 @@ CREATE TABLE IF NOT EXISTS ss_forum_notifications (
     KEY idx_install_unread (install_id, is_read, created_at),
     CONSTRAINT fk_notif_install FOREIGN KEY (install_id) REFERENCES ss_forum_installs (id),
     CONSTRAINT fk_notif_thread  FOREIGN KEY (thread_id)  REFERENCES ss_forum_threads  (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- Attachments (v3)
+-- Images posted on a thread or reply. Polymorphic target, matching the
+-- reactions/edit_history convention (no FK on target_id).
+-- Files themselves live on disk under api/forum/uploads/; this row is the
+-- record. stored_name = randomized server filename; orig_name kept only for
+-- display/alt text. is_deleted = reversible hide (never hard-delete — GL-6).
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ss_forum_attachments (
+    id              INT            NOT NULL AUTO_INCREMENT,
+    target_type     ENUM('thread','reply') NOT NULL,
+    target_id       INT            NOT NULL,
+    install_id      INT            NOT NULL,
+    stored_name     VARCHAR(96)    NOT NULL,
+    orig_name       VARCHAR(255)   NOT NULL DEFAULT '',
+    mime            VARCHAR(40)    NOT NULL,
+    byte_size       INT            NOT NULL DEFAULT 0,
+    width           INT            NOT NULL DEFAULT 0,
+    height          INT            NOT NULL DEFAULT 0,
+    is_deleted      TINYINT(1)     NOT NULL DEFAULT 0,
+    created_at      TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_stored (stored_name),
+    KEY idx_target (target_type, target_id),
+    KEY idx_install (install_id),
+    CONSTRAINT fk_attach_install FOREIGN KEY (install_id) REFERENCES ss_forum_installs (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------

@@ -35,7 +35,9 @@ mysql -u your_user -p your_database < forum-schema.sql
 
 Or paste `forum-schema.sql` into phpMyAdmin's SQL tab. Safe to re-run — all `CREATE TABLE` statements use `IF NOT EXISTS` and category seeding uses `INSERT IGNORE`.
 
-**Upgrading an existing install?** Run `forum-schema-v2-migration.sql` instead. It adds the new columns and tables without touching existing data. Requires MySQL 8.0+.
+**Upgrading an existing install?** Run the migrations you haven't applied yet, in order: `forum-schema-v2-migration.sql`, then `forum-schema-v3-migration.sql` (v3 adds `ss_forum_attachments` for image posts). Each adds columns/tables without touching existing data. Requires MySQL 8.0+. Installs updated through Smack Central's self-updater get this automatically — it applies `forum-schema.sql` idempotently.
+
+**Image uploads:** posted images live on disk under `api/forum/uploads/` (created and hardened automatically by the updater — nothing in it can execute). Keep that directory writable by PHP and include it in your backups. Optional overrides in `config.php`: `FORUM_UPLOAD_DIR`, `FORUM_MAX_UPLOAD_BYTES`, `FORUM_MAX_IMAGE_DIM`, `FORUM_MAX_MEGAPIXELS`, `FORUM_MAX_ATTACH_PER`, `FORUM_BASE_URL`.
 
 ### 2. Upload the API files
 
