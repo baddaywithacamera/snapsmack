@@ -337,6 +337,90 @@ def apply_adjustments(image, adjustments):
     return output
 
 
+FILTER_TYPES = ("orton", "grain", "light_leak", "pastel")
+
+
+def _filter_orton(image, settings):
+    """Luminous soft-focus: a sharp base screened with a blurred, brightened copy,
+    keeping enough detail to avoid looking like a plain blur."""
+    radius = max(1.0, float(settings.get("radius", 6.0)))
+    glow = float(settings.get("glow", 0.6))
+    blurred = image.filter(ImageFilter.GaussianBlur(radius))
+    bright = ImageEnhance.Brightness(blurred).enhance(1.0 + 0.45 * glow)
+    screened = ImageChops.screen(image, bright)
+    return Image.blend(image, screened, 0.85)
+
+
+def _filter_grain(image, settings):
+    """Resolution-aware organic grain via soft-light, mono or colour."""
+    width, height = image.size
+    sigma = max(4.0, float(settings.get("size", 24.0)))
+    if settings.get("monochrome", True):
+        noise = Image.effect_noise((width, height), sigma)
+        noise_rgb = Image.merge("RGB", (noise, noise, noise))
+    else:
+        noise_rgb = Image.merge("RGB", tuple(
+            Image.effect_noise((width, height), sigma) for _ in range(3)))
+    return ImageChops.soft_light(image, noise_rgb)
+
+
+def _filter_light_leak(image, settings):
+    """A warm colour bloom from a corner, screened over the photo."""
+    width, height = image.size
+    colour = tuple(int(c) for c in settings.get("colour", [255, 120, 40]))[:3]
+    cx = float(settings.get("x", 0.85)) * width
+    cy = float(settings.get("y", 0.15)) * height
+    reach = max(width, height) * float(settings.get("size", 0.6))
+    glow = Image.new("L", (width, height), 0)
+    ImageDraw.Draw(glow).ellipse([cx - reach, cy - reach, cx + reach, cy + reach], fill=255)
+    glow = glow.filter(ImageFilter.GaussianBlur(reach * 0.4))
+    leak = Image.composite(Image.new("RGB", (width, height), colour),
+                           Image.new("RGB", (width, height), (0, 0, 0)), glow)
+    return ImageChops.screen(image, leak)
+
+
+def _filter_pastel(image, settings):
+    """Muted, lifted, gently warm — a soft pastel treatment."""
+    out = ImageEnhance.Color(image).enhance(float(settings.get("saturation", 0.7)))
+    out = ImageEnhance.Contrast(out).enhance(0.9)
+    lift = int(settings.get("lift", 28))
+    out = out.point(lambda v: int(min(255, lift + v * (255 - lift) / 255.0)))
+    wash = Image.new("RGB", image.size, (255, 240, 235))
+    return Image.blend(out, ImageChops.multiply(out, wash), 0.28)
+
+
+_FILTERS = {"orton": _filter_orton, "grain": _filter_grain,
+            "light_leak": _filter_light_leak, "pastel": _filter_pastel}
+
+
+def apply_filter(image, kind, settings=None):
+    """Return the full-strength filtered RGB image. A filter layer's opacity is
+    its Amount, so this always renders the effect at full and the compositor
+    crossfades it over the photo."""
+    func = _FILTERS.get(kind)
+    if func is None:
+        raise ValueError(f"Unknown filter: {kind}")
+    return func(image.convert("RGB"), settings or {}).convert("RGB")
+
+
+def apply_lewk_steps(image, steps, upto=None):
+    """Run a LEWK's steps in order and return the result (RGB).
+
+    A step is {"type": "adjust", "adjustments": {...}} or
+    {"type": "filter", "filter": "orton", "settings": {...}}. ``upto`` limits how
+    many steps run — the TEACH ME walkthrough uses it to show the effect building
+    up one step at a time.
+    """
+    result = image.convert("RGB")
+    limit = len(steps) if upto is None else max(0, min(int(upto), len(steps)))
+    for step in steps[:limit]:
+        if step.get("type") == "filter":
+            result = apply_filter(result, step.get("filter", ""), step.get("settings"))
+        else:
+            result = apply_adjustments(result, step.get("adjustments", {}))
+    return result
+
+
 def blend_images(base, top, mode="normal", opacity=1.0):
     base = base.convert("RGBA")
     top = top.convert("RGBA")
