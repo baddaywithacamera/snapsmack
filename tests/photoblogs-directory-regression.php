@@ -15,7 +15,7 @@ $expect = function (bool $ok, string $message) use (&$failures): void {
 
 $expect(str_contains($page, '/page.php?slug=directory'), 'legacy directory route must redirect to the skinned CMS page');
 $expect(str_contains($parser, '[photoblogs_directory]'), 'parser must expose the directory shortcode');
-$expect(str_contains($renderer, 'class="pbf-directory-list"'), 'directory must render a compact text list');
+$expect(str_contains($renderer, 'class="pbf-directory-table"'), 'directory must render a compact semantic table');
 $expect(!str_contains($renderer, 'class="card"'), 'directory must not use a card grid');
 $expect(!str_contains($renderer, '<footer'), 'directory shortcode must not render page chrome');
 $expect(str_contains($renderer, "\$row['site_url']"), 'directory entries must use the registered blog URL');
