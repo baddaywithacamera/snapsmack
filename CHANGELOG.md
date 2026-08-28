@@ -12,6 +12,13 @@
 
 ## 0.7.575 — 2026-08-27 "FEDBOARD"
 
+- **SUYB can back up the hub as well as every spoke.** The shared backup key was
+  already valid across the spokes, but the hub was incorrectly sent through a
+  spoke-only provisioning route and returned HTTP 401. The hub now exposes a
+  narrow authenticated action that installs the same revocable, backup-scoped
+  key locally; spoke provisioning is unchanged. SUYB 0.7.29 also recognizes the
+  configured hub during self-healing and will not activate a newly generated
+  fleet key unless every target accepted it.
 - **photoblogs.fyi now keeps every public page inside the CMS and active skin.**
   The Directory and Feed are body-only shortcodes rendered by `page.php`, so
   Home, Directory, Feed, and About share the skin's header, navigation, footer,
