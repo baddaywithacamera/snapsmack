@@ -12,6 +12,17 @@
 
 ## 0.7.576 — 2026-08-27 "FEDBOARD"
 
+- **photoblogs.fyi now keeps every public page inside the CMS and active skin.**
+  The Directory and Feed are body-only shortcodes rendered by `page.php`, so
+  Home, Directory, Feed, and About share the skin's header, navigation, footer,
+  and page lifecycle. The legacy `directory.php` and `feed.php` entry points now
+  redirect to their CMS slugs instead of maintaining independent page shells.
+- **Directory and Feed have distinct jobs again.** The Directory is a searchable,
+  filterable, old-Yahoo-style text listing ordered by recent activity with a
+  bounded fairness rotation for inactive-but-live blogs. The Feed reads the
+  directory collector's post table, shows at most one image per blog per day,
+  links only to original published posts, and never promotes landing/static
+  pages.
 - **SECAUDIT 052 closes the `llms.txt` agent-instruction boundary before it
   becomes an incident.** Publisher-controlled site names and descriptions are
   flattened into length-bounded descriptive text, stripped of Markdown controls
