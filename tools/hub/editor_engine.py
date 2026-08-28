@@ -33,6 +33,10 @@ DEFAULT_ADJUSTMENTS = {
     "highlights": 0.0, "shadows": 0.0, "whites": 0.0, "blacks": 0.0,
     "temperature": 0.0, "tint": 0.0, "saturation": 0.0, "vibrance": 0.0,
     "clarity": 0.0, "texture": 0.0, "dehaze": 0.0, "sharpen": 0.0,
+    # Smart-sharpen controls. amount == the sharpen slider above. Lens mode
+    # edge-limits the sharpen (finer detail, no haloes, noise left alone);
+    # gaussian is the classic unsharp mask. Defaults keep sharpen off (0).
+    "sharpen_radius": 1.2, "sharpen_reduce_noise": 0.0, "sharpen_mode": "lens",
     "level_black": 0.0, "level_gamma": 1.0, "level_white": 255.0,
     "black_white": False, "vignette": 0.0, "grain": 0.0,
     # Vignette edge softness (50 == the classic look) and a darken-only grain
@@ -371,9 +375,7 @@ def apply_adjustments(image, adjustments):
     if dehaze:
         output = ImageEnhance.Contrast(output).enhance(max(.2, 1.0 + dehaze / 130.0))
         output = ImageEnhance.Color(output).enhance(max(0.0, 1.0 + dehaze / 350.0))
-    sharpen = float(settings["sharpen"])
-    if sharpen > 0:
-        output = output.filter(ImageFilter.UnsharpMask(radius=1.2, percent=int(sharpen * 2.5), threshold=3))
+    output = _smart_sharpen(output, settings)
 
     output = _colour_mix(output, settings)
 
@@ -497,6 +499,42 @@ def _colour_glow(image, settings):
     bloom = Image.composite(Image.new("RGB", (width, height), colour),
                             Image.new("RGB", (width, height), (0, 0, 0)), glow)
     return ImageChops.screen(output, bloom)
+
+
+def _smart_sharpen(image, settings):
+    """Unsharp-mask sharpening with Smart-Sharpen-style controls: Amount (the
+    sharpen slider), Radius, Reduce Noise, and a Lens/Gaussian edge model.
+    Lens mode confines the sharpen to real edge detail via a high-pass mask, so
+    smooth gradients (sky, skin) keep their pixels — finer detail, far fewer
+    haloes, and noise left alone. Gaussian mode is the classic unsharp mask."""
+    amount = float(settings.get("sharpen", 0.0))
+    if amount <= 0:
+        return image
+    radius = max(0.1, min(6.0, float(settings.get("sharpen_radius", 1.2))))
+    reduce_noise = max(0.0, min(1.0, float(settings.get("sharpen_reduce_noise", 0.0)) / 100.0))
+    mode = settings.get("sharpen_mode", "lens")
+    percent = int(max(0.0, min(500.0, amount * 2.5)))
+    # Reduce Noise raises the unsharp-mask threshold so low-contrast noise is
+    # ignored; at 0 it is the classic threshold of 3.
+    threshold = int(3 + reduce_noise * 10)
+
+    sharpened = image.filter(ImageFilter.UnsharpMask(radius=radius, percent=percent, threshold=threshold))
+
+    # Lens mode always edge-limits; Gaussian mode does so only as Reduce Noise
+    # is dialled up. The high-pass detail mask lets the sharpen land on edges
+    # and protects flat areas from haloing / noise amplification.
+    gate = reduce_noise
+    if mode == "lens":
+        gate = max(gate, 0.4)
+    if gate > 0:
+        blur = image.filter(ImageFilter.GaussianBlur(radius=radius))
+        detail = ImageChops.difference(image, blur).convert("L")
+        floor = int(gate * 28)
+        slope = 6 + int(gate * 6)
+        mask = detail.point(lambda v, f=floor, s=slope: 0 if v <= f else min(255, (v - f) * s))
+        mask = mask.filter(ImageFilter.GaussianBlur(radius=max(0.4, radius * 0.5)))
+        sharpened = Image.composite(sharpened, image, mask)
+    return sharpened
 
 
 def _photo_filter(image, settings):

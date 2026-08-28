@@ -635,6 +635,37 @@ def test_colour_engine_additions():
     win.curve_editor.set_curves(win.active_adjustments())   # loads back with no error
 
 
+def test_smart_sharpen():
+    from PIL import ImageDraw
+    img = Image.new("RGB", (120, 90), (128, 128, 128))
+    d = ImageDraw.Draw(img)
+    d.rectangle([10, 10, 60, 80], fill=(60, 60, 60))
+    d.line([70, 5, 70, 85], fill=(230, 230, 230), width=1)
+    base = list(editor_engine.apply_adjustments(img, {}).getdata())
+    g = list(editor_engine.apply_adjustments(
+        img, {"sharpen": 60, "sharpen_mode": "gaussian"}).getdata())
+    l = list(editor_engine.apply_adjustments(
+        img, {"sharpen": 60, "sharpen_mode": "lens"}).getdata())
+    assert g != base and l != base            # both sharpen
+    assert l != g                             # the two edge models differ
+    # reduce noise and radius each change the result
+    assert list(editor_engine.apply_adjustments(
+        img, {"sharpen": 60, "sharpen_mode": "gaussian",
+              "sharpen_reduce_noise": 80}).getdata()) != g
+    assert list(editor_engine.apply_adjustments(
+        img, {"sharpen": 60, "sharpen_radius": 3.0}).getdata()) != l
+    # amount 0 stays neutral (backward compatible)
+    assert list(editor_engine.apply_adjustments(img, {"sharpen": 0}).getdata()) == base
+    # UI: the detail controls are wired onto the active target
+    win = _editor(_image("sharp.jpg", (200, 150)))
+    assert "sharpen_radius" in win.rows and "sharpen_reduce_noise" in win.rows
+    idx = [win.sharpen_mode_combo.itemData(i)
+           for i in range(win.sharpen_mode_combo.count())].index("gaussian")
+    win.sharpen_mode_combo.setCurrentIndex(idx)
+    win._on_sharpen_mode(idx)
+    assert win.active_adjustments()["sharpen_mode"] == "gaussian"
+
+
 def test_keyboard_shortcuts_and_help_topics():
     from slapper_qt.help_dialog import TOPICS
     win = _editor(_image("keys.jpg", (160, 120)))
