@@ -141,6 +141,7 @@ def render(src: Path, out: Path) -> None:
     lines = src.read_text(encoding="utf-8").splitlines()
     story, paragraph, code_lines, table_rows = [], [], [], []
     in_code = False
+    in_html_comment = False
     first_heading = True
     doc_title = src.stem
 
@@ -172,7 +173,13 @@ def render(src: Path, out: Path) -> None:
 
     for raw in lines:
         line = raw.rstrip()
-        if line.startswith("<!--") or line.startswith("-->"):
+        if not in_html_comment and line.startswith("<!--"):
+            if not line.endswith("-->"):
+                in_html_comment = True
+            continue
+        if in_html_comment:
+            if line.strip() == "-->":
+                in_html_comment = False
             continue
         if line.startswith("```"):
             flush_paragraph()

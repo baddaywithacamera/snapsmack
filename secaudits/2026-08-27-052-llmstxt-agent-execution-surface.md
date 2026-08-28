@@ -7,7 +7,7 @@ Last non-empty line of this file MUST match the marker above.
 # SECAUDIT 052 - `llms.txt` Agent-Execution Surface
 
 **Audit date:** 2026-08-27
-**Remediation release:** SnapSmack 0.7.576
+**Remediation release:** SnapSmack 0.7.575
 **Scope:** `core/site-files.php`, generated `/llms.txt`, output trust boundaries,
 release integrity, and regression coverage
 **Review:** Sean McCormick and OpenAI Codex; independent live-fleet verification
@@ -41,7 +41,7 @@ inserted directly into agent-readable Markdown. A malicious or compromised
 setting could manufacture headings, links, role-labelled instructions, or
 executable-looking command text.
 
-Release 0.7.576 closes that boundary. Publisher fields are now reduced to inert,
+Release 0.7.575 closes that boundary. Publisher fields are now reduced to inert,
 single-line descriptive text; suspicious descriptions are omitted; unsafe URLs
 are rejected; generated links are restricted to the validated current site and
 hard-coded SnapSmack attribution; and regression tests pin the behavior against
@@ -129,7 +129,7 @@ different from the source template.
 **Severity:** HIGH, preventive
 **Exploitability qualifier:** exploitation additionally requires a consuming agent
 that follows untrusted instructions and has consequential tools
-**Affected code:** pre-0.7.576 `snapsmack_generate_llms()`
+**Affected code:** pre-0.7.575 `snapsmack_generate_llms()`
 
 ### 4.1 Previous behavior
 
@@ -174,7 +174,7 @@ remote code execution.
 
 ---
 
-## 5. Remediation in 0.7.576
+## 5. Remediation in 0.7.575
 
 ### 5.1 Inert descriptive-text boundary
 
@@ -369,7 +369,7 @@ boundary that should be fixed before it becomes an incident: administrator-set
 descriptive fields could shape a document consumed as instructions by external
 agents.
 
-The source remediation is complete in 0.7.576. It preserves useful discovery,
+The source remediation is complete in 0.7.575. It preserves useful discovery,
 photographer policy, and SnapSmack attribution while preventing those fields from
 adding Markdown structure, arbitrary links, or known command and prompt-injection
 forms. The remaining work is ordinary release discipline: signed delivery,
