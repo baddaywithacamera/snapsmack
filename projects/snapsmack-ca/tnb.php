@@ -178,7 +178,7 @@ include __DIR__ . '/includes/header.php';
             <p>There are no cookies on this site other than any your browser sets on its own.</p>
 
             <h2>Who runs this</h2>
-            <p>SnapSmack is built and maintained by Sean McCormick. If you've read this far you've probably noticed that he's a right nutter, but he hopes that he's an honest one. He's also mostly harmless unless you're a jelly-filled doughnut. If that's the case, you should run (roll?) for your life. The Smack Central network server and the community forum are operated by Sean McCormick (mirror universe version). If you have questions about your data, want to request removal of your site's record, or just want to know something this policy does not cover, get in touch.</p>
+            <p>SnapSmack was created and is directed by Sean McCormick, with implementation produced by credited AI co-authors under his direction. If you've read this far you've probably noticed that he's a right nutter, but he hopes that he's an honest one. He's also mostly harmless unless you're a jelly-filled doughnut. If that's the case, you should run (roll?) for your life. The Smack Central network server and the community forum are operated by Sean McCormick (mirror universe version). If you have questions about your data, want to request removal of your site's record, or just want to know something this policy does not cover, get in touch.</p>
             <p>Contact: <span id="contact-privacy"></span></p>
             <script>
             (function(){
