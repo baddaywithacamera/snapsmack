@@ -10,7 +10,7 @@
 
 # SnapSmack Changelog
 
-## 0.7.576 — 2026-08-27 "FEDBOARD"
+## 0.7.575 — 2026-08-27 "FEDBOARD"
 
 - **photoblogs.fyi now keeps every public page inside the CMS and active skin.**
   The Directory and Feed are body-only shortcodes rendered by `page.php`, so
@@ -39,8 +39,6 @@
   same-site navigation, prompt-injection rejection, package/install and
   pipe-to-shell rejection, Markdown/link containment, unsafe URL rejection, and
   the continued absence of an `llms-full.txt` producer.
-
-## 0.7.575 — 2026-08-27 "FEDBOARD"
 
 - **AI field helper is a small themed sparkle, not a green button box.** The per-field
   AI fill used to drop a bolted-on labelled button under every field. It's now a small
