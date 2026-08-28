@@ -6,7 +6,7 @@
  *   $page_title       — <title> content
  *   $page_description — meta description
  *   $page_og_url      — canonical og:url for this page
- *   $nav_active       — key matching a nav link: index|wotcha|bugger|tnb|hairy-muff|brass-tacks|buzzers|oi
+ *   $nav_active       — key matching a nav link, including goods-* and hows-yer-father
  *   $page_css         — (optional) additional CSS string for page-specific styles
  */
 
@@ -26,7 +26,7 @@ function ss_nav_link(string $href, string $label, string $key, string $active): 
 
 $_nav = function(string $active): string {
     $goods_open = str_starts_with($active, 'goods') ? ' active' : '';
-    $rest_open  = in_array($active, ['bugger', 'tnb', 'hairy-muff', 'buzzers', 'oi'], true) ? ' active' : '';
+    $rest_open  = in_array($active, ['bugger', 'tnb', 'hairy-muff', 'buzzers', 'oi', 'hows-yer-father'], true) ? ' active' : '';
     return ss_nav_link('index.php',      'GAFF!',        'index',       $active) . "\n" .
            '            <details class="nav-group' . $goods_open . '"><summary>THE GOODS!</summary><div class="nav-flyout">' .
            ss_nav_link('features.php',   'THE GOODS!',   'goods',       $active) .
@@ -40,6 +40,7 @@ $_nav = function(string $active): string {
            ss_nav_link('tnb.php',        'TWIG N BERRIES!', 'tnb',       $active) .
            ss_nav_link('hairy-muff.php', 'HAIRY MUFF!',     'hairy-muff',$active) .
            ss_nav_link('buzzers.php',    'BUZZERS!',        'buzzers',   $active) .
+           ss_nav_link('hows-yer-father.php', 'HOW\'S YER FATHER?', 'hows-yer-father', $active) .
            ss_nav_link('oi.php',         'OI THERE MATE!',  'oi',        $active) .
            '</div></details>';
 };
