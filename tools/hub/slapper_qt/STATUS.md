@@ -110,6 +110,13 @@ identity, so every existing look/project renders unchanged.
   (instead of the whole photo) so editing while held at 100% stays fast on
   very large files. Correct-but-slower full-native render ships now.
 - Standardise `snap_log` into the other standalone tools (SUYB, scanner, etc.).
-- Packaging the Qt build into the shipped SNAP SLAPPER.exe.
+  (Note: `snap_log` does not exist in `tools/_shared` yet — the editor's
+  `import snap_log` is an optional try/except, so crash-logging is a no-op both
+  from source and in the exe until that module is built. Not a build regression.)
+- ~~Packaging the Qt build into the shipped SNAP SLAPPER.exe~~ — **DONE 2026-08-28**
+  via `tools/hub/slapper_qt.spec` (PyInstaller onefile, ~56 MB). Verified: 33/33
+  tests pass, exe launches headless without a startup crash, and no credential/
+  fleet modules ride along (SECAUDIT 051). Build:
+  `python -m PyInstaller tools/hub/slapper_qt.spec`.
 
 <!-- ===== SNAPSMACK EOF ===== -->
