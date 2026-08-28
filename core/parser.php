@@ -157,6 +157,10 @@ class SnapSmack {
         // so it runs after block-nesting cleanup like the contact form / mosaics.
         $content = $this->parseFeed($content);
 
+        // --- PHASE 11: PHOTOBLOG DIRECTORY ---
+        // Body-only output: the CMS page and active skin own all page chrome.
+        $content = $this->parsePhotoblogsDirectory($content);
+
         return $content;
     }
 
@@ -179,6 +183,14 @@ class SnapSmack {
                 require_once __DIR__ . '/photoblogs-feed.php';
             }
             return pbfeed_grid_html($this->pdo);
+        }, $content);
+    }
+
+    private function parsePhotoblogsDirectory($content) {
+        if (stripos($content, '[photoblogs_directory]') === false) return $content;
+        return preg_replace_callback('/\[photoblogs_directory\]/i', function () {
+            if (!function_exists('pbdir_public_html')) require_once __DIR__ . '/photoblogs-directory-view.php';
+            return pbdir_public_html($this->pdo);
         }, $content);
     }
 
