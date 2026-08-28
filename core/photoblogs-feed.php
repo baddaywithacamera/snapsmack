@@ -235,10 +235,25 @@ function pbfeed_refresh_hashtag(PDO $pdo, callable $say): array {
  */
 function pbfeed_rss_xml(PDO $pdo, array $channel): string {
     pbfeed_ensure_table($pdo);
-    $rows = $pdo->query(
-        "SELECT blog_name, post_url, image_url, title, pub_date
-         FROM snap_feed_items ORDER BY pub_date DESC, id DESC LIMIT 100"
-    )->fetchAll(PDO::FETCH_ASSOC);
+    try {
+        // Current photoblogs.fyi collector: one post per blog per calendar day,
+        // retained to ten posts per blog by cron-directory-feeds.php.
+        $rows = $pdo->query(
+            "SELECT l.name AS blog_name, f.post_url, f.image_url, f.title,
+                    f.published_at AS pub_date
+             FROM snap_directory_feed_items f
+             JOIN snap_directory_listings l ON l.id = f.listing_id
+             WHERE l.state = 'active' AND l.feed_status <> 'dead'
+             ORDER BY f.published_at DESC, f.id DESC LIMIT 100"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        // Upgrade compatibility for installs that still have only the original
+        // discovery cache. Remove after the directory-feed schema is universal.
+        $rows = $pdo->query(
+            "SELECT blog_name, post_url, image_url, title, pub_date
+             FROM snap_feed_items ORDER BY pub_date DESC, id DESC LIMIT 100"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
     $out  = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
@@ -287,10 +302,20 @@ function pbfeed_interleave(array $items): array {
 /** Read the cache, de-clump, and return the square-grid HTML (no text). */
 function pbfeed_grid_html(PDO $pdo): string {
     pbfeed_ensure_table($pdo);
-    $rows = $pdo->query(
-        "SELECT host, blog_name, post_url, image_url, title
-         FROM snap_feed_items ORDER BY pub_date DESC, id DESC LIMIT " . (int)PBFEED_GRID_LIMIT
-    )->fetchAll(PDO::FETCH_ASSOC);
+    try {
+        $rows = $pdo->query(
+            "SELECT l.host, l.name AS blog_name, f.post_url, f.image_url, f.title
+             FROM snap_directory_feed_items f
+             JOIN snap_directory_listings l ON l.id = f.listing_id
+             WHERE l.state = 'active' AND l.feed_status <> 'dead'
+             ORDER BY f.published_at DESC, f.id DESC LIMIT " . (int)PBFEED_GRID_LIMIT
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        $rows = $pdo->query(
+            "SELECT host, blog_name, post_url, image_url, title
+             FROM snap_feed_items ORDER BY pub_date DESC, id DESC LIMIT " . (int)PBFEED_GRID_LIMIT
+        )->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     if (!$rows) {
         return '<p class="pbfeed-empty">The feed fills as member blogs publish. Nothing here yet — check back soon.</p>';

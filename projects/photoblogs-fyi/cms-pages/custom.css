@@ -47,7 +47,36 @@ body.static-transmission .static-content {
   max-width: 44rem;
   margin: 0 auto;
   padding: 3rem 1.25rem 5rem;
+  background: transparent !important;
 }
+
+.page-slug-directory .static-content,
+.page-slug-feed .static-content { max-width: 72rem !important; }
+
+/* -------------------------------- directory page: old-Yahoo-style text index */
+.pbf-directory-head { padding:0 0 1.5rem;border-bottom:1px solid var(--pbf-line); }
+.pbf-directory-head h1 { margin:0;font:900 clamp(2.1rem,7vw,3.8rem)/.95 'Arial Black',Arial,sans-serif;text-transform:uppercase; }
+.pbf-directory-head h1 span { color:var(--pbf-red); }
+.pbf-directory-head > p:last-child { max-width:40rem;margin:.9rem 0 0;color:var(--pbf-muted);font-size:1.1rem;line-height:1.6; }
+.pbf-directory-controls { display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin:2rem 0 1rem; }
+.pbf-directory-controls input[type=search] { flex:1 1 24rem;min-width:12rem;padding:.7rem .9rem;color:var(--pbf-ink);background:var(--pbf-panel);border:1px solid var(--pbf-line);font:1rem/1.4 Georgia,serif; }
+.pbf-directory-controls button,.pbf-directory-controls > a { padding:.6rem .8rem;border:1px solid var(--pbf-line);color:var(--pbf-muted);background:transparent;font:700 .75rem/1 Arial,sans-serif;text-decoration:none; }
+.pbf-directory-controls button,.pbf-directory-controls > a.on { color:var(--pbf-black);background:var(--pbf-ink);border-color:var(--pbf-ink); }
+.pbf-directory-topics { display:flex;gap:.5rem;flex-wrap:wrap;margin:0 0 2rem; }
+.pbf-directory-topics a { padding:.4rem .7rem;border:1px solid var(--pbf-line);color:var(--pbf-ink);font:.84rem/1 Arial,sans-serif;text-decoration:none; }
+.pbf-directory-topics a.on { color:#fff;background:var(--pbf-red);border-color:var(--pbf-red); }
+.pbf-directory-topics b { margin-left:.3rem;color:var(--pbf-muted);font-size:.8em; }
+.pbf-directory-list { max-width:58rem;margin:0;padding:0;border-top:1px solid var(--pbf-line);list-style:none; }
+.pbf-directory-list li { position:relative;padding:1rem 0 1rem 1.35rem;border-bottom:1px dotted #3a3a3a; }
+.pbf-directory-list li::before { content:"▪";position:absolute;left:0;top:1.05rem;color:var(--pbf-red); }
+.pbf-directory-list h3 { margin:0;font:900 1rem/1.3 'Arial Black',Arial,sans-serif; }
+.pbf-directory-list h3 > a { color:var(--pbf-ink);text-decoration:underline;text-decoration-color:var(--pbf-red);text-underline-offset:3px; }
+.pbf-directory-list h3 span { margin-left:.55rem;color:#777;font:400 .72rem/1.3 'Courier New',monospace; }
+.pbf-directory-list p { max-width:72ch;margin:.38rem 0 0;color:#d0d0d0;font-size:.92rem;line-height:1.45; }
+.pbf-directory-list small { display:block;margin-top:.45rem;color:#777;font:.7rem/1.5 'Courier New',monospace; }
+.pbf-directory-list small a { color:#aaa;text-decoration:underline;text-decoration-color:#555; }
+.pbf-directory-empty { padding:2rem 0;color:var(--pbf-muted); }
+.pbf-directory-join { margin:2.5rem 0 0;color:var(--pbf-muted);font-size:.92rem; }
 
 body.static-transmission .description a {
   color: var(--pbf-ink);
@@ -269,7 +298,6 @@ body.homepage-static .pbf-how  { max-width: 48em; margin-left: auto; margin-righ
    footer to the old static reference (transparent, 3px red top rule, centred monospace grey).
    IDs + !important are needed to beat the skin's own id-scoped !important footer rules. */
 body.homepage-static #scroll-stage { display: flex !important; flex-direction: column !important; overflow-y: auto !important; }
-body.homepage-static #header { height: 46px !important; flex: 0 0 auto !important; }
 body.homepage-static #scroll-stage .static-content { flex: 0 0 auto !important; overflow: visible !important; max-width: 1060px !important; padding-top: 12px !important; padding-bottom: 10px !important; }
 body.homepage-static .pbf-lede { max-width: 44em !important; }
 body.homepage-static .pbf-sub  { max-width: 60em !important; }
@@ -277,14 +305,6 @@ body.homepage-static .pbf-how  { max-width: 62em !important; margin-top: 2.0rem 
 body.homepage-static .pbf-rule { margin-top: 1.3rem !important; margin-bottom: 1.3rem !important; }
 body.homepage-static .pbf-tagline { margin-top: 1.0rem !important; }
 body.homepage-static .pbf-kicker { margin-bottom: 1.35rem !important; }
-body.homepage-static #page-wrapper #scroll-stage #system-footer {
-  margin-top: auto !important; flex: 0 0 auto !important;
-  background: transparent !important; border-top: 3px solid #D40000 !important;
-  padding: 15px 24px !important; color: #8a8a8a !important;
-  font-family: 'Courier New', monospace !important; font-size: 0.68rem !important; letter-spacing: 0.06em !important;
-}
-body.homepage-static #page-wrapper #scroll-stage #system-footer * { font-family: 'Courier New', monospace !important; font-size: 0.68rem !important; letter-spacing: 0.06em !important; }
-body.homepage-static #page-wrapper #scroll-stage #system-footer a { color: #a5a5a5 !important; }
 
 /* --------------------------------- the feed page: square-thumb discovery grid */
 /* Rendered by [photoblogs_feed] (core/photoblogs-feed.php) — one square per recent

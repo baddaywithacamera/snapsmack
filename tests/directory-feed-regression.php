@@ -3,6 +3,7 @@
 $root = dirname(__DIR__);
 $cron = file_get_contents($root . '/cron-directory-feeds.php');
 $feed = file_get_contents($root . '/feed.php');
+$shortcode_feed = file_get_contents($root . '/core/photoblogs-feed.php');
 $api = file_get_contents($root . '/directory-api.php');
 $payload = file_get_contents($root . '/core/photoblogs-directory.php');
 $fail = [];
@@ -18,10 +19,12 @@ $expect(str_contains($cron, 'PBDIR_MAX_FEED_BYTES'), 'poller must cap response s
 $expect(str_contains($cron, 'LIBXML_NONET'), 'XML parsing must disable network access');
 $expect(str_contains($cron, 'uq_listing_day'), 'cache must enforce one item per blog per day');
 $expect(str_contains($cron, 'OFFSET 10'), 'cache must retain only the last ten daily posts per blog');
-$expect(str_contains($feed, '>= 10'), 'public feed must cap each blog at ten posts');
+$expect(str_contains($cron, 'OFFSET 10'), 'public feed cache must cap each blog at ten posts');
 $expect(str_contains($cron, "feed_status=IF(feed_failures+1>=?,'dead','error')"), 'poller must age repeated failures into dead state');
-$expect(str_contains($feed, "\$item['post_url']"), 'feed images must link to RSS post permalinks');
-$expect(!str_contains($feed, "\$item['site_url']"), 'feed must never fall back to a site landing page');
+$expect(str_contains($feed, '/page.php?slug=feed'), 'legacy feed route must redirect to the skinned CMS page');
+$expect(str_contains($shortcode_feed, "\$r['post_url']"), 'feed images must link to RSS post permalinks');
+$expect(str_contains($shortcode_feed, 'FROM snap_directory_feed_items f'), 'CMS feed shortcode must read the current directory RSS cache');
+$expect(str_contains($shortcode_feed, "l.state = 'active' AND l.feed_status <> 'dead'"), 'CMS feed shortcode must exclude inactive and dead blogs');
 
 if ($fail) { fwrite(STDERR, implode(PHP_EOL, $fail) . PHP_EOL); exit(1); }
 echo "directory feed regression: ok\n";
