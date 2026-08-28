@@ -21,6 +21,7 @@ from PySide6.QtGui import QColor
 from . import masks
 
 import editor_engine
+import photo_manager
 from . import theme
 from .engine_bridge import render_pixmap, original_pixmap
 from .widgets import ImageView, SliderRow, Accordion, Histogram
@@ -97,7 +98,81 @@ class EditorWindow(QMainWindow):
         self._render_timer.setInterval(45)
         self._render_timer.timeout.connect(self._render_preview)
 
+        # Autosave: write a crash-recovery copy a couple seconds after edits.
+        self._recovery_dir = self._resolve_recovery_dir()
+        self._recovery_timer = QTimer(self)
+        self._recovery_timer.setSingleShot(True)
+        self._recovery_timer.setInterval(2500)
+        self._recovery_timer.timeout.connect(self._write_recovery)
+
         self._refresh_actions()
+
+    # --- Autosave / crash recovery ------------------------------------------
+    @staticmethod
+    def _resolve_recovery_dir():
+        try:
+            import snap_home
+            directory = os.path.join(snap_home.home(), "snap_slapper", "recovery")
+        except Exception:  # noqa: BLE001
+            directory = os.path.join(os.path.expanduser("~"), "SnapSmack", "recovery")
+        try:
+            os.makedirs(directory, exist_ok=True)
+        except OSError:
+            return None
+        return directory
+
+    def _on_doc_change(self, _doc):
+        self._refresh_actions()
+        if self._recovery_dir:
+            self._recovery_timer.start()
+
+    def _recovery_path(self):
+        if not self._recovery_dir or not self.doc:
+            return None
+        return photo_manager.recovery_path(self._recovery_dir, self.doc.source_path)
+
+    def _write_recovery(self):
+        path = self._recovery_path()
+        if not path or not self.doc or not self.doc.is_dirty():
+            return
+        try:
+            self.doc.save_recovery(path)
+            _log.info("autosaved recovery: %s", path)
+        except Exception:  # noqa: BLE001
+            _log.exception("autosave (recovery) failed")
+
+    def _clear_recovery(self):
+        path = self._recovery_path()
+        if path and os.path.isfile(path):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+    def _maybe_recover(self, source_path):
+        """If a newer recovery file exists for this photo, offer to restore it.
+        Returns a recovered EditorDocument, or None to open normally."""
+        if not self._recovery_dir:
+            return None
+        rec = photo_manager.recovery_path(self._recovery_dir, source_path)
+        if not (rec and os.path.isfile(rec) and os.path.getsize(rec) > 0):
+            return None
+        answer = QMessageBox.question(
+            self, "Recover unsaved edits?",
+            "SNAP SLAPPER has unsaved edits for this photo from a previous "
+            "session. Restore them?",
+            QMessageBox.Yes | QMessageBox.No)
+        if answer != QMessageBox.Yes:
+            try:
+                os.remove(rec)
+            except OSError:
+                pass
+            return None
+        try:
+            return editor_engine.EditorDocument.load_project(rec)
+        except Exception:  # noqa: BLE001
+            _log.exception("recovery restore failed")
+            return None
 
     # --- Construction -------------------------------------------------------
     def _build_toolbar(self):
@@ -756,8 +831,11 @@ class EditorWindow(QMainWindow):
         except Exception as error:  # noqa: BLE001 — surface any decode failure plainly
             self._error("Cannot open", f"Could not open this image:\n{error}")
             return False
+        recovered = self._maybe_recover(path)   # offer to restore unsaved edits
+        if recovered is not None:
+            document = recovered
         self.doc = document
-        self.doc.on_change = lambda _doc: self._refresh_actions()
+        self.doc.on_change = self._on_doc_change
         self.active_target = BASE
         self.layers_panel.rebuild()
         self.target_label.setText("Editing: Base image")
@@ -790,7 +868,7 @@ class EditorWindow(QMainWindow):
             self._error("Cannot open project", str(error))
             return
         self.doc = document
-        self.doc.on_change = lambda _doc: self._refresh_actions()
+        self.doc.on_change = self._on_doc_change
         self.active_target = BASE
         self.layers_panel.rebuild()
         self.target_label.setText("Editing: Base image")
@@ -813,6 +891,7 @@ class EditorWindow(QMainWindow):
         except Exception as error:  # noqa: BLE001
             self._error("Save failed", str(error))
             return
+        self._clear_recovery()   # project saved — recovery no longer needed
         self._update_title()
         self.status.showMessage(f"Saved {os.path.basename(path)}")
 
@@ -1069,6 +1148,7 @@ class EditorWindow(QMainWindow):
 
     def closeEvent(self, event):
         if self._confirm_discard():
+            self._clear_recovery()   # deliberate close — discard the recovery copy
             event.accept()
         else:
             event.ignore()
