@@ -635,6 +635,29 @@ def test_colour_engine_additions():
     win.curve_editor.set_curves(win.active_adjustments())   # loads back with no error
 
 
+def test_keyboard_shortcuts_and_help_topics():
+    from slapper_qt.help_dialog import TOPICS
+    win = _editor(_image("keys.jpg", (160, 120)))
+    # every mapped action carries its shortcut, and none of them collide
+    seqs = []
+    for action, _seq in win._shortcuts:
+        s = action.shortcut().toString()
+        assert s, f"missing shortcut on {action.text()}"
+        seqs.append(s)
+    assert len(seqs) == len(set(seqs)), "duplicate shortcuts: " + str(seqs)
+    assert win.act_fit.shortcut().toString().lower().endswith("0")
+    assert win.act_full.shortcut().toString().lower().endswith("1")
+    assert win.act_lewks.shortcut().toString().lower().endswith("k")
+    # tooltips now advertise the shortcut
+    assert "Ctrl" in win.act_lewks.toolTip()
+    # help gained the new topics
+    titles = [t for t, _ in TOPICS]
+    for want in ("Photo Filter", "Keyboard",
+                 "Tone curve, split tone, colour mix, and glow"):
+        assert want in titles, want
+    assert "glass-box" in dict(TOPICS)["LEWKS"].lower()
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for test in tests:
