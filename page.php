@@ -107,7 +107,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
 }
 ?>
 
-<body class="static-transmission">
+<body class="static-transmission page-slug-<?php echo htmlspecialchars(preg_replace('/[^a-z0-9_-]/i', '-', (string)$slug), ENT_QUOTES); ?>">
     <div id="page-wrapper">
 
         <div id="scroll-stage">
