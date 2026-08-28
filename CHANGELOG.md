@@ -10,6 +10,25 @@
 
 # SnapSmack Changelog
 
+## 0.7.576 — 2026-08-27 "FEDBOARD"
+
+- **SECAUDIT 052 closes the `llms.txt` agent-instruction boundary before it
+  becomes an incident.** Publisher-controlled site names and descriptions are
+  flattened into length-bounded descriptive text, stripped of Markdown controls
+  and arbitrary links, and omitted when they contain prompt-role manipulation,
+  install commands, command substitution, or fetch-and-run syntax. Configured
+  site URLs now require valid HTTP/HTTPS form with no credentials or control
+  characters; invalid URLs produce no Key Pages section.
+- **Machine-readable attribution remains useful without becoming executable
+  documentation.** Generated links are limited to the validated current site and
+  hard-coded SnapSmack attribution. SnapSmack continues not to generate
+  `llms-full.txt`, and the signed SMACKBACK boundary remains the generator code
+  rather than an invalid universal hash for per-site output.
+- **Regression coverage added.** Twenty-one checks pin safe descriptions,
+  same-site navigation, prompt-injection rejection, package/install and
+  pipe-to-shell rejection, Markdown/link containment, unsafe URL rejection, and
+  the continued absence of an `llms-full.txt` producer.
+
 ## 0.7.575 — 2026-08-27 "FEDBOARD"
 
 - **AI field helper is a small themed sparkle, not a green button box.** The per-field
@@ -43,7 +62,6 @@
   correctly. Existing garbled rows can be corrected with a one-off `REPLACE`
   update on `snap_ap_timeline`; after this ships fleet-wide a re-ingest keeps
   them clean on its own.
-
 ## 0.7.572 — 2026-08-27 "FEDBOARD"
 
 - **Both scheduling controls show date and time.** **Boosting Window Starts At**

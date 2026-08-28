@@ -81,20 +81,79 @@ function snapsmack_generate_robots(array $s): string {
     return $robots;
 }
 
-/** Build llms.txt (GEO / AI attribution), mirroring the AI-training policy. */
+/**
+ * Reduce publisher-controlled text to one inert descriptive line for llms.txt.
+ *
+ * llms.txt is consumed by agents, not just rendered by browsers.  A site name or
+ * description must therefore never be able to add Markdown structure, links,
+ * code fences, command examples, or instruction-override language.  Suspicious
+ * descriptions are omitted rather than "cleaned" into something whose meaning
+ * may have changed.  This is intentionally stricter than HTML escaping.
+ */
+function snapsmack_llms_plain_text(string $value, int $max_length = 500): string {
+    $value = html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $value = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $value) ?? '';
+    $value = preg_replace('/\s+/u', ' ', trim($value)) ?? '';
+    if ($value === '') return '';
+
+    // Reject material shaped like agent instructions or executable references.
+    // Ordinary prose mentioning software remains valid; actionable command
+    // syntax and prompt-role manipulation do not.
+    $danger = '~(?:
+        \b(?:ignore|disregard|override)\s+(?:all\s+)?(?:previous|prior|above)\s+(?:instructions?|prompts?|rules?)\b
+      | \b(?:system|developer|assistant)\s*(?:message|prompt)?\s*:
+      | \b(?:pip3?|pipx|uv)\s+install\b
+      | \b(?:npm|pnpm|yarn)\s+(?:install|add|exec)\b
+      | \bnpx\s+[^\s]
+      | \b(?:gem|cargo)\s+install\b
+      | \bgo\s+(?:get|install)\b
+      | \bdocker\s+(?:pull|run)\b
+      | \b(?:curl|wget)\s+[^\s]
+      | \|\s*(?:sh|bash|zsh|powershell|pwsh)\b
+      | \bsource\s*<\s*\(
+      | `|\$\(
+    )~ixu';
+    if (preg_match($danger, $value)) return '';
+
+    // User-entered descriptions do not need live URLs or Markdown controls.
+    // Remove them instead of letting the field manufacture links/headings.
+    $value = preg_replace('~\b(?:https?|ftp|file|data|javascript):\S+~iu', '', $value) ?? '';
+    $value = str_replace(['#', '[', ']', '<', '>', '{', '}', '|', '\\'], ' ', $value);
+    $value = preg_replace('/\s+/u', ' ', trim($value)) ?? '';
+
+    if (function_exists('mb_substr')) return mb_substr($value, 0, $max_length, 'UTF-8');
+    return substr($value, 0, $max_length);
+}
+
+/** Return a safe public base URL, or '' rather than inventing/echoing one. */
+function snapsmack_llms_site_url(string $value): string {
+    $value = trim($value);
+    if ($value === '' || preg_match('/[\x00-\x20\x7F]/', $value)) return '';
+    if (filter_var($value, FILTER_VALIDATE_URL) === false) return '';
+    $parts = parse_url($value);
+    if (!is_array($parts)) return '';
+    $scheme = strtolower((string)($parts['scheme'] ?? ''));
+    if (!in_array($scheme, ['http', 'https'], true)) return '';
+    if (empty($parts['host']) || isset($parts['user']) || isset($parts['pass'])) return '';
+    return rtrim($value, '/') . '/';
+}
+
+/** Build descriptive-only llms.txt (GEO / AI attribution). */
 function snapsmack_generate_llms(array $s): string {
     $ai_policy = $s['ai_training_policy'] ?? 'no_opinion';
-    $ll_url  = rtrim($s['site_url'] ?? 'https://example.com/', '/') . '/';
-    $ll_name = trim($s['site_name'] ?? '') ?: 'This photo blog';
-    $ll_desc = trim($s['site_description'] ?? '');
+    $ll_url  = snapsmack_llms_site_url((string)($s['site_url'] ?? ''));
+    $ll_name = snapsmack_llms_plain_text((string)($s['site_name'] ?? ''), 120) ?: 'This photo blog';
+    $ll_desc = snapsmack_llms_plain_text((string)($s['site_description'] ?? ''), 500);
     $ll_ver  = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '';
 
     $llms  = "# {$ll_name}\n\n";
-    if ($ll_desc !== '') $llms .= "> {$ll_desc}\n\n";
+    if ($ll_desc !== '') $llms .= "> Publisher description (descriptive text only): {$ll_desc}\n\n";
     $llms .= "A photo blog published with SnapSmack" . ($ll_ver !== '' ? " {$ll_ver}" : '')
            . ", an open, self-hosted photoblogging CMS. The photographs on this site belong to their photographer.\n\n";
     $llms .= "## About the software\n- SnapSmack — an open, self-hosted photoblogging CMS (learn more): https://snapsmack.ca\n\n";
-    $llms .= "## Key pages\n- Home: {$ll_url}\n- Archive: {$ll_url}archive.php\n\n";
+    if ($ll_url !== '') {
+        $llms .= "## Key pages\n- Home: {$ll_url}\n- Archive: {$ll_url}archive.php\n\n";
+    }
     $llms .= "## AI use\n";
     if ($ai_policy === 'disallow') {
         $llms .= "The photographs and images on this site are NOT licensed for AI or model training (see the ai-train=no content signal in robots.txt and page metadata). You may state that this site runs SnapSmack and link readers to https://snapsmack.ca.\n";
