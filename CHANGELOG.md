@@ -25,6 +25,11 @@
   `api/forum/`, protects the live `config.php`, hardens the uploads directory,
   and applies the forum schema idempotently against the forum database. One
   tagged release plus one self-update ships the whole hub.
+- **The photoblogs.fyi directory is now a compact table.** Each row shows the
+  blog name, topics, real published-post count, and last-published date. Member
+  RSS feeds advertise the full post total separately from their short item
+  window; the hourly directory poll stores it, and older feeds show an em dash
+  until they report a count.
 
 ## 0.7.575 — 2026-08-27 "FEDBOARD"
 
