@@ -33,6 +33,7 @@ function pbfeed_schema(PDO $pdo): void {
         "ADD COLUMN IF NOT EXISTS feed_failures INT UNSIGNED NOT NULL DEFAULT 0 AFTER feed_status",
         "ADD COLUMN IF NOT EXISTS feed_etag VARCHAR(255) NOT NULL DEFAULT '' AFTER feed_failures",
         "ADD COLUMN IF NOT EXISTS feed_last_modified VARCHAR(255) NOT NULL DEFAULT '' AFTER feed_etag",
+        "ADD COLUMN IF NOT EXISTS post_count INT UNSIGNED NULL AFTER feed_last_modified",
     ] as $alter) $pdo->exec("ALTER TABLE snap_directory_listings {$alter}");
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS snap_directory_feed_items (
@@ -140,7 +141,7 @@ function pbfeed_fetch(array $listing): array {
 }
 
 /** @return array|null Null means invalid XML/feed; an empty array is a healthy empty feed. */
-function pbfeed_items(string $xml_raw, array $listing): ?array {
+function pbfeed_items(string $xml_raw, array $listing, ?int &$post_count = null): ?array {
     $prior = libxml_use_internal_errors(true);
     $doc = new DOMDocument();
     $loaded = $doc->loadXML($xml_raw, LIBXML_NONET | LIBXML_NOBLANKS | LIBXML_COMPACT);
@@ -149,6 +150,8 @@ function pbfeed_items(string $xml_raw, array $listing): ?array {
     if (!$loaded) return null;
     $xp = new DOMXPath($doc);
     if (!$xp->query('/*[local-name()="rss" or local-name()="feed"]')->length) return null;
+    $reported_count = trim((string)$xp->evaluate('string(/*[local-name()="rss"]/*[local-name()="channel"]/*[local-name()="postCount"][1])'));
+    $post_count = preg_match('/^\d+$/', $reported_count) ? (int)$reported_count : null;
     $nodes = $xp->query('//*[local-name()="item" or local-name()="entry"]');
     $out = [];
     foreach ($nodes ?: [] as $node) {
@@ -224,7 +227,8 @@ try {
                 ->execute([$feed_url, PBDIR_DEAD_FAILURES, $listing['id']]);
             continue;
         }
-        $items = $code === 304 ? [] : pbfeed_items($xml, $listing);
+        $reported_post_count = null;
+        $items = $code === 304 ? [] : pbfeed_items($xml, $listing, $reported_post_count);
         if ($code !== 304 && $items === null) {
             $fail_count++;
             $pdo->prepare("UPDATE snap_directory_listings SET feed_url=?,last_checked_at=NOW(),
@@ -248,8 +252,9 @@ try {
             last_post_at=CASE WHEN ? IS NULL THEN last_post_at
                               WHEN last_post_at IS NULL OR ? > last_post_at THEN ? ELSE last_post_at END,
             feed_status='ok',feed_failures=0,
+            post_count=COALESCE(?,post_count),
             feed_etag=?,feed_last_modified=? WHERE id=?")
-            ->execute([$feed_url,$latest,$latest,$latest,mb_substr((string)($headers['etag'] ?? $listing['feed_etag']),0,255),
+            ->execute([$feed_url,$latest,$latest,$latest,$reported_post_count,mb_substr((string)($headers['etag'] ?? $listing['feed_etag']),0,255),
                 mb_substr((string)($headers['last-modified'] ?? $listing['feed_last_modified']),0,255),$listing['id']]);
         $ok_count++;
     }

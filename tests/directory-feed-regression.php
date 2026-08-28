@@ -6,6 +6,8 @@ $feed = file_get_contents($root . '/feed.php');
 $shortcode_feed = file_get_contents($root . '/core/photoblogs-feed.php');
 $api = file_get_contents($root . '/directory-api.php');
 $payload = file_get_contents($root . '/core/photoblogs-directory.php');
+$rss = file_get_contents($root . '/rss.php');
+$directory_view = file_get_contents($root . '/core/photoblogs-directory-view.php');
 $fail = [];
 $expect = function (bool $ok, string $message) use (&$fail): void { if (!$ok) $fail[] = $message; };
 
@@ -20,6 +22,9 @@ $expect(str_contains($cron, 'LIBXML_NONET'), 'XML parsing must disable network a
 $expect(str_contains($cron, 'uq_listing_day'), 'cache must enforce one item per blog per day');
 $expect(str_contains($cron, 'OFFSET 10'), 'cache must retain only the last ten daily posts per blog');
 $expect(str_contains($cron, 'OFFSET 10'), 'public feed cache must cap each blog at ten posts');
+$expect(str_contains($rss, 'snapsmack:postCount'), 'member RSS must advertise the real published-post count');
+$expect(str_contains($cron, "local-name()=\"postCount\""), 'directory poller must read the published-post count');
+$expect(str_contains($directory_view, 'pbf-directory-table'), 'directory must render a compact semantic table');
 $expect(str_contains($cron, "feed_status=IF(feed_failures+1>=?,'dead','error')"), 'poller must age repeated failures into dead state');
 $expect(str_contains($feed, '/page.php?slug=feed'), 'legacy feed route must redirect to the skinned CMS page');
 $expect(str_contains($shortcode_feed, "\$r['post_url']"), 'feed images must link to RSS post permalinks');

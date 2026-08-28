@@ -25,19 +25,29 @@ $site_name = $settings['site_name'] ?? 'ISWA.CA';
 $site_url  = rtrim($settings['site_url'] ?? 'https://example.com/', '/') . '/';
 $site_desc = $settings['site_description'] ?? '3D Anaglyph Photography';
 
+// Directory consumers can show the real number of published posts instead of
+// mistaking the deliberately short RSS window for the site's full archive.
+$post_count = 0;
+try {
+    $solo = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND post_id IS NULL")->fetchColumn();
+    $grouped = (int)$pdo->query("SELECT COUNT(DISTINCT post_id) FROM snap_images WHERE img_status='published' AND post_id IS NOT NULL")->fetchColumn();
+    $post_count = $solo + $grouped;
+} catch (Throwable $e) { /* fresh installs may not have the full post model yet */ }
+
 // --- FEED SETUP ---
 // Force XML content type for proper parsing in browsers and feed readers
 header("Content-Type: application/rss+xml; charset=UTF-8");
 
 echo '<?xml version="1.0" encoding="UTF-8" ?>';
 ?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:snapsmack="https://snapsmack.ca/ns/rss">
 <channel>
     <title><?php echo htmlspecialchars($site_name); ?></title>
     <link><?php echo $site_url; ?></link>
     <description><?php echo htmlspecialchars($site_desc); ?></description>
     <language>en-us</language>
     <atom:link href="<?php echo $site_url; ?>rss.php" rel="self" type="application/rss+xml" />
+    <snapsmack:postCount><?php echo $post_count; ?></snapsmack:postCount>
 
     <?php
     // --- FEED ITEMS ---
