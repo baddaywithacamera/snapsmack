@@ -30,8 +30,8 @@ $help = $read('smack-help.php');
 $migration = $read('migrations/migrate-fedboard-sso.sql');
 $updater = $read('core/updater.php');
 
-fb_expect(str_contains($constants, "SNAPSMACK_VERSION_SHORT', '0.7.575'"), 'release must be version 0.7.575');
-fb_expect(str_contains($constants, "SNAPSMACK_VERSION_CODENAME', 'FEDBOARD'"), 'release codename must be FEDBOARD');
+fb_expect(str_contains($constants, "SNAPSMACK_VERSION_SHORT', '0.7.576'"), 'release must be version 0.7.576');
+fb_expect(str_contains($constants, "SNAPSMACK_VERSION_CODENAME', 'SHOW AND TELL'"), 'release codename must be SHOW AND TELL');
 fb_expect(str_contains($migration, 'token_hash') && !str_contains($migration, '`token` VARCHAR'), 'migration must store only ticket hashes');
 fb_expect(str_contains(strtolower($migration), "enum('admin','fedboard')"), 'tickets must bind an allowlisted destination');
 fb_expect(str_contains($updater, "'migrate-fedboard-sso.sql'"), 'updater must apply the FEDBOARD migration');
