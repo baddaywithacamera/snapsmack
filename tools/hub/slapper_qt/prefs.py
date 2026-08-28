@@ -14,6 +14,7 @@ DEFAULTS = {
     "add_copyright_if_missing": True,
     "strip_gps": False,            # remove GPS from exported copies (never the original)
     "texture_site_hint": "foundtextures",
+    "mode": "advanced",            # "normal" (Picasa-simple) or "advanced"
 }
 
 

@@ -156,6 +156,44 @@ def test_prefs_and_export_options():
     assert os.path.getsize(out) > 0
 
 
+def test_auto_enhance():
+    # a low-contrast, slightly warm image — auto should recover range + neutralise
+    path = os.path.join(TMP, "lowcon.png")
+    image = Image.new("RGB", (200, 150))
+    px = image.load()
+    for y in range(150):
+        for x in range(200):
+            px[x, y] = (120 + (x % 25), 110 + (y % 15), 95)
+    image.save(path)
+    win = _editor(path)
+    win.auto_enhance()
+    adj = win.doc.adjustments
+    assert adj["contrast"] == 8.0 and adj["vibrance"] == 10.0
+    assert adj["level_white"] < 255 or adj["level_black"] > 0   # levels stretched
+    assert win.doc.render((150, 150))
+
+
+def test_normal_advanced_mode():
+    win = _editor(_image("mode.jpg", (300, 200)))
+    win.apply_mode("normal")
+    # advanced-only sections/rows hidden, curated ones shown
+    assert win._sections["LEVELS"].isHidden()
+    assert win._sections["PRESENCE"].isHidden()
+    assert not win._sections["LIGHT"].isHidden()
+    assert win.rows["exposure"].isHidden() and win.rows["whites"].isHidden()
+    assert not win.rows["contrast"].isHidden()
+    assert win._histogram_wrap.isHidden()
+    # advanced-only toolbar hidden, Normal tools kept
+    assert win.act_textures.isVisible() is False
+    assert win.act_save_project.isVisible() is False
+    assert win.act_lewks.isVisible() is True and win.act_auto.isVisible() is True
+    # back to advanced restores everything
+    win.apply_mode("advanced")
+    assert not win._sections["LEVELS"].isHidden()
+    assert not win.rows["exposure"].isHidden()
+    assert win.act_textures.isVisible() is True
+
+
 def test_autosave_recovery():
     win = _editor(_image("rec.jpg", (300, 200)))
     win._recovery_dir = tempfile.mkdtemp(dir=TMP)     # isolate from the real dir

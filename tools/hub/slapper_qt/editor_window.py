@@ -75,6 +75,12 @@ GROUPS = [
 IMAGE_FILTER = ("Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp);;"
                 "All files (*.*)")
 
+# Normal mode (Picasa/Snapseed-simple) shows a curated subset; Advanced shows
+# everything. These name what stays visible in Normal.
+NORMAL_SECTIONS = {"LIGHT", "COLOUR", "BLACK + WHITE", "GEOMETRY"}
+NORMAL_ROWS = {"brightness", "contrast", "highlights", "shadows",
+               "temperature", "saturation"}
+
 
 class EditorWindow(QMainWindow):
     def __init__(self):
@@ -106,6 +112,7 @@ class EditorWindow(QMainWindow):
         self._recovery_timer.timeout.connect(self._write_recovery)
 
         self._refresh_actions()
+        self._init_mode()
 
     # --- Autosave / crash recovery ------------------------------------------
     @staticmethod
@@ -206,6 +213,11 @@ class EditorWindow(QMainWindow):
 
         bar.addSeparator()
 
+        self.act_auto = QAction("Auto", self)
+        self.act_auto.setToolTip("Auto-enhance — one-click improvement you can still tweak")
+        self.act_auto.triggered.connect(self.auto_enhance)
+        bar.addAction(self.act_auto)
+
         self.act_fit = QAction("Fit", self)
         self.act_fit.triggered.connect(lambda: self.view.fit())
         bar.addAction(self.act_fit)
@@ -272,6 +284,19 @@ class EditorWindow(QMainWindow):
         self.act_help.triggered.connect(self.open_help)
         bar.addAction(self.act_help)
 
+        self.act_advanced = QAction("Advanced", self)
+        self.act_advanced.setCheckable(True)
+        self.act_advanced.setToolTip("Advanced mode — layers, masks, levels, textures, and more")
+        self.act_advanced.toggled.connect(self._on_mode_toggled)
+        bar.addAction(self.act_advanced)
+
+        # Toolbar actions hidden in Normal mode (Advanced-only).
+        self._advanced_actions = [
+            self.act_open_project, self.act_heal, self.act_compare,
+            self.act_recipe_save, self.act_recipe_apply, self.act_save_project,
+            self.act_textures,
+        ]
+
     def _error(self, title, message):
         """Show an error dialog AND write it (with traceback if any) to the log."""
         _log.error("%s — %s", title, message, exc_info=sys.exc_info()[0] is not None)
@@ -287,6 +312,8 @@ class EditorWindow(QMainWindow):
         self._retouch_type = "heal"
 
     def _build_rail(self):
+        self._sections = {}          # title -> Accordion (for Normal/Advanced)
+        self._bw_mixer_widgets = []  # the 8 colour sliders + hint (advanced only)
         rail = QWidget()
         rail.setObjectName("Rail")
         rail.setFixedWidth(288)
@@ -306,6 +333,7 @@ class EditorWindow(QMainWindow):
         self.layers_panel = LayersPanel(self)
         layers_section.add(self.layers_panel)
         inner_layout.addWidget(layers_section)
+        self._sections["LAYERS"] = layers_section
 
         # "Editing: …" target indicator
         self.target_label = QLabel("Editing: Base image")
@@ -327,7 +355,8 @@ class EditorWindow(QMainWindow):
         for title, controls in GROUPS:
             section = Accordion(title, expanded=(title == "LIGHT"))
             if title == "LIGHT":
-                section.add(self._build_histogram())
+                self._histogram_wrap = self._build_histogram()
+                section.add(self._histogram_wrap)
             for key, label, start, end, resolution, default in controls:
                 srow = SliderRow(key, label, start, end, resolution, default)
                 srow.changed.connect(self._on_adjust)
@@ -335,16 +364,19 @@ class EditorWindow(QMainWindow):
                 self.rows[key] = srow
                 section.add(srow)
             inner_layout.addWidget(section)
+            self._sections[title] = section
 
         # Geometry (rotate / straighten / flip)
         geo_section = Accordion("GEOMETRY", expanded=False)
         geo_section.add(self._build_geometry())
         inner_layout.addWidget(geo_section)
+        self._sections["GEOMETRY"] = geo_section
 
         # Retouch (spot heal / red-eye)
         retouch_section = Accordion("RETOUCH", expanded=False)
         retouch_section.add(self._build_retouch())
         inner_layout.addWidget(retouch_section)
+        self._sections["RETOUCH"] = retouch_section
 
         # Black & white — neutral toggle + per-colour luminance mix
         bw_section = Accordion("BLACK + WHITE", expanded=False)
@@ -354,6 +386,7 @@ class EditorWindow(QMainWindow):
         bw_hint = QLabel("Colour mix — how each colour becomes grey")
         bw_hint.setObjectName("TargetLabel")
         bw_section.add(bw_hint)
+        self._bw_mixer_widgets.append(bw_hint)
         for key, label in (("bw_red", "Red"), ("bw_orange", "Orange"),
                            ("bw_yellow", "Yellow"), ("bw_green", "Green"),
                            ("bw_aqua", "Aqua"), ("bw_blue", "Blue"),
@@ -363,7 +396,9 @@ class EditorWindow(QMainWindow):
             srow.committed.connect(self._on_commit)
             self.rows[key] = srow
             bw_section.add(srow)
+            self._bw_mixer_widgets.append(srow)
         inner_layout.addWidget(bw_section)
+        self._sections["BLACK + WHITE"] = bw_section
 
         inner_layout.addStretch(1)
         scroll.setWidget(inner)
@@ -907,6 +942,66 @@ class EditorWindow(QMainWindow):
         from .prefs_dialog import PreferencesDialog
         PreferencesDialog(self).exec()
 
+    # --- Normal / Advanced mode ---------------------------------------------
+    def _init_mode(self):
+        from . import prefs
+        self.mode = prefs.load().get("mode", "advanced")
+        self.act_advanced.blockSignals(True)
+        self.act_advanced.setChecked(self.mode == "advanced")
+        self.act_advanced.blockSignals(False)
+        self.apply_mode(self.mode)
+
+    def _on_mode_toggled(self, checked):
+        self.apply_mode("advanced" if checked else "normal")
+        from . import prefs
+        values = prefs.load()
+        values["mode"] = self.mode
+        prefs.save(values)
+
+    def apply_mode(self, mode):
+        advanced = (mode == "advanced")
+        self.mode = mode
+        for title, section in self._sections.items():
+            section.setVisible(advanced or title in NORMAL_SECTIONS)
+        self._histogram_wrap.setVisible(advanced)
+        for widget in self._bw_mixer_widgets:
+            widget.setVisible(advanced)
+        for key, row in self.rows.items():
+            row.setVisible(advanced or key in NORMAL_ROWS)
+        self.target_label.setVisible(advanced)
+        for action in self._advanced_actions:
+            action.setVisible(advanced)
+        if not advanced:
+            # Normal edits the base photo; no layer panels.
+            self.active_target = BASE
+            self.text_section.setVisible(False)
+            self.mask_section.setVisible(False)
+            self._sync_controls_from_doc()
+        self.status.showMessage(
+            "Advanced mode" if advanced else "Normal mode — simple editing")
+
+    def auto_enhance(self):
+        if not self.doc:
+            return
+        from PIL import Image, ImageOps
+        try:
+            with Image.open(self.doc.source_path) as source:
+                small = ImageOps.exif_transpose(source).convert("RGB")
+            small.thumbnail((400, 400))
+            auto = editor_engine.auto_adjustments(small)
+        except Exception as error:  # noqa: BLE001
+            self._error("Auto-enhance failed", str(error))
+            return
+        target = self.active_adjustments()
+        if target is None:
+            return
+        target.update(auto)
+        self.doc.record("Auto enhance")
+        self._sync_controls_from_doc()
+        self._render_preview()
+        self._update_title()
+        self.status.showMessage("Auto-enhanced — tweak any slider to taste")
+
     def open_lewks(self):
         if not self.doc:
             self._error("Open a photo first",
@@ -1140,6 +1235,7 @@ class EditorWindow(QMainWindow):
         self.act_save_project.setEnabled(has)
         self.act_textures.setEnabled(has)
         self.act_lewks.setEnabled(has)
+        self.act_auto.setEnabled(has)
 
     def _update_title(self):
         if not self.doc:
