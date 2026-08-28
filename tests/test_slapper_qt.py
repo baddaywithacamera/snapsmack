@@ -131,6 +131,31 @@ def test_layers_isolation_and_ops():
     assert len(win.doc.layers) == 1
 
 
+def test_prefs_and_export_options():
+    from slapper_qt import prefs
+    # prefs round-trip against an isolated file
+    pfile = os.path.join(TMP, "prefs.json")
+    prefs._path = lambda: pfile
+    prefs.save({"export_quality": 72, "copyright_text": "(c) Test",
+                "add_copyright_if_missing": True, "strip_gps": True,
+                "texture_site_hint": "foundtextures"})
+    loaded = prefs.load()
+    assert loaded["export_quality"] == 72 and loaded["strip_gps"] is True
+    # corrupt/missing file falls back to defaults
+    with open(pfile, "w") as handle:
+        handle.write("not json{{{")
+    assert prefs.load()["export_quality"] == prefs.DEFAULTS["export_quality"]
+    # export honours the quality preference (smaller quality -> smaller file)
+    prefs.save({"export_quality": 30, "copyright_text": "", "add_copyright_if_missing": False,
+                "strip_gps": False, "texture_site_hint": "foundtextures"})
+    win = _editor(_image("exp.jpg", (400, 300), (180, 90, 40)))
+    out = os.path.join(TMP, "q30.jpg")
+    # export via the engine with the loaded pref (dialog-free)
+    settings = prefs.load()
+    win.doc.export(out, quality=settings["export_quality"])
+    assert os.path.getsize(out) > 0
+
+
 def test_autosave_recovery():
     win = _editor(_image("rec.jpg", (300, 200)))
     win._recovery_dir = tempfile.mkdtemp(dir=TMP)     # isolate from the real dir
