@@ -44,8 +44,12 @@ $page_css = <<<'CSS'
 .capability-card { padding: 28px; background: var(--white); }
 .capability-card h3 { margin-bottom: 10px; color: var(--red); font-size: 1rem; }
 .capability-card p { margin: 0; font-size: .9rem; line-height: 1.55; }
-#working { background: #f4f1eb; }
+#modes { border-top: 8px solid var(--black); }
+#working { background: #e8e1d6; border-top: 8px solid var(--red); }
+#working .capability-grid { gap: 3px; background: var(--black); border: 3px solid var(--black); }
+#working .capability-card { background: var(--white); }
 #ecosystem { background: var(--black); color: #ddd; }
+#ecosystem, #featured-skins, #coming, #security { border-top: 8px solid var(--red); }
 #ecosystem h2, #ecosystem h3 { color: var(--white); }
 #ecosystem .lede { color: #bbb; }
 #ecosystem .capability-grid { background: #383838; border-color: #383838; }
@@ -53,13 +57,15 @@ $page_css = <<<'CSS'
 #ecosystem .capability-card h3 { color: var(--red); }
 #ecosystem .capability-card p { color: #bbb; }
 .ecosystem-line { max-width: 900px; margin: 34px 0 0; padding: 22px 26px; border-left: 5px solid var(--red); background: #242424; color: var(--white); font: 900 clamp(1.05rem, 2vw, 1.35rem)/1.4 Arial Black, Arial, sans-serif; }
+.ecosystem-sauce { max-width: 860px; margin: -12px 0 34px; color: var(--white); font: 900 clamp(1.05rem, 2vw, 1.35rem)/1.4 Arial Black, Arial, sans-serif; }
+.ecosystem-sauce span { color: var(--red); }
 .mode-grid, .trust-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
 .mode-card, .trust-card { padding: 30px; background: var(--white); }
 .mode-num { color: var(--red); font: 900 .72rem/1 Arial, sans-serif; }
 .mode-card h3 { margin: 10px 0 12px; font-size: 1.18rem; }
 .mode-tagline { margin: -5px 0 14px; color: var(--red); font: 900 .76rem/1.25 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .mode-card p, .trust-card p { font-size: .93rem; }
-#federate { background: #f4f1eb; }
+#federate { background: #f4f1eb; border-top: 8px solid var(--black); }
 .fed-eyebrow { margin-bottom: 12px; color: var(--red); font: 900 .74rem/1.2 Arial Black, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
 .fed-head { max-width: 850px; color: var(--black); font-size: clamp(2rem, 4vw, 3.2rem); }
 .fed-lede { max-width: 780px; color: var(--black); font-size: 1.2rem; }
@@ -108,13 +114,15 @@ $page_css = <<<'CSS'
 #security .site-discovery-kicker { color: #bbb; }
 #security .lede { color: #bbb; max-width: 900px; }
 .security-layers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 34px 42px; margin-top: 42px; }
+#security .roadmap-details .security-layers { margin-top: 0; padding: 30px 28px 34px; }
 .security-layer { padding-top: 22px; border-top: 3px solid var(--red); }
 .security-layer .layer-num { margin-bottom: 10px; color: var(--red); font: 900 .7rem/1 Arial Black, Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
 .security-layer h3 { color: var(--white); margin-bottom: 12px; font-size: 1.1rem; }
 .security-layer p { margin: 0; color: #bbb; font-size: .9rem; line-height: 1.6; }
 .trust-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .trust-card h3 { color: var(--red); }
-#beta { background: var(--red); color: var(--white); }
+#trust, #respect, #whodat { border-top: 8px solid var(--black); }
+#beta { background: var(--red); color: var(--white); border-top: 8px solid var(--black); }
 #beta h2, #beta .lede { color: var(--white); }
 #beta .wrap { max-width: 820px; }
 .ml-embedded { margin-top: 26px; }
@@ -148,6 +156,7 @@ $page_css = <<<'CSS'
     .coming-grid { grid-template-columns: 1fr; }
     .coming-features { grid-template-columns: 1fr; }
     .security-layers { grid-template-columns: 1fr; }
+    #security .roadmap-details .security-layers { padding: 22px 18px 26px; }
     .trust-grid { grid-template-columns: 1fr; }
     .whodat-card { display: block; }
     .whodat-portrait { margin: -22px -22px 20px; }
@@ -167,8 +176,8 @@ require_once __DIR__ . '/includes/header.php';
     <section id="hero">
         <div class="hero-inner">
             <p class="hero-kicker">Your photography website, archive, social presence, and desktop workflow.</p>
-            <h1 class="hero-headline">Your photography.<br><span>One free ecosystem you control.</span></h1>
-            <p class="hero-sub">SnapSmack is a free, self-hosted photography publishing system: your website, your permanent archive, your connection to the social web, and a suite of powerful Windows and Linux tools that does the heavy lifting around it.</p>
+            <h1 class="hero-headline">Retro Photo Blogging.<br><span>Modern Technology.</span></h1>
+            <p class="hero-sub">SnapSmack is free, self-hosted photography publishing for people who want to own their photographs, website, audience, domain, and archive. The joy of the old web, backed by modern Windows and Linux tools that move the heavy work off your hosting account and onto your own computer.</p>
             <p class="hero-principles"><strong>Publish the original on your own domain.</strong> Organize it, edit it, post it, back it up, move it, and share it elsewhere without handing your archive or future to somebody else's platform.</p>
             <div class="hero-actions">
                 <a href="#working" class="btn btn-secondary">See What Works Now</a>
@@ -231,17 +240,18 @@ require_once __DIR__ . '/includes/header.php';
             <div class="section-heading">
                 <p class="site-discovery-kicker">More than a CMS</p>
                 <h2>The website is home. The desktop tools do the heavy lifting.</h2>
-                <p class="lede">Most photography software gives you one piece and rents you another. SnapSmack connects the publishing site to a growing suite of free, powerful desktop tools without requiring your collection to live in somebody else's cloud.</p>
+                <p class="lede">Most full-featured CMSes ask the web server to do nearly everything. On ordinary shared hosting, that server is often the weakest and most expensive part of the system. SnapSmack's free Windows and Linux tools prepare, organize, process, migrate, back up, and publish from your own computer so the site itself can stay lean.</p>
+                <p class="ecosystem-sauce"><span>Put less politely:</span> WordPress is Jabba the Hutt trying to ride a landspeeder built for Princess Leia.</p>
             </div>
             <div class="capability-grid">
                 <article class="capability-card"><h3>Import and escape</h3><p>Recover Instagram and Flickr exports and move surviving work away from platforms or websites you no longer trust.</p></article>
                 <article class="capability-card"><h3>Organize and edit</h3><p>Work with the local photography library, metadata, ordering, albums, collections, carousels, and non-destructive edits.</p></article>
-                <article class="capability-card"><h3>Prepare and publish</h3><p>Process a shoot, enrich its metadata, assemble the post, and publish without spending the afternoon fighting browser forms.</p></article>
+                <article class="capability-card"><h3>Prepare and publish</h3><p>Process photographs, enrich metadata, assemble the post, and do resource-heavy preparation locally before the finished work reaches the web server.</p></article>
                 <article class="capability-card"><h3>Back up and recover</h3><p>Create complete recovery archives, move them offsite, audit coverage, detect damage, and recover when a site or account goes sideways.</p></article>
                 <article class="capability-card"><h3>Manage multiple sites</h3><p>Discover a fleet once, share protected local profiles, monitor it, update it, and handle work across several photography sites.</p></article>
                 <article class="capability-card"><h3>Export and leave</h3><p>Take understandable copies of the photographs and portable data with you. Ownership includes the right to stop using SnapSmack.</p></article>
             </div>
-            <p class="ecosystem-line">No subscription. No premium tier. No advertising network. The CMS, skins, and companion tools are free.</p>
+            <p class="ecosystem-line">A full-featured photography CMS on a cheaper hosting plan: less server load, no subscription, no premium tier, and no advertising network.</p>
             <p class="section-link"><a href="tools.php">Meet the desktop tool ecosystem &rarr;</a></p>
         </div>
     </section>
@@ -479,7 +489,7 @@ require_once __DIR__ . '/includes/header.php';
                     <div>
                         <p class="whodat-name">Sean McCormick</p>
                         <p class="whodat-title">Just a guy with a camera.</p>
-                        <p class="whodat-bio">Photographer who got tired of watching his archive evaporate into the memory hole of dying platforms. Built SnapSmack because the alternative was continuing to post between ads for hemorrhoid cream. Has opinions about light. Runs several <a href="https://linktr.ee/mccormickphotography" target="_blank">photo sites</a> using software he envisioned to avoid having opinions about Squarespace. Based in Canada, which is polite for "somewhere cold with good coffee."</p>
+                        <p class="whodat-bio">Photographer, creator, product designer, chief tester, and final decision-maker who got tired of watching his archive evaporate into the memory hole of dying platforms. Conceived and directed SnapSmack because the alternative was continuing to post between ads for hemorrhoid cream. Not a programmer beyond a few minor CSS contributions; the implementation is AI-authored under his direction. Has opinions about light. Runs several <a href="https://linktr.ee/mccormickphotography" target="_blank">photo sites</a> using software he envisioned to avoid having opinions about Squarespace. Based in Canada, which is polite for "somewhere cold with good coffee."</p>
                     </div>
                 </article>
                 <article class="whodat-card">

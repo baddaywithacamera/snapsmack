@@ -66,6 +66,12 @@ ideas, acknowledgements, or technical substance.
 
 SnapSmack is not only a CMS. Its differentiator is a complete free photography ecosystem:
 
+- Desktop tools deliberately move resource-heavy work off constrained shared hosting and
+  onto the photographer's Windows or Linux computer. This keeps the server footprint lean
+  enough for a full-featured CMS to run on cheaper hosting plans.
+- Keep Sean's voice in the explanation. The homepage's deliberately saucy shorthand is:
+  "WordPress is Jabba the Hutt trying to ride a landspeeder built for Princess Leia."
+
 - a self-hosted photography website and archive;
 - three purpose-built publishing modes;
 - RSS, IndieWeb, POSSE, and two-way ActivityPub;
@@ -120,6 +126,9 @@ beta story or onto clearly linked supporting pages.
 - The complete security explanation and links to published audits.
 - Pixelpost, Jay Williams, Noah Grey, and Greymatter acknowledgements.
 - Sean, Claude, and Codex contributor acknowledgements.
+- Credit Sean accurately as SnapSmack's creator, photographer, product designer,
+  requirements source, chief tester, director, and final decision-maker. Do not imply he
+  programmed the system: his direct coding contribution is limited to minor CSS work.
 - The site's irreverent voice; clarity should improve without sanding it into generic
   corporate copy.
 - Closed-beta dates, capacity, archive expectations, and application mechanism, verified
