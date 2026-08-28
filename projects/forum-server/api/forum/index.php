@@ -15,6 +15,10 @@
  *   PATCH  threads/{id}                       Mod: pin / lock flags; own/mod: edit body
  *   DELETE threads/{id}                       Soft-delete own thread (mod: any)
  *   POST   threads/{id}/replies               Add a reply (rate-limited)
+ *   POST   threads/{id}/attachments           Attach an image to a thread (own/mod; multipart "image")
+ *   POST   replies/{id}/attachments           Attach an image to a reply (own/mod; multipart "image")
+ *   DELETE attachments/{id}                   Reversible hide of an image (own/mod)
+ *   POST   attachments/{id}/restore           Un-hide an image (mod)
  *   PATCH  replies/{id}                       Edit own reply body (mod: any)
  *   DELETE replies/{id}                       Soft-delete own reply (mod: any)
  *   POST   replies/{id}/solve                 Mark reply as accepted answer (thread author or mod)
@@ -42,6 +46,13 @@
 
 
 require_once __DIR__ . '/config.php';
+
+// ── Attachment / upload config (guarded defaults — override in config.php) ─────
+if (!defined('FORUM_UPLOAD_DIR'))       define('FORUM_UPLOAD_DIR', __DIR__ . '/uploads');
+if (!defined('FORUM_MAX_UPLOAD_BYTES')) define('FORUM_MAX_UPLOAD_BYTES', 10 * 1024 * 1024); // 10 MB
+if (!defined('FORUM_MAX_IMAGE_DIM'))    define('FORUM_MAX_IMAGE_DIM', 2560);  // downscale longest side to this
+if (!defined('FORUM_MAX_MEGAPIXELS'))   define('FORUM_MAX_MEGAPIXELS', 30);   // decompression-bomb guard (~120MB decoded)
+if (!defined('FORUM_MAX_ATTACH_PER'))   define('FORUM_MAX_ATTACH_PER', 8);    // images per thread/reply
 
 // ── Headers ───────────────────────────────────────────────────────────────────
 header('Content-Type: application/json; charset=utf-8');
@@ -164,16 +175,22 @@ function make_excerpt(string $body, int $len = 300): string {
 
 /**
  * Rate limiting — sliding window.
- * Limits: thread = 3/hour, reply = 10/hour, react = 30/10min
+ * Limits: thread = 3/hour, reply = 10/hour, react = 30/10min, attach = 40/hour
  * Prunes old records on each check.
+ *
+ * $exempt skips the limit entirely — used for moderators (a trusted vendor/mod
+ * key answering many owners must not be throttled by the anti-spam caps).
  */
-function check_rate_limit(int $install_id, string $action): void {
+function check_rate_limit(int $install_id, string $action, bool $exempt = false): void {
+    if ($exempt) return;
+
     $pdo = get_pdo();
 
     $windows = [
         'thread' => ['seconds' => 3600, 'max' => 3],
         'reply'  => ['seconds' => 3600, 'max' => 10],
         'react'  => ['seconds' => 600,  'max' => 30],
+        'attach' => ['seconds' => 3600, 'max' => 40],
     ];
 
     if (!isset($windows[$action])) return;
@@ -292,6 +309,220 @@ function create_reply_notifications(int $reply_id, int $thread_id, int $actor_in
         )->execute([$pid, $thread_id, $reply_id, $actor_name, $actor_domain, $thread_title]);
         $notified[] = $pid;
     }
+}
+
+// ── Attachments ───────────────────────────────────────────────────────────────
+
+/**
+ * Public base URL of this forum install (e.g. https://snapsmack.ca/api/forum).
+ * Override with FORUM_BASE_URL in config.php for forks behind a proxy.
+ */
+function forum_base_url(): string {
+    if (defined('FORUM_BASE_URL') && FORUM_BASE_URL) return rtrim(FORUM_BASE_URL, '/');
+    $scheme = (!empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off') ? 'https' : 'http';
+    $host   = $_SERVER['HTTP_HOST'] ?? 'snapsmack.ca';
+    $dir    = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/api/forum/index.php')), '/');
+    return $scheme . '://' . $host . $dir;
+}
+
+/**
+ * Fetch non-hidden attachments for a set of targets in one query.
+ * Returns [target_id => [ {id,url,alt,mime,width,height}, ... ]].
+ */
+function fetch_attachments(string $target_type, array $ids): array {
+    if (empty($ids)) return [];
+    $pdo = get_pdo();
+    $ph  = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare(
+        "SELECT id, target_id, stored_name, orig_name, mime, width, height
+         FROM ss_forum_attachments
+         WHERE target_type = ? AND target_id IN ($ph) AND is_deleted = 0
+         ORDER BY id ASC"
+    );
+    $stmt->execute(array_merge([$target_type], $ids));
+    $base = forum_base_url() . '/uploads/';
+    $out  = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $out[(int)$row['target_id']][] = [
+            'id'     => (int)$row['id'],
+            'url'    => $base . $row['stored_name'],
+            'alt'    => $row['orig_name'],
+            'mime'   => $row['mime'],
+            'width'  => (int)$row['width'],
+            'height' => (int)$row['height'],
+        ];
+    }
+    return $out;
+}
+
+/**
+ * Validate + re-encode an uploaded image to a clean file on disk.
+ * Rejects anything that is not a real JPEG/PNG/GIF/WebP. Re-encoding through GD
+ * discards EXIF and any non-image payload hidden in the file — defense in depth
+ * on top of the uploads/ no-execute .htaccess. Downscales oversized images.
+ *
+ * Returns ['stored_name','mime','width','height','byte_size'] or throws.
+ */
+function store_uploaded_image(array $file): array {
+    if (!function_exists('imagecreatefromstring')) {
+        throw new RuntimeException('Server image support (GD) is unavailable.');
+    }
+    // Decoding a full-size image needs headroom well above a shared host's default
+    // 128MB. The megapixel guard below still hard-caps the source size.
+    @ini_set('memory_limit', '256M');
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('Upload failed (error code ' . (int)($file['error'] ?? -1) . ').');
+    }
+    if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+        throw new RuntimeException('No valid uploaded file.');
+    }
+    if ((int)$file['size'] > FORUM_MAX_UPLOAD_BYTES) {
+        throw new RuntimeException('Image is larger than ' . round(FORUM_MAX_UPLOAD_BYTES / 1048576) . ' MB.');
+    }
+
+    $info = @getimagesize($file['tmp_name']);
+    if ($info === false) {
+        throw new RuntimeException('That file is not a valid image.');
+    }
+    [$w, $h] = $info;
+    $type    = $info[2];
+
+    $map = [
+        IMAGETYPE_JPEG => ['jpg',  'image/jpeg'],
+        IMAGETYPE_PNG  => ['png',  'image/png'],
+        IMAGETYPE_GIF  => ['gif',  'image/gif'],
+        IMAGETYPE_WEBP => ['webp', 'image/webp'],
+    ];
+    if (!isset($map[$type])) {
+        throw new RuntimeException('Only JPEG, PNG, GIF, and WebP images are allowed.');
+    }
+    [$ext, $mime] = $map[$type];
+
+    if ($w < 1 || $h < 1 || ($w * $h) > (FORUM_MAX_MEGAPIXELS * 1000000)) {
+        throw new RuntimeException('Image dimensions are out of range.');
+    }
+
+    $src = @imagecreatefromstring(file_get_contents($file['tmp_name']));
+    if ($src === false) {
+        throw new RuntimeException('Could not read that image (unsupported or corrupt).');
+    }
+
+    // Downscale if the longest side exceeds the cap.
+    $max = max($w, $h);
+    if ($max > FORUM_MAX_IMAGE_DIM) {
+        $scale = FORUM_MAX_IMAGE_DIM / $max;
+        $nw = max(1, (int)round($w * $scale));
+        $nh = max(1, (int)round($h * $scale));
+        $dst = imagecreatetruecolor($nw, $nh);
+        if (in_array($type, [IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP], true)) {
+            imagealphablending($dst, false);
+            imagesavealpha($dst, true);
+            $transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
+            imagefilledrectangle($dst, 0, 0, $nw, $nh, $transparent);
+        }
+        imagecopyresampled($dst, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
+        imagedestroy($src);
+        $src = $dst;
+        $w = $nw; $h = $nh;
+    }
+
+    if (!is_dir(FORUM_UPLOAD_DIR)) @mkdir(FORUM_UPLOAD_DIR, 0755, true);
+    if (!is_dir(FORUM_UPLOAD_DIR) || !is_writable(FORUM_UPLOAD_DIR)) {
+        imagedestroy($src);
+        throw new RuntimeException('Upload directory is not writable.');
+    }
+
+    $stored_name = bin2hex(random_bytes(16)) . '.' . $ext;
+    $dest_path   = rtrim(FORUM_UPLOAD_DIR, '/\\') . '/' . $stored_name;
+
+    $ok = false;
+    switch ($type) {
+        case IMAGETYPE_JPEG: $ok = imagejpeg($src, $dest_path, 88); break;
+        case IMAGETYPE_PNG:  $ok = imagepng($src, $dest_path, 6);   break;
+        case IMAGETYPE_GIF:  $ok = imagegif($src, $dest_path);      break;
+        case IMAGETYPE_WEBP: $ok = function_exists('imagewebp') ? imagewebp($src, $dest_path, 88) : false; break;
+    }
+    imagedestroy($src);
+
+    if (!$ok || !file_exists($dest_path)) {
+        @unlink($dest_path);
+        throw new RuntimeException('Failed to save the processed image.');
+    }
+
+    return [
+        'stored_name' => $stored_name,
+        'mime'        => $mime,
+        'width'       => $w,
+        'height'      => $h,
+        'byte_size'   => (int)filesize($dest_path),
+    ];
+}
+
+/**
+ * Shared handler for POST /threads/{id}/attachments and /replies/{id}/attachments.
+ * Verifies the target exists and the caller owns it (or is a mod), enforces the
+ * per-target cap and rate limit, stores the image, records the row, responds 201.
+ */
+function handle_attachment_upload(string $target_type, int $target_id, array $install): void {
+    $pdo   = get_pdo();
+    $table = $target_type === 'thread' ? 'ss_forum_threads' : 'ss_forum_replies';
+
+    $stmt = $pdo->prepare("SELECT id, install_id FROM $table WHERE id = ? AND is_deleted = 0 LIMIT 1");
+    $stmt->execute([$target_id]);
+    $target = $stmt->fetch();
+    if (!$target) api_error(404, 'TARGET_NOT_FOUND', ucfirst($target_type) . ' not found.');
+
+    $is_own = (int)$target['install_id'] === (int)$install['id'];
+    if (!$is_own && !is_install_mod($install)) {
+        api_error(403, 'FORBIDDEN', 'You can only add images to your own posts.');
+    }
+
+    $cnt = $pdo->prepare(
+        "SELECT COUNT(*) FROM ss_forum_attachments WHERE target_type = ? AND target_id = ? AND is_deleted = 0"
+    );
+    $cnt->execute([$target_type, $target_id]);
+    if ((int)$cnt->fetchColumn() >= FORUM_MAX_ATTACH_PER) {
+        api_error(409, 'TOO_MANY_ATTACHMENTS', 'That post already has the maximum of ' . FORUM_MAX_ATTACH_PER . ' images.');
+    }
+
+    check_rate_limit((int)$install['id'], 'attach', is_install_mod($install));
+
+    if (empty($_FILES['image']) || !is_array($_FILES['image'])) {
+        api_error(400, 'NO_FILE', 'Attach the image in a multipart field named "image" (the whole request may also exceed the server upload limit).');
+    }
+
+    try {
+        $img = store_uploaded_image($_FILES['image']);
+    } catch (RuntimeException $e) {
+        api_error(400, 'BAD_IMAGE', $e->getMessage());
+    }
+
+    // Keep the original filename only for display/alt text; strip control chars.
+    $orig = '';
+    if (!empty($_FILES['image']['name'])) {
+        $orig = mb_substr(preg_replace('/\p{C}+/u', '', basename((string)$_FILES['image']['name'])), 0, 255);
+    }
+
+    $pdo->prepare(
+        "INSERT INTO ss_forum_attachments
+         (target_type, target_id, install_id, stored_name, orig_name, mime, byte_size, width, height)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    )->execute([
+        $target_type, $target_id, $install['id'],
+        $img['stored_name'], $orig, $img['mime'], $img['byte_size'], $img['width'], $img['height'],
+    ]);
+    $attach_id = (int)$pdo->lastInsertId();
+
+    respond([
+        'attachment' => [
+            'id'     => $attach_id,
+            'url'    => forum_base_url() . '/uploads/' . $img['stored_name'],
+            'alt'    => $orig,
+            'mime'   => $img['mime'],
+            'width'  => $img['width'],
+            'height' => $img['height'],
+        ],
+    ], 201);
 }
 
 // ── Router ────────────────────────────────────────────────────────────────────
@@ -545,6 +776,15 @@ if ($method === 'GET' && count($parts) === 2 && $parts[0] === 'threads' && ctype
     }
     unset($r);
 
+    // Attachments (thread + replies)
+    $thread_att = fetch_attachments('thread', [$thread_id]);
+    $thread['attachments'] = $thread_att[$thread_id] ?? [];
+    $reply_att = fetch_attachments('reply', array_map('intval', $reply_ids));
+    foreach ($replies as &$r) {
+        $r['attachments'] = $reply_att[(int)$r['id']] ?? [];
+    }
+    unset($r);
+
     // Tags for this thread
     $tag_stmt = $pdo->prepare(
         "SELECT tg.id, tg.slug, tg.name
@@ -577,7 +817,7 @@ if ($method === 'GET' && count($parts) === 2 && $parts[0] === 'threads' && ctype
 if ($method === 'POST' && $path === 'threads') {
     $install = require_auth();
 
-    check_rate_limit((int)$install['id'], 'thread');
+    check_rate_limit((int)$install['id'], 'thread', is_install_mod($install));
 
     $b      = body();
     $cat_id = (int)trim($b['category_id'] ?? 0);
@@ -740,7 +980,7 @@ if ($method === 'POST'
     $install   = require_auth();
     $thread_id = (int)$parts[1];
 
-    check_rate_limit((int)$install['id'], 'reply');
+    check_rate_limit((int)$install['id'], 'reply', is_install_mod($install));
 
     $b    = body();
     $text = trim($b['body'] ?? '');
@@ -1335,6 +1575,57 @@ if ($method === 'PATCH' && $path === 'installs/me') {
     )->execute([$display_name, $install['id']]);
 
     respond(['status' => 'updated', 'display_name' => $display_name]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /threads/{id}/attachments  — attach an image to a thread (own or mod)
+// POST /replies/{id}/attachments  — attach an image to a reply (own or mod)
+// Multipart form-data, file field "image". One image per request.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($method === 'POST' && count($parts) === 3 && $parts[0] === 'threads' && ctype_digit($parts[1]) && $parts[2] === 'attachments') {
+    $install = require_auth();
+    handle_attachment_upload('thread', (int)$parts[1], $install);
+}
+
+if ($method === 'POST' && count($parts) === 3 && $parts[0] === 'replies' && ctype_digit($parts[1]) && $parts[2] === 'attachments') {
+    $install = require_auth();
+    handle_attachment_upload('reply', (int)$parts[1], $install);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DELETE /attachments/{id}  — reversible hide (owner or mod). GL-6: never destroy.
+// POST   /attachments/{id}/restore  — un-hide (mod only).
+// ─────────────────────────────────────────────────────────────────────────────
+if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'attachments' && ctype_digit($parts[1])) {
+    $install = require_auth();
+    $aid     = (int)$parts[1];
+    $pdo     = get_pdo();
+
+    $stmt = $pdo->prepare("SELECT id, install_id FROM ss_forum_attachments WHERE id = ? AND is_deleted = 0 LIMIT 1");
+    $stmt->execute([$aid]);
+    $att = $stmt->fetch();
+    if (!$att) api_error(404, 'ATTACHMENT_NOT_FOUND', 'Attachment not found.');
+
+    if ((int)$att['install_id'] !== (int)$install['id'] && !is_install_mod($install)) {
+        api_error(403, 'FORBIDDEN', 'You can only remove your own images.');
+    }
+
+    $pdo->prepare("UPDATE ss_forum_attachments SET is_deleted = 1 WHERE id = ?")->execute([$aid]);
+    respond(['status' => 'hidden']);
+}
+
+if ($method === 'POST' && count($parts) === 3 && $parts[0] === 'attachments' && ctype_digit($parts[1]) && $parts[2] === 'restore') {
+    $install = require_auth();
+    if (!is_install_mod($install)) api_error(403, 'FORBIDDEN', 'Only moderators can restore removed images.');
+    $aid = (int)$parts[1];
+    $pdo = get_pdo();
+
+    $stmt = $pdo->prepare("SELECT id FROM ss_forum_attachments WHERE id = ? LIMIT 1");
+    $stmt->execute([$aid]);
+    if (!$stmt->fetch()) api_error(404, 'ATTACHMENT_NOT_FOUND', 'Attachment not found.');
+
+    $pdo->prepare("UPDATE ss_forum_attachments SET is_deleted = 0 WHERE id = ?")->execute([$aid]);
+    respond(['status' => 'restored']);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -10,6 +10,22 @@
 
 # SnapSmack Changelog
 
+## 0.7.576 — 2026-08-28  (version proposed — confirm before tagging)
+
+- **The admin support forum accepts image posts.** Threads and replies can now
+  carry images (jpg, png, gif, webp), so an owner can show a screenshot of a
+  broken skin instead of describing it in words. Uploads are validated by real
+  content — not the file extension — size-capped, and decoded then re-encoded on
+  the server so nothing hidden inside an image file can execute; files are stored
+  with random names in a no-execute directory, and oversized images are
+  downscaled. Images can be hidden and restored, never hard-deleted. Moderators
+  are exempt from the reply and attachment rate limits.
+- **Smack Central's self-updater now deploys and migrates the forum.** Previously
+  `projects/forum-server/` was uploaded by hand; the updater now installs it into
+  `api/forum/`, protects the live `config.php`, hardens the uploads directory,
+  and applies the forum schema idempotently against the forum database. One
+  tagged release plus one self-update ships the whole hub.
+
 ## 0.7.575 — 2026-08-27 "FEDBOARD"
 
 - **SUYB can back up the hub as well as every spoke.** The shared backup key was
