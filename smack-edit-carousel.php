@@ -987,6 +987,7 @@ include 'core/sidebar.php';
                         <button type="button" class="ce-remove-btn cp-remove-btn" title="Remove from post">×</button>
                         <button type="button" class="ce-split-btn" title="Pull out into its own separate post" style="position:absolute;top:6px;left:6px;width:24px;height:24px;border:0;border-radius:4px;background:rgba(0,0,0,0.55);color:var(--text, #fff);font-size:14px;line-height:1;cursor:pointer;" data-confirm="Pull this image out into its own separate post?">↗</button>
                         <button type="button" class="ce-edit-img-btn" title="Edit Image" onclick="SnapPhotoEditor.open('<?php echo htmlspecialchars($pimg['img_file'], ENT_QUOTES); ?>', <?php echo (int)$pimg['post_id']; ?>)">✎</button>
+                        <a class="ce-swap-btn" href="smack-swap.php?id=<?php echo (int)$pimg['id']; ?>" target="_blank" rel="noopener" title="Swap in a different photo — keeps this slot's position, crop &amp; caption. Opens in a new tab; reload here to see it.">⇄</a>
                     </div>
                     <div class="cp-item-label"><?php echo htmlspecialchars(basename($pimg['img_file'])); ?></div>
 
@@ -1122,6 +1123,14 @@ include 'core/sidebar.php';
     font-size:13px; border:0; border-radius:4px; cursor:pointer;
     background:rgba(0,0,0,.55); color:#fff; }
 .ce-edit-img-btn:hover { background:rgba(0,0,0,.8); }
+/* Swap button: replace the photo behind this slot via smack-swap.php, which
+   swaps in place on the same image row — so the slot's position, cover, crop and
+   caption are all preserved. Sits next to the edit pencil, bottom-left. */
+.ce-swap-btn { position:absolute; bottom:6px; left:36px; z-index:3;
+    width:24px; height:24px; padding:0; line-height:24px; text-align:center;
+    font-size:13px; border:0; border-radius:4px; cursor:pointer; text-decoration:none;
+    background:rgba(0,0,0,.55); color:#fff; }
+.ce-swap-btn:hover { background:rgba(0,0,0,.8); }
 .btn-secondary {
     background: #333; color: #aaa;
     border: 1px solid #555; padding: 6px 14px;
