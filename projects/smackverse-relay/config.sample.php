@@ -1,7 +1,7 @@
 <?php
 // SNAPSMACK_EOF_HEADER: this file MUST end with // ===== SNAPSMACK EOF =====
 /**
- * SMACKVERSE Relay — configuration. Copy to config.php (which is gitignored) and
+ * photoblogs.fyi Relay — configuration. Copy to config.php (which is gitignored) and
  * fill in. The relay is a standalone service on its own Proxmox CT.
  */
 return [

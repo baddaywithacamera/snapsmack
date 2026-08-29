@@ -1,7 +1,7 @@
 <?php
 // SNAPSMACK_EOF_HEADER: this file MUST end with // ===== SNAPSMACK EOF =====
 /**
- * SMACKVERSE Relay — DB + settings + config helpers. Standalone: no dependency
+ * photoblogs.fyi Relay — DB + settings + config helpers. Standalone: no dependency
  * on a CMS install.
  */
 

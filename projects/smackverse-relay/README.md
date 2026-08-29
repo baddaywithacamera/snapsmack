@@ -2,7 +2,7 @@
   SNAPSMACK_EOF_HEADER: this file MUST end with the canonical .md EOF marker.
 -->
 
-# SMACKVERSE Relay
+# photoblogs.fyi Relay
 
 A stripped ActivityPub **relay** for the SnapSmack network. SnapSmack blogs
 subscribe; each blog's public posts fan out to every other subscriber, so every
@@ -62,7 +62,7 @@ index) is specced in `_spec/smackverse-relay-node-spec-v1.md`.
 
 ## How blogs join
 
-In the CMS: **SMACKVERSE → Federation → JOIN NETWORK** (pushable fleet-wide from
+In the CMS: **photoblogs.fyi → Federation → JOIN NETWORK** (pushable fleet-wide from
 the multisite hub). That sends the relay-follow (`Follow` with object = the
 Public collection) to the relay. Relayed posts arrive through the inbox each
 blog already runs.
