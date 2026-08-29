@@ -10,6 +10,14 @@
 
 # SnapSmack Changelog
 
+## 0.7.581 "SLAP HAPPY" — 2026-08-28
+
+- **THE HUB now builds and launches the new Qt SNAP SLAPPER editor.**
+  The desktop packager targets the Qt application instead of the retired Tk
+  shell, pins a compatible Qt runtime, and performs an off-screen startup check
+  before replacing an installed executable. The prior executable remains usable
+  if a new package fails verification.
+
 ## 0.7.580 "FIRM FOOTING" — 2026-08-28
 
 - **The forum database now heals itself all the way from the original version.**
