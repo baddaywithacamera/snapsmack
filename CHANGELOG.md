@@ -10,6 +10,16 @@
 
 # SnapSmack Changelog
 
+## 0.7.583 "SQUARED AWAY" — 2026-08-29
+
+- **Directory shows relay & hub membership.** The hub's directory moderation page
+  now has **On Relay** and **On Hub** columns — so a directory *listing* is no
+  longer mistaken for an actual relay *join* — plus roomier rows. It also moved
+  out of the Fediverse menu into admin settings (it was never federation).
+- **"SMACKVERSE" is gone from everything the fediverse sees** — the relay's public
+  name and all user-facing labels are de-branded.
+- Rolls up the latest editor (library browsing) and site-page work.
+
 ## 0.7.582 "FLIP THE SWITCH" — 2026-08-29
 
 - **"Enable Relay" no longer crashes.** The SMACKCAST relay toggle in the
