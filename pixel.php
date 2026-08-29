@@ -209,6 +209,7 @@ try {
 } catch (Throwable $e) {}
 
 $sv_unread = $sv_on ? sv_unread_count($pdo) : 0;
+if (($sv_settings['multisite_role'] ?? '') !== '') fb_refresh_sparse_roster($pdo, $sv_settings);
 $fb_roster = (($sv_settings['multisite_role'] ?? '') !== '') ? fb_roster($pdo, $sv_settings) : [];
 $ver = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : time();
 
