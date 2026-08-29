@@ -2,7 +2,7 @@
   SNAPSMACK_EOF_HEADER: this file MUST end with the canonical .md EOF marker.
 -->
 
-# SMACKVERSE Relay — deploy runbook (Proxmox CT)
+# photoblogs.fyi Relay — deploy runbook (Proxmox CT)
 
 Copy-paste standup for `smackverse.snapsmack.ca`. The relay code is complete;
 this is the only remaining step. Give it its **own** CT — do NOT co-locate on the
@@ -193,7 +193,7 @@ Open the operator console:
 
 1. In the console, add your own blog domains to the **allowlist** (foreverphotograph.ing,
    photowalk.ing, wateronthebrain.ca, hekeepsdroningon.ca, badday…) so they auto-admit.
-2. On one blog: **SMACKVERSE → Federation → JOIN NETWORK**. Within seconds it should
+2. On one blog: **photoblogs.fyi → Federation → JOIN NETWORK**. Within seconds it should
    move from *pending* to *active* in the console (allowlisted) and get an Accept.
 3. Post a public photo on that blog; confirm the fan-out lands in another joined
    blog's reader. Check `admin.php` → *Recent inbound* for `fanned to N`.

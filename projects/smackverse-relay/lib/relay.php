@@ -1,7 +1,7 @@
 <?php
 // SNAPSMACK_EOF_HEADER: this file MUST end with // ===== SNAPSMACK EOF =====
 /**
- * SMACKVERSE Relay — subscription, moderation, fan-out, and the inbox handler.
+ * photoblogs.fyi Relay — subscription, moderation, fan-out, and the inbox handler.
  */
 
 require_once __DIR__ . '/ap.php';
