@@ -56,6 +56,7 @@ fb_expect(str_contains($roster, "version_compare(\$version, '0.7.547', '>=')"), 
 fb_expect(str_contains($pixel, 'aria-current="page"') && str_contains($pixel, 'fb-cursor'), 'active site must be identified accessibly and visually');
 fb_expect(!str_contains($pixel, 'target="_blank"'), 'FEDBOARD page must keep switching in the same tab');
 fb_expect(str_contains($css, 'prefers-reduced-motion: reduce'), 'cursor must respect reduced-motion preferences');
+fb_expect(str_contains($css, '.sx-nav a{ cursor:pointer; }'), 'FEDIVERSE navigation must show the link pointer on hover');
 fb_expect(str_contains($js, 'fedboard-help-dismissed'), 'first-use FEDBOARD guidance must be dismissible');
 fb_expect(str_contains($smackverse, "foreach (['uri', 'url'] as \$key)"), 'remote account mapping must prefer the ActivityPub actor URI and fall back to the profile URL');
 fb_expect(substr_count($smackverse, "'id'     => \$actor_id") >= 3, 'all remote photo timelines must expose a usable actor id for Like and Comment actions');
