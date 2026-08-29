@@ -3383,6 +3383,11 @@ function sv_account_actor_id(array $acct): string {
     return '';
 }
 
+/** Decode remote HTML captions once, then hand plain text to the escaping client renderer. */
+function sv_client_plain_text(string $html): string {
+    return trim(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+}
+
 /** Local/Global discovery: a chosen instance's public timeline via REST. */
 function sv_public_timeline(string $host, bool $local, int $limit = 30): array {
     $host = trim($host);
@@ -3410,7 +3415,7 @@ function sv_public_timeline(string $host, bool $local, int $limit = 30): array {
             'published' => (string)($st['created_at'] ?? ''),
             'text'      => (isset($st['content_text']) && $st['content_text'] !== '')
                             ? (string)$st['content_text']
-                            : trim(strip_tags((string)($st['content'] ?? ''))),
+                            : sv_client_plain_text((string)($st['content'] ?? '')),
             'images'    => $imgs, 'count' => count($imgs),
             'author'    => [
                 'handle' => (string)($acct['acct'] ?? ''),
@@ -3450,7 +3455,7 @@ function sv_map_status_row(array $st, string $fallback_host = ''): ?array {
         'published' => (string)($st['created_at'] ?? ''),
         'text'      => (isset($st['content_text']) && $st['content_text'] !== '')
                         ? (string)$st['content_text']
-                        : trim(strip_tags((string)($st['content'] ?? ''))),
+                        : sv_client_plain_text((string)($st['content'] ?? '')),
         'images'    => $imgs, 'count' => count($imgs),
         'author'    => [
             'handle' => (string)($acct['acct'] ?? ''),
@@ -3494,7 +3499,7 @@ function sv_status_replies(string $object_url): array {
         $acct = is_array($st['account'] ?? null) ? $st['account'] : [];
         $text = (isset($st['content_text']) && $st['content_text'] !== '')
                 ? (string)$st['content_text']
-                : trim(strip_tags((string)($st['content'] ?? '')));
+                : sv_client_plain_text((string)($st['content'] ?? ''));
         if ($text === '') continue;
         $handle = (string)($acct['acct'] ?? '');
         if ($handle !== '' && strpos($handle, '@') === false) {
@@ -3548,7 +3553,7 @@ function sv_map_tag_status(array $st, string $fallback_host): ?array {
         'published' => (string)($st['created_at'] ?? ''),
         'text'      => (isset($st['content_text']) && $st['content_text'] !== '')
                         ? (string)$st['content_text']
-                        : trim(strip_tags((string)($st['content'] ?? ''))),
+                        : sv_client_plain_text((string)($st['content'] ?? '')),
         'images'    => $imgs, 'count' => count($imgs),
         'author'    => [
             'handle' => (string)($acct['acct'] ?? ''),

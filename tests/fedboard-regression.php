@@ -59,6 +59,10 @@ fb_expect(str_contains($css, 'prefers-reduced-motion: reduce'), 'cursor must res
 fb_expect(str_contains($js, 'fedboard-help-dismissed'), 'first-use FEDBOARD guidance must be dismissible');
 fb_expect(str_contains($smackverse, "foreach (['uri', 'url'] as \$key)"), 'remote account mapping must prefer the ActivityPub actor URI and fall back to the profile URL');
 fb_expect(substr_count($smackverse, "'id'     => \$actor_id") >= 3, 'all remote photo timelines must expose a usable actor id for Like and Comment actions');
+fb_expect(str_contains($smackverse, 'sv_client_plain_text'), 'remote captions must decode HTML entities before client-side escaping');
+fb_expect(str_contains($pixel, 'href="?panel=home"') && str_contains($pixel, 'href="?panel=profile"'), 'FEDIVERSE navigation must remain keyboard accessible without JavaScript');
+fb_expect(str_contains($pixel, 'href="privacy-policy.php"') && !str_contains($pixel, '<a href="#">Privacy</a>'), 'FEDIVERSE footer must not contain dead privacy links');
+fb_expect(!str_contains($js, 'sx-book'), 'FEDIVERSE must not show a non-functional bookmark control');
 fb_expect(str_contains($help, "\$help_topics['fedboard']") && str_contains($help, 'RETURN TO FEDBOARD'), 'FEDBOARD help must ship with a return path');
 
 if ($failures) {
