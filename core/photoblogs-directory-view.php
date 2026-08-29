@@ -18,7 +18,8 @@ function pbdir_public_html(PDO $pdo): string {
     uksort($counts, 'strcasecmp');
     $q = trim((string)($_GET['q'] ?? ''));
     $topic = trim((string)($_GET['topic'] ?? ''));
-    $sort = in_array(($_GET['sort'] ?? 'recent'), ['recent','name'], true) ? (string)$_GET['sort'] : 'recent';
+    $sort = (string)($_GET['sort'] ?? 'recent');
+    $sort = in_array($sort, ['recent','name'], true) ? $sort : 'recent';
     $filtered = [];
     foreach ($rows as $row) {
         if ($topic !== '' && !array_filter($row['_topics'], fn($v) => strcasecmp(trim((string)$v), $topic) === 0)) continue;
