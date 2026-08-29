@@ -30,6 +30,8 @@ $smackverse = $read('core/smackverse.php');
 $help = $read('smack-help.php');
 $migration = $read('migrations/migrate-fedboard-sso.sql');
 $updater = $read('core/updater.php');
+$webcron = $read('core/smackverse-webcron.php');
+$cron = $read('cron-smackverse.php');
 
 fb_expect(str_contains($constants, "SNAPSMACK_VERSION_SHORT', '0.7.577'"), 'release must be version 0.7.577');
 fb_expect(str_contains($constants, "SNAPSMACK_VERSION_CODENAME', 'REACH OUT'"), 'release codename must be REACH OUT');
@@ -56,6 +58,13 @@ fb_expect(str_contains($roster, 'function fb_refresh_sparse_roster')
     && str_contains($roster, "fedboard_roster_pull_attempt")
     && str_contains($pixel, 'fb_refresh_sparse_roster($pdo, $sv_settings)'),
     'a sparse spoke roster must self-heal from the hub without depending exclusively on cron');
+fb_expect(str_contains($webcron, 'fedboard_roster_pull_attempt')
+    && strpos($webcron, 'fedboard_roster_pull_attempt') < strpos($webcron, "smackverse_enabled'] ?? '0'"),
+    'web-cron must refresh FEDBOARD independently of SMACKVERSE delivery');
+fb_expect(strpos($cron, 'ms_spoke_pull_roster') < strpos($cron, 'if (!sv_enabled($settings))'),
+    'CLI cron must refresh FEDBOARD before its SMACKVERSE enabled guard');
+fb_expect(str_contains($mesh, 'fedboard_roster_pull_last_success') && str_contains($mesh, 'fedboard_roster_pull_error'),
+    'roster pulls must expose their last success and failure reason');
 fb_expect(str_contains($roster, "version_compare(\$version, '0.7.547', '>=')"), 'older fleet members must remain visible but unavailable');
 fb_expect(str_contains($pixel, 'aria-current="page"') && str_contains($pixel, 'fb-cursor'), 'active site must be identified accessibly and visually');
 fb_expect(!str_contains($pixel, 'target="_blank"'), 'FEDBOARD page must keep switching in the same tab');

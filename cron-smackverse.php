@@ -57,6 +57,13 @@ try {
     exit(1);
 }
 
+// Roster synchronization is lightweight and must not depend on federation
+// delivery being enabled. This keeps FEDBOARD healthy on every spoke.
+require_once "{$root}/core/mesh-helpers.php";
+if (function_exists('ms_spoke_pull_roster')) {
+    try { ms_spoke_pull_roster($pdo, $settings); } catch (Throwable $e) {}
+}
+
 if (!sv_enabled($settings)) {
     echo "SMACKVERSE disabled — nothing to do.\n";
     exit(0);

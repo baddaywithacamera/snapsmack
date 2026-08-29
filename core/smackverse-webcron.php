@@ -32,8 +32,26 @@ if (!function_exists('sv_web_cron_tick')) {
     function sv_web_cron_tick(PDO $pdo, array $settings): void
     {
         if (PHP_SAPI === 'cli') return;
-        if (($settings['smackverse_enabled'] ?? '0') !== '1') return;
         if (($settings['smackverse_webcron_enabled'] ?? '1') === '0') return;
+
+        // FEDBOARD roster health is independent of ActivityPub delivery. A
+        // spoke must keep learning its fleet even when SMACKVERSE is disabled
+        // or the host has no system crontab.
+        if (($settings['multisite_role'] ?? '') === 'spoke') {
+            $roster_last = (int)($settings['fedboard_roster_pull_attempt'] ?? 0);
+            if (!$roster_last || time() - $roster_last >= 900) {
+                register_shutdown_function(static function () use ($pdo, $settings) {
+                    if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request();
+                    @ignore_user_abort(true);
+                    @set_time_limit(20);
+                    require_once __DIR__ . '/mesh-helpers.php';
+                    try { ms_spoke_pull_roster($pdo, $settings); }
+                    catch (Throwable $e) { error_log('FEDBOARD roster refresh failed: ' . $e->getMessage()); }
+                });
+            }
+        }
+
+        if (($settings['smackverse_enabled'] ?? '0') !== '1') return;
 
         // Due? Reuse the exact stamp the CLI cron / RUN NOW button write. A blank
         // or "never" value parses to 0 and is treated as due right away.
