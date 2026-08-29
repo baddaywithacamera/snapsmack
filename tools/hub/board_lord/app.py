@@ -25,6 +25,17 @@ def main(argv=None):
 
     window = BoardLordWindow()
     window.show()
+
+    # The operator's desktop is busy — center the window and force it to the
+    # front so it never opens hidden behind other windows.
+    screen = app.primaryScreen()
+    if screen is not None:
+        frame = window.frameGeometry()
+        frame.moveCenter(screen.availableGeometry().center())
+        window.move(frame.topLeft())
+    window.raise_()
+    window.activateWindow()
+
     return app.exec()
 
 
