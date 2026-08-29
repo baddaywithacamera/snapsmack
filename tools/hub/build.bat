@@ -14,15 +14,15 @@ if not exist hub.spec (
     pause
     exit /b 1
 )
-if not exist snap_slapper.spec (
-    echo ERROR: snap_slapper.spec not found.
+if not exist slapper_qt.spec (
+    echo ERROR: slapper_qt.spec not found.
     pause
     exit /b 1
 )
 
-"%BUILD_PYTHON%" -c "import tkinter as tk; root=tk.Tk(); root.withdraw(); root.destroy()"
+"%BUILD_PYTHON%" -c "from PySide6.QtWidgets import QApplication; app=QApplication([]); app.quit()"
 if errorlevel 1 (
-    echo ERROR: This Python installation does not contain a working Tk runtime.
+    echo ERROR: This Python installation does not contain a working Qt runtime.
     echo SNAP SLAPPER cannot be packaged into a usable desktop application here.
     echo Run: powershell -NoProfile -ExecutionPolicy Bypass -File bootstrap-build-runtime.ps1
     pause
@@ -43,7 +43,7 @@ if not exist C:\snapsmack\hub mkdir C:\snapsmack\hub
 echo.
 echo Building standalone SNAP SLAPPER...
 if not exist "dist\snap_slapper" mkdir "dist\snap_slapper"
-"%BUILD_PYTHON%" -m PyInstaller --noconfirm --clean snap_slapper.spec --distpath "dist\snap_slapper"
+"%BUILD_PYTHON%" -m PyInstaller --noconfirm --clean slapper_qt.spec --distpath "dist\snap_slapper"
 if errorlevel 1 (
     echo ERROR: SNAP SLAPPER packaging failed.
     pause
@@ -53,6 +53,7 @@ if errorlevel 1 (
 set "SNAPSMACK_HOME=%TEMP%\snap_slapper_build_qa_home"
 set "SNAP_SLAPPER_QA_IMAGE=%TEMP%\snap_slapper_build_qa.png"
 set "SNAP_SLAPPER_QA_MARKER=%TEMP%\snap_slapper_build_qa.pass"
+set "QT_QPA_PLATFORM=offscreen"
 if exist "%SNAP_SLAPPER_QA_MARKER%" del /q "%SNAP_SLAPPER_QA_MARKER%"
 "%BUILD_PYTHON%" -c "from PIL import Image; Image.new('RGB',(80,60),(180,40,20)).save(r'%SNAP_SLAPPER_QA_IMAGE%')"
 if errorlevel 1 (
@@ -69,6 +70,7 @@ if not exist "%SNAP_SLAPPER_QA_MARKER%" (
 del /q "%SNAP_SLAPPER_QA_IMAGE%" "%SNAP_SLAPPER_QA_MARKER%"
 set "SNAP_SLAPPER_QA_IMAGE="
 set "SNAP_SLAPPER_QA_MARKER="
+set "QT_QPA_PLATFORM="
 
 if not exist "C:\snapsmack\snap_slapper" mkdir "C:\snapsmack\snap_slapper"
 copy /b /y "dist\snap_slapper\SNAP SLAPPER.exe" "C:\snapsmack\snap_slapper\SNAP SLAPPER.exe.new" >nul
