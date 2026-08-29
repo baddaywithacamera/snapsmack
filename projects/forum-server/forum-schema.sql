@@ -269,6 +269,25 @@ CREATE TABLE IF NOT EXISTS ss_forum_follows (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
+-- v4 idempotent patch — brings a pre-v4 install up to date when this file is
+-- re-applied by the Smack Central updater (which only runs forum-schema.sql,
+-- and whose CREATE TABLE IF NOT EXISTS cannot add columns to an existing table).
+-- Fresh installs already have these from the CREATE TABLEs above; the
+-- IF NOT EXISTS / duplicate-tolerant applier makes this a safe no-op there.
+-- ------------------------------------------------------------
+ALTER TABLE ss_forum_installs
+    ADD COLUMN IF NOT EXISTS role TINYINT NOT NULL DEFAULT 0 AFTER is_moderator;
+
+ALTER TABLE ss_forum_threads
+    ADD COLUMN IF NOT EXISTS flag ENUM('none','chat','support','question','brag')
+        NOT NULL DEFAULT 'none' AFTER tag_cache;
+ALTER TABLE ss_forum_threads ADD KEY IF NOT EXISTS idx_flag (flag);
+
+-- Keep the role/is_moderator mirror consistent both ways.
+UPDATE ss_forum_installs SET role = 2 WHERE is_moderator = 1 AND role < 2;
+UPDATE ss_forum_installs SET is_moderator = 1 WHERE role >= 2 AND is_moderator = 0;
+
+-- ------------------------------------------------------------
 -- Seed: initial five boards
 -- INSERT IGNORE so re-running is safe.
 -- ------------------------------------------------------------
