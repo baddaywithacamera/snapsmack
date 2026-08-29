@@ -112,10 +112,20 @@ class EditorWindow(QMainWindow):
         self.status.showMessage("Open a photograph to begin.")
 
         # Debounce live renders so a slider drag doesn't render on every pixel.
+        # Renders are cheap now (cached decode + proxy), so a short interval gives
+        # a live-feeling preview during the drag instead of only when you pause.
         self._render_timer = QTimer(self)
         self._render_timer.setSingleShot(True)
-        self._render_timer.setInterval(45)
+        self._render_timer.setInterval(22)
         self._render_timer.timeout.connect(self._render_preview)
+
+        # The histogram is a second render; refresh it on its own slower beat so a
+        # drag isn't paying for it every frame — it catches up shortly after you
+        # stop moving the slider.
+        self._hist_timer = QTimer(self)
+        self._hist_timer.setSingleShot(True)
+        self._hist_timer.setInterval(160)
+        self._hist_timer.timeout.connect(self._refresh_histogram)
 
         # Autosave: write a crash-recovery copy a couple seconds after edits.
         self._recovery_dir = self._resolve_recovery_dir()
@@ -1690,6 +1700,9 @@ class EditorWindow(QMainWindow):
     def _schedule_render(self):
         self._render_timer.start()
 
+    def _schedule_histogram(self):
+        self._hist_timer.start()
+
     def _render_preview(self, keep_view=True):
         if not self.doc:
             return
@@ -1704,7 +1717,7 @@ class EditorWindow(QMainWindow):
         else:
             pixmap = render_pixmap(self.doc, max_size=max_size)
             self.view.set_pixmap(pixmap, keep_view=keep_view)
-        self._refresh_histogram()
+        self._schedule_histogram()
 
     def zoom_fit(self):
         """Fit the whole photograph to the window (fast preview resolution)."""
