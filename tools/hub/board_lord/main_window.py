@@ -1,6 +1,6 @@
 """BOARD LORD main window — rail (filters + boards) | thread list | detail."""
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QSplitter, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
@@ -41,6 +41,12 @@ class BoardLordWindow(QMainWindow):
         self._build_body()
         self.statusBar().showMessage("Ready.")
 
+        # Defer first-run work until the window is actually on screen. Opening a
+        # modal dialog during construction (before show()) makes Qt treat the
+        # dialog's close as "last window closed" and quit the whole app.
+        QTimer.singleShot(0, self._startup)
+
+    def _startup(self):
         if not self.config.is_configured:
             self.statusBar().showMessage("Not connected — open Settings and paste your key.")
             self._open_settings()
