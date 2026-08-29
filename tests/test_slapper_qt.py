@@ -49,6 +49,17 @@ def _editor(path):
     return win
 
 
+def _wait_for(predicate, timeout=5.0):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        APP.processEvents()
+        if predicate():
+            return True
+        time.sleep(0.01)
+    APP.processEvents()
+    return bool(predicate())
+
+
 def test_bad_file_does_not_crash():
     # a corrupt/non-image file must fail cleanly, not crash the app
     from PySide6.QtWidgets import QMessageBox
@@ -410,10 +421,11 @@ def test_library_scan_and_open():
     lib = LibraryWindow()
     lib.act_subfolders.setChecked(False)
     lib.load_folder(folder)
-    assert lib.list.count() == 3
+    assert _wait_for(lambda: lib.list.count() == 3)
+    assert lib.act_subfolders.text() == "Subfolders: OFF"
     lib.act_subfolders.setChecked(True)
-    lib.load_folder(folder)
-    assert lib.list.count() == 4
+    assert _wait_for(lambda: lib.list.count() == 4)
+    assert lib.act_subfolders.text() == "Subfolders: ON"
     QThreadPool.globalInstance().waitForDone(5000)
     for _ in range(20):
         APP.processEvents(); time.sleep(0.01)
@@ -514,7 +526,7 @@ def test_library_sort_search_info_and_folders():
 
     lib = LibraryWindow()
     lib.load_folder(folder)
-    assert lib.list.count() == 3
+    assert _wait_for(lambda: lib.list.count() == 3)
     QThreadPool.globalInstance().waitForDone(5000)
     for _ in range(20):
         APP.processEvents(); time.sleep(0.01)
