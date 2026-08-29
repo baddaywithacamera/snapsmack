@@ -25,7 +25,7 @@ sys.path.insert(0, HUB)
 from PIL import Image                                    # noqa: E402
 import editor_engine                                     # noqa: E402
 from PySide6.QtWidgets import QApplication               # noqa: E402
-from PySide6.QtCore import QThreadPool                   # noqa: E402
+from PySide6.QtCore import QDir, QThreadPool             # noqa: E402
 from slapper_qt import theme                             # noqa: E402
 from slapper_qt.editor_window import EditorWindow        # noqa: E402
 from slapper_qt.library_window import LibraryWindow      # noqa: E402
@@ -47,6 +47,17 @@ def _editor(path):
     win = EditorWindow()
     assert win.open_path(path) is True
     return win
+
+
+def _wait_for(predicate, timeout=5.0):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        APP.processEvents()
+        if predicate():
+            return True
+        time.sleep(0.01)
+    APP.processEvents()
+    return bool(predicate())
 
 
 def test_bad_file_does_not_crash():
@@ -410,10 +421,11 @@ def test_library_scan_and_open():
     lib = LibraryWindow()
     lib.act_subfolders.setChecked(False)
     lib.load_folder(folder)
-    assert lib.list.count() == 3
+    assert _wait_for(lambda: lib.list.count() == 3)
+    assert lib.act_subfolders.text() == "Subfolders: OFF"
     lib.act_subfolders.setChecked(True)
-    lib.load_folder(folder)
-    assert lib.list.count() == 4
+    assert _wait_for(lambda: lib.list.count() == 4)
+    assert lib.act_subfolders.text() == "Subfolders: ON"
     QThreadPool.globalInstance().waitForDone(5000)
     for _ in range(20):
         APP.processEvents(); time.sleep(0.01)
@@ -513,8 +525,11 @@ def test_library_sort_search_info_and_folders():
         Image.new("RGB", (300, 200), colour).save(os.path.join(folder, name))
 
     lib = LibraryWindow()
+    # The tree must never enumerate the Windows drive root. Disconnected mapped
+    # drives and cloud providers can block the shell and freeze the whole app.
+    assert lib.tree_model.rootPath() not in ("", QDir.rootPath())
     lib.load_folder(folder)
-    assert lib.list.count() == 3
+    assert _wait_for(lambda: lib.list.count() == 3)
     QThreadPool.globalInstance().waitForDone(5000)
     for _ in range(20):
         APP.processEvents(); time.sleep(0.01)

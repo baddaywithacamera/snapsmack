@@ -19,7 +19,10 @@ to be ported in later phases.
 import os
 import time
 
-from PySide6.QtCore import Qt, QObject, QRunnable, QThreadPool, Signal, QSize, QDir
+from PySide6.QtCore import (
+    Qt, QObject, QRunnable, QThreadPool, Signal, QSize, QDir, QTimer,
+    QStandardPaths,
+)
 from PySide6.QtGui import QImage, QPixmap, QIcon, QAction, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QListWidget, QListWidgetItem, QFileDialog, QLabel, QSlider,
@@ -107,20 +110,78 @@ class _ThumbTask(QRunnable):
             _log.debug("thumbnail failed for %s", self.path, exc_info=True)
 
 
+class _ScanSignals(QObject):
+    ready = Signal(str, bool, int, object)  # folder, recursive, generation, paths
+
+
+class _ScanToken:
+    def __init__(self):
+        self.cancelled = False
+
+
+class _ScanTask(QRunnable):
+    """Enumerate photo paths without blocking the library window."""
+
+    def __init__(self, folder, recursive, generation, signals, token):
+        super().__init__()
+        self.folder = folder
+        self.recursive = recursive
+        self.generation = generation
+        self.signals = signals
+        self.token = token
+
+    def run(self):
+        found = []
+        if self.recursive:
+            def ignore_error(_error):
+                return None
+
+            for root, _dirs, files in os.walk(
+                    self.folder, onerror=ignore_error, followlinks=False):
+                if self.token.cancelled:
+                    return
+                for name in files:
+                    if os.path.splitext(name)[1].lower() in IMAGE_EXTENSIONS:
+                        found.append(os.path.join(root, name))
+        else:
+            try:
+                with os.scandir(self.folder) as entries:
+                    for entry in entries:
+                        if self.token.cancelled:
+                            return
+                        try:
+                            if entry.is_file() and os.path.splitext(
+                                    entry.name)[1].lower() in IMAGE_EXTENSIONS:
+                                found.append(entry.path)
+                        except OSError:
+                            continue
+            except OSError:
+                pass
+        self.signals.ready.emit(
+            self.folder, self.recursive, self.generation, found)
+
+
 class LibraryWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("SNAP SLAPPER — Library")
         self.resize(1180, 780)
         self._pool = QThreadPool.globalInstance()
+        self._scan_pool = QThreadPool(self)
+        self._scan_pool.setMaxThreadCount(1)
         self._items = {}          # path -> QListWidgetItem
         self._icons = {}          # path -> QIcon (cached so re-sort never re-decodes)
         self._stamps = {}         # path -> capture timestamp (float)
         self._paths = []          # all photo paths in the current folder
         self._folder = None
+        self._scan_generation = 0
+        self._scan_token = None
+        self._populate_generation = 0
         self._editors = []        # keep editor windows alive
         self._signals = _ThumbSignals()
         self._signals.ready.connect(self._on_thumb)
+        self._scan_signals = _ScanSignals()
+        self._scan_signals.ready.connect(self._on_scan_ready)
 
         from . import prefs
         settings = prefs.load()
@@ -128,14 +189,28 @@ class LibraryWindow(QMainWindow):
         folders_visible = bool(settings.get("library_folders_visible", True))
 
         self._build_toolbar()
+        self.act_subfolders.blockSignals(True)
+        self.act_subfolders.setChecked(
+            bool(settings.get("library_include_subfolders", False)))
+        self.act_subfolders.blockSignals(False)
+        self._update_subfolder_action()
 
         # Left: folder tree. Right: thumbnail grid. Split so the tree slides
         # in and out without disturbing the grid.
         self.tree_model = QFileSystemModel(self)
-        self.tree_model.setRootPath("")
         self.tree_model.setFilter(QDir.Dirs | QDir.Drives | QDir.NoDotAndDotDot)
         self.tree = QTreeView()
         self.tree.setModel(self.tree_model)
+        # Never root this model at "" on Windows. That asks the shell to probe
+        # every mapped/cloud/network drive; one stale share marks the entire
+        # application Not Responding. Start from a known local directory and
+        # re-root only when the user explicitly chooses another folder.
+        initial_root = QStandardPaths.writableLocation(
+            QStandardPaths.PicturesLocation)
+        if not initial_root or not os.path.isdir(initial_root):
+            initial_root = QDir.homePath()
+        initial_index = self.tree_model.setRootPath(initial_root)
+        self.tree.setRootIndex(initial_index)
         self.tree.setHeaderHidden(True)
         for column in range(1, self.tree_model.columnCount()):
             self.tree.hideColumn(column)
@@ -188,9 +263,11 @@ class LibraryWindow(QMainWindow):
         self.act_folders.toggled.connect(self._toggle_folders)
         bar.addAction(self.act_folders)
 
-        self.act_subfolders = QAction("Include Subfolders", self)
+        self.act_subfolders = QAction("Subfolders: OFF", self)
         self.act_subfolders.setCheckable(True)
-        self.act_subfolders.toggled.connect(self._reload_current)
+        self.act_subfolders.setToolTip(
+            "OFF — show photographs only from the selected folder")
+        self.act_subfolders.toggled.connect(self._subfolders_toggled)
         bar.addAction(self.act_subfolders)
 
         bar.addSeparator()
@@ -262,47 +339,90 @@ class LibraryWindow(QMainWindow):
 
     # --- Folder scanning ----------------------------------------------------
     def choose_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "Choose photo folder")
+        dialog = QFileDialog(self, "Choose photo folder")
+        dialog.setFileMode(QFileDialog.Directory)
+        dialog.setOption(QFileDialog.ShowDirsOnly, True)
+        # The Windows shell picker can hang while resolving disconnected drives
+        # and stale network locations. Qt's own directory view stays responsive.
+        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        folder = ""
+        if dialog.exec():
+            selected = dialog.selectedFiles()
+            folder = selected[0] if selected else ""
         if folder:
             self.load_folder(folder)
-            index = self.tree_model.index(folder)
+            index = self.tree_model.setRootPath(folder)
             if index.isValid():
-                self.tree.setCurrentIndex(index)
-                self.tree.scrollTo(index)
-                self.tree.expand(index)
+                self.tree.setRootIndex(index)
+
+    def _subfolders_toggled(self, checked):
+        from . import prefs
+        values = prefs.load()
+        values["library_include_subfolders"] = bool(checked)
+        prefs.save(values)
+        self._update_subfolder_action()
+        self._reload_current()
+
+    def _update_subfolder_action(self):
+        enabled = self.act_subfolders.isChecked()
+        self.act_subfolders.setText(
+            "Subfolders: ON" if enabled else "Subfolders: OFF")
+        self.act_subfolders.setToolTip(
+            "ON — include photographs from every folder below the selection"
+            if enabled else
+            "OFF — show photographs only from the selected folder")
 
     def _reload_current(self, _checked=None):
         if self._folder:
             self.load_folder(self._folder)
 
     def load_folder(self, folder):
+        folder = os.path.abspath(folder)
+        recursive = self.act_subfolders.isChecked()
         self._folder = folder
-        self._paths = self._scan(folder, self.act_subfolders.isChecked())
+        self._scan_generation += 1
+        generation = self._scan_generation
+        if self._scan_token is not None:
+            self._scan_token.cancelled = True
+        self._scan_token = _ScanToken()
+        self._populate_generation += 1  # cancel a pending incremental populate
+        self._paths = []
         self._icons.clear()
         self._stamps.clear()
+        self.list.clear()
+        self._items.clear()
         self.setWindowTitle(f"SNAP SLAPPER — {os.path.basename(folder) or folder}")
-        self._populate()
-        for path in self._paths:
-            self._pool.start(_ThumbTask(path, self._signals))
-        self.status.showMessage(f"{len(self._paths)} photo(s) in {folder}")
+        scope = "folder and subfolders" if recursive else "folder only"
+        self.status.showMessage(f"Scanning {scope}…  {folder}")
+        self._scan_pool.start(_ScanTask(
+            folder, recursive, generation, self._scan_signals,
+            self._scan_token))
 
     def _scan(self, folder, recursive):
+        """Synchronous helper retained for tests and small direct callers."""
         found = []
         if recursive:
-            for root, _dirs, files in os.walk(folder):
-                for name in files:
-                    if os.path.splitext(name)[1].lower() in IMAGE_EXTENSIONS:
-                        found.append(os.path.join(root, name))
+            for root, _dirs, files in os.walk(folder, followlinks=False):
+                found.extend(os.path.join(root, name) for name in files
+                             if os.path.splitext(name)[1].lower()
+                             in IMAGE_EXTENSIONS)
         else:
             try:
-                for name in os.listdir(folder):
-                    full = os.path.join(folder, name)
-                    if os.path.isfile(full) and \
-                            os.path.splitext(name)[1].lower() in IMAGE_EXTENSIONS:
-                        found.append(full)
+                with os.scandir(folder) as entries:
+                    found.extend(entry.path for entry in entries
+                                 if entry.is_file() and os.path.splitext(
+                                     entry.name)[1].lower()
+                                 in IMAGE_EXTENSIONS)
             except OSError:
-                return []
+                pass
         return found
+
+    def _on_scan_ready(self, folder, recursive, generation, paths):
+        if generation != self._scan_generation or folder != self._folder or \
+                recursive != self.act_subfolders.isChecked():
+            return  # a newer folder/scope selection superseded this scan
+        self._paths = paths
+        self._populate()
 
     # --- Grid population, sort, filter --------------------------------------
     def _sorted_paths(self):
@@ -323,14 +443,31 @@ class LibraryWindow(QMainWindow):
         self.list.clear()
         self._items.clear()
         placeholder = self._placeholder_icon()
-        for path in self._sorted_paths():
-            icon = self._icons.get(path, placeholder)
-            item = QListWidgetItem(icon, os.path.basename(path))
-            item.setData(Qt.UserRole, path)
-            item.setToolTip(path)
-            self.list.addItem(item)
-            self._items[path] = item
-        self._apply_filter(self.search.text())
+        paths = self._sorted_paths()
+        self._populate_generation += 1
+        generation = self._populate_generation
+
+        def add_batch(offset=0):
+            if generation != self._populate_generation:
+                return
+            end = min(offset + 150, len(paths))
+            for path in paths[offset:end]:
+                icon = self._icons.get(path, placeholder)
+                item = QListWidgetItem(icon, os.path.basename(path))
+                item.setData(Qt.UserRole, path)
+                item.setToolTip(path)
+                self.list.addItem(item)
+                self._items[path] = item
+                if path not in self._icons:
+                    self._pool.start(_ThumbTask(path, self._signals))
+            if end < len(paths):
+                self.status.showMessage(
+                    f"Showing {end} of {len(paths)} photos…")
+                QTimer.singleShot(0, lambda: add_batch(end))
+            else:
+                self._apply_filter(self.search.text())
+
+        add_batch()
 
     def _sort_changed(self, _index):
         self._sort = self.sort_combo.currentData()
