@@ -33,8 +33,8 @@ $updater = $read('core/updater.php');
 $webcron = $read('core/smackverse-webcron.php');
 $cron = $read('cron-smackverse.php');
 
-fb_expect(str_contains($constants, "SNAPSMACK_VERSION_SHORT', '0.7.578'"), 'release must be version 0.7.578');
-fb_expect(str_contains($constants, "SNAPSMACK_VERSION_CODENAME', 'STAY CONNECTED'"), 'release codename must be STAY CONNECTED');
+fb_expect(str_contains($constants, "SNAPSMACK_VERSION_SHORT', '0.7.579'"), 'release must be version 0.7.579');
+fb_expect(str_contains($constants, "SNAPSMACK_VERSION_CODENAME', 'PULL UP A CHAIR'"), 'release codename must be PULL UP A CHAIR');
 fb_expect(str_contains($migration, 'token_hash') && !str_contains($migration, '`token` VARCHAR'), 'migration must store only ticket hashes');
 fb_expect(str_contains(strtolower($migration), "enum('admin','fedboard')"), 'tickets must bind an allowlisted destination');
 fb_expect(str_contains($updater, "'migrate-fedboard-sso.sql'"), 'updater must apply the FEDBOARD migration');
