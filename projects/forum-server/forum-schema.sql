@@ -5,12 +5,13 @@
 
 
 -- ============================================================
--- SNAPSMACK FORUM — Database Schema (v3)
+-- SNAPSMACK FORUM — Database Schema (v4)
 -- Deploy to: squir871_smackforum on snapsmack.ca
 -- Run once on fresh installs. Existing installs: run the latest
--- forum-schema-vN-migration.sql (v2, then v3) — or let the Smack Central
--- self-updater apply this file idempotently.
+-- forum-schema-vN-migration.sql (v2, then v3, then v4) — or let the Smack
+-- Central self-updater apply this file idempotently.
 -- v3: adds ss_forum_attachments (image posts on threads & replies).
+-- v4: adds install role ladder, thread author-flags, ss_forum_follows.
 -- Safe to re-run (IF NOT EXISTS throughout).
 -- ============================================================
 
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS ss_forum_installs (
     last_seen_at    TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     is_banned       TINYINT(1)     NOT NULL DEFAULT 0,
     is_moderator    TINYINT(1)     NOT NULL DEFAULT 0,
+    role            TINYINT        NOT NULL DEFAULT 0,   -- 0 user, 1 power, 2 mod, 3 admin (God = FORUM_MOD_KEY, out-of-band)
     PRIMARY KEY (id),
     UNIQUE KEY uq_api_key (api_key),
     UNIQUE KEY uq_domain  (domain)
@@ -79,12 +81,14 @@ CREATE TABLE IF NOT EXISTS ss_forum_threads (
     last_reply_display_name VARCHAR(100)   NOT NULL DEFAULT '',
     last_reply_domain       VARCHAR(255)   NOT NULL DEFAULT '',
     tag_cache               VARCHAR(500)   NOT NULL DEFAULT '',
+    flag                    ENUM('none','chat','support','question','brag') NOT NULL DEFAULT 'none',
     created_at              TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_edited               TINYINT(1)     NOT NULL DEFAULT 0,
     edited_at               TIMESTAMP               DEFAULT NULL,
     PRIMARY KEY (id),
     KEY idx_category_last_reply (category_id, last_reply_at),
     KEY idx_install             (install_id),
+    KEY idx_flag                (flag),
     FULLTEXT KEY ft_thread_search (title, body),
     CONSTRAINT fk_thread_category FOREIGN KEY (category_id) REFERENCES ss_forum_categories (id),
     CONSTRAINT fk_thread_install  FOREIGN KEY (install_id)  REFERENCES ss_forum_installs  (id)
@@ -248,6 +252,64 @@ CREATE TABLE IF NOT EXISTS ss_forum_attachments (
     KEY idx_install (install_id),
     CONSTRAINT fk_attach_install FOREIGN KEY (install_id) REFERENCES ss_forum_installs (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- Follows (v4)
+-- A blog follows a thread to get reply notifications even if it never posted.
+-- PK prevents dupes; idx_thread powers follower fan-out on new replies.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ss_forum_follows (
+    install_id      INT            NOT NULL,
+    thread_id       INT            NOT NULL,
+    created_at      TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (install_id, thread_id),
+    KEY idx_thread (thread_id),
+    CONSTRAINT fk_follow_install FOREIGN KEY (install_id) REFERENCES ss_forum_installs (id),
+    CONSTRAINT fk_follow_thread  FOREIGN KEY (thread_id)  REFERENCES ss_forum_threads  (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- Idempotent self-heal — brings a LEGACY install (as far back as v1) fully up
+-- to date whenever this file is re-applied by the Smack Central updater. The
+-- updater only runs forum-schema.sql, and CREATE TABLE IF NOT EXISTS cannot add
+-- columns to a table that already exists — so every column introduced after v1
+-- is (re)added here. Missing tables are handled by the CREATE TABLEs above.
+--
+-- Deliberately: IF NOT EXISTS on every statement (safe no-op where present) and
+-- NO "AFTER" clauses, so there is zero ordering dependency between these lines
+-- and none of them can fail on a column that does not exist yet.
+-- ------------------------------------------------------------
+
+-- installs (v4): role ladder
+ALTER TABLE ss_forum_installs ADD COLUMN IF NOT EXISTS role TINYINT NOT NULL DEFAULT 0;
+
+-- threads (v2): richer thread metadata
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS excerpt                 VARCHAR(400) NOT NULL DEFAULT '';
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS is_solved               TINYINT(1)   NOT NULL DEFAULT 0;
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS solved_reply_id         INT                   DEFAULT NULL;
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS view_count              INT          NOT NULL DEFAULT 0;
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS reaction_count          INT          NOT NULL DEFAULT 0;
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS last_reply_display_name VARCHAR(100) NOT NULL DEFAULT '';
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS last_reply_domain       VARCHAR(255) NOT NULL DEFAULT '';
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS tag_cache               VARCHAR(500) NOT NULL DEFAULT '';
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS is_edited               TINYINT(1)   NOT NULL DEFAULT 0;
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS edited_at               TIMESTAMP    NULL     DEFAULT NULL;
+-- threads (v4): author post-flag
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS flag ENUM('none','chat','support','question','brag') NOT NULL DEFAULT 'none';
+
+-- replies (v2): edit tracking + reaction count
+ALTER TABLE ss_forum_replies ADD COLUMN IF NOT EXISTS is_edited      TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE ss_forum_replies ADD COLUMN IF NOT EXISTS edited_at      TIMESTAMP  NULL     DEFAULT NULL;
+ALTER TABLE ss_forum_replies ADD COLUMN IF NOT EXISTS reaction_count INT        NOT NULL DEFAULT 0;
+
+-- Indexes introduced after v1 (full-text search + flag filter). Duplicate-tolerant.
+ALTER TABLE ss_forum_threads ADD FULLTEXT KEY IF NOT EXISTS ft_thread_search (title, body);
+ALTER TABLE ss_forum_replies ADD FULLTEXT KEY IF NOT EXISTS ft_reply_search (body);
+ALTER TABLE ss_forum_threads ADD KEY IF NOT EXISTS idx_flag (flag);
+
+-- Keep the role/is_moderator mirror consistent both ways.
+UPDATE ss_forum_installs SET role = 2 WHERE is_moderator = 1 AND role < 2;
+UPDATE ss_forum_installs SET is_moderator = 1 WHERE role >= 2 AND is_moderator = 0;
 
 -- ------------------------------------------------------------
 -- Seed: initial five boards
