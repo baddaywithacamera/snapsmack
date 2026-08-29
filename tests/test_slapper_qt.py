@@ -25,7 +25,7 @@ sys.path.insert(0, HUB)
 from PIL import Image                                    # noqa: E402
 import editor_engine                                     # noqa: E402
 from PySide6.QtWidgets import QApplication               # noqa: E402
-from PySide6.QtCore import QThreadPool                   # noqa: E402
+from PySide6.QtCore import QDir, QThreadPool             # noqa: E402
 from slapper_qt import theme                             # noqa: E402
 from slapper_qt.editor_window import EditorWindow        # noqa: E402
 from slapper_qt.library_window import LibraryWindow      # noqa: E402
@@ -525,6 +525,9 @@ def test_library_sort_search_info_and_folders():
         Image.new("RGB", (300, 200), colour).save(os.path.join(folder, name))
 
     lib = LibraryWindow()
+    # The tree must never enumerate the Windows drive root. Disconnected mapped
+    # drives and cloud providers can block the shell and freeze the whole app.
+    assert lib.tree_model.rootPath() not in ("", QDir.rootPath())
     lib.load_folder(folder)
     assert _wait_for(lambda: lib.list.count() == 3)
     QThreadPool.globalInstance().waitForDone(5000)
