@@ -10,6 +10,20 @@
 
 # SnapSmack Changelog
 
+## 0.7.577 "REACH OUT" — 2026-08-28
+
+- **Likes and replies from FEDIVERSE work across remote server formats.** Feed
+  account records now prefer the canonical ActivityPub actor URI and fall back
+  safely to the public profile URL, preventing the recurring “no usable id” and
+  “could not reach that account” failures.
+- **The FEDIVERSE reader no longer advertises dead controls.** The unfinished
+  Bookmark button and placeholder footer links are gone; Help and Privacy lead
+  somewhere useful, and every main section is keyboard-accessible with a real
+  fallback URL.
+- **Remote captions render as text instead of entity soup.** Apostrophes and
+  lightweight formatting received from other servers are decoded before the
+  browser safely escapes and displays them.
+
 ## 0.7.576 "SHOW AND TELL" — 2026-08-28
 
 - **The admin support forum accepts image posts.** Threads and replies can now
