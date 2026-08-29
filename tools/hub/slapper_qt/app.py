@@ -1,7 +1,9 @@
 """Application bootstrap for the Qt editor shell."""
 
+import os
 import sys
 
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
 from . import theme
@@ -32,6 +34,20 @@ def main(argv=None):
     else:
         window = LibraryWindow()
     window.show()
+
+    # Packaged-build smoke test: open a real image, prove the Qt event loop can
+    # start, write a marker, and exit without requiring desktop interaction.
+    qa_image = os.environ.get("SNAP_SLAPPER_QA_IMAGE", "")
+    qa_marker = os.environ.get("SNAP_SLAPPER_QA_MARKER", "")
+    if qa_image and qa_marker:
+        def finish_qa():
+            try:
+                if os.path.isfile(qa_image):
+                    with open(qa_marker, "w", encoding="utf-8") as marker:
+                        marker.write("ok\n")
+            finally:
+                app.quit()
+        QTimer.singleShot(750, finish_qa)
 
     return app.exec()
 
