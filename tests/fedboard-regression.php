@@ -52,6 +52,10 @@ fb_expect(str_contains($multisite, 'fedboard_sso_enabled'), 'heartbeat storage m
 fb_expect(str_contains($mesh, "'fedboard_sso_enabled'"), 'mesh roster must propagate FEDBOARD consent state');
 
 fb_expect(str_contains($roster, 'strnatcasecmp'), 'FEDBOARD roster must sort names naturally and case-insensitively');
+fb_expect(str_contains($roster, 'function fb_refresh_sparse_roster')
+    && str_contains($roster, "fedboard_roster_pull_attempt")
+    && str_contains($pixel, 'fb_refresh_sparse_roster($pdo, $sv_settings)'),
+    'a sparse spoke roster must self-heal from the hub without depending exclusively on cron');
 fb_expect(str_contains($roster, "version_compare(\$version, '0.7.547', '>=')"), 'older fleet members must remain visible but unavailable');
 fb_expect(str_contains($pixel, 'aria-current="page"') && str_contains($pixel, 'fb-cursor'), 'active site must be identified accessibly and visually');
 fb_expect(!str_contains($pixel, 'target="_blank"'), 'FEDBOARD page must keep switching in the same tab');
