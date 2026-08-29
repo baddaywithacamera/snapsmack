@@ -115,7 +115,6 @@
   var HEART_F = svg(21, '<path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.8a5 5 0 0 0 0-6.6z"/>', "currentColor");
   var CHAT    = svg(21, '<path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.9-.9L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5z"/>');
   var BOOST   = svg(21, '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>');
-  var MARK    = svg(20, '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>');
   var DOTS    = svg(20, '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>', "currentColor");
   var GLOBE   = svg(14, '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/>');
   var SEND    = svg(18, '<path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>');
@@ -201,8 +200,7 @@
         '<button class="sx-act sx-like"><span class="sx-ic">' + HEART + "</span> Like</button>" +
         '<button class="sx-act sx-comment"><span class="sx-ic">' + CHAT + "</span> Comment</button>" +
         '<span class="sx-act-sp"></span>' +
-        '<button class="sx-act sx-boost" title="Boost"><span class="sx-ic">' + BOOST + "</span></button>" +
-        '<button class="sx-act sx-book" title="Bookmark"><span class="sx-ic">' + MARK + "</span></button>" +
+        '<button class="sx-act sx-boost" title="Boost" aria-label="Boost"><span class="sx-ic">' + BOOST + "</span></button>" +
       "</div>" +
       (p.text ? '<div class="sx-caption"><span class="sx-ch-h">' + esc(a.handle ? a.handle.split("@")[0] : a.name) + "</span> " + linkifyCaption(p.text) + "</div>" : "") +
       '<div class="sx-comments sx-hide"></div>';
