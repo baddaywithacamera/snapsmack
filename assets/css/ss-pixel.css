@@ -165,6 +165,7 @@ button{ font-family:inherit; cursor:pointer; }
 
 /* nav */
 .sx-nav{ border:1px solid var(--line); border-radius:var(--radius); padding:6px; background:var(--card); }
+.sx-nav a{ cursor:pointer; }
 .sx-nav-top{ display:grid; grid-template-columns:repeat(3,1fr); border-bottom:1px solid var(--line-soft); padding-bottom:6px; margin-bottom:6px; }
 .sx-nav-top a{ display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 2px; border-radius:10px; font-size:.72rem; font-weight:600; color:var(--muted-2); }
 .sx-nav-top a .sx-ic{ font-size:1.15rem; }
