@@ -21,6 +21,7 @@ import time
 
 from PySide6.QtCore import (
     Qt, QObject, QRunnable, QThreadPool, Signal, QSize, QDir, QTimer,
+    QStandardPaths,
 )
 from PySide6.QtGui import QImage, QPixmap, QIcon, QAction, QKeySequence
 from PySide6.QtWidgets import (
@@ -197,10 +198,19 @@ class LibraryWindow(QMainWindow):
         # Left: folder tree. Right: thumbnail grid. Split so the tree slides
         # in and out without disturbing the grid.
         self.tree_model = QFileSystemModel(self)
-        self.tree_model.setRootPath("")
         self.tree_model.setFilter(QDir.Dirs | QDir.Drives | QDir.NoDotAndDotDot)
         self.tree = QTreeView()
         self.tree.setModel(self.tree_model)
+        # Never root this model at "" on Windows. That asks the shell to probe
+        # every mapped/cloud/network drive; one stale share marks the entire
+        # application Not Responding. Start from a known local directory and
+        # re-root only when the user explicitly chooses another folder.
+        initial_root = QStandardPaths.writableLocation(
+            QStandardPaths.PicturesLocation)
+        if not initial_root or not os.path.isdir(initial_root):
+            initial_root = QDir.homePath()
+        initial_index = self.tree_model.setRootPath(initial_root)
+        self.tree.setRootIndex(initial_index)
         self.tree.setHeaderHidden(True)
         for column in range(1, self.tree_model.columnCount()):
             self.tree.hideColumn(column)
@@ -341,11 +351,9 @@ class LibraryWindow(QMainWindow):
             folder = selected[0] if selected else ""
         if folder:
             self.load_folder(folder)
-            index = self.tree_model.index(folder)
+            index = self.tree_model.setRootPath(folder)
             if index.isValid():
-                self.tree.setCurrentIndex(index)
-                self.tree.scrollTo(index)
-                self.tree.expand(index)
+                self.tree.setRootIndex(index)
 
     def _subfolders_toggled(self, checked):
         from . import prefs
