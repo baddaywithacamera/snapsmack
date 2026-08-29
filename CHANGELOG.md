@@ -10,6 +10,18 @@
 
 # SnapSmack Changelog
 
+## 0.7.579 "PULL UP A CHAIR" — 2026-08-28
+
+- **The forum grew ranks, follows, flags, and real sorting** (BOARD LORD backend).
+  - Every blog holds a rank — ordinary, power, moderator, or admin. God (Smack Central)
+    can set any rank; an admin blog can promote spokes up to moderator. No one can change
+    a rank at or above their own.
+  - Posters can flag a thread **chat / support / question / brag**, and a board can be
+    filtered to just one kind — so a cry for help stops drowning in chatter.
+  - **Follow or unfollow** any thread to get reply notifications, even threads you never posted in.
+  - Thread lists can sort by newest, most-viewed, or unread-first, and filter to unread or followed.
+  - **Admin blogs** (not only the master key) can create boards, and boards can be renamed or hidden.
+
 ## 0.7.578 "STAY CONNECTED" — 2026-08-28
 
 - **FEDBOARD roster synchronization no longer depends on Fediverse delivery.**
