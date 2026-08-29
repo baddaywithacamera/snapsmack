@@ -10,6 +10,12 @@
 
 # SnapSmack Changelog
 
+## 0.7.584 "BLANK SLATE" — 2026-08-29
+
+- **The fediverse handle field starts blank and must be filled in.** It used to
+  pre-fill with your domain, which made it easy to save the wrong handle without
+  noticing. Now you choose it deliberately — the form won't save an empty handle.
+
 ## 0.7.583 "SQUARED AWAY" — 2026-08-29
 
 - **Directory shows relay & hub membership.** The hub's directory moderation page
