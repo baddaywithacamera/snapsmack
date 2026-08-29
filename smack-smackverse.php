@@ -95,10 +95,11 @@ include 'core/sidebar.php';
             <div class="lens-input-wrapper">
                 <label>HANDLE</label>
                 <input type="text" id="sv-handle-input" name="sv_handle" maxlength="60"
-                       value="<?php echo htmlspecialchars($sv_handle); ?>" autocomplete="off">
+                       value="<?php echo htmlspecialchars($sv_handle_raw); ?>" autocomplete="off"
+                       required placeholder="choose a handle — e.g. relay">
             </div>
             <p>Will answer as:
-                <code id="sv-handle-preview" data-sv-domain="<?php echo htmlspecialchars($sv_dom); ?>"><?php echo htmlspecialchars($sv_address); ?></code>
+                <code id="sv-handle-preview" data-sv-domain="<?php echo htmlspecialchars($sv_dom); ?>"><?php echo htmlspecialchars($sv_handle_raw !== '' ? $sv_address : '@…@' . $sv_dom); ?></code>
             </p>
             <?php if ($sv_on && $sv_follower_count > 0): ?>
             <label style="display:block; margin-bottom:10px;">
