@@ -393,6 +393,10 @@ $sv_on       = sv_enabled($sv_settings);
 $sv_handle   = sv_handle($sv_settings);
 $sv_dom      = sv_domain($sv_settings);
 $sv_address  = '@' . $sv_handle . '@' . $sv_dom;
+// The handle input shows the RAW stored value, never the domain-derived fallback,
+// so the field is BLANK until the operator deliberately sets a handle. Leaving the
+// domain pre-filled trained the wrong handle in over and over. Required to save.
+$sv_handle_raw = trim((string)($sv_settings['smackverse_handle'] ?? ''));
 $sv_has_key  = trim($sv_settings['smackverse_public_key'] ?? '') !== '';
 $sv_key_fp   = $sv_has_key ? substr(hash('sha256', $sv_settings['smackverse_public_key']), 0, 16) : '';
 
