@@ -3374,6 +3374,15 @@ function sv_proxy_client_items(array $items): array {
     return $items;
 }
 
+/** Return the canonical ActivityPub actor id exposed by Mastodon/Pixelfed account rows. */
+function sv_account_actor_id(array $acct): string {
+    foreach (['uri', 'url'] as $key) {
+        $candidate = trim((string)($acct[$key] ?? ''));
+        if (stripos($candidate, 'https://') === 0) return $candidate;
+    }
+    return '';
+}
+
 /** Local/Global discovery: a chosen instance's public timeline via REST. */
 function sv_public_timeline(string $host, bool $local, int $limit = 30): array {
     $host = trim($host);
@@ -3394,6 +3403,7 @@ function sv_public_timeline(string $host, bool $local, int $limit = 30): array {
         }
         if (!$imgs) continue;
         $acct = is_array($st['account'] ?? null) ? $st['account'] : [];
+        $actor_id = sv_account_actor_id($acct);
         $out[] = [
             'id'        => (string)($st['uri'] ?? ($st['url'] ?? '')),
             'url'       => (string)($st['url'] ?? ($st['uri'] ?? '')),
@@ -3406,8 +3416,8 @@ function sv_public_timeline(string $host, bool $local, int $limit = 30): array {
                 'handle' => (string)($acct['acct'] ?? ''),
                 'name'   => (string)($acct['display_name'] ?? ($acct['username'] ?? '')),
                 'avatar' => (string)($acct['avatar'] ?? ''),
-                'id'     => (string)($acct['url'] ?? ''),
-                'host'   => parse_url((string)($acct['url'] ?? ''), PHP_URL_HOST) ?: $host,
+                'id'     => $actor_id,
+                'host'   => parse_url($actor_id, PHP_URL_HOST) ?: $host,
             ],
         ];
         if (count($out) >= $limit) break;
@@ -3433,6 +3443,7 @@ function sv_map_status_row(array $st, string $fallback_host = ''): ?array {
     }
     if (!$imgs) return null;
     $acct = is_array($st['account'] ?? null) ? $st['account'] : [];
+    $actor_id = sv_account_actor_id($acct);
     return [
         'id'        => (string)($st['uri'] ?? ($st['url'] ?? '')),
         'url'       => (string)($st['url'] ?? ($st['uri'] ?? '')),
@@ -3445,8 +3456,8 @@ function sv_map_status_row(array $st, string $fallback_host = ''): ?array {
             'handle' => (string)($acct['acct'] ?? ''),
             'name'   => (string)($acct['display_name'] ?? ($acct['username'] ?? '')),
             'avatar' => (string)($acct['avatar'] ?? ''),
-            'id'     => (string)($acct['url'] ?? ''),
-            'host'   => parse_url((string)($acct['url'] ?? ''), PHP_URL_HOST) ?: $fallback_host,
+            'id'     => $actor_id,
+            'host'   => parse_url($actor_id, PHP_URL_HOST) ?: $fallback_host,
         ],
     ];
 }
@@ -3530,6 +3541,7 @@ function sv_map_tag_status(array $st, string $fallback_host): ?array {
     }
     if (!$imgs) return null;
     $acct = is_array($st['account'] ?? null) ? $st['account'] : [];
+    $actor_id = sv_account_actor_id($acct);
     return [
         'id'        => (string)($st['uri'] ?? ($st['url'] ?? '')),
         'url'       => (string)($st['url'] ?? ($st['uri'] ?? '')),
@@ -3542,8 +3554,8 @@ function sv_map_tag_status(array $st, string $fallback_host): ?array {
             'handle' => (string)($acct['acct'] ?? ''),
             'name'   => (string)($acct['display_name'] ?? ($acct['username'] ?? '')),
             'avatar' => (string)($acct['avatar'] ?? ''),
-            'id'     => (string)($acct['url'] ?? ''),
-            'host'   => parse_url((string)($acct['url'] ?? ''), PHP_URL_HOST) ?: $fallback_host,
+            'id'     => $actor_id,
+            'host'   => parse_url($actor_id, PHP_URL_HOST) ?: $fallback_host,
         ],
     ];
 }

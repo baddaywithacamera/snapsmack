@@ -26,6 +26,7 @@ $mesh = $read('core/mesh-helpers.php');
 $pixel = $read('pixel.php');
 $css = $read('assets/css/ss-pixel.css');
 $js = $read('assets/js/ss-pixel.js');
+$smackverse = $read('core/smackverse.php');
 $help = $read('smack-help.php');
 $migration = $read('migrations/migrate-fedboard-sso.sql');
 $updater = $read('core/updater.php');
@@ -56,6 +57,8 @@ fb_expect(str_contains($pixel, 'aria-current="page"') && str_contains($pixel, 'f
 fb_expect(!str_contains($pixel, 'target="_blank"'), 'FEDBOARD page must keep switching in the same tab');
 fb_expect(str_contains($css, 'prefers-reduced-motion: reduce'), 'cursor must respect reduced-motion preferences');
 fb_expect(str_contains($js, 'fedboard-help-dismissed'), 'first-use FEDBOARD guidance must be dismissible');
+fb_expect(str_contains($smackverse, "foreach (['uri', 'url'] as \$key)"), 'remote account mapping must prefer the ActivityPub actor URI and fall back to the profile URL');
+fb_expect(substr_count($smackverse, "'id'     => \$actor_id") >= 3, 'all remote photo timelines must expose a usable actor id for Like and Comment actions');
 fb_expect(str_contains($help, "\$help_topics['fedboard']") && str_contains($help, 'RETURN TO FEDBOARD'), 'FEDBOARD help must ship with a return path');
 
 if ($failures) {
