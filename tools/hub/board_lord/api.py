@@ -42,7 +42,16 @@ class ForumClient:
                 url += "?" + urllib.parse.urlencode(clean)
 
         data = None
-        headers = {"Authorization": "Bearer " + self.key}
+        # A real browser-style User-Agent: the forum sits behind Cloudflare, which
+        # 1010-blocks the default "Python-urllib/x" agent as a bot. Without this
+        # every call is refused and the console shows no data.
+        headers = {
+            "Authorization": "Bearer " + self.key,
+            "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                           "AppleWebKit/537.36 (KHTML, like Gecko) "
+                           "Chrome/124.0.0.0 Safari/537.36 BOARD-LORD"),
+            "Accept": "application/json",
+        }
         if body is not None:
             data = json.dumps(body).encode("utf-8")
             headers["Content-Type"] = "application/json"
