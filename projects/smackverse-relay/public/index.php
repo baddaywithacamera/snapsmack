@@ -1,7 +1,7 @@
 <?php
 // SNAPSMACK_EOF_HEADER: this file MUST end with // ===== SNAPSMACK EOF =====
 /**
- * SMACKVERSE Relay — front controller. All public routes dispatch here.
+ * photoblogs.fyi Relay — front controller. All public routes dispatch here.
  *   /actor  /.well-known/webfinger  /.well-known/nodeinfo  /nodeinfo/2.0
  *   /inbox  /followers  /following  /outbox  /
  */
@@ -55,7 +55,7 @@ switch ($path) {
             'openRegistrations' => (relay_setting('open_mode', 'allowlist') === 'open'),
             'usage'             => ['users' => ['total' => $n]],
             'metadata'          => [
-                'nodeName'        => 'SMACKVERSE Relay',
+                'nodeName'        => 'photoblogs.fyi Relay',
                 'nodeDescription' => 'SnapSmack network relay — fan-out only, no image storage.',
             ],
         ], 'application/json');
@@ -74,7 +74,7 @@ switch ($path) {
 
     case '/':
         header('Content-Type: text/plain; charset=utf-8');
-        echo "SMACKVERSE Relay. ActivityPub actor at /actor. No image storage — media loads from origin blogs.\n";
+        echo "photoblogs.fyi Relay. ActivityPub actor at /actor. No image storage — media loads from origin blogs.\n";
         exit;
 
     default:

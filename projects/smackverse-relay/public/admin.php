@@ -1,7 +1,7 @@
 <?php
 // SNAPSMACK_EOF_HEADER: this file MUST end with // ===== SNAPSMACK EOF =====
 /**
- * SMACKVERSE Relay — operator console. Token-gated (config admin_token). Lists
+ * photoblogs.fyi Relay — operator console. Token-gated (config admin_token). Lists
  * subscribers, approves pending, blocks/unblocks domains, manages the allowlist,
  * and flips open mode. No public UI, no user accounts.
  */
@@ -89,7 +89,7 @@ $q_queued  = (int)relay_db()->query("SELECT COUNT(*) FROM relay_deliveries WHERE
 $q_failed  = (int)relay_db()->query("SELECT COUNT(*) FROM relay_deliveries WHERE status='failed'")->fetchColumn();
 $t = htmlspecialchars($token);
 ?><!doctype html>
-<html><head><meta charset="utf-8"><title>SMACKVERSE Relay — operator</title>
+<html><head><meta charset="utf-8"><title>photoblogs.fyi Relay — operator</title>
 <style>
 body{font-family:system-ui,sans-serif;background:#0b1015;color:#dde;margin:0;padding:24px;}
 h1{color:#4fd;font-size:1.4rem} h2{color:#4fd;font-size:1rem;margin-top:28px;border-bottom:1px solid #234;padding-bottom:4px}
@@ -99,7 +99,7 @@ button{cursor:pointer} .msg{background:#123;padding:10px;border-radius:6px;margi
 .pill{padding:2px 8px;border-radius:10px;font-size:.72rem} .on{background:#052;color:#5f9} .off{background:#411;color:#f88}
 form.inline{display:inline}
 </style></head><body>
-<h1>SMACKVERSE Relay — operator console</h1>
+<h1>photoblogs.fyi Relay — operator console</h1>
 <p>Mode: <span class="pill <?php echo $mode==='open'?'off':'on'; ?>"><?php echo strtoupper($mode); ?></span>
    &nbsp; Queue: <?php echo $q_queued; ?> queued, <?php echo $q_failed; ?> failed.</p>
 <?php if ($msg): ?><div class="msg"><?php echo $msg; ?></div><?php endif; ?>

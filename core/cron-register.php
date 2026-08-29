@@ -83,7 +83,7 @@ function cron_register_job(string $schedule, string $script_abs, string $tag): a
  * the full canonical block is still what System Maintenance → REPAIR writes.
  */
 function cron_ensure_webfinger_htaccess(string $htaccess_path): array {
-    // Both SMACKVERSE rewrites, keyed by their presence-check needle.
+    // Both Fediverse rewrites, keyed by their presence-check needle.
     // The /ap/ path routes exist because AP object ids must be
     // query-string-free — Pixelfed HTML-encodes '&' when dereferencing
     // object URLs, so ?ap=note&post=N ids 404 on their side (0.7.350).
@@ -106,7 +106,7 @@ function cron_ensure_webfinger_htaccess(string $htaccess_path): array {
         if (strpos($content, $needle) === false) $missing[$needle] = $line;
     }
     if (!$missing) {
-        return [true, 'SMACKVERSE rewrites already present.'];
+        return [true, 'Fediverse rewrites already present.'];
     }
     if (!is_writable($htaccess_path)) {
         return [false, '.htaccess is not writable — run System Maintenance → REPAIR .htaccess, or add the rules by hand.'];
@@ -125,7 +125,7 @@ function cron_ensure_webfinger_htaccess(string $htaccess_path): array {
     if ($new === null || @file_put_contents($htaccess_path, $new, LOCK_EX) === false) {
         return [false, 'Could not write the SMACKVERSE rules — run System Maintenance → REPAIR .htaccess.'];
     }
-    return [true, 'SMACKVERSE rewrites added to .htaccess.'];
+    return [true, 'Fediverse rewrites added to .htaccess.'];
 }
 
 /** Remove the job carrying $tag. Safe when nothing is registered. */
