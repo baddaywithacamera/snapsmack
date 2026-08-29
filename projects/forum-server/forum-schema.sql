@@ -269,18 +269,42 @@ CREATE TABLE IF NOT EXISTS ss_forum_follows (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- v4 idempotent patch — brings a pre-v4 install up to date when this file is
--- re-applied by the Smack Central updater (which only runs forum-schema.sql,
--- and whose CREATE TABLE IF NOT EXISTS cannot add columns to an existing table).
--- Fresh installs already have these from the CREATE TABLEs above; the
--- IF NOT EXISTS / duplicate-tolerant applier makes this a safe no-op there.
+-- Idempotent self-heal — brings a LEGACY install (as far back as v1) fully up
+-- to date whenever this file is re-applied by the Smack Central updater. The
+-- updater only runs forum-schema.sql, and CREATE TABLE IF NOT EXISTS cannot add
+-- columns to a table that already exists — so every column introduced after v1
+-- is (re)added here. Missing tables are handled by the CREATE TABLEs above.
+--
+-- Deliberately: IF NOT EXISTS on every statement (safe no-op where present) and
+-- NO "AFTER" clauses, so there is zero ordering dependency between these lines
+-- and none of them can fail on a column that does not exist yet.
 -- ------------------------------------------------------------
-ALTER TABLE ss_forum_installs
-    ADD COLUMN IF NOT EXISTS role TINYINT NOT NULL DEFAULT 0 AFTER is_moderator;
 
-ALTER TABLE ss_forum_threads
-    ADD COLUMN IF NOT EXISTS flag ENUM('none','chat','support','question','brag')
-        NOT NULL DEFAULT 'none' AFTER tag_cache;
+-- installs (v4): role ladder
+ALTER TABLE ss_forum_installs ADD COLUMN IF NOT EXISTS role TINYINT NOT NULL DEFAULT 0;
+
+-- threads (v2): richer thread metadata
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS excerpt                 VARCHAR(400) NOT NULL DEFAULT '';
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS is_solved               TINYINT(1)   NOT NULL DEFAULT 0;
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS solved_reply_id         INT                   DEFAULT NULL;
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS view_count              INT          NOT NULL DEFAULT 0;
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS reaction_count          INT          NOT NULL DEFAULT 0;
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS last_reply_display_name VARCHAR(100) NOT NULL DEFAULT '';
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS last_reply_domain       VARCHAR(255) NOT NULL DEFAULT '';
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS tag_cache               VARCHAR(500) NOT NULL DEFAULT '';
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS is_edited               TINYINT(1)   NOT NULL DEFAULT 0;
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS edited_at               TIMESTAMP    NULL     DEFAULT NULL;
+-- threads (v4): author post-flag
+ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS flag ENUM('none','chat','support','question','brag') NOT NULL DEFAULT 'none';
+
+-- replies (v2): edit tracking + reaction count
+ALTER TABLE ss_forum_replies ADD COLUMN IF NOT EXISTS is_edited      TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE ss_forum_replies ADD COLUMN IF NOT EXISTS edited_at      TIMESTAMP  NULL     DEFAULT NULL;
+ALTER TABLE ss_forum_replies ADD COLUMN IF NOT EXISTS reaction_count INT        NOT NULL DEFAULT 0;
+
+-- Indexes introduced after v1 (full-text search + flag filter). Duplicate-tolerant.
+ALTER TABLE ss_forum_threads ADD FULLTEXT KEY IF NOT EXISTS ft_thread_search (title, body);
+ALTER TABLE ss_forum_replies ADD FULLTEXT KEY IF NOT EXISTS ft_reply_search (body);
 ALTER TABLE ss_forum_threads ADD KEY IF NOT EXISTS idx_flag (flag);
 
 -- Keep the role/is_moderator mirror consistent both ways.
