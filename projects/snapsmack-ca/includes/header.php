@@ -39,8 +39,8 @@ $_nav = function(string $active): string {
            ss_nav_link('bugger.php',     'BUGGER!',         'bugger',    $active) .
            ss_nav_link('tnb.php',        'TWIG N BERRIES!', 'tnb',       $active) .
            ss_nav_link('hairy-muff.php', 'HAIRY MUFF!',     'hairy-muff',$active) .
-           ss_nav_link('the-reckoning.php', 'THE RECKONING!', 'reckoning', $active) .
            ss_nav_link('buzzers.php',    'BUZZERS!',        'buzzers',   $active) .
+           ss_nav_link('the-reckoning.php', 'THE RECKONING!', 'reckoning', $active) .
            ss_nav_link('oi.php',         'OI THERE MATE!',  'oi',        $active) .
            '</div></details>';
 };
