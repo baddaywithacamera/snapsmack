@@ -823,6 +823,10 @@ class EditorDocument:
     _font_reference_cache = {}
     def __init__(self, source_path):
         self.source_path = os.path.abspath(source_path)
+        # Decode/geometry caches (see _decoded_source / _base_proxy). A live drag
+        # must not re-open the file and re-resize the full-res original per tick.
+        self._source_cache = None
+        self._proxy_cache = {}
         self.adjustments = copy.deepcopy(DEFAULT_ADJUSTMENTS)
         self.geometry = {"rotation": 0.0, "crop": None, "flip_x": False, "flip_y": False}
         self.layers = []
@@ -1079,23 +1083,55 @@ class EditorDocument:
                 left += painter.textlength(character, font=font) + character_spacing
         return output
 
-    def render(self, max_size=None):
-        with Image.open(self.source_path) as source:
-            image = ImageOps.exif_transpose(source).convert("RGB")
-        rotation = float(self.geometry.get("rotation", 0))
+    def _decoded_source(self):
+        """The source photo decoded once (EXIF-transposed RGB) and cached, so a
+        slider drag doesn't re-open and re-decode the file on every render."""
+        if self._source_cache is None:
+            with Image.open(self.source_path) as source:
+                self._source_cache = ImageOps.exif_transpose(source).convert("RGB")
+        return self._source_cache
+
+    def _base_proxy(self, max_size):
+        """Geometry-applied (and, for previews, downscaled) copy of the source,
+        cached per (geometry, max_size). Adjustments run on top of this, so during
+        a drag only the adjustment pass re-runs — not decode + geometry + resize.
+        Produces the exact same pixels the old inline path did."""
+        geom = self.geometry
+        crop = geom.get("crop")
+        key = (round(float(geom.get("rotation", 0)), 4),
+               bool(geom.get("flip_x")), bool(geom.get("flip_y")),
+               tuple(crop) if crop else None,
+               tuple(max_size) if max_size else None)
+        cached = self._proxy_cache.get(key)
+        if cached is not None:
+            return cached
+
+        image = self._decoded_source().copy()   # detach so thumbnail() can't mutate the cache
+        rotation = float(geom.get("rotation", 0))
         if rotation:
             image = image.rotate(rotation, expand=True, resample=Image.Resampling.BICUBIC)
-        if self.geometry.get("flip_x"):
+        if geom.get("flip_x"):
             image = ImageOps.mirror(image)
-        if self.geometry.get("flip_y"):
+        if geom.get("flip_y"):
             image = ImageOps.flip(image)
-        crop = self.geometry.get("crop")
         if crop:
             left, top, right, bottom = crop
             image = image.crop((int(left * image.width), int(top * image.height),
                                 int(right * image.width), int(bottom * image.height)))
         if max_size:
             image.thumbnail(max_size, Image.Resampling.LANCZOS)
+        # Keep only the latest proxy so memory stays bounded — one drag reuses one
+        # key; changing geometry or the viewport size simply rebuilds it.
+        self._proxy_cache = {key: image}
+        return image
+
+    def invalidate_cache(self):
+        """Drop cached decode/proxies — call if the source file changes on disk."""
+        self._source_cache = None
+        self._proxy_cache = {}
+
+    def render(self, max_size=None):
+        image = self._base_proxy(max_size)
         image = apply_adjustments(image, self.adjustments).convert("RGBA")
         if self.retouched:
             for spot in self.retouched:
