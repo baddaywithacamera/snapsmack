@@ -10,6 +10,16 @@
 
 # SnapSmack Changelog
 
+## 0.7.578 "STAY CONNECTED" — 2026-08-28
+
+- **FEDBOARD roster synchronization no longer depends on Fediverse delivery.**
+  Both system cron and the locked-down-host web scheduler refresh spoke rosters
+  independently, including when SMACKVERSE delivery is disabled.
+- **Sparse FEDBOARD menus repair themselves.** Opening FEDIVERSE on a spoke
+  with no cached siblings performs a throttled hub refresh, while failed hub
+  requests retain the last-known-good roster and record a useful error.
+- **FEDIVERSE navigation now shows the expected pointer cursor.**
+
 ## 0.7.577 "REACH OUT" — 2026-08-28
 
 - **Likes and replies from FEDIVERSE work across remote server formats.** Feed
