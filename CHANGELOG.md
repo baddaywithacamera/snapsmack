@@ -10,6 +10,14 @@
 
 # SnapSmack Changelog
 
+## 0.7.582 "FLIP THE SWITCH" — 2026-08-29
+
+- **"Enable Relay" no longer crashes.** The SMACKCAST relay toggle in the
+  Fediverse Portal called a step-up check (`reauth_verify`) that wasn't loaded on
+  that path, so the page 500'd the moment you tried to turn the relay on. Fixed —
+  enabling still asks for your password + authenticator code.
+- Silenced a recurring `sort` warning in the photoblogs directory view.
+
 ## 0.7.581 "SLAP HAPPY" — 2026-08-28
 
 - **THE HUB now builds and launches the new Qt SNAP SLAPPER editor.**
