@@ -7,6 +7,13 @@ via queued signals — so callbacks can safely touch widgets.
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot
 
+# Strong references to in-flight jobs. Without this the QRunnable (and its
+# _Signals emitter) can be garbage-collected the instant run() returns — before
+# the queued result signal is delivered to the GUI thread — so the callback
+# silently never fires. That is the classic "the call ran but nothing updated"
+# PySide6 bug. Keep each job alive until its result has actually been delivered.
+_INFLIGHT = set()
+
 
 class _Signals(QObject):
     ok = Signal(object)
@@ -31,8 +38,16 @@ class _Job(QRunnable):
 
 def run_async(fn, on_ok=None, on_err=None):
     """Run ``fn()`` off-thread. ``on_ok(result)`` / ``on_err(message)`` fire on
-    the GUI thread. Returns the job (kept alive by the pool until it finishes)."""
+    the GUI thread. The job is retained until its result is delivered."""
     job = _Job(fn)
+    _INFLIGHT.add(job)
+
+    def _release(*_):
+        _INFLIGHT.discard(job)
+
+    # _release runs first so the job is dropped once its result is delivered.
+    job.signals.ok.connect(_release)
+    job.signals.err.connect(_release)
     if on_ok is not None:
         job.signals.ok.connect(on_ok)
     if on_err is not None:
