@@ -237,7 +237,23 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
 function ms_spoke_pull_roster(PDO $pdo, array $settings): array
 {
     $none = ['added' => 0, 'updated' => 0, 'pruned' => 0, 'ok' => false];
-    if (($settings['multisite_role'] ?? '') === 'hub' || !function_exists('curl_init')) {
+    if (($settings['multisite_role'] ?? '') === 'hub') {
+        return $none;
+    }
+    $stamp = static function (bool $ok, string $error = '') use ($pdo): void {
+        $values = [
+            'fedboard_roster_pull_attempt' => (string)time(),
+            'fedboard_roster_pull_error'   => $error,
+        ];
+        if ($ok) $values['fedboard_roster_pull_last_success'] = date('Y-m-d H:i:s');
+        try {
+            $q = $pdo->prepare("INSERT INTO snap_settings (setting_key,setting_val) VALUES (?,?)
+                                ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)");
+            foreach ($values as $key => $value) $q->execute([$key, $value]);
+        } catch (Throwable $e) {}
+    };
+    if (!function_exists('curl_init')) {
+        $stamp(false, 'cURL is unavailable');
         return $none;
     }
     try {
@@ -247,6 +263,7 @@ function ms_spoke_pull_roster(PDO $pdo, array $settings): array
         return $none;
     }
     if (!$hub || trim((string)($hub['api_key_remote'] ?? '')) === '') {
+        $stamp(false, 'Hub connection or outbound key is missing');
         return $none;
     }
     $hub_url = rtrim((string)$hub['site_url'], '/');
@@ -269,10 +286,12 @@ function ms_spoke_pull_roster(PDO $pdo, array $settings): array
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     if (!$raw || $code !== 200) {
+        $stamp(false, 'Hub roster request returned HTTP ' . $code);
         return $none;
     }
     $hb = json_decode((string)$raw, true);
     if (empty($hb['ok'])) {
+        $stamp(false, 'Hub roster response was invalid');
         return $none;
     }
     try {
@@ -281,10 +300,12 @@ function ms_spoke_pull_roster(PDO $pdo, array $settings): array
     } catch (Throwable $e) {
     }
     if (empty($hb['mesh']['peers']) || !is_array($hb['mesh']['peers'])) {
+        $stamp(true);
         return ['added' => 0, 'updated' => 0, 'pruned' => 0, 'ok' => true];
     }
     $r = ms_ingest_roster($pdo, $hub_url, $hb['mesh']['peers']);
     $r['ok'] = true;
+    $stamp(true);
     return $r;
 }
 // ===== SNAPSMACK EOF =====
