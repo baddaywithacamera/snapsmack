@@ -46,6 +46,38 @@ function fb_audit(PDO $pdo, string $direction, string $peer_url, string $destina
     } catch (Throwable $e) { error_log('FEDBOARD audit failed: ' . $e->getMessage()); }
 }
 
+/**
+ * A spoke normally learns the fleet roster from its Fediverse cron. If that
+ * cron is absent or unhealthy, self-heal an empty picker on page load. Attempts
+ * are throttled so an unreachable hub cannot add a long network wait to every
+ * FEDIVERSE request.
+ */
+function fb_refresh_sparse_roster(PDO $pdo, array &$settings): void {
+    if (($settings['multisite_role'] ?? '') !== 'spoke') return;
+    try {
+        $known = (int)$pdo->query("SELECT COUNT(*) FROM snap_multisite_nodes")->fetchColumn();
+    } catch (Throwable $e) {
+        return;
+    }
+    if ($known > 1) return;
+
+    $last = (int)($settings['fedboard_roster_pull_attempt'] ?? 0);
+    if ($last > 0 && time() - $last < 300) return;
+    $now = (string)time();
+    try {
+        $pdo->prepare("INSERT INTO snap_settings (setting_key,setting_val) VALUES ('fedboard_roster_pull_attempt',?)
+                       ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$now]);
+        $settings['fedboard_roster_pull_attempt'] = $now;
+    } catch (Throwable $e) {
+        return;
+    }
+
+    require_once __DIR__ . '/mesh-helpers.php';
+    if (function_exists('ms_spoke_pull_roster')) {
+        try { ms_spoke_pull_roster($pdo, $settings); } catch (Throwable $e) {}
+    }
+}
+
 /** @return array<int,array<string,mixed>> */
 function fb_roster(PDO $pdo, array $settings): array {
     $current_url = fb_base_url((string)($settings['site_url'] ?? ''));
